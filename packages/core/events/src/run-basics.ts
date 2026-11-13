@@ -168,9 +168,10 @@ export interface StoredBlob {
 export type ToolRisk = "read" | "write" | "send";
 
 /**
- * What one call of a sending tool sends, in the singular and the plural, as
- * its integration's sheet names it, such as `{ one: "email", many: "emails" }`.
- * Both are stored so a reader never has to make a plural itself.
+ * What one call of a tool sends, reads or drafts, in the singular and the
+ * plural, as its integration's sheet names it, such as
+ * `{ one: "email", many: "emails" }`. Both are stored so a reader never has to
+ * make a plural itself.
  */
 export interface ToolNoun {
   one: string;
@@ -178,11 +179,13 @@ export interface ToolNoun {
 }
 
 /**
- * What one call of a sending tool did to its noun, in the past tense, as
- * its integration's sheet says: "saved" reads "Saved 1 file". A closed list,
- * so a sheet can't word a send as something milder; absent means "sent".
+ * What one call of a tool did to its noun, in the past tense, as its
+ * integration's sheet says: "saved" reads "Saved 1 file". A closed list, so a
+ * sheet can't word a send as something milder; absent means "sent". `drafted`
+ * is for a `write` tool that prepares something without sending it ("Drafted
+ * 1 email"), and a `send` tool may never use it.
  */
-export type ToolVerb = "sent" | "saved" | "created" | "updated" | "moved";
+export type ToolVerb = "sent" | "saved" | "created" | "updated" | "moved" | "drafted";
 
 /**
  * Why a run failed. Each reason has its own requirement in `requirements/`.

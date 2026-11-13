@@ -37,10 +37,15 @@ verifies("events.tool-result-risk", () => {
     expectTypeOf<EventOf<"tool.result">["noun"]>().toEqualTypeOf<ToolNoun | undefined>();
   });
 
-  typeTest("says what one call did to its noun: sent, saved, created, updated or moved", () => {
-    expectTypeOf<ToolVerb>().toEqualTypeOf<"sent" | "saved" | "created" | "updated" | "moved">();
-    expectTypeOf<EventOf<"tool.result">["verb"]>().toEqualTypeOf<ToolVerb | undefined>();
-  });
+  typeTest(
+    "says what one call did to its noun: sent, saved, created, updated, moved or drafted",
+    () => {
+      expectTypeOf<ToolVerb>().toEqualTypeOf<
+        "sent" | "saved" | "created" | "updated" | "moved" | "drafted"
+      >();
+      expectTypeOf<EventOf<"tool.result">["verb"]>().toEqualTypeOf<ToolVerb | undefined>();
+    },
+  );
 
   typeTest("takes a sending call with its noun and verb, and a call without them", () => {
     expectTypeOf({
@@ -61,6 +66,16 @@ verifies("events.tool-result-risk", () => {
       risk: "send",
       noun: { one: "file", many: "files" },
       verb: "saved",
+    } as const).toExtend<EventOf<"tool.result">>();
+    expectTypeOf({
+      type: "tool.result",
+      agent: "writer",
+      tool: "create_draft",
+      result: "drafted",
+      outcome: "ok",
+      risk: "write",
+      noun: { one: "email", many: "emails" },
+      verb: "drafted",
     } as const).toExtend<EventOf<"tool.result">>();
     expectTypeOf({
       type: "tool.result",

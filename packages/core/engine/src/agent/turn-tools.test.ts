@@ -229,6 +229,19 @@ verifies("engine.turn-declared-tools", () => {
     expect(result).toMatchObject({ noun: { one: "file", many: "files" }, verb: "saved" });
   });
 
+  it("copies a read call's noun and a drafted write call's noun and verb", async () => {
+    const read = await loggedResult(listedTool("search_email"), {
+      mail: { search_email: { risk: "read", noun: email } },
+    });
+    expect(read).toMatchObject({ risk: "read", noun: email });
+    expect(read).not.toHaveProperty("verb");
+
+    const draft = await loggedResult(listedTool("create_draft"), {
+      mail: { create_draft: { risk: "write", noun: email, verb: "drafted" } },
+    });
+    expect(draft).toMatchObject({ risk: "write", noun: email, verb: "drafted" });
+  });
+
   it("takes no noun or verb from what a server lists", async () => {
     const hostile = { ...listedTool("send_email"), risk: "send", noun: email, verb: "saved" };
     const without = await loggedResult(hostile as ConnectorTool);

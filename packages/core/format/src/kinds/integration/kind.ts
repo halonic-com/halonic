@@ -26,7 +26,8 @@ export const integrationKind: FileKind<IntegrationSheet> = {
 /**
  * The rules over several fields: no list names a thing twice, a secret goes
  * only to hosts the sheet declares, the sign-ins fit the sheet and its `kit`
- * (`checkSignIns`), a send tool has a noun, a verb comes with a noun, and
+ * (`checkSignIns`), a send tool has a noun, a verb comes with a noun, a send
+ * tool never says "drafted", and
  * the Google fields fit the sheet.
  *
  * @example
@@ -88,6 +89,7 @@ export function checkIntegrationSheet(sheet: IntegrationSheet): KindCheckProblem
   problems.push(...checkSignIns(sheet));
   problems.push(...checkSendNouns(sheet));
   problems.push(...checkToolVerbs(sheet));
+  problems.push(...checkDraftedVerbs(sheet));
   problems.push(...checkGoogleFields(sheet));
   return problems;
 }
@@ -124,6 +126,26 @@ function checkToolVerbs(sheet: IntegrationSheet): KindCheckProblem[] {
             code: "verb-without-noun",
             path: ["tools", index, "verb"],
             message: `Integration "${sheet.id}": tool "${tool.name}" has verb ${tool.verb} but no noun, so a run couldn't say what was ${tool.verb}; add one, such as noun: { one: file, many: files }`,
+          },
+        ]
+      : [],
+  );
+}
+
+/**
+ * `drafted` says nothing was sent, so only a `write` tool may use it. The list
+ * is closed so a send can't be worded as something milder, and "drafted" is
+ * milder than "sent".
+ */
+function checkDraftedVerbs(sheet: IntegrationSheet): KindCheckProblem[] {
+  return sheet.tools.flatMap((tool, index): KindCheckProblem[] =>
+    tool.verb === "drafted" && tool.risk !== "write"
+      ? [
+          {
+            severity: "error",
+            code: "drafted-on-send-tool",
+            path: ["tools", index, "verb"],
+            message: `Integration "${sheet.id}": tool "${tool.name}" has risk ${tool.risk}, so it may not say drafted: only a write tool prepares something without sending it`,
           },
         ]
       : [],
