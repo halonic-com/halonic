@@ -1,3 +1,4 @@
+import type { MenuEntry } from "@halonicjs/studio-kit";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
 import { FeatureDialogs } from "../dialogs/feature-dialogs.tsx";
 import type { StudioHost } from "../engine/engine-words.ts";
@@ -39,6 +40,17 @@ import { StudioSidebar } from "./studio-sidebar.tsx";
 import type { StudioWorkspace } from "./studio-workspace.ts";
 import { useActiveTabTitle, useWindowTitle } from "./window-title.ts";
 
+/** What the window lets its workspace menu do. */
+export interface WindowActions {
+  /** Runs the command with this id, any feature's, and says whether a feature added it. */
+  readonly runCommand: (commandId: string) => boolean;
+}
+
+/** The workspace switcher as {@link StudioWindow} takes it. */
+export interface StudioSwitcher extends Omit<WorkspaceSwitcherProps, "menu"> {
+  readonly menu: readonly MenuEntry[] | ((window: WindowActions) => readonly MenuEntry[]);
+}
+
 /** Props for {@link StudioWindow}. */
 export interface StudioWindowProps {
   /** The registered features and the window's announcer, close stack, engine and toasts. */
@@ -51,8 +63,11 @@ export interface StudioWindowProps {
   readonly platform: KeyboardPlatform;
   /** The language of the Studio's words, such as `en`, set on `<html lang>`. */
   readonly language: string;
-  /** The sidebar's workspace switcher, once the app has a workspace menu (T3). */
-  readonly switcher?: WorkspaceSwitcherProps | undefined;
+  /**
+   * The sidebar's workspace switcher, once the app has a workspace menu (T3). The menu is a list of
+   * rows, or a function of the window's actions for rows that open a page (**Workspace settings…**).
+   */
+  readonly switcher?: StudioSwitcher | undefined;
   /** The phone's More page switcher row, once the app has a workspace picker (T3). */
   readonly phoneSwitcher?: MorePageSwitcher | undefined;
   /** The workspace's header badges, such as "Not trusted yet · Review", on the desktop. */
@@ -155,6 +170,15 @@ export function StudioWindow(props: StudioWindowProps) {
     }),
     [shell, workspace, openSettings, settingsSections, contributions],
   );
+  const runCommand = (commandId: string): boolean => {
+    const command = contributions.commands.get(commandId, contextFor);
+    if (command === undefined) {
+      return false;
+    }
+    runWithToast(command, contextFor, shell.toasts);
+    return true;
+  };
+  const sidebarSwitcher = withActions(props.switcher, { runCommand });
   /** The item's place, named as its kind's tab names it, as Ctrl K opens a found item. */
   function locationOfItem(item: ItemRef): TabLocation {
     const kind = contributions.itemKinds.get(item.kind);
@@ -212,7 +236,7 @@ export function StudioWindow(props: StudioWindowProps) {
           contextFor={contextFor}
           onSearch={palette.show}
           onSettings={() => openSettings()}
-          switcher={props.switcher}
+          switcher={sidebarSwitcher}
         />
       }
       statusBar={<StatusBarItems items={contributions.statusBar.list()} contextFor={contextFor} />}
@@ -302,4 +326,16 @@ export function StudioWindow(props: StudioWindowProps) {
       <FeatureDialogs hosts={contributions.dialogs.list()} contextFor={contextFor} />
     </ShellFrame>
   );
+}
+
+/** The switcher the sidebar draws: a menu given as a function is made with the window's actions. */
+function withActions(
+  switcher: StudioSwitcher | undefined,
+  actions: WindowActions,
+): WorkspaceSwitcherProps | undefined {
+  if (switcher === undefined) {
+    return undefined;
+  }
+  const { menu } = switcher;
+  return { ...switcher, menu: typeof menu === "function" ? menu(actions) : menu };
 }

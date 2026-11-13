@@ -2,7 +2,13 @@
 
 import { KindedError } from "@halonicjs/std";
 import { createToastStore } from "@halonicjs/studio-kit";
-import { createShell, type Shell, StudioWorkspace } from "@halonicjs/studio-shell";
+import {
+  createShell,
+  defineFeature,
+  type Feature,
+  type Shell,
+  StudioWorkspace,
+} from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -61,8 +67,9 @@ function start(
   picks: string[],
   gone: string[] = [],
   saving?: WorkspaceSaving,
+  features: readonly Feature[] = [],
 ): { shell: Shell; switcher: WorkspaceSwitcher } {
-  const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
+  const shell = createShell({ features, host: "desktop-app", platform: "windows" });
   const storage = new Map<string, string>();
   const switcher = new WorkspaceSwitcher({
     pickFolder: async () => picks.shift(),
@@ -142,6 +149,26 @@ verifies("workspace.workspace-window", () => {
     expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: acme");
     await press({ key: "2", ctrlKey: true, altKey: true });
     expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: acme");
+  });
+
+  it("opens the workspace page from the menu's Workspace settings… (workspace.workspace-page)", async () => {
+    // jsdom has no popovers, which the menu closes itself with.
+    HTMLElement.prototype.hidePopover ??= () => {};
+    const opened = vi.fn();
+    const stub = defineFeature({
+      id: "stub",
+      title: "Stub",
+      register: (studio) =>
+        studio.commands.add({ id: "workspace.open", title: "Open", run: opened }),
+    });
+    const { switcher } = start([], [], undefined, [stub]);
+    await act(() => switcher.openLocation("/work/acme"));
+
+    const row = [...element.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+      (each) => each.textContent === "Workspace settings…",
+    );
+    await act(async () => row?.click());
+    expect(opened).toHaveBeenCalledOnce();
   });
 
   it("goes back to Welcome when the last workspace closes", async () => {

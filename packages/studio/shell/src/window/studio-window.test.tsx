@@ -15,7 +15,7 @@ import { FakeTimers } from "../test-support/fake-timers.ts";
 import { MapTarget } from "../test-support/map-target.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import type { PlaceViewProps } from "./studio-page.tsx";
-import { StudioWindow } from "./studio-window.tsx";
+import { type StudioSwitcher, StudioWindow, type WindowActions } from "./studio-window.tsx";
 import { StudioWorkspace } from "./studio-workspace.ts";
 
 let media: FakeMediaQueries;
@@ -84,6 +84,7 @@ const openerFeature = defineFeature({
 
 function renderWindow(
   shell: Shell = createShell({ features: [inboxFeature], timers: new FakeTimers() }),
+  switcher?: StudioSwitcher,
 ) {
   const services = new MapTarget();
   shell.services.instantiate(services);
@@ -95,6 +96,7 @@ function renderWindow(
       host="desktop-app"
       platform="windows"
       language="en"
+      switcher={switcher}
     />,
   );
   const link = (name: string) =>
@@ -112,6 +114,33 @@ async function settle() {
 }
 
 verifies("shell.studio-window", () => {
+  it("makes a switcher menu given as a function with the window's actions, which run any feature's command", async () => {
+    const ran: string[] = [];
+    const runner = defineFeature({
+      id: "runner",
+      title: "Runner",
+      register: (studio) =>
+        studio.commands.add({ id: "runner.go", title: "Go", run: () => void ran.push("go") }),
+    });
+    const shell = createShell({ features: [runner], timers: new FakeTimers() });
+    let actions: WindowActions | undefined;
+    renderWindow(shell, {
+      workspace: { name: "Acme", folder: "/work/acme" },
+      menu: (given) => {
+        actions = given;
+        return [];
+      },
+    });
+
+    let answers: boolean[] = [];
+    act(() => {
+      answers = [actions?.runCommand("runner.go") ?? false, actions?.runCommand("nope") ?? true];
+    });
+    await settle();
+    expect(answers).toEqual([true, false]);
+    expect(ran).toEqual(["go"]);
+  });
+
   it("shows the title bar with its mark, Back and Forward and the window tabs, the sidebar and Home in a new workspace", () => {
     const { container, link } = renderWindow();
 

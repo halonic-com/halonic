@@ -14,6 +14,7 @@ function options(overrides: Partial<WorkspaceMenuOptions> = {}): WorkspaceMenuOp
     platform: "windows",
     onOpen: vi.fn(),
     onOpenFolder: vi.fn(),
+    onWorkspaceSettings: vi.fn(),
     onClose: vi.fn(),
     ...overrides,
   };
@@ -44,7 +45,7 @@ verifies("workspace.workspace-menu", () => {
     expect(outline(workspaceMenu(options()))).toEqual(["Open a folder…"]);
   });
 
-  it("lists Recent first, then Open a folder…, then Close workspace", () => {
+  it("lists Recent first, then Open a folder…, then Workspace settings… and Close workspace", () => {
     const menu = workspaceMenu(
       options({ recent: [acme, beta], open: [acme.location], shown: acme.location }),
     );
@@ -56,6 +57,7 @@ verifies("workspace.workspace-menu", () => {
       "—",
       "Open a folder…",
       "—",
+      "Workspace settings…",
       "Close workspace",
     ]);
   });
@@ -93,10 +95,12 @@ verifies("workspace.workspace-menu", () => {
 
     item(menu, "Beta").onSelect();
     item(menu, "Open a folder…").onSelect();
+    item(menu, "Workspace settings…").onSelect();
     item(menu, "Close workspace").onSelect();
 
     expect(callbacks.onOpen).toHaveBeenCalledWith("/work/beta");
     expect(callbacks.onOpenFolder).toHaveBeenCalledOnce();
+    expect(callbacks.onWorkspaceSettings).toHaveBeenCalledOnce();
     expect(callbacks.onClose).toHaveBeenCalledOnce();
   });
 });

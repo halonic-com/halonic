@@ -40,7 +40,9 @@ import {
   RecentWorkspaces,
   WorkspaceSaving,
   WorkspaceSwitcher,
+  workspaceFeature,
 } from "@halonicjs/studio-feature-workspace";
+import { WorkspacePageService } from "@halonicjs/studio-feature-workspace/api";
 import {
   hostSettingsStoreKey,
   provideShellHostSettings,
@@ -117,8 +119,8 @@ export function keyboardPlatform(userAgent: string): KeyboardPlatform {
  * (`studio.open-folder`). The served Studio opens the one workspace it serves. The window is the
  * shell's or the workspace feature's; the app only starts it, as AGENTS.md asks of screens.
  *
- * The desktop app registers the Inbox and Runs, over the runs in each open folder, and Settings
- * (`studio.settings`). The served Studio registers no feature yet: nothing serves it runs until
+ * The desktop app registers the Inbox and Runs, over the runs in each open folder, Settings
+ * (`studio.settings`) and the workspace page (`workspace.page`). The served Studio registers no feature yet: nothing serves it runs until
  * `halonic serve` is built, so it shows Home and the Search box.
  *
  * @param desktop the desktop app's features and the services it gives them, `desktopFeatures`
@@ -160,8 +162,8 @@ export function startStudio(page: StudioPage, desktop = desktopFeatures): Starte
  * ({@link openFolder}).
  */
 export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = {
-  features: [inboxFeature, runsFeature, settingsFeature],
-  hostServices: [InboxRunsService, RunsSourceService, DisplaySettingsService],
+  features: [inboxFeature, runsFeature, settingsFeature, workspaceFeature],
+  hostServices: [InboxRunsService, RunsSourceService, DisplaySettingsService, WorkspacePageService],
 };
 
 /**
@@ -244,7 +246,9 @@ export async function openFolder(
       ? undefined
       : openFolderScope(files, location, trust);
   const services = scope?.services ?? new ServiceRegistry();
+  const trustView = trust === undefined ? undefined : new WorkspaceTrustView(trust, location);
   services.provide(DisplaySettingsService, display);
+  services.provide(WorkspacePageService, { name, trust: trustView });
   provideShellSecrets(services, window);
   provideShellHostSettings(services, window);
   provideAgentSandbox(services, window);
@@ -257,7 +261,7 @@ export async function openFolder(
     name,
     workspace,
     saving: scope === undefined ? undefined : savingOf(scope, workspace, name),
-    trust: trust === undefined ? undefined : new WorkspaceTrustView(trust, location),
+    trust: trustView,
     dispose: () => (scope === undefined ? services.dispose() : scope.close()),
   };
 }
