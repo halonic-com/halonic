@@ -111,7 +111,9 @@ verifies("cloudflare-durable.timers", () => {
       expect(alarm.at).toBe(clock.now().getTime());
     });
   });
+});
 
+verifies("cloudflare-durable.run-list-outbox", () => {
   describe("RunState run list update", () => {
     const events = [started("r1"), entered("r1", 2)];
 
@@ -214,7 +216,9 @@ verifies("cloudflare-durable.timers", () => {
       expect(await state.summary()).toMatchObject({ id: "r1", status: "running" });
     });
   });
+});
 
+verifies("cloudflare-durable.run-log", () => {
   describe("RunState log", () => {
     it("appends, reads and snapshots through the run log", async () => {
       const { state } = newState();
