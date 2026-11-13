@@ -154,7 +154,7 @@ export function bridgeOptions(
     settings: { baseUrl: "https://api.example.com" },
     tools: ["forecast", "echo"],
     http: fakeKitClient(() => new Response("{}")),
-    secrets: secretForms([{ value: fakeSecret }]),
+    secrets: () => secretForms([{ value: fakeSecret }]),
     onBlocked: (block) => blocks.push(block),
     onStderr: (text) => log.push(text),
     blocks,

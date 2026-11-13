@@ -93,7 +93,7 @@ async function runningCall(
   const options = bridgeOptions(fake, {
     http: kit.http,
     limits,
-    secrets: secretForms([{ value: secret }]),
+    secrets: () => secretForms([{ value: secret }]),
   });
   const runner = new HandDrivenRunner(fake);
   const connecting = connectRunner(options);

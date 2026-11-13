@@ -240,7 +240,7 @@ verifies("integration-runner.call-limits", () => {
     it("counts the stderr limit again for each call", async () => {
       const { fake, options, runner, connection } = await startedRunner({
         limits: { maxStderrBytesPerCall: 40 },
-        secrets: secretForms([]),
+        secrets: () => secretForms([]),
       });
       const encoder = new TextEncoder();
       for (const call of [0, 1]) {

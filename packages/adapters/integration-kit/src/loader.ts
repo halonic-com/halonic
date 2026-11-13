@@ -18,6 +18,7 @@ import {
   workspaceSecrets,
 } from "@halonicjs/ports";
 import { deepEqual, err, ok, type Result } from "@halonicjs/std";
+import { type CurrentSecretForms, currentSecretForms } from "./current-secret-forms.ts";
 import { declarationProblems } from "./declaration.ts";
 import { createIntegrationHost } from "./host.ts";
 import type { RequestLimits } from "./limited-http.ts";
@@ -113,6 +114,13 @@ export interface PreparedIntegration extends Omit<LoadedIntegration, "integratio
    * filtered too. Only Halonic's side ever calls it.
    */
   readonly readSecrets: () => Promise<SecretOnWire[]>;
+  /**
+   * What the runner bridge filters with: the picked secrets read now, and
+   * every value the sign-in tokens list, read again each time the filter is
+   * used, so a token a refresh issues later is removed too. Call it for each
+   * runner start, like {@link PreparedIntegration.readSecrets}.
+   */
+  readonly currentSecretForms: () => Promise<CurrentSecretForms>;
 }
 
 /**
@@ -134,7 +142,7 @@ export function loadIntegration(
   if (!prepared.ok) {
     return prepared;
   }
-  const { readSecrets: _readSecrets, ...loaded } = prepared.value;
+  const { readSecrets: _readSecrets, currentSecretForms: _forms, ...loaded } = prepared.value;
   return ok({ ...loaded, integration });
 }
 
@@ -193,7 +201,8 @@ function prepare(
     ...(options.now ? { now: options.now } : {}),
   });
   const readSecrets = () => secretsOnWire(sheet, secrets);
-  return ok({ origin: source.origin, sheet, host, log, readSecrets });
+  const forms = async () => currentSecretForms(await readSecrets(), options.signInTokens);
+  return ok({ origin: source.origin, sheet, host, log, readSecrets, currentSecretForms: forms });
 }
 
 /**

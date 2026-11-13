@@ -176,7 +176,7 @@ verifies("integration-runner.local-integration", () => {
       expect(starts).toHaveLength(1);
       expect(starts[0]?.http).toBe(host.http);
       expect(starts[0]?.tools).toEqual(["forecast"]);
-      expect(starts[0]?.secrets.texts).toContain(`Bearer ${fakeSecret}`);
+      expect(starts[0]?.secrets().texts).toContain(`Bearer ${fakeSecret}`);
       const connection = integration.connect(host);
       expect(await connection.callTool("forecast", { city: "Ghent" })).toBe(
         'first: forecast {"city":"Ghent"}',

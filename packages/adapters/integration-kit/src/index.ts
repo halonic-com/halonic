@@ -10,6 +10,11 @@
 // The transport the loader asks for; only an address-checking transport, such as
 // `createNodeHttpClient`, is one.
 export type { AddressCheckingHttpClient } from "@halonicjs/adapter-http-kit";
+export {
+  type CurrentSecretForms,
+  currentSecretForms,
+  removeCurrentSecretsStream,
+} from "./current-secret-forms.ts";
 export { declarationProblems } from "./declaration.ts";
 export {
   type CreatedIntegrationHost,

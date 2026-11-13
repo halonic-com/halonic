@@ -174,7 +174,7 @@ verifies("integration-runner.plugin-backend", () => {
       expect(starts).toHaveLength(1);
       expect(starts[0]?.http).toBe(host.http);
       expect(starts[0]?.tools).toEqual(["forecast"]);
-      expect(starts[0]?.secrets.texts).toContain(`Bearer ${fakeSecret}`);
+      expect(starts[0]?.secrets().texts).toContain(`Bearer ${fakeSecret}`);
       const connection = integration.connect(host);
       expect(await connection.callTool("forecast", { city: "Ghent" })).toBe(
         'forecast {"city":"Ghent"}',
@@ -368,7 +368,7 @@ verifies("integration-runner.plugin-backend", () => {
       it("reaches the runner only as the bridge's filter forms, never in its client, settings or tool names", async () => {
         const { starts } = await load(fakeRunner(declaration()));
         const { secrets, ...whatTheCodeGets } = starts[0] as LocalRunnerBridge;
-        expect(secrets.texts).toContain(fakeSecret);
+        expect(secrets().texts).toContain(fakeSecret);
         expect(JSON.stringify(whatTheCodeGets.settings)).not.toContain(fakeSecret);
         expect(JSON.stringify(whatTheCodeGets.tools)).not.toContain(fakeSecret);
         expect(Object.keys(whatTheCodeGets).sort()).toEqual(["http", "settings", "tools"]);
