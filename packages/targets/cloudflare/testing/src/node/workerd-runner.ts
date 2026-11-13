@@ -27,11 +27,24 @@ export interface WorkerdBindings {
   r2Buckets?: readonly string[];
   /**
    * Durable Object bindings: the name the suites read from `env`, and the
-   * class a suite file exports for it.
+   * class a suite file exports for it. Every class gets SQLite storage
+   * (`ctx.storage.sql`), the kind Cloudflare recommends for new classes.
    */
   durableObjects?: Readonly<Record<string, string>>;
   /** Names of D1 databases, such as `"DB"`, read as `env.DB`. */
   d1Databases?: readonly string[];
+}
+
+/** Binds each class with SQLite storage, so objects can use `ctx.storage.sql`. */
+function sqliteBacked(
+  classNames: Readonly<Record<string, string>>,
+): Record<string, { className: string; useSQLite: true }> {
+  return Object.fromEntries(
+    Object.entries(classNames).map(([binding, className]) => [
+      binding,
+      { className, useSQLite: true },
+    ]),
+  );
 }
 
 /**
@@ -65,7 +78,7 @@ export class WorkerdRunner {
       modules: true,
       script,
       compatibilityDate,
-      durableObjects: { ...bindings.durableObjects },
+      durableObjects: sqliteBacked(bindings.durableObjects ?? {}),
       ...inMemoryStorage,
       r2Buckets: [...(bindings.r2Buckets ?? [])],
       d1Databases: [...(bindings.d1Databases ?? [])],

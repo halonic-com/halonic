@@ -121,6 +121,38 @@ describe("the test Worker", () => {
       await runner.stop();
     }
   });
+
+  it("gives a bound Durable Object class SQLite storage", async () => {
+    const file = await suiteFile(
+      [
+        'import { env } from "cloudflare:workers";',
+        'import { describe, expect, it } from "vitest";',
+        "export class SqlObject {",
+        "  constructor(readonly ctx: DurableObjectState) {}",
+        "  async fetch() {",
+        '    this.ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS notes (text TEXT NOT NULL)");',
+        '    this.ctx.storage.sql.exec("INSERT INTO notes (text) VALUES (?)", "kept");',
+        '    const rows = [...this.ctx.storage.sql.exec("SELECT text FROM notes")];',
+        "    return new Response(JSON.stringify(rows));",
+        "  }",
+        "}",
+        'describe("sql", () => {',
+        '  it("stores a row", async () => {',
+        '    const stub = env.SQL.get(env.SQL.idFromName("one"));',
+        '    expect(await (await stub.fetch("http://sql.invalid/")).text()).toBe(\'[{"text":"kept"}]\');',
+        "  });",
+        "});",
+      ].join("\n"),
+    );
+    const runner = await WorkerdRunner.start(await buildTestWorker([file]), {
+      durableObjects: { SQL: "SqlObject" },
+    });
+    try {
+      expect(await runner.run("1")).toEqual({ status: "passed", assertions: 1 });
+    } finally {
+      await runner.stop();
+    }
+  });
 });
 
 describe("the compatibility date", () => {
