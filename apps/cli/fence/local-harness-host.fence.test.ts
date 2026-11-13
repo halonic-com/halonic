@@ -35,7 +35,8 @@ let reported: unknown[];
 const opened: LocalEngine[] = [];
 
 beforeEach(async () => {
-  folder = await mkdtemp(join(tmpdir(), "halonic-cli-harness-sandbox-"));
+  // A short place: the bridge's socket path must stay under macOS's limit, and its temp folder is long.
+  folder = await mkdtemp(join(process.platform === "win32" ? tmpdir() : "/tmp", "hhs-"));
   acme = join(folder, "acme");
   await cp(acmeExample, acme, { recursive: true });
   profile = { ...nodeProfileEnvironment(), variables: { HALONIC_HOME: join(folder, "profile") } };
