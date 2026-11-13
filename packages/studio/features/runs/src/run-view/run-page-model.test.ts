@@ -115,7 +115,7 @@ verifies("runs.run-page", () => {
       });
     });
 
-    it("stops at the budget with a warning, not red, and its title", () => {
+    it("stops at the budget in amber, not red, and its title", () => {
       const { banner } = page({
         status: "failed",
         reason: "budget",
@@ -123,7 +123,7 @@ verifies("runs.run-page", () => {
       });
       expect(banner).toEqual({
         kind: "callout",
-        tone: "warning",
+        tone: "attention",
         name: "Stopped at its budget",
         title: "Stopped at its estimated budget",
         lines: [

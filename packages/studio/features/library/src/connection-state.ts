@@ -7,7 +7,7 @@ export type ConnectionState =
   | "not-connected";
 
 /** The colour family of a state. It only decorates: the label always carries the meaning. */
-export type ConnectionTone = "success" | "attention" | "neutral";
+export type ConnectionTone = "success" | "attention";
 
 /**
  * What is known about a connector, in terms that fit every connector. A connector

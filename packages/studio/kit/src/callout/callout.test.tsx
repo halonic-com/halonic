@@ -32,6 +32,7 @@ verifies("kit.callout", () => {
   it.each([
     ["info", "bg-accent-soft", "text-accent", "M8 4.75h.01"],
     ["warning", "bg-warning-soft", "text-warning", "M7.13 2.5"],
+    ["attention", "bg-attention-soft", "text-attention", "M7.13 2.5"],
     ["danger", "bg-danger-soft", "text-danger", "M8 11.25h.01"],
   ] as const)("draws the %s tone as a %s box with its icon in %s", (tone, fill, colour, mark) => {
     const { container } = render(<Callout tone={tone}>Something to know.</Callout>);

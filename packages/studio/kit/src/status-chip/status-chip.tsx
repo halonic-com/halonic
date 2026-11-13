@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 
 /**
- * The chip's colour, which says what kind of state it is. `warning` is "Needs you" (your turn), `attention` is "have a look" (late, over budget, not connected). `outline` is
- * a tag: a fact about the item ("Test"), not its state.
+ * The chip's colour, which says what kind of state it is. `warning` is "Needs you" (your turn),
+ * `attention` is "have a look" (late, over budget, not connected). `outline` is a tag: a fact
+ * about the item ("Test"), not its state.
  */
 export type StatusChipTone =
   | "neutral"
