@@ -93,13 +93,31 @@ function sign(text: string, git: ReturnType<typeof fakeGit>, privatePem: string)
 const checkRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
 /**
+ * Loads the static import lines can't show: a dynamic `import(...)`, a `require(...)`
+ * or a `createRequire`. Any of them fails, with a literal argument or not, because the
+ * test can't follow them. Comments and the text of plain string literals are blanked
+ * first, so prose and messages can mention them.
+ */
+function dynamicLoads(source: string): string[] {
+  const code = source.replace(
+    /\/\*[\s\S]*?\*\/|\/\/[^\n]*|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g,
+    " ",
+  );
+  return [...code.matchAll(/\b(?:import\s*\(|require\s*\(|createRequire\b)/g)].map((m) => m[0]);
+}
+
+/**
  * What a guard command reaches: the local files it imports (relative to the repo
  * root) and the packages, with `node:` built-ins left out. With `runtime`,
  * `import type` and `export type` lines are skipped, because Node erases them
  * and loads nothing for them.
  */
-function guardImports(entry: string, runtime = false): { files: string[]; packages: string[] } {
+function guardImports(
+  entry: string,
+  runtime = false,
+): { files: string[]; packages: string[]; dynamic: string[] } {
   const seen = new Set<string>();
+  const dynamic: string[] = [];
   const packages = new Set<string>();
   const stack = [entry];
   for (let file = stack.pop(); file !== undefined; file = stack.pop()) {
@@ -108,6 +126,7 @@ function guardImports(entry: string, runtime = false): { files: string[]; packag
     }
     seen.add(file);
     const source = readFileSync(join(checkRoot, file), "utf8");
+    dynamic.push(...dynamicLoads(source).map((load) => `${file}: ${load}`));
     for (const match of source.matchAll(
       /^(?:import|export)\s+(type\s+)?(?:[^;"]*?\sfrom\s+)?"([^"]+)";/gm,
     )) {
@@ -122,7 +141,11 @@ function guardImports(entry: string, runtime = false): { files: string[]; packag
       }
     }
   }
-  return { files: [...seen].map((file) => `tooling/check/${file}`), packages: [...packages] };
+  return {
+    files: [...seen].map((file) => `tooling/check/${file}`),
+    packages: [...packages],
+    dynamic,
+  };
 }
 
 const guardCommands = ["src/cli/guard-notes.ts", "src/cli/requirement-guard.ts"] as const;
@@ -272,6 +295,32 @@ verifies("check.guard-two-guardians", () => {
     expect(guardImports("src/cli/requirement-guard.ts", true).packages).toEqual([
       "@typescript/typescript6",
     ]);
+  });
+
+  test("lets the guard commands and the files they load make no dynamic load", () => {
+    for (const command of guardCommands) {
+      expect(guardImports(command).dynamic).toEqual([]);
+    }
+  });
+
+  test("sees a dynamic import, a require and a createRequire, literal or not", () => {
+    expect(dynamicLoads('const m = await import("x");')).toEqual(["import("]);
+    expect(dynamicLoads("const m = await import(name);")).toEqual(["import("]);
+    expect(dynamicLoads('const m = require("x");')).toEqual(["require("]);
+    expect(dynamicLoads("const m = require(name);")).toEqual(["require("]);
+    expect(dynamicLoads('const r = createRequire(import.meta.url);\nr("x");')).toEqual([
+      "createRequire",
+    ]);
+    expect(dynamicLoads('import { createRequire } from "node:module";')).toEqual(["createRequire"]);
+  });
+
+  test("leaves static imports, import.meta and comments alone", () => {
+    expect(
+      dynamicLoads(
+        'import { a } from "./a.ts";\nexport { b } from "./b.ts";\nconst u = import.meta.url;\n' +
+          "// import(x) and require(y)\n/* createRequire */\nconst k = 1; // require(z)\n",
+      ),
+    ).toEqual([]);
   });
 
   test("lists the package.json that pins the parser as a trust root", () => {
