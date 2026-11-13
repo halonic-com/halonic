@@ -8,8 +8,9 @@ The `Sandbox` port on [sandbox-runtime](https://github.com/anthropics/sandbox-ru
 - **Public API:** `@halonicjs/adapter-sandbox-srt`
 
 `SrtSandbox` is the whole adapter. `check()` says whether the sandbox can start on this machine and
-gives the first reason when it can't: Windows without srt's install (`setup-needed`; `srt windows-install`, once, as an administrator), inside a container (Docker or Podman), WSL 1
-(`not-supported`), bubblewrap missing, user namespaces refused by AppArmor (asked only once bubblewrap is
+gives the first reason when it can't: Windows without srt's install (`setup-needed`; `srt windows-install`, once, as an administrator), inside a container, Docker or Podman (`container`), WSL 1
+(`not-supported`), bubblewrap missing (`bubblewrap-missing`), user namespaces refused by AppArmor
+(`user-namespaces-restricted`, asked only once bubblewrap is
 there and fails, and only while AppArmor's `apparmor_restrict_unprivileged_userns` is `1`), or `socat`
 or ripgrep (`rg`) missing, which srt starts next to bubblewrap (`linux-tools-missing`, naming which),
 or ripgrep missing on macOS, where srt starts it next to Seatbelt (`ripgrep-missing`).
@@ -21,7 +22,10 @@ On Linux it is ready only once srt has started its smallest real sandbox and run
 line. `open()` checks first, refuses a bridge that isn't a
 loopback address or is on a Unix socket (srt's rule for it comes with HAL-6348), and a profile that denies the key store when srt's own settings would drop that deny, naming the dropped services; then it opens a session that proves its fence (a canary file the fence hides and a
 loopback port it blocks) before any program starts. Programs never start without a proven fence, and
-never run a file under a skill's `scripts/` folder. When a session ends, it undoes any `commondir`
+never run a file under a skill's `scripts/` folder. A program starts in the working folder, or in a
+folder inside a read-only path, such as the workspace folder a connector's script is in. The start
+folder is checked where it really is, through links, and a denied path or the session's own private
+folders always refuse it. When a session ends, it undoes any `commondir`
 file the program changed in the working folder's git folders and moves aside any `.git` the program
 planted at a gitlink, reporting each as a refused write.
 
@@ -38,7 +42,10 @@ user's name and the run id, it would be too long. The session's temp folder goes
 
 `setUp()` is the one-time setup the installer runs as an administrator (through the agent host's
 `--sandbox-setup`). On Windows it runs srt's install (what `srt windows-install` runs), then checks:
-it is `ok` only when `check()` then passes, and otherwise gives one line on why not. Running it again
+it is `ok` only when `check()` then passes. Otherwise it gives an `outcome` and one line on why not:
+`cancelled` when the administrator prompt was refused, `failed` when the install failed (with a sentence
+for each of the install helper's exit codes, such as a missing or changed Visual C++ runtime that
+Halonic ships for the sandbox), or `check_failed` when `check()` still fails afterwards. Running it again
 repairs the install or changes nothing. The install is for the whole machine (the sandbox account,
 its password in `HKLM` and the network filters), so it serves every user, also when an administrator
 other than the person at the keyboard answered the prompt. It leaves out srt's profile read grant,
@@ -62,7 +69,8 @@ above a working folder elsewhere in the profile stay.
 `remove()` undoes it for the uninstaller (through the agent host's `--sandbox-remove`). On Windows it
 runs srt's uninstall (what `srt windows-uninstall` runs): the sandbox account and its profile, the
 sandbox group, the network filters, the `HKLM\SOFTWARE\sandbox-runtime` key, and the write grants
-kept on project folders by sessions of the user it runs as. It is `ok` when nothing was set up, and
+kept on project folders by sessions of the user it runs as (when it runs with administrator rights it
+leaves that user's kept grants recorded and logs that it did). It is `ok` when nothing was set up, and
 when run again. srt removes nothing while a sandboxed program runs, and leaves
 `%ProgramData%\sandbox-runtime` (its CA key folder) in place. Other systems have nothing to remove.
 
@@ -125,7 +133,9 @@ sessions are open at once, srt still lets one read the other (known limit, `it.f
 
 | Export | What it is |
 | --- | --- |
-| `SrtSandbox` | The `Sandbox` port: `check()`, `capabilities()` and `open()`. |
+| `SrtSandbox` | The `Sandbox` port: `check()`, `capabilities()` and `open()`, and `setUp()`, `remove()`, `cleanUp()` and `sweepOnce()` for the installer and the host. |
+| `SandboxSetup`, `SandboxRemoval` | What `setUp()` and `remove()` give back: `ok`, or an `outcome` and a reason. |
+| `sandboxRuntimeFolder` | The folder of sandbox-runtime itself, which a profile that hides the folders around it must keep readable (its seccomp helper runs inside the fence on Linux). |
 | `buildSrtConfig` | Turns a `SandboxProfile` into sandbox-runtime settings. |
 | `recoverGitFolders` | After a host crash, undoes the `commondir` files of sessions whose host has died. |
 | `Machine`, `systemMachine` | What the sandbox asks of the machine; a test passes a fake `Machine`. |
