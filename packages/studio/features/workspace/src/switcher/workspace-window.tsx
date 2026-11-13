@@ -3,8 +3,10 @@ import {
   type Shell,
   StudioWindow,
   WelcomeWindow,
+  type WindowActions,
 } from "@halonicjs/studio-shell";
 import { useEffect, useSyncExternalStore } from "react";
+import { openWorkspaceCommand } from "../feature.ts";
 import { WorkspaceTrustBadge } from "../trust/workspace-trust-badge.tsx";
 import { CloseWorkspaceDialog } from "./close-workspace-dialog.tsx";
 import { workspaceMenu } from "./workspace-menu.ts";
@@ -90,15 +92,17 @@ export function WorkspaceWindow({ shell, switcher, platform, language }: Workspa
       />
     );
   }
-  const menu = workspaceMenu({
-    recent: switcher.recent.list(),
-    open: open.all.map((slot) => slot.location),
-    shown: shown.location,
-    platform,
-    onOpen: (location) => void switcher.fromMenu(() => switcher.openLocation(location), true),
-    onOpenFolder: () => void switcher.fromMenu(() => switcher.pickAndOpen()),
-    onClose: () => void switcher.closeShown(),
-  });
+  const menu = (window: WindowActions) =>
+    workspaceMenu({
+      recent: switcher.recent.list(),
+      open: open.all.map((slot) => slot.location),
+      shown: shown.location,
+      platform,
+      onOpen: (location) => void switcher.fromMenu(() => switcher.openLocation(location), true),
+      onOpenFolder: () => void switcher.fromMenu(() => switcher.pickAndOpen()),
+      onWorkspaceSettings: () => window.runCommand(openWorkspaceCommand),
+      onClose: () => void switcher.closeShown(),
+    });
   return (
     <>
       {/* Each workspace keeps its own tabs in its StudioWorkspace; the key starts its window afresh. */}
