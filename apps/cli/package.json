@@ -12,7 +12,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:fence": "vitest run --config vitest.fence.config.ts"
   },
   "dependencies": {
     "@halonicjs/adapter-coordination-node": "workspace:*",

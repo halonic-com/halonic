@@ -16,7 +16,7 @@ export function connectorIsLocal(connector: Connector): boolean {
   if ("stdio" in transport) {
     return true;
   }
-  if ("google" in transport) {
+  if ("google" in transport || "integration" in transport || "plugin" in transport) {
     return false;
   }
   const host = hostOf(transport.http.url);

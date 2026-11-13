@@ -83,14 +83,20 @@ describe("the harness bridge on a Unix socket", () => {
     }
   }
 
-  /** Runs `curl` in the fence with `args` and gives the status it got: `000` when it got none. */
-  async function status(...args: string[]): Promise<string> {
+  /** Runs `curl` in the fence with `args` and gives the status it got (`000` when it got none) and the body. */
+  async function reply(...args: string[]): Promise<{ code: string; body: string }> {
     const started = await session.start({
       program: "curl",
-      args: ["-s", "-o", "/dev/null", "-w", "%{http_code}\\n", "--max-time", "10", ...args],
+      args: ["-s", "-w", "\\n%{http_code}\\n", "--max-time", "10", ...args],
     });
     const [out] = await Promise.all([read(started.stdout), started.exited]);
-    return out.trim();
+    const lines = out.trimEnd().split("\n");
+    return { code: lines.pop() ?? "", body: lines.join("\n").trim() };
+  }
+
+  /** Runs `curl` in the fence with `args` and gives the status it got: `000` when it got none. */
+  async function status(...args: string[]): Promise<string> {
+    return (await reply(...args)).code;
   }
 
   const url = (path = "/v1/messages", host = socketBridgeName) => `http://${host}${path}`;
@@ -168,8 +174,11 @@ describe("the harness bridge on a Unix socket", () => {
 
   it("serves the program's request through srt's proxy, and through a tunnel to the name", async () => {
     const before = providerCalls.length;
-    expect(await status(url(), ...post(), ...withToken())).toBe("200");
-    expect(await status("-p", url(), ...post(), ...withToken())).toBe("200");
+    // A 502 comes from srt's proxy, not the bridge; its body says which hop failed, so a flake explains itself (HAL-8158).
+    for (const tunnel of [[], ["-p"]]) {
+      const { code, body } = await reply(...tunnel, url(), ...post(), ...withToken());
+      expect(code, `${tunnel.join(" ") || "no tunnel"}: ${body}`).toBe("200");
+    }
     expect(providerCalls).toHaveLength(before + 2);
   });
 

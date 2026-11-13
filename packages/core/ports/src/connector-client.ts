@@ -213,7 +213,11 @@ export type ConnectorTransport =
       pin?: ConnectorPin;
     }
   /** Built-in Gmail and Drive for one account; `client` names no secret. */
-  | { kind: "google"; account: string; client: string };
+  | { kind: "google"; account: string; client: string }
+  /** A local integration in the I5 runner: a folder under `integrations/`. */
+  | { kind: "integration"; folder: string }
+  /** A plugin's backend in the I5 runner. */
+  | { kind: "plugin"; id: string };
 
 /** A connector as the workspace configures it. */
 export interface ConnectorConfig {
