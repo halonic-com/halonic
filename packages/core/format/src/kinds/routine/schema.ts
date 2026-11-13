@@ -1,6 +1,7 @@
 import { type Infer, s } from "@halonicjs/schema-kit";
 import { DURATION_PATTERN, id, version } from "../../shared/fields.ts";
 import { Guard } from "../../shared/guard.ts";
+import { WEBHOOK_HEADER_PATTERN } from "./webhook-headers.ts";
 
 /** On a schedule: five-field cron or a shortcut such as @daily, in a time zone. */
 const ScheduleTrigger = s
@@ -56,6 +57,32 @@ const MailTrigger = s
   })
   .strict();
 
+/**
+ * A request from outside, signed with a secret. The host gives each routine its
+ * own address; this file names only the secret and the headers the run may read.
+ */
+const WebhookTrigger = s
+  .object({
+    webhook: s
+      .object({
+        /** The name of the secret that signs the request body; the file never holds its value. */
+        secret: s.string().min(1),
+        /** Lowercase request headers the run may read as {{trigger.headers.<name>}}; none by default. */
+        headers: s
+          .array(
+            s
+              .string()
+              .regex(
+                WEBHOOK_HEADER_PATTERN,
+                "use a lowercase header name: letters, digits or '-', such as x-event",
+              ),
+          )
+          .default([]),
+      })
+      .strict(),
+  })
+  .strict();
+
 /** When a routine starts. */
 export const RoutineTrigger = s.union([
   ScheduleTrigger,
@@ -63,6 +90,7 @@ export const RoutineTrigger = s.union([
   ManualTrigger,
   SignalTrigger,
   MailTrigger,
+  WebhookTrigger,
 ]);
 
 /** What a routine runs: a workflow with input, or one agent with a prompt. */
@@ -72,7 +100,7 @@ export const RoutineTarget = s.union([
       /** The workflow's hub. Required for workspace-level routines. */
       hub: id.optional(),
       workflow: id,
-      /** Workflow input; text may use {{trigger.at}}, {{trigger.lastRun}} and {{trigger.message}}. */
+      /** Workflow input; text may use {{trigger.at}}, {{trigger.lastRun}}, {{trigger.message}} and, for a webhook, {{trigger.body}} and {{trigger.headers.<name>}}. */
       input: s.record(s.string(), s.unknown()).default({}),
     })
     .strict(),
