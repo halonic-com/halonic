@@ -109,9 +109,28 @@ verifies("kit.month-bars", () => {
     );
     const line = container.querySelector("line");
     expect(line?.getAttribute("stroke-dasharray")).toBe("4 4");
-    // The limit is the top of the scale, so the 10 bar is a tenth of it and the line is at the top.
-    expect(Number(line?.getAttribute("y1"))).toBe(0);
+    // The limit is the top of the scale, so the 10 bar is a tenth of it and the line is at the top
+    // of the plot, below the label's headroom.
+    expect(Number(line?.getAttribute("y1"))).toBeGreaterThan(0);
     expect(container.querySelector("svg g:last-child text")?.textContent).toBe("Budget");
+  });
+
+  it("keeps the limit's label inside the picture, at the left end, with a halo", () => {
+    const tall = [{ label: "Jun", value: 100 }];
+    const { container } = render(
+      <MonthBars
+        title="Bills"
+        months={tall}
+        emptyText="None"
+        limit={{ value: 100, label: "Budget" }}
+      />,
+    );
+    const label = container.querySelector("svg g:last-child text");
+    expect(Number(label?.getAttribute("y"))).toBeGreaterThanOrEqual(0);
+    expect(Number(container.querySelector("line")?.getAttribute("y1"))).toBeGreaterThan(0);
+    expect(label?.getAttribute("x")).toBe("0");
+    expect(label?.getAttribute("text-anchor")).toBe("start");
+    expect(label?.getAttribute("paint-order")).toBe("stroke");
   });
 
   it("draws no line without a limit", () => {
