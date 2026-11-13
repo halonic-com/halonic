@@ -148,5 +148,7 @@ export function ListedToolsFallbackBody({
       );
     case "nothing-waiting":
       return <p className="text-body text-fg">{listedToolsWords.nothingWaiting}</p>;
+    default:
+      return fallback satisfies never;
   }
 }

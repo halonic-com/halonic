@@ -120,6 +120,9 @@ export class ListedToolsReviewModel {
    */
   async refresh(): Promise<void> {
     const ticket = ++this.latest;
+    // A retry after a failed first reading shows the loading rows again, so a second failure
+    // is not mistaken for a click that did nothing.
+    if (this.state.phase === "failed") this.set({ phase: "loading" });
     try {
       const snapshot = await this.host.review(this.connectorId);
       if (ticket !== this.latest) return;

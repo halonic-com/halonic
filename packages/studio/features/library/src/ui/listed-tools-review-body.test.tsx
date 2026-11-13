@@ -172,19 +172,6 @@ describe("the review body", () => {
       expect(names.indexOf("beta")).toBeLessThan(names.indexOf("alpha"));
     });
 
-    it("approves a tool that keeps changing only by its own button, at the version shown", async () => {
-      const { container, outcomes } = await open(base);
-      const button = [...container.querySelectorAll("button")].find((candidate) =>
-        candidate.textContent?.startsWith("Approve this version"),
-      );
-      expect(button?.textContent).toBe("Approve this version of sync_tags");
-      await act(async () => button?.click());
-      expect(approvals).toEqual([[{ name: "sync_tags", fingerprint: "htl1:sync_tags-1" }]]);
-      expect(outcomes).toEqual([
-        { kind: "close", toast: "Approved 1 tool from Notes server. 1 stays off." },
-      ]);
-    });
-
     it("cuts a refused reason between characters, not inside an emoji", async () => {
       const { container } = await open({
         ...base,
@@ -202,6 +189,21 @@ describe("the review body", () => {
       await act(async () => button?.click());
       expect(removed).toEqual([]);
       expect(container.textContent).toContain("read_note");
+    });
+  });
+
+  verifies("library.listed-tools-review-states", () => {
+    it("approves a tool that keeps changing only by its own button, at the version shown", async () => {
+      const { container, outcomes } = await open(base);
+      const button = [...container.querySelectorAll("button")].find((candidate) =>
+        candidate.textContent?.startsWith("Approve this version"),
+      );
+      expect(button?.textContent).toBe("Approve this version of sync_tags");
+      await act(async () => button?.click());
+      expect(approvals).toEqual([[{ name: "sync_tags", fingerprint: "htl1:sync_tags-1" }]]);
+      expect(outcomes).toEqual([
+        { kind: "close", toast: "Approved 1 tool from Notes server. 1 stays off." },
+      ]);
     });
   });
 });

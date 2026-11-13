@@ -185,7 +185,9 @@ describe("the review dialog", () => {
       });
       expect(closes).toHaveLength(1);
     });
+  });
 
+  verifies("library.listed-tools-review-states", () => {
     it("shows loading rows and no buttons while the tools are being read", async () => {
       vi.useFakeTimers();
       try {
@@ -214,6 +216,22 @@ describe("the review dialog", () => {
       serverUp = true;
       await act(async () => button(container, "Try again").click());
       expect(container.textContent).toContain("Approve selected");
+    });
+
+    it("shows the loading rows while Try again reads, and the failure again if it fails again", async () => {
+      let release: (() => void) | undefined;
+      let retrying = false;
+      const { container } = await open(snapshot(["a"]), async () => {
+        if (retrying) await new Promise<void>((resolve) => (release = resolve));
+        throw new Error("The server is down.");
+      });
+      expect(container.textContent).toContain("Couldn't list the tools:");
+      retrying = true;
+      await act(async () => button(container, "Try again").click());
+      expect(container.textContent).not.toContain("Couldn't list the tools:");
+      expect(container.querySelector('[role="status"]')).not.toBeNull();
+      await act(async () => release?.());
+      expect(container.textContent).toContain("Couldn't list the tools:");
     });
 
     it("shows a refused listing with no rows and no buttons", async () => {

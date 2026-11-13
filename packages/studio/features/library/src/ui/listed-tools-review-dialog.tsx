@@ -76,6 +76,7 @@ export function ListedToolsReviewDialog({
       </Dialog>
     );
   }
+  // No fallback means a snapshot with tools to decide on; this narrows the type for the rows below.
   if (snapshot === undefined) return null;
   const shown = model.shown;
   const shownCount = shown.toReview.length + shown.keepsChanging.length + shown.refused.length;
