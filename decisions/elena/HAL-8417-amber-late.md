@@ -2,6 +2,7 @@
 
 - Approval: the board's design decision on HAL-8416
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Dms+5k5UuvQWyuS+9t7cUXu1o+G7gFLQDdir7B0EWmeee9J2a7IcDQiqPSXJaIsn9bXjyeKerGaPR9ad2u2wBg==
 - Task: HAL-8417
 
 ## What changes
