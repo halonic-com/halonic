@@ -3,6 +3,7 @@
 - Task: HAL-8051
 - Approval: the task asks for this change, with the wording agreed with Maya; Liam reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:bmexb0+uxJdX512JhI7jHq0WGRxWEhLrNa1fhFFDzHTP4ukzhiBqFBbN6hJnxkTxp8OcpiH6Nu17RLyHhtPxDQ==
 
 ## What changes
 
