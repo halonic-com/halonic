@@ -195,10 +195,12 @@ verifies("sandbox-mxc.session", () => {
         control: "x",
         hidden: "x",
         denied: "x",
-        ports: [{ host: "not an address", port: 1 }],
+        // A bad port fails at once, with no DNS lookup that could time out first.
+        ports: [{ host: "127.0.0.1", port: -1 }],
       });
       const [attempt] = parseLeakReport(output)?.ports ?? [];
       expect(attempt?.state).toBe("failed");
+      expect(attempt?.code).toBe("ERR_SOCKET_BAD_PORT");
     });
   });
 
