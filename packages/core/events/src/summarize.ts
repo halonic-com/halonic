@@ -170,12 +170,14 @@ function removeApproval(approvals: PendingApproval[], callId: string): void {
 
 /**
  * Add one model call's tokens, and its cost when it has a price. A call the
- * person's subscription paid for is counted on its own, never priced.
+ * person's subscription paid for is counted on its own, never priced. An
+ * answer from the cache made no model call, so it adds nothing at all.
  */
 function addModelCall(
   summary: RunSummary,
-  call: { usage: Usage; cost?: number; paidBy?: "subscription" },
+  call: { usage: Usage; cost?: number; paidBy?: "subscription"; cached?: boolean },
 ): void {
+  if (call.cached === true) return;
   summary.usage = addUsage(summary.usage, call.usage);
   if (call.paidBy === "subscription") summary.subscriptionCalls++;
   else if (call.cost === undefined) summary.unpricedCalls++;

@@ -229,6 +229,19 @@ verifies("events.summary-cost", () => {
     );
     expect(summary).toMatchObject({ cost: 0.25, unpricedCalls: 0, subscriptionCalls: 1 });
   });
+
+  it("adds nothing for an answer from the cache, not even an unpriced call", () => {
+    const summary = summaryOf(
+      { ...response, usage: { inputTokens: 10, outputTokens: 5 }, cost: 0.25 },
+      { ...response, usage: { inputTokens: 1_000, outputTokens: 200 }, cached: true },
+    );
+    expect(summary).toMatchObject({
+      usage: { inputTokens: 10, outputTokens: 5 },
+      cost: 0.25,
+      unpricedCalls: 0,
+      subscriptionCalls: 0,
+    });
+  });
 });
 
 verifies("events.summary-approvals-and-signals", () => {
