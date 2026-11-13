@@ -77,7 +77,8 @@ verifies("kit.list-columns", () => {
       label: "Branch Refund, in the step Check the order",
     };
     const { container } = renderRuns([done, child]);
-    const [plain, indented] = [0, 1].map((index) => layoutsOf(cellOf(container, index)));
+    const plain = layoutsOf(cellOf(container, 0));
+    const indented = layoutsOf(cellOf(container, 1));
     expect(plain.wide?.className).toContain("px-4");
     expect(plain.stacked?.className).toContain("px-4");
     for (const layout of [indented.wide, indented.stacked]) {
