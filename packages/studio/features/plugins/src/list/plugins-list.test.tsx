@@ -130,6 +130,13 @@ verifies("plugins.plugin-list", () => {
   it("gives a built-in plugin the chip and only Open", async () => {
     const seen = show([weather()]);
     expect(text()).toContain("Comes with Halonic");
+    const chips = [...document.querySelectorAll("span")].filter(
+      (node) =>
+        node.closest("h2, h3, h4") === null &&
+        node.children.length === 0 &&
+        node.textContent?.trim() === "Built in",
+    );
+    expect(chips).toHaveLength(1);
     await openMenu("Gmail");
     expect(items()).toEqual(["Open"]);
     await choose("Open");
@@ -185,6 +192,8 @@ verifies("plugins.plugin-list", () => {
     const seen = show([], { load: { kind: "failed", reason: "The folder is locked." } });
     expect(text()).toContain("Couldn't load your plugins");
     expect(text()).toContain("The folder is locked.");
+    expect(text()).toContain("Built in");
+    expect(text()).toContain("Gmail");
     await pick("Try again");
     expect(seen.calls).toEqual(["retry"]);
   });

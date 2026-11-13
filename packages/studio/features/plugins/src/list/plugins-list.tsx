@@ -155,25 +155,23 @@ export function PluginsList({
           action={{ label: TRY_AGAIN, onClick: onRetry }}
         />
       ) : (
-        <>
-          <List
-            heading={{ name: INSTALLED_HEADING }}
-            rows={installedRows}
-            loading={load.kind === "loading"}
-            loadingLabel={LOADING_LABEL}
-            onOpen={openRow}
-            onOpenInNewTab={(id) => onOpenInNewTab(id)}
-            onRetry={onRetry}
-            empty={{
-              title: EMPTY_TITLE,
-              description: EMPTY_LINE,
-              action: { label: ADD_PLUGIN, onClick: onAdd },
-            }}
-          />
-          {builtInRows.length === 0 || load.kind === "loading" ? null : (
-            <List heading={{ name: BUILT_IN_HEADING }} rows={builtInRows} onOpen={openRow} />
-          )}
-        </>
+        <List
+          heading={{ name: INSTALLED_HEADING }}
+          rows={installedRows}
+          loading={load.kind === "loading"}
+          loadingLabel={LOADING_LABEL}
+          onOpen={openRow}
+          onOpenInNewTab={onOpenInNewTab}
+          onRetry={onRetry}
+          empty={{
+            title: EMPTY_TITLE,
+            description: EMPTY_LINE,
+            action: { label: ADD_PLUGIN, onClick: onAdd },
+          }}
+        />
+      )}
+      {builtInRows.length === 0 || load.kind === "loading" ? null : (
+        <List heading={{ name: BUILT_IN_HEADING }} rows={builtInRows} onOpen={openRow} />
       )}
       <ContextMenu
         label={installed?.name ?? builtInMenu?.name ?? PLUGINS}
