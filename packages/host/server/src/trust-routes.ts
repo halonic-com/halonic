@@ -1,5 +1,5 @@
 import { isRunTargetNotFound } from "@halonicjs/ports";
-import type { ServerPorts } from "./api.ts";
+import type { ServerPorts, TrustGate } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 
 export interface TrustRoutes {
@@ -39,6 +39,16 @@ function isRunId(value: unknown): value is string | undefined {
   );
 }
 
+/**
+ * Asks the gate, every time, and answers the refusal to send when the state is
+ * not `trusted`; `null` means go on. A gate that throws is an error that
+ * reaches the caller, and nothing starts.
+ */
+export async function refuseUnlessTrusted(trust: TrustGate): Promise<Response | null> {
+  const decision = await trust.check();
+  return decision.state === "trusted" ? null : errorResponse(serverErrors.workspaceNotTrusted);
+}
+
 export function createTrustRoutes({ trust, runs }: TrustRoutePorts): TrustRoutes {
   /**
    * Asks the gate again for every start, never from memory, so a workspace
@@ -48,9 +58,9 @@ export function createTrustRoutes({ trust, runs }: TrustRoutePorts): TrustRoutes
    * exist answers 404; any other failure of the start stays an internal error.
    */
   async function whenTrusted(start: () => Promise<Response>): Promise<Response> {
-    const decision = await trust.check();
-    if (decision.state !== "trusted") {
-      return errorResponse(serverErrors.workspaceNotTrusted);
+    const refusal = await refuseUnlessTrusted(trust);
+    if (refusal !== null) {
+      return refusal;
     }
     try {
       return await start();

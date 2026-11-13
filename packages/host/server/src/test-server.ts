@@ -1,6 +1,7 @@
 import type {
   Clock,
   Coordination,
+  Lease,
   PasswordHasher,
   RunExecutor,
   Secrets,
@@ -13,6 +14,7 @@ import type {
   ServerConfig,
   ServerPorts,
   TrustGate,
+  WebhookRoutines,
 } from "./api.ts";
 import { createServer } from "./create-server.ts";
 
@@ -54,7 +56,7 @@ export class FakePasswordHasher implements PasswordHasher {
   }
 }
 
-/** The values and windows of `Coordination` that sign-in uses; the rest fails the test loudly. */
+/** The values, windows and leases of `Coordination` that sign-in and webhooks use; the rest fails the test loudly. */
 export class FakeCoordination implements Partial<Coordination> {
   readonly values = new Map<string, string>();
   readonly #windows = new Map<string, { start: number; count: number }>();
@@ -63,6 +65,18 @@ export class FakeCoordination implements Partial<Coordination> {
     this.#clock = clock;
   }
 
+  readonly leases = new Map<string, { token: string; until: number }>();
+  async tryAcquire(key: string, ttlMs: number): Promise<Lease | null> {
+    const now = this.#clock.now().getTime();
+    const held = this.leases.get(key);
+    if (held !== undefined && now < held.until) return null;
+    const token = `token-${this.leases.size + 1}-${now}`;
+    this.leases.set(key, { token, until: now + ttlMs });
+    return { key, token, expiresAt: new Date(now + ttlMs).toISOString() };
+  }
+  async release(lease: Lease): Promise<void> {
+    if (this.leases.get(lease.key)?.token === lease.token) this.leases.delete(lease.key);
+  }
   async read(key: string): Promise<string | null> {
     return this.values.get(key) ?? null;
   }
@@ -96,6 +110,7 @@ export function testServer(options: {
   requestCounts?: RequestCountStore;
   runs?: RunExecutor;
   trust?: TrustGate;
+  webhooks?: WebhookRoutines;
 }): Server {
   const clock = options.clock ?? new TestClock();
   const ports: ServerPorts = {
@@ -106,6 +121,7 @@ export function testServer(options: {
     },
     passwordHasher: options.passwordHasher ?? unusedPort("passwordHasher"),
     coordination: options.coordination ?? unusedPort("coordination"),
+    webhooks: options.webhooks ?? { find: async () => null },
     requestCounts: options.requestCounts ?? unusedPort("requestCounts"),
     errorLog: options.errorLog ?? { record: () => {} },
     clock,

@@ -4,6 +4,7 @@ import { errorResponse, serverErrors } from "./errors.ts";
 import { checkHost, checkOrigin, readBody, withSecurityHeaders } from "./security.ts";
 import { createSignIn, passwordSecretName } from "./sign-in.ts";
 import { createTrustRoutes } from "./trust-routes.ts";
+import { createWebhookRoutes, webhookPathPrefix } from "./webhooks.ts";
 
 function checkConfig(config: ServerConfig): void {
   if (config.allowedHosts.length === 0) {
@@ -31,13 +32,27 @@ export const createServer: CreateServer = ({ config, ports }) => {
   const allowedHosts = config.allowedHosts.map((name) => name.toLowerCase());
   const signIn = createSignIn(ports);
   const trustRoutes = createTrustRoutes(ports);
+  const webhookRoutes = createWebhookRoutes(ports);
 
   async function route(
     request: Request,
     context: RequestContext,
     body: Uint8Array,
   ): Promise<Response> {
-    const endpoint = `${request.method} ${new URL(request.url).pathname}`;
+    const { pathname } = new URL(request.url);
+    // A sender signs its request instead of signing in, so this route sits before the sign-in routes.
+    if (request.method === "POST" && pathname.startsWith(webhookPathPrefix)) {
+      return webhookRoutes.receive(request, pathname.slice(webhookPathPrefix.length), body);
+    }
+    return apiRoute(request, context, body, `${request.method} ${pathname}`);
+  }
+
+  async function apiRoute(
+    request: Request,
+    context: RequestContext,
+    body: Uint8Array,
+    endpoint: string,
+  ): Promise<Response> {
     switch (endpoint) {
       case "GET /api/hello":
         // The one route that answers without a sign-in: the Android app calls it before it opens the login.

@@ -2165,9 +2165,15 @@ importers:
 
   packages/host/server:
     dependencies:
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../core/format
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports
+      '@halonicjs/routines':
+        specifier: workspace:*
+        version: link:../../core/routines
     devDependencies:
       '@halonicjs/testing-contracts':
         specifier: workspace:*

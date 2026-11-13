@@ -6,6 +6,7 @@ import type {
   RunExecutor,
   Secrets,
 } from "@halonicjs/ports";
+import type { PlacedRoutine } from "@halonicjs/routines";
 
 /**
  * The `Request → Response` handler behind `halonic serve` and a cloud Worker.
@@ -111,6 +112,20 @@ export interface TrustGate {
   check(): Promise<TrustDecision>;
 }
 
+/**
+ * The routines a webhook may start. The host loads them from the workspace
+ * the server runs, at every request, so an edited or disabled routine counts
+ * at once.
+ */
+export interface WebhookRoutines {
+  /**
+   * The routine at a webhook address, or `null` when there is none.
+   *
+   * @param key The routine's key as `routineKey` writes it: `<hubId>/<routineId>` or `@workspace/<routineId>`.
+   */
+  find(key: string): Promise<PlacedRoutine | null>;
+}
+
 /** Records the cause of an unexpected failure, so an operator can find it. It must not throw. */
 export interface ErrorLog {
   record(error: unknown): void;
@@ -128,6 +143,8 @@ export interface ServerPorts {
   readonly coordination: Coordination;
   /** The trust check: every route that starts a run asks it first. */
   readonly trust: TrustGate;
+  /** The routines with a webhook trigger; `POST /api/webhooks/<hub>/<routine>` starts one. */
+  readonly webhooks: WebhookRoutines;
   /** The daily request counter. */
   readonly requestCounts: RequestCountStore;
   /** Where the cause of an unexpected failure goes. The reply to the caller never carries it. */
