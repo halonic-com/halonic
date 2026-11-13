@@ -5,7 +5,7 @@ import { WorkspaceTrustSection } from "../trust/workspace-trust-section.tsx";
 import { WORKSPACE_PAGE_TITLE } from "./workspace-page-text.ts";
 
 /**
- * The workspace page (`workspace.page`, flow-workspace 6): the open workspace's settings. For now
+ * The workspace page (`workspace.workspace-page`, flow-workspace 6): the open workspace's settings. For now
  * it holds the **Trust** section; the other sections of the frames come with the features that
  * own them. Without a folder to trust, as in the served Studio, there is no Trust section.
  *

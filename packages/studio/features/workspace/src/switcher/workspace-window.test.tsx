@@ -151,7 +151,7 @@ verifies("workspace.workspace-window", () => {
     expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: acme");
   });
 
-  it("opens the workspace page from the menu's Workspace settings… (workspace.page)", async () => {
+  it("opens the workspace page from the menu's Workspace settings… (workspace.workspace-page)", async () => {
     // jsdom has no popovers, which the menu closes itself with.
     HTMLElement.prototype.hidePopover ??= () => {};
     const opened = vi.fn();

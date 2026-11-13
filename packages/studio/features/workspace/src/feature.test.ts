@@ -10,7 +10,7 @@ describe("workspaceFeature", () => {
   });
 });
 
-verifies("workspace.page", () => {
+verifies("workspace.workspace-page", () => {
   const shell = createShell({ features: [workspaceFeature], hostServices: [WorkspacePageService] });
 
   it("adds the workspace item kind, titled Workspace settings", async () => {

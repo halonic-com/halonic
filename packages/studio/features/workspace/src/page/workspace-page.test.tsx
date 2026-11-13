@@ -48,7 +48,7 @@ function show(facts: Facts): HTMLElement {
   return element;
 }
 
-verifies("workspace.page", () => {
+verifies("workspace.workspace-page", () => {
   it("is titled Workspace settings and shows the Trust section for a folder", () => {
     const page = show({ name: "Acme", trust });
 

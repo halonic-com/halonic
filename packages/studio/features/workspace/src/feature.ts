@@ -13,7 +13,7 @@ export const openTrustCommand = "workspace.open-trust";
 
 /**
  * The Workspace feature (`workspace.feature`). It adds the `workspace` item kind, the page of the
- * open workspace's settings, and the commands that open it (`workspace.page`). The folder
+ * open workspace's settings, and the commands that open it (`workspace.workspace-page`). The folder
  * switcher around it is the app's window (`mountWorkspaceWindow`).
  */
 export const workspaceFeature = defineFeature({
