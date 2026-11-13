@@ -63,7 +63,7 @@ function control(status: Status, remove?: () => Promise<TrustGrantResult>) {
     get status() {
       return current;
     },
-    // 12 Nov 2026 at noon UTC is the same day in every time zone.
+    // 3 Nov 2026 at noon UTC is the same calendar day in every time zone.
     trustedAt:
       status === "trusted" || status === "changed" ? "2026-11-03T12:00:00.000Z" : undefined,
     review: () => (current === "trusted" ? undefined : review),

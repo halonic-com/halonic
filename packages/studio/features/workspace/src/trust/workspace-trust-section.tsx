@@ -1,5 +1,5 @@
 import { Button, DashedRingIcon, Dialog, type ToastStore } from "@halonicjs/studio-kit";
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useId, useRef, useState, useSyncExternalStore } from "react";
 import {
   changedSince,
   NOT_TRUSTED_LINE,
@@ -27,7 +27,7 @@ export interface WorkspaceTrustSectionProps {
 }
 
 /**
- * The **Trust** section of the workspace page (`studio.workspace-trust-section`, states-flow-map
+ * The **Trust** section of the workspace page (`workspace.trust-section`, states-flow-map
  * P4 to P6, P9 to P11): whether the workspace is trusted and since when, **Review** or **Review
  * changes** when it isn't or has changed (the same check as the header badge), and **Remove
  * trust** in a confirmation when it is. Removing trust deletes the record, so the section then
@@ -45,6 +45,7 @@ export function WorkspaceTrustSection({ trust, name, toasts }: WorkspaceTrustSec
     (onChange) => trust.subscribe(onChange),
     () => trust.trustedAt,
   );
+  const headingId = useId();
   const action = useRef<HTMLButtonElement | null>(null);
   const check = useTrustCheck(trust, name, toasts, () => action.current);
   const [removing, setRemoving] = useState(false);
@@ -67,8 +68,8 @@ export function WorkspaceTrustSection({ trust, name, toasts }: WorkspaceTrustSec
   };
 
   return (
-    <section aria-labelledby="workspace-trust-heading" className="flex flex-col gap-3">
-      <h2 id="workspace-trust-heading" tabIndex={-1} className="text-heading">
+    <section aria-labelledby={headingId} className="flex flex-col gap-3">
+      <h2 id={headingId} tabIndex={-1} className="text-heading">
         {TRUST_HEADING}
       </h2>
       {status === "unknown" ? null : (
