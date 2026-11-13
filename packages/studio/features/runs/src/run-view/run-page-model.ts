@@ -165,7 +165,7 @@ function childRunBanner(runId: string, context: RunPageContext): RunBanner {
 }
 
 /** When the run started: "today 10:40", "yesterday 10:40", or "Fri 6 Nov 10:40". */
-function startedWords(started: Date, now: Date): string {
+export function startedWords(started: Date, now: Date): string {
   const day = dayWords(started, now);
   const time = clockTime(started);
   if (day === "Today") {
