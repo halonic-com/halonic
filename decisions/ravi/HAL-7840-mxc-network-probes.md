@@ -2,6 +2,7 @@
 
 - Approval: HAL-7840 (Liam, CTO, asked for it in the review of the session pull request)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:PbxkyU5nPWh+aw2Hh+nZmhrpWx6ycRlrgYTVw5k3ni/b2lXeEm+Pv1gZKgkhmsk54jSvh5knfXz7jAOZeflXDQ==
 - Task: HAL-7840
 
 MXC's fence proof and canary now probe the internet, public DNS and the computer's other
