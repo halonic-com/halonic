@@ -3,7 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import type { SourcedRun } from "../api.ts";
 import { approvalAt, minutesLater, mondayMorning, summaryWith } from "../summary.test-helper.ts";
-import { summaryLine } from "./receipt-model.ts";
+import { approvalLines, summaryLine } from "./receipt-model.ts";
 import { logOf } from "./run-log.test-helper.ts";
 
 const context = {
@@ -94,5 +94,73 @@ verifies("runs.run-view.receipt-summary", () => {
 
   it("leaves out the cost of a run with no priced call and no unpriced one", () => {
     expect(line({ ...done, cost: 0 }, [])).toBe("Finished in 2 min · sent nothing");
+  });
+});
+
+verifies("runs.run-view.receipt-approvals", () => {
+  const asked = (callId: string, tool: string): RunEventBody => ({
+    type: "approval.requested",
+    state: "send",
+    agent: "reporter",
+    tool,
+    args: {},
+    callId,
+    resume: { kind: "agent" } as never,
+  });
+  const answered = (
+    callId: string,
+    tool: string,
+    approved: boolean,
+    by?: "person" | "rule",
+  ): RunEventBody => ({
+    type: "approval.resolved",
+    state: "send",
+    agent: "reporter",
+    tool,
+    callId,
+    approved,
+    ...(by === undefined ? {} : { by }),
+  });
+
+  it("says what was decided, by whom and when, in the order asked", () => {
+    const events = logOf(id, [
+      [1, asked("c1", "gmail_send")],
+      [2, answered("c1", "gmail_send", true, "person")],
+      [3, asked("c2", "drive_save")],
+      [4, answered("c2", "drive_save", false, "rule")],
+    ]);
+    expect(approvalLines(events).map((entry) => entry.text)).toEqual([
+      "gmail_send: approved by you at 10:42",
+      "drive_save: rejected by a rule at 10:44",
+    ]);
+  });
+
+  it("leaves out who answered when an older log doesn't say", () => {
+    const events = logOf(id, [
+      [1, asked("c1", "gmail_send")],
+      [2, answered("c1", "gmail_send", true)],
+    ]);
+    expect(approvalLines(events).map((entry) => entry.text)).toEqual([
+      "gmail_send: approved at 10:42",
+    ]);
+  });
+
+  it("says an approval still open is waiting, and has no lines for a run that asked none", () => {
+    expect(approvalLines(logOf(id, [[1, asked("c1", "gmail_send")]])).map((e) => e.text)).toEqual([
+      "gmail_send: waiting for your answer",
+    ]);
+    expect(approvalLines(logOf(id, []))).toEqual([]);
+  });
+
+  it("says an approval left open on a run that ended was not answered", () => {
+    const failed: RunEventBody = { type: "run.failed", reason: "cancelled" } as never;
+    expect(
+      approvalLines(
+        logOf(id, [
+          [1, asked("c1", "gmail_send")],
+          [2, failed],
+        ]),
+      ).map((e) => e.text),
+    ).toEqual(["gmail_send: not answered"]);
   });
 });

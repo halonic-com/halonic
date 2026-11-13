@@ -326,4 +326,13 @@ export const summaryWords = {
 /** The receipt's heading: kit 24.2 gives it an `h2`; the word is a team decision under HAL-2282 (HAL-1301). */
 export const receiptWords = {
   heading: "Receipt",
+  approvalsHeading: "Approvals",
+  /** One approval the run asked for: what was decided, by whom (RCPT-2.4), and when. */
+  approvalLine: (tool: string, decision: "approved" | "rejected", by: string, time: string) =>
+    `${tool}: ${decision}${by === "" ? "" : ` by ${by}`} at ${time}`,
+  approvalWaiting: (tool: string) => `${tool}: waiting for your answer`,
+  /** An approval left open when the run ended: nobody can answer it any more. */
+  approvalNotAnswered: (tool: string) => `${tool}: not answered`,
+  approvalByPerson: "you",
+  approvalByRule: "a rule",
 };
