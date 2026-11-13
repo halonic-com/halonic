@@ -29,6 +29,7 @@ import {
   resourceProbeContract,
   runStoreContract,
   schedulerContract,
+  secretStoreContract,
   secretsContract,
   tokenStoreContract,
   trustServiceAttackContract,
@@ -59,6 +60,7 @@ import {
   MemoryResourceProbe,
   MemoryRunStore,
   MemoryScheduler,
+  MemorySecretStore,
   MemorySecrets,
   MemoryTokenStore,
   MemoryTrustStore,
@@ -78,6 +80,19 @@ blobStoreContract("memory", async () => new MemoryBlobStore());
 recordStoreContract("memory", async () => new MemoryRecordStore());
 secretsContract("memory", async (values) => new MemorySecrets(values));
 tokenStoreContract("memory", async () => new MemoryTokenStore());
+let lastSecretStore = new MemorySecretStore();
+secretStoreContract("memory", {
+  make: async () => {
+    lastSecretStore = new MemorySecretStore();
+    return lastSecretStore;
+  },
+  reopen: async () => lastSecretStore,
+});
+secretsContract("memory (store)", async (values) => {
+  const store = new MemorySecretStore();
+  for (const [name, value] of Object.entries(values)) await store.set(name, value);
+  return store;
+});
 const makeTrustStore = async () => {
   const store = new MemoryTrustStore();
   return { store, damage: async (location: string) => store.damage(location) };

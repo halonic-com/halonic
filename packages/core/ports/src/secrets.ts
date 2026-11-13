@@ -27,6 +27,62 @@ export interface Secrets {
   get(name: string): Promise<string | null>;
 }
 
+/**
+ * The secrets a person sets and removes with `halonic secret`: {@link Secrets}
+ * that can also be written. A host that only reads secrets (a Worker, the
+ * environment) implements `Secrets` alone; only a store the person owns, such
+ * as a file in the profile, implements this. It follows the version of
+ * {@link Secrets}, which it extends without changing.
+ *
+ * The same name rule and the same matching apply: every method runs
+ * {@link secretKey} on a name before it touches storage, so a bad name is a
+ * `RangeError` that changes nothing, and `Open-AI` and `open_ai` are one secret.
+ * **A value never appears in an error, a log or a listing.**
+ */
+export interface SecretStore extends Secrets {
+  /**
+   * Saves a value, replacing the one stored under the same name. The name is
+   * kept as it was written last, so a listing shows what the person typed.
+   *
+   * @throws RangeError when the name breaks the rule, or the value is empty or
+   *   longer than {@link maxSecretValueLength}; the message never repeats the value
+   */
+  set(name: string, value: string): Promise<void>;
+  /**
+   * Removes a secret. Removing one that isn't stored succeeds and changes nothing.
+   *
+   * @throws RangeError when the name breaks the rule
+   */
+  remove(name: string): Promise<void>;
+  /** The names of the stored secrets, sorted by their `secretKey` form, and never a value. */
+  names(): Promise<readonly string[]>;
+}
+
+/** The longest value a {@link SecretStore} saves, in UTF-16 code units. Bounds what one secret may cost a store. */
+export const maxSecretValueLength = 64 * 1024;
+
+/**
+ * Checks a value before a {@link SecretStore} saves it, so every store refuses
+ * the same ones: an empty value (`EnvSecrets` treats it as unset, so it would
+ * look like no secret) and one over {@link maxSecretValueLength}.
+ *
+ * @throws RangeError; the message never repeats the value, only its length
+ *
+ * @example
+ * checkSecretValue("sk-live-1234"); // fine
+ * checkSecretValue(""); // throws a RangeError
+ */
+export function checkSecretValue(value: string): void {
+  if (value === "") {
+    throw new RangeError("A secret's value can't be empty. Remove the secret instead.");
+  }
+  if (value.length > maxSecretValueLength) {
+    throw new RangeError(
+      `A secret's value can be at most ${maxSecretValueLength} characters; this one has ${value.length}.`,
+    );
+  }
+}
+
 /** The longest a `Secrets` or `TokenStore` name may be. */
 export const maxSecretNameLength = 128;
 

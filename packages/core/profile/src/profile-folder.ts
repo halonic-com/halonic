@@ -32,6 +32,10 @@ const settingsFolderName = "settings";
 /** The name of the folder in the profile that holds the approvals of listed tools. */
 const toolApprovalFolderName = "tool-approvals";
 
+/** The name of the folder in the profile that holds the secrets file, and the file's own name. */
+const secretsFolderName = "secrets";
+const secretsFileName = "secrets.json";
+
 /** What {@link profileFolder} reads from the system; the adapter fills it in. */
 export interface ProfileEnvironment {
   /** The system Halonic runs on. */
@@ -134,6 +138,23 @@ export function sandboxJournalFolder(profile: ProfileFolder): string {
  */
 export function toolApprovalFolder(profile: ProfileFolder): string {
   return joinPath(profile.platform, profile.root, toolApprovalFolderName);
+}
+
+/**
+ * The file for the secrets a person sets with `halonic secret`,
+ * `secrets/secrets.json` in the profile folder. It has a folder of its own so
+ * the folder can be private to the person and hold the file's temporary
+ * copies too. It is the person's own, never a workspace's.
+ *
+ * @param profile - the profile folder, from {@link profileFolder}
+ * @returns the secrets file, joined the profile's way; nothing is created
+ *
+ * @example
+ * secretsFile({ platform: "linux", root: "/srv/acme/.local/share/halonic" });
+ * // "/srv/acme/.local/share/halonic/secrets/secrets.json"
+ */
+export function secretsFile(profile: ProfileFolder): string {
+  return joinPath(profile.platform, profile.root, secretsFolderName, secretsFileName);
 }
 
 /** The system's folder for a person's application data. */

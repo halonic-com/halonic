@@ -171,6 +171,7 @@ export {
   objectPropertySecretNames,
   unquotableSecretNames,
 } from "./secret-names.ts";
+export { type SecretStoreHarness, secretStoreContract } from "./secret-store.ts";
 export {
   type MakeSecrets,
   type MakeTokenStore,

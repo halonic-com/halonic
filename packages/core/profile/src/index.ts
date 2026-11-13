@@ -6,6 +6,7 @@ export {
   pluginsFolder,
   profileFolder,
   sandboxJournalFolder,
+  secretsFile,
   settingsFolder,
   toolApprovalFolder,
   trustFolder,
