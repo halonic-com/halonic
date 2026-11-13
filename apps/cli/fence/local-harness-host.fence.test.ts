@@ -196,7 +196,8 @@ describe("a harness run in the real srt sandbox", () => {
       const attempts = seen.attempts;
       expect(attempts).not.toBeNull();
       expect(attempts?.readProfileRoot).not.toBe(0);
-      expect(attempts?.writeProfileRoot).not.toBe(0);
+      // Writing to the hidden profile root may seem to work inside the sandbox, which hides it
+      // behind an empty folder of its own. What counts is that nothing lands on disk, checked below.
       expect(attempts?.writeWorkspace).not.toBe(0);
       expect(attempts?.writeWorking).toBe(0);
       expect(attempts?.writeTemp).toBe(0);
