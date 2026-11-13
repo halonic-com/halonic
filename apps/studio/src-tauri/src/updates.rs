@@ -19,18 +19,22 @@ use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use halonic_update_state::{
-    CHECK_TIME_LIMIT, CheckFailure, CheckResult, FIRST_CHECK_AFTER, JustUpdated, Managed, Migrated,
-    RecordRead, StartOutcome, UpdateState, UpdateStatus, UpdaterRecord, Version, check_due,
-    detect_managed, migrate_settings_file, notes_url, read_record, record_text,
+    CHECK_TIME_LIMIT, CheckResult, FIRST_CHECK_AFTER, JustUpdated, Managed, Migrated, RecordRead,
+    StartOutcome, UpdateState, UpdateStatus, UpdaterRecord, Version, check_due, detect_managed,
+    migrate_settings_file, read_record, record_text,
 };
 use tauri::async_runtime::JoinHandle;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, Runtime, Webview};
-use tauri_plugin_updater::{Error as UpdaterError, Update, UpdaterExt};
+use tauri_plugin_updater::{Update, UpdaterExt};
 
 #[path = "updates_download.rs"]
 mod download;
 use download::start_download;
+
+#[path = "updates_check.rs"]
+mod check;
+use check::{available, check_failure};
 
 #[path = "updates_managed.rs"]
 mod managed;
@@ -350,38 +354,6 @@ async fn check<R: Runtime>(app: &AppHandle<R>) {
     drop(inner);
     if automatic {
         start_download(app);
-    }
-}
-
-/// The state for a version the check found: available, unless its
-/// signature failed too often.
-fn available(record: &mut UpdaterRecord, version: String) -> UpdateState {
-    let refused = Version::parse(&version).is_some_and(|parsed| !record.may_download(&parsed));
-    match record.bad_signature.as_ref().filter(|_| refused) {
-        Some(bad) => UpdateState::SignatureMismatch {
-            attempts: bad.count,
-            version,
-        },
-        None => UpdateState::Available {
-            notes_url: notes_url(&version),
-            version,
-        },
-    }
-}
-
-/// Why a check got no usable answer, by the updater's error type, never by
-/// its message.
-fn check_failure(error: &UpdaterError) -> CheckFailure {
-    match error {
-        UpdaterError::Reqwest(error) if error.is_connect() => CheckFailure::Offline,
-        UpdaterError::Reqwest(error) if error.is_decode() || error.is_body() => {
-            CheckFailure::Unreadable
-        }
-        UpdaterError::Serialization(_)
-        | UpdaterError::Semver(_)
-        | UpdaterError::TargetNotFound(_)
-        | UpdaterError::TargetsNotFound(_) => CheckFailure::Unreadable,
-        _ => CheckFailure::NoAnswer,
     }
 }
 
