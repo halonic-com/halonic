@@ -12,7 +12,7 @@ Settings › Agent sandbox, in three parts:
 - **Words for a failed check.** A check that ran and found the sandbox can't run reads "The sandbox isn't ready: …". A check that couldn't run reads "Couldn't check the sandbox: …" with the reason.
 - **Time-out and removal text.** A repair that takes 3 minutes says so in the words of a repair ("The sandbox isn't repaired: the repair didn't finish within 3 minutes."). A removal that fails while several runs use the sandbox says how many, in the plural.
 
-Both requirements get these sentences and examples. Nothing they said before is removed or weakened: a setup still starts only on a button press, the 3-minute limit still doesn't stop the setup, and the removal still needs the dialog.
+`settings.agent-sandbox-section` gets the first part, `settings.agent-sandbox-state` the other two, each with sentences and examples. Nothing they said before is removed or weakened: a setup still starts only on a button press, the 3-minute limit still doesn't stop the setup, and the removal still needs the dialog.
 
 ## Why
 
