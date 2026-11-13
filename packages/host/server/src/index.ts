@@ -1,6 +1,7 @@
 export type {
   CreateServer,
   ErrorLog,
+  RequestContext,
   RequestCountStore,
   Server,
   ServerConfig,
