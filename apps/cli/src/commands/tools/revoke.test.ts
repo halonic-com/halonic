@@ -15,7 +15,7 @@ verifies("cli.commands.tools.revoke", () => {
     expect((await kit.tools(["revoke", "notes-mcp", "send"])).code).toBe(exitCode.ok);
     const notes = kit.notes();
     expect(await notes.approvals.get(await notes.key("send"))).toBeNull();
-    expect(notes.started).toEqual([]);
+    expect(notes.servers.started).toEqual([]);
   });
 
   it("removes an approval that can't be read", async () => {

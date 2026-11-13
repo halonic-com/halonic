@@ -4,7 +4,7 @@
 
 import { connectorConfigOf } from "@halonicjs/app";
 import type { Connector } from "@halonicjs/format";
-import type { ConnectorTool, Secrets } from "@halonicjs/ports";
+import type { ConnectorTool, Secrets, TrustGrant } from "@halonicjs/ports";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { ConnectorMachine } from "./connector-machine.ts";
 import type { Message } from "./messages/define.ts";
@@ -28,6 +28,13 @@ export interface SourceListingTarget {
   readonly workspace: LoadedWorkspace;
 }
 
+/** What a source lists now, and the grant it was connected with. */
+export interface SourceListing {
+  readonly tools: ConnectorTool[];
+  /** The workspace's grant, which `checkConnectorTools` reads the listing with. */
+  readonly trust: TrustGrant;
+}
+
 /**
  * The tools `target`'s source lists now, as its server wrote them: fence
  * them with `readToolListing` before they are shown. The workspace must be
@@ -45,7 +52,7 @@ export async function readSourceListing(
   machine: ConnectorMachine,
   secrets: Secrets,
   nothingDone: Message,
-): Promise<ConnectorTool[]> {
+): Promise<SourceListing> {
   const trust = await trustedGrant(
     target.dir,
     machine,
@@ -53,7 +60,7 @@ export async function readSourceListing(
     nothingDone,
     target.workspace,
   );
-  return await machine.factories.listTools(connectorConfigOf(target.connector), {
+  const tools = await machine.factories.listTools(connectorConfigOf(target.connector), {
     secrets,
     tokens: machine.tokens,
     http: machine.http,
@@ -61,4 +68,5 @@ export async function readSourceListing(
     workingFolders: await realWorkingFolders(target.dir.root, target.workspace),
     trust,
   });
+  return { tools, trust };
 }

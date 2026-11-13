@@ -1,0 +1,29 @@
+## colour: halonic tools approve notes-mcp --all
+exit 0
+stdout:
+  \e[33m!\e[39m Left out search: notes-mcp keeps changing it. Approve it by name: halonic tools approve notes-mcp search
+  \e[33m!\e[39m Approved no tools from notes-mcp: the ones waiting keep changing.
+stderr:
+
+## NO_COLOR: halonic tools approve notes-mcp --all
+exit 0
+stdout:
+  ! Left out search: notes-mcp keeps changing it. Approve it by name: halonic tools approve notes-mcp search
+  ! Approved no tools from notes-mcp: the ones waiting keep changing.
+stderr:
+
+## --json: halonic tools approve notes-mcp --all
+exit 0
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": true,
+    "approved": [],
+    "leftOut": [
+      {
+        "name": "search",
+        "why": "keeps_changing"
+      }
+    ]
+  }
+stderr:

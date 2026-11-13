@@ -1,0 +1,29 @@
+## colour: halonic tools approve notes-mcp archive
+exit 0
+stdout:
+  \e[32m✓\e[39m Approved archive from notes-mcp, as it is now.
+    \e[2mhtl1:90df971b9f6bc490a5bee8dbd87b55db470e8a52623785974d1cdffeafaee381\e[22m
+stderr:
+
+## NO_COLOR: halonic tools approve notes-mcp archive
+exit 0
+stdout:
+  ✓ Approved archive from notes-mcp, as it is now.
+    htl1:90df971b9f6bc490a5bee8dbd87b55db470e8a52623785974d1cdffeafaee381
+stderr:
+
+## --json: halonic tools approve notes-mcp archive
+exit 0
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": true,
+    "approved": [
+      {
+        "name": "archive",
+        "fingerprint": "htl1:90df971b9f6bc490a5bee8dbd87b55db470e8a52623785974d1cdffeafaee381"
+      }
+    ],
+    "leftOut": []
+  }
+stderr:

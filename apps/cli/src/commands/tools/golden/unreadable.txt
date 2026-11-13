@@ -1,0 +1,27 @@
+## colour: halonic tools approve notes-mcp archive
+exit 9
+stdout:
+stderr:
+  \e[31m✕\e[39m Couldn't read your approval for send in notes-mcp, so none of its listed tools are on.
+    Remove it, then approve it again: halonic tools revoke notes-mcp send
+
+## NO_COLOR: halonic tools approve notes-mcp archive
+exit 9
+stdout:
+stderr:
+  ✕ Couldn't read your approval for send in notes-mcp, so none of its listed tools are on.
+    Remove it, then approve it again: halonic tools revoke notes-mcp send
+
+## --json: halonic tools approve notes-mcp archive
+exit 9
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": false,
+    "error": {
+      "kind": "unavailable",
+      "message": "Couldn't read your approval for send in notes-mcp, so none of its listed tools are on.",
+      "fix": "Remove it, then approve it again: halonic tools revoke notes-mcp send"
+    }
+  }
+stderr:

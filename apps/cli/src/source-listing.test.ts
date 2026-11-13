@@ -1,9 +1,7 @@
 import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { PassThrough } from "node:stream";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
-import type { ProgramLaunch, ProgramStarter, RunningProgram } from "@halonicjs/adapter-mcp";
 import { MemorySecrets, MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
@@ -17,6 +15,7 @@ import {
 import { exitCodeOfError } from "./exit-code-for.ts";
 import { runMessages } from "./messages/run.ts";
 import { readSourceListing } from "./source-listing.ts";
+import { FakeMcpServers } from "./test/fake-mcp-servers.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import { assertTrustable, cliTrustService, readWorkspaceTrust } from "./workspace-trust.ts";
 
@@ -28,54 +27,8 @@ const notesTool = {
   inputSchema: { type: "object" },
 };
 
-/** A stdio MCP server in this process: it answers `initialize` and lists one tool. */
-class FakeServers implements ProgramStarter {
-  readonly started: ProgramLaunch[] = [];
-  running = 0;
-
-  async start(launch: ProgramLaunch): Promise<RunningProgram> {
-    this.started.push(launch);
-    this.running += 1;
-    const stdout = new PassThrough();
-    let resolveExit: () => void = () => undefined;
-    const exited = new Promise<{ code: number; signal: null }>((resolve) => {
-      resolveExit = () => resolve({ code: 0, signal: null });
-    });
-    let ended = false;
-    const end = () => {
-      if (ended) return;
-      ended = true;
-      this.running -= 1;
-      stdout.end();
-      resolveExit();
-    };
-    return {
-      write: async (text) => {
-        for (const line of text.split("\n").filter((part) => part !== "")) {
-          const answer = answerTo(JSON.parse(line) as { id?: number; method?: string });
-          if (answer !== undefined) stdout.write(`${JSON.stringify(answer)}\n`);
-        }
-      },
-      endInput: end,
-      signal: end,
-      stdout,
-      stderr: new PassThrough({ emitClose: true }).end(),
-      exited,
-    };
-  }
-}
-
-function answerTo(message: { id?: number; method?: string }): unknown {
-  if (message.id === undefined) return undefined;
-  const result =
-    message.method === "initialize"
-      ? { protocolVersion: "2025-11-25", capabilities: { tools: {} } }
-      : { tools: [notesTool] };
-  return { jsonrpc: "2.0", id: message.id, result };
-}
-
 let folder: string;
-let servers: FakeServers;
+let servers: FakeMcpServers;
 let machine: ConnectorMachine;
 
 beforeEach(async () => {
@@ -87,7 +40,7 @@ beforeEach(async () => {
     join(acme, "library", "connectors", "notes.connector.yaml"),
     "name: Notes\ntransport:\n  stdio:\n    command: acme-notes-server\n",
   );
-  servers = new FakeServers();
+  servers = new FakeMcpServers([notesTool]);
   machine = {
     factories: cliConnectorFactories(servers, { PATH: "/usr/bin" }),
     http: { fetch: () => Promise.reject(new TypeError("This test reaches no server.")) },
@@ -127,7 +80,7 @@ verifies("cli.source-listing", () => {
     it("reads a trusted stdio source's tools from its program, then stops it", async () => {
       const { target, trust } = await acmeNotes();
       await trust();
-      const tools = await readSourceListing(
+      const { tools, trust: grant } = await readSourceListing(
         target,
         machine,
         new MemorySecrets(),
@@ -136,6 +89,7 @@ verifies("cli.source-listing", () => {
       expect(tools).toEqual([
         { name: "read_note", description: "Reads one note.", parameters: { type: "object" } },
       ]);
+      expect(grant.fingerprint).toMatch(/^hfp1:/u);
       expect(servers.started.map((launch) => launch.program)).toEqual(["acme-notes-server"]);
       expect(servers.started[0]?.cwd).toBe(target.dir.root);
       expect(servers.started[0]?.workingFolders).toBeUndefined();
