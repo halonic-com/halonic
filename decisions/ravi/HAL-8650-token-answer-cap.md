@@ -3,6 +3,7 @@
 - Task: HAL-8650
 - Approval: /HAL/issues/HAL-8650; the maintainer (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Wza9ZdOETPOtyJFmL/6YHwHXR9zfrMsrA5Ji5IubB/2mvrKpZAlCKvWiqITBKc6ebBOgymyrNNXrPzy1vAMfBQ==
 
 ## What changes
 
