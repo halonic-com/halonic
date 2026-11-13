@@ -3,7 +3,7 @@ import { expect, it } from "vitest";
 import { exchangeAuthorizationCode } from "./exchange-code.ts";
 import { fakeProvider } from "./fake-provider.test-helper.ts";
 import { formBody } from "./form-body.ts";
-import { postTokenForm, tokenRequestTimeoutMs } from "./token-request.ts";
+import { maxTokenAnswerBytes, postTokenForm, tokenRequestTimeoutMs } from "./token-request.ts";
 
 // Fake values only; none is real.
 const fakeAccessToken = "fake-access-token-0000000001";
@@ -61,6 +61,52 @@ verifies("oauth-sign-in.exchange-code", () => {
       status: 502,
       json: undefined,
     });
+  });
+
+  it("parses an answer of exactly 64 KiB", async () => {
+    const padding = "a".repeat(maxTokenAnswerBytes - '{"pad":""}'.length);
+    const http = fakeProvider(() => new Response(JSON.stringify({ pad: padding })));
+
+    const answer = await postTokenForm(http, tokenEndpoint, {}, signal());
+
+    expect(answer).toEqual({ status: 200, json: { pad: padding } });
+  });
+
+  it("gives nothing for an answer one byte over 64 KiB, and never parses it", async () => {
+    const padding = "a".repeat(maxTokenAnswerBytes - '{"pad":""}'.length + 1);
+    const http = fakeProvider(() => new Response(JSON.stringify({ pad: padding })));
+
+    expect(await postTokenForm(http, tokenEndpoint, {}, signal())).toBeUndefined();
+  });
+
+  it("gives nothing for an answer that declares more than 64 KiB, without reading it", async () => {
+    let pulls = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls++;
+        controller.enqueue(new Uint8Array(10));
+      },
+    });
+    const http = fakeProvider(
+      () => new Response(body, { headers: { "content-length": String(maxTokenAnswerBytes + 1) } }),
+    );
+
+    expect(await postTokenForm(http, tokenEndpoint, {}, signal())).toBeUndefined();
+    expect(pulls).toBeLessThanOrEqual(1);
+  });
+
+  it("stops reading an endless answer at the limit", async () => {
+    let pulls = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls++;
+        controller.enqueue(new Uint8Array(8192).fill(32));
+      },
+    });
+    const http = fakeProvider(() => new Response(body));
+
+    expect(await postTokenForm(http, tokenEndpoint, {}, signal())).toBeUndefined();
+    expect(pulls).toBeLessThan(20);
   });
 
   it("gives nothing when the provider can't be reached, and never passes on the client's error", async () => {

@@ -1,4 +1,5 @@
 // The public API of @halonicjs/host-integration-sign-in. Everything else in src/ is internal.
+export { createHttpsOnlyClient } from "./https-only-client.ts";
 export {
   createIntegrationSignIns,
   type IntegrationSignIns,

@@ -6,6 +6,7 @@ import {
   fakeAccessToken,
   fakeClientSecret,
   rotatedRefreshToken,
+  sheetWithTokenUrl,
   webDigest,
 } from "./fake-integration.test-helper.ts";
 import {
@@ -27,7 +28,9 @@ export interface SeenRequest {
 }
 
 /** A sign-in flow with a fake store, token endpoint, settings and randomness. */
-export function exampleFlow(options: { settings?: Record<string, unknown>; issuer?: string } = {}) {
+export function exampleFlow(
+  options: { settings?: Record<string, unknown>; issuer?: string; tokenUrl?: string } = {},
+) {
   const values = new Map<string, string>();
   let storeFails = false;
   const grants: SignInGrants = createSignInGrants(
@@ -52,7 +55,10 @@ export function exampleFlow(options: { settings?: Record<string, unknown>; issue
     },
   };
   let source: SignInSource = {
-    sheet: withIssuer(exampleSheet(), options.issuer),
+    sheet: withIssuer(
+      options.tokenUrl === undefined ? exampleSheet() : sheetWithTokenUrl(options.tokenUrl),
+      options.issuer,
+    ),
     settings: options.settings ?? { clientId: "fake-client" },
   };
   let secret: string | null = fakeClientSecret;

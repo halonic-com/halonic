@@ -66,6 +66,15 @@ verifies("integration-sign-in.approved-sign-ins", () => {
     await expect(test.signIns.tokens.access(signInName)).rejects.toBeInstanceOf(SignInNeededError);
   });
 
+  it("never sends a refresh to a token URL on http", async () => {
+    const test = exampleIntegration({ tokenUrl: "http://auth.example.com/oauth/token" });
+    await test.signedIn();
+
+    await expect(test.signIns.tokens.access(signInName)).rejects.toThrow("could not be reached");
+
+    expect(test.provider.requests).toEqual([]);
+  });
+
   it("lists a token the kit reported as rejected for the secret filter", async () => {
     const test = exampleIntegration();
     await test.signedIn();

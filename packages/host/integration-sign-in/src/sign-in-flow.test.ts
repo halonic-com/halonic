@@ -336,6 +336,16 @@ verifies("integration-sign-in.sign-in-flow", () => {
     expect(test.outcomes[0]?.kind).toBe("unreachable");
   });
 
+  it("counts a token URL on http as unreachable and never calls the client", async () => {
+    const test = exampleFlow({ tokenUrl: "http://auth.example.com/oauth/token" });
+    const started = await test.started();
+
+    await test.flow.handleCallback(started.callback({ state: started.state, code: "c" }));
+
+    expect(test.outcomes[0]?.kind).toBe("unreachable");
+    expect(test.seen).toEqual([]);
+  });
+
   it("doesn't start when the client secret isn't in the store, or a setting is missing, or the name is unknown", async () => {
     const missingSecret = exampleFlow();
     missingSecret.withoutClientSecret();
