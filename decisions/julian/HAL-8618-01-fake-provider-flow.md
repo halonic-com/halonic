@@ -2,6 +2,7 @@
 
 - Approval: HAL-8689 (the CTO decided there to keep the four `it.fails` tests, on the condition that the gaps they pin are fixed before any release that ships sign-ins)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:I1Nt1xe4tt+Q27CaH+ft3p+/7xD1DzL3tfQ6Sv1MG0cjcq73MalaDwT+RULCZN7OjSgRkEgi5WEsFMnaUXEUBQ==
 - Task: HAL-8618
 
 ## What changes
