@@ -19,7 +19,7 @@ export interface MonthBarsProps {
   readonly format?: (value: number) => string;
   /** Shown instead of the bars when every month is zero. */
   readonly emptyText: string;
-  /** A line under the big number ("This month, of 100 EUR budget"); `attention` draws it amber. */
+  /** A line under the big number ("This month, within the 100 EUR budget"); `attention` draws it amber. */
   readonly note?: { readonly text: string; readonly attention?: boolean };
   /**
    * A thin dashed line across the bars at `value`, named by `label` at its right end. The scale

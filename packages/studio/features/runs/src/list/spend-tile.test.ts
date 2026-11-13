@@ -46,7 +46,7 @@ verifies("runs.spend-tile", () => {
   it("within the budget names it under the number, without amber", () => {
     const tile = spendTile([run("a", "2026-11-02T00:00:00.000Z", 40)], at, "EUR", 100);
 
-    expect(tile?.note).toEqual({ text: "This month, of 100.00 EUR budget" });
+    expect(tile?.note).toEqual({ text: "This month, within the 100.00 EUR budget" });
     expect(tile?.limit).toEqual({ value: 100, label: "Budget" });
   });
 

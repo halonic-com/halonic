@@ -375,7 +375,7 @@ export const spendWords = {
   /** An amount as the budget stop writes it: two decimals, then the currency code. */
   amount: (amount: number, currency: string) => `${amount.toFixed(2)} ${currency}`,
   thisMonth: "This month",
-  withinBudget: (budget: string) => `This month, of ${budget} budget`,
+  withinBudget: (budget: string) => `This month, within the ${budget} budget`,
   overBudget: (budget: string) => `This month, over the ${budget} budget`,
 };
 
