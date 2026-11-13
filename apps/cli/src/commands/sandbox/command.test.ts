@@ -275,6 +275,7 @@ verifies("cli.commands.sandbox.remove", () => {
         grantedAt: "2026-01-01T00:00:00Z",
         appVersion: "0.0.0",
         pins: {},
+        origin: "prompt",
       });
     }
     return store;
