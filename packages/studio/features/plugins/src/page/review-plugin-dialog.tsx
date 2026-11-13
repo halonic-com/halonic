@@ -1,11 +1,11 @@
 import type { Plugin } from "@halonicjs/format";
 import { useState } from "react";
+import { messageOf } from "../message-of.ts";
 import { changeSummary } from "../trust/change-rows.ts";
 import { PluginTrustDialog } from "../trust/plugin-trust-dialog.tsx";
 import { trustedDay } from "./page-text.ts";
 import type { PluginActions } from "./plugin-actions.ts";
 import type { InstalledPlugin } from "./plugin-pages.ts";
-import { messageOf } from "./remove-plugin-dialog.tsx";
 
 /** The props of `ReviewPluginDialog`. */
 export interface ReviewPluginDialogProps {
