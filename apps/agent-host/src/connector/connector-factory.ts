@@ -13,6 +13,7 @@ import { MemoryTokenStore } from "@halonicjs/adapter-memory";
 import type { ConnectorFactory, HttpClient, Sandbox, TokenStore } from "@halonicjs/ports";
 import type { ConnectorRouteDeps } from "./connector-routes.ts";
 import { ConnectorTable } from "./connector-table.ts";
+import { NoInheritedEnvFactory } from "./no-inherited-env-factory.ts";
 
 /** How long one connector's session may last: a run's connectors end with the run, so this only bounds a stuck one. */
 const connectorSessionLimitMs = 24 * 60 * 60_000;
@@ -38,13 +39,16 @@ export interface HostConnectorOptions {
 export function hostConnectorFactory(options: HostConnectorOptions): ConnectorFactory {
   const clientInfo = { name: "halonic", version: options.version };
   const runners = createRunnerSearch(options.env);
-  const unfenced = new McpStdioConnectorFactory({
-    starter: nodeProgramStarter,
-    folders: nodeLaunchFolders,
-    runners,
-    inheritedEnv: options.env,
-    clientInfo,
-  });
+  // The caller picks no variable of the host's environment for its program, fenced or not.
+  const unfenced = new NoInheritedEnvFactory(
+    new McpStdioConnectorFactory({
+      starter: nodeProgramStarter,
+      folders: nodeLaunchFolders,
+      runners,
+      inheritedEnv: options.env,
+      clientInfo,
+    }),
+  );
   return new SessionWorkspaceFactory({
     sandbox: options.sandbox,
     sandboxed: (setupOf) =>
