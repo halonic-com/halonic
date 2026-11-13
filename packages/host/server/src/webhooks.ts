@@ -22,6 +22,9 @@ const DELIVERY_MARGIN_MS = 60_000;
  */
 export const DELIVERY_MEMORY_MS = 2 * WEBHOOK_TOLERANCE_SECONDS * 1000 + DELIVERY_MARGIN_MS;
 
+/** How long a sender is told to wait before it resends a delivery that found its routine busy (`overlap: queue`). */
+const BUSY_RETRY_AFTER_SECONDS = 60;
+
 /** Keys the HMAC check on every path that has no real secret, so those answers take as long as a real one. */
 const dummySecret = "halonic-webhook-dummy-secret";
 
@@ -47,11 +50,11 @@ export interface WebhookRoutes {
 
 type WebhookPorts = Pick<
   ServerPorts,
-  "webhooks" | "secrets" | "coordination" | "trust" | "runs" | "clock"
+  "webhooks" | "secrets" | "coordination" | "trust" | "runs" | "runStore" | "clock"
 >;
 
 export function createWebhookRoutes(ports: WebhookPorts): WebhookRoutes {
-  const { webhooks, coordination, trust, runs, clock } = ports;
+  const { webhooks, coordination, trust, runs, runStore, clock } = ports;
   const secrets = workspaceSecrets(ports.secrets);
 
   /**
@@ -119,6 +122,10 @@ export function createWebhookRoutes(ports: WebhookPorts): WebhookRoutes {
       if (start.hub === null) {
         throw new Error(`Routine ${key} runs outside a hub, so it must name one in run.hub.`);
       }
+      const busy = await overlapAnswer(runStore, key, placed.routine.overlap);
+      if (busy !== null) {
+        return busy;
+      }
       const delivery = await sha256Hex(`${key}\n${signed.deliveryId}`);
       const lease = await coordination.tryAcquire(
         `webhook-delivery:${delivery}`,
@@ -160,6 +167,33 @@ export function createWebhookRoutes(ports: WebhookPorts): WebhookRoutes {
       }
     },
   };
+}
+
+/**
+ * The answer that stops a delivery the routine's `overlap` rule doesn't let
+ * start, or `null` to start it. The rule counts every run of the routine that
+ * is going, whichever trigger started it. The check and the start are not one
+ * step, so two deliveries that arrive together may both start.
+ */
+async function overlapAnswer(
+  runStore: WebhookPorts["runStore"],
+  key: string,
+  overlap: "skip" | "queue" | "allow",
+): Promise<Response | null> {
+  if (overlap === "allow") {
+    return null;
+  }
+  const going = await runStore.list({ status: ["running", "waiting"] });
+  if (!going.some((run) => run.trigger?.routineId === key)) {
+    return null;
+  }
+  if (overlap === "skip") {
+    return Response.json({ skipped: true }, { status: 202 });
+  }
+  // `queue`: no request bodies are stored, so the sender's own retry is the queue.
+  return errorResponse(serverErrors.webhookRoutineBusy, {
+    "Retry-After": String(BUSY_RETRY_AFTER_SECONDS),
+  });
 }
 
 /** `<scope>/<routine>` from the address, or `null` when it isn't exactly two plain segments. */

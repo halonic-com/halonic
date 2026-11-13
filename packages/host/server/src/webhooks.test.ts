@@ -1,4 +1,4 @@
-import type { Coordination, RunExecutor } from "@halonicjs/ports";
+import type { Coordination, RunExecutor, RunStore } from "@halonicjs/ports";
 import type { PlacedRoutine } from "@halonicjs/routines";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -47,6 +47,7 @@ function setup(
     secrets?: Record<string, string>;
     trust?: TrustDecision | Error;
     startFails?: boolean;
+    going?: { id: string; trigger?: { routineId: string } }[];
     passwordHash?: string | null;
   } = {},
 ) {
@@ -62,6 +63,7 @@ function setup(
     return { id: "run_1" };
   };
   const runs = { start: run, startAgent: run } as unknown as RunExecutor;
+  const runStore = { list: async () => options.going ?? [] } as unknown as Pick<RunStore, "list">;
   const placed = options.placed === undefined ? routine() : options.placed;
   const found: string[] = [];
   const webhooks: WebhookRoutines = {
@@ -79,6 +81,7 @@ function setup(
     passwordHash,
     clock,
     runs,
+    runStore,
     webhooks,
     secrets: {
       get: async (name) => (name === "serve-password" ? passwordHash : (values[name] ?? null)),
@@ -334,6 +337,45 @@ verifies("server.webhooks", () => {
     it("answers 500 and lets the sender's retry through", async () => {
       const { send, started } = setup({ startFails: true });
       expect((await send()).status).toBe(500);
+      expect((await send()).status).toBe(202);
+      expect(started).toHaveLength(1);
+    });
+
+    it("with overlap skip, answers 202 skipped and starts nothing while a run of the routine is going", async () => {
+      const { send, started } = setup({
+        going: [{ id: "r", trigger: { routineId: "acme/orders" } }],
+      });
+      const response = await send();
+      expect(response.status).toBe(202);
+      expect(await response.json()).toEqual({ skipped: true });
+      expect(started).toEqual([]);
+    });
+
+    it("with overlap queue, answers 429 with Retry-After while busy, and the same delivery gets through once free", async () => {
+      const going = [{ id: "r", trigger: { routineId: "acme/orders" } }];
+      const { send, started } = setup({ placed: routine({ overlap: "queue" }), going });
+      const busy = await send();
+      expect(busy.status).toBe(429);
+      expect(busy.headers.get("retry-after")).toBe("60");
+      expect(started).toEqual([]);
+      going.length = 0;
+      expect((await send()).status).toBe(202);
+      expect(started).toHaveLength(1);
+    });
+
+    it("with overlap allow, starts next to a run that is going", async () => {
+      const { send, started } = setup({
+        placed: routine({ overlap: "allow" }),
+        going: [{ id: "r", trigger: { routineId: "acme/orders" } }],
+      });
+      expect((await send()).status).toBe(202);
+      expect(started).toHaveLength(1);
+    });
+
+    it("counts only runs of this routine", async () => {
+      const { send, started } = setup({
+        going: [{ id: "r", trigger: { routineId: "acme/other" } }, { id: "s" }],
+      });
       expect((await send()).status).toBe(202);
       expect(started).toHaveLength(1);
     });

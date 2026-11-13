@@ -4,6 +4,7 @@ import type {
   Lease,
   PasswordHasher,
   RunExecutor,
+  RunStore,
   Secrets,
   WindowCount,
 } from "@halonicjs/ports";
@@ -109,12 +110,14 @@ export function testServer(options: {
   coordination?: Coordination;
   requestCounts?: RequestCountStore;
   runs?: RunExecutor;
+  runStore?: Pick<RunStore, "list">;
   trust?: TrustGate;
   webhooks?: WebhookRoutines;
 }): Server {
   const clock = options.clock ?? new TestClock();
   const ports: ServerPorts = {
     runs: options.runs ?? unusedPort("runs"),
+    runStore: options.runStore ?? { list: async () => [] },
     trust: options.trust ?? unusedPort("trust"),
     secrets: options.secrets ?? {
       get: async (name) => (name === "serve-password" ? options.passwordHash : null),

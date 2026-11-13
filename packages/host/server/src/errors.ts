@@ -50,6 +50,11 @@ export const serverErrors = {
     code: "webhook_replayed",
     message: "This delivery was already received.",
   },
+  webhookRoutineBusy: {
+    status: 429,
+    code: "webhook_routine_busy",
+    message: "The routine is still running. Send this delivery again later.",
+  },
   notFound: { status: 404, code: "not_found", message: "There is nothing at this address." },
   internal: {
     status: 500,
