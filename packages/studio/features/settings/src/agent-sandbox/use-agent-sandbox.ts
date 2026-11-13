@@ -170,7 +170,7 @@ async function runCommand(
   if (failure !== null) return { outcome: failure };
   onChecking();
   const check = await readCheck();
-  if (removing || check.state === "ready") return { outcome: null, check };
+  if (removing || check.state === "ready" || check.state === "restart-needed") return { outcome: null, check };
   const outcome: SandboxOutcome = {
     kind: "setup",
     how: "check_failed",

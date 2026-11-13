@@ -25,6 +25,8 @@ export const NEEDS_SETUP =
 export const needsRepair = (reason: string) =>
   `The sandbox is set up, but part of it is missing or out of date: ${reason} Until it's repaired, agents set to run in a sandbox don't start.`;
 export const notReady = (reason: string) => `The sandbox isn't ready: ${reason}`;
+export const RESTART_NEEDED =
+  "Windows needs to restart to finish setting up the sandbox. Restart Windows, then check again.";
 export const cannotCheck = (reason: string) => `Couldn't check the sandbox: ${reason}`;
 
 export const UAC_WAITING =

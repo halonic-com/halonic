@@ -69,6 +69,7 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
         ? `${check.missing[0].replace(/\.+$/, "")}.`
         : reasons[check.reason];
     if (check.reason === "setup-needed") return { state: "needs-setup" };
+    if (check.reason === "restart-needed") return { state: "restart-needed" };
     if (needsRepair.includes(check.reason)) return { state: "needs-repair", reason };
     return { state: "unavailable", reason };
   }

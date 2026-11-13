@@ -43,6 +43,7 @@ verifies("studio.agent-sandbox-host", () => {
     ["setup-needed", "needs-setup"],
     ["setup-conflict", "needs-repair"],
     ["distro-missing", "needs-repair"],
+    ["restart-needed", "restart-needed"],
     ["virtualisation-off", "unavailable"],
   ])("reads the reason %s as %s", async (reason, state) => {
     const { transport } = host({
