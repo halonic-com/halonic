@@ -40,6 +40,16 @@ export const serverErrors = {
     code: "run_target_not_found",
     message: "There is no such hub, workflow or agent to run.",
   },
+  webhookRejected: {
+    status: 401,
+    code: "webhook_rejected",
+    message: "The request isn't a valid, signed webhook for this address.",
+  },
+  webhookReplayed: {
+    status: 409,
+    code: "webhook_replayed",
+    message: "This delivery was already received.",
+  },
   notFound: { status: 404, code: "not_found", message: "There is nothing at this address." },
   internal: {
     status: 500,

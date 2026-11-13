@@ -22,6 +22,7 @@ verifies("server.api", () => {
     expectTypeOf<keyof ServerPorts>().toEqualTypeOf<
       | "runs"
       | "trust"
+      | "webhooks"
       | "secrets"
       | "passwordHasher"
       | "coordination"

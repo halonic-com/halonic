@@ -239,6 +239,10 @@ interface Pbkdf2Params extends Algorithm {
   iterations: number;
   salt: BufferSource;
 }
+/** HMAC for `importKey`: the hash it signs with. */
+interface HmacImportParams extends Algorithm {
+  hash: AlgorithmIdentifier;
+}
 type KeyFormat = "jwk" | "pkcs8" | "raw" | "spki";
 type KeyType = "private" | "public" | "secret";
 type KeyUsage =
@@ -282,7 +286,7 @@ interface SubtleCrypto {
   importKey(
     format: Exclude<KeyFormat, "jwk">,
     keyData: BufferSource,
-    algorithm: AlgorithmIdentifier,
+    algorithm: AlgorithmIdentifier | HmacImportParams,
     extractable: boolean,
     keyUsages: KeyUsage[],
   ): Promise<CryptoKey>;
