@@ -218,7 +218,7 @@ verifies("cloudflare-durable.run-list-outbox", () => {
   });
 });
 
-verifies("cloudflare-durable.run-log", () => {
+verifies("cloudflare-durable.timers", () => {
   describe("RunState log", () => {
     it("appends, reads and snapshots through the run log", async () => {
       const { state } = newState();
