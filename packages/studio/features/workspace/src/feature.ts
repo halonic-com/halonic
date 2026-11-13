@@ -1,5 +1,5 @@
 import { defineFeature } from "@halonicjs/studio-shell";
-import { WorkspacePageService } from "./api.ts";
+import { TrustedSourcesService, WorkspacePageService } from "./api.ts";
 import {
   WORKSPACE_PAGE_ITEM,
   WORKSPACE_PAGE_TAB,
@@ -13,14 +13,23 @@ export const openTrustCommand = "workspace.open-trust";
 
 /**
  * The Workspace feature (`workspace.feature`). It adds the `workspace` item kind, the page of the
- * open workspace's settings, and the commands that open it (`workspace.workspace-page`). The folder
+ * open workspace's settings, and the commands that open it (`workspace.workspace-page`), and
+ * Settings › Trusted sources (`workspace.trusted-sources`). The folder
  * switcher around it is the app's window (`mountWorkspaceWindow`).
  */
 export const workspaceFeature = defineFeature({
   id: "workspace",
   title: "Workspace",
-  needs: [WorkspacePageService],
+  needs: [WorkspacePageService, TrustedSourcesService],
   register(studio) {
+    studio.settings.add({
+      id: "trusted-sources",
+      title: "Trusted sources",
+      scope: "host",
+      order: 40,
+      view: "TrustedSourcesSection",
+      load: () => import("./trusted-sources/trusted-sources-section.tsx"),
+    });
     studio.itemKinds.add({
       kind: "workspace",
       label: WORKSPACE_PAGE_TITLE,

@@ -1,7 +1,7 @@
 import { createShell, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { WorkspacePageService } from "./api.ts";
+import { TrustedSourcesService, WorkspacePageService } from "./api.ts";
 import { openTrustCommand, openWorkspaceCommand, workspaceFeature } from "./feature.ts";
 
 describe("workspaceFeature", () => {
@@ -11,7 +11,10 @@ describe("workspaceFeature", () => {
 });
 
 verifies("workspace.workspace-page", () => {
-  const shell = createShell({ features: [workspaceFeature], hostServices: [WorkspacePageService] });
+  const shell = createShell({
+    features: [workspaceFeature],
+    hostServices: [WorkspacePageService, TrustedSourcesService],
+  });
 
   it("adds the workspace item kind, titled Workspace settings", async () => {
     const kind = shell.contributions.itemKinds.get("workspace");
@@ -30,4 +33,17 @@ verifies("workspace.workspace-page", () => {
       expect(opened).toEqual([{ kind: "workspace", hub: "local", id: "settings" }]);
     },
   );
+});
+
+verifies("workspace.trusted-sources", () => {
+  const shell = createShell({
+    features: [workspaceFeature],
+    hostServices: [WorkspacePageService, TrustedSourcesService],
+  });
+
+  it("adds Trusted sources to Settings, on this computer, after the Assistant", async () => {
+    const section = shell.contributions.settings.list().find((one) => one.id === "trusted-sources");
+    expect(section).toMatchObject({ title: "Trusted sources", scope: "host", order: 40 });
+    expect(await section?.load()).toHaveProperty(section?.view ?? "");
+  });
 });

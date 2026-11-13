@@ -42,7 +42,10 @@ import {
   WorkspaceSwitcher,
   workspaceFeature,
 } from "@halonicjs/studio-feature-workspace";
-import { WorkspacePageService } from "@halonicjs/studio-feature-workspace/api";
+import {
+  TrustedSourcesService,
+  WorkspacePageService,
+} from "@halonicjs/studio-feature-workspace/api";
 import {
   hostSettingsStoreKey,
   provideShellHostSettings,
@@ -65,6 +68,7 @@ import {
 } from "@halonicjs/studio-shell";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
+import { trustedSourcesOf } from "./trusted-sources.ts";
 import { WorkspaceTrust } from "./workspace-trust.ts";
 import { WorkspaceTrustView } from "./workspace-trust-control.ts";
 
@@ -163,7 +167,13 @@ export function startStudio(page: StudioPage, desktop = desktopFeatures): Starte
  */
 export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = {
   features: [inboxFeature, runsFeature, settingsFeature, workspaceFeature],
-  hostServices: [InboxRunsService, RunsSourceService, DisplaySettingsService, WorkspacePageService],
+  hostServices: [
+    InboxRunsService,
+    RunsSourceService,
+    DisplaySettingsService,
+    WorkspacePageService,
+    TrustedSourcesService,
+  ],
 };
 
 /**
@@ -249,6 +259,12 @@ export async function openFolder(
   const trustView = trust === undefined ? undefined : new WorkspaceTrustView(trust, location);
   services.provide(DisplaySettingsService, display);
   services.provide(WorkspacePageService, { name, trust: trustView });
+  services.provide(
+    TrustedSourcesService,
+    ipc === undefined
+      ? { list: async () => [], remove: async () => undefined }
+      : trustedSourcesOf(new TauriTrustStore(ipc)),
+  );
   provideShellSecrets(services, window);
   provideShellHostSettings(services, window);
   provideAgentSandbox(services, window);
