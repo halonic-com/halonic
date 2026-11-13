@@ -29,14 +29,21 @@ export function ListedToolsReviewDialog({ model, onClose }: ListedToolsReviewDia
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
   const state = useSyncExternalStore(subscribe, () => model.state);
   const removedToast = useRef<string | null>(null);
+  // A browser-forced close while an approval runs reports once now and once when it resolves.
+  const closed = useRef(false);
   const { snapshot } = state;
   if (snapshot === undefined) return null;
 
+  const finish = (toast: string | null) => {
+    if (closed.current) return;
+    closed.current = true;
+    onClose(toast);
+  };
   const close = (outcome: ReviewOutcome) => {
-    if (outcome.kind === "close") onClose(outcome.toast ?? removedToast.current);
+    if (outcome.kind === "close") finish(outcome.toast ?? removedToast.current);
   };
   const cancel = (reason: DialogCancelReason) =>
-    reason === "button" ? close(model.approveNone()) : onClose(removedToast.current);
+    reason === "button" ? close(model.approveNone()) : finish(removedToast.current);
   const shown = model.shown;
   const shownCount = shown.toReview.length + shown.keepsChanging.length + shown.refused.length;
   const searching = state.search.trim() !== "";

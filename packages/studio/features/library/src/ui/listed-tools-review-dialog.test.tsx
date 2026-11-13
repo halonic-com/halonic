@@ -76,6 +76,13 @@ function button(container: HTMLElement, name: string): HTMLButtonElement {
   return found;
 }
 
+/** Types into a React-controlled input the way the browser does. */
+function typeInto(input: HTMLInputElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  setter?.call(input, value);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
 const names = (count: number) => Array.from({ length: count }, (_, index) => `tool_${index}`);
 
 describe("the review dialog", () => {
@@ -131,6 +138,41 @@ describe("the review dialog", () => {
       unmountAll();
       const many = await open(snapshot(names(11)));
       expect(many.container.querySelector('input[type="search"]')).not.toBeNull();
+    });
+
+    it("counts what the search leaves, approves only that, and clears", async () => {
+      const { container, approvals } = await open(snapshot(names(11)));
+      const input = container.querySelector<HTMLInputElement>('input[type="search"]');
+      if (input === null) throw new Error("No search");
+      await act(async () => typeInto(input, "tool_1"));
+      expect(container.querySelector('[role="status"]')?.textContent).toBe("2 tools shown");
+      await act(async () => button(container, "Approve all 2 shown").click());
+      expect(approvals.map((picks) => picks.map((pick) => pick.name))).toEqual([
+        ["tool_1", "tool_10"],
+      ]);
+    });
+
+    it("says when nothing matches and offers Clear search", async () => {
+      const { container } = await open(snapshot(names(11)));
+      const input = container.querySelector<HTMLInputElement>('input[type="search"]');
+      if (input === null) throw new Error("No search");
+      await act(async () => typeInto(input, "zzz"));
+      expect(container.querySelector('[role="status"]')?.textContent).toBe('No tools match "zzz".');
+      await act(async () =>
+        container.querySelector<HTMLButtonElement>('button[aria-label="Clear search"]')?.click(),
+      );
+      expect(container.querySelector('[role="status"]')?.textContent).toBe("");
+    });
+
+    it("reports a close once when the browser closes it while an approval runs", async () => {
+      const { container, closes } = await open(snapshot(["a", "b"]));
+      await act(async () => {
+        const pending = button(container, "Approve all");
+        pending.click();
+        container.querySelector("dialog")?.dispatchEvent(new Event("close"));
+        await Promise.resolve();
+      });
+      expect(closes).toHaveLength(1);
     });
   });
 });
