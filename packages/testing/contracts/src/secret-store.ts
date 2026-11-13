@@ -163,6 +163,7 @@ export function secretStoreContract(name: string, harness: SecretStoreHarness): 
             store.remove(badName),
           ]) {
             const error = await rejection(action);
+            expect(error).toBeInstanceOf(RangeError);
             expect((error as RangeError).message, JSON.stringify(badName)).not.toContain(part);
           }
         }
