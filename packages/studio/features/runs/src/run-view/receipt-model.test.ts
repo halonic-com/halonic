@@ -151,4 +151,16 @@ verifies("runs.run-view.receipt-approvals", () => {
     ]);
     expect(approvalLines(logOf(id, []))).toEqual([]);
   });
+
+  it("says an approval left open on a run that ended was not answered", () => {
+    const failed: RunEventBody = { type: "run.failed", reason: "cancelled" } as never;
+    expect(
+      approvalLines(
+        logOf(id, [
+          [1, asked("c1", "gmail_send")],
+          [2, failed],
+        ]),
+      ).map((e) => e.text),
+    ).toEqual(["gmail_send: not answered"]);
+  });
 });

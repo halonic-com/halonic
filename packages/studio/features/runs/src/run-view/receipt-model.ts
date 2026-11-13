@@ -112,7 +112,10 @@ export interface ApprovalLine {
 /**
  * The receipt's Approvals section (RCPT-2.4): each approval the run asked
  * for in the order asked, with the answer, who gave it and when; one still
- * waiting says so. Empty when the run asked for none, which hides the section.
+ * waiting says so, and one left open on a run that has ended (cancelled, or
+ * a child ended with its parent) says it was not answered, since the run can
+ * no longer take an answer. Empty when the run asked for none, which hides
+ * the section.
  *
  * @example
  * approvalLines(events);
@@ -123,22 +126,27 @@ export function approvalLines(events: readonly RunEvent[]): ApprovalLine[] {
   for (const event of events) {
     if (event.type === "approval.resolved") answers.set(event.callId, event);
   }
+  const ended = events.some(
+    (event) => event.type === "run.completed" || event.type === "run.failed",
+  );
   const lines: ApprovalLine[] = [];
   for (const event of events) {
     if (event.type !== "approval.requested") continue;
     const answer = answers.get(event.callId);
-    lines.push({
-      callId: event.callId,
-      text:
-        answer === undefined
-          ? receiptWords.approvalWaiting(event.tool)
-          : receiptWords.approvalLine(
-              event.tool,
-              answer.approved ? "approved" : "rejected",
-              resolver(answer.by),
-              clockTime(new Date(answer.at)),
-            ),
-    });
+    let text: string;
+    if (answer !== undefined) {
+      text = receiptWords.approvalLine(
+        event.tool,
+        answer.approved ? "approved" : "rejected",
+        resolver(answer.by),
+        clockTime(new Date(answer.at)),
+      );
+    } else if (ended) {
+      text = receiptWords.approvalNotAnswered(event.tool);
+    } else {
+      text = receiptWords.approvalWaiting(event.tool);
+    }
+    lines.push({ callId: event.callId, text });
   }
   return lines;
 }

@@ -331,6 +331,8 @@ export const receiptWords = {
   approvalLine: (tool: string, decision: "approved" | "rejected", by: string, time: string) =>
     `${tool}: ${decision}${by === "" ? "" : ` by ${by}`} at ${time}`,
   approvalWaiting: (tool: string) => `${tool}: waiting for your answer`,
+  /** An approval left open when the run ended: nobody can answer it any more. */
+  approvalNotAnswered: (tool: string) => `${tool}: not answered`,
   approvalByPerson: "you",
   approvalByRule: "a rule",
 };
