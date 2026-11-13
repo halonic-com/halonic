@@ -4,6 +4,7 @@
 - Task: HAL-8173, a follow-up from the review of #2364 (HAL-8165)
 - Approval: Liam approves it in review of #2372
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:MSTZWujDjU8ghm3CLFjz2VHQgQwLM/hxVkiS0G+YotGsHwz6ycEPhrh1ShTvbUEqJqyJ250r4u1WtCmVJSHFDA==
 
 ## What changes
 
