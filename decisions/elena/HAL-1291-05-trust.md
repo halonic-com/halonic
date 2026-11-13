@@ -2,6 +2,7 @@
 
 - Approval: the board-approved workspace and trust flows (flow-workspace, HAL-177; HAL-65 trust requirements) built in HAL-1291; the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ACNjQl6ywauTz0Oy4btFWFT+uwIVIGanxNKyvhC16ks6z4M2kdzrA66Z5FXauOVs7+EpdFE0JKA9OAqYo6xOBg==
 
 ## What changes
 
