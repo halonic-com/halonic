@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-7197; build plan on HAL-195 (PR 4)
 
-Every `RequestCountStore` shall count one request for a UTC day unless the limit was already reached for that day, and shall answer whether it was allowed and the count after the call. The count shall never go above the limit, even for parallel calls. A new day shall start from zero. A store that is durable shall keep the count over a restart. The package shall ship `MemoryRequestCountStore`, which is not durable. The contract suite `requestCountStoreContract` (requirement `contracts.request-count-store`) shall hold these rules, and each host target shall run it against its own store.
+Where a store implements the `RequestCountStore` port, it shall count one request for a UTC day unless the limit was already reached for that day, and shall answer whether it was allowed and the count after the call. The count shall never go above the limit, even for parallel calls. A new day shall start from zero. A store that is durable shall keep the count over a restart. The package shall ship `MemoryRequestCountStore`, which is not durable. The contract suite `requestCountStoreContract` (requirement `contracts.request-count-store`) shall hold these rules, and each host target shall run it against its own store.
 
 Rationale: the Node target keeps the count on disk and the Cloudflare target in a durable store; one suite makes them agree with the handler's tests.
 
