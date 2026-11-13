@@ -10,9 +10,13 @@ function nameOf(location: string): string {
 /**
  * Settings › Trusted sources over the profile's trust records (`workspace.trusted-sources`). It
  * leaves `found` unknown: the page can't ask whether a folder is still there until the shell has a
- * command for it.
+ * command for it. Once a record is removed, `afterRemove` runs, so the folders open now check their
+ * trust again and a removed trust holds no longer, without waiting for a save.
  */
-export function trustedSourcesOf(store: TrustStore): TrustedSourcesHost {
+export function trustedSourcesOf(
+  store: TrustStore,
+  afterRemove: () => Promise<void> = async () => undefined,
+): TrustedSourcesHost {
   return {
     async list(): Promise<TrustedSource[]> {
       const records = await store.list();
@@ -22,6 +26,9 @@ export function trustedSourcesOf(store: TrustStore): TrustedSourcesHost {
         trustedAt: record.grantedAt,
       }));
     },
-    remove: (location) => store.revoke(location),
+    async remove(location): Promise<void> {
+      await store.revoke(location);
+      await afterRemove();
+    },
   };
 }
