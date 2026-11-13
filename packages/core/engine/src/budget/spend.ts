@@ -3,6 +3,7 @@
 // a subscription paid for (requirement `events.summary-cost`), so the budget
 // counts exactly what Halonic spends and never adds up `llm.response` itself.
 
+import { lastMonths, type MonthSpend, monthOf, monthStartOf, spendByMonth } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
 import type { RunStore } from "@halonicjs/ports";
 import type { RunState } from "../kernel/run-state.ts";
@@ -42,17 +43,12 @@ export async function spendOf(
   return { run: treeCost(summaries, top), month: monthSpend };
 }
 
-/** What one calendar month (UTC) spent: `month` is `YYYY-MM`. */
-export interface MonthSpend {
-  readonly month: string;
-  readonly spent: number;
-}
-
 /**
  * What each of the last `count` calendar months (UTC) up to and including the
- * month of `at` spent, oldest first: the same month rule as the budget's, so a
- * month's bar and the monthly budget stop always agree. A month without runs
- * spent 0. It lists the runs once, since the first month's start.
+ * month of `at` spent, oldest first: the month rule of `spendOf`, shared
+ * through `spendByMonth`, so a month's bar and the monthly budget stop always
+ * agree. A month without runs spent 0. It lists the runs once, since the first
+ * month's start.
  *
  * @param at - the ISO time that sets the current month
  */
@@ -61,36 +57,10 @@ export async function monthsSpend(
   at: string,
   count = 6,
 ): Promise<MonthSpend[]> {
-  const months = lastMonths(monthOf(at), count);
-  const first = months[0];
+  const first = lastMonths(at, count)[0];
   if (first === undefined) return [];
-  const totals = new Map(months.map((month) => [month, 0]));
-  for (const summary of await runs.list({ startedSince: monthStartOf(first) })) {
-    const month = monthOf(summary.startedAt);
-    const total = totals.get(month);
-    if (total !== undefined) totals.set(month, total + summary.cost);
-  }
-  return months.map((month) => ({ month, spent: totals.get(month) ?? 0 }));
-}
-
-/** The calendar month (UTC) an ISO time is in, as `YYYY-MM`. */
-function monthOf(time: string): string {
-  return time.slice(0, 7);
-}
-
-/** The first instant of a `YYYY-MM` month. */
-function monthStartOf(month: string): string {
-  return `${month}-01T00:00:00.000Z`;
-}
-
-/** The `count` months up to and including `last`, oldest first. */
-function lastMonths(last: string, count: number): string[] {
-  const year = Number(last.slice(0, 4));
-  const index = year * 12 + Number(last.slice(5, 7)) - 1;
-  return Array.from({ length: Math.max(0, count) }, (_, back) => {
-    const at = index - (count - 1 - back);
-    return `${String(Math.floor(at / 12)).padStart(4, "0")}-${String((at % 12) + 1).padStart(2, "0")}`;
-  });
+  const summaries = await runs.list({ startedSince: monthStartOf(first) });
+  return spendByMonth(summaries, at, count);
 }
 
 /** The run at the top of `run`'s parents: `run` itself when it has none. */
