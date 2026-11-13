@@ -2,11 +2,14 @@ import { Checkbox, StatusChip } from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import type { ListedToolRow } from "../listed-tools-host.ts";
 import { listedToolsWords } from "../listed-tools-words.ts";
+import { ListedToolChanges } from "./listed-tool-changes.tsx";
 import { PlainList } from "./plain-list.tsx";
 
 /** Props for {@link ListedToolRowView}. */
 export interface ListedToolRowViewProps {
   readonly row: ListedToolRow;
+  /** The connector's name, for the plate that says its server connects differently. */
+  readonly sourceName: string;
   /** `null` for a tool that keeps changing: it has no tick box, only its own button. */
   readonly tick: { readonly ticked: boolean; readonly onToggle: () => void } | null;
   /** Shows the state chip. The first screen leaves it out, since every row would say "Not approved". */
@@ -25,7 +28,13 @@ function isClamped(element: HTMLElement | null): boolean {
  * three lines, the arguments and the "Asks you before each use." line. Everything the server
  * wrote is plain text: React escapes it, and none of it picks a colour, icon or button word.
  */
-export function ListedToolRowView({ row, tick, showState, action }: ListedToolRowViewProps) {
+export function ListedToolRowView({
+  row,
+  sourceName,
+  tick,
+  showState,
+  action,
+}: ListedToolRowViewProps) {
   const descriptionId = useId();
   const [unfolded, setUnfolded] = useState(false);
   const descriptionRef = useRef<HTMLParagraphElement>(null);
@@ -78,6 +87,11 @@ export function ListedToolRowView({ row, tick, showState, action }: ListedToolRo
               {unfolded ? listedToolsWords.showLess : listedToolsWords.showAll}
             </button>
           ) : null}
+          <ListedToolChanges
+            differences={row.differences}
+            serverChanged={row.serverChanged}
+            sourceName={sourceName}
+          />
           {row.arguments.length === 0 ? null : (
             <div className="text-small text-fg-muted">
               <span>{listedToolsWords.argumentsLabel}</span>
