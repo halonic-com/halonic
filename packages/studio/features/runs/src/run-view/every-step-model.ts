@@ -71,6 +71,7 @@ export function everyStep(
       groups: stepGroups(
         eventsOfSteps[index] ?? [],
         id,
+        name,
         over ? "over" : "running",
         step.end.kind === "done" || step.end.kind === "answered",
       ),

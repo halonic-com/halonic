@@ -90,6 +90,30 @@ verifies("kit.list-columns", () => {
     );
   });
 
+  it("indents a child row by 24px less when a checkbox column comes before it", () => {
+    const child: ListColumnsRow = {
+      ...done,
+      id: "01JD8W:refund",
+      child: true,
+      label: "Branch Refund, in the step Check the order",
+    };
+    const { container } = render(
+      <List
+        label="Runs"
+        rows={[done, child]}
+        columns={columns}
+        onOpen={() => undefined}
+        selection={{ selected: new Set<string>(), onToggle: () => undefined }}
+      />,
+    );
+    // Each row has a checkbox cell, then its main cell.
+    const { wide, stacked } = layoutsOf(cellOf(container, 3));
+    for (const layout of [wide, stacked]) {
+      expect(layout?.className).toContain("pl-6");
+      expect(layout?.className).not.toContain("pl-10");
+    }
+  });
+
   it("lays the cells out side by side at fixed widths from 800px of the main cell's width", () => {
     const { container } = render(
       <List

@@ -22,8 +22,8 @@ const timelineColumns: readonly ListColumn[] = [{ kind: "main" }, { kind: "time"
  * panel, because a List row has no room for a link of its own yet.
  *
  * A step that ran branches or for-each items has them as rows right under
- * its entry. They open their step's panel; the kit's List can't indent a
- * row yet.
+ * its entry, indented as child rows whose label names the step. They open
+ * their step's panel.
  *
  * Not here yet: Show on canvas (T7).
  */
@@ -95,6 +95,7 @@ function Timeline({
           icon: <StepDot mark={group.mark} />,
           cells: { time: { value: group.time } },
           label: group.label,
+          child: true as const,
         })),
       ])}
     />

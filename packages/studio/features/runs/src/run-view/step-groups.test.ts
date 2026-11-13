@@ -46,7 +46,9 @@ verifies("runs.run-view.step-groups", () => {
       ["summarise", "done", "Took 1 min"],
       ["translate", "failed", "Failed after 1 min"],
     ]);
-    expect(steps[0]?.groups[1]?.label).toBe("Branch translate, failed, 10:40, Failed after 1 min");
+    expect(steps[0]?.groups[1]?.label).toBe(
+      "Branch translate, in the step Fan, failed, 10:40, Failed after 1 min",
+    );
   });
 
   it("names for-each items by place, with the total once the step has finished", () => {
@@ -63,6 +65,7 @@ verifies("runs.run-view.step-groups", () => {
     ]);
     const finished = stepsOf([...items, of(1, ended(), { item: 1 }), [1, entered("end")], finish]);
     expect(finished[0]?.groups.map((g) => g.name)).toEqual(["Item 1 of 2", "Item 2 of 2"]);
+    expect(finished[0]?.groups[0]?.label).toMatch(/^Item 1 of 2, in the step Fan, /);
   });
 
   it("says a part with no end didn't finish once its step failed", () => {

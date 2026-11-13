@@ -43,12 +43,13 @@ interface Part {
  * `ended` fine, because the log never says how long the list was.
  *
  * @example
- * stepGroups(eventsOfStep(events, "step-1"), "step-1", "over", true);
+ * stepGroups(eventsOfStep(events, "step-1"), "step-1", "Read", "over", true);
  * // [{ id: "step-1:item:0", name: "Item 1 of 2", mark: "done", line: "Took 3 s", … }, …]
  */
 export function stepGroups(
   events: readonly RunEvent[],
   stepId: string,
+  stepName: string,
   outcome: StepOutcome,
   endedFine: boolean,
 ): StepGroup[] {
@@ -72,12 +73,13 @@ export function stepGroups(
   }
   const ordered = [...parts.values()].sort((a, b) => (a.item ?? 0) - (b.item ?? 0));
   const total = endedFine ? ordered.filter((part) => part.item !== undefined).length : undefined;
-  return ordered.map((part) => group(part, stepId, outcome, total));
+  return ordered.map((part) => group(part, stepId, stepName, outcome, total));
 }
 
 function group(
   part: Part,
   stepId: string,
+  stepName: string,
   outcome: StepOutcome,
   total: number | undefined,
 ): StepGroup {
@@ -106,8 +108,12 @@ function group(
     mark,
     line,
     time,
-    label: [part.branch === undefined ? name : stepGroupWords.branch(name), state, time, line].join(
-      ", ",
-    ),
+    label: [
+      part.branch === undefined ? name : stepGroupWords.branch(name),
+      stepGroupWords.inStep(stepName),
+      state,
+      time,
+      line,
+    ].join(", "),
   };
 }
