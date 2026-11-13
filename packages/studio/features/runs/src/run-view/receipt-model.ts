@@ -49,8 +49,9 @@ function lead(
   const { summary } = run;
   switch (standing) {
     case "running":
-    case "cant-try":
       return summaryWords.runningIn(step);
+    case "cant-try":
+      return rowLineWords.inStep(step);
     case "needs-you":
       return needsYouLine(runWait(summary), step);
     case "waiting":

@@ -86,6 +86,12 @@ verifies("runs.run-view.receipt-summary", () => {
     );
   });
 
+  it("opens a run that couldn't try a step with the step, as its row does, not as running", () => {
+    expect(line({ status: "cant-try", endedAt: minutesLater(1), state: "draft" }, [])).toBe(
+      "In Draft · sent nothing",
+    );
+  });
+
   it("leaves out the cost of a run with no priced call and no unpriced one", () => {
     expect(line({ ...done, cost: 0 }, [])).toBe("Finished in 2 min · sent nothing");
   });
