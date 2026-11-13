@@ -8,7 +8,7 @@ import type {
 } from "@halonicjs/ports";
 import type { Clock } from "@halonicjs/std";
 import { RunLog } from "./run-log.ts";
-import type { RunObjectApi } from "./run-object-api.ts";
+import type { RunHealth, RunObjectApi } from "./run-object-api.ts";
 import { RunOutbox } from "./run-outbox.ts";
 import type { RunSql } from "./run-sql.ts";
 import { TimerDelivery } from "./timer-delivery.ts";
@@ -103,6 +103,14 @@ export class RunState implements RunObjectApi {
 
   async summary(): Promise<RunSummary | null> {
     return summarize(this.#log.events());
+  }
+
+  async health(): Promise<RunHealth> {
+    const earliestDueMs = this.#timers.earliestDueMs();
+    return {
+      lastEventAt: this.#log.lastEventAt(),
+      overdueMs: earliestDueMs === null ? 0 : Math.max(0, this.#nowMs() - earliestDueMs),
+    };
   }
 
   async schedule(key: string, timerId: string, at: string): Promise<void> {

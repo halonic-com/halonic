@@ -24,5 +24,16 @@ export {
   type RunObjectNamespace,
 } from "./durable-scheduler.ts";
 export { RunObject } from "./run-object.ts";
-export type { RunObjectApi } from "./run-object-api.ts";
+export type { RunHealth, RunObjectApi } from "./run-object-api.ts";
 export type { RunListSink } from "./run-state.ts";
+export {
+  defaultOverdueAfterMs,
+  defaultQuietAfterMs,
+  type WakeReason,
+  Watchdog,
+  type WatchdogOptions,
+  type WatchdogReport,
+  type WokenRun,
+  watchdogTimerId,
+  whyStuck,
+} from "./watchdog.ts";

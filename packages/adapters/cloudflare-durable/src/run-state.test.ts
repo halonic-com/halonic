@@ -8,6 +8,8 @@ import { sqlOfStorage } from "./run-sql.ts";
 import { type AlarmSlot, RunState } from "./run-state.ts";
 
 const second = 1000;
+const minute = 60 * second;
+const hour = 60 * minute;
 
 /** The alarm as a Durable Object keeps it: one time, or none. */
 class FakeAlarm implements AlarmSlot {
@@ -246,6 +248,27 @@ verifies("cloudflare-durable.timers", () => {
         [],
       );
       expect(sql.exec("SELECT n FROM t").toArray()).toEqual([{ n: 1 }]);
+    });
+  });
+});
+
+verifies("cloudflare-durable.watchdog", () => {
+  describe("RunState health", () => {
+    it("tells the time of the last event, and none for an empty log", async () => {
+      const { state } = newState();
+      expect(await state.health()).toEqual({ lastEventAt: null, overdueMs: 0 });
+      const events = [started("r1"), entered("r1", 2)];
+      await state.append("r1", 0, events);
+      expect((await state.health()).lastEventAt).toBe(events[1]?.at);
+    });
+
+    it("tells how long the earliest timer has been due, and 0 while none is due", async () => {
+      const { state, clock, inMs } = newState();
+      await state.schedule("r1", "wait", inMs(minute));
+      await state.schedule("r1", "later", inMs(hour));
+      expect((await state.health()).overdueMs).toBe(0);
+      clock.advance(5 * minute);
+      expect((await state.health()).overdueMs).toBe(4 * minute);
     });
   });
 });
