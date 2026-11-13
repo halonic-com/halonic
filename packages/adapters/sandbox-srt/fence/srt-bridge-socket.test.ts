@@ -9,7 +9,7 @@ import {
   type SandboxProfile,
   type SandboxSession,
 } from "@halonicjs/ports";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { SrtSandbox } from "../src/srt-sandbox.ts";
 import { w9Violations } from "./own-sockets.test-helper.ts";
 
@@ -50,6 +50,9 @@ describe("the harness bridge on a Unix socket", () => {
   let bridge: OpenHarnessBridge;
   let session: SandboxSession;
   let closed = false;
+  /** What srt's proxy says about a failed hop; it logs the errno only when `SRT_DEBUG` is set (HAL-8158). */
+  const srtLog: string[] = [];
+  let hadSrtDebug: string | undefined;
 
   const run = (): HarnessBridgeOptions => ({
     runId: "run_fence",
@@ -111,6 +114,11 @@ describe("the harness bridge on a Unix socket", () => {
   ];
 
   beforeAll(async () => {
+    hadSrtDebug = process.env.SRT_DEBUG;
+    process.env.SRT_DEBUG = "1";
+    vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      srtLog.push(args.map(String).join(" "));
+    });
     base = await mkdtemp(join(tmpdir(), "srt-bridge-"));
     await mkdir(join(base, "work"), { recursive: true });
     await mkdir(join(base, "temp"), { recursive: true });
@@ -132,6 +140,9 @@ describe("the harness bridge on a Unix socket", () => {
   });
 
   afterAll(async () => {
+    vi.restoreAllMocks();
+    if (hadSrtDebug === undefined) delete process.env.SRT_DEBUG;
+    else process.env.SRT_DEBUG = hadSrtDebug;
     await session?.close();
     if (!closed) await bridge?.close();
     await rm(base, { recursive: true, force: true });
@@ -177,7 +188,8 @@ describe("the harness bridge on a Unix socket", () => {
     // A 502 comes from srt's proxy, not the bridge; its body says which hop failed, so a flake explains itself (HAL-8158).
     for (const tunnel of [[], ["-p"]]) {
       const { code, body } = await reply(...tunnel, url(), ...post(), ...withToken());
-      expect(code, `${tunnel.join(" ") || "no tunnel"}: ${body}`).toBe("200");
+      const said = srtLog.slice(-10).join("\n");
+      expect(code, `${tunnel.join(" ") || "no tunnel"}: ${body}\nsrt said:\n${said}`).toBe("200");
     }
     expect(providerCalls).toHaveLength(before + 2);
   });
