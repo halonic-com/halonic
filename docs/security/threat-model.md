@@ -113,7 +113,41 @@ workspace you didn't write is like running its code.
 | A workspace reads another workspace's or hub's data | Isolation between workspaces and hubs is not built | **Planned** (phase 2, plan HAL-9) |
 | A listed tool of an untrusted workspace lowers its risk | Without a trust grant every listed tool counts as `write`; `readToolListing` ignores the workspace's lower risks (`packages/core/app/src/tool-listing.ts`) | **On `main`** |
 | Secrets committed to the repository | The leak guard blocks private keys, Google client secrets, OAuth tokens, protected personal terms and absolute local paths (`tooling/check/src/leaks`, [leak guard](../guides/leak-guard.md)) | **On `main`** |
-| A sandbox limits what a trusted workspace's program can do | Harness agents: see [4.6](#46-agents-in-a-sandbox-b8). Stdio connectors a workspace starts get their own sandbox (D45) | **Planned** (HAL-2310) |
+| A sandbox limits what a trusted workspace's program can do | Harness agents: see [4.6](#46-agents-in-a-sandbox-b8). Stdio connectors a workspace starts get their own sandbox (D45): see [the workspace connector's sandbox](#workspace-connector-sandbox) | The start in a sandbox **On `main`** (`connector-stdio-sandbox.workspace-connector-start`, `.workspace-connector-profile`); the host setting it up **Planned** (HAL-2310) |
+
+#### Workspace connector sandbox
+
+When the host sets one up (D45), a `stdio` connector a workspace starts runs in
+the same sandbox as a plugin's local tool, not as you on your computer:
+
+- **Its own folders.** It gets a new working folder and a new temp folder. A
+  program that runs a script from the workspace (`node tools/mail.js`) can read
+  the workspace, read-only. A pinned package (`npx`, `uvx`) doesn't get the
+  workspace at all.
+- **No agent's files.** The profile denies reading every harness agent's
+  working folder, so a connector can't load a file an agent wrote, even one it
+  never names (`require('./lib')`, a pnpm `node_modules` link). Before the
+  start, `touchesWorkingFolder` also checks the start folder, the program, its
+  arguments, its `env`, and the program found on `PATH`, and refuses one that
+  points into an agent's folder.
+- **Its own environment.** Only its `env` and `secretEnv`. `inheritEnv` is
+  refused in a sandbox: it names variables from your environment, which the
+  sandbox doesn't hand over.
+- **Only its `sites`.** The network is limited to Halonic's bridge and the sites
+  in the connector file's `sites`. A connector with no `sites`, or with an empty
+  list, reaches nothing else; it never means no fence. The proxy refuses
+  loopback, private, link-local and metadata addresses after it looks up a
+  name, so `1.2.3.4.nip.io` doesn't reach a local address.
+- **Where there's no sandbox, nothing changes.** A connector the launcher
+  starts without one (setting `off`) starts as before, with your rights and
+  without a fence, and `sites` limits nothing. The trust check's "Allowed
+  sites" list is a fence only where the program starts in a sandbox. A plugin's
+  local tool is never started without one.
+
+The limits in [sandbox.md](sandbox.md#the-limits) apply: a site that is allowed
+sees what the connector can read, and the fence is not a virtual machine.
+Attack tests run in a real sandbox: an undeclared site, a read outside its
+folder, and a read of the environment (`workspace-connector-attacks.test.ts`).
 
 **Known limit.** After you trust a workspace, its programs run with your
 rights. Trust only workspaces from people you trust. A
