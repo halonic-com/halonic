@@ -1,3 +1,4 @@
+import type { HiddenChange } from "@halonicjs/app/listed-tools";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
 /** One argument of a listed tool, as a line "Arguments: id (string): the note's id". */
@@ -8,8 +9,11 @@ export interface ListedToolArgument {
   readonly description?: string;
 }
 
-/** Why a person might not see a change: another alphabet, another way of writing, only spaces, or characters that don't show. */
-export type ListedToolHiddenChange = "lookalike" | "normalization" | "whitespace" | "format";
+/**
+ * Why a person might not see a change: another alphabet, another way of writing, invisible
+ * characters, or only spaces. It is core's type, so the two can't drift apart.
+ */
+export type ListedToolHiddenChange = HiddenChange;
 
 /** One text of a tool that changed since it was approved. */
 export interface ListedToolDifference {
