@@ -239,6 +239,20 @@ verifies("format.integration-file", () => {
     );
   });
 
+  it("lets only a write tool say drafted", () => {
+    const tool = (risk: string) =>
+      `  - { name: draft, description: Draft., risk: ${risk}, untrusted: false, noun: { one: email, many: emails }, verb: drafted }`;
+    const ok = yaml(...base, "tools:", tool("write"));
+    expect(parsedValue("integration", ok).tools[0]?.verb).toBe("drafted");
+    for (const risk of ["send", "read"]) {
+      const problems = problemsOf("integration", yaml(...base, "tools:", tool(risk)));
+      expect(summary(problems)).toEqual(["tools.0.verb drafted-on-send-tool 7"]);
+      expect(problems[0]?.message).toBe(
+        `Integration "weather": tool "draft" has risk ${risk}, so it may not say drafted: only a write tool prepares something without sending it`,
+      );
+    }
+  });
+
   it("refuses a send tool without a noun, and lets a read or write tool leave it out", () => {
     const text = yaml(
       ...base,

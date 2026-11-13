@@ -257,9 +257,10 @@ const ToolNoun = s.object({ one: nounWord, many: nounWord }).strict();
  * What one call of a tool does to its noun, in the past tense, so a run can
  * say "Saved 1 Drive file" rather than "Sent". A closed list, so a sheet
  * can't word a send as something milder: each verb still says that something
- * was made or changed. The same list as `ToolVerb` in `@halonicjs/events`.
+ * was made or changed; `drafted` is only for a `write` tool (`drafted-on-send-tool`).
+ * The same list as `ToolVerb` in `@halonicjs/events`.
  */
-const TOOL_VERBS = ["sent", "saved", "created", "updated", "moved"] as const;
+const TOOL_VERBS = ["sent", "saved", "created", "updated", "moved", "drafted"] as const;
 
 /** A tool as a sheet declares it; a plugin's local tools declare theirs the same way. */
 export const IntegrationTool = s

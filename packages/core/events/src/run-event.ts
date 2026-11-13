@@ -254,9 +254,9 @@ export type RunEventBody =
   | { type: "knowledge.searched"; agent: string; source: string; query: string; refs: string[] }
   /**
    * `outcome`: how the call ended (requirement `events.tool-result-outcome`).
-   * `risk`, `noun` and `verb`: what the tool can do, what one call sends and
-   * what it does to it, copied from its integration's sheet when the call
-   * ends (requirement `events.tool-result-risk`). Each is absent in older
+   * `risk`, `noun` and `verb`: what the tool can do, what one call sends,
+   * reads or drafts and what it does to it, copied from its integration's
+   * sheet when the call ends (requirement `events.tool-result-risk`). Each is absent in older
    * logs, and `risk`, `noun` and `verb` for a tool without a sheet. A
    * missing `verb` means "sent".
    * `resultBlob`: set when the result was too large for the log; `result`
