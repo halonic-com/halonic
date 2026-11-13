@@ -1,0 +1,36 @@
+{
+  "name": "@halonicjs/testing-sign-in",
+  "private": true,
+  "type": "module",
+  "description": "A fake OAuth server and the attack tests T1 to T22 for sign-ins: the sheet, the flow, the tokens and the kit against a hostile provider.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "testing",
+    "owner": "julian",
+    "coverage": {
+      "lines": 80
+    }
+  },
+  "dependencies": {
+    "@halonicjs/adapter-http-node": "workspace:*",
+    "@halonicjs/adapter-integration-kit": "workspace:*",
+    "@halonicjs/format": "workspace:*",
+    "@halonicjs/host-integration-sign-in": "workspace:*",
+    "@halonicjs/oauth-sign-in": "workspace:*",
+    "@halonicjs/ports": "workspace:*"
+  }
+}
