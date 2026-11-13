@@ -2,6 +2,7 @@
 
 - Approval: HAL-8306 (Liam, CTO, MXC ship gate part 2)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nAFBZvnEh5VYIbOp0KFz6T2qUff7HP2FfdgnFdfP4N2CEUb5BmYNnLZWwrqHMV2xlK1bNop/fLoFjkOPIHmUBw==
 - Task: HAL-8306
 
 The probe program inside the MXC box now also tries the router's usual address and one other
