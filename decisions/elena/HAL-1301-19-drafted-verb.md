@@ -2,6 +2,7 @@
 
 - Approval: HAL-1301 (the Messages and Read sections plan: a draft tool says "Drafted 1 email", a send never can); the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+FjrrAg3L2EN2tUT067Yk+7CknT+Nu0cLBIbF/5BTlY9W2rEYYiAQ1A4+xflE0HbsDBFdhMOcXz/UjyALQW0Bg==
 - Task: HAL-1301, HAL-8238
 
 ## What changes
