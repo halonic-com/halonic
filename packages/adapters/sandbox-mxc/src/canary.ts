@@ -25,7 +25,12 @@ import {
 import { hostAddressTargets } from "./lan-targets.ts";
 import { type LoopbackListener, listenOnLoopbacks } from "./loopback-listener.ts";
 import { MxcSession } from "./mxc-session.ts";
-import { judgeNetwork, type NetworkAsked, networkSettings } from "./network-probes.ts";
+import {
+  judgeNetwork,
+  type NetworkAsked,
+  type NetworkTarget,
+  networkSettings,
+} from "./network-probes.ts";
 import {
   type LeakReport,
   parseLeakReport,
@@ -46,6 +51,8 @@ export interface MxcCanaryOptions {
   disk?: MxcDisk;
   /** The Node program the probes run as; the one running Halonic by default. */
   nodeProgram?: string;
+  /** The computer's own addresses the probe tries, as `hostAddressTargets` finds them by default. */
+  hostTargets?: () => NetworkTarget[];
   /** The check's time limit, for the canary session, in milliseconds. 60 seconds by default. */
   timeLimitMs?: number;
   /** How long each probe program may take, in milliseconds. 15 seconds by default. */
@@ -162,7 +169,7 @@ export class MxcCanary implements TrustCanary {
     try {
       const ports = [
         ...listeners.map(({ host, port }) => ({ host, port })),
-        ...hostAddressTargets(),
+        ...(this.#options.hostTargets ?? hostAddressTargets)(),
       ];
       const network = networkSettings({
         kind: "loopback",

@@ -14,12 +14,13 @@ import {
 import { grantPath } from "./grant-path.ts";
 import { MemoryDisk } from "./memory-disk.test-helper.ts";
 import { MxcSandbox } from "./mxc-sandbox.ts";
+import type { NetworkTarget } from "./network-probes.ts";
 
 // Made-up Windows paths, each marked for the leak guard on its own line.
 const project = "C:\\acme\\project"; // leak-guard: allow absolute-path made-up Windows path for a test
 
 /** The adapter and its canary on a fake SDK and a memory disk. */
-function setup(leaks: Leaks | Behavior = {}) {
+function setup(leaks: Leaks | Behavior = {}, hostTargets?: () => NetworkTarget[]) {
   const disk = new MemoryDisk().folder(project).folder(nodeFolder);
   const fake = new FakeMxc(disk, typeof leaks === "function" ? leaks : healthyBox(disk, leaks));
   const { boxes, made } = testBoxes(disk);
@@ -31,6 +32,7 @@ function setup(leaks: Leaks | Behavior = {}) {
     disk,
     nodeProgram,
     programTimeoutMs: 50,
+    hostTargets,
   });
   return { disk, fake, sandbox, canary, made };
 }
@@ -104,6 +106,18 @@ verifies("sandbox-mxc.canary", () => {
     ])("fails as %s when %s", async (_what, leaks, code) => {
       const { sandbox, canary } = setup(leaks);
       expect(await runTrustCheck(sandbox, canary)).toMatchObject({ passed: false, reason: code });
+    });
+
+    it("is not stalled by an address of this computer whose connect is dropped", async () => {
+      // 192.0.2.1 is reserved for documentation: nothing answers there, and routers often drop it.
+      const dropped = () => [{ host: "192.0.2.1", port: 80 }];
+      const { sandbox, canary } = setup({ reachPort: true }, dropped);
+      const started = Date.now();
+      expect(await runTrustCheck(sandbox, canary)).toMatchObject({
+        passed: false,
+        reason: "port-reachable",
+      });
+      expect(Date.now() - started).toBeLessThan(2_000);
     });
 
     it("counts a timeout as blocked when the bridge, the network control, was reached", async () => {
