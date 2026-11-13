@@ -3,7 +3,11 @@
 - Approval: HAL-7840 (Liam, CTO, asked for it in the review of the session pull request)
 - Kind: internal
 - Task: HAL-7840
-- Covers: `sandbox-mxc.session`, `sandbox-mxc.canary`
+
+## Covers
+
+- `sandbox-mxc.session`
+- `sandbox-mxc.canary`
 
 ## What changes
 
