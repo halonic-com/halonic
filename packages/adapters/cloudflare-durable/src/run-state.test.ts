@@ -1,7 +1,7 @@
 import type { ScheduledTimer } from "@halonicjs/ports";
 import { entered, started } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ManualClock } from "./fakes.test-helper.ts";
 import { NodeRunSql } from "./node/node-sql.spec.ts";
 import { sqlOfStorage } from "./run-sql.ts";
@@ -168,6 +168,28 @@ verifies("cloudflare-durable.timers", () => {
         ["r1", 2],
         ["r1", 3],
       ]);
+    });
+
+    it("sends an append's update while a timer's call is still running", async () => {
+      const { state, published, inMs, onDelivery } = newState({
+        nap: (_ms, signal) =>
+          new Promise((resolve) => signal.addEventListener("abort", () => resolve())),
+      });
+      let endCall: () => void = () => {};
+      const callEnds = new Promise<void>((resolve) => (endCall = resolve));
+      let callStarted: () => void = () => {};
+      const started = new Promise<void>((resolve) => (callStarted = resolve));
+      onDelivery(async () => {
+        callStarted();
+        await callEnds;
+      });
+      await state.schedule("r1", "t1", inMs(0));
+      const alarm = state.alarm();
+      await started;
+      await state.append("r1", 0, events);
+      await vi.waitFor(() => expect(published).toEqual([["r1", 2]]));
+      endCall();
+      await alarm;
     });
 
     it("sends the update although a timer's delivery failed, and the reverse", async () => {

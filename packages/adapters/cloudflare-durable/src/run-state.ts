@@ -51,6 +51,9 @@ export interface RunStateOptions {
  * Every append notes in the outbox, in its own transaction, that the run
  * list is behind. The update is sent from the alarm, so a slow or failing D1
  * never slows or fails an append; it is retried with the timers' backoff.
+ *
+ * An append whose alarm can't be set throws although it is stored; the caller's retry then gets
+ * `conflict`, and the next alarm sends the update all the same.
  */
 export class RunState implements RunObjectApi {
   readonly #log: RunLog;
@@ -59,6 +62,8 @@ export class RunState implements RunObjectApi {
   readonly #outbox: RunOutbox;
   readonly #alarm: AlarmSlot;
   readonly #options: RunStateOptions;
+  /** Wakes the send loop of a running alarm, so an append made during a timer's call is sent. */
+  #wakeSendLoop: () => void = () => {};
 
   constructor(options: RunStateOptions) {
     this.#options = options;
@@ -82,6 +87,7 @@ export class RunState implements RunObjectApi {
   ): Promise<AppendResult> {
     const result = this.#log.append(runId, expectedSeq, events, options);
     if (result.ok) {
+      this.#wakeSendLoop();
       await this.#setAlarm();
     }
     return result;
@@ -114,17 +120,47 @@ export class RunState implements RunObjectApi {
   }
 
   /**
-   * Delivers the timers that are due and sends the run list update that is due, each whether the
-   * other worked or not, then sets the alarm again. The first failure is thrown after that.
+   * Delivers the timers that are due and sends the run list updates that are due, each whether
+   * the other worked or not, then sets the alarm again. The first failure is thrown after that.
+   * Updates keep being sent while a timer's call runs: the next alarm can't start until this one
+   * returns, and a call can take minutes.
    */
   async alarm(): Promise<void> {
-    const outcomes = await Promise.allSettled([
-      this.#delivery.deliverDueTimers(),
-      this.#sendRunListUpdate(),
-    ]);
+    const delivering = this.#delivery.deliverDueTimers();
+    const outcomes = await Promise.allSettled([delivering, this.#sendUntilSettled(delivering)]);
     await this.#setAlarm();
     for (const outcome of outcomes) {
       if (outcome.status === "rejected") throw outcome.reason;
+    }
+  }
+
+  /**
+   * Sends the update whenever the outbox has one due, until `delivering` is over. Between sends it
+   * waits for an append, for the entry's next try to come due, or for the end of the delivery.
+   */
+  async #sendUntilSettled(delivering: Promise<void>): Promise<void> {
+    let over = false;
+    const end = delivering.then(
+      () => {
+        over = true;
+      },
+      () => {
+        over = true;
+      },
+    );
+    for (;;) {
+      await this.#sendRunListUpdate();
+      if (over) return;
+      const entry = this.#outbox.entry();
+      const stopNapping = new AbortController();
+      const waits = [end, new Promise<void>((wake) => (this.#wakeSendLoop = wake))];
+      if (entry !== null) {
+        waits.push(
+          this.#options.nap(Math.max(0, entry.dueAtMs - this.#nowMs()), stopNapping.signal),
+        );
+      }
+      await Promise.race(waits);
+      stopNapping.abort();
     }
   }
 
@@ -136,7 +172,7 @@ export class RunState implements RunObjectApi {
     const summary = summarize(events);
     try {
       if (summary !== null) {
-        await this.#options.runList().publish(summary, events.length);
+        await this.#options.runList().publish(summary, this.#log.lastSeq());
       }
     } catch {
       this.#outbox.failed(entry, this.#nowMs());
