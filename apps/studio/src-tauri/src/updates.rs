@@ -298,7 +298,9 @@ fn background<R: Runtime>(app: &AppHandle<R>, ready: Instant) {
 /// One check, with its 15-second limit and no retry. With automatic updates
 /// on, an update it finds downloads at once, also after Check now (flow 4.3).
 async fn check<R: Runtime>(app: &AppHandle<R>) {
-    {
+    // The guard lives only in this block: a `drop` inside an `if` still leaves
+    // it in the future's state, which makes the command's future not `Send`.
+    let is_managed = {
         let mut inner = lock(app);
         if inner.checking {
             return;
@@ -308,10 +310,10 @@ async fn check<R: Runtime>(app: &AppHandle<R>) {
         inner.record.last_attempt = Some(now());
         inner.save();
         inner.notify();
-        if inner.managed.is_some() {
-            drop(inner);
-            return managed::check(app).await;
-        }
+        inner.managed.is_some()
+    };
+    if is_managed {
+        return managed::check(app).await;
     }
     let result = match app.updater_builder().timeout(CHECK_TIME_LIMIT).build() {
         Ok(updater) => updater.check().await,
