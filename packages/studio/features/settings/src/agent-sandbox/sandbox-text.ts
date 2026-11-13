@@ -24,6 +24,7 @@ export const NEEDS_SETUP =
   "The sandbox needs a one-time setup with administrator rights. Until then, agents set to run in a sandbox don't start.";
 export const needsRepair = (reason: string) =>
   `The sandbox is set up, but part of it is missing or out of date: ${reason} Until it's repaired, agents set to run in a sandbox don't start.`;
+export const notReady = (reason: string) => `The sandbox isn't ready: ${reason}`;
 export const cannotCheck = (reason: string) => `Couldn't check the sandbox: ${reason}`;
 
 export const UAC_WAITING =
@@ -37,6 +38,8 @@ export const STEP_REMOVING = "Removing the agent sandbox…";
 
 export const DENIED =
   "The sandbox isn't set up: Windows didn't give Halonic administrator rights. If you don't have an administrator password, ask whoever manages this computer.";
+export const REPAIR_TOOK_TOO_LONG =
+  "The sandbox isn't repaired: the repair didn't finish within 3 minutes.";
 export const failedSetUp = (reason: string) => `The sandbox isn't set up: ${reason}`;
 export const TOOK_TOO_LONG = "The sandbox isn't set up: the setup didn't finish within 3 minutes.";
 export const failedCheck = (reason: string) =>
@@ -51,7 +54,7 @@ export const REMOVE_DENIED =
   "The sandbox wasn't removed: Windows didn't give Halonic administrator rights.";
 export const removeFailed = (reason: string) => `The sandbox wasn't removed: ${reason}`;
 export const removeInUse = (runs: number) =>
-  `The sandbox wasn't removed: ${runs === 1 ? "1 run is" : `${runs} runs are`} using it. Stop it or let it finish, then try again.`;
+  `The sandbox wasn't removed: ${runs === 1 ? "1 run is using it. Stop it or let it finish" : `${runs} runs are using it. Stop them or let them finish`}, then try again.`;
 
 /** What is said once when a setup or repair ends, in the section's live region. */
 export const announceReady = (checkedAt: string) => `Sandbox set up. Checked ${checkedAt}.`;

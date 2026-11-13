@@ -8,7 +8,7 @@ import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { AgentSandboxHostView } from "./agent-sandbox-section.tsx";
 import type { SandboxCheckFacts, SandboxOutcome } from "./sandbox-state.ts";
-import { checkedAtLabel } from "./use-agent-sandbox.ts";
+import { checkedAtLabel } from "./sandbox-state.ts";
 
 beforeEach(fakeModal);
 afterEach(() => {
@@ -18,17 +18,27 @@ afterEach(() => {
 });
 
 /** A host whose check and commands the test answers when it chooses. */
-function fakeHost(first: SandboxCheckFacts) {
+function fakeHost(first: SandboxCheckFacts, runningNow: "setup" | "remove" | null = null) {
   let check = first;
   let ends: (outcome: SandboxOutcome | null) => void = () => {};
+  const signals: (AbortSignal | undefined)[] = [];
+  const command = (options?: { readonly signal?: AbortSignal }) => {
+    signals.push(options?.signal);
+    return new Promise<SandboxOutcome | null>((resolve) => (ends = resolve));
+  };
   const host = {
     available: true,
     check: vi.fn(async () => check),
-    setUp: vi.fn(() => new Promise<SandboxOutcome | null>((resolve) => (ends = resolve))),
-    remove: vi.fn(() => new Promise<SandboxOutcome | null>((resolve) => (ends = resolve))),
+    running: vi.fn(async () => runningNow),
+    setUp: vi.fn(command),
+    remove: vi.fn(command),
+    follow: vi.fn((_verb: "setup" | "remove", options?: { readonly signal?: AbortSignal }) =>
+      command(options),
+    ),
   } satisfies AgentSandboxHost;
   return {
     host,
+    signals,
     setCheck: (next: SandboxCheckFacts) => {
       check = next;
     },
@@ -142,6 +152,53 @@ verifies("settings.agent-sandbox-section", () => {
     expect(host.setUp).toHaveBeenCalledTimes(1);
     await click(button(view, "Try again"));
     expect(host.setUp).toHaveBeenCalledTimes(2);
+  });
+
+  it("stops following the command when Settings closes", async () => {
+    const { host, signals } = fakeHost(needsSetup);
+    const { view } = await show(host);
+    await click(button(view, "Set up the sandbox"));
+    expect(signals[0]?.aborted).toBe(false);
+    unmountAll();
+    expect(signals[0]?.aborted).toBe(true);
+  });
+
+  it("stops following the first command when Try again starts a second", async () => {
+    vi.useFakeTimers();
+    const { host, signals } = fakeHost(needsSetup);
+    const { view } = await show(host);
+    await click(button(view, "Set up the sandbox"));
+    await act(async () => {
+      vi.advanceTimersByTime(3 * 60 * 1000);
+    });
+    await click(button(view, "Try again"));
+    expect(signals.map((signal) => signal?.aborted)).toEqual([true, false]);
+  });
+
+  it("shows Setting up when a setup already runs in the host, and Ready when it ends", async () => {
+    const { host, end, setCheck } = fakeHost(needsSetup, "setup");
+    const { view } = await show(host);
+    expect(view.textContent).toContain("Setting up…");
+    expect(host.follow).toHaveBeenCalledWith("setup", expect.anything());
+    expect(host.setUp).toHaveBeenCalledTimes(0);
+    expect(host.remove).toHaveBeenCalledTimes(0);
+    expect(view.textContent).not.toContain("Windows is asking for administrator rights.");
+    setCheck(ready);
+    await end(null);
+    expect(view.textContent).toContain("Ready");
+  });
+
+  it("says a repair took 3 minutes in the words of a repair", async () => {
+    vi.useFakeTimers();
+    const { host } = fakeHost({ state: "needs-repair", reason: "the image is missing." });
+    const { view } = await show(host);
+    await click(button(view, "Repair the sandbox"));
+    await act(async () => {
+      vi.advanceTimersByTime(3 * 60 * 1000);
+    });
+    expect(view.textContent).toContain(
+      "The sandbox isn't repaired: the repair didn't finish within 3 minutes.",
+    );
   });
 
   it("asks before removing: Cancel removes nothing, Remove sandbox does", async () => {

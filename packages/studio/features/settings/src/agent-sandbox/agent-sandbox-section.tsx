@@ -1,5 +1,5 @@
 import { Button, Callout, Dialog, StatusChip, type StatusChipTone } from "@halonicjs/studio-kit";
-import type { SettingsSectionProps } from "@halonicjs/studio-shell";
+import { type SettingsSectionProps, ShellError } from "@halonicjs/studio-shell";
 import { useState } from "react";
 import { type AgentSandboxHost, AgentSandboxService } from "../api.ts";
 import {
@@ -88,7 +88,7 @@ export function AgentSandboxView({
   onRemove,
   onCheckAgain,
 }: AgentSandboxViewProps) {
-  const view = sandboxView(facts);
+  const view = sandboxView(facts, new Date());
   const buttons = {
     "check-again": { label: text.CHECK_AGAIN, onClick: onCheckAgain },
     remove: { label: text.REMOVE, onClick: onRemove },
@@ -124,17 +124,11 @@ export function AgentSandboxView({
             {view.primary.label}
           </Button>
         ) : null}
-        {view.secondary.map((action) => {
-          const button =
-            action === "try-again" || action === "set-up" || action === "repair"
-              ? undefined
-              : buttons[action];
-          return button ? (
-            <Button key={action} variant="ghost" onClick={button.onClick}>
-              {button.label}
-            </Button>
-          ) : null;
-        })}
+        {view.secondary.map((action) => (
+          <Button key={action} variant="ghost" onClick={buttons[action].onClick}>
+            {buttons[action].label}
+          </Button>
+        ))}
       </div>
       {view.hint ? <p className="text-small text-fg-muted">{view.hint}</p> : null}
     </div>
@@ -145,7 +139,9 @@ export function AgentSandboxView({
 function hostOf(context: SettingsSectionProps["context"]): AgentSandboxHost | undefined {
   try {
     return context.services.get(AgentSandboxService);
-  } catch {
-    return undefined;
+  } catch (error) {
+    // Only "the feature doesn't list it" means no host; anything else is a bug to surface.
+    if (error instanceof ShellError) return undefined;
+    throw error;
   }
 }
