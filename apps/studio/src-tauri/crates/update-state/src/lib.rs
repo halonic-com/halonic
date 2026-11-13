@@ -5,6 +5,7 @@
 //! `tauri-plugin-updater`, keeps the record in the profile, and asks this
 //! crate what to do. Only `migrate_settings_file` touches files.
 
+mod managed;
 mod record;
 mod settings;
 mod status;
@@ -12,6 +13,7 @@ mod version;
 
 use std::time::Duration;
 
+pub use managed::{Managed, ManagedBy, bucket_version, detect as detect_managed};
 pub use record::{
     BadSignature, CheckResult, FORMAT, InstallRecord, MAX_BAD_SIGNATURES, RecordRead, StartOutcome,
     UpdaterRecord, read_record, record_text,
