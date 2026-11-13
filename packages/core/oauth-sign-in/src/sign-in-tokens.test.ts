@@ -88,7 +88,7 @@ verifies("oauth-sign-in.sign-in-tokens", () => {
     expect(http.received).toHaveLength(2);
   });
 
-  it("uses a token without expires_in for five minutes, and keeps it in the filter until the process ends", async () => {
+  it("places a token without expires_in until it has 60 seconds of a five-minute life left, and keeps it in the filter until the process ends", async () => {
     let count = 0;
     const { tokens, saveGrant, passSeconds } = setup(() =>
       Response.json({ access_token: tokenAt(++count), token_type: "Bearer" }),
@@ -148,19 +148,19 @@ verifies("oauth-sign-in.sign-in-tokens", () => {
   });
 
   it("asks the user to sign in when nothing current is saved", async () => {
-    const { tokens, http, saveGrant } = setup(numberedAnswers());
+    const { tokens, http } = setup(numberedAnswers());
 
     await expect(tokens.access("work-account")).rejects.toBeInstanceOf(SignInNeededError);
     await expect(tokens.access("other")).rejects.toBeInstanceOf(SignInNeededError);
-    await saveGrant();
     const changed = { ...approvedExample, revokeUrl: "https://evil.example.com/revoke" };
-    const { tokens: changedTokens, grants } = setup(numberedAnswers(), changed);
-    await grants.save("gitlab", "work-account", {
+    const stale = setup(numberedAnswers(), changed);
+    await stale.grants.save("gitlab", "work-account", {
       refreshToken: firstRefreshToken,
       approved: approvedExample,
     });
-    await expect(changedTokens.access("work-account")).rejects.toBeInstanceOf(SignInNeededError);
+    await expect(stale.tokens.access("work-account")).rejects.toBeInstanceOf(SignInNeededError);
     expect(http.received).toHaveLength(0);
+    expect(stale.http.received).toHaveLength(0);
   });
 
   it("removes the grant when the server answers invalid_grant, and keeps it when it can't be reached", async () => {
@@ -199,11 +199,35 @@ verifies("oauth-sign-in.sign-in-tokens", () => {
   it("stops waiting when the caller's signal aborts, and leaves the refresh to the others", async () => {
     const { tokens, http, saveGrant } = setup(numberedAnswers());
     await saveGrant();
+    const others = tokens.access("work-account");
     const abort = new AbortController();
+    const gaveUp = tokens.access("work-account", abort.signal);
     abort.abort(new Error("gave up"));
 
-    await expect(tokens.access("work-account", abort.signal)).rejects.toThrow("gave up");
-    expect(await tokens.access("work-account")).toBe(tokenAt(1));
+    await expect(gaveUp).rejects.toThrow("gave up");
+    expect(await others).toBe(tokenAt(1));
     expect(http.received).toHaveLength(1);
+  });
+
+  it("starts no refresh for a signal that is already aborted, so a failing one can't go unhandled", async () => {
+    const unhandled: unknown[] = [];
+    const record = (reason: unknown) => unhandled.push(reason);
+    process.on("unhandledRejection", record);
+    try {
+      const { tokens, http, saveGrant } = setup(() => {
+        throw new Error("network down");
+      });
+      await saveGrant();
+      const abort = new AbortController();
+      abort.abort(new Error("gave up"));
+
+      await expect(tokens.access("work-account", abort.signal)).rejects.toThrow("gave up");
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(http.received).toHaveLength(0);
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", record);
+    }
   });
 });

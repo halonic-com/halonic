@@ -19,7 +19,7 @@ export const accessTokenMinimumLifeMs = 60_000;
  */
 export const forcedRefreshIntervalMs = 30_000;
 
-/** How long a token is used when its answer had no `expires_in`. The filter holds it until the process ends. */
+/** The life assumed for a token whose answer had no `expires_in`; it is placed until {@link accessTokenMinimumLifeMs} of it is left. The filter holds it until the process ends. */
 export const unknownLifetimeMs = 300_000;
 
 /** What `createSignInTokens` needs. */
@@ -209,6 +209,8 @@ export function createSignInTokens(settings: SignInTokensSettings): SignInTokens
       if (isUsable(state)) {
         return state.current.value;
       }
+      // Checked before the refresh starts: a refresh nobody waits for would leave its failure unhandled.
+      signal?.throwIfAborted();
       // One refresh serves every request waiting for it. It keeps its own time limit,
       // so a caller that gives up doesn't cancel the refresh the others wait for.
       state.refreshing ??= refresh(signIn, state).finally(() => {
