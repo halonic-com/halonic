@@ -1,6 +1,5 @@
 import type { Path } from "@halonicjs/schema-kit";
 import { err, ok, type Result } from "@halonicjs/std";
-import type { ClientIdProblem } from "./approved-sign-ins.ts";
 import {
   type AddressClass,
   type IntegrationHost,
@@ -87,7 +86,8 @@ export interface PolicyProblem {
     | "setting-outside-class"
     | "plain-http-not-local"
     | "secret-over-plain-http"
-    | ClientIdProblem["code"];
+    | "client-id-missing"
+    | "client-id-invalid";
   /** Where the host sits in the sheet. */
   readonly path: Path;
   readonly message: string;
@@ -164,9 +164,6 @@ export function integrationPolicy(
     signIns,
     tokens: sheet.tokens.map((token) => token.name),
   };
-  if (problems.length > 0) {
-    return err(problems);
-  }
   return ok(sheet.limits === undefined ? { policy } : { policy, limits: sheet.limits });
 }
 

@@ -65,4 +65,29 @@ verifies("format.integration-approved-sign-ins", () => {
     expect(code({})).toBe("client-id-missing");
     expect(code({ clientId: "a b" })).toBe("client-id-invalid");
   });
+
+  it("refuses a sign-in whose address setting is missing or outside its class", () => {
+    const text = sheet(
+      "{ fromSetting: gitlab, path: /oauth/token }",
+      "[{ fromSetting: gitlab, class: public }, api.example.com]",
+    );
+    const codes = (settings: Record<string, unknown>) =>
+      (approved(text, { clientId: "abc123", ...settings }) as { code: string }[]).map(
+        (problem) => problem.code,
+      );
+    expect(codes({})).toContain("setting-missing");
+    expect(codes({ gitlab: "http://192.168.1.5" })).toContain("setting-outside-class");
+    expect(codes({ gitlab: "https://192.168.1.5" })).toContain("setting-outside-class");
+  });
+
+  it("refuses plain http for a sign-in's address", () => {
+    const text = sheet(
+      "{ fromSetting: gitlab, path: /oauth/token }",
+      "[{ fromSetting: gitlab, class: public }, api.example.com]",
+    );
+    const problems = approved(text, { clientId: "abc123", gitlab: "http://git.example.com" });
+    expect((problems as { code: string }[]).map((problem) => problem.code)).toContain(
+      "plain-http-not-local",
+    );
+  });
 });

@@ -31,17 +31,15 @@ export interface ResolvedSignIn {
 }
 
 /** Why a sign-in's client ID can't be resolved. */
-export interface ClientIdProblem {
+export type ClientIdProblem = PolicyProblem & {
   readonly code: "client-id-missing" | "client-id-invalid";
-  readonly path: Path;
-  readonly message: string;
-}
+};
 
 /** What {@link resolveSignIn} needs from its caller, who already checked the hosts. */
 export interface SignInResolution {
   readonly sheetId: string;
   readonly settings: Readonly<Record<string, unknown>>;
-  /** The host a `{ fromSetting }` URL reads, `host[:port]`; undefined when the setting is already a problem. */
+  /** The host a `{ fromSetting }` URL reads, `host[:port]`; undefined when the setting is a problem, which it reports. */
   readonly hostOfSetting: (setting: string, path: Path) => string | undefined;
   /** The hosts the access token may go to, already resolved. */
   readonly accessHosts: readonly string[];
@@ -140,7 +138,7 @@ function clientIdOf(signIn: IntegrationSignIn, resolution: SignInResolution): st
  * @param declared - what `integrationPolicy` resolved, for the access hosts
  * @param report - called with each client ID problem
  * @param hostOfSetting - the host a `{ fromSetting }` URL reads, or undefined
- *   when the setting is a problem that `hosts` already reports
+ *   when the setting is a problem, which it has already reported
  */
 function approveEach(
   sheet: IntegrationSheet,
@@ -186,8 +184,10 @@ export function approvedSignIns(
     settings,
     declared,
     (problem) => problems.push(problem),
+    // The sheet's checks keep a sign-in's address setting in class `public`,
+    // and `resolveHost` refuses plain http there, so the host is always https.
     (setting, path) =>
-      resolveHost(sheet, { fromSetting: setting }, classes, settings, path, [])?.host,
+      resolveHost(sheet, { fromSetting: setting }, classes, settings, path, problems)?.host,
   );
   return problems.length > 0 ? err(problems) : ok(approved);
 }
