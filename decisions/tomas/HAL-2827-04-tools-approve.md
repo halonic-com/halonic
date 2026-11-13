@@ -2,6 +2,7 @@
 
 - Approval: Liam approves this note in review on HAL-8296
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DkscAR0n+Pz6bz4l1gO0X/CamUCAWCq+0wk5oDp1nmVhJndUvA8fyfAVoxHwLzL2m3Y0XXpu/eBi65moW3ZlDQ==
 - Task: HAL-2827
 
 ## What changes
