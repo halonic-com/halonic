@@ -244,6 +244,47 @@ verifies("workspace.trust-content", () => {
     });
   });
 
+  describe("a connector that runs in the runner", () => {
+    const local = (
+      transport: Connector["transport"],
+      fields: Partial<Connector> = {},
+    ): Connector => ({
+      version: 1,
+      id: "station",
+      transport,
+      tools: { approve: [] },
+      ...fields,
+    });
+
+    it("names the folder or the plugin it starts, as its own kind", () => {
+      const folder = local({ integration: { folder: "home-station" } });
+      const plugin = local({ plugin: { id: "acme.notes" } });
+      expect(trustContent({ connectors: [folder] }).connectors[0]).toMatchObject({
+        transport: "integration",
+        settings: { folder: "home-station" },
+      });
+      expect(trustContent({ connectors: [plugin] }).connectors[0]).toMatchObject({
+        transport: "plugin",
+        settings: { id: "acme.notes" },
+      });
+    });
+
+    it("changes when the folder, the plugin id or `local` changes", () => {
+      const content = (connector: Connector) => trustContent({ connectors: [connector] });
+      const folder = local({ integration: { folder: "home-station" } });
+      const plugin = local({ plugin: { id: "acme.notes" } });
+      expect(deepEqual(content(folder), content(folder))).toBe(true);
+      expect(
+        deepEqual(content(folder), content(local({ integration: { folder: "other-station" } }))),
+      ).toBe(false);
+      expect(deepEqual(content(folder), content({ ...folder, local: true }))).toBe(false);
+      expect(deepEqual(content(plugin), content(local({ plugin: { id: "acme.other" } })))).toBe(
+        false,
+      );
+      expect(deepEqual(content(plugin), content({ ...plugin, local: true }))).toBe(false);
+    });
+  });
+
   describe("a URL that can't be trusted", () => {
     it("refuses the connector, without its URL, instead of normalising it", () => {
       const sneaky = { ...http("https://evil.test\\@mcp.acme.test/"), id: "sneaky" };
