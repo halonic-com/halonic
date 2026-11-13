@@ -86,7 +86,7 @@ verifies("shell.item-page-header", () => {
     const heading = header.querySelector("h1") as HTMLElement;
     const kind = heading.querySelector(".uppercase") as HTMLElement;
     expect(kind.textContent).toBe("Workflow");
-    expect(kind.className).toContain("text-caption uppercase tracking-label text-fg-subtle");
+    expect(kind.className).toContain("text-label uppercase text-fg-subtle");
     expect(nameField(container).value).toBe("Support reply");
     expect(heading.contains(nameField(container))).toBe(true);
     expect(

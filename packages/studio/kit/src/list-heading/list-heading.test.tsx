@@ -24,7 +24,7 @@ verifies("kit.list-heading", () => {
     const heading = container.querySelector("h2") as HTMLElement;
     expect(heading.textContent).toBe("Agents");
     expect(heading.className).toContain(
-      "px-4 pt-4 pb-1 text-caption uppercase tracking-label text-fg-muted",
+      "px-4 pt-4 pb-1 text-label uppercase text-fg-muted",
     );
   });
 

@@ -140,10 +140,14 @@
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
 
-  /* Ten text styles. Each class sets size, line height and weight together: text-body. */
+  /* Eleven text styles. Each class sets size, line height and weight together: text-body. */
   --text-caption: 12px; /* labels, badges, hints; the smallest size */
   --text-caption--line-height: 16px;
   --text-caption--font-weight: 500;
+  --text-label: 12px; /* small group and card labels; the CSS draws them in capitals */
+  --text-label--line-height: 16px;
+  --text-label--font-weight: 600;
+  --text-label--letter-spacing: 0.04em;
   --text-small: 13px; /* secondary lines, table cells */
   --text-small--line-height: 20px;
   --text-small--font-weight: 400;
@@ -176,8 +180,6 @@
   --text-input-touch: 16px; /* inputs on a phone: below 16px, mobile browsers zoom in on focus */
   --text-input-touch--line-height: 24px;
   --text-input-touch--font-weight: 400;
-
-  --tracking-label: 0.04em; /* only for small uppercase group labels */
 
   /* ---------------------------------------------------------------- Spacing (p-2 = 8px) */
   /* A 4px grid. Use the steps 0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12 and 16 only;

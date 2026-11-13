@@ -731,7 +731,7 @@ alone for a list the kit doesn't draw, such as the shell's Settings nav.
 | `id` | So the list it names can point `aria-labelledby` at it |
 | `layout` | `inline` (the default): name · detail. `stacked`: the name over the detail |
 
-`text-caption` in capitals, `tracking-label`, `fg-muted`, padded 16px 16px 4px so its text starts
+`text-label` in capitals, `fg-muted`, padded 16px 16px 4px so its text starts
 where the rows' text does. The "·" is hidden from screen readers, which hear a comma instead:
 "Acme, Workspace settings". When the detail doesn't fit after the name (at 320px and 200% text),
 it moves onto its own line, and a detail too long even for that wraps. Use `stacked` in a narrow

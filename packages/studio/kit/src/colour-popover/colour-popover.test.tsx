@@ -117,7 +117,7 @@ verifies("kit.colour-popover", () => {
     const group = popover.querySelector('[role="radiogroup"]') as HTMLElement;
     const heading = document.getElementById(group.getAttribute("aria-labelledby") ?? "");
     expect(heading?.textContent).toBe("Presets");
-    expect(heading?.className).toContain("text-caption uppercase tracking-label text-fg-muted");
+    expect(heading?.className).toContain("text-label uppercase text-fg-muted");
     expect(radios.map((radio) => radio.getAttribute("aria-label"))).toEqual(
       PRESETS.map((preset) => preset.name),
     );

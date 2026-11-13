@@ -26,7 +26,7 @@ export interface ListHeadingProps {
   readonly headingRef?: Ref<HTMLHeadingElement>;
 }
 
-const shared = "px-4 pt-4 pb-1 text-caption uppercase tracking-label text-fg-muted";
+const shared = "px-4 pt-4 pb-1 text-label uppercase text-fg-muted";
 
 const layoutClasses: Record<ListHeadingLayout, string> = {
   inline: "flex flex-wrap items-baseline gap-x-1",

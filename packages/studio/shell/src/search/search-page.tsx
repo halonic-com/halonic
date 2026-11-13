@@ -315,7 +315,7 @@ function searchedState(props: SearchResultsProps): ReactNode {
 }
 
 // Small caps over a group, as the item page's kind label (VK T2-F7).
-const groupLabelClasses = "px-4 text-caption uppercase tracking-label text-fg-subtle";
+const groupLabelClasses = "px-4 text-label uppercase text-fg-subtle";
 
 interface ResultRowProps {
   readonly result: NameResult;

@@ -36,7 +36,7 @@ export interface PartSection {
   readonly rows: readonly StateRow[];
 }
 
-const caption = "text-caption font-medium uppercase tracking-label text-fg-muted";
+const caption = "text-label uppercase text-fg-muted";
 
 const phoneQuery = "(width < 600px)";
 
