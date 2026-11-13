@@ -2,6 +2,7 @@
 
 - Approval: HAL-8651 (Liam, CTO)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/cNyFpGI2kdIJpPvMc7D56bSkcdK+ZE5No4OlKB0C1yt0pUd3KtX1uDWvZc43Myh6ASPg2O3b7dLBcVT0qu/Bw==
 
 Signing in again signs the old grant out before the new one is saved: it is revoked at the
 URL it was approved with, then dropped. This is what the HAL-984 design says; the flow did not
