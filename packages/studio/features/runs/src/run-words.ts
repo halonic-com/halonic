@@ -332,6 +332,20 @@ export const receiptWords = {
   /** The Messages section's two lines (RCPT-2.2), one for drafts and one for sends. */
   drafted: (things: string) => `Drafted ${things}`,
   sent: (things: string) => `Sent ${things}`,
+  modelsHeading: "Models and cost",
+  /** One model's line (RCPT-2.5): calls, tokens, then what they cost. */
+  modelCalls: (model: string, calls: number) =>
+    `${model} · ${calls === 1 ? "1 call" : `${calls} calls`}`,
+  modelTokens: (input: number, output: number) =>
+    `${input.toLocaleString("en")} in · ${output.toLocaleString("en")} out`,
+  modelCached: "cached, no model call",
+  modelNoPrice: "No price",
+  modelSubscription: "on your subscription",
+  /** The total under the model lines; `calls` is the calls without a price. */
+  modelsTotal: (amount: string, calls: number) =>
+    `Estimated cost ${amount}${calls === 0 ? "" : ` + ${calls === 1 ? "1 call" : `${calls} calls`} without a price`} · from the prices in Settings › Models`,
+  modelsTotalUnpriced: (calls: number) =>
+    `${calls === 1 ? "1 call" : `${calls} calls`} without a price · from the prices in Settings › Models`,
   /** The Read section's one line (RCPT-2.7). */
   read: (things: string) => `Read ${things}`,
   /** One approval the run asked for: what was decided, by whom (RCPT-2.4), and when. */

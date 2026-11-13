@@ -11,6 +11,8 @@ export interface ReceiptProps {
   readonly messages?: readonly string[];
   /** The Read section's line from `readLines`; none hides the section. */
   readonly reads?: readonly string[];
+  /** The Models and cost section's lines from `modelLines`; none hides the section. */
+  readonly models?: readonly string[];
 }
 
 /**
@@ -21,7 +23,13 @@ export interface ReceiptProps {
  * @example
  * <Receipt summary="Finished in 2 min · sent nothing" approvals={[]} />
  */
-export function Receipt({ summary, approvals, messages = [], reads = [] }: ReceiptProps) {
+export function Receipt({
+  summary,
+  approvals,
+  messages = [],
+  reads = [],
+  models = [],
+}: ReceiptProps) {
   return (
     <section aria-labelledby="run-receipt" className="flex flex-col gap-2">
       <h2 id="run-receipt" className="sr-only">
@@ -30,6 +38,7 @@ export function Receipt({ summary, approvals, messages = [], reads = [] }: Recei
       <p className="text-section">{summary}</p>
       <TextSection id="receipt-messages" heading={receiptWords.messagesHeading} lines={messages} />
       <TextSection id="receipt-read" heading={receiptWords.readHeading} lines={reads} />
+      <TextSection id="receipt-models" heading={receiptWords.modelsHeading} lines={models} />
       {approvals.length === 0 ? null : (
         <section aria-labelledby="receipt-approvals" className="flex flex-col gap-1">
           <h3 id="receipt-approvals" className="text-small text-fg-muted">
