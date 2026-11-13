@@ -2,7 +2,6 @@
 
 - Approval: Liam asked for this on HAL-8685; the change only records what #2502 (HAL-8614) already delivered
 - Kind: internal
-- Signature: pending (Liam signs)
 - Task: HAL-8685
 
 ## What changes
