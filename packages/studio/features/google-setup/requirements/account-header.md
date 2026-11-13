@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-712; [google-setup-flow](/HAL/issues/HAL-621#document-google-setup-flow) sections 2.1 and 2.3; [ux-checklists](/HAL/issues/HAL-1019#document-ux-checklists) sections 2.1 and 9 (U4)
+- Source: HAL-712; google-setup-flow (HAL-621) sections 2.1 and 2.3; ux-checklists (HAL-1019) sections 2.1 and 9 (U4)
 
 The Google setup view shall head the item with "Google for" and the account's address, and the step it is at ("Step 3 of 7"), then a line naming the ticked services and the account type with **Change** (a screen reader reads a comma, not "middle dot", between them), then the line "Uses your own Google app, on this computer." with **Other ways (later)**. The names come from the account's services, never from Studio's code. When the account's address needs asking, the view shall ask "What kind of Google account is …?" as a radio group in place of the first line, save the answer at once, and show no step until it is answered. **Change** shall open the same question with the current answer picked and a **Cancel**; picking an answer or choosing **Cancel** shall close it and return focus to **Change**. While the engine isn't answering, the answers shall be unavailable, with the reason as their note. **Other ways (later)** shall open a panel with no buttons and set `aria-expanded`.
 
