@@ -11,12 +11,19 @@ export const webhookPathPrefix = "/api/webhooks/";
 /** How far a request's timestamp may be from the server's clock, in either direction. */
 export const WEBHOOK_TOLERANCE_SECONDS = 300;
 
+/** Extra time a delivery id is remembered, so clock skew between the adapter and `clock` can't open a replay at the window's edge. */
+const DELIVERY_MARGIN_MS = 60_000;
+
 /**
  * How long a delivery id is remembered. A request with a timestamp at the edge
  * of the window may arrive up to a full window early and be valid for a full
- * window after, so two windows cover every moment it could be replayed.
+ * window after, so two windows cover every moment it could be replayed; the
+ * margin keeps the lease alive past that last moment.
  */
-const deliveryMemoryMs = 2 * WEBHOOK_TOLERANCE_SECONDS * 1000;
+export const DELIVERY_MEMORY_MS = 2 * WEBHOOK_TOLERANCE_SECONDS * 1000 + DELIVERY_MARGIN_MS;
+
+/** Keys the HMAC check on every path that has no real secret, so those answers take as long as a real one. */
+const dummySecret = "halonic-webhook-dummy-secret";
 
 const pathSegment = /^[@A-Za-z0-9._-]{1,128}$/;
 const deliveryIdPattern = /^[A-Za-z0-9._:-]{1,128}$/;
@@ -67,25 +74,27 @@ export function createWebhookRoutes(ports: WebhookPorts): WebhookRoutes {
   ): Promise<ProvenSender | null> {
     const key = routineKeyOf(address);
     const placed = key === null ? null : await webhooks.find(key);
-    if (key === null || placed === null || !placed.routine.enabled) {
-      return null;
-    }
-    const { trigger } = placed.routine;
-    if (!("webhook" in trigger)) {
-      return null;
-    }
-    const secret = await readSecret(secrets, trigger.webhook.secret);
+    const trigger = placed?.routine.enabled ? placed.routine.trigger : null;
+    const webhookTrigger = trigger !== null && "webhook" in trigger ? trigger : null;
+    const secret =
+      webhookTrigger === null ? null : await readSecret(secrets, webhookTrigger.webhook.secret);
     const signed = readSigned(request);
     const now = clock.now();
+    // Every path runs one HMAC check, against a dummy key when there is no real one,
+    // so the response time doesn't tell a caller whether the routine exists.
+    const signatureOk = await signatureMatches(secret ?? dummySecret, signed ?? dummySigned, body);
     if (
+      key === null ||
+      placed === null ||
+      webhookTrigger === null ||
       secret === null ||
       signed === null ||
       !isWithinWindow(signed.timestamp, now) ||
-      !(await signatureMatches(secret, signed, body))
+      !signatureOk
     ) {
       return null;
     }
-    return { key, placed, trigger, signed, now };
+    return { key, placed, trigger: webhookTrigger, signed, now };
   }
 
   return {
@@ -111,7 +120,10 @@ export function createWebhookRoutes(ports: WebhookPorts): WebhookRoutes {
         throw new Error(`Routine ${key} runs outside a hub, so it must name one in run.hub.`);
       }
       const delivery = await sha256Hex(`${key}\n${signed.deliveryId}`);
-      const lease = await coordination.tryAcquire(`webhook-delivery:${delivery}`, deliveryMemoryMs);
+      const lease = await coordination.tryAcquire(
+        `webhook-delivery:${delivery}`,
+        DELIVERY_MEMORY_MS,
+      );
       if (lease === null) {
         return errorResponse(serverErrors.webhookReplayed);
       }
@@ -195,6 +207,13 @@ interface SignedRequest {
   readonly timestampText: string;
   readonly deliveryId: string;
 }
+
+const dummySigned: SignedRequest = {
+  signature: new Uint8Array(32),
+  timestamp: 0,
+  timestampText: "0",
+  deliveryId: "dummy",
+};
 
 /** The three signing headers, or `null` when one is missing or malformed. */
 function readSigned(request: Request): SignedRequest | null {
