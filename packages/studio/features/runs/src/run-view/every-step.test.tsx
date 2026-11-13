@@ -44,7 +44,7 @@ verifies("runs.every-step", () => {
   it("lists the steps under the h2 Every step, each with its dot, in one List", async () => {
     const { root } = await openRun(fakeSource([running], { [runId]: drafting }));
 
-    expect(root.querySelector("h2")?.textContent).toBe("Every step");
+    expect(root.querySelectorAll("h2")[1]?.textContent).toBe("Every step");
     expect(root.querySelectorAll('[role="grid"]')).toHaveLength(1);
     expect(entries(root)).toEqual([
       "Read, done, 10:40, Took 1 min",

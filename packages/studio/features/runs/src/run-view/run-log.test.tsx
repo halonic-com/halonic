@@ -53,7 +53,7 @@ verifies("runs.run-view.run-log", () => {
     await act(async () => button(root, "Show the run log").click());
 
     expect(root.querySelector('[role="grid"]')).toBeNull();
-    expect(root.querySelector("h2")?.textContent).toBe("Every step");
+    expect(root.querySelectorAll("h2")[1]?.textContent).toBe("Every step");
     const lines = [...root.querySelectorAll('[aria-label="Run log"] > li')].map(
       (line) => line.textContent,
     );

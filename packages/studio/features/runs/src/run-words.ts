@@ -307,3 +307,23 @@ export const detailsWords = {
   noModelCalls: "None",
   tokens: (input: string, output: string) => `${input} in · ${output} out`,
 };
+
+/**
+ * The receipt's summary line (checklist part 1, 1.9; mc 15.2): the parts the
+ * CLI's receipt says, in its words. "Running in" is a team decision under
+ * HAL-2282 (HAL-1301): microcopy words the finished, waiting, failed, budget
+ * and cancelled forms only.
+ */
+export const summaryWords = {
+  runningIn: (step: string) => `Running in ${step}`,
+  failedIn: (step: string, took: string) => `Failed in ${step} after ${took}`,
+  sentNothing: "sent nothing",
+  askedYou: (times: string) => `asked you ${times}`,
+  soFar: (phrase: string) => `${phrase} so far`,
+  counted: (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`,
+};
+
+/** The receipt's heading: kit 24.2 gives it an `h2`; the word is a team decision under HAL-2282 (HAL-1301). */
+export const receiptWords = {
+  heading: "Receipt",
+};
