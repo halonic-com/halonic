@@ -1,0 +1,55 @@
+# Throwaway (HAL-8306): does a program that listens on a non-loopback address
+# of a Windows 11 computer bring up the Defender Firewall dialog or open a
+# port to the local network? Reads the firewall's own settings and log. Never merged.
+name: tmp firewall probe
+on:
+  pull_request:
+    paths:
+      - .github/workflows/tmp-firewall-probe.yml
+permissions: {}
+jobs:
+  probe:
+    runs-on: windows-11-arm
+    timeout-minutes: 10
+    permissions: {}
+    steps:
+      - name: Firewall settings, then listen like listenOnHostAddresses, then look again
+        shell: pwsh
+        run: |
+          Write-Host "== OS"; (Get-CimInstance Win32_OperatingSystem).Caption
+          Write-Host "== Profiles (NotifyOnListen true means the dialog appears for a program with no rule)"
+          Get-NetFirewallProfile | Format-Table Name, Enabled, DefaultInboundAction, NotifyOnListen, AllowInboundRules -AutoSize | Out-String -Width 200
+          Write-Host "== Inbound allow rules that name node.exe or pwsh.exe, before"
+          $before = Get-NetFirewallApplicationFilter | Where-Object { $_.Program -match 'node\.exe|pwsh\.exe' }
+          ($before | Measure-Object).Count
+          Write-Host "== Interactive session?"
+          [Environment]::UserInteractive
+          Write-Host "== Addresses"
+          Get-NetIPAddress | Where-Object { $_.IPAddress -ne '127.0.0.1' -and $_.IPAddress -ne '::1' -and $_.IPAddress -notlike 'fe80*' } | Format-Table InterfaceAlias, IPAddress, PrefixOrigin -AutoSize | Out-String -Width 200
+          Write-Host "== Listen with Node on each non-loopback address (as net.createServer does)"
+          $js = @'
+          const net = require("node:net");
+          const { networkInterfaces } = require("node:os");
+          const addresses = Object.values(networkInterfaces()).flat().filter((e) => !e.internal && !e.address.startsWith("fe80:")).map((e) => e.address);
+          const servers = [];
+          let pending = addresses.length;
+          const done = () => { if (--pending === 0) setTimeout(() => { servers.forEach((s) => s.close()); }, 8000); };
+          for (const address of new Set(addresses)) {
+            const s = net.createServer();
+            s.once("error", (e) => { console.log(address, "error", e.code); done(); });
+            s.listen(0, address, () => { console.log(address, "listening on", s.address().port); servers.push(s); done(); });
+          }
+          '@
+          Set-Content -Path probe.js -Value $js
+          $node = Start-Process node -ArgumentList probe.js -PassThru -NoNewWindow
+          Start-Sleep -Seconds 4
+          Write-Host "== Listening sockets of that process"
+          Get-NetTCPConnection -State Listen -OwningProcess $node.Id -ErrorAction SilentlyContinue | Format-Table LocalAddress, LocalPort -AutoSize | Out-String -Width 200
+          Write-Host "== Inbound allow rules that name node.exe or pwsh.exe, after"
+          $after = Get-NetFirewallApplicationFilter | Where-Object { $_.Program -match 'node\.exe|pwsh\.exe' }
+          ($after | Measure-Object).Count
+          Write-Host "== Firewall log: rules added or changed in the last 5 minutes"
+          Get-WinEvent -FilterHashtable @{ LogName = 'Microsoft-Windows-Windows Firewall With Advanced Security/Firewall'; StartTime = (Get-Date).AddMinutes(-5) } -ErrorAction SilentlyContinue | Select-Object -First 10 Id, Message | Format-List | Out-String -Width 200
+          Write-Host "== Any process waiting for a dialog (the notifier)"
+          Get-Process | Where-Object { $_.ProcessName -match 'FirewallNotif|wf\.msc|FwNotif' } | Format-Table ProcessName, Id
+          Wait-Process -Id $node.Id -Timeout 20 -ErrorAction SilentlyContinue
