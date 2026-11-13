@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-8422, HAL-8442; board decision of 13 Nov (HAL-8416)
 
-The kit's `MonthBars` shall draw the last six months' values as bars on a card, oldest first: the current month (the last) in blue (`series-1`), earlier months in slate (`series-other`), and any month whose value is above its budget in amber (`attention-fill`). It shall show the current month's value as one big number in normal digits and write the month names under the bars with equal-width digits. When every month is zero it shall show the given empty text instead of bars. It shall show a given note under the big number, amber when it asks for attention, and a given limit as a thin dashed line across the bars, labelled at its right end, with the scale including it. It shall name the chart by its title and give screen readers every month's value as text, saying which months are over budget.
+The kit's `MonthBars` shall draw the last six months' values as bars on a card, oldest first: the current month (the last) in blue (`series-1`), earlier months in slate (`series-other`), and any month whose value is above its budget in amber (`attention-fill`). It shall show the current month's value as one big number in normal digits and write the month names under the bars with equal-width digits. When every month is zero it shall show the given empty text instead of bars. It shall show a given note under the big number, amber when it asks for attention, and a given limit as a thin dashed line across the bars, labelled at its left end with a halo so it stays readable over the bars, with the scale including it. It shall name the chart by its title and give screen readers every month's value as text, saying which months are over budget.
 
 ## Examples
 
