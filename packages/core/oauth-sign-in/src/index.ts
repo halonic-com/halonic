@@ -39,6 +39,13 @@ export {
   type SignInGrants,
 } from "./sign-in-grants.ts";
 export { signInTokenName } from "./sign-in-token-name.ts";
+export {
+  accessTokenMinimumLifeMs,
+  createSignInTokens,
+  forcedRefreshIntervalMs,
+  type SignInTokensSettings,
+  unknownLifetimeMs,
+} from "./sign-in-tokens.ts";
 export { createState, stateMatches } from "./state.ts";
 export { classifyTokenAnswer, type TokenAnswer, type TokenAnswerMeaning } from "./token-answer.ts";
 export { postTokenForm, tokenRequestTimeoutMs } from "./token-request.ts";
