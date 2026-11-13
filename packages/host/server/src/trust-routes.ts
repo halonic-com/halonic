@@ -27,6 +27,17 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/**
+ * The optional `runId` of a start: absent, or a non-empty string of at most
+ * 256 UTF-8 bytes (the executor's limit), so a retry can't start a second run.
+ */
+function isRunId(value: unknown): value is string | undefined {
+  return (
+    value === undefined ||
+    (typeof value === "string" && value !== "" && new TextEncoder().encode(value).length <= 256)
+  );
+}
+
 export function createTrustRoutes({ trust, runs }: TrustRoutePorts): TrustRoutes {
   /**
    * Asks the gate again for every start, never from memory, so a workspace
@@ -52,20 +63,44 @@ export function createTrustRoutes({ trust, runs }: TrustRoutePorts): TrustRoutes
       const request = parseObject(body);
       const { hubId, workflowId } = request ?? {};
       const input = request?.["input"] ?? {};
-      if (typeof hubId !== "string" || typeof workflowId !== "string" || !isObject(input)) {
+      const runId = request?.["runId"];
+      if (
+        typeof hubId !== "string" ||
+        typeof workflowId !== "string" ||
+        !isObject(input) ||
+        !isRunId(runId)
+      ) {
         return errorResponse(serverErrors.badRequest);
       }
-      return whenTrusted(async () => Response.json(await runs.start({ hubId, workflowId, input })));
+      return whenTrusted(async () =>
+        Response.json(
+          await runs.start(
+            runId === undefined
+              ? { hubId, workflowId, input }
+              : { hubId, workflowId, input, runId },
+          ),
+        ),
+      );
     },
 
     async startAgent(body) {
       const request = parseObject(body);
       const { hubId, agentId, prompt } = request ?? {};
-      if (typeof hubId !== "string" || typeof agentId !== "string" || typeof prompt !== "string") {
+      const runId = request?.["runId"];
+      if (
+        typeof hubId !== "string" ||
+        typeof agentId !== "string" ||
+        typeof prompt !== "string" ||
+        !isRunId(runId)
+      ) {
         return errorResponse(serverErrors.badRequest);
       }
       return whenTrusted(async () =>
-        Response.json(await runs.startAgent({ hubId, agentId, prompt })),
+        Response.json(
+          await runs.startAgent(
+            runId === undefined ? { hubId, agentId, prompt } : { hubId, agentId, prompt, runId },
+          ),
+        ),
       );
     },
   };
