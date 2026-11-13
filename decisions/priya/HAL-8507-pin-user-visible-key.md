@@ -2,6 +2,7 @@
 
 - Approval: HAL-8506; the board approved "`user-visible` and `internal` on Liam's key" on HAL-1337 on 12 Nov
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:jJt2t1HJVPbnDs2rn+SpDkPXKQIw0MqY09AaD8aNMUxXRDQJYv3qbb5x3lVoZQpw34SL9mWpiosff46ndwShCg==
 - Task: HAL-8507
 
 ## What changes
