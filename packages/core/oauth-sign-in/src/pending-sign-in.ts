@@ -1,23 +1,24 @@
-import type { SetupService } from "./setup-input.ts";
-
-/** How long a sign-in may wait for Google's callback: 10 minutes (plan D5). */
+/** How long a sign-in may wait for the provider's callback: 10 minutes (plan D5). */
 export const pendingSignInLifetimeMs = 10 * 60 * 1000;
 
 /**
- * What a sign-in keeps while the browser is at Google. It holds the PKCE
+ * What a sign-in keeps while the browser is at the provider. It holds the PKCE
  * verifier, so it lives in memory only and is never written to any store
  * (plan D5): the record store only appends, so a stored verifier would stay
  * in its history for good. It never holds the client secret.
+ *
+ * A provider adds what its own steps need after the sign-in by extending
+ * this, and the holder returns that type back (see {@link PendingSignIns}).
  */
 export interface PendingSignInDetails {
   /** The sign-in's `state`; the callback finds the sign-in by it. */
   readonly state: string;
-  /** The PKCE verifier. A secret: it goes only to Google's token endpoint. */
+  /** The PKCE verifier. A secret: it goes only to the provider's token endpoint. */
   readonly codeVerifier: string;
   /**
-   * The OAuth client ID the auth URL used. Google only exchanges the code for
-   * the same client, so the callback uses this one even if the setup record
-   * has moved to another client meanwhile.
+   * The OAuth client ID the auth URL used. The provider only exchanges the
+   * code for the same client, so the callback uses this one even if the
+   * client has been changed meanwhile.
    */
   readonly clientId: string;
   /** The ref of that client's secret in the `TokenStore`. A ref, never the secret. */
@@ -27,15 +28,6 @@ export interface PendingSignInDetails {
   /** The scopes the auth URL asked for. */
   readonly scopes: readonly string[];
   /**
-   * The connector's address. Google must confirm this account, or nothing is
-   * saved (design 3.5 point 3). Personal data: never logged.
-   */
-  readonly account: string;
-  /** The ticked services, whose scopes and `googleCheck` are checked after sign-in. */
-  readonly services: readonly SetupService[];
-  /** The project ID from the setup (step 1), for the "Switch it on" link. */
-  readonly projectId?: string;
-  /**
    * The auth URL this sign-in sent the browser to. "Open again" sends the
    * browser to the same URL, so the first tab's callback still works (plan
    * D7). It holds `state` and the PKCE challenge, never the verifier.
@@ -44,33 +36,33 @@ export interface PendingSignInDetails {
 }
 
 /** A pending sign-in as `PendingSignIns.take` returns it. */
-export interface PendingSignIn extends PendingSignInDetails {
-  /** The account ref from the setup record. */
+export type PendingSignIn<Details extends PendingSignInDetails = PendingSignInDetails> = Details & {
+  /** The ref of the account (or grant) the sign-in is for. */
   readonly accountRef: string;
   /** When the sign-in started, from the `Clock`. */
   readonly startedAt: Date;
-}
+};
 
 /**
  * The pending sign-ins of one server. The host creates one instance per
  * server and passes it in like a port, so nothing lives in module memory.
  * There is at most one per account.
  */
-export interface PendingSignIns {
+export interface PendingSignIns<Details extends PendingSignInDetails = PendingSignInDetails> {
   /**
    * Keeps a new pending sign-in for an account, replacing any earlier one for
    * the same account, whose `state` then matches nothing.
    *
-   * @param accountRef - the account ref from the setup record
-   * @param pending - the `state`, verifier, redirect URI and scopes
+   * @param accountRef - the account ref
+   * @param pending - the `state`, verifier, redirect URI and scopes, and whatever the provider adds
    */
-  start(accountRef: string, pending: PendingSignInDetails): void;
+  start(accountRef: string, pending: Details): void;
   /**
    * The auth URL of the account's pending sign-in, for "Open again" (plan
    * D7). Reusing it keeps the same `state` and verifier, so a callback from
    * either tab can finish the sign-in. Nothing is removed.
    *
-   * @param accountRef - the account ref from the setup record
+   * @param accountRef - the account ref
    * @returns the auth URL, or `undefined` when there is none or it has expired
    */
   authUrlFor(accountRef: string): string | undefined;
@@ -78,7 +70,7 @@ export interface PendingSignIns {
    * Drops the account's pending sign-in, for "Cancel" (plan D7). Its `state`
    * then matches nothing. Does nothing when there is none.
    *
-   * @param accountRef - the account ref from the setup record
+   * @param accountRef - the account ref
    */
   cancel(accountRef: string): void;
   /**
@@ -90,7 +82,7 @@ export interface PendingSignIns {
    * @param state - the `state` from the callback
    * @returns the sign-in, or `undefined` when none matches or it has expired
    */
-  take(state: string): PendingSignIn | undefined;
+  take(state: string): PendingSignIn<Details> | undefined;
 }
 
 /**

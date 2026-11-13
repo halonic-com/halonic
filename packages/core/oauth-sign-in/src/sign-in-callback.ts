@@ -1,5 +1,5 @@
-import { safeGoogleErrorCode } from "./google-error-code.ts";
-import type { PendingSignIn, PendingSignIns } from "./pending-sign-in.ts";
+import { safeOAuthErrorCode } from "./oauth-error-code.ts";
+import type { PendingSignIn, PendingSignInDetails, PendingSignIns } from "./pending-sign-in.ts";
 
 /** The callback's query string, as `URLSearchParams` gives it. */
 export interface CallbackQuery {
@@ -11,29 +11,34 @@ export interface CallbackQuery {
  * What the callback means. Every kind except `code` is safe to show and to
  * log. `code` holds the authorisation code, a secret: it stays in the host
  * package, which exchanges it at once.
+ *
+ * `Named` is the kinds a provider gives its own error codes (see
+ * {@link NamedErrors}).
  */
-export type SignInCallback =
+export type SignInCallback<
+  Details extends PendingSignInDetails = PendingSignInDetails,
+  Named extends string = never,
+> =
   | {
       readonly kind: "code";
       readonly code: string;
-      readonly pending: PendingSignIn;
+      readonly pending: PendingSignIn<Details>;
     }
-  | { readonly kind: "cancelled"; readonly accountRef: string }
-  | { readonly kind: "adminBlocked"; readonly accountRef: string }
-  | { readonly kind: "outsideOrganisation"; readonly accountRef: string }
-  | { readonly kind: "googleError"; readonly accountRef: string; readonly errorCode: string }
+  | { readonly kind: "cancelled" | Named; readonly accountRef: string }
+  | { readonly kind: "providerError"; readonly accountRef: string; readonly errorCode: string }
   | { readonly kind: "incompleteCallback"; readonly accountRef: string }
   | { readonly kind: "linkNoLongerValid" };
 
-/** Google's `error` values that get their own result. */
-const namedErrors = {
-  access_denied: "cancelled",
-  admin_policy_enforced: "adminBlocked",
-  org_internal: "outsideOrganisation",
-} as const;
+/**
+ * The `error` values a provider gives their own result kind, by code. Only
+ * `access_denied` is standard (RFC 6749, section 4.1.2.1): it is always
+ * `cancelled`. Anything else the provider names, such as Google's
+ * `org_internal`, comes in through this table.
+ */
+export type NamedErrors<Named extends string> = Readonly<Record<string, Named>>;
 
 /**
- * Reads Google's callback in the order agreed in HAL-718:
+ * Reads the provider's callback in the order agreed in HAL-718:
  * 1. Find and remove the pending sign-in by `state`. When none matches, or it
  *    has expired, the result is `linkNoLongerValid` and nothing else is read,
  *    so a forged `error=access_denied` can't cancel a real sign-in.
@@ -44,12 +49,17 @@ const namedErrors = {
  *
  * @param query - the callback's query parameters
  * @param pendingSignIns - the server's pending sign-ins
+ * @param namedErrors - the provider's own error codes and the result kind each gets
  * @returns what the callback means
  */
-export function readSignInCallback(
+export function readSignInCallback<
+  Details extends PendingSignInDetails,
+  Named extends string = never,
+>(
   query: CallbackQuery,
-  pendingSignIns: PendingSignIns,
-): SignInCallback {
+  pendingSignIns: PendingSignIns<Details>,
+  namedErrors: NamedErrors<Named> = {},
+): SignInCallback<Details, Named> {
   const state = query.get("state");
   if (state === null || state === "") {
     return { kind: "linkNoLongerValid" };
@@ -62,11 +72,15 @@ export function readSignInCallback(
 
   const error = query.get("error");
   if (error !== null) {
-    const errorCode = safeGoogleErrorCode(error);
-    if (Object.hasOwn(namedErrors, errorCode)) {
-      return { kind: namedErrors[errorCode as keyof typeof namedErrors], accountRef };
+    const errorCode = safeOAuthErrorCode(error);
+    if (errorCode === "access_denied") {
+      return { kind: "cancelled", accountRef };
     }
-    return { kind: "googleError", accountRef, errorCode };
+    const named = Object.hasOwn(namedErrors, errorCode) ? namedErrors[errorCode] : undefined;
+    if (named !== undefined) {
+      return { kind: named, accountRef };
+    }
+    return { kind: "providerError", accountRef, errorCode };
   }
 
   const code = query.get("code");

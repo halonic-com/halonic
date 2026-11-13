@@ -1,10 +1,10 @@
+import type { Clock } from "@halonicjs/ports";
 import {
   hasPendingSignInExpired,
   type PendingSignIn,
   type PendingSignInDetails,
   type PendingSignIns,
-} from "@halonicjs/google-setup";
-import type { Clock } from "@halonicjs/ports";
+} from "./pending-sign-in.ts";
 import { stateMatches } from "./state.ts";
 
 /**
@@ -21,13 +21,15 @@ import { stateMatches } from "./state.ts";
  * @example
  * const pendingSignIns = createPendingSignIns(systemClock);
  */
-export function createPendingSignIns(clock: Clock): PendingSignIns {
-  const byAccount = new Map<string, PendingSignIn>();
-  const isLive = (pending: PendingSignIn): boolean =>
+export function createPendingSignIns<Details extends PendingSignInDetails = PendingSignInDetails>(
+  clock: Clock,
+): PendingSignIns<Details> {
+  const byAccount = new Map<string, PendingSignIn<Details>>();
+  const isLive = (pending: PendingSignIn<Details>): boolean =>
     !hasPendingSignInExpired(pending, clock.now());
 
   return {
-    start(accountRef: string, pending: PendingSignInDetails): void {
+    start(accountRef: string, pending: Details): void {
       byAccount.set(accountRef, { ...pending, accountRef, startedAt: clock.now() });
     },
 
@@ -40,11 +42,11 @@ export function createPendingSignIns(clock: Clock): PendingSignIns {
       byAccount.delete(accountRef);
     },
 
-    take(state: string): PendingSignIn | undefined {
+    take(state: string): PendingSignIn<Details> | undefined {
       // Compare against every pending sign-in without stopping at a match, so
       // the time taken doesn't tell which one matched or how many there are
       // before it.
-      let match: PendingSignIn | undefined;
+      let match: PendingSignIn<Details> | undefined;
       for (const pending of byAccount.values()) {
         if (stateMatches(pending.state, state)) {
           match = pending;

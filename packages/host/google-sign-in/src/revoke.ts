@@ -1,6 +1,6 @@
 import { refreshTokenName } from "@halonicjs/google-setup";
+import { tokenRequestTimeoutMs } from "@halonicjs/oauth-sign-in";
 import type { HttpClient, TokenStore } from "@halonicjs/ports";
-import { googleTokenTimeoutMs } from "./token-request.ts";
 
 /** Google's endpoint for revoking a token. */
 export const googleRevokeEndpoint = "https://oauth2.googleapis.com/revoke";
@@ -43,7 +43,7 @@ export async function revokeGoogleSignIn(
       body: new URLSearchParams({ token: refreshToken }).toString(),
       // A redirect would send the refresh token to another address; a stalled answer must not hang a disconnect.
       redirect: "error",
-      signal: AbortSignal.timeout(googleTokenTimeoutMs),
+      signal: AbortSignal.timeout(tokenRequestTimeoutMs),
     });
     googleConfirmed = response.status === 200;
   } catch {

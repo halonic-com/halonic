@@ -1,9 +1,9 @@
 import { constantTimeEqual, encodeBase64url, encodeUtf8, type RandomBytes } from "@halonicjs/std";
-import { secretBytes, webRandomBytes } from "./random.ts";
+import { secretBytes } from "./random.ts";
 
 /**
  * Makes a new OAuth `state` for one sign-in: 32 random bytes as 43 base64url
- * characters. It ties Google's callback to the sign-in that started it, so a
+ * characters. It ties the provider's callback to the sign-in that started it, so a
  * request forged by another page or local process matches nothing.
  *
  * @param randomBytes - where the 32 bytes come from; tests pass fixed bytes
@@ -11,9 +11,9 @@ import { secretBytes, webRandomBytes } from "./random.ts";
  * @throws AssertionError when `randomBytes` returns another number of bytes than 32
  *
  * @example
- * createState().length; // 43
+ * createState(randomBytes).length; // 43
  */
-export function createState(randomBytes: RandomBytes = webRandomBytes): string {
+export function createState(randomBytes: RandomBytes): string {
   return encodeBase64url(secretBytes(randomBytes));
 }
 
