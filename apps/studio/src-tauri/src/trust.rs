@@ -11,7 +11,8 @@
 //! No command takes a folder for the store: the page gives a location or a
 //! record, never where the records live.
 
-use std::path::PathBuf;
+use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 
 use halonic_profile::join_path;
 use halonic_trust_grant::{PickedFolders, TrustRefusal, TrustState};
@@ -133,6 +134,28 @@ pub async fn trust_list<R: Runtime>(app: AppHandle<R>) -> Result<Vec<Value>, Tru
             );
         }
         Ok(listing.records)
+    })
+    .await
+}
+
+/// Whether each of `locations` is a folder that exists now, by the location
+/// as asked. Only a folder the person already trusted is looked at, so the
+/// page can't use it to probe the disk: a location without a trust record
+/// is left out of the answer.
+#[tauri::command]
+pub async fn trust_folders_found<R: Runtime>(
+    app: AppHandle<R>,
+    locations: Vec<String>,
+) -> Result<BTreeMap<String, bool>, TrustRefusal> {
+    on_worker(app, move |app| {
+        let store = trust_store(app)?;
+        let mut found = BTreeMap::new();
+        for location in locations {
+            if store.get(&location)?.is_some() {
+                found.insert(location.clone(), Path::new(&location).is_dir());
+            }
+        }
+        Ok(found)
     })
     .await
 }

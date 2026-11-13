@@ -17,4 +17,4 @@ The Workspace feature shall add the Settings section **Trusted sources** (`trust
 
 ## Not yet
 
-Clicking a workspace row to open it, and the "Folder not found" mark in the desktop app, wait for a shell command that says whether a folder is still there (HAL-8614 follow-up). Until then the desktop app leaves `found` unknown, and the row reads "Trusted *3 Nov*".
+Clicking a workspace row to open it waits for a window-level open command (HAL-8614 follow-up). The desktop app asks the shell (`trust_folders_found`) whether each folder is still there; when the shell can't answer, `found` stays unknown and the row reads "Trusted *3 Nov*".

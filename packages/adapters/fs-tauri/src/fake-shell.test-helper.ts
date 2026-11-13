@@ -33,6 +33,8 @@ export class FakeTrustShell implements TauriShell {
   /** What the person says when the shell asks; `true` when the list runs out. */
   readonly answers: boolean[] = [];
   readonly #files = new Map<string, string>();
+  /** The folders of records that are gone from the disk, as `trust_folders_found` reports. */
+  readonly #missing = new Set<string>();
   /** The picked folders that still spare a question: a revoke takes one out. */
   readonly #sparing: string[];
   readonly #granted: boolean;
@@ -47,6 +49,11 @@ export class FakeTrustShell implements TauriShell {
     this.#sparing = [...this.picked];
     this.opened = [...this.picked];
     this.#granted = options.granted ?? true;
+  }
+
+  /** Makes `trust_folders_found` say the folder of `location` is no longer there. */
+  removeFolder(location: string): void {
+    this.#missing.add(location);
   }
 
   /** Makes the stored record for `location` unreadable, as a cut-off file is. */
@@ -81,6 +88,12 @@ export class FakeTrustShell implements TauriShell {
         return [...this.#files.keys()]
           .sort((left, right) => (left < right ? -1 : 1))
           .map((location) => this.#read(location));
+      case "trust_folders_found":
+        return Object.fromEntries(
+          (args as { locations: string[] }).locations
+            .filter((location) => this.#files.has(location))
+            .map((location) => [location, !this.#missing.has(location)]),
+        );
       case "trust_grant":
         return this.#grant(args?.["record"] as TrustRecord);
       case "trust_revoke":

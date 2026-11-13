@@ -159,6 +159,31 @@ verifies("fs-tauri.trust-commands", () => {
       expect(isTrustRefusal("Command trust_get not allowed by ACL")).toBe(false);
       expect(isTrustRefusal(null)).toBe(false);
     });
+
+    it("asks whether trusted folders are still there, and leaves out a location with no record", async () => {
+      const shell = new FakeTrustShell();
+      const store = new TauriTrustStore(shell);
+      await store.grant(trustRecord("/workspaces/acme"));
+      await store.grant(trustRecord("/workspaces/gone"));
+      shell.removeFolder("/workspaces/gone");
+      const found = await store.foldersFound([
+        "/workspaces/acme",
+        "/workspaces/gone",
+        "/workspaces/never",
+      ]);
+      expect([...found]).toEqual([
+        ["/workspaces/acme", true],
+        ["/workspaces/gone", false],
+      ]);
+      expect(await store.foldersFound([])).toEqual(new Map());
+    });
+
+    it("gives an unavailable error for a folders-found answer it can't use", async () => {
+      for (const answer of [["/a"], null, { "/a": "yes" }]) {
+        const store = new TauriTrustStore({ invoke: async () => answer });
+        expect(errorKindOf(await rejection(store.foldersFound(["/a"])))).toBe("unavailable");
+      }
+    });
   });
 });
 

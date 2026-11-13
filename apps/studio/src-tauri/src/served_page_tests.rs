@@ -103,6 +103,7 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "pick_folder",
         "trust_get",
         "trust_list",
+        "trust_folders_found",
         "trust_grant",
         "trust_revoke",
         "reopen_folder",
