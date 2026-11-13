@@ -121,7 +121,7 @@ verifies("ports.integration-sign-in-placement", () => {
   });
 
   typeTest("keeps tokens out of the host: SignInTokens is the kit's, not the integration's", () => {
-    expectTypeOf<keyof IntegrationHost>().not.toExtend<keyof SignInTokens>();
+    expectTypeOf<Extract<keyof IntegrationHost, keyof SignInTokens>>().toBeNever();
     expectTypeOf<SignInTokens["access"]>().returns.toEqualTypeOf<Promise<string>>();
     expectTypeOf<SignInTokens["filterValues"]>().returns.toEqualTypeOf<readonly string[]>();
   });

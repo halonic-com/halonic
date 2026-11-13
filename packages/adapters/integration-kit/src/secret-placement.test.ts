@@ -144,6 +144,21 @@ verifies("integration-kit.placement-from-sheet", () => {
       expect(sent).toEqual([]);
     });
 
+    it("refuses a sign-in placement, alone or beside a secret, since a token isn't placed yet", async () => {
+      const { http, sent, reads } = countingClient({ as: "header", header: "x-api-key" });
+      const placements = [
+        { signIn: "example-account", as: "bearer" },
+        { secret: "example-key", signIn: "example-account", as: "header", header: "x-api-key" },
+      ] as unknown as SecretPlacement[];
+      for (const auth of placements) {
+        expect(await refusal(http.fetch("https://api.example.com/v1", { auth }))).toBe(
+          "sign-in-not-placed-yet",
+        );
+      }
+      expect(reads).toEqual([]);
+      expect(sent).toEqual([]);
+    });
+
     it("refuses before the first hop, so a redirect doesn't change the result", async () => {
       const toApi = () => redirect(302, "https://api.example.com/final");
       const refused = client(toApi, undefined, inHeader);

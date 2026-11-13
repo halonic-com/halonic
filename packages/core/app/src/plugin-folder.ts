@@ -240,6 +240,11 @@ function pluginProblems(
   if ((plugin.backend?.tokens.length ?? 0) > 0) {
     problems.push(manifestValueProblem("backend-tokens", ["backend", "tokens"], noTokensMessage));
   }
+  // `plugin.yaml` is refused by the format's plugin check; an `integration.yaml` is read as a sheet, so this is where its sign-ins are refused.
+  for (const name of Object.keys(plugin.backend?.signIns ?? {})) {
+    const message = `a backend can't declare the sign-in ${name} yet: the trust check doesn't show sign-ins`;
+    problems.push(manifestValueProblem("backend-sign-in", ["backend", "signIns", name], message));
+  }
   const needed: [string, (string | number)[]][] = [];
   if (plugin.backend !== undefined) needed.push([plugin.backend.entry, ["backend", "entry"]]);
   (plugin.localTools ?? []).forEach((tool, index) => {

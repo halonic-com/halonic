@@ -8,8 +8,13 @@ The kit shall place a secret only the way the permission sheet says: the same `a
 
 The kit shall check and place a copy of each placement, made by reading each field once, so the integration can't change a placement after the check, with a getter or by changing its own object, on any hop. A placement field that isn't text shall be refused with `placement-not-in-sheet`.
 
+The kit shall refuse any placement that has a `signIn` key, with `sign-in-not-placed-yet`, before a secret value is read and before anything is sent, so `{ secret, signIn, as }` doesn't place the secret either. The kit places a sign-in's token in a later change.
+
 ## Examples
 
+- Given a request with `auth: { signIn: "example-account", as: "bearer" }`, or `{ secret, signIn, as }`,
+  when it is sent,
+  then the kit throws `sign-in-not-placed-yet`, reads no secret and sends nothing.
 - Given a sheet that puts `example-key` in the header `x-api-key`,
   when the integration asks for it in `x-other-key`, in a form field, or as a bearer token,
   then the kit throws `placement-not-in-sheet`, reads no secret and sends nothing.

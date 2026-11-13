@@ -84,6 +84,9 @@ verifies("format.integration-sign-ins", () => {
         "?%63lient_id=x",
         "?scope=a",
         "?code_challenge=x",
+        "?request=x",
+        "?request_uri=x",
+        "?response_mode=x",
       ]) {
         expect(codes(url(query)), query).toEqual(["sign-in-reserved-parameter"]);
       }

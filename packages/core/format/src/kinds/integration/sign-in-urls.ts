@@ -12,6 +12,9 @@ export const RESERVED_AUTHORIZE_PARAMETERS: readonly string[] = [
   "code_challenge",
   "code_challenge_method",
   "response_type",
+  "response_mode",
+  "request",
+  "request_uri",
   "scope",
 ];
 

@@ -187,10 +187,48 @@ verifies("integration-kit.loader", () => {
     });
   });
 
+  describe("a sign-in in a local integration", () => {
+    it("is refused until the trust content shows it, which a built-in one may declare", () => {
+      const withSignIn = {
+        ...sheet(),
+        kit: 2,
+        signIns: {
+          "example-account": {
+            purpose: "Access to your Example account.",
+            flow: "oauth-code",
+            authorizeUrl: "https://auth.example.com/authorize",
+            tokenUrl: "https://auth.example.com/token",
+            clientId: "example-app-id",
+            access: { hosts: ["api.example.com"], as: "bearer" },
+          },
+        },
+      };
+      const integration = weather();
+      const refused = load({
+        source: { origin: "local", sheet: withSignIn, integration, approvedSheet: withSignIn },
+      }).loaded;
+      expect(codes(refused)).toEqual([
+        { code: "sign-ins-not-allowed", path: ["signIns", "example-account"] },
+      ]);
+      expect(refused.ok ? undefined : refused.error[0]?.fix).toBe(
+        "Remove signIns from its sheet and use an API key, or ask for sign-in support.",
+      );
+      const builtIn = load({ source: { origin: "built-in", sheet: withSignIn, integration } });
+      expect(builtIn.loaded.ok).toBe(true);
+    });
+  });
+
   describe("prepared without its code, as the runner needs it", () => {
-    const prepare = (choices: WorkspaceChoices, data = sheet()) =>
+    const prepare = (
+      choices: WorkspaceChoices,
+      data = sheet(),
+      origin: "built-in" | "local" = "local",
+    ) =>
       prepareIntegration({
-        source: { origin: "local", sheet: data, approvedSheet: data },
+        source:
+          origin === "local"
+            ? { origin, sheet: data, approvedSheet: data }
+            : { origin, sheet: data },
         choices,
         transport: fakeTransport().transport,
         secrets,
@@ -232,6 +270,7 @@ verifies("integration-kit.loader", () => {
           ...sheet(),
           ...signIns,
         },
+        "built-in",
       );
       if (!prepared.ok) expect.fail(JSON.stringify(prepared.error));
       expect(await prepared.value.readSecrets()).toEqual([
