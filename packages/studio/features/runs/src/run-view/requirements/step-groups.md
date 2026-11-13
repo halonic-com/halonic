@@ -16,3 +16,5 @@ When a step ran the branches of a parallel state or the items of a for-each stat
   then its rows are "Item 1" done and "Item 2" running, with no total.
 - Given a step that failed while one branch had not ended,
   then that branch reads "Didn't finish" with the stopped mark.
+- Given step Fan out whose branch translate failed,
+  then the translate row is indented under the step and a screen reader hears "Branch translate, in the step Fan out, failed, …".
