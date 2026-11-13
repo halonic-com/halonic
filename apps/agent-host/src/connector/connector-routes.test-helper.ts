@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, realpath, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { MemoryTrustStore } from "@halonicjs/adapter-memory";
 import type {
   ConnectorCallOptions,
   ConnectorClient,
@@ -8,6 +9,7 @@ import type {
   ConnectorFactory,
   ConnectorFactoryContext,
   ConnectorTool,
+  TrustRecord,
 } from "@halonicjs/ports";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
@@ -16,6 +18,38 @@ import type { OpenConnectorBody } from "./connector-schemas.ts";
 import { ConnectorTable } from "./connector-table.ts";
 
 export const token = randomLaunchToken();
+
+/** The fingerprint the test workspace's record holds. */
+export const trustedFingerprint = "hfp1:test";
+
+/** A trust record for `workspace`, as `halonic trust` saves it, holding the connector that {@link openBody} describes. */
+export function trustRecord(workspace: string): TrustRecord {
+  return {
+    location: workspace,
+    fingerprint: trustedFingerprint,
+    content: {
+      connectors: [
+        {
+          id: "notes",
+          transport: "stdio",
+          settings: {
+            command: "node",
+            args: ["tools/notes.js"],
+            cwd: ".",
+            env: { MODE: "test" },
+            secretEnv: { NOTES_KEY: "‹secret notes-key›" },
+            sites: ["api.example.test"],
+          },
+          tools: { approve: "all" },
+        },
+      ],
+    },
+    grantedAt: "2026-11-12T10:00:00.000Z",
+    appVersion: "0.0.0",
+    pins: {},
+    origin: "cli",
+  };
+}
 
 /** A connector the fake factory made: what it was given, and what was called on it. */
 export class FakeConnector implements ConnectorClient {
@@ -67,6 +101,8 @@ export interface Folders {
 export interface Setup {
   url: string;
   table: ConnectorTable;
+  /** The host's trust records: the workspace is trusted with {@link trustedFingerprint}, as the default open request has it. */
+  trust: MemoryTrustStore;
   made: FakeConnector[];
   folders: Folders;
   close(): Promise<void>;
@@ -74,7 +110,12 @@ export interface Setup {
 
 /** Starts the routes with a fake factory, over real folders. */
 export async function startRoutes(
-  options: { maxConnectors?: number; whileCreating?: (table: ConnectorTable) => void } = {},
+  options: {
+    maxConnectors?: number;
+    whileCreating?: (table: ConnectorTable) => void;
+    /** Leave the workspace without a trust record. */
+    untrusted?: boolean;
+  } = {},
 ): Promise<Setup> {
   const base = await realpath(await mkdtemp(join(tmpdir(), "agent-host-connector-")));
   const folders: Folders = {
@@ -96,17 +137,21 @@ export async function startRoutes(
     },
   };
   const table = new ConnectorTable(options);
+  const trust = new MemoryTrustStore();
+  if (options.untrusted !== true) await trust.grant(trustRecord(folders.workspace));
   const routes = connectorRoutes({
     factory,
     connectors: table,
     workspaceRoots: [folders.workspace],
     http: { fetch: async () => new Response("") },
+    trustStore: trust,
     tokens: { get: async () => null, set: async () => {}, remove: async () => {} } as never,
   });
   const server: HostServer = await startHostServer(token, routes);
   return {
     url: server.url,
     table,
+    trust,
     made,
     folders,
     close: async () => {
@@ -140,7 +185,7 @@ export function openBody(
     secrets: { "notes-key": "fake-value-for-test" },
     workspaceRoot: folders.workspace,
     workingFolders: [folders.agent],
-    trust: { location: folders.workspace, fingerprint: "hfp1:test" },
+    trust: { location: folders.workspace, fingerprint: trustedFingerprint },
     ...change,
   } as OpenConnectorBody;
 }

@@ -1,10 +1,12 @@
 import type { Readable, Writable } from "node:stream";
+import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
 import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
-import type { Harness } from "@halonicjs/ports";
+import type { Harness, TrustStore } from "@halonicjs/ports";
+import { type ProfilePlatform, trustFolder } from "@halonicjs/profile";
 import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
 import { bridgeSocketFolder, sweepLeftOverBridges } from "./bridge/socket-folder.ts";
 import { hostConnectorRoutes } from "./connector/connector-factory.ts";
@@ -148,12 +150,25 @@ export async function run(
   }
 }
 
-/** What workspace connectors may use and never reach: Halonic's own profile folder is never a workspace, and is denied. */
+/**
+ * What workspace connectors may use and never reach: Halonic's own profile folder is never a workspace, and is denied.
+ * The host checks every connector's trust grant against the trust records of that same folder.
+ */
 function connectorPlaces(roots: readonly string[], profileFolder: string | undefined) {
   return {
     workspaceRoots: roots.filter((root) => root !== profileFolder),
     deniedPaths: profileFolder === undefined ? [] : [profileFolder],
+    trustStore: profileFolder === undefined ? undefined : profileTrustStore(profileFolder),
   };
+}
+
+function profileTrustStore(profileFolder: string): TrustStore {
+  const platforms: Partial<Record<NodeJS.Platform, ProfilePlatform>> = {
+    win32: "windows",
+    darwin: "macos",
+  };
+  const platform = platforms[process.platform] ?? "linux";
+  return new FileTrustStore(trustFolder({ platform, root: profileFolder }));
 }
 
 /** The value after `name` in `args`, when there is one. */
@@ -233,13 +248,13 @@ interface HostServices {
 /**
  * @param socketFolder - where each bridge serves a Unix socket (see {@link bridgeSocketFolder});
  *   `undefined` for bridges on loopback ports
- * @param connectors - the folders the launcher named as workspaces, and what a workspace connector's program may never reach
+ * @param connectors - the folders the launcher named as workspaces, what a workspace connector's program may never reach, and the trust records it is checked against
  */
 function hostServices(
   version: string,
   sandbox: SrtSandbox,
   socketFolder: string | undefined,
-  connectors: { workspaceRoots: readonly string[]; deniedPaths: readonly string[] },
+  connectors: ReturnType<typeof connectorPlaces>,
 ): HostServices {
   const sessions = new SessionTable();
   const bridges = new BridgeTable();
@@ -248,6 +263,7 @@ function hostServices(
   const connectorDeps = hostConnectorRoutes(
     { sandbox, version, deniedPaths: connectors.deniedPaths, env: process.env },
     connectors.workspaceRoots,
+    connectors.trustStore,
   );
   const routes = [
     healthRoute(version),

@@ -42,6 +42,7 @@
     "@halonicjs/adapter-system-node": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
+    "@halonicjs/profile": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*",
     "@halonicjs/std": "workspace:*"
   }

@@ -313,6 +313,9 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../packages/core/ports
+      '@halonicjs/profile':
+        specifier: workspace:*
+        version: link:../../packages/core/profile
       '@halonicjs/schema-kit':
         specifier: workspace:*
         version: link:../../packages/core/schema-kit

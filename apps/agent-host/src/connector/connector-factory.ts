@@ -10,7 +10,13 @@ import {
   nodeProgramStarter,
 } from "@halonicjs/adapter-mcp";
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
-import type { ConnectorFactory, HttpClient, Sandbox, TokenStore } from "@halonicjs/ports";
+import type {
+  ConnectorFactory,
+  HttpClient,
+  Sandbox,
+  TokenStore,
+  TrustStore,
+} from "@halonicjs/ports";
 import type { ConnectorRouteDeps } from "./connector-routes.ts";
 import { ConnectorTable } from "./connector-table.ts";
 
@@ -70,14 +76,23 @@ export function hostConnectorFactory(options: HostConnectorOptions): ConnectorFa
  * What the connector routes reach on this host.
  *
  * @param workspaceRoots - the folders the launcher named as workspaces
+ * @param trustStore - the profile's trust records, or `undefined` without a profile folder (nothing opens)
  */
 export function hostConnectorRoutes(
   options: HostConnectorOptions,
   workspaceRoots: readonly string[],
+  trustStore: TrustStore | undefined,
   connectors: ConnectorTable = new ConnectorTable(),
 ): ConnectorRouteDeps {
   const http: HttpClient = createNodeHttpClient({ hostClass: () => "public" });
   // A `stdio` connector reads no sign-in token.
   const tokens: TokenStore = new MemoryTokenStore();
-  return { factory: hostConnectorFactory(options), connectors, workspaceRoots, http, tokens };
+  return {
+    factory: hostConnectorFactory(options),
+    connectors,
+    workspaceRoots,
+    http,
+    tokens,
+    trustStore,
+  };
 }

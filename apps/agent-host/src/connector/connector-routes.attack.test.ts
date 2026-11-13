@@ -2,12 +2,19 @@ import { symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
-import { openBody, post, type Setup, startRoutes } from "./connector-routes.test-helper.ts";
+import {
+  openBody,
+  post,
+  type Setup,
+  startRoutes,
+  trustedFingerprint,
+} from "./connector-routes.test-helper.ts";
 
 /**
  * Attacks from a caller that holds the launch token, such as a compromised
  * page: it may not widen a connector's place, name a workspace the launcher
- * didn't, or reach a connector it didn't open.
+ * didn't, start a program the user's trust record doesn't cover, or reach a
+ * connector it didn't open.
  */
 
 let setup: Setup | undefined;
@@ -126,6 +133,74 @@ verifies("agent-host.connector-routes", () => {
       expect((await post(url, "/v1/connectors/close", opened)).status).toBe(200);
       expect((await post(url, "/v1/connectors/close", opened)).status).toBe(404);
       expect(made[0]?.closeCount).toBe(1);
+    });
+  });
+
+  describe("the trust grant, which the host checks against its own record (HAL-8674)", () => {
+    async function refusedAsUntrusted(body: unknown): Promise<void> {
+      const { url, made } = setup as Setup;
+      const response = await post(url, "/v1/connectors/open", body);
+      expect(response.status).toBe(403);
+      expect(((await response.json()) as { error: { kind: string } }).error.kind).toBe(
+        "workspace_not_trusted",
+      );
+      expect(made).toEqual([]);
+    }
+
+    it("starts nothing for a workspace that has no trust record, whatever grant the request holds", async () => {
+      setup = await startRoutes({ untrusted: true });
+      await refusedAsUntrusted(openBody(setup.folders));
+    });
+
+    it("starts nothing when the grant's fingerprint isn't the record's", async () => {
+      await started();
+      const { folders } = setup as Setup;
+      const trust = { location: folders.workspace, fingerprint: "hfp1:forged" };
+      await refusedAsUntrusted(openBody(folders, { trust }));
+    });
+
+    it("starts nothing when the grant names another location than the workspace", async () => {
+      await started();
+      const { folders } = setup as Setup;
+      const trust = { location: folders.other, fingerprint: trustedFingerprint };
+      await refusedAsUntrusted(openBody(folders, { trust }));
+    });
+
+    it("starts nothing for a program the record doesn't hold, even with a true grant", async () => {
+      await started();
+      const { folders } = setup as Setup;
+      for (const change of [
+        { command: "sh" },
+        { args: ["tools/other.js"] },
+        { id: "other" },
+        { env: { MODE: "test", LD_PRELOAD: "injected.so" } },
+        { inheritEnv: ["HOME"] },
+        { sites: ["*"] },
+        { cwd: "tools" },
+      ]) {
+        await refusedAsUntrusted(openBody(folders, change));
+      }
+    });
+
+    it("starts nothing when the record can't be read", async () => {
+      await started();
+      const { folders, trust } = setup as Setup;
+      trust.get = async () => {
+        throw new Error("The record is damaged.");
+      };
+      await refusedAsUntrusted(openBody(folders));
+    });
+
+    it("opens the connector the record holds, with its sites written in capitals", async () => {
+      await started();
+      const { url, folders, made } = setup as Setup;
+      const response = await post(
+        url,
+        "/v1/connectors/open",
+        openBody(folders, { sites: ["API.example.test"] }),
+      );
+      expect(response.status).toBe(200);
+      expect(made).toHaveLength(1);
     });
   });
 });
