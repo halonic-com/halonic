@@ -453,7 +453,7 @@ mod tests {
         #[cfg(windows)]
         let mut command = {
             let mut command = Command::new("findstr");
-            command.args(["^", ">nul"]);
+            command.arg("^");
             command
         };
         let child = command

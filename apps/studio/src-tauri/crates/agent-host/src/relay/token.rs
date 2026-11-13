@@ -94,15 +94,14 @@ mod tests {
 
     #[test]
     fn relay_limits_token_check_finds_the_end_of_a_head_split_inside_its_terminator() {
-        let mut check = TokenCheck::new(TOKEN);
         let head = format!("GET / HTTP/1.1\r\nAuthorization: Bearer {TOKEN}\r\n\r\n");
+        assert!(TokenCheck::new(TOKEN).found(head.as_bytes()));
         for cut in 1..4 {
             let (first, second) = head.as_bytes().split_at(head.len() - cut);
             let mut check = TokenCheck::new(TOKEN);
             assert!(!check.found(first), "cut {cut}");
             assert!(check.found(second), "cut {cut}");
         }
-        assert!(check.found(head.as_bytes()));
     }
 
     #[test]
