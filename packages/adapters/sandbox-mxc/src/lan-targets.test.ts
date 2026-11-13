@@ -1,7 +1,7 @@
 import type { NetworkInterfaceInfo } from "node:os";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { lanTargets } from "./lan-targets.ts";
+import { hostAddressTargets, lanTargets } from "./lan-targets.ts";
 
 /** One interface address, as `os.networkInterfaces()` lists it. */
 function entry(
@@ -68,6 +68,29 @@ verifies("sandbox-mxc.canary", () => {
         { host: "192.168.1.1", port: 80 },
         { host: "192.168.1.1", port: 443 },
       ]);
+    });
+  });
+
+  describe("the computer's own addresses the box must not reach", () => {
+    it("tries the web ports on each address of the computer, once", () => {
+      const targets = hostAddressTargets({
+        wifi: [entry("IPv4", "192.168.1.20", "255.255.255.0"), entry("IPv6", "fd12::25", "ffff::")],
+        dock: [entry("IPv4", "192.168.1.20", "255.255.255.0")],
+      });
+      expect(targets).toEqual([
+        { host: "192.168.1.20", port: 80 },
+        { host: "192.168.1.20", port: 443 },
+        { host: "fd12::25", port: 80 },
+        { host: "fd12::25", port: 443 },
+      ]);
+    });
+
+    it("leaves out loopback and link-local addresses", () => {
+      const targets = hostAddressTargets({
+        lo: [entry("IPv4", "127.0.0.1", "255.0.0.0", true), entry("IPv6", "::1", "ffff::", true)],
+        auto: [entry("IPv6", "FE80::1", "ffff::")],
+      });
+      expect(targets).toEqual([]);
     });
   });
 });

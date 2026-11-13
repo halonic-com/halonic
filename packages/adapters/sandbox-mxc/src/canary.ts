@@ -22,7 +22,8 @@ import {
   victimText,
   writeFenceFiles,
 } from "./fence-files.ts";
-import { type LoopbackListener, listenOnEveryAddress } from "./loopback-listener.ts";
+import { hostAddressTargets } from "./lan-targets.ts";
+import { type LoopbackListener, listenOnLoopbacks } from "./loopback-listener.ts";
 import { MxcSession } from "./mxc-session.ts";
 import { judgeNetwork, type NetworkAsked, networkSettings } from "./network-probes.ts";
 import {
@@ -157,9 +158,12 @@ export class MxcCanary implements TrustCanary {
     missing: string[];
     networkProven: boolean;
   }> {
-    const listeners = await listenOnEveryAddress();
+    const listeners = await listenOnLoopbacks();
     try {
-      const ports = listeners.map(({ host, port }) => ({ host, port }));
+      const ports = [
+        ...listeners.map(({ host, port }) => ({ host, port })),
+        ...hostAddressTargets(),
+      ];
       const network = networkSettings({
         kind: "loopback",
         host: "127.0.0.1",
@@ -198,7 +202,7 @@ export class MxcCanary implements TrustCanary {
       return {
         report,
         ...judge(report, listeners, written, {
-          ports: listeners.length,
+          ports: ports.length,
           lan: network.lan.length,
           internet: network.internet.length,
           dns: network.dns.length,

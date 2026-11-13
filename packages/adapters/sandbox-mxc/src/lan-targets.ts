@@ -50,6 +50,24 @@ export function lanTargets(
   return addresses.flatMap((host) => lanPorts.map((port) => ({ host, port })));
 }
 
+/**
+ * The computer's own addresses, other than loopback, with the ports to try: the box must not
+ * reach them either, for they are not the bridge. Link-local IPv6 addresses are left out; they
+ * need a scope to be reached. Nothing listens on them, so a refusal is read like any other
+ * (`network-probes.ts`), and only a connection that connects is a leak.
+ *
+ * @param interfaces the computer's network interfaces, as `os.networkInterfaces()` returns them
+ */
+export function hostAddressTargets(
+  interfaces: NodeJS.Dict<NetworkInterfaceInfo[]> = networkInterfaces(),
+): NetworkTarget[] {
+  const addresses = Object.values(interfaces)
+    .flatMap((list) => list ?? [])
+    .filter((entry) => !entry.internal && !entry.address.toLowerCase().startsWith("fe80:"))
+    .map((entry) => entry.address);
+  return [...new Set(addresses)].flatMap((host) => lanPorts.map((port) => ({ host, port })));
+}
+
 /** One address in each private IPv4 range the computer is on, not its own. */
 function ipv4Neighbours(
   entries: readonly NetworkInterfaceInfo[],
