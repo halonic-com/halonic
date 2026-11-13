@@ -2,6 +2,7 @@
 
 - Approval: the package owner (Liam) approves this in review of #2463 on HAL-8512
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mxWDiTEp1G3s756BSHLz+HI/yyMTeEp5ysOzmPVCAmV9OyZSTALTnXVQEdNluUY8AjrLoCSEHQRXc0Hb17mqDw==
 - Task: HAL-8467
 
 ## What changes
