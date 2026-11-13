@@ -1,7 +1,7 @@
 # Decision: the CLI compare checks that a call still prints something
 
 - Approval: HAL-8202, from the guardian review on HAL-8178; Liam reviews and signs this note
-- Kind: internal
+- Kind: user-visible
 - Task: HAL-8202
 
 ## What changes
