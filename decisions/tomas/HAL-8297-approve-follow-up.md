@@ -27,7 +27,9 @@ named approval fails. Their colour and `NO_COLOR` goldens are unchanged. One gol
 
 ## Covers
 
+- cli.commands.tools.approve
 - apps/cli/src/commands/tools/requirements/approve.md
 - apps/cli/src/commands/tools/golden/approve-changed.txt
 - apps/cli/src/commands/tools/golden/approve-not-listed.txt
 - apps/cli/src/commands/tools/golden/approve-refused.txt
+- apps/cli/src/commands/tools/golden/approve-several-stops.txt
