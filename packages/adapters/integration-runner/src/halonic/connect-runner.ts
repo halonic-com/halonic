@@ -2,7 +2,7 @@
 // stdin and stdout, holds it to the protocol and the limits, and offers it to
 // the engine as an ordinary IntegrationConnection (design HAL-958, section 3).
 
-import { removeSecrets, type SecretForms } from "@halonicjs/adapter-integration-kit";
+import { type CurrentSecretForms, removeSecrets } from "@halonicjs/adapter-integration-kit";
 import type {
   IntegrationConnection,
   IntegrationHttpClient,
@@ -46,8 +46,12 @@ export interface ConnectRunnerOptions {
   tools: readonly string[];
   /** The kit's client for this integration: every request the runner asks for goes through it. */
   http: IntegrationHttpClient;
-  /** Every form of this integration's secrets, to filter what leaves the runner. */
-  secrets: SecretForms;
+  /**
+   * Every form of this integration's secrets and sign-in tokens, as they are
+   * now, to filter what leaves the runner. It is asked each time something is
+   * filtered, because a sign-in token can be issued while the runner runs.
+   */
+  secrets: CurrentSecretForms;
   /** Hears what the connector should be paused for and recorded as `sandbox.blocked`. */
   onBlocked?: (block: RunnerBlock) => void;
   /** Hears the runner's stderr, filtered and cut. */
@@ -126,7 +130,7 @@ class RunnerBridge {
     this.#calls = new CallTable(limits, {
       send: (frame) => this.#send(frame),
       sendCancel: (call) => this.#send({ type: "cancel", call }),
-      filter: (text) => removeSecrets(text, options.secrets),
+      filter: (text) => removeSecrets(text, options.secrets()),
       onGraceOver: () => this.#halt({ reason: "call-deadline" }),
       onBusy: () => this.#heartbeat.duringCall(),
       onIdle: () => {

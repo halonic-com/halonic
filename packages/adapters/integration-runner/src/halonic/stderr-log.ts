@@ -3,7 +3,10 @@
 // flood can't fill Halonic's memory or block the runner (A21), and counted,
 // so the log says how much is missing.
 
-import { removeSecretsStream, type SecretForms } from "@halonicjs/adapter-integration-kit";
+import {
+  type CurrentSecretForms,
+  removeCurrentSecretsStream,
+} from "@halonicjs/adapter-integration-kit";
 
 /** Passes the runner's stderr on, filtered and cut. */
 export class StderrLog {
@@ -27,10 +30,10 @@ export class StderrLog {
    * Reads the stream to its end. Resolves when it ends, also when it fails,
    * because a broken stderr says nothing more about the runner than its exit.
    */
-  async pump(stderr: ReadableStream<Uint8Array>, secrets: SecretForms): Promise<void> {
+  async pump(stderr: ReadableStream<Uint8Array>, secrets: CurrentSecretForms): Promise<void> {
     const decoder = new TextDecoder();
     try {
-      for await (const piece of stderr.pipeThrough(removeSecretsStream(secrets))) {
+      for await (const piece of stderr.pipeThrough(removeCurrentSecretsStream(secrets))) {
         const room = Math.max(0, this.#maxBytesPerCall - this.#keptBytes);
         const kept = piece.subarray(0, room);
         this.#keptBytes += kept.byteLength;

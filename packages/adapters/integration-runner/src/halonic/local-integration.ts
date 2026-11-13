@@ -11,14 +11,13 @@
 // confirmed, the launcher's. This file never starts a process itself.
 
 import {
+  type CurrentSecretForms,
   declarationProblems,
   type LoadedIntegration,
   type LoadProblem,
   type PreparedIntegration,
   type PrepareIntegrationOptions,
   prepareIntegration,
-  type SecretForms,
-  secretForms,
 } from "@halonicjs/adapter-integration-kit";
 import type {
   IntegrationConnection,
@@ -38,8 +37,11 @@ export interface LocalRunnerBridge {
   readonly settings: Readonly<Record<string, unknown>>;
   /** The names of the tools its sheet declares. Only these are called. */
   readonly tools: readonly string[];
-  /** Every form of its secrets' values, read for this start, for the bridge's filter. */
-  readonly secrets: SecretForms;
+  /**
+   * Every form of its secrets' values, read for this start, and of its
+   * sign-in tokens as they are at each use, for the bridge's filter.
+   */
+  readonly secrets: CurrentSecretForms;
 }
 
 /**
@@ -115,7 +117,7 @@ async function load(
   if (!prepared.ok) {
     return prepared;
   }
-  const { readSecrets: _readSecrets, ...checked } = prepared.value;
+  const { readSecrets: _readSecrets, currentSecretForms: _forms, ...checked } = prepared.value;
   const links = folderLinkProblems(checked.sheet.id, folder, folderDisk);
   if (links.length > 0) {
     return err(links);
@@ -233,7 +235,7 @@ class LocalRunners {
   }
 
   async #startNext(): Promise<RunnerConnection> {
-    const { host, sheet, readSecrets } = this.#prepared;
+    const { host, sheet, currentSecretForms } = this.#prepared;
     if (this.#declared !== undefined) {
       const links = this.#linkProblems();
       if (links.length > 0) {
@@ -246,7 +248,7 @@ class LocalRunners {
         http: host.http,
         settings: host.settings,
         tools: sheet.tools.map((tool) => tool.name),
-        secrets: secretForms(await readSecrets()),
+        secrets: await currentSecretForms(),
       });
     } catch (error) {
       this.#current = undefined;
