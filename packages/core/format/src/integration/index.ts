@@ -2,6 +2,10 @@
 // the integration kit and the conformance suite. It must not import `yaml`,
 // even indirectly; integration-entry.test.ts checks that.
 
+export {
+  approvedSignIns,
+  type ResolvedSignIn,
+} from "../kinds/integration/approved-sign-ins.ts";
 export { checkIntegrationSheet } from "../kinds/integration/kind.ts";
 export { parseIntegrationSheet, type SheetProblem } from "../kinds/integration/parse-sheet.ts";
 export {
