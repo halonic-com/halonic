@@ -3,6 +3,7 @@
 - Approval: Liam asked for both fixes on HAL-8297, the two [minor] findings of his review of #2344
   (HAL-8290); Liam signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jylEngcwctqXoi6jJgTMumzWa8cNC60eiINIe/3AIa3/MrroIeUOXJ80lbRpSATIBt1qeK9m7IaKbf51wkeRAw==
 - Task: HAL-8297
 
 ## What changes
