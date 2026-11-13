@@ -19,6 +19,13 @@ export const accessTokenMinimumLifeMs = 60_000;
  */
 export const forcedRefreshIntervalMs = 30_000;
 
+/**
+ * How long past its stated expiry an access token stays in the secret filter.
+ * Many services honour a token a few minutes longer than `expires_in` says, so
+ * a token echoed back just after its expiry must still be removed.
+ */
+export const filterGraceMs = 600_000;
+
 /** The life assumed for a token whose answer had no `expires_in`; it is placed until {@link accessTokenMinimumLifeMs} of it is left. The filter holds it until the process ends. */
 export const unknownLifetimeMs = 300_000;
 
@@ -27,7 +34,7 @@ export interface ManagedSignInTokens extends SignInTokens {
   /**
    * Drops the token in use for a sign-in that was signed out, so the next
    * `access` doesn't hand it out. What the secret filter holds stays until it
-   * expires: the server may not have revoked it.
+   * expires and its grace period passes: the server may not have revoked it.
    */
   forget(signIn: string): void;
   /**
@@ -71,7 +78,7 @@ interface IssuedToken {
 /** What is kept in memory for one sign-in. */
 interface SignInState {
   current?: IssuedToken | undefined;
-  /** Every access token not yet expired, for the secret filter. A rejected one stays: a 401 doesn't prove it was revoked. */
+  /** Every access token not yet {@link filterGraceMs} past its expiry, for the secret filter. A rejected one stays: a 401 doesn't prove it was revoked. */
   issued: IssuedToken[];
   refreshToken?: string;
   clientSecret?: string | undefined;
@@ -264,7 +271,7 @@ export function createSignInTokens(settings: SignInTokensSettings): ManagedSignI
       const values: string[] = [];
       for (const state of states.values()) {
         state.issued = state.issued.filter(
-          ({ expiresAtMs }) => expiresAtMs === undefined || expiresAtMs > now,
+          ({ expiresAtMs }) => expiresAtMs === undefined || expiresAtMs + filterGraceMs > now,
         );
         values.push(...state.issued.map(({ value }) => value));
         for (const secret of [state.refreshToken, state.clientSecret]) {

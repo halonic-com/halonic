@@ -183,13 +183,15 @@ verifies("oauth-sign-in.sign-in-tokens", () => {
     });
   });
 
-  it("lists the access tokens not yet expired, the refresh token and the client secret for the filter", async () => {
+  it("lists the access tokens until 10 minutes after their expiry, the refresh token and the client secret for the filter", async () => {
     const { tokens, saveGrant, passSeconds } = setup(numberedAnswers());
     await saveGrant();
     expect(tokens.filterValues()).toEqual([]);
 
     const first = await tokens.access("work-account");
-    passSeconds(3600);
+    passSeconds(3600 + 599);
+    expect(tokens.filterValues()).toContain(first);
+    passSeconds(1);
     const second = await tokens.access("work-account");
 
     expect(tokens.filterValues()).toEqual([second, firstRefreshToken, fakeSecret]);
