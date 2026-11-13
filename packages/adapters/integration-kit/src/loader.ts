@@ -13,6 +13,7 @@ import {
   pluginSecrets,
   type SecretPlacement,
   type Secrets,
+  type SignInTokens,
   type TokenStore,
   workspaceSecrets,
 } from "@halonicjs/ports";
@@ -74,6 +75,12 @@ export interface LoadIntegrationOptions {
   readonly transport: AddressCheckingHttpClient;
   readonly secrets: Secrets;
   readonly tokens: TokenStore;
+  /**
+   * The access tokens of the sheet's sign-ins, from the host's
+   * `createIntegrationSignIns`. Without it a request that places a sign-in's
+   * token is refused as `sign-in-needed`. The integration never sees it.
+   */
+  readonly signInTokens?: SignInTokens;
   /** What this runtime offers beyond HTTP, for the sheet's `needs`, such as `process`. Default none. */
   readonly capabilities?: readonly string[];
   readonly now?: () => number;
@@ -180,6 +187,7 @@ function prepare(
     transport: options.transport,
     secrets,
     tokens: options.tokens,
+    ...(options.signInTokens ? { signInTokens: options.signInTokens } : {}),
     settings,
     ...(resolved.value.limits ? { limits: requestLimits(resolved.value.limits) } : {}),
     ...(options.now ? { now: options.now } : {}),
