@@ -3,6 +3,7 @@ import { checkDailyRequests } from "./daily-requests.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { checkHost, checkOrigin, readBody, withSecurityHeaders } from "./security.ts";
 import { createSignIn, passwordSecretName } from "./sign-in.ts";
+import { createTrustRoutes } from "./trust-routes.ts";
 
 function checkConfig(config: ServerConfig): void {
   if (config.allowedHosts.length === 0) {
@@ -23,12 +24,13 @@ function isWholeNumberAboveZero(value: number): boolean {
 /**
  * Builds the server. Every request passes the security layer first: the
  * `Host` check, the `Origin` check, the daily request ceiling, then the body
- * limit. Then `GET /api/hello` and the sign-in routes answer. A route behind the sign-in needs a session when a password is set.
+ * limit. Then `GET /api/hello` and the sign-in routes answer. A route behind the sign-in needs a session when a password is set. A route that starts a run asks the trust gate first.
  */
 export const createServer: CreateServer = ({ config, ports }) => {
   checkConfig(config);
   const allowedHosts = config.allowedHosts.map((name) => name.toLowerCase());
   const signIn = createSignIn(ports);
+  const trustRoutes = createTrustRoutes(ports);
 
   async function route(
     request: Request,
@@ -52,6 +54,18 @@ export const createServer: CreateServer = ({ config, ports }) => {
         return (await signIn.isSignedIn(request, context))
           ? Response.json({ signedIn: true })
           : errorResponse(serverErrors.notSignedIn);
+      case "GET /api/trust":
+        return (await signIn.isSignedIn(request, context))
+          ? trustRoutes.show()
+          : errorResponse(serverErrors.notSignedIn);
+      case "POST /api/runs":
+      case "POST /api/agent-runs":
+        if (!(await signIn.isSignedIn(request, context))) {
+          return errorResponse(serverErrors.notSignedIn);
+        }
+        return endpoint === "POST /api/runs"
+          ? trustRoutes.startWorkflow(body)
+          : trustRoutes.startAgent(body);
       default:
         return errorResponse(serverErrors.notFound);
     }

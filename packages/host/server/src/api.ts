@@ -91,6 +91,26 @@ export interface ServerConfig {
   readonly maxBodyBytes: number;
 }
 
+/** Whether the workspace may start programs on this computer, as a person last decided. */
+export type TrustState = "trusted" | "new" | "changed" | "unreadable" | "refused";
+
+/** What the trust check found about the workspace the server runs. */
+export interface TrustDecision {
+  readonly state: TrustState;
+  /** One short sentence for a person, such as what changed since the workspace was trusted. */
+  readonly message: string;
+}
+
+/**
+ * The host's trust check for the workspace the server runs. It is read-only on
+ * purpose: only a person at the computer grants trust, with `halonic trust`,
+ * so the server has no call to grant it and no way to update a record.
+ * It checks the workspace as it is now, every time, and never from memory.
+ */
+export interface TrustGate {
+  check(): Promise<TrustDecision>;
+}
+
 /** Records the cause of an unexpected failure, so an operator can find it. It must not throw. */
 export interface ErrorLog {
   record(error: unknown): void;
@@ -106,6 +126,8 @@ export interface ServerPorts {
   readonly passwordHasher: PasswordHasher;
   /** Shared login limits and session records, so every instance of a deployment agrees. */
   readonly coordination: Coordination;
+  /** The trust check: every route that starts a run asks it first. */
+  readonly trust: TrustGate;
   /** The daily request counter. */
   readonly requestCounts: RequestCountStore;
   /** Where the cause of an unexpected failure goes. The reply to the caller never carries it. */
