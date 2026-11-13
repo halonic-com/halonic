@@ -16,6 +16,7 @@
     "test:fence": "vitest run --config vitest.fence.config.ts"
   },
   "dependencies": {
+    "@halonicjs/adapter-connector-stdio-sandbox": "workspace:*",
     "@halonicjs/adapter-coordination-node": "workspace:*",
     "@halonicjs/adapter-env-secrets": "workspace:*",
     "@halonicjs/adapter-fs-node": "workspace:*",

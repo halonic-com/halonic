@@ -4,6 +4,10 @@
 // workspace's source, such as `halonic tools` (HAL-2827), gets them from
 // here and builds nothing of its own.
 
+import {
+  SandboxStdioConnectorFactory,
+  SessionWorkspaceFactory,
+} from "@halonicjs/adapter-connector-stdio-sandbox";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { classifyAddress, type HostClass } from "@halonicjs/adapter-http-kit";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
@@ -17,7 +21,7 @@ import {
 } from "@halonicjs/adapter-mcp";
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { ConnectorFactories } from "@halonicjs/app";
-import type { HttpClient, TokenStore } from "@halonicjs/ports";
+import type { ConnectorFactory, HttpClient, Sandbox, TokenStore } from "@halonicjs/ports";
 import { profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { nodeCommandSearch } from "./command-paths.ts";
@@ -59,25 +63,73 @@ export function connectorHttpClient(): HttpClient {
   return createNodeHttpClient({ hostClass: connectorHostClass });
 }
 
+/** What runs a workspace's `stdio` connectors in a sandbox session, where the sandbox works (D45). */
+export interface ConnectorFence {
+  /** The sandbox each connector's session opens in. */
+  readonly sandbox: Pick<Sandbox, "check" | "open">;
+  /** What a connector's program may never reach: Halonic's own data. */
+  readonly deniedPaths: readonly string[];
+}
+
+/** How long one connector's session may last: a run's connectors end with the run, so this only bounds a stuck one. */
+const connectorSessionLimitMs = 24 * 60 * 60_000;
+/** How long one connector call may take. */
+const connectorCallLimitMs = 5 * 60_000;
+
 /**
  * The CLI's `stdio` and `http` factories. A `stdio` program starts with
  * `starter`, inheriting `env`; a pinned one is found in `env` too.
+ *
+ * With a `fence`, a program starts in a sandbox session of its own while the
+ * sandbox works, and on this computer, as before, while it doesn't
+ * (`connector-stdio-sandbox.workspace-connector-session`).
  */
 export function cliConnectorFactories(
   starter: ProgramStarter,
   env: Readonly<Record<string, string | undefined>>,
+  fence?: ConnectorFence,
 ): ConnectorFactories {
   const clientInfo = { name: "halonic", version: halonicVersion };
+  const runners = createRunnerSearch(env);
+  const unfenced = new McpStdioConnectorFactory({
+    starter,
+    folders: nodeLaunchFolders,
+    runners,
+    inheritedEnv: env,
+    clientInfo,
+  });
   return new ConnectorFactories([
-    new McpStdioConnectorFactory({
-      starter,
-      folders: nodeLaunchFolders,
-      runners: createRunnerSearch(env),
-      inheritedEnv: env,
-      clientInfo,
-    }),
+    fence === undefined ? unfenced : sessionFactory(fence, unfenced, env, runners, clientInfo),
     new McpHttpConnectorFactory({ clientInfo }),
   ]);
+}
+
+function sessionFactory(
+  fence: ConnectorFence,
+  unfenced: ConnectorFactory,
+  env: Readonly<Record<string, string | undefined>>,
+  runners: ReturnType<typeof createRunnerSearch>,
+  clientInfo: { name: string; version: string },
+): ConnectorFactory {
+  return new SessionWorkspaceFactory({
+    sandbox: fence.sandbox,
+    sandboxed: (setupOf) =>
+      new SandboxStdioConnectorFactory({
+        clientInfo,
+        localTools: () => undefined,
+        workspaceConnectors: setupOf,
+        // The CLI shows a blocked access in the run's own events, not from a connector.
+        onBlocked: () => undefined,
+        onUndeclaredTool: () => undefined,
+      }),
+    unfenced,
+    folders: nodeLaunchFolders,
+    runners,
+    deniedPaths: fence.deniedPaths,
+    path: env["PATH"] ?? "",
+    timeLimitMs: connectorSessionLimitMs,
+    callTimeoutMs: connectorCallLimitMs,
+  });
 }
 
 /**

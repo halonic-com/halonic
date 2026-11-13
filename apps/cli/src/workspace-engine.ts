@@ -9,8 +9,9 @@
 
 import { nodeProgramStarter } from "@halonicjs/adapter-mcp";
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
+import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import type { HttpClient, TrustGrant } from "@halonicjs/ports";
-import type { ProfileEnvironment } from "@halonicjs/profile";
+import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import { closeAfterStop, stoppedCloseLimitMs } from "./close-after-stop.ts";
@@ -36,6 +37,7 @@ import {
   type SandboxGateHost,
   sandboxGateMachine,
 } from "./sandbox-gate-machine.ts";
+import { privateJournalFolder } from "./sandbox-journals.ts";
 import {
   type GaveUpRun,
   retriedLine,
@@ -44,6 +46,7 @@ import {
   stuckTimerWatch,
 } from "./stuck-timers.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
+import { nodeProfileEnvironment } from "./workspace-runs.ts";
 import type { WorkspaceVersions } from "./workspace-versions.ts";
 
 /** What opening a workspace's engine uses on this computer, so tests can fix it. */
@@ -173,7 +176,9 @@ export async function openWorkspaceEngine(
     workspace: target.workspace,
     ...(target.versions === undefined ? {} : { versions: target.versions }),
     workspaceRoot: target.dir.root,
-    runConnectors: (setup.runConnectors ?? computerRunConnectors)(target.trust),
+    runConnectors: (
+      setup.runConnectors ?? ((trust) => computerRunConnectors(trust, setup.profile))
+    )(target.trust),
     secrets: context.secrets,
     http: setup.http,
     // The scheduler retries a failed step; one that keeps failing stops the command with its
@@ -240,10 +245,18 @@ export async function checkEngineRuns(
 }
 
 /** This computer's connector programs, `PATH` and network, for {@link WorkspaceEngineSetup.runConnectors}. */
-function computerRunConnectors(trust: TrustGrant | null): LocalRunConnectorsInput {
+function computerRunConnectors(
+  trust: TrustGrant | null,
+  environment: ProfileEnvironment = nodeProfileEnvironment(),
+): LocalRunConnectorsInput {
+  const profile = profileFolder(environment);
   return {
     trust,
-    factories: cliConnectorFactories(nodeProgramStarter, process.env),
+    // Workspace programs start in a sandbox session where the sandbox works (D45).
+    factories: cliConnectorFactories(nodeProgramStarter, process.env, {
+      sandbox: new SrtSandbox(undefined, undefined, privateJournalFolder(profile)),
+      deniedPaths: [profile.root],
+    }),
     // The CLI connects no built-in Google connector yet, the only kind that reads sign-ins.
     context: { http: connectorHttpClient(), tokens: new MemoryTokenStore() },
   };

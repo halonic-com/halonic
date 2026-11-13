@@ -20,6 +20,10 @@ export {
 } from "./sandbox-connector.ts";
 export { sandboxProgram } from "./sandbox-program.ts";
 export {
+  SessionWorkspaceFactory,
+  type SessionWorkspaceOptions,
+} from "./session-workspace-factory.ts";
+export {
   refuseAgentFolderStart,
   type WorkspaceConnectorSetting,
   workspaceConnectorPlace,
