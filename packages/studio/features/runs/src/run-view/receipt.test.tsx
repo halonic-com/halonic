@@ -62,3 +62,21 @@ verifies("runs.run-view.receipt-messages-read", () => {
     expect(root.querySelector("h3")).toBeNull();
   });
 });
+
+verifies("runs.run-view.receipt-models-cost", () => {
+  it("draws a Models and cost section, and leaves it out with no lines", () => {
+    const root = render(
+      <Receipt
+        summary="Finished"
+        approvals={[]}
+        models={["sonnet · 1 call", "Estimated cost €0.01"]}
+      />,
+    );
+    expect(root.querySelector("h3")?.textContent).toBe("Models and cost");
+    expect([...root.querySelectorAll("li")].map((item) => item.textContent)).toEqual([
+      "sonnet · 1 call",
+      "Estimated cost €0.01",
+    ]);
+    expect(render(<Receipt summary="Finished" approvals={[]} />).querySelector("h3")).toBeNull();
+  });
+});

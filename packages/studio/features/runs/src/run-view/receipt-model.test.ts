@@ -3,7 +3,13 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import type { SourcedRun } from "../api.ts";
 import { approvalAt, minutesLater, mondayMorning, summaryWith } from "../summary.test-helper.ts";
-import { approvalLines, messageLines, readLines, summaryLine } from "./receipt-model.ts";
+import {
+  approvalLines,
+  messageLines,
+  modelLines,
+  readLines,
+  summaryLine,
+} from "./receipt-model.ts";
 import { logOf } from "./run-log.test-helper.ts";
 
 const context = {
@@ -216,5 +222,79 @@ verifies("runs.run-view.receipt-messages-read", () => {
   it("has no lines for a run that read and messaged nothing", () => {
     expect(readLines(log())).toEqual([]);
     expect(messageLines(log())).toEqual([]);
+  });
+});
+
+function modelCall(
+  model: string,
+  extra: { cost?: number; cached?: true; paidBy?: "subscription" } = {},
+  usage = { inputTokens: 1000, outputTokens: 300 },
+): RunEventBody {
+  return {
+    type: "llm.response",
+    agent: "reporter",
+    provider: "anthropic",
+    model,
+    usage,
+    latencyMs: 10,
+    text: "ok",
+    ...extra,
+  };
+}
+
+verifies("runs.run-view.receipt-models-cost", () => {
+  const total = { cost: 0.0083, unpricedCalls: 0 };
+  const lines = (bodies: RunEventBody[], summary = total) =>
+    modelLines(
+      logOf(
+        id,
+        bodies.map((body) => [1, body] as const),
+      ),
+      summary,
+      "EUR",
+    );
+
+  it("has one line per model with its calls, tokens and cost, then the total", () => {
+    expect(
+      lines([modelCall("sonnet", { cost: 0.004 }), modelCall("sonnet", { cost: 0.0043 })]),
+    ).toEqual([
+      "sonnet · 2 calls · 2,000 in · 600 out · €0.008",
+      "Estimated cost €0.008 · from the prices in Settings › Models",
+    ]);
+  });
+
+  it("says a cached answer was not a model call, never €0", () => {
+    expect(lines([modelCall("sonnet", { cached: true })], { cost: 0, unpricedCalls: 0 })).toEqual([
+      "sonnet · 1 call · cached, no model call",
+    ]);
+  });
+
+  it("says a call without a price has none and counts it beside the total", () => {
+    expect(
+      lines([modelCall("sonnet", { cost: 0.0083 }), modelCall("odd")], {
+        cost: 0.0083,
+        unpricedCalls: 1,
+      }),
+    ).toEqual([
+      "sonnet · 1 call · 1,000 in · 300 out · €0.008",
+      "odd · 1 call · 1,000 in · 300 out · No price",
+      "Estimated cost €0.008 + 1 call without a price · from the prices in Settings › Models",
+    ]);
+    expect(lines([modelCall("odd")], { cost: 0, unpricedCalls: 1 }).at(-1)).toBe(
+      "1 call without a price · from the prices in Settings › Models",
+    );
+  });
+
+  it("says a subscription paid for a call", () => {
+    expect(
+      lines([modelCall("sonnet", { paidBy: "subscription", cost: 0 })], {
+        cost: 0,
+        unpricedCalls: 0,
+      }),
+    ).toEqual(["sonnet · 1 call · 1,000 in · 300 out · on your subscription"]);
+  });
+
+  it("has no lines for a run that made no model call", () => {
+    expect(lines([])).toEqual([]);
   });
 });

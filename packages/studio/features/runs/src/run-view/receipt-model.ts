@@ -3,8 +3,15 @@
 // receipt (cli-output 3.4): how it stands, what it sent, how often it asked
 // the user, and its estimated cost.
 
-import { runStanding, runWait } from "@halonicjs/app";
-import type { ApprovalResolver, RunEvent, RunSends, SendCount, SendGroup } from "@halonicjs/events";
+import { moneyAmount, runStanding, runWait } from "@halonicjs/app";
+import type {
+  ApprovalResolver,
+  RunEvent,
+  RunSends,
+  RunSummary,
+  SendCount,
+  SendGroup,
+} from "@halonicjs/events";
 import { draftsOf, readsOf, sendsOf } from "@halonicjs/events";
 import type { SourcedRun } from "../api.ts";
 import { costParts, currentStepName, needsYouLine, took, waitingLine } from "../list/run-row.ts";
@@ -190,4 +197,83 @@ export function messageLines(events: readonly RunEvent[]): string[] {
 export function readLines(events: readonly RunEvent[]): string[] {
   const reads = readsOf(events);
   return reads.length === 0 ? [] : [receiptWords.read(countsInWords(reads))];
+}
+
+/**
+ * The receipt's Models and cost section (RCPT-2.5): one line per model with
+ * its calls, tokens and estimated cost, then a total from the run's summary.
+ * A cached answer says "cached, no model call", a call without a price says
+ * "No price" and is never counted as zero, and a call the person's own
+ * subscription paid for says so. Empty when the run made no model call, which
+ * hides the section.
+ *
+ * @example
+ * modelLines(events, summary, "EUR");
+ * // ["claude-sonnet · 2 calls · 1,204 in · 312 out · €0.008", "Estimated cost €0.008 · from the prices in Settings › Models"]
+ */
+export function modelLines(
+  events: readonly RunEvent[],
+  summary: Pick<RunSummary, "cost" | "unpricedCalls">,
+  currency: string,
+): string[] {
+  const models = new Map<string, ModelTotals>();
+  for (const event of events) {
+    if (event.type !== "llm.response") continue;
+    const totals = models.get(event.model) ?? emptyTotals();
+    models.set(event.model, totals);
+    totals.calls++;
+    if (event.cached === true) {
+      totals.cached++;
+      continue;
+    }
+    totals.input += event.usage.inputTokens;
+    totals.output += event.usage.outputTokens;
+    if (event.paidBy === "subscription") totals.subscription++;
+    else if (event.cost === undefined) totals.unpriced++;
+    else totals.cost += event.cost;
+  }
+  if (models.size === 0) return [];
+  const lines = [...models].map(([model, totals]) => modelLine(model, totals, currency));
+  const total = totalLine(summary, currency);
+  return total === undefined ? lines : [...lines, total];
+}
+
+interface ModelTotals {
+  calls: number;
+  cached: number;
+  subscription: number;
+  unpriced: number;
+  input: number;
+  output: number;
+  cost: number;
+}
+
+function emptyTotals(): ModelTotals {
+  return { calls: 0, cached: 0, subscription: 0, unpriced: 0, input: 0, output: 0, cost: 0 };
+}
+
+function modelLine(model: string, totals: ModelTotals, currency: string): string {
+  const parts = [receiptWords.modelCalls(model, totals.calls)];
+  if (totals.cached === totals.calls)
+    return [...parts, receiptWords.modelCached].join(lineSeparator);
+  parts.push(receiptWords.modelTokens(totals.input, totals.output));
+  const priced = totals.calls - totals.cached - totals.subscription - totals.unpriced;
+  if (priced > 0) parts.push(moneyAmount(totals.cost, currency));
+  if (totals.unpriced > 0) parts.push(receiptWords.modelNoPrice);
+  if (totals.subscription > 0) parts.push(receiptWords.modelSubscription);
+  if (totals.cached > 0) parts.push(`${totals.cached} ${receiptWords.modelCached}`);
+  return parts.join(lineSeparator);
+}
+
+/** The total: the estimated cost and the calls without a price; nothing when neither is there. */
+function totalLine(
+  summary: Pick<RunSummary, "cost" | "unpricedCalls">,
+  currency: string,
+): string | undefined {
+  if (summary.cost > 0) {
+    return receiptWords.modelsTotal(moneyAmount(summary.cost, currency), summary.unpricedCalls);
+  }
+  return summary.unpricedCalls > 0
+    ? receiptWords.modelsTotalUnpriced(summary.unpricedCalls)
+    : undefined;
 }

@@ -12,7 +12,13 @@ import { detailRows } from "./details-model.ts";
 import { EveryStep, useRunLog } from "./every-step.tsx";
 import { everyStep } from "./every-step-model.ts";
 import { Receipt } from "./receipt.tsx";
-import { approvalLines, messageLines, readLines, summaryLine } from "./receipt-model.ts";
+import {
+  approvalLines,
+  messageLines,
+  modelLines,
+  readLines,
+  summaryLine,
+} from "./receipt-model.ts";
 import {
   type BannerAction,
   type RunBanner,
@@ -108,6 +114,7 @@ export function RunView({
                     approvals={approvalLines(log)}
                     messages={messageLines(log)}
                     reads={readLines(log)}
+                    models={modelLines(log, run.summary, context.currency)}
                   />
                   <EveryStep
                     log={log}
