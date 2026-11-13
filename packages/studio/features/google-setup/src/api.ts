@@ -26,6 +26,11 @@ export interface GoogleSetupAccount {
    * guess until then, so the checklist stays shut.
    */
   readonly askAccountType: boolean;
+  /**
+   * The addresses of the other accounts whose setup uses the same client. **Start over** keeps
+   * the client secret while any are listed, and says so. Usually none.
+   */
+  readonly clientSharedWith: readonly string[];
 }
 
 /** The Google accounts of the open workspace. The app provides it. */
@@ -37,6 +42,12 @@ export interface GoogleSetupAccounts {
    * It rejects when the engine can't save it; nothing changes then.
    */
   edit(accountRef: string, edit: SetupEdit): Promise<void>;
+  /**
+   * **Start over**: removes the account's setup, its sign-in and its client secret (unless another
+   * account uses the client), and leaves a fresh setup at step 1 that `list` returns. It never
+   * talks to Google. It rejects when the engine can't do it; nothing changes then.
+   */
+  startOver(accountRef: string): Promise<void>;
   /** Calls `listener` whenever an account may have changed. Returns a function that stops the calls. */
   subscribe(listener: () => void): () => void;
 }

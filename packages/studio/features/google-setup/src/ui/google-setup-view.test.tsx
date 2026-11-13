@@ -3,14 +3,19 @@ import type { SetupViewProps } from "@halonicjs/studio-feature-inbox/api";
 import { loadView } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, type ComponentType } from "react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { account, atlas, fakeAccounts, ledger, record } from "../accounts.test-helper.ts";
 import type { GoogleSetupAccount } from "../api.ts";
 import { googleSetupSource } from "../google-setup-source.ts";
+import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { GoogleSetupView } from "./google-setup-view.tsx";
 
-afterEach(unmountAll);
+beforeEach(fakeModal);
+afterEach(() => {
+  unmountAll();
+  restoreModal();
+});
 
 const item = {
   kind: "setup",
@@ -241,7 +246,9 @@ verifies("google-setup.checklist", () => {
   it("shows no reason in a step that has no Done, next, while the engine isn't answering", async () => {
     const four = record(["project", "apis", "consent", "scopes"]);
     const { container } = await open([account(four)], false);
-    expect(container.textContent).not.toContain("The engine isn't answering.");
+    expect(container.querySelector("section > ol")?.textContent).not.toContain(
+      "The engine isn't answering.",
+    );
   });
 
   it("closes the item with Not now", async () => {
@@ -261,5 +268,105 @@ verifies("google-setup.setup-source", () => {
     await settled();
     await press(button(container, "Done, next"));
     expect(fake.edits).toHaveLength(1);
+  });
+});
+
+verifies("google-setup.resume-and-start-over", () => {
+  const threeDone = record(["project", "apis", "consent"], {
+    projectId: "halonic-x",
+    startedAt: "2026-11-08T10:00:00.000Z",
+  });
+
+  function dialog(_container: HTMLElement): HTMLElement | null {
+    return document.querySelector("dialog");
+  }
+
+  it("opens at the first step not done and says when it was started", async () => {
+    const { container } = await open([account(threeDone)]);
+    expect(container.textContent).toContain("You started this on 8 Nov. Steps 1–3 are done.");
+    expect(steps(container)[3]?.getAttribute("aria-current")).toBe("step");
+  });
+
+  it("says nothing about a start when no step is done", async () => {
+    const { container } = await open([account(record([]))]);
+    expect(container.textContent).not.toContain("You started this");
+  });
+
+  it("says progress is kept and offers Start over", async () => {
+    const { container } = await open([account(threeDone)]);
+    expect(container.textContent).toContain(
+      "Studio keeps your progress. You can close this at any step.",
+    );
+    expect(button(container, "Start over")).toBeDefined();
+  });
+
+  it("asks first, with Cancel in focus, and starts nothing over", async () => {
+    const { fake, container } = await open([account(threeDone)]);
+    await press(button(container, "Start over"));
+    expect(dialog(container)?.textContent).toContain(
+      "Halonic deletes the saved client ID and secret and stops using them. Your Google Cloud project stays as it is.",
+    );
+    expect(document.activeElement?.textContent).toBe("Cancel");
+    expect(fake.startOvers).toEqual([]);
+  });
+
+  it("returns focus to the link when you choose Cancel", async () => {
+    const { fake, container } = await open([account(threeDone)]);
+    const link = button(container, "Start over");
+    link.focus();
+    await press(link);
+    const cancel = [...(dialog(container)?.querySelectorAll("button") ?? [])].find(
+      (b) => b.textContent === "Cancel",
+    );
+    await press(cancel as HTMLElement);
+    expect(dialog(container)).toBeNull();
+    expect(fake.startOvers).toEqual([]);
+    expect(document.activeElement).toBe(link);
+  });
+
+  it("starts the account over and puts focus on step 1's title", async () => {
+    const { fake, container } = await open([account(threeDone)]);
+    await press(button(container, "Start over"));
+    const confirm = dialog(container)?.querySelector<HTMLElement>("button[id]");
+    fake.change([account(record([]))]);
+    await press(confirm as HTMLElement);
+    expect(fake.startOvers).toEqual(["gaccount_1"]);
+    expect(dialog(container)).toBeNull();
+    expect(document.activeElement?.tagName).toBe("H3");
+    expect(document.activeElement?.textContent).toContain("Step 1 of 7");
+    expect(container.textContent).not.toContain("You started this");
+  });
+
+  it("names the account and the one that keeps the secret when the client is shared", async () => {
+    const { container } = await open([account(threeDone, { clientSharedWith: ["y@example.com"] })]);
+    await press(button(container, "Start over"));
+    const text = dialog(container)?.textContent ?? "";
+    expect(text).toContain("Start the Google setup over for x@example.com?");
+    expect(text).toContain("The client secret stays, because y@example.com uses it.");
+  });
+
+  it("keeps the question open and says so when the host can't start over", async () => {
+    const { fake, container } = await open([account(threeDone)]);
+    fake.source.startOver = async () => {
+      throw new Error("no");
+    };
+    await press(button(container, "Start over"));
+    const confirm = dialog(container)?.querySelector<HTMLElement>("button[id]");
+    await press(confirm as HTMLElement);
+    // The kit's alert slot fills a frame after the request ends.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(dialog(container)?.textContent).toContain("Couldn't start over. Try again.");
+  });
+
+  it("makes Start over unavailable, with its reason, while the engine isn't answering", async () => {
+    const { fake, container } = await open([account(threeDone)], false);
+    const link = button(container, "Start over");
+    expect(link.getAttribute("aria-disabled")).toBe("true");
+    expect(container.textContent).toContain("The engine isn't answering.");
+    await press(link);
+    expect(dialog(container)).toBeNull();
+    expect(fake.startOvers).toEqual([]);
   });
 });
