@@ -63,7 +63,7 @@ try {
   Write-Output 'Starting Halonic.'
   $start = Now
   $app = Start-Process (Join-Path $installDir 'Halonic.exe') -PassThru
-  foreach ($phase in @(@('firstStart', $FirstStartSeconds), @('updateCheck', $UpdateWindowSeconds - $FirstStartSeconds))) {
+  foreach ($phase in @(@('firstStart', $FirstStartSeconds), @('updateCheck', ($UpdateWindowSeconds - $FirstStartSeconds)))) {
     Start-Sleep -Seconds $phase[1]
     if ($app.HasExited) { throw "Halonic quit during $($phase[0]) with exit code $($app.ExitCode)" }
     $phases[$phase[0]] = @{ start = $start; end = Now }
