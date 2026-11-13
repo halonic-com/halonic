@@ -63,6 +63,9 @@ export const gitIgnoreLines: readonly string[] = [".env", ".env.*"];
  * alone on a new folder; a caller with other writers must keep them out while
  * it runs.
  *
+ * This is {@link createWorkspace} with `ifNotEmpty: "refuse"`, which is what
+ * `halonic init` wants; the Studio's New workspace dialog uses the other mode.
+ *
  * @param store - where the workspace files go: an empty folder, or one that doesn't exist yet
  * @param options - the workspace's name, and its id if it isn't to come from the name
  * @returns the files written, or why nothing was
@@ -75,29 +78,109 @@ export async function initWorkspace(
   store: DefinitionStore,
   options: InitWorkspaceOptions,
 ): Promise<Result<InitializedWorkspace, InitWorkspaceError>> {
+  const created = await createWorkspace(store, { ...options, ifNotEmpty: "refuse" });
+  if (!created.ok) {
+    // "refuse" never answers `already_workspace`: a workspace.yaml makes the store not empty.
+    return err(created.error as InitWorkspaceError);
+  }
+  const { location, id, name, written } = created.value;
+  return ok({ location, id, name, files: written });
+}
+
+/** What {@link createWorkspace} needs: what {@link initWorkspace} needs, and what to do with a folder that has files. */
+export interface CreateWorkspaceOptions extends InitWorkspaceOptions {
+  /**
+   * What to do when the store already lists files. `"add-missing"` (the
+   * default) writes only the files that aren't there and changes nothing
+   * that is; `"refuse"` writes nothing and says `not_empty`.
+   */
+  readonly ifNotEmpty?: "add-missing" | "refuse";
+}
+
+/** A workspace `createWorkspace` laid out. */
+export interface CreatedWorkspace {
+  /** The store's location, such as "memory:demo". */
+  readonly location: string;
+  readonly id: string;
+  readonly name: string;
+  /** The workspace-relative paths written, with `/` separators, in the order they were written. */
+  readonly written: readonly string[];
+  /** The paths the template has that were already there and were left as they are. */
+  readonly skipped: readonly string[];
+}
+
+/** Why `createWorkspace` wrote nothing. */
+export type CreateWorkspaceError =
+  | InitWorkspaceError
+  /** The store already holds a `workspace.yaml`: open it instead of creating one. */
+  | { readonly kind: "already_workspace"; readonly location: string };
+
+/**
+ * Lays out a new workspace through a {@link DefinitionStore}: the one
+ * template behind `halonic init` and the Studio's New workspace dialog (flow
+ * 2.3). It writes a `.gitignore` that keeps `.env` files out of git and a
+ * `workspace.yaml` with the id, the name and `privacy.localOnly: true`.
+ *
+ * With `ifNotEmpty: "add-missing"` (the default) a folder that already holds
+ * files is fine: a template file that is there is left untouched and listed
+ * in `skipped`; the caller decides what that means (no trust record when
+ * anything was skipped, HAL-65 decision 1). A folder that already holds a
+ * `workspace.yaml` is never touched: that is `already_workspace`, so the
+ * Studio can offer to open it. The settings are checked before anything is
+ * written, and a failed write of `workspace.yaml` removes the files this
+ * call wrote, so the call can be repeated.
+ *
+ * The same caveat as {@link initWorkspace} holds: the listing and the writes
+ * are not one step.
+ *
+ * @param store - where the workspace files go
+ * @param options - the name, the id if it isn't to come from the name, and what to do with a folder that has files
+ * @returns what was written and what was skipped, or why nothing was written
+ *
+ * @example
+ * const result = await createWorkspace(store, { name: "Acme" });
+ * if (result.ok && result.value.skipped.length > 0) console.log("opens untrusted");
+ */
+export async function createWorkspace(
+  store: DefinitionStore,
+  options: CreateWorkspaceOptions,
+): Promise<Result<CreatedWorkspace, CreateWorkspaceError>> {
   const id = options.id ?? slugify(options.name);
   const settings = writeYamlFile({ id, name: options.name, privacy: { localOnly: true } });
   const parsed = parseFile("workspace", settings);
   if (!parsed.ok) {
     return err({ kind: "invalid_settings", problems: parsed.error });
   }
-  if ((await store.list()).length > 0) {
+  const existing = new Set(await store.list());
+  if (options.ifNotEmpty === "refuse" && existing.size > 0) {
     return err({ kind: "not_empty", location: store.location });
   }
+  if (existing.has(settingsPath)) {
+    return err({ kind: "already_workspace", location: store.location });
+  }
 
-  await store.write(gitIgnorePath, `${gitIgnoreLines.join("\n")}\n`);
+  const template: ReadonlyArray<readonly [string, string]> = [
+    [gitIgnorePath, `${gitIgnoreLines.join("\n")}\n`],
+    [settingsPath, settings],
+  ];
+  const written: string[] = [];
+  const skipped: string[] = [];
   try {
-    await store.write(settingsPath, settings);
+    for (const [path, content] of template) {
+      if (existing.has(path)) {
+        skipped.push(path);
+        continue;
+      }
+      await store.write(path, content);
+      written.push(path);
+    }
   } catch (error) {
-    await removeQuietly(store, gitIgnorePath);
+    for (const path of written) {
+      await removeQuietly(store, path);
+    }
     throw error;
   }
-  return ok({
-    location: store.location,
-    id,
-    name: options.name,
-    files: [gitIgnorePath, settingsPath],
-  });
+  return ok({ location: store.location, id, name: options.name, written, skipped });
 }
 
 /**
