@@ -98,6 +98,25 @@ listener, one at a time; a tick that arrives while another runs shares it.
   A failed backup tick is not thrown, because Cloudflare would retry the alarm
   and a tick is never retried: the next one catches up.
 
+## The watchdog
+
+`Watchdog` (HAL-197 part 7) wakes runs that are stuck, so none stays stuck for
+good. `sweep()` is meant for the routine tick: the Worker's tick listener calls
+it after the routine scheduler. It reads the running and waiting runs from the
+run list and asks each run object for its `health()`: the time of its last
+event, and how long its earliest timer has been due without delivery.
+
+- **What counts as stuck.** A timer due for at least 2 minutes (its alarm was
+  lost), or a *running* run with no new event for 10 minutes. A waiting run with
+  no overdue timer is never stuck, however long it waits: it rightly waits days
+  for an approval.
+- **How it wakes a run.** It sets the run's `watchdog` timer (`watchdogTimerId`)
+  for now. Setting a timer moves the object's alarm to the earliest due time, so
+  the run's overdue timers are delivered with it. The engine treats the
+  `watchdog` timer as "look at this run again" and ignores it when there is
+  nothing to do, so waking is safe to repeat.
+- A run whose check or wake fails is in the report's `failed`; the others go on.
+
 ## Tests
 
 The `Coordination` contract runs two ways. `coordination.test.ts` runs it

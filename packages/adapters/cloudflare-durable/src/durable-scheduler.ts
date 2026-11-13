@@ -1,5 +1,5 @@
 import type { ScheduledTimer, Scheduler } from "@halonicjs/ports";
-import type { RunObjectApi } from "./run-object-api.ts";
+import type { RunHealth, RunObjectApi } from "./run-object-api.ts";
 
 /**
  * The part of a Durable Object namespace this adapter uses. The namespace
@@ -49,6 +49,11 @@ export class DurableScheduler<Id = unknown> implements Scheduler {
 
   pending(key: string): Promise<ScheduledTimer[]> {
     return this.#object(key).pending(key);
+  }
+
+  /** How the run of `key` is moving, from its run object, for the watchdog. */
+  health(key: string): Promise<RunHealth> {
+    return this.#object(key).health();
   }
 
   #object(key: string): RunObjectApi {

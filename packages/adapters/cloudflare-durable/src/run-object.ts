@@ -8,7 +8,7 @@ import type {
   SchedulerListener,
 } from "@halonicjs/ports";
 import { type Clock, systemClock } from "@halonicjs/std";
-import type { RunObjectApi } from "./run-object-api.ts";
+import type { RunHealth, RunObjectApi } from "./run-object-api.ts";
 import { sqlOfStorage } from "./run-sql.ts";
 import { type RunListSink, RunState } from "./run-state.ts";
 import { napFor } from "./timer-delivery.ts";
@@ -81,6 +81,10 @@ export class RunObject extends DurableObject implements RunObjectApi {
 
   summary(): Promise<RunSummary | null> {
     return this.#state.summary();
+  }
+
+  health(): Promise<RunHealth> {
+    return this.#state.health();
   }
 
   schedule(key: string, timerId: string, at: string): Promise<void> {
