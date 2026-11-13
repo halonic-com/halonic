@@ -2,8 +2,8 @@
 
 The Studio's feature registry and the contribution points features plug into, with the window's
 frame and the parts inside it. The registry, the points and the window's state (announcer, close
-stack, engine, save state, tabs) have no React; `ShellFrame`, `WindowTabStrip`, `Toolbar`,
-`ToolbarSaveNote`, `StatusBarItems`, `EngineLine` and `SidebarResizeEdge` are React components.
+stack, engine, save state, tabs) have no React; `ShellFrame`, `WindowTabStrip`, `TitleBarBrand`,
+`HistoryButtons`, `StatusBarSaveNote`, `StatusBarItems`, `EngineLine` and `SidebarResizeEdge` are React components.
 
 - **Layer:** studio
 - **Owner:** elena
@@ -32,13 +32,13 @@ first, and a cycle between them throws a `ShellError`.
 | `StatusBarItems` | the status bar's items, state only | `shell.status-bar` |
 | `shell.announcer` | read text to screen readers, once per window | `shell.announcer` |
 | `shell.closeStack` | close the right layer on Esc and Android's Back | `shell.close-stack` |
-| `Toolbar` | Back and Forward, the path, the badges and the save state | `shell.toolbar` |
+| `TitleBarBrand`, `HistoryButtons` | the Halonic Studio mark, and Back and Forward, in the title bar | `shell.title-bar` |
 | `shell.engine` | send and announce when the engine is lost and back | `shell.engine-connection` |
 | `EngineLine` | the one line while the engine isn't answering | `shell.engine-line` |
 | `shell.engine.supervise` | start the engine, restart it once, report why it failed | `shell.engine-start` |
 | `saveFailureFor` | turn a write error into a save reason | `shell.save-reasons` |
-| `SaveState` | the toolbar's save note and the failed-save toast | `shell.save-state` |
-| `ToolbarSaveNote` | the save note in the toolbar, and what it reads out | `shell.save-note` |
+| `SaveState` | the save note and the failed-save toast | `shell.save-state` |
+| `StatusBarSaveNote` | the save note at the status bar's right end, and what it reads out | `shell.save-note` |
 | `watchResources` | read the engine's resource numbers, flag a low disk | `shell.resource-numbers` |
 
 The shell adds Home itself. The other sidebar places come from features through `places.add`,
@@ -135,7 +135,7 @@ words, and the active one checked. A pick makes that tab active and the page tak
 window shows the tabs again.
 
 Each tab's tooltip is its full path, "Workflows / Support reply" (component specs 24.5,
-`shell.cut-text-tooltips`), from the same `parentsOf` as the toolbar's. It describes the tab only
+`shell.cut-text-tooltips`), from `parentsOf`. It describes the tab only
 when there are places above the tab's own; a tab on Home is already named "Home".
 
 ```tsx
@@ -182,8 +182,7 @@ shows `ItemGone`.
 ## The frame
 
 `ShellFrame` is the Studio window, in React. On the desktop it draws the three layers of design
-direction 2: the 40px title bar on the halo, the panel with the toolbar as its first row and the
-sidebar beside the page under it, and the 24px status bar. Below `PHONE_MAX_WIDTH` it shows the
+direction 2: the 40px title bar on the halo, the panel with the sidebar beside the page, and the 24px status bar. There's no toolbar row. Below `PHONE_MAX_WIDTH` it shows the
 page between the phone's own bars (see Phone bars) and switches as soon as the window crosses that
 width.
 The parts inside read the layout with the kit's `usePresentation()`.
@@ -197,7 +196,7 @@ layers. An Esc that ends an input method's composition is ignored. `phoneQuery` 
 `usePresentationFromWidth` are the width check the frame uses.
 
 In a narrow window (600 to 899px, `useNarrowWindow`) the sidebar folds into a Places button at the
-toolbar's left. It opens the same sidebar as a 264px drawer over the scrim, with focus on the
+title bar's far left, before the Halonic mark, with `aria-expanded`, `aria-controls` and a tooltip. It opens the same sidebar as a 264px drawer over the scrim, with focus on the
 current place; a pick, Esc, the scrim or the button closes it again (component specs 24.4). The
 drawer is a `drawer` layer in the close stack. The sidebar fills the drawer there, and
 `SidebarResizeEdge` hides itself. Widening the window docks the sidebar again without remounting
@@ -239,24 +238,26 @@ There are no window tabs and no status bar.
 >
 ```
 
-## The toolbar
+## The title bar
 
-`Toolbar` fills the frame's 44px toolbar row (`h-toolbar`) for the active tab: Back and Forward,
-then the path as a `nav` named "Location", then the header badges and the save state. `parentsOf`
-gives the places above a tab's place, so a workflow reads "Workflows / Support reply"; each of
-them is a link that opens in the active tab, or in a new tab on a Ctrl-click or a middle-click,
-announced as "Opened Workflows in a new tab." (or "Workflows is already open in a tab.", with the
-tabs left as they are). Back and Forward move focus to the new page's `h1`. With nowhere to go, they
-stay in the Tab order as unavailable, and screen readers hear "Nothing to go back to" or "Nothing to
-go forward to". The `badges` slot and the `saveState` slot (see `ToolbarSaveNote`) take no room when
-they're empty. A part of the path cut with "…" shows its full title as a tooltip on hover and keyboard
-focus, and none while it fits (`shell.cut-text-tooltips`); the item page's name field does the same.
-Such a tooltip never names or describes its element, whose own text is already the full text. There's
-no Assistant button until the Assistant (T14) lands; the window-wide Back and Forward keys come in a
-later pull request.
+There's no toolbar row: the panel starts with the page. The title bar holds, from the left,
+`TitleBarBrand` (the Halonic mark and "Halonic Studio", not a link; under 900px only the mark, named
+"Halonic Studio"), `HistoryButtons` and the window tabs. Back and Forward move focus to the new
+page's `h1`. With nowhere to go, they stay in the Tab order as unavailable, and screen readers hear
+"Nothing to go back to" or "Nothing to go forward to". There's no Assistant button until the
+Assistant (T14) lands; the window-wide Back and Forward keys come in a later pull request.
+
+The status bar starts with the frame's `badges` slot ("Not trusted yet") and ends with its
+`saveNote` slot (see `StatusBarSaveNote`); both take no room when they're empty. The item page's
+name field, cut with "…", shows its full text as a tooltip on hover and keyboard focus, and none
+while it fits (`shell.cut-text-tooltips`). Such a tooltip never names or describes its element,
+whose own text is already the full text.
 
 ```tsx
-<ShellFrame toolbar={<Toolbar tabs={workspace.tabs} announcer={shell.announcer} />} …>
+<ShellFrame
+  titleBar={<><TitleBarBrand /><HistoryButtons tabs={workspace.tabs} /></>}
+  …
+>
 ```
 
 ## Ctrl K palette
@@ -507,7 +508,7 @@ fixed order, from `showPlace`. Where you are (an item counts as in its outermost
 `parentsOf`) shows the filled icon in `accent` on the halo tint and is `aria-current="page"`. A
 count or the still running dot shows after the name, and a screen reader hears its words after the
 name ("Inbox, 2 waiting"). A click opens the place in the active tab and moves focus to the page's
-`h1`; a Ctrl-click or a middle-click opens it in a new tab and says so, like the toolbar's path.
+`h1`; a Ctrl-click or a middle-click opens it in a new tab and says so, like the sidebar's places.
 
 ```tsx
 <PlacesList places={shownPlaces} tabs={workspace.tabs} announcer={shell.announcer} />;
@@ -566,7 +567,7 @@ to listeners added with `shell.engine.on("engine.connection", listener)`. `shell
 is the state now, and `shell.engine.status` the last event with its details.
 
 `shell.engine.stale` is `true` while the engine isn't answering after it had answered. Pages keep
-what they showed, and the frame shows one line under the toolbar (`EngineLine`, VK T2-F30), never
+what they showed, and the frame shows one line at the top of the panel (`EngineLine`, VK T2-F30), never
 one per section. Becoming stale is announced once, assertively, and answering again once, politely.
 An engine that never answered isn't announced: the page that needed it shows "Couldn't load …"
 with `shell.engine.words.notAnswering` as the reason. The words follow `createShell`'s `host`
@@ -605,7 +606,7 @@ Copy details; they never go on screen (rule 4 of the failure-path guide).
 
 ## Save state
 
-The Studio saves by itself (save model, HAL-1102), and the toolbar's save note is the only place
+The Studio saves by itself (save model, HAL-1102), and the status bar's save note is the only place
 saving shows. A workspace has one `SaveState`; screens write through `save(item, write)`, which
 never rejects and resolves to whether the item was saved. `note` says, most urgent first:
 `failed` ("Couldn't save _Support reply_ · Try again", or "Couldn't save 2 items"), `items-not-saved` (a change from outside Halonic holds
@@ -617,7 +618,7 @@ item closes the toast. Screens report fields with `setFieldsNotSaved` and outsid
 `holdForOutsideChange` and `releaseHold`; `compare()` opens Compare for the item held back
 longest. When an item is deleted or its tab closes, `forget(key)` drops it, with its toast.
 
-`ToolbarSaveNote` goes in the toolbar's `saveState` slot. It shows "✓ Saved" (named "All changes
+`StatusBarSaveNote` goes in the frame's `saveNote` slot, at the status bar's right end. It shows "✓ Saved" (named "All changes
 saved"), "Saving…" only once a write has run for 300ms, so quick saves don't blink, and the
 problems after a warning or danger mark named "Warning" or "Error", with **Compare** or **Try
 again**. It isn't a live region: `announceSaveNotes(saving, announcer)` reads the note out
@@ -627,11 +628,7 @@ for a failure too, since the danger toast is an alert that already reads it, wit
 
 ```tsx
 announceSaveNotes(workspace.saving, shell.announcer);
-<Toolbar
-  tabs={workspace.tabs}
-  announcer={shell.announcer}
-  saveState={<ToolbarSaveNote saving={workspace.saving} />}
-/>;
+<ShellFrame saveNote={<StatusBarSaveNote saving={workspace.saving} />} …>
 ```
 
 ## Error messages
@@ -959,9 +956,9 @@ there (`shell.view-loading`).
 ## The Studio window
 
 `StudioWindow` puts the desktop window together for one open workspace (`shell.studio-window`):
-`WindowTabStrip` in the title bar, the `Toolbar` with `ToolbarSaveNote`, the sidebar
+`TitleBarBrand`, `HistoryButtons` and `WindowTabStrip` in the title bar, the sidebar
 (`SidebarSearch`, `PlacesList` and `SidebarResizeEdge`, with `WorkspaceSwitcher` once the app passes
-a workspace menu), `TabPages` and `StatusBarItems`, and the Ctrl K palette, opened from the Search
+a workspace menu), `TabPages` and `StatusBarItems` with `StatusBarSaveNote` at its right end, and the Ctrl K palette, opened from the Search
 box, Mod K, **+** and Ctrl T. A tab on Home shows `HomePage`, a tab on a search the `SearchPage`,
 and a tab on a place a feature added that place's view, which gets `PlaceViewProps`: the context of
 the feature that added it. A tab on an item (`kind/hub/id`) shows the `open` view of the kind a
@@ -998,7 +995,7 @@ K's palette is the desktop's; a phone searches in its Search sheet. `shownPlaces
 with their signals for the sidebar, the bottom navigation and the More page alike.
 
 While no workspace is open the window is `WelcomeWindow` (`shell.welcome-open`): the `Welcome`
-screen in the shell's frame, with no tabs, toolbar, sidebar or status bar, and the app's name alone
+screen in the shell's frame, with no tabs, sidebar or status bar, and the app's name alone
 as the title. `Welcome` shows "Halonic Studio" and **Open folder**, which reads "Opening…" while the
 folder opens. A folder that fails says "Can't open *folder*: *reason*" (`cantOpenProblem`, with the
 reasons in `cantOpenWords`), and **Copy details** when Halonic can't explain it
@@ -1053,11 +1050,11 @@ The rest of `src/index.ts`, by area; the types are what the parts above take and
 - **Search page:** `SearchScope`, `SearchPageQuery`, `NameResult`, `SearchPageNames`.
 - **Sidebar:** `SidebarResizeEdgeProps`, `clampSidebarWidth`, `SIDEBAR_MIN_WIDTH`,
   `SIDEBAR_MAX_WIDTH`, `SIDEBAR_DEFAULT_WIDTH`.
-- **Tabs and toolbar:** `TabLocation`, `WindowTab`, `TabSetState`, `OpenedTab`, `homeLocation`,
-  `currentLocation`, `reopenableTabs` (20), `WindowTabStripProps`, `ToolbarProps`.
+- **Tabs and title bar:** `TabLocation`, `WindowTab`, `TabSetState`, `OpenedTab`, `homeLocation`,
+  `currentLocation`, `reopenableTabs` (20), `WindowTabStripProps`, `HistoryButtonsProps`.
 - **Save:** `SaveReason`, `SaveFailure`, `SaveNote`, `SavingItem`, `couldNotSaveText`,
   `SaveNoteWords`, `SaveNoteMark`, `SaveNoteAction`, `saveNoteActionLabels`,
-  `ToolbarSaveNoteProps`, `SAVING_AFTER_MS` (300 ms).
+  `StatusBarSaveNoteProps`, `SAVING_AFTER_MS` (300 ms).
 - **Resources:** `ResourceWatch`, `ResourceWatchOptions`, `ResourceReading`, `ResourceListener`,
   `ResourceCheckReason`, `resourceCheckIntervalMs` (1 min), `lowDiskBytes`, `EngineResourceReport`,
   `ChildProcessUsage`, `LoadedModel`.

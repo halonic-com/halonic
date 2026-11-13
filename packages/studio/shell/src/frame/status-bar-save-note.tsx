@@ -14,8 +14,8 @@ import type { SaveNote, SaveState } from "../save/save-state.ts";
 /** How long a write runs before the note says "Saving…", as for loading (microcopy 1.1). */
 export const SAVING_AFTER_MS = 300;
 
-/** Props for {@link ToolbarSaveNote}. */
-export interface ToolbarSaveNoteProps {
+/** Props for {@link StatusBarSaveNote}. */
+export interface StatusBarSaveNoteProps {
   /** The open workspace's save state. */
   readonly saving: SaveState;
   /** Timers for the "Saving…" wait; tests pass fake ones. */
@@ -23,21 +23,17 @@ export interface ToolbarSaveNoteProps {
 }
 
 /**
- * The toolbar's save note (save model 1.4), for the toolbar's `saveState` slot: "✓ Saved",
+ * The save note (save model 1.4), for the status bar's right end (`ShellFrame`'s `saveNote` slot): "✓ Saved",
  * "Saving…", "2 fields not saved", "1 item not saved · Compare" or "Couldn't save *Support reply*
  * · Try again". It's the only place saving shows. A write shorter than 300ms never shows
- * "Saving…", so the toolbar doesn't blink while the user types.
+ * "Saving…", so the status bar doesn't blink while the user types.
  *
  * The note isn't a live region; `announceSaveNotes` reads out the states worth hearing, once.
  *
  * @example
- * <Toolbar
- *   tabs={workspace.tabs}
- *   announcer={shell.announcer}
- *   saveState={<ToolbarSaveNote saving={workspace.saving} />}
- * />
+ * <ShellFrame saveNote={<StatusBarSaveNote saving={workspace.saving} />} …>
  */
-export function ToolbarSaveNote({ saving, timers = systemTimers }: ToolbarSaveNoteProps) {
+export function StatusBarSaveNote({ saving, timers = systemTimers }: StatusBarSaveNoteProps) {
   const note = useShownNote(saving, timers);
   const words = saveNoteWords(note);
   const action = words.action;
@@ -82,8 +78,8 @@ const marks: Readonly<Record<SaveNoteMark, ReactNode>> = {
 };
 
 /**
- * A problem's words stop at 240px and end in "…", so a long item title can't push the path away
- * or hide the button, which keeps its width. The whole title stays in the text, so a screen reader reads all of it, and
+ * A problem's words stop at 240px and end in "…", so a long item title can't push the other status
+ * items away or hide the button, which keeps its width. The whole title stays in the text, so a screen reader reads all of it, and
  * the failed-save toast shows it in full.
  */
 const longWords = "min-w-0 max-w-60 truncate";

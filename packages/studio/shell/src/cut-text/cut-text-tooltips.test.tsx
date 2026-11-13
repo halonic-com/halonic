@@ -4,15 +4,12 @@ import { TOOLTIP_DELAY_MS } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createAnnouncer } from "../announcer/announcer.ts";
 import { NameField } from "../item-page/name-field.tsx";
 import { type TabLocation, TabSet } from "../tabs/tab-set.ts";
 import { WindowTabStrip } from "../tabs/window-tab-strip.tsx";
 import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
 import { installFakePopover, isPopoverOpen } from "../test-support/fake-popover.ts";
-import { FakeTimers } from "../test-support/fake-timers.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
-import { Toolbar } from "../toolbar/toolbar.tsx";
 
 const home: TabLocation = { key: "home", title: "Home" };
 const workflows: TabLocation = { key: "workflows", title: "Workflows" };
@@ -93,38 +90,6 @@ verifies("shell.cut-text-tooltips", () => {
       hover(homeTab as HTMLElement);
       expect(shownTooltips(container)).toEqual(["Home"]);
       expect(homeTab?.hasAttribute("aria-describedby")).toBe(false);
-    });
-  });
-
-  describe("the toolbar's path", () => {
-    function renderPath() {
-      const tabs = new TabSet();
-      tabs.openHere(workflows);
-      tabs.openHere(reply);
-      const announcer = createAnnouncer({ timers: new FakeTimers() });
-      const container = render(<Toolbar tabs={tabs} announcer={announcer} parentsOf={parentsOf} />);
-      const link = container.querySelector("nav a") as HTMLElement;
-      const current = container.querySelector('nav [aria-current="page"]') as HTMLElement;
-      return { container, link, current };
-    }
-
-    it("shows the full title of a cut part, and none on a part that fits", () => {
-      const { container, link, current } = renderPath();
-      measure(link, 70, 70);
-      measure(current, 280, 120);
-      hover(link);
-      expect(shownTooltips(container)).toEqual([]);
-      hover(current);
-      expect(shownTooltips(container)).toEqual(["Support reply for refunds over the limit"]);
-      expect(current.hasAttribute("aria-describedby")).toBe(false);
-    });
-
-    it("shows a cut link's full title on keyboard focus too", () => {
-      const { container, link } = renderPath();
-      measure(link, 70, 40);
-      focusByKeyboard(link);
-      expect(shownTooltips(container)).toEqual(["Workflows"]);
-      expect(link.hasAttribute("aria-describedby")).toBe(false);
     });
   });
 

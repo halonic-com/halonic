@@ -14,7 +14,7 @@ export interface WelcomeWindowProps extends WelcomeProps {
 
 /**
  * The Studio window with no workspace open: the {@link Welcome} screen in the shell's frame, with
- * no title bar tabs, toolbar, sidebar or status bar, so there's nothing to use before a folder is
+ * no title bar tabs, sidebar or status bar, so there's nothing to use before a folder is
  * open. The toasts still show, so a workspace closed from here leaves its messages. The window
  * title is the app's name alone, as no page or workspace is shown.
  *

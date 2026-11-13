@@ -83,6 +83,11 @@ export {
   StatusBarItems,
   type StatusBarItemsProps,
 } from "./frame/status-bar.tsx";
+export {
+  SAVING_AFTER_MS,
+  StatusBarSaveNote,
+  type StatusBarSaveNoteProps,
+} from "./frame/status-bar-save-note.tsx";
 export type { HomeCardProps } from "./home/home-page.tsx";
 export { HomeSectionEmpty } from "./home/home-section.tsx";
 export { ItemHeader, type ItemHeaderProps } from "./item-page/item-header.tsx";
@@ -363,12 +368,8 @@ export {
 export { useWindowKeys, type WindowKeysOptions } from "./tabs/use-window-keys.ts";
 export { type PressedKey, type WindowKey, windowKeyFor } from "./tabs/window-keys.ts";
 export { WindowTabStrip, type WindowTabStripProps } from "./tabs/window-tab-strip.tsx";
-export { Toolbar, type ToolbarProps } from "./toolbar/toolbar.tsx";
-export {
-  SAVING_AFTER_MS,
-  ToolbarSaveNote,
-  type ToolbarSaveNoteProps,
-} from "./toolbar/toolbar-save-note.tsx";
+export { HistoryButtons, type HistoryButtonsProps } from "./title-bar/history-buttons.tsx";
+export { TitleBarBrand } from "./title-bar/title-bar-brand.tsx";
 export { loadView, type ViewRef } from "./view.ts";
 export {
   cantOpenProblem,

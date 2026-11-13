@@ -13,7 +13,7 @@ export interface HistoryMoves {
  * Back and Forward for the active tab that take focus to the page they reach (UX checklist 1.12,
  * a11y A3): after the move the old page is gone, so focus goes to the new page's `h1`, and a
  * screen reader reads where the user is now. With nowhere to go nothing moves and focus stays.
- * The toolbar's buttons use it, and so do Alt ← and Alt → (3c), so both move focus the same way.
+ * The title bar's buttons use it, and so do Alt ← and Alt → (3c), so both move focus the same way.
  */
 export function useHistoryMoves(tabs: TabSet): HistoryMoves {
   const focusNewPage = usePageHeadingFocus();

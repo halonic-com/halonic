@@ -10,7 +10,7 @@ export interface SavingItem {
 }
 
 /**
- * What the toolbar says about saving (save model 1.4), the most urgent first when several are
+ * What the status bar says about saving (save model 1.4), the most urgent first when several are
  * true: saves that failed, then items held back by a change from outside Halonic, then fields
  * with a mistake, then a save running. Otherwise everything is saved. `first` is the item the note
  * names when its count is 1; of items held back, it is the one held longest (Compare opens it).
@@ -58,7 +58,7 @@ export function couldNotSaveText(title: string, reason: SaveReason): string {
 }
 
 /**
- * Whether a workspace's changes are saved, for the toolbar's save note. The Studio saves by
+ * Whether a workspace's changes are saved, for the save note. The Studio saves by
  * itself (save model 1), so this is the only place saving shows. Screens write through `save`,
  * report fields with a mistake and items a change from outside holds back; the note reads `note`
  * and subscribes. A failed write also shows its error toast, with **Try again**.
@@ -82,7 +82,7 @@ export class SaveState {
     this.toasts = toasts;
   }
 
-  /** What the toolbar says now. Every change makes a new note. */
+  /** What the status bar says now. Every change makes a new note. */
   get note(): SaveNote {
     return this.current;
   }

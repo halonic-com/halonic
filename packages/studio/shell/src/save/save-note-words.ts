@@ -7,7 +7,7 @@ export type SaveNoteMark = "none" | "check" | "warning" | "danger";
 /** The button after the note's words, which runs `SaveState.tryAgain` or `SaveState.compare`. */
 export type SaveNoteAction = "try-again" | "compare";
 
-/** What the toolbar's save note shows for a {@link SaveNote}. */
+/** What the save note shows for a {@link SaveNote}. */
 export interface SaveNoteWords {
   /** The words on screen: "Couldn't save Support reply", "2 fields not saved", "Saved". */
   readonly text: string;
@@ -24,7 +24,7 @@ export const saveNoteActionLabels: Readonly<Record<SaveNoteAction, string>> = {
 };
 
 /**
- * Words the toolbar's save note shows (save model 1.4, microcopy 2). A failure names the item when
+ * Words the save note shows (save model 1.4, microcopy 2). A failure names the item when
  * one failed, as the toast does: "Couldn't save *Support reply* · Try again", and counts them when
  * several did: "Couldn't save 2 items · Try again". "Saving…" uses the ellipsis character.
  *
