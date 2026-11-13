@@ -4,6 +4,8 @@
 //! the network work and checks the signature against the key built into the
 //! app; `halonic-update-state` decides when to check and what to show; this
 //! file joins them and keeps the record in `<profile>/updates/updater.json`.
+//! An install another tool updates (Scoop) skips all of this but the status:
+//! see `updates_managed.rs` (HAL-1452).
 //!
 //! The local Studio page reads the status with `update_status`, follows it
 //! with `update_watch` and acts with the other `update_*` commands
@@ -17,9 +19,9 @@ use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use halonic_update_state::{
-    CHECK_TIME_LIMIT, CheckFailure, CheckResult, FIRST_CHECK_AFTER, JustUpdated, Migrated,
+    CHECK_TIME_LIMIT, CheckFailure, CheckResult, FIRST_CHECK_AFTER, JustUpdated, Managed, Migrated,
     RecordRead, StartOutcome, UpdateState, UpdateStatus, UpdaterRecord, Version, check_due,
-    migrate_settings_file, notes_url, read_record, record_text,
+    detect_managed, migrate_settings_file, notes_url, read_record, record_text,
 };
 use tauri::async_runtime::JoinHandle;
 use tauri::ipc::Channel;
@@ -29,6 +31,9 @@ use tauri_plugin_updater::{Error as UpdaterError, Update, UpdaterExt};
 #[path = "updates_download.rs"]
 mod download;
 use download::start_download;
+
+#[path = "updates_managed.rs"]
+mod managed;
 
 #[path = "updates_way_back.rs"]
 mod way_back;
@@ -59,6 +64,9 @@ struct Inner {
     checked_this_run: bool,
     state: Option<UpdateState>,
     just_updated: Option<JustUpdated>,
+    /// Set when another tool (Scoop) updates this install: this updater then
+    /// only reads the bucket's version (HAL-1452).
+    managed: Option<Managed>,
     /// What the last check found.
     found: Option<Update>,
     /// The downloaded installer, its signature checked. Kept for this
@@ -77,6 +85,7 @@ impl Inner {
             checking: self.checking,
             last_checked: self.record.last_checked,
             just_updated: self.just_updated.clone(),
+            managed: self.managed.clone(),
             state: self.state.clone().unwrap_or(UpdateState::NeverChecked),
         }
     }
@@ -117,7 +126,13 @@ fn lock<R: Runtime>(app: &AppHandle<R>) -> MutexGuard<'_, Inner> {
 /// found there too, since that may ask the login shell (HAL-5545), so none
 /// of it is on the start-up path. The shell calls it once the window is open.
 pub fn start<R: Runtime>(app: &AppHandle<R>) {
-    lock(app).current = app.package_info().version.to_string();
+    {
+        let mut inner = lock(app);
+        inner.current = app.package_info().version.to_string();
+        inner.managed = std::env::current_exe()
+            .ok()
+            .and_then(|exe| detect_managed(&exe, Path::exists));
+    }
     let app = app.clone();
     let ready = Instant::now();
     let started = std::thread::Builder::new()
@@ -177,7 +192,16 @@ fn load<R: Runtime>(app: &AppHandle<R>) {
             } => eprintln!("updates: {version} didn't install ({attempts} tries)"),
             _ => {}
         }
-        inner.state = Some(inner.record.starting_state(&current));
+        let state = inner.record.starting_state(&current);
+        // Nothing is downloaded or installed here, so those states don't apply.
+        inner.state = Some(match state {
+            UpdateState::DidNotInstall { .. } | UpdateState::SignatureMismatch { .. }
+                if inner.managed.is_some() =>
+            {
+                UpdateState::NeverChecked
+            }
+            state => state,
+        });
     }
     inner.save();
     inner.notify();
@@ -280,6 +304,10 @@ async fn check<R: Runtime>(app: &AppHandle<R>) {
         inner.record.last_attempt = Some(now());
         inner.save();
         inner.notify();
+        if inner.managed.is_some() {
+            drop(inner);
+            return managed::check(app).await;
+        }
     }
     let result = match app.updater_builder().timeout(CHECK_TIME_LIMIT).build() {
         Ok(updater) => updater.check().await,
@@ -458,6 +486,9 @@ pub fn update_cancel<R: Runtime>(app: AppHandle<R>) -> UpdateStatus {
 /// restarts itself.
 #[tauri::command]
 pub fn update_restart<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    if lock(&app).managed.is_some() {
+        return Err("updates are managed by another tool".to_owned());
+    }
     install(&app, true).inspect_err(|error| {
         eprintln!("updates: restart to update failed: {error}");
     })?;

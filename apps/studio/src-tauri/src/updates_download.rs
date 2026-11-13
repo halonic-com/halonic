@@ -17,7 +17,7 @@ use super::lock;
 /// one is ready, or this version's signature failed too often.
 pub(super) fn start_download<R: Runtime>(app: &AppHandle<R>) {
     let mut inner = lock(app);
-    if inner.busy() {
+    if inner.busy() || inner.managed.is_some() {
         return;
     }
     let Some(found) = inner.found.clone() else {

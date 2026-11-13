@@ -4,6 +4,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::Managed;
+
 /// Everything About Halonic and the status bar need, in one value.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -18,6 +20,10 @@ pub struct UpdateStatus {
     pub last_checked: Option<u64>,
     /// Set on the first start after an update, for the "Updated to" toast.
     pub just_updated: Option<JustUpdated>,
+    /// Set when another tool updates this install (Scoop): Studio then
+    /// downloads and installs nothing, and shows `command` instead of
+    /// "Restart to update" (HAL-1452).
+    pub managed: Option<Managed>,
     pub state: UpdateState,
 }
 

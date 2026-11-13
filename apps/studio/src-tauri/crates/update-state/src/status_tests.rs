@@ -13,6 +13,7 @@ fn update_state_sends_the_status_in_the_agreed_shape() {
             to: "0.1.1".to_owned(),
             not_carried_over: Vec::new(),
         }),
+        managed: None,
         state: UpdateState::Downloading {
             version: "0.1.1".to_owned(),
             done: 12,
@@ -28,6 +29,7 @@ fn update_state_sends_the_status_in_the_agreed_shape() {
             "checking": false,
             "lastChecked": 1_762_160_000_000_u64,
             "justUpdated": { "from": "0.1.0", "to": "0.1.1", "notCarriedOver": [] },
+            "managed": null,
             "state": { "kind": "downloading", "version": "0.1.1", "done": 12, "total": null, "unit": "bytes" }
         })
     );
@@ -68,4 +70,16 @@ fn update_state_names_each_state_as_the_plan_does() {
     for (state, expected) in cases {
         assert_eq!(serde_json::to_value(&state).expect("JSON"), expected);
     }
+}
+
+#[test]
+fn update_state_tells_the_page_who_manages_the_install() {
+    let managed = crate::Managed {
+        by: crate::ManagedBy::Scoop,
+        command: "scoop update halonic".to_owned(),
+    };
+    assert_eq!(
+        serde_json::to_value(&managed).expect("JSON"),
+        json!({ "by": "scoop", "command": "scoop update halonic" })
+    );
 }
