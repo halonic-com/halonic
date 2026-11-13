@@ -1,0 +1,35 @@
+{
+  "name": "@halonicjs/target-node-runtime",
+  "private": true,
+  "type": "module",
+  "description": "Runs the secure server on Node: the HTTP listener, the on-disk request count and the network opt-in of halonic serve.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-contracts": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "targets",
+    "owner": "elena",
+    "coverage": {
+      "lines": 80
+    }
+  },
+  "dependencies": {
+    "@halonicjs/adapter-coordination-node": "workspace:*",
+    "@halonicjs/adapter-fs-node": "workspace:*",
+    "@halonicjs/host-server": "workspace:*",
+    "@halonicjs/ports": "workspace:*"
+  }
+}
