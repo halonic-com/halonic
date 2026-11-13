@@ -7,6 +7,8 @@ import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import type { Harness } from "@halonicjs/ports";
 import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
 import { bridgeSocketFolder, sweepLeftOverBridges } from "./bridge/socket-folder.ts";
+import { hostConnectorRoutes } from "./connector/connector-factory.ts";
+import { connectorRoutes } from "./connector/connector-routes.ts";
 import { harnessRoutes } from "./harness/harness-routes.ts";
 import { RunTable } from "./harness/run-table.ts";
 import { signInRoute } from "./harness/sign-in-route.ts";
@@ -128,7 +130,12 @@ export async function run(
   if (lock !== null && socketFolder !== undefined) {
     await sweepLeftOverBridges(socketFolder, (text) => io.writeError(text));
   }
-  const host = hostServices(version, sandbox, socketFolder);
+  const host = hostServices(
+    version,
+    sandbox,
+    socketFolder,
+    connectorPlaces(given.roots, profileFolder),
+  );
   try {
     if (args.includes("--stdio")) return await serveOverFrames(args, io, host);
     await serve(io, host);
@@ -139,6 +146,14 @@ export async function run(
       io.writeError(`The host lock couldn't be released: ${String(error)}\n`);
     });
   }
+}
+
+/** What workspace connectors may use and never reach: Halonic's own profile folder is never a workspace, and is denied. */
+function connectorPlaces(roots: readonly string[], profileFolder: string | undefined) {
+  return {
+    workspaceRoots: roots.filter((root) => root !== profileFolder),
+    deniedPaths: profileFolder === undefined ? [] : [profileFolder],
+  };
 }
 
 /** The value after `name` in `args`, when there is one. */
@@ -218,16 +233,22 @@ interface HostServices {
 /**
  * @param socketFolder - where each bridge serves a Unix socket (see {@link bridgeSocketFolder});
  *   `undefined` for bridges on loopback ports
+ * @param connectors - the folders the launcher named as workspaces, and what a workspace connector's program may never reach
  */
 function hostServices(
   version: string,
   sandbox: SrtSandbox,
   socketFolder: string | undefined,
+  connectors: { workspaceRoots: readonly string[]; deniedPaths: readonly string[] },
 ): HostServices {
   const sessions = new SessionTable();
   const bridges = new BridgeTable();
   const runs = new RunTable();
   const harnesses = hostHarnesses(version);
+  const connectorDeps = hostConnectorRoutes(
+    { sandbox, version, deniedPaths: connectors.deniedPaths, env: process.env },
+    connectors.workspaceRoots,
+  );
   const routes = [
     healthRoute(version),
     ...sandboxRoutes(sandbox, sessions),
@@ -241,12 +262,15 @@ function hostServices(
       bridges,
     ),
     ...harnessRoutes({ harnesses, sessions, bridges, runs }),
+    ...connectorRoutes(connectorDeps),
     signInRoute({ harnesses, openTerminal: (command) => openTerminal(command) }),
   ];
   const stop = async () => {
     // Stop the runs, then their sandboxed programs, so none outlives the host;
     // their bridges then have no caller.
     await runs.cancelAll();
+    // A connector closes its own session; then any session left.
+    await connectorDeps.connectors.closeAll();
     await sessions.closeAll();
     await bridges.closeAll();
   };

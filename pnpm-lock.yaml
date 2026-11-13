@@ -274,6 +274,9 @@ importers:
 
   apps/agent-host:
     dependencies:
+      '@halonicjs/adapter-connector-stdio-sandbox':
+        specifier: workspace:*
+        version: link:../../packages/adapters/connector-stdio-sandbox
       '@halonicjs/adapter-fs-node':
         specifier: workspace:*
         version: link:../../packages/adapters/fs-node
@@ -286,6 +289,15 @@ importers:
       '@halonicjs/adapter-harness-codex':
         specifier: workspace:*
         version: link:../../packages/adapters/harness-codex
+      '@halonicjs/adapter-http-node':
+        specifier: workspace:*
+        version: link:../../packages/adapters/http-node
+      '@halonicjs/adapter-mcp':
+        specifier: workspace:*
+        version: link:../../packages/adapters/mcp
+      '@halonicjs/adapter-memory':
+        specifier: workspace:*
+        version: link:../../packages/adapters/memory
       '@halonicjs/adapter-sandbox-host':
         specifier: workspace:*
         version: link:../../packages/adapters/sandbox-host

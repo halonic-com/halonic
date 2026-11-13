@@ -86,6 +86,10 @@ A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413`
 | `POST /v1/bridge/open` | an NDJSON stream: the bridge, then its calls to Studio (below) |
 | `POST /v1/bridge/answer` | `{"answered":true}`, or `404` for a call the bridge isn't waiting for |
 | `POST /v1/bridge/close` | `{"closed":true}`, or `404` for an unknown bridge |
+| `POST /v1/connectors/open` with the connector's file fields (`id`, `command`, `args`, `env`, `inheritEnv`, `cwd`, `sites`, `pin`, `secretEnv`), `secrets` (the values of its own secret names only), `workspaceRoot`, `workingFolders` and `trust` | `{"connector"}`: an id. The host builds the connector's sandbox place itself (a sandbox profile in the body is refused, `400`); the program and its session start on the first call, and start without a sandbox where the host's own check fails. `403 workspace_not_named` when `workspaceRoot` isn't one of the `--sweep-root` folders (the profile folder is never one), `429 too_many_connectors`, `503 host_stopping` |
+| `POST /v1/connectors/tools` with `{"connector"}` | the connector's `ConnectorTool[]`, or `404 unknown_connector`, or `502 connector_failed` with the reason |
+| `POST /v1/connectors/call` with `{"connector","tool","args"}`, and `"idempotencyKey"` | `{"text"}`, or the same errors |
+| `POST /v1/connectors/close` with `{"connector"}` | `{"closed":true}`, or `404`. The host closes every connector, and so its sessions, when it stops |
 | `GET /v1/harnesses` | `[{"id","name"}]` |
 | `POST /v1/harnesses/detect` with `{"harness"}`, and `"settingsFolder"` for one agent | the `HarnessDetection` |
 | `POST /v1/harnesses/sign-in` with `{"harness","settingsFolder"}` | `{"opened":true}`, or `{"opened":false,"reason","command"}` (below) |
