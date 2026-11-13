@@ -11,7 +11,7 @@ import {
   leakAttemptCodes,
   type RefusalCode,
 } from "@halonicjs/adapter-integration-kit";
-import type { IntegrationHttpClient, SecretPlacement } from "@halonicjs/ports";
+import type { AuthPlacement, IntegrationHttpClient } from "@halonicjs/ports";
 import { decodeRequestBody, toBase64 } from "../bodies.ts";
 import { FrameTooLargeError } from "../frame-lines.ts";
 import type { FetchFrame, HalonicFrame } from "../frames.ts";
@@ -337,9 +337,11 @@ function requestHeadBytes(frame: FetchFrame): number {
 }
 
 /** A placement from a frame, with an absent header prefix left out rather than `undefined`. */
-function toPlacement(placement: FetchFrame["auth"][number]): SecretPlacement {
+function toPlacement(placement: FetchFrame["auth"][number]): AuthPlacement {
   if (placement.as !== "header" || placement.prefix !== undefined)
-    return placement as SecretPlacement;
+    return placement as AuthPlacement;
+  if ("signIn" in placement)
+    return { signIn: placement.signIn, as: "header", header: placement.header };
   return { secret: placement.secret, as: "header", header: placement.header };
 }
 

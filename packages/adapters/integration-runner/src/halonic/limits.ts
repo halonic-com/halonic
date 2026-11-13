@@ -28,7 +28,7 @@ export interface RunnerLimits {
   /** The largest body piece in one `chunk` frame (256 KiB), well inside a frame as base64. */
   maxBodyPieceBytes: number;
   /**
-   * A request's URL, headers and secret placements together, as UTF-8
+   * A request's URL, headers and placements together, as UTF-8
    * (32 KiB); a larger one is refused before it reaches the kit (section 3.3).
    * Each header and each placement counts 4 bytes more, for its `: ` and line
    * end, so many tiny ones can't slip under it (HAL-4375).
@@ -36,7 +36,7 @@ export interface RunnerLimits {
   maxRequestHeadBytes: number;
   /** Headers in one request (100); more are refused as `request-too-large`. */
   maxRequestHeaders: number;
-  /** Secret placements in one request (16); more are refused as `request-too-large`. */
+  /** Placements in one request (16); more are refused as `request-too-large`. */
   maxSecretPlacements: number;
   /**
    * Frames Halonic has queued for the runner's stdin and the runner hasn't

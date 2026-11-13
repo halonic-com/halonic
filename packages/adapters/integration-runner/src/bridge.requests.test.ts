@@ -66,6 +66,31 @@ verifies("integration-runner.requests", () => {
       });
     });
 
+    it("sends a sign-in's access token placement by the sign-in's name, with and without a prefix", async () => {
+      const kit = fakeKitClient(() => new Response("ok"));
+      const { run } = await bridged(async (host) => {
+        await host.http.fetch("https://api.example.com/v1/projects", {
+          auth: { signIn: "example-account", as: "bearer" },
+        });
+        await host.http.fetch("https://api.example.com/v1/projects", {
+          auth: [
+            { signIn: "example-account", as: "header", header: "x-token" },
+            { signIn: "other-account", as: "header", header: "authorization", prefix: "Token " },
+          ],
+        });
+        return "done";
+      }, kit);
+
+      expect(await run()).toBe("done");
+      expect(kit.sent.map((request) => request.init.auth)).toEqual([
+        [{ signIn: "example-account", as: "bearer" }],
+        [
+          { signIn: "example-account", as: "header", header: "x-token" },
+          { signIn: "other-account", as: "header", header: "authorization", prefix: "Token " },
+        ],
+      ]);
+    });
+
     it("keeps a form a form, so the kit can still place a secret in a field", async () => {
       const kit = fakeKitClient(() => new Response(null, { status: 204 }));
       const { run } = await bridged(async (host) => {
