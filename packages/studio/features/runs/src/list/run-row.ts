@@ -154,6 +154,8 @@ export function startedBy(
       return words(startedByWords.mail, spoken.mail);
     case "signal":
       return words(startedByWords.signal, spoken.signal);
+    case "webhook":
+      return words(startedByWords.webhook, spoken.webhook);
     case "schedule":
     case "every": {
       const tooltip = routine?.name ?? trigger.routineId;

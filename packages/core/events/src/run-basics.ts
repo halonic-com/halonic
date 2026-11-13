@@ -78,7 +78,7 @@ export interface Usage {
 
 /** What started a run. Absent for runs started by hand from a workflow. */
 export interface RunTrigger {
-  type: "manual" | "schedule" | "every" | "mail" | "signal";
+  type: "manual" | "schedule" | "every" | "mail" | "signal" | "webhook";
   /** Routine key: "<hubId>/<routineId>" or "@workspace/<routineId>". */
   routineId?: string;
   /** ISO time the run was due (the scheduled time, not when it actually started). */
@@ -87,6 +87,8 @@ export interface RunTrigger {
   messageId?: string;
   /** Signal triggers: "<runId>:<seq>" of the signal that started this run (one run per signal). */
   signalId?: string;
+  /** Webhook triggers: the sender's delivery id of the request that started this run (one run per delivery). */
+  deliveryId?: string;
   /**
    * Routine runs that started later than the tick's grace after `at`, such
    * as after the computer slept or Halonic was closed. Absent for a run that

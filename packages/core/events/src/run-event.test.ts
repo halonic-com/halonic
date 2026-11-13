@@ -314,11 +314,13 @@ verifies("events.run-log-contract", () => {
       cacheWrite1hTokens?: number;
     }>();
     expectTypeOf<RunTrigger>().toEqualTypeOf<{
-      type: "manual" | "schedule" | "every" | "mail" | "signal";
+      // "webhook" and `deliveryId` added after the reference by events.trigger-webhook (HAL-195).
+      type: "manual" | "schedule" | "every" | "mail" | "signal" | "webhook";
       routineId?: string;
       at: string;
       messageId?: string;
       signalId?: string;
+      deliveryId?: string;
       // Added after the reference by events.trigger-catch-up (HAL-2524).
       catchUp?: { skipped: number; countIsMinimum?: true };
     }>();

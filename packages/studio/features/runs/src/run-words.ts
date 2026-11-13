@@ -50,6 +50,7 @@ export const startedByWords = {
   terminal: "You, in the terminal",
   mail: "A message arrived",
   signal: "A signal arrived",
+  webhook: "A web request arrived",
   /** The routine's schedule, in `halonic routines`' words: "Schedule · weekdays at 08:00". */
   schedule: (when: string | undefined) =>
     when === undefined ? "Schedule" : `Schedule · ${when.charAt(0).toLowerCase()}${when.slice(1)}`,
@@ -76,6 +77,7 @@ export const rowLabelWords = {
     terminal: "you, in the terminal",
     mail: "a message",
     signal: "a signal",
+    webhook: "a web request",
     schedule: (when: string | undefined) =>
       when === undefined
         ? "the schedule"
