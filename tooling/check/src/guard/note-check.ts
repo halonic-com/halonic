@@ -96,7 +96,7 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
     }
     return report;
   }
-  const reachesRoot = changed.some((each) => matches(trustRoots, each));
+  const reachesRoot = changed.some((each) => isTrustRoot(each));
   const needUser = touched.filter((path) => !internalOwnPaths.includes(path) || reachesRoot);
   if (parsed.note.kind !== "user-visible" && needUser.length > 0) {
     report.error(
@@ -137,15 +137,48 @@ function touchedPaths(run: NoteCheckRun): {
   exports: string[];
   changed: readonly string[];
 } {
-  const exportsOnly =
-    run.changed.includes(policyFile) &&
-    onlyExtraExportsChanged(
-      run.git.readFile(run.mergeBase, policyFile),
-      run.git.readFile(run.pull.head, policyFile),
-    );
-  const changed = exportsOnly ? run.changed.filter((path) => path !== policyFile) : run.changed;
+  const { changed, exportsOnly } = withoutExportsOnlyPolicy(
+    run.changed,
+    run.git.readFile(run.mergeBase, policyFile),
+    run.git.readFile(run.pull.head, policyFile),
+  );
   const touched = ownPaths.filter((path) => changed.some((each) => matches([path], each)));
   return { touched, exports: exportsOnly ? [policyFile] : [], changed };
+}
+
+/**
+ * `changed` without `policy.json` when it changed in `extraExports` only,
+ * and whether it did. One rule for the note check and the requirement guard.
+ */
+function withoutExportsOnlyPolicy(
+  changed: readonly string[],
+  basePolicy: string | undefined,
+  headPolicy: string | undefined,
+): { changed: readonly string[]; exportsOnly: boolean } {
+  const exportsOnly =
+    changed.includes(policyFile) && onlyExtraExportsChanged(basePolicy, headPolicy);
+  return {
+    changed: exportsOnly ? changed.filter((path) => path !== policyFile) : changed,
+    exportsOnly,
+  };
+}
+
+/**
+ * Whether a change reaches a trust root, so its note needs the guardians'
+ * signatures. A change to `policy.json` in `extraExports` only doesn't
+ * (HAL-8163).
+ */
+export function reachesTrustRoot(
+  changed: readonly string[],
+  basePolicy: string | undefined,
+  headPolicy: string | undefined,
+): boolean {
+  return withoutExportsOnlyPolicy(changed, basePolicy, headPolicy).changed.some(isTrustRoot);
+}
+
+/** Whether `file` is a trust root, or under one that ends in `/`. */
+export function isTrustRoot(file: string): boolean {
+  return matches(trustRoots, file);
 }
 
 /** Whether `file` is one of `paths`, or under one that ends in `/`. */

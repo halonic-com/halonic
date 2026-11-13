@@ -1,11 +1,18 @@
+import { readFileSync } from "node:fs";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
-import { signedApprovals } from "../guard/approvals.ts";
+import { type ApprovalLookup, signedApprovals } from "../guard/approvals.ts";
 import { parseDecisionNote } from "../guard/decision-notes.ts";
 import type { GuardCheck } from "../guard/finding.ts";
 import type { GitObjects } from "../guard/signatures.ts";
 import { noteCovering, noteFile, runGuard } from "./guard-fixture.ts";
 
+const policyFile = "tooling/check/policy.json";
+const realPolicy = JSON.parse(
+  readFileSync(new URL("../../policy.json", import.meta.url), "utf8"),
+) as Record<string, unknown>;
+const policyWith = (changes: Record<string, unknown>): string =>
+  `${JSON.stringify({ ...realPolicy, ...changes }, null, 2)}\n`;
 const file = "packages/core/workflow/requirements/timer-fires.md";
 /** A check that always finds one change, standing in for the real ones. */
 const findsAnEdit: GuardCheck = () => [
@@ -90,5 +97,74 @@ verifies("check.guard-approval-fails-closed", () => {
     const withoutBase = { ...everything, hasCommit: (commit: string) => commit === pull.head };
     const verdict = note && (await signedApprovals(pull, withoutBase).check({ note }));
     expect(verdict).toMatchObject({ approved: false, reason: /can't read/ });
+  });
+});
+
+verifies("check.guard-needs-approved-note", () => {
+  /** Pins `cto` as a guardian only, and `ceo` as the one `user-visible` approver. */
+  const pinned = (signer: string): ApprovalLookup => ({
+    check: ({ note, guardians = false }) => {
+      const singleKey = note.kind === "user-visible" ? "ceo" : "cto";
+      const allowed = guardians ? ["cto"] : [singleKey];
+      return Promise.resolve(
+        allowed.includes(signer)
+          ? { approved: true }
+          : { approved: false, reason: `${signer} may not sign this note` },
+      );
+    },
+  });
+  const userVisible = noteCovering("workflow.timer-fires").replace(
+    "- Kind: internal",
+    "- Kind: user-visible",
+  );
+  const trustRootEdit = {
+    ...edited,
+    baseOutside: { ".gitattributes": "* text=auto\n" },
+    headOutside: { ".gitattributes": "* text=auto eol=lf\n" },
+    note: userVisible,
+  };
+
+  test("accepts a user-visible note signed by a guardian when a trust root changes", async () => {
+    const { errors } = await runGuard({ ...trustRootEdit, approvals: pinned("cto") });
+    expect(errors).toEqual([]);
+  });
+
+  test("rejects the same note signed by a key that isn't a guardian", async () => {
+    const { errors } = await runGuard({ ...trustRootEdit, approvals: pinned("ceo") });
+    expect(errors).toEqual([
+      `${file}: The active requirement "workflow.timer-fires" was edited. ${noteFile} covers it, but its approval isn't verified: ceo may not sign this note.`,
+    ]);
+  });
+
+  test("keeps the single-key check for the note's kind when no trust root changes", async () => {
+    const untouched = { ...edited, note: userVisible };
+    expect((await runGuard({ ...untouched, approvals: pinned("ceo") })).errors).toEqual([]);
+    expect((await runGuard({ ...untouched, approvals: pinned("cto") })).errors).toHaveLength(1);
+  });
+
+  test("keeps the single-key check when policy.json changes in extraExports only", async () => {
+    const exportsOnly = {
+      ...edited,
+      baseOutside: { [policyFile]: policyWith({}) },
+      headOutside: {
+        [policyFile]: policyWith({ extraExports: { "@halonicjs/example": ["./node"] } }),
+      },
+      note: noteCovering("workflow.timer-fires"),
+    };
+    /** The guardians are `ceo` only; the internal key `cto` isn't one. */
+    const lookup: ApprovalLookup = {
+      check: ({ guardians = false }) =>
+        Promise.resolve(
+          guardians ? { approved: false, reason: "cto isn't a guardian" } : { approved: true },
+        ),
+    };
+    expect((await runGuard({ ...exportsOnly, approvals: lookup })).errors).toEqual([]);
+    const rootToo = {
+      ...exportsOnly,
+      headOutside: { ...exportsOnly.headOutside, ".gitattributes": "* text=auto\n" },
+    };
+    expect(await runGuard({ ...rootToo, approvals: lookup })).toMatchObject({
+      errors: [expect.stringContaining("cto isn't a guardian")],
+    });
   });
 });
