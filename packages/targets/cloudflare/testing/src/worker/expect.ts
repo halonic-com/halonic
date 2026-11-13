@@ -36,6 +36,8 @@ export interface Matchers {
   toBeInstanceOf(expected: ErrorClass): void;
   /** A number at or above `expected`. */
   toBeGreaterThanOrEqual(expected: number | bigint): void;
+  /** A number at or below `expected`. */
+  toBeLessThanOrEqual(expected: number | bigint): void;
   /** Exactly `null`. */
   toBeNull(): void;
   /** Exactly `undefined`. */
@@ -110,6 +112,10 @@ const matchers: Record<keyof Matchers, MatcherImplementation> = {
   toBeGreaterThanOrEqual: (actual, expected) => ({
     pass: requireComparable(actual, "actual") >= requireComparable(expected, "expected"),
     expectation: `to be greater than or equal to ${describeValue(expected)}`,
+  }),
+  toBeLessThanOrEqual: (actual, expected) => ({
+    pass: requireComparable(actual, "actual") <= requireComparable(expected, "expected"),
+    expectation: `to be less than or equal to ${describeValue(expected)}`,
   }),
   toBeNull: (actual) => ({ pass: actual === null, expectation: "to be null" }),
   toBeUndefined: (actual) => ({ pass: actual === undefined, expectation: "to be undefined" }),

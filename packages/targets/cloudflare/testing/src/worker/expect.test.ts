@@ -9,11 +9,19 @@ describe("the shim's expect", () => {
     shimExpect(Number.NaN).toBe(Number.NaN);
     shimExpect(3).toBeGreaterThanOrEqual(3);
     shimExpect(4n).toBeGreaterThanOrEqual(2n);
+    shimExpect(3).toBeLessThanOrEqual(3);
+    shimExpect(2n).toBeLessThanOrEqual(4n);
     shimExpect(null).toBeNull();
     shimExpect(undefined).toBeUndefined();
     expect(() => shimExpect("a").toBe("b")).toThrow(new AssertionError('expected "a" to be "b"'));
     expect(() => shimExpect(0).toBeGreaterThanOrEqual(1)).toThrow(
       new AssertionError("expected 0 to be greater than or equal to 1"),
+    );
+  });
+
+  it("fails toBeLessThanOrEqual with Vitest's wording", () => {
+    expect(() => shimExpect(2).toBeLessThanOrEqual(1)).toThrow(
+      new AssertionError("expected 2 to be less than or equal to 1"),
     );
   });
 
@@ -86,6 +94,7 @@ describe("the shim's expect", () => {
       "toContain",
       "toBeInstanceOf",
       "toBeGreaterThanOrEqual",
+      "toBeLessThanOrEqual",
       "toBeNull",
       "toBeUndefined",
       "toThrow",
