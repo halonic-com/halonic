@@ -28,7 +28,9 @@ verifies("integration-kit.sign-in-filter", () => {
         undefined,
         fakeSignInTokens(),
       );
-      const response = await http.fetch("https://api.example.com/v1", { auth: bearer });
+      const response = await http.fetch("https://api.example.com/v1", {
+        auth: bearer,
+      });
       expect(response.headers.get("x-echo")).toBe(secretRemoved);
       expect(await response.text()).toBe(
         JSON.stringify({ echoed: secretRemoved, raw: secretRemoved }),
@@ -44,8 +46,24 @@ verifies("integration-kit.sign-in-filter", () => {
         undefined,
         fakeSignInTokens(),
       );
-      const response = await http.fetch("https://api.example.com/v1", { auth: bearer });
+      const response = await http.fetch("https://api.example.com/v1", {
+        auth: bearer,
+      });
       expect(await response.text()).toBe(`${secretRemoved} ${secretRemoved} ${secretRemoved}`);
+    });
+
+    it("still removes a declared secret the request doesn't place", async () => {
+      const { http } = client(
+        () => new Response(`echo ${canary["example-key"]}`),
+        undefined,
+        undefined,
+        undefined,
+        fakeSignInTokens(),
+      );
+      const response = await http.fetch("https://api.example.com/v1", {
+        auth: bearer,
+      });
+      expect(await response.text()).toBe(`echo ${secretRemoved}`);
     });
 
     it("removes a token that came in only after the request started, from the answer of a later hop", async () => {
@@ -117,6 +135,20 @@ verifies("integration-kit.sign-in-filter", () => {
     it("is not followed", async () => {
       const { http, sent } = client(
         () => redirect(302, `https://api.example.com/next?t=${tokenCanary.refresh}`),
+        undefined,
+        undefined,
+        undefined,
+        fakeSignInTokens(),
+      );
+      expect(await refusal(http.fetch("https://api.example.com/v1", { auth: bearer }))).toBe(
+        "secret-in-redirect",
+      );
+      expect(sent).toHaveLength(1);
+    });
+
+    it("is not followed when it holds a declared secret the request doesn't place", async () => {
+      const { http, sent } = client(
+        () => redirect(302, `https://api.example.com/next?k=${canary["example-key"]}`),
         undefined,
         undefined,
         undefined,

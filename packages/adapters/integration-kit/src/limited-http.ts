@@ -201,7 +201,15 @@ async function send(
   };
 
   try {
-    return await followHops(options, { hop, values, carried, guard, maxBodyBytes, timers });
+    return await followHops(options, {
+      hop,
+      values,
+      declared,
+      carried,
+      guard,
+      maxBodyBytes,
+      timers,
+    });
   } catch (error) {
     clearTimeout(timers.headers);
     clearTimeout(timers.total);
@@ -244,7 +252,10 @@ function startTimers(
 /** What {@link followHops} needs besides the request itself. */
 interface HopContext {
   readonly hop: Hop;
+  /** The secrets this request places. */
   readonly values: Awaited<ReturnType<typeof readSecrets>>;
+  /** Every declared secret, placed or not: the filter and the redirect check cover all of them. */
+  readonly declared: ReadonlyMap<string, string>;
   /** Replaced when a hop brings in a token the kit hadn't seen. */
   carried: SecretForms;
   readonly guard: BodyGuard;
@@ -286,7 +297,7 @@ function placementName(placement: AuthPlacement): string {
 /** Sends the request, then each redirect hop, until an answer that isn't one. */
 async function followHops(options: LimitedHttpOptions, context: HopContext): Promise<Response> {
   const { policy, limits = {} } = options;
-  const { hop, values, guard, maxBodyBytes, timers } = context;
+  const { hop, values, declared, guard, maxBodyBytes, timers } = context;
   const maxRedirects = limits.maxRedirects ?? 5;
   for (let count = 0; ; count++) {
     const tokens = await readTokens(
@@ -298,8 +309,8 @@ async function followHops(options: LimitedHttpOptions, context: HopContext): Pro
     );
     if (hop.placements.some(isSignInPlacement)) {
       // A refresh may have issued a token the filter didn't know when the request started.
-      guard.secrets = filterForms(options, hop.placements, values, tokens);
-      context.carried = carriedForms([...values.values(), ...signInValues(options)]);
+      guard.secrets = filterForms(options, hop.placements, declared, tokens);
+      context.carried = carriedForms([...declared.values(), ...signInValues(options)]);
     }
     const headers = new Headers(hop.headers);
     const placedForm = place(
