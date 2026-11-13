@@ -7,6 +7,7 @@ export {
   bridgeAnswerLimitBytes,
   fitsAnswerLimit,
 } from "./bridges.ts";
+export { AgentHostConnectorFactory } from "./connector.ts";
 export {
   AgentHostHarness,
   type AgentHostHarnessOptions,

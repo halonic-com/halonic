@@ -23,6 +23,10 @@ The stand-ins call the host through an `AgentHostTransport`. It names a route fr
 
 `agentHostHarnesses(transport, { bridgeIdOf, environments })` gives one `AgentHostHarness` per harness the host lists. `environment` is the harness's own function (`claudeCodeEnvironment`, `codexEnvironment`), called here, because it only reads its arguments. A run needs a session open in the host and a bridge opened there, and names both by their ids, so the bridge's token never travels again. The run reads the host's stream from the start, so `send` and `cancel` work before anyone reads its events. `cancel` resolves once the stream has ended; before the host has started the run, it hangs up at once, which stops the run in the host. A stream that ends before `started` fails `send` with `run_not_started`. `openSignIn(settingsFolder)` asks the host to open the harness program's own sign-in for one agent in a terminal the person can see, and answers a `SignInOpened`: `{ opened: true }`, or `{ opened: false, reason, command }` with the command to run by hand. A harness without a sign-in of its own fails with `no_sign_in`, and a refused one with `sign_in_refused`.
 
+## The connectors
+
+`new AgentHostConnectorFactory(transport)` is the engine's `stdio` connector factory in Studio. A connector it makes is a stand-in for a program the host runs in a sandbox session of its own. It opens in the host on its first call with the connector's file fields, the workspace folder, the agents' working folders and the trust grant, never a sandbox profile: the host builds the program's place itself. Studio keeps the secrets: the stand-in reads only the ones the connector's own `secretEnv` names and sends their values with the open request. It refuses to open, without calling the host, when the context has no workspace folder or no trust grant, or a secret isn't set. `close` closes it in the host once.
+
 ## Example
 
 ```ts
