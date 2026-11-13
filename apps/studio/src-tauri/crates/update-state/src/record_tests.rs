@@ -47,6 +47,7 @@ fn update_state_install_that_worked_says_so_once() {
     let updated = StartOutcome::Updated(JustUpdated {
         from: "0.1.0".to_owned(),
         to: "0.1.1".to_owned(),
+        not_carried_over: Vec::new(),
     });
     assert_eq!(record.after_start(&version("0.1.1")), updated);
     assert_eq!(record.after_start(&version("0.1.1")), StartOutcome::Nothing);

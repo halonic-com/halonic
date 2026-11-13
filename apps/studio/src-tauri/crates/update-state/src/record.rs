@@ -237,6 +237,7 @@ impl UpdaterRecord {
             StartOutcome::Updated(JustUpdated {
                 from: install.from.clone(),
                 to: install.target.clone(),
+                not_carried_over: Vec::new(),
             })
         } else {
             StartOutcome::Nothing

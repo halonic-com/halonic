@@ -17,9 +17,9 @@ use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use halonic_update_state::{
-    CHECK_TIME_LIMIT, CheckFailure, CheckResult, FIRST_CHECK_AFTER, JustUpdated, RecordRead,
-    StartOutcome, UpdateState, UpdateStatus, UpdaterRecord, Version, check_due, notes_url,
-    read_record, record_text,
+    CHECK_TIME_LIMIT, CheckFailure, CheckResult, FIRST_CHECK_AFTER, JustUpdated, Migrated,
+    RecordRead, StartOutcome, UpdateState, UpdateStatus, UpdaterRecord, Version, check_due,
+    migrate_settings_file, notes_url, read_record, record_text,
 };
 use tauri::async_runtime::JoinHandle;
 use tauri::ipc::Channel;
@@ -159,7 +159,17 @@ fn load<R: Runtime>(app: &AppHandle<R>) {
             inner.record = after;
         }
         match outcome {
-            StartOutcome::Updated(updated) => inner.just_updated = Some(updated),
+            StartOutcome::Updated(mut updated) => {
+                let profile = inner.file.clone();
+                if let Some(profile) = profile
+                    .as_deref()
+                    .and_then(Path::parent)
+                    .and_then(Path::parent)
+                {
+                    updated.not_carried_over = migrate_settings(profile, &updated.from);
+                }
+                inner.just_updated = Some(updated);
+            }
             StartOutcome::DidNotInstall {
                 version,
                 attempts,
@@ -171,6 +181,27 @@ fn load<R: Runtime>(app: &AppHandle<R>) {
     }
     inner.save();
     inner.notify();
+}
+
+/// This version's settings migrations (FS6): a settings file in the profile,
+/// and what to make of the text an older version wrote. None yet: 0.1.1
+/// reads every file 0.1.0 wrote as it is. A new one goes here with a test.
+type Migration = (&'static str, fn(&str) -> Migrated);
+const MIGRATIONS: &[Migration] = &[];
+
+/// Runs the migrations on the first start after an update from `from`,
+/// each keeping its file's old bytes first. Answers what they couldn't
+/// carry over.
+fn migrate_settings(profile: &Path, from: &str) -> Vec<String> {
+    let mut not_carried_over = Vec::new();
+    for (name, migrate) in MIGRATIONS {
+        let file = profile.join(name);
+        match migrate_settings_file(&file, from, migrate) {
+            Ok(lost) => not_carried_over.extend(lost),
+            Err(error) => eprintln!("updates: {} can't be migrated: {error}", file.display()),
+        }
+    }
+    not_carried_over
 }
 
 /// The record, and whether it may be written. A missing file gives the

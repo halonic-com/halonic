@@ -1,10 +1,12 @@
 //! What the Studio shell's updater knows (HAL-1206): the states it shows the
 //! page (flow-install-update 4.3), when it checks (4.1), and its record of
-//! installs and bad signatures (4.3, 4.6). Plain Rust with no Tauri types
-//! and no files: the shell runs the checks with `tauri-plugin-updater`,
-//! keeps the record in the profile, and asks this crate what to do.
+//! installs and bad signatures (4.3, 4.6), and FS6's settings backup. Plain
+//! Rust with no Tauri types: the shell runs the checks with
+//! `tauri-plugin-updater`, keeps the record in the profile, and asks this
+//! crate what to do. Only `migrate_settings_file` touches files.
 
 mod record;
+mod settings;
 mod status;
 mod version;
 
@@ -14,6 +16,7 @@ pub use record::{
     BadSignature, CheckResult, FORMAT, InstallRecord, MAX_BAD_SIGNATURES, RecordRead, StartOutcome,
     UpdaterRecord, read_record, record_text,
 };
+pub use settings::{Migrated, backup_path, migrate_settings_file};
 pub use status::{
     CheckFailure, DownloadFailure, JustUpdated, Unit, UpdateState, UpdateStatus, notes_url,
 };

@@ -11,6 +11,7 @@ fn update_state_sends_the_status_in_the_agreed_shape() {
         just_updated: Some(JustUpdated {
             from: "0.1.0".to_owned(),
             to: "0.1.1".to_owned(),
+            not_carried_over: Vec::new(),
         }),
         state: UpdateState::Downloading {
             version: "0.1.1".to_owned(),
@@ -26,7 +27,7 @@ fn update_state_sends_the_status_in_the_agreed_shape() {
             "automatic": true,
             "checking": false,
             "lastChecked": 1_762_160_000_000_u64,
-            "justUpdated": { "from": "0.1.0", "to": "0.1.1" },
+            "justUpdated": { "from": "0.1.0", "to": "0.1.1", "notCarriedOver": [] },
             "state": { "kind": "downloading", "version": "0.1.1", "done": 12, "total": null, "unit": "bytes" }
         })
     );
