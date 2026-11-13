@@ -125,6 +125,8 @@ function standIn(root: string, seen: { attempts: Attempts | null }): Harness {
     environment: () => ({}),
     start: (_task, session) => ({
       async *[Symbol.asyncIterator]() {
+        // The host waits a short time for a first event; the attempts below take longer.
+        yield { type: "agent.started", agent: "coder", prompt: "Write change.txt" };
         const { profile: given } = session;
         if (given.settingsFolder === null) throw new Error("The run has no settings folder.");
         // Written from outside the fence, as the person's own file the fence must hide.
@@ -179,7 +181,11 @@ describe("a harness run in the real srt sandbox", () => {
       await engine.close();
 
       // A failed run says why, so a first run on a real machine can be read from the log.
-      expect({ status: run.summary.status, error: run.summary.error, reported: reported.map(String) }).toEqual({
+      expect({
+        status: run.summary.status,
+        error: run.summary.error,
+        reported: reported.map(String),
+      }).toEqual({
         status: "completed",
         error: null,
         reported: [],
