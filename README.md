@@ -17,7 +17,29 @@ as plain files in your own git repository.
 Studio is the desktop app, for Windows. Its installer comes with the 0.1.0
 release. To build it yourself, see [apps/studio](apps/studio/README.md).
 
+## Status: what is not in 0.1.0 yet
+
+0.1.0 is a first release; expect rough edges. What we know about is in the
+pinned [Known issues in 0.1.0](https://github.com/halonic-com/halonic/issues?q=is%3Aissue+label%3Aknown-issues)
+issue.
+<!-- CHECK (HAL-6394): swap in the issue number once it is posted. -->
+
+- Not on npm yet. `npm install -g halonic` installs an empty placeholder, not
+  this release.
+- Studio on macOS and Linux is in progress, with no date. On those, use the
+  command line. Approving from your phone is in progress too.
+- No cost estimates for runs with a real model until 0.1.1, and no spending
+  limit: set one at your provider.
+- Studio doesn't start connectors (MCP servers) yet.
+- Agents can't use your Claude or ChatGPT subscription. They use an API key or
+  a local model. Agents that run Claude Code or Codex are in progress.
+- The sandbox is in progress: 0.1.0 doesn't start agent programs, so nothing
+  runs in it.
+
 ## Install the command line from source
+
+Halonic is not on npm yet. Don't install `halonic` from npm: that package is an
+empty placeholder, not this release.
 
 The `halonic` command installs from this repository. You need
 [git](https://git-scm.com/), [Node.js](https://nodejs.org/) 26.12 or later and
@@ -60,6 +82,36 @@ pnpm install
 
 To remove the command, run `pnpm remove -g halonic`. Then you can delete the
 clone.
+
+## Try it in 5 minutes
+
+```sh
+halonic init --example acme
+cd acme
+halonic test
+```
+
+You should see `5 tests passed`. Acme is an invented company's support
+workspace. It runs on a built-in test model: no key, no account, nothing sent
+anywhere.
+
+## Something failed?
+
+Run `halonic doctor` and fix what it lists. Then run the command that failed
+again with `--debug`. Still stuck? Open an
+[Install problem](https://github.com/halonic-com/halonic/issues/new?template=install-problem.yml)
+or [Bug report](https://github.com/halonic-com/halonic/issues/new/choose)
+issue. Remove keys, tokens and private folder or user names first: `--debug`
+output can include your home folder.
+
+## Models and privacy
+
+- Use local models through Ollama, LM Studio, llama.cpp or vLLM, or cloud
+  models with your own API key. No markup, no credits.
+- No account.
+- Halonic talks only to the models and services you set up. Local models keep
+  your prompts on your computer.
+- The 0.1.0 command line doesn't check for updates.
 
 ## Help and contributing
 
