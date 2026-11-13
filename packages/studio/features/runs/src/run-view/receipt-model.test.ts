@@ -3,7 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import type { SourcedRun } from "../api.ts";
 import { approvalAt, minutesLater, mondayMorning, summaryWith } from "../summary.test-helper.ts";
-import { approvalLines, summaryLine } from "./receipt-model.ts";
+import { approvalLines, messageLines, readLines, summaryLine } from "./receipt-model.ts";
 import { logOf } from "./run-log.test-helper.ts";
 
 const context = {
@@ -162,5 +162,59 @@ verifies("runs.run-view.receipt-approvals", () => {
         ]),
       ).map((e) => e.text),
     ).toEqual(["gmail_send: not answered"]);
+  });
+});
+
+verifies("runs.run-view.receipt-messages-read", () => {
+  const call = (
+    risk: "read" | "write" | "send",
+    noun: [string, string],
+    verb?: "drafted" | "saved",
+  ): RunEventBody => ({
+    type: "tool.result",
+    agent: "reporter",
+    tool: "a_tool",
+    result: "ok",
+    outcome: "ok",
+    risk,
+    noun: { one: noun[0], many: noun[1] },
+    ...(verb === undefined ? {} : { verb }),
+  });
+  const email: [string, string] = ["email", "emails"];
+  const invite: [string, string] = ["invite", "invites"];
+  const file: [string, string] = ["Drive file", "Drive files"];
+  const log = (...bodies: RunEventBody[]) =>
+    logOf(
+      id,
+      bodies.map((body) => [1, body] as const),
+    );
+
+  it("says what was drafted, then what was sent, as two lines", () => {
+    const events = log(
+      call("send", email),
+      call("write", email, "drafted"),
+      call("send", invite),
+      call("send", email),
+    );
+    expect(messageLines(events)).toEqual(["Drafted 1 email", "Sent 2 emails and 1 invite"]);
+  });
+
+  it("doesn't count a file saved as a message", () => {
+    expect(messageLines(log(call("send", file, "saved")))).toEqual([]);
+  });
+
+  it("puts all reads in one line", () => {
+    const events = log(
+      call("read", email),
+      call("read", file),
+      call("read", email),
+      call("read", email),
+    );
+    expect(readLines(events)).toEqual(["Read 3 emails and 1 Drive file"]);
+  });
+
+  it("has no lines for a run that read and messaged nothing", () => {
+    expect(readLines(log())).toEqual([]);
+    expect(messageLines(log())).toEqual([]);
   });
 });

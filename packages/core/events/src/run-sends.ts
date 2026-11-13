@@ -89,6 +89,12 @@ function addCall(groups: SendGroup[], verb: ToolVerb, noun: ToolNoun): void {
   }
 }
 
+export function countNoun(counts: SendCount[], noun: ToolNoun): void {
+  const count = counts.find((candidate) => sameNoun(candidate.noun, noun));
+  if (count === undefined) counts.push({ noun: { one: noun.one, many: noun.many }, calls: 1 });
+  else count.calls += 1;
+}
+
 function sameNoun(a: ToolNoun, b: ToolNoun): boolean {
   return a.one === b.one && a.many === b.many;
 }

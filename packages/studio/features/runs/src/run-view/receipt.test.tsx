@@ -35,3 +35,30 @@ verifies("runs.run-view.receipt-summary", () => {
     ]);
   });
 });
+
+verifies("runs.run-view.receipt-messages-read", () => {
+  it("draws Messages and Read sections with their lines", () => {
+    const root = render(
+      <Receipt
+        summary="Finished in 2 min"
+        approvals={[]}
+        messages={["Drafted 1 email", "Sent 2 emails"]}
+        reads={["Read 3 emails"]}
+      />,
+    );
+    expect([...root.querySelectorAll("h3")].map((heading) => heading.textContent)).toEqual([
+      "Messages",
+      "Read",
+    ]);
+    expect([...root.querySelectorAll("li")].map((item) => item.textContent)).toEqual([
+      "Drafted 1 email",
+      "Sent 2 emails",
+      "Read 3 emails",
+    ]);
+  });
+
+  it("leaves out sections without lines", () => {
+    const root = render(<Receipt summary="Finished in 2 min" approvals={[]} />);
+    expect(root.querySelector("h3")).toBeNull();
+  });
+});
