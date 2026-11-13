@@ -2,6 +2,7 @@
 
 - Approval: Noah's spec on HAL-8553 (a team decision, a detail of the approved Home design, built on the board's design decisions of 13 Nov on HAL-8416); the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:UyfnjGw3YOsrXBRCaGKHFZeLskn974mb2by5+aiD8j2i76qwCfIA1w+8IDyB+rd3HP3F/CeThX+dY3ov9AtQCw==
 - Task: HAL-8552
 
 Users see this change. The note is `internal` because no key is pinned for
