@@ -62,7 +62,6 @@ jobs:
     env:
       CARGO_TERM_COLOR: always
       CARGO_INCREMENTAL: "0"
-      ARTIFACTS: ${{ runner.temp }}/network-capture-artifacts
     steps:
       # The app at the commit under test, then this branch's probe scripts
       # beside it (in that order: checkout cleans what it doesn't track).
@@ -82,7 +81,9 @@ jobs:
         run: rustup toolchain install
       - name: Build the installer
         working-directory: apps/studio/src-tauri
-        run: pwsh windows/build-installer.ps1
+        run: |
+          Add-Content $env:GITHUB_ENV "ARTIFACTS=$env:RUNNER_TEMP\network-capture-artifacts"
+          pwsh windows/build-installer.ps1
       - name: Capture install, first start, update check and idle
         env:
           IDLE_MINUTES: ${{ inputs.idle_minutes || '10' }}
