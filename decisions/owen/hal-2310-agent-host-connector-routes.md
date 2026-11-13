@@ -2,7 +2,6 @@
 
 - Approval: Paperclip task HAL-2310 (D45, board on HAL-2257 Q3); Liam's decision on HAL-8403, part (b); Liam approves this note in review, Julian reviews the security side
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Vl+3ICuPxcyq3t7/XrLskQj+AP/rXUw/EZb9R6HnDmz4kbgnoYUCrX225JM3g3Ur+oaRXs7wH6nk4hVSWmYGBQ==
 
 In Studio the engine runs in a page that can't start programs, so the agent host runs a workspace `stdio` connector, as it runs harnesses. This adds `/v1/connectors/open|tools|call|close` to the host (the stand-in client and Studio's use come in the next parts).
 
