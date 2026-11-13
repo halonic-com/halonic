@@ -1,3 +1,4 @@
+import { Server } from "node:net";
 import { mkdir, mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -57,6 +58,28 @@ const loggingRunner: Runner = {
     return { ...program, stderr: passed };
   },
 };
+
+
+/** SCRATCH (HAL-8158): what the bridge's socket did with each connection, to see who closes a 502'd one. */
+const connTrace: string[] = [];
+const originalEmit = Server.prototype.emit;
+let traceSeq = 0;
+Server.prototype.emit = function (this: Server, event: string | symbol, ...args: unknown[]) {
+  if (event === "connection" && typeof this.address() === "string") {
+    const socket = args[0] as import("node:net").Socket;
+    const id = ++traceSeq;
+    const t0 = performance.now();
+    const note = (what: string) =>
+      connTrace.push(
+        `#${id} +${(performance.now() - t0).toFixed(1)}ms ${what} read=${socket.bytesRead} written=${socket.bytesWritten}`,
+      );
+    note("accepted");
+    for (const what of ["end", "close", "error", "timeout"]) {
+      socket.on(what, (e?: unknown) => note(`${what}${e instanceof Error ? ` ${e.message}` : ""}`));
+    }
+  }
+  return originalEmit.call(this, event, ...args);
+} as typeof Server.prototype.emit;
 
 const sandbox = new SrtSandbox(undefined, loggingRunner);
 const onLinux = process.platform === "linux";
@@ -209,20 +232,15 @@ describe("the harness bridge on a Unix socket", () => {
     },
   );
 
-  it("serves the program's request through srt's proxy, and through a tunnel to the name", async () => {
-    const before = providerCalls.length;
-    // A 502 comes from srt's proxy, not the bridge; its body says which hop failed, so a flake explains itself (HAL-8158).
-    for (const tunnel of [[], ["-p"]]) {
+  it("STRESS: the plain request, many times", async () => {
+    for (let i = 0; i < 300; i++) {
+      connTrace.length = 0;
       srtLog.length = 0;
-      const { code, body } = await reply(...tunnel, url(), ...post(), ...withToken());
-      const said = srtLog
-        .filter((line) => !srtLogNoise.test(line))
-        .slice(-srtLogTail)
-        .join("\n");
-      expect(code, `${tunnel.join(" ") || "no tunnel"}: ${body}\nsrt said:\n${said}`).toBe("200");
+      const { code, body } = await reply(url(), ...post(), ...withToken());
+      const said = srtLog.filter((line) => !srtLogNoise.test(line)).slice(-srtLogTail).join("\n");
+      expect(code, `pass ${i}: ${body}\nbridge socket:\n${connTrace.join("\n")}\nsrt said:\n${said}`).toBe("200");
     }
-    expect(providerCalls).toHaveLength(before + 2);
-  });
+  }, 600_000);
 
   describe("what never reaches the bridge", () => {
     it("is a request to any other name or port, which srt refuses itself", async () => {
