@@ -11,7 +11,8 @@ import {
 } from "@halonicjs/studio-kit";
 import type { PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useState, useSyncExternalStore } from "react";
-import { type RunRow, runRow } from "../list/run-row.ts";
+import { listRows } from "../list/list-rows.ts";
+import type { RunRow } from "../list/run-row.ts";
 import {
   dayGroups,
   type EmptyList,
@@ -69,15 +70,7 @@ export function RunsView({ list, goToWorkflows, openRun, now = () => new Date() 
   const state = useSyncExternalStore(subscribe, () => list.state);
   const [filters, setFilters] = useState<RunsFilters>(startFilters);
   const retry = () => void list.refresh();
-  const currency = list.source.currency();
-  const rows = state.runs.map((run) =>
-    runRow(run, {
-      workflow: list.source.workflow(run.summary.hubId, run.summary.workflowId),
-      routine: routineOf(list, run.summary),
-      currency,
-      now: now(),
-    }),
-  );
+  const rows = listRows(list, now());
   const showTestRuns = () => setFilters({ ...filters, testRuns: true });
   const openRow =
     openRun === undefined
@@ -109,12 +102,6 @@ export function RunsView({ list, goToWorkflows, openRun, now = () => new Date() 
       />
     </div>
   );
-}
-
-/** The routine that started the run, when its trigger names one. */
-function routineOf(list: RunsList, summary: RunSummary) {
-  const key = summary.trigger?.routineId;
-  return key === undefined ? undefined : list.source.routine(key);
 }
 
 /** What comes under the sentence: the load error, the no-runs state, or the filters and the runs. */
