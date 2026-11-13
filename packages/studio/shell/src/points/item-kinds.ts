@@ -1,5 +1,6 @@
 import type { ViewRef } from "../view.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
+import type { SidebarPlace } from "./frame.ts";
 
 /** Points at one item, the same way a deep link does: `kind/hub/id`. */
 export interface ItemRef {
@@ -47,6 +48,12 @@ export interface ItemKindContribution {
   readonly kind: string;
   readonly label: string;
   readonly icon: string;
+  /**
+   * The sidebar place that lists this kind, such as `workflows`. An item's page shows a back link
+   * to it above its title: `ItemPage` draws it, and a view that doesn't render `ItemPage` renders
+   * `PageBackLinkSlot` above its own title. Leave it out for a kind no place lists.
+   */
+  readonly place?: SidebarPlace;
   /** The view that shows an item of this kind in a tab. */
   readonly open: ViewRef;
   /** The dialog that creates an item of this kind, when people can create one. */

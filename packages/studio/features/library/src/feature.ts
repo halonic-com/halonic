@@ -15,6 +15,7 @@ export const libraryFeature = defineFeature({
       kind: "connector",
       label: "Connector",
       icon: "library",
+      place: "library",
       open: { view: "ConnectorPage", load: () => import("./ui/connector-page.tsx") },
       tab: {
         describe: (item) => ({ label: item.id }),

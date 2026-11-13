@@ -2,7 +2,9 @@ import { Suspense } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
 import { HomePage } from "../home/home-page.tsx";
 import { lazyView } from "../lazy-view.ts";
-import type { PlaceContribution } from "../points/frame.ts";
+import { BackLinkSlotProvider } from "../page/back-link-slot.tsx";
+import { PageBackLink } from "../page/page-back-link.tsx";
+import { type PlaceContribution, placeNames } from "../points/frame.ts";
 import type { Registered } from "../points/point-store.ts";
 import { SearchPage } from "../search/search-page.tsx";
 import { searchPageWords } from "../search/search-page-names.ts";
@@ -24,6 +26,8 @@ export interface StudioPageProps {
   readonly tabs: TabSet;
   readonly announcer: Announcer;
   readonly contextFor: (featureId: string) => WorkspaceContext;
+  /** Shows an item's back link above its page, as the desktop does; the phone has its own Back. */
+  readonly backLink?: boolean;
 }
 
 /**
@@ -35,9 +39,18 @@ export interface StudioPageProps {
  *
  * A tab on an item (`kind/hub/id`) shows the `open` view of the kind a feature added
  * (`shell.item-tabs`), given the item and that feature's context, imported the first time a tab
- * shows the kind. An item of a kind no feature added shows nothing.
+ * shows the kind. An item of a kind no feature added shows nothing. With `backLink`, an item
+ * whose kind names its `place` gets a "← Workflows" link, which its `ItemPage` draws above the
+ * header (`shell.page-back-link`).
  */
-export function StudioPage({ location, shell, tabs, announcer, contextFor }: StudioPageProps) {
+export function StudioPage({
+  location,
+  shell,
+  tabs,
+  announcer,
+  contextFor,
+  backLink = false,
+}: StudioPageProps) {
   const { contributions } = shell;
   if (location.key === homeLocation.key) {
     return <HomePage cards={contributions.home.cards()} contextFor={contextFor} />;
@@ -63,7 +76,18 @@ export function StudioPage({ location, shell, tabs, announcer, contextFor }: Stu
   const item = itemOfLocationKey(location.key);
   const kind = item === undefined ? undefined : contributions.itemKinds.get(item.kind);
   if (item !== undefined && kind !== undefined) {
-    return <ItemView kind={kind} item={item} context={contextFor(kind.featureId)} />;
+    const view = <ItemView kind={kind} item={item} context={contextFor(kind.featureId)} />;
+    if (!backLink || kind.place === undefined) {
+      return view;
+    }
+    const parent = { key: kind.place, title: placeNames[kind.place].label };
+    return (
+      <BackLinkSlotProvider
+        value={<PageBackLink parent={parent} tabs={tabs} announcer={announcer} />}
+      >
+        {view}
+      </BackLinkSlotProvider>
+    );
   }
   return null;
 }
