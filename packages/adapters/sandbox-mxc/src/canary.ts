@@ -199,6 +199,7 @@ export class MxcCanary implements TrustCanary {
         report,
         ...judge(report, listeners, written, {
           ports: listeners.length,
+          lan: network.lan.length,
           internet: network.internet.length,
           dns: network.dns.length,
         }),
@@ -277,6 +278,11 @@ function judge(
     missing.push(
       "The canary reached a port of this computer other than the bridge, on loopback or another address.",
     );
+  }
+  if (network.lanReached) {
+    // Same code as a reached port: the interface of `core/app` stays as it is.
+    if (!found.includes("port-reachable")) found.push("port-reachable");
+    missing.push("The canary connected to an address of the local network, such as the router.");
   }
   if (network.internetReached) {
     found.push("internet-reachable");

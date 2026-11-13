@@ -55,13 +55,14 @@ verifies("sandbox-mxc.session", () => {
         hidden: "hidden",
         denied: "readable",
         ports: [{ host: "127.0.0.1", port, state: "refused", code: "ECONNREFUSED" }],
+        lan: [],
         internet: [],
         dns: [],
         network: null,
       });
     });
 
-    it("reports an open port as connected", async () => {
+    it("reports an open port as connected, as a port of this computer and as an address of the local network", async () => {
       const open = createServer((socket) => socket.destroy());
       await new Promise<void>((resolve) => open.listen(0, "127.0.0.1", resolve));
       const address = open.address();
@@ -74,15 +75,15 @@ verifies("sandbox-mxc.session", () => {
           hidden: "x",
           denied: "x",
           ports: [{ host: "127.0.0.1", port }],
+          lan: [{ host: "127.0.0.1", port }],
         };
         writeFileSync(join(folder, "probe.json"), JSON.stringify(settings));
         const { stdout: output } = await execFileAsync(process.execPath, [
           join(folder, "probe.cjs"),
           join(folder, "probe.json"),
         ]);
-        expect(parseLeakReport(output)?.ports).toEqual([
-          { host: "127.0.0.1", port, state: "connected", code: null },
-        ]);
+        const connected = [{ host: "127.0.0.1", port, state: "connected", code: null }];
+        expect(parseLeakReport(output)).toMatchObject({ ports: connected, lan: connected });
       } finally {
         await new Promise<void>((resolve) => open.close(() => resolve()));
       }
@@ -229,6 +230,7 @@ verifies("sandbox-mxc.session", () => {
         hidden: "hidden",
         denied: "hidden",
         ports: [],
+        lan: [],
         internet: [],
         dns: [],
         network: null,

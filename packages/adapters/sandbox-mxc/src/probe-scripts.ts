@@ -8,14 +8,15 @@
  * Reads the control file, the hidden file and the denied file; tries to write
  * where nothing may be written (the host looks at the disk afterwards, so
  * what the box says about it doesn't matter); and tries the network: a TCP
- * connection to each port, to each internet address and to the bridge (the
- * network control), and a DNS query sent straight to each public DNS server.
+ * connection to each port, to each address of the local network, to each
+ * internet address and to the bridge (the network control), and a DNS query
+ * sent straight to each public DNS server.
  *
  * Settings: `{ control, hidden, denied, writes: [{ create, existing }],
- * ports: [{ host, port }], internet: [{ host, port }], dns: [{ host, port }],
- * bridge: { host, port } | null }`.
+ * ports: [{ host, port }], lan: [{ host, port }], internet: [{ host, port }],
+ * dns: [{ host, port }], bridge: { host, port } | null }`.
  *
- * It prints `{ control, hidden, denied, ports, internet, dns, network }`. A file
+ * It prints `{ control, hidden, denied, ports, lan, internet, dns, network }`. A file
  * is `readable` or `hidden`. A network attempt is `{ host, port, state, code }`:
  * `connected` (a connection, or a DNS answer), `refused` (the system said no:
  * ECONNREFUSED, EACCES, EPERM or an unreachable network), `timeout` (nothing
@@ -113,8 +114,9 @@ async function main() {
     attempt(() => fs.rmSync(existing));
   }
   // All at once, so the slowest wait is one timeout, not their sum.
-  [report.ports, report.internet, report.dns, report.network] = await Promise.all([
+  [report.ports, report.lan, report.internet, report.dns, report.network] = await Promise.all([
     Promise.all(config.ports.map(reach)),
+    Promise.all((config.lan ?? []).map(reach)),
     Promise.all((config.internet ?? []).map(reach)),
     Promise.all((config.dns ?? []).map(ask)),
     config.bridge ? reach(config.bridge) : null,
@@ -172,6 +174,8 @@ export interface LeakReport {
   denied: string;
   /** The loopback and host-address listeners. */
   ports: NetworkAttempt[];
+  /** The router's usual address and a neighbour in each private range: nothing of ours listens there. */
+  lan: NetworkAttempt[];
   internet: NetworkAttempt[];
   dns: NetworkAttempt[];
   /** The bridge, the network control; `null` when the box has none. */
@@ -212,13 +216,13 @@ function isAttempt(value: unknown): value is NetworkAttempt {
 export function parseLeakReport(output: string): LeakReport | null {
   const report = lastLine(output) as Partial<LeakReport> | null;
   if (typeof report !== "object" || report === null) return null;
-  const { control, hidden, denied, ports, internet, dns, network } = report;
+  const { control, hidden, denied, ports, lan, internet, dns, network } = report;
   if (typeof control !== "string" || typeof hidden !== "string" || typeof denied !== "string") {
     return null;
   }
   if (!Array.isArray(ports) || !ports.every(isAttempt)) return null;
-  // A probe settings file without internet or DNS targets prints none.
-  const lists = [internet ?? [], dns ?? []];
+  // A probe settings file without local network, internet or DNS targets prints none.
+  const lists = [lan ?? [], internet ?? [], dns ?? []];
   if (!lists.every((list) => Array.isArray(list) && list.every(isAttempt))) return null;
   if (network !== null && network !== undefined && !isAttempt(network)) return null;
   return {
@@ -226,8 +230,9 @@ export function parseLeakReport(output: string): LeakReport | null {
     hidden,
     denied,
     ports,
-    internet: lists[0] as NetworkAttempt[],
-    dns: lists[1] as NetworkAttempt[],
+    lan: lists[0] as NetworkAttempt[],
+    internet: lists[1] as NetworkAttempt[],
+    dns: lists[2] as NetworkAttempt[],
     network: network ?? null,
   };
 }
