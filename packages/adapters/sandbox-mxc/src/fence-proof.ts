@@ -12,7 +12,8 @@
 import type { SandboxBridge, SandboxCommand, SandboxFence, SandboxProcess } from "@halonicjs/ports";
 import type { MxcDisk } from "./disk.ts";
 import { type FenceFiles, writeFenceFiles } from "./fence-files.ts";
-import { type LoopbackListener, listenOnEveryAddress } from "./loopback-listener.ts";
+import { hostAddressTargets } from "./lan-targets.ts";
+import { type LoopbackListener, listenOnLoopbacks } from "./loopback-listener.ts";
 import { judgeNetwork, type NetworkAsked, networkSettings } from "./network-probes.ts";
 import { type LeakReport, parseLeakReport } from "./probe-scripts.ts";
 import { errorLine, runToEnd } from "./run-to-end.ts";
@@ -41,9 +42,9 @@ export async function proveFence(input: FenceProofInput): Promise<SandboxFence> 
   const { files } = input;
   let listeners: LoopbackListener[] = [];
   try {
-    listeners = await listenOnEveryAddress();
+    listeners = await listenOnLoopbacks();
     await writeFenceFiles(input.disk, files);
-    const ports = listeners.map(({ host, port }) => ({ host, port }));
+    const ports = [...listeners.map(({ host, port }) => ({ host, port })), ...hostAddressTargets()];
     const network = networkSettings(input.bridge);
     const settings = {
       control: files.control,

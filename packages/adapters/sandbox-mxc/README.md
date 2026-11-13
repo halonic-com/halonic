@@ -80,7 +80,7 @@ holds the files of the fence proof and nothing the program may read.
 
 **Fence proof.** Before anything runs, a Node probe starts in the box under the session's own
 policy. It must be refused a file no grant names, a denied file inside a folder it may read and
-a port of a listener on this computer (loopback and its other addresses), the internet and a
+a port of a listener on this computer's loopback addresses and a connection to its other addresses (no listener there), the internet and a
 public DNS server asked directly, and it must read a file in a folder it may read
 (without that control "hidden" proves nothing). A network probe counts as blocked only when the system refused it, or when it timed out and the
 box did connect to its bridge (the network control): any other failure, such as Winsock not

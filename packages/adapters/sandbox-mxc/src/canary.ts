@@ -22,9 +22,15 @@ import {
   victimText,
   writeFenceFiles,
 } from "./fence-files.ts";
-import { type LoopbackListener, listenOnEveryAddress } from "./loopback-listener.ts";
+import { hostAddressTargets } from "./lan-targets.ts";
+import { type LoopbackListener, listenOnLoopbacks } from "./loopback-listener.ts";
 import { MxcSession } from "./mxc-session.ts";
-import { judgeNetwork, type NetworkAsked, networkSettings } from "./network-probes.ts";
+import {
+  judgeNetwork,
+  type NetworkAsked,
+  type NetworkTarget,
+  networkSettings,
+} from "./network-probes.ts";
 import {
   type LeakReport,
   parseLeakReport,
@@ -45,6 +51,8 @@ export interface MxcCanaryOptions {
   disk?: MxcDisk;
   /** The Node program the probes run as; the one running Halonic by default. */
   nodeProgram?: string;
+  /** The computer's own addresses the probe tries, as `hostAddressTargets` finds them by default. */
+  hostTargets?: () => NetworkTarget[];
   /** The check's time limit, for the canary session, in milliseconds. 60 seconds by default. */
   timeLimitMs?: number;
   /** How long each probe program may take, in milliseconds. 15 seconds by default. */
@@ -157,9 +165,12 @@ export class MxcCanary implements TrustCanary {
     missing: string[];
     networkProven: boolean;
   }> {
-    const listeners = await listenOnEveryAddress();
+    const listeners = await listenOnLoopbacks();
     try {
-      const ports = listeners.map(({ host, port }) => ({ host, port }));
+      const ports = [
+        ...listeners.map(({ host, port }) => ({ host, port })),
+        ...(this.#options.hostTargets ?? hostAddressTargets)(),
+      ];
       const network = networkSettings({
         kind: "loopback",
         host: "127.0.0.1",
@@ -198,7 +209,7 @@ export class MxcCanary implements TrustCanary {
       return {
         report,
         ...judge(report, listeners, written, {
-          ports: listeners.length,
+          ports: ports.length,
           lan: network.lan.length,
           internet: network.internet.length,
           dns: network.dns.length,

@@ -217,7 +217,8 @@ function workReport(leaks: Leaks): FakeResult {
 /** What a leaking box does besides reading: connects to the ports and writes where it may not. */
 async function actOutside(disk: MemoryDisk, settings: ProbeSettings, leaks: Leaks): Promise<void> {
   if (leaks.reachPort === true) {
-    for (const { host, port } of settings.ports ?? []) await reach(host, port);
+    // All at once, like the real probe, so the slowest wait is one timeout, not their sum.
+    await Promise.all((settings.ports ?? []).map(({ host, port }) => reach(host, port)));
   }
   if (leaks.writeOutside === true) {
     for (const { create } of settings.writes ?? [])
@@ -250,14 +251,20 @@ function leakReport(settings: ProbeSettings, leaks: Leaks): FakeResult {
   return { stdout: `${JSON.stringify(report)}\n`, exitCode: 0 };
 }
 
-/** Connects to a port of this computer, as a leaking box would. */
+/** How long the fake box waits for one connection. A dropped connect (Windows does that to its own addresses) never answers. */
+const reachTimeoutMs = 200;
+
+/** Connects to a port of this computer, as a leaking box would, and gives up after {@link reachTimeoutMs}. */
 function reach(host: string, port: number): Promise<void> {
   return new Promise((resolve) => {
     const socket = connect({ host, port });
-    socket.once("connect", () => {
+    const finish = () => {
+      clearTimeout(timer);
       socket.destroy();
       resolve();
-    });
-    socket.once("error", () => resolve());
+    };
+    const timer = setTimeout(finish, reachTimeoutMs);
+    socket.once("connect", finish);
+    socket.once("error", finish);
   });
 }
