@@ -2,7 +2,7 @@
 
 The `DefinitionStore`, `RunStore`, `RecordStore`, `TrustStore`,
 `AgentPlacementStore`, `ConnectionSettingsStore`, `UnfencedRunConsentStore`, `HostSettingsStore`,
-`BlobStore` and `FolderReader` ports on the local file system with Node: workspace files are
+`BlobStore`, `FolderReader` and `PluginFolderWriter` ports on the local file system with Node: workspace files are
 plain files under a root folder, each run and each collection of records is a
 JSONL log, each trust record, each agent's "this computer" choice, each
 connector's "allow sending" setting and the yes to run without the sandbox is
@@ -36,7 +36,7 @@ and passes the shared `DefinitionStore` contract suite.
   the file, so another program reads the old text or the new. On Windows a
   scanner, an editor or the search indexer can hold the file open for a
   moment, and the rename fails with `EPERM` or `EBUSY`; the store tries it
-  again fifteen times over just under two seconds before the write fails.
+  again every 15 ms for up to 2 seconds before the write fails.
   A file it replaces keeps its permissions, such as a script's execute bit.
   The temporary file is flushed to disk before the rename, so after a power
   cut the file holds the old text or the new one, never an empty or partial
