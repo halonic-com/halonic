@@ -30,3 +30,10 @@ export {
   type WorkspaceWindowProps,
   workspaceKeyPosition,
 } from "./switcher/workspace-window.tsx";
+export type {
+  TrustGrantResult,
+  TrustReview,
+  TrustRowView,
+  TrustSectionView,
+  WorkspaceTrustControl,
+} from "./trust/workspace-trust-control.ts";

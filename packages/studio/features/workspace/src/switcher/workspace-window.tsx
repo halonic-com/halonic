@@ -5,6 +5,7 @@ import {
   WelcomeWindow,
 } from "@halonicjs/studio-shell";
 import { useEffect, useSyncExternalStore } from "react";
+import { WorkspaceTrustBadge } from "../trust/workspace-trust-badge.tsx";
 import { CloseWorkspaceDialog } from "./close-workspace-dialog.tsx";
 import { workspaceMenu } from "./workspace-menu.ts";
 import { historyKey } from "./workspace-saving.ts";
@@ -109,6 +110,15 @@ export function WorkspaceWindow({ shell, switcher, platform, language }: Workspa
         platform={platform}
         language={language}
         switcher={{ workspace: { name: shown.value.name, folder: shown.location }, menu, busy }}
+        badges={
+          shown.value.trust === undefined ? undefined : (
+            <WorkspaceTrustBadge
+              trust={shown.value.trust}
+              name={shown.value.name}
+              toasts={shell.toasts}
+            />
+          )
+        }
       />
       {closeRequest === undefined ? null : (
         <CloseWorkspaceDialog

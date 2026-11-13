@@ -3,6 +3,7 @@ import {
   readLocalIntegrations,
   type TrustCheck,
   type TrustService,
+  type TrustSubject,
   trustSubjectOf,
 } from "@halonicjs/app";
 import type { DefinitionSource, Digest, FolderReader } from "@halonicjs/ports";
@@ -36,6 +37,8 @@ export interface WorkspaceTrustSources {
 export class WorkspaceTrust {
   readonly #sources: WorkspaceTrustSources;
   #check: TrustCheck | undefined;
+  #subject: TrustSubject | undefined;
+  readonly #listeners = new Set<() => void>();
   #name: string | undefined;
   #latest = 0;
 
@@ -53,6 +56,38 @@ export class WorkspaceTrust {
     return this.#check;
   }
 
+  /** Calls `listener` whenever a check starts or ends; returns the way to stop. */
+  subscribe(listener: () => void): () => void {
+    this.#listeners.add(listener);
+    return () => {
+      this.#listeners.delete(listener);
+    };
+  }
+
+  /**
+   * Saves a person's trust in exactly the check with `shownFingerprint`, then checks again.
+   * Never rejects: it says why nothing was saved.
+   */
+  async grant(
+    shownFingerprint: string,
+  ): Promise<{ readonly ok: true } | { readonly ok: false; readonly reason: string }> {
+    const subject = this.#subject;
+    if (subject === undefined) {
+      return { ok: false, reason: "Halonic hasn't read this workspace yet" };
+    }
+    try {
+      const result = await this.#sources.trust.grant(subject, shownFingerprint, "prompt");
+      if (!result.ok) {
+        await this.refresh();
+        return { ok: false, reason: "this workspace changed" };
+      }
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : "unknown error" };
+    }
+    await this.refresh();
+    return this.isTrusted() ? { ok: true } : { ok: false, reason: "this workspace changed" };
+  }
+
   /** Whether the last check found the workspace trusted. */
   isTrusted(): boolean {
     return this.#check?.status === "trusted";
@@ -66,17 +101,25 @@ export class WorkspaceTrust {
   async refresh(): Promise<void> {
     const mine = ++this.#latest;
     this.#check = undefined;
+    this.#subject = undefined;
+    this.#changed();
     try {
-      const { name, check } = await this.#read();
+      const { name, check, subject } = await this.#read();
       if (mine !== this.#latest) return;
       this.#name = name;
       this.#check = check;
+      this.#subject = subject;
     } catch {
       // Fails closed: no check, so no trust.
     }
+    if (mine === this.#latest) this.#changed();
   }
 
-  async #read(): Promise<{ name: string | undefined; check: TrustCheck }> {
+  #changed(): void {
+    for (const listener of this.#listeners) listener();
+  }
+
+  async #read(): Promise<{ name: string | undefined; check: TrustCheck; subject: TrustSubject }> {
     const { definitions, folder, digest, trust } = this.#sources;
     const workspace = await loadWorkspace(definitions);
     const connectors = filesOf(workspace, "connector").map((file) => file.value);
@@ -94,6 +137,7 @@ export class WorkspaceTrust {
     return {
       name: filesOf(workspace, "workspace")[0]?.value.name,
       check: await trust.check(subject),
+      subject,
     };
   }
 }

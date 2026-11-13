@@ -9,6 +9,7 @@ import {
   type StudioWorkspace,
   type WelcomeOpenProblem,
 } from "@halonicjs/studio-shell";
+import type { WorkspaceTrustControl } from "../trust/workspace-trust-control.ts";
 import { OpenWorkspaces } from "./open-workspaces.ts";
 import type { RecentWorkspaces } from "./recent-workspaces.ts";
 import type { WorkspaceSaving } from "./workspace-saving.ts";
@@ -21,6 +22,8 @@ export interface OpenedWorkspace {
   readonly workspace: StudioWorkspace;
   /** Saves its files by itself and says whether it can close; absent when it has no files to save. */
   readonly saving?: WorkspaceSaving | undefined;
+  /** Whether it is trusted and the way to trust it; absent when there is no folder to trust. */
+  readonly trust?: WorkspaceTrustControl | undefined;
   /** Stops its services. Called once, when it closes. */
   dispose(): Promise<void>;
 }
