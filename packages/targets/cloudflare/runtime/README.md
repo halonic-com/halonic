@@ -28,6 +28,19 @@ the migration, the bindings or the list differ, and `src/test/worker.spec.ts`
 (run inside workerd) fails when the Worker stops exporting one. The rule is
 `runtime.durable-object-migrations`.
 
+## Configuration and wiring
+
+`createRuntime(env)` builds every Cloudflare adapter from the Worker's `env`:
+the Durable Object, D1 and R2 bindings that `wrangler.toml` declares (`COORDINATION`,
+`RUN`, `DB`, `BLOBS`, `DEFINITIONS`), and the secrets. A secret is a Workers secret
+named `HALONIC_SECRET_<NAME>`: `token-key` is `HALONIC_SECRET_TOKEN_KEY` (32 random
+bytes in base64url) and `serve-password` is `HALONIC_SECRET_SERVE_PASSWORD` (the
+PBKDF2 hash `halonic deploy` makes). Nothing else in `env` is read as a secret.
+When a binding or one of these two secrets is missing, `createRuntime` throws a
+`ConfigurationError` naming what is missing, never a value. `fetch()` doesn't
+use it yet: the health route needs no configuration and shows none. The rule is
+the requirement `runtime.configuration`.
+
 ## Tests
 
 `routes.test.ts` and `worker.node.test.ts` run in Node. `worker.test.ts` runs

@@ -2708,6 +2708,21 @@ importers:
       '@halonicjs/adapter-cloudflare-durable':
         specifier: workspace:*
         version: link:../../../adapters/cloudflare-durable
+      '@halonicjs/adapter-cloudflare-storage':
+        specifier: workspace:*
+        version: link:../../../adapters/cloudflare-storage
+      '@halonicjs/adapter-env-secrets':
+        specifier: workspace:*
+        version: link:../../../adapters/env-secrets
+      '@halonicjs/adapter-password-pbkdf2':
+        specifier: workspace:*
+        version: link:../../../adapters/password-pbkdf2
+      '@halonicjs/adapter-token-store':
+        specifier: workspace:*
+        version: link:../../../adapters/token-store
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../../core/ports
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
