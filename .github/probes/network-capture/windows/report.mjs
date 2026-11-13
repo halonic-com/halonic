@@ -26,7 +26,9 @@ const read = (name) => {
   }
 };
 const json = (name) => {
-  const text = read(name)?.toString("utf8").replace(/^\uFEFF/, "");
+  const text = read(name)
+    ?.toString("utf8")
+    .replace(/^\uFEFF/, "");
   return text ? JSON.parse(text) : undefined;
 };
 const problems = [];
@@ -76,9 +78,7 @@ export function normalize(address) {
   return bare.includes(":") ? new URL(`http://[${bare}]`).hostname.slice(1, -1) : bare;
 }
 const ip6 = (b, at) =>
-  normalize(
-    Array.from({ length: 8 }, (_, i) => b.readUInt16BE(at + i * 2).toString(16)).join(":"),
-  );
+  normalize(Array.from({ length: 8 }, (_, i) => b.readUInt16BE(at + i * 2).toString(16)).join(":"));
 
 /** An Ethernet frame to { proto, src, dst, sport, dport, flags, payload } or { other }. */
 export function decode(frame) {
@@ -104,10 +104,16 @@ export function decode(frame) {
     at += 40;
   } else return { other: ethertype === 0x0806 ? "ARP" : `ethertype 0x${ethertype.toString(16)}` };
   if (proto !== 6 && proto !== 17) return { other: `IP protocol ${proto}`, src, dst };
-  const out = { proto: proto === 6 ? "TCP" : "UDP", src, dst, sport: frame.readUInt16BE(at), dport: frame.readUInt16BE(at + 2) };
+  const out = {
+    proto: proto === 6 ? "TCP" : "UDP",
+    src,
+    dst,
+    sport: frame.readUInt16BE(at),
+    dport: frame.readUInt16BE(at + 2),
+  };
   if (proto === 6) {
     out.flags = frame[at + 13];
-    out.payload = frame.subarray(at + ((frame[at + 12] >> 4) * 4));
+    out.payload = frame.subarray(at + (frame[at + 12] >> 4) * 4);
   } else out.payload = frame.subarray(at + 8);
   return out;
 }
@@ -165,13 +171,18 @@ if (!samples) problems.push("There are no process samples (processes.json).");
 if (!control) problems.push("The control never ran: there is no control.json.");
 else if (!control.ok) problems.push(`The control fetch failed: ${control.error ?? "no answer"}.`);
 
-const packets = pcap && pcap.length > 0 ? readPcapng(pcap).map((p) => ({ time: p.time, ...decode(p.frame) })) : [];
+const packets =
+  pcap && pcap.length > 0
+    ? readPcapng(pcap).map((p) => ({ time: p.time, ...decode(p.frame) }))
+    : [];
 const WINDOW = 1500;
 const installDir = (session?.installDir ?? "\0").toLowerCase();
 const setup = (session?.setup ?? "\0").toLowerCase();
 const table = samples?.processes ?? [];
 const processAt = (pid, time) =>
-  table.filter((p) => p.pid === pid).find((p) => p.first - WINDOW <= time && time <= p.last + WINDOW) ??
+  table
+    .filter((p) => p.pid === pid)
+    .find((p) => p.first - WINDOW <= time && time <= p.last + WINDOW) ??
   table.find((p) => p.pid === pid);
 const isHalonicProgram = (p) => {
   const path = (p.path ?? "").toLowerCase();
@@ -196,16 +207,28 @@ const connections = (samples?.connections ?? []).map((c) => {
   };
   const [la, lp] = split(c.local);
   const [ra, rp] = split(c.remote);
-  return { ...c, la: wildcard(la) ? la : normalize(la), lp, ra: ra === "*" ? ra : normalize(ra), rp };
+  return {
+    ...c,
+    la: wildcard(la) ? la : normalize(la),
+    lp,
+    ra: ra === "*" ? ra : normalize(ra),
+    rp,
+  };
 });
 const connectionOf = (p) =>
   connections
-    .filter((c) => c.proto === p.proto && c.pid > 0 && c.first - WINDOW <= p.time && p.time <= c.last + WINDOW)
+    .filter(
+      (c) =>
+        c.proto === p.proto && c.pid > 0 && c.first - WINDOW <= p.time && p.time <= c.last + WINDOW,
+    )
     .filter((c) => {
       const sends = String(p.sport) === c.lp && (wildcard(c.la) || c.la === p.src);
       const gets = String(p.dport) === c.lp && (wildcard(c.la) || c.la === p.dst);
       if (c.proto === "UDP") return sends || gets;
-      return (sends && endpointKey(p.dst, p.dport) === `${c.ra}:${c.rp}`) || (gets && endpointKey(p.src, p.sport) === `${c.ra}:${c.rp}`);
+      return (
+        (sends && endpointKey(p.dst, p.dport) === `${c.ra}:${c.rp}`) ||
+        (gets && endpointKey(p.src, p.sport) === `${c.ra}:${c.rp}`)
+      );
     })
     .sort((a, b) => b.first - a.first)[0];
 
@@ -213,10 +236,17 @@ const connectionOf = (p) =>
 const names = new Map();
 const asked = new Map();
 for (const p of packets) {
-  if (p.proto !== "UDP" || (p.sport !== 53 && p.dport !== 53) || !p.payload || p.payload.length < 12) continue;
+  if (
+    p.proto !== "UDP" ||
+    (p.sport !== 53 && p.dport !== 53) ||
+    !p.payload ||
+    p.payload.length < 12
+  )
+    continue;
   const dns = parseDns(p.payload);
   for (const q of dns.questions) if (p.dport === 53) asked.set(q, (asked.get(q) ?? 0) + 1);
-  for (const [name, address] of dns.answers) names.set(address, [...new Set([...(names.get(address) ?? []), name])]);
+  for (const [name, address] of dns.answers)
+    names.set(address, [...new Set([...(names.get(address) ?? []), name])]);
 }
 const nameOf = (address) => names.get(address)?.[0] ?? address;
 // The update check reads latest.json from GitHub, which sends the download on to its asset hosts.
@@ -224,33 +254,73 @@ const isUpdateHost = (address) =>
   (names.get(address) ?? []).some((n) => /(^|\.)(github\.com|githubusercontent\.com)$/i.test(n));
 
 const phaseOf = (time) =>
-  Object.entries(session?.phases ?? {}).find(([, w]) => w.start <= time && time <= w.end)?.[0] ?? "between";
-const lookedUp = packets.some((p) => p.proto === "UDP" && p.sport === 53 && parseDns(p.payload).answers.some(([n]) => /^example\.com$/i.test(n)));
-const answers = new Set(packets.filter((p) => p.proto === "UDP" && p.sport === 53).flatMap((p) => parseDns(p.payload).answers.filter(([n]) => /^example\.com$/i.test(n)).map(([, a]) => a)));
-const connected = packets.some((p) => p.proto === "TCP" && p.flags & 2 && !(p.flags & 16) && p.dst === control?.address && p.dport === 443 && p.sport === control?.localPort);
+  Object.entries(session?.phases ?? {}).find(([, w]) => w.start <= time && time <= w.end)?.[0] ??
+  "between";
+const lookedUp = packets.some(
+  (p) =>
+    p.proto === "UDP" &&
+    p.sport === 53 &&
+    parseDns(p.payload).answers.some(([n]) => /^example\.com$/i.test(n)),
+);
+const answers = new Set(
+  packets
+    .filter((p) => p.proto === "UDP" && p.sport === 53)
+    .flatMap((p) =>
+      parseDns(p.payload)
+        .answers.filter(([n]) => /^example\.com$/i.test(n))
+        .map(([, a]) => a),
+    ),
+);
+const connected = packets.some(
+  (p) =>
+    p.proto === "TCP" &&
+    p.flags & 2 &&
+    !(p.flags & 16) &&
+    p.dst === control?.address &&
+    p.dport === 443 &&
+    p.sport === control?.localPort,
+);
 if (control?.ok) {
   if (!lookedUp) problems.push("The control's DNS lookup of example.com isn't in the capture.");
-  if (!connected) problems.push(`The control's SYN to ${control.address}:443 isn't in the capture.`);
+  if (!connected)
+    problems.push(`The control's SYN to ${control.address}:443 isn't in the capture.`);
   if (control.address && !answers.has(control.address))
-    problems.push(`The control connected to ${control.address}, which its lookup in the capture didn't return.`);
+    problems.push(
+      `The control connected to ${control.address}, which its lookup in the capture didn't return.`,
+    );
 }
 
-const groups = { Halonic: new Map(), WebView2: new Map(), "Windows and others": new Map(), "No process in the samples": new Map() };
+const groups = {
+  Halonic: new Map(),
+  WebView2: new Map(),
+  "Windows and others": new Map(),
+  "No process in the samples": new Map(),
+};
 const count = (map, key) => map.set(key, (map.get(key) ?? 0) + 1);
 const failures = [];
 let local = 0;
 let controlPackets = 0;
 for (const p of packets) {
   if (p.other && !p.proto) {
-    count(groups["No process in the samples"], `${p.other}${p.src ? ` ${p.src} → ${p.dst}` : ""} · ${phaseOf(p.time)}`);
+    count(
+      groups["No process in the samples"],
+      `${p.other}${p.src ? ` ${p.src} → ${p.dst}` : ""} · ${phaseOf(p.time)}`,
+    );
     continue;
   }
   if (normalize(p.src).startsWith("127.") || p.src === "::1") {
     local++;
     continue;
   }
-  if (control && p.sport === control.localPort && p.proto === "TCP" && p.dst === control.address) controlPackets++;
-  else if (control && p.dport === control.localPort && p.proto === "TCP" && p.src === control.address) controlPackets++;
+  if (control && p.sport === control.localPort && p.proto === "TCP" && p.dst === control.address)
+    controlPackets++;
+  else if (
+    control &&
+    p.dport === control.localPort &&
+    p.proto === "TCP" &&
+    p.src === control.address
+  )
+    controlPackets++;
   const server = p.sport < p.dport ? [p.src, p.sport] : [p.dst, p.dport];
   const label = `${p.proto} → ${nameOf(server[0])}:${server[1]}`;
   const connection = connectionOf(p);
@@ -261,18 +331,26 @@ for (const p of packets) {
   }
   const group = groupOf(process, p.time);
   count(groups[group], `${process.name} · ${label} · ${phaseOf(p.time)}`);
-  if (group === "Halonic" && !isUpdateHost(server[0])) failures.push(`${process.name} → ${nameOf(server[0])}:${server[1]} (${phaseOf(p.time)})`);
+  if (group === "Halonic" && !isUpdateHost(server[0]))
+    failures.push(`${process.name} → ${nameOf(server[0])}:${server[1]} (${phaseOf(p.time)})`);
 }
 
 const total = (m) => [...m.values()].reduce((a, b) => a + b, 0);
-const rows = (m) => [...m].sort((x, y) => y[1] - x[1]).map(([k, n]) => `| ${k.replaceAll("|", "\\|")} | ${n} |`);
-const section = (heading, m) => (m.size > 0 ? [`### ${heading}`, "", "| Packets | Count |", "|---|---|", ...rows(m), ""] : [`### ${heading}`, "", "none", ""]);
+const rows = (m) =>
+  [...m].sort((x, y) => y[1] - x[1]).map(([k, n]) => `| ${k.replaceAll("|", "\\|")} | ${n} |`);
+const section = (heading, m) =>
+  m.size > 0
+    ? [`### ${heading}`, "", "| Packets | Count |", "|---|---|", ...rows(m), ""]
+    : [`### ${heading}`, "", "none", ""];
 const out = [
   "## Session on Windows (x64)",
   "",
   `${packets.length} packets at the network cards: ${total(groups.Halonic)} from Halonic, ${total(groups.WebView2)} from WebView2, ${total(groups["Windows and others"])} from Windows and others, ${total(groups["No process in the samples"])} with no process in the samples, ${controlPackets} of them the control's. Loopback isn't captured at the cards (${local} seen).`,
   "",
-  "Phases: " + Object.entries(session?.phases ?? {}).map(([n, w]) => `${n} ${Math.round((w.end - w.start) / 1000)} s`).join(", "),
+  "Phases: " +
+    Object.entries(session?.phases ?? {})
+      .map(([n, w]) => `${n} ${Math.round((w.end - w.start) / 1000)} s`)
+      .join(", "),
   "",
   "### Control: a fetch of example.com at the end of the session",
   "",
@@ -286,7 +364,10 @@ const out = [
   ...section("Halonic (installer, app, agent host, sandbox helper)", groups.Halonic),
   ...section("WebView2, for review", groups.WebView2),
   ...section("Windows and others (runner, DNS, system), for review", groups["Windows and others"]),
-  ...section("No process in the samples (short connections, ARP, closed connections), for review", groups["No process in the samples"]),
+  ...section(
+    "No process in the samples (short connections, ARP, closed connections), for review",
+    groups["No process in the samples"],
+  ),
   ...section("DNS names asked for (any program)", asked),
   "### Only checked in the code, not in this capture",
   "",
@@ -295,7 +376,8 @@ const out = [
   "- A connection shorter than the 0.2 s sampling is never matched to a process; its packets are in the last table.",
   "",
 ];
-if (failures.length > 0) problems.push(`Halonic sent traffic that isn't the update check (listed above).`);
+if (failures.length > 0)
+  problems.push(`Halonic sent traffic that isn't the update check (listed above).`);
 if (problems.length > 0) out.push("### Problems", "", ...problems.map((p) => `- ${p}`), "");
 process.stdout.write(`${out.join("\n")}\n`);
 process.exitCode = problems.length > 0 ? 1 : 0;
