@@ -4,6 +4,10 @@
 - Kind: internal
 - Task: HAL-7840
 
+MXC's fence proof and canary now probe the internet, public DNS and the computer's other
+addresses, not only loopback, and a positive network control decides what counts as blocked, so
+a probe that fails for an unrelated reason no longer passes as a closed fence.
+
 ## Covers
 
 - `sandbox-mxc.session`
