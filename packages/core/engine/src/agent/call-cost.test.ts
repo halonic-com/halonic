@@ -10,6 +10,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { call, callAnswer, ScriptedModel, textAnswer } from "../testing/scripted-model.ts";
 import { callCost } from "./call-cost.ts";
+import { noListedToolApproval } from "./listed-tool-approval.ts";
 import { runModelTurn } from "./run-model-turn.ts";
 import {
   MemoryTurnLog,
@@ -106,6 +107,7 @@ verifies("engine.turn-prices-calls", () => {
       callerTools: [],
       halonicTools: [],
       connectors: [],
+      listedToolApproval: noListedToolApproval,
       maxRounds: 1,
       agent: "clerk",
       clock: steppingClock(),

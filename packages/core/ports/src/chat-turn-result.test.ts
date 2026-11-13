@@ -1,6 +1,12 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
-import { expect, expectTypeOf, it } from "vitest";
-import type { ChatMessage, ChatTurnRefusal, ChatTurnResponse, ChatTurnSkip } from "./index.ts";
+import { assertType, expect, expectTypeOf, it } from "vitest";
+import type {
+  ChatMessage,
+  ChatTurnRefusal,
+  ChatTurnResponse,
+  ChatTurnSkip,
+  ChatTurnWaiting,
+} from "./index.ts";
 
 // Type tests: `tsc -p tsconfig.test.json` checks them. Each `@ts-expect-error`
 // fails the typecheck if the line it marks ever starts to compile.
@@ -77,5 +83,26 @@ verifies("ports.chat-turn-skipped", () => {
       reason: "no-key",
       next: "default",
     });
+  });
+});
+
+verifies("ports.chat-turn-waiting", () => {
+  typeTest("keeps waiting optional and apart from refusals", () => {
+    expectTypeOf<ChatTurnResponse["waiting"]>().toEqualTypeOf<ChatTurnWaiting[] | undefined>();
+    expectTypeOf(plain).toMatchTypeOf<ChatTurnResponse>();
+  });
+
+  typeTest("names only the connector and the tool", () => {
+    expectTypeOf<keyof ChatTurnWaiting>().toEqualTypeOf<"source" | "name">();
+    // @ts-expect-error: waiting has no reason; it is only waiting
+    assertType<ChatTurnWaiting>({ source: "notes", name: "lookup", reason: "x" });
+  });
+
+  it("carries the connector's id and the tool's name", () => {
+    const response: ChatTurnResponse = {
+      ...plain,
+      waiting: [{ source: "notes", name: "lookup" }],
+    };
+    expect(response.waiting).toEqual([{ source: "notes", name: "lookup" }]);
   });
 });

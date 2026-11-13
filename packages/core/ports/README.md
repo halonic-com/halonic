@@ -77,7 +77,9 @@ in a model server's error text with `isModelOutOfMemory` (requirement
 `isModelCallError`, not `instanceof`, because an adapter may have its own
 copy of this package (requirement `model-call-error`). A chat turn outside a
 run returns the models it skipped before calling them in
-`ChatTurnResponse.skipped` (requirement `chat-turn-skipped`).
+`ChatTurnResponse.skipped` (requirement `chat-turn-skipped`), and the listed tools
+it left out because nobody approved them yet in `ChatTurnResponse.waiting`
+(requirement `chat-turn-waiting`).
 
 Three files hold shared types, not a port: `chat.ts` (the messages of a model
 call), `run-failure-error.ts` and `cant-try-error.ts`. The second has

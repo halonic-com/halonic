@@ -232,6 +232,7 @@ export {
   type ChatTurnRequest,
   type ChatTurnResponse,
   type ChatTurnSkip,
+  type ChatTurnWaiting,
   type EngineConnection,
   type EngineConnectionState,
   type RunEventListener,

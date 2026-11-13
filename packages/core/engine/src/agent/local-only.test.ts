@@ -10,6 +10,8 @@ import {
   ScriptedModel,
   textAnswer,
 } from "../testing/scripted-model.ts";
+import { reviewedTools } from "./listed-tool-approval.test-helper.ts";
+import { noListedToolApproval } from "./listed-tool-approval.ts";
 import type { ResolvedModel } from "./model-chain.ts";
 import { runModelTurn } from "./run-model-turn.ts";
 import {
@@ -41,6 +43,7 @@ function executorOn(
     resolveModel: async () => model,
     halonicTools: [],
     connectors,
+    listedToolApproval: reviewedTools,
     secrets: secretsWith(),
     clock: steppingClock(),
     localOnly,
@@ -81,6 +84,7 @@ verifies("engine.local-only", () => {
       callerTools: [],
       halonicTools: [],
       connectors: [],
+      listedToolApproval: noListedToolApproval,
       maxRounds: 20,
       agent: "clerk",
       clock: steppingClock(),

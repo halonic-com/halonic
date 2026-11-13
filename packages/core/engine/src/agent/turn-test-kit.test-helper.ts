@@ -8,6 +8,8 @@ import type {
 } from "@halonicjs/ports";
 import { ScriptedModel } from "../testing/scripted-model.ts";
 import type { CallChecker } from "./check-call-before-run.ts";
+import { reviewedTools } from "./listed-tool-approval.test-helper.ts";
+import type { ListedToolApproval } from "./listed-tool-approval.ts";
 import type { ResolvedModel } from "./model-chain.ts";
 import { type ModelTurnInput, runModelTurn } from "./run-model-turn.ts";
 import type { TurnEvent, TurnLog } from "./turn-log.ts";
@@ -63,6 +65,8 @@ export interface TestTurn {
   connectors?: ConnectorClient[];
   /** The tools the connectors' sheets declare, by connector id and listed name. */
   declaredTools?: NonNullable<ModelTurnInput["declaredTools"]>;
+  /** Which listed tools were approved; {@link reviewedTools} when left out, so every tool passes. */
+  listedToolApproval?: ListedToolApproval;
   maxRounds?: number;
   log?: TurnLog;
   /** The provider's id; "scripted" when left out. */
@@ -86,6 +90,7 @@ export async function runTestTurn(setup: TestTurn) {
     halonicTools: setup.halonicTools ?? [],
     connectors: setup.connectors ?? [],
     ...(setup.declaredTools === undefined ? {} : { declaredTools: setup.declaredTools }),
+    listedToolApproval: setup.listedToolApproval ?? reviewedTools,
     maxRounds: setup.maxRounds ?? 20,
     agent: "clerk",
     clock: steppingClock(),

@@ -13,6 +13,7 @@ import {
 } from "../testing/scripted-model.ts";
 import { subagentTools } from "../tools/subagents/subagent-tools.ts";
 import type { CallChecker } from "./check-call-before-run.ts";
+import { reviewedTools } from "./listed-tool-approval.test-helper.ts";
 import { type AgentTurnOutcome, runAgentTurn } from "./run-model-turn.ts";
 import type { TurnAnswer } from "./turn-approval.ts";
 import {
@@ -86,6 +87,7 @@ class Hub {
       messages: [{ role: "user", content: task }],
       halonicTools: [tool("lookup"), tool("publish"), ...delegates],
       connectors: [this.mail],
+      listedToolApproval: reviewedTools,
       effects: { checkSending: async () => ({ allowed: true }) },
       maxRounds: 6,
       agent,

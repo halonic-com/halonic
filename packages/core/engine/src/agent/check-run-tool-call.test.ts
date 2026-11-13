@@ -3,6 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { call, ScriptedConnector } from "../testing/scripted-model.ts";
 import { checkRunToolCall, runToolCheckOf } from "./check-run-tool-call.ts";
+import { reviewedTools } from "./listed-tool-approval.test-helper.ts";
 import { halonicTool } from "./turn-test-kit.test-helper.ts";
 import { collectTurnTools, type TurnTool } from "./turn-tools.ts";
 
@@ -57,6 +58,7 @@ verifies("engine.run-tool-calls", () => {
       callerTools: [],
       halonicTools: [],
       connectors: [mail],
+      listedToolApproval: reviewedTools,
     });
 
     expect(tools.map((tool) => (tool.kind === "server" ? tool.risk : null))).toEqual([

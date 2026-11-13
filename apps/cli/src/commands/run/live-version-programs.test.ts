@@ -1,23 +1,26 @@
-import { cp, mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
+import { FileToolApprovalStore, FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
 import { testGit } from "@halonicjs/adapter-git/testing";
 import { nodeProgramStarter } from "@halonicjs/adapter-mcp";
 import { MemorySecrets, MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { liveVersionOf, WorkflowRuns } from "@halonicjs/app";
+import { approveAllShown, checkConnectorTools } from "@halonicjs/app/listed-tools";
 import type { RunEvent } from "@halonicjs/events";
-import { profileFolder } from "@halonicjs/profile";
+import { type ProfileEnvironment, profileFolder, toolApprovalFolder } from "@halonicjs/profile";
+import { systemClock } from "@halonicjs/std";
 import { contractGrant } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
+import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { cliConnectorFactories } from "../../connector-machine.ts";
 import { openLocalEngine } from "../../local-engine-host.ts";
 import { loadRunWorkspace, openGitHistory } from "../../run-workspace.ts";
 import { removeTestFolder } from "../../test/remove-folder.ts";
-import { nodeProfileEnvironment } from "../../workspace-runs.ts";
+import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts";
 
 /** The Acme example, which the notes connector is added to. */
 const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import.meta.url));
@@ -120,6 +123,30 @@ async function reporterCallsNotes(): Promise<void> {
   );
 }
 
+/** What `halonic tools approve --all` writes for the notes connector's `which` tool in `profile`. */
+async function approveNotesTools(
+  workspace: LoadedWorkspace,
+  profile: ProfileEnvironment,
+): Promise<void> {
+  const store = new FileToolApprovalStore(toolApprovalFolder(profileFolder(profile)));
+  const connector = filesOf(workspace, "connector").find((file) => file.value.id === "notes");
+  if (connector === undefined) throw new Error("The workspace has the notes connector.");
+  const location = await realpath(acme);
+  const check = await checkConnectorTools({
+    location,
+    connector: connector.value,
+    listed: [
+      { name: "which", description: "Says which script answers.", parameters: { type: "object" } },
+    ],
+    trust: { location, fingerprint: "hfp1:test" },
+    store,
+    digest: webCryptoDigest,
+    clock: systemClock,
+  });
+  if (!check.ok) throw new Error(check.error);
+  await approveAllShown(check.value, check.value.waiting, store, systemClock);
+}
+
 /**
  * Loads the workspace as `halonic run` does, runs Weekly report in the CLI's
  * engine on the live version, and gives what the notes connector's `which`
@@ -142,6 +169,7 @@ async function askNotesFromALiveRun(): Promise<{ answer: string; copiesLeft: str
     ...nodeProfileEnvironment(),
     variables: { HALONIC_HOME: join(folder, "profile") },
   };
+  await approveNotesTools(loaded.workspace, profile);
   const engine = await openLocalEngine({
     workspace: loaded.workspace,
     workspaceRoot: acme,

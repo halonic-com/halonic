@@ -7,6 +7,7 @@ import type { SendingSettings } from "@halonicjs/app";
 import type { Agent, Connector } from "@halonicjs/format";
 import type { ConnectorClient } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
+import type { ListedToolApproval } from "../agent/listed-tool-approval.ts";
 import { countedRisk, type DeclaredTools, isMarkedRead } from "../agent/offer-listed-tools.ts";
 import type { EffectBoundary } from "../agent/run-tool-call.ts";
 import { collectTurnTools, errorMessage } from "../agent/turn-tools.ts";
@@ -90,6 +91,7 @@ export async function makeConnectorCall(
   connectors: readonly ConnectorClient[],
   boundary: EffectBoundary,
   effect: CallToolEffect,
+  listedToolApproval: ListedToolApproval,
   declared?: Readonly<Record<string, DeclaredTools>>,
 ): Promise<ToolResult> {
   const connector = connectors.find((connected) => connected.id === effect.connector);
@@ -101,6 +103,7 @@ export async function makeConnectorCall(
     halonicTools: [],
     connectors: [connector],
     ...(declared === undefined ? {} : { declaredTools: declared }),
+    listedToolApproval,
   });
   // The effect names the tool as the model saw it. Once HAL-998 renames
   // tools whose names clash, that name and the listed one can differ, so
@@ -140,6 +143,7 @@ export async function makeRunConnectorCall(
   open: () => Promise<readonly ConnectorClient[]>,
   boundary: EffectBoundary,
   effect: CallToolEffect,
+  listedToolApproval: ListedToolApproval,
   declared?: Readonly<Record<string, DeclaredTools>>,
 ): Promise<ToolResult> {
   let connectors: readonly ConnectorClient[];
@@ -148,7 +152,7 @@ export async function makeRunConnectorCall(
   } catch (error) {
     return notMade(`the connector "${effect.connector}" isn't connected: ${errorMessage(error)}`);
   }
-  return makeConnectorCall(connectors, boundary, effect, declared);
+  return makeConnectorCall(connectors, boundary, effect, listedToolApproval, declared);
 }
 
 function notMade(why: string): ToolResult {

@@ -22,7 +22,7 @@ import {
   workflowAgentsOf,
   workspaceExecutorOptions,
 } from "@halonicjs/adapter-workspace-models";
-import { type AssembledEngine, assembleEngine } from "@halonicjs/engine";
+import { type AssembledEngine, assembleEngine, noListedToolApproval } from "@halonicjs/engine";
 import type { Clock, DefinitionStore, HttpClient, IdGenerator, Secrets } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { TauriIpc } from "@halonicjs/studio-services";
@@ -155,6 +155,8 @@ export class EngineService {
             secrets: this.#options.secrets,
             http: this.#options.http,
             clock,
+            // Until Studio has its approval store (HAL-850 step 6), no listed tool is offered.
+            listedToolApproval: noListedToolApproval,
           }),
           runs: {
             store: new TauriRunStore(ipc, location),

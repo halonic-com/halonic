@@ -18,6 +18,8 @@ import type {
   ScheduledTimer,
 } from "@halonicjs/ports";
 import { fixedIds } from "@halonicjs/std";
+import { reviewedTools } from "../agent/listed-tool-approval.test-helper.ts";
+import type { ListedToolApproval } from "../agent/listed-tool-approval.ts";
 import type { ResolvedModel } from "../agent/model-chain.ts";
 import { secretsWith, steppingClock } from "../agent/turn-test-kit.test-helper.ts";
 import type { HalonicTool } from "../agent/turn-tools.ts";
@@ -124,6 +126,8 @@ export interface RunsSetup {
   readonly price?: ModelPrice;
   /** The connected servers; none when left out. */
   readonly connectors?: readonly ConnectorClient[];
+  /** Which listed tools were approved; {@link reviewedTools} when left out, so every tool passes. */
+  readonly listedToolApproval?: ListedToolApproval;
   /**
    * The `tools` lists of the connector files the hub can see, by id; a file
    * with no `allow` for each of `connectors` when left out.
@@ -199,6 +203,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
     halonicTools: setup.halonicTools ?? [],
     ...(setup.memory === undefined ? {} : { memory: setup.memory }),
     connectors: setup.connectors ?? [],
+    listedToolApproval: setup.listedToolApproval ?? reviewedTools,
     ...(setup.localOnly === undefined ? {} : { localOnly: setup.localOnly }),
     ...(setup.knowledgeOptions === undefined ? {} : { knowledge: setup.knowledgeOptions }),
     secrets: secretsWith(),

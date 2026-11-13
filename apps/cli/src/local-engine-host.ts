@@ -27,6 +27,8 @@ import { NodeCoordination } from "@halonicjs/adapter-coordination-node";
 import { randomLeaseToken } from "@halonicjs/adapter-coordination-node/node";
 import {
   FileRecordStore,
+  FileToolApprovalStore,
+  FileTrustStore,
   FolderBlobStore,
   FolderDefinitionStore,
   FolderRunStore,
@@ -55,6 +57,7 @@ import {
   type RoutineTicks,
 } from "@halonicjs/engine";
 import type {
+  ChatTurnWaiting,
   Clock,
   ConnectorClient,
   Coordination,
@@ -66,13 +69,17 @@ import type {
 } from "@halonicjs/ports";
 import {
   type ProfileEnvironment,
+  type ProfileFolder,
   profileFolder,
+  toolApprovalFolder,
+  trustFolder,
   type WorkspaceFolders,
   workspaceFolders,
 } from "@halonicjs/profile";
 import { KindedError, randomIds, systemClock } from "@halonicjs/std";
 import { type LoadedWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
 import { approvedIntegrations } from "./approved-integrations.ts";
+import { cliListedToolApproval } from "./cli-listed-tool-approval.ts";
 import {
   type LocalHarnessHost,
   type LocalHarnessParts,
@@ -134,6 +141,12 @@ export interface LocalEngineInput {
    * `routines watch` gave up on and couldn't cancel (HAL-5294).
    */
   holdsTimer?(timer: ScheduledTimer): boolean;
+  /**
+   * Hears the listed tools that wait for a person's approval, once for each
+   * turn that leaves some out. A run's turn can't ask, so this is where the
+   * command to approve them is named.
+   */
+  reportWaiting?(connector: string, waiting: readonly ChatTurnWaiting[]): void;
   /** The connected servers a chat turn calls; none by default. */
   readonly connectors?: readonly ConnectorClient[];
   /**
@@ -256,7 +269,7 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
     });
     // Before the engine can start a run: the folders of runs that ended while no engine was open go.
     await harnessHost.start();
-    engine = engineOn(input, { location, folders }, lock, programFolders, harnessHost);
+    engine = engineOn(input, { location, folders, profile }, lock, programFolders, harnessHost);
     return engine;
   } catch (error) {
     try {
@@ -276,12 +289,14 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
 interface EnginePlace {
   readonly location: string;
   readonly folders: WorkspaceFolders;
+  /** The profile folder, where the approvals of listed tools and the trust records are kept. */
+  readonly profile: ProfileFolder;
 }
 
 /** The engine on the workspace's folders in the profile, which holds `lock` until it is closed. */
 function engineOn(
   input: LocalEngineInput,
-  { location, folders }: EnginePlace,
+  { location, folders, profile }: EnginePlace,
   lock: HeldLock,
   programFolders: ProgramFolders,
   harnessHost: LocalHarnessHost,
@@ -318,6 +333,16 @@ function engineOn(
         secrets: input.secrets,
         http: input.http,
         clock,
+        // The approvals a person gave with `halonic tools`, read at the start of every turn.
+        listedToolApproval: cliListedToolApproval({
+          location,
+          workspace: latest,
+          approvals: new FileToolApprovalStore(toolApprovalFolder(profile)),
+          trust: new FileTrustStore(trustFolder(profile)),
+          digest: webCryptoDigest,
+          clock,
+          ...(input.reportWaiting === undefined ? {} : { reportWaiting: input.reportWaiting }),
+        }),
         ...(input.connectors === undefined ? {} : { connectors: input.connectors }),
       }),
       runs: {

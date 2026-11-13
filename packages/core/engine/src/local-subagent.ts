@@ -3,6 +3,7 @@
 
 import type { ChatTurnRequest, Clock, ConnectorClient, Secrets } from "@halonicjs/ports";
 import { runToolCheckOf } from "./agent/check-run-tool-call.ts";
+import type { ListedToolApproval } from "./agent/listed-tool-approval.ts";
 import type { ResolvedModel } from "./agent/model-chain.ts";
 import { agentParamsOf } from "./agent/model-params.ts";
 import { runAgentTurn } from "./agent/run-model-turn.ts";
@@ -59,6 +60,8 @@ export interface LocalSubagentContext {
   readonly effects?: EffectBoundary;
   /** Whether the workspace is local only, as `LocalExecutorOptions.localOnly` says. */
   readonly localOnly: boolean;
+  /** Which listed tools a person approved, checked at the start of the subagent's turn. */
+  readonly listedToolApproval: ListedToolApproval;
   /** The knowledge sources of an agent in the turn's run. */
   knowledgeOf(agentId: string): AgentKnowledge;
   /** The Halonic tools of an agent in the turn's run, at a depth, with its knowledge. */
@@ -119,6 +122,7 @@ export async function runLocalSubagent(
     ...(turn.definitions.declaredTools === undefined
       ? {}
       : { declaredTools: turn.definitions.declaredTools }),
+    listedToolApproval: context.listedToolApproval,
     ...(context.effects === undefined ? {} : { effects: context.effects }),
     ...agentParamsOf(subagent),
     maxRounds: subagent?.maxSteps ?? defaultRunMaxRounds,

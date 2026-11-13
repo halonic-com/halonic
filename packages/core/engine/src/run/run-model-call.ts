@@ -6,6 +6,7 @@
 import type { ChatTurnRequest, Clock, ConnectorClient, Secrets } from "@halonicjs/ports";
 import type { StopSignal } from "@halonicjs/std";
 import { runToolCheckOf } from "../agent/check-run-tool-call.ts";
+import type { ListedToolApproval } from "../agent/listed-tool-approval.ts";
 import type { ResolvedModel } from "../agent/model-chain.ts";
 import { agentParamsOf } from "../agent/model-params.ts";
 import { runAgentTurn } from "../agent/run-model-turn.ts";
@@ -41,6 +42,8 @@ export interface RunModelCall {
   /** Where the turn hands over connector calls that can change things. */
   readonly effects?: EffectBoundary;
   readonly localOnly: boolean;
+  /** Which listed tools a person approved, checked at the start of the call's turn. */
+  readonly listedToolApproval: ListedToolApproval;
   /** The agent's knowledge sources, built on a resumed call too: the model can still search after the OK. */
   readonly knowledge: AgentKnowledge;
   readonly log: TurnLog;
@@ -125,6 +128,7 @@ export async function runModelCall(input: RunModelCall): Promise<ModelCallResult
       ...(turn.definitions.declaredTools === undefined
         ? {}
         : { declaredTools: turn.definitions.declaredTools }),
+      listedToolApproval: input.listedToolApproval,
       ...(input.effects === undefined ? {} : { effects: input.effects }),
       ...agentParamsOf(agent),
       maxRounds,

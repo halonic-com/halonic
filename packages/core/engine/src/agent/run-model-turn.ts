@@ -10,6 +10,7 @@ import type {
   ChatResponse,
   ChatTurnRefusal,
   ChatTurnSkip,
+  ChatTurnWaiting,
   Clock,
   ConnectorClient,
   KnowledgeProvider,
@@ -22,6 +23,7 @@ import { callCost } from "./call-cost.ts";
 import type { CallChecker } from "./check-call-before-run.ts";
 import { checkChatToolCall } from "./check-chat-tool-call.ts";
 import { withFencedTextsNotice } from "./fenced-texts-notice.ts";
+import type { ListedToolApproval } from "./listed-tool-approval.ts";
 import { ModelChain, type ResolvedModel } from "./model-chain.ts";
 import { type EffectBoundary, runCalls, type ToolCallContext } from "./run-tool-call.ts";
 import { isToolCallAsText } from "./tool-call-as-text.ts";
@@ -59,6 +61,11 @@ export interface ModelTurnInput {
   readonly connectorTools?: NonNullable<TurnToolSources["connectorTools"]>;
   /** The tools the connectors' sheets declare, by connector id; see {@link TurnToolSources}. */
   readonly declaredTools?: NonNullable<TurnToolSources["declaredTools"]>;
+  /**
+   * Which listed tools a person approved, checked at the start of every turn.
+   * Required: a caller with no approvals passes `noListedToolApproval`.
+   */
+  readonly listedToolApproval: ListedToolApproval;
   /**
    * The params of the turn's calls, laid over each model's own alias params:
    * the agent's, then a chat turn's request's on top (see `layeredParams`).
@@ -116,6 +123,8 @@ export interface ModelTurnResult extends ChatResponse {
   /** Every assistant and tool message the turn added, ending with the last answer. */
   readonly turn: ChatMessage[];
   readonly refusals: ChatTurnRefusal[];
+  /** The listed tools left out because nobody approved them yet; never sent to the model. */
+  readonly waiting: ChatTurnWaiting[];
   /** The models skipped before any call, in order. */
   readonly skipped: ChatTurnSkip[];
   /** The model name that gave the last answer. */
@@ -196,6 +205,7 @@ async function turnLoop(
       usage,
       turn,
       refusals: context.refusals,
+      waiting: [...tools.waiting],
       skipped: models.skipped,
       model: answeredBy.model,
     };

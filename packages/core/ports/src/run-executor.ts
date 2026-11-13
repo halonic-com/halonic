@@ -145,6 +145,19 @@ export interface ChatTurnRefusal {
 }
 
 /**
+ * A listed tool a chat turn left out because nobody approved it yet, as data
+ * a status view can read (requirement `ports.chat-turn-waiting`). Waiting
+ * isn't a refusal: the tool broke no rule, and it is offered once a person
+ * approves it. It never goes to the model.
+ */
+export interface ChatTurnWaiting {
+  /** The id of the connector that lists the tool. */
+  source: string;
+  /** The name the server lists the tool under, cut to 64 characters and escaped. */
+  name: string;
+}
+
+/**
  * A model alias a chat turn skipped before calling it. It is what an
  * `llm.skipped` run log event says, for a turn that has no run log.
  */
@@ -177,6 +190,11 @@ export interface ChatTurnResponse extends ChatResponse {
   turn?: ChatMessage[];
   /** What the turn refused, in the order it happened. Absent or empty when it refused nothing. */
   refusals?: ChatTurnRefusal[];
+  /**
+   * The listed tools left out because they wait for a person's approval.
+   * Absent or empty when none did.
+   */
+  waiting?: ChatTurnWaiting[];
   /** The model aliases skipped before any call, in order. Absent or empty when none was. */
   skipped?: ChatTurnSkip[];
 }

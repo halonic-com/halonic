@@ -4,6 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { call, callAnswer, ScriptedModel, textAnswer } from "../testing/scripted-model.ts";
 import type { CallChecker } from "./check-call-before-run.ts";
+import { noListedToolApproval } from "./listed-tool-approval.ts";
 import { type AgentTurnOutcome, runAgentTurn, runModelTurn } from "./run-model-turn.ts";
 import type { TurnAnswer } from "./turn-approval.ts";
 import { halonicTool, secretsWith, steppingClock } from "./turn-test-kit.test-helper.ts";
@@ -27,6 +28,7 @@ async function agentTurn(answers: ChatResponse[], resumeFrom?: TurnAnswer, maxRo
     messages: [{ role: "user", content: "Post the Acme notice" }],
     halonicTools: [tool("lookup"), tool("publish")],
     connectors: [],
+    listedToolApproval: noListedToolApproval,
     maxRounds,
     agent: "writer",
     clock: steppingClock(),
@@ -150,6 +152,7 @@ verifies("engine.turn-approval-stop", () => {
       callerTools: [],
       halonicTools: [halonicTool("publish", async () => "done")],
       connectors: [],
+      listedToolApproval: noListedToolApproval,
       maxRounds: 6,
       agent: "chat",
       clock: steppingClock(),

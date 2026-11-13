@@ -231,6 +231,13 @@ export const runMessages = defineMessages("run", {
     }
     return phrase`the engine couldn't sweep a leftover program copy: ${reason}`;
   },
+  /**
+   * Listed tools a turn left out because nobody approved them, with the
+   * command that approves them. Nobody can answer in a run, so this is the
+   * only place the command is named. The names arrive escaped.
+   */
+  toolsWaiting: (source: string, names: string, command: string) =>
+    phrase`the tools ${names} of ${source} wait for your approval and stay off; to approve them, run ${command}`,
   /** The same when a stopped command gave up waiting for the engine to close (HAL-6677). */
   closeAbandoned: (seconds: number) =>
     phrase`the engine didn't close within ${seconds} s of the stop; released its lock and ending without it`,

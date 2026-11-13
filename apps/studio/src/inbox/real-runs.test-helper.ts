@@ -6,7 +6,7 @@ import {
   MemorySecrets,
   ScriptedLlmProvider,
 } from "@halonicjs/adapter-memory";
-import { type HalonicTool, LocalExecutor } from "@halonicjs/engine";
+import { type HalonicTool, LocalExecutor, noListedToolApproval } from "@halonicjs/engine";
 import type { RunSummary } from "@halonicjs/events";
 import type { Workflow } from "@halonicjs/format";
 import type { BlobStore, ChatRequest, ChatResponse, LlmProvider, RunStore } from "@halonicjs/ports";
@@ -139,6 +139,7 @@ export function realEngine(
     resolveModel: async () => ({ provider: model, model: "scripted-1" }),
     halonicTools: [publishTool(published)],
     connectors: [],
+    listedToolApproval: noListedToolApproval,
     secrets: new MemorySecrets(),
     clock,
     runs: {

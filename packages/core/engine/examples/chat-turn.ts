@@ -1,5 +1,5 @@
 import type { ChatRequest, ChatResponse, LlmProvider } from "@halonicjs/ports";
-import { type HalonicTool, LocalExecutor } from "../src/index.ts";
+import { type HalonicTool, LocalExecutor, noListedToolApproval } from "../src/index.ts";
 
 // A stand-in model that first calls the `lookup` tool, then answers with what
 // the tool returned. A real provider comes from an adapter, such as OpenAI's.
@@ -36,6 +36,8 @@ export async function runExample(): Promise<{ answer: string; roles: string[]; m
     resolveModel: async () => ({ provider: model, model: "acme-1" }),
     halonicTools: [lookup],
     connectors: [],
+    // No connector lists tools here, so there is nothing to approve.
+    listedToolApproval: noListedToolApproval,
     // The stand-in model names no key, so no secret is ever looked up.
     secrets: { get: async () => null },
     clock: { now: () => new Date("2026-11-09T09:00:00Z") },

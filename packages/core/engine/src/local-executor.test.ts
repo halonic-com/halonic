@@ -2,6 +2,8 @@ import { AgentRunsNotAvailable, type ChatTurnRequest } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { chatApprovalReason } from "./agent/check-chat-tool-call.ts";
+import { reviewedTools } from "./agent/listed-tool-approval.test-helper.ts";
+import { noListedToolApproval } from "./agent/listed-tool-approval.ts";
 import { halonicTool, secretsWith, steppingClock } from "./agent/turn-test-kit.test-helper.ts";
 import { writerAgent } from "./kernel/kernel-test-kit.test-helper.ts";
 import {
@@ -30,6 +32,8 @@ function executorOn(model: ScriptedModel, options: Partial<LocalExecutorOptions>
     },
     halonicTools: [],
     connectors: [],
+    // These tests are about what a chat offers, not about approvals.
+    listedToolApproval: reviewedTools,
     secrets: secretsWith(),
     clock: steppingClock(),
     ...options,
@@ -221,6 +225,7 @@ verifies("engine.local-chat-turn", () => {
       resolveModel: () => Promise.reject(new Error("no model with alias fast")),
       halonicTools: [],
       connectors: [],
+      listedToolApproval: noListedToolApproval,
       secrets: secretsWith(),
       clock: steppingClock(),
     });

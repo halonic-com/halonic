@@ -2,6 +2,7 @@ import type { Coordination, ScheduledTimer, Scheduler, SchedulerListener } from 
 import { fixedIds } from "@halonicjs/std";
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { noListedToolApproval } from "./agent/listed-tool-approval.ts";
 import { secretsWith } from "./agent/turn-test-kit.test-helper.ts";
 import { assembleEngine, type EngineAssemblyOptions } from "./engine-assembly.ts";
 import {
@@ -55,6 +56,7 @@ function setUp(extra: Partial<EngineAssemblyOptions> = {}) {
       },
       halonicTools: [],
       connectors: [],
+      listedToolApproval: noListedToolApproval,
       secrets: secretsWith(),
       clock: { now: () => new Date("2026-11-03T08:00:00Z") },
       runs: {
@@ -220,6 +222,7 @@ verifies("engine.harness-stops-with-engine", () => {
         },
         halonicTools: [],
         connectors: [],
+        listedToolApproval: noListedToolApproval,
         secrets: secretsWith(),
         clock: { now: () => new Date("2026-11-03T08:00:00Z") },
         runs: {

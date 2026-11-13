@@ -6,6 +6,7 @@ import { KernelRuns, writerAgent } from "../kernel/kernel-test-kit.test-helper.t
 import { LocalExecutor } from "../local-executor.ts";
 import { replyStart, runsOn } from "../run/local-runs-test-kit.test-helper.ts";
 import { call, callAnswer, ScriptedModel, textAnswer } from "../testing/scripted-model.ts";
+import { noListedToolApproval } from "./listed-tool-approval.ts";
 import { layeredParams } from "./model-params.ts";
 import { secretsWith, steppingClock } from "./turn-test-kit.test-helper.ts";
 
@@ -131,6 +132,7 @@ verifies("engine.model-params", () => {
         }),
         halonicTools: [],
         connectors: [],
+        listedToolApproval: noListedToolApproval,
         secrets: secretsWith(),
         clock: steppingClock(),
         chatAgentOf: async () => writerWith({ stop: ["END"] }),
@@ -154,6 +156,7 @@ verifies("engine.model-params", () => {
         resolveModel: async () => ({ provider: model, model: "scripted-1", params: smartParams }),
         halonicTools: [],
         connectors: [],
+        listedToolApproval: noListedToolApproval,
         secrets: secretsWith(),
         clock: steppingClock(),
         chatAgentOf: async () => writerWith({ temperature: 0.7, stop: ["END"] }),

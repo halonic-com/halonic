@@ -4,7 +4,14 @@
 // caller or Halonic already uses.
 
 import type { Connector } from "@halonicjs/format";
-import type { ChatTurnRefusal, ConnectorClient, ToolDefinition, ToolRisk } from "@halonicjs/ports";
+import type {
+  ChatTurnRefusal,
+  ChatTurnWaiting,
+  ConnectorClient,
+  ToolDefinition,
+  ToolRisk,
+} from "@halonicjs/ports";
+import { approveConnectorListing, type ListedToolApproval } from "./listed-tool-approval.ts";
 import { type DeclaredTool, type DeclaredTools, offerListedTools } from "./offer-listed-tools.ts";
 import type { TurnAnswer, TurnStop } from "./turn-approval.ts";
 
@@ -102,6 +109,8 @@ export interface TurnTools {
   readonly tools: readonly TurnTool[];
   readonly byName: ReadonlyMap<string, TurnTool>;
   readonly refusals: readonly ChatTurnRefusal[];
+  /** The listed tools left out because nobody approved them yet; they never go to the model. */
+  readonly waiting: readonly ChatTurnWaiting[];
 }
 
 /** Where a turn's tools come from. */
@@ -122,6 +131,12 @@ export interface TurnToolSources {
    * no entry, and its tools have no noun (requirement `engine.turn-declared-tools`).
    */
   readonly declaredTools?: Readonly<Record<string, DeclaredTools>>;
+  /**
+   * Which listed tools a person approved. Required: a caller with no
+   * approvals passes `noListedToolApproval`, which keeps every listed tool
+   * off.
+   */
+  readonly listedToolApproval: ListedToolApproval;
 }
 
 /**
@@ -141,6 +156,7 @@ export async function collectTurnTools(sources: TurnToolSources): Promise<TurnTo
     await addConnectorTools(
       builder,
       connector,
+      sources.listedToolApproval,
       forConnector(sources.connectorTools, connector.id),
       forConnector(sources.declaredTools, connector.id),
     );
@@ -151,6 +167,7 @@ export async function collectTurnTools(sources: TurnToolSources): Promise<TurnTo
 async function addConnectorTools(
   builder: ToolListBuilder,
   connector: ConnectorClient,
+  approval: ListedToolApproval,
   lists: Pick<Connector["tools"], "approve" | "read"> | undefined,
   declared: DeclaredTools | undefined,
 ) {
@@ -165,9 +182,14 @@ async function addConnectorTools(
     });
     return;
   }
+  const approved = await approveConnectorListing(approval, connector.id, listed);
+  for (const refusal of approved.refusals) {
+    builder.refuse(refusal);
+  }
+  builder.wait(approved.waiting);
   const offer = offerListedTools({
     source: connector.id,
-    listed,
+    listed: approved.listed,
     otherNames: builder.names(),
     ...(lists === undefined ? {} : { lists }),
     ...(declared === undefined ? {} : { declared }),
@@ -200,6 +222,7 @@ class ToolListBuilder {
   private readonly tools: TurnTool[] = [];
   private readonly byName = new Map<string, TurnTool>();
   private readonly refusals: ChatTurnRefusal[] = [];
+  private readonly waiting: ChatTurnWaiting[] = [];
 
   add(tool: TurnTool): void {
     const name = tool.definition.name;
@@ -221,12 +244,21 @@ class ToolListBuilder {
     this.refusals.push(refusal);
   }
 
+  wait(waiting: readonly ChatTurnWaiting[]): void {
+    this.waiting.push(...waiting);
+  }
+
   names(): ReadonlySet<string> {
     return new Set(this.byName.keys());
   }
 
   result(): TurnTools {
-    return { tools: this.tools, byName: this.byName, refusals: this.refusals };
+    return {
+      tools: this.tools,
+      byName: this.byName,
+      refusals: this.refusals,
+      waiting: this.waiting,
+    };
   }
 }
 

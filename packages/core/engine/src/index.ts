@@ -1,3 +1,12 @@
+export {
+  type AllToolsReviewed,
+  allToolsReviewed,
+  type ConnectorToolAddress,
+  type ListedToolApproval,
+  type ListedToolApprovalStore,
+  type NoListedToolApproval,
+  noListedToolApproval,
+} from "./agent/listed-tool-approval.ts";
 export type { ResolvedModel } from "./agent/model-chain.ts";
 export { layeredParams, type ParamsLayer } from "./agent/model-params.ts";
 export {
