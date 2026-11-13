@@ -18,5 +18,11 @@
       "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEADUMsj9fiayWL75aWrS7L1+mS6yEGtQPh4FbXexcty9I=\n-----END PUBLIC KEY-----\n"
     }
   ],
-  "user-visible": []
+  "user-visible": [
+    {
+      "id": "sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM",
+      "holder": "the CTO's Paperclip agent",
+      "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAHAKPlrCmldmS/Jcp4T5PN2ocup5KekoWTw8E0NnMfpQ=\n-----END PUBLIC KEY-----\n"
+    }
+  ]
 }
