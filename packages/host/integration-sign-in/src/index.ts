@@ -6,3 +6,10 @@ export {
   type SignInLookup,
   type SignInSource,
 } from "./integration-sign-ins.ts";
+export {
+  createSignInFlow,
+  type SignInFlow,
+  type SignInFlowSettings,
+  type SignInOutcome,
+  type StartResult,
+} from "./sign-in-flow.ts";
