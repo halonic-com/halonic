@@ -1,3 +1,9 @@
+export { AddPluginDialog, type AddPluginDialogProps } from "./add/add-plugin-dialog.tsx";
+export type {
+  PluginAddOutcome,
+  PluginAddSource,
+  PluginInstaller,
+} from "./add/plugin-installer.ts";
 export {
   PluginCard,
   type PluginCardProps,
