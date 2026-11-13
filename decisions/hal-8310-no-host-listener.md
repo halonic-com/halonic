@@ -2,7 +2,6 @@
 
 - Approval: HAL-8306 (Liam, CTO)
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:w5MUgwPWQ+3Y/pp+SM+EnibkvbOEg8Y0jBEwAuHZkgMdkhfssgY9neKqXvKeFGlFETINFo5o18uCocsZFhbYBQ==
 - Task: HAL-8310
 
 MXC's fence proof and canary listen only on loopback. The computer's other addresses are probed
