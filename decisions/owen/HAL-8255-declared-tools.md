@@ -4,7 +4,6 @@
 - Task: HAL-8255, reviewed on HAL-8258
 - Approval: Liam's decision on HAL-8255 (https://github.com/halonic-com/halonic/pull/2398 carries it)
 - Kind: internal
-- Signature: PENDING
 
 ## What changes
 
