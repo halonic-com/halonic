@@ -1,5 +1,6 @@
 import type { MenuEntry } from "@halonicjs/studio-kit";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
+import { HeaderBadges } from "../badges/header-badges.tsx";
 import { FeatureDialogs } from "../dialogs/feature-dialogs.tsx";
 import type { StudioHost } from "../engine/engine-words.ts";
 import { usePresentationFromWidth } from "../frame/frame-effects.ts";
@@ -225,7 +226,12 @@ export function StudioWindow(props: StudioWindowProps) {
           <WindowTabStrip tabs={tabs} onNewTab={palette.show} windowKeys={{ host, platform }} />
         </>
       }
-      badges={props.badges}
+      badges={
+        <>
+          <HeaderBadges registry={shell.badges} />
+          {props.badges}
+        </>
+      }
       saveNote={<StatusBarSaveNote saving={workspace.saving} />}
       sidebar={
         <StudioSidebar

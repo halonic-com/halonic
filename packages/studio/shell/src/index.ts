@@ -11,6 +11,12 @@ export {
 } from "./announcer/announcer.ts";
 export type { AnnouncerTimers } from "./announcer/timers.ts";
 export {
+  type BadgeRegistry,
+  type BadgeState,
+  createBadgeRegistry,
+  trustBadgePriority,
+} from "./badges/badge-registry.ts";
+export {
   backToCard,
   type CardStack,
   cardPath,

@@ -1,6 +1,7 @@
 import { createToastStore, type ToastStore } from "@halonicjs/studio-kit";
 import { type Announcer, createAnnouncer } from "./announcer/announcer.ts";
 import { type AnnouncerTimers, systemTimers } from "./announcer/timers.ts";
+import { type BadgeRegistry, createBadgeRegistry } from "./badges/badge-registry.ts";
 import { type CloseStack, createCloseStack } from "./close-stack/close-stack.ts";
 import { createShellEngine, type ShellEngine } from "./engine/engine-connection.ts";
 import type { StudioHost } from "./engine/engine-words.ts";
@@ -69,6 +70,8 @@ export interface Shell {
   readonly engine: ShellEngine;
   /** The window's toasts, for results and failed commands; the frame shows them. */
   readonly toasts: ToastStore;
+  /** The window's header badges: features add and remove states, the frame shows them. */
+  readonly badges: BadgeRegistry;
   /** Everything the features contributed, for the shell's layout. */
   readonly contributions: LayoutContributions & FrameContributions & CommandContributions;
 }
@@ -102,6 +105,7 @@ export function createShell(options: ShellOptions): Shell {
     closeStack: createCloseStack(),
     engine: createShellEngine(announcer, options.timers ?? systemTimers, options.host),
     toasts: createToastStore(),
+    badges: createBadgeRegistry(),
     services: {
       instantiate: (target) => catalog.instantiate(target, hostServices),
       contextFor: (featureId, target) => ({
