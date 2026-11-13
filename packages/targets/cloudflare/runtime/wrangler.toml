@@ -21,3 +21,19 @@ class_name = "RoutinesObject"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["CoordinationObject", "RunObject", "RoutinesObject"]
+
+# Storage. The Cloudflare connection creates what these name on the first deploy.
+[[d1_databases]]
+binding = "DB"
+database_name = "halonic-cloud"
+
+[[r2_buckets]]
+binding = "BLOBS"
+bucket_name = "halonic-cloud-blobs"
+
+[[r2_buckets]]
+binding = "DEFINITIONS"
+bucket_name = "halonic-cloud-definitions"
+
+# Secrets are never listed here. Set `HALONIC_SECRET_TOKEN_KEY` and
+# `HALONIC_SECRET_SERVE_PASSWORD` as Workers secrets (see README).

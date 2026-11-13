@@ -7,12 +7,17 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.wiring.json && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
     "test": "vitest run"
   },
   "dependencies": {
-    "@halonicjs/adapter-cloudflare-durable": "workspace:*"
+    "@halonicjs/adapter-cloudflare-durable": "workspace:*",
+    "@halonicjs/adapter-cloudflare-storage": "workspace:*",
+    "@halonicjs/adapter-env-secrets": "workspace:*",
+    "@halonicjs/adapter-password-pbkdf2": "workspace:*",
+    "@halonicjs/adapter-token-store": "workspace:*",
+    "@halonicjs/ports": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
