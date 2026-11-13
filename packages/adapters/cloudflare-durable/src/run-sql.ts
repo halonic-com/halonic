@@ -18,3 +18,17 @@ export interface RunSql {
    */
   transactionSync<T>(change: () => T): T;
 }
+
+/** What {@link sqlOfStorage} reads from a Durable Object's `ctx.storage`. */
+export interface SqlStorageOwner {
+  sql: { exec<T extends SqlRow>(query: string, ...bindings: SqlValue[]): { toArray(): T[] } };
+  transactionSync<T>(change: () => T): T;
+}
+
+/** The {@link RunSql} of a Durable Object's storage (`ctx.storage`). */
+export function sqlOfStorage(storage: SqlStorageOwner): RunSql {
+  return {
+    exec: (query, ...bindings) => storage.sql.exec(query, ...bindings),
+    transactionSync: (change) => storage.transactionSync(change),
+  };
+}
