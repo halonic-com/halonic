@@ -1,9 +1,13 @@
+import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import type { SandboxRemoval, SandboxSetup } from "@halonicjs/adapter-sandbox-srt";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
-import { profileFolder } from "@halonicjs/profile";
+import type { TrustStore } from "@halonicjs/ports";
+import { profileFolder, trustFolder } from "@halonicjs/profile";
+import { systemClock } from "@halonicjs/std";
 import type { CliCommand } from "../../command.ts";
 import { sandboxSetupMessages } from "../../messages/sandbox-setup.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
+import { cliTrustService } from "../../workspace-trust.ts";
 import { removeSandbox, setUpSandbox } from "./setup.ts";
 
 /** What the commands need of the sandbox, so tests can hand in a fake one. */
@@ -59,7 +63,29 @@ export const sandboxCommand: CliCommand = sandboxCommandWith(() => {
     platform: process.platform,
     setUp: () => srt.setUp(),
     remove: () => srt.remove(),
-    // Everything Halonic works in is in its profile folder; any other kept grant isn't ours.
-    otherUse: () => srt.otherUse([profileFolder(nodeProfileEnvironment()).root]),
+    otherUse: () => {
+      const profile = profileFolder(nodeProfileEnvironment());
+      return otherUseBesidesHalonic(srt, profile.root, new FileTrustStore(trustFolder(profile)));
+    },
   };
 });
+
+/**
+ * The kept grants outside the folders Halonic works in: its profile folder
+ * (temp and proposal folders) and the workspaces the user trusted, since an
+ * agent works in a workspace itself and a session that didn't close cleanly
+ * leaves its grant there. When the trusted workspaces can't be read, which
+ * grants are Halonic's can't be told, so the answer is `unknown`.
+ */
+export async function otherUseBesidesHalonic(
+  srt: { otherUse(known: readonly string[]): Promise<{ folders: string[]; unknown: boolean }> },
+  profileRoot: string,
+  trust: TrustStore,
+): Promise<{ folders: string[]; unknown: boolean }> {
+  try {
+    const trusted = await cliTrustService(trust, systemClock).list();
+    return await srt.otherUse([profileRoot, ...trusted.map((record) => record.location)]);
+  } catch {
+    return { folders: [], unknown: true };
+  }
+}

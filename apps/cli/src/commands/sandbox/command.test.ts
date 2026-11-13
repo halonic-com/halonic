@@ -1,6 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { MemoryTrustStore } from "@halonicjs/adapter-memory";
 import type { SandboxRemoval, SandboxSetup } from "@halonicjs/adapter-sandbox-srt";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -8,7 +9,7 @@ import { exitCode } from "../../exit-code.ts";
 import type { QuestionTerminal } from "../../output/question.ts";
 import { runCli, type Terminal } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
-import { type SandboxSetter, sandboxCommandWith } from "./command.ts";
+import { otherUseBesidesHalonic, type SandboxSetter, sandboxCommandWith } from "./command.ts";
 
 let folder: string;
 
@@ -240,6 +241,59 @@ verifies("cli.commands.sandbox.remove", () => {
     expect(JSON.parse(io.stdout.join("\n"))).toMatchObject({
       outcome: "failed",
       reason: "a sandboxed program is running",
+    });
+  });
+});
+
+verifies("cli.commands.sandbox.remove", () => {
+  const profile = "C:\\profile"; // leak-guard: allow absolute-path made-up Windows path for a test
+  const acme = "C:\\work\\acme"; // leak-guard: allow absolute-path made-up Windows path for a test
+  const tool = "C:\\other\\tool"; // leak-guard: allow absolute-path made-up Windows path for a test
+
+  /** The folders asked about, and a sandbox that keeps `kept` outside them. */
+  function keeping(...kept: string[]) {
+    const asked: string[][] = [];
+    const srt = {
+      otherUse: async (known: readonly string[]) => {
+        asked.push([...known]);
+        return {
+          folders: kept.filter((grant) => !known.some((root) => grant.startsWith(root))),
+          unknown: false,
+        };
+      },
+    };
+    return { srt, asked };
+  }
+
+  async function trusting(...locations: string[]) {
+    const store = new MemoryTrustStore();
+    for (const location of locations) {
+      await store.grant({
+        location,
+        fingerprint: "hfp1:f",
+        content: {},
+        grantedAt: "2026-01-01T00:00:00Z",
+        appVersion: "0.0.0",
+        pins: {},
+      });
+    }
+    return store;
+  }
+
+  it("doesn't call a trusted workspace's kept grant another program's", async () => {
+    const { srt, asked } = keeping(`${acme}\\src`, tool);
+    const result = await otherUseBesidesHalonic(srt, profile, await trusting(acme));
+    expect(asked).toEqual([[profile, acme]]);
+    expect(result).toEqual({ folders: [tool], unknown: false });
+  });
+
+  it("says it can't tell when the trusted workspaces can't be read", async () => {
+    const { srt } = keeping(tool);
+    const store = await trusting();
+    store.list = () => Promise.reject(new Error("unreadable"));
+    expect(await otherUseBesidesHalonic(srt, profile, store)).toEqual({
+      folders: [],
+      unknown: true,
     });
   });
 });
