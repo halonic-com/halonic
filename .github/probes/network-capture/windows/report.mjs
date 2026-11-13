@@ -230,13 +230,13 @@ const isUpdateHost = (address) =>
 // services, Microsoft, certificate checks and the control. Anything else, or a
 // bare address no lookup in the capture explains, fails when no process owns it.
 const KNOWN_HOSTS =
-  /(^|\.)(github\.com|githubusercontent\.com|githubapp\.com|microsoft\.com|cloud\.microsoft|windows\.com|windowsupdate\.com|msftconnecttest\.com|msedge\.net|microsoftonline\.com|live\.com|office\.com|office\.net|azure\.com|azureedge\.net|azurefd\.net|trafficmanager\.net|core\.windows\.net|visualstudio\.com|vsassets\.io|digicert\.com|example\.com)$/i;
-/** Loopback, private, link-local, multicast and broadcast addresses, Azure's wire server, and Microsoft's 57.157.0.0/16 (seen from the runner with no name). */
+  /(^|[.-])(github\.com|githubusercontent\.com|githubapp\.com|microsoft\.com|cloud\.microsoft|windows\.com|windowsupdate\.com|msftconnecttest\.com|msedge\.net|microsoftonline\.com|live\.com|office\.com|office\.net|azure\.com|azureedge\.net|azurefd\.net|trafficmanager\.net|core\.windows\.net|visualstudio\.com|vsassets\.io|digicert\.com|example\.com)$/i;
+/** Loopback, private, link-local, multicast and broadcast addresses, Azure's wire server, and Microsoft's 57.150-157.x.x and 40.64-127.x.x (Azure, seen from the runner with no name). */
 export function isLocalAddress(a) {
   if (a.includes(":")) return /^(::1?|f[cd]|fe[89ab]|ff)/i.test(a) || a.startsWith("::ffff:");
   const [x, y] = a.split(".").map(Number);
   return (
-    x === 10 || x === 127 || x >= 224 || (x === 172 && y >= 16 && y <= 31) || (x === 192 && y === 168) || (x === 169 && y === 254) || a === "168.63.129.16" || (x === 57 && y === 157)
+    x === 10 || x === 127 || x >= 224 || (x === 172 && y >= 16 && y <= 31) || (x === 192 && y === 168) || (x === 169 && y === 254) || a === "168.63.129.16" || (x === 57 && y >= 150 && y <= 157) || (x === 40 && y >= 64 && y <= 127)
   );
 }
 const isKnownHost = (address) =>
