@@ -34,6 +34,9 @@ lists, in this order (requirement `cli.trust-check`):
   asks a second question. A program whose connector names `sites` then lists
   each site it may reach in a sandbox, one per line, as an agent's allowed
   sites are, and the summary counts each site once with the agents' sites.
+  "Allowed sites" is a fence only where the program starts in a sandbox. Where
+  it doesn't, the program still runs with your rights and `sites` limits
+  nothing.
 - **Agents:** every agent that runs in Claude Code or Codex, with its allowed
   sites and its working folder when it isn't the default. Agents in Halonic's
   own harness aren't listed.
