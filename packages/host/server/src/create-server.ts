@@ -1,4 +1,5 @@
 import type { CreateServer, RequestContext, ServerConfig } from "./api.ts";
+import { checkDailyRequests } from "./daily-requests.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { checkHost, checkOrigin, readBody, withSecurityHeaders } from "./security.ts";
 import { createSignIn, passwordSecretName } from "./sign-in.ts";
@@ -21,8 +22,8 @@ function isWholeNumberAboveZero(value: number): boolean {
 
 /**
  * Builds the server. Every request passes the security layer first: the
- * `Host` check, the `Origin` check, then the body limit. Then the sign-in
- * routes answer. A route behind the sign-in needs a session when a password is set.
+ * `Host` check, the `Origin` check, the daily request ceiling, then the body
+ * limit. Then `GET /api/hello` and the sign-in routes answer. A route behind the sign-in needs a session when a password is set.
  */
 export const createServer: CreateServer = ({ config, ports }) => {
   checkConfig(config);
@@ -36,6 +37,13 @@ export const createServer: CreateServer = ({ config, ports }) => {
   ): Promise<Response> {
     const endpoint = `${request.method} ${new URL(request.url).pathname}`;
     switch (endpoint) {
+      case "GET /api/hello":
+        // The one route that answers without a sign-in: the Android app calls it before it opens the login.
+        return Response.json({
+          product: "halonic",
+          version: config.version,
+          minAppVersion: config.minAppVersion,
+        });
       case "POST /api/login":
         return signIn.login(request, body, context);
       case "POST /api/logout":
@@ -54,6 +62,10 @@ export const createServer: CreateServer = ({ config, ports }) => {
     const refusal = checkHost(request, { allowedHosts, hasPassword }) ?? checkOrigin(request);
     if (refusal !== null) {
       return errorResponse(refusal);
+    }
+    const overCeiling = await checkDailyRequests(config, ports);
+    if (overCeiling !== null) {
+      return overCeiling;
     }
     const body = await readBody(request, config.maxBodyBytes);
     if (!body.ok) {

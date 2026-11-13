@@ -119,6 +119,11 @@ export {
   recordedRegistries,
 } from "./recorded-registry.ts";
 export {
+  type RequestCountStoreHarness,
+  type RequestCountStoreUnderTest,
+  requestCountStoreContract,
+} from "./request-count-store.ts";
+export {
   type MakeResourceProbe,
   type ResourceProbeHarness,
   resourceProbeContract,

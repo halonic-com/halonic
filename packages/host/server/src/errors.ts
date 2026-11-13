@@ -25,6 +25,11 @@ export const serverErrors = {
     code: "too_many_attempts",
     message: "Too many sign-in attempts. Try again later.",
   },
+  dailyLimitReached: {
+    status: 429,
+    code: "daily_limit_reached",
+    message: "This server has reached its daily request limit. Try again after midnight UTC.",
+  },
   notFound: { status: 404, code: "not_found", message: "There is nothing at this address." },
   internal: {
     status: 500,
