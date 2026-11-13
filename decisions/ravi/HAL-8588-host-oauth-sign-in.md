@@ -2,6 +2,7 @@
 
 - Approval: HAL-8588 (HAL-984 design, section 4, "Revoking and signing out"); the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Vk75X4v445bMtFDaGy3VF9xoyuazrCsDp5rh4+iEzBH8MmYxm3Lcbw9NIXoZ/wBMX6kS91jMbCqZzOk/oM4CBg==
 - Task: HAL-8588
 
 ## What changes
