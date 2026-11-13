@@ -1,7 +1,7 @@
 import { shortRunId } from "@halonicjs/app";
 import { type RunEvent, type RunVersion, summarize } from "@halonicjs/events";
 import { Callout, type CalloutAction, EmptyState, List, StatusChip } from "@halonicjs/studio-kit";
-import { ItemGone, type ItemViewProps } from "@halonicjs/studio-shell";
+import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
 import { type ReactNode, useCallback, useState, useSyncExternalStore } from "react";
 import type { SourcedRun } from "../api.ts";
 import { loadFailureReason } from "../load-failure.ts";
@@ -157,6 +157,7 @@ export function RunView({
   }
   return (
     <div className="flex w-full flex-col gap-4 px-6 py-5">
+      <PageBackLinkSlot />
       <h1 className="text-title">{title}</h1>
       {state.error === undefined ? (
         <List
@@ -194,6 +195,7 @@ function RunLayout({
   const header = runHeader(run, context);
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-6 py-5">
+      <PageBackLinkSlot />
       <header className="flex flex-col gap-1">
         <p className="text-small text-fg-muted">{header.kindLabel}</p>
         <div className="flex flex-wrap items-center gap-3">

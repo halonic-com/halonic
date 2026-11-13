@@ -50,7 +50,8 @@ export interface ItemKindContribution {
   readonly icon: string;
   /**
    * The sidebar place that lists this kind, such as `workflows`. An item's page shows a back link
-   * to it above its title. Leave it out for a kind no place lists.
+   * to it above its title: `ItemPage` draws it, and a view that doesn't render `ItemPage` renders
+   * `PageBackLinkSlot` above its own title. Leave it out for a kind no place lists.
    */
   readonly place?: SidebarPlace;
   /** The view that shows an item of this kind in a tab. */

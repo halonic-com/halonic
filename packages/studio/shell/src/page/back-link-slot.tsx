@@ -13,3 +13,11 @@ export const BackLinkSlotProvider = BackLinkSlot.Provider;
 export function useBackLinkSlot(): ReactNode {
   return useContext(BackLinkSlot);
 }
+
+/**
+ * Draws the tab's back link. A kind's view that doesn't render `ItemPage` puts this above its own
+ * title, so the link doesn't drop off that page.
+ */
+export function PageBackLinkSlot() {
+  return <>{useBackLinkSlot()}</>;
+}
