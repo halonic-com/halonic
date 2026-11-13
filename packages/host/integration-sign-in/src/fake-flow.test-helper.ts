@@ -29,7 +29,13 @@ export interface SeenRequest {
 
 /** A sign-in flow with a fake store, token endpoint, settings and randomness. */
 export function exampleFlow(
-  options: { settings?: Record<string, unknown>; issuer?: string; tokenUrl?: string } = {},
+  options: {
+    settings?: Record<string, unknown>;
+    issuer?: string;
+    tokenUrl?: string;
+    /** The sheet says the provider's revoke ends every token of the client and user. */
+    revokeEndsClientGrants?: boolean;
+  } = {},
 ) {
   const values = new Map<string, string>();
   let storeFails = false;
@@ -55,9 +61,12 @@ export function exampleFlow(
     },
   };
   let source: SignInSource = {
-    sheet: withIssuer(
+    sheet: withSignInFields(
       options.tokenUrl === undefined ? exampleSheet() : sheetWithTokenUrl(options.tokenUrl),
-      options.issuer,
+      {
+        ...(options.issuer === undefined ? {} : { issuer: options.issuer }),
+        ...(options.revokeEndsClientGrants === true ? { revokeEndsClientGrants: true } : {}),
+      },
     ),
     settings: options.settings ?? { clientId: "fake-client" },
   };
@@ -115,6 +124,13 @@ export function exampleFlow(
     changeSettings(settings: Record<string, unknown>) {
       source = { ...source, settings };
     },
+    /** The sheet from now on says the provider's revoke ends every token of the client and user. */
+    declareRevokeEndsClientGrants() {
+      source = {
+        ...source,
+        sheet: withSignInFields(source.sheet, { revokeEndsClientGrants: true }),
+      };
+    },
     failStoreWrites() {
       storeFails = true;
     },
@@ -145,11 +161,14 @@ export function exampleFlow(
   };
 }
 
-/** The example sheet, with its sign-in declaring an `issuer` when one is given. */
-function withIssuer(sheet: IntegrationSheet, issuer: string | undefined): IntegrationSheet {
-  if (issuer === undefined) {
+/** The example sheet, with its sign-in declaring the given fields, such as an `issuer`. */
+function withSignInFields(
+  sheet: IntegrationSheet,
+  fields: { issuer?: string; revokeEndsClientGrants?: true },
+): IntegrationSheet {
+  if (Object.keys(fields).length === 0) {
     return sheet;
   }
   const signIn = sheet.signIns["example-account"];
-  return { ...sheet, signIns: { "example-account": { ...signIn, issuer } } } as IntegrationSheet;
+  return { ...sheet, signIns: { "example-account": { ...signIn, ...fields } } } as IntegrationSheet;
 }

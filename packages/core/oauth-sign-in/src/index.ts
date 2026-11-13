@@ -3,6 +3,7 @@ export {
   type ApprovedSignIn,
   type ApprovedSignInHash,
   approvedSignInHash,
+  revokeWouldEndGrantOf,
 } from "./approved-sign-in.ts";
 export {
   type ClientAuth,

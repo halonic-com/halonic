@@ -18,6 +18,13 @@ export interface ApprovedSignIn {
   readonly tokenUrl: string;
   /** Where to revoke, when the sheet declares it. */
   readonly revokeUrl?: string;
+  /**
+   * The server's revoke ends every token of the client and user, so revoking
+   * the old grant of a new sign-in under the same client would end the new
+   * one. Left out when the sheet doesn't say so, which keeps the hash of
+   * every grant saved before this key existed.
+   */
+  readonly revokeEndsClientGrants?: true;
   readonly issuer?: string;
   readonly clientId: string;
   readonly clientAuth: ClientAuth;
@@ -59,4 +66,26 @@ export async function approvedSignInHash(
     accessHosts: [...signIn.accessHosts].sort(),
   });
   return `sha256:${bytesToHex(await digest.sha256(encodeUtf8(canonical)))}`;
+}
+
+/**
+ * Whether revoking `old` at its server would also end a grant approved as
+ * `next`: either approval says the server's revoke ends every token of a
+ * client, and both use the same client at the same token server. The flag
+ * describes the server, so the new approval saying it is enough for a grant
+ * saved before the sheet did. The revoke endpoint of `next` doesn't matter:
+ * what ends the new grant is the revoke of `old`, at the server that issued
+ * both.
+ */
+export function revokeWouldEndGrantOf(old: ApprovedSignIn, next: ApprovedSignIn): boolean {
+  return (
+    (old.revokeEndsClientGrants === true || next.revokeEndsClientGrants === true) &&
+    old.clientId === next.clientId &&
+    originOf(old.tokenUrl) === originOf(next.tokenUrl)
+  );
+}
+
+/** `https://host` of an approved URL, which is always absolute and already normalised; a core package has no `URL`. */
+function originOf(url: string): string {
+  return url.split("/").slice(0, 3).join("/");
 }

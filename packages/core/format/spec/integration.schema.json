@@ -337,6 +337,9 @@
               }
             ]
           },
+          "revokeEndsClientGrants": {
+            "type": "boolean"
+          },
           "issuer": {
             "anyOf": [
               {

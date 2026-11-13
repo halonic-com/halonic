@@ -211,6 +211,13 @@ const SignIn = s
     tokenUrl: SignInUrl,
     /** RFC 7009. Without it, signing out only forgets the tokens. */
     revokeUrl: SignInUrl.optional(),
+    /**
+     * Say `true` when the server's revoke ends every token of the client and
+     * user, not only the one sent (RFC 7009 allows it; Google does it). Signing
+     * in again then keeps the old token instead of revoking it, because the
+     * revoke would end the new grant too.
+     */
+    revokeEndsClientGrants: s.boolean().optional(),
     /** Checked against the `iss` of the redirect (RFC 9207). */
     issuer: SignInUrl.optional(),
     /** A fixed ID, or a setting: never a secret, since OAuth sends it in the browser's address bar. */

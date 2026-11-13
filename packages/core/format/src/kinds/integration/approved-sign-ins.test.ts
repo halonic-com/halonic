@@ -49,6 +49,15 @@ verifies("format.integration-approved-sign-ins", () => {
     });
   });
 
+  it("carries revokeEndsClientGrants when the sheet says so and leaves the key out otherwise", () => {
+    const text = sheet().replace(
+      '    revokeUrl: "https://revoke.example.com/oauth/revoke"',
+      '    revokeUrl: "https://revoke.example.com/oauth/revoke"\n    revokeEndsClientGrants: true',
+    );
+    expect(approved(text, { clientId: "abc123" })).toMatchObject({ revokeEndsClientGrants: true });
+    expect(approved(sheet(), { clientId: "abc123" })).not.toHaveProperty("revokeEndsClientGrants");
+  });
+
   it("turns a { fromSetting, path } URL into the setting's host and the path", () => {
     const text = sheet(
       "{ fromSetting: gitlab, path: /oauth/token }",

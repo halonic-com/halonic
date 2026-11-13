@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-8323 (HAL-984 design, section 4, "Signing out")
 
-The sign-in shall on sign-out revoke the saved refresh token at the revoke endpoint of the sign-in the user approved, never at one from the sheet as it is now, with the client of that approved sign-in, and then remove the grant whether or not the server confirmed, and shall drop the access token in use so that it is not given out again.
+The sign-in shall on sign-out revoke the saved refresh token at the revoke endpoint of the sign-in the user approved, never at one from the sheet as it is now, with the client of that approved sign-in, unless the sign-out is for a new grant that the revoke would end too (the old or the new approval says `revokeEndsClientGrants`, and both have the same client and token server), in which case no revoke is sent, and then remove the grant whether or not the server confirmed, and shall drop the access token in use so that it is not given out again.
 
 ## Examples
 
@@ -14,6 +14,12 @@ The sign-in shall on sign-out revoke the saved refresh token at the revoke endpo
   then the result says `notConfirmed` and the grant is removed.
 - Given an approved sign-in without a revoke endpoint,
   then nothing is sent, the result says `noRevokeUrl` and the grant is removed.
+- Given an approved sign-in with `revokeEndsClientGrants` and a replacing approval with the same client and servers,
+  then nothing is sent, the result says `skipped` and the grant is removed.
+- Given an old approval without the flag and a replacing approval with it and the same client and token server, even without a revoke endpoint,
+  then nothing is sent and the result says `skipped`.
+- Given that sign-in and a replacing approval with another client or token server, or neither approval with the flag,
+  then the revoke is sent as usual.
 - Given no saved grant,
   then the result is `notSignedIn` and nothing is sent.
 - Given a sign-in that was signed out after a token was given out,
