@@ -3,6 +3,7 @@
 - Task: HAL-8357
 - Approval: Liam approves this note in review on HAL-8357
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8xcwNyR7zcMxKP9NpJhHrqh03FLFQdfcXQU6HxBZ6xQrZW+oMVbiDmsNd+qKaQHuw405E14NaCoT8DWeFULQAg==
 
 ## What changes
 
