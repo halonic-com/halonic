@@ -1,0 +1,36 @@
+{
+  "name": "@halonicjs/adapter-secrets-file",
+  "private": true,
+  "type": "module",
+  "description": "The SecretStore port over one private JSON file in the profile.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-contracts": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "elena",
+    "coverage": {
+      "lines": 95,
+      "branches": 90
+    },
+    "runtime": "node"
+  },
+  "dependencies": {
+    "@halonicjs/adapter-fs-node": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/std": "workspace:*"
+  }
+}
