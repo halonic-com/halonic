@@ -21,7 +21,11 @@ const timelineColumns: readonly ListColumn[] = [{ kind: "main" }, { kind: "time"
  * The child runs a step started are named, with their links, in its side
  * panel, because a List row has no room for a link of its own yet.
  *
- * Not here yet: branch and for-each groups, and Show on canvas (T7).
+ * A step that ran branches or for-each items has them as rows right under
+ * its entry. They open their step's panel; the kit's List can't indent a
+ * row yet.
+ *
+ * Not here yet: Show on canvas (T7).
  */
 export function EveryStep({
   entries,
@@ -73,16 +77,26 @@ function Timeline({
     <List
       heading={{ name: everyStepWords.heading }}
       columns={timelineColumns}
-      onOpen={onOpenEntry}
+      onOpen={(id) => onOpenEntry(id.split(":")[0] ?? id)}
       {...(openEntry === undefined ? {} : { current: openEntry })}
-      rows={entries.map((entry) => ({
-        id: entry.id,
-        title: entry.name,
-        meta: entry.line,
-        icon: <StepDot mark={entry.mark} />,
-        cells: { time: { value: entry.time } },
-        label: entry.label,
-      }))}
+      rows={entries.flatMap((entry) => [
+        {
+          id: entry.id,
+          title: entry.name,
+          meta: entry.line,
+          icon: <StepDot mark={entry.mark} />,
+          cells: { time: { value: entry.time } },
+          label: entry.label,
+        },
+        ...entry.groups.map((group) => ({
+          id: group.id,
+          title: group.name,
+          meta: group.line,
+          icon: <StepDot mark={group.mark} />,
+          cells: { time: { value: group.time } },
+          label: group.label,
+        })),
+      ])}
     />
   );
 }
