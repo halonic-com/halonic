@@ -118,9 +118,8 @@ verifies("sign-in.token-attacks", () => {
     });
   });
 
-  // Open gap, tracked as finding 2 of the attack-test task (second part).
   describe("attack case T11: signing in again over a changed sign-in", () => {
-    it.fails("revokes the old grant at the URL the user approved", async () => {
+    it("revokes the old grant at the URL the user approved", async () => {
       const rig = await signedInRig();
       rig.editSignIn({ scopes: [{ scope: "projects.write", reason: "Changes your projects." }] });
 
