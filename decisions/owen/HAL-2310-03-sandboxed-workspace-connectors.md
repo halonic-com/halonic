@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-2310 (D45, board on HAL-2257 Q3; decided by Liam on HAL-2303); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:iyiuZg9Xey1re4236CtLGq3DoFecRaoWm0rks8LmhEzJLmOpJSYgaYcNCwmvjtEkvUanbNcNRTMnIhjQCwyeCA==
 
 Parts 3a and 3b of HAL-2310 (halonic#2074) start a workspace's `stdio` connector in the agent sandbox
 session, with its own working folder, its own secrets and only the sites it names. Two changes need a note:
