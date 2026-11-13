@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ListedToolRow, ListedToolsHost, ListedToolsSnapshot } from "../listed-tools-host.ts";
 import { ListedToolsReviewModel } from "../listed-tools-review-model.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -23,11 +23,16 @@ function row(name: string, overrides: Partial<ListedToolRow> = {}): ListedToolRo
   };
 }
 
-function hostFor(snapshot: ListedToolsSnapshot, removals: string[] = []): ListedToolsHost {
+function hostFor(
+  snapshot: ListedToolsSnapshot,
+  removals: string[] = [],
+  failRemoval = false,
+): ListedToolsHost {
   return {
     review: async () => snapshot,
     approve: async () => ({ approved: [], changed: [] }),
     removeApproval: async (_id, name) => {
+      if (failRemoval) throw new Error("The server said no.");
       removals.push(name);
     },
     subscribe: () => () => {},
@@ -45,15 +50,13 @@ const base: ListedToolsSnapshot = {
   hasApprovals: false,
 };
 
-async function open(snapshot: ListedToolsSnapshot, removals: string[] = []) {
-  const model = new ListedToolsReviewModel(hostFor(snapshot, removals), "notes");
+async function open(snapshot: ListedToolsSnapshot, removals: string[] = [], failRemoval = false) {
+  const model = new ListedToolsReviewModel(hostFor(snapshot, removals, failRemoval), "notes");
   const removed: string[] = [];
   const container = render(
     <ListedToolsReviewBody model={model} onRemoved={(toast) => removed.push(toast)} />,
   );
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
+  await act(() => model.refresh());
   return { container, model, removed };
 }
 
@@ -96,6 +99,77 @@ describe("the review body", () => {
       expect(removed).toEqual([
         "Removed your approval for read_note. It's off until you approve it again.",
       ]);
+    });
+
+    it("offers Show all only when the description is cut, and folds again", async () => {
+      const clamp = vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(120);
+      const height = vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(60);
+      try {
+        const { container } = await open(base);
+        const toggle = () =>
+          [...container.querySelectorAll("button")].find((candidate) =>
+            candidate.textContent?.startsWith("Show"),
+          );
+        expect(toggle()?.textContent).toBe("Show all");
+        await act(async () => toggle()?.click());
+        expect(toggle()?.textContent).toBe("Show less");
+        expect(toggle()?.getAttribute("aria-expanded")).toBe("true");
+      } finally {
+        clamp.mockRestore();
+        height.mockRestore();
+      }
+    });
+
+    it("leaves out Show all when nothing is cut", async () => {
+      const { container } = await open(base);
+      expect(container.textContent).not.toContain("Show all");
+    });
+
+    it("lists arguments and what Halonic left out of them", async () => {
+      const { container } = await open({
+        ...base,
+        toReview: [
+          row("search_notes", {
+            arguments: [{ name: "query", type: "string", description: "What to find" }],
+            leftOutArguments: ["too many arguments"],
+          }),
+        ],
+      });
+      expect(container.textContent).toContain("query (string): What to find");
+      expect(container.textContent).toContain(
+        "Halonic left out part of its arguments: too many arguments.",
+      );
+    });
+
+    it("lists tools that keep changing with their line, and keeps the order the host gives", async () => {
+      const { container } = await open({
+        ...base,
+        hasApprovals: true,
+        toReview: [row("beta", { state: "changed" }), row("alpha")],
+      });
+      expect(container.textContent).toContain("Keeps changing");
+      expect(container.textContent).toContain("sync_tags");
+      const names = [...container.querySelectorAll("li .font-mono")].map((n) => n.textContent);
+      expect(names.indexOf("beta")).toBeLessThan(names.indexOf("alpha"));
+    });
+
+    it("cuts a refused reason between characters, not inside an emoji", async () => {
+      const { container } = await open({
+        ...base,
+        refused: [{ name: "look up", reason: `${"x".repeat(63)}😀😀` }],
+      });
+      const refused = container.querySelector('li[title^="look up"]');
+      expect(refused?.textContent).toBe(`look up: ${"x".repeat(63)}😀…`);
+    });
+
+    it("shows no toast and keeps the approval when removing fails", async () => {
+      const { container, removed } = await open(base, [], true);
+      const button = [...container.querySelectorAll("button")].find((candidate) =>
+        candidate.textContent?.startsWith("Remove approval"),
+      );
+      await act(async () => button?.click());
+      expect(removed).toEqual([]);
+      expect(container.textContent).toContain("read_note");
     });
   });
 });

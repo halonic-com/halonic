@@ -1,5 +1,5 @@
 import { Checkbox, StatusChip } from "@halonicjs/studio-kit";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { ListedToolRow } from "../listed-tools-host.ts";
 import { listedToolsWords } from "../listed-tools-words.ts";
 import { PlainList } from "./plain-list.tsx";
@@ -13,8 +13,10 @@ export interface ListedToolRowViewProps {
   readonly showState: boolean;
 }
 
-/** A description longer than this gets **Show all**: three lines of the dialog hold about this much. */
-const foldAfterCharacters = 180;
+/** Whether the three-line clamp hides part of `element`: the only honest test, since lines break by width. */
+function isClamped(element: HTMLElement | null): boolean {
+  return element !== null && element.scrollHeight > element.clientHeight;
+}
 
 /**
  * One tool to decide on: the tick box, the name in the code font, the description folded after
@@ -24,8 +26,18 @@ const foldAfterCharacters = 180;
 export function ListedToolRowView({ row, tick, showState }: ListedToolRowViewProps) {
   const descriptionId = useId();
   const [unfolded, setUnfolded] = useState(false);
-  const foldable =
-    row.description.length > foldAfterCharacters || row.description.split("\n").length > 3;
+  const descriptionRef = useRef<HTMLParagraphElement>(null);
+  const [clamped, setClamped] = useState(false);
+  // Measured, not guessed from the length: a narrow dialog or a large font clamps short text too.
+  // Once unfolded the clamp is gone and nothing overflows, so the button stays on its last answer.
+  useEffect(() => {
+    if (unfolded) return;
+    const measure = () => setClamped(isClamped(descriptionRef.current));
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [unfolded, row.description]);
+  const foldable = clamped || unfolded;
   return (
     <li className="flex min-w-0 flex-col gap-1 border-b border-border px-4 py-3 last:border-b-0">
       <div className="flex min-w-0 items-start gap-3">
@@ -47,7 +59,8 @@ export function ListedToolRowView({ row, tick, showState }: ListedToolRowViewPro
           </div>
           <p
             id={descriptionId}
-            className={`whitespace-pre-line text-body text-fg [overflow-wrap:anywhere] ${foldable && !unfolded ? "line-clamp-3" : ""}`}
+            ref={descriptionRef}
+            className={`whitespace-pre-line text-body text-fg [overflow-wrap:anywhere] ${!unfolded ? "line-clamp-3" : ""}`}
           >
             {row.description}
           </p>
@@ -59,15 +72,15 @@ export function ListedToolRowView({ row, tick, showState }: ListedToolRowViewPro
               className="self-start text-small text-primary focus-ring"
               onClick={() => setUnfolded(!unfolded)}
             >
-              {listedToolsWords.showAll}
+              {unfolded ? listedToolsWords.showLess : listedToolsWords.showAll}
             </button>
           ) : null}
           {row.arguments.length === 0 ? null : (
             <div className="text-small text-fg-muted">
               <span>{listedToolsWords.argumentsLabel}</span>
               <PlainList>
-                {row.arguments.map((argument) => (
-                  <li key={argument.name} className="[overflow-wrap:anywhere]">
+                {row.arguments.map((argument, index) => (
+                  <li key={`${index}:${argument.name}`} className="[overflow-wrap:anywhere]">
                     <span className="font-mono">{argument.name}</span>
                     {argument.type === undefined ? "" : ` (${argument.type})`}
                     {argument.description === undefined ? "" : `: ${argument.description}`}
@@ -76,8 +89,8 @@ export function ListedToolRowView({ row, tick, showState }: ListedToolRowViewPro
               </PlainList>
             </div>
           )}
-          {row.leftOutArguments.map((reason) => (
-            <p key={reason} className="text-small text-fg-muted">
+          {row.leftOutArguments.map((reason, index) => (
+            <p key={`${index}:${reason}`} className="text-small text-fg-muted">
               {listedToolsWords.leftOut(reason)}
             </p>
           ))}

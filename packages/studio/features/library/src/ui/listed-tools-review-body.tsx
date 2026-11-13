@@ -15,7 +15,8 @@ export interface ListedToolsReviewBodyProps {
 /** A refused tool's reason, cut for the screen. The full text stays in the tooltip. */
 function cutReason(reason: string): string {
   const limit = listedToolsWords.refusedReasonLimit;
-  return reason.length > limit ? `${reason.slice(0, limit)}…` : reason;
+  const characters = Array.from(reason);
+  return characters.length > limit ? `${characters.slice(0, limit).join("")}…` : reason;
 }
 
 /**
@@ -56,14 +57,22 @@ export function ListedToolsReviewBody({ model, onRemoved }: ListedToolsReviewBod
             headingLevel={2}
             name={listedToolsWords.keepsChangingHeading}
           />
-          {shown.keepsChanging.map((row) => (
-            <p key={row.name} className="px-4 text-small text-fg-muted [overflow-wrap:anywhere]">
+          {shown.keepsChanging.map((row, index) => (
+            <p
+              key={`${index}:${row.name}`}
+              className="px-4 text-small text-fg-muted [overflow-wrap:anywhere]"
+            >
               {listedToolsWords.keepsChangingLine(snapshot.sourceName, row.name)}
             </p>
           ))}
           <PlainList>
-            {shown.keepsChanging.map((row) => (
-              <ListedToolRowView key={row.name} row={row} tick={null} showState={false} />
+            {shown.keepsChanging.map((row, index) => (
+              <ListedToolRowView
+                key={`${index}:${row.name}`}
+                row={row}
+                tick={null}
+                showState={false}
+              />
             ))}
           </PlainList>
         </section>
@@ -97,7 +106,12 @@ export function ListedToolsReviewBody({ model, onRemoved }: ListedToolsReviewBod
                   </span>
                   <span className="block">{listedToolsWords.askedBeforeEachUse}</span>
                 </span>
-                <Button variant="ghost" size="sm" onClick={() => void remove(name)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  busy={state.busy}
+                  onClick={() => void remove(name)}
+                >
                   {listedToolsWords.removeApproval}
                   <span className="sr-only"> for {name}</span>
                 </Button>

@@ -36,6 +36,7 @@ export const listedToolsWords = {
   states: { changed: "Changed", notApproved: "Not approved" },
   tickLabel: (tool: string) => `Approve ${tool}`,
   showAll: "Show all",
+  showLess: "Show less",
   argumentsLabel: "Arguments:",
   refusedHeading: "Refused",
   refusedLine:

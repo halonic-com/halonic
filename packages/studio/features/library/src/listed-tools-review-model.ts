@@ -211,6 +211,7 @@ export class ListedToolsReviewModel {
 
   /** Removes the approval of one tool, then reads the list again. Returns the toast to show once the screen closes. */
   async removeApproval(toolName: string): Promise<string | undefined> {
+    if (this.state.busy) return undefined;
     this.set({ busy: true, approveError: undefined });
     try {
       await this.host.removeApproval(this.connectorId, toolName);
