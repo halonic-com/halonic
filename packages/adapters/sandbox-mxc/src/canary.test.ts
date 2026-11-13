@@ -12,6 +12,7 @@ import {
   testBoxes,
 } from "./fake-mxc.test-helper.ts";
 import { grantPath } from "./grant-path.ts";
+import { hostAddressTargets } from "./lan-targets.ts";
 import { MemoryDisk } from "./memory-disk.test-helper.ts";
 import { MxcSandbox } from "./mxc-sandbox.ts";
 import type { NetworkTarget } from "./network-probes.ts";
@@ -20,7 +21,10 @@ import type { NetworkTarget } from "./network-probes.ts";
 const project = "C:\\acme\\project"; // leak-guard: allow absolute-path made-up Windows path for a test
 
 /** The adapter and its canary on a fake SDK and a memory disk. */
-function setup(leaks: Leaks | Behavior = {}, hostTargets?: () => NetworkTarget[]) {
+function setup(
+  leaks: Leaks | Behavior = {},
+  hostTargets: () => NetworkTarget[] = hostAddressTargets,
+) {
   const disk = new MemoryDisk().folder(project).folder(nodeFolder);
   const fake = new FakeMxc(disk, typeof leaks === "function" ? leaks : healthyBox(disk, leaks));
   const { boxes, made } = testBoxes(disk);
