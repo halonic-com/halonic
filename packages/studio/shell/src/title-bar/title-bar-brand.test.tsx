@@ -37,5 +37,16 @@ verifies("shell.title-bar", () => {
       expect(mark?.getAttribute("role")).toBe("img");
       expect(mark?.getAttribute("aria-label")).toBe("Halonic Studio");
     });
+
+    it("points the ring at its own gradient, and two marks never share an id", () => {
+      const first = render(<TitleBarBrand />);
+      const second = render(<TitleBarBrand />);
+      const ids = [first, second].map((container) => {
+        const id = container.querySelector("linearGradient")?.getAttribute("id");
+        expect(container.querySelector("circle")?.getAttribute("stroke")).toBe(`url(#${id})`);
+        return id;
+      });
+      expect(ids[0]).not.toBe(ids[1]);
+    });
   });
 });
