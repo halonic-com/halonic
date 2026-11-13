@@ -2,6 +2,7 @@
 
 - Approval: Timothy (board) approved this on HAL-8416 ("Yes, all"); Noah's spec is on HAL-8433
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:U0fB90Dm8Y0CJsa6rtja/zMckm6yolG8/48fgwgyUN74NPslczXHkqS3vrQ5LV7PqhxVdsp6Y6FE8L5v2j6WAg==
 - Task: HAL-8421
 
 ## What changes
