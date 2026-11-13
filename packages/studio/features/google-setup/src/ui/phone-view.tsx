@@ -1,9 +1,11 @@
 import type { SetupStep } from "@halonicjs/google-setup";
 import { ViewOnlyLine } from "@halonicjs/studio-kit";
 import type { GoogleSetupAccount } from "../api.ts";
+import { connectorProblem } from "../connector-problem.ts";
 import { stepTitle } from "../step-names.ts";
 import { accountTypeNames, listNames } from "./account-labels.ts";
 import { currentStep } from "./checklist.tsx";
+import { ProblemBanner } from "./problem-banner.tsx";
 import { StepMark, type StepState, stepStateWords } from "./step-mark.tsx";
 
 /** Props for {@link PhoneView}. */
@@ -26,6 +28,7 @@ function stateOf(step: SetupStep, current: SetupStep | undefined, done: boolean)
  */
 export function PhoneView({ account, steps }: PhoneViewProps) {
   const current = currentStep(account, steps);
+  const problem = connectorProblem(account);
   const doneCount = steps.filter((step) => account.record.stepsDone[step.id] !== undefined).length;
   return (
     <section aria-labelledby="google-setup-phone-title" className="flex flex-col gap-4 p-4">
@@ -35,6 +38,12 @@ export function PhoneView({ account, steps }: PhoneViewProps) {
       <ViewOnlyLine>
         Set this up on a computer. Google Cloud Console is hard to use on a phone.
       </ViewOnlyLine>
+      {problem === undefined ? null : (
+        <>
+          <ProblemBanner problem={problem} />
+          <ViewOnlyLine>Fix this on your computer: Workspace settings › Connectors</ViewOnlyLine>
+        </>
+      )}
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-body">
         <dt className="text-fg-muted">Account</dt>
         <dd>{accountTypeNames[account.record.accountType]}</dd>
