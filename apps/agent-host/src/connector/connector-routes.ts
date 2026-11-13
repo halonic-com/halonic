@@ -6,6 +6,7 @@ import type {
   HttpClient,
   Secrets,
   TokenStore,
+  TrustStore,
 } from "@halonicjs/ports";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
@@ -17,6 +18,7 @@ import {
   openConnectorBody,
 } from "./connector-schemas.ts";
 import type { ConnectorTable } from "./connector-table.ts";
+import { checkTrustGrant } from "./trust-check.ts";
 
 /** What the connector routes reach: the factory, the folders the launcher named, and what a start needs. */
 export interface ConnectorRouteDeps {
@@ -31,6 +33,12 @@ export interface ConnectorRouteDeps {
   /** What a pinned package's lookup reaches the registry with. */
   http: HttpClient;
   tokens: TokenStore;
+  /**
+   * The trust records of the user's profile, which the host reads itself
+   * before it starts any program. `undefined` when the host has no profile
+   * folder: nothing is trusted then, and no connector opens.
+   */
+  trustStore: TrustStore | undefined;
 }
 
 const unknownConnectorMessage = "The agent host has no open connector with this id.";
@@ -44,7 +52,9 @@ const unknownConnectorMessage = "The agent host has no open connector with this 
  *   own secrets' values, the workspace folder, the agents' working folders and
  *   the trust grant answers `{ connector }`: an id. The host builds the
  *   connector's place; there is no profile in the request. The program starts
- *   on the first call. It answers 403 `workspace_not_named` when the
+ *   on the first call. It answers 403 `workspace_not_trusted` when the host's own
+ *   trust record doesn't cover the connector as the request describes it (the
+ *   grant in the request is only a claim), and starts nothing; 403 `workspace_not_named` when the
  *   workspace isn't one of the launcher's folders, 429 `too_many_connectors`
  *   when the table is full, 503 `host_stopping` once the host stops;
  * - `POST /v1/connectors/tools` with `{ connector }` answers its `ConnectorTool[]`;
@@ -129,6 +139,15 @@ function openHandler(deps: ConnectorRouteDeps): HostRoute["handle"] {
         );
         return;
       }
+      if ((await checkTrustGrant(deps.trustStore, context.workspaceRoot, body)) !== undefined) {
+        sendError(
+          response,
+          403,
+          "workspace_not_trusted",
+          "This computer's trust record doesn't cover this connector in this workspace. Trust the workspace first.",
+        );
+        return;
+      }
       const client = deps.factory.create(configOf(body), context);
       const id = connectors.add(client);
       if (id === undefined) {
@@ -149,14 +168,15 @@ function openHandler(deps: ConnectorRouteDeps): HostRoute["handle"] {
 /**
  * What the start is given: the workspace and the agents' folders as real
  * paths (Studio's page can't resolve them), the connector's own secrets and
- * the trust grant. Nothing else of the host's reaches it.
+ * the trust grant, which the host checks against its own record before it
+ * starts anything. Nothing else of the host's reaches it.
  *
  * @returns undefined when the workspace isn't one of the launcher's folders
  */
 async function contextOf(
   deps: ConnectorRouteDeps,
   body: OpenConnectorBody,
-): Promise<ConnectorFactoryContext | undefined> {
+): Promise<(ConnectorFactoryContext & { workspaceRoot: string }) | undefined> {
   const workspaceRoot = await realpath(body.workspaceRoot).catch(() => undefined);
   if (workspaceRoot === undefined) return undefined;
   const named = await Promise.all(

@@ -313,12 +313,18 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../packages/core/ports
+      '@halonicjs/profile':
+        specifier: workspace:*
+        version: link:../../packages/core/profile
       '@halonicjs/schema-kit':
         specifier: workspace:*
         version: link:../../packages/core/schema-kit
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../packages/core/std
+      '@halonicjs/workspace':
+        specifier: workspace:*
+        version: link:../../packages/core/workspace
     devDependencies:
       '@halonicjs/testing-spec':
         specifier: workspace:*
