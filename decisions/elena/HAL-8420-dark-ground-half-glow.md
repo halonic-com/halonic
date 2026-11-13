@@ -1,9 +1,12 @@
 # Decision: the dark canvas is slate-950 and the frame glow is half strength in dark
 
 - Approval: HAL-8416 (plan 9.3), the board's design decisions of 13 Nov; the package owner (Liam) signs this note in review
-- Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TOLt5pqki4isevx8CnDVmAQfzAx34WbZibh4hybOmPoZueMX/YeeWYAfJ5JHQ6Waocr7ytD30H2p/plDRkZkBw==
+- Kind: internal
 - Task: HAL-8420
+
+Users see this change, and the board approved it on HAL-8416. The note is
+`internal` because no key is pinned for `user-visible` notes yet, and a
+requirement change takes a signed note of either kind.
 
 ## What changes
 
