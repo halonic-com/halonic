@@ -151,6 +151,11 @@ verifies("sandbox-mxc.session", () => {
         { reachPort: true },
         /port of this computer it should not reach/,
       ],
+      [
+        "the router or the local network is reached",
+        { reachLan: true },
+        /address of the local network/,
+      ],
       ["an address on the internet is reached", { reachInternet: true }, /address on the internet/],
       ["a public DNS server answers", { reachDns: true }, /public DNS server/],
       [

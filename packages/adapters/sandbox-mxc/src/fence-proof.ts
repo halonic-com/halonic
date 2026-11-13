@@ -2,6 +2,7 @@
 // program runs in the box under the real policy and must find the hidden file
 // and the denied file inside the readable folder unreadable, the ports of
 // listeners on this computer (loopback and its other addresses) unreachable,
+// the router's usual address and a neighbour in each private range unreachable,
 // the internet and public DNS servers unreachable, and the allowed folder's
 // control file readable (without that control, "hidden" proves nothing). A
 // network probe that failed for another reason than a refusal proves nothing
@@ -71,6 +72,7 @@ export async function proveFence(input: FenceProofInput): Promise<SandboxFence> 
     }
     const problem = problemWith(report, {
       ports: ports.length,
+      lan: network.lan.length,
       internet: network.internet.length,
       dns: network.dns.length,
     });
@@ -98,6 +100,9 @@ function problemWith(report: LeakReport, asked: NetworkAsked): string | null {
   const found = judgeNetwork(report, asked);
   if (found.portReached) {
     return "a program inside the fence could connect to a port of this computer it should not reach";
+  }
+  if (found.lanReached) {
+    return "a program inside the fence could connect to an address of the local network";
   }
   if (found.internetReached) {
     return "a program inside the fence could connect to an address on the internet";

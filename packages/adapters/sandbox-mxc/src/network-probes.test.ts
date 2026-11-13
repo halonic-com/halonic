@@ -14,13 +14,14 @@ function report(internet: NetworkAttempt[], network: NetworkAttempt | null): Lea
     hidden: "hidden",
     denied: "hidden",
     ports: [],
+    lan: [],
     internet,
     dns: [],
     network,
   };
 }
 
-const asked = { ports: 0, internet: 1, dns: 0 };
+const asked = { ports: 0, lan: 0, internet: 1, dns: 0 };
 
 verifies("sandbox-mxc.canary", () => {
   describe("reading the network attempts", () => {

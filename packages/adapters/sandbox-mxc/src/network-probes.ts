@@ -12,6 +12,7 @@
 // Anything else is unproven, and an unproven result proves nothing.
 
 import type { SandboxBridge } from "@halonicjs/ports";
+import { lanTargets } from "./lan-targets.ts";
 import type { LeakReport, NetworkAttempt } from "./probe-scripts.ts";
 
 /** An address and a port the probe tries. */
@@ -40,17 +41,20 @@ export const dnsTargets: readonly NetworkTarget[] = [
 export function networkSettings(bridge: SandboxBridge | null): {
   internet: readonly NetworkTarget[];
   dns: readonly NetworkTarget[];
+  lan: readonly NetworkTarget[];
   bridge: NetworkTarget | null;
 } {
   const control =
     bridge !== null && bridge.kind === "loopback" ? { host: bridge.host, port: bridge.port } : null;
-  return { internet: internetTargets, dns: dnsTargets, bridge: control };
+  return { internet: internetTargets, dns: dnsTargets, lan: lanTargets(), bridge: control };
 }
 
 /** What the probe's network attempts found. */
 export interface NetworkJudgement {
   /** A listener on this computer (loopback or another address of it) was reached. */
   portReached: boolean;
+  /** The router's usual address, or another address of the local network, was reached. */
+  lanReached: boolean;
   /** An address outside this computer was reached. */
   internetReached: boolean;
   /** A public DNS server answered a query sent straight to it. */
@@ -62,6 +66,7 @@ export interface NetworkJudgement {
 /** How many attempts of each kind the probe was asked to make. */
 export interface NetworkAsked {
   ports: number;
+  lan: number;
   internet: number;
   dns: number;
 }
@@ -83,6 +88,7 @@ export function judgeNetwork(report: LeakReport, asked: NetworkAsked): NetworkJu
   };
   return {
     portReached: read("local port", report.ports, asked.ports),
+    lanReached: read("local network", report.lan, asked.lan),
     internetReached: read("internet", report.internet, asked.internet),
     dnsReached: read("DNS", report.dns, asked.dns),
     unproven,

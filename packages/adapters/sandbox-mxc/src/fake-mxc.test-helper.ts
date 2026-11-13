@@ -57,6 +57,7 @@ export interface ProbeSettings {
   hidden: string;
   denied: string;
   ports?: { host: string; port: number }[];
+  lan?: { host: string; port: number }[];
   internet?: { host: string; port: number }[];
   dns?: { host: string; port: number }[];
   bridge?: { host: string; port: number } | null;
@@ -174,6 +175,8 @@ export interface Leaks {
   /** The allowed folder's control file can't be read. */
   controlUnreadable?: boolean;
   reachPort?: boolean;
+  /** The probe connects to the router's usual address or another address of the local network. */
+  reachLan?: boolean;
   /** The probe connects to an address on the internet. */
   reachInternet?: boolean;
   /** A public DNS server answers the probe's query. */
@@ -236,6 +239,7 @@ function leakReport(settings: ProbeSettings, leaks: Leaks): FakeResult {
     hidden: leaks.hidden === true ? "readable" : "hidden",
     denied: leaks.denied === true ? "readable" : "hidden",
     ports: (settings.ports ?? []).map(attempt(leaks.reachPort === true)),
+    lan: (settings.lan ?? []).map(attempt(leaks.reachLan === true)),
     internet: (settings.internet ?? []).map(attempt(leaks.reachInternet === true)),
     dns: (settings.dns ?? []).map(attempt(leaks.reachDns === true)),
     network:

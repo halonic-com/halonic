@@ -86,6 +86,7 @@ verifies("sandbox-mxc.canary", () => {
       ["a denied file inside a readable folder is readable", { denied: true }, "file-readable"],
       ["a file is written where nothing may be written", { writeOutside: true }, "file-writable"],
       ["a loopback port is reached", { reachPort: true }, "port-reachable"],
+      ["the router or the local network is reached", { reachLan: true }, "port-reachable"],
       ["an address on the internet is reached", { reachInternet: true }, "internet-reachable"],
       ["a public DNS server answers", { reachDns: true }, "dns-reachable"],
       [
