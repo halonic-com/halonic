@@ -9,12 +9,19 @@ import {
 } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, it } from "vitest";
 import { type ConnectorStatusHost, ConnectorStatusHostService } from "../connector-status-host.ts";
 import { libraryFeature } from "../feature.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 
 const original = { matchMedia: window.matchMedia };
+
+// The connector page loads lazily. On a busy CI machine the first import (transforming the page and
+// everything behind it) can take longer than the test's own 5 s, so do it up front under the hook's
+// longer limit; the test then only waits for the already loaded page to draw.
+beforeAll(async () => {
+  await import("./connector-page.tsx");
+}, 60_000);
 
 beforeEach(() => {
   window.matchMedia = ((query: string) =>
