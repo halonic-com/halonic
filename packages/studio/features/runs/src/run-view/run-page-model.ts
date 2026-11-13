@@ -23,7 +23,10 @@ export interface RunHeader {
 /** What the run page shows where a banner goes; `undefined` when the run needs no attention. */
 export type RunBanner =
   | {
-      /** The kit Callout: `warning` when the run needs you, `attention` when it stopped at its budget, `info` for a wait that isn't yours. */
+      /**
+       * The kit Callout: `warning` when the run needs you, `attention` when it stopped at its
+       * budget, `info` for a wait that isn't yours.
+       */
       readonly kind: "callout";
       readonly tone: "info" | "warning" | "attention" | "danger";
       /** The hidden title that names the banner's region. */

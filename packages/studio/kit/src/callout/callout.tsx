@@ -7,7 +7,8 @@ import { WarningIcon } from "../icons/warning-icon.tsx";
 /**
  * `info` for a fact and maybe a next step (also the "neutral" notices). `warning` when part of
  * something worked, or Halonic kept a copy: nothing was lost. `attention` (amber) for "have a
- * look": over budget, late. `danger` only when something failed and wasn't kept. There's no success tone: a success is a toast.
+ * look": over budget, late. `danger` only when something failed and wasn't kept. There's no
+ * success tone: a success is a toast.
  */
 export type CalloutTone = "info" | "warning" | "attention" | "danger";
 
