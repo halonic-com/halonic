@@ -10,15 +10,16 @@
   changes a trust root of the guard, the same rule the note check (`Guard notes`) already uses. Before,
   it checked one signature against the `user-visible` keys, which `approvers.json` pins none of, so no
   note could pass both checks and every change to a trust root was blocked.
-- `note-check.ts` exports the trust-root matcher (`isTrustRoot`) and the guard reuses it, so the two
-  checks can't drift apart.
+- `note-check.ts` exports one rule, `reachesTrustRoot`, and both checks use it, so they can't drift
+  apart. A change to `policy.json` in `extraExports` only doesn't reach a trust root, in either check.
 - Pull requests that change no trust root are checked as before: one signature for the note's kind.
 
 ## Tests
 
-No test was weakened and no golden file changed. Three tests are added in `guard-notes.test.ts`: a
-trust-root change passes with a guardian's signature, fails with another key's, and a change outside
-the trust roots still uses the single-key check.
+No test was weakened and no golden file changed. Four tests are added in `guard-notes.test.ts`: a
+trust-root change passes with a guardian's signature, fails with another key's, a change outside the
+trust roots still uses the single-key check, and so does a change to `policy.json` in `extraExports`
+only (unless a real trust root changes with it).
 
 ## Covers
 
