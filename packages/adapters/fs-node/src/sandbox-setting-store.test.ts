@@ -54,15 +54,13 @@ verifies("fs-node.sandbox-setting-store-files", () => {
       await store.remove();
     });
 
-    it.skipIf(process.platform === "win32")(
-      "[platform:win32] needs POSIX links, modes and signals: makes the folder and the file private to the user",
-      async () => {
-        const root = join(await tempFolder(), "sandbox");
-        await new FileSandboxSettingStore(root).save(sandboxChoiceOf("srt"));
-        expect((await stat(root)).mode & 0o777).toBe(0o700);
+    it("makes the folder and the file private to the user (modes are checked where the system has them)", async () => {
+      const root = join(await tempFolder(), "sandbox");
+      await new FileSandboxSettingStore(root).save(sandboxChoiceOf("srt"));
+      if (process.platform !== "win32") expect((await stat(root)).mode & 0o777).toBe(0o700);
+      if (process.platform !== "win32")
         expect((await stat(join(root, fileName))).mode & 0o777).toBe(0o600);
-      },
-    );
+    });
 
     it("leaves no temporary file behind when a save fails", async () => {
       const root = await tempFolder();
@@ -176,28 +174,23 @@ verifies("fs-node.sandbox-setting-store-files", () => {
         expect(JSON.parse(await readFile(outside, "utf8"))).toEqual(sandboxChoiceOf("srt"));
       });
 
-      it.skipIf(process.platform === "win32")(
-        "[platform:win32] needs POSIX links, modes and signals: keeps the file private after it is saved over one anybody could read",
-        async () => {
-          const { root, store } = await saved();
-          await chmod(join(root, fileName), 0o666);
+      it("keeps the file private after it is saved over one anybody could read (modes are checked where the system has them)", async () => {
+        const { root, store } = await saved();
+        await chmod(join(root, fileName), 0o666);
 
-          await store.save(sandboxChoiceOf("mxc"));
+        await store.save(sandboxChoiceOf("mxc"));
+        if (process.platform !== "win32")
           expect((await stat(join(root, fileName))).mode & 0o777).toBe(0o600);
-        },
-      );
+      });
 
-      it.skipIf(process.platform === "win32")(
-        "[platform:win32] needs POSIX links, modes and signals: makes a folder that was already there private on save",
-        async () => {
-          const root = join(await tempFolder(), "sandbox");
-          await mkdir(root, { mode: 0o777 });
-          await chmod(root, 0o777);
+      it("makes a folder that was already there private on save (modes are checked where the system has them)", async () => {
+        const root = join(await tempFolder(), "sandbox");
+        await mkdir(root, { mode: 0o777 });
+        await chmod(root, 0o777);
 
-          await new FileSandboxSettingStore(root).save(sandboxChoiceOf("srt"));
-          expect((await stat(root)).mode & 0o777).toBe(0o700);
-        },
-      );
+        await new FileSandboxSettingStore(root).save(sandboxChoiceOf("srt"));
+        if (process.platform !== "win32") expect((await stat(root)).mode & 0o777).toBe(0o700);
+      });
     });
   });
 });
