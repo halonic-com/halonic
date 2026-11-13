@@ -52,6 +52,7 @@ export function account(
     routinesOnHold: 0,
     changedAt: at,
     askAccountType: false,
+    clientSharedWith: [],
     ...extra,
   };
 }
@@ -61,10 +62,14 @@ export function fakeAccounts(initial: readonly GoogleSetupAccount[]) {
   let accounts = initial;
   const listeners = new Set<() => void>();
   const edits: { accountRef: string; edit: SetupEdit }[] = [];
+  const startOvers: string[] = [];
   const source: GoogleSetupAccounts = {
     list: async () => accounts,
     edit: async (accountRef, edit) => {
       edits.push({ accountRef, edit });
+    },
+    startOver: async (accountRef) => {
+      startOvers.push(accountRef);
     },
     subscribe: (listener) => {
       listeners.add(listener);
@@ -76,6 +81,8 @@ export function fakeAccounts(initial: readonly GoogleSetupAccount[]) {
     listeners,
     /** Every edit the view asked to save, in order. */
     edits,
+    /** The account refs the view asked to start over, in order. */
+    startOvers,
     change: (next: readonly GoogleSetupAccount[]) => {
       accounts = next;
       for (const listener of [...listeners]) listener();

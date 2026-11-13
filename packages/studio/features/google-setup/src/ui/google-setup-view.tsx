@@ -1,11 +1,13 @@
 import type { AccountType, SetupEdit } from "@halonicjs/google-setup";
 import type { SetupViewProps } from "@halonicjs/studio-feature-inbox/api";
 import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { accountSteps } from "../account-steps.ts";
 import type { GoogleSetupAccount, GoogleSetupAccounts } from "../api.ts";
 import { AccountHeader } from "./account-header.tsx";
 import { Checklist, currentStep } from "./checklist.tsx";
+import { resumeLine } from "./resume-line.ts";
+import { StartOver } from "./start-over.tsx";
 
 /** Props for {@link GoogleSetupView}: the Inbox's, and where the accounts are read and saved. */
 export interface GoogleSetupViewProps extends SetupViewProps {
@@ -20,6 +22,8 @@ interface AccountRead {
   readonly account: GoogleSetupAccount | undefined;
   readonly problem: Problem | undefined;
   readonly retry: () => void;
+  /** Reads again now and resolves once the account shows what the host has. */
+  readonly refresh: () => Promise<void>;
 }
 
 /**
@@ -33,6 +37,7 @@ function useAccount(accounts: GoogleSetupAccounts, ref: string): AccountRead {
   const [problem, setProblem] = useState<Problem>();
   // Counts **Try again**, so the read starts again.
   const [attempt, setAttempt] = useState(0);
+  const reader = useRef<() => Promise<void>>(async () => {});
   useEffect(() => {
     let current = true;
     // Only the newest read counts: an older one that answers late must not undo a newer one.
@@ -55,6 +60,7 @@ function useAccount(accounts: GoogleSetupAccounts, ref: string): AccountRead {
         },
       );
     };
+    reader.current = read;
     void read();
     const stop = accounts.subscribe(() => void read());
     window.addEventListener("focus", read);
@@ -64,7 +70,12 @@ function useAccount(accounts: GoogleSetupAccounts, ref: string): AccountRead {
       window.removeEventListener("focus", read);
     };
   }, [accounts, ref, attempt]);
-  return { account, problem, retry: () => setAttempt((count) => count + 1) };
+  return {
+    account,
+    problem,
+    retry: () => setAttempt((count) => count + 1),
+    refresh: () => reader.current(),
+  };
 }
 
 /**
@@ -72,7 +83,18 @@ function useAccount(accounts: GoogleSetupAccounts, ref: string): AccountRead {
  * checklist. The title of the step in hand takes focus as it mounts.
  */
 export function GoogleSetupView({ item, answering, close, accounts }: GoogleSetupViewProps) {
-  const { account, problem, retry } = useAccount(accounts, item.account);
+  const { account, problem, retry, refresh } = useAccount(accounts, item.account);
+  // Counts the times the setup was started over: the checklist starts afresh, at step 1.
+  const [restarts, setRestarts] = useState(0);
+  // Whether the item opened with steps already done: it then says when it was started.
+  const resumed = useRef<boolean | undefined>(undefined);
+  if (account !== undefined && resumed.current === undefined) {
+    resumed.current = Object.keys(account.record.stepsDone).length > 0;
+  }
+  const startedOver = useCallback(() => {
+    resumed.current = false;
+    setRestarts((count) => count + 1);
+  }, []);
   const steps = useMemo(
     () => (account === undefined ? [] : accountSteps(account, account.services)),
     [account],
@@ -120,14 +142,33 @@ export function GoogleSetupView({ item, answering, close, accounts }: GoogleSetu
         answering={answering}
         onAccountType={(accountType: AccountType) => edit({ kind: "account-type", accountType })}
       />
+      {asking || !resumed.current ? null : (
+        <p className="text-body text-fg-muted">{resumeLine(account, steps)}</p>
+      )}
       {asking ? null : (
         <Checklist
+          key={restarts}
           account={account}
           steps={steps}
           answering={answering}
           onEdit={edit}
           close={close}
         />
+      )}
+      {asking ? null : (
+        <footer className="flex flex-wrap items-center gap-2 text-body text-fg-muted">
+          <span>Studio keeps your progress. You can close this at any step.</span>
+          <StartOver
+            email={account.email}
+            clientSharedWith={account.clientSharedWith}
+            answering={answering}
+            onStartOver={async () => {
+              await accounts.startOver(account.record.accountRef);
+              await refresh();
+            }}
+            onStartedOver={startedOver}
+          />
+        </footer>
       )}
     </section>
   );
