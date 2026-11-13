@@ -2,6 +2,7 @@
 
 - Approval: HAL-8416 (plan 9.3), the board's design decisions of 13 Nov; the package owner (Liam) signs this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TOLt5pqki4isevx8CnDVmAQfzAx34WbZibh4hybOmPoZueMX/YeeWYAfJ5JHQ6Waocr7ytD30H2p/plDRkZkBw==
 - Task: HAL-8420
 
 ## What changes
