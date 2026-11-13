@@ -1,5 +1,13 @@
 export { workspaceFeature } from "./feature.ts";
 export {
+  type CreatedTrust,
+  type FolderState,
+  NewWorkspaceDialog,
+  type NewWorkspaceDialogProps,
+  type NewWorkspaceHost,
+} from "./new-workspace/new-workspace-dialog.tsx";
+export { createdLine, NEW_WORKSPACE_MENU_ROW } from "./new-workspace/new-workspace-text.ts";
+export {
   type MountedWorkspaceWindow,
   mountWorkspaceWindow,
 } from "./switcher/mount-workspace-window.tsx";

@@ -164,6 +164,17 @@ empty. Any other store is left alone and `initWorkspace` returns `{ kind: "not_e
 `workspace.yaml` is written last; if that write fails, the `.gitignore` is removed again, so the
 store is empty once more and `initWorkspace` can simply run again.
 
+`createWorkspace(store, { name, id?, ifNotEmpty? })` is the template behind `initWorkspace` and the Studio's
+New workspace dialog (requirement [`workspace.create`](requirements/create.md)). It writes the same
+`.gitignore` and `workspace.yaml`, but with `ifNotEmpty: "add-missing"` (the default) a folder that already
+has files is fine: it writes only the template files the store lacks and changes nothing that is there.
+`ifNotEmpty: "refuse"` gives `initWorkspace`'s rule (`not_empty`). A success is a `CreatedWorkspace`: the
+`location`, `id`, `name`, the paths `written` and the paths `skipped`, so a caller can decide what that
+means (the Studio makes no trust record when anything was skipped). The errors, `CreateWorkspaceError`, are
+`invalid_settings` (with the problems), `not_empty` and `already_workspace` (the store has a `workspace.yaml`,
+so open it instead). A failed write removes the files this call wrote and throws the write's error.
+An existing `.gitignore` is never edited, so one that doesn't list `.env` stays as it is.
+
 `gitIgnorePath` and `gitIgnoreLines` are that file's name and its lines, and `settingsPath` is where a
 workspace's own settings live (`workspace.yaml`).
 
@@ -193,6 +204,7 @@ The types in the API go with these functions: `LoadedWorkspace`, `LoadedFile`, `
 `WorkspaceIssue` for `loadWorkspace` and `filesOf`; `PlaceMatch` for `placeOf`; `ModelTarget` and
 `ResolvedModelTarget` for model aliases; `HubDefinitions` for `definitionsOf`; `RunStartDefinitions` for `runDefinitionsOf`;
 `InitWorkspaceOptions`, `InitializedWorkspace` and `InitWorkspaceError` for `initWorkspace`;
+`CreateWorkspaceOptions`, `CreatedWorkspace` and `CreateWorkspaceError` for `createWorkspace`;
 `CopiedWorkspace` and `CopyWorkspaceError` for `copyWorkspace`; `ExtractPlan`, `ExtractFile`,
 `ExtractPart`, `ExtractSettings` and `ExtractError` for `planHubExtract`; `ExtractedHub`, `ExtractHubOptions` and
 `ExtractHubError` for `extractHub`; `VersionReader` for `VersionSource`;
