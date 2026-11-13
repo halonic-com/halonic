@@ -1,4 +1,4 @@
-import type { Coordination, RunExecutor } from "@halonicjs/ports";
+import { type Coordination, type RunExecutor, RunTargetNotFound } from "@halonicjs/ports";
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import type { Server, TrustDecision, TrustGate } from "./api.ts";
@@ -20,25 +20,27 @@ class ScriptedGate implements TrustGate {
   }
 }
 
-function fakeRuns() {
+function fakeRuns(failure?: Error) {
   const started: unknown[] = [];
   const summary = { runId: "run_1" };
   const runs = {
     start: async (request: unknown) => {
       started.push(request);
+      if (failure !== undefined) throw failure;
       return summary;
     },
     startAgent: async (request: unknown) => {
       started.push(request);
+      if (failure !== undefined) throw failure;
       return summary;
     },
   } as unknown as RunExecutor;
   return { runs, started };
 }
 
-function setup(gate: TrustGate, passwordHash: string | null = null) {
+function setup(gate: TrustGate, passwordHash: string | null = null, failure?: Error) {
   const clock = new TestClock();
-  const { runs, started } = fakeRuns();
+  const { runs, started } = fakeRuns(failure);
   const server: Server = testServer({
     passwordHash,
     clock,
@@ -130,6 +132,36 @@ describe("trust gate", () => {
       expect((await post(server, "/api/runs", workflowStart)).status).toBe(403);
       expect(gate.checks).toBe(2);
       expect(started).toHaveLength(1);
+    });
+
+    it.each([
+      ["hub", "/api/runs", workflowStart],
+      ["workflow", "/api/runs", workflowStart],
+      ["hub", "/api/agent-runs", agentStart],
+      ["agent", "/api/agent-runs", agentStart],
+    ] as const)(
+      "answers 404 when the %s of a start at %s doesn't exist",
+      async (kind, path, body) => {
+        const secret = "secret-name-in-the-message";
+        const { server } = setup(
+          new ScriptedGate([trusted]),
+          null,
+          new RunTargetNotFound(kind, "x", secret),
+        );
+        const response = await post(server, path, body);
+        expect(response.status).toBe(404);
+        const text = await response.text();
+        expect(JSON.parse(text)).toEqual({
+          code: "run_target_not_found",
+          message: "There is no such hub, workflow or agent to run.",
+        });
+        expect(text).not.toContain(secret);
+      },
+    );
+
+    it("keeps any other failure of a start a 500", async () => {
+      const { server } = setup(new ScriptedGate([trusted]), null, new RangeError("odd"));
+      expect((await post(server, "/api/runs", workflowStart)).status).toBe(500);
     });
 
     it("counts a gate that throws as no trust: 500 and no run", async () => {

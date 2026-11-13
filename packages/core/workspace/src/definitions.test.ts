@@ -1,4 +1,4 @@
-import type { Digest } from "@halonicjs/ports";
+import { type Digest, RunTargetNotFound } from "@halonicjs/ports";
 import { bytesToHex, canonicalJson, encodeUtf8 } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -148,12 +148,12 @@ verifies("workspace.run-definitions", () => {
   it("refuses a workflow the hub doesn't have, naming the hub and the workflow", async () => {
     const workspace = await load();
     expect(() => runDefinitionsOf(workspace, "billing", "tidy")).toThrow(
-      new RangeError('The hub "billing" has no workflow "tidy".'),
+      new RunTargetNotFound("workflow", "tidy", 'The hub "billing" has no workflow "tidy".'),
     );
   });
 
   it("refuses a hub the workspace doesn't have", async () => {
     const workspace = await load();
-    expect(() => runDefinitionsOf(workspace, "nowhere", "invoice")).toThrow(RangeError);
+    expect(() => runDefinitionsOf(workspace, "nowhere", "invoice")).toThrow(RunTargetNotFound);
   });
 });

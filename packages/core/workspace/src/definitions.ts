@@ -1,5 +1,5 @@
 import type { Connector, HubUses, KindName, KindValues } from "@halonicjs/format";
-import type { Digest } from "@halonicjs/ports";
+import { type Digest, RunTargetNotFound } from "@halonicjs/ports";
 import { bytesToHex, canonicalJson, encodeUtf8 } from "@halonicjs/std";
 import { type DeclaredToolsByConnector, declaredToolsOf } from "./declared-tools.ts";
 import { filesOf, type LoadedWorkspace } from "./load-workspace.ts";
@@ -51,7 +51,7 @@ type LibraryKind = "skill" | "knowledge" | "collection" | "connector";
  * @param workspace - the loaded workspace
  * @param hubId - the hub the run is in
  * @returns plain data; {@link definitionsVersion} hashes it
- * @throws RangeError when no file of the workspace is in that hub
+ * @throws RunTargetNotFound (a RangeError) when no file of the workspace is in that hub
  *
  * @example
  * const definitions = definitionsOf(workspace, "billing");
@@ -59,7 +59,7 @@ type LibraryKind = "skill" | "knowledge" | "collection" | "connector";
  */
 export function definitionsOf(workspace: LoadedWorkspace, hubId: string): HubDefinitions {
   if (!workspace.files.some((file) => file.hub === hubId)) {
-    throw new RangeError(`The workspace has no hub "${hubId}".`);
+    throw new RunTargetNotFound("hub", hubId, `The workspace has no hub "${hubId}".`);
   }
   const settings = filesOf(workspace, "workspace")[0]?.value ?? null;
   const hub = filesOf(workspace, "hub").find((file) => file.hub === hubId)?.value ?? null;
@@ -124,7 +124,7 @@ export interface RunStartDefinitions {
  * @param workflowId - the workflow the run runs
  * @param integrations - the local integrations the trust check covered, whose sheets
  *   give the declared tools of their connectors; leave out, or pass none, without trust
- * @throws RangeError when the workspace has no such hub, or the hub no such workflow
+ * @throws RunTargetNotFound (a RangeError) when the workspace has no such hub, or the hub no such workflow
  *
  * @example
  * runDefinitionsOf(workspace, "support", "support-reply");
@@ -139,7 +139,11 @@ export function runDefinitionsOf(
   const hub = definitionsOf(workspace, hubId);
   const workflow = Object.hasOwn(hub.workflows, workflowId) ? hub.workflows[workflowId] : undefined;
   if (workflow === undefined) {
-    throw new RangeError(`The hub "${hubId}" has no workflow "${workflowId}".`);
+    throw new RunTargetNotFound(
+      "workflow",
+      workflowId,
+      `The hub "${hubId}" has no workflow "${workflowId}".`,
+    );
   }
   return {
     workflow,

@@ -1,3 +1,4 @@
+import { isRunTargetNotFound } from "@halonicjs/ports";
 import type { ServerPorts } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 
@@ -43,14 +44,21 @@ export function createTrustRoutes({ trust, runs }: TrustRoutePorts): TrustRoutes
    * Asks the gate again for every start, never from memory, so a workspace
    * that changed after it was trusted starts nothing. A gate that fails
    * counts as no trust: the error reaches the caller as an internal error and
-   * no run starts.
+   * no run starts. A start that names a hub, workflow or agent that doesn't
+   * exist answers 404; any other failure of the start stays an internal error.
    */
   async function whenTrusted(start: () => Promise<Response>): Promise<Response> {
     const decision = await trust.check();
     if (decision.state !== "trusted") {
       return errorResponse(serverErrors.workspaceNotTrusted);
     }
-    return start();
+    try {
+      return await start();
+    } catch (error) {
+      // A wrong name is the caller's mistake; the body doesn't say which hub, workflow or agent, or what exists.
+      if (isRunTargetNotFound(error)) return errorResponse(serverErrors.runTargetNotFound);
+      throw error;
+    }
   }
 
   return {
