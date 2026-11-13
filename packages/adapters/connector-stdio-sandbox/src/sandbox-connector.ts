@@ -12,6 +12,7 @@ import {
   resultText,
   type StdioLimits,
   StdioTransport,
+  toConnectorTool,
 } from "@halonicjs/adapter-mcp";
 import type {
   ConnectorClient,
@@ -20,7 +21,6 @@ import type {
   ConnectorFactoryContext,
   ConnectorTool,
   SandboxBlock,
-  SandboxFence,
   SandboxSession,
 } from "@halonicjs/ports";
 import { type Clock, systemClock } from "@halonicjs/std";
@@ -29,10 +29,11 @@ import { SandboxNotFencedError, SandboxSessionEndedError } from "./errors.ts";
 import type { LocalToolPlace, StdioConfig } from "./local-tool-launch.ts";
 import { planLaunch } from "./plan-launch.ts";
 import { sandboxProgram } from "./sandbox-program.ts";
-
-/** Why a session without a fence by design (`off`) starts no local tool. */
-const noFenceReason =
-  "the session has no fence at all. A local tool runs only inside the sandbox, even when running without it is allowed.";
+import { unfencedReason } from "./session-fence.ts";
+import {
+  type WorkspaceConnectorSetting,
+  workspaceConnectorPlace,
+} from "./workspace-connector-place.ts";
 
 /**
  * How much longer than the connector's own deadlines the transport waits
@@ -57,6 +58,18 @@ export interface LocalToolSetup {
   readonly callTimeoutMs: number;
 }
 
+/**
+ * What the host set up for one of a workspace's own `stdio` connectors
+ * (D45). The trust grant covers all its tools, so, unlike a local tool's,
+ * none is limited to a manifest's list.
+ */
+export interface WorkspaceConnectorSetup {
+  /** Where the host set the connector up; the connector builds the profile's place from it. */
+  readonly setting: WorkspaceConnectorSetting;
+  /** How long one call may take, in milliseconds. */
+  readonly callTimeoutMs: number;
+}
+
 /** A tool a local tool's server listed that its plugin's manifest doesn't declare. */
 export interface UndeclaredTool {
   readonly connectorId: string;
@@ -72,6 +85,12 @@ export interface SandboxStdioOptions {
    * `undefined` for a connector it didn't set up, which then doesn't start.
    */
   readonly localTools: (connectorId: string) => LocalToolSetup | undefined;
+  /**
+   * What the host set up for each of the workspace's own connectors, by
+   * connector id, or `undefined` for one it didn't set up. Asked only
+   * for a connector `localTools` doesn't know.
+   */
+  readonly workspaceConnectors?: (connectorId: string) => WorkspaceConnectorSetup | undefined;
   /**
    * Hears every access the sandbox refused a connector's program. The host
    * turns each into the run's `sandbox.blocked` event.
@@ -146,6 +165,16 @@ export class SandboxStdioConnectorFactory implements ConnectorFactory {
 /** A factory context that has its session. */
 type SandboxContext = ConnectorFactoryContext & { readonly sandbox: SandboxSession };
 
+/** What one connector runs with, from a local tool's setup or a workspace connector's. */
+interface ConnectorSetup {
+  readonly place: LocalToolPlace;
+  readonly callTimeoutMs: number;
+  /** The tools offered and called, or `undefined` for every tool the server lists. */
+  readonly tools: readonly DeclaredTool[] | undefined;
+  /** Set for a workspace connector: its start is checked against the agents' working folders. */
+  readonly workspace?: WorkspaceConnectorSetting;
+}
+
 /** A started program and the MCP session with it. */
 interface Connection {
   readonly session: McpSession;
@@ -201,6 +230,7 @@ class SandboxStdioConnector implements ConnectorClient {
       (seconds) =>
         `Connector "${this.id}"'s program didn't list its tools within ${seconds} seconds, so Halonic stopped it. The next call starts it again.`,
     );
+    if (setup.tools === undefined) return listed.map(toConnectorTool);
     return offeredTools(setup.tools, listed, (toolName) =>
       this.#options.onUndeclaredTool({ connectorId: this.id, toolName }),
     );
@@ -212,7 +242,7 @@ class SandboxStdioConnector implements ConnectorClient {
    */
   async callTool(name: string, args: Record<string, unknown>): Promise<string> {
     const setup = this.#setup();
-    if (!setup.tools.some((tool) => tool.name === name)) {
+    if (setup.tools !== undefined && !setup.tools.some((tool) => tool.name === name)) {
       throw new Error(
         `Connector "${this.id}" has no tool "${name}" that its plugin declares, so Halonic doesn't call it.`,
       );
@@ -265,12 +295,14 @@ class SandboxStdioConnector implements ConnectorClient {
       );
       throw this.#stopped;
     }
+    const setup = this.#setup();
     const command = await planLaunch({
       config: this.#config,
       stdio: this.#stdio,
-      place: this.#setup().place,
+      place: setup.place,
       session: this.#context.sandbox,
       context: this.#context,
+      ...(setup.workspace === undefined ? {} : { workspace: setup.workspace }),
     });
     // The registry lookup takes a while; a connector closed meanwhile starts nothing.
     if (this.#closed) {
@@ -325,15 +357,22 @@ class SandboxStdioConnector implements ConnectorClient {
     if (unfenced !== undefined) throw new SandboxNotFencedError(this.id, unfenced);
   }
 
-  /** What the host set up for this local tool. */
-  #setup(): LocalToolSetup {
-    const setup = this.#options.localTools(this.id);
-    if (setup === undefined) {
-      throw new Error(
-        `Connector "${this.id}" is a local tool Halonic didn't set up, so it doesn't start.`,
-      );
+  /** What the host set up for this local tool or workspace connector. */
+  #setup(): ConnectorSetup {
+    const tool = this.#options.localTools(this.id);
+    if (tool !== undefined) return tool;
+    const workspace = this.#options.workspaceConnectors?.(this.id);
+    if (workspace !== undefined) {
+      return {
+        place: workspaceConnectorPlace(this.#stdio, workspace.setting),
+        callTimeoutMs: workspace.callTimeoutMs,
+        tools: undefined,
+        workspace: workspace.setting,
+      };
     }
-    return setup;
+    throw new Error(
+      `Connector "${this.id}" is a local tool Halonic didn't set up, so it doesn't start.`,
+    );
   }
 
   /**
@@ -435,25 +474,5 @@ class SandboxStdioConnector implements ConnectorClient {
 class DeadlinePassedError extends McpError {
   constructor(message: string) {
     super("unavailable", message);
-  }
-}
-
-/**
- * Why the fence doesn't hold a local tool's program, or `undefined` when it
- * is `fenced`. Only a proven fence counts: a launcher session (`off`) has no
- * fence by design, so it is refused like a fence that failed its probes.
- * Its caller reports a `stopped` session as ended before it asks; the case
- * still refuses, so every state but `fenced` does.
- */
-function unfencedReason(fence: SandboxFence): string | undefined {
-  switch (fence.state) {
-    case "fenced":
-      return undefined;
-    case "not-fenced":
-      return fence.reason;
-    case "off":
-      return noFenceReason;
-    case "stopped":
-      return "The session has ended.";
   }
 }

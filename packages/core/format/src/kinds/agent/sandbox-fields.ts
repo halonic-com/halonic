@@ -211,10 +211,14 @@ export const AllowedSite = s.string().superRefine((site, context) => {
  * A list of {@link AllowedSite}s, at most {@link MAX_ALLOWED_SITES}, for a
  * field inside a union, such as a connector's `transport`. The cap is a
  * refinement rather than `max`, because a union reports a list that's too
- * long only as its whole input being wrong, not at the list.
+ * long only as its whole input being wrong, not at the list. The JSON
+ * Schema still shows the cap as `maxItems`, so editors know it too.
  */
-export const AllowedSitesInUnion = s.array(AllowedSite).superRefine((sites, context) => {
-  if (sites.length > MAX_ALLOWED_SITES) {
-    context.addIssue({ code: "custom", message: `Name at most ${MAX_ALLOWED_SITES} sites` });
-  }
-});
+export const AllowedSitesInUnion = s
+  .array(AllowedSite)
+  .superRefine((sites, context) => {
+    if (sites.length > MAX_ALLOWED_SITES) {
+      context.addIssue({ code: "custom", message: `Name at most ${MAX_ALLOWED_SITES} sites` });
+    }
+  })
+  .meta({ maxItems: MAX_ALLOWED_SITES });
