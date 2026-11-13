@@ -19,6 +19,8 @@ export interface ResolvedSignIn {
   readonly authorizeUrl: string;
   readonly tokenUrl: string;
   readonly revokeUrl?: string;
+  /** Only ever `true`: a sign-in that doesn't say so is left without the key. */
+  readonly revokeEndsClientGrants?: true;
   readonly issuer?: string;
   readonly clientId: string;
   readonly clientAuth: "post" | "basic";
@@ -88,6 +90,7 @@ export function resolveSignIn(
     authorizeUrl,
     tokenUrl,
     ...(revokeUrl === undefined ? {} : { revokeUrl }),
+    ...(signIn.revokeEndsClientGrants === true ? { revokeEndsClientGrants: true as const } : {}),
     ...(issuer === undefined ? {} : { issuer }),
     clientId,
     clientAuth: signIn.clientAuth,

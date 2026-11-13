@@ -232,6 +232,41 @@ verifies("integration-sign-in.sign-in-flow", () => {
     expect((await test.grants.find("example", signInName))?.refreshToken).toBe(newRefreshToken);
   });
 
+  it("drops the old grant without revoking it when the provider's revoke ends every grant of the client", async () => {
+    const test = exampleFlow({ revokeEndsClientGrants: true });
+    await signInWith(test, "fake-code-1");
+    test.answerWith({
+      status: 200,
+      body: { access_token: fakeAccessToken, token_type: "Bearer", refresh_token: newRefreshToken },
+    });
+    test.seen.length = 0;
+
+    await signInWith(test, "fake-code-2");
+
+    expect(test.seen.map((request) => request.url)).toEqual([
+      "https://auth.example.com/oauth/token",
+    ]);
+    expect(test.outcomes.at(-1)).toMatchObject({ kind: "signedIn", previousGrant: "skipped" });
+    expect((await test.grants.find("example", signInName))?.refreshToken).toBe(newRefreshToken);
+  });
+
+  it("still revokes the old grant of such a provider when the new sign-in uses another client", async () => {
+    const test = exampleFlow({ revokeEndsClientGrants: true });
+    await signInWith(test, "fake-code-1");
+    test.changeSettings({ clientId: "another-fake-client" });
+    test.answerWith({
+      status: 200,
+      body: { access_token: fakeAccessToken, token_type: "Bearer", refresh_token: newRefreshToken },
+    });
+
+    await signInWith(test, "fake-code-2");
+
+    expect(test.seen.map((request) => request.url)).toContain(
+      "https://auth.example.com/oauth/revoke",
+    );
+    expect(test.outcomes.at(-1)).toMatchObject({ kind: "signedIn", previousGrant: "revoked" });
+  });
+
   it("revokes nothing when no grant was there", async () => {
     const test = exampleFlow();
 

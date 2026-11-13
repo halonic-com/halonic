@@ -70,6 +70,37 @@ verifies("oauth-sign-in.sign-out", () => {
     expect(http.received[0]?.url).toBe("https://auth.example.com/old/revoke");
   });
 
+  it("sends no revoke when the server's revoke would end the grant that replaces this one", async () => {
+    const { settings, grants, http, save } = setup(ok);
+    const endsClientGrants = { ...approvedExample, revokeEndsClientGrants: true as const };
+    await save(endsClientGrants);
+
+    const result = await signOut(settings, "work-account", approvedExample);
+
+    expect(result).toEqual({ kind: "signedOut", revoke: "skipped" });
+    expect(http.received).toEqual([]);
+    expect(await grants.find("gitlab", "work-account")).toBeUndefined();
+  });
+
+  it("still revokes for a replacing grant of another client or server, or when the old one doesn't say its revoke ends client grants", async () => {
+    const endsClientGrants = { ...approvedExample, revokeEndsClientGrants: true as const };
+    const cases = [
+      [endsClientGrants, { ...approvedExample, clientId: "another-fake-client" }],
+      [endsClientGrants, { ...approvedExample, tokenUrl: "https://other.example.com/token" }],
+      [endsClientGrants, { ...approvedExample, revokeUrl: "https://other.example.com/revoke" }],
+      [approvedExample, approvedExample],
+    ] as const;
+    for (const [old, replacement] of cases) {
+      const { settings, http, save } = setup(ok);
+      await save(old);
+
+      const result = await signOut(settings, "work-account", replacement);
+
+      expect(result).toEqual({ kind: "signedOut", revoke: "revoked" });
+      expect(http.received).toHaveLength(1);
+    }
+  });
+
   it("removes the grant and says notConfirmed when the server fails or can't be reached", async () => {
     for (const answer of [
       () => new Response(null, { status: 503 }),

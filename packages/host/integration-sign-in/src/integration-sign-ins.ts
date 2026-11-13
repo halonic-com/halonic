@@ -67,8 +67,10 @@ export interface IntegrationSignIns {
    * Signs out: waits for a refresh in flight, revokes at the address the user
    * approved and removes the grant. While it runs, `tokens` give nothing for
    * this sign-in, so no new refresh can save a token after the grant is gone.
+   *
+   * @param replacedBy - the approval of the grant that takes this one's place, so a revoke that would end it too is skipped
    */
-  signOut(signIn: string): Promise<SignOutResult>;
+  signOut(signIn: string, replacedBy?: ApprovedSignIn): Promise<SignOutResult>;
 }
 
 /**
@@ -111,21 +113,26 @@ export function createIntegrationSignIns(given: IntegrationSignInsSettings): Int
   return {
     tokens: refusingWhileSigningOut(managed, signingOut),
     lookUp,
-    signOut(signIn) {
+    signOut(signIn, replacedBy) {
       // A second call while one runs gets the same sign-out, so the server is asked once.
       const running = signingOut.get(signIn);
       if (running) {
         return running;
       }
-      const started = signOutAfterRefresh(signIn).finally(() => signingOut.delete(signIn));
+      const started = signOutAfterRefresh(signIn, replacedBy).finally(() =>
+        signingOut.delete(signIn),
+      );
       signingOut.set(signIn, started);
       return started;
     },
   };
 
-  async function signOutAfterRefresh(signIn: string): Promise<SignOutResult> {
+  async function signOutAfterRefresh(
+    signIn: string,
+    replacedBy: ApprovedSignIn | undefined,
+  ): Promise<SignOutResult> {
     await managed.settled(signIn);
-    const result = await signOutAtServer(signOutSettings(settings), signIn);
+    const result = await signOutAtServer(signOutSettings(settings), signIn, replacedBy);
     managed.forget(signIn);
     return result;
   }

@@ -83,9 +83,10 @@ export type SignInOutcome =
       /**
        * What became of the grant this sign-in replaced, when there was one. It
        * is dropped in every case; `notConfirmed` and `noRevokeUrl` say the
-       * provider may still honour its refresh token.
+       * provider may still honour its refresh token. `skipped` says the
+       * revoke was not sent because it would have ended the new grant too.
        */
-      readonly previousGrant?: "revoked" | "notConfirmed" | "noRevokeUrl";
+      readonly previousGrant?: "revoked" | "notConfirmed" | "noRevokeUrl" | "skipped";
     }
   | {
       readonly kind: "cancelled" | "incompleteCallback" | "linkNoLongerValid";
@@ -280,8 +281,10 @@ export function createSignInFlow(given: SignInFlowSettings): SignInFlow {
       return read;
     }
     // The old grant is signed out first, at the URL its own approval named, so
-    // the provider is not left with a refresh token nobody holds.
-    const previous = await settings.signIns.signOut(signIn);
+    // the provider is not left with a refresh token nobody holds. A provider
+    // whose revoke ends every token of the client is the exception: there the
+    // revoke would end the new grant too, so the old token is only dropped.
+    const previous = await settings.signIns.signOut(signIn, approved);
     await settings.grants.save(settings.integration, signIn, {
       refreshToken: read.refreshToken,
       approved,

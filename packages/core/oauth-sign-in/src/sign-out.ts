@@ -1,5 +1,5 @@
 import type { HttpClient, Secrets } from "@halonicjs/ports";
-import type { ApprovedSignIn } from "./approved-sign-in.ts";
+import { type ApprovedSignIn, revokeWouldEndGrantOf } from "./approved-sign-in.ts";
 import { type RevokeResult, revokeToken } from "./revoke-token.ts";
 import type { SignInGrants } from "./sign-in-grants.ts";
 
@@ -23,10 +23,14 @@ export interface SignOutSettings {
  * - `notConfirmed`: the server didn't answer 200 or couldn't be reached, or
  *   its client secret is missing. The refresh token may still work there.
  * - `noRevokeUrl`: the approved sign-in has no revoke endpoint.
+ * - `skipped`: the server's revoke would have ended the grant that replaces this one.
  */
 export type SignOutResult =
   | { readonly kind: "notSignedIn" }
-  | { readonly kind: "signedOut"; readonly revoke: RevokeResult["kind"] | "noRevokeUrl" };
+  | {
+      readonly kind: "signedOut";
+      readonly revoke: RevokeResult["kind"] | "noRevokeUrl" | "skipped";
+    };
 
 /**
  * Signs a sign-in out: revokes its refresh token at the revoke endpoint the
@@ -38,23 +42,41 @@ export type SignOutResult =
  *
  * @param settings - the integration, the grant store and the ports
  * @param signIn - the sign-in's name in the sheet
+ * @param replacedBy - the sign-in whose new grant takes this one's place, when there is one: a server whose revoke ends every grant of the client is not asked, as that would end the new grant too
  * @returns whether anything was signed in, and what the server did
  *
  * @example
  * const result = await signOut({ integration: "gitlab", grants, http, secrets, requestSignal }, "work-account");
  */
-export async function signOut(settings: SignOutSettings, signIn: string): Promise<SignOutResult> {
+export async function signOut(
+  settings: SignOutSettings,
+  signIn: string,
+  replacedBy?: ApprovedSignIn,
+): Promise<SignOutResult> {
   const grant = await settings.grants.find(settings.integration, signIn);
   if (grant === undefined) {
     return { kind: "notSignedIn" };
   }
   const { approved } = grant;
-  const revoke =
-    approved.revokeUrl === undefined
-      ? "noRevokeUrl"
-      : await revokeAtApprovedUrl(settings, approved, approved.revokeUrl, grant.refreshToken);
+  const revoke = await revokeUnlessUseless(settings, grant.refreshToken, approved, replacedBy);
   await settings.grants.remove(settings.integration, signIn);
   return { kind: "signedOut", revoke };
+}
+
+/** Revokes at the approved URL, unless there is none or the revoke would end the grant that replaces this one. */
+async function revokeUnlessUseless(
+  settings: SignOutSettings,
+  refreshToken: string,
+  approved: ApprovedSignIn,
+  replacedBy: ApprovedSignIn | undefined,
+): Promise<Extract<SignOutResult, { kind: "signedOut" }>["revoke"]> {
+  if (approved.revokeUrl === undefined) {
+    return "noRevokeUrl";
+  }
+  if (replacedBy !== undefined && revokeWouldEndGrantOf(approved, replacedBy)) {
+    return "skipped";
+  }
+  return await revokeAtApprovedUrl(settings, approved, approved.revokeUrl, refreshToken);
 }
 
 async function revokeAtApprovedUrl(
