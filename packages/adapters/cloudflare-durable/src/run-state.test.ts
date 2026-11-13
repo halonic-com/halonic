@@ -20,7 +20,7 @@ class FakeAlarm implements AlarmSlot {
   }
 }
 
-function newState(options: { nap?: () => Promise<void> } = {}) {
+function newState(options: { nap?: (ms: number, signal: AbortSignal) => Promise<void> } = {}) {
   const published: [string, number][] = [];
   let publishing: (summaryId: string) => Promise<void> = async () => {};
   const clock = new ManualClock();
