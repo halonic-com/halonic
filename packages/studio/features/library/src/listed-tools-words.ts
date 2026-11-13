@@ -34,6 +34,9 @@ export const listedToolsWords = {
   noMatch: (text: string) => `No tools match "${text}".`,
   clearSearch: "Clear search",
   states: { changed: "Changed", notApproved: "Not approved" },
+  tickLabel: (tool: string) => `Approve ${tool}`,
+  showAll: "Show all",
+  argumentsLabel: "Arguments:",
   refusedHeading: "Refused",
   refusedLine:
     "Halonic left these out because they break its rules for tools a server lists. You can't approve them.",
@@ -73,6 +76,8 @@ export const listedToolsWords = {
   loadFailed: (reason: string) => `Couldn't list the tools: ${reason}.`,
   tryAgain: "Try again",
   connecting: "Connecting…",
+  /** A refused tool's reason is cut to this many characters on screen; the full text is its tooltip. */
+  refusedReasonLimit: 64,
   /** More tools than this on the screen turns the search field on. */
   searchThreshold: 10,
 } as const;
