@@ -156,6 +156,13 @@ export {
   sandboxCheckContract,
   sandboxFenceContract,
 } from "./sandbox.ts";
+export {
+  type MakeSandboxSettingStore,
+  type SandboxSettingStoreHarness,
+  sandboxChoiceOf,
+  sandboxChoiceOfNone,
+  sandboxSettingStoreContract,
+} from "./sandbox-setting-store.ts";
 export { schedulerContract } from "./scheduler.ts";
 export {
   type MakeScheduler,

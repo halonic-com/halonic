@@ -27,6 +27,7 @@ export { MemoryPluginFolder } from "./plugin-folder.ts";
 export { MemoryRecordStore } from "./record-store.ts";
 export { MemoryResourceProbe, type MemoryResourceProbeOptions } from "./resource-probe.ts";
 export { MemoryRunStore } from "./run-store.ts";
+export { MemorySandboxSettingStore } from "./sandbox-setting-store.ts";
 export {
   MemoryScheduler,
   type MemorySchedulerOptions,
