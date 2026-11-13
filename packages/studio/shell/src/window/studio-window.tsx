@@ -157,6 +157,7 @@ export function StudioWindow(props: StudioWindowProps) {
     (featureId: string): WorkspaceContext => ({
       ...shell.services.contextFor(featureId, workspace.services),
       openPlace: (place) => openPlaceHere.current(place),
+      badges: shell.badges,
       openItem: (item) => openHere.current(locationOfItem(item)),
       openSettings,
       settingsSections,
