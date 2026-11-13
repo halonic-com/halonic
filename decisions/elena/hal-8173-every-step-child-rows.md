@@ -2,6 +2,7 @@
 
 - Approval: Liam asked for this in the review of #2385 (HAL-8211); the rows' words are a team decision under HAL-2282
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:IfpZ7i/dVdBeqF0hpt3NTjglZ3MKixG/MEstFfd3cvqCyGXk8ZiVKTsVJRqURcbcUdnyHFh2CGlzvBm+N/PZBQ==
 - Task: HAL-8173
 
 ## What changes
