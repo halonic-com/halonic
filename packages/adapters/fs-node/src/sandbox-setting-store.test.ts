@@ -56,7 +56,9 @@ verifies("fs-node.sandbox-setting-store-files", () => {
 
     it("makes the folder and the file private to the user (modes are checked where the system has them)", async () => {
       const root = join(await tempFolder(), "sandbox");
-      await new FileSandboxSettingStore(root).save(sandboxChoiceOf("srt"));
+      const store = new FileSandboxSettingStore(root);
+      await store.save(sandboxChoiceOf("srt"));
+      expect(await store.get()).toEqual(sandboxChoiceOf("srt"));
       if (process.platform !== "win32") expect((await stat(root)).mode & 0o777).toBe(0o700);
       if (process.platform !== "win32")
         expect((await stat(join(root, fileName))).mode & 0o777).toBe(0o600);
@@ -179,6 +181,7 @@ verifies("fs-node.sandbox-setting-store-files", () => {
         await chmod(join(root, fileName), 0o666);
 
         await store.save(sandboxChoiceOf("mxc"));
+        expect(await store.get()).toEqual(sandboxChoiceOf("mxc"));
         if (process.platform !== "win32")
           expect((await stat(join(root, fileName))).mode & 0o777).toBe(0o600);
       });
@@ -188,7 +191,9 @@ verifies("fs-node.sandbox-setting-store-files", () => {
         await mkdir(root, { mode: 0o777 });
         await chmod(root, 0o777);
 
-        await new FileSandboxSettingStore(root).save(sandboxChoiceOf("srt"));
+        const store = new FileSandboxSettingStore(root);
+        await store.save(sandboxChoiceOf("srt"));
+        expect(await store.get()).toEqual(sandboxChoiceOf("srt"));
         if (process.platform !== "win32") expect((await stat(root)).mode & 0o777).toBe(0o700);
       });
     });
