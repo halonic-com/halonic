@@ -1,5 +1,5 @@
 import { Checkbox, StatusChip } from "@halonicjs/studio-kit";
-import { useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import type { ListedToolRow } from "../listed-tools-host.ts";
 import { listedToolsWords } from "../listed-tools-words.ts";
 import { PlainList } from "./plain-list.tsx";
@@ -11,6 +11,8 @@ export interface ListedToolRowViewProps {
   readonly tick: { readonly ticked: boolean; readonly onToggle: () => void } | null;
   /** Shows the state chip. The first screen leaves it out, since every row would say "Not approved". */
   readonly showState: boolean;
+  /** A button of the row's own, at the right of the name: "Approve this version". */
+  readonly action?: ReactNode;
 }
 
 /** Whether the three-line clamp hides part of `element`: the only honest test, since lines break by width. */
@@ -23,7 +25,7 @@ function isClamped(element: HTMLElement | null): boolean {
  * three lines, the arguments and the "Asks you before each use." line. Everything the server
  * wrote is plain text: React escapes it, and none of it picks a colour, icon or button word.
  */
-export function ListedToolRowView({ row, tick, showState }: ListedToolRowViewProps) {
+export function ListedToolRowView({ row, tick, showState, action }: ListedToolRowViewProps) {
   const descriptionId = useId();
   const [unfolded, setUnfolded] = useState(false);
   const descriptionRef = useRef<HTMLParagraphElement>(null);
@@ -56,6 +58,7 @@ export function ListedToolRowView({ row, tick, showState }: ListedToolRowViewPro
                 {listedToolsWords.states[row.state === "changed" ? "changed" : "notApproved"]}
               </StatusChip>
             ) : null}
+            {action}
           </div>
           <p
             id={descriptionId}

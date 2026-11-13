@@ -1,12 +1,23 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ListedToolRow, ListedToolsHost, ListedToolsSnapshot } from "../listed-tools-host.ts";
-import { ListedToolsReviewModel } from "../listed-tools-review-model.ts";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type {
+  ListedToolPick,
+  ListedToolRow,
+  ListedToolsHost,
+  ListedToolsSnapshot,
+} from "../listed-tools-host.ts";
+import { ListedToolsReviewModel, type ReviewOutcome } from "../listed-tools-review-model.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ListedToolsReviewBody } from "./listed-tools-review-body.tsx";
 
+/** What the host was asked to approve, for the test that is running. */
+let approvals: (readonly ListedToolPick[])[] = [];
+
+beforeEach(() => {
+  approvals = [];
+});
 afterEach(unmountAll);
 
 function row(name: string, overrides: Partial<ListedToolRow> = {}): ListedToolRow {
@@ -30,7 +41,10 @@ function hostFor(
 ): ListedToolsHost {
   return {
     review: async () => snapshot,
-    approve: async () => ({ approved: [], changed: [] }),
+    approve: async (_id, picks) => {
+      approvals.push(picks);
+      return { approved: picks.map((pick) => pick.name), changed: [] };
+    },
     removeApproval: async (_id, name) => {
       if (failRemoval) throw new Error("The server said no.");
       removals.push(name);
@@ -53,11 +67,16 @@ const base: ListedToolsSnapshot = {
 async function open(snapshot: ListedToolsSnapshot, removals: string[] = [], failRemoval = false) {
   const model = new ListedToolsReviewModel(hostFor(snapshot, removals, failRemoval), "notes");
   const removed: string[] = [];
+  const outcomes: ReviewOutcome[] = [];
   const container = render(
-    <ListedToolsReviewBody model={model} onRemoved={(toast) => removed.push(toast)} />,
+    <ListedToolsReviewBody
+      model={model}
+      onRemoved={(toast) => removed.push(toast)}
+      onOutcome={(outcome) => outcomes.push(outcome)}
+    />,
   );
   await act(() => model.refresh());
-  return { container, model, removed };
+  return { container, model, removed, outcomes };
 }
 
 describe("the review body", () => {
@@ -170,6 +189,21 @@ describe("the review body", () => {
       await act(async () => button?.click());
       expect(removed).toEqual([]);
       expect(container.textContent).toContain("read_note");
+    });
+  });
+
+  verifies("library.listed-tools-review-states", () => {
+    it("approves a tool that keeps changing only by its own button, at the version shown", async () => {
+      const { container, outcomes } = await open(base);
+      const button = [...container.querySelectorAll("button")].find((candidate) =>
+        candidate.textContent?.startsWith("Approve this version"),
+      );
+      expect(button?.textContent).toBe("Approve this version of sync_tags");
+      await act(async () => button?.click());
+      expect(approvals).toEqual([[{ name: "sync_tags", fingerprint: "htl1:sync_tags-1" }]]);
+      expect(outcomes).toEqual([
+        { kind: "close", toast: "Approved 1 tool from Notes server. 1 stays off." },
+      ]);
     });
   });
 });
