@@ -22,6 +22,10 @@ pub struct TrustState {
     /// The folders the person picked in the folder dialog, canonical. Only
     /// these spare a question: a folder a grant opened doesn't.
     picked: Mutex<Vec<PathBuf>>,
+    /// The folders the person opened by a pick or a reopen, canonical. A
+    /// revoke never closes these, even after it stopped them sparing a
+    /// question, so the open workspace keeps its file access.
+    person_opened: Mutex<Vec<PathBuf>>,
     /// The entry each pick or grant added to the opened folders, by its
     /// location, so revoking closes that exact entry.
     opened: Mutex<HashMap<String, PathBuf>>,
@@ -87,6 +91,7 @@ impl TrustState {
         };
         let (canonical, location) = canonical_folder(&chosen)?;
         self.open(folders, &location, &canonical);
+        self.mark_person_opened(&canonical);
         let mut picked = self.picked.lock().unwrap_or_else(PoisonError::into_inner);
         if !picked.contains(&canonical) {
             picked.push(canonical.clone());
@@ -147,8 +152,8 @@ impl TrustState {
         Ok(store.revoke(location)?)
     }
 
-    /// Keeps a picked folder open but no longer picked, so it spares no
-    /// question; closes any other entry that opened for the location.
+    /// Stops the folder sparing a question; closes the entry that opened for
+    /// the location unless the person opened it by a pick or a reopen.
     fn unspare_or_close(&self, folders: &OpenedFolders, location: &str) {
         let entry = self
             .opened
@@ -159,13 +164,28 @@ impl TrustState {
         let Some(entry) = entry else {
             return;
         };
-        let mut picked = self.picked.lock().unwrap_or_else(PoisonError::into_inner);
-        if picked.contains(&entry) {
-            picked.retain(|picked| *picked != entry);
-            return;
+        self.picked
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .retain(|picked| *picked != entry);
+        let person_opened = self
+            .person_opened
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .contains(&entry);
+        if !person_opened {
+            self.close(folders, location);
         }
-        drop(picked);
-        self.close(folders, location);
+    }
+
+    fn mark_person_opened(&self, canonical: &Path) {
+        let mut marked = self
+            .person_opened
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        if !marked.iter().any(|folder| folder == canonical) {
+            marked.push(canonical.to_owned());
+        }
     }
 
     /// Closes the exact entry a pick, reopen or grant opened for the
@@ -180,6 +200,11 @@ impl TrustState {
             folders.close_canonical(&entry);
             let mut picked = self.picked.lock().unwrap_or_else(PoisonError::into_inner);
             picked.retain(|picked| *picked != entry);
+            drop(picked);
+            self.person_opened
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .retain(|folder| *folder != entry);
         }
     }
 
@@ -217,6 +242,7 @@ impl TrustState {
             ));
         }
         self.open(folders, location, &canonical);
+        self.mark_person_opened(&canonical);
         {
             let mut picked = self.picked.lock().unwrap_or_else(PoisonError::into_inner);
             if !picked.contains(&canonical) {

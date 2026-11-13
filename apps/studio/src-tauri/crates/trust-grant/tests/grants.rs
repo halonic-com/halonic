@@ -344,8 +344,10 @@ fn trust_grants_ask_again_after_a_picked_folder_is_granted_and_revoked() {
     let (result, asked) = shell.grant(&acme, true);
     assert_eq!(result, Ok(()));
     assert_eq!(asked.len(), 1);
-    // Declined, the folder is still open and nothing is saved.
+    // A second revoke keeps the folder open too: the person picked it.
     shell.revoke(&acme);
+    assert!(shell.is_open(&acme));
+    // Declined, the folder is still open and nothing is saved.
     assert_eq!(shell.grant(&acme, false).0, Err("declined"));
     assert!(!shell.is_saved(&acme));
     assert!(shell.is_open(&acme));

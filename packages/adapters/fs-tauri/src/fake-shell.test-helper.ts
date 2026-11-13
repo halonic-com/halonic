@@ -129,6 +129,9 @@ export class FakeTrustShell implements TauriShell {
     const sparing = this.#sparing.indexOf(location);
     if (sparing !== -1) {
       this.#sparing.splice(sparing, 1);
+    }
+    // A folder the person picked stays open, even after it stopped sparing.
+    if (this.picked.includes(location)) {
       return null;
     }
     const index = this.opened.indexOf(location);
