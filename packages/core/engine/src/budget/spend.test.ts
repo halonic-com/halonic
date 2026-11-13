@@ -4,7 +4,7 @@ import { KernelRuns } from "../kernel/kernel-test-kit.test-helper.ts";
 import type { RunState } from "../kernel/run-state.ts";
 import { readRun } from "../kernel/step.ts";
 import { putSpentRun } from "./budget-test-kit.test-helper.ts";
-import { spendOf } from "./spend.ts";
+import { monthsSpend, spendOf } from "./spend.ts";
 
 const at = "2026-01-20T10:00:00.000Z";
 
@@ -62,5 +62,45 @@ verifies("engine.budget-stops", () => {
       [{ startedSince: "2025-12-31T23:00:00.000Z" }],
       [{ startedSince: "2026-01-01T00:00:00.000Z" }],
     ]);
+  });
+});
+
+verifies("engine.month-spend", () => {
+  it("adds up each of the last six months, oldest first, with 0 for a month without runs", async () => {
+    const runs = new KernelRuns();
+    putSpentRun(runs, "run_0", { startedAt: "2025-07-31T23:59:59.000Z", cost: 9 });
+    putSpentRun(runs, "run_1", { startedAt: "2025-08-01T00:00:00.000Z", cost: 1 });
+    putSpentRun(runs, "run_2", { startedAt: "2025-08-20T08:00:00.000Z", cost: 0.5 });
+    putSpentRun(runs, "run_3", { startedAt: "2025-12-31T23:00:00.000Z", cost: 2 });
+    putSpentRun(runs, "run_4", {
+      startedAt: "2026-01-02T08:00:00.000Z",
+      cost: 3,
+      paidBy: "subscription",
+    });
+    putSpentRun(runs, "run_5", { startedAt: "2026-01-03T08:00:00.000Z", cost: 0.25 });
+    const list = vi.spyOn(runs, "list");
+
+    const months = await monthsSpend(runs, at);
+
+    expect(months).toEqual([
+      { month: "2025-08", spent: 1.5 },
+      { month: "2025-09", spent: 0 },
+      { month: "2025-10", spent: 0 },
+      { month: "2025-11", spent: 0 },
+      { month: "2025-12", spent: 2 },
+      { month: "2026-01", spent: 0.25 },
+    ]);
+    expect(list.mock.calls).toEqual([[{ startedSince: "2025-08-01T00:00:00.000Z" }]]);
+  });
+
+  it("agrees with the month spend the budget stops on", async () => {
+    const runs = new KernelRuns();
+    putSpentRun(runs, "run_1", { startedAt: "2026-01-01T00:00:00.000Z", cost: 0.125 });
+    putSpentRun(runs, "run_2", { startedAt: "2026-01-31T23:59:59.000Z", cost: 0.5 });
+
+    const spend = await spendOf(runs, await stateOf(runs, "run_2"), at);
+    const months = await monthsSpend(runs, at, 1);
+
+    expect(months).toEqual([{ month: "2026-01", spent: spend.month }]);
   });
 });
