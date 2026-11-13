@@ -5,7 +5,7 @@ import {
   checkRunAppend,
   type RunSnapshot,
 } from "@halonicjs/ports";
-import type { RunSql } from "./run-sql.ts";
+import type { RunSql, SqlRow } from "./run-sql.ts";
 
 /**
  * Cloudflare keeps a SQLite row to at most 2 MB. A snapshot is a cache the
@@ -14,13 +14,11 @@ import type { RunSql } from "./run-sql.ts";
  */
 export const maxSnapshotBytes = 2 * 1024 * 1024 - 4096;
 
-interface EventRow {
-  [column: string]: string | number | null | ArrayBuffer;
+interface EventRow extends SqlRow {
   json: string;
 }
 
-interface SnapshotRow {
-  [column: string]: string | number | null | ArrayBuffer;
+interface SnapshotRow extends SqlRow {
   seq: number;
   json: string;
 }
