@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-2310 (D45, board on HAL-2257 Q3); Liam's decision on HAL-8403; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mdQgIk1uewx81E3ShwlHP0H+KXSxjuEYNSrOnA5UGWk+YLmOoShYPUkC/ed9P3vgGg4xaQo4yP4S+gnAI+HQDw==
 
 Liam's decision on HAL-8403 says `FolderRunConnectors` opens one sandbox session per stdio connector when the check passes and closes it on `end`, with `WorkspaceStdioConnectorFactory` wrapping the unfenced starter. Two parts of how it is built differ from that wording, with the same effect:
 
