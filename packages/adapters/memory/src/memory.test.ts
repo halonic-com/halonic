@@ -28,6 +28,7 @@ import {
   recordStoreContract,
   resourceProbeContract,
   runStoreContract,
+  sandboxSettingStoreContract,
   schedulerContract,
   secretStoreContract,
   secretsContract,
@@ -59,6 +60,7 @@ import {
   MemoryRemote,
   MemoryResourceProbe,
   MemoryRunStore,
+  MemorySandboxSettingStore,
   MemoryScheduler,
   MemorySecretStore,
   MemorySecrets,
@@ -116,6 +118,10 @@ trustServiceAttackContract(
 agentPlacementStoreContract("memory", async () => {
   const store = new MemoryAgentPlacementStore();
   return { store, damage: async (key) => store.damage(key) };
+});
+sandboxSettingStoreContract("memory", async () => {
+  const store = new MemorySandboxSettingStore();
+  return { store, damage: async () => store.damage() };
 });
 clockContract("memory", async () => new ManualClock());
 connectionSettingsStoreContract("memory", async () => {

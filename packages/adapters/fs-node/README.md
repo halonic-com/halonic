@@ -1,7 +1,7 @@
 # @halonicjs/adapter-fs-node
 
 The `DefinitionStore`, `RunStore`, `RecordStore`, `TrustStore`,
-`AgentPlacementStore`, `ConnectionSettingsStore`, `UnfencedRunConsentStore`, `HostSettingsStore`,
+`AgentPlacementStore`, `SandboxSettingStore`, `ConnectionSettingsStore`, `UnfencedRunConsentStore`, `HostSettingsStore`,
 `BlobStore`, `FolderReader` and `PluginFolderWriter` ports on the local file system with Node: workspace files are
 plain files under a root folder, each run and each collection of records is a
 JSONL log, each trust record, each agent's "this computer" choice, each
@@ -226,6 +226,21 @@ It passes the shared `AgentPlacementStore` contract suite.
   agent's key, `get` throws naming the agent and its workspace, and
   `remove` deletes the file without reading it. `AgentPlacement` in
   `core/app` then runs the agent in a sandbox.
+
+## The sandbox choice in the profile
+
+`new FileSandboxSettingStore(root)` keeps the person's sandbox choice, a
+backend or none, as one JSON file, `sandbox-setting.json`, in `root`, a
+folder in the user's profile such as `<profile>/sandbox`, never inside a
+workspace, so an agent that edits the workspace can't change the sandbox it
+runs in. It passes the shared `SandboxSettingStore` contract suite.
+
+- **Writes** go through a flushed temporary file and a rename, with the same
+  modes as the placement choices.
+- **Damage:** when the file can't be read, holds anything but a valid choice,
+  or is a link, `get` throws naming the file, never `null`, and `remove`
+  deletes the file without reading it. `SandboxChoiceService` in `core/app`
+  then runs nothing and says so.
 
 ## "Allow sending" settings in the profile
 

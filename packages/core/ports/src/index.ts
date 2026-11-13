@@ -267,6 +267,14 @@ export {
   sandboxVersion,
 } from "./sandbox.ts";
 export {
+  isSandboxSetting,
+  type SandboxBackendId,
+  type SandboxSetting,
+  type SandboxSettingStore,
+  sandboxBackendIds,
+  sandboxSettingStoreVersion,
+} from "./sandbox-setting-store.ts";
+export {
   type ScheduledTimer,
   type Scheduler,
   type SchedulerFactory,

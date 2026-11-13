@@ -24,6 +24,7 @@ import { resourceProbeVersion } from "./resource-probe.ts";
 import { runExecutorVersion } from "./run-executor.ts";
 import { runStoreVersion } from "./run-store.ts";
 import { sandboxVersion } from "./sandbox.ts";
+import { sandboxSettingStoreVersion } from "./sandbox-setting-store.ts";
 import { schedulerVersion } from "./scheduler.ts";
 import { secretsVersion } from "./secrets.ts";
 import { tokenStoreVersion } from "./token-store.ts";
@@ -67,6 +68,7 @@ export const portVersions = {
   RunExecutor: runExecutorVersion,
   RunStore: runStoreVersion,
   Sandbox: sandboxVersion,
+  SandboxSettingStore: sandboxSettingStoreVersion,
   Scheduler: schedulerVersion,
   Secrets: secretsVersion,
   TokenStore: tokenStoreVersion,
