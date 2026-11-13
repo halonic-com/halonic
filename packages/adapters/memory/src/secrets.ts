@@ -74,12 +74,7 @@ export class MemorySecretStore implements SecretStore {
   }
 
   async names(): Promise<readonly string[]> {
-    // Keys are upper-case ASCII, so the default sort is the same on every system.
-    return [...this.#entries]
-      .sort(([a], [b]) => {
-        if (a === b) return 0;
-        return a < b ? -1 : 1;
-      })
-      .map(([, entry]) => entry.name);
+    // Keys are unique upper-case ASCII, so comparing by code gives the same order on every system.
+    return [...this.#entries].sort(([a], [b]) => (a < b ? -1 : 1)).map(([, entry]) => entry.name);
   }
 }
