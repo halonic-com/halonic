@@ -9,23 +9,23 @@ loop of one model turn, which the local chat turn runs.
 
 | Part | What it does | Requirement |
 | --- | --- | --- |
-|  | streams a run's events from the store to `subscribe`, in order, and closes the stream once the run has ended | `engine.local-run-subscribe` |
-|  | fails a run whose call fails, with the reason `runFailureReasonOf` gives the error | `engine.run-call-fails` |
-|  | fails a run whose step asks for an effect it can't carry out yet, and sets no timer for it | `engine.local-runs-unbuilt-effect` |
-|  | starts child runs, passes a parent's events to its waiting child, and lets the parent go on in the same call | `engine.local-child-runs` |
-|  | cancels a run and the child run it waits on as `cancelled`, and stops their harness and model calls; an ended run stays as it is | `engine.local-run-cancel` |
-|  | stops a model call going on when its run is cancelled or ends, or the engine stops: the request is aborted with the host's `abortOnStop`, no other model is tried, nothing is recorded; a subagent's turn under it stops too | `engine.model-call-stop` |
-|  | hands calls to the caller's tools back, ends at the round limit, and keeps the first of two tools with the same name | `engine.turn-round-limit`, `engine.turn-tool-names` |
-|  | returns refusals as data, gives the model a tool's error, and writes the model and tool calls to the run log when it has one | `engine.turn-refusals-as-data`, `engine.turn-tool-error`, `engine.turn-logs-events` |
-|  | marks an answer whose whole text, bare or in `<tool_call>` tags (the last may lack its closing tag), calls an offered tool with `toolCallAsText`, never running it; other text around the tags leaves it unmarked | `engine.turn-tool-call-as-text`, `engine.turn-tool-call-tag-as-text` |
-|  | moves on at once from a model whose provider is busy, as from an offline one | `engine.busy-falls-back` |
-|  | stops the turn when the model is missing, can't use tools or runs out of memory, or the key, credit or call is refused | `engine.model-failure-stops` |
-|  | each model's price and whether it is local, which give each `llm.response` its `cost` | `engine.turn-prices-calls` |
-|  | with `LargeResultsTurnLog` round it, keeps a tool result over 256 KB in the blob store and its start in the log | `engine.large-results-to-blobs` |
-|  | starts a run with one `context.updated` per key of the workflow's initial context, before its first state | `engine.initial-context-logged` |
-|  | with `artifact`, keeps the answer in the blob store first, then logs `artifact.created` before the transition | `engine.artifact-created` |
-|  | with `signal`, a task, parallel, foreach or workflow state logs `signal.sent` after its output, its data rendered from the context with the output in it | `engine.step-signal` |
-|  | with `conversation`, a task state adds its prompt and answer to the turns it keeps under that context key, as its last event; the next call doesn't get them yet | `engine.task-conversation` |
+| `LocalExecutor.subscribe` | streams a run's events from the store to `subscribe`, in order, and closes the stream once the run has ended | `engine.local-run-subscribe` |
+| `LocalExecutor` failed call | fails a run whose call fails, with the reason `runFailureReasonOf` gives the error | `engine.run-call-fails` |
+| `LocalExecutor` unbuilt effect | fails a run whose step asks for an effect it can't carry out yet, and sets no timer for it | `engine.local-runs-unbuilt-effect` |
+| `LocalExecutor` child runs | starts child runs, passes a parent's events to its waiting child, and lets the parent go on in the same call | `engine.local-child-runs` |
+| `LocalExecutor.cancel` | cancels a run and the child run it waits on as `cancelled`, and stops their harness and model calls; an ended run stays as it is | `engine.local-run-cancel` |
+| `LocalExecutor` stop | stops a model call going on when its run is cancelled or ends, or the engine stops: the request is aborted with the host's `abortOnStop`, no other model is tried, nothing is recorded; a subagent's turn under it stops too | `engine.model-call-stop` |
+| `runModelTurn` caller's tools | hands calls to the caller's tools back, ends at the round limit, and keeps the first of two tools with the same name | `engine.turn-round-limit`, `engine.turn-tool-names` |
+| `runModelTurn` results | returns refusals as data, gives the model a tool's error, and writes the model and tool calls to the run log when it has one | `engine.turn-refusals-as-data`, `engine.turn-tool-error`, `engine.turn-logs-events` |
+| `toolCallAsText` | marks an answer whose whole text, bare or in `<tool_call>` tags (the last may lack its closing tag), calls an offered tool with `toolCallAsText`, never running it; other text around the tags leaves it unmarked | `engine.turn-tool-call-as-text`, `engine.turn-tool-call-tag-as-text` |
+| `ModelChain` busy provider | moves on at once from a model whose provider is busy, as from an offline one | `engine.busy-falls-back` |
+| `ModelChain` stops | stops the turn when the model is missing, can't use tools or runs out of memory, or the key, credit or call is refused | `engine.model-failure-stops` |
+| `llm.response` cost | each model's price and whether it is local, which give each `llm.response` its `cost` | `engine.turn-prices-calls` |
+| `LargeResultsTurnLog` | with `LargeResultsTurnLog` round it, keeps a tool result over 256 KB in the blob store and its start in the log | `engine.large-results-to-blobs` |
+| `start` | starts a run with one `context.updated` per key of the workflow's initial context, before its first state | `engine.initial-context-logged` |
+| `artifact` | with `artifact`, keeps the answer in the blob store first, then logs `artifact.created` before the transition | `engine.artifact-created` |
+| `signal` | with `signal`, a task, parallel, foreach or workflow state logs `signal.sent` after its output, its data rendered from the context with the output in it | `engine.step-signal` |
+| `conversation` | with `conversation`, a task state adds its prompt and answer to the turns it keeps under that context key, as its last event; the next call doesn't get them yet | `engine.task-conversation` |
 | `agentKnowledge` | builds the providers of an agent's `knowledge` sources through the factory of each one's `provider` type; a run's agent and a chat turn's agent get them as `knowledge_search` and `knowledge_read` | `engine.agent-knowledge` |
 | `AgentMemory` | (internal) an agent's notes, by title, in the `RecordStore` collection `agent-memory/<agentId>` | `engine.agent-memory-records` |
 | `decide` | what a run does next for one input: pure, no clock and no new ids; refuses what the run can't take | `engine.decide-refusals` |
@@ -34,8 +34,7 @@ loop of one model turn, which the local chat turn runs.
 | `final` state | completes the run with its context | `engine.final-state` |
 | `halonicSource` | the source id `"halonic"` that refusals name for Halonic's tools; `callerSource` (`"caller"`) is the same for the caller's | `engine.turn-refusals-as-data` |
 | `HalonicTool` | one of Halonic's own tools: its definition and how to run it | `engine.turn-runs-tool-calls` |
-| `InputRefused` | what `decide` throws for an input the run can't take; its `code` (a `RefusalCode`) says why, and nothing is recorded | `engine.decide-refusals` |
-| `InputRefused` | an input refused before anything is recorded, with a `RefusalCode`; a `send` for a call the run doesn't wait on is refused | `engine.decide-refusals`, `engine.decision-callid-must-match` |
+| `InputRefused` | what `decide` throws for an input the run can't take, with a `RefusalCode` that says why; nothing is recorded; a `send` for a call the run doesn't wait on is refused | `engine.decide-refusals`, `engine.decision-callid-must-match` |
 | `keepDefinitions` | keeps a run's definitions in the blob store (`definitionsOf` reads them back); a missing or unreadable blob fails the run, and the error says why | `engine.kept-definitions`, `engine.kept-definitions-why` |
 | `knowledgeTools` | the read-only tools `knowledge_search` and `knowledge_read` over an agent's sources, with the text fenced as `knowledgeHitForModel` gives it; offered to a run's agents and subagents and to a chat turn's agent | `engine.knowledge-tools` |
 | `layeredParams` | the params of a model call: its alias's, then its agent's, then a chat turn's request's, each over the one before, key by key | `engine.model-params` |
@@ -65,6 +64,21 @@ loop of one model turn, which the local chat turn runs.
 | `wait` state | records `run.waiting` and sets its timers; a sent event writes `lastEvent` and moves on, a due timer moves on `after <delay>` | `engine.wait-state`, `engine.wait-timers` |
 | `withKnowledgeFirst` | for `mode: auto` sources, searches the task text before the first model call, adds the best passages, fenced, to the prompt and logs `knowledge.searched` | `engine.knowledge-auto` |
 | `workflow` state | starts a child run from the run's kept workflows, waits while it waits, writes its context to `output` or fails with it | `engine.workflow-state` |
+| `task` state `method`, `format` | a `method` asks the agent with the method's prompt, the state's `with` values and the picked data, and checks the answer against the method's `output`; a `format` (`json` or `text`) comes before the method's `output`, and both before the agent's own; a `parallel` branch calls its method too | `engine.task-method`, `engine.step-format`, `engine.parallel-branch-method` |
+| `foreach` state | one model call per item, in list order, at most `concurrency` at once (default 1), the item under `as` (default `item`) and its 0-based `index`; the results go to `output` in item order; a failed item, or one that stops for an approval, fails the run | `engine.foreach-state`, `engine.foreach-item-gets`, `engine.foreach-item-method` |
+| `run-harness` with a run `harness` | a run started with a `harness` runs every task agent in it instead of the agent file's, including `foreach` items and child runs; a `parallel` branch can't run a program harness, so the run fails saying so; a `harness` no agent file can name is refused before anything is recorded | `engine.run-harness-override` |
+| `sandbox-start-failed`, `harness-start-failed` | a harness run fails when its sandbox hasn't opened within 30 seconds or the harness has sent no first event within 60 seconds (the host may set others; a limit must be a whole number of milliseconds of 1 or more); `sandbox.started` and `harness.started` carry the limit | `engine.harness-start-limits` |
+| `sandbox.blocked` | each access the sandbox refused, per target (a file with its access, a site with its port): the first is logged at once with `count: 1`, repeats are totalled when the session closes, and past 100 targets a step (`maxBlockedTargetsPerStep`) the rest are counted together as `others` | `engine.sandbox-blocked` |
+| harness approvals | a harness that asks for an OK keeps its call, sandbox and bridge open while the run records `approval.requested` under its own `call-<n>` id and waits for `approve` or `reject` | `engine.harness-approvals`, `engine.harness-stops-with-engine` |
+| approvals in a task | an agent that stops at a tool call needing an OK gets `approval.requested` under a `call-<n>` id the engine makes, then `run.waiting` for `approve` and `reject`; the answer is logged with its `comment` and the model call goes on with it | `engine.task-approvals`, `engine.turn-approval-stop` |
+| connector calls that change things | before the call, one append records `effect.requested` (idempotency key `<runId>:<callId>`), `connector.started` with the time limit and `tool.called`; the host's `callTool` gets only the call's own fields, never the prompt or conversation | `engine.connector-effects`, `engine.connector-call-fields` |
+| unknown outcome | a connector call that breaks off without an answer is logged as `tool.result` with `outcome: "unknown"` and the run waits for `retry` or `skip`; it is never made again on its own, and `retry` keeps the same call id and idempotency key | `engine.unknown-outcome` |
+| `localOnly` | refuses every model and connector that isn't `local`, and every harness program (it sends the work to its own cloud model): a skipped model logs `llm.skipped` with reason `local-only`, and a run that ends so fails with reason `local-only` | `engine.local-only` |
+| `declaredTools` | the `noun` and `verb` of a connector's tool come only from the person's integration sheet and are copied into `tool.result`; the call's `risk` there is the higher of the sheet's and the listing's, and a tool the sheet declares but the listing lacks isn't offered | `engine.turn-declared-tools`, `engine.turn-logs-risk` |
+| `providerText` | the text and status of a `VendorErrorText` cause, kept on `run.failed` and `llm.fallback` after dropping it when empty or shaped like a key, cut at 300 characters | `engine.provider-text` |
+| `run.cant-try` | a Try it or Test run ends with `run.cant-try`, never `run.failed`, at a step it can't try because it needs a change left out of the run: those the caller found at load (`cantTry` on the start) and those a call's `CantTryError` adds | `engine.run-cant-try` |
+| child runs at end | when a run ends, every child run it started and hasn't heard end is ended with `run.failed` and reason `cancelled`; at start, a waiting child whose parent has ended is ended the same way | `engine.child-runs-end-with-run`, `engine.end-orphaned-child-runs` |
+| budget stops | a model call or harness run is refused at or over the run or month budget, and a `parallel` or `foreach` state checks before it starts its branches or items (see Budgets) | `engine.budget-stops`, `engine.budget-composite-stops`, `engine.budget-stop-message` |
 
 A run's turn writes through a `LargeResultsTurnLog` wrapped round its `RunStoreTurnLog`. A tool
 result over 256 KB of UTF-8 goes to the blob store as `text/plain`, and its `tool.result` keeps the
@@ -167,8 +181,7 @@ Halonic's own tools for an agent come from the fields of its definition. `runLog
 agent never sees another hub's work; the old engine read every hub. `list_runs` leaves out test runs
 and the run the agent is in. A tool's arguments come from the model, so one of the wrong type or
 out of range fails the call with an error that names it, and the model gets that error back. A run's
-agent gets these tools once runs call tools (step 4(c) of the HAL-186 plan); until then they work in
-`runModelTurn`.
+agent gets them too, after its memory tools (`engine.run-agent-tools`).
 
 ## Kernel
 
@@ -190,14 +203,14 @@ for each effect, then return; the run goes on when the timer is due, so the sche
 forwards its timers to `LocalExecutor.onTimer`. A model call is carried out from the run's state
 (`pendingCall` keeps the prompt), and a timer that is late or delivered twice changes nothing. A
 run still waiting on a call when the engine stops is `running`, so the next start ends it as
-`interrupted`. An effect the executor can't carry out yet fails the run rather than leaving it going with no
-timer: a harness run when the executor has no `harnesses` (reason `harness-unavailable`), a tool call with reason `error`. A failed call becomes an `effect-failed` input, and the run fails with the
-reason `runFailureReasonOf` gives. For now a run's model call sends the state's prompt to its agent's
+`interrupted`. An effect the executor can't carry out fails the run rather than leaving it going with no
+timer: a harness run when the executor has no `harnesses` (reason `harness-unavailable`), a connector call when it has no `connectorCalls` (reason `error`). A failed call becomes an `effect-failed` input, and the run fails with the
+reason `runFailureReasonOf` gives. A run's model call sends the state's prompt to its agent's
 model with Halonic's tools and the tools its file grants. The agent's `maxSteps` (6 without its
 file) is the round limit: a call that reaches it while the model still calls tools fails, so a `task`
 state fails the run and a `parallel` branch ends with that error (requirement
-`engine.run-step-limit`); the agent's own prompt and the run log
-of the call come with the agent loop. `subscribe` reads every event from the store, after each append the executor makes; it
+`engine.run-step-limit`); the agent's system message and the run log
+of the call are described above. `subscribe` reads every event from the store, after each append the executor makes; it
 assumes one engine per run store, as `endInterruptedRuns` does.
 
 A cancelled run fails with the error "The run was cancelled.", and a harness call a cancel stops
@@ -206,9 +219,8 @@ refused with `There's no run "<id>".`.
 
 Each folder in `src/states` exports `<folder>State` from its `state.ts`. `pnpm discover` lists
 them in `src/generated/states.ts`, typed against `StateRegistry`, so a missing or extra folder
-fails typecheck. The registry covers `BuiltStateType`, the types built so far (`task`, `wait`, `final`);
-it widens as each state lands, until it is the format's whole `StateType` union. A run that enters
-a type not built yet fails with a clear error.
+fails typecheck. The registry covers `BuiltStateType`: `task`, `wait`, `final`, `workflow`, `parallel` and `foreach`,
+the format's whole `StateType` union.
 
 A `parallel` state records `agent.started` with `branch` for every branch in name order, asks for every
 branch's model call at once and joins the results under the branch names (requirement
