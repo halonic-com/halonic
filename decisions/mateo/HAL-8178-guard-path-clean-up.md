@@ -1,8 +1,7 @@
 # Decision: review of nine merged changes to the guard's own paths
 
 - Approval: HAL-1337 clean-up step, assigned on HAL-8178; Liam and Julian sign as the two guardians
-- Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:CCfg45Mn71jSzJlPTDOC44VOgBhkbCRDZRaxpH9Eg6NX3AU4b3hnbW1dnzhEG7GpqMT1kUicoZnEPFhG9oLdCw==
+- Kind: internal
 
 ## What changes
 
