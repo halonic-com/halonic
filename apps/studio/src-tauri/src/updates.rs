@@ -186,7 +186,8 @@ fn load<R: Runtime>(app: &AppHandle<R>) {
 /// This version's settings migrations (FS6): a settings file in the profile,
 /// and what to make of the text an older version wrote. None yet: 0.1.1
 /// reads every file 0.1.0 wrote as it is. A new one goes here with a test.
-const MIGRATIONS: &[(&str, fn(&str) -> Migrated)] = &[];
+type Migration = (&'static str, fn(&str) -> Migrated);
+const MIGRATIONS: &[Migration] = &[];
 
 /// Runs the migrations on the first start after an update from `from`,
 /// each keeping its file's old bytes first. Answers what they couldn't
