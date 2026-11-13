@@ -5,7 +5,7 @@ import type { StoredTimer, TimerTable } from "./timer-table.ts";
 /** What {@link TimerDelivery} needs besides the timers. */
 export interface TimerDeliveryOptions {
   table: TimerTable;
-  listener: SchedulerListener;
+  listener: Pick<SchedulerListener, "onTimer">;
   clock: Clock;
   /**
    * Waits about `ms` and resolves, or gives up when `signal` aborts. A
