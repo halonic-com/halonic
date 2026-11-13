@@ -13,6 +13,7 @@ import { cliConnectorFactories } from "./connector-machine.ts";
 import { IntegrationConnectorFactory } from "./integration-connector-factory.ts";
 import { computerIntegrationMachine } from "./local-integration-machine.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
+import { profilePlatformOf } from "./workspace-runs.ts";
 
 let base: string;
 let dir: OpenWorkspaceDir;
@@ -31,7 +32,7 @@ afterEach(async () => {
 });
 
 const environment = (): ProfileEnvironment => ({
-  platform: "linux",
+  platform: profilePlatformOf(process.platform),
   homeFolder: join(base, "home"),
   variables: { HALONIC_HOME: join(base, "profile") },
 });
