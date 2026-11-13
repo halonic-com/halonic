@@ -2,6 +2,7 @@
 
 - Approval: HAL-1337, the board's design for guarded trust roots, which this closes a gap in; follow-up of the check of halonic#2360 on HAL-8199
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:sJKjvuzKT0MtxHc5W0VJAmOa5cuBblT4YuHsklQw+rg9+lOfRrJG7nmfMgVwG9Bb8/SSFdUvY4Eb+tIgp5I9BQ==
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:OZ98WgU8Miom8y7shDJqm2WfU5A6NXXDpDdVvfc9E1RUWAd/8Tk7rFRufA2Fl2A/hh40rJMYNa+CR6MWvrBAAQ==
 
 The test that keeps the guard commands to a short list of packages only read top-level `import` and `export ... from` lines. A dynamic `import(...)`, a `require(...)` or a `createRequire` in a guard command, or in a file it loads, could load a package without the test seeing it. The test now also fails on the common forms of those in the files it walks, with a literal argument or not, because it can't follow them. Comments and the text of plain string literals are ignored, so prose can mention them. Only the test changes; the guard commands themselves are unchanged.
