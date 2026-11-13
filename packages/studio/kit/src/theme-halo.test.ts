@@ -52,8 +52,12 @@ function spot(preset: Preset, end: End, mode: Mode): Rgba {
 
 /** The window frame's colour at one end: bg-halo-frame's colour-mix(), blended onto canvas. */
 function frame(preset: Preset, end: End, mode: Mode): Rgba {
-  const mix = new RegExp(`color-mix\\(in srgb, var\\(--halo-${end}\\) [\\d.]+%, transparent\\)`, "g");
-  const value = blockBody(css, "@utility bg-halo-frame").match(mix)?.[mode === "light" ? 0 : 1] ?? "";
+  const mix = new RegExp(
+    `color-mix\\(in srgb, var\\(--halo-${end}\\) [\\d.]+%, transparent\\)`,
+    "g",
+  );
+  const value =
+    blockBody(css, "@utility bg-halo-frame").match(mix)?.[mode === "light" ? 0 : 1] ?? "";
   return blend(withPreset(value, preset), colourToken("canvas", mode));
 }
 
