@@ -101,12 +101,25 @@ not here.
   a `plugin.yaml` and convert a plugin's backend to and from an integration sheet.
   A plugin's id is at most 48 characters and a secret it declares at most 64, so the name the app
   keeps the secret under fits the `Secrets` port's 128.
+- Routines: a `webhook` trigger takes a `secret` (the name of the secret that signs the request body,
+  never its value) and the `headers` a run may read; `WEBHOOK_REFUSED_HEADERS` lists the headers it
+  refuses, such as `authorization` and `cookie` (requirement `routine-webhook`). A mail trigger's
+  `every` is a number followed by `m`, `h` or `d`, such as `15m` (requirement `routine-mail-interval`).
+- Connectors: besides the local and remote transports, `integration: { folder: <id> }` (a folder
+  under `integrations/`) and `plugin: { id: <id> }` run in the integration runner. Such a connector
+  is local only when its own `local` key says `true` (requirement `connector-runner-transports`).
+- Sign-ins: an integration sheet may declare `signIns` (the `oauth-code` flow, with its URLs, scopes
+  and the hosts it may reach), which need `kit` 2 or higher; a plugin's backend can't declare
+  them yet (requirements `integration-sign-ins`, `plugin-backend-sign-ins`).
+- Plugin settings and `ui`: `PluginSettingField`, `PluginSettingValue` and `settingValueProblem(field,
+  value)` check a setting's value; a `ui` command or card must name a declared tool whose `risk` is
+  `read` (`tool-not-read`, requirement `plugin-ui-read-tools`).
 - The types of each kind's value (`Agent`, `Workflow`, `Routine` and so on) and `Guard`.
 
 ## Subpath exports
 
-Both entry points import only schema-kit and std, never `yaml`, so a reader that doesn't parse
-workspace files doesn't load the YAML parser. `@halonicjs/format` doesn't re-export `./recording`.
+These entry points never import `yaml`, so a reader that doesn't parse workspace files doesn't load
+the YAML parser. `@halonicjs/format` doesn't re-export `./recording` or `./runtime-export`.
 
 - `@halonicjs/format/integration` is the integration permission sheet: `IntegrationSheet`,
   `parseIntegrationSheet`, `checkIntegrationSheet`, `integrationPolicy`, the pattern and limit
@@ -116,11 +129,17 @@ workspace files doesn't load the YAML parser. `@halonicjs/format` doesn't re-exp
 - `@halonicjs/format/recording` is the recording file, `integrations/<name>/recordings/<scenario>.json`,
   shared by the recorder and the conformance suite: `recordingFileSchema` (with the type
   `RecordingFile`), `formatRecording` and `RECORDING_FORMAT` (`halonic.recording/1`).
+- `@halonicjs/format/runtime-export` is the manifest of `halonic deploy export` and `import`, the
+  folder that holds one deployment's runtime data: `runtimeExportManifestSchema` (with the type
+  `RuntimeExportManifest`), `RUNTIME_EXPORT_FORMAT_VERSION` and `RUNTIME_EXPORT_MANIFEST`
+  (`halonic-export.json`). A file is under `runs/`, `records/` or `blobs/`, and the manifest and
+  each entry refuse any key they don't list, so no secret store has a place in an export
+  (requirement `runtime-export`). It imports only schema-kit and ports.
 
 ## Spec files
 
 `spec/<kind>.schema.json` (for example `spec/workflow-test.schema.json`) is each kind's JSON
-Schema (2020-12), as `jsonSchemaOf` emits it. These files are the source of truth for anyone
+Schema (2020-12), as `jsonSchemaOf` emits it. `spec/runtime-export.schema.json` is the export manifest's, checked by its own test. These files are the source of truth for anyone
 outside this repo who reads or writes workspace files. Each one's `$id`, for example
 `https://halonic.com/spec/format/workflow/v1.schema.json`, names the file format version it
 describes; nothing is hosted at that address yet.
@@ -135,7 +154,7 @@ A released copy never changes.
 
 Each case of a `workflowTest` file scripts what a run would meet, because tests never contact a
 model, a connector or a program: `mocks` (model replies per agent id), `tools` (connector results,
-keyed `<connector>.<tool>`) and `programs`. `programs` maps an agent id to a list of results for the
+keyed `<connector>.<tool>`), `events` (what a run waits for and is sent) and `programs`. `programs` maps an agent id to a list of results for the
 programs its harness starts, used in the order the engine starts them (requirement
 `workflow-test-programs`). A result is a string (the program's text), `{ output: <value> }` or
 `{ fails: "<message>" }` with a message. `{}` and extra keys fail. The key is optional, so older
@@ -175,12 +194,3 @@ Three optional agent fields say how an agent runs in another program
   Punycode, each once. A stdio connector's optional `transport.stdio.sites`, the sites its
   program may reach in a sandbox, follows the same rules (requirement `connector-sites`); no
   other transport takes it.
-
-## Workflow tests
-
-A test case in `workflows/<id>.test.yaml` scripts everything a run would reach outside the
-workflow: `mocks` (model replies per agent), `tools` (connector tool results), `events` and the
-optional `programs` (requirement `workflow-test-programs`). `programs` maps an agent id to a list of
-results for the programs that agent starts, used in the order the engine starts them. A result is a
-string (the program's text), `{ output: <any value> }` or `{ fails: "<message>" }` with a
-non-empty message. Any other shape fails. Tests never start a real program.
