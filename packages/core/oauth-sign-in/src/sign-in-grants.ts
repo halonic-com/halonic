@@ -45,6 +45,12 @@ export interface SignInGrants {
    * @param current - the sign-in as the sheet and the settings resolve it now
    */
   load(integration: string, signIn: string, current: ApprovedSignIn): Promise<GrantLookup>;
+  /**
+   * Finds a sign-in's grant without comparing it with any sheet: sign out
+   * needs it even when the sheet no longer has the sign-in. A record that
+   * can't be read is removed, as in `load`.
+   */
+  find(integration: string, signIn: string): Promise<SignInGrant | undefined>;
   /** Removes a grant. Removing one that isn't there is not an error. */
   remove(integration: string, signIn: string): Promise<void>;
 }
@@ -75,15 +81,13 @@ export function createSignInGrants(tokens: TokenStore, digest: Digest): SignInGr
       await tokens.set(signInTokenName(integration, signIn), JSON.stringify(saved));
     },
 
+    async find(integration, signIn) {
+      return (await readStoredGrant(tokens, digest, signInTokenName(integration, signIn)))?.grant;
+    },
+
     async load(integration, signIn, current) {
-      const name = signInTokenName(integration, signIn);
-      const text = await tokens.get(name);
-      if (text === null) {
-        return { kind: "none" };
-      }
-      const grant = await readSavedGrant(text, digest);
+      const grant = await readStoredGrant(tokens, digest, signInTokenName(integration, signIn));
       if (grant === undefined) {
-        await tokens.remove(name);
         return { kind: "none" };
       }
       const hashNow = await approvedSignInHash(current, digest);
@@ -94,6 +98,23 @@ export function createSignInGrants(tokens: TokenStore, digest: Digest): SignInGr
       await tokens.remove(signInTokenName(integration, signIn));
     },
   };
+}
+
+/** The grant saved under `name`, or `undefined` when none is saved. A record that can't be read is removed. */
+async function readStoredGrant(
+  tokens: TokenStore,
+  digest: Digest,
+  name: string,
+): Promise<{ grant: SignInGrant; hash: ApprovedSignInHash } | undefined> {
+  const text = await tokens.get(name);
+  if (text === null) {
+    return undefined;
+  }
+  const grant = await readSavedGrant(text, digest);
+  if (grant === undefined) {
+    await tokens.remove(name);
+  }
+  return grant;
 }
 
 /** The saved grant and its hash, or `undefined` when the text isn't a grant that matches its own hash. */
