@@ -15,7 +15,8 @@ const base: SandboxFacts = {
   running: null,
   outcome: null,
 };
-const view = (over: Partial<SandboxFacts>) => sandboxView({ ...base, ...over });
+const view = (over: Partial<SandboxFacts>) =>
+  sandboxView({ ...base, ...over }, new Date(2026, 10, 9, 12, 0));
 
 verifies("settings.agent-sandbox-state", () => {
   it("shows Needs setting up with the button and the one-prompt hint", () => {
@@ -26,7 +27,9 @@ verifies("settings.agent-sandbox-state", () => {
   });
 
   it("shows Ready with Check again and Remove", () => {
-    const v = view({ check: { state: "ready", checkedAt: "today at 09:12" } });
+    const v = view({
+      check: { state: "ready", checkedAt: new Date(2026, 10, 9, 9, 12).toISOString() },
+    });
     expect(v.chip).toEqual({ label: "Ready", tone: "success" });
     expect(v.lead).toBe("Checked today at 09:12");
     expect(v.secondary).toEqual(["check-again", "remove"]);
@@ -48,6 +51,22 @@ verifies("settings.agent-sandbox-state", () => {
   it("says when it can't check, and offers Check again only", () => {
     const v = view({ check: { state: "unknown", reason: "the host didn't answer." } });
     expect(v.lead).toBe("Couldn't check the sandbox: the host didn't answer.");
+    expect(v.secondary).toEqual(["check-again"]);
+    expect(v.primary).toBeNull();
+  });
+
+  it("words when it checked from the clock at drawing, not from when the check ran", () => {
+    const checkedAt = new Date(2026, 10, 9, 9, 12).toISOString();
+    const facts = { ...base, check: { state: "ready", checkedAt } } as const;
+    expect(sandboxView(facts, new Date(2026, 10, 9, 23, 59)).lead).toBe("Checked today at 09:12");
+    expect(sandboxView(facts, new Date(2026, 10, 10, 0, 1)).lead).toBe(
+      "Checked yesterday at 09:12",
+    );
+  });
+
+  it("says why the sandbox can't run when the check ran, and offers Check again only", () => {
+    const v = view({ check: { state: "unavailable", reason: "hardware virtualisation is off." } });
+    expect(v.lead).toBe("The sandbox isn't ready: hardware virtualisation is off.");
     expect(v.secondary).toEqual(["check-again"]);
     expect(v.primary).toBeNull();
   });
@@ -105,8 +124,11 @@ verifies("settings.agent-sandbox-state", () => {
     });
 
     it("says the time-out", () => {
-      expect(callout({ kind: "setup", how: "timed-out" })?.line).toBe(
+      expect(callout({ kind: "setup", how: "timed-out", repairing: false })?.line).toBe(
         "The sandbox isn't set up: the setup didn't finish within 3 minutes.",
+      );
+      expect(callout({ kind: "setup", how: "timed-out", repairing: true })?.line).toBe(
+        "The sandbox isn't repaired: the repair didn't finish within 3 minutes.",
       );
     });
 
@@ -121,8 +143,8 @@ verifies("settings.agent-sandbox-state", () => {
         line: "The sandbox wasn't removed: 1 run is using it. Stop it or let it finish, then try again.",
         action: null,
       });
-      expect(callout({ kind: "remove", how: "in-use", runs: 3 })?.line).toContain(
-        "3 runs are using it",
+      expect(callout({ kind: "remove", how: "in-use", runs: 3 })?.line).toBe(
+        "The sandbox wasn't removed: 3 runs are using it. Stop them or let them finish, then try again.",
       );
     });
 
@@ -139,7 +161,10 @@ verifies("settings.agent-sandbox-state", () => {
     expect(needs.primary).toBeNull();
     expect(needs.hint).toBe("View only here. Set up the sandbox on the computer running Halonic.");
     expect(needs.secondary).toEqual(["check-again"]);
-    const ready = view({ place: "served", check: { state: "ready", checkedAt: "today" } });
+    const ready = view({
+      place: "served",
+      check: { state: "ready", checkedAt: "2026-11-09T09:12:00" },
+    });
     expect(ready.secondary).toEqual(["check-again"]);
   });
 

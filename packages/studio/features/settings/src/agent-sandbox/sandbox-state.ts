@@ -3,16 +3,35 @@ import * as text from "./sandbox-text.ts";
 /** How long a setup may run before Studio says so (SB3). The command isn't stopped. */
 export const SETUP_TIME_LIMIT_MS = 3 * 60 * 1000;
 
+const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "today at 09:12", "yesterday at 09:12" or "3 Nov at 09:12", as the section says when it checked. */
+export function checkedAtLabel(iso: string, now: Date): string {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return iso;
+  const pad = (value: number) => String(value).padStart(2, "0");
+  const time = `${pad(at.getHours())}:${pad(at.getMinutes())}`;
+  const day = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const daysAgo = Math.round((day(now).getTime() - day(at).getTime()) / 86_400_000);
+  if (daysAgo === 0) return `today at ${time}`;
+  if (daysAgo === 1) return `yesterday at ${time}`;
+  return `${at.getDate()} ${months[at.getMonth()]} at ${time}`;
+}
+
 /** What the host's check says, in the words the section needs. */
 export type SandboxCheckFacts =
   | { readonly state: "ready"; readonly checkedAt: string }
   | { readonly state: "needs-setup" }
   | { readonly state: "needs-repair"; readonly reason: string }
+  /** The check ran and says the sandbox can't run now, for a reason a person or an administrator fixes. */
+  | { readonly state: "unavailable"; readonly reason: string }
+  /** The check itself didn't happen or couldn't be read. */
   | { readonly state: "unknown"; readonly reason: string };
 
 /** How the last setup, repair or removal ended, when it failed. */
 export type SandboxOutcome =
-  | { readonly kind: "setup"; readonly how: "cancelled" | "timed-out" }
+  | { readonly kind: "setup"; readonly how: "cancelled" }
+  | { readonly kind: "setup"; readonly how: "timed-out"; readonly repairing: boolean }
   | { readonly kind: "setup"; readonly how: "failed" | "check_failed"; readonly reason: string }
   | { readonly kind: "remove"; readonly how: "cancelled" }
   | { readonly kind: "remove"; readonly how: "failed"; readonly reason: string }
@@ -35,7 +54,7 @@ export interface SandboxFacts {
 }
 
 export type ChipTone = "warning" | "neutral" | "success";
-export type SandboxAction = "set-up" | "repair" | "remove" | "try-again" | "check-again";
+export type SandboxAction = "remove" | "check-again";
 
 export interface SandboxStep {
   readonly mark: "done" | "doing" | "waiting";
@@ -77,7 +96,7 @@ const none = {
  * sandboxView({ available: true, place: "app", check: { state: "needs-setup" }, running: null, outcome: null }).primary
  * // { action: "set-up", label: "Set up the sandbox", busy: false }
  */
-export function sandboxView(facts: SandboxFacts): SandboxView {
+export function sandboxView(facts: SandboxFacts, now: Date = new Date()): SandboxView {
   if (!facts.available)
     return { ...none, lead: text.NOT_AVAILABLE, chip: { label: "Not available", tone: "neutral" } };
   const { check, running, outcome } = facts;
@@ -85,13 +104,14 @@ export function sandboxView(facts: SandboxFacts): SandboxView {
 
   if (running) return busyView(running, check);
 
-  return checkedView(check, facts.place === "served", callout);
+  return checkedView(check, facts.place === "served", callout, now);
 }
 
 function checkedView(
   check: SandboxCheckFacts,
   viewOnly: boolean,
   callout: SandboxView["callout"],
+  now: Date,
 ): SandboxView {
   const hint = (line: string) => (viewOnly ? text.VIEW_ONLY : line);
   switch (check.state) {
@@ -99,7 +119,7 @@ function checkedView(
       return {
         ...none,
         chip: { label: "Ready", tone: "success" },
-        lead: `Checked ${check.checkedAt}`,
+        lead: `Checked ${checkedAtLabel(check.checkedAt, now)}`,
         callout,
         hint: viewOnly ? text.VIEW_ONLY : null,
         secondary: viewOnly ? ["check-again"] : ["check-again", "remove"],
@@ -113,6 +133,14 @@ function checkedView(
         hint: hint(text.REPAIR_HINT),
         primary: viewOnly ? null : { action: "repair", label: text.REPAIR, busy: false },
         secondary: viewOnly ? ["check-again"] : ["remove"],
+      };
+    case "unavailable":
+      return {
+        ...none,
+        chip: null,
+        lead: text.notReady(check.reason),
+        callout,
+        secondary: ["check-again"],
       };
     case "unknown":
       return {
@@ -189,7 +217,10 @@ function calloutFor(outcome: SandboxOutcome): SandboxView["callout"] {
     case "cancelled":
       return { line: text.DENIED, action: "try-again" };
     case "timed-out":
-      return { line: text.TOOK_TOO_LONG, action: "try-again" };
+      return {
+        line: outcome.repairing ? text.REPAIR_TOOK_TOO_LONG : text.TOOK_TOO_LONG,
+        action: "try-again",
+      };
     case "failed":
       return { line: text.failedSetUp(outcome.reason), action: "try-again" };
     case "check_failed":

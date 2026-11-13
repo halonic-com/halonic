@@ -29,13 +29,16 @@ export interface AgentSandboxHost {
   readonly available: boolean;
   /** The host's check, in the section's words. `checkedAt` is an ISO time. */
   check(): Promise<SandboxCheckFacts>;
+  /** Which command runs in the host now, if any: a setup or removal that began before Settings opened. */
+  running(): Promise<"setup" | "remove" | null>;
   /**
    * Runs the one-time setup, or the repair, until the host says how it ended: `null` when it
-   * worked (the caller then checks), else why it didn't. Joins a setup that already runs.
+   * worked (the caller then checks), else why it didn't. Joins a setup that already runs. The
+   * command itself isn't stopped when `signal` aborts: the host stops following it.
    */
-  setUp(): Promise<SandboxOutcome | null>;
+  setUp(options?: { readonly signal?: AbortSignal }): Promise<SandboxOutcome | null>;
   /** Runs the removal until it ends, with the same answer as `setUp`. */
-  remove(): Promise<SandboxOutcome | null>;
+  remove(options?: { readonly signal?: AbortSignal }): Promise<SandboxOutcome | null>;
 }
 
 /** The agent sandbox the host runs, when the app has one. */

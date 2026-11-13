@@ -43,7 +43,7 @@ verifies("studio.agent-sandbox-host", () => {
     ["setup-needed", "needs-setup"],
     ["setup-conflict", "needs-repair"],
     ["distro-missing", "needs-repair"],
-    ["virtualisation-off", "unknown"],
+    ["virtualisation-off", "unavailable"],
   ])("reads the reason %s as %s", async (reason, state) => {
     const { transport } = host({
       "GET /v1/sandbox/capabilities": capabilities,
@@ -58,7 +58,7 @@ verifies("studio.agent-sandbox-host", () => {
       "GET /v1/sandbox/check": failing("other", ["the helper is missing"]),
     });
     expect(await new AgentHostSandboxFacts(transport).check()).toEqual({
-      state: "unknown",
+      state: "unavailable",
       reason: "the helper is missing.",
     });
   });
@@ -140,6 +140,25 @@ verifies("studio.agent-sandbox-host", () => {
       runs: 2,
     });
     expect(asked).toEqual(["POST /v1/sandbox/remove"]);
+  });
+
+  it("says which command runs in the host now", async () => {
+    const status = (running: string | null) =>
+      host({ "GET /v1/sandbox/setup": { status: 200, body: { running, last: null } } });
+    expect(await new AgentHostSandboxFacts(status("setup").transport).running()).toBe("setup");
+    expect(await new AgentHostSandboxFacts(status(null).transport).running()).toBeNull();
+  });
+
+  it("stops following a setup when the signal aborts", async () => {
+    const running = { status: 200, body: { running: "setup", last: null } };
+    const { transport } = host({
+      "POST /v1/sandbox/setup": running,
+      "GET /v1/sandbox/setup": running,
+    });
+    const stop = new AbortController();
+    stop.abort();
+    const outcome = await new AgentHostSandboxFacts(transport).setUp({ signal: stop.signal });
+    expect(outcome).toMatchObject({ kind: "setup", how: "failed" });
   });
 
   it("starts nothing when it is only made and checked", async () => {

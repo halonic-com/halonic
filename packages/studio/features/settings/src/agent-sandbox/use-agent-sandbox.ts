@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentSandboxHost } from "../api.ts";
 import {
   afterResult,
+  checkedAtLabel,
   type SandboxCheckFacts,
   type SandboxFacts,
   type SandboxOutcome,
@@ -17,21 +18,6 @@ export interface AgentSandboxControls {
   readonly setUp: () => void;
   readonly remove: () => void;
   readonly checkAgain: () => void;
-}
-
-const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-/** "today at 09:12", "yesterday at 09:12" or "3 Nov at 09:12", as the section says when it checked. */
-export function checkedAtLabel(iso: string, now: Date): string {
-  const at = new Date(iso);
-  if (Number.isNaN(at.getTime())) return iso;
-  const pad = (value: number) => String(value).padStart(2, "0");
-  const time = `${pad(at.getHours())}:${pad(at.getMinutes())}`;
-  const day = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const daysAgo = Math.round((day(now).getTime() - day(at).getTime()) / 86_400_000);
-  if (daysAgo === 0) return `today at ${time}`;
-  if (daysAgo === 1) return `yesterday at ${time}`;
-  return `${at.getDate()} ${months[at.getMonth()]} at ${time}`;
 }
 
 /**
@@ -52,6 +38,11 @@ export function useAgentSandbox(
   const [outcome, setOutcome] = useState<SandboxOutcome | null>(null);
   const alive = useRef(true);
   const busy = useRef(false);
+  // The container passes a new `announce` on every render; the effects must not restart for it.
+  const announceRef = useRef(announce);
+  announceRef.current = announce;
+  // The poll of the command that runs; a new press or leaving Settings stops following it.
+  const following = useRef<AbortController | null>(null);
   // Each press gets a number, so a result that arrives after the time limit still counts, but one
   // from an earlier press doesn't overwrite a newer one.
   const press = useRef(0);
@@ -59,28 +50,20 @@ export function useAgentSandbox(
   const readCheck = useCallback(async (): Promise<SandboxCheckFacts> => {
     if (host === undefined) return { state: "unknown", reason: "no agent host is running." };
     try {
-      const facts = await host.check();
-      return facts.state === "ready"
-        ? { state: "ready", checkedAt: checkedAtLabel(facts.checkedAt, new Date()) }
-        : facts;
+      return await host.check();
     } catch (error) {
       return { state: "unknown", reason: `${reasonOf(error)}.` };
     }
   }, [host]);
-
-  useEffect(() => {
-    alive.current = true;
-    void readCheck().then((facts) => alive.current && setCheck(facts));
-    return () => {
-      alive.current = false;
-    };
-  }, [readCheck]);
 
   const run = useCallback(
     async (verb: SandboxRunning["verb"]) => {
       if (host === undefined || busy.current) return;
       busy.current = true;
       const mine = ++press.current;
+      following.current?.abort();
+      const follow = new AbortController();
+      following.current = follow;
       const current = () => alive.current && press.current === mine;
       setOutcome(null);
       setRunning({ verb, step: "elevating" });
@@ -92,9 +75,9 @@ export function useAgentSandbox(
               // The command isn't stopped: a Try again joins it in the host.
               busy.current = false;
               setRunning(null);
-              setOutcome({ kind: "setup", how: "timed-out" });
+              setOutcome({ kind: "setup", how: "timed-out", repairing: verb === "repair" });
             }, SETUP_TIME_LIMIT_MS);
-      const ended = await runCommand(host, verb, readCheck, () => {
+      const ended = await runCommand(host, verb, follow.signal, readCheck, () => {
         clearTimeout(timer);
         if (current()) setRunning({ verb, step: "checking" });
       });
@@ -104,10 +87,31 @@ export function useAgentSandbox(
       setRunning(null);
       setOutcome(ended.outcome);
       setCheck((now) => ended.check ?? afterResult(ended.outcome as SandboxOutcome, now));
-      if (ended.check?.state === "ready") announce(text.announceReady(ended.check.checkedAt));
+      if (ended.check?.state === "ready") {
+        announceRef.current(text.announceReady(checkedAtLabel(ended.check.checkedAt, new Date())));
+      }
     },
-    [host, readCheck, announce],
+    [host, readCheck],
   );
+
+  useEffect(() => {
+    alive.current = true;
+    void readCheck().then((facts) => alive.current && setCheck(facts));
+    // A setup or removal that began before Settings opened shows as running, and ends as usual.
+    void host?.running().then(
+      (verb) => {
+        if (alive.current && verb !== null) void run(verb);
+      },
+      () => undefined,
+    );
+    return () => {
+      alive.current = false;
+      following.current?.abort();
+      // A press that was following the command is over; the next mount starts fresh.
+      press.current++;
+      busy.current = false;
+    };
+  }, [host, readCheck, run]);
 
   return {
     facts: {
@@ -143,11 +147,12 @@ type Ended =
 async function runCommand(
   host: AgentSandboxHost,
   verb: SandboxRunning["verb"],
+  signal: AbortSignal,
   readCheck: () => Promise<SandboxCheckFacts>,
   onChecking: () => void,
 ): Promise<Ended> {
   const removing = verb === "remove";
-  const failure = await (removing ? host.remove() : host.setUp()).catch(
+  const failure = await (removing ? host.remove({ signal }) : host.setUp({ signal })).catch(
     (error: unknown): SandboxOutcome => ({
       kind: removing ? "remove" : "setup",
       how: "failed",

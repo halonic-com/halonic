@@ -41,7 +41,7 @@ const needsRepair: readonly SandboxUnavailableReason[] = ["distro-missing", "set
 /**
  * The agent host's sandbox as Settings › Agent sandbox reads it: the host's check becomes Ready,
  * Needs setting up (`setup-needed`), Needs repair (part of the setup is there but wrong) or a
- * check Studio couldn't make sense of. The setup and the removal start only when the section calls
+ * check that says why the sandbox can't run now (Unavailable). The setup and the removal start only when the section calls
  * them, from a press, and run until the host says how they ended, however long the administrator
  * prompt takes (HAL-1451).
  */
@@ -70,24 +70,28 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
         : reasons[check.reason];
     if (check.reason === "setup-needed") return { state: "needs-setup" };
     if (needsRepair.includes(check.reason)) return { state: "needs-repair", reason };
-    return { state: "unknown", reason };
+    return { state: "unavailable", reason };
   }
 
-  async setUp(): Promise<SandboxOutcome | null> {
+  async running(): Promise<"setup" | "remove" | null> {
+    return (await this.#setup.status()).running;
+  }
+
+  async setUp(options: { readonly signal?: AbortSignal } = {}): Promise<SandboxOutcome | null> {
     const started = await this.#setup.startSetUp();
     if (started.running === null) {
       return started.last?.verb === "setup" ? outcomeOf("setup", started.last.result) : null;
     }
-    return outcomeOf("setup", (await this.#setup.ended("setup"))?.result);
+    return outcomeOf("setup", (await this.#setup.ended("setup", options))?.result);
   }
 
-  async remove(): Promise<SandboxOutcome | null> {
+  async remove(options: { readonly signal?: AbortSignal } = {}): Promise<SandboxOutcome | null> {
     const started = await this.#setup.startRemove();
     if ("inUse" in started) return { kind: "remove", how: "in-use", runs: started.inUse };
     if (started.running === null) {
       return started.last?.verb === "remove" ? outcomeOf("remove", started.last.result) : null;
     }
-    return outcomeOf("remove", (await this.#setup.ended("remove"))?.result);
+    return outcomeOf("remove", (await this.#setup.ended("remove", options))?.result);
   }
 }
 
