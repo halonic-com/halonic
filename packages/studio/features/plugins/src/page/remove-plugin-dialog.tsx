@@ -1,5 +1,6 @@
 import { Dialog } from "@halonicjs/studio-kit";
 import { useState } from "react";
+import { messageOf } from "../message-of.ts";
 import {
   actionFailedLine,
   goesAwayLine,
@@ -70,9 +71,4 @@ export function RemovePluginDialog({
       {keeps === "" ? null : <p className="mt-2">{keeps}</p>}
     </Dialog>
   );
-}
-
-/** A thrown value's message, for the person. */
-export function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

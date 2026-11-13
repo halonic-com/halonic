@@ -123,11 +123,16 @@ verifies("plugins.plugin-add", () => {
   it("says Getting halonic-weather… and makes the field unavailable while it copies", async () => {
     const seen = fresh();
     let finish: (outcome: PluginAddOutcome) => void = () => {};
-    show(() => new Promise((resolve) => (finish = resolve)), seen);
+    show(
+      () => new Promise((resolve) => (finish = resolve)),
+      seen,
+      async () => undefined,
+    );
     await type(inputLabelled("Folder"), "/plugins/halonic-weather/");
     await press("Add plugin");
     expect(text()).toContain("Getting halonic-weather…");
     expect(inputLabelled("Folder").disabled).toBe(true);
+    expect(button("Choose folder…").getAttribute("aria-busy")).toBe("true");
     await act(async () => finish({ kind: "added", plugin: "weather" }));
     expect(seen.added).toEqual(["weather"]);
   });
@@ -202,5 +207,16 @@ verifies("plugins.plugin-add", () => {
     show(reply(seen, { kind: "added", plugin: "weather" }), seen, async () => "/picked/one");
     await press("Choose folder…");
     expect(inputLabelled("Folder").value).toBe("/picked/one");
+  });
+
+  it("clears the failure when the person picks the other source", async () => {
+    const seen = fresh();
+    show(reply(seen, { kind: "no-manifest" }), seen);
+    await type(inputLabelled("Folder"), "/plugins/empty");
+    await press("Add plugin");
+    expect(text()).toContain("That folder has no plugin.yaml.");
+    await pickGit();
+    expect(text()).not.toContain("That folder has no plugin.yaml.");
+    expect(button("Add plugin")).toBeDefined();
   });
 });

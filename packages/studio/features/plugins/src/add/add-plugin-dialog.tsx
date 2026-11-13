@@ -1,6 +1,7 @@
 import { Button, Callout, Dialog, Field, Input, RadioGroup } from "@halonicjs/studio-kit";
 import { useEffect, useRef, useState } from "react";
-import { messageOf } from "../page/remove-plugin-dialog.tsx";
+import { messageOf } from "../message-of.ts";
+import type { PluginLoadProblem } from "../page/plugin-pages.ts";
 import {
   ADD_PLUGIN,
   ADDRESS_FIELD,
@@ -41,7 +42,11 @@ export interface AddPluginDialogProps {
 /** What went wrong, as the dialog shows it. */
 type Failure =
   | { readonly kind: "line"; readonly text: string }
-  | { readonly kind: "broken"; readonly text: string; readonly outcome: PluginAddOutcome }
+  | {
+      readonly kind: "broken";
+      readonly text: string;
+      readonly problems: readonly PluginLoadProblem[];
+    }
   | { readonly kind: "taken"; readonly text: string; readonly plugin: string };
 
 /**
@@ -116,7 +121,7 @@ export function AddPluginDialog({ installer, onAdded, onOpen, onCancel }: AddPlu
       <div className="flex items-center gap-2">
         <Input ref={sourceField} disabled={busy} value={folder} onChange={typed(setFolder)} />
         {installer.chooseFolder === undefined ? null : (
-          <Button variant="secondary" onClick={() => void choose()}>
+          <Button variant="secondary" busy={busy} onClick={() => void choose()}>
             {CHOOSE_FOLDER}
           </Button>
         )}
@@ -155,6 +160,7 @@ export function AddPluginDialog({ installer, onAdded, onOpen, onCancel }: AddPlu
             onChange={(next) => {
               setKind(next);
               setFieldError(undefined);
+              setFailure(undefined);
             }}
             options={[
               { value: "folder", label: FOLDER_OPTION, field: folderField },
@@ -193,11 +199,10 @@ function FailureCallout({
       </Callout>
     );
   }
-  const problems = failure.outcome.kind === "broken" ? failure.outcome.problems : [];
   return (
     <Callout tone="danger">
       {failure.text}
-      <ProblemList problems={problems} />
+      <ProblemList problems={failure.problems} />
     </Callout>
   );
 }
@@ -208,7 +213,7 @@ function failureOf(outcome: Exclude<PluginAddOutcome, { kind: "added" }>, name: 
       return {
         kind: "broken",
         text: brokenLine(outcome.name ?? name, outcome.problems.length),
-        outcome,
+        problems: outcome.problems,
       };
     case "taken":
       return { kind: "taken", text: takenLine(outcome.plugin), plugin: outcome.plugin };

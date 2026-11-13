@@ -1,6 +1,7 @@
 import { Button, Menu, type MenuEntry, MoreIcon, useToastStore } from "@halonicjs/studio-kit";
 import { saveNoteWords } from "@halonicjs/studio-shell";
 import { useId, useState } from "react";
+import { messageOf } from "../message-of.ts";
 import {
   type PluginSecretStore,
   type PluginSettingsReader,
@@ -19,7 +20,7 @@ import {
   removedToast,
 } from "./plugin-actions.ts";
 import type { InstalledPlugin } from "./plugin-pages.ts";
-import { messageOf, RemovePluginDialog } from "./remove-plugin-dialog.tsx";
+import { RemovePluginDialog } from "./remove-plugin-dialog.tsx";
 import { ReviewPluginDialog } from "./review-plugin-dialog.tsx";
 import { StatusBox } from "./status-box.tsx";
 import { WhatItAdds } from "./what-it-adds.tsx";
