@@ -32,6 +32,22 @@ const secretPlacement = s.discriminatedUnion("as", [
   s.object({ secret: s.string(), as: s.literal("form"), field: s.string() }).strict(),
 ]);
 
+/** A sign-in's access token placement, by the sign-in's name: never the token. */
+const signInPlacement = s.discriminatedUnion("as", [
+  s.object({ signIn: s.string(), as: s.literal("bearer") }).strict(),
+  s
+    .object({
+      signIn: s.string(),
+      as: s.literal("header"),
+      header: s.string(),
+      prefix: s.string().optional(),
+    })
+    .strict(),
+]);
+
+/** What a request asks the kit to place: a secret or a sign-in's access token, by name. */
+const authPlacement = s.union([secretPlacement, signInPlacement]);
+
 /**
  * A request body as it crosses: text, a form (sent as its encoded text, so
  * the kit can still place a secret in a form field) or bytes as base64.
@@ -99,7 +115,7 @@ export const runnerFrame = s.discriminatedUnion("type", [
       method: s.string().min(1).max(32),
       headers: headerList,
       body: requestBody.nullable(),
-      auth: s.array(secretPlacement),
+      auth: s.array(authPlacement),
     })
     .strict(),
   s.object({ type: s.literal("pull"), body: frameId }).strict(),

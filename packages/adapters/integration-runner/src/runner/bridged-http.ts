@@ -5,9 +5,9 @@
 
 import { IntegrationRefusedError } from "@halonicjs/adapter-integration-kit/integration";
 import type {
+  AuthPlacement,
   IntegrationHttpClient,
   IntegrationRequestInit,
-  SecretPlacement,
 } from "@halonicjs/ports";
 import { encodeRequestBody, fromBase64 } from "../bodies.ts";
 import { FrameTooLargeError } from "../frame-lines.ts";
@@ -188,7 +188,7 @@ export class BridgedHttp implements IntegrationHttpClient {
   }
 }
 
-function placements(auth: IntegrationRequestInit["auth"]): SecretPlacement[] {
+function placements(auth: IntegrationRequestInit["auth"]): AuthPlacement[] {
   if (auth === undefined) return [];
-  return Array.isArray(auth) ? [...auth] : [auth as SecretPlacement];
+  return Array.isArray(auth) ? [...auth] : [auth as AuthPlacement];
 }
