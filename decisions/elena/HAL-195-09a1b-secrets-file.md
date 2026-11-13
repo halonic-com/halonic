@@ -4,6 +4,7 @@
 - Task: HAL-8336 (PR 9a-1b of HAL-195); design approved by Liam on HAL-8325
 - Approval: the maintainer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:U7ISYoWfFAzlOh9OwohnhCutaVu7WpaVWMWdv9piU+clO83ljTnkoe/2Rm66BGuKN6XIxsJSsCFUbzAzR8X2DQ==
 
 ## What changes
 
