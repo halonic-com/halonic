@@ -35,6 +35,9 @@ The kit's loader shall build an integration's host only when its permission shee
 - Given a local integration whose approved sheet declares a sign-in,
   when it is loaded,
   then it fails with `sign-ins-not-allowed` at `signIns.<name>` and the fix "Remove signIns from its sheet and use an API key, or ask for sign-in support."; the same sheet loads as built-in.
+- Given a built-in integration with a sign-in, and the sign-in tokens the host gives the loader,
+  when a request places the sign-in's token,
+  then the request carries the token the host gave, and the integration never reads it; with no sign-in tokens given, the request is refused as `sign-in-needed` and nothing is sent.
 - Given `needs: [process]` on a runtime without `process`,
   when it is loaded,
   then it fails with `need-not-available` at `needs[0]`.
