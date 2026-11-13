@@ -367,6 +367,18 @@ export const homeWords = {
   seeAll: "See all runs",
 };
 
+/** Home's Spend tile (HAL-8553): the tile's title, the line under the number, and its empty text. */
+export const spendWords = {
+  title: "Spend per month",
+  empty: "No spend yet. When a run costs something, you'll see it here by month.",
+  budgetLabel: "Budget",
+  /** An amount as the budget stop writes it: two decimals, then the currency code. */
+  amount: (amount: number, currency: string) => `${amount.toFixed(2)} ${currency}`,
+  thisMonth: "This month",
+  withinBudget: (budget: string) => `This month, within the ${budget} budget`,
+  overBudget: (budget: string) => `This month, over the ${budget} budget`,
+};
+
 /** Ctrl K's run rows (checklist part 1, 1.1). */
 export const searchWords = {
   title: "Runs",

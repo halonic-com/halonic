@@ -61,6 +61,7 @@ describe("RunsList", () => {
       workflow: () => undefined,
       routine: () => undefined,
       currency: () => "EUR",
+      monthlyBudget: () => undefined,
       subscribe: () => () => {},
     };
     const list = new RunsList(source);

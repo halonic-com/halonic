@@ -23,9 +23,10 @@ const rows: readonly { title: SkeletonBarWidth; meta: SkeletonBarWidth }[] = [
 export interface SectionSkeletonProps {
   /**
    * What the section's content looks like once it loads: `rows`, a list, or `cards`, the
-   * plugins' cards side by side (T16-F35). Default `rows`.
+   * plugins' cards side by side (T16-F35), or `card`, one such card, for a section with a
+   * single tile such as Spend. Default `rows`.
    */
-  readonly shape?: "rows" | "cards";
+  readonly shape?: "rows" | "cards" | "card";
 }
 
 /**
@@ -50,8 +51,8 @@ export function SectionSkeleton({ shape = "rows" }: SectionSkeletonProps) {
   if (!showing) {
     return null;
   }
-  if (shape === "cards") {
-    return <CardsSkeleton phone={phone} />;
+  if (shape === "cards" || shape === "card") {
+    return <CardsSkeleton phone={phone} count={shape === "card" ? 1 : cardWidths.length} />;
   }
   return (
     <div
@@ -71,11 +72,11 @@ export function SectionSkeleton({ shape = "rows" }: SectionSkeletonProps) {
   );
 }
 
-/** Two still cards in the shape of a plugin's card: its title, its result and its footer. */
-function CardsSkeleton({ phone }: { readonly phone: boolean }) {
+/** Two still cards (or `count`) in the shape of a plugin's card: its title, its result and its footer. */
+function CardsSkeleton({ phone, count }: { readonly phone: boolean; readonly count: number }) {
   return (
     <div aria-hidden="true" className={phone ? "grid gap-2 px-4" : "grid grid-cols-2 gap-2"}>
-      {cardWidths.map((widths) => (
+      {cardWidths.slice(0, count).map((widths) => (
         <div
           key={widths.title}
           className="flex flex-col gap-2 rounded-md border border-border bg-surface p-4"

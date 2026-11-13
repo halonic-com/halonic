@@ -78,4 +78,63 @@ verifies("kit.month-bars", () => {
     expect(bars(container)).toHaveLength(0);
     expect(container.textContent).toContain("No bills yet");
   });
+
+  it("shows a note under the big number, amber when it needs attention", () => {
+    const { container } = render(
+      <MonthBars
+        title="Bills"
+        months={months}
+        emptyText="None"
+        note={{ text: "This month, over the 100 EUR budget", attention: true }}
+      />,
+    );
+    const note = container.querySelector("p.text-attention");
+    expect(note?.textContent).toBe("This month, over the 100 EUR budget");
+    const plain = render(
+      <MonthBars title="Bills" months={months} emptyText="None" note={{ text: "This month" }} />,
+    );
+    expect(plain.container.querySelector("p.text-attention")).toBeNull();
+    expect(plain.container.textContent).toContain("This month");
+  });
+
+  it("draws a dashed line at the limit, labelled, and keeps it in the scale", () => {
+    const low = [{ label: "Jun", value: 10 }];
+    const { container } = render(
+      <MonthBars
+        title="Bills"
+        months={low}
+        emptyText="None"
+        limit={{ value: 100, label: "Budget" }}
+      />,
+    );
+    const line = container.querySelector("line");
+    expect(line?.getAttribute("stroke-dasharray")).toBe("4 4");
+    // The limit is the top of the scale, so the 10 bar is a tenth of it and the line is at the top
+    // of the plot, below the label's headroom.
+    expect(Number(line?.getAttribute("y1"))).toBeGreaterThan(0);
+    expect(container.querySelector("svg g:last-child text")?.textContent).toBe("Budget");
+  });
+
+  it("keeps the limit's label inside the picture, at the left end, with a halo", () => {
+    const tall = [{ label: "Jun", value: 100 }];
+    const { container } = render(
+      <MonthBars
+        title="Bills"
+        months={tall}
+        emptyText="None"
+        limit={{ value: 100, label: "Budget" }}
+      />,
+    );
+    const label = container.querySelector("svg g:last-child text");
+    expect(Number(label?.getAttribute("y"))).toBeGreaterThanOrEqual(0);
+    expect(Number(container.querySelector("line")?.getAttribute("y1"))).toBeGreaterThan(0);
+    expect(label?.getAttribute("x")).toBe("0");
+    expect(label?.getAttribute("text-anchor")).toBe("start");
+    expect(label?.getAttribute("paint-order")).toBe("stroke");
+  });
+
+  it("draws no line without a limit", () => {
+    const { container } = render(<MonthBars title="Bills" months={months} emptyText="None" />);
+    expect(container.querySelector("line")).toBeNull();
+  });
 });

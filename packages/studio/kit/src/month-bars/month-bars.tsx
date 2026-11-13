@@ -19,6 +19,13 @@ export interface MonthBarsProps {
   readonly format?: (value: number) => string;
   /** Shown instead of the bars when every month is zero. */
   readonly emptyText: string;
+  /** A line under the big number ("This month, within the 100 EUR budget"); `attention` draws it amber. */
+  readonly note?: { readonly text: string; readonly attention?: boolean };
+  /**
+   * A thin dashed line across the bars at `value`, named by `label` at its left end. The scale
+   * includes it, so a line above every bar still shows.
+   */
+  readonly limit?: { readonly value: number; readonly label: string };
 }
 
 /** How many months the chart shows. */
@@ -28,6 +35,8 @@ const WIDTH = 360;
 const HEIGHT = 120;
 const BOTTOM = 22;
 const GAP = 8;
+/** Room above the tallest bar for the limit's label, so the line is never on the top edge. */
+const LIMIT_HEADROOM = 16;
 
 /** A month is over budget when it has a budget and its value is above it. */
 export function isOverBudget(month: Month): boolean {
@@ -52,12 +61,25 @@ function barFill(month: Month, isCurrent: boolean): string {
  * @example
  * <MonthBars title="Bills" months={[{ label: "Jun", value: 40 }]} emptyText="No bills yet" />
  */
-export function MonthBars({ title, months, format = String, emptyText }: MonthBarsProps) {
+export function MonthBars({
+  title,
+  months,
+  format = String,
+  emptyText,
+  note,
+  limit,
+}: MonthBarsProps) {
   const titleId = useId();
   const shown = months.slice(-MONTH_COUNT);
   const current = shown.at(-1);
   const empty = shown.every((month) => month.value === 0);
-  const top = Math.max(1, ...shown.flatMap((month) => [month.value, month.budget ?? 0]));
+  const top = Math.max(
+    1,
+    limit?.value ?? 0,
+    ...shown.flatMap((month) => [month.value, month.budget ?? 0]),
+  );
+  const plot = HEIGHT - BOTTOM - (limit === undefined ? 0 : LIMIT_HEADROOM);
+  const limitY = limit === undefined ? 0 : HEIGHT - BOTTOM - (limit.value / top) * plot;
   const slot = (WIDTH - GAP * (shown.length - 1)) / Math.max(1, shown.length);
   return (
     <section className="rounded-md border border-border bg-surface p-4 text-body">
@@ -69,6 +91,11 @@ export function MonthBars({ title, months, format = String, emptyText }: MonthBa
       ) : (
         <>
           <p className="mt-2 text-title text-fg">{format(current.value)}</p>
+          {note === undefined ? null : (
+            <p className={note.attention === true ? "text-attention" : "text-fg-muted"}>
+              {note.text}
+            </p>
+          )}
           <svg
             viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
             className="mt-3 w-full"
@@ -78,7 +105,7 @@ export function MonthBars({ title, months, format = String, emptyText }: MonthBa
           >
             <title>{title}</title>
             {shown.map((month, at) => {
-              const height = (Math.max(0, month.value) / top) * (HEIGHT - BOTTOM);
+              const height = (Math.max(0, month.value) / top) * plot;
               const x = at * (slot + GAP);
               const fill = barFill(month, at === shown.length - 1);
               return (
@@ -103,6 +130,30 @@ export function MonthBars({ title, months, format = String, emptyText }: MonthBa
                 </g>
               );
             })}
+            {limit === undefined ? null : (
+              <g>
+                <line
+                  x1={0}
+                  x2={WIDTH}
+                  y1={limitY}
+                  y2={limitY}
+                  strokeDasharray="4 4"
+                  className="stroke-fg-subtle"
+                />
+                <text
+                  x={0}
+                  y={limitY - 4}
+                  textAnchor="start"
+                  className="fill-fg-subtle stroke-surface text-caption"
+                  fontSize={12}
+                  strokeWidth={3}
+                  strokeLinejoin="round"
+                  paintOrder="stroke"
+                >
+                  {limit.label}
+                </text>
+              </g>
+            )}
           </svg>
           <p id={`${titleId}-text`} className="sr-only">
             {shown

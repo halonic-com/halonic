@@ -48,6 +48,7 @@ interface WorkspaceFacts {
   /** By key, the `trigger.routineId` of the runs each starts. */
   readonly routines: ReadonlyMap<string, RoutineClock>;
   readonly currency: string;
+  readonly monthly: number | undefined;
 }
 
 const systemTimer: PollTimer = {
@@ -125,6 +126,10 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
     return this.#facts?.currency ?? defaultCurrency;
   }
 
+  monthlyBudget(): number | undefined {
+    return this.#facts?.monthly;
+  }
+
   waiting(): Promise<RunSummary[]> {
     return this.#options.runs.list({ status: ["waiting"] });
   }
@@ -163,6 +168,7 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
       workflows: hubWorkflows(workspace),
       routines: routineClocks(workspace),
       currency: settings?.budget?.currency ?? defaultCurrency,
+      monthly: settings?.budget?.monthly,
     };
   }
 
