@@ -2,6 +2,7 @@
 
 - Approval: Liam, review of halonic#2489 on HAL-8617
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:AyBEYMda3018FBScDaDsG4YR9Sx7MxMr2/M0em4zD47QxGZuSc6FmINc+jhePZMRbbfxnHGxjEt/UiYz1aHjCQ==
 
 ## What changes
 
