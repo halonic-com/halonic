@@ -67,8 +67,16 @@ port over it.
   15 minutes, and is never dropped. Each timer keeps its failure count and a
   version, so a timer the listener sets or cancels during its call is not
   undone when the call ends.
-- **The listener.** The platform wakes the object, not the client, so the
-  Worker subclasses `RunObject` and overrides `timerListener()`.
+- **The run list.** Every successful append notes in an outbox, in the same
+  transaction, that the run list (`D1RunList` in `adapter-cloudflare-storage`)
+  is behind. The alarm sends the run's summary, worked out from the log, so a
+  slow or failing D1 never slows an append. A failed send is kept and tried again
+  on the same alarm with the timers' backoff, and then sends the latest
+  summary. The D1 side only replaces a run's row with a later event, so repeats
+  and late updates change nothing. `DurableRunStore` is the `RunStore` port:
+  `get` comes from the log (always current), `list` from D1 (may lag).
+- **The listener and the run list.** The platform wakes the object, not the client, so the
+  Worker subclasses `RunObject` and overrides `timerListener()` and `runList()`.
 - **The tick** is the cron's (part 7), not the object's.
 
 ## Tests

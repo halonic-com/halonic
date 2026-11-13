@@ -34,9 +34,16 @@ interface SnapshotRow extends SqlRow {
  */
 export class RunLog {
   readonly #sql: RunSql;
+  readonly #onAppended: (lastSeq: number) => void;
 
-  constructor(sql: RunSql) {
+  /**
+   * @param sql - the object's storage
+   * @param onAppended - called inside an append's transaction, once its events are written, with
+   *   the log's new last seq. What it writes is stored with the events or not at all.
+   */
+  constructor(sql: RunSql, onAppended: (lastSeq: number) => void = () => {}) {
     this.#sql = sql;
+    this.#onAppended = onAppended;
     sql.exec("CREATE TABLE IF NOT EXISTS events (seq INTEGER PRIMARY KEY, json TEXT NOT NULL)");
     sql.exec(
       "CREATE TABLE IF NOT EXISTS snapshot (only_row INTEGER PRIMARY KEY CHECK (only_row = 1), seq INTEGER NOT NULL, json TEXT NOT NULL)",
@@ -65,6 +72,7 @@ export class RunLog {
       }
       const newLastSeq = expectedSeq + events.length;
       this.#storeSnapshot(newLastSeq, options.snapshot);
+      this.#onAppended(newLastSeq);
       return { ok: true, lastSeq: newLastSeq };
     });
   }

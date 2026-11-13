@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import type { RunEvent } from "@halonicjs/events";
+import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type {
   AppendOptions,
   AppendResult,
@@ -10,17 +10,18 @@ import type {
 import { type Clock, systemClock } from "@halonicjs/std";
 import type { RunObjectApi } from "./run-object-api.ts";
 import { sqlOfStorage } from "./run-sql.ts";
-import { RunState } from "./run-state.ts";
+import { type RunListSink, RunState } from "./run-state.ts";
 import { napFor } from "./timer-delivery.ts";
 
 /**
  * The Durable Object of one run: its event log and its timers, in the
  * object's own SQLite storage. It does nothing itself: each method is a
  * method of {@link RunState}, and callers use them through `DurableScheduler`
- * (and, from the next step, `DurableRunStore`).
+ * and `DurableRunStore`.
  *
- * The Worker subclasses it and overrides {@link RunObject.timerListener}: the
- * platform wakes the object at the alarm, and the object has no engine of its own to call.
+ * The Worker subclasses it and overrides {@link RunObject.timerListener} and
+ * {@link RunObject.runList}: the platform wakes the object at the alarm, and the
+ * object has no engine or database of its own to call.
  *
  * Never rename or delete this class once it has been deployed: Cloudflare
  * deletes a Durable Object class's data with it. The names are fixed in
@@ -45,6 +46,7 @@ export class RunObject extends DurableObject implements RunObjectApi {
       clock: () => this.clock,
       nap: (ms, signal) => this.nap(ms, signal),
       listener: () => this.timerListener(),
+      runList: () => this.runList(),
     });
   }
 
@@ -53,6 +55,11 @@ export class RunObject extends DurableObject implements RunObjectApi {
     throw new Error(
       "This RunObject has no timer listener: subclass it and override timerListener().",
     );
+  }
+
+  /** Where run summaries go for the run list. The Worker's subclass answers with a `D1RunList`. */
+  protected runList(): RunListSink {
+    throw new Error("This RunObject has no run list: subclass it and override runList().");
   }
 
   append(
@@ -70,6 +77,10 @@ export class RunObject extends DurableObject implements RunObjectApi {
 
   snapshot(): Promise<RunSnapshot | null> {
     return this.#state.snapshot();
+  }
+
+  summary(): Promise<RunSummary | null> {
+    return this.#state.summary();
   }
 
   schedule(key: string, timerId: string, at: string): Promise<void> {

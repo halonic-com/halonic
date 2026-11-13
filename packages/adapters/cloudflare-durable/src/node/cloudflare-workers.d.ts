@@ -27,7 +27,6 @@ interface DurableObjectState {
 }
 
 declare namespace Cloudflare {
-  interface Env {
-    [binding: string]: unknown;
-  }
+  // biome-ignore lint/suspicious/noEmptyInterface: the Worker's own bindings are declared where they are used.
+  interface Env {}
 }

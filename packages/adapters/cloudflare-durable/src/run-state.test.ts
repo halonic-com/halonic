@@ -21,6 +21,8 @@ class FakeAlarm implements AlarmSlot {
 }
 
 function newState(options: { nap?: () => Promise<void> } = {}) {
+  const published: [string, number][] = [];
+  let publishing: (summaryId: string) => Promise<void> = async () => {};
   const clock = new ManualClock();
   const alarm = new FakeAlarm();
   const delivered: ScheduledTimer[] = [];
@@ -36,6 +38,12 @@ function newState(options: { nap?: () => Promise<void> } = {}) {
         await behaviour();
       },
     }),
+    runList: () => ({
+      publish: async (summary, seq) => {
+        await publishing(summary.id);
+        published.push([summary.id, seq]);
+      },
+    }),
   });
   const inMs = (ms: number) => new Date(clock.now().getTime() + ms).toISOString();
   return {
@@ -44,8 +52,12 @@ function newState(options: { nap?: () => Promise<void> } = {}) {
     alarm,
     delivered,
     inMs,
+    published,
     onDelivery: (change: () => Promise<void>) => {
       behaviour = change;
+    },
+    onPublish: (change: (summaryId: string) => Promise<void>) => {
+      publishing = change;
     },
   };
 }
@@ -97,6 +109,87 @@ verifies("cloudflare-durable.timers", () => {
       alarm.at = null;
       await expect(state.alarm()).rejects.toThrow("storage failed");
       expect(alarm.at).toBe(clock.now().getTime());
+    });
+  });
+
+  describe("RunState run list update", () => {
+    const events = [started("r1"), entered("r1", 2)];
+
+    it("notes an append in the outbox and sends the summary from the alarm, once", async () => {
+      const { state, clock, alarm, published } = newState();
+      await state.append("r1", 0, events);
+      expect(published).toEqual([]);
+      expect(alarm.at).toBe(clock.now().getTime());
+      await state.alarm();
+      expect(published).toEqual([["r1", 2]]);
+      expect(alarm.at).toBeNull();
+      await state.alarm();
+      expect(published).toHaveLength(1);
+    });
+
+    it("sends nothing for an append that conflicts", async () => {
+      const { state, alarm, published } = newState();
+      await state.append("r1", 0, events);
+      await state.alarm();
+      alarm.at = null;
+      expect(await state.append("r1", 1, [entered("r1", 2)])).toMatchObject({ ok: false });
+      expect(alarm.at).toBeNull();
+      await state.alarm();
+      expect(published).toHaveLength(1);
+    });
+
+    it("retries a failed update on the alarm with the backoff, and sends the latest summary", async () => {
+      const { state, clock, alarm, published, onPublish } = newState();
+      onPublish(async () => {
+        throw new Error("D1 is down");
+      });
+      await state.append("r1", 0, events);
+      await state.alarm();
+      expect(published).toEqual([]);
+      expect(alarm.at).toBe(clock.now().getTime() + second);
+      await state.append("r1", 2, [entered("r1", 3)]);
+      clock.advance(second);
+      onPublish(async () => {});
+      await state.alarm();
+      expect(published).toEqual([["r1", 3]]);
+      expect(alarm.at).toBeNull();
+    });
+
+    it("keeps the note of an append made while its update was being sent", async () => {
+      const { state, published, onPublish } = newState();
+      await state.append("r1", 0, events);
+      onPublish(async () => {
+        await state.append("r1", 2, [entered("r1", 3)]);
+      });
+      await state.alarm();
+      onPublish(async () => {});
+      await state.alarm();
+      expect(published).toEqual([
+        ["r1", 2],
+        ["r1", 3],
+      ]);
+    });
+
+    it("sends the update although a timer's delivery failed, and the reverse", async () => {
+      const { state, clock, alarm, published, inMs, onDelivery } = newState({
+        nap: async () => {
+          throw new Error("storage failed");
+        },
+      });
+      onDelivery(() => new Promise<void>(() => {}));
+      await state.schedule("r1", "stuck", inMs(0));
+      await state.schedule("r1", "later", inMs(30 * second));
+      await state.append("r1", 0, events);
+      await expect(state.alarm()).rejects.toThrow("storage failed");
+      expect(published).toEqual([["r1", 2]]);
+      expect(alarm.at).toBe(clock.now().getTime());
+    });
+
+    it("gives the summary from the log, and none for an empty log", async () => {
+      const { state } = newState();
+      expect(await state.summary()).toBeNull();
+      await state.append("r1", 0, events);
+      expect(await state.summary()).toMatchObject({ id: "r1", status: "running" });
     });
   });
 

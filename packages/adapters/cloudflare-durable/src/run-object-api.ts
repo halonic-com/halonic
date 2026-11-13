@@ -1,4 +1,4 @@
-import type { RunEvent } from "@halonicjs/events";
+import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { AppendOptions, AppendResult, RunSnapshot, ScheduledTimer } from "@halonicjs/ports";
 
 /**
@@ -14,6 +14,8 @@ export interface RunObjectApi {
   ): Promise<AppendResult>;
   events(afterSeq?: number): Promise<RunEvent[]>;
   snapshot(): Promise<RunSnapshot | null>;
+  /** The run's summary, worked out from its log, or `null` for a log that is empty. */
+  summary(): Promise<RunSummary | null>;
   schedule(key: string, timerId: string, at: string): Promise<void>;
   cancel(key: string, timerId: string): Promise<void>;
   pending(key: string): Promise<ScheduledTimer[]>;
