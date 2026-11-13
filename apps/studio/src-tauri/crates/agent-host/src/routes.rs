@@ -110,6 +110,22 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/harnesses/runs/cancel",
         route(Method::Post, "/v1/harnesses/runs/cancel", Answer::Json),
     ),
+    (
+        "POST /v1/connectors/open",
+        route(Method::Post, "/v1/connectors/open", Answer::Json),
+    ),
+    (
+        "POST /v1/connectors/tools",
+        route(Method::Post, "/v1/connectors/tools", Answer::Json),
+    ),
+    (
+        "POST /v1/connectors/call",
+        route(Method::Post, "/v1/connectors/call", Answer::Json),
+    ),
+    (
+        "POST /v1/connectors/close",
+        route(Method::Post, "/v1/connectors/close", Answer::Json),
+    ),
 ];
 
 /// The route a page names, when it is one of the table's and answers as

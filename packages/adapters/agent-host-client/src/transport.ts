@@ -21,6 +21,10 @@ export const agentHostRequestRoutes = [
   "POST /v1/harnesses/sign-in",
   "POST /v1/harnesses/runs/send",
   "POST /v1/harnesses/runs/cancel",
+  "POST /v1/connectors/open",
+  "POST /v1/connectors/tools",
+  "POST /v1/connectors/call",
+  "POST /v1/connectors/close",
 ] as const;
 
 /** The agent host's routes that answer with an NDJSON stream. */
