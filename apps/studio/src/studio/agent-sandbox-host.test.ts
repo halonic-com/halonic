@@ -161,6 +161,23 @@ verifies("studio.agent-sandbox-host", () => {
     expect(outcome).toMatchObject({ kind: "setup", how: "failed" });
   });
 
+  it("follows a running command with GETs only, and answers nothing when the signal aborts", async () => {
+    const running = { status: 200, body: { running: "setup", last: null } };
+    const done = {
+      status: 200,
+      body: { running: null, last: { verb: "setup", result: { ok: true }, finishedAt: "t" } },
+    };
+    const { transport, asked } = host({ "GET /v1/sandbox/setup": done });
+    expect(await new AgentHostSandboxFacts(transport).follow("setup")).toBeNull();
+    const stop = new AbortController();
+    stop.abort();
+    const stopped = host({ "GET /v1/sandbox/setup": running });
+    expect(
+      await new AgentHostSandboxFacts(stopped.transport).follow("setup", { signal: stop.signal }),
+    ).toBeUndefined();
+    expect([...asked, ...stopped.asked].filter((route) => !route.startsWith("GET"))).toEqual([]);
+  });
+
   it("starts nothing when it is only made and checked", async () => {
     const { transport, asked } = host({
       "GET /v1/sandbox/capabilities": capabilities,

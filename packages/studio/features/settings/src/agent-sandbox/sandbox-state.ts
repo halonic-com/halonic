@@ -37,10 +37,13 @@ export type SandboxOutcome =
   | { readonly kind: "remove"; readonly how: "failed"; readonly reason: string }
   | { readonly kind: "remove"; readonly how: "in-use"; readonly runs: number };
 
-/** What runs now: the elevated step, then the check that follows it. */
+/**
+ * What runs now: the elevated step, then the check that follows it. `running` is a command the
+ * section joined: it may be past the administrator prompt, so no step claims to wait for it.
+ */
 export interface SandboxRunning {
   readonly verb: "setup" | "repair" | "remove";
-  readonly step: "elevating" | "checking";
+  readonly step: "elevating" | "running" | "checking";
 }
 
 export interface SandboxFacts {
@@ -173,9 +176,11 @@ function busyView(running: SandboxRunning, check: SandboxCheckFacts): SandboxVie
   }[running.verb];
   const done = repairing ? text.STEP_REPAIRED : text.STEP_SET_UP;
   const steps: SandboxStep[] =
-    running.step === "elevating"
+    running.step !== "checking"
       ? [
-          { mark: "doing", label: doing, note: text.UAC_WAITING },
+          running.step === "elevating"
+            ? { mark: "doing", label: doing, note: text.UAC_WAITING }
+            : { mark: "doing", label: doing },
           ...(removing ? [] : [{ mark: "waiting", label: text.STEP_CHECKING } as const]),
         ]
       : [

@@ -39,6 +39,15 @@ export interface AgentSandboxHost {
   setUp(options?: { readonly signal?: AbortSignal }): Promise<SandboxOutcome | null>;
   /** Runs the removal until it ends, with the same answer as `setUp`. */
   remove(options?: { readonly signal?: AbortSignal }): Promise<SandboxOutcome | null>;
+  /**
+   * Follows a command that already runs, as `running()` said, until it ends, with the same
+   * answer as `setUp`, or `undefined` when `signal` aborts first. Reads only: it never starts
+   * a command, so opening Settings can't (`settings.agent-sandbox-state`).
+   */
+  follow(
+    verb: "setup" | "remove",
+    options?: { readonly signal?: AbortSignal },
+  ): Promise<SandboxOutcome | null | undefined>;
 }
 
 /** The agent sandbox the host runs, when the app has one. */

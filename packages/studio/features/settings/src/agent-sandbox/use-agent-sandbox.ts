@@ -57,7 +57,7 @@ export function useAgentSandbox(
   }, [host]);
 
   const run = useCallback(
-    async (verb: SandboxRunning["verb"]) => {
+    async (verb: SandboxRunning["verb"], joining = false) => {
       if (host === undefined || busy.current) return;
       busy.current = true;
       const mine = ++press.current;
@@ -66,7 +66,7 @@ export function useAgentSandbox(
       following.current = follow;
       const current = () => alive.current && press.current === mine;
       setOutcome(null);
-      setRunning({ verb, step: "elevating" });
+      setRunning({ verb, step: joining ? "running" : "elevating" });
       const timer =
         verb === "remove"
           ? undefined
@@ -77,12 +77,12 @@ export function useAgentSandbox(
               setRunning(null);
               setOutcome({ kind: "setup", how: "timed-out", repairing: verb === "repair" });
             }, SETUP_TIME_LIMIT_MS);
-      const ended = await runCommand(host, verb, follow.signal, readCheck, () => {
+      const ended = await runCommand(host, verb, joining, follow.signal, readCheck, () => {
         clearTimeout(timer);
         if (current()) setRunning({ verb, step: "checking" });
       });
       clearTimeout(timer);
-      if (!current()) return;
+      if (!current() || ended === undefined) return;
       busy.current = false;
       setRunning(null);
       setOutcome(ended.outcome);
@@ -97,10 +97,11 @@ export function useAgentSandbox(
   useEffect(() => {
     alive.current = true;
     void readCheck().then((facts) => alive.current && setCheck(facts));
-    // A setup or removal that began before Settings opened shows as running, and ends as usual.
+    // A setup or removal that began before Settings opened shows as running and is followed,
+    // never started: opening Settings sends no command.
     void host?.running().then(
       (verb) => {
-        if (alive.current && verb !== null) void run(verb);
+        if (alive.current && verb !== null) void run(verb, true);
       },
       () => undefined,
     );
@@ -141,24 +142,31 @@ type Ended =
   | { readonly outcome: SandboxOutcome | null; readonly check: SandboxCheckFacts };
 
 /**
- * Runs the host's command until it ends, then, if it worked, the check that follows it
- * (`onChecking` says the check began). A setup whose check doesn't pass failed its check.
+ * Runs the host's command until it ends, or, when `joining`, follows the one that already runs
+ * without starting another; then, if it worked, the check that follows it (`onChecking` says the
+ * check began). A setup whose check doesn't pass failed its check. Undefined when `signal` aborted.
  */
 async function runCommand(
   host: AgentSandboxHost,
   verb: SandboxRunning["verb"],
+  joining: boolean,
   signal: AbortSignal,
   readCheck: () => Promise<SandboxCheckFacts>,
   onChecking: () => void,
-): Promise<Ended> {
+): Promise<Ended | undefined> {
   const removing = verb === "remove";
-  const failure = await (removing ? host.remove({ signal }) : host.setUp({ signal })).catch(
+  const start = removing ? host.remove : host.setUp;
+  const command = joining
+    ? host.follow(removing ? "remove" : "setup", { signal })
+    : start.call(host, { signal });
+  const failure = await command.catch(
     (error: unknown): SandboxOutcome => ({
       kind: removing ? "remove" : "setup",
       how: "failed",
       reason: `${reasonOf(error)}.`,
     }),
   );
+  if (failure === undefined) return undefined;
   if (failure !== null) return { outcome: failure };
   onChecking();
   const check = await readCheck();

@@ -93,6 +93,16 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
     }
     return outcomeOf("remove", (await this.#setup.ended("remove", options))?.result);
   }
+
+  /** Follows the command that runs, with `GET`s only: it starts nothing. */
+  async follow(
+    verb: "setup" | "remove",
+    options: { readonly signal?: AbortSignal } = {},
+  ): Promise<SandboxOutcome | null | undefined> {
+    const ended = await this.#setup.ended(verb, options);
+    if (options.signal?.aborted && ended === undefined) return undefined;
+    return outcomeOf(verb, ended?.result);
+  }
 }
 
 /** What a finished setup or removal leaves for the section: nothing when it worked. */

@@ -32,6 +32,9 @@ function fakeHost(first: SandboxCheckFacts, runningNow: "setup" | "remove" | nul
     running: vi.fn(async () => runningNow),
     setUp: vi.fn(command),
     remove: vi.fn(command),
+    follow: vi.fn((_verb: "setup" | "remove", options?: { readonly signal?: AbortSignal }) =>
+      command(options),
+    ),
   } satisfies AgentSandboxHost;
   return {
     host,
@@ -176,7 +179,10 @@ verifies("settings.agent-sandbox-section", () => {
     const { host, end, setCheck } = fakeHost(needsSetup, "setup");
     const { view } = await show(host);
     expect(view.textContent).toContain("Setting up…");
-    expect(host.setUp).toHaveBeenCalledTimes(1);
+    expect(host.follow).toHaveBeenCalledWith("setup", expect.anything());
+    expect(host.setUp).toHaveBeenCalledTimes(0);
+    expect(host.remove).toHaveBeenCalledTimes(0);
+    expect(view.textContent).not.toContain("Windows is asking for administrator rights.");
     setCheck(ready);
     await end(null);
     expect(view.textContent).toContain("Ready");

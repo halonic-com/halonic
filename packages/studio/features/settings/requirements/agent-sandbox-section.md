@@ -4,10 +4,13 @@
 - Since: 0.1.0
 - Source: HAL-8034 (S1 part 2, HAL-1451); ux-checklists-s1-s2 1.2 to 1.6 (HAL-1444); flow-install-update 13 (HAL-1151)
 
-The Settings window shall list **Agent sandbox** under the host sections and draw the state `settings.agent-sandbox-state` decides: chip, words, steps, the failure Callout and the buttons. The section shall ask the agent host for its check when it opens and start a setup, repair or removal only when the person presses its button. **Remove the sandbox…** shall open a dialog titled "Remove the agent sandbox?" and remove nothing until **Remove sandbox** is pressed; **Cancel** closes it. A setup that has run for 3 minutes without ending shall show its Callout with **Try again** and shall not be stopped. After a setup the section shall check again, and a check that doesn't pass shall read Needs repair. Without an agent host the section shall read Not available and show no button.
+The Settings window shall list **Agent sandbox** under the host sections and draw the state `settings.agent-sandbox-state` decides: chip, words, steps, the failure Callout and the buttons. The section shall ask the agent host for its check when it opens and start a setup, repair or removal only when the person presses its button. **Remove the sandbox…** shall open a dialog titled "Remove the agent sandbox?" and remove nothing until **Remove sandbox** is pressed; **Cancel** closes it. A setup or removal that already runs when the section opens shall show as running and be followed until it ends, and shall not be started again. A setup that has run for 3 minutes without ending shall show its Callout with **Try again** and shall not be stopped. After a setup the section shall check again, and a check that doesn't pass shall read Needs repair. Without an agent host the section shall read Not available and show no button.
 
 ## Examples
 
+- Given a setup already runs in the host,
+  when the section opens,
+  then it shows Setting up, without the administrator step, and the host is asked only how the setup is going, never to set up or remove.
 - Given the check says the sandbox isn't set up,
   when the section opens,
   then nothing starts and **Set up the sandbox** shows.
