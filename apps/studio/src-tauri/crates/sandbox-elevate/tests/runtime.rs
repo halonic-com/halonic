@@ -40,7 +40,7 @@ fn sandbox_elevate_runtime_refuses_a_swapped_copy_and_deletes_the_one_in_the_fol
         .files
         .borrow_mut()
         .insert(folder().join(RUNTIME), RUNTIME_BYTES.to_vec());
-    assert_eq!(machine.run(Verb::SetUp), code::WRONG_SRT_WIN);
+    assert_eq!(machine.run(Verb::SetUp), code::WRONG_RUNTIME);
     assert!(machine.ran().is_empty());
     assert_eq!(machine.file(folder().join(RUNTIME)), None);
     assert!(!machine.written.borrow().contains(&folder().join(RUNTIME)));
@@ -54,7 +54,7 @@ fn sandbox_elevate_runtime_missing_stops_setup() {
         .files
         .borrow_mut()
         .remove(&app().join(RUNTIME_SHIPPED));
-    assert_eq!(machine.run(Verb::SetUp), code::NO_SRT_WIN);
+    assert_eq!(machine.run(Verb::SetUp), code::NO_RUNTIME);
     assert!(machine.ran().is_empty());
 }
 

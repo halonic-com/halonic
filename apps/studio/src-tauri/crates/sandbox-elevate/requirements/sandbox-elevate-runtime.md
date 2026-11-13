@@ -13,10 +13,10 @@ When the helper sets up the agent sandbox, it shall put a pinned `vcruntime140.d
   then `Program Files\Halonic Sandbox` holds `vcruntime140.dll` for Users to read and run, and the app folder holds none under that name.
 - Given a runtime that someone swapped,
   when the helper runs `setup`,
-  then it exits 33, writes none of it, deletes an earlier copy and runs nothing.
+  then it exits 40, writes none of it, deletes an earlier copy and runs nothing.
 - Given no runtime next to the helper,
   when it runs `setup`,
-  then it exits 32 and runs nothing.
+  then it exits 39 and runs nothing.
 - Given a sandbox set up before the runtime was shipped,
   when Installed apps runs the copy's `remove`,
   then the sandbox is removed.

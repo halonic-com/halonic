@@ -104,9 +104,11 @@ verifies("sandbox-srt.setup", () => {
     });
 
     it("words every code it knows, and an unknown one by what was being done", () => {
-      for (const code of [12, 13, 14, 17, 30, 31, 32, 33, 34, 35, 36, 38]) {
+      for (const code of [12, 13, 14, 17, 30, 31, 32, 33, 34, 35, 36, 38, 39, 40]) {
         expect(helperFailure("setup", code, "")).toMatch(/^[A-Za-z].*[a-z]$/);
       }
+      expect(helperFailure("setup", 39, "")).toContain("runtime for the sandbox is missing");
+      expect(helperFailure("setup", 40, "")).toContain("has been changed");
       expect(helperFailure("setup", 1, "")).toBe("the sandbox setup stopped with an error");
       expect(helperFailure("remove", 99, "")).toBe("the sandbox removal stopped with an error");
     });
