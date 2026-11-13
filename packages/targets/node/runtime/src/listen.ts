@@ -50,7 +50,7 @@ export interface Listening {
   readonly host: string;
   /** The port it listens on. */
   readonly port: number;
-  /** Stops listening and waits for open connections to end. */
+  /** Stops listening and ends open connections. */
   close(): Promise<void>;
 }
 
@@ -88,27 +88,33 @@ export async function listenOnNode(options: ListenOptions): Promise<Listening> {
   });
   await new Promise<void>((resolve, reject) => {
     http.once("error", reject);
-    http.listen(options.port, options.network ? "0.0.0.0" : "127.0.0.1", resolve);
+    http.listen(options.port, options.network ? "0.0.0.0" : "127.0.0.1", () => {
+      http.off("error", reject);
+      resolve();
+    });
   });
-  const address = http.address();
-  if (address === null || typeof address === "string") {
-    throw new Error("The HTTP listener has no port.");
+  const close = () =>
+    new Promise<void>((resolve, reject) => {
+      http.close((error) => (error === undefined ? resolve() : reject(error)));
+      http.closeAllConnections();
+    });
+  try {
+    const address = http.address();
+    if (address === null || typeof address === "string") {
+      throw new Error("The HTTP listener has no port.");
+    }
+    const allowedHosts = [`localhost:${address.port}`];
+    if (lanAddress !== undefined) {
+      allowedHosts.push(`${lanAddress}:${address.port}`);
+    }
+    server = options.createServer(allowedHosts);
+    if (lanAddress !== undefined) {
+      options.report(`Open on your phone: http://${lanAddress}:${address.port}`);
+    }
+    return { host: address.address, port: address.port, close };
+  } catch (error) {
+    // Don't leave the port bound, on every address in network mode, with no one to close it.
+    await close();
+    throw error;
   }
-  const allowedHosts = [`localhost:${address.port}`];
-  if (lanAddress !== undefined) {
-    allowedHosts.push(`${lanAddress}:${address.port}`);
-  }
-  server = options.createServer(allowedHosts);
-  if (lanAddress !== undefined) {
-    options.report(`Open on your phone: http://${lanAddress}:${address.port}`);
-  }
-  return {
-    host: address.address,
-    port: address.port,
-    close: () =>
-      new Promise<void>((resolve, reject) => {
-        http.close((error) => (error === undefined ? resolve() : reject(error)));
-        http.closeAllConnections();
-      }),
-  };
 }

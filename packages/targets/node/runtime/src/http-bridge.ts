@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import type { ReadableStream as WebReadableStream } from "node:stream/web";
 import type { Server } from "@halonicjs/host-server";
 
@@ -36,7 +37,8 @@ export async function answerRequest(
     outgoing.end();
     return;
   }
-  Readable.fromWeb(response.body as WebReadableStream).pipe(outgoing);
+  // `pipeline`, not `pipe`: a body that fails partway must reach the caller, not crash the process.
+  await pipeline(Readable.fromWeb(response.body as WebReadableStream), outgoing);
 }
 
 function toHeaders(incoming: IncomingMessage): Headers {

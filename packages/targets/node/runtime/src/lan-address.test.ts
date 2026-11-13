@@ -33,6 +33,16 @@ describe("findLanAddress", () => {
     ).toBe("192.168.1.20");
   });
 
+  it("skips container and virtual-machine bridges, which sort before eth0", () => {
+    expect(
+      findLanAddress({
+        docker0: [ipv4("172.17.0.1", false)],
+        "br-1a2b3c": [ipv4("172.18.0.1", false)],
+        eth0: [ipv4("192.168.1.20", false)],
+      }),
+    ).toBe("192.168.1.20");
+  });
+
   it("answers undefined when there is none", () => {
     expect(findLanAddress({ lo: [ipv4("127.0.0.1", true)], down: undefined })).toBeUndefined();
   });

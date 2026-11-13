@@ -2,7 +2,7 @@ import { type IncomingHttpHeaders, request } from "node:http";
 import { connect } from "node:net";
 import type { RequestContext, Server } from "@halonicjs/host-server";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   type Listening,
   listenOnNode,
@@ -72,6 +72,7 @@ function send(
       (incoming) => {
         const chunks: Buffer[] = [];
         incoming.on("data", (chunk: Buffer) => chunks.push(chunk));
+        incoming.on("error", reject);
         incoming.on("end", () =>
           resolve({
             status: incoming.statusCode ?? 0,
@@ -207,6 +208,52 @@ verifies("node-runtime.listen", () => {
       });
       expect(status).toBe("HTTP/1.1 400 Bad Request");
       expect(seen).toEqual([]);
+    });
+
+    it("logs a body that fails partway and keeps serving", async () => {
+      const errors: unknown[] = [];
+      let failing = true;
+      const { listening } = await listen({
+        createServer: () => ({
+          handle: async () => {
+            if (!failing) {
+              return new Response("ok");
+            }
+            return new Response(
+              new ReadableStream({
+                start(controller) {
+                  controller.enqueue(new TextEncoder().encode("partial"));
+                  setTimeout(() => controller.error(new Error("body broke")), 20);
+                },
+              }),
+            );
+          },
+        }),
+        logError: (error) => errors.push(error),
+      });
+      await send(listening.port, { headers: { host: "localhost" } }).catch(() => undefined);
+      await vi.waitFor(() => expect(errors).toHaveLength(1));
+      failing = false;
+      const answer = await send(listening.port, { headers: { host: "localhost" } });
+      expect(answer).toMatchObject({ status: 200, body: "ok" });
+    });
+
+    it("closes the port and rethrows when building the server fails", async () => {
+      let port = 0;
+      await expect(
+        listenOnNode({
+          createServer: (allowedHosts) => {
+            port = Number(allowedHosts[0]?.split(":")[1]);
+            throw new Error("no server");
+          },
+          port: 0,
+          network: false,
+          passwordIsSet: true,
+          report: () => undefined,
+          logError: () => undefined,
+        }),
+      ).rejects.toThrow("no server");
+      await expect(send(port, {})).rejects.toThrow();
     });
 
     it("answers an empty 500 and logs the cause when the handler throws", async () => {
