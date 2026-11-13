@@ -9,7 +9,7 @@
 #      state is signature-mismatch and 0.1.1 stays installed.
 #   3. A 0.1.2 whose download fails changes nothing either.
 #   4. A 0.1.2 that doesn't start (built without its agent host) never
-#      proves it starts, so after 60 s the installer kept for 0.1.1 puts
+#      proves it starts, so after 180 s the installer kept for 0.1.1 puts
 #      0.1.1 back, which then reports that 0.1.2 didn't install.
 # The updater is driven through the Studio page's own update_* commands
 # (update-driver.mjs), so the test takes the path a person takes.
@@ -183,7 +183,7 @@ try {
   Invoke-Driver call update_restart
   Wait-Until { (Get-InstalledVersion) -eq '0.1.2' } 120 '0.1.2 installing'
   try {
-    Wait-Until { (Get-InstalledVersion) -eq '0.1.1' -and (Get-Process Halonic -ErrorAction SilentlyContinue) } 240 'going back to 0.1.1'
+    Wait-Until { (Get-InstalledVersion) -eq '0.1.1' -and (Get-Process Halonic -ErrorAction SilentlyContinue) } 420 'going back to 0.1.1'
   } catch {
     # Say where the way back stopped: which installer ran, what started, what the log says.
     Write-Output "installed: $(Get-InstalledVersion)"
