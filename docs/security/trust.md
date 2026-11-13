@@ -66,6 +66,15 @@ untrusted or changed workspace with exit 3 and write the check and the fingerpri
 can only reach the test model needs no trust. `halonic validate` starts
 nothing, so it doesn't check.
 
+The host's server (`packages/host/server`, behind `halonic serve` and the
+cloud Worker) checks trust on every request that starts a run, which are
+`POST /api/runs` and `POST /api/agent-runs` (requirement `server.trust-gate`). It
+answers 403 with the code `workspace_not_trusted` for a workspace that isn't
+trusted or changed since, and 500 when the check itself fails; in both cases
+nothing starts. Unlike the CLI, it makes no exception for a run that can only
+reach the test model. `GET /api/trust` only shows the decision. No route of the
+server grants trust: you do that on the computer, with `halonic trust`.
+
 ## What Studio asks for
 
 Studio doesn't show this check. Its shell asks "Trust this folder?" before it

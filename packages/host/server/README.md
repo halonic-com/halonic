@@ -1,10 +1,23 @@
 # @halonicjs/host-server
 
-The `Request → Response` handler behind `halonic serve` and the cloud Worker. `createServer` builds the handler with its security layer: the `Host` check (loopback names only when no password is set), the exact `Origin` check, strict response headers, a body limit enforced while the body streams, and errors that are a code and a short message. `GET /api/hello` and the sign-in routes answer; every other path answers 404 for now. Web-standard APIs only, with every outside dependency behind a port.
+The `Request → Response` handler behind `halonic serve` and the cloud Worker. `createServer` builds the handler with its security layer: the `Host` check (loopback names only when no password is set), the exact `Origin` check, strict response headers, a body limit enforced while the body streams, and errors that are a code and a short message. `GET /api/hello`, the sign-in routes, `GET /api/trust` and the two routes that start a run answer; every other path answers 404 for now. Web-standard APIs only, with every outside dependency behind a port.
 
 - **Layer:** host
 - **Owner:** elena
 - **Public API:** `@halonicjs/host-server`
+
+## Starting a run needs a trusted workspace
+
+The server asks the host's trust gate before it starts any run, on every request. It keeps no answer from before, so a workspace that changed since you trusted it starts nothing.
+
+- `POST /api/runs` starts a workflow and `POST /api/agent-runs` starts one agent. Both need a sign-in when a password is set.
+- When the workspace isn't trusted (new, changed since it was trusted, unreadable or refused), both answer **403** with the code `workspace_not_trusted` and start nothing.
+- When the trust check itself fails, both answer **500** with the code `internal_error` and start nothing. A failed check counts as no trust.
+- A run on the test model isn't exempt. The CLI skips the trust check for a workspace that can only reach the test model; the server doesn't.
+- A malformed start request gets 400 before the gate is asked.
+- `GET /api/trust` shows the decision, read-only: its state and a short message, behind the sign-in. No route grants trust, saves a record or updates one. Only a person at the computer grants trust, with `halonic trust`.
+
+The rule is the requirement `server.trust-gate`.
 
 ## Daily request ceiling
 

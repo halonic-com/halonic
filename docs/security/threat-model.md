@@ -587,13 +587,21 @@ The DNS leak is what keeps native srt experimental.
 ## 5. `serve` (B6)
 
 `halonic serve` is not built yet (phase 4, plan HAL-9). This section is the
-design the code will be held to. Nothing here works today.
+design the code will be held to. Only what is marked **On `main`** works today.
 
 - **A `serve` on a non-loopback address is public.** Every rule below applies.
 - Threats: DNS rebinding and a wrong `Host`, no sign-in, password guessing in
   parallel, a stolen session, cross-site requests, script injection,
   oversized bodies, error text that leaks, unsigned webhooks that start runs,
   and cost abuse.
+- **On `main`:** the server's trust gate. `POST /api/runs` and
+  `POST /api/agent-runs` ask the host's trust check on every request, and
+  answer 403 (`workspace_not_trusted`) for a workspace that isn't trusted, or
+  500 when the check fails, and start nothing. A run on the test model isn't
+  exempt. `GET /api/trust` is read-only and no route grants trust, so a page,
+  an app or a script that reaches the server can't start a workspace's programs
+  or trust the workspace itself (`server.trust-gate`; see
+  [workspace trust](trust.md#where-trust-is-checked)).
 - Planned mitigations (all **Planned**, phase 4): a host allow-list; required
   sign-in on public shapes, with the server refusing to run without a password
   hash; scrypt password hashing and a shared, atomic login limiter; session
