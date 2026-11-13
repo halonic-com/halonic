@@ -38,7 +38,7 @@ function reviewedTool(
     changes: [],
     leftOutArguments: [],
     ...rest,
-  } as ReviewedTool;
+  };
 }
 
 describe("listedToolsSnapshot", () => {
@@ -61,6 +61,22 @@ describe("listedToolsSnapshot", () => {
         { name: "title", type: "string", description: "The note's title" },
       ]);
       expect(snapshot.hasApprovals).toBe(true);
+    });
+
+    it("carries a change made only of invisible characters as hidden: format", () => {
+      const changes = [
+        {
+          path: "description",
+          before: "Finds a note.",
+          after: "Finds a\u200B note.",
+          hidden: "format",
+        },
+      ] as const;
+      const snapshot = listedToolsSnapshot("Notes", {
+        ...emptyReview,
+        toReview: [reviewedTool({ changes })],
+      });
+      expect(snapshot.toReview[0]?.differences[0]?.hidden).toBe("format");
     });
 
     it("gives a never-approved tool no differences and no approvals", () => {

@@ -66,6 +66,7 @@ export const listedToolsWords = {
   hidden: {
     lookalike: "Looks the same, but a letter was swapped for one from another alphabet.",
     normalization: "Looks the same, but its characters are written another way.",
+    format: "Looks the same, but invisible characters were added or removed.",
     whitespace: "Only spaces or line breaks changed.",
     format: "Looks the same, but it has characters you can't see.",
   },
