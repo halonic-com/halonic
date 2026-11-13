@@ -1,4 +1,5 @@
 import { fenceUntrusted } from "@halonicjs/app";
+import type { ConnectorTool } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import {
@@ -13,6 +14,7 @@ import {
   halonicTool,
   MemoryTurnLog,
   runTestTurn,
+  type TestTurn,
 } from "./turn-test-kit.test-helper.ts";
 
 verifies("engine.turn-refusals-as-data", () => {
@@ -193,5 +195,77 @@ verifies("engine.turn-logs-risk", () => {
     for (const result of results) {
       expect(result).not.toHaveProperty("risk");
     }
+  });
+});
+
+verifies("engine.turn-declared-tools", () => {
+  const email = { one: "email", many: "emails" };
+
+  async function loggedResult(listed: ConnectorTool, declaredTools?: TestTurn["declaredTools"]) {
+    const log = new MemoryTurnLog();
+    await runTestTurn({
+      answers: [callAnswer(call("c1", listed.name)), textAnswer("Done")],
+      connectors: [new ScriptedConnector("mail", [listed])],
+      ...(declaredTools === undefined ? {} : { declaredTools }),
+      log,
+    });
+    return log.events.find((event) => event.type === "tool.result");
+  }
+
+  it("copies a declared noun and risk, and leaves the verb out when the sheet has none", async () => {
+    const result = await loggedResult(listedTool("send_email"), {
+      mail: { send_email: { risk: "send", noun: email } },
+    });
+
+    expect(result).toMatchObject({ risk: "send", noun: email });
+    expect(result).not.toHaveProperty("verb");
+  });
+
+  it("copies a declared verb", async () => {
+    const result = await loggedResult(listedTool("save_file"), {
+      mail: { save_file: { risk: "write", noun: { one: "file", many: "files" }, verb: "saved" } },
+    });
+
+    expect(result).toMatchObject({ noun: { one: "file", many: "files" }, verb: "saved" });
+  });
+
+  it("takes no noun or verb from what a server lists", async () => {
+    const hostile = { ...listedTool("send_email"), risk: "send", noun: email, verb: "saved" };
+    const without = await loggedResult(hostile as ConnectorTool);
+    const declaredOnlyRisk = await loggedResult(hostile as ConnectorTool, {
+      mail: { send_email: { risk: "send" } },
+    });
+
+    for (const result of [without, declaredOnlyRisk]) {
+      expect(result).not.toHaveProperty("noun");
+      expect(result).not.toHaveProperty("verb");
+    }
+  });
+
+  it("leaves a tool the sheet doesn't declare as it is without a sheet", async () => {
+    const result = await loggedResult(listedTool("lookup"), {
+      mail: { send_email: { risk: "send", noun: email } },
+    });
+
+    expect(result).not.toHaveProperty("noun");
+    expect(result).not.toHaveProperty("risk");
+  });
+
+  it("keeps a connector's declarations from reaching another connector's tool", async () => {
+    const result = await loggedResult(listedTool("send_email"), {
+      drive: { send_email: { risk: "send", noun: email } },
+    });
+
+    expect(result).not.toHaveProperty("noun");
+  });
+
+  it("doesn't offer a tool only the sheet declares", async () => {
+    const { model } = await runTestTurn({
+      answers: [textAnswer("Hello")],
+      connectors: [new ScriptedConnector("mail", [listedTool("lookup")])],
+      declaredTools: { mail: { delete_all: { risk: "write" } } },
+    });
+
+    expect(model.requests[0]?.tools?.map((tool) => tool.name)).toEqual(["lookup"]);
   });
 });

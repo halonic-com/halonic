@@ -1,3 +1,4 @@
+import type { ToolNoun, ToolVerb } from "@halonicjs/events";
 import type { ChatMessage, ChatTurnRefusal, ToolCall, ToolRisk } from "@halonicjs/ports";
 import type { CallChecker } from "./check-call-before-run.ts";
 import { passResultToModel } from "./pass-result-to-model.ts";
@@ -265,6 +266,7 @@ async function finishCall(
     result,
     outcome,
     ...riskOf(tool),
+    ...declaredOf(tool),
   });
   return toolMessage(call, passResultToModel(tool, result));
 }
@@ -298,11 +300,25 @@ interface ToolRun {
 
 /**
  * The `risk` a call's `tool.result` copies from its tool, when the tool has
- * one (requirement `engine.turn-logs-risk`). Only a server's listing says
- * it; Halonic's own tools leave it out, so readers count it as unknown.
+ * one (requirement `engine.turn-logs-risk`). Only a server's tool has it,
+ * from its listing or its sheet; Halonic's own tools leave it out, so readers
+ * count it as unknown.
  */
 function riskOf(tool: TurnTool): { risk?: ToolRisk } {
-  return tool.kind === "server" && tool.listedRisk !== undefined ? { risk: tool.listedRisk } : {};
+  return tool.kind === "server" && tool.loggedRisk !== undefined ? { risk: tool.loggedRisk } : {};
+}
+
+/**
+ * The `noun` and `verb` a call's `tool.result` copies from its tool, only
+ * when the tool's sheet gives them (requirement `engine.turn-declared-tools`).
+ * A sheet's noun without a verb is left that way: readers say "sent".
+ */
+function declaredOf(tool: TurnTool): { noun?: ToolNoun; verb?: ToolVerb } {
+  if (tool.kind !== "server") return {};
+  return {
+    ...(tool.noun === undefined ? {} : { noun: tool.noun }),
+    ...(tool.verb === undefined ? {} : { verb: tool.verb }),
+  };
 }
 
 async function runTool(

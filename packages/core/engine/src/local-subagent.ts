@@ -116,6 +116,9 @@ export async function runLocalSubagent(
     halonicTools: context.toolsOf(task.agent, task.depth, knowledge),
     connectors,
     connectorTools: lists,
+    ...(turn.definitions.declaredTools === undefined
+      ? {}
+      : { declaredTools: turn.definitions.declaredTools }),
     ...(context.effects === undefined ? {} : { effects: context.effects }),
     ...agentParamsOf(subagent),
     maxRounds: subagent?.maxSteps ?? defaultRunMaxRounds,

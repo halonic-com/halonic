@@ -5,7 +5,7 @@
 
 import type { Connector } from "@halonicjs/format";
 import type { ChatTurnRefusal, ConnectorClient, ToolDefinition, ToolRisk } from "@halonicjs/ports";
-import { offerListedTools } from "./offer-listed-tools.ts";
+import { type DeclaredTool, type DeclaredTools, offerListedTools } from "./offer-listed-tools.ts";
 import type { TurnAnswer, TurnStop } from "./turn-approval.ts";
 
 /** The source id of Halonic's own tools in refusals. */
@@ -88,8 +88,12 @@ export type TurnTool =
       readonly risk: ToolRisk;
       /** Set when it counts as `read` because the connector file's `read` list names it. */
       readonly markedRead?: true;
-      /** What calling it can do, as its listing says, only for the log; absent when the listing doesn't say. */
-      readonly listedRisk?: ToolRisk;
+      /** What calling it can do, as its listing and sheet say, only for the log; absent when neither says. */
+      readonly loggedRisk?: ToolRisk;
+      /** What one call sends or changes, from the connector's sheet only, for the log. */
+      readonly noun?: NonNullable<DeclaredTool["noun"]>;
+      /** What one call did to its noun, from the connector's sheet only, for the log. */
+      readonly verb?: NonNullable<DeclaredTool["verb"]>;
     };
 
 /** The tools of one turn and what was refused while building them. */
@@ -111,6 +115,13 @@ export interface TurnToolSources {
    * passes its kept definitions' lists; a chat passes none.
    */
   readonly connectorTools?: Readonly<Record<string, Pick<Connector["tools"], "approve" | "read">>>;
+  /**
+   * The tools the sheets bound to the connectors declare, by connector id and
+   * then by the name the server lists a tool under. The host fills it from
+   * the sheet a person bound to each source; a connector with no sheet has
+   * no entry, and its tools have no noun (requirement `engine.turn-declared-tools`).
+   */
+  readonly declaredTools?: Readonly<Record<string, DeclaredTools>>;
 }
 
 /**
@@ -127,11 +138,11 @@ export async function collectTurnTools(sources: TurnToolSources): Promise<TurnTo
     builder.add({ kind: "halonic", source: halonicSource, definition: tool.definition, tool });
   }
   for (const connector of sources.connectors) {
-    const lists = sources.connectorTools;
     await addConnectorTools(
       builder,
       connector,
-      lists !== undefined && Object.hasOwn(lists, connector.id) ? lists[connector.id] : undefined,
+      forConnector(sources.connectorTools, connector.id),
+      forConnector(sources.declaredTools, connector.id),
     );
   }
   return builder.result();
@@ -141,6 +152,7 @@ async function addConnectorTools(
   builder: ToolListBuilder,
   connector: ConnectorClient,
   lists: Pick<Connector["tools"], "approve" | "read"> | undefined,
+  declared: DeclaredTools | undefined,
 ) {
   let listed: Awaited<ReturnType<ConnectorClient["listTools"]>>;
   try {
@@ -158,6 +170,7 @@ async function addConnectorTools(
     listed,
     otherNames: builder.names(),
     ...(lists === undefined ? {} : { lists }),
+    ...(declared === undefined ? {} : { declared }),
   });
   for (const refusal of offer.refusals) {
     builder.refuse(refusal);
@@ -171,9 +184,16 @@ async function addConnectorTools(
       connector,
       risk: tool.risk,
       ...(tool.markedRead === undefined ? {} : { markedRead: tool.markedRead }),
-      ...(tool.listedRisk === undefined ? {} : { listedRisk: tool.listedRisk }),
+      ...(tool.loggedRisk === undefined ? {} : { loggedRisk: tool.loggedRisk }),
+      ...(tool.noun === undefined ? {} : { noun: tool.noun }),
+      ...(tool.verb === undefined ? {} : { verb: tool.verb }),
     });
   }
+}
+
+/** What a map by connector id holds for one connector, if anything. */
+function forConnector<T>(byConnector: Readonly<Record<string, T>> | undefined, id: string) {
+  return byConnector !== undefined && Object.hasOwn(byConnector, id) ? byConnector[id] : undefined;
 }
 
 class ToolListBuilder {
