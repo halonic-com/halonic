@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-712; google-setup-flow (HAL-621) section 6 (Phone); ux-checklists (HAL-1019) section 2.6
 
-On a phone, the Google setup view shall be read-only. It shall be a page titled "Google for x@example.com", whose first line says "Set this up on a computer. Google Cloud Console is hard to use on a phone." It shall show three rows, Account, For and Progress, then every step's title and state, and the current step shall add "Continue on a computer." It shall have no buttons and no fields: no **Edit**, **Copy**, **Done, next**, **Not now**, **Change** or **Start over**. The steps shall come from the generated steps, so their number and order follow them.
+While the device is a phone, the Google setup view shall be read-only. It shall be a page titled "Google for x@example.com", whose first line says "Set this up on a computer. Google Cloud Console is hard to use on a phone." It shall show three rows, Account, For and Progress, then every step's title and state, and the current step shall add "Continue on a computer." It shall have no buttons and no fields: no **Edit**, **Copy**, **Done, next**, **Not now**, **Change** or **Start over**. The steps shall come from the generated steps, so their number and order follow them.
 
 ## Examples
 
