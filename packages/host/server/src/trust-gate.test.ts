@@ -1,6 +1,6 @@
 import type { Coordination, RunExecutor } from "@halonicjs/ports";
-import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { typeTest, verifies } from "@halonicjs/testing-spec";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import type { Server, TrustDecision, TrustGate } from "./api.ts";
 import { FakeCoordination, FakePasswordHasher, TestClock, testServer } from "./test-server.ts";
 
@@ -74,6 +74,31 @@ describe("trust gate", () => {
       expect(agent.status).toBe(200);
       expect(await workflow.json()).toEqual({ runId: "run_1" });
       expect(started).toEqual([workflowStart, agentStart]);
+    });
+
+    it("passes a runId through, so a client retry doesn't start a second run", async () => {
+      const { server, started } = setup(new ScriptedGate([trusted]));
+      await post(server, "/api/runs", { ...workflowStart, runId: "try-1" });
+      await post(server, "/api/agent-runs", { ...agentStart, runId: "try-2" });
+      expect(started).toEqual([
+        { ...workflowStart, runId: "try-1" },
+        { ...agentStart, runId: "try-2" },
+      ]);
+    });
+
+    it("refuses a runId that isn't a short, non-empty string with 400 before the gate", async () => {
+      const gate = new ScriptedGate([trusted]);
+      const { server, started } = setup(gate);
+      for (const runId of ["", 3, null, "x".repeat(257)]) {
+        expect((await post(server, "/api/runs", { ...workflowStart, runId })).status).toBe(400);
+        expect((await post(server, "/api/agent-runs", { ...agentStart, runId })).status).toBe(400);
+      }
+      expect(gate.checks).toBe(0);
+      expect(started).toEqual([]);
+    });
+
+    typeTest("gives the server's gate port only a read method", () => {
+      expectTypeOf<keyof TrustGate>().toEqualTypeOf<"check">();
     });
 
     it.each(["new", "changed", "unreadable", "refused"] as const)(
