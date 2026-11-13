@@ -17,7 +17,7 @@ The toolbar row above the page is removed. Its parts move:
 
 ## Why
 
-The board asked for one less row above the page, with Back and Forward next to the name at top left and "Saved" in the bottom bar. The tests that name these requirements still assert the same behaviour in the new places. No test was weakened; one assertion in the workspace window test stopped saying the words "Halonic Studio" are absent, because the title bar now always shows them.
+The board asked for one less row above the page, with Back and Forward next to the name at top left and "Saved" in the bottom bar. The other tests that name these requirements still assert the same behaviour in the new places. The tests for the path were removed with the path. Back and Forward are now tested in `title-bar/history-buttons.test.tsx`, and the save note in `frame/status-bar-save-note.test.tsx`. One assertion in the workspace window test stopped saying the words "Halonic Studio" are absent, because the title bar now always shows them.
 
 ## Covers
 
@@ -31,3 +31,6 @@ The board asked for one less row above the page, with Back and Forward next to t
 - shell.studio-window
 - shell.title-bar
 - shell.toolbar
+- packages/studio/shell/src/cut-text/cut-text-tooltips.test.tsx
+- packages/studio/shell/src/toolbar/toolbar-save-note.test.tsx
+- packages/studio/shell/src/toolbar/toolbar.test.tsx
