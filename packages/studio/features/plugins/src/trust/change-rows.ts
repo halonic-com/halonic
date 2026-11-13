@@ -41,6 +41,37 @@ const hostWords = (host: unknown): string =>
 
 const riskWords = (risk: string): string => RISK_WORDS[risk as PluginToolRisk] ?? risk;
 
+const FIELD_NOUNS: Readonly<Record<string, string>> = {
+  purpose: "what it is for",
+  optional: "whether it is optional",
+  placement: "how it is sent",
+  description: "its description",
+  risk: "what it may do",
+  untrusted: "whether it reads outside text",
+  start: "how it starts",
+  args: "its arguments",
+  env: "its settings",
+  network: "where it may reach",
+  callTimeoutMs: "its time limit",
+  hosts: "where it may reach",
+};
+
+/**
+ * The row for a changed item. The state in words is shown as old → new; when both read the same,
+ * the change is in a field the words leave out, so the row names the fields core found instead.
+ */
+function changedRow<Item>(
+  what: string,
+  { before, after, fields }: { before: Item; after: Item; fields: readonly string[] },
+  words: (item: Item) => string,
+): ChangeRow {
+  const from = words(before);
+  const to = words(after);
+  if (from !== to) return { tag: "Changed", what, from, to };
+  const named = fields.map((field) => FIELD_NOUNS[field] ?? field).join(", ");
+  return { tag: "Changed", what, to: `${named} changed` };
+}
+
 /** A tool's one-line state: "Reads", "Changes things, outside text". */
 function toolState(tool: PluginToolContent): string {
   return [riskWords(tool.risk), tool.untrusted ? "outside text" : undefined]
@@ -56,12 +87,7 @@ function toolRows(changes: PluginItemChanges<PluginToolContent>): ChangeRow[] {
       what: name(tool),
       to: toolState(tool),
     })),
-    ...changes.changed.map(({ before, after }) => ({
-      tag: "Changed" as const,
-      what: name(after),
-      from: toolState(before),
-      to: toolState(after),
-    })),
+    ...changes.changed.map((change) => changedRow(name(change.after), change, toolState)),
     ...changes.removed.map((tool) => ({
       tag: "Removed" as const,
       what: name(tool),
@@ -80,12 +106,7 @@ function secretRows(changes: PluginItemChanges<PluginSecretContent>): ChangeRow[
       what: name(secret),
       to: goes(secret),
     })),
-    ...changes.changed.map(({ before, after }) => ({
-      tag: "Changed" as const,
-      what: name(after),
-      from: goes(before),
-      to: goes(after),
-    })),
+    ...changes.changed.map((change) => changedRow(name(change.after), change, goes)),
     ...changes.removed.map((secret) => ({
       tag: "Removed" as const,
       what: name(secret),
@@ -103,17 +124,17 @@ function hostRows(changes: PluginItemChanges<PluginHostContent>): ChangeRow[] {
   ];
 }
 
-/** A program's start and arguments as one line: "npx weather-mcp@1.2.3 --units metric". */
+/**
+ * A program's start and arguments as one line: "npx weather-mcp@1.2.3 --units metric" for a package,
+ * "node ./server.js" for a script.
+ */
 function programLine(program: PluginLocalToolContent): string {
-  const { start } = program;
-  const pin = start["package"] ?? start;
+  const { runner, name, version, program: script, path } = program.start;
   const head =
-    typeof pin === "object" && pin !== null
-      ? Object.values(pin as Record<string, unknown>)
-          .filter((part) => typeof part === "string")
-          .join(" ")
-      : String(pin);
-  return [head, ...program.args].join(" ");
+    typeof name === "string"
+      ? [runner, version === undefined ? name : `${name}@${version}`]
+      : [script, path];
+  return [...head, ...program.args].filter((part) => typeof part === "string").join(" ");
 }
 
 function programRows(changes: PluginItemChanges<PluginLocalToolContent>): ChangeRow[] {
@@ -124,12 +145,7 @@ function programRows(changes: PluginItemChanges<PluginLocalToolContent>): Change
       what: name(program),
       to: programLine(program),
     })),
-    ...changes.changed.map(({ before, after }) => ({
-      tag: "Changed" as const,
-      what: name(after),
-      from: programLine(before),
-      to: programLine(after),
-    })),
+    ...changes.changed.map((change) => changedRow(name(change.after), change, programLine)),
     ...changes.removed.map((program) => ({
       tag: "Removed" as const,
       what: name(program),
@@ -171,8 +187,20 @@ function unchangedOf(manifest: Plugin, changes: Extract<PluginTrustChanges, { re
   ];
 }
 
+/** Whether a section row already says the change in a manifest's `backend` or `localTools` part. */
+function partHasRow(field: string, changes: Extract<PluginTrustChanges, { readable: true }>) {
+  if (field !== "backend" && field !== "localTools") return false;
+  const lists = [changes.tools, changes.secrets, changes.hosts, changes.localTools];
+  return lists.some((list) =>
+    [...list.added, ...list.removed, ...list.changed.map(({ after }) => after)].some((item) => {
+      const part = "part" in item ? item.part : "local:";
+      return (field === "backend") === (part === "backend");
+    }),
+  );
+}
+
 /** The manifest fields the rows above already say, in their own words. */
-const COVERED_FIELDS = new Set(["id", "version", "sdk", "name", "backend", "localTools"]);
+const COVERED_FIELDS = new Set(["id", "version", "sdk", "name"]);
 
 const FIELD_WORDS: Readonly<Record<string, string>> = {
   id: "Plugin id",
@@ -207,7 +235,7 @@ export function changeSummary(manifest: Plugin, changes: PluginTrustChanges): Pl
     ...changes.files.changed.map((path) => ({ tag: "Changed" as const, what: `File ${path}` })),
     ...changes.files.removed.map((path) => ({ tag: "Removed" as const, what: `File ${path}` })),
     ...changes.manifest
-      .filter((field) => !COVERED_FIELDS.has(field))
+      .filter((field) => !COVERED_FIELDS.has(field) && !partHasRow(field, changes))
       .map((field) => ({ tag: "Changed" as const, what: `Manifest ${field}` })),
   ];
   return { readable: true, rows, unchanged: unchangedOf(manifest, changes) };

@@ -1,4 +1,3 @@
-import type { PluginTrustChanges } from "@halonicjs/app";
 import type { Plugin } from "@halonicjs/format";
 import { useState } from "react";
 import { changeSummary } from "../trust/change-rows.ts";
@@ -44,13 +43,13 @@ export function ReviewPluginDialog({ plugin, manifest, trust, onClose }: ReviewP
     setBusy(false);
   }
 
-  const changed = plugin.status === "changed" && plugin.changes !== undefined;
+  const changes = plugin.status === "changed" ? plugin.changes : undefined;
   return (
     <PluginTrustDialog
       manifest={manifest}
       origin={plugin.origin}
-      reason={changed ? "changed" : "review"}
-      changes={changed ? changeSummary(manifest, plugin.changes as PluginTrustChanges) : undefined}
+      reason={changes !== undefined ? "changed" : "review"}
+      changes={changes !== undefined ? changeSummary(manifest, changes) : undefined}
       trustedOn={trustedDay(plugin.trustedAt, new Date())}
       busy={busy}
       failure={failure}

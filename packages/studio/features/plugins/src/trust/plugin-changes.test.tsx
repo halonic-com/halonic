@@ -99,10 +99,33 @@ verifies("plugins.plugin-changes", () => {
   it("has Not now focused and Trust again and turn on trusts the plugin", async () => {
     const asked: string[] = [];
     const view = open(current, changesFrom(trusted, current), async (id) => void asked.push(id));
-    expect(button("Not now")).toBeDefined();
+    expect(document.activeElement).toBe(button("Not now"));
     await act(async () => button("Trust again and turn on")?.click());
     expect(asked).toEqual(["weather"]);
     expect(view.closed()).toBe(1);
+  });
+
+  it("names the field when a secret's only change is how it is sent", () => {
+    const secret = (placement: string) =>
+      manifestOf(
+        `${head}${forecast}  secrets: { token: { purpose: Signs in., hosts: [api.example.com], ${placement} } }\n`,
+      );
+    const summary = changeSummary(
+      secret("as: header, header: x-api-key"),
+      changesFrom(secret("as: bearer"), secret("as: header, header: x-api-key")),
+    );
+    expect(summary.rows).toContainEqual({
+      tag: "Changed",
+      what: "Secret token",
+      to: "how it is sent changed",
+    });
+  });
+
+  it("keeps the manifest backend row when only the backend entry changed", () => {
+    const entry = (file: string) =>
+      manifestOf(`${head.replace("backend:\n", `backend:\n  entry: ${file}\n`)}${forecast}`);
+    const summary = changeSummary(entry("b.js"), changesFrom(entry("a.js"), entry("b.js")));
+    expect(summary.rows.map((row) => row.what)).toContain("Manifest backend");
   });
 
   it("only says something changed when the record can't be compared", () => {
