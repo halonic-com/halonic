@@ -21,6 +21,7 @@ verifies("server.api", () => {
   typeTest("takes every outside dependency as a port", () => {
     expectTypeOf<keyof ServerPorts>().toEqualTypeOf<
       | "runs"
+      | "trust"
       | "secrets"
       | "passwordHasher"
       | "coordination"

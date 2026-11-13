@@ -1,5 +1,19 @@
-import type { Clock, Coordination, PasswordHasher, Secrets, WindowCount } from "@halonicjs/ports";
-import type { ErrorLog, RequestCountStore, Server, ServerConfig, ServerPorts } from "./api.ts";
+import type {
+  Clock,
+  Coordination,
+  PasswordHasher,
+  RunExecutor,
+  Secrets,
+  WindowCount,
+} from "@halonicjs/ports";
+import type {
+  ErrorLog,
+  RequestCountStore,
+  Server,
+  ServerConfig,
+  ServerPorts,
+  TrustGate,
+} from "./api.ts";
 import { createServer } from "./create-server.ts";
 
 /** A port the test doesn't expect the server to touch: any call fails the test loudly. */
@@ -80,10 +94,13 @@ export function testServer(options: {
   passwordHasher?: PasswordHasher;
   coordination?: Coordination;
   requestCounts?: RequestCountStore;
+  runs?: RunExecutor;
+  trust?: TrustGate;
 }): Server {
   const clock = options.clock ?? new TestClock();
   const ports: ServerPorts = {
-    runs: unusedPort("runs"),
+    runs: options.runs ?? unusedPort("runs"),
+    trust: options.trust ?? unusedPort("trust"),
     secrets: options.secrets ?? {
       get: async (name) => (name === "serve-password" ? options.passwordHash : null),
     },

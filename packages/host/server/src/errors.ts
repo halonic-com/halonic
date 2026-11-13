@@ -30,6 +30,11 @@ export const serverErrors = {
     code: "daily_limit_reached",
     message: "This server has reached its daily request limit. Try again after midnight UTC.",
   },
+  workspaceNotTrusted: {
+    status: 403,
+    code: "workspace_not_trusted",
+    message: "This workspace isn't trusted. Trust it on the computer that runs Halonic first.",
+  },
   notFound: { status: 404, code: "not_found", message: "There is nothing at this address." },
   internal: {
     status: 500,
