@@ -8,7 +8,6 @@
 // it (Liam, HAL-4349).
 
 import { nodeProgramStarter } from "@halonicjs/adapter-mcp";
-import { MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import type { HttpClient, TrustGrant } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
@@ -16,7 +15,7 @@ import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import { closeAfterStop, stoppedCloseLimitMs } from "./close-after-stop.ts";
 import type { CommandContext } from "./command.ts";
-import { cliConnectorFactories, connectorHttpClient } from "./connector-machine.ts";
+import { cliConnectorFactories, nodeConnectorMachine } from "./connector-machine.ts";
 import { checkHarnessOverride } from "./harness-override.ts";
 import {
   type EngineErrorSource,
@@ -26,10 +25,12 @@ import {
   type RoutineEngine,
   type RoutineTicks,
 } from "./local-engine-host.ts";
+import { computerIntegrationMachine } from "./local-integration-machine.ts";
 import type { LocalRunConnectorsInput } from "./local-run-connectors.ts";
 import type { Message } from "./messages/define.ts";
 import type { Phrase } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
+import { openLocalIntegration } from "./open-local-integration.ts";
 import { printable } from "./output/printable.ts";
 import { checkRunSandbox, type SandboxGateRun, type UnsandboxedAgent } from "./sandbox-gate.ts";
 import {
@@ -70,7 +71,10 @@ export interface WorkspaceEngineSetup {
    * command's trust check: this computer's programs, `PATH` and network by
    * default.
    */
-  readonly runConnectors?: (trust: TrustGrant | null) => LocalRunConnectorsInput;
+  readonly runConnectors?: (
+    trust: TrustGrant | null,
+    target: Pick<WorkspaceEngineTarget, "dir" | "workspace">,
+  ) => LocalRunConnectorsInput;
 }
 
 /** The workspace the engine is opened for, and the runs it starts or moves on. */
@@ -177,7 +181,8 @@ export async function openWorkspaceEngine(
     ...(target.versions === undefined ? {} : { versions: target.versions }),
     workspaceRoot: target.dir.root,
     runConnectors: (
-      setup.runConnectors ?? ((trust) => computerRunConnectors(trust, setup.profile))
+      setup.runConnectors ??
+      ((trust) => computerRunConnectors(trust, target, setup.profile))
     )(target.trust),
     secrets: context.secrets,
     http: setup.http,
@@ -244,21 +249,34 @@ export async function checkEngineRuns(
   return [...unsandboxed.values()];
 }
 
-/** This computer's connector programs, `PATH` and network, for {@link WorkspaceEngineSetup.runConnectors}. */
+/**
+ * This computer's connector programs, `PATH` and network, for
+ * {@link WorkspaceEngineSetup.runConnectors}. A local integration starts in
+ * the runner, behind the trust check and the start gate.
+ */
 function computerRunConnectors(
   trust: TrustGrant | null,
+  target: Pick<WorkspaceEngineTarget, "dir" | "workspace">,
   environment: ProfileEnvironment = nodeProfileEnvironment(),
 ): LocalRunConnectorsInput {
   const profile = profileFolder(environment);
+  const machine = nodeConnectorMachine();
+  const integrations = computerIntegrationMachine({ ...target, trust: machine, environment });
   return {
     trust,
     // Workspace programs start in a sandbox session where the sandbox works (D45).
-    factories: cliConnectorFactories(nodeProgramStarter, process.env, {
-      sandbox: new SrtSandbox(undefined, undefined, privateJournalFolder(profile)),
-      deniedPaths: [profile.root],
-    }),
+    factories: cliConnectorFactories(
+      nodeProgramStarter,
+      process.env,
+      {
+        sandbox: new SrtSandbox(undefined, undefined, privateJournalFolder(profile)),
+        deniedPaths: [profile.root],
+      },
+      openLocalIntegration(integrations),
+    ),
     // The CLI connects no built-in Google connector yet, the only kind that reads sign-ins.
-    context: { http: connectorHttpClient(), tokens: new MemoryTokenStore() },
+    context: { http: machine.http, tokens: machine.tokens },
+    dispose: () => integrations.dispose(),
   };
 }
 
