@@ -8,6 +8,11 @@ import type {
 } from "@halonicjs/ports";
 import { type LocalToolPlace, localToolLaunch, type StdioConfig } from "./local-tool-launch.ts";
 import { profileDifferences } from "./profile-check.ts";
+import {
+  refuseAgentFolderStart,
+  type WorkspaceConnectorSetting,
+  workspaceStartFolder,
+} from "./workspace-connector-place.ts";
 
 /** What the connector checks its launch against. */
 export interface LaunchChecks {
@@ -17,6 +22,12 @@ export interface LaunchChecks {
   readonly place: LocalToolPlace;
   readonly session: SandboxSession;
   readonly context: Pick<ConnectorFactoryContext, "secrets" | "http">;
+  /**
+   * Set for a workspace's own connector, which starts in the workspace and
+   * is checked against the agents' working folders. Absent for a plugin's
+   * local tool, which starts in its working folder.
+   */
+  readonly workspace?: WorkspaceConnectorSetting;
 }
 
 /**
@@ -33,9 +44,9 @@ export interface LaunchChecks {
  * @throws when a check fails
  */
 export async function planLaunch(checks: LaunchChecks): Promise<SandboxCommand> {
-  const { config, stdio, place, session, context } = checks;
+  const { config, stdio, place, session, context, workspace } = checks;
   const id = config.id;
-  if (stdio.cwd !== undefined) {
+  if (workspace === undefined && stdio.cwd !== undefined) {
     throw new Error(
       `Connector "${id}" names a folder to start in, but a local tool starts in the working folder Halonic chose for it.`,
     );
@@ -45,6 +56,12 @@ export async function planLaunch(checks: LaunchChecks): Promise<SandboxCommand> 
     throw new Error(
       `Connector "${id}" names variables to take from your environment, but a local tool in a sandbox gets none of them. Set them under env or secretEnv instead.`,
     );
+  }
+  // Before the registry lookup and the secrets, so a refused start reads and looks up nothing.
+  let startFolder: string | undefined;
+  if (workspace !== undefined) {
+    startFolder = workspaceStartFolder(stdio, workspace);
+    await refuseAgentFolderStart(stdio, startFolder, workspace);
   }
   const pin = await checkPinnedLaunch(stdio, config.secretEnv, context.http);
   if (!pin.ok) throw new Error(`Halonic didn't start the connector "${id}": ${pin.error}.`);
@@ -56,7 +73,10 @@ export async function planLaunch(checks: LaunchChecks): Promise<SandboxCommand> 
       `Connector "${id}" didn't start: its sandbox session's profile isn't the one Halonic built for it (${differences.join(", ")}).`,
     );
   }
-  return expected.command;
+  // Where a program starts when it isn't the working folder: a script in the workspace.
+  return startFolder === undefined || startFolder === place.workingFolder
+    ? expected.command
+    : { ...expected.command, cwd: startFolder };
 }
 
 /**

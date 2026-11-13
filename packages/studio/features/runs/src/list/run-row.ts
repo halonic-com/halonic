@@ -128,7 +128,7 @@ export function runRow(run: SourcedRun, context: RowContext): RunRow {
  * routine's run on a clock says the routine's schedule, with its name in the
  * tooltip. `spoken` is what the row's sentence says after "Started by".
  */
-function startedBy(
+export function startedBy(
   run: SourcedRun,
   routine: RunRoutine | undefined,
 ): { readonly words: string; readonly spoken: string; readonly tooltip: string | undefined } {
@@ -244,7 +244,7 @@ function withCost(first: string, summary: RunSummary, currency: string): string 
  * price after it; only those calls when none had a price; nothing at all for
  * a run on the test model, a local model or a subscription, never "€0.00".
  */
-function costParts(summary: RunSummary, currency: string): string[] {
+export function costParts(summary: RunSummary, currency: string): string[] {
   if (summary.cost > 0) {
     const estimated = costWords.estimated(moneyAmount(summary.cost, currency));
     return summary.unpricedCalls > 0

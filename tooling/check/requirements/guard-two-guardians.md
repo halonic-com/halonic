@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1337
 
-If a pull request changes, adds or deletes a trust root of the guard, that is `tooling/check/approvers.json`, `.gitattributes`, `tooling/check/policy.json` outside `extraExports`, `.github/workflows/guard-notes.yml`, `tooling/check/src/guard/`, the two guard commands or the `lib/` helpers they import, then the note check shall fail it unless its decision note carries `- Signature:` lines from two different keys that the base branch's `tooling/check/approvers.json` lists as `guardians`, or from every guardian if the base lists fewer than two.
+If a pull request changes, adds or deletes a trust root of the guard, that is `tooling/check/approvers.json`, `.gitattributes`, `tooling/check/policy.json` outside `extraExports`, `.github/workflows/guard-notes.yml`, `tooling/check/src/guard/`, `tooling/check/package.json`, the two guard commands or the `lib/` helpers they import, then the note check shall fail it unless its decision note carries `- Signature:` lines from two different keys that the base branch's `tooling/check/approvers.json` lists as `guardians`, or from every guardian if the base lists fewer than two.
 
 ## Examples
 
@@ -20,6 +20,12 @@ If a pull request changes, adds or deletes a trust root of the guard, that is `t
 - Given the signatures replayed on another pull request, or a note edited after the first signature,
   when the note check runs,
   then it fails.
+- Given a change to `tooling/check/package.json`, such as a swap of the TypeScript parser the requirement guard loads, and an `internal` note signed by the CTO,
+  when the note check runs,
+  then it fails, because the Kind must be user-visible with two guardians' signatures.
+- Given a guard command that imports a package other than `node:` built-ins and that parser,
+  when the test suite runs,
+  then it fails, so a new package can't enter the guard unlisted.
 - Given a base branch that lists one guardian, and that guardian's signature,
   when the note check runs,
   then it passes, which is how the second guardian is added.

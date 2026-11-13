@@ -20,6 +20,12 @@ export const sandboxSetupMessages = defineMessages("sandboxSetup", {
     phrase`Set up the agent sandbox? Windows asks for administrator rights once.`,
   removeQuestion: () =>
     phrase`Remove the agent sandbox? Agents set to run in a sandbox won't start until you set it up again. Windows asks for administrator rights once.`,
+  /** Before the remove question, when another program may use the sandbox and srt names no folder. */
+  otherUse: () =>
+    phrase`Another program on this computer may also use this sandbox, and removing it stops that program's sandbox from working too.`,
+  /** The same, naming the folders srt keeps write access to: `folders` is already worded ("A and B", "A, B and 2 more"). */
+  otherUseFolders: (folders: string) =>
+    phrase`Another program on this computer may also use this sandbox (for ${folders}), and removing it stops that program's sandbox from working too.`,
   setupNoTerminal: () =>
     phrase`Setting up the sandbox asks Windows for administrator rights, and there's no terminal to ask you first.`,
   removeNoTerminal: () =>

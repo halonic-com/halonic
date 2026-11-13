@@ -95,6 +95,22 @@ fn update_state_install_that_did_not_happen_counts_once_per_try() {
 }
 
 #[test]
+fn update_state_proving_a_start_keeps_the_count_of_an_install_that_did_not_happen() {
+    let mut record = UpdaterRecord::default();
+    record.before_install("0.1.2", "0.1.1");
+    record.after_start(&version("0.1.1"));
+    record.after_proved(&version("0.1.1"));
+    assert_eq!(
+        record.install.as_ref().map(|install| install.failures),
+        Some(1)
+    );
+    // The version that did install clears its record.
+    record.before_install("0.1.2", "0.1.1");
+    record.after_proved(&version("0.1.2"));
+    assert_eq!(record.install, None);
+}
+
+#[test]
 fn update_state_install_record_clears_on_a_newer_version_installed_by_hand() {
     let mut record = UpdaterRecord::default();
     record.before_install("0.1.1", "0.1.0");

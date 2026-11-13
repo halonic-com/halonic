@@ -294,8 +294,8 @@ signed `internal` note is enough, unless the change reaches a trust root
 **Two guardians for the trust roots.** A change to the guard's trust roots needs
 two `- Signature:` lines from two different guardians, one under the other in
 the header, both over the same text above. The trust roots are
-`tooling/check/approvers.json`, `.gitattributes`, `tooling/check/policy.json`
-outside `extraExports`, `.github/workflows/guard-notes.yml`,
+`tooling/check/approvers.json`, `tooling/check/package.json`, `.gitattributes`,
+`tooling/check/policy.json` outside `extraExports`, `.github/workflows/guard-notes.yml`,
 `tooling/check/src/guard/`, the two guard commands (`guard-notes.ts`,
 `requirement-guard.ts`) and the `lib/` helpers they import. The guardians are
 the keys under `guardians` in `approvers.json`: the CTO's and the security
@@ -352,7 +352,7 @@ that path as written here and its approval is verified. The note must be
 `user-visible`, except for `.github/`, `tooling/check/` and `.gitattributes`,
 where the CTO's signed `internal` note is enough. That cover ends where the
 change reaches one of the guard's trust roots: `tooling/check/approvers.json`,
-`.gitattributes`, `tooling/check/policy.json` outside `extraExports`,
+`tooling/check/package.json`, `.gitattributes`, `tooling/check/policy.json` outside `extraExports`,
 `.github/workflows/guard-notes.yml`, `tooling/check/src/guard/`, the two
 guard commands `tooling/check/src/cli/guard-notes.ts` and
 `tooling/check/src/cli/requirement-guard.ts`, and the `tooling/check/src/lib/`

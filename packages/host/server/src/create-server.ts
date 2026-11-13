@@ -1,4 +1,4 @@
-import type { CreateServer, ServerConfig } from "./api.ts";
+import type { CreateServer, RequestContext, ServerConfig } from "./api.ts";
 import { checkDailyRequests } from "./daily-requests.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { checkHost, checkOrigin, readBody, withSecurityHeaders } from "./security.ts";
@@ -30,7 +30,11 @@ export const createServer: CreateServer = ({ config, ports }) => {
   const allowedHosts = config.allowedHosts.map((name) => name.toLowerCase());
   const signIn = createSignIn(ports);
 
-  async function route(request: Request, body: Uint8Array): Promise<Response> {
+  async function route(
+    request: Request,
+    context: RequestContext,
+    body: Uint8Array,
+  ): Promise<Response> {
     const endpoint = `${request.method} ${new URL(request.url).pathname}`;
     switch (endpoint) {
       case "GET /api/hello":
@@ -41,11 +45,11 @@ export const createServer: CreateServer = ({ config, ports }) => {
           minAppVersion: config.minAppVersion,
         });
       case "POST /api/login":
-        return signIn.login(request, body);
+        return signIn.login(request, body, context);
       case "POST /api/logout":
-        return signIn.logout(request);
+        return signIn.logout(request, context);
       case "GET /api/session":
-        return (await signIn.isSignedIn(request))
+        return (await signIn.isSignedIn(request, context))
           ? Response.json({ signedIn: true })
           : errorResponse(serverErrors.notSignedIn);
       default:
@@ -53,7 +57,7 @@ export const createServer: CreateServer = ({ config, ports }) => {
     }
   }
 
-  async function answer(request: Request): Promise<Response> {
+  async function answer(request: Request, context: RequestContext): Promise<Response> {
     const hasPassword = (await ports.secrets.get(passwordSecretName)) !== null;
     const refusal = checkHost(request, { allowedHosts, hasPassword }) ?? checkOrigin(request);
     if (refusal !== null) {
@@ -67,13 +71,13 @@ export const createServer: CreateServer = ({ config, ports }) => {
     if (!body.ok) {
       return errorResponse(serverErrors.bodyTooLarge);
     }
-    return route(request, body.bytes);
+    return route(request, context, body.bytes);
   }
 
   return {
-    async handle(request) {
+    async handle(request, context = {}) {
       try {
-        return withSecurityHeaders(await answer(request), request);
+        return withSecurityHeaders(await answer(request, context), request);
       } catch (cause) {
         // The cause stays out of the reply: a stack or path would tell a caller about the host.
         ports.errorLog.record(cause);

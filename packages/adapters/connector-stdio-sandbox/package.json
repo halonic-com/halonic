@@ -2,7 +2,7 @@
   "name": "@halonicjs/adapter-connector-stdio-sandbox",
   "private": true,
   "type": "module",
-  "description": "The stdio connector for a plugin's local tool: starts its MCP program inside a Sandbox session, never on this computer directly.",
+  "description": "The stdio connector for a plugin's local tool or a workspace's stdio connector: starts its MCP program inside a Sandbox session, never on this computer directly.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@halonicjs/adapter-mcp": "workspace:*",
+    "@halonicjs/adapter-system-node": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/std": "workspace:*"
   },

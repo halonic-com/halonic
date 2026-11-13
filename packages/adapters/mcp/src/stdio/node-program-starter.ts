@@ -1,39 +1,15 @@
 import { type ChildProcess, spawn } from "node:child_process";
-import { readdir, realpath, stat } from "node:fs/promises";
+import { realpath } from "node:fs/promises";
 import { resolve, win32 } from "node:path";
 import { findProgram } from "@halonicjs/adapter-system-node";
-import {
-  type ConnectorStart,
-  type FolderLookup,
-  type PathLookup,
-  skillScriptsRefusal,
-  touchesSkillScripts,
-  touchesWorkingFolder,
-  workingFolderRefusal,
-} from "@halonicjs/format";
-import type {
-  AgentWorkingFolders,
-  ProgramExit,
-  ProgramLaunch,
-  ProgramStarter,
-  RunningProgram,
-} from "./program.ts";
+import { type PathLookup, skillScriptsRefusal, touchesSkillScripts } from "@halonicjs/format";
+import type { ProgramExit, ProgramLaunch, ProgramStarter, RunningProgram } from "./program.ts";
+import { refuseWorkingFolders } from "./working-folder-guard.ts";
 
 const isWindows = process.platform === "win32";
 
 /** Node's way to find where a path leads, for the shared skill `scripts/` check. */
 const nodePaths: PathLookup = { resolve, realpath };
-
-/** Node's way to look at folders, for the shared working folder check. */
-const nodeFolders: FolderLookup = {
-  ...nodePaths,
-  list: (folder) => readdir(folder).catch(() => []),
-  isFile: (path) =>
-    stat(path).then(
-      (found) => found.isFile(),
-      () => false,
-    ),
-};
 
 /**
  * Starts a stdio connector's program with Node: array arguments, no shell,
@@ -78,22 +54,6 @@ export const nodeProgramStarter: ProgramStarter = {
     return runningProgram(child);
   },
 };
-
-/**
- * Refuses a start that would run or load a file from a harness agent's
- * working folder, on the real file system (`format.working-folder-start`).
- * Does nothing when the launch names no working folders.
- *
- * @throws the refusal, naming the working folder and how the start reaches it
- */
-async function refuseWorkingFolders(
-  start: ConnectorStart,
-  guard: AgentWorkingFolders | undefined,
-): Promise<void> {
-  if (guard === undefined) return;
-  const reach = await touchesWorkingFolder(start, guard.workspaceRoot, guard.folders, nodeFolders);
-  if (reach !== null) throw new Error(workingFolderRefusal(reach));
-}
 
 /**
  * The absolute path of the launch's program, found in the `PATH` of the

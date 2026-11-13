@@ -136,6 +136,17 @@ verifies("app.connector-factories", () => {
       });
     });
 
+    it("takes a stdio connector's sites in the sandbox's form, and none when it names none", () => {
+      const named = {
+        stdio: { command: "node", args: [], sites: ["API.Acme.test", "bücher.test"] },
+      };
+      expect(connectorConfigOf(connectorFile(named)).transport).toMatchObject({
+        sites: ["api.acme.test", "xn--bcher-kva.test"],
+      });
+      const none = { stdio: { command: "node", args: [] } };
+      expect(connectorConfigOf(connectorFile(none)).transport).not.toHaveProperty("sites");
+    });
+
     it("takes a google connector's account and leaves out the secret it no longer names", () => {
       const google = { google: { account: "ada@acme.test", client: "google" } };
       expect(connectorConfigOf(connectorFile(google, "old-secret"))).toEqual({

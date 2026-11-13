@@ -1,7 +1,8 @@
 import type { Coordination } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import type { Server } from "./api.ts";
+import type { RequestContext, Server } from "./api.ts";
+import { addressGroup } from "./sign-in.ts";
 import { FakeCoordination, FakePasswordHasher, TestClock, testServer } from "./test-server.ts";
 
 const host = "halonic.acme.example";
@@ -27,13 +28,16 @@ function login(
   body: unknown,
   type = "application/json",
   scheme = "https",
+  context?: RequestContext,
+  extraHeaders: Record<string, string> = {},
 ): Promise<Response> {
   return server.handle(
     new Request(`${scheme}://${host}/api/login`, {
       method: "POST",
-      headers: { host, "content-type": type },
+      headers: { host, "content-type": type, ...extraHeaders },
       body: typeof body === "string" ? body : JSON.stringify(body),
     }),
+    context,
   );
 }
 
@@ -141,6 +145,44 @@ describe("sign-in", () => {
       expect((await get(server, "/api/session", cookie, "http")).status).toBe(401);
     });
 
+    it("takes the scheme from the host, not from the URL or a forwarded header", async () => {
+      const { server } = setup();
+      const behindProxy = { secure: true };
+      const response = await login(
+        server,
+        { password: "correct horse" },
+        undefined,
+        "http",
+        behindProxy,
+        {
+          "x-forwarded-proto": "http",
+        },
+      );
+      const header = response.headers.get("set-cookie");
+      expect(header).toMatch(new RegExp(`^${cookieName}=[0-9a-f]{64}; `));
+      expect(header).toContain("Secure");
+
+      const cookie = sessionCookieOf(response);
+      const session = await server.handle(
+        new Request(`http://${host}/api/session`, { headers: { host, cookie } }),
+        behindProxy,
+      );
+      expect(session.status).toBe(200);
+
+      const plain = await login(
+        server,
+        { password: "correct horse" },
+        undefined,
+        "https",
+        { secure: false },
+        {
+          "x-forwarded-proto": "https",
+        },
+      );
+      expect(plain.headers.get("set-cookie")).toMatch(new RegExp(`^${plainCookieName}=`));
+      expect(plain.headers.get("set-cookie")).not.toContain("Secure");
+    });
+
     it("ignores the cookie of the other scheme", async () => {
       const { server } = setup();
       const secure = sessionCookieOf(await login(server, { password: "correct horse" }));
@@ -204,6 +246,142 @@ describe("sign-in", () => {
   });
 
   verifies("server.login-limit", () => {
+    const from = (clientAddress: string): RequestContext => ({ clientAddress });
+
+    async function guess(server: Server, times: number, address: string): Promise<void> {
+      for (let attempt = 0; attempt < times; attempt += 1) {
+        await login(server, { password: "nope" }, undefined, undefined, from(address));
+      }
+    }
+
+    it("counts each address on its own", async () => {
+      const { server } = setup();
+      await guess(server, 10, "203.0.113.1");
+      const blocked = await login(
+        server,
+        { password: "correct horse" },
+        undefined,
+        undefined,
+        from("203.0.113.1"),
+      );
+      expect(blocked.status).toBe(429);
+      const other = await login(
+        server,
+        { password: "correct horse" },
+        undefined,
+        undefined,
+        from("203.0.113.2"),
+      );
+      expect(other.status).toBe(200);
+    });
+
+    it("stops every address at the ceiling for the whole server", async () => {
+      const { server } = setup();
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        await login(
+          server,
+          { password: "nope" },
+          undefined,
+          undefined,
+          from(`198.51.100.${attempt}`),
+        );
+      }
+      const blocked = await login(
+        server,
+        { password: "correct horse" },
+        undefined,
+        undefined,
+        from("203.0.113.9"),
+      );
+      expect(blocked.status).toBe(429);
+    });
+
+    it("does not use up the server's count on an attempt refused for its address", async () => {
+      const { server } = setup();
+      await guess(server, 10, "203.0.113.1");
+      await guess(server, 200, "203.0.113.1");
+      const other = await login(
+        server,
+        { password: "correct horse" },
+        undefined,
+        undefined,
+        from("203.0.113.2"),
+      );
+      expect(other.status).toBe(200);
+    });
+
+    it("counts an IPv6 client by its /64 and a mapped IPv4 address as IPv4", async () => {
+      const { server } = setup();
+      await guess(server, 10, "2001:db8:1:2::1");
+      const sameBlock = await login(
+        server,
+        { password: "correct horse" },
+        undefined,
+        undefined,
+        from("2001:DB8:1:2:ffff::9"),
+      );
+      expect(sameBlock.status).toBe(429);
+      const otherBlock = await login(
+        server,
+        { password: "correct horse" },
+        undefined,
+        undefined,
+        from("2001:db8:1:3::1"),
+      );
+      expect(otherBlock.status).toBe(200);
+      await guess(server, 10, "::ffff:203.0.113.1");
+      const mapped = await login(
+        server,
+        { password: "correct horse" },
+        undefined,
+        undefined,
+        from("203.0.113.1"),
+      );
+      expect(mapped.status).toBe(429);
+    });
+
+    it("groups addresses the same way however they are written", () => {
+      expect(addressGroup("2001:db8:0:0:1:2:3:4")).toBe(addressGroup("2001:db8::9"));
+      expect(addressGroup("fe80::1%eth0")).toBe(addressGroup("fe80::2"));
+      expect(addressGroup("::ffff:cb00:7101")).toBe("203.0.113.1");
+      expect(addressGroup("::1")).toBe("0:0:0:0::/64");
+      expect(addressGroup("203.0.113.1")).toBe("203.0.113.1");
+      expect(addressGroup("not an address")).toBe("not an address");
+      expect(addressGroup("1:2:3:4:5:6:7:8:9")).toBe("1:2:3:4:5:6:7:8:9");
+      expect(addressGroup("1::2::3")).toBe("1::2::3");
+    });
+
+    it("ignores a forwarded address the client sets", async () => {
+      const { server } = setup();
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        await login(server, { password: "nope" }, undefined, undefined, from("203.0.113.1"), {
+          "x-forwarded-for": `192.0.2.${attempt}`,
+          "cf-connecting-ip": `192.0.2.${attempt}`,
+        });
+      }
+      const blocked = await login(
+        server,
+        { password: "correct horse" },
+        undefined,
+        undefined,
+        from("203.0.113.1"),
+        {
+          "x-forwarded-for": "192.0.2.99",
+        },
+      );
+      expect(blocked.status).toBe(429);
+    });
+
+    it("holds the whole server to 10 when the host gives no address", async () => {
+      const { server } = setup();
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        await login(server, { password: "nope" }, undefined, undefined, undefined, {
+          "x-forwarded-for": `192.0.2.${attempt}`,
+        });
+      }
+      expect((await login(server, { password: "correct horse" })).status).toBe(429);
+    });
+
     it("stops after 10 attempts in a window without checking the password again", async () => {
       const { server, passwordHasher } = setup();
       for (let attempt = 0; attempt < 10; attempt += 1) {

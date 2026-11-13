@@ -30,6 +30,10 @@ use tauri_plugin_updater::{Error as UpdaterError, Update, UpdaterExt};
 mod download;
 use download::start_download;
 
+#[path = "updates_way_back.rs"]
+mod way_back;
+use way_back::{log_way_back, prove_started};
+
 /// How often the background thread asks whether a check is due.
 const TICK: Duration = Duration::from_secs(60);
 
@@ -120,6 +124,7 @@ pub fn start<R: Runtime>(app: &AppHandle<R>) {
         .name("halonic-updates".to_owned())
         .spawn(move || {
             load(&app);
+            prove_started(&app);
             background(&app, ready);
         });
     if let Err(error) = started {
@@ -145,7 +150,15 @@ fn load<R: Runtime>(app: &AppHandle<R>) {
     inner.record = record;
     inner.writable = writable;
     if let Some(current) = Version::parse(&inner.current.clone()) {
-        match inner.record.after_start(&current) {
+        let mut after = inner.record.clone();
+        let outcome = after.after_start(&current);
+        // The install record stays until this version has proved it starts
+        // (`prove_started`): a version that opens but whose host doesn't
+        // answer must still count as not installed once the way back runs.
+        if !matches!(outcome, StartOutcome::Updated(_)) {
+            inner.record = after;
+        }
+        match outcome {
             StartOutcome::Updated(updated) => inner.just_updated = Some(updated),
             StartOutcome::DidNotInstall {
                 version,
@@ -325,6 +338,7 @@ fn install<R: Runtime>(app: &AppHandle<R>, relaunch: bool) -> Result<(), String>
         let current = inner.current.clone();
         inner.record.before_install(&update.version, &current);
         inner.save();
+        log_way_back(&inner, &update.version);
         (update, bytes)
     };
     let mut builder = app.updater_builder();

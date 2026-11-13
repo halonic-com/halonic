@@ -145,13 +145,21 @@ export function stepChildRuns(
  * `state.entered` of the workflow itself, so a parallel branch's or a
  * for-each item's events belong to their step.
  */
-function eventsOfStep(events: readonly RunEvent[], entryId: string): RunEvent[] {
-  const index = Number(entryId.slice("step-".length));
-  let step = -1;
-  return events.filter((event) => {
+export function eventsOfStep(events: readonly RunEvent[], entryId: string): RunEvent[] {
+  return eventsBySteps(events)[Number(entryId.slice("step-".length))] ?? [];
+}
+
+/**
+ * The events of every step, in one pass over the log: the one at index 1
+ * is `eventsOfStep(events, "step-1")`. Events before the first step are left out.
+ */
+export function eventsBySteps(events: readonly RunEvent[]): RunEvent[][] {
+  const steps: RunEvent[][] = [];
+  for (const event of events) {
     if (event.type === "state.entered" && event.branch === undefined && event.item === undefined) {
-      step += 1;
+      steps.push([]);
     }
-    return step === index;
-  });
+    steps[steps.length - 1]?.push(event);
+  }
+  return steps;
 }

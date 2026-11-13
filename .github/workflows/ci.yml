@@ -61,7 +61,7 @@ jobs:
         run: |
           areas=(
             "tauri=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|tooling/check/licence-texts/crates/)"
-            "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-srt|harness-bridge|system-node|integration-runner|integration-kit|connector-stdio-sandbox)/|packages/core/ports/|pnpm-lock\.yaml$)"
+            "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-srt|harness-bridge|system-node|integration-runner|integration-kit|connector-stdio-sandbox)/|apps/cli/(fence/|src/local-harness-host)|packages/core/ports/|pnpm-lock\.yaml$)"
             "sandbox=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-[^/]+|system-node|git)/|packages/core/ports/)"
             "windows=^(\.github/workflows/ci\.yml$|\.github/actions/|pnpm-lock\.yaml$|apps/(cli|agent-host)/|packages/adapters/(fs-node|harness-kit|harness-claude-code|harness-codex|mcp|memory|system-node|http-kit|integration-kit)/|packages/core/(workspace|app|events|format|ports|profile|routines|schema-kit|std|workflow|yaml)/|packages/testing/(contracts|spec|parity|integration)/|tooling/(config|publish)/)"
             "android=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|apps/studio/src/connect/|apps/studio/connect\.html$|apps/studio/vite\.config\.ts$|apps/studio/package\.json$|pnpm-lock\.yaml$)"
@@ -1367,6 +1367,12 @@ jobs:
       - name: Local tool attacks through the fence
         working-directory: packages/adapters/connector-stdio-sandbox
         run: pnpm test:fence
+      - name: Harness run through the fence
+        # A stand-in program run by the CLI's harness host in the real
+        # sandbox: the profile root is hidden, only the run's own folders are
+        # writable and the file lands in the proposal.
+        working-directory: apps/cli
+        run: pnpm test:fence
 
   sandbox-fence-macos:
     # The same fence tests on macOS, where sandbox-runtime uses Seatbelt
@@ -1406,6 +1412,12 @@ jobs:
         run: pnpm test:fence
       - name: Local tool attacks through the fence
         working-directory: packages/adapters/connector-stdio-sandbox
+        run: pnpm test:fence
+      - name: Harness run through the fence
+        # A stand-in program run by the CLI's harness host in the real
+        # sandbox: the profile root is hidden, only the run's own folders are
+        # writable and the file lands in the proposal.
+        working-directory: apps/cli
         run: pnpm test:fence
 
   sandbox-os:
@@ -1866,6 +1878,78 @@ jobs:
           retention-days: 3
           if-no-files-found: ignore
 
+  update-windows:
+    # The update test (HAL-1206): installers for 0.1.0 and 0.1.1, both built
+    # with a test updater key made in this job and a local update address.
+    # 0.1.0 updates itself to 0.1.1 through "Restart to update" and opens
+    # again, with the user's files unchanged; a bad signature and a failed
+    # download change nothing; a 0.1.2 built without its agent host never
+    # proves it starts, so Halonic goes back to 0.1.1 by itself
+    # (windows/test-update.ps1). The keys live in the runner's temp folder
+    # only and are never uploaded.
+    name: Windows update (0.1.0 to 0.1.1)
+    needs: changes
+    if: needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true'
+    runs-on: windows-2025
+    timeout-minutes: 75
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+        with:
+          cache: false
+      - name: Install the pinned Rust toolchain
+        working-directory: apps/studio/src-tauri
+        run: rustup toolchain install
+      - name: Make two test updater keys and the two builds' settings
+        working-directory: apps/studio
+        run: |
+          $keys = Join-Path $env:RUNNER_TEMP 'update-keys'
+          New-Item -ItemType Directory -Force $keys | Out-Null
+          foreach ($name in 'test', 'other') {
+            pnpm exec tauri signer generate --ci --password= --write-keys (Join-Path $keys "$name.key")
+            if ($LASTEXITCODE -ne 0) { throw "tauri signer generate failed" }
+          }
+          $pubkey = (Get-Content (Join-Path $keys 'test.key.pub') -Raw).Trim()
+          $updater = @{ pubkey = $pubkey; endpoints = @('http://127.0.0.1:8765/latest.json'); dangerousInsecureTransportProtocol = $true }
+          foreach ($version in '0.1.0', '0.1.1') {
+            @{ version = $version; plugins = @{ updater = $updater } } | ConvertTo-Json -Depth 5 |
+              Set-Content (Join-Path $keys "build-$version.json") -Encoding utf8NoBOM
+          }
+          @{ version = '0.1.2'; plugins = @{ updater = $updater } } |
+            ConvertTo-Json -Depth 5 | Set-Content (Join-Path $keys 'build-0.1.2.json') -Encoding utf8NoBOM
+      - name: Build Halonic 0.1.0
+        working-directory: apps/studio/src-tauri
+        run: pwsh windows/build-installer.ps1 -Config (Join-Path $env:RUNNER_TEMP 'update-keys/build-0.1.0.json')
+      - name: Build Halonic 0.1.1
+        working-directory: apps/studio/src-tauri
+        run: pwsh windows/build-installer.ps1 -Config (Join-Path $env:RUNNER_TEMP 'update-keys/build-0.1.1.json')
+      - name: Build Halonic 0.1.2 without its agent host
+        working-directory: apps/studio/src-tauri
+        # 0.1.2 ships a stand-in (whoami.exe) as its agent host: it starts
+        # and exits without answering the handshake, so 0.1.2 never proves it
+        # starts.
+        run: pwsh windows/build-installer.ps1 -Config (Join-Path $env:RUNNER_TEMP 'update-keys/build-0.1.2.json') -AgentHost "$env:WINDIR\System32\whoami.exe"
+      - name: Update 0.1.0 to 0.1.1, refuse a bad signature and a failed download, go back from a 0.1.2 that doesn't start
+        run: |
+          $keys = Join-Path $env:RUNNER_TEMP 'update-keys'
+          pwsh apps/studio/src-tauri/windows/test-update.ps1 `
+            -OldSetup (Resolve-Path 'dist/Halonic-0.1.0-windows-x64-setup.exe') `
+            -NewSetup (Resolve-Path 'dist/Halonic-0.1.1-windows-x64-setup.exe') `
+            -BrokenSetup (Resolve-Path 'dist/Halonic-0.1.2-windows-x64-setup.exe') `
+            -Key (Join-Path $keys 'test.key') -OtherKey (Join-Path $keys 'other.key') `
+            -Serve (Join-Path $env:RUNNER_TEMP 'update-serve')
+          if ($LASTEXITCODE -ne 0) { throw 'the update test failed' }
+
   android:
     # The Android connect shell's debug APK, for arm64 phones and x86_64
     # emulators. Its own job, so the slow Android build never holds up the
@@ -2256,6 +2340,7 @@ jobs:
         sandbox-windows,
         agent-host,
         installer-windows,
+        update-windows,
         android,
         e2e,
         docs,

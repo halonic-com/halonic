@@ -1,3 +1,4 @@
+import type { PluginTrustChanges } from "@halonicjs/app";
 import type { Plugin } from "@halonicjs/format";
 import type { ItemKindContribution, ItemRef, WorkspaceContext } from "@halonicjs/studio-shell";
 import type { PluginPanelFeed, PluginPanelUi } from "../panel/plugin-panels.ts";
@@ -40,6 +41,8 @@ export interface InstalledPlugin extends PluginPanelUi {
   readonly trustedAt?: string | undefined;
   /** Where it was added from, when it was added through Add plugin. */
   readonly origin?: PluginOrigin | undefined;
+  /** What changed since the person trusted it, while its status is `changed`. */
+  readonly changes?: PluginTrustChanges | undefined;
   /** Why it can't load; empty while it loads. */
   readonly problems: readonly PluginLoadProblem[];
 }

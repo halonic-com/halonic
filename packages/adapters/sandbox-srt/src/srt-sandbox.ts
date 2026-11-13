@@ -182,6 +182,18 @@ export class SrtSandbox implements Sandbox {
   }
 
   /**
+   * Whether another program may use this sandbox too, for the warning before
+   * {@link SrtSandbox.remove} (HAL-7414, S-7): on Windows, the folders srt
+   * keeps write access to for this user outside `known`, the folders Halonic
+   * itself works in. `unknown` is true when srt's status can't be read.
+   * Other systems, with nothing to remove, give none. Never rejects.
+   */
+  async otherUse(known: readonly string[]): Promise<{ folders: string[]; unknown: boolean }> {
+    if (this.#machine.platform !== "win32") return { folders: [], unknown: false };
+    return this.#grants.foreignRoots(known);
+  }
+
+  /**
    * What the uninstaller runs, as the user: removes the entries
    * {@link SrtSandbox.open} gave srt's sandbox account on the folders above
    * the session folders in the user profile, so none stay in the user's

@@ -31,6 +31,8 @@ export interface GuardCase {
   readonly note?: string;
   /** What the approval lookup answers. Defaults to approved. */
   readonly approved?: boolean;
+  /** Replaces the approval lookup `approved` configures. */
+  readonly approvals?: ApprovalLookup;
   /** The checks to run; every check when left out. */
   readonly checks?: readonly GuardCheck[];
 }
@@ -60,7 +62,7 @@ export async function runGuard(guardCase: GuardCase): Promise<GuardOutcome> {
     ...(guardCase.note === undefined ? {} : { [noteFile]: guardCase.note }),
   });
   const testedRoot = guardCase.tested === undefined ? undefined : repo(guardCase.tested, {});
-  const approvals: ApprovalLookup = {
+  const approvals: ApprovalLookup = guardCase.approvals ?? {
     check: () =>
       Promise.resolve(
         guardCase.approved === false

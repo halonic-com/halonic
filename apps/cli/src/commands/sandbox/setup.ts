@@ -56,11 +56,13 @@ export async function removeSandbox(
   sandbox: SandboxSetter,
 ): Promise<CommandResult> {
   if (sandbox.platform !== "win32") return onlyWindows();
+  const other = await sandbox.otherUse();
   const sure = await askFirst(
     input,
     context,
     messages.removeQuestion(),
     messages.removeNoTerminal(),
+    otherUseLines(other),
   );
   if (!sure) return notDone(messages.notRemoved(), "remove");
   const progress = context.progress(messages.removing().phrase);
@@ -89,12 +91,34 @@ function askFirst(
   context: CommandContext,
   question: Message,
   noTerminal: Message,
+  shownFirst: readonly Phrase[] = [],
 ): Promise<boolean> {
   return context.ask({
     question,
+    shownFirst,
     yes: input.options["yes"] === true,
     refusal: () => new UsageError(noTerminal, messages.noTerminalFix()),
   });
+}
+
+/**
+ * The warning shown before the remove question when another program may use
+ * the sandbox: srt keeps write access to folders Halonic doesn't work in, or
+ * can't say (HAL-7414, S-7). Nothing otherwise.
+ */
+function otherUseLines(other: { folders: string[]; unknown: boolean }): Phrase[] {
+  if (other.folders.length > 0) return [messages.otherUseFolders(folderList(other.folders)).phrase];
+  return other.unknown ? [messages.otherUse().phrase] : [];
+}
+
+/** "A", "A and B", "A, B and C", "A, B, C and 2 more": full paths, in srt's order. */
+function folderList(folders: readonly string[]): string {
+  if (folders.length <= 3) {
+    return folders.length < 2
+      ? (folders[0] ?? "")
+      : `${folders.slice(0, -1).join(", ")} and ${folders.at(-1)}`;
+  }
+  return `${folders.slice(0, 3).join(", ")} and ${folders.length - 3} more`;
 }
 
 /** The lines for a setup that didn't pass: the ✓ step it got through, then the ! outcome. */

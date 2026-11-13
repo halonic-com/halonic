@@ -35,7 +35,7 @@ use crate::profile::cli_profile;
 
 #[path = "agent_host_life.rs"]
 mod life;
-pub use life::{end_page_streams, stop_host};
+pub use life::{end_page_streams, host_answers, stop_host};
 
 /// How long the host may take to unpack its files and serve.
 const START_WAIT: Duration = Duration::from_secs(60);

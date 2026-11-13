@@ -71,10 +71,14 @@ held by another process, an approval, a timer.
   and records in the log how to go back.
 - **Update checks are optional.** Blocked or offline update checks never stop
   Studio from working.
-- **Test it in the update test** (not written yet: `main` has no updater or
-  update test, only the release workflow): the 0.1.0 to 0.1.1 test also checks that a
-  workspace, a run log and the settings are byte-for-byte the same afterwards,
-  and that a new version that fails to start leaves 0.1.0 working.
+- **Test it in the update test** (`apps/studio/src-tauri/windows/test-update.ps1`,
+  the `Windows update` CI job): 0.1.0 updates to 0.1.1 and opens again, and a
+  workspace, a run log and the settings are byte-for-byte the same afterwards;
+  a bad signature and a failed download leave 0.1.1 as it was; and a 0.1.2
+  that never proves it starts is replaced by 0.1.1 again. On Windows, every
+  installer keeps a copy of itself in the profile's `updates\installers`
+  folder until the next version has started once, and `updates\updates.log`
+  says how to go back.
 
 ## 3. Resource use is visible
 

@@ -15,12 +15,29 @@ import type {
  */
 export interface Server {
   /**
-   * Answers one request. It never throws for a request it can't serve: a
-   * refused or failed request gets a {@link ServerErrorBody} with the right
-   * status. A request that goes over the daily ceiling is refused here,
-   * before routing, and never starts a run.
+   * Answers one request. `context` is what the host knows about the
+   * connection and can vouch for; the server never reads it from a header.
+   * It never throws for a request it can't serve: a refused or failed
+   * request gets a {@link ServerErrorBody} with the right status. A request
+   * that goes over the daily ceiling is refused here, before routing, and
+   * never starts a run.
    */
-  handle(request: Request): Promise<Response>;
+  handle(request: Request, context?: RequestContext): Promise<Response>;
+}
+
+/**
+ * Facts about one connection that only the host can vouch for: the socket
+ * address on Node, `CF-Connecting-IP` on Cloudflare. A host must never fill
+ * these from a header the client sets, such as `X-Forwarded-For`.
+ */
+export interface RequestContext {
+  /** The client's address. When absent, the login limit counts the whole server only. */
+  readonly clientAddress?: string;
+  /**
+   * Whether the client reached the host over HTTPS, also when a proxy ended
+   * TLS in front of it. When absent, the scheme of the request URL decides.
+   */
+  readonly secure?: boolean;
 }
 
 /** The body of every error the server sends: a code and a short message, never a stack, path or secret. */

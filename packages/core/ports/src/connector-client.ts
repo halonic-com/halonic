@@ -165,6 +165,12 @@ export type ConnectorTransport =
       inheritEnv?: string[];
       cwd?: string;
       /**
+       * The only sites the program may reach when it starts in a sandbox,
+       * lowercase and in Punycode (`format.connector-sites`). Absent means
+       * none. A program that starts without a sandbox isn't held to them.
+       */
+      sites?: string[];
+      /**
        * The version to start, for package-runner connectors. The app fills it
        * from the trust record, **never from workspace YAML**, so a workspace
        * edit can't choose the version or the registry.

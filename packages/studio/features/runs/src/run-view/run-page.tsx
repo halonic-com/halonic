@@ -1,5 +1,5 @@
 import { shortRunId } from "@halonicjs/app";
-import { summarize } from "@halonicjs/events";
+import { type RunEvent, type RunVersion, summarize } from "@halonicjs/events";
 import { Callout, type CalloutAction, EmptyState, List, StatusChip } from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps } from "@halonicjs/studio-shell";
 import { type ReactNode, useCallback, useState, useSyncExternalStore } from "react";
@@ -7,6 +7,8 @@ import type { SourcedRun } from "../api.ts";
 import { loadFailureReason } from "../load-failure.ts";
 import { emptyListWords, runPageWords } from "../run-words.ts";
 import { type RunsList, RunsListService } from "../runs-list.ts";
+import { Details } from "./details.tsx";
+import { detailRows } from "./details-model.ts";
 import { EveryStep, useRunLog } from "./every-step.tsx";
 import { everyStep } from "./every-step-model.ts";
 import {
@@ -59,8 +61,7 @@ export interface RunViewProps {
  *
  * Under them, Every step, from the run's log.
  *
- * Not here yet: the receipt and Details (the next pull requests), Started by,
- * the header's ⋮, Run again (T7) and the failed banners by cause (HAL-1845).
+ * Not here yet: the receipt (the next pull request), the header's ⋮, Run again (T7) and the failed banners by cause (HAL-1845).
  */
 export function RunView({
   list,
@@ -94,14 +95,25 @@ export function RunView({
             reviewInInbox={reviewInInbox}
             openRun={openRun}
           />
-          {log === undefined ? null : (
-            <EveryStep
-              log={log}
-              entries={entries}
-              openEntry={open?.id}
-              onOpenEntry={setOpenEntry}
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
+            <div className="flex min-w-0 flex-col gap-4">
+              {log === undefined ? null : (
+                <EveryStep
+                  log={log}
+                  entries={entries}
+                  openEntry={open?.id}
+                  onOpenEntry={setOpenEntry}
+                />
+              )}
+            </div>
+            <Details
+              rows={detailRows(run, context, routineOf(list, run))}
+              version={startedVersion(log)}
+              logRead={log !== undefined}
+              runId={run.summary.id}
+              now={context.now}
             />
-          )}
+          </div>
         </RunLayout>
         {open === undefined || log === undefined ? null : (
           // A new key for each entry, so its panel takes focus as it opens.
@@ -232,6 +244,20 @@ function bannerAction(
     return { label: action.label, onClick: () => openRun(runId) };
   }
   return undefined;
+}
+
+/** The routine that started the run, when it has one and the workspace still has it. */
+function routineOf(list: RunsList, run: SourcedRun) {
+  const { trigger } = run.summary;
+  return trigger !== null && "routineId" in trigger
+    ? list.source.routine(trigger.routineId)
+    : undefined;
+}
+
+/** What the run's `run.started` says it ran; `undefined` for a log from before it said. */
+function startedVersion(log: readonly RunEvent[] | undefined): RunVersion | undefined {
+  const started = log?.find((event) => event.type === "run.started");
+  return started?.type === "run.started" ? started.version : undefined;
 }
 
 /** What a workflow of the run's workspace is called, by its id; its id when it isn't loaded. */
