@@ -5,6 +5,7 @@
 
 use std::path::Path;
 
+use halonic_update_state::Version;
 use tauri::{AppHandle, Runtime};
 
 use super::{Inner, lock, now};
@@ -47,8 +48,12 @@ pub(super) fn prove_started<R: Runtime>(app: &AppHandle<R>) {
     }
     {
         let mut inner = lock(app);
-        if inner.record.install.take().is_some() {
-            inner.save();
+        if let Some(current) = Version::parse(&inner.current.clone()) {
+            let before = inner.record.install.clone();
+            inner.record.after_proved(&current);
+            if inner.record.install != before {
+                inner.save();
+            }
         }
     }
     let keep = installer_name(&version);

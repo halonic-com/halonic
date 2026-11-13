@@ -246,6 +246,23 @@ impl UpdaterRecord {
     }
 }
 
+impl UpdaterRecord {
+    /// Clears the install record once this version has proved it starts. A
+    /// record whose target is newer than `running` stays: it is the way back's
+    /// count of an install that didn't happen, and clearing it would lose that
+    /// count (HAL-8197).
+    pub fn after_proved(&mut self, running: &Version) {
+        let failed = self
+            .install
+            .as_ref()
+            .and_then(|install| Version::parse(&install.target))
+            .is_some_and(|target| running < &target);
+        if !failed {
+            self.install = None;
+        }
+    }
+}
+
 #[cfg(test)]
 #[path = "record_tests.rs"]
 mod tests;
