@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { useNarrowWindow } from "../frame/frame-effects.ts";
 
 /**
@@ -25,6 +26,7 @@ export function TitleBarBrand() {
  * dark and needs no media query. The Android connect page draws the same ring.
  */
 function HalonicMark({ named }: { readonly named: boolean }) {
+  const gradientId = useId();
   return (
     <svg
       viewBox="0 0 100 100"
@@ -34,12 +36,12 @@ function HalonicMark({ named }: { readonly named: boolean }) {
       aria-hidden={named ? undefined : true}
     >
       <defs>
-        <linearGradient id="halonic-mark" x1="0" y1="1" x2="1" y2="0">
+        <linearGradient id={gradientId} x1="0" y1="1" x2="1" y2="0">
           <stop offset="0" stopColor="#3175f2" />
           <stop offset="1" stopColor="#1bc6c8" />
         </linearGradient>
       </defs>
-      <circle cx="50" cy="50" r="42" fill="none" stroke="url(#halonic-mark)" strokeWidth="16" />
+      <circle cx="50" cy="50" r="42" fill="none" stroke={`url(#${gradientId})`} strokeWidth="16" />
     </svg>
   );
 }
