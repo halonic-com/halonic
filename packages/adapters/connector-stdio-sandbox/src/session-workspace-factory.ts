@@ -72,18 +72,10 @@ export interface SessionWorkspaceOptions {
 export class SessionWorkspaceFactory implements ConnectorFactory {
   readonly transport = "stdio";
   readonly #options: SessionWorkspaceOptions;
-  readonly #sandboxed: ConnectorFactory;
-  /** What each open connector's current session was built from, for the sandboxed factory to read. */
-  readonly #setups = new Map<string, WorkspaceConnectorSetup>();
 
   constructor(options: SessionWorkspaceOptions) {
     this.#options = options;
-    this.#sandboxed = options.sandboxed(this.setupOf);
   }
-
-  /** The `workspaceConnectors` lookup of the sandboxed factory. */
-  readonly setupOf = (connectorId: string): WorkspaceConnectorSetup | undefined =>
-    this.#setups.get(connectorId);
 
   create(config: ConnectorConfig, context: ConnectorFactoryContext): ConnectorClient {
     if (config.transport.kind !== "stdio") {
@@ -91,17 +83,7 @@ export class SessionWorkspaceFactory implements ConnectorFactory {
         `Connector "${config.id}" uses ${config.transport.kind}, but this factory serves stdio.`,
       );
     }
-    return new SessionWorkspaceConnector(
-      config,
-      config.transport,
-      context,
-      this.#options,
-      this.#sandboxed,
-      {
-        remember: (setup) => this.#setups.set(config.id, setup),
-        forget: () => this.#setups.delete(config.id),
-      },
-    );
+    return new SessionWorkspaceConnector(config, config.transport, context, this.#options);
   }
 }
 
@@ -120,8 +102,13 @@ class SessionWorkspaceConnector implements ConnectorClient {
   readonly #stdio: StdioConfig;
   readonly #context: ConnectorFactoryContext;
   readonly #options: SessionWorkspaceOptions;
+  /**
+   * The sandboxed factory of this connector alone: its lookup answers with this
+   * connector's setup only, so runs that use the same connector never share one.
+   */
   readonly #sandboxed: ConnectorFactory;
-  readonly #registry: { remember(setup: WorkspaceConnectorSetup): void; forget(): void };
+  /** What the current session was built from, for the sandboxed factory to read. */
+  #setup: WorkspaceConnectorSetup | undefined;
   #starting: Promise<Running> | undefined;
   #closed = false;
 
@@ -130,16 +117,15 @@ class SessionWorkspaceConnector implements ConnectorClient {
     stdio: StdioConfig,
     context: ConnectorFactoryContext,
     options: SessionWorkspaceOptions,
-    sandboxed: ConnectorFactory,
-    registry: { remember(setup: WorkspaceConnectorSetup): void; forget(): void },
   ) {
     this.id = config.id;
     this.#config = config;
     this.#stdio = stdio;
     this.#context = context;
     this.#options = options;
-    this.#sandboxed = sandboxed;
-    this.#registry = registry;
+    this.#sandboxed = options.sandboxed((connectorId) =>
+      connectorId === this.id ? this.#setup : undefined,
+    );
   }
 
   listTools(): Promise<ConnectorTool[]> {
@@ -190,14 +176,16 @@ class SessionWorkspaceConnector implements ConnectorClient {
   }
 
   async #retire(running: Running): Promise<void> {
-    if ((await this.#starting?.catch(() => undefined)) === running) this.#starting = undefined;
+    // Only the call that finds it current stops it; a second call that saw the same ended session leaves it.
+    if ((await this.#starting?.catch(() => undefined)) !== running) return;
+    this.#starting = undefined;
     await this.#stop(running);
   }
 
   async #stop(running: Running): Promise<void> {
     await running.client.close();
     await running.session?.close();
-    this.#registry.forget();
+    this.#setup = undefined;
     await Promise.allSettled(running.folders.map((path) => this.#options.folders.remove(path)));
   }
 
@@ -220,8 +208,9 @@ class SessionWorkspaceConnector implements ConnectorClient {
       const secretEnv = await readSecretEnv(this.id, this.#config.secretEnv, this.#context.secrets);
       const place = workspaceConnectorPlace(this.#stdio, setting);
       const { profile } = localToolLaunch(this.#stdio, place, pin, secretEnv);
+      if (this.#closed) throw new Error(`Connector "${this.id}" is closed.`);
       const session = await sandbox.open(profile);
-      this.#registry.remember({ setting, callTimeoutMs: this.#options.callTimeoutMs });
+      this.#setup = { setting, callTimeoutMs: this.#options.callTimeoutMs };
       try {
         const context = { ...this.#context, sandbox: session };
         return { client: this.#sandboxed.create(this.#config, context), session, folders };

@@ -149,4 +149,29 @@ verifies("connector-stdio-sandbox.workspace-connector-session", () => {
     expect(sandbox.sessions[0]?.fence.state).toBe("stopped");
     expect(removed.sort()).toEqual([...made].sort());
   });
+
+  it("keeps each run's setup apart when two clients of one connector are open", async () => {
+    const other: ConnectorFactoryContext = {
+      ...context,
+      workspaceRoot: "/other/space",
+      workingFolders: ["/other/space/files/agents/editor"],
+    };
+    const first = factory.create(mail, context);
+    const second = factory.create(mail, other);
+    await first.listTools();
+    await second.listTools();
+    await second.close();
+    expect((await first.listTools()).length).toBeGreaterThan(0);
+    expect(sandbox.sessions[0]?.profile.readOnlyPaths).toEqual(["/work/space"]);
+    expect(sandbox.sessions[1]?.profile.readOnlyPaths).toEqual(["/other/space"]);
+    await first.close();
+  });
+
+  it("opens no session for a connector that closed while it was starting", async () => {
+    const client = factory.create(mail, context);
+    const listing = client.listTools().catch(() => undefined);
+    await client.close();
+    await listing;
+    expect(sandbox.sessions.every((session) => session.fence.state === "stopped")).toBe(true);
+  });
 });
