@@ -120,6 +120,8 @@ function standIn(root: string, seen: { attempts: Attempts | null }): Harness {
   return {
     id: "claude-code",
     name: "Stand-in program",
+    // A harness with a sign-in gets a settings folder of its own in the profile.
+    signIn: { program: "sh", args: [], folderVariable: "STAND_IN_CONFIG_DIR" },
     detect: async () => ({ status: "ready", version: "1.0.0" }),
     // Its own settings and temp folders are in the profile already; the program needs nothing more.
     environment: () => ({}),
