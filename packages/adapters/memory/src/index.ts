@@ -32,7 +32,7 @@ export {
   type MemorySchedulerOptions,
   memorySchedulerFactory,
 } from "./scheduler.ts";
-export { MemorySecrets, MemoryTokenStore } from "./secrets.ts";
+export { MemorySecretStore, MemorySecrets, MemoryTokenStore } from "./secrets.ts";
 export { MemoryToolApprovalStore } from "./tool-approval-store.ts";
 export { MemoryTrustStore } from "./trust-store.ts";
 export { MemoryUnfencedRunConsentStore } from "./unfenced-run-consent-store.ts";

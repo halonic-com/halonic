@@ -1,10 +1,14 @@
-import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { typeTest, verifies } from "@halonicjs/testing-spec";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import {
+  checkSecretValue,
   describeSecretName,
   isQuotableSecretName,
   isSecretName,
   maxSecretNameLength,
+  maxSecretValueLength,
+  type SecretStore,
+  type Secrets,
   secretKey,
 } from "./index.ts";
 
@@ -61,5 +65,30 @@ verifies("ports.secret-name-rule", () => {
         );
       }
     });
+  });
+});
+
+verifies("ports.secret-store", () => {
+  typeTest("is Secrets that can also be written", () => {
+    expectTypeOf<SecretStore>().toExtend<Secrets>();
+    expectTypeOf<SecretStore["set"]>().toEqualTypeOf<
+      (name: string, value: string) => Promise<void>
+    >();
+    expectTypeOf<SecretStore["remove"]>().toEqualTypeOf<(name: string) => Promise<void>>();
+    expectTypeOf<SecretStore["names"]>().toEqualTypeOf<() => Promise<readonly string[]>>();
+  });
+
+  it("accepts a value up to the limit", () => {
+    expect(() => checkSecretValue("sk-live-1234")).not.toThrow();
+    expect(() => checkSecretValue("x".repeat(maxSecretValueLength))).not.toThrow();
+    expect(maxSecretValueLength).toBe(65_536);
+  });
+
+  it("refuses an empty value, or one over the limit, without repeating it", () => {
+    expect(() => checkSecretValue("")).toThrow(RangeError);
+    const long = `${"x".repeat(maxSecretValueLength)}-leak-me`;
+    expect(() => checkSecretValue(long)).toThrow(RangeError);
+    expect(() => checkSecretValue(long)).toThrow(String(long.length));
+    expect(() => checkSecretValue(long)).not.toThrow(/leak-me/);
   });
 });

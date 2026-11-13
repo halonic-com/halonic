@@ -274,6 +274,7 @@ export {
   schedulerVersion,
 } from "./scheduler.ts";
 export {
+  checkSecretValue,
   describeSecretName,
   halonicSecretNames,
   isHalonicSecretName,
@@ -281,9 +282,11 @@ export {
   isQuotableSecretName,
   isSecretName,
   maxSecretNameLength,
+  maxSecretValueLength,
   pluginSecretNamePrefix,
   pluginSecretSeparator,
   pluginSecrets,
+  type SecretStore,
   type Secrets,
   secretKey,
   secretsVersion,
