@@ -2,6 +2,7 @@
 
 - Approval: Timothy (board) approved this on HAL-8416 ("Yes, all"); Noah's spec is on HAL-8433
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:XMNUUrlgcKgOj+QENPy/90NFEvzVE+5ngFIHP4kjZBP+BxHxNCyw+DOM3PD/G/BXRrnmqd7wFGeYtMLlYAIWAQ==
 - Task: HAL-8421
 
 Users see this change, and the board approved it on HAL-8416. The note is
