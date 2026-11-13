@@ -292,10 +292,20 @@ verifies("server.webhooks", () => {
       expect(started).toHaveLength(2);
     });
 
-    it("is free again after 600 seconds, when the timestamp window has closed anyway", async () => {
+    it("still refuses a replay at exactly timestamp + 300 seconds, for a request sent 300 seconds early", async () => {
+      const { send, started, clock } = setup();
+      const early = Math.floor(clock.now().getTime() / 1000) + 300;
+      expect((await send({ timestamp: early, delivery: "edge" })).status).toBe(202);
+      clock.advance(600_000);
+      expect(Math.floor(clock.now().getTime() / 1000)).toBe(early + 300);
+      expect((await send({ timestamp: early, delivery: "edge" })).status).toBe(409);
+      expect(started).toHaveLength(1);
+    });
+
+    it("is free again after 660 seconds, two windows and a 60 second margin", async () => {
       const { send, started, clock } = setup();
       expect((await send()).status).toBe(202);
-      clock.advance(601_000);
+      clock.advance(661_000);
       expect((await send({ timestamp: Math.floor(clock.now().getTime() / 1000) })).status).toBe(
         202,
       );
