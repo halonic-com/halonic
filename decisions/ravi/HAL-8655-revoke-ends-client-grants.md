@@ -2,6 +2,7 @@
 
 - Approval: Liam's review on HAL-8655 (https://github.com/halonic-com/halonic/pull/2503#issuecomment-6858976414 and the approval after it); he judged the sheet field a technical choice inside the approved sign-in design
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xqIHmoUAQNMKMm/ZepFRxqbKJZW66f/Gxg+taQrP7nzPPVFCrmzD/3DM2QIkOCggNbYpwm0oBA3eBsAHijkdAA==
 - Task: HAL-8655
 
 ## What changes
