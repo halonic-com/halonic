@@ -1,10 +1,10 @@
 import type { RoutineTrigger } from "@halonicjs/format";
 
-/** The five ways a routine can start. */
-export type TriggerKind = "schedule" | "every" | "manual" | "mail" | "signal";
+/** The six ways a routine can start. */
+export type TriggerKind = "schedule" | "every" | "manual" | "mail" | "signal" | "webhook";
 
 /**
- * Which of the five kinds a trigger is, from the one key it has.
+ * Which of the six kinds a trigger is, from the one key it has.
  *
  * @example
  * triggerKind({ every: "15m" }); // "every"
@@ -15,5 +15,6 @@ export function triggerKind(trigger: RoutineTrigger): TriggerKind {
   if ("every" in trigger) return "every";
   if ("mail" in trigger) return "mail";
   if ("signal" in trigger) return "signal";
+  if ("webhook" in trigger) return "webhook";
   return "manual";
 }

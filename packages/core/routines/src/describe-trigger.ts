@@ -21,12 +21,14 @@ const DEFAULT_MAIL_QUERY = "in:inbox";
  * describeTrigger({ schedule: "0 8 * * 1-5", timezone: "Europe/Amsterdam" }); // "Weekdays at 08:00 (Europe/Amsterdam)"
  * describeTrigger({ every: "1d" }); // "Every day (UTC)"
  * describeTrigger({ manual: true }); // "Manual only"
+ * describeTrigger({ webhook: { secret: "acme-hook", headers: [] } }); // "On a signed web request"
  */
 export function describeTrigger(trigger: RoutineTrigger): string {
   if ("manual" in trigger) return "Manual only";
   if ("signal" in trigger) {
     return `On signal ${trigger.signal.name}${trigger.signal.when ? " (filtered)" : ""}`;
   }
+  if ("webhook" in trigger) return "On a signed web request";
   if ("mail" in trigger) {
     const { connector, query } = trigger.mail;
     return `New mail in ${connector}${query === DEFAULT_MAIL_QUERY ? "" : ` matching "${query}"`}`;

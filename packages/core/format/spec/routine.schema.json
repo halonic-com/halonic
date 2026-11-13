@@ -124,6 +124,36 @@
             "mail"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "webhook": {
+              "type": "object",
+              "properties": {
+                "secret": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "headers": {
+                  "default": [],
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "required": [
+                "secret"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "webhook"
+          ],
+          "additionalProperties": false
         }
       ]
     },

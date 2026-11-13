@@ -8,7 +8,7 @@ import { checkTimeZone, DEFAULT_TIME_ZONE } from "./time-zone.ts";
  * When the trigger fires next, strictly after `after`, on the same clock
  * `due` uses. A schedule gives its next cron time, in `timeZone` when the
  * schedule names no zone. An interval gives its next slot counted from the
- * Unix epoch, whenever it last ran. Manual, signal and mail triggers never
+ * Unix epoch, whenever it last ran. Manual, signal, mail and webhook triggers never
  * fire on a clock, so they give null.
  *
  * @param timeZone pass the tick policy's `timeZone`, so the answer matches `due`

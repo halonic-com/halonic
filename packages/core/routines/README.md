@@ -28,11 +28,11 @@ without a short phrase.
 
 `parseCron` turns an expression into the allowed values of each field, and
 `parseEvery` turns an interval such as `15m`, `2h` or `1d` into milliseconds.
-`triggerKind` names a trigger (`schedule`, `every`, `mail`, `signal` or
+`triggerKind` names a trigger (`schedule`, `every`, `mail`, `signal`, `webhook` or
 `manual`), `triggerError` returns the first thing wrong with a trigger as a
 message, or `null` when it is fine, and `describeTrigger` writes a trigger in
 words, such as "Weekdays at 08:00 (Europe/Amsterdam)", without throwing on a bad
-one. An interval is written in the largest unit that divides it, and says "(UTC)"
+one. A `webhook` trigger never fires on a clock: a signed request from outside starts it, and the host's server checks that request. An interval is written in the largest unit that divides it, and says "(UTC)"
 when that unit is hours or days, because its slots count from the epoch in UTC:
 `120m` reads "Every 2 hours (UTC)", `15m` reads "Every 15 minutes".
 
