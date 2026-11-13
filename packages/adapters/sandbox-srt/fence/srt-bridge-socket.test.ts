@@ -10,6 +10,7 @@ import {
   type SandboxSession,
 } from "@halonicjs/ports";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { type Runner, srtRunner } from "../src/srt-runner.ts";
 import { SrtSandbox } from "../src/srt-sandbox.ts";
 import { w9Violations } from "./own-sockets.test-helper.ts";
 
@@ -21,7 +22,35 @@ import { w9Violations } from "./own-sockets.test-helper.ts";
  * checks are tried one by one in `harness-bridge`'s tests; here they run again
  * where srt's proxy rewrites the request on its way. Run with `pnpm test:fence`.
  */
-const sandbox = new SrtSandbox();
+/** How many of srt's last log lines a failure message shows. */
+const srtLogTail = 10;
+/** What srt's proxy says about a failed hop; it logs the errno only when `SRT_DEBUG` is set (HAL-8158). */
+const srtLog: string[] = [];
+
+/**
+ * srt runs as a child process, so its log lines come through the program's
+ * error output, not this process's console. Turns its debug log on for the
+ * launcher and keeps the last lines, passing the output on unchanged.
+ */
+const loggingRunner: Runner = {
+  async run(request) {
+    const program = await srtRunner.run({
+      ...request,
+      launcherEnv: { ...request.launcherEnv, SRT_DEBUG: "1" },
+    });
+    const decoder = new TextDecoder();
+    const keep = new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        srtLog.push(...decoder.decode(chunk, { stream: true }).split(/\r?\n/).filter(Boolean));
+        srtLog.splice(0, Math.max(0, srtLog.length - 200));
+        controller.enqueue(chunk);
+      },
+    });
+    return { ...program, stderr: program.stderr.pipeThrough(keep) };
+  },
+};
+
+const sandbox = new SrtSandbox(undefined, loggingRunner);
 const onLinux = process.platform === "linux";
 
 async function read(stream: ReadableStream<Uint8Array>): Promise<string> {
@@ -177,7 +206,8 @@ describe("the harness bridge on a Unix socket", () => {
     // A 502 comes from srt's proxy, not the bridge; its body says which hop failed, so a flake explains itself (HAL-8158).
     for (const tunnel of [[], ["-p"]]) {
       const { code, body } = await reply(...tunnel, url(), ...post(), ...withToken());
-      expect(code, `${tunnel.join(" ") || "no tunnel"}: ${body}`).toBe("200");
+      const said = srtLog.slice(-srtLogTail).join("\n");
+      expect(code, `${tunnel.join(" ") || "no tunnel"}: ${body}\nsrt said:\n${said}`).toBe("200");
     }
     expect(providerCalls).toHaveLength(before + 2);
   });
