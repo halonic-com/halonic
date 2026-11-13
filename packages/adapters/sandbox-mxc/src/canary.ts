@@ -22,8 +22,9 @@ import {
   victimText,
   writeFenceFiles,
 } from "./fence-files.ts";
-import { type LoopbackListener, listenOnLoopbacks } from "./loopback-listener.ts";
+import { type LoopbackListener, listenOnEveryAddress } from "./loopback-listener.ts";
 import { MxcSession } from "./mxc-session.ts";
+import { judgeNetwork, type NetworkAsked, networkSettings } from "./network-probes.ts";
 import {
   type LeakReport,
   parseLeakReport,
@@ -128,6 +129,7 @@ export class MxcCanary implements TrustCanary {
         controls: {
           readOnlyFileRead: leaks.report.control === "readable",
           workFolderScriptLoaded: work,
+          networkBlockProven: leaks.networkProven,
         },
         // A known limit of MXC: lookups go through the Windows DNS client service outside the box.
         nameLookupsLeave: true,
@@ -149,16 +151,27 @@ export class MxcCanary implements TrustCanary {
   async #probeLeaks(
     session: SandboxSession,
     files: FenceFiles,
-  ): Promise<{ report: LeakReport | null; found: TrustCheckLeak[]; missing: string[] }> {
-    const listeners = await listenOnLoopbacks();
+  ): Promise<{
+    report: LeakReport | null;
+    found: TrustCheckLeak[];
+    missing: string[];
+    networkProven: boolean;
+  }> {
+    const listeners = await listenOnEveryAddress();
     try {
       const ports = listeners.map(({ host, port }) => ({ host, port }));
+      const network = networkSettings({
+        kind: "loopback",
+        host: "127.0.0.1",
+        port: this.#options.bridgePort,
+      });
       const settings = {
         control: files.control,
         hidden: files.canary,
         denied: files.denied,
         ports,
         writes: writesOf(files),
+        ...network,
       };
       await this.#disk.writeText(files.config, JSON.stringify(settings));
       const finished = await runToEnd(
@@ -174,6 +187,7 @@ export class MxcCanary implements TrustCanary {
         const exit = finished.exit.code ?? finished.exit.signal;
         return {
           report,
+          networkProven: false,
           found: [],
           missing: [
             `The canary probe did not report (exit ${exit})${detail === "" ? "" : `: ${detail}`}.`,
@@ -181,7 +195,14 @@ export class MxcCanary implements TrustCanary {
         };
       }
       const written = await this.#writtenWhereRefused(files);
-      return { report, ...judge(report, listeners, written) };
+      return {
+        report,
+        ...judge(report, listeners, written, {
+          ports: listeners.length,
+          internet: network.internet.length,
+          dns: network.dns.length,
+        }),
+      };
     } finally {
       for (const listener of listeners) listener.close();
     }
@@ -238,7 +259,8 @@ function judge(
   report: LeakReport,
   listeners: readonly LoopbackListener[],
   writtenWhereRefused: boolean,
-): { found: TrustCheckLeak[]; missing: string[] } {
+  asked: NetworkAsked,
+): { found: TrustCheckLeak[]; missing: string[]; networkProven: boolean } {
   const found: TrustCheckLeak[] = [];
   const missing: string[] = [];
   if (report.hidden !== "hidden" || report.denied !== "hidden") {
@@ -249,18 +271,27 @@ function judge(
     found.push("file-writable");
     missing.push("The canary created, changed or removed a file outside the writable folders.");
   }
-  const reached = listeners.some((listener) => listener.reached());
-  const answered =
-    report.ports.length !== listeners.length ||
-    report.ports.some((port) => port.state !== "blocked");
-  if (reached || answered) {
+  const network = judgeNetwork(report, asked);
+  if (listeners.some((listener) => listener.reached()) || network.portReached) {
     found.push("port-reachable");
-    missing.push("The canary reached a loopback port of this computer other than the bridge.");
+    missing.push(
+      "The canary reached a port of this computer other than the bridge, on loopback or another address.",
+    );
   }
+  if (network.internetReached) {
+    found.push("internet-reachable");
+    missing.push("The canary connected to an address on the internet.");
+  }
+  if (network.dnsReached) {
+    found.push("dns-reachable");
+    missing.push("The canary got an answer from a public DNS server it asked directly.");
+  }
+  for (const sentence of network.unproven)
+    missing.push(`The canary's network probes: ${sentence}.`);
   if (report.control !== "readable") {
     missing.push("The canary couldn't read a file in a folder it may read.");
   }
-  return { found, missing };
+  return { found, missing, networkProven: network.unproven.length === 0 };
 }
 
 /** Starts a probe program: the adapter's own session runs it even when its fence isn't proven, so the canary can say what leaked. */

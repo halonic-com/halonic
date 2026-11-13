@@ -68,6 +68,13 @@ export type CanaryFindings =
         readOnlyFileRead: boolean;
         /** Node loaded a script from the read-write working folder, listed it and wrote in it. */
         workFolderScriptLoaded: boolean;
+        /**
+         * Every network probe that did not connect was refused by the system,
+         * or timed out while the box could reach its bridge. A probe that
+         * failed for another reason, such as Winsock not starting, proves no
+         * block (HAL-7840).
+         */
+        networkBlockProven: boolean;
       };
       /**
        * A never-used name, looked up through the operating system's DNS
@@ -165,8 +172,10 @@ function verdict(session: SandboxSession, findings: CanaryFindings): TrustCheckR
   const leak = trustCheckLeaks.find((code) => findings.leaks.includes(code));
   if (leak !== undefined) return failed(leak, findings.missing);
 
-  const { readOnlyFileRead, workFolderScriptLoaded } = findings.controls;
-  if (!readOnlyFileRead || !workFolderScriptLoaded) return failed("too-strict", findings.missing);
+  const { readOnlyFileRead, workFolderScriptLoaded, networkBlockProven } = findings.controls;
+  if (!readOnlyFileRead || !workFolderScriptLoaded || !networkBlockProven) {
+    return failed("too-strict", findings.missing);
+  }
 
   // Only a fence proof that says `fenced` passes: one that failed with no
   // probe to say which, or a sandbox with no fence at all, is still a failure.

@@ -29,14 +29,14 @@ const windows: SandboxCheck = { ok: false, reason: "windows", missing: [] };
 const clean: CanaryFindings = {
   started: true,
   leaks: [],
-  controls: { readOnlyFileRead: true, workFolderScriptLoaded: true },
+  controls: { readOnlyFileRead: true, workFolderScriptLoaded: true, networkBlockProven: true },
   nameLookupsLeave: true,
   missing: [],
 };
 
 const tooStrict: CanaryFindings = {
   ...clean,
-  controls: { readOnlyFileRead: false, workFolderScriptLoaded: true },
+  controls: { readOnlyFileRead: false, workFolderScriptLoaded: true, networkBlockProven: true },
   missing: ["the read-only file couldn't be read"],
 };
 

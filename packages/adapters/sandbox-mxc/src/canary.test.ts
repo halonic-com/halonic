@@ -86,11 +86,31 @@ verifies("sandbox-mxc.canary", () => {
       ["a denied file inside a readable folder is readable", { denied: true }, "file-readable"],
       ["a file is written where nothing may be written", { writeOutside: true }, "file-writable"],
       ["a loopback port is reached", { reachPort: true }, "port-reachable"],
+      ["an address on the internet is reached", { reachInternet: true }, "internet-reachable"],
+      ["a public DNS server answers", { reachDns: true }, "dns-reachable"],
+      [
+        "every network probe fails with an error that is no refusal",
+        { networkFailsWith: "UNKNOWN" },
+        "too-strict",
+      ],
+      [
+        "blocked probes time out and the bridge can't be reached",
+        { blockedAttemptsTimeOut: true, bridgeUnreachable: true },
+        "too-strict",
+      ],
       ["the read-only file can't be read", { controlUnreadable: true }, "too-strict"],
       ["Node can't list or write the working folder", { workFolderBroken: true }, "too-strict"],
     ])("fails as %s when %s", async (_what, leaks, code) => {
       const { sandbox, canary } = setup(leaks);
       expect(await runTrustCheck(sandbox, canary)).toMatchObject({ passed: false, reason: code });
+    });
+
+    it("counts a timeout as blocked when the bridge, the network control, was reached", async () => {
+      const { sandbox, canary } = setup({ blockedAttemptsTimeOut: true });
+      expect(await runTrustCheck(sandbox, canary)).toEqual({
+        passed: true,
+        nameLookupsLeave: true,
+      });
     });
 
     it("fails as did-not-start when the probe program prints nothing", async () => {
