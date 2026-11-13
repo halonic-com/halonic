@@ -4,6 +4,7 @@
 - Task: HAL-8255, reviewed on HAL-8258
 - Approval: Liam's decision on HAL-8255 (https://github.com/halonic-com/halonic/pull/2398 carries it)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:aaGQDiapu7HuDi9N/zthZFrK5qMkguXpt344fl3SvR561zE35nGIBoZasf1u2YqGKtXXUcOBQnzJd0rlskg8AA==
 
 ## What changes
 
