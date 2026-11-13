@@ -14,8 +14,10 @@ mod grants;
 mod picked;
 mod question;
 mod refusal;
+mod workspace_name;
 
 pub use grants::TrustState;
 pub use picked::{MAX_PICKED_FOLDERS, PickedFolders};
 pub use question::{CANCEL_BUTTON, QUESTION_TITLE, TRUST_BUTTON, question_text, shown_path};
 pub use refusal::TrustRefusal;
+pub use workspace_name::check_workspace_name;
