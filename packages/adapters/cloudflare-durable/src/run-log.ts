@@ -85,12 +85,12 @@ export class RunLog {
     return row?.last ?? 0;
   }
 
-  /** The ISO time of the last stored event, or `null` for an empty log. */
-  lastEventAt(): string | null {
+  /** The last stored event, or `null` for an empty log. */
+  lastEvent(): RunEvent | null {
     const [row] = this.#sql
       .exec<EventRow>("SELECT json FROM events ORDER BY seq DESC LIMIT 1")
       .toArray();
-    return row === undefined ? null : (JSON.parse(row.json) as RunEvent).at;
+    return row === undefined ? null : (JSON.parse(row.json) as RunEvent);
   }
 
   /** The events after `afterSeq`, oldest first. */

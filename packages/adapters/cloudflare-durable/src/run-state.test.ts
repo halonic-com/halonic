@@ -1,5 +1,5 @@
 import type { ScheduledTimer } from "@halonicjs/ports";
-import { entered, started } from "@halonicjs/testing-contracts";
+import { completed, entered, started } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { ManualClock } from "./fakes.test-helper.ts";
@@ -256,10 +256,18 @@ verifies("cloudflare-durable.watchdog", () => {
   describe("RunState health", () => {
     it("tells the time of the last event, and none for an empty log", async () => {
       const { state } = newState();
-      expect(await state.health()).toEqual({ lastEventAt: null, overdueMs: 0 });
+      expect(await state.health()).toEqual({ lastEventAt: null, overdueMs: 0, ended: false });
       const events = [started("r1"), entered("r1", 2)];
       await state.append("r1", 0, events);
       expect((await state.health()).lastEventAt).toBe(events[1]?.at);
+    });
+
+    it("tells when the log has ended the run, so the watchdog needn't trust a lagging run list", async () => {
+      const { state } = newState();
+      await state.append("r1", 0, [started("r1"), entered("r1", 2)]);
+      expect((await state.health()).ended).toBe(false);
+      await state.append("r1", 2, [completed("r1", 3)]);
+      expect((await state.health()).ended).toBe(true);
     });
 
     it("tells how long the earliest timer has been due, and 0 while none is due", async () => {

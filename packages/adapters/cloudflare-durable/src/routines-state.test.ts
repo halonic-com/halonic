@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { ManualClock } from "./fakes.test-helper.ts";
 import { defaultBackupAfterMs, RoutinesState } from "./routines-state.ts";
 import type { AlarmSlot } from "./run-state.ts";
+import { TimeLimitError } from "./time-limit.ts";
 
 const minute = 60 * 1000;
 
@@ -17,12 +18,15 @@ class FakeAlarm implements AlarmSlot {
   }
 }
 
-function newState() {
+function newState(options: { tickLimitMs?: number } = {}) {
   const clock = new ManualClock();
   const alarm = new FakeAlarm();
   const ticks: string[] = [];
   let behaviour: () => Promise<void> = async () => {};
+  const backupFailures: unknown[] = [];
   const state = new RoutinesState({
+    ...options,
+    onBackupFailure: (error) => void backupFailures.push(error),
     alarm,
     clock: () => clock,
     listener: () => ({
@@ -37,6 +41,7 @@ function newState() {
     clock,
     alarm,
     ticks,
+    backupFailures,
     onTick: (change: () => Promise<void>) => {
       behaviour = change;
     },
@@ -104,6 +109,44 @@ verifies("cloudflare-durable.routines-tick", () => {
       });
       await expect(state.alarm()).resolves.toBeUndefined();
       expect(alarm.at).toBe(clock.now().getTime() + defaultBackupAfterMs);
+    });
+  });
+});
+
+verifies("cloudflare-durable.routines-tick-limits", () => {
+  describe("RoutinesState limits", () => {
+    it("reports a failed backup tick, so a failing tick doesn't go unseen", async () => {
+      const { state, backupFailures, onTick } = newState();
+      onTick(async () => {
+        throw new Error("the routines are broken");
+      });
+      await state.alarm();
+      expect(backupFailures).toEqual([new Error("the routines are broken")]);
+    });
+
+    it("does not report a backup tick that worked", async () => {
+      const { state, backupFailures } = newState();
+      await state.alarm();
+      expect(backupFailures).toEqual([]);
+    });
+
+    describe("a tick that never ends", () => {
+      it("is given up on after the limit, so later ticks aren't held", async () => {
+        const { state, clock, ticks, alarm, onTick } = newState({ tickLimitMs: 20 });
+        onTick(() => new Promise<void>(() => {}));
+        await expect(state.tick(clock.now().toISOString())).rejects.toThrow(TimeLimitError);
+        expect(alarm.at).toBe(clock.now().getTime() + defaultBackupAfterMs);
+        onTick(async () => {});
+        await state.tick(clock.now().toISOString());
+        expect(ticks).toHaveLength(2);
+      });
+
+      it("is reported from the backup alarm as a failed tick", async () => {
+        const { state, backupFailures, onTick } = newState({ tickLimitMs: 20 });
+        onTick(() => new Promise<void>(() => {}));
+        await state.alarm();
+        expect(backupFailures[0]).toBeInstanceOf(TimeLimitError);
+      });
     });
   });
 });
