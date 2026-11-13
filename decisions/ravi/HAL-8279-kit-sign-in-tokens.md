@@ -2,7 +2,6 @@
 
 - Approval: design HAL-984 v0.4, sections 3, 4 and 5 and decisions 3, 5 and 6, approved by Liam on HAL-1080 and Julian on HAL-1081; built in HAL-8279 (pull request 2 of HAL-984)
 - Kind: internal
-- Signature: pending
 
 ## What changes
 
