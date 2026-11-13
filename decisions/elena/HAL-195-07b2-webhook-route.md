@@ -2,6 +2,7 @@
 
 - Approval: the package owner (Liam) approves this in review of #2455 on HAL-8512; the build plan for HAL-195 was approved by Liam on HAL-7816
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:HY22bjw08ScZ2sydy0cr5e2SfufK/6YEUwgLCq4eJOb3R0aibGXTVlwBPj2LpWijVjSUEDZmJBjW218hAJJ0Cw==
 - Task: HAL-195
 
 ## What changes
