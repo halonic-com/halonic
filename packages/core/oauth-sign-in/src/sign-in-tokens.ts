@@ -30,6 +30,12 @@ export interface ManagedSignInTokens extends SignInTokens {
    * expires: the server may not have revoked it.
    */
   forget(signIn: string): void;
+  /**
+   * Resolves once no refresh of the sign-in is running, whether it ended well
+   * or not. Sign out waits for it first: a refresh that ends after the grant
+   * was removed would save its rotated refresh token and sign the user back in.
+   */
+  settled(signIn: string): Promise<void>;
 }
 
 /** What `createSignInTokens` needs. */
@@ -220,6 +226,11 @@ export function createSignInTokens(settings: SignInTokensSettings): ManagedSignI
         state.current = undefined;
         state.rejectedCurrent = false;
       }
+    },
+
+    async settled(signIn) {
+      // A failed refresh reaches the requests that waited for it; here only its end matters.
+      await states.get(signIn)?.refreshing?.catch(() => undefined);
     },
 
     async access(signIn, signal) {
