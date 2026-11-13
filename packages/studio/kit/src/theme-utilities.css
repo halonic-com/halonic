@@ -58,13 +58,19 @@
 
 /* ---------------------------------------------------------------- The halo, as six utilities */
 
-/* The window frame: the halo over the canvas. */
+/* The window frame: the halo over the canvas. In dark, the glow is at half strength (HAL-8420). */
 @utility bg-halo-frame {
   background:
     linear-gradient(
       135deg,
-      color-mix(in srgb, var(--halo-blue) 30%, transparent),
-      color-mix(in srgb, var(--halo-violet) 28%, transparent)
+      light-dark(
+        color-mix(in srgb, var(--halo-blue) 30%, transparent),
+        color-mix(in srgb, var(--halo-blue) 15%, transparent)
+      ),
+      light-dark(
+        color-mix(in srgb, var(--halo-violet) 28%, transparent),
+        color-mix(in srgb, var(--halo-violet) 14%, transparent)
+      )
     ),
     var(--color-canvas);
 }

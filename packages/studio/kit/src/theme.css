@@ -63,7 +63,10 @@
 
   /* ---------------------------------------------------------------- Colour: surfaces (bg-*) */
   /* Neutrals carry a faint blue-violet cast (hue 240), so the greys belong to the halo. */
-  --color-canvas: light-dark(#ebecf6, #0e0e17); /* the window frame behind the panels */
+  --color-canvas: light-dark(
+    #ebecf6,
+    #020617
+  ); /* the window frame behind the panels; dark is slate-950 */
   --color-surface: light-dark(#ffffff, #171723); /* pages, panels, cards, inputs */
   --color-surface-subtle: light-dark(#f6f6fc, #1c1c2a); /* sidebar, table header, row hover */
   --color-surface-muted: light-dark(#ececf7, #272738); /* button and menu hover, neutral badge */
