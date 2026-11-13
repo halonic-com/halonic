@@ -4,6 +4,7 @@ import {
   classifyTokenAnswer,
   clientSecretName,
   googleAuthUrl,
+  googleTokenEndpoint,
   type LoopbackRedirect,
   loopbackRedirectUri,
   type PendingSignIn,
@@ -17,14 +18,14 @@ import {
   type TokenAnswer,
   type TokenAnswerMeaning,
 } from "@halonicjs/google-setup";
+import { exchangeAuthorizationCode, tokenRequestTimeoutMs } from "@halonicjs/oauth-sign-in";
 import type { Clock, HttpClient, TokenStore } from "@halonicjs/ports";
 import type { RandomBytes } from "@halonicjs/std";
 import { checkGoogleCheckUrl, checkServices } from "./google-check.ts";
 import { readIdTokenAccount } from "./id-token.ts";
 import { createPkcePair } from "./pkce.ts";
-import { webRandomBytes } from "./random.ts";
 import { createState } from "./state.ts";
-import { postTokenForm } from "./token-request.ts";
+import { webRandomBytes } from "./web-platform.ts";
 
 /** What a sign-in starts from. Nothing here is a secret. */
 export interface StartGoogleSignInInput {
@@ -228,19 +229,20 @@ function accessTokenIn(json: unknown): string | undefined {
   return typeof value === "string" && value !== "" ? value : undefined;
 }
 
-/** Sends the code to Google's token endpoint (see `postTokenForm`). */
+/** Sends the code to Google's token endpoint (see `exchangeAuthorizationCode`). */
 function exchangeCode(
   http: HttpClient,
   code: string,
   clientSecret: string,
   pending: PendingSignIn,
 ): Promise<TokenAnswer | undefined> {
-  return postTokenForm(http, {
-    grant_type: "authorization_code",
+  return exchangeAuthorizationCode(http, {
+    tokenEndpoint: googleTokenEndpoint,
     code,
-    client_id: pending.clientId,
-    client_secret: clientSecret,
-    redirect_uri: pending.redirectUri,
-    code_verifier: pending.codeVerifier,
+    clientId: pending.clientId,
+    clientSecret,
+    redirectUri: pending.redirectUri,
+    codeVerifier: pending.codeVerifier,
+    signal: AbortSignal.timeout(tokenRequestTimeoutMs),
   });
 }

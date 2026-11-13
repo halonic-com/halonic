@@ -7,10 +7,6 @@ import { assert, type RandomBytes } from "@halonicjs/std";
  */
 export const secretByteCount = 32;
 
-/** The platform's cryptographically secure randomness, through Web Crypto. */
-export const webRandomBytes: RandomBytes = (byteCount) =>
-  crypto.getRandomValues(new Uint8Array(byteCount));
-
 /**
  * Asks `randomBytes` for `secretByteCount` bytes and checks it gave exactly
  * that many, so a broken source can never shorten a secret without notice.

@@ -1,37 +1,28 @@
 import { googleTokenEndpoint, type TokenAnswer } from "@halonicjs/google-setup";
+import {
+  postTokenForm as postOAuthTokenForm,
+  tokenRequestTimeoutMs,
+} from "@halonicjs/oauth-sign-in";
 import type { HttpClient } from "@halonicjs/ports";
-import { parseJson } from "./json.ts";
-
-/** The longest the token endpoint, or the revoke endpoint, gets to answer. */
-export const googleTokenTimeoutMs = 10_000;
 
 /**
- * Sends one form to Google's token endpoint: the code exchange or a refresh.
- * The secrets go in the form body only, never in the URL. Redirects are
- * refused, because a 307 or 308 would send the same body, secrets and all,
- * to another address. A request that takes longer than `googleTokenTimeoutMs`
- * counts as unreachable.
+ * Sends one form to Google's token endpoint: a refresh. The secrets go in the
+ * form body only, redirects are refused, and a request that takes longer than
+ * `tokenRequestTimeoutMs` counts as unreachable (see `postTokenForm` in
+ * `@halonicjs/oauth-sign-in`).
  *
  * @param http - the server's `HttpClient`
  * @param form - the form fields, secrets included
- * @returns the status and parsed body, or `undefined` when Google couldn't be
- *   reached. The `HttpClient`'s error is dropped, never passed on: it can
- *   carry the request.
+ * @returns the status and parsed body, or `undefined` when Google couldn't be reached
  */
-export async function postTokenForm(
+export function postTokenForm(
   http: HttpClient,
   form: Readonly<Record<string, string>>,
 ): Promise<TokenAnswer | undefined> {
-  try {
-    const response = await http.fetch(googleTokenEndpoint, {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
-      body: new URLSearchParams(form).toString(),
-      redirect: "error",
-      signal: AbortSignal.timeout(googleTokenTimeoutMs),
-    });
-    return { status: response.status, json: parseJson(await response.text()) };
-  } catch {
-    return undefined;
-  }
+  return postOAuthTokenForm(
+    http,
+    googleTokenEndpoint,
+    form,
+    AbortSignal.timeout(tokenRequestTimeoutMs),
+  );
 }
