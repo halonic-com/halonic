@@ -31,6 +31,7 @@ SHA-256 and timeout come from the host that calls it (the `RandomBytes` and
 | `revokeToken` | asks a revoke endpoint (RFC 7009) to revoke a refresh token; `revoked` only for a 200 |
 | `withClientAuth`, `OAuthClient` | adds the client's ID and secret to a request as `clientAuth` says: in the body (`post`) or as HTTP Basic (`basic`) |
 | `createSignInTokens` | the kit's `SignInTokens` for one integration: `access` gives an access token with at least 60 seconds left and refreshes once per sign-in however many requests wait; a rotated refresh token is saved first; `rejected` forces a refresh only for the current token, at least 30 seconds old; `filterValues` lists every unexpired access token, the refresh token and the client secret. `SignInNeededError` only when no current grant is saved or the server answered `invalid_grant` |
+| `signOut` | revokes the saved refresh token at the revoke endpoint the user approved (never the sheet's now), then removes the grant even if the server didn't confirm; says `revoked`, `notConfirmed` or `noRevokeUrl`. `forget` on the tokens drops the access token in use |
 | `isUsableToken` | whether a token is fit to keep: visible ASCII, no space or line break, at least 16 characters |
 | `postTokenForm`, `formBody` | sends one form to a token endpoint: refuses redirects, stops when the caller's signal aborts (`tokenRequestTimeoutMs` is the limit it should have) and drops the `HttpClient`'s error, which can carry the request; writes a form body |
 

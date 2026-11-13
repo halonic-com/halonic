@@ -43,9 +43,11 @@ export {
   accessTokenMinimumLifeMs,
   createSignInTokens,
   forcedRefreshIntervalMs,
+  type ManagedSignInTokens,
   type SignInTokensSettings,
   unknownLifetimeMs,
 } from "./sign-in-tokens.ts";
+export { type SignOutResult, type SignOutSettings, signOut } from "./sign-out.ts";
 export { createState, stateMatches } from "./state.ts";
 export { classifyTokenAnswer, type TokenAnswer, type TokenAnswerMeaning } from "./token-answer.ts";
 export { postTokenForm, tokenRequestTimeoutMs } from "./token-request.ts";

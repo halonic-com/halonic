@@ -22,6 +22,16 @@ export const forcedRefreshIntervalMs = 30_000;
 /** The life assumed for a token whose answer had no `expires_in`; it is placed until {@link accessTokenMinimumLifeMs} of it is left. The filter holds it until the process ends. */
 export const unknownLifetimeMs = 300_000;
 
+/** The kit's view of the sign-in tokens, and what only Halonic's side may do. */
+export interface ManagedSignInTokens extends SignInTokens {
+  /**
+   * Drops the token in use for a sign-in that was signed out, so the next
+   * `access` doesn't hand it out. What the secret filter holds stays until it
+   * expires: the server may not have revoked it.
+   */
+  forget(signIn: string): void;
+}
+
 /** What `createSignInTokens` needs. */
 export interface SignInTokensSettings {
   /** The integration the sign-ins belong to, as its sheet names it. */
@@ -87,7 +97,7 @@ interface SignInState {
  * const tokens = createSignInTokens({ integration: "gitlab", grants, http, secrets, clock, resolveSignIn, requestSignal });
  * const value = await tokens.access("work-account");
  */
-export function createSignInTokens(settings: SignInTokensSettings): SignInTokens {
+export function createSignInTokens(settings: SignInTokensSettings): ManagedSignInTokens {
   const states = new Map<string, SignInState>();
   const nowMs = () => settings.clock.now().getTime();
 
@@ -204,6 +214,14 @@ export function createSignInTokens(settings: SignInTokensSettings): SignInTokens
   }
 
   return {
+    forget(signIn) {
+      const state = states.get(signIn);
+      if (state !== undefined) {
+        state.current = undefined;
+        state.rejectedCurrent = false;
+      }
+    },
+
     async access(signIn, signal) {
       const state = stateOf(signIn);
       if (isUsable(state)) {
