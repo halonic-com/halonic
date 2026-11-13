@@ -16,7 +16,8 @@ export interface ShellCall {
  * picked in the dialog is saved at once; any other makes the shell ask, and
  * `answers` says what the person says. A folder a grant opened doesn't count
  * as picked, so a folder inside it is asked about again. A revoke closes the
- * folder it revokes.
+ * folder a grant opened; a folder the person picked stays open, but no longer
+ * spares a question.
  *
  * Every call is kept in `calls`, every question in `asked`, and every folder
  * git and the file commands may use in `opened`.
@@ -32,6 +33,8 @@ export class FakeTrustShell implements TauriShell {
   /** What the person says when the shell asks; `true` when the list runs out. */
   readonly answers: boolean[] = [];
   readonly #files = new Map<string, string>();
+  /** The picked folders that still spare a question: a revoke takes one out. */
+  readonly #sparing: string[];
   readonly #granted: boolean;
   #nextRefusal: TrustRefusalKind | undefined;
 
@@ -41,6 +44,7 @@ export class FakeTrustShell implements TauriShell {
    */
   constructor(options: { picked?: readonly string[]; granted?: boolean } = {}) {
     this.picked = [...(options.picked ?? [])];
+    this.#sparing = [...this.picked];
     this.opened = [...this.picked];
     this.#granted = options.granted ?? true;
   }
@@ -104,7 +108,7 @@ export class FakeTrustShell implements TauriShell {
     // `/acme-evil` aren't inside `/acme`. The fake has no links to resolve, so cleaning
     // up `.` and `..` is all canonical means here.
     const canonical = posixPath.normalize(location);
-    const chosen = this.picked.some(
+    const chosen = this.#sparing.some(
       (folder) => canonical === folder || canonical.startsWith(`${folder}/`),
     );
     if (!chosen) {
@@ -122,6 +126,11 @@ export class FakeTrustShell implements TauriShell {
 
   #revoke(location: string): null {
     this.#files.delete(location);
+    const sparing = this.#sparing.indexOf(location);
+    if (sparing !== -1) {
+      this.#sparing.splice(sparing, 1);
+      return null;
+    }
     const index = this.opened.indexOf(location);
     if (index !== -1) {
       this.opened.splice(index, 1);

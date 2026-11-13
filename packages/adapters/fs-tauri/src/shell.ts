@@ -27,8 +27,10 @@ export const trustCommands = {
   grant: "trust_grant",
   /**
    * `{ location }` → nothing; also when there is no record. The shell also
-   * takes the folder off the folders git and the file commands may use, so a
-   * revoked folder is closed at once, not at the next start.
+   * takes a folder a grant opened off the folders git and the file commands
+   * may use, so it is closed at once, not at the next start. A folder the
+   * person picked stays open, so the open workspace keeps its file access; it
+   * only stops sparing a question.
    */
   revoke: "trust_revoke",
 } as const;

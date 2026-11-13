@@ -125,23 +125,47 @@ impl TrustState {
         Ok(())
     }
 
-    /// Closes the folder a pick or grant opened for the location and
-    /// deletes its record. The exact entry that opened is closed, not the
-    /// location canonicalised again, so a link swapped in since can't close
-    /// another folder instead. A picked folder no longer spares a question.
-    /// The folder is closed first: if deleting the record fails, nothing
-    /// stays open.
+    /// Deletes the record for the location, and closes the folder a grant
+    /// opened for it. A folder the person picked stays open: the shell
+    /// opened it for them, the page keeps reading through it, and closing it
+    /// would take the open workspace's file access away. It only stops
+    /// sparing a question, so the next grant asks again. The exact entry
+    /// that opened is closed, not the location canonicalised again, so a
+    /// link swapped in since can't close another folder instead. A folder
+    /// is closed first: if deleting the record fails, nothing a grant
+    /// opened stays open.
     ///
-    /// Git refuses the folder at once, unless a folder still open holds it:
-    /// a picked folder above it, or a folder opened on its own above it.
+    /// Git refuses a closed folder at once, unless a folder still open holds
+    /// it: a picked folder above it, or a folder opened on its own above it.
     pub fn revoke(
         &self,
         store: &FileTrustStore,
         folders: &OpenedFolders,
         location: &str,
     ) -> Result<(), TrustRefusal> {
-        self.close(folders, location);
+        self.unspare_or_close(folders, location);
         Ok(store.revoke(location)?)
+    }
+
+    /// Keeps a picked folder open but no longer picked, so it spares no
+    /// question; closes any other entry that opened for the location.
+    fn unspare_or_close(&self, folders: &OpenedFolders, location: &str) {
+        let entry = self
+            .opened
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get(location)
+            .cloned();
+        let Some(entry) = entry else {
+            return;
+        };
+        let mut picked = self.picked.lock().unwrap_or_else(PoisonError::into_inner);
+        if picked.contains(&entry) {
+            picked.retain(|picked| *picked != entry);
+            return;
+        }
+        drop(picked);
+        self.close(folders, location);
     }
 
     /// Closes the exact entry a pick, reopen or grant opened for the

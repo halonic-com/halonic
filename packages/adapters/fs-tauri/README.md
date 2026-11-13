@@ -50,8 +50,9 @@ chose in the shell itself:
 - the shell asks about one folder at a time. A grant that arrives while it is asking rejects with a
   `conflict` error, so the page can't stack questions.
 
-A revoke deletes the record and closes the folder at once: git and the file commands refuse it
-from then on.
+A revoke deletes the record and closes a folder a grant opened at once: git and the file commands
+refuse it from then on. A folder the person picked stays open, so the workspace they have open keeps
+its file access, but it no longer spares a question: the next grant asks again.
 
 ## Errors
 
