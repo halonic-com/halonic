@@ -244,6 +244,7 @@ export function StudioWindow(props: StudioWindowProps) {
               tabs={tabs}
               announcer={announcer}
               contextFor={contextFor}
+              backLink
             />
           )}
         />

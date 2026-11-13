@@ -33,6 +33,7 @@ export const runsFeature = defineFeature({
       kind: "run",
       label: "Run",
       icon: "runs",
+      place: "runs",
       open: { view: "RunPage", load: () => import("./run-view/run-page.tsx") },
       // The run page says itself when a run isn't in the workspace any more (states R22),
       // so its tab stays open.

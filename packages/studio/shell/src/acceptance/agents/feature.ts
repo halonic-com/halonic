@@ -12,6 +12,7 @@ export const agentsFeature = defineFeature({
       kind: "agent",
       label: "Agent",
       icon: "agent",
+      place: "agents",
       open: { view: "AgentEditorView", load: () => import("./ui/agent-editor-view.ts") },
     });
     studio.explorer.addGroup({ id: "agents", order: 20, title: "Agents", items: () => [] });
