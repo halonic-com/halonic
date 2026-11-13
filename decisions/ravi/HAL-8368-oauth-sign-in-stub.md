@@ -2,6 +2,7 @@
 
 - Approval: Liam approved moving the generic sign-in flow out of the Google packages (decision 4 of the HAL-984 design, Priya agreed on HAL-1091), and the flow as one core package on HAL-8341; Liam and Julian sign as the two guardians, because `policy.json` is a trust root
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kc4VnDikPXNatj13XT3gcNFndUgUieeRJgIRp6poqzERRhyZPKzTQVviYSovlp39pjudSV/aP6lPzgaW+STNAg==
 - Task: HAL-8323
 
 ## What changes
