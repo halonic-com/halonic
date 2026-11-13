@@ -37,6 +37,8 @@ export interface RunChip {
 export interface RunRow {
   /** The run's full id, which opens its page. */
   readonly id: string;
+  /** The hub the run's workflow is in; with `id` it names the run's item. */
+  readonly hubId: string;
   /** The last 6 characters of the id, as stored: the Run column, in the monospace style. */
   readonly shortId: string;
   readonly standing: RunStanding;
@@ -107,6 +109,7 @@ export function runRow(run: SourcedRun, context: RowContext): RunRow {
       : `${rowLabelWords.standing[standing]}, ${lowerFirst(line)}`;
   return {
     id: summary.id,
+    hubId: summary.hubId,
     shortId,
     standing,
     chip: { word: chipWords[standing], ...chipLooks[standing] },
