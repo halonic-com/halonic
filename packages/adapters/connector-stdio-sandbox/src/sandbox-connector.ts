@@ -150,7 +150,7 @@ export class SandboxStdioConnectorFactory implements ConnectorFactory {
     }
     if (context.sandbox === undefined) {
       throw new Error(
-        `Connector "${config.id}" is a local tool, which starts only in a sandbox session, and it was given none.`,
+        `Connector "${config.id}" starts a program, which starts only in a sandbox session, and it was given none.`,
       );
     }
     return new SandboxStdioConnector(
@@ -371,7 +371,7 @@ class SandboxStdioConnector implements ConnectorClient {
       };
     }
     throw new Error(
-      `Connector "${this.id}" is a local tool Halonic didn't set up, so it doesn't start.`,
+      `Connector "${this.id}" is neither a local tool nor a workspace connector Halonic set up, so it doesn't start.`,
     );
   }
 
