@@ -3,6 +3,7 @@
 - Requirement: `kit.list-columns` (`packages/studio/kit/requirements/list-columns.md`)
 - Task: HAL-8173, a follow-up from the review of #2364 (HAL-8165)
 - Approval: Liam approves it in review of #2372
+- Kind: internal
 
 ## What changes
 
@@ -18,3 +19,7 @@ nothing to tell it they belong to one. The kit has no wording of its own for
 this; the screen supplies the label.
 
 No existing rule or test was weakened or removed. One test was added.
+
+## Covers
+
+- kit.list-columns
