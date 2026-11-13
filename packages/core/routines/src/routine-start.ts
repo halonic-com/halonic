@@ -10,6 +10,10 @@ export interface TriggerFacts {
   lastRun: Date | null;
   /** The mail message that started the run, for a mail trigger. */
   message?: unknown;
+  /** The request body, for a webhook trigger: see {@link webhookFacts}. */
+  body?: unknown;
+  /** The request headers the routine asked for, by lowercase name, for a webhook trigger. */
+  headers?: Readonly<Record<string, string>>;
 }
 
 /** What a routine runs once its placeholders are filled in. */
@@ -34,6 +38,8 @@ export function routineStart(placed: PlacedRoutine, trigger: TriggerFacts): Rout
       at: trigger.at.toISOString(),
       lastRun: trigger.lastRun?.toISOString() ?? null,
       message: trigger.message,
+      body: trigger.body,
+      headers: trigger.headers ?? {},
     },
   };
   if ("workflow" in run) {

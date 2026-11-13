@@ -29,3 +29,4 @@ export {
 export { checkTimeZone, type WallTime, wallTime } from "./time-zone.ts";
 export { triggerError } from "./trigger-error.ts";
 export { type TriggerKind, triggerKind } from "./trigger-kind.ts";
+export { type WebhookRequest, webhookFacts } from "./webhook-facts.ts";

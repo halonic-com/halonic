@@ -27,3 +27,6 @@ The Runs list shall lay its rows out in columns, in `halonic runs`' order: the s
 - Given runs started with Run, by a message, by a signal, without a trigger and by the test case "Refund over €100",
   when their rows are shown,
   then their Started by columns read "You, with Run", "A message arrived", "A signal arrived", "You, in the terminal" and "Test “Refund over €100”".
+- Given a run started by a signed web request (a webhook trigger),
+  when its row is shown,
+  then its Started by column reads "A web request arrived", and a screen reader hears "Started by a web request, 10:40." (the team's call on HAL-195, in the words of the mail and signal lines).

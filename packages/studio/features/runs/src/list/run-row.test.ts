@@ -153,6 +153,9 @@ verifies("runs.row-columns", () => {
       expect(triggered({ type: "signal", at, signalId: "run_1:4" }).startedBy).toBe(
         "A signal arrived",
       );
+      expect(triggered({ type: "webhook", at, deliveryId: "d-1" }).startedBy).toBe(
+        "A web request arrived",
+      );
       expect(rowOf({ trigger: null }).startedBy).toBe("You, in the terminal");
       expect(triggered({ type: "manual", at }).startedByTooltip).toBeUndefined();
     });
@@ -166,6 +169,9 @@ verifies("runs.row-columns", () => {
       );
       expect(heard(triggered({ type: "signal", at, signalId: "run_1:4" }))).toBe(
         "Started by a signal, 10:40.",
+      );
+      expect(heard(triggered({ type: "webhook", at, deliveryId: "d-1" }))).toBe(
+        "Started by a web request, 10:40.",
       );
       expect(heard(rowOf({ parentRunId: "run_mfx3k2a1_7k2m9p" }))).toBe(
         "Started by run 7k2m9p, 10:40.",
