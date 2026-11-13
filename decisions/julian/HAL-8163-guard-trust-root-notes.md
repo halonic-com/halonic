@@ -3,6 +3,7 @@
 - Approval: HAL-8163, Liam's task; Liam reviews and signs this note
 - Kind: user-visible
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KS86vVoY6KiyxkdfkbkZctmt2vxaqbRkWsAvsZwTWqtQjJXIZlyAV1Dwnjq9vWBDk8TYqpaCW6lW1U8C9DfbAg==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:7NpY31xXTsjsQUTq78/GektkvuVhVorpLtzOQuLJDrK0Pz2AjeU01ZrrdvHOJ6QaCCWzrzUzOk3Zsnb5G4x6Bw==
 - Task: HAL-8163
 
 ## What changes
