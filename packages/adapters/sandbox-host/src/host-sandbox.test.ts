@@ -248,6 +248,17 @@ verifies("sandbox-host.start", () => {
       expect(session.fence).toEqual({ state: "stopped" });
     }, 15_000);
 
+    it("reports a timeout for a program the time limit closed while it was still starting (HAL-8390)", async () => {
+      // A limit this short runs out while the program starts, as it can on a busy Windows runner.
+      const session = await createHostSandbox().open(profile({ timeLimitMs: 1 }));
+      const program = await session
+        .start({ program: node, args: ["-e", "setInterval(() => {}, 1000)"] })
+        .catch(() => null);
+      // Started after the limit already ran out, a program is refused; started before, it times out.
+      if (program !== null) expect((await program.exited).reason).toBe("timeout");
+      expect(session.fence).toEqual({ state: "stopped" });
+    }, 15_000);
+
     it("closes when the open signal aborts, and refuses to open on one already aborted", async () => {
       const controller = new AbortController();
       const session = await createHostSandbox().open(profile(), { signal: controller.signal });

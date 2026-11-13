@@ -75,6 +75,7 @@ class HostSession implements SandboxSession {
   readonly #signal: AbortSignal | undefined;
   readonly #onAbort = () => void this.#shutDown(false);
   #closing: Promise<void> | null = null;
+  #closedByTimeLimit = false;
 
   constructor(profile: SandboxProfile, signal: AbortSignal | undefined) {
     this.profile = profile;
@@ -106,7 +107,8 @@ class HostSession implements SandboxSession {
     const started: Started = { program, stopped: false, timedOut: false };
     this.#started.add(started);
     // The session may have closed while the program was starting.
-    if (this.#closing !== null) await this.#stop(started, false);
+    // If the time limit closed it, that is the reason, not a plain stop.
+    if (this.#closing !== null) await this.#stop(started, this.#closedByTimeLimit);
     const exited = program.ended.then(({ code, signal }): SandboxExit => {
       this.#started.delete(started);
       return { code, signal, reason: exitReason(started) };
@@ -131,6 +133,7 @@ class HostSession implements SandboxSession {
 
   #shutDown(timedOut: boolean): Promise<void> {
     this.#closing ??= (async () => {
+      this.#closedByTimeLimit = timedOut;
       // Stopped as soon as it closes, so nobody reads `off` from a session that starts nothing more.
       this.#fence = { state: "stopped" };
       clearTimeout(this.#timer);
