@@ -87,4 +87,31 @@ verifies("workspace.routines", () => {
     );
     expect(workspace.issues).toEqual([]);
   });
+
+  it("refuses a root webhook routine without run.hub, even when the root has agents", async () => {
+    const workspace = await loadWorkspace(
+      new MemorySource({
+        "workspace.yaml": "id: acme\nname: Acme\n",
+        "agents/helper.agent.yaml": "name: Helper\n",
+        "workflows/routines/hook.routine.yaml":
+          "name: Hook\ntrigger: { webhook: { secret: HOOK } }\nrun: { agent: helper, prompt: Hello. }\n",
+      }),
+    );
+    expect(workspace.issues.map((issue) => [issue.code, issue.path])).toEqual([
+      ["webhook-routine-without-hub", ["run", "hub"]],
+    ]);
+  });
+
+  it("lets a root webhook routine name its hub in run.hub", async () => {
+    const workspace = await loadWorkspace(
+      new MemorySource({
+        "workspace.yaml": "id: acme\nname: Acme\n",
+        "hubs/billing/hub.yaml": "name: Billing\n",
+        "hubs/billing/agents/clerk.agent.yaml": "name: Clerk\n",
+        "workflows/routines/hook.routine.yaml":
+          "name: Hook\ntrigger: { webhook: { secret: HOOK } }\nrun: { agent: clerk, hub: billing, prompt: Hello. }\n",
+      }),
+    );
+    expect(workspace.issues).toEqual([]);
+  });
 });

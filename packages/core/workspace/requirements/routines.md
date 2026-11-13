@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1523 (HAL-186 implementation plan, step 1b; HAL-871)
 
-When `loadWorkspace` has parsed a workspace's files, the workspace package shall report as an error, starting with `Routine "<id>": `, a routine in a hub whose `run.hub` names another hub; a routine at the root without `run.hub` when the root has no agents or workflows of its own; a `run.hub` with no parsed `hub.yaml`; a workflow or agent the routine's hub doesn't have; a mail trigger's connector that is neither the hub's own nor shared at the root, or that isn't a Google connector; and the first cron, time zone or interval in its trigger that doesn't parse, with the message of the routines package. Each error has the key path and line of the value it is about. A routine in a hub whose `hub.yaml` failed shall not be checked, as the old loader left that hub out.
+When `loadWorkspace` has parsed a workspace's files, the workspace package shall report as an error, starting with `Routine "<id>": `, a routine in a hub whose `run.hub` names another hub; a routine at the root without `run.hub` when the root has no agents or workflows of its own, and a webhook routine at the root without `run.hub` even when it has; a `run.hub` with no parsed `hub.yaml`; a workflow or agent the routine's hub doesn't have; a mail trigger's connector that is neither the hub's own nor shared at the root, or that isn't a Google connector; and the first cron, time zone or interval in its trigger that doesn't parse, with the message of the routines package. Each error has the key path and line of the value it is about. A routine in a hub whose `hub.yaml` failed shall not be checked, as the old loader left that hub out.
 
 ## Examples
 
@@ -14,3 +14,5 @@ When `loadWorkspace` has parsed a workspace's files, the workspace package shall
 - Given the parity case `routine/bad-timezone`, when it is loaded, then `month-end` gives 'Routine "month-end": Unknown time zone "Mars/Olympus".' at `trigger.timezone`, line 5.
 - Given the parity case `hub/wrong-type`, whose `hub.yaml` fails, when it is loaded, then the two root routines that run in that hub give `unknown hub "billing"`, and the hub's own routines give nothing.
 - Given a root routine without `run.hub` that runs a root agent, when it is loaded, then there is no error.
+- Given a root webhook routine that runs a root agent and has no `run.hub`, when it is loaded, then `webhook-routine-without-hub` is reported at `run.hub`.
+- Given a root webhook routine with `run.hub` naming a hub, when it is loaded, then there is no error.
