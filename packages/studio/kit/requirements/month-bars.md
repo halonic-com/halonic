@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-8422, HAL-8442; board decision of 13 Nov (HAL-8416)
 
-The kit's `MonthBars` shall draw the last six months' values as bars on a card, oldest first: the current month (the last) in blue (`series-1`), earlier months in slate (`series-other`), and any month whose value is above its budget in amber (`attention-fill`). It shall show the current month's value as one big number in normal digits and write the month names under the bars with equal-width digits. When every month is zero it shall show the given empty text instead of bars. It shall name the chart by its title and give screen readers every month's value as text, saying which months are over budget.
+The kit's `MonthBars` shall draw the last six months' values as bars on a card, oldest first: the current month (the last) in blue (`series-1`), earlier months in slate (`series-other`), and any month whose value is above its budget in amber (`attention-fill`). It shall show the current month's value as one big number in normal digits and write the month names under the bars with equal-width digits. When every month is zero it shall show the given empty text instead of bars. It shall show a given note under the big number, amber when it asks for attention, and a given limit as a thin dashed line across the bars, labelled at its right end, with the scale including it. It shall name the chart by its title and give screen readers every month's value as text, saying which months are over budget.
 
 ## Examples
 
@@ -13,3 +13,6 @@ The kit's `MonthBars` shall draw the last six months' values as bars on a card, 
 - Given a month with a value of 120 and a budget of 100, when it renders, then its bar is `attention-fill` and its text says "over budget".
 - Given six months of zero, when it renders, then it shows the empty text and no bars.
 - Given a month with a negative value (a refund), when it renders, then its bar has no height, not a negative one.
+- Given a note that asks for attention, when it renders, then the note shows under the big number in the amber text colour.
+- Given a limit of 100 and bars of at most 10, when it renders, then a dashed line labelled with the limit's label sits at the top of the scale.
+- Given no limit, when it renders, then there is no line.

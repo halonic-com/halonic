@@ -17,6 +17,7 @@ export function fakeSource(
   let summaries = initial;
   let logs = initialLogs;
   let failure: unknown;
+  let monthly: number | undefined;
   let logFailure: unknown;
   const listeners = new Set<() => void>();
   const source: RunsSource = {
@@ -32,6 +33,7 @@ export function fakeSource(
     workflow: () => supportReply,
     routine: (key) => (key === "acme/morning-brief" ? morningBrief : undefined),
     currency: () => "EUR",
+    monthlyBudget: () => monthly,
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -39,6 +41,10 @@ export function fakeSource(
   };
   return {
     source,
+    /** Sets the workspace's monthly budget, or clears it. */
+    budget: (limit: number | undefined) => {
+      monthly = limit;
+    },
     fail: (error: unknown) => {
       failure = error;
     },

@@ -20,6 +20,7 @@ verifies("shell.home-sections", () => {
   it("lists Home's cards in its fixed order, whatever order features register in", () => {
     const shell = createShell({
       features: [
+        feature("spend", (studio) => studio.home.addCard(card("spend"))),
         feature("runs", (studio) => studio.home.addCard(card("recent-runs"))),
         feature("inbox", (studio) => studio.home.addCard(card("needs-you"))),
         feature("setup", (studio) => studio.home.addCard(card("setup"))),
@@ -30,8 +31,9 @@ verifies("shell.home-sections", () => {
       "Get set up",
       "Needs you",
       "Recent runs",
+      "Spend",
     ]);
-    expect(cards.map((entry) => entry.featureId)).toEqual(["setup", "inbox", "runs"]);
+    expect(cards.map((entry) => entry.featureId)).toEqual(["setup", "inbox", "runs", "spend"]);
   });
 
   it("leaves out a section whose feature hasn't added its card", () => {

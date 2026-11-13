@@ -20,9 +20,10 @@ const replyFile = [
   "",
 ].join("\n");
 
-function acmeFiles(currency = "USD"): MemoryDefinitionStore {
+function acmeFiles(currency = "USD", monthly?: number): MemoryDefinitionStore {
+  const limit = monthly === undefined ? "" : `  monthly: ${monthly}\n`;
   return new MemoryDefinitionStore({
-    "workspace.yaml": `id: acme\nname: Acme\nbudget:\n  currency: ${currency}\n`,
+    "workspace.yaml": `id: acme\nname: Acme\nbudget:\n  currency: ${currency}\n${limit}`,
     "hubs/acme/hub.yaml": "id: acme\nname: Acme\n",
     "hubs/acme/workflows/reply.workflow.yaml": replyFile,
     "hubs/acme/workflows/routines/morning.routine.yaml": [
@@ -80,6 +81,21 @@ verifies("studio.workspace-runs", () => {
     );
     expect(runs.workflow("acme", "gone")).toBeUndefined();
     expect(runs.currency()).toBe("USD");
+  });
+
+  it("reads the workspace's monthly budget, and none when it sets none", async () => {
+    const { engine } = await waitingRun();
+    const capped = new WorkspaceRuns({
+      runs: engine.stores.store,
+      definitions: acmeFiles("USD", 100),
+    });
+    const open = new WorkspaceRuns({ runs: engine.stores.store, definitions: acmeFiles() });
+
+    await capped.list();
+    await open.list();
+
+    expect(capped.monthlyBudget()).toBe(100);
+    expect(open.monthlyBudget()).toBeUndefined();
   });
 
   it("names the routine a run's trigger names, and says when it runs", async () => {

@@ -59,6 +59,8 @@ export interface RunsSource {
   readonly routine: (key: string) => RunRoutine | undefined;
   /** The workspace's currency (`budget.currency`, EUR when it names none). */
   readonly currency: () => string;
+  /** The workspace's monthly budget (`budget.monthly`); `undefined` when it sets none. */
+  readonly monthlyBudget: () => number | undefined;
   /** Calls `listener` whenever a run starts, changes or ends; returns a function that stops it. */
   readonly subscribe: (listener: () => void) => () => void;
 }

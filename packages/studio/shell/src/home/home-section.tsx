@@ -34,6 +34,7 @@ export const homeSectionErrors: Readonly<Record<HomeSection, string>> = {
   setup: "Couldn't load setup",
   "needs-you": "Couldn't load what needs you",
   "recent-runs": "Couldn't load recent runs",
+  spend: "Couldn't load spend",
   cards: "Couldn't load cards",
 };
 
@@ -144,12 +145,18 @@ function useCardSignal(card: HomeCardContribution, context: WorkspaceContext): s
   });
 }
 
-/** What a section shows while its card loads: none for Get set up, cards for Cards, else rows. */
+/** The shape of a section's skeleton when it isn't rows: Cards show two cards, Spend one. */
+const skeletonShapes: Partial<Record<HomeSection, "cards" | "card">> = {
+  spend: "card",
+  cards: "cards",
+};
+
+/** What a section shows while its card loads: none for Get set up, a card or cards, else rows. */
 function skeletonFor(section: HomeSection) {
   if (withoutSkeleton.has(section)) {
     return null;
   }
-  return <SectionSkeleton shape={section === "cards" ? "cards" : "rows"} />;
+  return <SectionSkeleton shape={skeletonShapes[section] ?? "rows"} />;
 }
 
 /** The card's view, imported the first time the section shows, and again for each Try again. */

@@ -7,6 +7,7 @@ import { recentRuns } from "../list/recent-runs.ts";
 import type { RunRow } from "../list/run-row.ts";
 import { homeWords } from "../run-words.ts";
 import { type RunsList, RunsListService } from "../runs-list.ts";
+import { firstLoad } from "./first-load.ts";
 
 /** Home's Recent runs card: the open workspace's runs, from `RunsListService`. */
 export function RecentRunsCard({ context }: HomeCardProps) {
@@ -98,41 +99,4 @@ function homeRow(row: RunRow): ListRow {
     ),
     ...(row.standing === "failed" ? { error: { reason: row.line, chip: row.chip.word } } : {}),
   };
-}
-
-/** The first load of each list: on its way, or done. */
-const firstLoads = new WeakMap<RunsList, Promise<void>>();
-
-/**
- * Settles when the list's first load is in, or fails with the reason it couldn't, so the section
- * shows its skeleton, then its rows or its error. A failed load is forgotten, so the section's
- * **Try again**, which mounts the card again, loads the runs again.
- */
-function firstLoad(list: RunsList): Promise<void> {
-  const known = firstLoads.get(list);
-  if (known !== undefined) return known;
-  if (list.state.loaded) {
-    const done = Promise.resolve();
-    firstLoads.set(list, done);
-    return done;
-  }
-  const load = new Promise<void>((resolve, reject) => {
-    let stop = () => {};
-    const settle = () => {
-      const { loaded, error } = list.state;
-      if (!loaded && error === undefined) return;
-      stop();
-      if (loaded) {
-        resolve();
-      } else {
-        firstLoads.delete(list);
-        reject(error);
-      }
-    };
-    stop = list.subscribe(settle);
-  });
-  firstLoads.set(list, load);
-  // A load that failed before: this is Try again, so load again.
-  if (list.state.error !== undefined) void list.refresh();
-  return load;
 }

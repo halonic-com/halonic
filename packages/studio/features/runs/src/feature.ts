@@ -11,7 +11,7 @@ import { RunsList, RunsListService } from "./runs-list.ts";
  * runs the app provides (`RunsSourceService`), and adds the Runs place, whose
  * running dot in the sidebar reads that same list, and the `run` item kind,
  * one run per tab, and Home's Recent runs, whose heading counts the same
- * running runs. Ctrl K finds a run by its short id or its workflow's name (HAL-1301).
+ * running runs, and Home's Spend, the last six months of what the runs cost (HAL-8552). Ctrl K finds a run by its short id or its workflow's name (HAL-1301).
  */
 export const runsFeature = defineFeature({
   id: "runs",
@@ -38,6 +38,11 @@ export const runsFeature = defineFeature({
       signal: (context) => context.services.get(RunsListService).signal(),
       subscribeSignal: (context, listener) =>
         context.services.get(RunsListService).subscribe(listener),
+    });
+    studio.home.addCard({
+      id: "spend",
+      view: "SpendCard",
+      load: () => import("./ui/spend-card.tsx"),
     });
     studio.search.addProvider({
       id: "runs",
