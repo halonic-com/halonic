@@ -2,7 +2,9 @@ import { isProjectId, type SetupEdit, type SetupStep, type StepId } from "@halon
 import { Button } from "@halonicjs/studio-kit";
 import { type ReactNode, type Ref, useEffect, useId, useRef, useState } from "react";
 import type { GoogleSetupAccount } from "../api.ts";
+import { connectorProblem } from "../connector-problem.ts";
 import { stepTitle } from "../step-names.ts";
+import { ProblemBanner } from "./problem-banner.tsx";
 import { StepBody } from "./step-body.tsx";
 import { StepMark, type StepState, stepStateWords } from "./step-mark.tsx";
 import { foldedValue, stepWhy } from "./step-text.ts";
@@ -45,8 +47,12 @@ function hasDoneButton(step: SetupStep): boolean {
  */
 export function Checklist({ account, steps, answering, onEdit, close }: ChecklistProps) {
   const current = currentStep(account, steps);
-  // A step opened with Edit, until **Done, next** goes on to the current one.
-  const [editing, setEditing] = useState<StepId | null>(null);
+  const problem = connectorProblem(account);
+  // A step opened with Edit, until **Done, next** goes on to the current one. An account Google
+  // refused opens at the first step it needs again.
+  const [editing, setEditing] = useState<StepId | null>(
+    () => steps.find((step) => problem?.reopenAt.includes(step.id))?.id ?? null,
+  );
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   // The project ID as typed in step 1, until it is saved with **Done, next**.
@@ -101,50 +107,55 @@ export function Checklist({ account, steps, answering, onEdit, close }: Checklis
   }
 
   return (
-    <ol className="flex flex-col gap-3">
-      {steps.map((step) => {
-        const done = account.record.stepsDone[step.id] !== undefined;
-        const isOpen = step.id === open.id;
-        return (
-          <StepRow
-            key={step.id}
-            step={step}
-            count={steps.length}
-            state={stateOf(step, current, done)}
-            isCurrent={step.id === current.id}
-            folded={done && !isOpen}
-            value={foldedValue(step, account)}
-            titleRef={(heading) => {
-              if (heading === null) titles.current.delete(step.id);
-              else titles.current.set(step.id, heading);
-            }}
-            onEdit={() => setEditing(step.id)}
-          >
-            {isOpen ? (
-              <OpenStep
-                step={step}
-                account={account}
-                projectId={typedProjectId ?? account.record.projectId ?? ""}
-                projectIdError={projectIdError}
-                onProjectId={(text) => {
-                  setTypedProjectId(text);
-                  setProjectIdError(null);
-                }}
-                onInProduction={(ticked) =>
-                  void onEdit({ kind: "in-production", ticked }).catch(() => setFailed(true))
-                }
-                onEditProject={() => setEditing("project")}
-                answering={answering}
-                busy={busy}
-                failed={failed}
-                onDone={() => void doneNext()}
-                close={close}
-              />
-            ) : null}
-          </StepRow>
-        );
-      })}
-    </ol>
+    <>
+      {problem === undefined ? null : (
+        <ProblemBanner problem={problem} onAction={() => setEditing(problem.actionStep)} />
+      )}
+      <ol className="flex flex-col gap-3">
+        {steps.map((step) => {
+          const done = account.record.stepsDone[step.id] !== undefined;
+          const isOpen = step.id === open.id;
+          return (
+            <StepRow
+              key={step.id}
+              step={step}
+              count={steps.length}
+              state={stateOf(step, current, done)}
+              isCurrent={step.id === current.id}
+              folded={done && !isOpen}
+              value={foldedValue(step, account)}
+              titleRef={(heading) => {
+                if (heading === null) titles.current.delete(step.id);
+                else titles.current.set(step.id, heading);
+              }}
+              onEdit={() => setEditing(step.id)}
+            >
+              {isOpen ? (
+                <OpenStep
+                  step={step}
+                  account={account}
+                  projectId={typedProjectId ?? account.record.projectId ?? ""}
+                  projectIdError={projectIdError}
+                  onProjectId={(text) => {
+                    setTypedProjectId(text);
+                    setProjectIdError(null);
+                  }}
+                  onInProduction={(ticked) =>
+                    void onEdit({ kind: "in-production", ticked }).catch(() => setFailed(true))
+                  }
+                  onEditProject={() => setEditing("project")}
+                  answering={answering}
+                  busy={busy}
+                  failed={failed}
+                  onDone={() => void doneNext()}
+                  close={close}
+                />
+              ) : null}
+            </StepRow>
+          );
+        })}
+      </ol>
+    </>
   );
 }
 
