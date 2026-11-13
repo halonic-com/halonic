@@ -15,34 +15,34 @@
     <script type="module" src="./src/connect/main.ts"></script>
   </head>
   <body>
+    <!--
+      The ring, drawn once and used by both screens below: the band is 16% of the
+      diameter, the gradient runs bottom left to top right (design decisions 42,
+      91, 92). The Studio's title bar draws the same ring (TitleBarBrand).
+    -->
+    <svg class="ring-defs" width="0" height="0" aria-hidden="true">
+      <defs>
+        <linearGradient id="ring-gradient" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0" stop-color="#3175f2" />
+          <stop offset="1" stop-color="#1bc6c8" />
+        </linearGradient>
+        <symbol id="ring" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="url(#ring-gradient)" stroke-width="16" />
+        </symbol>
+      </defs>
+    </svg>
     <main>
       <!--
         While the remembered address is checked, only the logo shows. After
         a second the status line says "Connecting…".
       -->
       <section data-screen="starting">
-        <svg class="logo" viewBox="0 0 100 100" aria-hidden="true">
-          <defs>
-            <linearGradient id="ring-1" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#2668ed" />
-              <stop offset="1" stop-color="#14b8a2" />
-            </linearGradient>
-          </defs>
-          <circle cx="50" cy="50" r="42" fill="none" stroke="url(#ring-1)" stroke-width="16" />
-        </svg>
+        <svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><use href="#ring" /></svg>
         <p class="status" role="status"></p>
       </section>
 
       <section data-screen="connect" hidden>
-        <svg class="logo" viewBox="0 0 100 100" aria-hidden="true">
-          <defs>
-            <linearGradient id="ring-2" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#2668ed" />
-              <stop offset="1" stop-color="#14b8a2" />
-            </linearGradient>
-          </defs>
-          <circle cx="50" cy="50" r="42" fill="none" stroke="url(#ring-2)" stroke-width="16" />
-        </svg>
+        <svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><use href="#ring" /></svg>
         <h1>Connect to Halonic <span class="line">on your computer</span></h1>
         <form novalidate>
           <label for="address">Address</label>

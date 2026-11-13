@@ -18,37 +18,28 @@ export function TitleBarBrand() {
   );
 }
 
-/** The app's ring, in the blue to teal of the app icon, 16px like a tab's icon. */
+/**
+ * The ring alone, 20px, drawn as on halonic.dev (`brand/masters/halonic-mark.svg`): the band is 16%
+ * of the diameter in one viewBox, so no pixel stroke, and the one gradient runs bottom left to top
+ * right (design decisions 42, 91, 92). The ring has no glow, so it looks the same in light and
+ * dark and needs no media query. The Android connect page draws the same ring.
+ */
 function HalonicMark({ named }: { readonly named: boolean }) {
   return (
     <svg
-      viewBox="0 0 512 512"
-      className="size-icon-sm shrink-0"
+      viewBox="0 0 100 100"
+      className="size-icon-md shrink-0"
       role={named ? "img" : undefined}
       aria-label={named ? "Halonic Studio" : undefined}
       aria-hidden={named ? undefined : true}
     >
       <defs>
-        <linearGradient
-          id="halonic-mark"
-          gradientUnits="userSpaceOnUse"
-          x1="16"
-          y1="16"
-          x2="496"
-          y2="496"
-        >
-          <stop offset="0" stopColor="#2668ed" />
-          <stop offset="1" stopColor="#14b8a2" />
+        <linearGradient id="halonic-mark" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0" stopColor="#3175f2" />
+          <stop offset="1" stopColor="#1bc6c8" />
         </linearGradient>
       </defs>
-      <circle
-        cx="256"
-        cy="256"
-        r="211.2"
-        fill="none"
-        stroke="url(#halonic-mark)"
-        strokeWidth="57.6"
-      />
+      <circle cx="50" cy="50" r="42" fill="none" stroke="url(#halonic-mark)" strokeWidth="16" />
     </svg>
   );
 }
