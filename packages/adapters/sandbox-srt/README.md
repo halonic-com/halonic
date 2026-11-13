@@ -24,8 +24,8 @@ loopback address or is on a Unix socket (srt's rule for it comes with HAL-6348),
 loopback port it blocks) before any program starts. Programs never start without a proven fence, and
 never run a file under a skill's `scripts/` folder. A program starts in the working folder, or in a
 folder inside a read-only path, such as the workspace folder a connector's script is in. The start
-folder is checked where it really is, through links, and a denied path or the session's own private
-folders always refuse it. When a session ends, it undoes any `commondir`
+folder is checked where it really is, through links, and a denied path (unless the profile reopens it) or the
+session's own private folders refuse it. When a session ends, it undoes any `commondir`
 file the program changed in the working folder's git folders and moves aside any `.git` the program
 planted at a gitlink, reporting each as a refused write.
 
