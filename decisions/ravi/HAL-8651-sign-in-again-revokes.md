@@ -2,7 +2,6 @@
 
 - Approval: HAL-8651 (Liam, CTO)
 - Kind: internal
-- Signature: PENDING
 
 Signing in again signs the old grant out before the new one is saved: it is revoked at the
 URL it was approved with, then dropped. This is what the HAL-984 design says; the flow did not
