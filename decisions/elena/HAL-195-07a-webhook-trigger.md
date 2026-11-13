@@ -3,6 +3,7 @@
 - Task: HAL-195
 - Approval: Liam approved the phase 4 build plan on HAL-7816 (PR 7: webhook triggers, additive); the package owner signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hy73c+1OXOymjZEXrTxiggJPFdXN8UVbDCEW0rlnhQW8MYEurHyNs7vf2o8yUvZRwqAD1BFbZOVgwxOMv87/Cg==
 
 ## What changes
 
