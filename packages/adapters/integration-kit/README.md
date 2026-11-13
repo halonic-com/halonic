@@ -115,6 +115,7 @@ const policy: IntegrationPolicy = {
   name: "acme-forecast",
   hosts: ["api.acme.example"],
   secrets: { "acme-key": { hosts: ["api.acme.example"], placement: { as: "bearer" } } },
+  signIns: {},
   tokens: [],
 };
 
