@@ -13,22 +13,27 @@
 //! id. Either side can end one (a half-close) or reset it. One thread writes
 //! every frame to the host; one reads the host's frames all the time and
 //! queues each connection's bytes, so a client that reads slowly never holds
-//! up the others. What it holds at most is in [`limits`]. Only std, so it
-//! builds and tests anywhere.
+//! up the others. What it holds at most is in [`limits`], what it waits for
+//! at most in [`deadlines`]. Only std, so it builds and tests anywhere.
 
 use std::io::{self, Read, Write};
 use std::net::{Ipv4Addr, Shutdown, SocketAddr, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::mpsc::{self, Receiver, Sender, SyncSender, TrySendError};
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use connections::{Connection, Connections};
-use limits::{BACKLOG_LIMIT, CONNECTION_LIMIT, QUEUED_FRAMES, Quota};
+use deadlines::Deadline;
+use limits::{Limits, QUEUED_FRAMES, QUEUED_FRAMES_PER_CONNECTION, Quota};
+use token::TokenCheck;
 
 mod connections;
+mod deadlines;
+mod from_host;
 mod limits;
+mod token;
 
 /// The most bytes one frame carries.
 pub(crate) const FRAME_LIMIT: usize = 64 * 1024;
@@ -46,10 +51,20 @@ const WAKE_TIMEOUT: Duration = Duration::from_secs(1);
 
 /// What goes to the host's input.
 enum ToHost {
-    /// A frame, and the share of the queue of the connection that sent it.
-    Frame(Vec<u8>, Option<Arc<Quota>>),
+    /// A frame, and what it took of the queue to the host.
+    Frame(Vec<u8>, Taken),
     /// Close the host's input, so it stops.
     Close,
+}
+
+/// What a frame took of the queue to the host, given back once it's written.
+enum Taken {
+    /// Nothing: an end or a reset, at most two for each connection opened.
+    Nothing,
+    /// A place in the queue: an `open`.
+    Place,
+    /// A place, and one of its connection's share: a client's bytes.
+    PlaceAndShare(Arc<Quota>),
 }
 
 /// What the host sent a connection's client.
@@ -61,38 +76,39 @@ enum ToClient {
 /// A relay on `127.0.0.1` for one host. Dropping it stops it.
 pub(crate) struct Relay {
     shared: Arc<Shared>,
-    /// The listener, the host's frames and the resets to send it until
+    /// The listener, the host's frames and the connections' deadlines until
     /// [`Relay::serve`] starts.
-    waiting: Option<(TcpListener, Receiver<ToHost>, Receiver<Option<u32>>)>,
+    waiting: Option<(TcpListener, Receiver<ToHost>, Receiver<Deadline>)>,
 }
 
 impl Relay {
     /// Listens on a free port of `127.0.0.1`. Nothing is accepted until
     /// [`Relay::serve`]: the host needs the port before it starts.
     pub(crate) fn bind() -> io::Result<Self> {
-        Self::bind_with_limits(BACKLOG_LIMIT, CONNECTION_LIMIT)
+        Self::bind_with_limits(Limits::default())
     }
 
-    fn bind_with_limits(backlog_limit: usize, connection_limit: usize) -> io::Result<Self> {
+    fn bind_with_limits(limits: Limits) -> io::Result<Self> {
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0))?;
         let port = listener.local_addr()?.port();
-        let (to_host, frames) = mpsc::sync_channel(QUEUED_FRAMES);
-        let (resets, resets_to_send) = mpsc::channel();
+        let (to_host, frames) = mpsc::channel();
+        let (deadlines, deadlines_to_keep) = mpsc::channel();
         let shared = Arc::new(Shared {
             port,
-            backlog_limit,
-            connection_limit,
+            limits,
             stopped: AtomicBool::new(false),
             accepting: AtomicBool::new(false),
             to_host,
-            resets,
+            queue: Quota::new(QUEUED_FRAMES),
+            writing_since: Mutex::default(),
+            deadlines,
             connections: Mutex::default(),
             #[cfg(test)]
             opens_queued: AtomicUsize::new(0),
         });
         Ok(Self {
             shared,
-            waiting: Some((listener, frames, resets_to_send)),
+            waiting: Some((listener, frames, deadlines_to_keep)),
         })
     }
 
@@ -103,13 +119,16 @@ impl Relay {
 
     /// Starts passing connections to the host: frames go to `input`, the
     /// host's standard input, and come from `output`, its standard output
-    /// after the handshake line. Calling it again does nothing.
+    /// after the handshake line. `token` is the one from that line, which
+    /// each connection's first request must carry. Calling it again does
+    /// nothing.
     pub(crate) fn serve(
         &mut self,
         input: impl Write + Send + 'static,
         output: impl Read + Send + 'static,
+        token: &str,
     ) {
-        let Some((listener, frames, resets)) = self.waiting.take() else {
+        let Some((listener, frames, deadlines)) = self.waiting.take() else {
             return;
         };
         let shared = Arc::clone(&self.shared);
@@ -117,12 +136,13 @@ impl Relay {
             shared.pass_frames_to_host(input, frames)
         });
         let shared = Arc::clone(&self.shared);
-        spawn("relay-resets", move || shared.send_resets(&resets));
+        spawn("relay-deadlines", move || shared.keep_deadlines(&deadlines));
         let shared = Arc::clone(&self.shared);
         spawn("relay-from-host", move || shared.pass_host_frames(output));
         self.shared.accepting.store(true, Ordering::SeqCst);
         let shared = Arc::clone(&self.shared);
-        spawn("relay-accept", move || shared.accept(&listener));
+        let token = token.to_owned();
+        spawn("relay-accept", move || shared.accept(&listener, &token));
     }
 
     /// Closes the host's input, so it stops, and every connection. Stopping
@@ -149,15 +169,20 @@ impl std::fmt::Debug for Relay {
 
 struct Shared {
     port: u16,
-    backlog_limit: usize,
-    connection_limit: usize,
+    limits: Limits,
     stopped: AtomicBool,
     /// True while a thread waits to accept connections, so stopping must
     /// wake it. Once it's gone, the port may be another process's.
     accepting: AtomicBool,
-    to_host: SyncSender<ToHost>,
-    /// Resets for the host, sent by one thread; `None` ends it.
-    resets: Sender<Option<u32>>,
+    /// Never waits: opens and what clients send wait for room in `queue`
+    /// first, so only ends and resets go past it.
+    to_host: Sender<ToHost>,
+    /// The frames from clients waiting for the host's input.
+    queue: Quota,
+    /// When the frame being written to the host's input started; `None`
+    /// between frames.
+    writing_since: Mutex<Option<Instant>>,
+    deadlines: Sender<Deadline>,
     connections: Mutex<Connections>,
     /// How many `open` frames reached the queue to the host, so a test can
     /// wait for the one it needs ahead of the frames it counts.
@@ -177,34 +202,23 @@ impl Shared {
     }
 
     fn send(&self, id: u32, kind: u8, bytes: &[u8]) -> Result<(), Broken> {
+        self.send_taking(id, kind, bytes, Taken::Nothing)
+    }
+
+    fn send_taking(&self, id: u32, kind: u8, bytes: &[u8], taken: Taken) -> Result<(), Broken> {
         self.to_host
-            .send(ToHost::Frame(frame(id, kind, bytes), None))
+            .send(ToHost::Frame(frame(id, kind, bytes), taken))
             .map_err(|_| Broken)
     }
 
-    /// Queues a reset without waiting, for the thread that reads the host's
-    /// frames: it must never wait on the host's input. One thread sends them
-    /// all, however many there are.
-    fn send_reset_later(&self, id: u32) {
-        let _ = self.resets.send(Some(id));
-    }
-
-    fn send_resets(&self, resets: &Receiver<Option<u32>>) {
-        while let Ok(Some(id)) = resets.recv() {
-            if self.send(id, RESET, &[]).is_err() {
-                return;
-            }
-        }
-    }
-
-    fn accept(self: &Arc<Self>, listener: &TcpListener) {
+    fn accept(self: &Arc<Self>, listener: &TcpListener, token: &str) {
         for socket in listener.incoming() {
             if self.stopped.load(Ordering::SeqCst) {
                 break;
             }
             // A client that went before it was accepted fails here; others go on.
             let Ok(socket) = socket else { continue };
-            if self.open(socket).is_err() {
+            if self.open(socket, token).is_err() {
                 self.accepting.store(false, Ordering::SeqCst);
                 self.stop();
                 return;
@@ -214,8 +228,8 @@ impl Shared {
     }
 
     /// Opens a connection for `socket`, tells the host, and starts passing
-    /// its bytes both ways.
-    fn open(self: &Arc<Self>, socket: TcpStream) -> Result<(), Broken> {
+    /// its bytes both ways. It closes if its first request lacks `token`.
+    fn open(self: &Arc<Self>, socket: TcpStream, token: &str) -> Result<(), Broken> {
         let _ = socket.set_nodelay(true);
         let (Ok(reader), Ok(writer)) = (socket.try_clone(), socket.try_clone()) else {
             // Without handles the connection can't be served; others can.
@@ -224,13 +238,19 @@ impl Shared {
         };
         let (to_client, from_host) = mpsc::channel();
         let backlog = Arc::new(AtomicUsize::new(0));
-        let quota = Arc::new(Quota::default());
+        let quota = Arc::new(Quota::new(QUEUED_FRAMES_PER_CONNECTION));
+        // Waits while the host reads nothing, so opens don't pile up.
+        if !self.queue.take() {
+            let _ = socket.shutdown(Shutdown::Both);
+            return Ok(());
+        }
         let id = {
             let mut connections = self.connections();
             // Stopping drains the connections under this lock: one opened
             // after that would stay open.
-            let full = connections.open.len() >= self.connection_limit;
+            let full = connections.open.len() >= self.limits.connections;
             if full || self.stopped.load(Ordering::SeqCst) {
+                self.queue.give_back();
                 let _ = socket.shutdown(Shutdown::Both);
                 return Ok(());
             }
@@ -244,17 +264,22 @@ impl Shared {
                 quota: Arc::clone(&quota),
                 client_ended: false,
                 host_ended: false,
+                has_token: false,
             };
             connections.open.insert(id, connection);
             id
         };
         // Sent before the client's bytes can be, so `open` comes first.
-        self.send(id, OPEN, &[])?;
+        self.send_taking(id, OPEN, &[], Taken::Place)?;
         #[cfg(test)]
         self.opens_queued.fetch_add(1, Ordering::SeqCst);
+        let _ = self
+            .deadlines
+            .send(Some((id, Instant::now() + self.limits.token)));
+        let check = TokenCheck::new(token);
         let shared = Arc::clone(self);
         spawn("relay-client-in", move || {
-            shared.pass_client_bytes(id, reader, &quota);
+            shared.pass_client_bytes(id, reader, &quota, check);
         });
         let shared = Arc::clone(self);
         spawn("relay-client-out", move || {
@@ -266,7 +291,13 @@ impl Shared {
     /// Passes what the client sends to the host, until the client ends,
     /// fails, or the connection closes. It waits while the client has its
     /// share of the queue to the host, so the others still get through.
-    fn pass_client_bytes(&self, id: u32, mut socket: TcpStream, quota: &Arc<Quota>) {
+    fn pass_client_bytes(
+        &self,
+        id: u32,
+        mut socket: TcpStream,
+        quota: &Arc<Quota>,
+        mut check: TokenCheck,
+    ) {
         let mut buffer = vec![0_u8; FRAME_LIMIT];
         loop {
             match socket.read(&mut buffer) {
@@ -275,12 +306,16 @@ impl Shared {
                     return;
                 }
                 Ok(read) => {
-                    let open = self.connections().open.contains_key(&id);
-                    if !open || !quota.take() {
+                    if let Some(connection) = self.connections().open.get_mut(&id) {
+                        connection.has_token |= check.found(&buffer[..read]);
+                    } else {
+                        return;
+                    }
+                    if !quota.take() || !self.queue.take() {
                         return;
                     }
                     let data = frame(id, DATA, &buffer[..read]);
-                    let queued = ToHost::Frame(data, Some(Arc::clone(quota)));
+                    let queued = ToHost::Frame(data, Taken::PlaceAndShare(Arc::clone(quota)));
                     if self.to_host.send(queued).is_err() {
                         return;
                     }
@@ -362,83 +397,25 @@ impl Shared {
         true
     }
 
-    /// Reads the host's frames until its output ends or breaks the format,
-    /// then stops the relay.
-    fn pass_host_frames(self: &Arc<Self>, mut output: impl Read) {
-        let mut header = [0_u8; HEADER_LENGTH];
-        while output.read_exact(&mut header).is_ok() {
-            let id = u32::from_be_bytes([header[0], header[1], header[2], header[3]]);
-            let kind = header[4];
-            let length = u32::from_be_bytes([header[5], header[6], header[7], header[8]]);
-            let Ok(length) = usize::try_from(length) else {
-                break;
-            };
-            if length > FRAME_LIMIT {
-                break;
-            }
-            let mut bytes = vec![0_u8; length];
-            if output.read_exact(&mut bytes).is_err() {
-                break;
-            }
-            let passed = match kind {
-                DATA => self.to_client(id, ToClient::Data(bytes)),
-                END => self.to_client(id, ToClient::End),
-                RESET => self.host_reset(id),
-                // Only the relay opens connections; any other kind is unknown.
-                _ => Err(Broken),
-            };
-            if passed.is_err() {
-                break;
-            }
-        }
-        self.stop();
-    }
-
-    /// Queues the host's bytes or end for a connection's client. A frame
-    /// for a connection that has closed is dropped; one for an id never
-    /// opened breaks the stream.
-    fn to_client(&self, id: u32, message: ToClient) -> Result<(), Broken> {
-        let mut connections = self.connections();
-        if id == 0 || id > connections.last_id {
-            return Err(Broken);
-        }
-        let Some(connection) = connections.open.get(&id) else {
-            return Ok(());
-        };
-        if let ToClient::Data(bytes) = &message {
-            let waiting = connection.backlog.fetch_add(bytes.len(), Ordering::SeqCst);
-            if waiting + bytes.len() > self.backlog_limit {
-                if let Some(connection) = connections.open.remove(&id) {
-                    connection.shut();
-                }
-                drop(connections);
-                self.send_reset_later(id);
-                return Ok(());
-            }
-        }
-        // The client's writer only ends after the connection closes.
-        let _ = connection.to_client.send(message);
-        Ok(())
-    }
-
-    fn host_reset(&self, id: u32) -> Result<(), Broken> {
-        if id == 0 || id > self.connections().last_id {
-            return Err(Broken);
-        }
-        self.close(id);
-        Ok(())
-    }
-
     /// Writes the queued frames to the host's input until the relay stops
-    /// or the host can't take them, then closes it.
+    /// or the host can't take them, then closes it. A write the host never
+    /// takes holds this thread until the host exits; the relay stops long
+    /// before that, so nothing else waits on it.
     fn pass_frames_to_host(&self, mut input: impl Write, frames: Receiver<ToHost>) {
         for message in frames {
-            let ToHost::Frame(frame, quota) = message else {
+            let ToHost::Frame(frame, taken) = message else {
                 break;
             };
+            self.set_writing_since(Some(Instant::now()));
             let written = input.write_all(&frame).and_then(|()| input.flush());
-            if let Some(quota) = quota {
-                quota.give_back();
+            self.set_writing_since(None);
+            match taken {
+                Taken::Nothing => {}
+                Taken::Place => self.queue.give_back(),
+                Taken::PlaceAndShare(quota) => {
+                    quota.give_back();
+                    self.queue.give_back();
+                }
             }
             if written.is_err() {
                 break;
@@ -446,6 +423,13 @@ impl Shared {
         }
         drop(input);
         self.stop();
+    }
+
+    fn set_writing_since(&self, since: Option<Instant>) {
+        *self
+            .writing_since
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = since;
     }
 
     fn stop(&self) {
@@ -456,17 +440,10 @@ impl Shared {
         for connection in closed {
             connection.shut();
         }
-        let _ = self.resets.send(None);
-        match self.to_host.try_send(ToHost::Close) {
-            Ok(()) | Err(TrySendError::Disconnected(_)) => {}
-            // The writer waits on the host; it closes the input after that.
-            Err(TrySendError::Full(close)) => {
-                let to_host = self.to_host.clone();
-                spawn("relay-close", move || {
-                    let _ = to_host.send(close);
-                });
-            }
-        }
+        self.queue.close();
+        let _ = self.deadlines.send(None);
+        // The writer closes the input once it wrote what came before.
+        let _ = self.to_host.send(ToHost::Close);
         // Wakes the thread waiting to accept, which then sees the relay stopped.
         if !self.accepting.load(Ordering::SeqCst) {
             return;

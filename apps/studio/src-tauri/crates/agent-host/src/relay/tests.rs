@@ -7,11 +7,16 @@ use std::sync::atomic::Ordering;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::time::{Duration, Instant};
 
-use super::limits::{BACKLOG_LIMIT, CONNECTION_LIMIT, QUEUED_FRAMES, QUEUED_FRAMES_PER_CONNECTION};
+use super::limits::{Limits, QUEUED_FRAMES, QUEUED_FRAMES_PER_CONNECTION};
 use super::{DATA, END, FRAME_LIMIT, OPEN, RESET, Relay, frame};
 
 /// Long enough for a thread to run on a busy CI machine.
 const WAIT: Duration = Duration::from_secs(20);
+
+/// Short, so a test waits little for a deadline to pass.
+const SHORT: Duration = Duration::from_millis(300);
+
+const TOKEN: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ";
 
 type Frame = (u32, u8, Vec<u8>);
 
@@ -62,15 +67,14 @@ impl StandIn {
 }
 
 fn relay() -> (Relay, StandIn) {
-    relay_with_limits(BACKLOG_LIMIT, CONNECTION_LIMIT)
+    relay_with_limits(Limits::default())
 }
 
-fn relay_with_limits(backlog_limit: usize, connection_limit: usize) -> (Relay, StandIn) {
-    let mut relay =
-        Relay::bind_with_limits(backlog_limit, connection_limit).expect("bind the relay");
+fn relay_with_limits(limits: Limits) -> (Relay, StandIn) {
+    let mut relay = Relay::bind_with_limits(limits).expect("bind the relay");
     let (mut input, relay_input) = io::pipe().expect("a pipe");
     let (relay_output, output) = io::pipe().expect("a pipe");
-    relay.serve(relay_input, relay_output);
+    relay.serve(relay_input, relay_output, TOKEN);
     let (sender, frames) = mpsc::channel();
     std::thread::spawn(move || {
         while let Some(frame) = read_frame(&mut input) {
@@ -226,7 +230,10 @@ fn relay_resets_a_connection_when_its_client_drops_it() {
 
 #[test]
 fn relay_resets_a_client_that_reads_nothing_past_the_backlog_limit() {
-    let (relay, mut host) = relay_with_limits(4 * FRAME_LIMIT, CONNECTION_LIMIT);
+    let (relay, mut host) = relay_with_limits(Limits {
+        backlog: 4 * FRAME_LIMIT,
+        ..Limits::default()
+    });
     let _idle = connect(&relay);
     assert_eq!(host.next(), (1, OPEN, Vec::new()));
 
@@ -248,7 +255,10 @@ fn relay_resets_a_client_that_reads_nothing_past_the_backlog_limit() {
 
 #[test]
 fn relay_limits_shut_connections_past_the_limit_until_one_closes() {
-    let (relay, mut host) = relay_with_limits(BACKLOG_LIMIT, 2);
+    let (relay, mut host) = relay_with_limits(Limits {
+        connections: 2,
+        ..Limits::default()
+    });
     let _first = connect(&relay);
     assert_eq!(host.next(), (1, OPEN, Vec::new()));
     let _second = connect(&relay);
@@ -274,7 +284,7 @@ fn relay_limits_leave_room_in_the_queue_while_one_client_sends_a_big_body() {
     let mut relay = Relay::bind().expect("bind the relay");
     let (mut input, relay_input) = io::pipe().expect("a pipe");
     let (relay_output, _output) = io::pipe().expect("a pipe");
-    relay.serve(relay_input, relay_output);
+    relay.serve(relay_input, relay_output, TOKEN);
     let mut big = connect(&relay);
     // Far more than the queue to the host holds, and the host reads nothing yet.
     let body = vec![7_u8; 2 * QUEUED_FRAMES * FRAME_LIMIT];
@@ -387,7 +397,7 @@ fn relay_closes_a_connection_accepted_while_it_stops() {
     let (socket, _) = listener.accept().expect("accept");
 
     relay.stop();
-    assert!(relay.shared.open(socket).is_ok());
+    assert!(relay.shared.open(socket, TOKEN).is_ok());
 
     assert!(relay.shared.connections().open.is_empty());
     assert!(closed(&mut client));
@@ -403,4 +413,72 @@ fn relay_stop_wakes_no_one_when_nothing_accepts() {
     listener.set_nonblocking(true).expect("non-blocking");
     let waiting = listener.accept().map(|_| ()).map_err(|error| error.kind());
     assert_eq!(waiting, Err(io::ErrorKind::WouldBlock));
+}
+
+#[test]
+fn relay_limits_close_a_connection_without_the_token_in_its_first_request() {
+    let (relay, mut host) = relay_with_limits(Limits {
+        token: SHORT,
+        ..Limits::default()
+    });
+    let mut without = connect(&relay);
+    without
+        .write_all(b"GET / HTTP/1.1\r\nAuthorization: Bearer guess\r\n\r\n")
+        .expect("send");
+    assert_eq!(host.next(), (1, OPEN, Vec::new()));
+    let mut with = connect(&relay);
+    let head = format!("GET / HTTP/1.1\r\nAuthorization: Bearer {TOKEN}\r\n\r\n");
+    with.write_all(head.as_bytes()).expect("send");
+
+    // The host may still answer the first one before its deadline.
+    loop {
+        let (id, kind, _) = host.next();
+        assert_ne!((id, kind), (2, RESET), "the one with the token stays open");
+        if (id, kind) == (1, RESET) {
+            break;
+        }
+    }
+    assert!(closed(&mut without));
+    host.send(2, DATA, b"served");
+    host.send(2, END, &[]);
+    assert_eq!(read_all(&mut with), b"served");
+}
+
+#[test]
+fn relay_limits_stop_the_relay_when_the_host_reads_nothing_for_too_long() {
+    let mut relay = Relay::bind_with_limits(Limits {
+        host_read: SHORT,
+        ..Limits::default()
+    })
+    .expect("bind the relay");
+    let (mut input, relay_input) = io::pipe().expect("a pipe");
+    let (relay_output, _output) = io::pipe().expect("a pipe");
+    relay.serve(relay_input, relay_output, TOKEN);
+    let mut idle = connect(&relay);
+    let mut big = connect(&relay);
+    // Far more than the pipe and the queue hold, and the host reads nothing.
+    // Keep sending until the relay closes the connection: how much the socket
+    // buffers take before that differs by platform (Windows takes a lot).
+    let chunk = vec![7_u8; FRAME_LIMIT];
+    let writer = std::thread::spawn(move || {
+        let give_up = Instant::now() + Duration::from_secs(20);
+        while Instant::now() < give_up {
+            big.write_all(&chunk)?;
+        }
+        Ok::<(), io::Error>(())
+    });
+
+    assert!(closed(&mut idle), "the relay stopped");
+    assert!(writer.join().expect("the writer ends").is_err());
+
+    // Once the host reads again, it gets what was queued, then its input closes.
+    let mut frames = 0;
+    while read_frame(&mut input).is_some() {
+        frames += 1;
+    }
+    // Two opens, the big one's share and the frame being written.
+    assert!(
+        frames <= QUEUED_FRAMES_PER_CONNECTION + 3,
+        "{frames} frames"
+    );
 }

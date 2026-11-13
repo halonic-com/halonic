@@ -26,6 +26,8 @@ pub(super) struct Connection {
     pub(super) quota: Arc<Quota>,
     pub(super) client_ended: bool,
     pub(super) host_ended: bool,
+    /// The client's first request carried the token, so no deadline closes it.
+    pub(super) has_token: bool,
 }
 
 impl Connection {
