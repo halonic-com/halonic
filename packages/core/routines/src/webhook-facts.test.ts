@@ -55,6 +55,26 @@ verifies("routines.webhook-facts", () => {
     expect(facts.headers).toEqual({ "x-event": "paid" });
   });
 
+  it("drops a refused header even when the trigger lists it", () => {
+    const trigger = { webhook: { secret: "acme-hook", headers: ["authorization", "x-event"] } };
+    const facts = webhookFacts(trigger, {
+      at,
+      body: "",
+      headers: { authorization: "Bearer x", "x-event": "paid" },
+    });
+    expect(facts.headers).toEqual({ "x-event": "paid" });
+  });
+
+  it("leaves a very large JSON body as text", () => {
+    const big = JSON.stringify({ pad: "x".repeat(300 * 1024) });
+    const facts = webhookFacts(routine.trigger, {
+      at,
+      body: big,
+      headers: { "content-type": "application/json" },
+    });
+    expect(facts.body).toBe(big);
+  });
+
   it("never reads Object.prototype for a listed name", () => {
     const { routine: odd } = routineOf("[constructor]");
     expect(webhookFacts(odd.trigger, { at, body: "", headers: {} }).headers).toEqual({});
