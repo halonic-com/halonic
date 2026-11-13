@@ -3,6 +3,7 @@
 - Task: HAL-8164, the follow-ups accepted in the review of #2353 (HAL-8125)
 - Approval: Liam reviewed #2373 on HAL-8164 and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:pm6uW0V9fsKXpirfuXydyTSQ5HHfgM6OJoYohRDYOZ4UAZ5sZq6aTS3cdz3wau/Bt0s22uVpHMkGGWZuy7tWAw==
 
 ## What changes
 
