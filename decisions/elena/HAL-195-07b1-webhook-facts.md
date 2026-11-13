@@ -2,9 +2,9 @@
 
 - Requirement: `runs.row-columns` (`packages/studio/features/runs/requirements/row-columns.md`)
 - Task: HAL-195, PR 7b-1 (review and approval on HAL-8326)
-- Approval: https://paperclip.halonic.com/HAL/issues/HAL-8326
-- Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jtb/Y+FBYMx4MuBA9tu9QLC5oHOZavmDnUMSva+yRRtrPWcaT5y4dSpHqxGL9CAf3LPQ1Z1HSDdmNDB5O3M1Bw==
+- Approval: the Started by column is approved (HAL-7094); the words for a web-request start are the
+  team's call on HAL-195 (HAL-2282), and Liam approved them in review on HAL-8326
+- Kind: internal
 
 ## What changes
 
