@@ -29,10 +29,14 @@ export interface SeenRequest {
 /** A sign-in flow with a fake store, token endpoint, settings and randomness. */
 export function exampleFlow(options: { settings?: Record<string, unknown>; issuer?: string } = {}) {
   const values = new Map<string, string>();
+  let storeFails = false;
   const grants: SignInGrants = createSignInGrants(
     {
       get: async (name) => values.get(name) ?? null,
-      set: async (name, value) => void values.set(name, value),
+      set: async (name, value) => {
+        if (storeFails) throw new Error("fake store failure");
+        values.set(name, value);
+      },
       remove: async (name) => void values.delete(name),
     },
     webDigest,
@@ -97,6 +101,9 @@ export function exampleFlow(options: { settings?: Record<string, unknown>; issue
     },
     changeSettings(settings: Record<string, unknown>) {
       source = { ...source, settings };
+    },
+    failStoreWrites() {
+      storeFails = true;
     },
     withoutClientSecret() {
       secret = null;

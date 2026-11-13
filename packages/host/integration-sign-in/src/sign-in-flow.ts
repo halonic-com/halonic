@@ -90,7 +90,8 @@ export type SignInOutcome =
         | "codeRefused"
         | "noRefreshToken"
         | "tokenAnswerRefused"
-        | "unreachable";
+        | "unreachable"
+        | "failed";
       readonly signIn: string;
     }
   | { readonly kind: "unexpectedAnswer"; readonly signIn: string; readonly status: number };
@@ -188,7 +189,15 @@ export function createSignInFlow(settings: SignInFlowSettings): SignInFlow {
     }
     // One answer per path, whatever it carries: a second visit finds nothing.
     paths.delete(url.pathname);
-    const outcome = await finish(url, entry.signIn);
+    let outcome: SignInOutcome;
+    try {
+      outcome = await finish(url, entry.signIn);
+    } catch {
+      // The error is dropped on purpose: it can carry a token or a URL.
+      outcome = { kind: "failed", signIn: entry.signIn };
+      settings.onOutcome?.(outcome);
+      return page(500, outcomeText(outcome));
+    }
     settings.onOutcome?.(outcome);
     return page(outcome.kind === "signedIn" ? 200 : 400, outcomeText(outcome));
   }
@@ -206,7 +215,9 @@ export function createSignInFlow(settings: SignInFlowSettings): SignInFlow {
         break;
     }
     const { pending: started } = callback;
-    // Never finish a sign-in through another path than its own.
+    // Never finish a sign-in through another path than its own. `state` was
+    // read first, so a callback on A's path with B's `state` also uses B up.
+    // That takes B's secret `state`; the outcome is only imprecise.
     if (started.callbackPath !== url.pathname || started.signIn !== signIn) {
       return { kind: "linkNoLongerValid", signIn };
     }

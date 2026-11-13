@@ -18,4 +18,5 @@ The host shall start an integration's sign-in from the sign-in the sheet and the
 - Given a setting that changed after the start, then nothing is exchanged and the outcome is `signInChanged`.
 - Given a token answer whose `token_type` isn't bearer, whose `access_token` is shorter than 16 characters or holds a space or line break, or that has no refresh token, then nothing is saved.
 - Given a provider that granted other scopes than asked, then the outcome names the missing and the extra ones.
+- Given a callback whose handling throws, such as a store that can't be written, then the outcome is `failed` (with the sign-in's name only), the page is a fixed 500 and a second visit gets the 400.
 - Given any callback, then the page and the outcome hold no code, error description, token or client secret.

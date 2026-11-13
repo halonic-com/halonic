@@ -232,6 +232,27 @@ verifies("integration-sign-in.sign-in-flow", () => {
     expect(test.values.size).toBe(0);
   });
 
+  it("reports a failed sign-in and answers 500 when the store can't be written", async () => {
+    const test = exampleFlow();
+    test.failStoreWrites();
+    const started = await test.started();
+
+    const response = await test.flow.handleCallback(
+      started.callback({ state: started.state, code: "fake-code-1" }),
+    );
+
+    expect(response.status).toBe(500);
+    expect(test.outcomes).toEqual([{ kind: "failed", signIn: signInName }]);
+    const shown = JSON.stringify(test.outcomes) + (await response.text());
+    expect(shown).not.toContain("fake-code-1");
+    expect(shown).not.toContain("fake store failure");
+    const again = await test.flow.handleCallback(
+      started.callback({ state: started.state, code: "fake-code-1" }),
+    );
+    expect(again.status).toBe(400);
+    expect(test.outcomes).toHaveLength(1);
+  });
+
   it("says which scopes the provider granted differently", async () => {
     const test = exampleFlow();
     test.answerWith({
