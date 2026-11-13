@@ -9,7 +9,7 @@
 //! commands (capabilities/desktop-host-settings.json) and the `run_*` commands
 //! (capabilities/desktop-runs.json) and the `agent_host_*` commands
 //! (capabilities/desktop-agent-host.json) and the `fs_*` commands
-//! (capabilities/desktop-files.json) and the `blob_*` commands
+//! (capabilities/desktop-files.json, with the read-only `folder_*` commands) and the `blob_*` commands
 //! (capabilities/desktop-blobs.json) and the `record_*` commands
 //! (capabilities/desktop-records.json) and the `update_*` commands
 //! (capabilities/desktop-updates.json); the Studio it then opens is
@@ -141,6 +141,9 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             files::fs_remove,
             files::fs_watch,
             files::fs_unwatch,
+            files::folder_entries,
+            files::folder_read,
+            files::folder_location,
             blobs::blob_put,
             blobs::blob_get,
             records::record_append,

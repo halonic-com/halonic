@@ -1,6 +1,6 @@
 # @halonicjs/adapter-fs-tauri
 
-The `TrustStore`, `RunStore`, `BlobStore`, `RecordStore`, `DefinitionStore` and `HostSettingsStore` ports for the Studio desktop app.
+The `TrustStore`, `RunStore`, `BlobStore`, `RecordStore`, `DefinitionStore`, `FolderReader` and `HostSettingsStore` ports for the Studio desktop app.
 
 - `TauriTrustStore`: every call goes to the shell's `trust_get`, `trust_list`, `trust_grant` or
   `trust_revoke` command. The shell keeps the records in the `trust` folder of the profile, laid out
@@ -21,6 +21,9 @@ The `TrustStore`, `RunStore`, `BlobStore`, `RecordStore`, `DefinitionStore` and 
 - `TauriDefinitionStore`: every call goes to the shell's `fs_list`, `fs_read`, `fs_write` or
   `fs_remove` command, on the plain files of a folder the person opened, the files the CLI's
   `FolderDefinitionStore` reads and writes. `watch()` hears the shell's `fs_watch`.
+- `TauriFolderReader`: every call goes to the shell's `folder_entries`, `folder_read` or
+  `folder_location` command, the read-only view of a folder the person opened that hides no name.
+  See [Folder reader](#folder-reader).
 - `TauriHostSettingsStore`: every call goes to the shell's `host_settings_read`,
   `host_settings_set` or `host_settings_remove` command. The shell keeps the settings in the
   profile's `settings/host.json`, as `FileHostSettingsStore` in `fs-node` keeps them, so the CLI and
@@ -205,6 +208,32 @@ The package exports `TauriDefinitionStore`, `TauriFileShell`, `TauriChannelHandl
 `isFileRefusal`. The tests run the definition-store contract against a fake shell; the comparing,
 the rename and the link checks on real files are proved by the Rust tests of the file commands
 (in `apps/studio/src-tauri`).
+
+## Folder reader
+
+`new TauriFolderReader(shell, workspace)` reads every entry and byte of `workspace`, a folder the
+person opened in the shell, for the plugin service and the trust fingerprint (HAL-8144). `shell` is a
+`TauriShell`. It passes the `FolderReader` contract (`folderReaderContract`) against a fake shell.
+
+It has the opened-folder check, the path rules and the profile fence of the file commands, but
+differs from them where the port does: it hides no name (`.git`, `.env` and temporary write files are
+listed and read), it lists a link as `link` and a pipe or socket as `other`, and it gives a file's
+bytes exactly, as base64url over the IPC, never as text. A path through a link, a special file and
+the profile are refused with a `RangeError`; nothing is ever followed or opened. There is no command
+that writes or removes. The page checks paths with `checkWorkspacePath` before it calls the shell.
+
+| The shell says | The adapter rejects with |
+| --- | --- |
+| `unsafe_path`, `private_path`, `special_path` | a `RangeError`, as the port asks |
+| `folder_not_open` | a `KindedError` `denied` |
+| `folder_unreadable`, `io` | a `KindedError` `unavailable`, with the shell's message |
+| anything else | a `KindedError` `unavailable`, without its text |
+
+An answer that isn't the command's also rejects with `unavailable`. The package exports
+`TauriFolderReader`, `folderCommands`, `folderRefusalKinds`, the types `FolderRefusal` and
+`FolderRefusalKind`, and `isFolderRefusal`. The file work is in `FolderReader` of
+`crates/workspace-files` (in `apps/studio/src-tauri`), whose Rust tests prove the listing, the reads
+and the link and special-file refusals on real files.
 
 ## Host settings
 

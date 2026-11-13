@@ -19,6 +19,14 @@ export {
   type TauriFileShell,
 } from "./file-commands.ts";
 export {
+  type FolderRefusal,
+  type FolderRefusalKind,
+  folderCommands,
+  folderRefusalKinds,
+  isFolderRefusal,
+} from "./folder-commands.ts";
+export { TauriFolderReader } from "./folder-reader.ts";
+export {
   type HostSettingsRefusal,
   type HostSettingsRefusalKind,
   hostSettingsCommands,

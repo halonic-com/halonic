@@ -2,7 +2,8 @@ use std::fmt;
 
 /// Why a file call was refused or failed. [`Self::kind`] is the stable name
 /// the page picks its words by, one of `fileRefusalKinds` in
-/// `packages/adapters/fs-tauri`. Messages name workspace paths only, never
+/// `packages/adapters/fs-tauri` (`special_path` is the folder reader's alone,
+/// one of its `folderRefusalKinds`). Messages name workspace paths only, never
 /// where the workspace is on the computer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FileError {
@@ -13,6 +14,9 @@ pub enum FileError {
     PrivatePath { path: String },
     /// A segment of the path is a symbolic link or a junction.
     LinkedPath { path: String },
+    /// The path is a special file, such as a pipe, a socket or a device,
+    /// which the folder reader never opens.
+    SpecialPath { path: String },
     /// A folder under the workspace can't be read. `path` is its workspace
     /// path, `""` for the workspace itself.
     FolderUnreadable { path: String, message: String },
@@ -29,6 +33,7 @@ impl FileError {
         match self {
             Self::UnsafePath { .. } => "unsafe_path",
             Self::PrivatePath { .. } | Self::LinkedPath { .. } => "private_path",
+            Self::SpecialPath { .. } => "special_path",
             Self::FolderUnreadable { .. } => "folder_unreadable",
             Self::NotText { .. } => "not_text",
             Self::Io { .. } => "io",
@@ -65,6 +70,10 @@ impl fmt::Display for FileError {
             Self::LinkedPath { path } => write!(
                 formatter,
                 "Linked workspace path {path:?}: the store doesn't follow links."
+            ),
+            Self::SpecialPath { path } => write!(
+                formatter,
+                "{path:?} is a special file: the reader never opens one."
             ),
             Self::FolderUnreadable { path, message } => {
                 write!(

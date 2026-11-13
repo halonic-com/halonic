@@ -22,11 +22,12 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+use halonic_blob_store::base64url;
 use halonic_git_guard::OpenedFolders;
 use halonic_profile::ProfileFolder;
 use halonic_workspace_files::{
-    Fence, FileError, FolderSnapshot, WatchMessage, Watches, WorkspaceFolder, WriteLocks,
-    WriteOutcome,
+    EntryKind, Fence, FileError, FolderEntry, FolderReader, FolderSnapshot, WatchMessage, Watches,
+    WorkspaceFolder, WriteLocks, WriteOutcome,
 };
 use serde::{Deserialize, Serialize};
 use tauri::ipc::Channel;
@@ -275,6 +276,104 @@ pub async fn fs_remove<R: Runtime>(
 ) -> Result<(), FileRefusal> {
     in_workspace(app, workspace, folder, Making::Nothing, move |files| {
         files.remove(&path)
+    })
+    .await
+}
+
+/// One entry of `folder_entries`: `{ path, kind, size? }`. `kind` is `file`,
+/// `folder`, `link` or `other`, and only a file has a `size`, as `FolderEntry`
+/// in `@halonicjs/ports` has it.
+#[derive(Debug, PartialEq, Eq, Serialize)]
+pub struct EntryAnswer {
+    path: String,
+    kind: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    size: Option<u64>,
+}
+
+impl From<FolderEntry> for EntryAnswer {
+    fn from(entry: FolderEntry) -> Self {
+        Self {
+            path: entry.path,
+            kind: match entry.kind {
+                EntryKind::File => "file",
+                EntryKind::Folder => "folder",
+                EntryKind::Link => "link",
+                EntryKind::Other => "other",
+            },
+            size: entry.size,
+        }
+    }
+}
+
+/// Runs `call` on the workspace the page named as a read-only
+/// [`FolderReader`] (HAL-8144), on a worker thread. The same opened-folder
+/// check and profile fence as the file commands apply, so the reader reaches
+/// nothing they don't; it only hides no name and lists links.
+async fn in_folder_reader<R, T, F>(
+    app: AppHandle<R>,
+    workspace: PathBuf,
+    call: F,
+) -> Result<T, FileRefusal>
+where
+    R: Runtime,
+    T: Send + 'static,
+    F: FnOnce(FolderReader) -> Result<T, FileError> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(move || {
+        let opened = app.state::<GitState>().folders();
+        let profile = cli_profile(&app).map_err(FileRefusal::io)?;
+        let root = workspace_root(&opened, &workspace)?;
+        let fence = profile_fence(&profile, &root);
+        Ok(call(FolderReader::new(root).fenced(fence))?)
+    })
+    .await
+    .map_err(FileRefusal::io)?
+}
+
+/// Every entry under `dir` (`null` for the whole workspace), with its kind,
+/// links and special files listed but never followed, and no name hidden.
+/// `limit` stops it once more entries were found; `recursive: false` lists
+/// only what is directly under `dir`.
+#[tauri::command]
+pub async fn folder_entries<R: Runtime>(
+    app: AppHandle<R>,
+    workspace: PathBuf,
+    dir: Option<String>,
+    limit: Option<usize>,
+    recursive: Option<bool>,
+) -> Result<Vec<EntryAnswer>, FileRefusal> {
+    in_folder_reader(app, workspace, move |reader| {
+        let entries = reader.entries(dir.as_deref(), limit, recursive.unwrap_or(true))?;
+        Ok(entries.into_iter().map(EntryAnswer::from).collect())
+    })
+    .await
+}
+
+/// The file's exact bytes as base64url, or `null` when there is no file.
+/// A link or a special file is refused, and never opened.
+#[tauri::command]
+pub async fn folder_read<R: Runtime>(
+    app: AppHandle<R>,
+    workspace: PathBuf,
+    path: String,
+) -> Result<Option<String>, FileRefusal> {
+    in_folder_reader(app, workspace, move |reader| {
+        Ok(reader.read(&path)?.map(|bytes| base64url::encode(&bytes)))
+    })
+    .await
+}
+
+/// The real location of the entry at `path` (`null` for the workspace
+/// itself), or `null` when there is none.
+#[tauri::command]
+pub async fn folder_location<R: Runtime>(
+    app: AppHandle<R>,
+    workspace: PathBuf,
+    path: Option<String>,
+) -> Result<Option<String>, FileRefusal> {
+    in_folder_reader(app, workspace, move |reader| {
+        reader.location_of(path.as_deref())
     })
     .await
 }
