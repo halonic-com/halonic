@@ -26,7 +26,7 @@ export interface ProviderDefaults {
   readonly modelPlaceholder: string;
 }
 
-/** The defaults of each provider. The secret names are the ones a workspace's provider defaults use. */
+/** The defaults of each provider. The secret names are only suggestions for the Secret name box; the key itself lives in the secret store. */
 export const providerDefaults: Readonly<Record<AssistantProvider, ProviderDefaults>> = {
   "not-set-up": {
     label: "Not set up",

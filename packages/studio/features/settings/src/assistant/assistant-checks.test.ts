@@ -16,7 +16,11 @@ verifies("settings.ai-agent-fields", () => {
     });
     expect(checkModel("openai-compatible", "")).toEqual({
       ok: false,
-      error: "Enter a model name, like claude-sonnet-5-5.",
+      error: "Enter a model name, like llama-3.1-8b-instruct.",
+    });
+    expect(checkModel("lmstudio", "")).toEqual({
+      ok: false,
+      error: "Enter a model name, like llama-3.1-8b-instruct.",
     });
   });
 
@@ -33,6 +37,22 @@ verifies("settings.ai-agent-fields", () => {
     expect(checkBaseUrl("openai-compatible", "")).toEqual({
       ok: false,
       error: "Enter a full address, like http://localhost:8000/v1.",
+    });
+  });
+
+  it("refuses an address that carries a name or password", () => {
+    const error = "Enter a full address, like http://localhost:8000/v1.";
+    expect(checkBaseUrl("openai-compatible", "https://me:token@host/v1")).toEqual({
+      ok: false,
+      error,
+    });
+    expect(checkBaseUrl("openai-compatible", "https://token@host/v1")).toEqual({
+      ok: false,
+      error,
+    });
+    expect(checkBaseUrl("openai-compatible", "https://:token@host/v1")).toEqual({
+      ok: false,
+      error,
     });
   });
 
