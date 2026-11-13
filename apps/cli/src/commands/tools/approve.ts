@@ -24,7 +24,7 @@ import { toolsMessages } from "../../messages/tools.ts";
 import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
 import { shellWord } from "../../output/shell-word.ts";
-import { approvedEntry, leftOutEntry } from "./json.ts";
+import { type ApprovedEntry, approvedEntry, leftOutEntry } from "./json.ts";
 import {
   checkToolSource,
   openToolSource,
@@ -155,7 +155,7 @@ async function approveByName(
   machine: ToolsMachine,
 ): Promise<CommandResult> {
   const lines: Phrase[] = [];
-  const approved: { name: string; fingerprint: string }[] = [];
+  const approved: ApprovedEntry[] = [];
   for (const name of names) {
     const result = await approveNamedTool(
       check,
@@ -164,7 +164,7 @@ async function approveByName(
       machine.clock,
       fingerprint,
     );
-    const said = approvedLines(result, name, source);
+    const said = approvedLines(result, name, source, approved);
     for (const line of said) {
       context.printAhead(line);
       lines.push(line);
@@ -183,7 +183,14 @@ async function approveByName(
  *   fingerprint given (`conflict`), Halonic refused it (`denied`), or the
  *   source doesn't list it (`not_found`)
  */
-function approvedLines(result: NamedToolApproval, typed: string, source: ToolSource): Phrase[] {
+function approvedLines(
+  result: NamedToolApproval,
+  typed: string,
+  source: ToolSource,
+  approvedBefore: readonly ApprovedEntry[],
+): Phrase[] {
+  // `--json` names the tools approved before the stop, so a script knows what stayed approved.
+  const jsonFields = { approved: approvedBefore };
   const name = printable(typed);
   switch (result.outcome) {
     case "approved":
@@ -200,9 +207,15 @@ function approvedLines(result: NamedToolApproval, typed: string, source: ToolSou
         "conflict",
         toolsMessages.changedSinceFingerprint(name, result.waiting.fingerprint),
         toolsMessages.readNewVersionFirst(toolsCommand("review", source)),
+        jsonFields,
       );
     case "refused":
-      throw new OwnLineError("denied", toolsMessages.refused(name, printable(result.reason)));
+      throw new OwnLineError(
+        "denied",
+        toolsMessages.refused(name, printable(result.reason)),
+        undefined,
+        jsonFields,
+      );
     case "not_listed": {
       const near = nearMatch(typed, result.listed);
       throw new OwnLineError(
@@ -211,11 +224,17 @@ function approvedLines(result: NamedToolApproval, typed: string, source: ToolSou
         near === undefined
           ? toolsMessages.seeItsTools(toolsCommand("review", source))
           : toolsMessages.didYouMean(printable(near)),
+        jsonFields,
       );
     }
     case "unreadable":
       // The check was refused before any tool was looked up (`checkToolSource`).
-      throw new OwnLineError("unavailable", toolsMessages.unreadableUnnamed(source.shown));
+      throw new OwnLineError(
+        "unavailable",
+        toolsMessages.unreadableUnnamed(source.shown),
+        undefined,
+        jsonFields,
+      );
   }
 }
 

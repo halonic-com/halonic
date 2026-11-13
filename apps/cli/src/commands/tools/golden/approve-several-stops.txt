@@ -1,0 +1,37 @@
+## colour: halonic tools approve notes-mcp archive lokup lookup
+exit 4
+stdout:
+  \e[32m✓\e[39m Approved archive from notes-mcp, as it is now.
+    \e[2mhtl1:90df971b9f6bc490a5bee8dbd87b55db470e8a52623785974d1cdffeafaee381\e[22m
+stderr:
+  \e[31m✕\e[39m Couldn't approve lokup: notes-mcp doesn't list a tool called lokup.
+    Did you mean lookup?
+
+## NO_COLOR: halonic tools approve notes-mcp archive lokup lookup
+exit 4
+stdout:
+  ✓ Approved archive from notes-mcp, as it is now.
+    htl1:90df971b9f6bc490a5bee8dbd87b55db470e8a52623785974d1cdffeafaee381
+stderr:
+  ✕ Couldn't approve lokup: notes-mcp doesn't list a tool called lokup.
+    Did you mean lookup?
+
+## --json: halonic tools approve notes-mcp archive lokup lookup
+exit 4
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": false,
+    "error": {
+      "kind": "not_found",
+      "message": "Couldn't approve lokup: notes-mcp doesn't list a tool called lokup.",
+      "fix": "Did you mean lookup?",
+      "approved": [
+        {
+          "name": "archive",
+          "fingerprint": "htl1:90df971b9f6bc490a5bee8dbd87b55db470e8a52623785974d1cdffeafaee381"
+        }
+      ]
+    }
+  }
+stderr:

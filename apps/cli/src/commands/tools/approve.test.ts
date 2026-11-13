@@ -98,6 +98,18 @@ verifies("cli.commands.tools.approve", () => {
     expect((await kit.listedNow()).on).toEqual(["send", "archive"]);
   });
 
+  it("names the tools approved before the stop in the JSON error", async () => {
+    const run = await kit.expectGolden("approve-several-stops", [
+      "tools",
+      "approve",
+      "notes-mcp",
+      "archive",
+      "lokup",
+      "lookup",
+    ]);
+    expect(run.noColour.exit).toBe(exitCode.notFound);
+  });
+
   describe("a wrong command line approves nothing and starts nothing", () => {
     it.each([
       ["names-and-all", ["lookup", "--all"]],

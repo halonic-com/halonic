@@ -21,7 +21,8 @@ stdout:
     "error": {
       "kind": "conflict",
       "message": "Couldn't approve lookup: it changed since that fingerprint. It's now htl1:5f6944f6e1ba80785d7362516461dfbb3bf1946e87f8c4eae44b60ba07f48a04.",
-      "fix": "Read the new version first: halonic tools review notes-mcp"
+      "fix": "Read the new version first: halonic tools review notes-mcp",
+      "approved": []
     }
   }
 stderr:

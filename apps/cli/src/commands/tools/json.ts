@@ -5,7 +5,13 @@
 import type { WaitingTool } from "@halonicjs/app/listed-tools";
 
 /** One approved tool in `approve`'s `approved`. */
-export function approvedEntry(waiting: WaitingTool) {
+export interface ApprovedEntry {
+  readonly name: string;
+  readonly fingerprint: string;
+}
+
+/** The `approved` entry of a tool. */
+export function approvedEntry(waiting: WaitingTool): ApprovedEntry {
   return { name: waiting.listedName, fingerprint: waiting.fingerprint };
 }
 
