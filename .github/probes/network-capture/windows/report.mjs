@@ -26,7 +26,7 @@ const read = (name) => {
   }
 };
 const json = (name) => {
-  const text = read(name)?.toString("utf8").replace(/^﻿/, "");
+  const text = read(name)?.toString("utf8").replace(/^\uFEFF/, "");
   return text ? JSON.parse(text) : undefined;
 };
 const problems = [];
