@@ -322,11 +322,35 @@ fn trust_grants_close_a_folder_when_its_trust_is_revoked() {
     // Revoking a folder never granted is no error, and closes nothing else.
     shell.revoke(&shell.location("work/acme-evil"));
     assert!(shell.is_open(&shell.location("work/acme")));
-    // A revoked picked folder is closed and no longer spares a question.
-    shell.revoke(&shell.location("work/acme"));
+    // A revoked picked folder stays open, so the open workspace keeps its
+    // file access, but it no longer spares a question.
+    let acme = shell.location("work/acme");
+    shell.revoke(&acme);
     let hubs = shell.location("work/acme/hubs");
-    assert!(!shell.is_open(&hubs));
+    assert!(shell.is_open(&acme));
+    assert!(shell.is_open(&hubs));
     assert_eq!(shell.grant(&hubs, true).1.len(), 1);
+}
+
+#[test]
+fn trust_grants_ask_again_after_a_picked_folder_is_granted_and_revoked() {
+    let shell = Shell::with_acme_picked("revoke-granted-pick");
+    let acme = shell.location("work/acme");
+    assert!(shell.grant(&acme, true).1.is_empty());
+    assert!(shell.is_saved(&acme));
+    shell.revoke(&acme);
+    assert!(!shell.is_saved(&acme));
+    assert!(shell.is_open(&acme));
+    let (result, asked) = shell.grant(&acme, true);
+    assert_eq!(result, Ok(()));
+    assert_eq!(asked.len(), 1);
+    // A second revoke keeps the folder open too: the person picked it.
+    shell.revoke(&acme);
+    assert!(shell.is_open(&acme));
+    // Declined, the folder is still open and nothing is saved.
+    assert_eq!(shell.grant(&acme, false).0, Err("declined"));
+    assert!(!shell.is_saved(&acme));
+    assert!(shell.is_open(&acme));
 }
 
 #[test]

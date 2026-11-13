@@ -69,6 +69,20 @@ verifies("fs-tauri.trust-commands", () => {
       expect(shell.opened).toEqual([]);
     });
 
+    it("keeps a picked folder open when its trust is revoked, and asks again on the next grant", async () => {
+      const shell = new FakeTrustShell({ picked: ["/workspaces/acme"] });
+      const store = new TauriTrustStore(shell);
+      await store.grant(trustRecord("/workspaces/acme"));
+      expect(shell.asked).toEqual([]);
+      await store.revoke("/workspaces/acme");
+      expect(await store.get("/workspaces/acme")).toBeNull();
+      expect(shell.opened).toEqual(["/workspaces/acme"]);
+      await store.grant(trustRecord("/workspaces/acme"));
+      expect(shell.asked).toEqual(["/workspaces/acme"]);
+      await store.revoke("/workspaces/acme");
+      expect(shell.opened).toEqual(["/workspaces/acme"]);
+    });
+
     it("rejects a grant the person says no to as denied, and saves and opens nothing", async () => {
       const shell = new FakeTrustShell();
       shell.answers.push(false);

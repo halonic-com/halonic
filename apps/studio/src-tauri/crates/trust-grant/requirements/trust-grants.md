@@ -31,6 +31,9 @@ The shell shall remember each folder the person picks, by its canonical path and
 - Given the granted folder `work/other`,
   when the page revokes it,
   then git is refused there and the record is gone.
+- Given the picked folder `work/acme` and its record,
+  when the page revokes `work/acme`,
+  then the record is gone and `work/acme` stays open, but a grant for it or inside it asks the question again.
 - Given the path `/work/acme\u{202e}dm.exe`,
   when the question shows it,
   then it reads `/work/acme\u{202e}dm.exe` with the escape written out.
