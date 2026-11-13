@@ -18,9 +18,9 @@ verifies("runtime.password-limit", () => {
       expect(deriveBits).not.toHaveBeenCalled();
     });
 
-    it("refuses to hash a password over 1,024 bytes, with no PBKDF2 work", () => {
+    it("refuses to hash a password over 1,024 bytes, with no PBKDF2 work", async () => {
       const deriveBits = vi.spyOn(crypto.subtle, "deriveBits");
-      expect(() => hasher.hash("x".repeat(maximumPasswordBytes + 1))).toThrow(RangeError);
+      await expect(hasher.hash("x".repeat(maximumPasswordBytes + 1))).rejects.toThrow(RangeError);
       expect(deriveBits).not.toHaveBeenCalled();
     });
 

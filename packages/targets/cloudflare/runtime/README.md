@@ -56,7 +56,7 @@ requirement `runtime.scheduled`.
 
 `runtime.passwords` is the chained PBKDF2 hasher behind `limitPasswordLength`: a
 password over 1,024 bytes (NFC, in UTF-8) is refused before any PBKDF2 work, so a
-long guess costs the Worker nothing. `verify` answers `false` and `hash` throws. The
+long guess costs the Worker nothing. `verify` answers `false` and `hash` rejects. The
 rule is the requirement `runtime.password-limit`.
 
 ## Tests

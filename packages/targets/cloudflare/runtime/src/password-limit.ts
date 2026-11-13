@@ -11,7 +11,7 @@ export const maximumPasswordBytes = 1024;
  * password (NFC), because that is what it works on.
  *
  * `verify` answers `false` for a long password: no stored hash can match it,
- * because `hash` refuses to make one. `hash` throws, since that is a deploy-time
+ * because `hash` refuses to make one. `hash` rejects, since that is a deploy-time
  * mistake the person must hear about.
  *
  * @example
@@ -20,7 +20,7 @@ export const maximumPasswordBytes = 1024;
  */
 export function limitPasswordLength(hasher: PasswordHasher): PasswordHasher {
   return {
-    hash(password) {
+    async hash(password) {
       if (isTooLong(password)) {
         throw new RangeError(`The password is longer than ${maximumPasswordBytes} bytes.`);
       }
