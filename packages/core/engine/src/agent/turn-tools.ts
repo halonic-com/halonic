@@ -89,7 +89,7 @@ export type TurnTool =
       /** Set when it counts as `read` because the connector file's `read` list names it. */
       readonly markedRead?: true;
       /** What calling it can do, as its listing and sheet say, only for the log; absent when neither says. */
-      readonly listedRisk?: ToolRisk;
+      readonly loggedRisk?: ToolRisk;
       /** What one call sends or changes, from the connector's sheet only, for the log. */
       readonly noun?: NonNullable<DeclaredTool["noun"]>;
       /** What one call did to its noun, from the connector's sheet only, for the log. */
@@ -184,7 +184,7 @@ async function addConnectorTools(
       connector,
       risk: tool.risk,
       ...(tool.markedRead === undefined ? {} : { markedRead: tool.markedRead }),
-      ...(tool.listedRisk === undefined ? {} : { listedRisk: tool.listedRisk }),
+      ...(tool.loggedRisk === undefined ? {} : { loggedRisk: tool.loggedRisk }),
       ...(tool.noun === undefined ? {} : { noun: tool.noun }),
       ...(tool.verb === undefined ? {} : { verb: tool.verb }),
     });

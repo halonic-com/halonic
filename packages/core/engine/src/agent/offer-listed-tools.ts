@@ -64,7 +64,7 @@ export interface OfferedListedTool {
    * `tool.result` (requirements `engine.turn-logs-risk` and
    * `engine.turn-declared-tools`); nothing is decided by it.
    */
-  readonly listedRisk?: ToolRisk;
+  readonly loggedRisk?: ToolRisk;
   /** What one call sends or changes, from the sheet only; absent when the sheet has none. */
   readonly noun?: NonNullable<DeclaredTool["noun"]>;
   /** What one call did to its noun, from the sheet only; absent means the reader says "sent". */
@@ -122,7 +122,7 @@ function offeredTool(
   // The app's `listedRisk` would count `send` as `write` and skip the
   // "allow sending" check, so the risk comes from `countedRisk` (HAL-5199).
   const declared = declaredOf(input.declared, read.name);
-  const listedRisk =
+  const loggedRisk =
     tool.risk === undefined ? declared?.risk : higherRisk(tool.risk, declared?.risk);
   const risk = higherRisk(
     countedRisk(tool.risk, isMarkedRead(input.lists, read.name)),
@@ -133,7 +133,7 @@ function offeredTool(
     listedName: read.name,
     risk,
     ...(risk === "read" ? { markedRead: true } : {}),
-    ...(listedRisk === undefined ? {} : { listedRisk }),
+    ...(loggedRisk === undefined ? {} : { loggedRisk }),
     ...(declared?.noun === undefined ? {} : { noun: declared.noun }),
     ...(declared?.verb === undefined ? {} : { verb: declared.verb }),
   };

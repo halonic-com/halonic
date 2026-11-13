@@ -117,7 +117,7 @@ export async function makeConnectorCall(
     return notMade(`the arguments of ${effect.tool} aren't an object`);
   }
   const logged = {
-    ...(tool.listedRisk === undefined ? {} : { risk: tool.listedRisk }),
+    ...(tool.loggedRisk === undefined ? {} : { risk: tool.loggedRisk }),
     ...(tool.noun === undefined ? {} : { noun: tool.noun }),
     ...(tool.verb === undefined ? {} : { verb: tool.verb }),
   };

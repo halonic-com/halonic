@@ -300,11 +300,12 @@ interface ToolRun {
 
 /**
  * The `risk` a call's `tool.result` copies from its tool, when the tool has
- * one (requirement `engine.turn-logs-risk`). Only a server's listing says
- * it; Halonic's own tools leave it out, so readers count it as unknown.
+ * one (requirement `engine.turn-logs-risk`). Only a server's tool has it,
+ * from its listing or its sheet; Halonic's own tools leave it out, so readers
+ * count it as unknown.
  */
 function riskOf(tool: TurnTool): { risk?: ToolRisk } {
-  return tool.kind === "server" && tool.listedRisk !== undefined ? { risk: tool.listedRisk } : {};
+  return tool.kind === "server" && tool.loggedRisk !== undefined ? { risk: tool.loggedRisk } : {};
 }
 
 /**

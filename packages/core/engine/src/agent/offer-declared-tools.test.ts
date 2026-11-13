@@ -23,14 +23,14 @@ verifies("engine.turn-declared-tools", () => {
   it("counts a tool the sheet declares as send as sending, whatever the listing says", () => {
     expect(riskOf(undefined, { send_email: { risk: "send" } })).toMatchObject({
       risk: "send",
-      listedRisk: "send",
+      loggedRisk: "send",
     });
     expect(riskOf("write", { send_email: { risk: "send" } })?.risk).toBe("send");
   });
 
   it("lets the listing raise the sheet's risk but never lower it", () => {
     expect(riskOf("send", { send_email: { risk: "read" } })?.risk).toBe("send");
-    expect(riskOf("send", { send_email: { risk: "write" } })?.listedRisk).toBe("send");
+    expect(riskOf("send", { send_email: { risk: "write" } })?.loggedRisk).toBe("send");
   });
 
   it("counts a tool the read list marks as write when the sheet declares it as write", () => {

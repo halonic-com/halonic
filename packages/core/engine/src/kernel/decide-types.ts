@@ -95,7 +95,7 @@ export interface ToolResult {
   readonly type: "tool";
   readonly result: string;
   readonly outcome: ToolOutcome;
-  /** The tool's risk as its listing gives it, for `tool.result`; absent when it gives none. */
+  /** The risk `tool.result` logs: the higher of its listing's and its sheet's; absent when neither gives one. */
   readonly risk?: ToolRisk;
   /** What one call sent or changed, from the sheet only, for `tool.result`; absent without a sheet. */
   readonly noun?: ToolNoun;
