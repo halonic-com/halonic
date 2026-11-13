@@ -136,4 +136,58 @@ verifies("studio.workspace-trust-review", () => {
 
     expect(calls).toBe(2);
   });
+
+  it("keeps showing the last check while a new one runs, and trusts nothing meanwhile", async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let hold = false;
+    const sources = sourcesOf();
+    const trust = new WorkspaceTrust({
+      ...sources,
+      findCommand: async (command) => {
+        if (hold) await gate;
+        return sources.findCommand(command);
+      },
+    });
+    await trust.refresh();
+    const view = new WorkspaceTrustView(trust, "/work/acme");
+    await view.grant(view.review()?.fingerprint ?? "");
+    expect(trust.isTrusted()).toBe(true);
+
+    hold = true;
+    const running = trust.refresh();
+
+    expect(trust.isTrusted()).toBe(false);
+    expect(trust.check?.status).toBe("trusted");
+    expect(view.badge).toBe("none");
+    release();
+    await running;
+    expect(trust.isTrusted()).toBe(true);
+  });
+
+  it("keeps the badge and the open check on screen while a new check runs", async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let hold = false;
+    const sources = sourcesOf();
+    const trust = new WorkspaceTrust({
+      ...sources,
+      findCommand: async (command) => {
+        if (hold) await gate;
+        return sources.findCommand(command);
+      },
+    });
+    await trust.refresh();
+    const view = new WorkspaceTrustView(trust, "/work/acme");
+    const before = view.review();
+
+    hold = true;
+    const running = trust.refresh();
+
+    expect(view.badge).toBe("not-trusted");
+    expect(view.review()).toBe(before);
+    release();
+    await running;
+    expect(view.review()).toEqual(before);
+  });
 });

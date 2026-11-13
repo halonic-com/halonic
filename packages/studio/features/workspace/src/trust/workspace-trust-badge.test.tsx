@@ -270,6 +270,22 @@ verifies("workspace.trust-badge", () => {
     expect(trust.granted).toEqual(["hfp1:def"]);
   });
 
+  it("clears the confirmation when the check changes under an open dialog", async () => {
+    const unpinned = { ...review, unpinned: ["files"] };
+    const trust = control(unpinned);
+    await show(trust.value);
+    act(() => badge()?.click());
+    const tick = () => document.querySelector<HTMLInputElement>('dialog input[type="checkbox"]');
+    act(() => tick()?.click());
+    expect(tick()?.checked).toBe(true);
+
+    act(() => trust.set({ ...unpinned, fingerprint: "hfp1:def" }));
+
+    expect(tick()?.checked).toBe(false);
+    await act(async () => button("Trust")?.click());
+    expect(trust.granted).toEqual([]);
+  });
+
   it("shows What changed with its tags and the unchanged row", async () => {
     const trust = control({
       ...review,

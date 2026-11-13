@@ -126,7 +126,9 @@ interface TrustCheckDialogProps {
 /** The kit Dialog at `md` with Not now focused, nothing red (mockup-trust 1 and 2). */
 function TrustCheckDialog(props: TrustCheckDialogProps) {
   const { review } = props;
-  const [understood, setUnderstood] = useState(false);
+  // The tick belongs to the check it was given for: a new fingerprint clears it.
+  const [understoodFor, setUnderstoodFor] = useState<string | undefined>();
+  const understood = understoodFor === review.fingerprint;
   const understoodId = useId();
   const refusedId = useId();
   const needsConfirm = review.unpinned.length > 0;
@@ -185,7 +187,10 @@ function TrustCheckDialog(props: TrustCheckDialogProps) {
           </Disclosure>
         )}
         {needsConfirm ? (
-          <Checkbox checked={understood} onChange={setUnderstood}>
+          <Checkbox
+            checked={understood}
+            onChange={(checked) => setUnderstoodFor(checked ? review.fingerprint : undefined)}
+          >
             <span id={understoodId}>I understand this can download new code when it starts</span>
           </Checkbox>
         ) : null}

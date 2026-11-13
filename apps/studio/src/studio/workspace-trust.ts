@@ -26,7 +26,8 @@ export interface WorkspaceTrustSources {
  * CLI reads it: the same loader, the same local-integration reader and the same subject, so one
  * folder gets one fingerprint in both. The page can't answer `isTrusted` on the spot, so this
  * keeps the last check and answers from it. Until the first check ends, after a check that
- * failed, and while a new check runs, the answer is no.
+ * failed, and while a new check runs, the answer is no. While a new check runs, {@link check}
+ * still holds the last settled one, so the window doesn't flicker on every save.
  *
  * @example
  * const trust = new WorkspaceTrust(sources);
@@ -37,6 +38,8 @@ export interface WorkspaceTrustSources {
 export class WorkspaceTrust {
   readonly #sources: WorkspaceTrustSources;
   #check: TrustCheck | undefined;
+  /** Whether the settled check may answer `isTrusted`: false while a new check runs. */
+  #settled = false;
   #subject: TrustSubject | undefined;
   readonly #listeners = new Set<() => void>();
   #name: string | undefined;
@@ -51,7 +54,10 @@ export class WorkspaceTrust {
     return this.#name;
   }
 
-  /** The last finished check, `undefined` when none has finished or the last one failed. */
+  /**
+   * The last finished check, kept while a new one runs, `undefined` when none has finished or
+   * the last one failed. Only for showing: {@link isTrusted} is no while a check runs.
+   */
   get check(): TrustCheck | undefined {
     return this.#check;
   }
@@ -90,7 +96,7 @@ export class WorkspaceTrust {
 
   /** Whether the last check found the workspace trusted. */
   isTrusted(): boolean {
-    return this.#check?.status === "trusted";
+    return this.#settled && this.#check?.status === "trusted";
   }
 
   /**
@@ -100,8 +106,7 @@ export class WorkspaceTrust {
    */
   async refresh(): Promise<void> {
     const mine = ++this.#latest;
-    this.#check = undefined;
-    this.#subject = undefined;
+    this.#settled = false;
     this.#changed();
     try {
       const { name, check, subject } = await this.#read();
@@ -109,8 +114,13 @@ export class WorkspaceTrust {
       this.#name = name;
       this.#check = check;
       this.#subject = subject;
+      this.#settled = true;
     } catch {
       // Fails closed: no check, so no trust.
+      if (mine === this.#latest) {
+        this.#check = undefined;
+        this.#subject = undefined;
+      }
     }
     if (mine === this.#latest) this.#changed();
   }
