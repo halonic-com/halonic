@@ -235,7 +235,7 @@ impl Walk<'_> {
                 continue;
             };
             let kind = kind_of(&metadata);
-            let size = (kind == EntryKind::File).then(|| metadata.len());
+            let size = (kind == EntryKind::File).then_some(metadata.len());
             let below = (kind == EntryKind::Folder && self.recursive).then(|| path.clone());
             found.push(FolderEntry { path, kind, size });
             if let Some(below) = below {
