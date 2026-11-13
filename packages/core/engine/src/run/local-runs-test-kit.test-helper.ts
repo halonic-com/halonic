@@ -24,6 +24,7 @@ import type { HalonicTool } from "../agent/turn-tools.ts";
 import type { Budget } from "../budget/budget.ts";
 import type { HarnessRunsOptions } from "../harness/harness-host.ts";
 import { NotingScheduler } from "../harness/harness-test-kit.test-helper.ts";
+import type { RunDefinitions } from "../kernel/decide-types.ts";
 import {
   KernelBlobs,
   KernelRuns,
@@ -128,6 +129,8 @@ export interface RunsSetup {
    * with no `allow` for each of `connectors` when left out.
    */
   readonly connectorTools?: Readonly<Record<string, Connector["tools"]>>;
+  /** What the sheets bound to the connectors declare, kept in the run's definitions. */
+  readonly declaredTools?: NonNullable<RunDefinitions["declaredTools"]>;
   /** The knowledge sources the hub can see; none when left out. */
   readonly knowledge?: Readonly<Record<string, KnowledgeSource>>;
   /** The skills the hub can see; none when left out. */
@@ -226,6 +229,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
           ...(knowledge === undefined ? {} : { knowledge }),
           ...(skills === undefined ? {} : { skills }),
           connectorTools,
+          ...(setup.declaredTools === undefined ? {} : { declaredTools: setup.declaredTools }),
         };
       },
     },

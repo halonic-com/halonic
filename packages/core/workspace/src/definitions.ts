@@ -1,8 +1,10 @@
 import type { Connector, HubUses, KindName, KindValues } from "@halonicjs/format";
 import type { Digest } from "@halonicjs/ports";
 import { bytesToHex, canonicalJson, encodeUtf8 } from "@halonicjs/std";
+import { type DeclaredToolsByConnector, declaredToolsOf } from "./declared-tools.ts";
 import { filesOf, type LoadedWorkspace } from "./load-workspace.ts";
 import { modelAliases, type ResolvedModelTarget, resolvedAlias } from "./resolve-model.ts";
+import type { LocalIntegrationInput } from "./trust-integrations.ts";
 
 /** Values of one kind by their id. */
 type ById<Name extends KindName> = Readonly<Record<string, KindValues[Name]>>;
@@ -104,6 +106,12 @@ export interface RunStartDefinitions {
    * a run needs only what its agents are offered, not how to connect.
    */
   readonly connectorTools: Readonly<Record<string, Connector["tools"]>>;
+  /**
+   * The tools the sheets bound to its connectors declare ({@link declaredToolsOf}),
+   * which a call's `tool.result` takes its noun and verb from. Left out when the
+   * host passed no integrations, for lack of trust or of any.
+   */
+  readonly declaredTools?: DeclaredToolsByConnector;
 }
 
 /**
@@ -114,6 +122,8 @@ export interface RunStartDefinitions {
  * @param workspace - the loaded workspace
  * @param hubId - the hub the run is in
  * @param workflowId - the workflow the run runs
+ * @param integrations - the local integrations the trust check covered, whose sheets
+ *   give the declared tools of their connectors; leave out, or pass none, without trust
  * @throws RangeError when the workspace has no such hub, or the hub no such workflow
  *
  * @example
@@ -124,6 +134,7 @@ export function runDefinitionsOf(
   workspace: LoadedWorkspace,
   hubId: string,
   workflowId: string,
+  integrations?: readonly LocalIntegrationInput[],
 ): RunStartDefinitions {
   const hub = definitionsOf(workspace, hubId);
   const workflow = Object.hasOwn(hub.workflows, workflowId) ? hub.workflows[workflowId] : undefined;
@@ -138,6 +149,7 @@ export function runDefinitionsOf(
     knowledge: hub.knowledge,
     skills: hub.skills,
     connectorTools: connectorToolsOf(hub),
+    ...(integrations === undefined ? {} : { declaredTools: declaredToolsOf(hub, integrations) }),
   };
 }
 

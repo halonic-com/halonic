@@ -4,6 +4,7 @@ import type { Connector } from "@halonicjs/format";
 import type { ChatResponse, ConnectorTool, ToolRisk } from "@halonicjs/ports";
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
+import type { RunDefinitions } from "../kernel/decide-types.ts";
 import { KernelBlobs, KernelRuns } from "../kernel/kernel-test-kit.test-helper.ts";
 import { call, callAnswer, ScriptedConnector, textAnswer } from "../testing/scripted-model.ts";
 import type { RunConnectorCalls } from "./connector-calls.ts";
@@ -50,6 +51,7 @@ async function waitingForOk(
   answer: (name: string, args: Record<string, unknown>) => string = () => "Sent",
   check: SendingCheck = { allowed: true },
   after: ChatResponse[] = [textAnswer("Posted")],
+  declaredTools?: NonNullable<RunDefinitions["declaredTools"]>,
 ) {
   const mail = new ScriptedConnector("mail", [mailTool("send_mail", "send")], answer);
   const { connectorCalls, reported, settings } = settingsGiving(check);
@@ -60,6 +62,7 @@ async function waitingForOk(
     connectors: [mail],
     connectorCalls,
     blobs,
+    ...(declaredTools === undefined ? {} : { declaredTools }),
   });
   await setup.executor.start(replyStart);
   await setup.scheduler.runDue();
@@ -100,6 +103,30 @@ verifies("engine.run-connector-calls", () => {
     expect(eventsOf(log, "tool.result")).toMatchObject([{ outcome: "ok", risk: "send" }]);
     expect(lastResult(model)).toContain("Sent");
     expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
+  });
+
+  it("logs the noun and verb of an approved send from the sheet kept in the run's definitions (HAL-8257)", async () => {
+    const noun = { one: "email", many: "emails" };
+    const { executor, scheduler, runs } = await waitingForOk(undefined, undefined, undefined, {
+      mail: { send_mail: { risk: "send", noun, verb: "sent" } },
+    });
+
+    await executor.send("run_1", "approve");
+    await scheduler.runDue();
+
+    expect(eventsOf(runs.logs.get("run_1"), "tool.result")).toMatchObject([
+      { outcome: "ok", risk: "send", noun, verb: "sent" },
+    ]);
+  });
+
+  it("logs no noun for an approved send when the run kept no sheet", async () => {
+    const { executor, scheduler, runs } = await waitingForOk();
+
+    await executor.send("run_1", "approve");
+    await scheduler.runDue();
+
+    const [result] = eventsOf(runs.logs.get("run_1"), "tool.result");
+    expect(result).not.toHaveProperty("noun");
   });
 
   it("refuses a send as data when sending is off, without asking a person or recording a call", async () => {
