@@ -87,10 +87,10 @@ verifies("connector-stdio-sandbox.local-tool-profile", () => {
       await client.close();
     });
 
-    it("refuses a local tool the host didn't set up", async () => {
+    it("refuses a connector the host didn't set up", async () => {
       const { sandbox, factory, context } = setUp({ factory: { localTools: () => undefined } });
       await expect(factory.create(config, context).listTools()).rejects.toThrow(
-        "Connector \"notes\" is a local tool Halonic didn't set up, so it doesn't start.",
+        'Connector "notes" is neither a local tool nor a workspace connector Halonic set up, so it doesn\'t start.',
       );
       expect(sandbox.started).toEqual([]);
     });

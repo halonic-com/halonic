@@ -49,7 +49,7 @@ verifies("connector-stdio-sandbox.session-start", () => {
     const { factory, context } = setUp();
     const { sandbox: _left, ...noSandbox } = context;
     expect(() => factory.create(config, noSandbox)).toThrow(
-      'Connector "notes" is a local tool, which starts only in a sandbox session, and it was given none.',
+      'Connector "notes" starts a program, which starts only in a sandbox session, and it was given none.',
     );
   });
 

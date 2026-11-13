@@ -7,6 +7,8 @@ import type {
   ConnectorConfig,
   ConnectorFactory,
   ConnectorFactoryContext,
+  SandboxFence,
+  SandboxSession,
 } from "@halonicjs/ports";
 import { contractGrant, FakeSandboxSession } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
@@ -116,6 +118,15 @@ verifies("connector-stdio-sandbox.workspace-connector-start", () => {
     expect(start).not.toHaveBeenCalled();
   });
 
+  it("tells a workspace connector that names variables to take from the environment what to do", async () => {
+    const config = mailConfig({ inheritEnv: ["AWS_PROFILE"] });
+    const { sandbox, factory, context } = setUp(config);
+    await expect(factory.create(config, context).listTools()).rejects.toThrow(
+      "a workspace connector in a sandbox gets none of them. Set them under env or secretEnv instead.",
+    );
+    expect(sandbox.started).toEqual([]);
+  });
+
   describe("WorkspaceStdioConnectorFactory", () => {
     const created: string[] = [];
     function fake(name: string): ConnectorFactory {
@@ -127,7 +138,8 @@ verifies("connector-stdio-sandbox.workspace-connector-start", () => {
         },
       };
     }
-    function through(isLocalTool: boolean, sandbox: boolean) {
+    type Session = "none" | SandboxFence["state"];
+    function through(isLocalTool: boolean, session: Session) {
       const { context } = setUp(mailConfig());
       const factory = new WorkspaceStdioConnectorFactory({
         sandboxed: fake("sandboxed"),
@@ -135,20 +147,36 @@ verifies("connector-stdio-sandbox.workspace-connector-start", () => {
         isLocalTool: () => isLocalTool,
       });
       const { sandbox: _session, ...withoutSession } = context;
-      factory.create(mailConfig(), sandbox ? context : withoutSession);
+      const given: ConnectorFactoryContext =
+        session === "none"
+          ? withoutSession
+          : { ...context, sandbox: sessionWithFence({ state: session, reason: "x" }) };
+      factory.create(mailConfig(), given);
       return created.splice(0);
+    }
+    function sessionWithFence(fence: SandboxFence): SandboxSession {
+      return { fence } as SandboxSession;
     }
 
     it("gives a connector to the sandboxed factory when the context has a session", () => {
-      expect(through(false, true)).toEqual(["sandboxed"]);
+      expect(through(false, "fenced")).toEqual(["sandboxed"]);
     });
 
     it("starts a workspace connector as before when the host has no session", () => {
-      expect(through(false, false)).toEqual(["unfenced"]);
+      expect(through(false, "none")).toEqual(["unfenced"]);
+    });
+
+    it("starts a workspace connector as before in the launcher's session, which runs without a sandbox", () => {
+      expect(through(false, "off")).toEqual(["unfenced"]);
+    });
+
+    it("keeps a workspace connector in the sandboxed factory when the fence failed its proof", () => {
+      expect(through(false, "not-fenced")).toEqual(["sandboxed"]);
     });
 
     it("never gives a plugin's local tool to the unfenced factory", () => {
-      expect(through(true, false)).toEqual(["sandboxed"]);
+      expect(through(true, "none")).toEqual(["sandboxed"]);
+      expect(through(true, "off")).toEqual(["sandboxed"]);
     });
   });
 });

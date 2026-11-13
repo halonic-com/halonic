@@ -54,7 +54,7 @@ export async function planLaunch(checks: LaunchChecks): Promise<SandboxCommand> 
   // The session's profile holds no variable from this computer's environment to take one from.
   if ((stdio.inheritEnv ?? []).length > 0) {
     throw new Error(
-      `Connector "${id}" names variables to take from your environment, but a local tool in a sandbox gets none of them. Set them under env or secretEnv instead.`,
+      `Connector "${id}" names variables to take from your environment, but ${programName(workspace)} in a sandbox gets none of them. Set them under env or secretEnv instead.`,
     );
   }
   // Before the registry lookup and the secrets, so a refused start reads and looks up nothing.
@@ -101,4 +101,9 @@ export async function readSecretEnv(
     values[variable] = value;
   }
   return values;
+}
+
+/** What the connector's program is called in a refusal: a workspace connector is not a plugin's local tool. */
+function programName(workspace: WorkspaceConnectorSetting | undefined): string {
+  return workspace === undefined ? "a local tool" : "a workspace connector";
 }

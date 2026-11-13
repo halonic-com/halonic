@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2310 (D45, board yes on HAL-2257 Q3; decided by Liam on HAL-2303); Mateo's answer on HAL-6884
 
-The workspace's `stdio` connector that the host set up (`workspaceConnectors`) shall start its program in the context's sandbox session, in the place `workspaceConnectorPlace` builds, and offer every tool its server lists, as the trust grant covers them all. Before it reads a secret or looks up a pin, it shall run `refuseAgentFolderStart`. A script shall start in the workspace, or in the connector file's `cwd` there, and a pinned package in its own working folder. `WorkspaceStdioConnectorFactory` shall give a connector to the sandboxed factory when the context has a session, and to the unfenced factory only when it has none and the connector is not a plugin's local tool.
+The workspace's `stdio` connector that the host set up (`workspaceConnectors`) shall start its program in the context's sandbox session, in the place `workspaceConnectorPlace` builds, and offer every tool its server lists, as the trust grant covers them all. Before it reads a secret or looks up a pin, it shall run `refuseAgentFolderStart`. A script shall start in the workspace, or in the connector file's `cwd` there, and a pinned package in its own working folder. `WorkspaceStdioConnectorFactory` shall give a connector to the sandboxed factory when the context has a session, and to the unfenced factory only when it has none, or the launcher's (`off`), and the connector is not a plugin's local tool. A refusal that a workspace connector can hit shall say "workspace connector", not "local tool".
 
 ## Examples
 
@@ -20,3 +20,9 @@ The workspace's `stdio` connector that the host set up (`workspaceConnectors`) s
 - Given a host with no sandbox session and a plugin's local tool,
   when the factory creates it,
   then it is refused.
+- Given the launcher's session (`off`) and a workspace connector,
+  when the factory creates it,
+  then it starts as before, without a sandbox.
+- Given a workspace connector that names `inheritEnv`,
+  when it starts in a sandbox,
+  then nothing starts and the refusal says "a workspace connector in a sandbox gets none of them".

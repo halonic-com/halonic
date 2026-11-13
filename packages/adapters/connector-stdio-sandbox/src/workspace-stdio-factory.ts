@@ -8,11 +8,13 @@ import type {
 /**
  * The `stdio` connector factory of a host that can sandbox a workspace's
  * connectors (D45). It starts each connector in the sandbox session its
- * context holds, and only where there is none, as before: the connector
- * file's trust line, and no sites to keep.
+ * context holds, and only where there is none, or where it is the
+ * launcher's (`off`, running without the sandbox by design), as before: the
+ * connector file's trust line, and no sites to keep.
  *
  * A plugin's local tool never takes the second way: it always goes to the
- * sandboxed factory, which refuses it when the context has no session, so
+ * sandboxed factory, which refuses it when the context has no session or an
+ * `off` one, so
  * a host that couldn't open one doesn't run a plugin's program on this
  * computer.
  *
@@ -43,7 +45,15 @@ export class WorkspaceStdioConnectorFactory implements ConnectorFactory {
   }
 
   create(config: ConnectorConfig, context: ConnectorFactoryContext): ConnectorClient {
-    const sandboxed = context.sandbox !== undefined || this.#isLocalTool(config.id);
-    return (sandboxed ? this.#sandboxed : this.#unfenced).create(config, context);
+    return (this.#startsInSandbox(config, context) ? this.#sandboxed : this.#unfenced).create(
+      config,
+      context,
+    );
+  }
+
+  #startsInSandbox(config: ConnectorConfig, context: ConnectorFactoryContext): boolean {
+    if (this.#isLocalTool(config.id)) return true;
+    // A launcher session (`off`) is the person's choice to run without the sandbox, so a workspace connector starts as before.
+    return context.sandbox !== undefined && context.sandbox.fence.state !== "off";
   }
 }
