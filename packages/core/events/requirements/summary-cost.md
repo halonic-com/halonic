@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: old app `summarize` at commit 784f78d; old test `budget.test.ts` checks `unpricedCalls`; subscription calls from HAL-2311 (decided on HAL-2303, question 3); cache tokens, 1-hour cache writes included, from HAL-2688
+- Source: old app `summarize` at commit 784f78d; old test `budget.test.ts` checks `unpricedCalls`; subscription calls from HAL-2311 (decided on HAL-2303, question 3); cache tokens, 1-hour cache writes included, from HAL-2688; cached answers from HAL-8357
 
-When a run's model responses are summarized, the events package shall add up their input and output tokens, their tokens read from the prompt cache, written to it, and written to it for 1 hour (each on its own, and only when a response has them), and the cost of the priced ones, and count the responses without a cost as unpriced calls. A response marked `paidBy: "subscription"` shall count as a subscription call: its tokens are added up, but it is never priced and never counted as unpriced, whatever its `cost`.
+When a run's model responses are summarized, the events package shall add up their input and output tokens, their tokens read from the prompt cache, written to it, and written to it for 1 hour (each on its own, and only when a response has them), and the cost of the priced ones, and count the responses without a cost as unpriced calls. A response marked `paidBy: "subscription"` shall count as a subscription call: its tokens are added up, but it is never priced and never counted as unpriced, whatever its `cost`. A response marked `cached: true` was answered from the cache, not by a model call, so it shall add nothing: no tokens, no cost, and it is not an unpriced call.
 
 ## Examples
 
@@ -23,3 +23,6 @@ When a run's model responses are summarized, the events package shall add up the
 - Given two subscription calls (one with cost 0, one without a cost), a call with cost 0.006, one without a cost and one with cost 0, each with 1,000 input and 200 output tokens,
   when they are summarized,
   then the usage is 5,000 input and 1,000 output tokens, the cost is 0.006, there is 1 unpriced call and there are 2 subscription calls.
+- Given an `llm.response` with cost 0.25, and one marked `cached: true` without a cost and with 1,000 input and 200 output tokens,
+  when they are summarized,
+  then the cost is 0.25, there are no unpriced calls and the usage is that of the first response only.
