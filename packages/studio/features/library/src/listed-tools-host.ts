@@ -8,8 +8,8 @@ export interface ListedToolArgument {
   readonly description?: string;
 }
 
-/** Why a person might not see a change: another alphabet, another way of writing, or only spaces. */
-export type ListedToolHiddenChange = "lookalike" | "normalization" | "whitespace";
+/** Why a person might not see a change: another alphabet, another way of writing, only spaces, or characters that don't show. */
+export type ListedToolHiddenChange = "lookalike" | "normalization" | "whitespace" | "format";
 
 /** One text of a tool that changed since it was approved. */
 export interface ListedToolDifference {

@@ -46,6 +46,7 @@ export function ListedToolsReviewBody({ model, onRemoved, onOutcome }: ListedToo
             <ListedToolRowView
               key={row.name}
               row={row}
+              sourceName={snapshot.sourceName}
               showState={snapshot.hasApprovals}
               tick={{ ticked: state.ticked.has(row.name), onToggle: () => model.toggle(row.name) }}
             />
@@ -72,6 +73,7 @@ export function ListedToolsReviewBody({ model, onRemoved, onOutcome }: ListedToo
               <ListedToolRowView
                 key={`${index}:${row.name}`}
                 row={row}
+                sourceName={snapshot.sourceName}
                 tick={null}
                 showState={false}
                 action={

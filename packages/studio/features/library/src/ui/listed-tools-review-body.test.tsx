@@ -201,9 +201,8 @@ describe("the review body", () => {
       expect(button?.textContent).toBe("Approve this version of sync_tags");
       await act(async () => button?.click());
       expect(approvals).toEqual([[{ name: "sync_tags", fingerprint: "htl1:sync_tags-1" }]]);
-      expect(outcomes).toEqual([
-        { kind: "close", toast: "Approved 1 tool from Notes server. 1 stays off." },
-      ]);
+      // Another tool still waits, so the review stays open.
+      expect(outcomes).toEqual([{ kind: "stay" }]);
     });
   });
 });

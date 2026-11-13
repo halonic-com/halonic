@@ -198,7 +198,9 @@ export class ListedToolsReviewModel {
   /** Approves one tool that keeps changing, at the version shown. It is the only way such a tool is approved. */
   async approveThisVersion(name: string): Promise<ReviewOutcome> {
     const row = this.state.snapshot?.keepsChanging.find((candidate) => candidate.name === name);
-    return row === undefined ? stay : this.approve(this.picks([row]));
+    return row === undefined
+      ? stay
+      : this.approve(this.picks([row]), { staysOpenWhileWaiting: true });
   }
 
   /** Closes the screen as "none": the toast says what stays off. The tools are still waiting, so the badge stays. */
@@ -231,7 +233,14 @@ export class ListedToolsReviewModel {
     return rows.map((row) => ({ name: row.name, fingerprint: row.fingerprint }));
   }
 
-  private async approve(picks: readonly ListedToolPick[]): Promise<ReviewOutcome> {
+  /**
+   * `staysOpenWhileWaiting` keeps the review open while another tool still waits for a decision,
+   * so approving one tool never hides the others that stay off. The toast comes when it closes.
+   */
+  private async approve(
+    picks: readonly ListedToolPick[],
+    { staysOpenWhileWaiting = false } = {},
+  ): Promise<ReviewOutcome> {
     if (picks.length === 0 || this.state.busy) return stay;
     this.set({ busy: true, approveError: undefined });
     let result: Awaited<ReturnType<ListedToolsHost["approve"]>>;
@@ -249,6 +258,8 @@ export class ListedToolsReviewModel {
     }
     const sourceName = this.state.snapshot?.sourceName ?? "";
     const stayingOff = this.state.snapshot?.toReview.length ?? 0;
+    const stillWaiting = stayingOff + (this.state.snapshot?.keepsChanging.length ?? 0);
+    if (staysOpenWhileWaiting && stillWaiting > 0) return stay;
     return {
       kind: "close",
       toast: listedToolsWords.approved(result.approved.length, sourceName, stayingOff),

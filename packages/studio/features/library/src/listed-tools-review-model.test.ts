@@ -61,6 +61,7 @@ class FakeHost implements ListedToolsHost {
     this.answer = {
       ...this.answer,
       toReview: this.answer.toReview.filter((r) => !approved.includes(r.name)),
+      keepsChanging: this.answer.keepsChanging.filter((r) => !approved.includes(r.name)),
       approved: [...this.answer.approved, ...approved],
     };
     return { approved, changed: this.changed };
@@ -205,6 +206,24 @@ verifies("library.listed-tools-review", () => {
       expect(shown.toReview.map((r) => r.name)).toEqual(["search", "lookup"]);
       expect(shown.keepsChanging).toEqual([]);
       expect(shown.refused.map((r) => r.name)).toEqual(["search it"]);
+    });
+  });
+});
+
+verifies("library.listed-tools-review-states", () => {
+  it("keeps the review open on Approve this version while other tools wait", async () => {
+    const model = await opened(new FakeHost(snapshot({ keepsChanging: [row("flaky")] })));
+    expect(await model.approveThisVersion("flaky")).toEqual({ kind: "stay" });
+    expect(model.state.snapshot?.approved).toEqual(["flaky"]);
+  });
+
+  it("closes with the toast on Approve this version once nothing is left to decide", async () => {
+    const model = await opened(
+      new FakeHost(snapshot({ toReview: [], keepsChanging: [row("flaky")] })),
+    );
+    expect(await model.approveThisVersion("flaky")).toEqual({
+      kind: "close",
+      toast: "Approved 1 tool from Notes server",
     });
   });
 });
