@@ -12,11 +12,11 @@ The job builds the installer from the commit in the `windows_ref` input (default
 
 pktmon's packets name no process. `sample.ps1` therefore reads `netstat -ano` every 0.2 s and the process table every second, and `report.mjs` matches each packet to the connection with the same addresses and ports at that time. It sorts the processes into Halonic (the installer, the install folder's programs and what they start), WebView2 (`msedgewebview2.exe`) and Windows and others. DNS goes out from a Windows service, so lookups are in the last group; the report lists every DNS name asked for. The report reads the capture (pcapng, DNS names included) itself, so the job installs no capture tool.
 
-The job fails when a Halonic program sends anything to a host that isn't GitHub (the update check reads `latest.json` from GitHub and follows its redirect to GitHub's asset hosts), when the control isn't in the capture, when the control fails, or when a step fails. WebView2, Windows and unmatched traffic are listed for review and don't fail it.
+The job fails when a Halonic program sends anything to a host that isn't GitHub (the update check reads `latest.json` from GitHub and follows its redirect to GitHub's asset hosts), when the control isn't in the capture, when the control fails, or when a step fails. WebView2 and Windows traffic is listed for review and doesn't fail it. Packets no process could be matched to (HAL-8700) fail it when they go to a host that isn't a known runner or Microsoft host (private and link-local addresses, Azure's wire server, GitHub, Microsoft, Azure and certificate hosts by the name the capture's own DNS answers gave); a bare address no lookup explains also fails. The list is in `report.mjs` (`KNOWN_HOSTS`). Per-process attribution of short connections (ETW Microsoft-Windows-Kernel-Network) was the other option and is left for later: it needs a second tool and can't be tried outside a Windows runner.
 
 ## What is only checked in the code
 
-Nothing clicks through onboarding, so the capture shows the app on its first screen. What the app sends after each onboarding step, after sign-in or with a configured model provider, and what an update does once found, are read in the code, not captured. A connection shorter than the sampling is never matched to a process.
+Nothing clicks through onboarding, so the capture shows the app on its first screen. What the app sends after each onboarding step, after sign-in or with a configured model provider, and what an update does once found, are read in the code, not captured. A connection shorter than the sampling is never matched to a process; a short Halonic connection to GitHub or a Microsoft host would pass unseen.
 
 ## Why
 

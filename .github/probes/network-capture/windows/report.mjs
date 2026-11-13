@@ -11,7 +11,10 @@
 //   - WebView2: msedgewebview2.exe;
 //   - Windows and others: everything else (the runner, DNS, updates).
 // DNS goes out from a Windows service, so lookups land in the last group. A
-// packet whose connection was never sampled is listed on its own.
+// packet whose connection was never sampled is listed on its own, and fails the
+// run unless it goes to a known runner or Microsoft host (see isKnownHost): a
+// short Halonic connection can land there, and an unknown host is not assumed
+// to be the runner's.
 //
 // Usage: report.mjs <capture folder>
 import { readFileSync } from "node:fs";
@@ -223,6 +226,22 @@ const nameOf = (address) => names.get(address)?.[0] ?? address;
 const isUpdateHost = (address) =>
   (names.get(address) ?? []).some((n) => /(^|\.)(github\.com|githubusercontent\.com)$/i.test(n));
 
+// Hosts whose unmatched packets are the runner's or Windows' own: the runner's
+// services, Microsoft, certificate checks and the control. Anything else, or a
+// bare address no lookup in the capture explains, fails when no process owns it.
+const KNOWN_HOSTS =
+  /(^|\.)(github\.com|githubusercontent\.com|githubapp\.com|microsoft\.com|windows\.com|windowsupdate\.com|msftconnecttest\.com|msedge\.net|microsoftonline\.com|live\.com|office\.com|office\.net|azure\.com|azureedge\.net|azurefd\.net|trafficmanager\.net|core\.windows\.net|visualstudio\.com|vsassets\.io|digicert\.com|example\.com)$/i;
+/** Loopback, private, link-local, multicast and broadcast addresses, and Azure's wire server. */
+export function isLocalAddress(a) {
+  if (a.includes(":")) return /^(::1?|f[cd]|fe[89ab]|ff)/i.test(a) || a.startsWith("::ffff:");
+  const [x, y] = a.split(".").map(Number);
+  return (
+    x === 10 || x === 127 || x >= 224 || (x === 172 && y >= 16 && y <= 31) || (x === 192 && y === 168) || (x === 169 && y === 254) || a === "168.63.129.16"
+  );
+}
+const isKnownHost = (address) =>
+  isLocalAddress(address) || (names.get(address) ?? []).some((n) => KNOWN_HOSTS.test(n));
+
 const phaseOf = (time) =>
   Object.entries(session?.phases ?? {}).find(([, w]) => w.start <= time && time <= w.end)?.[0] ?? "between";
 const lookedUp = packets.some((p) => p.proto === "UDP" && p.sport === 53 && parseDns(p.payload).answers.some(([n]) => /^example\.com$/i.test(n)));
@@ -238,6 +257,7 @@ if (control?.ok) {
 const groups = { Halonic: new Map(), WebView2: new Map(), "Windows and others": new Map(), "No process in the samples": new Map() };
 const count = (map, key) => map.set(key, (map.get(key) ?? 0) + 1);
 const failures = [];
+const unattributed = [];
 let local = 0;
 let controlPackets = 0;
 for (const p of packets) {
@@ -257,6 +277,8 @@ for (const p of packets) {
   const process = connection && processAt(connection.pid, p.time);
   if (!process) {
     count(groups["No process in the samples"], `${label} · ${phaseOf(p.time)}`);
+    // Not Halonic as far as we can tell, but not known to be the runner's either.
+    if (!isKnownHost(server[0])) unattributed.push(`${p.proto} → ${nameOf(server[0])}:${server[1]} (${phaseOf(p.time)})`);
     continue;
   }
   const group = groupOf(process, p.time);
@@ -283,6 +305,10 @@ const out = [
   "",
   ...(failures.length > 0 ? [...new Set(failures)].map((f) => `- ${f}`) : ["none"]),
   "",
+  "### Packets with no process to a host that isn't a known runner or Microsoft host",
+  "",
+  ...(unattributed.length > 0 ? [...new Set(unattributed)].map((f) => `- ${f}`) : ["none"]),
+  "",
   ...section("Halonic (installer, app, agent host, sandbox helper)", groups.Halonic),
   ...section("WebView2, for review", groups.WebView2),
   ...section("Windows and others (runner, DNS, system), for review", groups["Windows and others"]),
@@ -292,10 +318,12 @@ const out = [
   "",
   "- Onboarding: nobody clicks through it here, so the capture shows the app on its first screen. What the app does after each onboarding step is only read in the code.",
   "- Anything a signed-in or configured app sends (model providers, sign-in), and what an update does once one is found (download, install, restart).",
-  "- A connection shorter than the 0.2 s sampling is never matched to a process; its packets are in the last table.",
+  "- A connection shorter than the 0.2 s sampling is never matched to a process; its packets are in the last table, and fail the run when they go to a host that isn't a known runner or Microsoft host. One to GitHub or Microsoft passes unseen.",
   "",
 ];
 if (failures.length > 0) problems.push(`Halonic sent traffic that isn't the update check (listed above).`);
+if (unattributed.length > 0)
+  problems.push("Packets that no process could be found for went to hosts that aren't known runner or Microsoft hosts (listed above). Halonic may have sent them in a connection too short to sample.");
 if (problems.length > 0) out.push("### Problems", "", ...problems.map((p) => `- ${p}`), "");
 process.stdout.write(`${out.join("\n")}\n`);
 process.exitCode = problems.length > 0 ? 1 : 0;
