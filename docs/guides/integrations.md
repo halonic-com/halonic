@@ -124,8 +124,10 @@ and `access`, the hosts the access token may go to and how it is put in
 (`as: bearer`, or `header` with `header` and `prefix`). Halonic's own code runs
 the sign-in, so the integration will use the token, with
 `auth: { signIn: "example-account", as: "bearer" }`, but never read it. The
-kit doesn't place a token yet and refuses such a request with
-`sign-in-not-placed-yet`, and a local integration or a plugin backend can't
+kit places the token only the way the sheet says (`placement-not-in-sheet`
+otherwise), only on the sheet's hosts and only over `https`, and returns a 401
+unchanged. It refuses a request with `sign-in-needed` when the user has to
+sign in again. A local integration or a plugin backend can't
 declare `signIns` until the trust content shows them. A
 client secret is a `secrets` entry with only a `purpose`, named in the
 sign-in's `clientSecret`; it goes only to the sign-in's token and revoke hosts.

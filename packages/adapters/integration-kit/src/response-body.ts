@@ -18,8 +18,12 @@ export interface BodyGuard {
   readonly onIdle: () => void;
   /** Called once when the body is finished, failed or cancelled. */
   readonly done: () => void;
-  /** The secrets of this request, removed from the status text, the headers, the URL, the body and its errors. */
-  readonly secrets: SecretForms;
+  /**
+   * The secrets and tokens of this request, removed from the status text, the
+   * headers, the URL, the body and its errors. The kit replaces it when a hop
+   * brings in a token that wasn't known before.
+   */
+  secrets: SecretForms;
 }
 
 /**

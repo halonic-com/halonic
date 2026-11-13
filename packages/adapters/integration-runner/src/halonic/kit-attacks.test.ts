@@ -50,6 +50,7 @@ const policy = {
       placement: { as: "form" as const, field: "token" },
     },
   },
+  signIns: {},
   tokens: [],
 };
 

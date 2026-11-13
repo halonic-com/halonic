@@ -1,14 +1,14 @@
-import type { SecretPlacement } from "@halonicjs/ports";
+import type { AuthPlacement } from "@halonicjs/ports";
 import { secretRemoved, secretTextForms } from "@halonicjs/std";
 
 /** What a secret value is replaced with wherever the filter finds it. */
 export { secretRemoved };
 
-/** A secret value, and where the kit placed it, if it did. */
+/** A secret or token value, and where the kit placed it, if it did. */
 export interface SecretOnWire {
   readonly value: string;
   /** How the kit put it in a request, so the placed forms are matched whole. */
-  readonly placements?: readonly SecretPlacement[];
+  readonly placements?: readonly AuthPlacement[];
 }
 
 /**
@@ -54,7 +54,7 @@ export function secretForms(secrets: Iterable<SecretOnWire>): SecretForms {
 }
 
 /** The exact text the kit puts on the wire for one placement. */
-function placed(placement: SecretPlacement, value: string): string {
+function placed(placement: AuthPlacement, value: string): string {
   switch (placement.as) {
     case "bearer":
       return `Bearer ${value}`;

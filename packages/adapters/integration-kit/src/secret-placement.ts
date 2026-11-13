@@ -1,123 +1,60 @@
-import type { SecretPlacement, Secrets } from "@halonicjs/ports";
+import type { AuthPlacement, SecretPlacement, Secrets } from "@halonicjs/ports";
 import { IntegrationRefusedError } from "./integration/index.ts";
 import { isLoopback } from "./local-address.ts";
 import {
   type DeclaredPlacement,
   type DeclaredSecret,
+  type DeclaredSignInPlacement,
   hostIn,
   type IntegrationPolicy,
 } from "./policy.ts";
 
-/**
- * Copies the placements the integration's code gave into frozen objects of
- * text fields, reading each field once. The kit checks and places only
- * these copies: the code keeps its own objects and could change them, or
- * give a getter, after the check and before the secret is placed. A field
- * that isn't text is refused here, because an object could turn into other
- * text each time it is read.
- */
-export function copyPlacements(
-  policy: IntegrationPolicy,
-  placements: readonly unknown[],
-): readonly SecretPlacement[] {
-  return Object.freeze(placements.map((placement) => copyPlacement(policy, placement)));
-}
-
-/** A placement as the integration's code may give it, with nothing trusted. */
-interface GivenPlacement {
-  readonly secret?: unknown;
-  readonly signIn?: unknown;
-  readonly as?: unknown;
-  readonly header?: unknown;
-  readonly prefix?: unknown;
-  readonly field?: unknown;
-}
-
-function copyPlacement(policy: IntegrationPolicy, placement: unknown): SecretPlacement {
-  if (typeof placement !== "object" || placement === null) {
-    throw notText(policy, "a secret placement");
-  }
-  const given: GivenPlacement = placement;
-  // The types allow `{ signIn, as }`, but the kit doesn't place a token yet; refusing any `signIn` key means `{ secret, signIn }` can't place the secret either.
-  if ("signIn" in given) {
+/** Checks that the secret is declared, isn't a client secret, and is placed as the sheet says. */
+export function checkSecretPlacement(policy: IntegrationPolicy, placement: SecretPlacement): void {
+  const declared = declaredSecret(policy, placement.secret);
+  if (declared === undefined) {
+    if (isClientSecret(policy, placement.secret)) {
+      throw new IntegrationRefusedError(
+        "secret-sign-in-only",
+        `${policy.name}: the secret ${quoted(placement.secret)} is the client secret of a sign-in, which only Halonic's sign-in code sends`,
+      );
+    }
     throw new IntegrationRefusedError(
-      "sign-in-not-placed-yet",
-      `${policy.name}: the kit doesn't place a sign-in's token yet`,
+      "secret-not-declared",
+      `${policy.name}: the secret ${quoted(placement.secret)} is not in its permission sheet`,
     );
   }
-  const secret = given.secret;
-  const as = given.as;
-  if (typeof secret !== "string") throw notText(policy, "the secret's name");
-  if (typeof as !== "string") throw notText(policy, `the "as" of the secret ${quoted(secret)}`);
-  const copy: Record<string, string> = { secret, as };
-  for (const key of ["header", "prefix", "field"] as const) {
-    const value = given[key];
-    if (value === undefined) continue;
-    if (typeof value !== "string")
-      throw notText(policy, `the "${key}" of the secret ${quoted(secret)}`);
-    copy[key] = value;
-  }
-  // Whether the fields fit together is for `checkPlacements` to say.
-  return Object.freeze(copy) as unknown as SecretPlacement;
-}
-
-function notText(policy: IntegrationPolicy, what: string): IntegrationRefusedError {
-  return new IntegrationRefusedError(
-    "placement-not-in-sheet",
-    `${policy.name}: ${what} in a secret placement is not text`,
-  );
-}
-
-/**
- * Checks every placement against the sheet before a secret value is read.
- * Give it the copies from {@link copyPlacements}, never the code's own
- * objects. Where the secret may go is for {@link checkPlacementHosts}.
- */
-export function checkPlacements(
-  policy: IntegrationPolicy,
-  placements: readonly SecretPlacement[],
-): void {
-  for (const placement of placements) {
-    const declared = declaredSecret(policy, placement.secret);
-    if (declared === undefined) {
-      throw new IntegrationRefusedError(
-        "secret-not-declared",
-        `${policy.name}: the secret ${quoted(placement.secret)} is not in its permission sheet`,
-      );
-    }
-    if (!matchesSheet(placement, declared.placement)) {
-      throw new IntegrationRefusedError(
-        "placement-not-in-sheet",
-        `${policy.name}: the secret ${quoted(placement.secret)} goes ${describe(declared.placement)} in its permission sheet, not ${describe(placement)}`,
-      );
-    }
+  if (!matchesSheet(placement, declared.placement)) {
+    throw new IntegrationRefusedError(
+      "placement-not-in-sheet",
+      `${policy.name}: the secret ${quoted(placement.secret)} goes ${describe(declared.placement)} in its permission sheet, not ${describe(placement)}`,
+    );
   }
 }
 
-/**
- * Checks that every placed secret may go to the request's first host, once
- * the URL is parsed. {@link checkPlacements} has already run, so every
- * secret is declared.
- */
-export function checkPlacementHosts(
+/** Whether a sign-in names the secret as its client secret, by own key only. */
+function isClientSecret(policy: IntegrationPolicy, secret: string): boolean {
+  return Object.values(policy.signIns).some((signIn) => signIn.clientSecret?.name === secret);
+}
+
+/** Checks that the secret may go to this host, over this scheme. */
+export function checkSecretHost(
   policy: IntegrationPolicy,
-  placements: readonly SecretPlacement[],
+  placement: SecretPlacement,
   url: URL,
 ): void {
-  for (const placement of placements) {
-    const declared = declaredSecret(policy, placement.secret);
-    if (declared === undefined || !hostIn(declared.hosts, url)) {
-      throw new IntegrationRefusedError(
-        "secret-not-allowed-for-host",
-        `${policy.name}: the secret ${quoted(placement.secret)} may not go to ${url.host}`,
-      );
-    }
-    if (!mayCarrySecret(url)) {
-      throw new IntegrationRefusedError(
-        "secret-over-plain-http",
-        `${policy.name}: the secret ${quoted(placement.secret)} may not go over plain http to another machine (${url.host})`,
-      );
-    }
+  const declared = declaredSecret(policy, placement.secret);
+  if (declared === undefined || !hostIn(declared.hosts, url)) {
+    throw new IntegrationRefusedError(
+      "secret-not-allowed-for-host",
+      `${policy.name}: the secret ${quoted(placement.secret)} may not go to ${url.host}`,
+    );
+  }
+  if (!mayCarrySecret(url)) {
+    throw new IntegrationRefusedError(
+      "secret-over-plain-http",
+      `${policy.name}: the secret ${quoted(placement.secret)} may not go over plain http to another machine (${url.host})`,
+    );
   }
 }
 
@@ -134,7 +71,10 @@ function declaredSecret(policy: IntegrationPolicy, secret: string): DeclaredSecr
  * form field names are case-sensitive. The placement comes from the
  * integration's code, so nothing in it is trusted to have the right type.
  */
-function matchesSheet(placement: SecretPlacement, sheet: DeclaredPlacement): boolean {
+export function matchesSheet(
+  placement: AuthPlacement,
+  sheet: DeclaredPlacement | DeclaredSignInPlacement,
+): boolean {
   switch (sheet.as) {
     case "bearer":
       return placement.as === "bearer";
@@ -159,7 +99,9 @@ function asciiLowerCase(text: string): string {
 }
 
 /** A placement in words, for a refusal message. It never holds a value. */
-function describe(placement: DeclaredPlacement | SecretPlacement): string {
+export function describe(
+  placement: DeclaredPlacement | DeclaredSignInPlacement | AuthPlacement,
+): string {
   switch (placement.as) {
     case "bearer":
       return "as a bearer token";
@@ -181,7 +123,7 @@ function describe(placement: DeclaredPlacement | SecretPlacement): string {
  * the message. It is cut by characters before quoting, so the cut never
  * falls inside an escape or a surrogate pair.
  */
-function quoted(text: unknown): string {
+export function quoted(text: unknown): string {
   const characters = Array.from(String(text));
   const shown =
     characters.length <= 50 ? characters.join("") : `${characters.slice(0, 50).join("")}…`;
@@ -200,10 +142,10 @@ function mayCarrySecret(url: URL): boolean {
 export async function readSecrets(
   policy: IntegrationPolicy,
   secrets: Secrets,
-  placements: readonly SecretPlacement[],
+  placements: readonly AuthPlacement[],
 ): Promise<Map<string, string>> {
   const values = new Map<string, string>();
-  for (const { secret } of placements) {
+  for (const { secret } of placements.filter((placement) => "secret" in placement)) {
     if (values.has(secret)) continue;
     const value = await secrets.get(secret);
     if (value === null || value === "") {
@@ -239,49 +181,46 @@ export function checkSecretLength(integration: string, secret: string, value: st
 }
 
 /**
- * Puts the secrets allowed for this hop's host into the headers and the form
- * body. A placement whose secret may not go to this hop is left out, which
- * happens after a redirect to another declared host.
+ * Puts one secret into the headers or the form body, when it may go to this
+ * hop's host. A secret that may not go to this hop is left out, which happens
+ * after a redirect to another declared host.
  *
- * @returns the form body to send, when a placement wrote into it
+ * @returns the form body to send, which a `form` placement writes into
  */
-export function place(
+export function placeSecret(
   policy: IntegrationPolicy,
-  placements: readonly SecretPlacement[],
-  values: ReadonlyMap<string, string>,
+  placement: SecretPlacement,
+  value: string | undefined,
   url: URL,
   headers: Headers,
   form: URLSearchParams | undefined,
 ): URLSearchParams | undefined {
-  let body = form;
-  for (const placement of placements) {
-    const declared = policy.secrets[placement.secret];
-    const value = values.get(placement.secret);
-    if (
-      declared === undefined ||
-      value === undefined ||
-      !hostIn(declared.hosts, url) ||
-      !mayCarrySecret(url)
-    )
-      continue;
-    switch (placement.as) {
-      case "bearer":
-        headers.set("authorization", `Bearer ${value}`);
-        break;
-      case "header":
-        headers.set(placement.header, `${placement.prefix ?? ""}${value}`);
-        break;
-      case "form":
-        if (body === undefined) {
-          throw new IntegrationRefusedError(
-            "secret-needs-form-body",
-            `${policy.name}: the secret ${quoted(placement.secret)} goes in a form field, so the body must be a form`,
-          );
-        }
-        body = new URLSearchParams(body);
-        body.set(placement.field, value);
-        break;
+  const declared = policy.secrets[placement.secret];
+  if (
+    declared === undefined ||
+    value === undefined ||
+    !hostIn(declared.hosts, url) ||
+    !mayCarrySecret(url)
+  ) {
+    return form;
+  }
+  switch (placement.as) {
+    case "bearer":
+      headers.set("authorization", `Bearer ${value}`);
+      return form;
+    case "header":
+      headers.set(placement.header, `${placement.prefix ?? ""}${value}`);
+      return form;
+    case "form": {
+      if (form === undefined) {
+        throw new IntegrationRefusedError(
+          "secret-needs-form-body",
+          `${policy.name}: the secret ${quoted(placement.secret)} goes in a form field, so the body must be a form`,
+        );
+      }
+      const written = new URLSearchParams(form);
+      written.set(placement.field, value);
+      return written;
     }
   }
-  return body;
 }

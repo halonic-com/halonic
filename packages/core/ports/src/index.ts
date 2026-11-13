@@ -133,6 +133,7 @@ export {
   integrationVersion,
   maxIntegrationWaitMs,
   type SecretPlacement,
+  SignInNeededError,
   type SignInPlacement,
   type SignInTokens,
 } from "./integration.ts";

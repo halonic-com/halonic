@@ -1,4 +1,10 @@
-import type { HttpClient, IntegrationHost, Secrets, TokenStore } from "@halonicjs/ports";
+import type {
+  HttpClient,
+  IntegrationHost,
+  Secrets,
+  SignInTokens,
+  TokenStore,
+} from "@halonicjs/ports";
 import { createLimitedHttpClient, type RequestLimits } from "./limited-http.ts";
 import type { IntegrationPolicy } from "./policy.ts";
 import { RequestLog } from "./request-log.ts";
@@ -11,6 +17,12 @@ export interface IntegrationHostOptions {
   readonly transport: HttpClient;
   readonly secrets: Secrets;
   readonly tokens: TokenStore;
+  /**
+   * Where the kit gets the access tokens of the sheet's sign-ins, and tells
+   * about a 401. Without it, a request that places a token is refused as
+   * `sign-in-needed`.
+   */
+  readonly signInTokens?: SignInTokens;
   readonly settings?: Readonly<Record<string, unknown>>;
   readonly limits?: RequestLimits;
   readonly now?: () => number;
@@ -37,6 +49,7 @@ export function createIntegrationHost(options: IntegrationHostOptions): CreatedI
     transport: options.transport,
     secrets: options.secrets,
     log,
+    ...(options.signInTokens ? { signInTokens: options.signInTokens } : {}),
     ...(options.limits ? { limits: options.limits } : {}),
     ...(options.now ? { now: options.now } : {}),
   });

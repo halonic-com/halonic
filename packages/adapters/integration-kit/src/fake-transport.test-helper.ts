@@ -1,5 +1,6 @@
 import type { AddressCheckingHttpClient } from "@halonicjs/adapter-http-kit";
-import type { Secrets, TokenStore } from "@halonicjs/ports";
+import type { Secrets, SignInTokens, TokenStore } from "@halonicjs/ports";
+import { SignInNeededError } from "@halonicjs/ports";
 import { IntegrationRefusedError, type RefusalCode } from "./integration/index.ts";
 import { createLimitedHttpClient, type RequestLimits } from "./limited-http.ts";
 import type { DeclaredPlacement, IntegrationPolicy } from "./policy.ts";
@@ -47,7 +48,52 @@ export function fakeTransport(
 export const canary = {
   "example-key": "canary-example-key-7f3a",
   "client-secret": "canary-client-secret-91c2",
+  "account-client-secret": "canary-account-client-secret-5d1e",
 };
+
+/** Canary values for a sign-in's tokens, which only Halonic's side may hold. */
+export const tokenCanary = {
+  access: "canary-access-token-a1b2c3d4",
+  older: "canary-older-access-token-e5f6a7b8",
+  refresh: "canary-refresh-token-c9d0e1f2",
+};
+
+/**
+ * A stand-in for Halonic's sign-in code: it gives `access` as the current
+ * token, lists the older token, the refresh token and the client secret for
+ * the filter, and records what the kit asked and reported.
+ */
+export function fakeSignInTokens(
+  options: { access?: string; needsSignIn?: boolean } = {},
+): SignInTokens & {
+  /** The token the next `access` gives; a test changes it to simulate a refresh. */
+  current: string;
+  readonly asked: string[];
+  readonly rejectedCalls: { signIn: string; value: string }[];
+} {
+  const asked: string[] = [];
+  const rejectedCalls: { signIn: string; value: string }[] = [];
+  const tokens = {
+    current: options.access ?? tokenCanary.access,
+    asked,
+    rejectedCalls,
+    access: async (signIn: string) => {
+      asked.push(signIn);
+      if (options.needsSignIn) throw new SignInNeededError(signIn);
+      return tokens.current;
+    },
+    rejected: (signIn: string, value: string) => {
+      rejectedCalls.push({ signIn, value });
+    },
+    filterValues: () => [
+      tokens.current,
+      tokenCanary.older,
+      tokenCanary.refresh,
+      canary["account-client-secret"],
+    ],
+  };
+  return tokens;
+}
 
 export const secrets: Secrets = {
   get: async (name) => (Object.hasOwn(canary, name) ? canary[name as keyof typeof canary] : null),
@@ -77,7 +123,30 @@ export const policy: IntegrationPolicy = {
       placement: { as: "form", field: "client_secret" },
     },
   },
+  signIns: {
+    "example-account": { hosts: ["api.example.com"], as: "bearer" },
+    "example-client-account": {
+      hosts: ["api.example.com"],
+      as: "header",
+      header: "x-token",
+      prefix: "Token ",
+      clientSecret: { name: "account-client-secret", hosts: ["oauth.example.com"] },
+    },
+  },
   tokens: ["refresh"],
+};
+
+/** A policy with a sign-in whose token may also go to the CDN, and one on a local `http` host. */
+export const wideSignIns: IntegrationPolicy = {
+  ...policy,
+  localHosts: ["localhost:8080"],
+  hosts: [...policy.hosts],
+  signIns: {
+    ...policy.signIns,
+    wide: { hosts: ["api.example.com", "cdn.example.com", "localhost:8080"], as: "bearer" },
+    narrow: { hosts: ["api.example.com"], as: "bearer" },
+    local: { hosts: ["localhost:8080"], as: "bearer" },
+  },
 };
 
 /** The test policy, with a sheet that puts `example-key` in another place. */
@@ -98,6 +167,7 @@ export function client(
   limits?: RequestLimits,
   clientPolicy: IntegrationPolicy = policy,
   clientSecrets: Secrets = secrets,
+  signInTokens?: SignInTokens,
 ) {
   const { transport, sent, options } = fakeTransport(answer);
   const log = new RequestLog();
@@ -107,6 +177,7 @@ export function client(
     transport,
     secrets: clientSecrets,
     log,
+    ...(signInTokens ? { signInTokens } : {}),
     now: () => clock++,
     ...(limits ? { limits } : {}),
   });

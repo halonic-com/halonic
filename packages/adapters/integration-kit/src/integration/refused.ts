@@ -9,9 +9,13 @@ export type RefusalCode =
   | "host-not-allowed"
   | "secret-not-declared"
   | "placement-not-in-sheet"
-  | "sign-in-not-placed-yet"
+  | "secret-sign-in-only"
+  | "sign-in-not-declared"
+  | "sign-in-needed"
   | "secret-not-allowed-for-host"
   | "secret-over-plain-http"
+  | "token-not-allowed-for-host"
+  | "token-over-plain-http"
   | "secret-not-configured"
   | "secret-too-short"
   | "secret-needs-form-body"
@@ -35,9 +39,13 @@ const refusalKinds: Readonly<Record<RefusalCode, ErrorKind>> = {
   "host-not-allowed": "denied",
   "secret-not-declared": "denied",
   "placement-not-in-sheet": "denied",
-  "sign-in-not-placed-yet": "denied",
+  "secret-sign-in-only": "denied",
+  "sign-in-not-declared": "denied",
+  "sign-in-needed": "unauthenticated",
   "secret-not-allowed-for-host": "denied",
   "secret-over-plain-http": "denied",
+  "token-not-allowed-for-host": "denied",
+  "token-over-plain-http": "denied",
   "secret-not-configured": "denied",
   "secret-too-short": "denied",
   "secret-needs-form-body": "invalid_input",
