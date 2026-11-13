@@ -6,6 +6,8 @@
 /// Studio's heads are far smaller.
 const HEAD_LIMIT: usize = 16 * 1024;
 
+const HEAD_END: &[u8] = b"\r\n\r\n";
+
 /// Looks for `Authorization: Bearer <token>` in the head of a connection's
 /// first request, as the client sends it.
 pub(super) struct TokenCheck {
@@ -29,9 +31,13 @@ impl TokenCheck {
         if self.done {
             return false;
         }
-        let room = HEAD_LIMIT - self.head.len();
+        let previous_length = self.head.len();
+        let room = HEAD_LIMIT - previous_length;
         self.head.extend_from_slice(&bytes[..bytes.len().min(room)]);
-        let Some(end) = find(&self.head, b"\r\n\r\n") else {
+        // The end of the head may start in what came before, up to 3 bytes
+        // back; what is further back was searched already.
+        let from = previous_length.saturating_sub(HEAD_END.len() - 1);
+        let Some(end) = find(&self.head[from..], HEAD_END).map(|at| from + at) else {
             self.done = self.head.len() == HEAD_LIMIT;
             return false;
         };
@@ -84,6 +90,18 @@ mod tests {
         assert!(!check.found(b"GET /v1/health HTTP/1.1\r\nauthorization:  Bearer "));
         let rest = format!("{TOKEN} \r\nhost: 127.0.0.1\r\n\r\n");
         assert!(check.found(rest.as_bytes()));
+    }
+
+    #[test]
+    fn relay_limits_token_check_finds_the_end_of_a_head_split_inside_its_terminator() {
+        let head = format!("GET / HTTP/1.1\r\nAuthorization: Bearer {TOKEN}\r\n\r\n");
+        assert!(TokenCheck::new(TOKEN).found(head.as_bytes()));
+        for cut in 1..4 {
+            let (first, second) = head.as_bytes().split_at(head.len() - cut);
+            let mut check = TokenCheck::new(TOKEN);
+            assert!(!check.found(first), "cut {cut}");
+            assert!(check.found(second), "cut {cut}");
+        }
     }
 
     #[test]

@@ -230,9 +230,12 @@ impl AgentHost {
         &self.handshake
     }
 
-    /// True once the host has exited, so the shell can start a new one.
+    /// True once the host has exited, or its relay stopped (it read nothing
+    /// for too long, or the host broke the framing): nothing reaches the
+    /// host then, so the shell starts a new one.
     pub fn has_exited(&mut self) -> bool {
-        !matches!(self.child.try_wait(), Ok(None))
+        self.relay.as_ref().is_some_and(Relay::is_stopped)
+            || !matches!(self.child.try_wait(), Ok(None))
     }
 
     /// Closes the host's input and waits up to `grace` for it to exit on its
@@ -376,9 +379,12 @@ fn kill(child: &mut Child) {
 #[cfg(test)]
 mod tests {
     use std::io::Cursor;
+    use std::process::{Command, Stdio};
+    use std::time::Duration;
 
     use super::handshake::read_relayed_handshake;
-    use super::{FirstLine, read_first_line};
+    use super::relay::Relay;
+    use super::{AgentHost, FirstLine, read_first_line};
 
     const TOKEN: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJ-_01234";
 
@@ -433,5 +439,46 @@ mod tests {
             let error = read_relayed_handshake(line.as_bytes(), 1).expect_err(line);
             assert!(!error.to_string().contains(TOKEN), "{error}");
         }
+    }
+
+    #[test]
+    fn relay_stopped_counts_as_an_exited_host() {
+        // Runs until its input closes, so only the relay's state tells.
+        #[cfg(unix)]
+        let mut command = {
+            let mut command = Command::new("/bin/sh");
+            command.args(["-c", "cat > /dev/null"]);
+            command
+        };
+        #[cfg(windows)]
+        let mut command = {
+            let mut command = Command::new("findstr");
+            command.arg("^");
+            command
+        };
+        let child = command
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .spawn()
+            .expect("start the stand-in");
+        let mut relay = Relay::bind().expect("bind the relay");
+        let (_input, relay_input) = std::io::pipe().expect("a pipe");
+        let (relay_output, _output) = std::io::pipe().expect("a pipe");
+        relay.serve(relay_input, relay_output, TOKEN);
+        let line = format!("{{\"token\":\"{TOKEN}\"}}\n");
+        let handshake = read_relayed_handshake(line.as_bytes(), relay.port())
+            .expect("a handshake")
+            .expect("not skipped");
+        let mut host = AgentHost {
+            child,
+            stdin: None,
+            relay: Some(relay),
+            handshake,
+        };
+
+        assert!(!host.has_exited(), "the relay serves and the host runs");
+        host.relay.as_ref().expect("the relay").stop();
+        assert!(host.has_exited(), "a stopped relay reaches no host");
+        host.stop(Duration::from_secs(5));
     }
 }
