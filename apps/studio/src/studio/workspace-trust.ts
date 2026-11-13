@@ -94,6 +94,24 @@ export class WorkspaceTrust {
     return this.isTrusted() ? { ok: true } : { ok: false, reason: "this workspace changed" };
   }
 
+  /**
+   * Forgets the person's trust in this folder, then checks again, so the workspace asks again
+   * before it runs anything. Never rejects: it says why the trust is still there.
+   */
+  async remove(): Promise<{ readonly ok: true } | { readonly ok: false; readonly reason: string }> {
+    const location = this.#subject?.location;
+    if (location === undefined) {
+      return { ok: false, reason: "Halonic hasn't read this workspace yet" };
+    }
+    try {
+      await this.#sources.trust.revoke(location);
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : "unknown error" };
+    }
+    await this.refresh();
+    return { ok: true };
+  }
+
   /** Whether the last check found the workspace trusted. */
   isTrusted(): boolean {
     return this.#settled && this.#check?.status === "trusted";

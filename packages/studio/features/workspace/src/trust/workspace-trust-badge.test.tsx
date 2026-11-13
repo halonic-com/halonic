@@ -80,7 +80,10 @@ function control(initial: TrustReview | undefined, grant?: () => Promise<TrustGr
     get badge() {
       return current === undefined ? "none" : "not-trusted";
     },
+    status: current === undefined ? "trusted" : "not-trusted",
+    trustedAt: undefined,
     review: () => current,
+    remove: async () => ({ ok: true }),
     grant: async (fingerprint) => {
       granted.push(fingerprint);
       return grant === undefined ? { ok: true } : grant();

@@ -37,3 +37,7 @@ export type {
   TrustSectionView,
   WorkspaceTrustControl,
 } from "./trust/workspace-trust-control.ts";
+export {
+  WorkspaceTrustSection,
+  type WorkspaceTrustSectionProps,
+} from "./trust/workspace-trust-section.tsx";
