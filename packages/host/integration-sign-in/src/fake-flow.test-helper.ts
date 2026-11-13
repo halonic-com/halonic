@@ -124,6 +124,13 @@ export function exampleFlow(
     changeSettings(settings: Record<string, unknown>) {
       source = { ...source, settings };
     },
+    /** The sheet from now on says the provider's revoke ends every token of the client and user. */
+    declareRevokeEndsClientGrants() {
+      source = {
+        ...source,
+        sheet: withSignInFields(source.sheet, { revokeEndsClientGrants: true }),
+      };
+    },
     failStoreWrites() {
       storeFails = true;
     },

@@ -70,17 +70,18 @@ export async function approvedSignInHash(
 
 /**
  * Whether revoking `old` at its server would also end a grant approved as
- * `next`: `old` says its revoke ends every token of a client, and both use
- * the same client at the same token and revoke servers.
+ * `next`: either approval says the server's revoke ends every token of a
+ * client, and both use the same client at the same token server. The flag
+ * describes the server, so the new approval saying it is enough for a grant
+ * saved before the sheet did. The revoke endpoint of `next` doesn't matter:
+ * what ends the new grant is the revoke of `old`, at the server that issued
+ * both.
  */
 export function revokeWouldEndGrantOf(old: ApprovedSignIn, next: ApprovedSignIn): boolean {
   return (
-    old.revokeEndsClientGrants === true &&
+    (old.revokeEndsClientGrants === true || next.revokeEndsClientGrants === true) &&
     old.clientId === next.clientId &&
-    originOf(old.tokenUrl) === originOf(next.tokenUrl) &&
-    old.revokeUrl !== undefined &&
-    next.revokeUrl !== undefined &&
-    originOf(old.revokeUrl) === originOf(next.revokeUrl)
+    originOf(old.tokenUrl) === originOf(next.tokenUrl)
   );
 }
 

@@ -23,7 +23,8 @@ export interface SignOutSettings {
  * - `notConfirmed`: the server didn't answer 200 or couldn't be reached, or
  *   its client secret is missing. The refresh token may still work there.
  * - `noRevokeUrl`: the approved sign-in has no revoke endpoint.
- * - `skipped`: the server's revoke would have ended the grant that replaces this one.
+ * - `skipped`: the server's revoke would have ended the grant that replaces this one,
+ *   so nothing was sent. The refresh token may still work there, as for `notConfirmed`.
  */
 export type SignOutResult =
   | { readonly kind: "notSignedIn" }
