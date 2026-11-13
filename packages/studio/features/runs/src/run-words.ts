@@ -291,3 +291,17 @@ export function stepName(stateId: string, description: string | undefined): stri
   }
   return stateId.charAt(0).toUpperCase() + stateId.slice(1);
 }
+
+/** Details, the run page's right column (checklist part 1, 1.11; mc 15.2). */
+export const detailsWords = {
+  heading: "Details",
+  startedBy: "Started by",
+  started: "Started",
+  took: "Took",
+  modelCalls: "Model calls and tokens",
+  estimatedCost: "Estimated cost",
+  ranOn: "Ran on",
+  /** The model calls row of a run that made none. */
+  noModelCalls: "None",
+  tokens: (input: string, output: string) => `${input} in · ${output} out`,
+};

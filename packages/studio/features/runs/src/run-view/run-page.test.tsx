@@ -50,7 +50,7 @@ verifies("runs.run-page", () => {
     expect(root.querySelector("header")?.textContent).toBe(
       "Run · Support replyRun 7k2m9pRunningtoday 10:40 · updates live",
     );
-    expect(root.querySelector("section")).toBeNull();
+    expect(root.querySelector("section[aria-label]")).toBeNull();
   });
 
   it("names the banner's region and sends Review in Inbox to the Inbox", async () => {
