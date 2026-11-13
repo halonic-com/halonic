@@ -2,6 +2,7 @@
 
 - Approval: Liam approves this note in review on HAL-8296
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:uSAY3HcAS8uXBhH40J3eHUsMRDtIPJl5SqFJwCOVjoRihE0EVS9i6jlo1tru4kpJLO0YHGK+bEcc/50l1VhTCQ==
 - Task: HAL-2827
 
 ## What changes
