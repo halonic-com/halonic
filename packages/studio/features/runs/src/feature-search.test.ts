@@ -43,4 +43,16 @@ verifies("runs.search", () => {
     ]);
     expect(await provider?.search("zzz", context)).toEqual([]);
   });
+
+  it("fails when the runs can't be loaded, so Ctrl K doesn't read it as no results", async () => {
+    const shell = createShell({ features: [runsFeature], hostServices: [RunsSourceService] });
+    const workspace = new WorkspaceServices();
+    const fake = fakeSource([summaryWith({ id: "run_a_01jd8q" })]);
+    fake.fail(new Error("offline"));
+    workspace.provide(RunsSourceService, fake.source);
+    shell.services.instantiate(workspace);
+    const provider = shell.contributions.search.providers().find((added) => added.id === "runs");
+    const context = shell.services.contextFor("runs", workspace);
+    await expect(provider?.search("run", context)).rejects.toThrow("offline");
+  });
 });

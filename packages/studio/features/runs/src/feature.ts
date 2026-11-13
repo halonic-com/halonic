@@ -45,7 +45,12 @@ export const runsFeature = defineFeature({
       order: 30,
       search: async (query, context) => {
         const list = context.services.get(RunsListService);
-        if (!list.state.loaded) await list.refresh();
+        if (!list.state.loaded) {
+          await list.refresh();
+          // A list that still isn't loaded failed: say so, so Ctrl K can note that it
+          // couldn't search everything instead of showing "no results".
+          if (!list.state.loaded) throw list.state.error;
+        }
         return findRuns(listRows(list, new Date()), query).map((row) => ({
           item: { kind: "run", hub: row.hubId, id: row.id },
           label: searchWords.label(row.shortId, row.workflow),
