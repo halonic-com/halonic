@@ -2,6 +2,7 @@
 
 - Approval: Liam asked for this on HAL-8685; the change only records what #2502 (HAL-8614) already delivered
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FL1F5I04QMv32USXpChg5ApH/OXvndpeYBCEHDJEFm5Vv0HmTD8oPYDgIFrXhZNZo+whnEXvbCP/ttvnzhKQCg==
 - Task: HAL-8685
 
 ## What changes
