@@ -18,7 +18,8 @@ stdout:
     "ok": false,
     "error": {
       "kind": "denied",
-      "message": "Couldn't approve look.up: Halonic refused it: its name breaks the name rule."
+      "message": "Couldn't approve look.up: Halonic refused it: its name breaks the name rule.",
+      "approved": []
     }
   }
 stderr:

@@ -235,7 +235,16 @@ export class UsageError extends Error {
  * in acme." (cli-output 3.4). Its message and fix come from the catalogue.
  */
 export class OwnLineError extends KindedError {
-  constructor(kind: ErrorKind, line: Message, fix?: Message) {
+  /** Fields `--json` adds to the error, for what a script needs to know besides the reason. */
+  readonly jsonFields: Readonly<Record<string, unknown>>;
+
+  constructor(
+    kind: ErrorKind,
+    line: Message,
+    fix?: Message,
+    jsonFields: Readonly<Record<string, unknown>> = {},
+  ) {
     super(kind, plainText(line.phrase), fix === undefined ? {} : { fix: plainText(fix.phrase) });
+    this.jsonFields = jsonFields;
   }
 }

@@ -21,7 +21,8 @@ stdout:
     "error": {
       "kind": "not_found",
       "message": "Couldn't approve lokup: notes-mcp doesn't list a tool called lokup.",
-      "fix": "Did you mean lookup?"
+      "fix": "Did you mean lookup?",
+      "approved": []
     }
   }
 stderr:

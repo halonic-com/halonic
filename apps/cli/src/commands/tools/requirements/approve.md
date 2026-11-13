@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2827 (HAL-850 step 5, C2 Approve all); cli-output 3.10 (revisions 33 and 36, N9); HAL-3004 (`--fingerprint` goes with one tool); HAL-2579 F9
 
-The `halonic tools approve <source> <tool>…` command shall approve each tool named, without a question, in order, one line each with its fingerprint, and stop at the first tool it can't approve with that tool's error: one that changed since the `--fingerprint` given (exit 5, naming the current fingerprint), one Halonic refused (exit 7, with why), or one the source doesn't list (exit 4, with the closest name or the `review` command). A tool approved already shall say so, and a tool its server keeps changing shall be approved like any other when named. With `--all` it shall approve exactly the tools waiting in the listing it read, at the fingerprints it prints, leave out each tool its server keeps changing with the command that approves it by name, and end on "Tools that change later ask again.". Tool names with `--all`, and `--fingerprint` with `--all` or with more than one tool, shall be usage errors (exit 2) that start nothing and approve nothing. With `--json` it shall give the tools approved with their fingerprints and the tools left out. It shall connect the source only in a workspace trusted as it is now, and the three `tools` commands shall share their errors: an unknown connector with the closest id or where to find the connectors, an untrusted workspace (exit 3, nothing started), a refused listing (exit 7), and an approval that can't be read (exit 9), with the `revoke` command that removes it.
+The `halonic tools approve <source> <tool>…` command shall approve each tool named, without a question, in order, one line each with its fingerprint, and stop at the first tool it can't approve with that tool's error: one that changed since the `--fingerprint` given (exit 5, naming the current fingerprint), one Halonic refused (exit 7, with why), or one the source doesn't list (exit 4, with the closest name or the `review` command). A tool approved already shall say so, and a tool its server keeps changing shall be approved like any other when named. With `--all` it shall approve exactly the tools waiting in the listing it read, at the fingerprints it prints, leave out each tool its server keeps changing with the command that approves it by name, and end on one of three lines: "Tools that change later ask again." after the tools it approved, "Nothing from <source> is waiting for your approval." when none waits, or "Approved no tools from <source>: the ones waiting keep changing." when every waiting tool keeps changing. Tool names with `--all`, and `--fingerprint` with `--all` or with more than one tool, shall be usage errors (exit 2) that start nothing and approve nothing. With `--json` it shall give the tools approved with their fingerprints and the tools left out, and an error that stops it at a named tool shall give the tools approved before it as `approved` (empty when none). It shall connect the source only in a workspace trusted as it is now, and the three `tools` commands shall share their errors: an unknown connector with the closest id or where to find the connectors, an untrusted workspace (exit 3, nothing started), a refused listing (exit 7), and an approval that can't be read (exit 9), with the `revoke` command that removes it.
 
 ## Examples
 
@@ -23,6 +23,12 @@ The `halonic tools approve <source> <tool>…` command shall approve each tool n
 - Given `archive`, `lokup` and `lookup` named,
   when they are approved,
   then archive is approved, it stops at lokup with "Couldn't approve lokup: notes-mcp doesn't list a tool called lokup." and lookup isn't tried.
+- Given `search` waiting and changing on every listing,
+  when `halonic tools approve notes-mcp --all` runs,
+  then search is left out and the last line is "! Approved no tools from notes-mcp: the ones waiting keep changing.".
+- Given `archive`, `lokup` and `lookup` named and `--json`,
+  when it stops at lokup,
+  then the error document lists archive with its fingerprint under `approved`.
 - Given `lookup --all`, `lookup send --fingerprint htl1:0` or `--all --fingerprint htl1:0`,
   when the command runs,
   then it exits 2 and no program starts.

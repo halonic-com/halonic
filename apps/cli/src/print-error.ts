@@ -79,6 +79,8 @@ export interface ErrorDocument {
     readonly fingerprint?: string;
     /** For `not_trusted` only: what changed since the workspace was trusted, left out when it never was. */
     readonly changes?: TrustChangesDocument;
+    /** Fields a command's own error adds, such as the tools `approve` approved before it failed. */
+    readonly [field: string]: unknown;
   };
 }
 
@@ -98,6 +100,7 @@ export function errorDocument(error: unknown, context: PrintErrorContext = {}): 
       message: plainText(report.reason),
       ...(report.fix === undefined ? {} : { fix: plainText(report.fix) }),
       ...(error instanceof NotTrustedError ? notTrustedFields(error) : {}),
+      ...(error instanceof OwnLineError ? error.jsonFields : {}),
     },
   };
 }
