@@ -455,6 +455,7 @@ fn served_page_test_sees_trust_granted_to_the_local_main_window_only() {
             "allow-pick-folder",
             "allow-trust-get",
             "allow-trust-list",
+            "allow-trust-folders-found",
             "allow-trust-grant",
             "allow-trust-revoke",
             "allow-reopen-folder",
