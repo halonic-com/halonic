@@ -32,7 +32,7 @@ const srtLog: string[] = [];
 /**
  * srt runs as a child process, so its log lines come through the program's
  * error output, not this process's console. Turns its debug log on for the
- * launcher and keeps the last lines, passing the output on unchanged.
+ * launcher and keeps the last lines as they come, passing the output on unchanged.
  */
 const loggingRunner: Runner = {
   async run(request) {
@@ -40,15 +40,21 @@ const loggingRunner: Runner = {
       ...request,
       launcherEnv: { ...request.launcherEnv, SRT_DEBUG: "1" },
     });
+    // `reply` never reads the program's error output, and a stream moves only when it is read:
+    // keep our own copy flowing, so the lines are there when a request fails.
+    const [kept, passed] = program.stderr.tee();
     const decoder = new TextDecoder();
-    const keep = new TransformStream<Uint8Array, Uint8Array>({
-      transform(chunk, controller) {
-        srtLog.push(...decoder.decode(chunk, { stream: true }).split(/\r?\n/).filter(Boolean));
-        srtLog.splice(0, Math.max(0, srtLog.length - 200));
-        controller.enqueue(chunk);
-      },
-    });
-    return { ...program, stderr: program.stderr.pipeThrough(keep) };
+    void kept
+      .pipeTo(
+        new WritableStream<Uint8Array>({
+          write(chunk) {
+            srtLog.push(...decoder.decode(chunk, { stream: true }).split(/\r?\n/).filter(Boolean));
+            srtLog.splice(0, Math.max(0, srtLog.length - 200));
+          },
+        }),
+      )
+      .catch(() => {});
+    return { ...program, stderr: passed };
   },
 };
 
