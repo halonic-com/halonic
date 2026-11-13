@@ -12,6 +12,8 @@ Sign-out shall wait for a refresh in flight before it revokes and removes the gr
   then sign-out sends nothing until the refresh has ended, then revokes the refresh token the refresh saved and removes the grant.
 - Given a sign-out that is running,
   then `access` throws `SignInNeededError` and sends no refresh.
+- Given a sign-out that is running and a second one for the same sign-in,
+  then the second gets the first one's result and the server is asked once.
 - Given a signed-out sign-in,
   then `access` throws `SignInNeededError`.
 - Given a sign-in nobody signed in to,

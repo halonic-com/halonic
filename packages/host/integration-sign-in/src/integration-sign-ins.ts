@@ -74,7 +74,7 @@ export interface IntegrationSignIns {
  * const { tokens, signOut } = createIntegrationSignIns({ integration: "gitlab", current, grants, http, secrets, clock, requestSignal });
  */
 export function createIntegrationSignIns(settings: IntegrationSignInsSettings): IntegrationSignIns {
-  const signingOut = new Set<string>();
+  const signingOut = new Map<string, Promise<SignOutResult>>();
 
   async function lookUp(signIn: string): Promise<SignInLookup> {
     const { sheet, settings: values } = await settings.current();
@@ -105,18 +105,24 @@ export function createIntegrationSignIns(settings: IntegrationSignInsSettings): 
   return {
     tokens: refusingWhileSigningOut(managed, signingOut),
     lookUp,
-    async signOut(signIn) {
-      signingOut.add(signIn);
-      try {
-        await managed.settled(signIn);
-        const result = await signOutAtServer(signOutSettings(settings), signIn);
-        managed.forget(signIn);
-        return result;
-      } finally {
-        signingOut.delete(signIn);
+    signOut(signIn) {
+      // A second call while one runs gets the same sign-out, so the server is asked once.
+      const running = signingOut.get(signIn);
+      if (running) {
+        return running;
       }
+      const started = signOutAfterRefresh(signIn).finally(() => signingOut.delete(signIn));
+      signingOut.set(signIn, started);
+      return started;
     },
   };
+
+  async function signOutAfterRefresh(signIn: string): Promise<SignOutResult> {
+    await managed.settled(signIn);
+    const result = await signOutAtServer(signOutSettings(settings), signIn);
+    managed.forget(signIn);
+    return result;
+  }
 }
 
 function signOutSettings(settings: IntegrationSignInsSettings): SignOutSettings {
@@ -132,7 +138,7 @@ function signOutSettings(settings: IntegrationSignInsSettings): SignOutSettings 
 /** The kit's view of the tokens, without `forget` and `settled`, which are for Halonic's side only. */
 function refusingWhileSigningOut(
   managed: ManagedSignInTokens,
-  signingOut: ReadonlySet<string>,
+  signingOut: ReadonlyMap<string, unknown>,
 ): SignInTokens {
   return {
     access(signIn, signal) {

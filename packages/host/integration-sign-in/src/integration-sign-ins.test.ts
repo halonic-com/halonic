@@ -66,7 +66,7 @@ verifies("host-integration-sign-in.approved-sign-ins", () => {
     await expect(test.signIns.tokens.access(signInName)).rejects.toBeInstanceOf(SignInNeededError);
   });
 
-  it("lists the tokens for the secret filter and takes the kit's report of a rejected one", async () => {
+  it("lists a token the kit reported as rejected for the secret filter", async () => {
     const test = exampleIntegration();
     await test.signedIn();
     const value = await test.signIns.tokens.access(signInName);
@@ -131,6 +131,20 @@ verifies("host-integration-sign-in.sign-out", () => {
     test.provider.requests[0]?.release();
     await signOut;
 
+    expect(test.provider.requests).toHaveLength(1);
+  });
+
+  it("asks the server once when it is signed out twice at the same time", async () => {
+    const test = exampleIntegration({ hold: true });
+    await test.signedIn();
+
+    const first = test.signIns.signOut(signInName);
+    const second = test.signIns.signOut(signInName);
+    await until(() => test.provider.requests.length === 1);
+    await expect(test.signIns.tokens.access(signInName)).rejects.toBeInstanceOf(SignInNeededError);
+    test.provider.requests[0]?.release();
+
+    expect(await second).toBe(await first);
     expect(test.provider.requests).toHaveLength(1);
   });
 

@@ -14,8 +14,7 @@
   "dependencies": {
     "@halonicjs/format": "workspace:*",
     "@halonicjs/oauth-sign-in": "workspace:*",
-    "@halonicjs/ports": "workspace:*",
-    "@halonicjs/std": "workspace:*"
+    "@halonicjs/ports": "workspace:*"
   },
   "devDependencies": {
     "@halonicjs/testing-spec": "workspace:*",
