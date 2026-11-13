@@ -4,6 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { defineFeature } from "../feature.ts";
+import { ItemPage } from "../item-page/item-page.tsx";
 import { createShell } from "../shell.ts";
 import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
 import { fakeShowModal } from "../test-support/fake-show-modal.ts";
@@ -28,7 +29,17 @@ afterEach(() => {
 });
 
 function Page() {
-  return <h1 tabIndex={-1}>Page</h1>;
+  return (
+    <ItemPage
+      icon={<svg viewBox="0 0 16 16" />}
+      kind="Workflow"
+      name="Page"
+      onRename={() => undefined}
+      views={[{ id: "flow", label: "Flow" }]}
+    >
+      {() => <p>Flow</p>}
+    </ItemPage>
+  );
 }
 
 const workflowsFeature = defineFeature({
@@ -89,6 +100,10 @@ verifies("shell.page-back-link", () => {
     const link = backLink(container);
     expect(link?.textContent).toBe("Workflows");
     expect(link?.getAttribute("href")).toBe("#workflows");
+    expect(link?.getAttribute("aria-label")).toBe("Back to Workflows");
+    expect(link?.compareDocumentPosition(container.querySelector("main header") as Node)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
     expect(document.title.startsWith("Support reply")).toBe(true);
   });
 

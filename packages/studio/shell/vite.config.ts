@@ -20,6 +20,7 @@ export default defineConfig({
         "context-menu": `${import.meta.dirname}/e2e/pages/context-menu.html`,
         "item-header": `${import.meta.dirname}/e2e/pages/item-header.html`,
         "settings-list": `${import.meta.dirname}/e2e/pages/settings-list.html`,
+        "item-page-back-link": `${import.meta.dirname}/e2e/pages/item-page-back-link.html`,
       },
     },
   },

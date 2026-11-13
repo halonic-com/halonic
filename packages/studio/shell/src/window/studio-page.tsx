@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
 import { HomePage } from "../home/home-page.tsx";
 import { lazyView } from "../lazy-view.ts";
+import { BackLinkSlotProvider } from "../page/back-link-slot.tsx";
 import { PageBackLink } from "../page/page-back-link.tsx";
 import { type PlaceContribution, placeNames } from "../points/frame.ts";
 import type { Registered } from "../points/point-store.ts";
@@ -39,7 +40,8 @@ export interface StudioPageProps {
  * A tab on an item (`kind/hub/id`) shows the `open` view of the kind a feature added
  * (`shell.item-tabs`), given the item and that feature's context, imported the first time a tab
  * shows the kind. An item of a kind no feature added shows nothing. With `backLink`, an item
- * whose kind names its `place` gets a "← Workflows" link above it (`shell.page-back-link`).
+ * whose kind names its `place` gets a "← Workflows" link, which its `ItemPage` draws above the
+ * header (`shell.page-back-link`).
  */
 export function StudioPage({
   location,
@@ -80,10 +82,11 @@ export function StudioPage({
     }
     const parent = { key: kind.place, title: placeNames[kind.place].label };
     return (
-      <>
-        <PageBackLink parent={parent} tabs={tabs} announcer={announcer} />
+      <BackLinkSlotProvider
+        value={<PageBackLink parent={parent} tabs={tabs} announcer={announcer} />}
+      >
         {view}
-      </>
+      </BackLinkSlotProvider>
     );
   }
   return null;

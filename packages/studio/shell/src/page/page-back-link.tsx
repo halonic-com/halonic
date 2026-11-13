@@ -28,6 +28,7 @@ export function PageBackLink({ parent, tabs, announcer }: PageBackLinkProps) {
       <LocationLink
         location={parent}
         onOpen={(location, inNewTab) => openLocation(tabs, announcer, location, inNewTab)}
+        label={`Back to ${parent.title}`}
         className={linkClasses}
       >
         <span aria-hidden="true" className="inline-grid size-icon-sm shrink-0 *:size-full">

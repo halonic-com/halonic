@@ -1,6 +1,7 @@
 import { type MenuItem, type Tab, TabPanel, useTabIds } from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import type { CloseStack } from "../close-stack/close-stack.ts";
+import { useBackLinkSlot } from "../page/back-link-slot.tsx";
 import { panelEdgeLimits } from "../panels/panel-width.ts";
 import { usePanelWidth } from "../panels/panel-width-context.tsx";
 import { ResizeEdge } from "../resize/resize-edge.tsx";
@@ -86,6 +87,7 @@ export function ItemPage<Id extends string>({
   ...header
 }: ItemPageProps<Id>) {
   const tabIds = useTabIds();
+  const backLink = useBackLinkSlot();
   const [view, pick] = useRememberedView(
     views.map((candidate) => candidate.id),
     views[0].id,
@@ -144,6 +146,7 @@ export function ItemPage<Id extends string>({
     // The tab's page is the scroller (TabPages), so the header stays at its top while a full-width
     // view scrolls under it. Where the chat shows, the chat and the panel each scroll on their own.
     <div ref={page} className={shown.chat ? "flex h-full flex-col" : "flex min-h-full flex-col"}>
+      {backLink}
       <ItemHeader
         {...header}
         views={views}
