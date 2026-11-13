@@ -202,8 +202,12 @@ impl Shared {
     }
 
     fn send(&self, id: u32, kind: u8, bytes: &[u8]) -> Result<(), Broken> {
+        self.send_taking(id, kind, bytes, Taken::Nothing)
+    }
+
+    fn send_taking(&self, id: u32, kind: u8, bytes: &[u8], taken: Taken) -> Result<(), Broken> {
         self.to_host
-            .send(ToHost::Frame(frame(id, kind, bytes), Taken::Nothing))
+            .send(ToHost::Frame(frame(id, kind, bytes), taken))
             .map_err(|_| Broken)
     }
 
@@ -266,7 +270,7 @@ impl Shared {
             id
         };
         // Sent before the client's bytes can be, so `open` comes first.
-        self.send(id, OPEN, &[])?;
+        self.send_taking(id, OPEN, &[], Taken::Place)?;
         #[cfg(test)]
         self.opens_queued.fetch_add(1, Ordering::SeqCst);
         let _ = self
