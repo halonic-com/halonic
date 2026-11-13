@@ -2,6 +2,7 @@
 
 - Approval: HAL-8652, finding 3 of the attack tests on HAL-8618; the owner of the sign-in (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:oUDFh1msxIc/AWY/H62QBTvKMOsjG0y/VOl4AJk/B+7rSkexlriOsnTSaMRC0hURWQpBSu2oJwuJGzxMtAkHDQ==
 - Task: HAL-8652
 
 ## What changes
