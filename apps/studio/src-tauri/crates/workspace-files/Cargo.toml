@@ -14,6 +14,12 @@ publish.workspace = true
 # this adds no crate for cargo-deny to audit.
 sha2 = { version = "=0.10.9", default-features = false }
 
+# Only for `O_NOFOLLOW`, `O_NONBLOCK` and their errors, which the standard
+# library doesn't name: no `unsafe` code. Pinned as in `host-settings`, so it
+# adds no new code to the build (Liam, HAL-8495).
+[target.'cfg(unix)'.dependencies]
+libc = { version = "=0.2.191", default-features = false }
+
 [dev-dependencies]
 serde_json = { version = "1", default-features = false, features = ["std"] }
 

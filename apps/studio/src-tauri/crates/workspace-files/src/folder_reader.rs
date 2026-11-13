@@ -10,7 +10,7 @@
 //! refused when a path goes through it. Only the shell's [`Fence`], the
 //! profile, is left out, as for every call on a workspace.
 
-use std::fs::{self, File, Metadata};
+use std::fs::{self, File, Metadata, OpenOptions};
 use std::io::{self, Read};
 use std::path::Path;
 
@@ -103,11 +103,11 @@ impl FolderReader {
     /// The file's bytes, or `None` when there is nothing at `path` or a
     /// folder. A special file is refused, and never opened.
     ///
-    /// The file is read from one open handle that is checked to be the file
-    /// `lstat` saw, so a file swapped for a link or a folder between the
-    /// check and the open is refused rather than read. A pipe swapped in
-    /// between would make the open wait for a writer; only a program on this
-    /// computer can do that, and the shell reads on a worker thread.
+    /// The open itself refuses to follow a link and, on Unix, doesn't wait
+    /// (see [`open_unlinked`]), and the handle is then checked to be the file
+    /// `lstat` saw. So a file swapped for a link, a folder or a pipe between
+    /// the check and the open is refused rather than read, and can't hold a
+    /// shell worker thread.
     pub fn read(&self, path: &str) -> Result<Option<Vec<u8>>, FileError> {
         self.check(path)?;
         let Some(seen) = entry_at(&self.root, path)? else {
@@ -121,18 +121,17 @@ impl FolderReader {
                 path: path.to_owned(),
             });
         }
-        let mut file = match File::open(native_path(&self.root, path)) {
+        let mut file = match open_unlinked(&native_path(&self.root, path)) {
             Ok(file) => file,
             Err(error) if is_missing(&error) => return Ok(None),
+            Err(error) if is_link_refusal(&error) => return Err(changed(path)),
             Err(error) => return Err(FileError::io(path, &error)),
         };
         let opened = file
             .metadata()
             .map_err(|error| FileError::io(path, &error))?;
         if !opened.is_file() || !same_file(&seen, &opened) {
-            return Err(FileError::Io {
-                message: format!("{path:?} changed while it was opened: read it again."),
-            });
+            return Err(changed(path));
         }
         let mut bytes = Vec::new();
         file.read_to_end(&mut bytes)
@@ -246,6 +245,48 @@ impl Walk<'_> {
     }
 }
 
+fn changed(path: &str) -> FileError {
+    FileError::Io {
+        message: format!("{path:?} changed while it was opened: read it again."),
+    }
+}
+
+/// Opens the file for reading without following a link, as `open_unlinked`
+/// in `host-settings` does: `O_NOFOLLOW` and `O_NONBLOCK` on Unix, so a
+/// link or a pipe swapped in after the check is refused instead of followed
+/// or waited on; `FILE_FLAG_OPEN_REPARSE_POINT` on Windows, which opens a
+/// link itself, so the handle then fails the plain-file check.
+#[cfg(unix)]
+fn open_unlinked(file: &Path) -> io::Result<File> {
+    use std::os::unix::fs::OpenOptionsExt;
+    OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+        .open(file)
+}
+
+#[cfg(windows)]
+fn open_unlinked(file: &Path) -> io::Result<File> {
+    use std::os::windows::fs::OpenOptionsExt;
+    /// Opens a link itself rather than what it points to (`winbase.h`).
+    const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+    OpenOptions::new()
+        .read(true)
+        .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT)
+        .open(file)
+}
+
+/// The link `O_NOFOLLOW` wouldn't open (`ELOOP`, or `EMLINK` on FreeBSD).
+#[cfg(unix)]
+fn is_link_refusal(error: &io::Error) -> bool {
+    matches!(error.raw_os_error(), Some(libc::ELOOP | libc::EMLINK))
+}
+
+#[cfg(not(unix))]
+fn is_link_refusal(_: &io::Error) -> bool {
+    false
+}
+
 /// What `lstat` says about the entry, or `None` when it is gone.
 fn metadata_or_gone(entry: &fs::DirEntry, path: &str) -> Result<Option<Metadata>, FileError> {
     match fs::symlink_metadata(entry.path()) {
@@ -280,4 +321,40 @@ fn same_file(first: &Metadata, second: &Metadata) -> bool {
 #[cfg(not(unix))]
 fn same_file(_: &Metadata, _: &Metadata) -> bool {
     true
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::process::Command;
+
+    fn scratch(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("halonic-open-unlinked-{name}"));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("a folder");
+        dir
+    }
+
+    #[test]
+    fn open_unlinked_refuses_a_link() {
+        let dir = scratch("link");
+        fs::write(dir.join("real"), "text").expect("a file");
+        std::os::unix::fs::symlink(dir.join("real"), dir.join("link")).expect("a link");
+
+        let error = open_unlinked(&dir.join("link")).expect_err("a link isn't followed");
+        assert!(is_link_refusal(&error), "{error:?}");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn open_unlinked_does_not_wait_on_a_pipe() {
+        let dir = scratch("pipe");
+        let made = Command::new("mkfifo").arg(dir.join("pipe")).status();
+        assert!(made.is_ok_and(|status| status.success()), "mkfifo");
+
+        // A plain open would wait here for a writer, forever.
+        let opened = open_unlinked(&dir.join("pipe")).expect("it opens without waiting");
+        assert!(!opened.metadata().expect("metadata").is_file());
+        let _ = fs::remove_dir_all(&dir);
+    }
 }
