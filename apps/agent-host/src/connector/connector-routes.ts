@@ -1,0 +1,215 @@
+import { realpath } from "node:fs/promises";
+import type {
+  ConnectorCallOptions,
+  ConnectorFactory,
+  ConnectorFactoryContext,
+  HttpClient,
+  Secrets,
+  TokenStore,
+} from "@halonicjs/ports";
+import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
+import { readCheckedBody } from "../server/json-body.ts";
+import {
+  callToolBody,
+  configOf,
+  connectorBody,
+  type OpenConnectorBody,
+  openConnectorBody,
+} from "./connector-schemas.ts";
+import type { ConnectorTable } from "./connector-table.ts";
+
+/** What the connector routes reach: the factory, the folders the launcher named, and what a start needs. */
+export interface ConnectorRouteDeps {
+  /** Starts a `stdio` connector: sandboxed where the host's own check passes (`SessionWorkspaceFactory`). */
+  factory: ConnectorFactory;
+  connectors: ConnectorTable;
+  /**
+   * The folders the launcher named as workspaces (the `--sweep-root`s, without
+   * Halonic's own profile folder). A connector's workspace must be one of them.
+   */
+  workspaceRoots: readonly string[];
+  /** What a pinned package's lookup reaches the registry with. */
+  http: HttpClient;
+  tokens: TokenStore;
+}
+
+const unknownConnectorMessage = "The agent host has no open connector with this id.";
+
+/**
+ * The `ConnectorClient` port over loopback, so Studio can give the engine a
+ * stand-in for a workspace `stdio` connector that runs here, in a sandbox
+ * session the host opens itself (D45):
+ *
+ * - `POST /v1/connectors/open` with the connector as its file says it, its
+ *   own secrets' values, the workspace folder, the agents' working folders and
+ *   the trust grant answers `{ connector }`: an id. The host builds the
+ *   connector's place; there is no profile in the request. The program starts
+ *   on the first call. It answers 403 `workspace_not_named` when the
+ *   workspace isn't one of the launcher's folders, 429 `too_many_connectors`
+ *   when the table is full, 503 `host_stopping` once the host stops;
+ * - `POST /v1/connectors/tools` with `{ connector }` answers its `ConnectorTool[]`;
+ * - `POST /v1/connectors/call` with `{ connector, tool, args, idempotencyKey? }` answers `{ text }`;
+ * - `POST /v1/connectors/close` with `{ connector }` stops the program and closes its session.
+ *
+ * A failed start or call answers 502 `connector_failed` with the reason.
+ */
+export function connectorRoutes(deps: ConnectorRouteDeps): HostRoute[] {
+  const { connectors } = deps;
+  return [
+    { method: "POST", path: "/v1/connectors/open", handle: openHandler(deps) },
+    {
+      method: "POST",
+      path: "/v1/connectors/tools",
+      handle: async (request, response) => {
+        const body = await readCheckedBody(request, response, connectorBody);
+        if (body === undefined) return;
+        const client = connectors.get(body.connector);
+        if (client === undefined) return sendUnknown(response);
+        await answering(response, async () => sendJson(response, 200, await client.listTools()));
+      },
+    },
+    {
+      method: "POST",
+      path: "/v1/connectors/call",
+      handle: async (request, response) => {
+        const body = await readCheckedBody(request, response, callToolBody);
+        if (body === undefined) return;
+        const client = connectors.get(body.connector);
+        if (client === undefined) return sendUnknown(response);
+        const options: ConnectorCallOptions =
+          body.idempotencyKey === undefined ? {} : { idempotencyKey: body.idempotencyKey };
+        await answering(response, async () => {
+          const text = await client.callTool(body.tool, body.args, options);
+          sendJson(response, 200, { text });
+        });
+      },
+    },
+    {
+      method: "POST",
+      path: "/v1/connectors/close",
+      handle: async (request, response) => {
+        const body = await readCheckedBody(request, response, connectorBody);
+        if (body === undefined) return;
+        await answering(response, async () => {
+          if (await connectors.close(body.connector)) sendJson(response, 200, { closed: true });
+          else sendUnknown(response);
+        });
+      },
+    },
+  ];
+}
+
+function openHandler(deps: ConnectorRouteDeps): HostRoute["handle"] {
+  const { connectors } = deps;
+  return async (request, response) => {
+    const body = await readCheckedBody(request, response, openConnectorBody);
+    if (body === undefined) return;
+    if (connectors.isStopping) {
+      sendHostStopping(response);
+      return;
+    }
+    const release = connectors.reserve();
+    if (release === undefined) {
+      sendError(
+        response,
+        429,
+        "too_many_connectors",
+        "The agent host already has the most connectors it allows. Close one first.",
+      );
+      return;
+    }
+    try {
+      const context = await contextOf(deps, body);
+      if (context === undefined) {
+        sendError(
+          response,
+          403,
+          "workspace_not_named",
+          "The workspace folder isn't one the agent host was given.",
+        );
+        return;
+      }
+      const client = deps.factory.create(configOf(body), context);
+      const id = connectors.add(client);
+      if (id === undefined) {
+        // The host began stopping while the folders were checked: nothing else will close this one.
+        await client.close();
+        sendHostStopping(response);
+        return;
+      }
+      sendJson(response, 200, { connector: id });
+    } catch (error) {
+      sendError(response, 502, "connector_failed", messageOf(error));
+    } finally {
+      release();
+    }
+  };
+}
+
+/**
+ * What the start is given: the workspace and the agents' folders as real
+ * paths (Studio's page can't resolve them), the connector's own secrets and
+ * the trust grant. Nothing else of the host's reaches it.
+ *
+ * @returns undefined when the workspace isn't one of the launcher's folders
+ */
+async function contextOf(
+  deps: ConnectorRouteDeps,
+  body: OpenConnectorBody,
+): Promise<ConnectorFactoryContext | undefined> {
+  const workspaceRoot = await realpath(body.workspaceRoot).catch(() => undefined);
+  if (workspaceRoot === undefined) return undefined;
+  const named = await Promise.all(
+    deps.workspaceRoots.map((root) => realpath(root).catch(() => root)),
+  );
+  if (!named.includes(workspaceRoot)) return undefined;
+  return {
+    secrets: memorySecrets(body.secrets),
+    tokens: deps.tokens,
+    http: deps.http,
+    workspaceRoot,
+    workingFolders: await Promise.all(body.workingFolders.map(realPathOrGiven)),
+    trust: body.trust,
+  };
+}
+
+/** A folder that doesn't exist yet stays as given: the start's check follows it as far as it exists. */
+async function realPathOrGiven(path: string): Promise<string> {
+  return await realpath(path).catch(() => path);
+}
+
+/** Only the values Studio sent: the host never reads a secret store. */
+function memorySecrets(values: Readonly<Record<string, string>>): Secrets {
+  return {
+    get: async (name) => (Object.hasOwn(values, name) ? (values[name] ?? null) : null),
+  };
+}
+
+/** Runs `answer`, and answers 502 `connector_failed` when it throws. */
+async function answering(
+  response: Parameters<typeof sendError>[0],
+  answer: () => Promise<void>,
+): Promise<void> {
+  try {
+    await answer();
+  } catch (error) {
+    sendError(response, 502, "connector_failed", messageOf(error));
+  }
+}
+
+function sendHostStopping(response: Parameters<typeof sendError>[0]): void {
+  sendError(
+    response,
+    503,
+    "host_stopping",
+    "The agent host is stopping and opens no more connectors.",
+  );
+}
+
+function sendUnknown(response: Parameters<typeof sendError>[0]): void {
+  sendError(response, 404, "unknown_connector", unknownConnectorMessage);
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
