@@ -108,6 +108,16 @@
   --color-danger-soft: light-dark(rgb(199 13 69 / 0.1), rgb(253 118 146 / 0.18));
   --color-on-danger: light-dark(#ffffff, #0d0d1f);
 
+  /* ---------------------------------------------------------------- Colour: chart series */
+  /* Blue, rose, teal and periwinkle, in that order, for up to four series on a card. Blue and
+     periwinkle are close in lightness, so the names written at the line ends carry the
+     difference. A fifth series and more are summed into the slate "Other". */
+  --color-series-1: light-dark(#2563eb, #60a5fa);
+  --color-series-2: light-dark(#db2452, #e24b71);
+  --color-series-3: light-dark(#0e8171, #14b8a2);
+  --color-series-4: light-dark(#5d67d0, #757dd7);
+  --color-series-other: light-dark(#64748b, #94a3b8);
+
   /* ---------------------------------------------------------------- Typography (font-*, text-*) */
   --font-sans:
     "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
