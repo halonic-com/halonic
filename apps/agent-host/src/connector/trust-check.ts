@@ -1,6 +1,7 @@
 import { asciiAllowedSites } from "@halonicjs/format";
-import type { TrustGrant, TrustStore } from "@halonicjs/ports";
+import type { ConnectorPin, TrustGrant, TrustStore } from "@halonicjs/ports";
 import { posixPath } from "@halonicjs/std";
+import { secretReference } from "@halonicjs/workspace";
 import type { OpenConnectorBody } from "./connector-schemas.ts";
 
 /** Why the host won't start a connector, or `undefined` when the workspace's trust covers it. */
@@ -15,7 +16,8 @@ export type TrustRefusal = "no_record" | "different_grant" | "connector_not_trus
  * The request passes when:
  * - the grant names the workspace folder and the fingerprint the record holds, and
  * - the record's content lists a `stdio` connector with the request's id whose
- *   program, arguments, folder, environment and sites are the request's.
+ *   program, arguments, folder, environment, secret names, sites and pin
+ *   (none in 0.1) are the request's.
  *
  * @param store - the trust records of the user's profile; `undefined` when the host has no profile folder, so nothing is trusted
  * @param workspaceRoot - the workspace folder as a real path
@@ -34,9 +36,18 @@ export async function checkTrustGrant(
   }
   if (record === null) return "no_record";
   if (!isGrantOf(body.trust, workspaceRoot, record.fingerprint)) return "different_grant";
-  return trustedConnectors(record.content).some((trusted) => describes(trusted, body))
+  const pin = trustedPinOf(record.pins, body.id);
+  return trustedConnectors(record.content).some((trusted) => describes(trusted, body, pin))
     ? undefined
     : "connector_not_trusted";
+}
+
+/** The pin saved for the connector, never one inherited from the object's prototype. */
+function trustedPinOf(
+  pins: Readonly<Record<string, ConnectorPin>>,
+  id: string,
+): ConnectorPin | undefined {
+  return Object.hasOwn(pins, id) ? pins[id] : undefined;
 }
 
 function isGrantOf(grant: TrustGrant, location: string, fingerprint: string): boolean {
@@ -62,14 +73,20 @@ function trustedConnectors(content: unknown): TrustedConnector[] {
 }
 
 /** Whether the trusted connector starts exactly the program the request asks for, with what it reaches. */
-function describes(trusted: TrustedConnector, body: OpenConnectorBody): boolean {
+function describes(
+  trusted: TrustedConnector,
+  body: OpenConnectorBody,
+  pin: ConnectorPin | undefined,
+): boolean {
   if (trusted.id !== body.id) return false;
   const expected = {
     command: body.command,
     args: body.args,
     cwd: posixPath.normalize(body.cwd ?? "."),
     env: sortedEntries(body.env),
+    secretEnv: sortedEntries(referencesTo(body.secretEnv)),
     inheritEnv: [...(body.inheritEnv ?? [])].sort(),
+    pin: pinEntries(body.pin),
     sites: asciiAllowedSites(body.sites ?? []).sort(),
   };
   const { settings } = trusted;
@@ -78,11 +95,25 @@ function describes(trusted: TrustedConnector, body: OpenConnectorBody): boolean 
     args: settings["args"],
     cwd: settings["cwd"],
     env: isObject(settings["env"]) ? sortedEntries(settings["env"]) : undefined,
+    secretEnv: isObject(settings["secretEnv"]) ? sortedEntries(settings["secretEnv"]) : undefined,
     // Absent in the content when the file names none.
     inheritEnv: settings["inheritEnv"] ?? [],
+    pin: pinEntries(pin),
     sites: settings["sites"] ?? [],
   };
   return JSON.stringify(expected) === JSON.stringify(actual);
+}
+
+/** The secret names as the trust content shows them, so the request is compared with the record by name. */
+function referencesTo(secretEnv: Readonly<Record<string, string>>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(secretEnv).map(([name, secret]) => [name, secretReference(secret)]),
+  );
+}
+
+/** A pin as comparable entries; `null` for none, which is all a 0.1 record holds. */
+function pinEntries(pin: ConnectorPin | undefined): [string, unknown][] | null {
+  return pin === undefined ? null : sortedEntries({ ...pin });
 }
 
 function sortedEntries(values: Readonly<Record<string, unknown>>): [string, unknown][] {

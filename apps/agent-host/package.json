@@ -43,6 +43,7 @@
     "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/profile": "workspace:*",
+    "@halonicjs/workspace": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*",
     "@halonicjs/std": "workspace:*"
   }
