@@ -27,4 +27,4 @@ When the host has taken 30 seconds to read one frame, the relay shall stop and c
 
 The share is per connection, not per client: it keeps one client's big body from filling the queue, not a hostile client that opens eight connections. Any process of the same user can already do more harm than that.
 
-The token check only looks at the first request's head (at most 16 KiB): the host checks every request itself. A process without the token can still open connections over and over, each for up to 10 seconds; that, too, is less than a process of the same user can already do. A relay that stopped because the host read nothing leaves the host running until the shell stops it.
+The token check only looks at the first request's head (at most 16 KiB): the host checks every request itself. A process without the token can still open connections over and over, each for up to 10 seconds; that, too, is less than a process of the same user can already do. A relay that stopped because the host read nothing counts as an exited host: the shell starts a new one, which stops the old one.

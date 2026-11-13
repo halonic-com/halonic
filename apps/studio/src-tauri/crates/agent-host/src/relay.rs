@@ -145,6 +145,12 @@ impl Relay {
         spawn("relay-accept", move || shared.accept(&listener, &token));
     }
 
+    /// True once the relay stopped, by [`Relay::stop`] or on its own, when
+    /// the host read nothing for too long or broke the framing.
+    pub(crate) fn is_stopped(&self) -> bool {
+        self.shared.stopped.load(Ordering::SeqCst)
+    }
+
     /// Closes the host's input, so it stops, and every connection. Stopping
     /// twice does nothing.
     pub(crate) fn stop(&self) {
