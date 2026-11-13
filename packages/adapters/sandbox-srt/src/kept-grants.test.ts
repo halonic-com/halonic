@@ -150,6 +150,25 @@ verifies("sandbox-srt.kept-grants", () => {
       ]);
     });
 
+    it("names the kept grants outside the known folders, and says when it can't tell", async () => {
+      const listing = (roots: string[]) =>
+        fakeSrtWin((args) =>
+          args[0] === "user" ? { stdout: JSON.stringify({ persistent_grants: { roots } }) } : {},
+        ).grants;
+      expect(await listing([inRuns, outside, sibling]).foreignRoots([runsFolder])).toEqual({
+        folders: [outside, sibling],
+        unknown: false,
+      });
+      expect(await listing([inRuns]).foreignRoots([runsFolder])).toEqual({
+        folders: [],
+        unknown: false,
+      });
+      const noList = fakeSrtWin((args) => (args[0] === "user" ? { stdout: "{}" } : {})).grants;
+      expect(await noList.foreignRoots([runsFolder])).toEqual({ folders: [], unknown: true });
+      const failing = fakeSrtWin(() => ({ status: 1, stderr: "no install" })).grants;
+      expect(await failing.foreignRoots([runsFolder])).toEqual({ folders: [], unknown: true });
+    });
+
     it("starts nothing without a root", async () => {
       const { calls, grants } = fakeSrtWin();
       expect(await grants.sweep([])).toEqual({ heldByOthers: [], failed: [] });

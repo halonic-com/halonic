@@ -195,14 +195,7 @@ export class KeptGrants {
     if (roots.length === 0) return { heldByOthers: [], failed: [] };
     let kept: string[];
     try {
-      const run = await this.#run(["user", "status"]);
-      if (run.status !== 0)
-        throw new Error(`exit ${run.status}: ${oneLine(run.stderr || run.stdout)}`);
-      const parsed = JSON.parse(run.stdout) as { persistent_grants?: { roots?: unknown } };
-      const listed = parsed.persistent_grants?.roots;
-      kept = Array.isArray(listed)
-        ? listed.filter((root): root is string => typeof root === "string")
-        : [];
+      kept = await this.#listKept();
     } catch (error) {
       return {
         heldByOthers: [],
@@ -217,6 +210,40 @@ export class KeptGrants {
     return this.#forgetUnheld(
       kept.filter((folder) => roots.some((root) => isInsideWindows(root, folder))),
     );
+  }
+
+  /**
+   * The folders srt keeps write access to for this user that are outside
+   * `known`, for the warning before a removal: they may belong to another
+   * program that uses the same sandbox (HAL-7414, S-7). `unknown` is true
+   * when srt's status can't be read or isn't in the shape this module knows,
+   * since then nothing can be ruled out. Never rejects.
+   */
+  async foreignRoots(known: readonly string[]): Promise<{ folders: string[]; unknown: boolean }> {
+    try {
+      this.assertSupported();
+      const kept = await this.#listKept(true);
+      return {
+        folders: kept.filter((folder) => !known.some((root) => isInsideWindows(root, folder))),
+        unknown: false,
+      };
+    } catch {
+      return { folders: [], unknown: true };
+    }
+  }
+
+  /** The kept grants' folders from `srt-win user status`; throws when it can't be read, and with `strict` when it has no list of roots. */
+  async #listKept(strict = false): Promise<string[]> {
+    const run = await this.#run(["user", "status"]);
+    if (run.status !== 0)
+      throw new Error(`exit ${run.status}: ${oneLine(run.stderr || run.stdout)}`);
+    const parsed = JSON.parse(run.stdout) as { persistent_grants?: { roots?: unknown } };
+    const listed = parsed.persistent_grants?.roots;
+    if (!Array.isArray(listed)) {
+      if (strict) throw new Error("no kept grants in status");
+      return [];
+    }
+    return listed.filter((root): root is string => typeof root === "string");
   }
 }
 
