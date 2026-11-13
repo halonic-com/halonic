@@ -35,7 +35,7 @@ verifies("runs.run-view.step-groups", () => {
     const heard = [...(grid?.querySelectorAll(".sr-only") ?? [])].map((part) => part.textContent);
     expect(heard).toEqual([
       "Fan, running, 10:40, Running",
-      "Branch summarise, done, 10:40, Took 1 min",
+      "Branch summarise, in the step Fan, done, 10:40, Took 1 min",
     ]);
   });
 });

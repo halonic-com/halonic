@@ -245,6 +245,8 @@ export const stepGroupWords = {
     total === undefined ? `Item ${number}` : `Item ${number} of ${total}`,
   /** What a screen reader hears before a branch's name. */
   branch: (name: string) => `Branch ${name}`,
+  /** Names the step a branch or item belongs to, in its screen-reader label. */
+  inStep: (name: string) => `in the step ${name}`,
   /** A part the step ended without, because the step failed or was stopped first. */
   unfinished: "Didn't finish",
 };
