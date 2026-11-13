@@ -1,5 +1,10 @@
 // The public API of @halonicjs/oauth-sign-in. Everything else in src/ is internal.
 export {
+  type ApprovedSignIn,
+  type ApprovedSignInHash,
+  approvedSignInHash,
+} from "./approved-sign-in.ts";
+export {
   type ClientAuth,
   type ClientRequest,
   type OAuthClient,
@@ -27,6 +32,13 @@ export {
   readSignInCallback,
   type SignInCallback,
 } from "./sign-in-callback.ts";
+export {
+  createSignInGrants,
+  type GrantLookup,
+  type SignInGrant,
+  type SignInGrants,
+} from "./sign-in-grants.ts";
+export { signInTokenName } from "./sign-in-token-name.ts";
 export { createState, stateMatches } from "./state.ts";
 export { classifyTokenAnswer, type TokenAnswer, type TokenAnswerMeaning } from "./token-answer.ts";
 export { postTokenForm, tokenRequestTimeoutMs } from "./token-request.ts";
