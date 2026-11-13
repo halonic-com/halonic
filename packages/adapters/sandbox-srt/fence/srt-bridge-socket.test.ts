@@ -23,7 +23,9 @@ import { w9Violations } from "./own-sockets.test-helper.ts";
  * where srt's proxy rewrites the request on its way. Run with `pnpm test:fence`.
  */
 /** How many of srt's last log lines a failure message shows. */
-const srtLogTail = 10;
+const srtLogTail = 30;
+/** Lines srt writes while tearing a session down; on a failure they crowd out the ones that say why. */
+const srtLogNoise = /Cleaned up|Sent SIG(TERM|KILL) to/;
 /** What srt's proxy says about a failed hop; it logs the errno only when `SRT_DEBUG` is set (HAL-8158). */
 const srtLog: string[] = [];
 
@@ -205,8 +207,12 @@ describe("the harness bridge on a Unix socket", () => {
     const before = providerCalls.length;
     // A 502 comes from srt's proxy, not the bridge; its body says which hop failed, so a flake explains itself (HAL-8158).
     for (const tunnel of [[], ["-p"]]) {
+      srtLog.length = 0;
       const { code, body } = await reply(...tunnel, url(), ...post(), ...withToken());
-      const said = srtLog.slice(-srtLogTail).join("\n");
+      const said = srtLog
+        .filter((line) => !srtLogNoise.test(line))
+        .slice(-srtLogTail)
+        .join("\n");
       expect(code, `${tunnel.join(" ") || "no tunnel"}: ${body}\nsrt said:\n${said}`).toBe("200");
     }
     expect(providerCalls).toHaveLength(before + 2);
