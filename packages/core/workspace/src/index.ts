@@ -35,6 +35,10 @@ export {
 } from "./extract-plan.ts";
 export { harnessWorkingFolders } from "./harness-working-folders.ts";
 export {
+  type CreatedWorkspace,
+  type CreateWorkspaceError,
+  type CreateWorkspaceOptions,
+  createWorkspace,
   gitIgnoreLines,
   gitIgnorePath,
   type InitializedWorkspace,
