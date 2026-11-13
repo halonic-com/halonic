@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SandboxNetwork, SandboxProcess, SandboxProfile } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { cantStartCode } from "./host-process.ts";
 import { createHostSandbox } from "./host-sandbox.ts";
 
@@ -239,13 +239,22 @@ verifies("sandbox-host.start", () => {
     );
 
     it("stops its programs when the time limit runs out", async () => {
-      // Long enough for Node to start twice and print the child's id on a busy runner.
-      const session = await createHostSandbox().open(profile({ timeLimitMs: 3_000 }));
-      const program = await session.start({ program: node, args: ["-e", parentOfChild] });
-      const child = Number(await firstLine(program));
-      expect((await program.exited).reason).toBe("timeout");
-      await gone(child);
-      expect(session.fence).toEqual({ state: "stopped" });
+      // Only the session's limit timer is faked, so the limit can't run out while the program
+      // is still starting on a busy runner: the test reaches it once the child's id is read.
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      try {
+        const session = await createHostSandbox().open(profile({ timeLimitMs: 3_000 }));
+        const program = await session.start({ program: node, args: ["-e", parentOfChild] });
+        const child = Number(await firstLine(program));
+        expect(child).toBeGreaterThan(0);
+        await vi.advanceTimersByTimeAsync(3_000);
+        expect((await program.exited).reason).toBe("timeout");
+        vi.useRealTimers();
+        await gone(child);
+        expect(session.fence).toEqual({ state: "stopped" });
+      } finally {
+        vi.useRealTimers();
+      }
     }, 15_000);
 
     it("reports a timeout for a program the time limit closed while it was still starting (HAL-8390)", async () => {
@@ -257,6 +266,16 @@ verifies("sandbox-host.start", () => {
       // Started after the limit already ran out, a program is refused; started before, it times out.
       if (program !== null) expect((await program.exited).reason).toBe("timeout");
       expect(session.fence).toEqual({ state: "stopped" });
+    }, 15_000);
+
+    it("reports a stop, not a timeout, when the session was closed before the limit", async () => {
+      const session = await createHostSandbox().open(profile({ timeLimitMs: 1_000 }));
+      const program = await session.start({
+        program: node,
+        args: ["-e", "setInterval(() => {}, 1000)"],
+      });
+      await session.close();
+      expect((await program.exited).reason).toBe("stopped");
     }, 15_000);
 
     it("closes when the open signal aborts, and refuses to open on one already aborted", async () => {
