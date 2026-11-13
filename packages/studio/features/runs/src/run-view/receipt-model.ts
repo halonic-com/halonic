@@ -4,8 +4,8 @@
 // the user, and its estimated cost.
 
 import { runStanding, runWait } from "@halonicjs/app";
-import type { ApprovalResolver, RunEvent, RunSends, SendGroup } from "@halonicjs/events";
-import { sendsOf } from "@halonicjs/events";
+import type { ApprovalResolver, RunEvent, RunSends, SendCount, SendGroup } from "@halonicjs/events";
+import { draftsOf, readsOf, sendsOf } from "@halonicjs/events";
 import type { SourcedRun } from "../api.ts";
 import { costParts, currentStepName, needsYouLine, took, waitingLine } from "../list/run-row.ts";
 import { lineSeparator, receiptWords, rowLineWords, summaryWords } from "../run-words.ts";
@@ -95,12 +95,15 @@ export function sendsInWords(sends: RunSends): string[] {
 }
 
 function groupInWords(group: SendGroup): string {
-  const counts = group.counts.map(({ calls, noun }) =>
-    summaryWords.counted(calls, noun.one, noun.many),
-  );
-  const list =
-    counts.length <= 1 ? counts.join("") : `${counts.slice(0, -1).join(", ")} and ${counts.at(-1)}`;
-  return `${group.verb} ${list}`;
+  return `${group.verb} ${countsInWords(group.counts)}`;
+}
+
+/** "1 email", or "2 emails and 1 invite", or "3 emails, 2 invites and 1 file". */
+function countsInWords(counts: readonly SendCount[]): string {
+  const parts = counts.map(({ calls, noun }) => summaryWords.counted(calls, noun.one, noun.many));
+  return parts.length <= 1
+    ? parts.join("")
+    : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
 }
 
 /** One approval the run asked for, as a line of the receipt's Approvals section. */
@@ -155,4 +158,36 @@ export function approvalLines(events: readonly RunEvent[]): ApprovalLine[] {
 function resolver(by: ApprovalResolver | undefined): string {
   if (by === undefined) return "";
   return by === "rule" ? receiptWords.approvalByRule : receiptWords.approvalByPerson;
+}
+
+/**
+ * The receipt's Messages section (RCPT-2.2): what the run drafted and what it
+ * sent as two separate lines, drafts first. "Sent" counts only the emails,
+ * invites and the like that a tool whose risk is `send` recorded as sent (the
+ * "sent" verb); a file saved is not a message. Empty hides the section.
+ *
+ * @example
+ * messageLines(events);
+ * // ["Drafted 1 email", "Sent 2 emails and 1 invite"]
+ */
+export function messageLines(events: readonly RunEvent[]): string[] {
+  const drafted = draftsOf(events);
+  const sent = sendsOf(events).sent.find((group) => group.verb === "sent");
+  return [
+    ...(drafted.length === 0 ? [] : [receiptWords.drafted(countsInWords(drafted))]),
+    ...(sent === undefined ? [] : [receiptWords.sent(countsInWords(sent.counts))]),
+  ];
+}
+
+/**
+ * The receipt's Read section (RCPT-2.7): every read in one line, never one by
+ * one. Empty when the run read nothing a tool sheet names, which hides it.
+ *
+ * @example
+ * readLines(events);
+ * // ["Read 12 emails and 3 Drive files"]
+ */
+export function readLines(events: readonly RunEvent[]): string[] {
+  const reads = readsOf(events);
+  return reads.length === 0 ? [] : [receiptWords.read(countsInWords(reads))];
 }

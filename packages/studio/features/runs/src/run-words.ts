@@ -327,6 +327,13 @@ export const summaryWords = {
 export const receiptWords = {
   heading: "Receipt",
   approvalsHeading: "Approvals",
+  messagesHeading: "Messages",
+  readHeading: "Read",
+  /** The Messages section's two lines (RCPT-2.2), one for drafts and one for sends. */
+  drafted: (things: string) => `Drafted ${things}`,
+  sent: (things: string) => `Sent ${things}`,
+  /** The Read section's one line (RCPT-2.7). */
+  read: (things: string) => `Read ${things}`,
   /** One approval the run asked for: what was decided, by whom (RCPT-2.4), and when. */
   approvalLine: (tool: string, decision: "approved" | "rejected", by: string, time: string) =>
     `${tool}: ${decision}${by === "" ? "" : ` by ${by}`} at ${time}`,

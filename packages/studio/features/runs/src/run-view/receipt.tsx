@@ -7,6 +7,10 @@ export interface ReceiptProps {
   readonly summary: string;
   /** The Approvals section's lines from `approvalLines`; none hides the section. */
   readonly approvals: readonly ApprovalLine[];
+  /** The Messages section's lines from `messageLines`; none hides the section. */
+  readonly messages?: readonly string[];
+  /** The Read section's line from `readLines`; none hides the section. */
+  readonly reads?: readonly string[];
 }
 
 /**
@@ -17,13 +21,15 @@ export interface ReceiptProps {
  * @example
  * <Receipt summary="Finished in 2 min · sent nothing" approvals={[]} />
  */
-export function Receipt({ summary, approvals }: ReceiptProps) {
+export function Receipt({ summary, approvals, messages = [], reads = [] }: ReceiptProps) {
   return (
     <section aria-labelledby="run-receipt" className="flex flex-col gap-2">
       <h2 id="run-receipt" className="sr-only">
         {receiptWords.heading}
       </h2>
       <p className="text-section">{summary}</p>
+      <TextSection id="receipt-messages" heading={receiptWords.messagesHeading} lines={messages} />
+      <TextSection id="receipt-read" heading={receiptWords.readHeading} lines={reads} />
       {approvals.length === 0 ? null : (
         <section aria-labelledby="receipt-approvals" className="flex flex-col gap-1">
           <h3 id="receipt-approvals" className="text-small text-fg-muted">
@@ -38,6 +44,33 @@ export function Receipt({ summary, approvals }: ReceiptProps) {
           </ul>
         </section>
       )}
+    </section>
+  );
+}
+
+/** A section of plain lines under its own small heading; no lines, no section. */
+function TextSection({
+  id,
+  heading,
+  lines,
+}: {
+  readonly id: string;
+  readonly heading: string;
+  readonly lines: readonly string[];
+}) {
+  if (lines.length === 0) return null;
+  return (
+    <section aria-labelledby={id} className="flex flex-col gap-1">
+      <h3 id={id} className="text-small text-fg-muted">
+        {heading}
+      </h3>
+      <ul className="flex flex-col gap-1 text-small">
+        {lines.map((line) => (
+          <li key={line} className="break-words">
+            {line}
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

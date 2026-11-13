@@ -30,6 +30,7 @@ export type {
   Usage,
 } from "./run-basics.ts";
 export type { RunEvent, RunEventBase, RunEventBody, RunEventType } from "./run-event.ts";
+export { draftsOf, readsOf } from "./run-reads.ts";
 export type { RunSends, SendCount, SendGroup } from "./run-sends.ts";
 export { sendsOf } from "./run-sends.ts";
 export type { PendingApproval, RunSummary, SentSignal } from "./run-summary.ts";
