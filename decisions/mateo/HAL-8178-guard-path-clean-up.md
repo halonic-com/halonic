@@ -3,6 +3,7 @@
 - Approval: HAL-1337 clean-up step, assigned on HAL-8178; Liam and Julian sign as the two guardians
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:9dKhKDrmAnzPQMV82Fc9PrCDQH+VIm/qS8RlIj64zVSRv376evve9a3/WhiUfJDv0blbRDKWPyJ0sYEbmnM/AQ==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:oNH2MZ8vAlFjtX/10mnH97vZk9ZKDXRVPZBXNdNDkwG/okuCujMgKD5i7He/Ri9Pahv9t3uu8ee7QFDxktqABA==
 
 ## What changes
 
