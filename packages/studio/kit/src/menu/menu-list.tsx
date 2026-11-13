@@ -19,8 +19,7 @@ const descriptionClasses = "m-0 max-w-75 px-2 pt-2 pb-1.5 text-small text-fg-mut
 
 // The caption-caps label of a group (component specs 24.4, "Group labels"). Exported for the states
 // page's static copy.
-export const menuHeadingClasses =
-  "px-2 pt-2 pb-1 text-label uppercase text-fg-subtle";
+export const menuHeadingClasses = "px-2 pt-2 pb-1 text-label uppercase text-fg-subtle";
 
 /** What names the menu: the button that opens it, or a label of its own (a context menu). */
 export type MenuNaming = { readonly labelledBy: string } | { readonly label: string };
