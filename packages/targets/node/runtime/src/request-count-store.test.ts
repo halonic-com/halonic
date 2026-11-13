@@ -35,7 +35,7 @@ requestCountStoreContract(
 );
 
 describe("the disk request count", () => {
-  verifies("node-runtime.request-count-store", () => {
+  verifies("runtime.request-count-store", () => {
     it("keeps the day's count over a restart and keeps days apart", async () => {
       const folder = await newFolder();
       const before = openDiskRequestCountStore(folder, clock);

@@ -115,7 +115,7 @@ async function listen(
   return { listening, reported, hostNames };
 }
 
-verifies("node-runtime.listen", () => {
+verifies("runtime.listen", () => {
   describe("listenOnNode", () => {
     it("binds to the loopback address only, and says nothing for the phone", async () => {
       const { listening, reported } = await listen();

@@ -1,4 +1,4 @@
-# node-runtime.request-count-store
+# runtime.request-count-store
 
 - Status: active
 - Since: 0.1.0
