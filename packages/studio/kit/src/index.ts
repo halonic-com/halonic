@@ -302,3 +302,9 @@ export const PHONE_MAX_WIDTH = 600;
  * width as `--breakpoint-wide` in theme.css, kept equal by a test.
  */
 export const WIDE_MIN_WIDTH = 900;
+export {
+  MONTH_COUNT,
+  type Month,
+  MonthBars,
+  type MonthBarsProps,
+} from "./month-bars/month-bars.tsx";
