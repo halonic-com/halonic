@@ -21,7 +21,7 @@ export function FormSheet(props: ConfirmingDialogProps) {
 
   function cancel() {
     if (!busy) {
-      props.onCancel();
+      props.onCancel("dismiss");
     }
   }
 
@@ -40,7 +40,7 @@ export function FormSheet(props: ConfirmingDialogProps) {
       onClose={cancel}
       closeUnavailable={busy ? { reason: confirmId } : undefined}
       onCancel={cancel}
-      onClosedByBrowser={props.onCancel}
+      onClosedByBrowser={() => props.onCancel("dismiss")}
       onSubmit={submit}
       footer={
         <ActionBar

@@ -2,7 +2,7 @@ import { type CSSProperties, type FormEvent, useId, useRef, useState } from "rea
 import { usePresentation } from "../presentation/presentation.tsx";
 import { AlertSlot } from "./alert-slot.tsx";
 import { DialogFooter, DialogHeader } from "./dialog-parts.tsx";
-import type { DialogProps, DialogSize } from "./dialog-props.ts";
+import type { DialogCancelReason, DialogProps, DialogSize } from "./dialog-props.ts";
 import { FormSheet } from "./form-sheet.tsx";
 import { ModalRegions } from "./modal-regions.tsx";
 import { useCancelEvents } from "./use-cancel-events.ts";
@@ -81,9 +81,9 @@ function DialogBox(props: DialogProps) {
     fallback: props.returnFocus,
   });
 
-  function cancel() {
+  function cancel(reason: DialogCancelReason = "dismiss") {
     if (!busy) {
-      props.onCancel();
+      props.onCancel(reason);
     }
   }
 
@@ -95,7 +95,11 @@ function DialogBox(props: DialogProps) {
     props.onConfirm();
   }
 
-  const events = useCancelEvents(cancel, props.onCancel, !footerless);
+  const events = useCancelEvents(
+    () => cancel("dismiss"),
+    () => props.onCancel("dismiss"),
+    !footerless,
+  );
 
   const footer =
     props.confirm === undefined ? null : (
@@ -105,7 +109,7 @@ function DialogBox(props: DialogProps) {
         confirmId={ids.confirm}
         cancelButton={cancelButton}
         onConfirm={form ? undefined : confirm}
-        onCancel={cancel}
+        onCancel={() => cancel("button")}
       />
     );
 
@@ -118,7 +122,7 @@ function DialogBox(props: DialogProps) {
           confirmId={ids.confirm}
           closeButton={!phone || footerless}
           closeButtonRef={closeButton}
-          onClose={cancel}
+          onClose={() => cancel("dismiss")}
         />
         <div ref={body} id={ids.body} className={`${bodyScroll} ${bodyClasses(flush, form)}`}>
           {props.children}

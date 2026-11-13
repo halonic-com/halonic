@@ -58,6 +58,7 @@ export { Dialog } from "./dialog/dialog.tsx";
 export type {
   ConfirmingDialogProps,
   DialogAlternative,
+  DialogCancelReason,
   DialogConfirm,
   DialogProps,
   DialogSize,

@@ -30,6 +30,13 @@ export interface DialogAlternative {
   readonly onClick: () => void;
 }
 
+/**
+ * How a Dialog was cancelled: `button` is the footer's Cancel button, `dismiss` is Escape, a click
+ * on the overlay, the ✕ or a close the browser forced. A screen whose Cancel button does
+ * something of its own ("Approve none") tells it from a dismissal by this.
+ */
+export type DialogCancelReason = "button" | "dismiss";
+
 /** What every Dialog takes, with a footer or without one. */
 interface DialogCommonProps {
   /** "Delete agent?", "New agent". The dialog's name. */
@@ -42,9 +49,9 @@ interface DialogCommonProps {
   /**
    * Cancel, the ✕, Escape and a click on the overlay. The screen unmounts the Dialog. The
    * browser can force a close while `busy`; this still runs then, and the request's result goes
-   * to a toast.
+   * to a toast. It gets the reason, which most screens ignore.
    */
-  readonly onCancel: () => void;
+  readonly onCancel: (reason: DialogCancelReason) => void;
   /**
    * The ✕'s name. Default "Close" and the title without a trailing "?". A title that starts
    * with "Close" passes one: "Keep Acme open".
