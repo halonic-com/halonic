@@ -2,7 +2,6 @@
 
 - Approval: Liam decided this on HAL-8338 as owner of the review flow under the board-approved frames (HAL-2282 rule); a team decision with no board card
 - Kind: user-visible
-- Signature: unsigned, waiting for Liam's key
 - Task: HAL-8338
 
 ## What changes
