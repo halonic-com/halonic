@@ -1,6 +1,6 @@
 import { Button, Disclosure, ListHeading } from "@halonicjs/studio-kit";
 import { useCallback, useId, useSyncExternalStore } from "react";
-import type { ListedToolsReviewModel } from "../listed-tools-review-model.ts";
+import type { ListedToolsReviewModel, ReviewOutcome } from "../listed-tools-review-model.ts";
 import { listedToolsWords } from "../listed-tools-words.ts";
 import { ListedToolRowView } from "./listed-tool-row.tsx";
 import { PlainList } from "./plain-list.tsx";
@@ -10,6 +10,8 @@ export interface ListedToolsReviewBodyProps {
   readonly model: ListedToolsReviewModel;
   /** Called with the toast once an approval is removed. The dialog shows it when it closes, since toasts don't show over a dialog. */
   readonly onRemoved: (toast: string) => void;
+  /** Called with what a tool's own **Approve this version** did: close with the toast, or stay. */
+  readonly onOutcome: (outcome: ReviewOutcome) => void;
 }
 
 /** A refused tool's reason, cut for the screen. The full text stays in the tooltip. */
@@ -24,7 +26,7 @@ function cutReason(reason: string): string {
  * then Not approved), Keeps changing, Refused, then Approved folded. The dialog around it owns
  * the title, the top line and the button bar. It reads the model with `useSyncExternalStore`.
  */
-export function ListedToolsReviewBody({ model, onRemoved }: ListedToolsReviewBodyProps) {
+export function ListedToolsReviewBody({ model, onRemoved, onOutcome }: ListedToolsReviewBodyProps) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
   const state = useSyncExternalStore(subscribe, () => model.state);
   const { snapshot } = state;
@@ -72,6 +74,17 @@ export function ListedToolsReviewBody({ model, onRemoved }: ListedToolsReviewBod
                 row={row}
                 tick={null}
                 showState={false}
+                action={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    busy={state.busy}
+                    onClick={() => void model.approveThisVersion(row.name).then(onOutcome)}
+                  >
+                    {listedToolsWords.approveThisVersion}
+                    <span className="sr-only"> of {row.name}</span>
+                  </Button>
+                }
               />
             ))}
           </PlainList>

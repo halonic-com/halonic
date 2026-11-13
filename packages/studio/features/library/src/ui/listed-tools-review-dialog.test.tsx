@@ -46,26 +46,37 @@ function snapshot(toReview: readonly string[], approved: readonly string[] = [])
   } satisfies ListedToolsSnapshot;
 }
 
-async function open(tools: ListedToolsSnapshot) {
+async function open(
+  tools: ListedToolsSnapshot,
+  review?: ListedToolsHost["review"],
+  waitForTools = true,
+) {
   const approvals: (readonly ListedToolPick[])[] = [];
+  const removals: string[] = [];
   let waiting = tools.toReview;
   const host: ListedToolsHost = {
-    review: async () => ({ ...tools, toReview: waiting }),
+    review: review ?? (async () => ({ ...tools, toReview: waiting })),
     approve: async (_id, picks) => {
       approvals.push(picks);
       waiting = waiting.filter((tool) => !picks.some((pick) => pick.name === tool.name));
       return { approved: picks.map((pick) => pick.name), changed: [] };
     },
-    removeApproval: async () => {},
+    removeApproval: async (_id, name) => {
+      removals.push(name);
+    },
     subscribe: () => () => {},
   };
   const model = new ListedToolsReviewModel(host, "notes");
   const closes: (string | null)[] = [];
   const container = render(
-    <ListedToolsReviewDialog model={model} onClose={(toast) => closes.push(toast)} />,
+    <ListedToolsReviewDialog
+      model={model}
+      sourceName="Notes server"
+      onClose={(toast) => closes.push(toast)}
+    />,
   );
-  await act(() => model.refresh());
-  return { container, closes, approvals };
+  if (waitForTools) await act(() => model.refresh());
+  return { container, closes, approvals, removals, model };
 }
 
 function button(container: HTMLElement, name: string): HTMLButtonElement {
@@ -173,6 +184,77 @@ describe("the review dialog", () => {
         await Promise.resolve();
       });
       expect(closes).toHaveLength(1);
+    });
+
+    it("shows loading rows and no buttons while the tools are being read", async () => {
+      vi.useFakeTimers();
+      try {
+        const never = new Promise<ListedToolsSnapshot>(() => {});
+        const { container } = await open(snapshot(["a"]), () => never, false);
+        expect(container.querySelector("dialog h2")?.textContent).toBe(
+          "Review the tools from Notes server",
+        );
+        expect(container.querySelector("footer")).toBeNull();
+        expect(container.querySelector('[role="status"]')?.textContent).toBe("");
+        await act(async () => vi.advanceTimersByTime(1000));
+        expect(container.querySelector('[role="status"]')?.textContent).toBe("Connecting…");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("says the tools couldn't be listed and reads them again on Try again", async () => {
+      let serverUp = false;
+      const { container } = await open(snapshot(["a"]), async () => {
+        if (!serverUp) throw new Error("The server is down.");
+        return snapshot(["a"]);
+      });
+      expect(container.textContent).toContain("Couldn't list the tools:");
+      expect(container.querySelector("footer")).toBeNull();
+      serverUp = true;
+      await act(async () => button(container, "Try again").click());
+      expect(container.textContent).toContain("Approve selected");
+    });
+
+    it("shows a refused listing with no rows and no buttons", async () => {
+      const { container } = await open({
+        ...snapshot(["a"]),
+        listingRefused: "it lists 400 tools",
+      });
+      expect(container.textContent).toContain(
+        "Couldn't use the tool list from Notes server: it lists 400 tools. None of its listed tools are on.",
+      );
+      expect(container.querySelector("footer")).toBeNull();
+      expect(container.querySelector('input[type="checkbox"]')).toBeNull();
+    });
+
+    it("makes Remove approval unavailable, with its reason, when the tool isn't named", async () => {
+      const { container, removals } = await open({ ...snapshot([]), unreadable: {} });
+      expect(container.textContent).toContain(
+        "Couldn't read an approval for Notes server, so none of its listed tools are on.",
+      );
+      const remove = button(container, "Remove approval");
+      const reason = container.querySelector(`#${remove.getAttribute("aria-describedby")}`);
+      expect(reason?.textContent).toBe("Halonic can't tell which tool it belongs to yet.");
+      await act(async () => remove.click());
+      expect(removals).toEqual([]);
+    });
+
+    it("removes an approval it can name, and never shows the store's error", async () => {
+      const { container, removals } = await open({
+        ...snapshot([]),
+        unreadable: { toolName: "lookup" },
+      });
+      expect(container.textContent).toContain("Couldn't read your approval for lookup");
+      await act(async () => button(container, "Remove approval").click());
+      expect(removals).toEqual(["lookup"]);
+    });
+
+    it("says nothing is waiting, with the Approved group and no buttons", async () => {
+      const { container } = await open(snapshot([], ["send"]));
+      expect(container.textContent).toContain("Nothing is waiting for your approval.");
+      expect(container.textContent).toContain("Approved (1)");
+      expect(container.querySelector("footer")).toBeNull();
     });
   });
 });
