@@ -230,4 +230,28 @@ verifies("oauth-sign-in.sign-in-tokens", () => {
       process.off("unhandledRejection", record);
     }
   });
+
+  it("settles only when the refresh in flight has ended, ended well or not", async () => {
+    const { tokens, saveGrant } = setup(numberedAnswers());
+    await saveGrant();
+    const waiting = tokens.access("work-account");
+
+    await tokens.settled("work-account");
+
+    expect(tokens.filterValues()).toContain(tokenAt(1));
+    await waiting;
+  });
+
+  it("settles when the refresh in flight failed, and when none is running", async () => {
+    const { tokens, saveGrant } = setup(() => {
+      throw new Error("network down");
+    });
+    await saveGrant();
+    const failed = tokens.access("work-account");
+
+    await expect(tokens.settled("work-account")).resolves.toBeUndefined();
+    await expect(failed).rejects.toThrow();
+    await expect(tokens.settled("work-account")).resolves.toBeUndefined();
+    await expect(tokens.settled("never-used")).resolves.toBeUndefined();
+  });
 });
