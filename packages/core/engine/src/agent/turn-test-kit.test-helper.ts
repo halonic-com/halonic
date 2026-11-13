@@ -61,6 +61,8 @@ export interface TestTurn {
   callerTools?: ToolDefinition[];
   halonicTools?: HalonicTool[];
   connectors?: ConnectorClient[];
+  /** The tools the connectors' sheets declare, by connector id and listed name. */
+  declaredTools?: NonNullable<ModelTurnInput["declaredTools"]>;
   maxRounds?: number;
   log?: TurnLog;
   /** The provider's id; "scripted" when left out. */
@@ -83,6 +85,7 @@ export async function runTestTurn(setup: TestTurn) {
     callerTools: setup.callerTools ?? [],
     halonicTools: setup.halonicTools ?? [],
     connectors: setup.connectors ?? [],
+    ...(setup.declaredTools === undefined ? {} : { declaredTools: setup.declaredTools }),
     maxRounds: setup.maxRounds ?? 20,
     agent: "clerk",
     clock: steppingClock(),

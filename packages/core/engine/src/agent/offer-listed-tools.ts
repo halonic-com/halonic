@@ -9,8 +9,19 @@
 
 import { toolForModel } from "@halonicjs/app";
 import { escapeListedText, type KeptListedTool, readListedTool } from "@halonicjs/app/listed-tools";
-import { type Connector, marksRead } from "@halonicjs/format";
+import { type Connector, type IntegrationTool, marksRead } from "@halonicjs/format";
 import type { ChatTurnRefusal, ConnectorTool, ToolDefinition, ToolRisk } from "@halonicjs/ports";
+
+/**
+ * What a person's integration sheet declares about one tool: the parts of
+ * {@link IntegrationTool} the engine reads. The host picks them out of the
+ * sheet it bound to the connector, so only a sheet ever gives a `noun` or a
+ * `verb` (requirement `engine.turn-declared-tools`).
+ */
+export type DeclaredTool = Pick<IntegrationTool, "risk" | "noun" | "verb">;
+
+/** The declared tools of one connector, by the name its server lists them under. */
+export type DeclaredTools = Readonly<Record<string, DeclaredTool>>;
 
 /** One connector's listing, and the names already offered in the same turn. */
 export interface ListedToolsInput {
@@ -26,6 +37,12 @@ export interface ListedToolsInput {
    * outside a run, or when the run kept no file for the connector.
    */
   readonly lists?: Pick<Connector["tools"], "approve" | "read">;
+  /**
+   * What the sheet bound to the connector declares, by the listed name. It
+   * can raise a tool's risk and gives its `noun` and `verb`, but never adds
+   * a tool: a name the listing lacks is ignored. Absent when no sheet is bound.
+   */
+  readonly declared?: DeclaredTools;
 }
 
 /** A listed tool to offer. */
@@ -34,16 +51,24 @@ export interface OfferedListedTool {
   readonly definition: ToolDefinition;
   /** The name the server listed it under, which a call goes to. */
   readonly listedName: string;
-  /** What the engine counts a call to it as doing: {@link countedRisk} of its listing's risk. */
+  /**
+   * What the engine counts a call to it as doing: {@link countedRisk} of its
+   * listing's risk, raised to the sheet's when that is higher.
+   */
   readonly risk: ToolRisk;
   /** Set when it counts as `read` only because the connector file's `read` list names it. */
   readonly markedRead?: true;
   /**
-   * What calling it can do, as the listing says; absent when it doesn't say.
-   * It only goes into the call's `tool.result` (requirement
-   * `engine.turn-logs-risk`); nothing is decided by it.
+   * What calling it can do, as the listing and the sheet say, the higher of
+   * the two; absent when neither says. It only goes into the call's
+   * `tool.result` (requirements `engine.turn-logs-risk` and
+   * `engine.turn-declared-tools`); nothing is decided by it.
    */
   readonly listedRisk?: ToolRisk;
+  /** What one call sends or changes, from the sheet only; absent when the sheet has none. */
+  readonly noun?: NonNullable<DeclaredTool["noun"]>;
+  /** What one call did to its noun, from the sheet only; absent means the reader says "sent". */
+  readonly verb?: NonNullable<DeclaredTool["verb"]>;
 }
 
 /** What {@link offerListedTools} gives back. */
@@ -83,18 +108,35 @@ export function offerListedTools(input: ListedToolsInput): OfferedListing {
       const reason = `dropped the keyword at ${path}`;
       refusals.push({ source: input.source, name, refused: "keyword", reason });
     }
-    // The app's `listedRisk` would count `send` as `write` and skip the
-    // "allow sending" check, so the risk comes from `countedRisk` (HAL-5199).
-    const risk = countedRisk(tool.risk, isMarkedRead(input.lists, read.name));
-    tools.push({
-      definition: fencedDefinition(read),
-      listedName: read.name,
-      risk,
-      ...(risk === "read" ? { markedRead: true } : {}),
-      ...(tool.risk === undefined ? {} : { listedRisk: tool.risk }),
-    });
+    tools.push(offeredTool(tool, read, input));
   }
   return { tools, refusals };
+}
+
+/** The tool to offer for a kept listing, with its risk counted and what its sheet declares. */
+function offeredTool(
+  tool: ConnectorTool,
+  read: KeptListedTool,
+  input: ListedToolsInput,
+): OfferedListedTool {
+  // The app's `listedRisk` would count `send` as `write` and skip the
+  // "allow sending" check, so the risk comes from `countedRisk` (HAL-5199).
+  const declared = declaredOf(input.declared, read.name);
+  const listedRisk =
+    tool.risk === undefined ? declared?.risk : higherRisk(tool.risk, declared?.risk);
+  const risk = higherRisk(
+    countedRisk(tool.risk, isMarkedRead(input.lists, read.name)),
+    declared?.risk,
+  );
+  return {
+    definition: fencedDefinition(read),
+    listedName: read.name,
+    risk,
+    ...(risk === "read" ? { markedRead: true } : {}),
+    ...(listedRisk === undefined ? {} : { listedRisk }),
+    ...(declared?.noun === undefined ? {} : { noun: declared.noun }),
+    ...(declared?.verb === undefined ? {} : { verb: declared.verb }),
+  };
 }
 
 /**
@@ -152,4 +194,17 @@ export function isMarkedRead(
 export function countedRisk(listed: ToolRisk | undefined, markedRead: boolean): ToolRisk {
   if (listed === "send") return "send";
   return markedRead ? "read" : "write";
+}
+
+/** The sheet's entry for the tool a server listed under `name`, if the sheet declares it. */
+function declaredOf(declared: DeclaredTools | undefined, name: string): DeclaredTool | undefined {
+  return declared !== undefined && Object.hasOwn(declared, name) ? declared[name] : undefined;
+}
+
+const riskOrder: readonly ToolRisk[] = ["read", "write", "send"];
+
+/** The higher of two risks; a missing `other` leaves `risk` as it is. */
+function higherRisk(risk: ToolRisk, other: ToolRisk | undefined): ToolRisk {
+  if (other === undefined) return risk;
+  return riskOrder.indexOf(risk) >= riskOrder.indexOf(other) ? risk : other;
 }

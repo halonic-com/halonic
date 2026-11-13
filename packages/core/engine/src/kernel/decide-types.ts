@@ -9,8 +9,10 @@ import type {
   RunParent,
   RunTrigger,
   RunVersion,
+  ToolNoun,
   ToolOutcome,
   ToolRisk,
+  ToolVerb,
 } from "@halonicjs/events";
 import type {
   Agent,
@@ -20,6 +22,7 @@ import type {
   Skill,
   Workflow,
 } from "@halonicjs/format";
+import type { DeclaredTools } from "../agent/offer-listed-tools.ts";
 import type { ResumeAfterStop, RunState } from "./run-state.ts";
 
 // `decide` does no input or output and reads no clock. Everything it needs
@@ -94,6 +97,10 @@ export interface ToolResult {
   readonly outcome: ToolOutcome;
   /** The tool's risk as its listing gives it, for `tool.result`; absent when it gives none. */
   readonly risk?: ToolRisk;
+  /** What one call sent or changed, from the sheet only, for `tool.result`; absent without a sheet. */
+  readonly noun?: ToolNoun;
+  /** What one call did to its noun, from the sheet only, for `tool.result`. */
+  readonly verb?: ToolVerb;
 }
 
 /**
@@ -399,6 +406,12 @@ export interface RunDefinitions {
    * offer no connector's tools.
    */
   readonly connectorTools?: Readonly<Record<string, Connector["tools"]>>;
+  /**
+   * The tools the sheets bound to the connectors declare, by connector id and
+   * then by listed name (see `TurnToolSources.declaredTools`). Runs kept
+   * without them log no noun.
+   */
+  readonly declaredTools?: Readonly<Record<string, DeclaredTools>>;
 }
 
 /** The pure decider: what a run does next, given its state and one input. */

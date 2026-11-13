@@ -122,6 +122,9 @@ export async function runModelCall(input: RunModelCall): Promise<ModelCallResult
       halonicTools: methodHalonicTools(input.toolsOf(signal), method),
       connectors,
       connectorTools,
+      ...(turn.definitions.declaredTools === undefined
+        ? {}
+        : { declaredTools: turn.definitions.declaredTools }),
       ...(input.effects === undefined ? {} : { effects: input.effects }),
       ...agentParamsOf(agent),
       maxRounds,

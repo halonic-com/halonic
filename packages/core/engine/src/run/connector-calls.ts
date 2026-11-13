@@ -7,7 +7,7 @@ import type { SendingSettings } from "@halonicjs/app";
 import type { Agent, Connector } from "@halonicjs/format";
 import type { ConnectorClient } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
-import { countedRisk, isMarkedRead } from "../agent/offer-listed-tools.ts";
+import { countedRisk, type DeclaredTools, isMarkedRead } from "../agent/offer-listed-tools.ts";
 import type { EffectBoundary } from "../agent/run-tool-call.ts";
 import { collectTurnTools, errorMessage } from "../agent/turn-tools.ts";
 import type { CallToolEffect, ToolResult } from "../kernel/decide-types.ts";
@@ -90,6 +90,7 @@ export async function makeConnectorCall(
   connectors: readonly ConnectorClient[],
   boundary: EffectBoundary,
   effect: CallToolEffect,
+  declared?: Readonly<Record<string, DeclaredTools>>,
 ): Promise<ToolResult> {
   const connector = connectors.find((connected) => connected.id === effect.connector);
   if (connector === undefined) {
@@ -99,6 +100,7 @@ export async function makeConnectorCall(
     callerTools: [],
     halonicTools: [],
     connectors: [connector],
+    ...(declared === undefined ? {} : { declaredTools: declared }),
   });
   // The effect names the tool as the model saw it. Once HAL-998 renames
   // tools whose names clash, that name and the listed one can differ, so
@@ -114,14 +116,18 @@ export async function makeConnectorCall(
   if (!isPlainObject(effect.args)) {
     return notMade(`the arguments of ${effect.tool} aren't an object`);
   }
-  const risk = tool.listedRisk === undefined ? {} : { risk: tool.listedRisk };
+  const logged = {
+    ...(tool.listedRisk === undefined ? {} : { risk: tool.listedRisk }),
+    ...(tool.noun === undefined ? {} : { noun: tool.noun }),
+    ...(tool.verb === undefined ? {} : { verb: tool.verb }),
+  };
   try {
     const result = await connector.callTool(tool.listedName, effect.args, {
       idempotencyKey: effect.idempotencyKey,
     });
-    return { type: "tool", result, outcome: "ok", ...risk };
+    return { type: "tool", result, outcome: "ok", ...logged };
   } catch (error) {
-    return { type: "tool", result: brokeOff(errorMessage(error)), outcome: "unknown", ...risk };
+    return { type: "tool", result: brokeOff(errorMessage(error)), outcome: "unknown", ...logged };
   }
 }
 
@@ -134,6 +140,7 @@ export async function makeRunConnectorCall(
   open: () => Promise<readonly ConnectorClient[]>,
   boundary: EffectBoundary,
   effect: CallToolEffect,
+  declared?: Readonly<Record<string, DeclaredTools>>,
 ): Promise<ToolResult> {
   let connectors: readonly ConnectorClient[];
   try {
@@ -141,7 +148,7 @@ export async function makeRunConnectorCall(
   } catch (error) {
     return notMade(`the connector "${effect.connector}" isn't connected: ${errorMessage(error)}`);
   }
-  return makeConnectorCall(connectors, boundary, effect);
+  return makeConnectorCall(connectors, boundary, effect, declared);
 }
 
 function notMade(why: string): ToolResult {

@@ -57,6 +57,8 @@ export interface ModelTurnInput {
   readonly connectors: readonly ConnectorClient[];
   /** The `tools` lists of the connectors' files, by connector id; see {@link TurnToolSources}. */
   readonly connectorTools?: NonNullable<TurnToolSources["connectorTools"]>;
+  /** The tools the connectors' sheets declare, by connector id; see {@link TurnToolSources}. */
+  readonly declaredTools?: NonNullable<TurnToolSources["declaredTools"]>;
   /**
    * The params of the turn's calls, laid over each model's own alias params:
    * the agent's, then a chat turn's request's on top (see `layeredParams`).
