@@ -1,4 +1,4 @@
-import type { Routine } from "@halonicjs/format";
+import { parseFile } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { describeTrigger } from "./describe-trigger.ts";
@@ -24,18 +24,16 @@ verifies("routines.webhook-trigger", () => {
   });
 
   it("is never due, however long the tick was away", () => {
-    const routine = {
-      version: 1,
-      id: "orders",
-      name: "Orders",
-      enabled: true,
-      trigger: webhook,
-      overlap: "skip",
-      catchUp: "all",
-      run: { workflow: "w", input: {} },
-    } as unknown as Routine;
+    const routine = parseFile(
+      "routine",
+      "id: orders\nname: Orders\ntrigger: { webhook: { secret: acme-hook } }\nrun: { workflow: w }\n",
+      {},
+    );
+    if (!routine.ok) {
+      expect.fail(JSON.stringify(routine.error));
+    }
     const runs = due(
-      [{ hub: "h", routine }],
+      [{ hub: "h", routine: routine.value.value }],
       new Date("2026-11-01T00:00:00Z"),
       new Date("2026-11-03T00:00:00Z"),
     );

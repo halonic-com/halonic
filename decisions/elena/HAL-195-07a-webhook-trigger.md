@@ -7,7 +7,7 @@
 ## What changes
 
 The golden `packages/core/format/spec/routine.schema.json` gains one more trigger shape,
-`webhook: { secret, headers }`. Nothing in it is removed or loosened: every routine file that parsed
+`webhook: { secret, headers }`. Each header must be a lowercase HTTP header name (schema `pattern` `^[a-z0-9][a-z0-9-]*$`), listed once, and not one that carries the sender's credentials or that the server verifies (the format exports the list as `WEBHOOK_REFUSED_HEADERS`). Nothing in it is removed or loosened: every routine file that parsed
 before parses the same. New requirements record the shape (`format.routine-webhook`) and how the
 routines package treats it (`routines.webhook-trigger`). No existing requirement or test changes.
 

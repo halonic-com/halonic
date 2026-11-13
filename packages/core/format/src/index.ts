@@ -90,6 +90,7 @@ export {
 } from "./kinds/plugin/setting-values.ts";
 export type { Provider } from "./kinds/provider/schema.ts";
 export type { Routine, RoutineTarget, RoutineTrigger } from "./kinds/routine/schema.ts";
+export { WEBHOOK_REFUSED_HEADERS } from "./kinds/routine/webhook-headers.ts";
 export type { Runtime } from "./kinds/runtime/schema.ts";
 export type { Skill } from "./kinds/skill/schema.ts";
 export {

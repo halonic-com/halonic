@@ -32,7 +32,9 @@ without a short phrase.
 `manual`), `triggerError` returns the first thing wrong with a trigger as a
 message, or `null` when it is fine, and `describeTrigger` writes a trigger in
 words, such as "Weekdays at 08:00 (Europe/Amsterdam)", without throwing on a bad
-one. A `webhook` trigger never fires on a clock: a signed request from outside starts it, and the host's server checks that request. An interval is written in the largest unit that divides it, and says "(UTC)"
+one. A `webhook` trigger never fires on a clock: a signed request from outside
+starts it, and the host's server checks that request. An interval is written in
+the largest unit that divides it, and says "(UTC)"
 when that unit is hours or days, because its slots count from the epoch in UTC:
 `120m` reads "Every 2 hours (UTC)", `15m` reads "Every 15 minutes".
 

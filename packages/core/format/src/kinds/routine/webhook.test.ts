@@ -1,6 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { parsedValue, problemsOf, yaml } from "../../test/parse.spec.ts";
+import { WEBHOOK_REFUSED_HEADERS } from "./webhook-headers.ts";
 
 const routine = (trigger: string) =>
   yaml("id: orders", "name: Orders", trigger, "run: { workflow: invoice }");
@@ -43,5 +44,38 @@ verifies("format.routine-webhook", () => {
   it("refuses a path: the host gives each routine its address", () => {
     const text = routine("trigger: { webhook: { secret: acme-hook, path: /x } }");
     expect(problemsOf("routine", text).length).toBeGreaterThan(0);
+  });
+
+  it("refuses a header name that is not lowercase or not a header token", () => {
+    for (const header of ["X-Event", "'x event'", "a.b", "'{{x}}'", "-x"]) {
+      const text = routine(`trigger: { webhook: { secret: acme-hook, headers: [${header}] } }`);
+      const problems = problemsOf("routine", text);
+      expect(problems.length, header).toBeGreaterThan(0);
+      expect(problems[0]?.path.join("."), header).toBe("trigger.webhook.headers.0");
+    }
+  });
+
+  it("refuses a header listed twice, at the second", () => {
+    const text = routine(
+      "trigger: { webhook: { secret: acme-hook, headers: [x-event, x-event] } }",
+    );
+    const problems = problemsOf("routine", text);
+    expect(problems.map((problem) => [problem.code, problem.path.join(".")])).toEqual([
+      ["webhook-header-duplicate", "trigger.webhook.headers.1"],
+    ]);
+  });
+
+  it("refuses credential and verification headers, at the header", () => {
+    for (const header of WEBHOOK_REFUSED_HEADERS) {
+      const text = routine(
+        `trigger: { webhook: { secret: acme-hook, headers: [x-ok, ${header}] } }`,
+      );
+      const problems = problemsOf("routine", text);
+      expect(
+        problems.map((problem) => [problem.code, problem.path.join(".")]),
+        header,
+      ).toEqual([["webhook-header-refused", "trigger.webhook.headers.1"]]);
+    }
+    expect(WEBHOOK_REFUSED_HEADERS).toEqual(expect.arrayContaining(["authorization", "cookie"]));
   });
 });

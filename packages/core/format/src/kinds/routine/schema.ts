@@ -1,6 +1,7 @@
 import { type Infer, s } from "@halonicjs/schema-kit";
 import { DURATION_PATTERN, id, version } from "../../shared/fields.ts";
 import { Guard } from "../../shared/guard.ts";
+import { WEBHOOK_HEADER_PATTERN } from "./webhook-headers.ts";
 
 /** On a schedule: five-field cron or a shortcut such as @daily, in a time zone. */
 const ScheduleTrigger = s
@@ -66,8 +67,17 @@ const WebhookTrigger = s
       .object({
         /** The name of the secret that signs the request body; the file never holds its value. */
         secret: s.string().min(1),
-        /** Request headers the run may read as {{trigger.headers.<name>}}; none by default. */
-        headers: s.array(s.string().min(1)).default([]),
+        /** Lowercase request headers the run may read as {{trigger.headers.<name>}}; none by default. */
+        headers: s
+          .array(
+            s
+              .string()
+              .regex(
+                WEBHOOK_HEADER_PATTERN,
+                "use a lowercase header name: letters, digits or '-', such as x-event",
+              ),
+          )
+          .default([]),
       })
       .strict(),
   })
