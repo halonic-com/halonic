@@ -2,6 +2,7 @@
 
 - Approval: HAL-8391 asked for this fix and a requirement example; the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nRqAamfRAB30S3wMm8mn3dgZchO6BYrYfRCJD+rjsIiZOU8RwQrl9HaI0SJUlOQbMPxvuaJvM4pcKNjI6ZM3CQ==
 - Task: HAL-8391
 
 ## What changes
