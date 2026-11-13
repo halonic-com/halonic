@@ -8,12 +8,13 @@
  * Reads the control file, the hidden file and the denied file; tries to write
  * where nothing may be written (the host looks at the disk afterwards, so
  * what the box says about it doesn't matter); and tries the network: a TCP
- * connection to each port, to each address of the local network, to each internet address and to the bridge (the
- * network control), and a DNS query sent straight to each public DNS server.
+ * connection to each port, to each address of the local network, to each
+ * internet address and to the bridge (the network control), and a DNS query
+ * sent straight to each public DNS server.
  *
  * Settings: `{ control, hidden, denied, writes: [{ create, existing }],
- * ports: [{ host, port }], lan: [{ host, port }], internet: [{ host, port }], dns: [{ host, port }],
- * bridge: { host, port } | null }`.
+ * ports: [{ host, port }], lan: [{ host, port }], internet: [{ host, port }],
+ * dns: [{ host, port }], bridge: { host, port } | null }`.
  *
  * It prints `{ control, hidden, denied, ports, lan, internet, dns, network }`. A file
  * is `readable` or `hidden`. A network attempt is `{ host, port, state, code }`:

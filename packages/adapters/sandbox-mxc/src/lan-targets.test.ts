@@ -50,6 +50,18 @@ verifies("sandbox-mxc.canary", () => {
       expect(hostsOf(targets)).toEqual(["fd12:3456:789a:1:0:0:0:1"]);
     });
 
+    it("takes the second address when the computer is the IPv6 router address itself", () => {
+      const targets = lanTargets({
+        home: [entry("IPv6", "fd12:3456:789a:1::1", "ffff:ffff:ffff:ffff::")],
+      });
+      expect(hostsOf(targets)).toEqual(["fd12:3456:789a:1:0:0:0:2"]);
+    });
+
+    it("leaves out a point-to-point /32 address", () => {
+      const targets = lanTargets({ vpn: [entry("IPv4", "10.8.0.5", "255.255.255.255")] });
+      expect(targets).toEqual([]);
+    });
+
     it("tries the web ports on each address", () => {
       const targets = lanTargets({ wifi: [entry("IPv4", "192.168.1.20", "255.255.255.0")] });
       expect(targets).toEqual([

@@ -64,6 +64,7 @@ function ipv4Neighbours(
     const mask = ipv4ToNumber(entry.netmask);
     const network = (address & mask) >>> 0;
     const broadcast = (network | ~mask) >>> 0;
+    if (broadcast - network < 3) continue; // a /31 or /32 has no neighbour to guess
     const router = numberToIpv4(network + 1);
     const lastUsable = numberToIpv4(broadcast - 1);
     found.set(range.name, own.has(router) ? lastUsable : router);
@@ -81,15 +82,15 @@ function ipv6Neighbours(
     if (entry.family !== "IPv6") continue;
     const groups = expandIpv6(entry.address);
     if (groups === null || ((groups[0] ?? 0) & 0xfe00) !== 0xfc00) continue;
-    const neighbour = [...groups.slice(0, 4), 0, 0, 0, 1]
-      .map((group) => group.toString(16))
-      .join(":");
-    // `own` holds addresses as the system writes them, so compare the full forms.
-    const isOwn = [...own].some(
-      (address) =>
-        expandIpv6(address)?.join(":") === neighbour.replace(/(^|:)0+(?=[0-9a-f])/g, "$1"),
-    );
-    if (!isOwn) found.add(neighbour);
+    const network = groups.slice(0, 4);
+    const router = [...network, 0, 0, 0, 1];
+    const fallback = [...network, 0, 0, 0, 2];
+    // `own` holds addresses as the system writes them, so compare the numbers.
+    const ownKeys = new Set([...own].map((address) => expandIpv6(address)?.join(":")));
+    const neighbour = ownKeys.has(router.join(":")) ? fallback : router;
+    if (!ownKeys.has(neighbour.join(":"))) {
+      found.add(neighbour.map((group) => group.toString(16)).join(":"));
+    }
   }
   return [...found];
 }
