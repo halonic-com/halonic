@@ -1,7 +1,7 @@
-import type { IntegrationRequestInit, SecretPlacement } from "@halonicjs/ports";
+import type { AuthPlacement, IntegrationRequestInit } from "@halonicjs/ports";
+import { copyPlacements } from "./auth-placement.ts";
 import type { IntegrationPolicy } from "./policy.ts";
 import type { Body } from "./request-body.ts";
-import { copyPlacements } from "./secret-placement.ts";
 
 /**
  * The request as the integration's code gave it, copied once. The kit
@@ -21,7 +21,7 @@ export interface OwnRequest {
   readonly headers: Headers;
   /** The body, with its bytes or form copied. A kind the kit doesn't support stays as given. */
   readonly body: Body;
-  readonly placements: readonly SecretPlacement[];
+  readonly placements: readonly AuthPlacement[];
   readonly signal: AbortSignal | undefined;
 }
 

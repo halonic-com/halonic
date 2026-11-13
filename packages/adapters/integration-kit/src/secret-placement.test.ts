@@ -144,15 +144,15 @@ verifies("integration-kit.placement-from-sheet", () => {
       expect(sent).toEqual([]);
     });
 
-    it("refuses a sign-in placement, alone or beside a secret, since a token isn't placed yet", async () => {
+    it("refuses a placement that names both a secret and a sign-in, so neither is placed", async () => {
       const { http, sent, reads } = countingClient({ as: "header", header: "x-api-key" });
-      const placements = [
-        { signIn: "example-account", as: "bearer" },
+      const both = [
         { secret: "example-key", signIn: "example-account", as: "header", header: "x-api-key" },
+        { secret: "example-key", signIn: "example-account", as: "bearer" },
       ] as unknown as SecretPlacement[];
-      for (const auth of placements) {
+      for (const auth of both) {
         expect(await refusal(http.fetch("https://api.example.com/v1", { auth }))).toBe(
-          "sign-in-not-placed-yet",
+          "placement-not-in-sheet",
         );
       }
       expect(reads).toEqual([]);

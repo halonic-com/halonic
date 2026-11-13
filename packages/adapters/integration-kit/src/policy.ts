@@ -26,6 +26,12 @@ export interface IntegrationPolicy {
    * it up, instead of refusing the request.
    */
   readonly secrets: Readonly<Record<string, DeclaredSecret>>;
+  /**
+   * Each sign-in, the hosts its access token may go to, and where the sheet
+   * puts it. Halonic's own code runs the sign-in; the integration can only
+   * ask the kit to place the access token.
+   */
+  readonly signIns: Readonly<Record<string, DeclaredSignIn>>;
   /** The token names it may read and write. */
   readonly tokens: readonly string[];
 }
@@ -37,6 +43,23 @@ export interface DeclaredSecret {
   /** The only way the kit may place it; any other placement is refused. */
   readonly placement: DeclaredPlacement;
 }
+
+/** One sign-in in the permission sheet. */
+export type DeclaredSignIn = DeclaredSignInPlacement & {
+  /** The hosts the access token may go to. */
+  readonly hosts: readonly string[];
+  /**
+   * The sign-in's client secret, when it has one. The integration can't
+   * place it: only Halonic's sign-in code sends it, to the token and revoke
+   * hosts.
+   */
+  readonly clientSecret?: { readonly name: string; readonly hosts: readonly string[] };
+};
+
+/** Where the sheet puts a sign-in's access token. There is no `form`. */
+export type DeclaredSignInPlacement =
+  | { readonly as: "bearer" }
+  | { readonly as: "header"; readonly header: string; readonly prefix?: string };
 
 /** Where the sheet puts a secret: a `SecretPlacement` without the secret's name. */
 export type DeclaredPlacement =

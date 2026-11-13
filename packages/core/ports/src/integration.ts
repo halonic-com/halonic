@@ -76,7 +76,9 @@ export interface SignInTokens {
   /**
    * A token valid for at least 60 more seconds, refreshed if needed.
    *
-   * @throws when the sign-in isn't signed in, or the refresh fails
+   * @throws {SignInNeededError} when the sign-in isn't signed in, or the
+   *   server no longer accepts its refresh token, so the user must sign in
+   *   again. Any other failure, such as a network error, is thrown as it is.
    */
   access(signIn: string, signal?: AbortSignal): Promise<string>;
   /**
@@ -91,6 +93,24 @@ export interface SignInTokens {
    * sign-in it holds nothing for it, and nothing has been placed yet.
    */
   filterValues(): readonly string[];
+}
+
+/**
+ * The user has to sign in (again) before the sign-in's token can be used.
+ * {@link SignInTokens.access} throws it when there is no sign-in yet or the
+ * server answered `invalid_grant` to the refresh token. The kit turns it into
+ * the refusal `sign-in-needed`; a failure that signing in wouldn't fix, such
+ * as a network error, is not this error.
+ */
+export class SignInNeededError extends Error {
+  override readonly name = "SignInNeededError";
+  /** The sign-in, as the sheet names it. */
+  readonly signIn: string;
+
+  constructor(signIn: string, options?: ErrorOptions) {
+    super(`The sign-in "${signIn}" needs the user to sign in again.`, options);
+    this.signIn = signIn;
+  }
 }
 
 /**

@@ -44,6 +44,8 @@ export {
   allowedUrl,
   type DeclaredPlacement,
   type DeclaredSecret,
+  type DeclaredSignIn,
+  type DeclaredSignInPlacement,
   type IntegrationPolicy,
   namePattern,
 } from "./policy.ts";

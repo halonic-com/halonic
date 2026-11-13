@@ -16,6 +16,10 @@ const leakAttempts: Partial<Record<RefusalCode, Refused>> = {
     client().http.fetch("https://api.example.com/v1", {
       auth: { secret: "example-key", as: "header", header: "x-note-title" },
     }),
+  "secret-sign-in-only": () =>
+    client().http.fetch("https://oauth.example.com/v1", {
+      auth: { secret: "account-client-secret", as: "bearer" },
+    }),
 };
 
 /**
@@ -39,8 +43,12 @@ const ordinaryRefusals: Partial<Record<RefusalCode, Refused>> = {
 
 verifies("integration-kit.leak-attempt-codes", () => {
   describe("leakAttemptCodes", () => {
-    it("holds secret-in-request and placement-not-in-sheet", () => {
-      expect([...leakAttemptCodes].sort()).toEqual(["placement-not-in-sheet", "secret-in-request"]);
+    it("holds secret-in-request, placement-not-in-sheet and secret-sign-in-only", () => {
+      expect([...leakAttemptCodes].sort()).toEqual([
+        "placement-not-in-sheet",
+        "secret-in-request",
+        "secret-sign-in-only",
+      ]);
     });
 
     it.each(leakAttemptCodes)("holds %s, a code the kit really refuses with", async (code) => {

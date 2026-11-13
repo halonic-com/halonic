@@ -189,6 +189,20 @@ integration never holds it, and the host keeps the request log.
   stores and read back from there. The kit first copies each placement, and
   checks and places only that copy, so changing `auth` after `fetch` (or a
   getter) changes nothing. A placement field that isn't text is refused.
+- **Sign-in tokens are placed by the kit too.** `auth: { signIn, as }` names a
+  sign-in of the sheet. The kit asks `SignInTokens.access` for the access
+  token on each hop that may carry it, checks the placement against the
+  sheet's `access` block as it does for a secret (`placement-not-in-sheet`),
+  and puts it only on the sign-in's hosts, only over `https`, even for a local
+  host: `token-not-allowed-for-host` or `token-over-plain-http` for the first
+  host, and on a redirect to another host the token is left out. A sign-in
+  the sheet doesn't declare is `sign-in-not-declared`, a client secret named
+  in a sign-in is `secret-sign-in-only` for any placement, and a user who has
+  to sign in again is `sign-in-needed`. A 401 is returned unchanged and never
+  resent; the kit tells `SignInTokens.rejected` which token it placed on that
+  hop. The values `SignInTokens.filterValues` lists (access tokens, the
+  refresh token, the client secret) are filtered and refused in the
+  integration's requests like a secret.
 - **Limits** (`RequestLimits`, set from the permission sheet): 30 s for the
   response headers, redirects included; 60 s between two pieces of the body;
   10 min for the whole request; 10 MiB per response; 5 redirects. All can be
@@ -251,8 +265,8 @@ A refusal throws an `IntegrationRefusedError` with a `code`. Its message
 names the host and path only, never a query or a secret's value. A refusal that names a
 secret, a header or a form field shows the name in quotes, escaped and cut at 50 characters, so a
 huge name can't make a huge message. The codes in
-`leakAttemptCodes` (`secret-in-request`, `placement-not-in-sheet`, host
-side only) mean the integration tried to get a secret out; the bridge should pause the
+`leakAttemptCodes` (`secret-in-request`, `placement-not-in-sheet`,
+`secret-sign-in-only`, host side only) mean the integration tried to get a secret out; the bridge should pause the
 connector on any of them. Every other code is an ordinary mistake, or, like
 `secret-in-redirect`, something the server did.
 

@@ -1,10 +1,18 @@
 import type {
+  AuthPlacement,
   HttpClient,
   IntegrationHttpClient,
   IntegrationRequestInit,
-  SecretPlacement,
   Secrets,
+  SignInTokens,
 } from "@halonicjs/ports";
+import {
+  checkPlacementHosts,
+  checkPlacements,
+  isSecretPlacement,
+  isSignInPlacement,
+  place,
+} from "./auth-placement.ts";
 import { IntegrationRefusedError, IntegrationTimeoutError } from "./integration/index.ts";
 import { copyRequest, type OwnRequest } from "./own-request.ts";
 import { allowedUrl, type IntegrationPolicy } from "./policy.ts";
@@ -26,7 +34,8 @@ import {
   refuseRedirectCarryingSecrets,
   SecretInRequestError,
 } from "./secret-in-request.ts";
-import { checkPlacementHosts, checkPlacements, place, readSecrets } from "./secret-placement.ts";
+import { readSecrets } from "./secret-placement.ts";
+import { readTokens, reportRejected } from "./sign-in-placement.ts";
 
 /**
  * Limits on one request. Every field has a default; the loader sets them
@@ -59,6 +68,12 @@ export interface LimitedHttpOptions {
   readonly transport: HttpClient;
   /** Where the kit reads the values of the secrets it places. */
   readonly secrets: Secrets;
+  /**
+   * Where the kit gets the access token of a sign-in it places, and what it
+   * tells when a server answers 401. Without it, a request that places a
+   * token is refused as `sign-in-needed`.
+   */
+  readonly signInTokens?: SignInTokens;
   readonly log: RequestLog;
   readonly limits?: RequestLimits;
   /** Milliseconds for the request log's timings. Default `Date.now`. */
@@ -93,7 +108,7 @@ export function createLimitedHttpClient(options: LimitedHttpOptions): Integratio
         // Needs no secret, so a placement the sheet doesn't allow is refused before any is read.
         checkPlacements(options.policy, own.placements);
         const declared = await readDeclaredSecrets(options.policy, options.secrets);
-        const carried = carriedForms(declared.values());
+        const carried = carriedForms([...declared.values(), ...signInValues(options)]);
         refuseCarriedSecrets(options.policy, carried, {
           method: own.givenMethod,
           sentMethod: own.method,
@@ -125,6 +140,11 @@ export function createLimitedHttpClient(options: LimitedHttpOptions): Integratio
   };
 }
 
+/** Every value the sign-ins' tokens say the filter must remove: tokens not yet expired, refresh tokens, client secrets. */
+function signInValues(options: LimitedHttpOptions): readonly string[] {
+  return options.signInTokens?.filterValues() ?? [];
+}
+
 /** What the log shows of a request that failed before the secret check passed. */
 const unchecked = { method: "", host: "", path: "" };
 
@@ -140,7 +160,7 @@ interface Hop {
   method: string;
   body: Body;
   form: URLSearchParams | undefined;
-  placements: readonly SecretPlacement[];
+  placements: readonly AuthPlacement[];
   readonly headers: Headers;
 }
 
@@ -177,12 +197,7 @@ async function send(
     onIdle: () => timers.stop("no data", limits.idleTimeoutMs ?? 60_000),
     done: () => clearTimeout(timers.total),
     // Every declared secret, not only the placed ones: the bridge filters the same way.
-    secrets: secretForms(
-      [...declared].map(([secret, value]) => ({
-        value,
-        placements: placements.filter((placement) => placement.secret === secret),
-      })),
-    ),
+    secrets: filterForms(options, placements, declared, new Map()),
   };
 
   try {
@@ -230,20 +245,71 @@ function startTimers(
 interface HopContext {
   readonly hop: Hop;
   readonly values: Awaited<ReturnType<typeof readSecrets>>;
-  readonly carried: SecretForms;
+  /** Replaced when a hop brings in a token the kit hadn't seen. */
+  carried: SecretForms;
   readonly guard: BodyGuard;
   readonly maxBodyBytes: number;
   readonly timers: Timers;
 }
 
+/**
+ * Every form of the values that must not reach the integration or leave in
+ * its own requests: the declared secrets (with where this request places
+ * them), the sign-ins' filter values, and the tokens this hop places.
+ */
+function filterForms(
+  options: LimitedHttpOptions,
+  placements: readonly AuthPlacement[],
+  declared: ReadonlyMap<string, string>,
+  tokens: ReadonlyMap<string, string>,
+): SecretForms {
+  const placedAs = (name: string, isPlaced: (placement: AuthPlacement) => boolean) =>
+    placements.filter((placement) => isPlaced(placement) && placementName(placement) === name);
+  return secretForms([
+    ...[...declared].map(([secret, value]) => ({
+      value,
+      placements: placedAs(secret, isSecretPlacement),
+    })),
+    ...signInValues(options).map((value) => ({ value })),
+    ...[...tokens].map(([signIn, value]) => ({
+      value,
+      placements: placedAs(signIn, isSignInPlacement),
+    })),
+  ]);
+}
+
+/** The name of the secret or sign-in a placement is for. */
+function placementName(placement: AuthPlacement): string {
+  return isSecretPlacement(placement) ? placement.secret : placement.signIn;
+}
+
 /** Sends the request, then each redirect hop, until an answer that isn't one. */
 async function followHops(options: LimitedHttpOptions, context: HopContext): Promise<Response> {
   const { policy, limits = {} } = options;
-  const { hop, values, carried, guard, maxBodyBytes, timers } = context;
+  const { hop, values, guard, maxBodyBytes, timers } = context;
   const maxRedirects = limits.maxRedirects ?? 5;
   for (let count = 0; ; count++) {
+    const tokens = await readTokens(
+      policy,
+      options.signInTokens,
+      hop.placements.filter(isSignInPlacement),
+      hop.url,
+      timers.combined,
+    );
+    if (hop.placements.some(isSignInPlacement)) {
+      // A refresh may have issued a token the filter didn't know when the request started.
+      guard.secrets = filterForms(options, hop.placements, values, tokens);
+      context.carried = carriedForms([...values.values(), ...signInValues(options)]);
+    }
     const headers = new Headers(hop.headers);
-    const placedForm = place(policy, hop.placements, values, hop.url, headers, hop.form);
+    const placedForm = place(
+      policy,
+      hop.placements,
+      { secrets: values, tokens },
+      hop.url,
+      headers,
+      hop.form,
+    );
     const body = placedForm ?? hop.body;
     if (bodyBytes(body) > maxBodyBytes) throw requestTooLarge(policy, hop.url, maxBodyBytes);
     const response = await untilAborted(
@@ -256,6 +322,8 @@ async function followHops(options: LimitedHttpOptions, context: HopContext): Pro
       }),
       timers.combined,
     );
+    // Only for a token this hop placed: a 401 from any other hop says nothing about it.
+    if (response.status === 401) reportRejected(options.signInTokens, tokens);
     const location = response.headers.get("location");
     if (!redirectStatuses.has(response.status) || location === null) {
       clearTimeout(timers.headers);
@@ -268,7 +336,7 @@ async function followHops(options: LimitedHttpOptions, context: HopContext): Pro
         `${policy.name}: ${hop.url.host}${hop.url.pathname} redirected more than ${maxRedirects} times`,
       );
     }
-    refuseRedirectCarryingSecrets(policy, carried, location, hop.url);
+    refuseRedirectCarryingSecrets(policy, context.carried, location, hop.url);
     follow(hop, response.status, allowedUrl(policy, location, hop.url));
   }
 }

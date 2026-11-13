@@ -11,7 +11,7 @@ import type {
   SignInTokens,
   ToolRisk,
 } from "./index.ts";
-import { integrationVersion, maxIntegrationWaitMs } from "./index.ts";
+import { integrationVersion, maxIntegrationWaitMs, SignInNeededError } from "./index.ts";
 
 // Type tests: `tsc -p tsconfig.test.json` checks them. Each `@ts-expect-error`
 // fails the typecheck if the line it marks ever starts to compile.
@@ -124,6 +124,13 @@ verifies("ports.integration-sign-in-placement", () => {
     expectTypeOf<Extract<keyof IntegrationHost, keyof SignInTokens>>().toBeNever();
     expectTypeOf<SignInTokens["access"]>().returns.toEqualTypeOf<Promise<string>>();
     expectTypeOf<SignInTokens["filterValues"]>().returns.toEqualTypeOf<readonly string[]>();
+  });
+
+  it("tells the kit the user has to sign in with SignInNeededError, naming the sign-in", () => {
+    const error = new SignInNeededError("example-account");
+    expect(error).toBeInstanceOf(Error);
+    expect(error.signIn).toBe("example-account");
+    expect(error.message).toContain("example-account");
   });
 
   it("is the second version of the port", () => {

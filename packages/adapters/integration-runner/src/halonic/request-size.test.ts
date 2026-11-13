@@ -26,6 +26,7 @@ function realKitClient(): IntegrationHttpClient {
       name: "acme-customer-relations-management-crm",
       hosts: ["api.example.com"],
       secrets: {},
+      signIns: {},
       tokens: [],
     },
     transport: { fetch: async () => new Response("{}") },
