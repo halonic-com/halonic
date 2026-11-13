@@ -2,6 +2,7 @@
 
 - Approval: the board-approved workspace flow (flow-workspace, HAL-177, 2.1a and 6) built in HAL-1291; the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:koff/mOAD7/6pvhORMlJOtfrew7fBndsUKIoDlSK1UZX3pGN2BEu/ofGHtmHDc8QXh10OeJyhKIe0N3TusIEBg==
 
 ## What changes
 
