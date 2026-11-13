@@ -4,6 +4,7 @@ import type {
   IdGenerator,
   PasswordHasher,
   RunExecutor,
+  RunStore,
   Secrets,
 } from "@halonicjs/ports";
 import type { PlacedRoutine } from "@halonicjs/routines";
@@ -135,6 +136,8 @@ export interface ErrorLog {
 export interface ServerPorts {
   /** Runs workflows; the server only forwards start, send, cancel and subscribe calls to it. */
   readonly runs: RunExecutor;
+  /** The run list; a webhook start asks it whether the routine is already running. Read-only. */
+  readonly runStore: Pick<RunStore, "list">;
   /** Configured secrets, such as the sign-in password hash and webhook secrets. Read-only. */
   readonly secrets: Secrets;
   /** Hashes and checks the sign-in password. The target picks the format. */
