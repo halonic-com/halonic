@@ -136,7 +136,7 @@ export interface ListGroup<Id extends string = string, Row extends AnyListRow<Id
    */
   readonly id: string;
   /** Drawn with ListHeading, between the boxes. ↑ ↓ pass over it. */
-  readonly heading: { readonly name: string; readonly detail?: string };
+  readonly heading: { readonly name: string; readonly detail?: ReactNode };
   /** A group with no rows isn't drawn, heading and all. */
   readonly rows: readonly Row[];
 }
@@ -184,7 +184,7 @@ interface ListOfRows<Id extends string, Row extends AnyListRow<Id>> extends List
 /** A list named by its heading, the box's first line (18.3). */
 interface ListWithHeading<Id extends string, Row extends AnyListRow<Id>>
   extends ListOfRows<Id, Row> {
-  readonly heading: { readonly name: string; readonly detail?: string };
+  readonly heading: { readonly name: string; readonly detail?: ReactNode };
   readonly label?: never;
 }
 

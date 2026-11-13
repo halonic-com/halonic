@@ -116,6 +116,26 @@ verifies("inbox.page", () => {
       expect(root.textContent).toContain("Pick something on the left to see it here.");
     });
 
+    it("marks an item that has waited a day with an amber Late chip and counts it in the header", async () => {
+      const stale = waitingRun("r3", {
+        lastWaitingAt: new Date(2026, 10, 6, 9, 0).toISOString(),
+        waitingFor: { title: "Approve the invoice?", body: "" },
+      });
+      const { root } = await openPage(fakeRuns([notes, stale]).runs);
+      expect(nameOf(root, root.querySelector('[role="grid"]'))).toBe(
+        "Needs you, 2 waiting, 1 late",
+      );
+      const chips = root.querySelectorAll('[role="grid"] .bg-attention-soft');
+      expect([...chips].map((chip) => chip.textContent)).toEqual(["Late"]);
+      expect(rows(root)[1]?.textContent).toContain("Late");
+      expect(rows(root)[0]?.textContent).not.toContain("Late");
+    });
+
+    it("says nothing about late when nothing is", async () => {
+      const { root } = await openPage(fakeRuns([notes, review]).runs);
+      expect(root.textContent).not.toContain("late");
+    });
+
     it("opens a row's card beside the list, with no Open run until there's a run page", async () => {
       const { root } = await openPage(fakeRuns([notes, review]).runs);
       await click(rowCell(root, 1));

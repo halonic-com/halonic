@@ -1,4 +1,4 @@
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 
 /**
  * `inline` puts the detail after the name ("ACME · WORKSPACE SETTINGS") and moves it onto its own
@@ -12,7 +12,7 @@ export interface ListHeadingProps {
   /** The group's name, written in sentence case: CSS draws the capitals. It may be cut. */
   readonly name: string;
   /** Says which group: "Workspace settings". Never cut. */
-  readonly detail?: string;
+  readonly detail?: ReactNode;
   /** Default 2. Use 3 or 4 where the list sits under a panel's own headings. */
   readonly headingLevel?: 2 | 3 | 4;
   /** So a list that isn't a kit List can point `aria-labelledby` at the heading. */
@@ -49,7 +49,7 @@ export function ListHeading({
   headingRef,
 }: ListHeadingProps) {
   const Heading = `h${headingLevel}` as const;
-  const hasDetail = detail !== undefined && detail !== "";
+  const hasDetail = detail !== undefined && detail !== null && detail !== false && detail !== "";
 
   return (
     <Heading

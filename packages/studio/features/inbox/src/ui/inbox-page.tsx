@@ -6,7 +6,7 @@ import type { Inbox } from "../inbox.ts";
 import type { InboxItem } from "../inbox-items.ts";
 import { ApprovalCard } from "./approval-card.tsx";
 import type { NextItem } from "./card-parts.tsx";
-import { countDetail, itemTitle, rowFor } from "./inbox-row.tsx";
+import { countDetail, itemTitle, lateCount, rowFor } from "./inbox-row.tsx";
 import { SetupPane } from "./setup-pane.tsx";
 import { WaitCard } from "./wait-card.tsx";
 
@@ -101,7 +101,10 @@ export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
             />
           ) : (
             <List
-              heading={{ name: "Needs you", ...countDetail(state.items.length) }}
+              heading={{
+                name: "Needs you",
+                ...countDetail(state.items.length, lateCount(state.items, now())),
+              }}
               rows={state.items.map((item) => rowFor(item, now()))}
               onOpen={(key) => setOpen(state.items.find((item) => item.key === key) ?? null)}
               {...(open === null ? {} : { current: open.key })}
