@@ -271,8 +271,8 @@ export class RequestTable {
     if (frame.headers.length > limits.maxRequestHeaders) {
       return `a request can have at most ${limits.maxRequestHeaders} headers`;
     }
-    if (frame.auth.length > limits.maxSecretPlacements) {
-      return `a request can have at most ${limits.maxSecretPlacements} secret placements`;
+    if (frame.auth.length > limits.maxPlacements) {
+      return `a request can have at most ${limits.maxPlacements} secret placements`;
     }
     if (requestHeadBytes(frame) > limits.maxRequestHeadBytes) {
       return `a request's URL, headers and secret placements can be at most ${limits.maxRequestHeadBytes} bytes together`;
@@ -323,7 +323,7 @@ const utf8 = new TextEncoder();
 const bytesPerEntry = 4;
 
 /**
- * The UTF-8 size of a request's URL, header names and values, and secret
+ * The UTF-8 size of a request's URL, header names and values, and
  * placements, with {@link bytesPerEntry} for each header and placement (section 3.3).
  */
 function requestHeadBytes(frame: FetchFrame): number {

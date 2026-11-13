@@ -110,6 +110,26 @@ verifies("integration-runner.strict-protocol", () => {
         (call) => fetchFrame({ id: 0, call: call + 1 }),
         "a request for a call Halonic never started",
       ],
+      [
+        "a sign-in placement as a form field (A33)",
+        (call) =>
+          fetchFrame({
+            id: 0,
+            call,
+            auth: [{ signIn: "example-account", as: "form", field: "token" }],
+          }),
+        "a frame outside the protocol",
+      ],
+      [
+        "a placement that names both a secret and a sign-in (A33)",
+        (call) =>
+          fetchFrame({
+            id: 0,
+            call,
+            auth: [{ secret: "example-key", signIn: "example-account", as: "bearer" }],
+          }),
+        "a frame outside the protocol",
+      ],
     ];
 
     for (const [what, frame, detail] of outsideTheProtocol) {
@@ -167,14 +187,14 @@ verifies("integration-runner.strict-protocol", () => {
   });
 });
 
-function fetchFrame(fields: { id: number; call: number }) {
+function fetchFrame(fields: { id: number; call: number; auth?: object[] }) {
   return {
     type: "fetch",
-    ...fields,
     url: "https://api.example.com/v1/forecast",
     method: "GET",
     headers: [],
     body: null,
     auth: [],
+    ...fields,
   };
 }

@@ -37,7 +37,7 @@ export interface RunnerLimits {
   /** Headers in one request (100); more are refused as `request-too-large`. */
   maxRequestHeaders: number;
   /** Placements in one request (16); more are refused as `request-too-large`. */
-  maxSecretPlacements: number;
+  maxPlacements: number;
   /**
    * Frames Halonic has queued for the runner's stdin and the runner hasn't
    * read yet (8 MiB). A runner that sends but doesn't read is stopped, so
@@ -59,7 +59,7 @@ export const defaultRunnerLimits: Readonly<RunnerLimits> = Object.freeze({
   maxBodyPieceBytes: 256 * 1024,
   maxRequestHeadBytes: 32 * 1024,
   maxRequestHeaders: 100,
-  maxSecretPlacements: 16,
+  maxPlacements: 16,
   maxQueuedWriteBytes: 8 * 1024 * 1024,
 });
 
