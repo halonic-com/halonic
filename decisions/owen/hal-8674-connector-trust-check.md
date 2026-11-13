@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-8674 (finding M1 of the security review on HAL-8672); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:YAxAAh2k3NRsYWO8B9clSmqPBStqcoYE73vsF3olOAocM4VGjqCDbW9/GaPMhdSyKfCBMv1cFfLvvZSoj4DGAA==
 
 The open route took the trust grant from the request and passed it to the factory, so a page holding the launch token could claim trust, and a failed sandbox check then started the program with no fence. The host now reads the trust record in its own profile folder before it asks the factory to start anything.
 
