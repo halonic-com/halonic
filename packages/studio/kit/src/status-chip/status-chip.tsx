@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * The chip's colour, which says what kind of state it is. `warning` is "Needs you". `outline` is
+ * The chip's colour, which says what kind of state it is. `warning` is "Needs you" (your turn), `attention` is "have a look" (late, over budget, not connected). `outline` is
  * a tag: a fact about the item ("Test"), not its state.
  */
 export type StatusChipTone =
@@ -9,6 +9,7 @@ export type StatusChipTone =
   | "accent"
   | "running"
   | "warning"
+  | "attention"
   | "danger"
   | "success"
   | "outline";
@@ -49,6 +50,7 @@ const toneClasses: Record<StatusChipTone, string> = {
   accent: "bg-accent-soft text-accent-text",
   running: "bg-running-soft text-running",
   warning: "bg-warning-soft text-warning",
+  attention: "bg-attention-soft text-attention",
   danger: "bg-danger-soft text-danger",
   success: "bg-success-soft text-success",
   outline: "text-fg-muted",

@@ -80,7 +80,7 @@ const chipLooks: Readonly<Record<RunStanding, Omit<RunChip, "word">>> = {
   waiting: { tone: "neutral", dot: false },
   done: { tone: "success", dot: false },
   failed: { tone: "danger", dot: false },
-  budget: { tone: "warning", dot: false },
+  budget: { tone: "attention", dot: false },
   cancelled: { tone: "neutral", dot: false },
   "cant-try": { tone: "neutral", dot: false },
 };

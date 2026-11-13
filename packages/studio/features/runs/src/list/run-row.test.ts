@@ -99,7 +99,7 @@ verifies("runs.row", () => {
       const budget = rowOf({ status: "failed", reason: "budget", ...ended });
       const cancelled = rowOf({ status: "failed", reason: "cancelled", ...ended, cost: 0 });
 
-      expect(budget.chip).toEqual({ word: "Stopped · budget", tone: "warning", dot: false });
+      expect(budget.chip).toEqual({ word: "Stopped · budget", tone: "attention", dot: false });
       expect(budget.line).toBe("Budget reached in Draft after 3 min · estimated cost €5.08");
       expect(cancelled.chip).toEqual({ word: "Stopped", tone: "neutral", dot: false });
       expect(cancelled.line).toBe("Cancelled in Draft after 3 min");

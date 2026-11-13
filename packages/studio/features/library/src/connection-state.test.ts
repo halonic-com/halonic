@@ -38,10 +38,10 @@ verifies("library.connection-state", () => {
     expect(connectionStateTable["api-off"].label).toBe("API off");
     expect(connectionStateTable["not-connected"]).toEqual({
       label: "Not connected",
-      tone: "neutral",
+      tone: "attention",
     });
     for (const state of ["needs-sign-in", "needs-new-secret", "api-off"] as const) {
-      expect(connectionStateTable[state].tone).toBe("warning");
+      expect(connectionStateTable[state].tone).toBe("attention");
     }
   });
 });

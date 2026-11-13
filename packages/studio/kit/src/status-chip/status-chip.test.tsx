@@ -33,7 +33,7 @@ verifies("kit.status-chip", () => {
   });
 
   it("keeps the coloured tones and the tag as they are on a muted fill", () => {
-    for (const tone of ["accent", "running", "warning", "danger", "success", "outline"] as const) {
+    for (const tone of ["accent", "running", "warning", "attention", "danger", "success", "outline"] as const) {
       expect(renderChip({ tone, children: "State" }).className).not.toContain("on-muted:");
     }
   });
