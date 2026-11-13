@@ -16,6 +16,7 @@ const notPorts = new Set([
   "model-price.ts",
   "port-versions.ts",
   "run-failure-error.ts",
+  "run-target-not-found.ts",
 ]);
 
 const portFiles = readdirSync(sourceFolder)

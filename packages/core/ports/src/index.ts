@@ -238,6 +238,11 @@ export {
   startedAtOrAfter,
 } from "./run-store.ts";
 export {
+  isRunTargetNotFound,
+  type RunTargetKind,
+  RunTargetNotFound,
+} from "./run-target-not-found.ts";
+export {
   type Sandbox,
   type SandboxBlock,
   type SandboxBlockListener,

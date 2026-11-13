@@ -239,14 +239,15 @@ export interface RunExecutor {
   /**
    * Starts a workflow run, or returns the existing one for a repeated `runId`.
    *
-   * @throws when the hub or workflow doesn't exist or the input is refused
+   * @throws RunTargetNotFound when the hub or workflow doesn't exist
+   * @throws when the input is refused
    */
   start(request: StartRunRequest): Promise<RunSummary>;
   /**
    * Starts a run of one agent; its workflow id is "agent:<agentId>". A
    * repeated `runId` returns the existing run.
    *
-   * @throws when the hub or agent doesn't exist
+   * @throws RunTargetNotFound when the hub or agent doesn't exist
    */
   startAgent(request: StartAgentRequest): Promise<RunSummary>;
   /**

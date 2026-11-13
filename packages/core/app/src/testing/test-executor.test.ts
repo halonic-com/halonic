@@ -6,8 +6,17 @@ import { TestExecutor } from "./test-executor.ts";
 // pass on it and fail on a real executor.
 runExecutorContract("kernel test fake", async () => {
   const executor = new TestExecutor();
+  executor.missing.hubs.add("no-hub");
+  executor.missing.workflows.add("no-workflow");
+  executor.missing.agents.add("no-agent");
   return {
     executor,
+    missing: {
+      hubId: "acme",
+      unknownHubId: "no-hub",
+      unknownWorkflowId: "no-workflow",
+      unknownAgentId: "no-agent",
+    },
     async waitForApproval() {
       const run = await executor.start({ hubId: "acme", workflowId: "review", input: {} });
       executor.awaitApproval(run.id, "call-1");

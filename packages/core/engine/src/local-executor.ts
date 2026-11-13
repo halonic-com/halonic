@@ -133,7 +133,8 @@ export class LocalExecutor implements RunExecutor {
    * repeated `runId` returns the existing run.
    *
    * @throws RangeError when `runId` is longer than 256 UTF-8 bytes
-   * @throws when the hub or workflow doesn't exist, or the executor has no `runs`
+   * @throws RunTargetNotFound when the hub or workflow doesn't exist, as the host's `definitionsOf` reports it
+   * @throws when the executor has no `runs`
    */
   start(request: StartRunRequest): Promise<RunSummary> {
     return this.runs === undefined ? Promise.reject(noRuns()) : this.runs.start(request);

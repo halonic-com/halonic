@@ -1,11 +1,12 @@
 import type { PendingApproval, RunStatus, RunSummary } from "@halonicjs/events";
-import type {
-  RunExecutor,
-  RunFilter,
-  RunStore,
-  SendOptions,
-  StartAgentRequest,
-  StartRunRequest,
+import {
+  type RunExecutor,
+  type RunFilter,
+  type RunStore,
+  RunTargetNotFound,
+  type SendOptions,
+  type StartAgentRequest,
+  type StartRunRequest,
 } from "@halonicjs/ports";
 
 /** The events a run that waits for approval accepts: `APPROVAL_EVENTS` in `core/workflow`. */
@@ -30,6 +31,15 @@ export class TestExecutor implements RunExecutor, Pick<RunStore, "list"> {
   failOn: string | null = null;
   /** While set, every start waits for it before it does anything: a slow executor. */
   hold: Promise<void> | null = null;
+  /**
+   * What doesn't exist: a start in a hub of `hubs`, or of a workflow or agent
+   * id of `workflows` or `agents`, throws `RunTargetNotFound` and records nothing.
+   */
+  readonly missing = {
+    hubs: new Set<string>(),
+    workflows: new Set<string>(),
+    agents: new Set<string>(),
+  };
 
   async start(request: StartRunRequest): Promise<RunSummary> {
     await this.hold;
@@ -129,6 +139,7 @@ export class TestExecutor implements RunExecutor, Pick<RunStore, "list"> {
 
   private record(request: StartRunRequest | StartAgentRequest, workflowId: string): RunSummary {
     this.requests.push(request);
+    this.refuseMissing(request);
     if (workflowId === this.failOn || workflowId === `agent:${this.failOn}`) {
       throw new Error(`no such workflow: ${workflowId}`);
     }
@@ -140,6 +151,29 @@ export class TestExecutor implements RunExecutor, Pick<RunStore, "list"> {
     const summary = testSummary(id, request.hubId, workflowId, request.trigger ?? null);
     this.runs.set(id, summary);
     return summary;
+  }
+
+  private refuseMissing(request: StartRunRequest | StartAgentRequest): void {
+    const { hubId } = request;
+    if (this.missing.hubs.has(hubId)) {
+      throw new RunTargetNotFound("hub", hubId, `The workspace has no hub "${hubId}".`);
+    }
+    if ("agentId" in request && this.missing.agents.has(request.agentId)) {
+      const { agentId } = request;
+      throw new RunTargetNotFound(
+        "agent",
+        agentId,
+        `The hub "${hubId}" has no agent "${agentId}".`,
+      );
+    }
+    if ("workflowId" in request && this.missing.workflows.has(request.workflowId)) {
+      const { workflowId } = request;
+      throw new RunTargetNotFound(
+        "workflow",
+        workflowId,
+        `The hub "${hubId}" has no workflow "${workflowId}".`,
+      );
+    }
   }
 }
 
