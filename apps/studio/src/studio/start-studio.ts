@@ -1,17 +1,22 @@
 import {
+  TauriCommandPaths,
   TauriDefinitionStore,
   type TauriFileShell,
+  TauriFolderReader,
   TauriPickedFolders,
   TauriRunStore,
+  TauriTrustStore,
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
 import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
 import {
   openWorkspace,
   ServiceRegistry,
+  TrustService,
   type WorkspaceScope,
   workspaceFilesKey,
 } from "@halonicjs/app";
+import { systemClock } from "@halonicjs/std";
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import { runsFeature } from "@halonicjs/studio-feature-runs";
@@ -58,6 +63,7 @@ import {
 } from "@halonicjs/studio-shell";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
+import { WorkspaceTrust } from "./workspace-trust.ts";
 
 /**
  * The language of the Studio's words. Every text is English in v0.1, so the window's
@@ -186,7 +192,7 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
   const picked = new TauriPickedFolders(ipc);
   const switcher = new WorkspaceSwitcher({
     pickFolder: () => pickFolder(ipc),
-    openFolder: async (location) => openFolder(shell, page.window, location, display),
+    openFolder: (location) => openFolder(shell, page.window, location, display),
     reopenFolder: (location) => picked.reopen(location),
     forgetFolder: (location) => picked.forget(location),
     recent: new RecentWorkspaces(page.storage ?? noStorage),
@@ -216,20 +222,26 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
  * HAL-2952), and the profile's `settings/host.json` its host settings (HAL-6261). In the shell,
  * its runs are the run logs in the folder's run folder, the ones the CLI writes
  * (`studio.workspace-runs`). Its display settings are the window's `display`, the same for every
- * folder open in it. Its name is the folder's until the workspace's files are read for the trust
- * check. Outside the shell there are no files to open, so the scope has only the services above.
- * The workspace isn't trusted yet, so the assistant may write only Halonic items.
+ * folder open in it. In the shell, it is checked for trust before it opens, as the CLI checks it
+ * (`studio.workspace-trust`): its name is the one in `workspace.yaml`, else the folder's, and the
+ * assistant may write more than Halonic items only once a person has trusted what the folder
+ * holds. Outside the shell there are no files to open, so the scope has only the services above.
  */
-export function openFolder(
+export async function openFolder(
   shell: Shell,
   window: object,
   location: string,
   display: DisplaySettings,
-): OpenedWorkspace {
-  const name = folderName(location);
+): Promise<OpenedWorkspace> {
   const ipc = tauriChannelIpc(window);
   const files = ipc === undefined ? undefined : shellFiles(ipc);
-  const scope = files === undefined ? undefined : openFolderScope(files, location);
+  const trust = ipc === undefined ? undefined : workspaceTrustOf(ipc, location);
+  await trust?.refresh();
+  const name = trust?.name ?? folderName(location);
+  const scope =
+    files === undefined || trust === undefined
+      ? undefined
+      : openFolderScope(files, location, trust);
   const services = scope?.services ?? new ServiceRegistry();
   services.provide(DisplaySettingsService, display);
   provideShellSecrets(services, window);
@@ -246,6 +258,26 @@ export function openFolder(
     saving: scope === undefined ? undefined : savingOf(scope, workspace, name),
     dispose: () => (scope === undefined ? services.dispose() : scope.close()),
   };
+}
+
+/** The version written into the trust records the Studio saves, the one the CLI writes. */
+const halonicVersion = "0.1.0";
+
+/** The trust of the workspace in `location`, read through the shell as the CLI reads it. */
+function workspaceTrustOf(ipc: TauriIpc & TauriCallbacks, location: string): WorkspaceTrust {
+  const commands = new TauriCommandPaths(ipc);
+  return new WorkspaceTrust({
+    definitions: new TauriDefinitionStore(shellFiles(ipc), location),
+    folder: new TauriFolderReader(ipc, location),
+    findCommand: async (command) => (await commands.find([command])).get(command),
+    digest: webCryptoDigest,
+    trust: new TrustService({
+      store: new TauriTrustStore(ipc),
+      digest: webCryptoDigest,
+      clock: systemClock,
+      appVersion: halonicVersion,
+    }),
+  });
 }
 
 /**
@@ -289,14 +321,21 @@ function shellFiles(ipc: TauriIpc & TauriCallbacks): TauriFileShell {
 }
 
 /** The workspace's scope over its folder and its review records, which live in the profile. */
-function openFolderScope(files: TauriFileShell, location: string): WorkspaceScope {
-  return openWorkspace({
+function openFolderScope(
+  files: TauriFileShell,
+  location: string,
+  trust: WorkspaceTrust,
+): WorkspaceScope {
+  const scope = openWorkspace({
     store: new TauriDefinitionStore(files, location),
     reviewRecords: new TauriDefinitionStore(files, location, { folder: "review" }),
     digest: webCryptoDigest,
-    isTrusted: () => false,
+    isTrusted: () => trust.isTrusted(),
     onListenerError: (error) => console.error(error),
   });
+  // A saved change may add something to run, so trust is checked again on what is saved.
+  scope.events.on("files.saved", () => void trust.refresh());
+  return scope;
 }
 
 /**

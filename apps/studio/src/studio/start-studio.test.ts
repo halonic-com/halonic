@@ -173,6 +173,37 @@ function memoryStorage() {
   };
 }
 
+const acmeSettings = "id: acme\nname: Acme\n";
+
+verifies("studio.workspace-trust", () => {
+  it("names an opened workspace from workspace.yaml, and does not trust it until a person does", async () => {
+    const calls: string[] = [];
+    const answers: Record<string, unknown> = {
+      fs_list: ["workspace.yaml"],
+      folder_location: "/work/acme",
+      folder_entries: [],
+    };
+    const invoke = async (command: string, args?: Record<string, unknown>) => {
+      calls.push(command);
+      if (command === "fs_read") return args?.["path"] === "workspace.yaml" ? acmeSettings : null;
+      return answers[command] ?? null;
+    };
+    const internals = { invoke, transformCallback: () => 1, unregisterCallback: () => {} };
+    const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
+
+    const opened = await openFolder(
+      shell,
+      { __TAURI_INTERNALS__: internals },
+      "/work/acme",
+      displaySettings(),
+    );
+
+    expect(opened.name).toBe("Acme");
+    expect(calls).toContain("trust_get");
+    await opened.dispose();
+  });
+});
+
 verifies("studio.open-folder", () => {
   it("starts the desktop app on Welcome and opens the folder picked", async () => {
     const webview = desktopWebview("/work/acme");
@@ -224,7 +255,7 @@ verifies("studio.open-folder", () => {
   it("gives an opened workspace the keychain as its secrets, before its features' services", async () => {
     const webview = desktopWebview(null);
     const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
-    const opened = openFolder(shell, webview.page, "/work/acme", displaySettings());
+    const opened = await openFolder(shell, webview.page, "/work/acme", displaySettings());
 
     await opened.workspace.services.get(secretsKey).get("openai");
     expect(opened.workspace.services.has(tokenStoreKey)).toBe(true);
@@ -236,7 +267,7 @@ verifies("studio.open-folder", () => {
   it("opens the folder as a workspace scope over the shell's files", async () => {
     const webview = desktopWebview(null);
     const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
-    const opened = openFolder(shell, webview.page, "/work/acme", displaySettings());
+    const opened = await openFolder(shell, webview.page, "/work/acme", displaySettings());
 
     await opened.workspace.services.get(workspaceFilesKey).read("workspace.yaml");
     expect(opened.workspace.services.has(reviewServiceKey)).toBe(true);
@@ -251,7 +282,7 @@ verifies("studio.open-folder", () => {
   it("saves an opened workspace's changes through the shell and reports them in its save note", async () => {
     const webview = desktopWebview(null);
     const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
-    const opened = openFolder(shell, webview.page, "/work/acme", displaySettings());
+    const opened = await openFolder(shell, webview.page, "/work/acme", displaySettings());
 
     opened.workspace.services.get(workspaceFilesKey).change("Added a note", { "note.txt": "hi" });
     expect(await opened.saving?.saveNow()).toBe(true);
@@ -267,7 +298,7 @@ verifies("studio.open-folder", () => {
   it("gives an opened workspace the profile's host settings through the shell", async () => {
     const webview = desktopWebview(null);
     const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
-    const opened = openFolder(shell, webview.page, "/work/acme", displaySettings());
+    const opened = await openFolder(shell, webview.page, "/work/acme", displaySettings());
 
     await opened.workspace.services.get(hostSettingsStoreKey).remove("assistant.turn-limit");
     expect(webview.calls.at(-1)).toEqual({
@@ -321,7 +352,7 @@ verifies("studio.window-appearance", () => {
   it("gives an opened workspace the window's display settings", async () => {
     const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
     const display = displaySettings();
-    const opened = openFolder(shell, desktopWebview(null).page, "/work/acme", display);
+    const opened = await openFolder(shell, desktopWebview(null).page, "/work/acme", display);
 
     expect(opened.workspace.services.get(DisplaySettingsService)).toBe(display);
     await opened.dispose();
