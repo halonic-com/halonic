@@ -8,7 +8,7 @@ import {
   signInName,
 } from "./fake-integration.test-helper.ts";
 
-verifies("host-integration-sign-in.approved-sign-ins", () => {
+verifies("integration-sign-in.approved-sign-ins", () => {
   it("fills in the sign-in from the sheet and the settings", async () => {
     const { signIns } = exampleIntegration();
 
@@ -83,7 +83,7 @@ verifies("host-integration-sign-in.approved-sign-ins", () => {
   });
 });
 
-verifies("host-integration-sign-in.sign-out", () => {
+verifies("integration-sign-in.sign-out", () => {
   it("waits for a refresh in flight before it removes the grant, so the refresh can't save it again", async () => {
     const test = exampleIntegration({ hold: true });
     await test.signedIn();

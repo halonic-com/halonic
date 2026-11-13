@@ -1,4 +1,4 @@
-# host-integration-sign-in.approved-sign-ins
+# integration-sign-in.approved-sign-ins
 
 - Status: active
 - Since: 0.1.0
