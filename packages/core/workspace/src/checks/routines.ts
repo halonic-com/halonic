@@ -21,7 +21,8 @@ interface RoutineProblem {
  *
  * A routine in a hub runs that hub's workflows and agents. One at the root
  * names its hub in `run.hub`, unless the root has agents or workflows of its
- * own. A routine in a hub whose `hub.yaml` failed isn't checked: the old
+ * own, except a webhook routine, which always needs a hub: its request
+ * starts a run in one. A routine in a hub whose `hub.yaml` failed isn't checked: the old
  * loader left that hub out.
  */
 export function checkRoutines(context: CheckContext): WorkspaceIssue[] {
@@ -66,6 +67,10 @@ function targetProblem(context: CheckContext, routine: Routine): RoutineProblem 
       const message =
         "workspace-level routines need run.hub (or agents/ and workflows/ at the root)";
       return { path: ["run", "hub"], code: "routine-without-hub", message };
+    }
+    if ("webhook" in routine.value.trigger) {
+      const message = "a webhook routine runs in a hub, so a root one must name it in run.hub";
+      return { path: ["run", "hub"], code: "webhook-routine-without-hub", message };
     }
     hub = null;
   } else if (routine.hub === null && hub !== null && context.filesOf("hub", hub).length === 0) {
