@@ -2,7 +2,6 @@
 
 - Approval: Liam asked for this wiring on [HAL-7811](/HAL/issues/HAL-7811) and approves this note as the CTO; `ci.yml` is not a guard trust root, so no second guardian is needed
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:bDcf4ndeKGlFUiHDPCdBwQiT8MunYzqQSZuZZkbbLqHG6NbxkWf7Rfd95xX2ry6qI3Sip+YSrsHyl9x0rpeiBg==
 - Task: HAL-7811
 
 ## What changes
