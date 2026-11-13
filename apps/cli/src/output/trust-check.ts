@@ -34,6 +34,11 @@ export interface TrustCheckFacts {
   readonly name: string;
   /** The folder as the user gave it, such as "./acme". */
   readonly folder: string;
+  /**
+   * Whether this computer's sandbox works. A program's sites are shown only
+   * then, since without a sandbox nothing keeps it to them. Left out means no.
+   */
+  readonly sandboxWorks?: boolean;
 }
 
 /** A check with a fingerprint: every status but `refused`, which stops before any line is shown. */
@@ -75,13 +80,15 @@ export function trustCheckLines(check: FingerprintedCheck, facts: TrustCheckFact
     ...(check.status === "unreadable" ? [marked("needsYou", trustMessages.listUnreadable())] : []),
     trustMessages.heading(facts.name, facts.folder).phrase,
     trustMessages.intro(facts.name).phrase,
-    ...(hasCounts(check.content) ? [trustMessages.startSummary(counts(check.content)).phrase] : []),
+    ...(hasCounts(check.content, facts.sandboxWorks === true)
+      ? [trustMessages.startSummary(counts(check.content, facts.sandboxWorks === true)).phrase]
+      : []),
   ];
   return [
     ...heading,
     ...section(
       trustMessages.programsHeading(),
-      programs(connectors).flatMap((row) => programRow(row, unpinned)),
+      programs(connectors).flatMap((row) => programRow(row, unpinned, facts.sandboxWorks === true)),
     ),
     ...agentsSection(agents.flatMap((agent) => agentRow(agent))),
     ...section(trustMessages.addressesHeading(), [
@@ -137,7 +144,7 @@ function changedLines(
       : []),
     ...section(
       trustMessages.programsHeading(),
-      rowsOf(programs, (row) => programRow(row, unpinned)),
+      rowsOf(programs, (row) => programRow(row, unpinned, facts.sandboxWorks === true)),
     ),
     ...agentsSection([
       ...changes.agents.added.flatMap((agent) => tagged(agentRow(agent), newRow)),
@@ -175,7 +182,7 @@ function marked(mark: "done" | "needsYou", message: Message): Phrase {
   return phrase`${markPart(mark)} ${message.phrase}`;
 }
 
-function counts(content: TrustCheck["content"]) {
+function counts(content: TrustCheck["content"], sandboxWorks: boolean) {
   const agents = content.agents ?? [];
   const providers = content.providers ?? [];
   return {
@@ -194,13 +201,13 @@ function counts(content: TrustCheck["content"]) {
       providers.length,
     sites: new Set([
       ...agents.flatMap((agent) => agent.allowedSites),
-      ...programs(content.connectors).flatMap(programSites),
+      ...(sandboxWorks ? programs(content.connectors).flatMap(programSites) : []),
     ]).size,
   };
 }
 
-function hasCounts(content: TrustCheck["content"]): boolean {
-  return Object.values(counts(content)).some((count) => count > 0);
+function hasCounts(content: TrustCheck["content"], sandboxWorks: boolean): boolean {
+  return Object.values(counts(content, sandboxWorks)).some((count) => count > 0);
 }
 
 function isProgram(connector: ConnectorTrustContent): boolean {
