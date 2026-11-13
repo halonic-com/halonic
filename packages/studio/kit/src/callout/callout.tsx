@@ -6,10 +6,11 @@ import { WarningIcon } from "../icons/warning-icon.tsx";
 
 /**
  * `info` for a fact and maybe a next step (also the "neutral" notices). `warning` when part of
- * something worked, or Halonic kept a copy: nothing was lost. `danger` only when something failed
- * and wasn't kept. There's no success tone: a success is a toast.
+ * something worked, or Halonic kept a copy: nothing was lost. `attention` (amber) for "have a
+ * look": over budget, late. `danger` only when something failed and wasn't kept. There's no
+ * success tone: a success is a toast.
  */
-export type CalloutTone = "info" | "warning" | "danger";
+export type CalloutTone = "info" | "warning" | "attention" | "danger";
 
 /** The Callout's one action, drawn as a ghost button: "Try again". */
 export interface CalloutAction {
@@ -66,12 +67,14 @@ export const CALLOUT_FILES_SHOWN = 3;
 const toneClasses: Record<CalloutTone, { readonly fill: string; readonly icon: string }> = {
   info: { fill: "bg-accent-soft", icon: "text-accent" },
   warning: { fill: "bg-warning-soft", icon: "text-warning" },
+  attention: { fill: "bg-attention-soft", icon: "text-attention" },
   danger: { fill: "bg-danger-soft", icon: "text-danger" },
 };
 
 const toneIcons: Record<CalloutTone, ReactNode> = {
   info: <InfoIcon />,
   warning: <WarningIcon />,
+  attention: <WarningIcon />,
   danger: <AlertIcon />,
 };
 

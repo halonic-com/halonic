@@ -23,9 +23,12 @@ export interface RunHeader {
 /** What the run page shows where a banner goes; `undefined` when the run needs no attention. */
 export type RunBanner =
   | {
-      /** The kit Callout: `warning` when the run needs you, `info` for a wait that isn't yours. */
+      /**
+       * The kit Callout: `warning` when the run needs you, `attention` when it stopped at its
+       * budget, `info` for a wait that isn't yours.
+       */
       readonly kind: "callout";
-      readonly tone: "info" | "warning" | "danger";
+      readonly tone: "info" | "warning" | "attention" | "danger";
       /** The hidden title that names the banner's region. */
       readonly name: string;
       /** A title the banner shows, for the budget stop only. */
@@ -121,7 +124,7 @@ function endedBanner(summary: RunSummary, workflow: string, step: string): RunBa
   if (summary.reason === "budget") {
     return {
       kind: "callout",
-      tone: "warning",
+      tone: "attention",
       name: runPageWords.budgetName,
       title: runPageWords.budgetTitle,
       lines: [runPageWords.budget(workflow, step, message), runPageWords.budgetChecks],

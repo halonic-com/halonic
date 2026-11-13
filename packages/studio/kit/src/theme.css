@@ -20,10 +20,11 @@
  *   accent (blue)       you can act on it, or you picked it
  *   halo (blue->violet) where you are, and the brand
  *   running (azure)     an agent is working
- *   warning (violet)    needs you: waiting for you, or something to look at
+ *   warning (violet)    your turn: waiting for you, or for your OK
+ *   attention (amber)   have a look: late, over budget, not connected, numbers out of date
  *   danger (rose)       failed or destructive
  *   success (teal)      done
- * No orange or yellow anywhere. Each value keeps the site's hue; its lightness is tuned to the
+ * Each value keeps the site's hue; its lightness is tuned to the
  * Studio's own surfaces, which are not the site's.
  *
  * Every text colour passes WCAG AA on the surfaces it's used on, in both modes. theme.test.ts
@@ -104,8 +105,13 @@
   --color-success: light-dark(#037365, #14b8a2); /* teal: done */
   --color-success-soft: light-dark(rgb(3 115 101 / 0.1), rgb(20 184 162 / 0.18));
   --color-on-success: light-dark(#ffffff, #0d0d1f);
-  --color-warning: light-dark(#9736c5, #d380fe); /* violet: needs you ("Needs you", a warning) */
+  --color-warning: light-dark(#9736c5, #d380fe); /* violet: your turn ("Needs you") */
   --color-warning-soft: light-dark(rgb(151 54 197 / 0.1), rgb(211 128 254 / 0.18));
+  --color-attention: light-dark(
+    #8a5300,
+    #e8a33d
+  ); /* amber: have a look (late, over budget, not connected) */
+  --color-attention-soft: light-dark(rgb(138 83 0 / 0.1), rgb(232 163 61 / 0.18));
   --color-danger: light-dark(#c70d45, #fd7692); /* rose: failed or destructive */
   --color-danger-hover: light-dark(#af073b, #fe93a6);
   --color-danger-soft: light-dark(rgb(199 13 69 / 0.1), rgb(253 118 146 / 0.18));

@@ -7,7 +7,7 @@ export type ConnectionState =
   | "not-connected";
 
 /** The colour family of a state. It only decorates: the label always carries the meaning. */
-export type ConnectionTone = "success" | "warning" | "neutral";
+export type ConnectionTone = "success" | "attention";
 
 /**
  * What is known about a connector, in terms that fit every connector. A connector
@@ -41,8 +41,8 @@ export const connectionStateTable: Readonly<
   Record<ConnectionState, { readonly label: string; readonly tone: ConnectionTone }>
 > = {
   connected: { label: "Connected", tone: "success" },
-  "needs-sign-in": { label: "Needs sign-in", tone: "warning" },
-  "needs-new-secret": { label: "Needs new secret", tone: "warning" },
-  "api-off": { label: "API off", tone: "warning" },
-  "not-connected": { label: "Not connected", tone: "neutral" },
+  "needs-sign-in": { label: "Needs sign-in", tone: "attention" },
+  "needs-new-secret": { label: "Needs new secret", tone: "attention" },
+  "api-off": { label: "API off", tone: "attention" },
+  "not-connected": { label: "Not connected", tone: "attention" },
 };
