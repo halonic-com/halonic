@@ -68,6 +68,7 @@ import {
   runDefinitionsOf,
 } from "@halonicjs/workspace";
 import { abortOnStop } from "./abort-on-stop.ts";
+import { approvedIntegrations } from "./approved-integrations.ts";
 import {
   type LocalHarnessHost,
   type LocalHarnessParts,
@@ -368,7 +369,12 @@ function engineOn(
       ids: input.ids ?? randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), clock),
       definitionsOf: async (hubId, workflowId, version, runId) =>
         versions === undefined
-          ? runDefinitionsOf(input.workspace, hubId, workflowId)
+          ? runDefinitionsOf(
+              input.workspace,
+              hubId,
+              workflowId,
+              await approvedIntegrations(input.runConnectors?.trust ?? null, input.workspaceRoot),
+            )
           : await versions.definitionsOf(hubId, workflowId, version, runId),
       ...connectors?.runs,
     },

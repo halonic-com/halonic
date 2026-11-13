@@ -17,6 +17,7 @@ import {
   runDefinitionsOf,
   VersionSource,
 } from "@halonicjs/workspace";
+import { approvedIntegrations } from "../../approved-integrations.ts";
 import { OwnLineError } from "../../command.ts";
 import type { TrustedVersion } from "../../local-run-connectors.ts";
 import { plainText } from "../../messages/phrase.ts";
@@ -185,9 +186,14 @@ export class WatchedVersions implements WorkspaceVersions {
     runId: string,
   ): Promise<RunDefinitions> {
     const workspace = await this.#workspaceAllowedAt(version);
-    await this.#checks.trust(workspace);
+    const grant = await this.#checks.trust(workspace);
     await this.#checks.sandbox(workspace, { hubId, workflowId });
-    const definitions = runDefinitionsOf(workspace, hubId, workflowId);
+    const definitions = runDefinitionsOf(
+      workspace,
+      hubId,
+      workflowId,
+      await approvedIntegrations(grant, this.#dir.root, this.#dir.shown),
+    );
     this.#latest = workspace;
     this.#workspaceOfRun.set(runId, workspace);
     return definitions;

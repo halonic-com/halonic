@@ -7,6 +7,11 @@ export {
   copyWorkspace,
 } from "./copy-workspace.ts";
 export {
+  type DeclaredToolEntry,
+  type DeclaredToolsByConnector,
+  declaredToolsOf,
+} from "./declared-tools.ts";
+export {
   connectorToolsOf,
   definitionsOf,
   definitionsVersion,
