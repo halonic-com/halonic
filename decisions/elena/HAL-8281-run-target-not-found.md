@@ -2,6 +2,7 @@
 
 - Approval: HAL-8281, from Liam's review of #2396 (HAL-8252, item 3); the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7Qb5T/2zaOB/th9G3wBsXSJ0e4n/8HsfOCjie4GEzjLDCo9Z8o6lQnoSfMTGJobYdvV8fLhrnpuFARPhrjRsAw==
 - Task: HAL-8281
 
 ## What changes
