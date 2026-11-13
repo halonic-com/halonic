@@ -120,6 +120,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             trust::pick_folder,
             trust::trust_get,
             trust::trust_list,
+            trust::trust_folders_found,
             trust::trust_grant,
             trust::trust_revoke,
             trust::reopen_folder,

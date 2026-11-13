@@ -35,6 +35,40 @@ verifies("workspace.trusted-sources", () => {
     expect(await host.list()).toEqual([]);
   });
 
+  it("marks a row whose folder is gone, and shows the list when the shell can't tell", async () => {
+    const store = new MemoryTrustStore();
+    for (const location of ["/work/here", "/work/gone"]) {
+      await store.grant({
+        location,
+        fingerprint: "hfp1:a",
+        content: {},
+        grantedAt: "2026-11-03T12:00:00.000Z",
+        appVersion: "0.1.0",
+        pins: {},
+        origin: "prompt",
+      });
+    }
+    const asked: string[][] = [];
+    const known = trustedSourcesOf(store, undefined, async (locations) => {
+      asked.push([...locations]);
+      return new Map([
+        ["/work/here", true],
+        ["/work/gone", false],
+      ]);
+    });
+    const rows = await known.list();
+    expect(rows.map((row) => [row.name, row.found])).toEqual([
+      ["gone", false],
+      ["here", true],
+    ]);
+    expect(asked).toEqual([["/work/gone", "/work/here"]]);
+
+    const unknown = trustedSourcesOf(store, undefined, async () => {
+      throw new Error("no answer");
+    });
+    expect((await unknown.list()).map((row) => row.found)).toEqual([undefined, undefined]);
+  });
+
   it("takes the trust from a folder that is open when its record is removed, without a save", async () => {
     const folder = await realpath(await mkdtemp(join(tmpdir(), "halonic-sources-")));
     try {

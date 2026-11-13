@@ -15,6 +15,7 @@ fn main() {
         "pick_folder",
         "trust_get",
         "trust_list",
+        "trust_folders_found",
         "trust_grant",
         "trust_revoke",
         "reopen_folder",

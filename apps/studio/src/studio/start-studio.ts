@@ -261,13 +261,18 @@ export async function openFolder(
   const trustView = trust === undefined ? undefined : new WorkspaceTrustView(trust, location);
   services.provide(DisplaySettingsService, display);
   services.provide(WorkspacePageService, { name, trust: trustView });
+  const trustStore = ipc === undefined ? undefined : new TauriTrustStore(ipc);
   services.provide(
     TrustedSourcesService,
-    ipc === undefined
+    trustStore === undefined
       ? { list: async () => [], remove: async () => undefined }
-      : trustedSourcesOf(new TauriTrustStore(ipc), async () => {
-          await Promise.all([...open].map((each) => each.refresh()));
-        }),
+      : trustedSourcesOf(
+          trustStore,
+          async () => {
+            await Promise.all([...open].map((each) => each.refresh()));
+          },
+          (locations) => trustStore.foldersFound(locations),
+        ),
   );
   provideShellSecrets(services, window);
   provideShellHostSettings(services, window);
