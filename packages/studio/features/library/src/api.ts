@@ -20,4 +20,5 @@ export {
   ListedToolsHostService,
   type ListedToolsSnapshot,
 } from "./listed-tools-host.ts";
+export { listedToolsSnapshot } from "./listed-tools-snapshot.ts";
 export { RefusalsFeed } from "./refusals-feed.ts";
