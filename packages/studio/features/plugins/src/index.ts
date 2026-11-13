@@ -26,6 +26,12 @@ export {
 } from "./commands/plugin-command-source.ts";
 export { TOOL_CALL_TIMEOUT_MS, timedToolCaller } from "./commands/tool-call-timeout.ts";
 export { pluginsFeature } from "./feature.ts";
+export {
+  type BuiltInPlugin,
+  PluginsList,
+  type PluginsListProps,
+  type PluginsLoad,
+} from "./list/plugins-list.tsx";
 export type { PluginActions, PluginRemoveOutcome } from "./page/plugin-actions.ts";
 export { PluginPage, type PluginPageProps } from "./page/plugin-page.tsx";
 export {

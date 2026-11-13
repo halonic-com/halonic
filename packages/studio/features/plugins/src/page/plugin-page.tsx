@@ -1,7 +1,6 @@
-import { Button, Menu, type MenuEntry, MoreIcon, useToastStore } from "@halonicjs/studio-kit";
+import { Button, Menu, type MenuEntry, MoreIcon } from "@halonicjs/studio-kit";
 import { saveNoteWords } from "@halonicjs/studio-shell";
 import { useId, useState } from "react";
-import { messageOf } from "../message-of.ts";
 import {
   type PluginSecretStore,
   type PluginSettingsReader,
@@ -10,19 +9,17 @@ import {
 } from "../settings/plugin-settings-section.tsx";
 import { OPEN_PANEL, PLUGIN, quoted } from "./page-text.ts";
 import {
-  ACTION_WORDS,
-  actionFailedLine,
   moreActionsFor,
   OPEN_FOLDER,
   type PluginActions,
   REMOVE_PLUGIN_ELLIPSIS,
   REMOVE_TRUST,
-  removedToast,
 } from "./plugin-actions.ts";
 import type { InstalledPlugin } from "./plugin-pages.ts";
 import { RemovePluginDialog } from "./remove-plugin-dialog.tsx";
 import { ReviewPluginDialog } from "./review-plugin-dialog.tsx";
 import { StatusBox } from "./status-box.tsx";
+import { usePageActions } from "./use-page-actions.ts";
 import { WhatItAdds } from "./what-it-adds.tsx";
 
 /** The props of `PluginPage`. */
@@ -197,25 +194,4 @@ function menuEntries(plugin: InstalledPlugin, act: MenuActions): MenuEntry[] {
     "divider",
     { id: "remove", label: REMOVE_PLUGIN_ELLIPSIS, danger: true, onSelect: act.remove },
   ];
-}
-
-/**
- * Runs a page action, and says in a toast when it fails: "Couldn't remove trust: *reason*."
- * `toastRemoved` is the Remove dialog's success: "*name* removed".
- */
-function usePageActions() {
-  const toasts = useToastStore();
-  return {
-    run: async (action: keyof typeof ACTION_WORDS, work: () => Promise<void>) => {
-      try {
-        await work();
-      } catch (error) {
-        const title = actionFailedLine(ACTION_WORDS[action], messageOf(error));
-        toasts?.show({ tone: "danger", title });
-      }
-    },
-    toastRemoved: (name: string) => {
-      toasts?.show({ tone: "success", title: removedToast(name) });
-    },
-  };
 }
