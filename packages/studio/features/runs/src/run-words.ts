@@ -357,3 +357,10 @@ export const receiptWords = {
   approvalByPerson: "you",
   approvalByRule: "a rule",
 };
+
+/** Home's Recent runs card (mc 3.3, 3.4). */
+export const homeWords = {
+  label: "Recent runs",
+  empty: "No runs yet. When an agent or workflow runs, you'll see it here.",
+  seeAll: "See all runs",
+};
