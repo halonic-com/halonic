@@ -17,6 +17,7 @@ import {
 } from "@halonicjs/oauth-sign-in";
 import type { Clock, Digest, HttpClient, Secrets } from "@halonicjs/ports";
 import type { RandomBytes } from "@halonicjs/std";
+import { createHttpsOnlyClient } from "./https-only-client.ts";
 import type { IntegrationSignIns, SignInLookup } from "./integration-sign-ins.ts";
 
 /** What a sign-in keeps while the browser is at the provider, on top of the generic details. */
@@ -36,7 +37,11 @@ export interface SignInFlowSettings {
   /** Looks sign-ins up the way the trust check shows them, and so tells what the sheet says now. */
   readonly signIns: Pick<IntegrationSignIns, "lookUp">;
   readonly grants: SignInGrants;
-  /** The server's `HttpClient`: https only, no redirects, a limited answer. */
+  /**
+   * The server's `HttpClient`: no redirects, a limited answer. The factory
+   * wraps it with `createHttpsOnlyClient`, so every sign-in request goes over
+   * https whatever the caller passes.
+   */
   readonly http: HttpClient;
   readonly secrets: Secrets;
   readonly clock: Clock;
@@ -126,7 +131,8 @@ export interface SignInFlow {
  * const flow = createSignInFlow({ integration: "gitlab", signIns, grants, http, secrets, clock, digest, randomBytes, requestSignal });
  * const started = await flow.start("work-account", server.port);
  */
-export function createSignInFlow(settings: SignInFlowSettings): SignInFlow {
+export function createSignInFlow(given: SignInFlowSettings): SignInFlow {
+  const settings = { ...given, http: createHttpsOnlyClient(given.http) };
   const pending = createPendingSignIns<IntegrationPendingDetails>(settings.clock);
   /** The callback paths that may still be answered, so a path is checked before `state` is read. */
   const paths = new Map<string, { readonly signIn: string; readonly startedAt: Date }>();

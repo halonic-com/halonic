@@ -50,5 +50,5 @@ export {
 export { type SignOutResult, type SignOutSettings, signOut } from "./sign-out.ts";
 export { createState, stateMatches } from "./state.ts";
 export { classifyTokenAnswer, type TokenAnswer, type TokenAnswerMeaning } from "./token-answer.ts";
-export { postTokenForm, tokenRequestTimeoutMs } from "./token-request.ts";
-export { isUsableToken, minTokenLength } from "./usable-token.ts";
+export { maxTokenAnswerBytes, postTokenForm, tokenRequestTimeoutMs } from "./token-request.ts";
+export { isUsableToken, maxTokenLength, minTokenLength } from "./usable-token.ts";

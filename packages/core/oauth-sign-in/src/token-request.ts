@@ -1,10 +1,14 @@
 import type { HttpClient } from "@halonicjs/ports";
+import { readCappedText } from "./capped-body.ts";
 import { formBody } from "./form-body.ts";
 import { parseJson } from "./json.ts";
 import type { TokenAnswer } from "./token-answer.ts";
 
 /** The longest the token endpoint, or the revoke endpoint, gets to answer. */
 export const tokenRequestTimeoutMs = 10_000;
+
+/** The most the token endpoint's answer, or the revoke endpoint's, may hold: 64 KiB. */
+export const maxTokenAnswerBytes = 64 * 1024;
 
 /**
  * Sends one form to a token endpoint: the code exchange or a refresh.
@@ -41,7 +45,8 @@ export async function postTokenForm(
       redirect: "error",
       signal,
     });
-    return { status: response.status, json: parseJson(await response.text()) };
+    const text = await readCappedText(response, maxTokenAnswerBytes);
+    return text === undefined ? undefined : { status: response.status, json: parseJson(text) };
   } catch {
     return undefined;
   }
