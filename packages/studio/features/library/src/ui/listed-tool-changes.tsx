@@ -22,11 +22,14 @@ function Side({
   label,
   pieces,
   own,
+  missing,
   empty,
 }: {
   readonly label: string;
   readonly pieces: readonly WordPiece[];
   readonly own: "removed" | "added";
+  /** The text doesn't exist on this side, as against existing and being empty. */
+  readonly missing: boolean;
   readonly empty: string;
 }) {
   const shown = pieces.filter((piece) => piece.kind === "same" || piece.kind === own);
@@ -34,7 +37,7 @@ function Side({
     <div className="flex min-w-0 flex-col gap-1">
       <span className="text-small text-fg-muted">{label}</span>
       <p className="whitespace-pre-line text-body text-fg [overflow-wrap:anywhere]">
-        {shown.length === 0
+        {missing
           ? empty
           : shown.map((piece, index) => (
               <span key={`${index}:${piece.kind}`} className={pieceStyle[piece.kind]}>
@@ -59,12 +62,14 @@ function Difference({ difference }: { readonly difference: ListedToolDifference 
           label={listedToolsWords.approvedVersion}
           pieces={pieces}
           own="removed"
+          missing={difference.before === null}
           empty={listedToolsWords.none}
         />
         <Side
           label={listedToolsWords.newVersion}
           pieces={pieces}
           own="added"
+          missing={difference.after === null}
           empty={listedToolsWords.removedText}
         />
       </div>

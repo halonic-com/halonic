@@ -42,12 +42,21 @@ function commonLengths(before: readonly string[], after: readonly string[]): num
 }
 
 /**
- * The words that left, stayed and arrived between two texts. `removed` pieces belong to the
- * old version's column and `added` pieces to the new one's; `same` pieces show in both.
+ * The most table cells {@link wordDiff} fills. A connector's server writes these texts, so a very
+ * long one must not freeze Studio; above the limit the two texts are shown whole, as removed and added.
  */
-export function wordDiff(before: string, after: string): WordPiece[] {
-  const old = tokens(before);
-  const now = tokens(after);
+export const wordDiffCellLimit = 250_000;
+
+/** Both texts as one removed and one added piece, leaving out an empty side. */
+function wholeTexts(before: string, after: string): WordPiece[] {
+  const pieces: WordPiece[] = [];
+  if (before !== "") pieces.push({ kind: "removed", text: before });
+  if (after !== "") pieces.push({ kind: "added", text: after });
+  return pieces;
+}
+
+/** Walks the table back from the end, collecting what stayed, arrived and left. */
+function diffPieces(old: readonly string[], now: readonly string[]): WordPiece[] {
   const table = commonLengths(old, now);
   const pieces: WordPiece[] = [];
   let row = old.length;
@@ -68,5 +77,16 @@ export function wordDiff(before: string, after: string): WordPiece[] {
       row--;
     }
   }
-  return merged(pieces.reverse());
+  return pieces.reverse();
+}
+
+/**
+ * The words that left, stayed and arrived between two texts. `removed` pieces belong to the
+ * old version's column and `added` pieces to the new one's; `same` pieces show in both.
+ */
+export function wordDiff(before: string, after: string): WordPiece[] {
+  const old = tokens(before);
+  const now = tokens(after);
+  if ((old.length + 1) * (now.length + 1) > wordDiffCellLimit) return wholeTexts(before, after);
+  return merged(diffPieces(old, now));
 }

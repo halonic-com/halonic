@@ -58,6 +58,17 @@ describe("ListedToolChanges", () => {
       expect(view.textContent).toContain("(removed)");
     });
 
+    it("does not say (none) for a text that exists but is empty", () => {
+      const view = render(
+        <ListedToolChanges
+          differences={[difference({ before: "", after: "Now has text." })]}
+          serverChanged={false}
+          sourceName="Notes server"
+        />,
+      );
+      expect(view.textContent).not.toContain("(none)");
+    });
+
     it("shows a plate, not columns, when only the server changed", () => {
       const view = render(
         <ListedToolChanges differences={[]} serverChanged sourceName="Notes server" />,

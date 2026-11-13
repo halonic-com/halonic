@@ -32,5 +32,13 @@ describe("wordDiff", () => {
       expect(wordDiff("", "new")).toEqual([{ kind: "added", text: "new" }]);
       expect(wordDiff("old", "")).toEqual([{ kind: "removed", text: "old" }]);
     });
+
+    it("shows two very long texts whole instead of comparing them word by word", () => {
+      const long = (word: string) => Array.from({ length: 2000 }, () => word).join(" ");
+      expect(wordDiff(long("a"), long("b"))).toEqual([
+        { kind: "removed", text: long("a") },
+        { kind: "added", text: long("b") },
+      ]);
+    });
   });
 });
