@@ -9,6 +9,13 @@ import {
 } from "./fake-integration.test-helper.ts";
 
 const shortToken = "short";
+const newRefreshToken = "fake-refresh-token-of-the-second-sign-in";
+
+/** Starts a sign-in and answers its callback with the code. */
+async function signInWith(test: ReturnType<typeof exampleFlow>, code: string): Promise<void> {
+  const started = await test.started();
+  await test.flow.handleCallback(started.callback({ state: started.state, code }));
+}
 
 verifies("integration-sign-in.sign-in-flow", () => {
   it("builds the authorize URL itself, with a redirect to a random path on 127.0.0.1", async () => {
@@ -180,6 +187,76 @@ verifies("integration-sign-in.sign-in-flow", () => {
     expect(await test.grants.find("example", signInName)).toBeUndefined();
   });
 
+  it("revokes the old grant at its approved URL and drops it before saving the new one", async () => {
+    const test = exampleFlow();
+    await signInWith(test, "fake-code-1");
+    test.changeSettings({ clientId: "another-fake-client" });
+    test.answerWith({
+      status: 200,
+      body: { access_token: fakeAccessToken, token_type: "Bearer", refresh_token: newRefreshToken },
+    });
+    test.seen.length = 0;
+
+    await signInWith(test, "fake-code-2");
+
+    const [exchange, revoke] = test.seen;
+    expect(revoke?.url).toBe("https://auth.example.com/oauth/revoke");
+    expect(revoke?.body).toContain(`token=${rotatedRefreshToken}`);
+    expect(revoke?.body).toContain("client_id=fake-client");
+    expect(exchange?.url).toBe("https://auth.example.com/oauth/token");
+    expect(test.seen).toHaveLength(2);
+    expect(test.outcomes.at(-1)).toEqual({
+      kind: "signedIn",
+      signIn: signInName,
+      missingScopes: [],
+      extraScopes: [],
+      previousGrant: "revoked",
+    });
+    const grant = await test.grants.find("example", signInName);
+    expect(grant?.refreshToken).toBe(newRefreshToken);
+    expect(grant?.approved.clientId).toBe("another-fake-client");
+  });
+
+  it("drops the old grant and says so when the provider doesn't confirm the revoke", async () => {
+    const test = exampleFlow();
+    await signInWith(test, "fake-code-1");
+    test.answerRevokeWith(500);
+    test.answerWith({
+      status: 200,
+      body: { access_token: fakeAccessToken, token_type: "Bearer", refresh_token: newRefreshToken },
+    });
+
+    await signInWith(test, "fake-code-2");
+
+    expect(test.outcomes.at(-1)).toMatchObject({ kind: "signedIn", previousGrant: "notConfirmed" });
+    expect((await test.grants.find("example", signInName))?.refreshToken).toBe(newRefreshToken);
+  });
+
+  it("revokes nothing when no grant was there", async () => {
+    const test = exampleFlow();
+
+    await signInWith(test, "fake-code-1");
+
+    expect(test.seen.map((request) => request.url)).toEqual([
+      "https://auth.example.com/oauth/token",
+    ]);
+    expect(test.outcomes[0]).not.toHaveProperty("previousGrant");
+  });
+
+  it("keeps the old grant when the new sign-in is refused", async () => {
+    const test = exampleFlow();
+    await signInWith(test, "fake-code-1");
+    test.answerWith({ status: 200, body: { access_token: fakeAccessToken, token_type: "mac" } });
+    test.seen.length = 0;
+
+    await signInWith(test, "fake-code-2");
+
+    expect(test.seen.map((request) => request.url)).toEqual([
+      "https://auth.example.com/oauth/token",
+    ]);
+    expect((await test.grants.find("example", signInName))?.refreshToken).toBe(rotatedRefreshToken);
+  });
+
   it.each([
     [
       "a token type that isn't bearer",
@@ -334,6 +411,16 @@ verifies("integration-sign-in.sign-in-flow", () => {
     await test.flow.handleCallback(started.callback({ state: started.state, code: "c" }));
 
     expect(test.outcomes[0]?.kind).toBe("unreachable");
+  });
+
+  it("counts a token URL on http as unreachable and never calls the client", async () => {
+    const test = exampleFlow({ tokenUrl: "http://auth.example.com/oauth/token" });
+    const started = await test.started();
+
+    await test.flow.handleCallback(started.callback({ state: started.state, code: "c" }));
+
+    expect(test.outcomes[0]?.kind).toBe("unreachable");
+    expect(test.seen).toEqual([]);
   });
 
   it("doesn't start when the client secret isn't in the store, or a setting is missing, or the name is unknown", async () => {

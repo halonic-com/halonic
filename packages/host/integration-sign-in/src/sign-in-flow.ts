@@ -17,6 +17,7 @@ import {
 } from "@halonicjs/oauth-sign-in";
 import type { Clock, Digest, HttpClient, Secrets } from "@halonicjs/ports";
 import type { RandomBytes } from "@halonicjs/std";
+import { createHttpsOnlyClient } from "./https-only-client.ts";
 import type { IntegrationSignIns, SignInLookup } from "./integration-sign-ins.ts";
 
 /** What a sign-in keeps while the browser is at the provider, on top of the generic details. */
@@ -34,9 +35,13 @@ export interface SignInFlowSettings {
   /** The integration, as its sheet names it. */
   readonly integration: string;
   /** Looks sign-ins up the way the trust check shows them, and so tells what the sheet says now. */
-  readonly signIns: Pick<IntegrationSignIns, "lookUp">;
+  readonly signIns: Pick<IntegrationSignIns, "lookUp" | "signOut">;
   readonly grants: SignInGrants;
-  /** The server's `HttpClient`: https only, no redirects, a limited answer. */
+  /**
+   * The server's `HttpClient`: no redirects, a limited answer. The factory
+   * wraps it with `createHttpsOnlyClient`, so every sign-in request goes over
+   * https whatever the caller passes.
+   */
   readonly http: HttpClient;
   readonly secrets: Secrets;
   readonly clock: Clock;
@@ -75,6 +80,12 @@ export type SignInOutcome =
       readonly missingScopes: readonly string[];
       /** Scopes the provider granted beyond the ones asked for. Usually none. */
       readonly extraScopes: readonly string[];
+      /**
+       * What became of the grant this sign-in replaced, when there was one. It
+       * is dropped in every case; `notConfirmed` and `noRevokeUrl` say the
+       * provider may still honour its refresh token.
+       */
+      readonly previousGrant?: "revoked" | "notConfirmed" | "noRevokeUrl";
     }
   | {
       readonly kind: "cancelled" | "incompleteCallback" | "linkNoLongerValid";
@@ -126,7 +137,8 @@ export interface SignInFlow {
  * const flow = createSignInFlow({ integration: "gitlab", signIns, grants, http, secrets, clock, digest, randomBytes, requestSignal });
  * const started = await flow.start("work-account", server.port);
  */
-export function createSignInFlow(settings: SignInFlowSettings): SignInFlow {
+export function createSignInFlow(given: SignInFlowSettings): SignInFlow {
+  const settings = { ...given, http: createHttpsOnlyClient(given.http) };
   const pending = createPendingSignIns<IntegrationPendingDetails>(settings.clock);
   /** The callback paths that may still be answered, so a path is checked before `state` is read. */
   const paths = new Map<string, { readonly signIn: string; readonly startedAt: Date }>();
@@ -267,11 +279,19 @@ export function createSignInFlow(settings: SignInFlowSettings): SignInFlow {
     if (read.kind !== "refreshable") {
       return read;
     }
+    // The old grant is signed out first, at the URL its own approval named, so
+    // the provider is not left with a refresh token nobody holds.
+    const previous = await settings.signIns.signOut(signIn);
     await settings.grants.save(settings.integration, signIn, {
       refreshToken: read.refreshToken,
       approved,
     });
-    return { kind: "signedIn", signIn, ...scopeDifference(started.scopes, read.grantedScopes) };
+    return {
+      kind: "signedIn",
+      signIn,
+      ...scopeDifference(started.scopes, read.grantedScopes),
+      ...(previous.kind === "signedOut" ? { previousGrant: previous.revoke } : {}),
+    };
   }
 
   return { start, handleCallback, cancel: forget };

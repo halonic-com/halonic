@@ -19,6 +19,11 @@ export const trustCommands = {
   /** `{}` → every record, sorted by location. */
   list: "trust_list",
   /**
+   * `{ locations }` → an object of whether each folder is there now, by the location as asked.
+   * Only a location with a trust record is answered; any other is left out.
+   */
+  foldersFound: "trust_folders_found",
+  /**
    * `{ record }` → nothing. The shell saves the record only when the person
    * chose its folder in the shell: picked it in the folder dialog, or said
    * yes when the shell asked. It then adds the folder to the folders git and

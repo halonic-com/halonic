@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { readRefreshAnswer } from "./refresh-answer.ts";
-import { isUsableToken } from "./usable-token.ts";
+import { isUsableToken, maxTokenLength } from "./usable-token.ts";
 
 // Fake values only; none is real.
 const fakeAccessToken = "fake-access-token-0000000001";
@@ -119,6 +119,13 @@ verifies("oauth-sign-in.usable-token", () => {
   it("accepts visible ASCII of 16 characters or more", () => {
     expect(isUsableToken("a".repeat(16))).toBe(true);
     expect(isUsableToken("Aa0!~-_.=+/".repeat(3))).toBe(true);
+  });
+
+  it("accepts a token of the longest length and refuses one character more", () => {
+    expect(maxTokenLength).toBe(4096);
+    expect(isUsableToken("a".repeat(4096))).toBe(true);
+    expect(isUsableToken("a".repeat(4097))).toBe(false);
+    expect(isUsableToken("a".repeat(1024 * 1024))).toBe(false);
   });
 
   it.each([

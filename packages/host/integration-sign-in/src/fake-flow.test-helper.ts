@@ -6,6 +6,7 @@ import {
   fakeAccessToken,
   fakeClientSecret,
   rotatedRefreshToken,
+  sheetWithTokenUrl,
   webDigest,
 } from "./fake-integration.test-helper.ts";
 import {
@@ -27,7 +28,9 @@ export interface SeenRequest {
 }
 
 /** A sign-in flow with a fake store, token endpoint, settings and randomness. */
-export function exampleFlow(options: { settings?: Record<string, unknown>; issuer?: string } = {}) {
+export function exampleFlow(
+  options: { settings?: Record<string, unknown>; issuer?: string; tokenUrl?: string } = {},
+) {
   const values = new Map<string, string>();
   let storeFails = false;
   const grants: SignInGrants = createSignInGrants(
@@ -52,14 +55,21 @@ export function exampleFlow(options: { settings?: Record<string, unknown>; issue
     },
   };
   let source: SignInSource = {
-    sheet: withIssuer(exampleSheet(), options.issuer),
+    sheet: withIssuer(
+      options.tokenUrl === undefined ? exampleSheet() : sheetWithTokenUrl(options.tokenUrl),
+      options.issuer,
+    ),
     settings: options.settings ?? { clientId: "fake-client" },
   };
+  let revokeStatus = 200;
   let secret: string | null = fakeClientSecret;
   let counter = 0;
   const http: HttpClient = {
     async fetch(url, init) {
       seen.push({ url, body: String(init?.body) });
+      if (url.endsWith("/revoke")) {
+        return new Response("", { status: revokeStatus });
+      }
       if (answer === "unreachable") {
         throw new Error("fake network failure");
       }
@@ -98,6 +108,9 @@ export function exampleFlow(options: { settings?: Record<string, unknown>; issue
     values,
     answerWith(next: ExchangeAnswer) {
       answer = next;
+    },
+    answerRevokeWith(status: number) {
+      revokeStatus = status;
     },
     changeSettings(settings: Record<string, unknown>) {
       source = { ...source, settings };

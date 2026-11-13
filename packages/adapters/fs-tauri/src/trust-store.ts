@@ -56,6 +56,30 @@ export class TauriTrustStore implements TrustStore {
     return answer.map(checkedRecord);
   }
 
+  /**
+   * Whether the folder of each of `locations` is still on this computer. A location without a
+   * record is not in the map.
+   *
+   * @throws KindedError `unavailable` when the shell gives no usable answer
+   */
+  async foldersFound(locations: readonly string[]): Promise<ReadonlyMap<string, boolean>> {
+    if (locations.length === 0) {
+      return new Map();
+    }
+    const answer = await this.#call(trustCommands.foldersFound, { locations: [...locations] });
+    if (typeof answer !== "object" || answer === null || Array.isArray(answer)) {
+      throw noAnswer();
+    }
+    const found = new Map<string, boolean>();
+    for (const [location, there] of Object.entries(answer)) {
+      if (typeof there !== "boolean") {
+        throw noAnswer();
+      }
+      found.set(location, there);
+    }
+    return found;
+  }
+
   /** Runs one command, turning a refusal into the error the port asks for. */
   async #call(command: string, args: Record<string, unknown>): Promise<unknown> {
     try {

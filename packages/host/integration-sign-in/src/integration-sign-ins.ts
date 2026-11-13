@@ -15,6 +15,7 @@ import {
   SignInNeededError,
   type SignInTokens,
 } from "@halonicjs/ports";
+import { createHttpsOnlyClient } from "./https-only-client.ts";
 
 /** The sheet and the settings of an integration, as they are at this moment. */
 export interface SignInSource {
@@ -33,7 +34,11 @@ export interface IntegrationSignInsSettings {
    */
   current(): Promise<SignInSource>;
   readonly grants: SignInGrants;
-  /** The server's `HttpClient`: https only, no redirects, a limited answer. */
+  /**
+   * The server's `HttpClient`: no redirects, a limited answer. The factory
+   * wraps it with `createHttpsOnlyClient`, so every sign-in request goes over
+   * https whatever the caller passes.
+   */
   readonly http: HttpClient;
   readonly secrets: Secrets;
   readonly clock: Clock;
@@ -73,7 +78,8 @@ export interface IntegrationSignIns {
  * @example
  * const { tokens, signOut } = createIntegrationSignIns({ integration: "gitlab", current, grants, http, secrets, clock, requestSignal });
  */
-export function createIntegrationSignIns(settings: IntegrationSignInsSettings): IntegrationSignIns {
+export function createIntegrationSignIns(given: IntegrationSignInsSettings): IntegrationSignIns {
+  const settings = { ...given, http: createHttpsOnlyClient(given.http) };
   const signingOut = new Map<string, Promise<SignOutResult>>();
 
   async function lookUp(signIn: string): Promise<SignInLookup> {

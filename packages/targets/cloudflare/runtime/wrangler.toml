@@ -1,0 +1,23 @@
+# The Halonic Worker. Deployed through the Cloudflare connection, never by hand.
+name = "halonic-cloud"
+main = "src/index.ts"
+# The same date the test harness runs workerd with (checked in wrangler-config.test.ts).
+compatibility_date = "2026-07-30"
+
+[[durable_objects.bindings]]
+name = "COORDINATION"
+class_name = "CoordinationObject"
+
+[[durable_objects.bindings]]
+name = "RUN"
+class_name = "RunObject"
+
+[[durable_objects.bindings]]
+name = "ROUTINES"
+class_name = "RoutinesObject"
+
+# Cloudflare keys an object's data by its class name: never rename or remove a class listed here.
+# A new class gets a new [[migrations]] entry, and a name in durableObjectClassNames.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["CoordinationObject", "RunObject", "RoutinesObject"]

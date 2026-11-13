@@ -44,6 +44,13 @@ export function exampleSheet(): IntegrationSheet {
   return parsed.value;
 }
 
+/** The example sheet with its sign-in's token URL replaced, as a sheet that passed no check could have it. */
+export function sheetWithTokenUrl(tokenUrl: string): IntegrationSheet {
+  const sheet = exampleSheet();
+  const signIn = sheet.signIns[signInName];
+  return { ...sheet, signIns: { [signInName]: { ...signIn, tokenUrl } } } as IntegrationSheet;
+}
+
 export const webDigest: Digest = {
   async sha256(data) {
     return new Uint8Array(await crypto.subtle.digest("SHA-256", Uint8Array.from(data)));
@@ -90,7 +97,7 @@ export function fakeProvider(hold: boolean): HttpClient & {
 
 /** An integration with its fake store, provider and settings. */
 export function exampleIntegration(
-  options: { settings?: Record<string, unknown>; hold?: boolean } = {},
+  options: { settings?: Record<string, unknown>; hold?: boolean; tokenUrl?: string } = {},
 ) {
   const values = new Map<string, string>();
   const grants: SignInGrants = createSignInGrants(
@@ -104,7 +111,7 @@ export function exampleIntegration(
   const provider = fakeProvider(options.hold ?? false);
   const clock: Clock = { now: () => new Date(Date.UTC(2026, 10, 13)) };
   let source: SignInSource = {
-    sheet: exampleSheet(),
+    sheet: options.tokenUrl === undefined ? exampleSheet() : sheetWithTokenUrl(options.tokenUrl),
     settings: options.settings ?? { clientId: "fake-client" },
   };
   const signIns: IntegrationSignIns = createIntegrationSignIns({
