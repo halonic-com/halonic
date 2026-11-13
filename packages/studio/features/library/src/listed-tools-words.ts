@@ -3,6 +3,11 @@ export function toolCount(count: number): string {
   return `${count} ${count === 1 ? "tool" : "tools"}`;
 }
 
+/** "stays" for one tool, "stay" for any other count. */
+function staysOff(count: number): string {
+  return count === 1 ? "stays off" : "stay off";
+}
+
 /** The words of the listed-tools review screen (microcopy 27, HAL-751). */
 export const listedToolsWords = {
   title: (source: string) => `Review the tools from ${source}`,
@@ -21,9 +26,9 @@ export const listedToolsWords = {
   approved: (count: number, source: string, stayingOff: number) =>
     stayingOff === 0
       ? `Approved ${toolCount(count)} from ${source}`
-      : `Approved ${toolCount(count)} from ${source}. ${stayingOff} stays off.`,
+      : `Approved ${toolCount(count)} from ${source}. ${stayingOff} ${staysOff(stayingOff)}.`,
   approvedNone: (source: string, stayingOff: number) =>
-    `Nothing approved. ${toolCount(stayingOff)} from ${source} stay off.`,
+    `Nothing approved. ${toolCount(stayingOff)} from ${source} ${staysOff(stayingOff)}.`,
   removed: (tool: string) =>
     `Removed your approval for ${tool}. It's off until you approve it again.`,
   changedAgain: (tool: string) =>

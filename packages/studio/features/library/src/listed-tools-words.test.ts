@@ -32,4 +32,22 @@ verifies("library.listed-tools-review", () => {
       "Approved 2 tools from Notes server",
     );
   });
+
+  it("makes the verb of the Approved toast follow the count that stays off", () => {
+    expect(listedToolsWords.approved(1, "Notes server", 1)).toBe(
+      "Approved 1 tool from Notes server. 1 stays off.",
+    );
+    expect(listedToolsWords.approved(1, "Notes server", 2)).toBe(
+      "Approved 1 tool from Notes server. 2 stay off.",
+    );
+  });
+
+  it("makes the verb of the Approve none toast follow the count that stays off", () => {
+    expect(listedToolsWords.approvedNone("Notes server", 1)).toBe(
+      "Nothing approved. 1 tool from Notes server stays off.",
+    );
+    expect(listedToolsWords.approvedNone("Notes server", 2)).toBe(
+      "Nothing approved. 2 tools from Notes server stay off.",
+    );
+  });
 });
