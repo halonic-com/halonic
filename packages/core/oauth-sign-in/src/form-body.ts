@@ -7,7 +7,7 @@ const plainCharacters = /[A-Za-z0-9*\-._]/;
  * as `URLSearchParams` writes it. The core has no `URLSearchParams` value,
  * so the form body is written here.
  */
-function encodeFormComponent(text: string): string {
+export function encodeFormComponent(text: string): string {
   return Array.from(text, (character) => {
     if (character === " ") return "+";
     if (plainCharacters.test(character)) return character;
