@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { SetupViewProps } from "@halonicjs/studio-feature-inbox/api";
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { loadView } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, type ComponentType } from "react";
@@ -368,5 +369,38 @@ verifies("google-setup.resume-and-start-over", () => {
     await press(link);
     expect(dialog(container)).toBeNull();
     expect(fake.startOvers).toEqual([]);
+  });
+});
+
+verifies("google-setup.phone-view", () => {
+  async function openOnPhone(accounts: readonly GoogleSetupAccount[]) {
+    const fake = fakeAccounts(accounts);
+    const container = render(
+      <PresentationProvider presentation="phone">
+        <GoogleSetupView item={item} answering close={vi.fn()} accounts={fake.source} />
+      </PresentationProvider>,
+    );
+    await settled();
+    return container;
+  }
+
+  it("shows the steps as text, with the page title and the one line first", async () => {
+    const container = await openOnPhone([account(twoDone, { services: [ledger] })]);
+    expect(container.querySelector("h2")?.textContent).toBe("Google for x@example.com");
+    const text = container.textContent ?? "";
+    expect(text).toContain(
+      "Set this up on a computer. Google Cloud Console is hard to use on a phone.",
+    );
+    expect(text).toContain("Personal Google account");
+    expect(text).toContain("2 of 7 steps done");
+    expect(steps(container)).toHaveLength(7);
+    expect(steps(container)[2]?.textContent).toContain("Continue on a computer.");
+    expect(steps(container)[0]?.textContent).not.toContain("Continue on a computer.");
+    expect(steps(container)[2]?.getAttribute("aria-current")).toBe("step");
+  });
+
+  it("has no button and no field", async () => {
+    const container = await openOnPhone([account(twoDone, { services: [ledger] })]);
+    expect(container.querySelectorAll("button, input, a")).toHaveLength(0);
   });
 });

@@ -1,11 +1,12 @@
 import type { AccountType, SetupEdit } from "@halonicjs/google-setup";
 import type { SetupViewProps } from "@halonicjs/studio-feature-inbox/api";
-import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
+import { EmptyState, SkeletonBar, usePresentation } from "@halonicjs/studio-kit";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { accountSteps } from "../account-steps.ts";
 import type { GoogleSetupAccount, GoogleSetupAccounts } from "../api.ts";
 import { AccountHeader } from "./account-header.tsx";
 import { Checklist, currentStep } from "./checklist.tsx";
+import { PhoneView } from "./phone-view.tsx";
 import { resumeLine } from "./resume-line.ts";
 import { StartOver } from "./start-over.tsx";
 
@@ -84,6 +85,7 @@ function useAccount(accounts: GoogleSetupAccounts, ref: string): AccountRead {
  */
 export function GoogleSetupView({ item, answering, close, accounts }: GoogleSetupViewProps) {
   const { account, problem, retry, refresh } = useAccount(accounts, item.account);
+  const phone = usePresentation() === "phone";
   // Counts the times the setup was started over: the checklist starts afresh, at step 1.
   const [restarts, setRestarts] = useState(0);
   // Whether the item opened with steps already done: it then says when it was started.
@@ -125,6 +127,8 @@ export function GoogleSetupView({ item, answering, close, accounts }: GoogleSetu
       </div>
     );
   }
+
+  if (phone) return <PhoneView account={account} steps={steps} />;
 
   const edit = (change: SetupEdit) => accounts.edit(account.record.accountRef, change);
   const asking = account.askAccountType;
