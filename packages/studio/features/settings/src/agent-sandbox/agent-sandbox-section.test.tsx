@@ -134,6 +134,22 @@ verifies("settings.agent-sandbox-section", () => {
     expect(button(view, "Repair the sandbox")).toBeDefined();
   });
 
+  it("asks for a restart, not a repair, when the check after a setup says Windows must restart", async () => {
+    const { host, end, setCheck } = fakeHost(needsSetup);
+    const { view } = await show(host);
+    await click(button(view, "Set up the sandbox"));
+    setCheck({ state: "restart-needed" });
+    await end(null);
+    expect(view.textContent).toContain("Restart needed");
+    expect(view.textContent).toContain(
+      "Windows needs to restart to finish setting up the sandbox.",
+    );
+    expect(view.textContent).not.toContain("Needs repair");
+    expect(view.textContent).not.toContain("didn't pass its check");
+    expect(() => button(view, "Repair the sandbox")).toThrow();
+    expect(button(view, "Check again")).toBeDefined();
+  });
+
   it("says a setup took 3 minutes and leaves it running", async () => {
     vi.useFakeTimers();
     const { host } = fakeHost(needsSetup);

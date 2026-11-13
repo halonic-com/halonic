@@ -144,7 +144,9 @@ type Ended =
 /**
  * Runs the host's command until it ends, or, when `joining`, follows the one that already runs
  * without starting another; then, if it worked, the check that follows it (`onChecking` says the
- * check began). A setup whose check doesn't pass failed its check. Undefined when `signal` aborted.
+ * check began). A setup whose check doesn't pass failed its check, except a check that says
+ * Windows must restart (`restart-needed`): that is not a failure, so it carries no outcome and the
+ * section shows Restart needed. Undefined when `signal` aborted.
  */
 async function runCommand(
   host: AgentSandboxHost,
@@ -170,7 +172,8 @@ async function runCommand(
   if (failure !== null) return { outcome: failure };
   onChecking();
   const check = await readCheck();
-  if (removing || check.state === "ready") return { outcome: null, check };
+  if (removing || check.state === "ready" || check.state === "restart-needed")
+    return { outcome: null, check };
   const outcome: SandboxOutcome = {
     kind: "setup",
     how: "check_failed",

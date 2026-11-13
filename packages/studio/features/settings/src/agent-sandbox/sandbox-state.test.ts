@@ -71,6 +71,14 @@ verifies("settings.agent-sandbox-state", () => {
     expect(v.primary).toBeNull();
   });
 
+  it("asks for a restart with Check again only, never Repair", () => {
+    const v = view({ check: { state: "restart-needed" } });
+    expect(v.chip).toEqual({ label: "Restart needed", tone: "warning" });
+    expect(v.lead).toContain("Windows needs to restart");
+    expect(v.primary).toBeNull();
+    expect(v.secondary).toEqual(["check-again"]);
+  });
+
   it("shows Not available and no button when the build has no sandbox", () => {
     const v = view({ available: false });
     expect(v.chip?.label).toBe("Not available");

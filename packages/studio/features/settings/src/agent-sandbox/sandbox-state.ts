@@ -25,6 +25,8 @@ export type SandboxCheckFacts =
   | { readonly state: "needs-repair"; readonly reason: string }
   /** The check ran and says the sandbox can't run now, for a reason a person or an administrator fixes. */
   | { readonly state: "unavailable"; readonly reason: string }
+  /** The setup is done, but Windows must restart before the sandbox can run. */
+  | { readonly state: "restart-needed" }
   /** The check itself didn't happen or couldn't be read. */
   | { readonly state: "unknown"; readonly reason: string };
 
@@ -142,6 +144,14 @@ function checkedView(
         ...none,
         chip: null,
         lead: text.notReady(check.reason),
+        callout,
+        secondary: ["check-again"],
+      };
+    case "restart-needed":
+      return {
+        ...none,
+        chip: { label: "Restart needed", tone: "warning" },
+        lead: text.RESTART_NEEDED,
         callout,
         secondary: ["check-again"],
       };

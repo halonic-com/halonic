@@ -40,10 +40,11 @@ const needsRepair: readonly SandboxUnavailableReason[] = ["distro-missing", "set
 
 /**
  * The agent host's sandbox as Settings › Agent sandbox reads it: the host's check becomes Ready,
- * Needs setting up (`setup-needed`), Needs repair (part of the setup is there but wrong) or a
- * check that says why the sandbox can't run now (Unavailable). The setup and the removal start only when the section calls
- * them, from a press, and run until the host says how they ended, however long the administrator
- * prompt takes (HAL-1451).
+ * Needs setting up (`setup-needed`), Needs repair (part of the setup is there but wrong), Restart
+ * needed (Windows must restart to finish the setup) or a check that says why the sandbox can't run
+ * now (Unavailable). The setup and the removal start only when the section calls them, from a
+ * press, and run until the host says how they ended, however long the administrator prompt takes
+ * (HAL-1451).
  */
 export class AgentHostSandboxFacts implements AgentSandboxHost {
   readonly available = true;
@@ -69,6 +70,7 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
         ? `${check.missing[0].replace(/\.+$/, "")}.`
         : reasons[check.reason];
     if (check.reason === "setup-needed") return { state: "needs-setup" };
+    if (check.reason === "restart-needed") return { state: "restart-needed" };
     if (needsRepair.includes(check.reason)) return { state: "needs-repair", reason };
     return { state: "unavailable", reason };
   }
