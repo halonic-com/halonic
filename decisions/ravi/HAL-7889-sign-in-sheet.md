@@ -2,6 +2,7 @@
 
 - Approval: design HAL-984 v0.4, decision 2 (`kit: 2` for `signIns`, the loader refuses a too-new `kit` with a plain message), approved by Liam on HAL-1080 and Julian on HAL-1081; built in HAL-7889
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:798eHMMbSBnOJccTGUux/BnBbSUIGdfMtIZ59U5Happoy6B3O82Wxxb38Of0T6Vt0WMl5Uqoqxp3oCJCdB6tCA==
 - Task: HAL-7889
 
 ## What changes
