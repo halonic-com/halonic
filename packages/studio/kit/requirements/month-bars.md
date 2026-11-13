@@ -12,3 +12,4 @@ The kit's `MonthBars` shall draw the last six months' values as bars on a card, 
 - Given a current month and an earlier month, when it renders, then the current bar is `series-1` and the earlier one `series-other`.
 - Given a month with a value of 120 and a budget of 100, when it renders, then its bar is `attention-fill` and its text says "over budget".
 - Given six months of zero, when it renders, then it shows the empty text and no bars.
+- Given a month with a negative value (a refund), when it renders, then its bar has no height, not a negative one.

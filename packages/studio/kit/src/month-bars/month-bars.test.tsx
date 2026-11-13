@@ -27,7 +27,9 @@ verifies("kit.month-bars", () => {
   it("draws the current month in blue and earlier months in slate", () => {
     const { container } = render(<MonthBars title="Bills" months={months} emptyText="None" />);
     expect(bars(container)).toEqual([...Array(5).fill("fill-series-other"), "fill-series-1"]);
-    expect(container.querySelector("p:not(.sr-only)")?.textContent).toBe("80");
+    const big = container.querySelector("p:not(.sr-only)");
+    expect(big?.textContent).toBe("80");
+    expect(big?.className).toContain("text-title");
   });
 
   it("draws a month over its budget in amber and says so in text", () => {
@@ -41,6 +43,26 @@ verifies("kit.month-bars", () => {
     expect(container.querySelector(".sr-only")?.textContent).toBe(
       "May: 5. Jun: 120, over budget. Jul: 50.",
     );
+  });
+
+  it("draws a negative month with no height, never a negative one", () => {
+    const refund = [
+      { label: "May", value: -20 },
+      { label: "Jun", value: 30 },
+    ];
+    const { container } = render(<MonthBars title="Bills" months={refund} emptyText="None" />);
+    const heights = Array.from(container.querySelectorAll("rect"), (r) => r.getAttribute("height"));
+    expect(heights[0]).toBe("0");
+    expect(Number(heights[1])).toBeGreaterThan(0);
+  });
+
+  it("keeps two months with the same label", () => {
+    const twin = [
+      { label: "Jun", value: 10 },
+      { label: "Jun", value: 20 },
+    ];
+    const { container } = render(<MonthBars title="Bills" months={twin} emptyText="None" />);
+    expect(bars(container)).toHaveLength(2);
   });
 
   it("names the chart by its title", () => {

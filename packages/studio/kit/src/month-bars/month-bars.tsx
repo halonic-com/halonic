@@ -68,7 +68,7 @@ export function MonthBars({ title, months, format = String, emptyText }: MonthBa
         <p className="mt-3 text-fg-muted">{emptyText}</p>
       ) : (
         <>
-          <p className="mt-2 text-2xl font-semibold text-fg">{format(current.value)}</p>
+          <p className="mt-2 text-title text-fg">{format(current.value)}</p>
           <svg
             viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
             className="mt-3 w-full"
@@ -78,11 +78,11 @@ export function MonthBars({ title, months, format = String, emptyText }: MonthBa
           >
             <title>{title}</title>
             {shown.map((month, at) => {
-              const height = (month.value / top) * (HEIGHT - BOTTOM);
+              const height = (Math.max(0, month.value) / top) * (HEIGHT - BOTTOM);
               const x = at * (slot + GAP);
               const fill = barFill(month, at === shown.length - 1);
               return (
-                <g key={month.label}>
+                <g key={at}>
                   <rect
                     x={x}
                     y={HEIGHT - BOTTOM - height}
