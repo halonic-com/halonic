@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
 import { FeatureDialogs } from "../dialogs/feature-dialogs.tsx";
 import type { StudioHost } from "../engine/engine-words.ts";
 import { usePresentationFromWidth } from "../frame/frame-effects.ts";
@@ -55,6 +55,8 @@ export interface StudioWindowProps {
   readonly switcher?: WorkspaceSwitcherProps | undefined;
   /** The phone's More page switcher row, once the app has a workspace picker (T3). */
   readonly phoneSwitcher?: MorePageSwitcher | undefined;
+  /** The workspace's header badges, such as "Not trusted yet · Review", on the desktop. */
+  readonly badges?: ReactNode;
 }
 
 /**
@@ -199,6 +201,7 @@ export function StudioWindow(props: StudioWindowProps) {
           <WindowTabStrip tabs={tabs} onNewTab={palette.show} windowKeys={{ host, platform }} />
         </>
       }
+      badges={props.badges}
       saveNote={<StatusBarSaveNote saving={workspace.saving} />}
       sidebar={
         <StudioSidebar

@@ -64,6 +64,7 @@ import {
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { WorkspaceTrust } from "./workspace-trust.ts";
+import { WorkspaceTrustView } from "./workspace-trust-control.ts";
 
 /**
  * The language of the Studio's words. Every text is English in v0.1, so the window's
@@ -256,6 +257,7 @@ export async function openFolder(
     name,
     workspace,
     saving: scope === undefined ? undefined : savingOf(scope, workspace, name),
+    trust: trust === undefined ? undefined : new WorkspaceTrustView(trust, location),
     dispose: () => (scope === undefined ? services.dispose() : scope.close()),
   };
 }
