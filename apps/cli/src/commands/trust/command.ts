@@ -28,6 +28,7 @@ import {
 } from "../../output/trust-changes-json.ts";
 import { type FingerprintedCheck, shownDate, trustCheckLines } from "../../output/trust-check.ts";
 import type { PluginSetup } from "../../plugin-host.ts";
+import { nodeSandboxWorks } from "../../sandbox-works.ts";
 import { shownPath } from "../../shown-path.ts";
 import { dirOption, openWorkspaceDir, workspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
@@ -42,6 +43,8 @@ export interface TrustMachine {
   readonly clock: Clock;
   /** Where the connectors' programs are looked for. */
   readonly commandSearch: CommandSearch;
+  /** Whether the sandbox works here; left out, the check shows no program's sites. */
+  readonly sandboxWorks?: () => Promise<boolean>;
 }
 
 /**
@@ -55,6 +58,7 @@ export function nodeTrustMachine(): TrustMachine {
     store: new FileTrustStore(trustFolder(profileFolder(nodeProfileEnvironment()))),
     clock: systemClock,
     commandSearch: nodeCommandSearch(),
+    sandboxWorks: nodeSandboxWorks,
   };
 }
 
@@ -150,7 +154,10 @@ async function reviewAndTrust(
   const trust = cliTrustService(machine.store, machine.clock);
   const check = await trust.check(workspace.subject);
   assertTrustable(check, workspace);
-  const lines = trustCheckLines(check, facts);
+  const lines = trustCheckLines(check, {
+    ...facts,
+    sandboxWorks: (await machine.sandboxWorks?.()) === true,
+  });
   const changes =
     check.status === "changed" ? trustChangesDocument(check.changes, check.trustedAt) : undefined;
   if (fingerprint !== undefined && fingerprint !== check.fingerprint) {

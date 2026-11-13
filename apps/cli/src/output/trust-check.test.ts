@@ -62,7 +62,8 @@ const crm: IntegrationTrustContent = {
 };
 const noChanges = { added: [], changed: [], removed: [], unchanged: 0 };
 
-const lines = (check: FingerprintedCheck) => trustCheckLines(check, facts).map(plainText);
+const lines = (check: FingerprintedCheck, sandboxWorks = true) =>
+  trustCheckLines(check, { ...facts, sandboxWorks }).map(plainText);
 
 verifies("cli.trust-check", () => {
   it("prints a new workspace's check as cli-output 3.5's example", () => {
@@ -174,6 +175,26 @@ verifies("cli.trust-check", () => {
       "Fingerprint",
       `  ${fingerprint}`,
     ]);
+  });
+
+  it("shows no site of a program, and counts none, where no sandbox works", () => {
+    const files: ConnectorTrustContent = {
+      ...program("files-mcp", "node", ["tools/files.js"]),
+      settings: {
+        ...program("files-mcp", "node", ["tools/files.js"]).settings,
+        sites: ["*.example.com", "pypi.org"],
+      },
+    };
+    const check: FingerprintedCheck = {
+      status: "new",
+      content: { connectors: [files], agents: [coder] },
+      fingerprint,
+      unpinned: [],
+    };
+    const shown = lines(check, false);
+    expect(shown).toContain("Will start 1 program and 1 agent and allow 2 sites.");
+    expect(shown).toContain("  files-mcp     node tools/files.js");
+    expect(shown.join("\n")).not.toContain("example.com");
   });
 
   it("starts with the ! line when the list of trusted workspaces can't be read", () => {

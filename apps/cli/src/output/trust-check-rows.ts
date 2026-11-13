@@ -33,12 +33,14 @@ const underRow = " ".repeat(rowIndent.length + firstColumn);
 
 /**
  * "  mail-mcp      npx @acme/mail-mcp 2.3.1 · gets the secret GMAIL_TOKEN ·
- * takes AWS_PROFILE from your environment", then its ! line, then every site
- * it may reach in a sandbox, as an agent's.
+ * takes AWS_PROFILE from your environment", then its ! line, then, where the
+ * sandbox works, every site it may reach in it, as an agent's. Without a
+ * sandbox no site is shown, so the check suggests no fence that isn't there.
  */
 export function programRow(
   connector: ConnectorTrustContent,
   unpinned: ReadonlySet<string>,
+  sandboxWorks: boolean,
 ): Phrase[] {
   const command = [text(connector.settings["command"]), ...strings(connector.settings["args"])];
   const withNames = withInherited(
@@ -52,7 +54,8 @@ export function programRow(
     );
     lines.push(phrase`${underRow}${markPart("needsYou")} ${warning.phrase}`);
   }
-  return [...lines, ...labelledLines(siteLines(programSites(connector)))];
+  const sites = sandboxWorks ? siteLines(programSites(connector)) : [];
+  return [...lines, ...labelledLines(sites)];
 }
 
 /** The sites a program connector may reach in a sandbox, in their stored form, or none. */

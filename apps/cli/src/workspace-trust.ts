@@ -156,6 +156,8 @@ export interface WorkspaceTrustMachine {
   readonly clock: Clock;
   /** Where the connectors' programs are looked for. */
   readonly commandSearch: CommandSearch;
+  /** Whether the sandbox works here; left out, the check shows no program's sites. */
+  readonly sandboxWorks?: () => Promise<boolean>;
 }
 
 /**
@@ -193,7 +195,11 @@ export async function trustedGrant(
       : runMessages.notTrusted(name, nothingDone.phrase),
     fix: trustMessages.reviewThenTrust(typedDir),
     fingerprint: check.fingerprint,
-    check: trustCheckLines(check, { name, folder: dir.shown }),
+    check: trustCheckLines(check, {
+      name,
+      folder: dir.shown,
+      sandboxWorks: (await machine.sandboxWorks?.()) === true,
+    }),
     changes: changed ? trustChangesDocument(check.changes, check.trustedAt) : undefined,
   });
 }

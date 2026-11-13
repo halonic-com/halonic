@@ -5,6 +5,7 @@ import type { CliCommand } from "../../command.ts";
 import { nodeCommandSearch } from "../../command-paths.ts";
 import { nodeHarnessPrograms } from "../../harness-programs.ts";
 import { inputValueName, runMessages } from "../../messages/run.ts";
+import { nodeSandboxWorks } from "../../sandbox-works.ts";
 import { dirOption } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { type RunSetup, runWorkflow } from "./run.ts";
@@ -20,6 +21,7 @@ export const computerRunSetup: RunSetup = {
     trustStore: new FileTrustStore(trustFolder(profileFolder(nodeProfileEnvironment()))),
     clock: systemClock,
     commandSearch: nodeCommandSearch(),
+    sandboxWorks: nodeSandboxWorks,
   }),
   http: { fetch: (url, init) => fetch(url, init) },
   harnesses: nodeHarnessPrograms,

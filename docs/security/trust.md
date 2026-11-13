@@ -31,11 +31,11 @@ lists, in this order (requirement `cli.trust-check`):
   on this computer, its arguments and its environment. A program started by
   `npx`, `uvx` or `pipx run` without a pinned version gets a `!` line, because
   it fetches code from npm or PyPI each time it starts. For those, the prompt
-  asks a second question. A program whose connector names `sites` then lists
-  each site it may reach in a sandbox, one per line, as an agent's allowed
-  sites are, and the summary counts each site once with the agents' sites.
-  "Allowed sites" is a fence only where the program starts in a sandbox. Where
-  it doesn't, the program still runs with your rights and `sites` limits
+  asks a second question. Where the sandbox works on your computer, a program
+  whose connector names `sites` then lists each site it may reach in it, one
+  per line, as an agent's allowed sites are, and the summary counts each site
+  once with the agents' sites. Where it doesn't, the check shows no site of a
+  program, because the program runs with your rights and `sites` limits
   nothing.
 - **Agents:** every agent that runs in Claude Code or Codex, with its allowed
   sites and its working folder when it isn't the default. Agents in Halonic's
