@@ -21,6 +21,7 @@ from the first deploy and must not change:
 | Class | What it holds |
 | --- | --- |
 | `CoordinationObject` | leases, values, counters and windows of one deployment |
+| `RunObject` | one run's event log and timers (HAL-6796) |
 
 `durableObjectClassNames` lists them, and `src/test/class-names.spec.ts` (run
 inside workerd by `class-names.test.ts`) fails when the list changes or a
@@ -47,6 +48,28 @@ sharded across several objects by name; no key's operations span two.
 
 Leases and windows that have run out stay in storage until the same key is used
 again. Clearing them on an alarm comes with the run object (part 6).
+
+## The run object
+
+`RunObject` (HAL-197 part 6) is one Durable Object per run, named after the
+run id. It keeps the run's event log (`RunLog`) and the timers of its key
+(`TimerTable`) in its own SQLite storage. `DurableScheduler` is the `Scheduler`
+port over it.
+
+- **One alarm.** The object keeps its alarm at the earliest time a timer is
+  due. When it fires, `alarm()` delivers what is due to the listener and sets the
+  alarm again in a `finally`, so a failure never leaves timers without one.
+- **Delivery during a call.** A Durable Object never runs two alarms at once,
+  but the port promises a timer that comes due while another timer's call runs
+  is delivered. So `alarm()` runs a loop (`TimerDelivery`) that starts every due
+  timer, waits for a call to end or the next timer to come due, and looks again.
+- **Retries.** A rejected timer is due again after 1 second, doubling, at most
+  15 minutes, and is never dropped. Each timer keeps its failure count and a
+  version, so a timer the listener sets or cancels during its call is not
+  undone when the call ends.
+- **The listener.** The platform wakes the object, not the client, so the
+  Worker subclasses `RunObject` and overrides `timerListener()`.
+- **The tick** is the cron's (part 7), not the object's.
 
 ## Tests
 

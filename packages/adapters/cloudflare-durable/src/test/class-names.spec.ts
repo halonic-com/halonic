@@ -10,15 +10,17 @@ import { describe, expect, it } from "vitest";
 import * as adapter from "../index.ts";
 
 export { CoordinationObject } from "../coordination-object.ts";
+export { RunObject } from "../run-object.ts";
 
 /** What the runner binds for this suite (see `class-names.test.ts`). */
 interface TestEnv {
   DEPLOYED: DurableObjectNamespace<adapter.CoordinationObject>;
+  RUN_DEPLOYED: DurableObjectNamespace<adapter.RunObject>;
 }
 
 describe("Durable Object class names", () => {
   it("are the ones already deployed", () => {
-    expect(adapter.durableObjectClassNames).toEqual(["CoordinationObject"]);
+    expect(adapter.durableObjectClassNames).toEqual(["CoordinationObject", "RunObject"]);
   });
 
   it("are all still exported as classes under their names", () => {
@@ -35,5 +37,14 @@ describe("Durable Object class names", () => {
     const lease = await coordination.tryAcquire("run:r1", 60_000);
     expect(lease).toMatchObject({ key: "run:r1" });
     expect(await coordination.tryAcquire("run:r1", 60_000)).toBeNull();
+  });
+
+  it("run the run object under its own name, keeping a timer", async () => {
+    const { RUN_DEPLOYED } = env as TestEnv;
+    const scheduler = new adapter.DurableScheduler({ namespace: RUN_DEPLOYED });
+    const at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    await scheduler.schedule("run_1", "wait", at);
+    expect(await scheduler.pending("run_1")).toEqual([{ key: "run_1", timerId: "wait", at }]);
+    await scheduler.cancel("run_1", "wait");
   });
 });

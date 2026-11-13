@@ -18,3 +18,10 @@ export {
   type DurableCoordinationOptions,
   defaultCoordinationObjectName,
 } from "./durable-coordination.ts";
+export {
+  DurableScheduler,
+  type DurableSchedulerOptions,
+  type RunObjectNamespace,
+} from "./durable-scheduler.ts";
+export { RunObject } from "./run-object.ts";
+export type { RunObjectApi } from "./run-object-api.ts";

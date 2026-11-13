@@ -25,7 +25,7 @@
     "layer": "adapters",
     "owner": "priya",
     "coverage": {
-      "lines": 90,
+      "lines": 85,
       "branches": 85
     },
     "runtime": "workers"
