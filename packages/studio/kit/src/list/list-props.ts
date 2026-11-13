@@ -41,23 +41,43 @@ export interface ListRow<Id extends string = string> extends ListRowBase<Id> {
   readonly tag?: never;
   readonly cells?: never;
   readonly label?: never;
+  readonly child?: never;
 }
 
 /** One item in a List with `columns`: a run in the Runs list. */
-export interface ListColumnsRow<Id extends string = string> extends ListRowBase<Id> {
+interface ListColumnsRowBase<Id extends string> extends ListRowBase<Id> {
   /** An outline tag after the title, never cut: "Test". */
   readonly tag?: ReactNode;
   /** The row's value in each column, by the column's `key`. */
   readonly cells?: Readonly<Record<string, ListCell>>;
+  /** A chip goes in a `status` column instead. */
+  readonly trailing?: never;
+}
+
+/** A row on its own: its `label` is optional. */
+interface ListColumnsRowAlone {
+  readonly child?: undefined;
   /**
    * The sentence a screen reader hears for the row, in its own order and words, as microcopy
    * 19.3's "Run 01JD8Q, Support reply, needs you, …". The columns are hidden from screen readers;
    * without it they hear the title and the meta line.
    */
   readonly label?: string;
-  /** A chip goes in a `status` column instead. */
-  readonly trailing?: never;
 }
+
+/**
+ * A row that belongs to the row above it, as a branch or a for-each item under its step: indented
+ * 24px, so it doesn't look like a step of its own. The indent is only for eyes, so its `label` is
+ * required and must name the parent: "Branch Refund, in the step Check the order".
+ */
+interface ListColumnsRowChild {
+  readonly child: true;
+  readonly label: string;
+}
+
+/** One item in a List with `columns`: a run in the Runs list, or a child row under a step. */
+export type ListColumnsRow<Id extends string = string> = ListColumnsRowBase<Id> &
+  (ListColumnsRowAlone | ListColumnsRowChild);
 
 /** Either kind of row, as the List's own parts take them. */
 export type AnyListRow<Id extends string = string> = ListRow<Id> | ListColumnsRow<Id>;

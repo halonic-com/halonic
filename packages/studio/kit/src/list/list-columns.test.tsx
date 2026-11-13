@@ -69,6 +69,27 @@ function layoutsOf(cell: HTMLElement): { wide: Element | null; stacked: Element 
 }
 
 verifies("kit.list-columns", () => {
+  it("indents a child row by 24px in both layouts and has its label name the parent", () => {
+    const child: ListColumnsRow = {
+      ...done,
+      id: "01JD8W:refund",
+      child: true,
+      label: "Branch Refund, in the step Check the order",
+    };
+    const { container } = renderRuns([done, child]);
+    const plain = layoutsOf(cellOf(container, 0));
+    const indented = layoutsOf(cellOf(container, 1));
+    expect(plain.wide?.className).toContain("px-4");
+    expect(plain.stacked?.className).toContain("px-4");
+    for (const layout of [indented.wide, indented.stacked]) {
+      expect(layout?.className).toContain("pl-10");
+      expect(layout?.className).not.toContain("px-4");
+    }
+    expect(cellOf(container, 1).textContent).toContain(
+      "Branch Refund, in the step Check the order",
+    );
+  });
+
   it("lays the cells out side by side at fixed widths from 800px of the main cell's width", () => {
     const { container } = render(
       <List
