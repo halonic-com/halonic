@@ -13,6 +13,7 @@
     "@halonicjs/workspace",
     "@halonicjs/app",
     "@halonicjs/engine",
+    "@halonicjs/oauth-sign-in",
     "@halonicjs/google-setup",
     "@halonicjs/test-runner"
   ],

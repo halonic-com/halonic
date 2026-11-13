@@ -389,7 +389,12 @@ checks and not a list. A list missing in the base fails the job,
 a dependency together with its allow-list entry fails: the base's list
 doesn't know it. The change takes effect after it merges. The `Fast gates`
 job still runs the pull request's own copy, for early feedback; only the
-base's verdict counts as a gate. What isn't enforced: the other `pnpm check`
+base's verdict counts as a gate. A new core package therefore lands in two
+steps: first the empty package with its `coreOrder` entry (the `packages`
+check rejects an entry with no core package behind it, and the base's copy
+rejects a package that uses core packages it doesn't list), then its code. The empty package carries the smallest real piece of its
+code, because a package with no tests fails `pnpm test`.
+What isn't enforced: the other `pnpm check`
 rules (names, file size and so on) run from the pull request's own copy, so
 a pull request can change them, and `guard-notes` is blocking only as a
 required check (above).
