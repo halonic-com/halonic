@@ -1,5 +1,6 @@
 import { connectionStateOf } from "@halonicjs/studio-feature-library/api";
-import { describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { record } from "./accounts.test-helper.ts";
 import type { GoogleSetupAccount } from "./api.ts";
 import { connectorFacts } from "./connector-facts.ts";
@@ -23,7 +24,7 @@ function stateOf(extra: Parameters<typeof record>[1]) {
   return connectionStateOf(connectorFacts(account(extra)));
 }
 
-describe("connectorFacts", () => {
+verifies("google-setup.connector-facts", () => {
   it("says not connected before the first sign-in", () => {
     expect(stateOf({})).toBe("not-connected");
   });
