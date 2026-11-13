@@ -8,6 +8,7 @@ detection) and hostile on request.
 - **Layer:** testing
 - **Owner:** julian
 - **Public API:** `@halonicjs/testing-sign-in`
+- **Where each attack case is tested:** [attack-cases.md](attack-cases.md)
 
 ## What is in it
 
