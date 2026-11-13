@@ -1,7 +1,9 @@
 import { shortRunId } from "@halonicjs/app";
 import { defineFeature } from "@halonicjs/studio-shell";
 import { RunsSourceService } from "./api.ts";
-import { runPageWords } from "./run-words.ts";
+import { listRows } from "./list/list-rows.ts";
+import { findRuns } from "./list/run-search.ts";
+import { runPageWords, searchWords } from "./run-words.ts";
 import { RunsList, RunsListService } from "./runs-list.ts";
 
 /**
@@ -9,7 +11,7 @@ import { RunsList, RunsListService } from "./runs-list.ts";
  * runs the app provides (`RunsSourceService`), and adds the Runs place, whose
  * running dot in the sidebar reads that same list, and the `run` item kind,
  * one run per tab, and Home's Recent runs, whose heading counts the same
- * running runs. Ctrl K's run rows register here as they land (HAL-1301).
+ * running runs. Ctrl K finds a run by its short id or its workflow's name (HAL-1301).
  */
 export const runsFeature = defineFeature({
   id: "runs",
@@ -36,6 +38,26 @@ export const runsFeature = defineFeature({
       signal: (context) => context.services.get(RunsListService).signal(),
       subscribeSignal: (context, listener) =>
         context.services.get(RunsListService).subscribe(listener),
+    });
+    studio.search.addProvider({
+      id: "runs",
+      title: searchWords.title,
+      order: 30,
+      search: async (query, context) => {
+        const list = context.services.get(RunsListService);
+        if (!list.state.loaded) {
+          await list.refresh();
+          // A list that still isn't loaded failed: say so, so Ctrl K can note that it
+          // couldn't search everything instead of showing "no results".
+          if (!list.state.loaded) throw list.state.error;
+        }
+        return findRuns(listRows(list, new Date()), query).map((row) => ({
+          item: { kind: "run", hub: row.hubId, id: row.id },
+          label: searchWords.label(row.shortId, row.workflow),
+          detail: searchWords.detail(row.hubId),
+          description: row.line,
+        }));
+      },
     });
     studio.itemKinds.add({
       kind: "run",

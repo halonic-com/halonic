@@ -366,3 +366,12 @@ export const homeWords = {
   empty: "No runs yet. When an agent or workflow runs, you'll see it here.",
   seeAll: "See all runs",
 };
+
+/** Ctrl K's run rows (checklist part 1, 1.1). */
+export const searchWords = {
+  title: "Runs",
+  /** The hit's label: the run's short id, then what ran. */
+  label: (shortId: string, workflow: string) => `Run ${shortId} · ${workflow}`,
+  /** The hit's detail: its kind and hub, as other items show theirs. */
+  detail: (hub: string) => `Run · ${hub}`,
+};
