@@ -31,6 +31,10 @@ export type {
   Deployments,
 } from "./kinds/deployments/schema.ts";
 export type { Hub, HubUses } from "./kinds/hub/schema.ts";
+export {
+  approvedSignIns,
+  type ResolvedSignIn,
+} from "./kinds/integration/approved-sign-ins.ts";
 export { checkIntegrationSheet } from "./kinds/integration/kind.ts";
 export { parseIntegrationSheet, type SheetProblem } from "./kinds/integration/parse-sheet.ts";
 export {

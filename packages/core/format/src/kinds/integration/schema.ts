@@ -140,7 +140,7 @@ const SCOPE_PATTERN = /^[\x21\x23-\x5b\x5d-\x7e]+$/;
 const urlPath = s.string().regex(/^\/[^\s?#]*$/, "start the path with '/', such as '/oauth/token'");
 
 /** Visible ASCII, so a client ID can't carry a line break or a space. */
-const CLIENT_ID_PATTERN = /^[\x21-\x7e]{1,256}$/;
+export const CLIENT_ID_PATTERN = /^[\x21-\x7e]{1,256}$/;
 
 /**
  * An `https` URL for a sign-in: `https://host[:port]/path?query` with an

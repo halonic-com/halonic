@@ -1,5 +1,6 @@
 import type { Path } from "@halonicjs/schema-kit";
 import { err, ok, type Result } from "@halonicjs/std";
+import type { ClientIdProblem } from "./approved-sign-ins.ts";
 import {
   type AddressClass,
   type IntegrationHost,
@@ -85,7 +86,8 @@ export interface PolicyProblem {
     | "setting-not-a-url"
     | "setting-outside-class"
     | "plain-http-not-local"
-    | "secret-over-plain-http";
+    | "secret-over-plain-http"
+    | ClientIdProblem["code"];
   /** Where the host sits in the sheet. */
   readonly path: Path;
   readonly message: string;
@@ -162,6 +164,9 @@ export function integrationPolicy(
     signIns,
     tokens: sheet.tokens.map((token) => token.name),
   };
+  if (problems.length > 0) {
+    return err(problems);
+  }
   return ok(sheet.limits === undefined ? { policy } : { policy, limits: sheet.limits });
 }
 
@@ -170,7 +175,7 @@ export function integrationPolicy(
  * hosts of the sign-in's token and revoke URLs. The other sign-in URLs read
  * settings that `hosts` already resolves, so they need no check here.
  */
-function resolveSignIns(
+export function resolveSignIns(
   sheet: IntegrationSheet,
   classes: ReadonlyMap<string, AddressClass>,
   settings: Readonly<Record<string, unknown>>,
@@ -253,7 +258,7 @@ interface FoundHost {
 }
 
 /** The class the sheet declares for each setting a `{ fromSetting }` host reads. */
-function settingClasses(sheet: IntegrationSheet): ReadonlyMap<string, AddressClass> {
+export function settingClasses(sheet: IntegrationSheet): ReadonlyMap<string, AddressClass> {
   const classes = new Map<string, AddressClass>();
   for (const host of sheet.hosts) {
     if (typeof host !== "string" && !classes.has(host.fromSetting)) {
@@ -263,7 +268,7 @@ function settingClasses(sheet: IntegrationSheet): ReadonlyMap<string, AddressCla
   return classes;
 }
 
-function resolveHost(
+export function resolveHost(
   sheet: IntegrationSheet,
   host: IntegrationHost | IntegrationSecretHost,
   classes: ReadonlyMap<string, AddressClass>,
