@@ -1,11 +1,14 @@
 {
-  "//": "The Node side: the test files that start workerd or read the configuration. The wiring test is checked in tsconfig.wiring.json.",
+  "//": "The Node side: the test files that start workerd or read the configuration. The ones that run the Worker's own sources are checked in tsconfig.wiring.json.",
   "extends": "@halonicjs/tooling-config/tsconfig/node.json",
   "include": [
     "src/**/*.test.ts",
     "vitest.config.ts"
   ],
   "exclude": [
-    "src/runtime.node.test.ts"
+    "src/runtime.node.test.ts",
+    "src/worker.node.test.ts",
+    "src/scheduled.test.ts",
+    "src/password-limit.test.ts"
   ]
 }

@@ -2,7 +2,10 @@
   "//": "The Node test of the wiring runs the Worker's own sources over stand-ins, so it is checked against workerd's types like they are, not against Node's.",
   "extends": "./tsconfig.json",
   "include": [
-    "src/runtime.node.test.ts"
+    "src/runtime.node.test.ts",
+    "src/worker.node.test.ts",
+    "src/scheduled.test.ts",
+    "src/password-limit.test.ts"
   ],
   "exclude": []
 }

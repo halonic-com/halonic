@@ -1,4 +1,8 @@
-import type { CoordinationObject, RunObject } from "@halonicjs/adapter-cloudflare-durable";
+import type {
+  CoordinationObject,
+  RoutinesObject,
+  RunObject,
+} from "@halonicjs/adapter-cloudflare-durable";
 import { halonicSecretNames } from "@halonicjs/ports";
 
 /**
@@ -9,6 +13,8 @@ import { halonicSecretNames } from "@halonicjs/ports";
 export interface RuntimeEnv {
   readonly COORDINATION: DurableObjectNamespace<CoordinationObject>;
   readonly RUN: DurableObjectNamespace<RunObject>;
+  /** The one object that owns the routine tick. */
+  readonly ROUTINES: DurableObjectNamespace<RoutinesObject>;
   /** The record store, the run list and the migrations' bookkeeping. */
   readonly DB: D1Database;
   /** Blobs, content-addressed. */
@@ -21,6 +27,7 @@ export interface RuntimeEnv {
 export const requiredBindings = [
   "COORDINATION",
   "RUN",
+  "ROUTINES",
   "DB",
   "BLOBS",
   "DEFINITIONS",
@@ -49,7 +56,7 @@ export class ConfigurationError extends Error {
  * use rather than as an `undefined` deep inside an adapter.
  *
  * @example
- * missingBindings({ DB }); // ["COORDINATION", "RUN", "BLOBS", "DEFINITIONS"]
+ * missingBindings({ DB }); // ["COORDINATION", "RUN", "ROUTINES", "BLOBS", "DEFINITIONS"]
  */
 export function missingBindings(env: Partial<RuntimeEnv>): string[] {
   return requiredBindings.filter((name) => env[name] === undefined);

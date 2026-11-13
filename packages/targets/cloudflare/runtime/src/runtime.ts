@@ -1,6 +1,7 @@
 import {
   DurableCoordination,
   DurableScheduler,
+  defaultRoutinesObjectName,
   Watchdog,
 } from "@halonicjs/adapter-cloudflare-durable";
 import {
@@ -11,9 +12,15 @@ import {
 } from "@halonicjs/adapter-cloudflare-storage";
 import { createPbkdf2ChainHasher } from "@halonicjs/adapter-password-pbkdf2";
 import { createTokenStore } from "@halonicjs/adapter-token-store";
-import type { Clock, Secrets } from "@halonicjs/ports";
+import type { Clock, PasswordHasher, Secrets } from "@halonicjs/ports";
 import { ConfigurationError, missingBindings, type RuntimeEnv, requiredSecrets } from "./env.ts";
+import { limitPasswordLength } from "./password-limit.ts";
 import { workerSecrets } from "./worker-secrets.ts";
+
+/** What the Worker asks of the routines object: to run the tick for a time. */
+export interface RoutineTicks {
+  tick(at: string): Promise<void>;
+}
 
 /** The adapters of one deployment, built from the Worker's `env`. */
 export interface Runtime {
@@ -25,9 +32,10 @@ export interface Runtime {
   readonly definitions: R2DefinitionSource;
   readonly coordination: DurableCoordination<DurableObjectId>;
   readonly scheduler: DurableScheduler<DurableObjectId>;
+  readonly routines: RoutineTicks;
   readonly watchdog: Watchdog;
   readonly tokens: ReturnType<typeof createTokenStore>;
-  readonly passwords: ReturnType<typeof createPbkdf2ChainHasher>;
+  readonly passwords: PasswordHasher;
 }
 
 /**
@@ -75,8 +83,9 @@ export async function createRuntime(env: RuntimeEnv): Promise<Runtime> {
     definitions: new R2DefinitionSource(env.DEFINITIONS),
     coordination: new DurableCoordination({ namespace: env.COORDINATION }),
     scheduler,
+    routines: env.ROUTINES.get(env.ROUTINES.idFromName(defaultRoutinesObjectName)),
     watchdog: new Watchdog({ runs, scheduler, clock }),
     tokens: createTokenStore({ records, secrets, clock }),
-    passwords: createPbkdf2ChainHasher(),
+    passwords: limitPasswordLength(createPbkdf2ChainHasher()),
   };
 }
