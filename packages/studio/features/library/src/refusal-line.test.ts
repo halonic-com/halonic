@@ -23,7 +23,7 @@ verifies("library.refusal-line", () => {
   it("says what each other kind of refusal did", () => {
     const line = (refused: "keyword" | "call") =>
       refusalLine({ source: "notes", name: "find", refused, reason: "why" });
-    expect(line("keyword")).toBe('notes: changed "find": why');
+    expect(line("keyword")).toBe('notes: "find": Halonic left out part of its arguments: why');
     expect(line("call")).toBe('notes: refused a call to "find": why');
   });
 });

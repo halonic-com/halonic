@@ -12,7 +12,7 @@ function staysOff(count: number): string {
 export const listedToolsWords = {
   title: (source: string) => `Review the tools from ${source}`,
   topLine:
-    "A server you connected wrote these descriptions. Halonic can't vouch for them. Approve only the tools you expect this server to have.",
+    "A server you connected wrote these descriptions. Halonic hasn't checked them. Approve only the tools you expect this server to have.",
   approveSelected: "Approve selected",
   approveAll: (count: number) => `Approve all (${count})`,
   /** With a search on, the button says how many tools it covers. */
@@ -29,6 +29,9 @@ export const listedToolsWords = {
       : `Approved ${toolCount(count)} from ${source}. ${stayingOff} ${staysOff(stayingOff)}.`,
   approvedNone: (source: string, stayingOff: number) =>
     `Nothing approved. ${toolCount(stayingOff)} from ${source} ${staysOff(stayingOff)}.`,
+  couldntRemove: (tool: string, reason: string) =>
+    `Couldn't remove your approval for ${tool}: ${reason}.`,
+  close: "Close",
   removed: (tool: string) =>
     `Removed your approval for ${tool}. It's off until you approve it again.`,
   changedAgain: (tool: string) =>
@@ -43,6 +46,12 @@ export const listedToolsWords = {
   showAll: "Show all",
   showLess: "Show less",
   argumentsLabel: "Arguments:",
+  /** What a changed text is called: the same words as `halonic tools review`. */
+  changedName: "Name",
+  changedDescription: "Description",
+  changedRequired: "Required arguments",
+  changedArgument: (argument: string, field: string) => `Argument ${argument}: ${field}`,
+  changedOther: (path: string) => `Arguments: ${path}`,
   refusedHeading: "Halonic won't use these",
   refusedLine: "These tools break Halonic's rules for tools. You can't approve them.",
   keepsChangingHeading: "Keeps changing",
@@ -51,9 +60,10 @@ export const listedToolsWords = {
   approvedHeading: (count: number) => `Approved (${count})`,
   removeApproval: "Remove approval",
   askedBeforeEachUse: "Asks you before each use.",
+  /** Instead of {@link askedBeforeEachUse}, when the workspace lowered the tool's risk. */
+  doesntAsk: (workspace: string) => `Doesn't ask before each use: ${workspace} lowered its risk.`,
   /** The line under a tool the person approved. Never "safe" or "trusted": approving doesn't vouch for the tool. */
   approvedAsks: "Approved. It still asks before each use.",
-  offUntilApproved: "Off until you approve the new version.",
   /** The badge on the connector's card. A placeholder: the badge itself lands in its own pull request. */
   waitingBadge: (count: number) =>
     count === 1
@@ -86,7 +96,7 @@ export const listedToolsWords = {
       ? `Couldn't read an approval for ${source}, so none of its listed tools are on.`
       : `Couldn't read your approval for ${tool}, so none of the tools ${source} lists are on. Remove it, then approve it again.`,
   unreadableUnavailable: "Halonic can't tell which tool it belongs to yet.",
-  loadFailed: (reason: string) => `Couldn't read the tools: ${reason}.`,
+  loadFailed: (reason: string) => `Couldn't list the tools: ${reason}.`,
   tryAgain: "Try again",
   connecting: "Connecting…",
   /** A refused tool's reason is cut to this many characters on screen; the full text is its tooltip. */

@@ -5,6 +5,13 @@ import type {
   ListedToolsSnapshot,
 } from "./listed-tools-host.ts";
 
+/** What the review needs of the workspace besides the tools. */
+export interface ListedToolsTrust {
+  readonly workspaceName: string;
+  /** Whether the connector asks before each use of the tool listed under this name. */
+  readonly asksBeforeUse: (toolName: string) => boolean;
+}
+
 /**
  * Puts one connector's review from `reviewListedTools` into the shape the
  * review dialog reads. The texts a tool changed since its approval come from
@@ -12,6 +19,7 @@ import type {
  * kept, never an old listing.
  *
  * @param sourceName - the connector's name, as on its card
+ * @param trust - the workspace's name, and whether the connector asks before using a tool
  *
  * @example
  * const snapshot = listedToolsSnapshot("Notes", reviewListedTools(check.value));
@@ -20,11 +28,14 @@ import type {
 export function listedToolsSnapshot(
   sourceName: string,
   review: ListedToolReview,
+  trust: ListedToolsTrust,
 ): ListedToolsSnapshot {
+  const row = (reviewed: ReviewedTool) => listedToolRow(reviewed, trust.asksBeforeUse);
   return {
     sourceName,
-    toReview: review.toReview.map(listedToolRow),
-    keepsChanging: review.keepsChanging.map(listedToolRow),
+    workspaceName: trust.workspaceName,
+    toReview: review.toReview.map(row),
+    keepsChanging: review.keepsChanging.map(row),
     refused: review.refused,
     approved: review.on,
     listingRefused: review.listingRefused,
@@ -46,7 +57,10 @@ function hasApprovals(review: ListedToolReview): boolean {
   return review.on.length > 0 || waiting.some((tool) => tool.state === "changed");
 }
 
-function listedToolRow(reviewed: ReviewedTool): ListedToolRow {
+function listedToolRow(
+  reviewed: ReviewedTool,
+  asksBeforeUse: (toolName: string) => boolean,
+): ListedToolRow {
   const { waiting } = reviewed;
   return {
     name: waiting.listedName,
@@ -57,6 +71,7 @@ function listedToolRow(reviewed: ReviewedTool): ListedToolRow {
     differences: reviewed.changes.map((change) => ({ ...change })),
     serverChanged: waiting.serverChanged,
     leftOutArguments: reviewed.leftOutArguments,
+    asksBeforeUse: asksBeforeUse(waiting.listedName),
   };
 }
 

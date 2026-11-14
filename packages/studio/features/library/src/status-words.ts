@@ -1,3 +1,5 @@
+import { clockTime } from "@halonicjs/studio-feature-inbox/api";
+
 const notAnswering = "The engine isn't answering.";
 
 /** The words of the status section (decided with Sofia's review, HAL-7814). */
@@ -7,8 +9,8 @@ export const statusWords = {
   nothingRefused: "Nothing refused since Halonic started.",
   /** Under a full list, so the user can tell the list stops there. */
   capNote: (limit: number) => `Showing the last ${limit} refusals.`,
-  /** When a refusal arrived, as the hour and minute on this computer. */
-  time: (at: Date) => at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  /** When a refusal arrived, as the Inbox says it: the time today, the day and time before. */
+  time: (at: Date, now: Date = new Date()) => clockTime(at, now),
   loading: "Loading refusals",
   loadFailed: "Couldn't load refusals",
   notAnswering,

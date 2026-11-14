@@ -1,4 +1,4 @@
-import { Callout, Dialog, type DialogCancelReason } from "@halonicjs/studio-kit";
+import { Button, Callout, Dialog, type DialogCancelReason } from "@halonicjs/studio-kit";
 import { useCallback, useRef, useSyncExternalStore } from "react";
 import {
   type ListedToolsReviewModel,
@@ -64,6 +64,7 @@ export function ListedToolsReviewDialog({
         <p>{listedToolsWords.topLine}</p>
         <ListedToolsFallbackBody
           fallback={fallback}
+          error={state.approveError}
           sourceName={snapshot?.sourceName ?? sourceName}
           onTryAgain={() => model.refresh()}
           onRemoveApproval={async (toolName) => {
@@ -79,6 +80,24 @@ export function ListedToolsReviewDialog({
   // No fallback means a snapshot with tools to decide on; this narrows the type for the rows below.
   if (snapshot === undefined) return null;
   const shown = model.shown;
+  if (snapshot.toReview.length === 0) {
+    // Only tools that keep changing are left: nothing to tick, so the only way out is Close.
+    return (
+      <Dialog
+        title={listedToolsWords.title(snapshot.sourceName)}
+        size="md"
+        onCancel={() => finish(removedToast.current)}
+      >
+        <p>{listedToolsWords.topLine}</p>
+        <ListedToolsReviewBody model={model} onRemoved={rememberRemoved} onOutcome={close} />
+        <div className="flex justify-end">
+          <Button variant="secondary" onClick={() => finish(removedToast.current)}>
+            {listedToolsWords.close}
+          </Button>
+        </div>
+      </Dialog>
+    );
+  }
   const shownCount = shown.toReview.length + shown.keepsChanging.length + shown.refused.length;
   const searching = state.search.trim() !== "";
   return (

@@ -30,6 +30,10 @@ export {
   readListedTool,
 } from "./listed-tool.ts";
 export {
+  type ListedToolChangeLabel,
+  listedToolChangeLabel,
+} from "./listed-tool-change-label.ts";
+export {
   httpToolServer,
   listedToolFingerprint,
   listedToolFingerprintPrefix,

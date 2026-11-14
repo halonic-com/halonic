@@ -10,6 +10,8 @@ export interface ListedToolRowViewProps {
   readonly row: ListedToolRow;
   /** The connector's name, for the plate that says its server connects differently. */
   readonly sourceName: string;
+  /** The workspace's name, for the line a lowered risk shows. */
+  readonly workspaceName: string;
   /** `null` for a tool that keeps changing: it has no tick box, only its own button. */
   readonly tick: { readonly ticked: boolean; readonly onToggle: () => void } | null;
   /** Shows the state chip. The first screen leaves it out, since every row would say "Not approved". */
@@ -31,6 +33,7 @@ function isClamped(element: HTMLElement | null): boolean {
 export function ListedToolRowView({
   row,
   sourceName,
+  workspaceName,
   tick,
   showState,
   action,
@@ -111,10 +114,11 @@ export function ListedToolRowView({
               {listedToolsWords.leftOut(reason)}
             </p>
           ))}
-          {showState && row.state === "changed" ? (
-            <p className="text-small text-fg-muted">{listedToolsWords.offUntilApproved}</p>
-          ) : null}
-          <p className="text-small text-fg-muted">{listedToolsWords.askedBeforeEachUse}</p>
+          <p className="text-small text-fg-muted">
+            {row.asksBeforeUse
+              ? listedToolsWords.askedBeforeEachUse
+              : listedToolsWords.doesntAsk(workspaceName)}
+          </p>
         </div>
       </div>
     </li>

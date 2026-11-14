@@ -41,6 +41,8 @@ function reviewedTool(
   };
 }
 
+const trust = { workspaceName: "Acme", asksBeforeUse: () => true };
+
 describe("listedToolsSnapshot", () => {
   verifies("library.listed-tools-snapshot", () => {
     it("carries the approved and new text of a changed tool, with why it can't be seen", () => {
@@ -52,10 +54,14 @@ describe("listedToolsSnapshot", () => {
           hidden: "lookalike",
         },
       ] as const;
-      const snapshot = listedToolsSnapshot("Notes", {
-        ...emptyReview,
-        toReview: [reviewedTool({ changes })],
-      });
+      const snapshot = listedToolsSnapshot(
+        "Notes",
+        {
+          ...emptyReview,
+          toReview: [reviewedTool({ changes })],
+        },
+        trust,
+      );
       expect(snapshot.toReview[0]?.differences).toEqual(changes);
       expect(snapshot.toReview[0]?.arguments).toEqual([
         { name: "title", type: "string", description: "The note's title" },
@@ -72,36 +78,52 @@ describe("listedToolsSnapshot", () => {
           hidden: "format",
         },
       ] as const;
-      const snapshot = listedToolsSnapshot("Notes", {
-        ...emptyReview,
-        toReview: [reviewedTool({ changes })],
-      });
+      const snapshot = listedToolsSnapshot(
+        "Notes",
+        {
+          ...emptyReview,
+          toReview: [reviewedTool({ changes })],
+        },
+        trust,
+      );
       expect(snapshot.toReview[0]?.differences[0]?.hidden).toBe("format");
     });
 
     it("gives a never-approved tool no differences and no approvals", () => {
-      const snapshot = listedToolsSnapshot("Notes", {
-        ...emptyReview,
-        toReview: [reviewedTool({ state: "not_approved" })],
-      });
+      const snapshot = listedToolsSnapshot(
+        "Notes",
+        {
+          ...emptyReview,
+          toReview: [reviewedTool({ state: "not_approved" })],
+        },
+        trust,
+      );
       expect(snapshot.toReview[0]?.state).toBe("not_approved");
       expect(snapshot.toReview[0]?.differences).toEqual([]);
       expect(snapshot.hasApprovals).toBe(false);
     });
 
     it("marks a tool whose only change is its server", () => {
-      const snapshot = listedToolsSnapshot("Notes", {
-        ...emptyReview,
-        toReview: [reviewedTool({ serverChanged: true })],
-      });
+      const snapshot = listedToolsSnapshot(
+        "Notes",
+        {
+          ...emptyReview,
+          toReview: [reviewedTool({ serverChanged: true })],
+        },
+        trust,
+      );
       expect(snapshot.toReview[0]).toMatchObject({ serverChanged: true, differences: [] });
     });
 
     it("leaves the tool name out of an unreadable approval that doesn't name one", () => {
-      const snapshot = listedToolsSnapshot("Notes", {
-        ...emptyReview,
-        unreadable: { toolName: null, error: new Error("bad") },
-      });
+      const snapshot = listedToolsSnapshot(
+        "Notes",
+        {
+          ...emptyReview,
+          unreadable: { toolName: null, error: new Error("bad") },
+        },
+        trust,
+      );
       expect(snapshot.unreadable).toEqual({});
     });
   });

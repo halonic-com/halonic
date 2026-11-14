@@ -4,7 +4,12 @@
 // Everything a server wrote is escaped here, so no control or bidi
 // character reaches the terminal (HAL-2579 G1).
 
-import type { HiddenChange, ListedToolChange, ReviewedTool } from "@halonicjs/app/listed-tools";
+import {
+  type HiddenChange,
+  type ListedToolChange,
+  listedToolChangeLabel,
+  type ReviewedTool,
+} from "@halonicjs/app/listed-tools";
 import { needsApproval } from "@halonicjs/format";
 import type { Message } from "../../messages/define.ts";
 import { bold, dim, markPart, type Phrase, phrase, plainText } from "../../messages/phrase.ts";
@@ -84,34 +89,22 @@ function changeLines(change: ListedToolChange): Phrase[] {
   return lines;
 }
 
-/**
- * A change's path in Studio's plain words: Name, Description, Argument *id*:
- * the field, Required arguments, and for anything else "Arguments:" and the
- * path after `parameters.`.
- */
+/** A change's path in Studio's plain words, from the label both of them share. */
 function changeLabel(path: string): Phrase {
-  if (path === "name") {
-    return toolsMessages.changedName().phrase;
+  const label = listedToolChangeLabel(path);
+  switch (label.kind) {
+    case "name":
+      return toolsMessages.changedName().phrase;
+    case "description":
+      return toolsMessages.changedDescription().phrase;
+    case "required":
+      return toolsMessages.changedRequired().phrase;
+    case "argument":
+      return toolsMessages.changedArgument(printable(label.argument), printable(label.field))
+        .phrase;
+    case "other":
+      return toolsMessages.changedOther(printable(label.path)).phrase;
   }
-  if (path === "description") {
-    return toolsMessages.changedDescription().phrase;
-  }
-  if (path === "parameters/required") {
-    return toolsMessages.changedRequired().phrase;
-  }
-  const argument = /^parameters\/properties\/([^/]+)\/([^/]+)$/u.exec(path);
-  if (argument !== null) {
-    const [, id = "", field = ""] = argument;
-    return toolsMessages.changedArgument(printable(pointerText(id)), printable(pointerText(field)))
-      .phrase;
-  }
-  return toolsMessages.changedOther(printable(pointerText(path.replace(/^parameters\//u, ""))))
-    .phrase;
-}
-
-/** A path token with its JSON-pointer escapes (`~1` for `/`, `~0` for `~`) undone. */
-function pointerText(token: string): string {
-  return token.replaceAll("~1", "/").replaceAll("~0", "~");
 }
 
 function hiddenMessage(hidden: HiddenChange): Message {

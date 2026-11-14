@@ -7,9 +7,8 @@ import { escapeListedText } from "./listed-tool-rules.ts";
 import type { ToolRefusal } from "./tool-listing.ts";
 
 /** What the status says the host did, for each kind of refusal. */
-const whatWasRefused: Record<ToolRefusal["refused"], string> = {
+const whatWasRefused: Record<Exclude<ToolRefusal["refused"], "keyword">, string> = {
   tool: "left out",
-  keyword: "changed",
   listing: "left out the listing",
 };
 
@@ -28,10 +27,16 @@ const whatWasRefused: Record<ToolRefusal["refused"], string> = {
  * // 'notes: left out "look up": its name breaks the name rule'
  * refusalStatusLine({ source: "notes", refused: "listing", reason: "the listing isn't a list of tools" });
  * // "notes: left out the listing: the listing isn't a list of tools"
+ * refusalStatusLine({ source: "notes", name: "look up", refused: "keyword", reason: "dropped the keyword at /pattern" });
+ * // 'notes: "look up": Halonic left out part of its arguments: dropped the keyword at /pattern'
  */
 export function refusalStatusLine(refusal: ToolRefusal): string {
   const source = escapeListedText(refusal.source);
-  const what = whatWasRefused[refusal.refused];
   const name = refusal.name === undefined ? "" : ` "${refusal.name}"`;
+  if (refusal.refused === "keyword") {
+    // The words of the listed-tools review, so the status and the review say it the same way.
+    return `${source}:${name}${name === "" ? "" : ":"} Halonic left out part of its arguments: ${refusal.reason}`;
+  }
+  const what = whatWasRefused[refusal.refused];
   return `${source}: ${what}${name}: ${refusal.reason}`;
 }

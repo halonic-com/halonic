@@ -1,3 +1,4 @@
+import { type ListedToolChangeLabel, listedToolChangeLabel } from "@halonicjs/app/listed-tools";
 import { WarningIcon } from "@halonicjs/studio-kit";
 import { type WordPiece, wordDiff } from "../listed-tool-word-diff.ts";
 import type { ListedToolDifference } from "../listed-tools-host.ts";
@@ -49,13 +50,29 @@ function Side({
   );
 }
 
-/** One changed text: its path, the approved version beside the new one, and a line when the change can't be seen. */
+/** A change's label in the words of the screen. */
+function labelText(label: ListedToolChangeLabel): string {
+  switch (label.kind) {
+    case "name":
+      return listedToolsWords.changedName;
+    case "description":
+      return listedToolsWords.changedDescription;
+    case "required":
+      return listedToolsWords.changedRequired;
+    case "argument":
+      return listedToolsWords.changedArgument(label.argument, label.field);
+    case "other":
+      return listedToolsWords.changedOther(label.path);
+  }
+}
+
+/** One changed text: its label, the approved version beside the new one, and a line when the change can't be seen. */
 function Difference({ difference }: { readonly difference: ListedToolDifference }) {
   const pieces = wordDiff(difference.before ?? "", difference.after ?? "");
   return (
     <li className="flex min-w-0 flex-col gap-1">
-      <span className="font-mono text-small text-fg-muted [overflow-wrap:anywhere]">
-        {difference.path}
+      <span className="text-small text-fg-muted [overflow-wrap:anywhere]">
+        {labelText(listedToolChangeLabel(difference.path))}
       </span>
       <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
         <Side

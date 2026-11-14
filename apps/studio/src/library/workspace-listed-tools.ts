@@ -7,7 +7,7 @@ import {
   reviewListedTools,
   revokeNamedTool,
 } from "@halonicjs/app/listed-tools";
-import type { Connector } from "@halonicjs/format";
+import { type Connector, needsApproval } from "@halonicjs/format";
 import type {
   Clock,
   DefinitionSource,
@@ -84,7 +84,10 @@ export class WorkspaceListedTools implements ListedToolsHost {
     if ("google" in source.connector.transport) {
       return nothingToReview(sourceName);
     }
-    return listedToolsSnapshot(sourceName, reviewListedTools(await this.#check(source)));
+    return listedToolsSnapshot(sourceName, reviewListedTools(await this.#check(source)), {
+      workspaceName: filesOf(source.workspace, "workspace")[0]?.value.name ?? sourceName,
+      asksBeforeUse: (toolName) => needsApproval(source.connector.tools, toolName),
+    });
   }
 
   async approve(
@@ -215,6 +218,7 @@ export class WorkspaceListedTools implements ListedToolsHost {
 function nothingToReview(sourceName: string): ListedToolsSnapshot {
   return {
     sourceName,
+    workspaceName: sourceName,
     toReview: [],
     keepsChanging: [],
     refused: [],
