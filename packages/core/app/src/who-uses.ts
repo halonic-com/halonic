@@ -11,6 +11,8 @@ export type LibraryItemKind = "skill" | "knowledge" | "collection" | "connector"
 export interface LibraryItemRef {
   readonly kind: LibraryItemKind;
   readonly id: string;
+  /** The hub folder the item sits in, or `null` when it is shared at the workspace root. Collections are always shared. */
+  readonly hub: string | null;
 }
 
 /** One thing that uses the item. */
@@ -41,26 +43,40 @@ const LISTING_FIELD = {
 
 /**
  * Who in the workspace uses this item, in the order of the files' paths.
+ * A hub's own item is used only from inside that hub; a shared item is used
+ * from the root and from every hub that has no item of its own with that id.
  *
  * @example
  * const usage = whoUses(workspace, { kind: "knowledge", id: "kb" });
- * usage.agents.map((agent) => agent.name); // ["Support", "Billing"]
+ * usage.agents.map((agent) => agent.name); // ["Billing", "Support"]
  */
 export function whoUses(workspace: LoadedWorkspace, item: LibraryItemRef): ItemUsage {
   const field = LISTING_FIELD[item.kind];
   const listsIt = (ids: readonly string[]) => ids.includes(item.id);
+  const hubsWithOwn = new Set(
+    item.hub === null
+      ? filesOf(workspace, item.kind)
+          .filter((file) => file.value.id === item.id && file.hub !== null)
+          .map((file) => file.hub)
+      : [],
+  );
+  const inReach = (hub: string | null) =>
+    item.hub === null ? hub === null || !hubsWithOwn.has(hub) : hub === item.hub;
 
   const agents = filesOf(workspace, "agent")
-    .filter((file) => listsIt(file.value[field]))
+    .filter((file) => inReach(file.hub) && listsIt(file.value[field]))
     .map((file) => usage(file.value, file.hub));
-  const hubs = filesOf(workspace, "hub")
+  const hubs = (item.hub === null ? filesOf(workspace, "hub") : [])
     .filter((file) => listsIt(file.value.uses?.[field] ?? []))
     .map((file) => usage(file.value, file.hub));
   const routines =
     item.kind === "connector"
       ? filesOf(workspace, "routine")
           .filter(
-            (file) => "mail" in file.value.trigger && file.value.trigger.mail.connector === item.id,
+            (file) =>
+              inReach(file.hub) &&
+              "mail" in file.value.trigger &&
+              file.value.trigger.mail.connector === item.id,
           )
           .map((file) => usage(file.value, file.hub))
       : [];
