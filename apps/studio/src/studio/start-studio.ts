@@ -10,6 +10,7 @@ import {
 } from "@halonicjs/adapter-fs-tauri";
 import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
 import {
+  HostSettings,
   openWorkspace,
   ServiceRegistry,
   TrustService,
@@ -31,6 +32,7 @@ import {
 import {
   AgentSandboxService,
   DisplaySettingsService,
+  HostSettingsService,
 } from "@halonicjs/studio-feature-settings/api";
 import {
   folderName,
@@ -172,6 +174,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     InboxRunsService,
     RunsSourceService,
     DisplaySettingsService,
+    HostSettingsService,
     WorkspacePageService,
     TrustedSourcesService,
   ],
@@ -264,7 +267,8 @@ function newWorkspaceOf(window: object, platform: KeyboardPlatform) {
  * folder open in it. In the shell, it is checked for trust before it opens, as the CLI checks it
  * (`studio.workspace-trust`): its name is the one in `workspace.yaml`, else the folder's, and the
  * assistant may write more than Halonic items only once a person has trusted what the folder
- * holds. Outside the shell there are no files to open, so the scope has only the services above.
+ * holds. Its host settings are the window's, loaded once (`settings.ai-agent-prefs`). Outside the
+ * shell there are no files to open, so the scope has only the services above.
  */
 export async function openFolder(
   shell: Shell,
@@ -302,6 +306,7 @@ export async function openFolder(
   );
   provideShellSecrets(services, window);
   provideShellHostSettings(services, window);
+  services.provide(HostSettingsService, await hostSettingsOf(services, window));
   provideAgentSandbox(services, window);
   if (ipc !== undefined && files !== undefined) {
     provideWorkspaceRuns(services, { ipc, files, window }, location);
@@ -318,6 +323,35 @@ export async function openFolder(
       return scope === undefined ? services.dispose() : scope.close();
     },
   };
+}
+
+/** The host settings of every window, loaded once and shared by the folders open in it. */
+const windowHostSettings = new WeakMap<object, Promise<HostSettings>>();
+
+/**
+ * The window's host settings over the profile's store, the same object for every folder open in
+ * the window (`settings.ai-agent-prefs`). When they can't be read, the folder still opens: it gets
+ * settings that aren't loaded, so only Settings › Assistant says so, and the next folder tries again.
+ */
+function hostSettingsOf(services: ServiceRegistry, window: object): Promise<HostSettings> {
+  const known = windowHostSettings.get(window);
+  if (known !== undefined) return known;
+  const settings = new HostSettings(
+    services.has(hostSettingsStoreKey)
+      ? services.get(hostSettingsStoreKey)
+      : new MemoryHostSettingsStore(),
+    { onRefreshError: (error) => console.error(error) },
+  );
+  const loaded = settings.load().then(
+    () => settings,
+    (error: unknown) => {
+      console.error(error);
+      windowHostSettings.delete(window);
+      return settings;
+    },
+  );
+  windowHostSettings.set(window, loaded);
+  return loaded;
 }
 
 /** The trust of every folder open in a window, so removing a trusted source reaches all of them. */

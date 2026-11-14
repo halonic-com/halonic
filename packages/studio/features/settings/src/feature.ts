@@ -1,5 +1,5 @@
 import { defineFeature, type SettingsSectionContribution } from "@halonicjs/studio-shell";
-import { DisplaySettingsService } from "./api.ts";
+import { DisplaySettingsService, HostSettingsService } from "./api.ts";
 import { agentCharactersPref, themePref } from "./appearance/appearance-prefs.ts";
 import { onOrOff, themeNames } from "./appearance/appearance-text.ts";
 
@@ -45,6 +45,14 @@ export const settingsSections: readonly SettingsSectionContribution[] = [
     load: () => import("./formats/formats-section.tsx"),
   },
   {
+    id: "assistant",
+    title: "Assistant",
+    scope: "host",
+    order: 10,
+    view: "AssistantSection",
+    load: () => import("./assistant/assistant-section.tsx"),
+  },
+  {
     id: "agent-sandbox",
     title: "Agent sandbox",
     scope: "host",
@@ -71,12 +79,12 @@ export const sectionsByName: readonly string[] = [
  * which the shell owns, the command **Settings** (`settings.open`), which opens it through the
  * window's `openSettings`, and a command per section in `sectionsByName` that a feature added
  * (`settings.section-commands`), named as its row, which opens Settings on it. It reads the
- * window's display settings from the app (`DisplaySettingsService`).
+ * window's display settings from the app (`DisplaySettingsService`) and the computer's host settings (`HostSettingsService`).
  */
 export const settingsFeature = defineFeature({
   id: "settings",
   title: "Settings",
-  needs: [DisplaySettingsService],
+  needs: [DisplaySettingsService, HostSettingsService],
   register(studio) {
     for (const section of settingsSections) {
       studio.settings.add(section);

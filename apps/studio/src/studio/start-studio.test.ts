@@ -6,7 +6,10 @@ import {
   DisplaySettings,
   themePref,
 } from "@halonicjs/studio-feature-settings";
-import { DisplaySettingsService } from "@halonicjs/studio-feature-settings/api";
+import {
+  DisplaySettingsService,
+  HostSettingsService,
+} from "@halonicjs/studio-feature-settings/api";
 import { RecentWorkspaces } from "@halonicjs/studio-feature-workspace";
 import { WorkspacePageService } from "@halonicjs/studio-feature-workspace/api";
 import { hostSettingsStoreKey, secretsKey, tokenStoreKey } from "@halonicjs/studio-services";
@@ -158,6 +161,7 @@ function desktopWebview(picked: string | null) {
     if (command === "pick_folder") return picked;
     if (command === "fs_write") return { status: "written" };
     if (command === "fs_list") return [];
+    if (command === "host_settings_read") return {};
     return command === "run_logs" ? [] : null;
   };
   const internals = { invoke, transformCallback: () => 1, unregisterCallback: () => {} };
@@ -183,6 +187,7 @@ verifies("studio.workspace-trust", () => {
       fs_list: ["workspace.yaml"],
       folder_location: "/work/acme",
       folder_entries: [],
+      host_settings_read: {},
     };
     const invoke = async (command: string, args?: Record<string, unknown>) => {
       calls.push(command);
@@ -209,6 +214,7 @@ verifies("studio.workspace-trust", () => {
       fs_list: ["workspace.yaml"],
       folder_location: "/work/acme",
       folder_entries: [],
+      host_settings_read: {},
     };
     const invoke = async (command: string, args?: Record<string, unknown>) => {
       if (command === "fs_read") return args?.["path"] === "workspace.yaml" ? acmeSettings : null;
@@ -333,11 +339,34 @@ verifies("studio.open-folder", () => {
     const opened = await openFolder(shell, webview.page, "/work/acme", displaySettings());
 
     await opened.workspace.services.get(hostSettingsStoreKey).remove("assistant.turn-limit");
-    expect(webview.calls.at(-1)).toEqual({
+    expect(webview.calls).toContainEqual({
       command: "host_settings_remove",
       args: { key: "assistant.turn-limit" },
     });
     await opened.dispose();
+  });
+
+  it("gives every folder open in a window the same loaded host settings", async () => {
+    const webview = desktopWebview(null);
+    const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
+    const first = await openFolder(shell, webview.page, "/work/acme", displaySettings());
+    const reads = () => webview.calls.filter((call) => call.command === "host_settings_read");
+    const readsBefore = reads().length;
+    const second = await openFolder(shell, webview.page, "/work/beta", displaySettings());
+
+    const settings = first.workspace.services.get(HostSettingsService);
+    expect(second.workspace.services.get(HostSettingsService)).toBe(settings);
+    expect(() =>
+      settings.get({
+        key: "x",
+        fallback: 1,
+        accepts: (value): value is number => typeof value === "number",
+      }),
+    ).not.toThrow();
+    expect(readsBefore).toBeGreaterThan(0);
+    expect(reads()).toHaveLength(readsBefore);
+    await first.dispose();
+    await second.dispose();
   });
 });
 
