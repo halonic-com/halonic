@@ -219,7 +219,10 @@ verifies("deploy.orchestrate", () => {
     const { api, options } = setup({ accounts: [], resources: owned, deployment: live });
     const renewDeployLock = api.renewDeployLock.bind(api);
     const done = await deploy(
-      { ...api, renewDeployLock: async (...args) => (takenOver ? undefined : renewDeployLock(...args)) },
+      {
+        ...api,
+        renewDeployLock: async (...args) => (takenOver ? undefined : renewDeployLock(...args)),
+      },
       {
         ...options,
         onProgress: (event) => {

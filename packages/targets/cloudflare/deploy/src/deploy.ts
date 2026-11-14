@@ -5,10 +5,10 @@ import { migrate } from "./migrate.ts";
 import { type ProvisionStep, provision } from "./provision.ts";
 import { type UploadProgress, uploadAndSwitch } from "./upload.ts";
 
-/** Where the deployed files come from: git, not the working folder. */
 const LOST_AFTER_SWITCH =
   "The deploy is live, but its lock was lost after traffic switched (another deploy may have taken it over). Check the Worker before deploying again.";
 
+/** Where the deployed files come from: git, not the working folder. */
 export interface DeploySource {
   /** The commit the deploy is taken from (its `HEAD`). The snapshot is read from git objects at this commit. */
   commit(): Promise<string>;
