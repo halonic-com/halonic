@@ -1,8 +1,9 @@
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, win32 } from "node:path";
 import { type RunProgram, runFixed } from "./journal-acl.ts";
+import { removeFolder } from "./remove-folder.ts";
 
 /**
  * The folders above `folders` that lie inside the user profile `home`, each
@@ -75,7 +76,7 @@ async function readSddl(folder: string, start: RunProgram): Promise<string> {
     await start("icacls.exe", [folder, "/save", saved]);
     return (await readFile(saved, "utf16le")).replace(/^\uFEFF/, "");
   } finally {
-    await rm(scratch, { recursive: true, force: true });
+    await removeFolder(scratch);
   }
 }
 

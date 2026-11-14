@@ -1,8 +1,9 @@
 import { randomBytes } from "node:crypto";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { SandboxProfile, SandboxSession } from "@halonicjs/ports";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { removeFolder } from "../src/remove-folder.ts";
 import { SrtSandbox } from "../src/srt-sandbox.ts";
 
 /**
@@ -57,7 +58,7 @@ describe("SrtSandbox on Windows, with the session's folders in the user profile"
 
   afterAll(async () => {
     await session?.close();
-    await rm(base, { recursive: true, force: true });
+    await removeFolder(base);
   });
 
   it("proves the fence", () => {
