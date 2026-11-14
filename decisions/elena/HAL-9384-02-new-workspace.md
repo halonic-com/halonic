@@ -2,6 +2,7 @@
 
 - Approval: Sofia's design check on HAL-9316 (section B3, B4 and the section C nit on trust); HAL-9384 asks for this on approved microcopy revision 96
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:oTuTkrmsrHwxR7uBD9yqjponhYa9YHCgupohtEyjO9zwCy+jWPgOaQBWNov3oKxZ9jzJUPrWsSiyCcJW/VCZAw==
 - Task: HAL-9384
 
 ## What changes
