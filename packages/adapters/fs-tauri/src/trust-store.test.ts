@@ -114,6 +114,10 @@ verifies("fs-tauri.trust-commands", () => {
         not_picked: "denied",
         folder_missing: "not_found",
         folder_changed: "denied",
+        name_invalid: "invalid_input",
+        parent_not_chosen: "denied",
+        parent_private: "denied",
+        exists: "conflict",
       };
       for (const [refusal, kind] of Object.entries(expected)) {
         const shell = new FakeTrustShell();
@@ -154,6 +158,8 @@ verifies("fs-tauri.trust-commands", () => {
       );
       expect(isTrustRefusal({ kind: "denied", message: "m" })).toBe(false);
       expect(isTrustRefusal({ kind: "io", message: 1 })).toBe(false);
+      expect(isTrustRefusal({ kind: "name_invalid", message: "m", reason: "empty" })).toBe(true);
+      expect(isTrustRefusal({ kind: "name_invalid", message: "m", reason: 2 })).toBe(false);
       expect(isTrustRefusal({ kind: "unreadable", message: "m", location: null })).toBe(false);
       expect(isTrustRefusal({ kind: "unreadable", message: "m", file: 2 })).toBe(false);
       expect(isTrustRefusal("Command trust_get not allowed by ACL")).toBe(false);

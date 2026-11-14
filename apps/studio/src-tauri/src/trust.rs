@@ -139,7 +139,7 @@ pub async fn create_workspace_folder<R: Runtime>(
             &folders,
             &list,
             documents.as_deref(),
-            |parent| profile_fence(&profile, parent) == Fence::Whole,
+            |created| profile_fence(&profile, created) == Fence::Whole,
             &parent,
             &name,
         )

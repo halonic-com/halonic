@@ -66,6 +66,14 @@ export const trustRefusalKinds = [
    * in, or the folder was deleted and made again.
    */
   "folder_changed",
+  /** `create_workspace_folder`: the name can't be a folder's name; `reason` says why. */
+  "name_invalid",
+  /** `create_workspace_folder`: the parent isn't Documents or a folder the person chose. */
+  "parent_not_chosen",
+  /** `create_workspace_folder`: the new folder would be the shell's own profile, or inside it. */
+  "parent_private",
+  /** `create_workspace_folder`: a folder of that name is already in the parent; it is never adopted. */
+  "exists",
 ] as const;
 
 /** One of {@link trustRefusalKinds}. */
@@ -79,6 +87,8 @@ export interface TrustRefusal {
   readonly location?: string;
   /** The record's file, for `unreadable`, so a person can delete it by hand. */
   readonly file?: string;
+  /** Why the shell refused a `name_invalid` name, as a stable word the page can turn into a sentence. */
+  readonly reason?: string;
 }
 
 /** Whether a rejection is the shell's refusal shape, as opposed to an IPC or permission failure. */
@@ -86,11 +96,12 @@ export function isTrustRefusal(reason: unknown): reason is TrustRefusal {
   if (typeof reason !== "object" || reason === null) {
     return false;
   }
-  const { kind, message, location, file } = reason as Record<string, unknown>;
+  const { kind, message, location, file, reason: why } = reason as Record<string, unknown>;
   return (
     trustRefusalKinds.some((known) => known === kind) &&
     typeof message === "string" &&
     (location === undefined || typeof location === "string") &&
-    (file === undefined || typeof file === "string")
+    (file === undefined || typeof file === "string") &&
+    (why === undefined || typeof why === "string")
   );
 }

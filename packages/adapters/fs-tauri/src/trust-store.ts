@@ -102,6 +102,11 @@ const errorKinds: Readonly<Record<Exclude<TrustRefusal["kind"], "unreadable">, E
   not_picked: "denied",
   folder_missing: "not_found",
   folder_changed: "denied",
+  // Only `create_workspace_folder` refuses with these (`TauriPickedFolders`), never a `trust_*` command.
+  name_invalid: "invalid_input",
+  parent_not_chosen: "denied",
+  parent_private: "denied",
+  exists: "conflict",
 };
 
 /**

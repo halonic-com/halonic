@@ -75,6 +75,11 @@ const errorKinds: Readonly<Record<TrustRefusalKind, ErrorKind>> = {
   declined: "denied",
   busy: "conflict",
   invalid_record: "internal",
+  // `create_workspace_folder`'s refusals; these commands don't send them.
+  name_invalid: "invalid_input",
+  parent_not_chosen: "denied",
+  parent_private: "denied",
+  exists: "conflict",
 };
 
 /**
