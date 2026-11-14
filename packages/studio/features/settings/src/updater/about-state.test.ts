@@ -107,6 +107,15 @@ verifies("settings.about-section", () => {
     expect(failed.actions).toEqual(["try-again"]);
   });
 
+  it("never says automatic updates are off on a managed install", () => {
+    const managed = { by: "scoop", command: "scoop update halonic" } as const;
+    const view = aboutView(
+      status({ kind: "up-to-date" }, { automatic: false, lastChecked: checkedEarlier, managed }),
+      now,
+    );
+    expect(view.line).not.toContain("Automatic updates are off");
+  });
+
   it("offers no button when another tool manages updates", () => {
     const managed = { by: "scoop", command: "scoop update halonic" } as const;
     for (const state of [
