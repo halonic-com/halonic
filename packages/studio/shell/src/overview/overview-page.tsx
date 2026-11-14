@@ -167,7 +167,7 @@ export function OverviewPage({
               </Button>
             )}
           </div>
-          {chips.length > 1 && (
+          {chips.length > 2 && (
             <FilterChips
               label={words.chipsLabel}
               options={chips}

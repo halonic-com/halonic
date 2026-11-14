@@ -8,7 +8,13 @@ import { render, unmountAll } from "../test-support/render.tsx";
 import type { OverviewHub } from "./overview-model.ts";
 import { OverviewPage, type OverviewPageProps, type OverviewWords } from "./overview-page.tsx";
 
-afterEach(unmountAll);
+let restorePopover: (() => void) | undefined;
+
+afterEach(() => {
+  unmountAll();
+  restorePopover?.();
+  restorePopover = undefined;
+});
 
 const words: OverviewWords = {
   searchLabel: "Search for skills",
@@ -170,9 +176,15 @@ verifies("shell.overview.filters-new-and-menu", () => {
   });
 
   it("shows no chips with one section only and a Shared chip when something is shared", () => {
+    const oneHub = hubs.slice(0, 1);
+    const sharedItems = { workspaceName: "Acme", items: [{ id: "tone", name: "Tone" }] };
     expect(show({ hubs: [] }).querySelector('[role="radiogroup"]')).toBeNull();
     unmountAll();
-    const page = show({ shared: { workspaceName: "Acme", items: [{ id: "tone", name: "Tone" }] } });
+    expect(show({ hubs: oneHub }).querySelector('[role="radiogroup"]')).toBeNull();
+    unmountAll();
+    expect(show({ hubs: [], shared: sharedItems }).querySelector('[role="radiogroup"]')).toBeNull();
+    unmountAll();
+    const page = show({ hubs: oneHub, shared: sharedItems });
     press(page, 'input[type="radio"][value="shared"]');
     expect(headings(page)).toEqual(["Shared in Acme"]);
   });
@@ -188,7 +200,7 @@ verifies("shell.overview.filters-new-and-menu", () => {
   });
 
   it("has a ⋮ button only on rows with menu items, and opens the feature's menu", () => {
-    const restorePopover = installFakePopover();
+    restorePopover = installFakePopover();
     const onSelect = vi.fn();
     const page = show({
       itemMenu: (item) =>
@@ -201,7 +213,6 @@ verifies("shell.overview.filters-new-and-menu", () => {
     );
     act(() => entry?.click());
     expect(onSelect).toHaveBeenCalledOnce();
-    restorePopover();
   });
 
   it("keeps the chips, search and New button out of the failed state", () => {
