@@ -1,7 +1,5 @@
-import { EmptyState } from "@halonicjs/studio-kit";
 import type { ItemPageSectionViewProps } from "@halonicjs/studio-shell";
 import { useId } from "react";
-import { TRY_AGAIN } from "../aliases/alias-text.ts";
 import { useModels } from "../aliases/use-models.ts";
 import { ModelsFilesService } from "../api.ts";
 import { providerRows } from "./provider-rows.ts";
@@ -10,8 +8,6 @@ import {
   PROVIDER_KIND,
   PROVIDERS_HEADING,
   PROVIDERS_LOADING_LINE,
-  PROVIDERS_UNREADABLE_REASON,
-  PROVIDERS_UNREADABLE_TITLE,
 } from "./provider-text.ts";
 
 /**
@@ -22,7 +18,7 @@ import {
  * <ProvidersSection item={WORKSPACE_PAGE_ITEM} context={context} />
  */
 export function ProvidersSection({ context }: ItemPageSectionViewProps) {
-  const [state, retry] = useModels(context.services.get(ModelsFilesService));
+  const [state] = useModels(context.services.get(ModelsFilesService));
   const headingId = useId();
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
@@ -30,20 +26,10 @@ export function ProvidersSection({ context }: ItemPageSectionViewProps) {
         {PROVIDERS_HEADING}
       </h2>
       {state.status === "loading" ? <p role="status">{PROVIDERS_LOADING_LINE}</p> : null}
-      {state.status === "unreadable" ? (
-        <EmptyState
-          tone="error"
-          align="start"
-          headingLevel={3}
-          title={PROVIDERS_UNREADABLE_TITLE}
-          description={PROVIDERS_UNREADABLE_REASON}
-          action={{ label: TRY_AGAIN, onClick: retry }}
-        />
-      ) : null}
-      {state.status === "ready" && state.providerFiles.length === 0 ? (
+      {state.status !== "loading" && state.providerFiles.length === 0 ? (
         <p>{NO_PROVIDERS_LINE}</p>
       ) : null}
-      {state.status === "ready" && state.providerFiles.length > 0 ? (
+      {state.status !== "loading" && state.providerFiles.length > 0 ? (
         <ul className="flex flex-col">
           {providerRows(state.providerFiles).map((row) => (
             <li key={row.id}>

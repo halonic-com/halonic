@@ -2,26 +2,31 @@ import { defaultCurrency } from "@halonicjs/app";
 import { type Models, type Provider, parseFile } from "@halonicjs/format";
 import type { ModelsFiles } from "../api.ts";
 
+/** What the provider views know of the workspace; it doesn't depend on `models.yaml`. */
+export interface ProvidersState {
+  readonly providers: readonly Provider[];
+  /** The providers with the file each was read from, in the order of `providers`. */
+  readonly providerFiles: readonly ProviderEntry[];
+  /** True when `workspace.yaml` says only local providers may be used. */
+  readonly localOnly: boolean;
+  /** The workspace's name, for words that name it; `undefined` when `workspace.yaml` doesn't read. */
+  readonly workspaceName: string | undefined;
+  readonly localProviders: ReadonlySet<string>;
+}
+
 /**
- * What the alias views know of the workspace: still reading, unreadable, or its aliases with the
- * budget currency, the providers that read, and the ids of those that run on this machine.
+ * What the Models views know of the workspace: still reading, `models.yaml` unreadable, or its
+ * aliases with the budget currency. Either way the providers that read come with it, so a broken
+ * `models.yaml` doesn't hide them.
  */
 export type ModelsState =
   | { readonly status: "loading" }
-  | { readonly status: "unreadable" }
-  | {
+  | ({ readonly status: "unreadable" } & ProvidersState)
+  | ({
       readonly status: "ready";
       readonly models: Models;
       readonly currency: string;
-      readonly providers: readonly Provider[];
-      /** The providers with the file each was read from, in the order of `providers`. */
-      readonly providerFiles: readonly ProviderEntry[];
-      /** True when `workspace.yaml` says only local providers may be used. */
-      readonly localOnly: boolean;
-      /** The workspace's name, for words that name it; `undefined` when `workspace.yaml` doesn't read. */
-      readonly workspaceName: string | undefined;
-      readonly localProviders: ReadonlySet<string>;
-    };
+    } & ProvidersState);
 
 /** A provider that read, with the path of its file. */
 export interface ProviderEntry {
@@ -35,21 +40,28 @@ export async function readModels(files: ModelsFiles): Promise<ModelsState> {
     readProviderEntries(files),
     files.readModels().catch(() => undefined),
   ]);
-  if (text === undefined) return { status: "unreadable" };
-  const models = text === null ? ({ version: 1, aliases: {} } as Models) : parseModels(text);
-  if (models === undefined) return { status: "unreadable" };
   const providers = entries.map(({ provider }) => provider);
   const workspace = await readWorkspace(files);
-  return {
-    status: "ready",
-    models,
-    currency: workspace?.budget?.currency ?? defaultCurrency,
+  const around: ProvidersState = {
     providers,
     providerFiles: entries,
     localOnly: workspace?.privacy.localOnly ?? false,
     workspaceName: workspace?.name,
     localProviders: new Set(providers.filter((provider) => provider.local).map(({ id }) => id)),
   };
+  const models = text === undefined ? undefined : parseModelsOrEmpty(text);
+  if (models === undefined) return { status: "unreadable", ...around };
+  return {
+    status: "ready",
+    models,
+    currency: workspace?.budget?.currency ?? defaultCurrency,
+    ...around,
+  };
+}
+
+/** No `models.yaml` is no aliases. */
+function parseModelsOrEmpty(text: string | null): Models | undefined {
+  return text === null ? ({ version: 1, aliases: {} } as Models) : parseModels(text);
 }
 
 function parseModels(text: string): Models | undefined {

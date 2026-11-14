@@ -54,6 +54,23 @@ verifies("models.aliases.edit-target", () => {
     ]);
   });
 
+  it("changes a provider file as one named step, and only a file directly in providers/", async () => {
+    const { changes, store, models } = setup();
+    store["providers/ollama.yaml"] = "id: ollama\n";
+
+    expect(await models.readProvider("providers/ollama.yaml")).toBe("id: ollama\n");
+    models.changeProvider("providers/ollama.yaml", "Updated provider Ollama", "id: ollama\nlocal: true\n");
+    models.changeProvider("workspace.yaml", "Nope", "x");
+
+    expect(await models.readProvider("workspace.yaml")).toBeNull();
+    expect(changes).toEqual([
+      {
+        label: "Updated provider Ollama",
+        changes: { "providers/ollama.yaml": "id: ollama\nlocal: true\n" },
+      },
+    ]);
+  });
+
   it("tells a listener about changes until it stops", () => {
     const { listeners, models } = setup();
 

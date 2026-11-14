@@ -52,6 +52,8 @@ function filesWith(
   return {
     readModels: async () => (text instanceof Error ? Promise.reject(text) : text),
     readProviders: async () => providerFiles(others.providers),
+    readProvider: async () => null,
+    changeProvider: () => undefined,
     readWorkspace: async () => others.workspace ?? null,
     changeModels: () => undefined,
     subscribe: (listener) => {

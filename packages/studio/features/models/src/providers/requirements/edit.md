@@ -11,6 +11,6 @@ When the user changes a provider's name, type, base URL, secret name or local sw
 - Given `providers/ollama.yaml` with no base URL,
   when the user sets the base URL to `http://localhost:11434/v1`,
   then `providers/ollama.yaml` is saved with `baseUrl: http://localhost:11434/v1`.
-- Given the user turns "local" off for "Ollama" while the workspace is local only, then the page says "Blocked: this workspace is set to local only." after the change.
+- Given the user turns "local" off for "Ollama" while the workspace is local only, then the page says "Acme is local only, so it can't use this provider." after the change (Acme being the workspace name).
 - Given the user types `localhost:11434` (no scheme) as base URL, then the file is not changed and the field shows the URL problem.
 - Given the user changes the secret name of "Anthropic" from `anthropic` to `anthropic-work`, then `providers/anthropic.yaml` is saved with `secret: anthropic-work` without asking, no stored key changes, and like any important setting it goes live with the next version.
