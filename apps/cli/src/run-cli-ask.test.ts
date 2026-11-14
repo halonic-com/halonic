@@ -1,3 +1,4 @@
+import { PassThrough } from "node:stream";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { type CliCommand, UsageError } from "./command.ts";
@@ -8,8 +9,10 @@ import { pluginMessages } from "./messages/plugin.ts";
 import { trustMessages } from "./messages/trust.ts";
 import { NotTrustedError } from "./not-trusted.ts";
 import type { QuestionTerminal } from "./output/question.ts";
+import { SecretReader, type TerminalInput } from "./output/secret-reader.ts";
 import { runCli, type Terminal } from "./run-cli.ts";
 import { captureIo } from "./test/capture-io.ts";
+import { fakeSignals } from "./test/fake-signals.ts";
 import { manualClock } from "./test/manual-clock.ts";
 
 const testMessages = defineMessages("test", {
@@ -20,6 +23,7 @@ const testMessages = defineMessages("test", {
   trusted: () => phrase`${markPart("done")} Trusted Acme.`,
   notTrusted: () => phrase`Left Acme untrusted.`,
   checking: () => phrase`Check Acme`,
+  password: () => phrase`Password`,
 });
 
 /** `trust`'s refusal without a terminal: the reason, then the flags, and exit 3 (F6). */
@@ -162,5 +166,92 @@ verifies("cli.questions", () => {
       "live (erase)",
       "ask Trust Acme on this computer? [y/N] ",
     ]);
+  });
+});
+
+verifies("cli.secret-prompt", () => {
+  const passwordCommand: CliCommand = {
+    ...trustCommand,
+    name: "password",
+    async run(_input, context) {
+      const value = await context.askSecret(testMessages.password(), notTrusted);
+      throw new Error(`The password ${value} was refused.`);
+    },
+  };
+
+  it("scrubs a typed value from the error the command then fails with", async () => {
+    const io = captureIo("/work");
+    const { terminal, written } = terminalTyping();
+    const hiding: Terminal = {
+      ...terminal,
+      questions: {
+        write: (text) => written.push(text),
+        readLine: async () => undefined,
+        readSecret: async () => "hunter2-hunter2",
+      },
+    };
+    expect(await runCli(["password"], io, [passwordCommand], { terminal: hiding })).toBe(
+      exitCode.failed,
+    );
+    expect(written).toEqual(["Password: ", "\n"]);
+    expect(io.stderr.join("\n")).not.toContain("hunter2-hunter2");
+  });
+
+  it("asks nothing and refuses with --json, in CI or when the terminal can't hide the answer", async () => {
+    const cases = [
+      { args: ["password", "--json"], env: {}, hides: true },
+      { args: ["password"], env: { CI: "true" }, hides: true },
+      { args: ["password"], env: {}, hides: false },
+    ];
+    for (const { args, env, hides } of cases) {
+      const io = captureIo("/work");
+      const { terminal, written } = terminalTyping("y");
+      const questions: QuestionTerminal = {
+        write: (text) => written.push(text),
+        readLine: async () => "y",
+        ...(hides ? { readSecret: async () => "hunter2" } : {}),
+      };
+      const there = { ...terminal, env: { ...terminal.env, ...env }, questions };
+      expect(await runCli(args, io, [passwordCommand], { terminal: there })).toBe(
+        exitCode.notTrusted,
+      );
+      expect(written).toEqual([]);
+    }
+  });
+
+  it("stops the command at Ctrl C even when the signal arrives after the key, instead of giving it no value", async () => {
+    const io = captureIo("/work");
+    const signals = fakeSignals();
+    const stdin = Object.assign(new PassThrough(), { setRawMode: () => undefined });
+    // As the real process: SIGINT is delivered on a later turn of the event loop.
+    const reader = new SecretReader(stdin as TerminalInput, () => {
+      setTimeout(() => signals.send("SIGINT"), 5);
+    });
+    const { terminal } = terminalTyping();
+    const seen: unknown[] = [];
+    const asking: CliCommand = {
+      ...passwordCommand,
+      async run(_input, context) {
+        seen.push(await context.askSecret(testMessages.password(), notTrusted));
+        return { exitCode: exitCode.ok, lines: [], json: {} };
+      },
+    };
+    const there: Terminal = {
+      ...terminal,
+      questions: {
+        write: () => undefined,
+        readLine: async () => undefined,
+        readSecret: (signal) => reader.readSecret(signal),
+      },
+    };
+    const running = runCli(["password"], io, [asking], {
+      terminal: there,
+      stop: { signals, exitNow: () => undefined },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    stdin.write("pass\u0003");
+    expect(await running).toBe(130);
+    expect(seen).toEqual([]);
+    expect(io.stderr).toEqual(["Stopped."]);
   });
 });

@@ -70,6 +70,15 @@ export interface CommandContext {
    */
   ask(question: Question): Promise<boolean>;
   /**
+   * Asks for a value without showing what is typed, such as a password, and
+   * returns it, or `undefined` when stdin ended before anything was typed.
+   * Where nobody can answer (no terminal on stdin, `CI` or `--json`) it asks
+   * nothing and throws `refusal`, which names the other way to give the
+   * value. `runCli` scrubs the value from everything it prints afterwards.
+   * Ctrl C or SIGTERM while it waits ends the prompt, as for {@link ask}.
+   */
+  askSecret(prompt: Message, refusal: () => Error): Promise<string | undefined>;
+  /**
    * Aborted at the first Ctrl C or SIGTERM (cli-output 1.5). The command
    * passes it on to what it starts, winds down, and returns a
    * {@link StoppedResult}.
