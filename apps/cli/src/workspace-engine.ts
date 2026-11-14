@@ -25,12 +25,13 @@ import {
   type RoutineEngine,
   type RoutineTicks,
 } from "./local-engine-host.ts";
-import { computerIntegrationMachine } from "./local-integration-machine.ts";
+import { computerIntegrationMachine, computerPluginMachine } from "./local-integration-machine.ts";
 import type { LocalRunConnectorsInput } from "./local-run-connectors.ts";
 import type { Message } from "./messages/define.ts";
 import type { Phrase } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import { openLocalIntegration } from "./open-local-integration.ts";
+import { openPluginBackend } from "./open-plugin-backend.ts";
 import { printable } from "./output/printable.ts";
 import { checkRunSandbox, type SandboxGateRun, type UnsandboxedAgent } from "./sandbox-gate.ts";
 import {
@@ -261,6 +262,7 @@ function computerRunConnectors(
   const profile = profileFolder(environment);
   const machine = nodeConnectorMachine();
   const integrations = computerIntegrationMachine({ ...target, trust: machine, environment });
+  const plugins = computerPluginMachine(integrations, { trust: machine, environment });
   return {
     trust,
     // Workspace programs start in a sandbox session where the sandbox works (D45).
@@ -272,6 +274,7 @@ function computerRunConnectors(
         deniedPaths: [profile.root],
       },
       openLocalIntegration(integrations),
+      openPluginBackend(plugins),
     ),
     // The CLI connects no built-in Google connector yet, the only kind that reads sign-ins.
     context: { http: machine.http, tokens: machine.tokens },
