@@ -45,6 +45,7 @@ export class FakeFileShell implements TauriFileShell {
   #nextWatch = 0;
   #nextRefusal: { kind: FileRefusalKind; command: string | undefined } | undefined;
   #review: FakeFileShell | undefined;
+  readonly #approvals = new Map<string, FakeFileShell>();
 
   /**
    * @param options.opened - the folders the person opened in the shell
@@ -67,6 +68,18 @@ export class FakeFileShell implements TauriFileShell {
   get review(): FakeFileShell {
     this.#review ??= new FakeFileShell({ opened: this.#opened, granted: this.#granted });
     return this.#review;
+  }
+
+  /** One source's tool approvals in `workspace`, which calls with `folder: "tool-approvals"` and that `source` reach. */
+  approvalsOf(workspace: string, source: string): FakeFileShell {
+    // As the shell names the folder: by the pair, never a joined spelling.
+    const folder = JSON.stringify([workspace, source]);
+    let approvals = this.#approvals.get(folder);
+    if (approvals === undefined) {
+      approvals = new FakeFileShell({ opened: this.#opened, granted: this.#granted });
+      this.#approvals.set(folder, approvals);
+    }
+    return approvals;
   }
 
   /** How many watches are open in the shell. */
@@ -131,6 +144,10 @@ export class FakeFileShell implements TauriFileShell {
     if (folder === "review" && command !== "fs_watch") {
       return await this.review.invoke(command, rest);
     }
+    if (folder === "tool-approvals" && command !== "fs_watch") {
+      const { source, ...others } = rest;
+      return await this.#approvalsCall(command, String(args["workspace"]), source, others);
+    }
     if (folder !== undefined && folder !== "workspace") {
       // What Tauri rejects with for an argument the command can't take: text, not a refusal.
       throw `invalid args \`folder\` for command ${command}`;
@@ -157,6 +174,23 @@ export class FakeFileShell implements TauriFileShell {
       default:
         throw `Command ${command} not found`;
     }
+  }
+
+  /** A call on the approvals folder: it needs a source, lists only the whole folder and keeps to the store's own file names. */
+  async #approvalsCall(
+    command: string,
+    workspace: string,
+    source: unknown,
+    args: Record<string, unknown>,
+  ): Promise<unknown> {
+    const unsafe = (message: string) => refusal("unsafe_path", message);
+    if (typeof source !== "string") throw unsafe("the tool approvals need a source");
+    const { path, dir } = args;
+    if (command === "fs_list" && dir !== null) throw unsafe("only the whole folder is listed");
+    if (path !== undefined && !/^(?:[0-9a-f]{64}|waiting)\.json$/u.test(String(path))) {
+      throw unsafe("the tool approvals folder holds only the store's own files");
+    }
+    return await this.approvalsOf(workspace, source).invoke(command, { workspace, ...args });
   }
 
   #list(dir: string | null): string[] {

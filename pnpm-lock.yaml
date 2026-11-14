@@ -824,6 +824,9 @@ importers:
 
   packages/adapters/fs-tauri:
     dependencies:
+      '@halonicjs/adapter-tool-approval-kit':
+        specifier: workspace:*
+        version: link:../tool-approval-kit
       '@halonicjs/adapter-watch-kit':
         specifier: workspace:*
         version: link:../watch-kit
