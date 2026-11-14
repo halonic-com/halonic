@@ -2,6 +2,12 @@ import type { SetupEdit, StepId } from "@halonicjs/google-setup";
 import type { SecretText } from "@halonicjs/studio-kit";
 import type { GoogleSetupAccount } from "../api.ts";
 
+/** A step tick that failed after its save went through, and how to run it again. */
+export interface ProgressFailure {
+  readonly error: unknown;
+  readonly retry: () => void;
+}
+
 /** What step 6 saves, and the steps each save finishes. */
 export interface CredentialSaves {
   /** Saves the client ID. It finishes step 5, and step 6 too when the secret is already saved. */
@@ -22,23 +28,30 @@ export interface CredentialSaves {
  * @param account - the account as the host has it now
  * @param onEdit - saves one change to the setup record
  * @param send - saves the secret to the secret store, then lets the host tell its listeners
- * @param onProgressFailed - told when a step couldn't be ticked, with the error and a retry
+ * A retry ticks only the steps that hadn't been ticked when it failed, not the ones before.
+ *
+ * @param onProgress - told when a step couldn't be ticked, with the error and a retry, and told
+ *   `null` once the ticks have gone through
  */
 export function credentialSaves(
   account: GoogleSetupAccount,
   onEdit: (edit: SetupEdit) => Promise<void>,
   send: (secret: SecretText) => Promise<void>,
-  onProgressFailed: (error: unknown, retry: () => void) => void,
+  onProgress: (failure: ProgressFailure | null) => void,
 ): CredentialSaves {
   const { record } = account;
   const finish = async (steps: readonly StepId[]): Promise<void> => {
-    try {
-      for (const step of steps) {
-        if (record.stepsDone[step] === undefined) await onEdit({ kind: "step-done", step });
+    for (const [index, step] of steps.entries()) {
+      if (record.stepsDone[step] !== undefined) continue;
+      try {
+        await onEdit({ kind: "step-done", step });
+      } catch (error) {
+        const rest = steps.slice(index);
+        onProgress({ error, retry: () => void finish(rest) });
+        return;
       }
-    } catch (error) {
-      onProgressFailed(error, () => void finish(steps));
     }
+    onProgress(null);
   };
   return {
     async saveClientId(clientId) {

@@ -62,6 +62,9 @@ export function Checklist(props: ChecklistProps) {
   );
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | undefined>(undefined);
+  // A save went through but its step tick didn't. Unlike `failed` it isn't tied to the open step:
+  // saving the secret can open step 6 in the same moment, and the line has to stay.
+  const [progressFailed, setProgressFailed] = useState<string | undefined>(undefined);
   // What **Try again** runs: the save that failed.
   const retry = useRef<() => void>(() => {});
   // The project ID as typed in step 1, until it is saved with **Done, next**.
@@ -89,9 +92,11 @@ export function Checklist(props: ChecklistProps) {
   }, [secretTyped]);
 
   if (current === undefined || open === undefined) return null;
-  const saves = credentialSaves(account, onEdit, props.onSaveSecret, (error, retryTick) => {
-    setFailed(failureLine("save your progress", error));
-    retry.current = retryTick;
+  const saves = credentialSaves(account, onEdit, props.onSaveSecret, (failure) => {
+    setProgressFailed(
+      failure === null ? undefined : failureLine("save your progress", failure.error),
+    );
+    if (failure !== null) retry.current = failure.retry;
   });
 
   async function doneNext() {
@@ -184,7 +189,7 @@ export function Checklist(props: ChecklistProps) {
                   }}
                   answering={answering}
                   busy={busy}
-                  failed={failed}
+                  failed={failed ?? progressFailed}
                   onRetry={() => retry.current()}
                   onDone={() => void doneNext()}
                   close={close}

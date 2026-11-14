@@ -62,6 +62,8 @@ export function SecretField(props: SecretFieldProps) {
       await onSave(new SecretText(value));
       field.value = "";
       setHasText(false);
+      // A later secret is a new send, so it asks again.
+      setConfirmed(false);
     } catch {
       // The typed value stays in the input so the user can try again. The error never repeats it.
       setFailed(true);

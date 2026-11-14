@@ -128,6 +128,49 @@ verifies("google-setup.client-id-field", () => {
     expect(inputs(container).id.value).toBe("");
   });
 
+  it("keeps the failed-tick line when saving a held secret opens step 6", async () => {
+    let failTick = false;
+    const { fake, container } = await open(account(record(upToClient)), {
+      edit: async (edit) => {
+        if (failTick && edit.kind === "step-done") throw new Error("The engine isn't answering.");
+      },
+    });
+    await type(inputs(container).secret, fakeSecret);
+    await type(inputs(container).id, clientId);
+    await press(button(container, "Save client ID"));
+    fake.change([account(record([...upToClient, "client"], { clientId }))]);
+    await settled();
+    failTick = true;
+    await press(button(container, "Save secret"));
+    expect(fake.secrets).toHaveLength(1);
+    expect(inputs(container).secret.value).toBe("");
+    expect(container.textContent).toContain(
+      "Couldn't save your progress: the engine isn't answering.",
+    );
+  });
+
+  it("retries only the steps that failed, not the one that was ticked", async () => {
+    const saved = record(upToClient, { clientSecret: { clientRef: "gclient_1", savedAt: at } });
+    let failCredentials = true;
+    const { fake, container } = await open(account(saved), {
+      edit: async (edit) => {
+        if (failCredentials && edit.kind === "step-done" && edit.step === "credentials") {
+          throw new Error("The engine isn't answering.");
+        }
+      },
+    });
+    await type(inputs(container).id, clientId);
+    await press(button(container, "Save client ID"));
+    failCredentials = false;
+    await press(button(container, "Try again"));
+    const ticks = edits(fake).filter((edit) => edit.kind === "step-done");
+    expect(ticks).toEqual([
+      { kind: "step-done", step: "client" },
+      { kind: "step-done", step: "credentials" },
+    ]);
+    expect(container.textContent).not.toContain("Couldn't save your progress");
+  });
+
   it("moves focus to the secret field when a secret is pasted into the client ID", async () => {
     const { container } = await open(account(record(upToClient)));
     await type(inputs(container).id, fakeSecret);
