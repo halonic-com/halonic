@@ -170,6 +170,13 @@ export const runPageWords = {
   updatesLive: "updates live",
   loading: (shortId: string) => `Loading run ${shortId}`,
   loadFailed: (shortId: string) => `Couldn't load run ${shortId}`,
+  /** The skeleton under the banner while the run's log is read (mc 15.2). */
+  loadingLog: "Loading the run",
+  logFailed: "Couldn't read this run's log",
+  /** The red banner for a log with a damaged line; no "inside Halonic", as the cause may be a disk. */
+  damagedLog: (line: number) =>
+    `Part of this run's log can't be read. Line ${line} is damaged. Everything before it is shown, so the receipt may be incomplete.`,
+  damagedLogName: "Damaged run log",
   notHere: "This run isn't in this workspace any more.",
   reviewInInbox: "Review in Inbox",
   openRun: (shortId: string) => `Open run ${shortId}`,

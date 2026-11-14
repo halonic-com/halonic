@@ -23,6 +23,25 @@ export interface SourcedRun {
   readonly testCase?: string;
 }
 
+/**
+ * What `RunsSource.log` throws when it read the log up to a damaged line and
+ * no further: the run page shows those events with a banner that names the
+ * line (mc 15.2, "Damaged run log").
+ */
+export class DamagedRunLog extends Error {
+  /** The 1-based line of the log file that can't be read. */
+  readonly line: number;
+  /** The events before it, oldest first. */
+  readonly events: RunEvent[];
+
+  constructor(line: number, events: RunEvent[]) {
+    super(`Line ${line} of the run log is damaged.`);
+    this.name = "DamagedRunLog";
+    this.line = line;
+    this.events = events;
+  }
+}
+
 /** What a run's workflow says about it: its name, and the description of each step. */
 export interface RunWorkflow {
   readonly name: string;
@@ -48,6 +67,7 @@ export interface RunsSource {
   /**
    * One run's whole log, oldest event first, the events `halonic runs show`
    * reads; empty when the run has no log. The run page reads it for Every step.
+   * Throws {@link DamagedRunLog} when part of it can't be read.
    */
   readonly log: (runId: string) => Promise<RunEvent[]>;
   /** The run's workflow; `undefined` when it's no longer in the workspace. */

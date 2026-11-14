@@ -1,7 +1,7 @@
 import type { RunEvent } from "@halonicjs/events";
 import { Button, List, type ListColumn } from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import type { RunsSource } from "../api.ts";
+import { DamagedRunLog, type RunsSource } from "../api.ts";
 import { everyStepWords, runLogWords } from "../run-words.ts";
 import type { StepEntry, StepMark } from "./every-step-model.ts";
 import { RunLog } from "./run-log.tsx";
@@ -141,11 +141,24 @@ export function StepDot({ mark }: { readonly mark: StepMark }) {
   );
 }
 
+/** What the run page knows of the run's log. */
+export interface RunLogRead {
+  /** The events read, `undefined` until a first read has worked. */
+  readonly events: readonly RunEvent[] | undefined;
+  /** Why the first read failed, while no read has worked; `undefined` otherwise. */
+  readonly failure: unknown;
+  /** The line a damaged log stops at; `undefined` for a log that reads whole. */
+  readonly damagedLine: number | undefined;
+  /** Reads the log again, for Try again. */
+  readonly retry: () => void;
+}
+
 /**
  * One run's log, read again whenever the run moves on (`lastSeq` grows), and
  * on every list refresh until a first read has worked, so Try again reaches
- * it. When a later read fails, the page keeps the log it showed (states R18);
- * `undefined` until the first read.
+ * it. When a later read fails, the page keeps the log it showed (states R18).
+ * A first read that fails is reported in `failure`, not left silent, and a
+ * damaged log gives the events before the damage with the line it stopped at.
  *
  * `listState` is the runs list's state: it changes on every refresh.
  */
@@ -154,34 +167,63 @@ export function useRunLog(
   runId: string,
   lastSeq: number,
   listState: unknown,
-): readonly RunEvent[] | undefined {
-  const [log, setLog] = useState<{ readonly runId: string; readonly events: RunEvent[] }>();
+): RunLogRead {
+  const [log, setLog] = useState<{
+    readonly runId: string;
+    readonly events: RunEvent[];
+    readonly damagedLine: number | undefined;
+  }>();
+  const [failure, setFailure] = useState<{ readonly runId: string; readonly error: unknown }>();
+  const [attempt, setAttempt] = useState(0);
   const read = useRef<
-    { source: RunsSource; runId: string; lastSeq: number; done: boolean } | undefined
+    | { source: RunsSource; runId: string; lastSeq: number; done: boolean; attempt: number }
+    | undefined
   >(undefined);
   useEffect(() => {
     const last = read.current;
-    const sameRead = last?.source === source && last.runId === runId && last.lastSeq === lastSeq;
+    const sameRead =
+      last?.source === source &&
+      last.runId === runId &&
+      last.lastSeq === lastSeq &&
+      last.attempt === attempt;
     if (sameRead && last.done) {
       return;
     }
-    const mine = { source, runId, lastSeq, done: false };
+    const mine = { source, runId, lastSeq, done: false, attempt };
     read.current = mine;
     let current = true;
     source.log(runId).then(
       (events) => {
         if (current) {
           mine.done = true;
-          setLog({ runId, events });
+          setFailure(undefined);
+          setLog({ runId, events, damagedLine: undefined });
         }
       },
-      () => {
-        // The list's own load says the engine isn't answering; the steps stay as they were.
+      (error: unknown) => {
+        if (!current) return;
+        if (error instanceof DamagedRunLog) {
+          mine.done = true;
+          setFailure(undefined);
+          setLog({ runId, events: error.events, damagedLine: error.line });
+          return;
+        }
+        // The list's own load says the engine isn't answering; a log already shown stays as it was.
+        setFailure({ runId, error });
       },
     );
     return () => {
       current = false;
     };
-  }, [source, runId, lastSeq, listState]);
-  return log?.runId === runId ? log.events : undefined;
+  }, [source, runId, lastSeq, listState, attempt]);
+  const mine = log?.runId === runId ? log : undefined;
+  return {
+    events: mine?.events,
+    failure: mine === undefined && failure?.runId === runId ? failure.error : undefined,
+    damagedLine: mine?.damagedLine,
+    retry: () => {
+      setFailure(undefined);
+      setAttempt((count) => count + 1);
+    },
+  };
 }
