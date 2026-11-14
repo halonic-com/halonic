@@ -1,5 +1,6 @@
 import { err, ok, parseAmount, type Result } from "@halonicjs/std";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
+import { ZERO_PRICE_WARNING } from "./alias-text.ts";
 
 /** What is wrong with a field, in the words the field shows under itself. */
 export interface FieldProblem {
@@ -88,13 +89,13 @@ export function editAliasPrice(
   ]);
 }
 
-/** The warning under the price fields for a cloud alias priced at 0, or `undefined`. */
+/** The warning under the price fields for a cloud alias priced at 0, or `undefined`; an empty field (`undefined`) is no price. */
 export function zeroPriceWarning(
-  price: { readonly input: number; readonly output: number },
+  price: { readonly input: number | undefined; readonly output: number | undefined },
   providerIsLocal: boolean,
 ): string | undefined {
   if (providerIsLocal || (price.input !== 0 && price.output !== 0)) {
     return undefined;
   }
-  return "A price of 0 means these calls look free in your estimated spend.";
+  return ZERO_PRICE_WARNING;
 }

@@ -101,5 +101,7 @@ verifies("models.aliases.edit-price", () => {
     expect(zeroPriceWarning({ input: 0, output: 5 }, false)).toBe(warning);
     expect(zeroPriceWarning({ input: 0, output: 0 }, true)).toBeUndefined();
     expect(zeroPriceWarning({ input: 1, output: 5 }, false)).toBeUndefined();
+    expect(zeroPriceWarning({ input: undefined, output: 5 }, false)).toBeUndefined();
+    expect(zeroPriceWarning({ input: undefined, output: undefined }, false)).toBeUndefined();
   });
 });

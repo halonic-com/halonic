@@ -9,8 +9,10 @@ export type ModelsState =
 
 /** The workspace's aliases; no `models.yaml` is no aliases, a file that doesn't parse is unreadable. */
 export async function readModels(files: ModelsFiles): Promise<ModelsState> {
-  const providers = await readProviders(files);
-  const text = await files.readModels().catch(() => undefined);
+  const [providers, text] = await Promise.all([
+    readProviders(files),
+    files.readModels().catch(() => undefined),
+  ]);
   if (text === undefined) return { status: "unreadable" };
   if (text === null)
     return { status: "ready", models: { version: 1, aliases: {} } as Models, providers };

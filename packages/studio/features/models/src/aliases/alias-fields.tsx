@@ -1,5 +1,5 @@
 import type { ModelAlias, Models, Provider } from "@halonicjs/format";
-import type { Result } from "@halonicjs/std";
+import { parseAmount, type Result } from "@halonicjs/std";
 import { Field, FormRows, Input, Select } from "@halonicjs/studio-kit";
 import { useState } from "react";
 import type { ModelsFiles } from "../api.ts";
@@ -9,6 +9,7 @@ import {
   editAliasTarget,
   type FieldProblem,
   parseFallbacks,
+  zeroPriceWarning,
 } from "./alias-edits.ts";
 import { providerChoices } from "./alias-rows.ts";
 import { saveModelsEdit } from "./alias-save.ts";
@@ -18,7 +19,6 @@ import {
   fallbacksHint,
   PRICE_HEADING,
   PRICE_HINT,
-  ZERO_PRICE_WARNING,
 } from "./alias-text.ts";
 import { useDraft } from "./use-draft.ts";
 
@@ -85,8 +85,9 @@ export function AliasFields({ files, models, providers, name }: AliasFieldsProps
     .sort((first, second) => first.localeCompare(second));
   const choices = providerChoices(providers, alias.provider);
   const isLocal = providers.some((provider) => provider.id === alias.provider && provider.local);
-  const pricedZero = [input, output].some(
-    (amount) => amount.trim() !== "" && Number(amount.replace(",", ".")) === 0,
+  const zeroWarning = zeroPriceWarning(
+    { input: parseAmount(input), output: parseAmount(output) },
+    isLocal,
   );
   const emptiesCachePrices = input.trim() === "" && output.trim() === "" && hasCachePrices(alias);
 
@@ -136,7 +137,7 @@ export function AliasFields({ files, models, providers, name }: AliasFieldsProps
             />
           </Field>
         </div>
-        {pricedZero && !isLocal ? <p>{ZERO_PRICE_WARNING}</p> : null}
+        {zeroWarning === undefined ? null : <p>{zeroWarning}</p>}
         {emptiesCachePrices ? <p>{CACHE_PRICES_NOTE}</p> : null}
       </fieldset>
       {problemFor("yaml") === null ? null : <p role="alert">{problemFor("yaml")}</p>}
