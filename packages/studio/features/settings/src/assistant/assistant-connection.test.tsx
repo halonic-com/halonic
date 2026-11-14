@@ -3,6 +3,7 @@ import { HostSettings } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
+import type { AssistantWorkspace } from "../api.ts";
 import { change, control, typeAndLeave } from "../test-support/controls.ts";
 import { MemoryHostSettingsStore } from "../test-support/memory-host-settings-store.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -108,5 +109,62 @@ verifies("settings.ai-agent-view-only", () => {
     );
     expect(view.textContent).toContain("Ollama (local)");
     expect(view.querySelector("input, select, textarea, [role='switch']")).toBeNull();
+  });
+});
+
+async function viewOnly(
+  surface: "window" | "phone",
+  saved: Record<string, unknown> = {},
+  workspace?: AssistantWorkspace,
+) {
+  const store = new MemoryHostSettingsStore();
+  for (const [key, value] of Object.entries(saved)) await store.set(key, value as never);
+  const settings = new HostSettings(store);
+  await settings.load();
+  const view = render(
+    <AssistantView
+      settings={settings}
+      announce={vi.fn()}
+      place="served"
+      surface={surface}
+      workspace={workspace}
+    />,
+  );
+  await act(async () => {});
+  return view;
+}
+
+verifies("settings.ai-agent-view-only", () => {
+  it("says it is view only on a phone, and to change the assistant on the computer", async () => {
+    const view = await viewOnly("phone");
+    expect(view.textContent).toContain(
+      "View only on a phone. Change the assistant on your computer.",
+    );
+    expect(view.textContent).not.toContain("View only here.");
+  });
+
+  it("says Not set up under the view-only line while no provider is set", async () => {
+    const view = await viewOnly("window");
+    expect(view.textContent).toContain(
+      "Not set up. Assistant chats use each workspace's model aliases.",
+    );
+  });
+
+  it("warns about a local-only workspace with a cloud model, and not with Local on", async () => {
+    const facts = { name: "Acme", localOnly: true, sessionModel: null, usesSecret: () => true };
+    const workspace: AssistantWorkspace = {
+      current: () => facts,
+      subscribe: () => () => undefined,
+      keyStored: async () => true,
+    };
+    const cloud = await viewOnly("window", { "assistant.provider": "anthropic" }, workspace);
+    expect(cloud.textContent).toContain("Acme is local only, so it can't use this cloud model.");
+    unmountAll();
+    const local = await viewOnly(
+      "window",
+      { "assistant.provider": "ollama", "assistant.local": true },
+      workspace,
+    );
+    expect(local.textContent).not.toContain("is local only");
   });
 });
