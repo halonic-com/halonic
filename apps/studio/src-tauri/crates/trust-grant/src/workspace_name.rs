@@ -8,9 +8,10 @@ const MAX_NAME_BYTES: usize = 255;
 const WINDOWS_FORBIDDEN: &str = "<>:\"|?*";
 
 /// Names Windows keeps for devices, with or without an extension.
-const WINDOWS_DEVICES: [&str; 22] = [
-    "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
-    "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+const WINDOWS_DEVICES: [&str; 26] = [
+    "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "COM0", "COM1", "COM2", "COM3", "COM4",
+    "COM5", "COM6", "COM7", "COM8", "COM9", "LPT0", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6",
+    "LPT7", "LPT8", "LPT9",
 ];
 
 /// The name a new workspace folder gets, trimmed, or a `name_invalid`
@@ -49,7 +50,16 @@ pub fn check_workspace_name(name: &str) -> Result<String, TrustRefusal> {
     }
     // `CON.txt` is the device too, and so is `con`; trailing spaces before
     // the extension count (`CON .txt`).
-    let stem = name.split('.').next().unwrap_or(name).trim_end();
+    // Windows also reads the superscript digits `COM¹`, `COM²`, `COM³` and
+    // `LPT¹`… as the device.
+    let stem = name
+        .split('.')
+        .next()
+        .unwrap_or(name)
+        .trim_end()
+        .replace('¹', "1")
+        .replace('²', "2")
+        .replace('³', "3");
     if WINDOWS_DEVICES
         .iter()
         .any(|device| stem.eq_ignore_ascii_case(device))

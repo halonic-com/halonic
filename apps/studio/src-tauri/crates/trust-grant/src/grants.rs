@@ -69,15 +69,7 @@ impl TrustState {
         let Some((canonical, location)) = self.pick_canonical(folders, choose)? else {
             return Ok(None);
         };
-        let remembered = known_identity(&location, &canonical).and_then(|identity| {
-            list.remember(PickedFolder {
-                location: location.clone(),
-                identity,
-            })
-        });
-        if let Err(refusal) = remembered {
-            eprintln!("pick_folder: {location:?} can't be remembered: {refusal:?}");
-        }
+        remember_picked(list, &canonical, &location);
         Ok(Some(location))
     }
 
@@ -95,14 +87,25 @@ impl TrustState {
         let Some(chosen) = chosen else {
             return Ok(None);
         };
-        let (canonical, location) = canonical_folder(&chosen)?;
+        self.open_picked(folders, &chosen).map(Some)
+    }
+
+    /// Opens `chosen` as a pick does, with no dialog: opened, spared
+    /// questions inside it and counted as picked. Its canonical path and
+    /// its location.
+    fn open_picked(
+        &self,
+        folders: &OpenedFolders,
+        chosen: &Path,
+    ) -> Result<(PathBuf, String), TrustRefusal> {
+        let (canonical, location) = canonical_folder(chosen)?;
         self.open(folders, &location, &canonical);
         self.mark_person_opened(&canonical);
         let mut picked = self.picked.lock().unwrap_or_else(PoisonError::into_inner);
         if !picked.contains(&canonical) {
             picked.push(canonical.clone());
         }
-        Ok(Some((canonical, location)))
+        Ok((canonical, location))
     }
 
     /// Saves the record and opens its folder, if the person chose the
@@ -320,6 +323,21 @@ struct Asking<'a>(&'a AtomicBool);
 impl Drop for Asking<'_> {
     fn drop(&mut self) {
         self.0.store(false, Ordering::Release);
+    }
+}
+
+/// Remembers a folder that opened in `list`, so [`TrustState::reopen`] can
+/// open it after a restart. One that can't be remembered still opens for
+/// now; why goes to the log.
+fn remember_picked(list: &PickedFolders, canonical: &Path, location: &str) {
+    let remembered = known_identity(location, canonical).and_then(|identity| {
+        list.remember(PickedFolder {
+            location: location.to_owned(),
+            identity,
+        })
+    });
+    if let Err(refusal) = remembered {
+        eprintln!("pick_folder: {location:?} can't be remembered: {refusal:?}");
     }
 }
 

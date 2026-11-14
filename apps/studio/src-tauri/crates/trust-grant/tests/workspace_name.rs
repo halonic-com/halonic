@@ -80,6 +80,12 @@ fn trust_grants_refuse_what_windows_refuses_on_every_platform() {
         "CON.txt",
         "nul.tar.gz",
         "CON .txt",
+        "COM0",
+        "LPT0",
+        "COM¹",
+        "lpt³.txt",
+        "CONIN$",
+        "conout$",
     ] {
         assert_eq!(reason(name), Some("reserved_name"), "{name:?}");
     }

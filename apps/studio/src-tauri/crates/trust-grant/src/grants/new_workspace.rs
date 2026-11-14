@@ -7,7 +7,7 @@ use std::sync::PoisonError;
 
 use halonic_git_guard::OpenedFolders;
 
-use super::{TrustState, canonical_folder};
+use super::{TrustState, canonical_folder, remember_picked};
 use crate::picked::PickedFolders;
 use crate::refusal::TrustRefusal;
 use crate::workspace_name::check_workspace_name;
@@ -51,11 +51,12 @@ impl TrustState {
     ///   that exists;
     /// - `parent_not_chosen`: `parent`'s real path isn't `documents` or a
     ///   folder the person chose in [`Self::pick_parent`];
-    /// - `parent_private`: `fenced` says the shell's own profile holds it;
+    /// - `parent_private`: `fenced` says the shell's own profile holds the
+    ///   new folder (the parent, or a name that is the profile's folder);
     /// - `exists`: something is at the path already. Nothing is adopted: a
     ///   folder that was there stays closed until the person picks it.
     ///
-    /// `fenced` gets the parent's real path.
+    /// `fenced` gets the new folder's real path, made or not.
     pub fn create_workspace(
         &self,
         folders: &OpenedFolders,
@@ -73,13 +74,18 @@ impl TrustState {
                 format!("{parent:?} isn't Documents or a folder the person chose"),
             ));
         }
-        if fenced(&canonical_parent) {
+        let created = canonical_parent.join(&name);
+        // The new folder, not only its parent: a name that is the profile's
+        // own folder must not make and open it.
+        if fenced(&created) {
             return Err(TrustRefusal::new(
                 "parent_private",
-                format!("{parent:?} is the shell's own folder or inside it"),
+                format!(
+                    "{:?} is the shell's own folder or inside it",
+                    created.display()
+                ),
             ));
         }
-        let created = canonical_parent.join(&name);
         // Not `create_dir_all`: it succeeds on a folder that is there, and
         // the person never picked that one.
         if let Err(error) = std::fs::create_dir(&created) {
@@ -91,8 +97,11 @@ impl TrustState {
                 _ => TrustRefusal::io(error),
             });
         }
-        let opened = self.pick_remembered(folders, list, || Some(created))?;
-        opened.ok_or_else(|| TrustRefusal::io("the new folder didn't open"))
+        // Not `pick_remembered`: it takes the dialog's turn and can refuse
+        // as `busy`, after the folder is made and every retry says `exists`.
+        let (canonical, location) = self.open_picked(folders, &created)?;
+        remember_picked(list, &canonical, &location);
+        Ok(location)
     }
 
     /// Whether `canonical` is the Documents folder or a parent the person

@@ -235,6 +235,46 @@ fn trust_grants_refuse_a_parent_the_profile_holds() {
 }
 
 #[test]
+fn trust_grants_refuse_a_name_that_is_the_profiles_own_folder() {
+    let scratch = Scratch::new("profile-name");
+    let shell = Shell::start();
+    let projects = shell.choose_parent(&scratch, "projects");
+    let profile_here = fs::canonicalize(scratch.path("projects"))
+        .unwrap()
+        .join("Cfg");
+
+    let refused = shell.create_with(
+        &scratch,
+        None,
+        |created| created == profile_here,
+        &projects,
+        "Cfg",
+    );
+
+    assert_eq!(refused, Err("parent_private"));
+    assert!(!scratch.path("projects/Cfg").exists());
+    assert!(!shell.is_open(&scratch.location("projects")));
+}
+
+#[test]
+fn trust_grants_creating_a_workspace_opens_it_while_a_dialog_shows() {
+    let scratch = Scratch::new("busy");
+    let shell = Shell::start();
+    let documents = scratch.location("documents");
+    let mut made = None;
+
+    // A parent dialog is showing; the folder is still made and opened.
+    let _ = shell.state.pick_parent(|| {
+        made = Some(shell.create(&scratch, &documents, "Acme"));
+        None
+    });
+
+    let made = made.unwrap().expect("it is made, not refused as busy");
+    assert!(shell.is_open(&made));
+    assert_eq!(scratch.list().locations(), vec![made]);
+}
+
+#[test]
 fn trust_grants_never_adopt_a_folder_that_exists() {
     let scratch = Scratch::new("exists");
     let shell = Shell::start();
