@@ -282,3 +282,45 @@ verifies("shell.overview.row-parts-and-quiet-head", () => {
     expect(page.textContent).toContain("New skill");
   });
 });
+
+verifies("shell.overview.used-by", () => {
+  const used: readonly OverviewHub[] = [
+    {
+      id: "acme",
+      name: "acme",
+      items: [
+        { id: "refunds", name: "Acme refunds", usedBy: "Used by 2 agents" },
+        { id: "tone", name: "Tone of voice" },
+        {
+          id: "both",
+          name: "Both parts",
+          chips: <span>1 running</span>,
+          usedBy: "Used by 1 agent",
+        },
+      ],
+    },
+  ];
+
+  it("ends a row with its used-by text and leaves the others bare", () => {
+    const page = show({ hubs: used });
+    const rows = [...page.querySelectorAll("tr")];
+    const refunds = rows.find((row) => row.textContent?.includes("Acme refunds"));
+    const tone = rows.find((row) => row.textContent?.includes("Tone of voice"));
+    expect(refunds?.textContent).toContain("Used by 2 agents");
+    expect(tone?.textContent).not.toContain("Used by");
+  });
+
+  it("draws a row's chips first, then its used-by text", () => {
+    const page = show({ hubs: used });
+    const row = [...page.querySelectorAll("tr")].find((r) => r.textContent?.includes("Both parts"));
+    const text = row?.textContent ?? "";
+    expect(text).toContain("1 running");
+    expect(text.indexOf("1 running")).toBeLessThan(text.indexOf("Used by 1 agent"));
+  });
+
+  it("doesn't search the used-by text", () => {
+    const page = show({ hubs: used });
+    type(search(page), "agents");
+    expect(page.textContent).not.toContain("Acme refunds");
+  });
+});
