@@ -6,6 +6,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it } from "vitest";
 import type { ModelsFiles } from "../api.ts";
+import { AliasTab } from "./alias-tab.tsx";
 import { ModelsSection } from "./models-section.tsx";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -115,4 +116,19 @@ verifies("models.aliases.list", () => {
 
     expect(section.textContent).toContain("Halonic couldn't read the model aliases.");
   });
+});
+
+it("titles an alias tab with the alias and says what pointing it does", () => {
+  element = document.createElement("div");
+  document.body.append(element);
+  root = createRoot(element);
+  const item = { kind: "model-alias", hub: "local", id: "smart" };
+  act(() =>
+    root?.render(<AliasTab item={item} context={{} as WorkspaceContext} Sections={() => null} />),
+  );
+
+  expect(element.querySelector("h1")?.textContent).toBe("Alias: smart");
+  expect(element.textContent).toContain(
+    'Agents ask for "smart". Point it at any provider and model; nothing else changes.',
+  );
 });
