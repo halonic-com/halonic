@@ -20,11 +20,13 @@
 //
 // The self-test (selftest.json) is a deliberate connection of under 100 ms from
 // a program in the install folder; the report must find it in the ETW events
-// and name it as Halonic, or it fails: that is the proof ETW closed the gap.
+// and name it as Halonic through ETW, or it fails: that is the proof ETW
+// closed the gap, not just that some source named the process.
 //
 // Usage: report.mjs <capture folder>
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { etwFlows, etwProcesses, normalize, parseEtw, swap16 } from "./etw.mjs";
 
 const dir = process.argv[2];
 const read = (name) => {
@@ -81,11 +83,6 @@ export function readPcapng(buffer) {
 }
 
 const ip4 = (b, at) => `${b[at]}.${b[at + 1]}.${b[at + 2]}.${b[at + 3]}`;
-/** The compressed, lower-case form of an address, so capture and netstat agree. */
-export function normalize(address) {
-  const bare = address.replace(/%.*$/, "").replace(/^\[|\]$/g, "");
-  return bare.includes(":") ? new URL(`http://[${bare}]`).hostname.slice(1, -1) : bare;
-}
 const ip6 = (b, at) =>
   normalize(Array.from({ length: 8 }, (_, i) => b.readUInt16BE(at + i * 2).toString(16)).join(":"));
 
@@ -167,93 +164,6 @@ export function parseDns(m) {
     // A message that doesn't parse gives what it gave so far.
   }
   return result;
-}
-
-/** Events of a tracerpt XML file: { provider, id, time (ms), data: {name: value} }. */
-export function parseEtw(text) {
-  const events = [];
-  for (const m of text.matchAll(/<Event\b[^>]*>([\s\S]*?)<\/Event>/g)) {
-    const body = m[1];
-    const id = Number(/<EventID[^>]*>(\d+)</.exec(body)?.[1]);
-    const stamp = /<TimeCreated\s+SystemTime=['"]([^'"]+)['"]/.exec(body)?.[1];
-    if (!Number.isFinite(id) || !stamp) continue;
-    const data = {};
-    for (const d of body.matchAll(/<Data\s+Name=['"]([^'"]+)['"][^>]*?(?:\/>|>([^<]*)<\/Data>)/g))
-      data[d[1]] = (d[2] ?? "").trim();
-    events.push({
-      provider: /<Provider\s+Name=['"]([^'"]+)['"]/.exec(body)?.[1] ?? "",
-      id,
-      // SystemTime has 100 ns digits and a Z: Date wants milliseconds only.
-      time: Date.parse(stamp.replace(/(\.\d{3})\d*/, "$1")),
-      data,
-    });
-  }
-  return events;
-}
-
-/** "10.0.0.4", "::1" or "[fe80::1]:443"-style text to a normalized address, or undefined. */
-function etwAddress(value) {
-  if (!value) return undefined;
-  const v = value.replace(/^\[|\](:\d+)?$/g, "").replace(/^(\d+\.\d+\.\d+\.\d+):\d+$/, "$1");
-  try {
-    return normalize(v);
-  } catch {
-    return undefined;
-  }
-}
-const swap16 = (n) => ((n & 255) << 8) | (n >> 8);
-// Kernel-Network event ids for UDP (v4, v6) sends and receives; the rest are TCP.
-const UDP_EVENTS = new Set([42, 43, 58, 59]);
-
-/** Flows from Kernel-Network events: one per pid and endpoint pair, with first and last time. */
-export function etwFlows(events) {
-  const flows = new Map();
-  for (const e of events) {
-    const { PID, saddr, daddr, sport, dport } = e.data;
-    const a = etwAddress(saddr);
-    const b = etwAddress(daddr);
-    if (PID === undefined || !a || !b || sport === undefined || dport === undefined) continue;
-    const proto = UDP_EVENTS.has(e.id) ? "UDP" : "TCP";
-    // The ports may be logged in network byte order: both are kept as keys.
-    const ports = [Number(sport), Number(dport)];
-    const key = `${proto} ${PID} ${a}:${ports[0]} ${b}:${ports[1]}`;
-    const flow = flows.get(key);
-    if (flow) {
-      flow.first = Math.min(flow.first, e.time);
-      flow.last = Math.max(flow.last, e.time);
-    } else flows.set(key, { proto, pid: Number(PID), a, ap: ports[0], b, bp: ports[1], first: e.time, last: e.time });
-  }
-  return [...flows.values()];
-}
-
-/** Process table entries from Kernel-Process starts (id 1) and stops (id 2). */
-export function etwProcesses(events, end) {
-  const byPid = new Map();
-  for (const e of events) {
-    const pid = Number(e.data.ProcessID);
-    if (!Number.isFinite(pid)) continue;
-    if (e.id === 1) {
-      const image = e.data.ImageName ?? "";
-      const entry = {
-        pid,
-        ppid: Number(e.data.ParentProcessID),
-        name: image.split(/[\\/]/).pop(),
-        path: image,
-        first: e.time,
-        last: end,
-        etw: true,
-      };
-      byPid.set(`${pid} ${e.time}`, entry);
-      byPid.set(`live ${pid}`, entry);
-    } else if (e.id === 2) {
-      const entry = byPid.get(`live ${pid}`);
-      if (entry) {
-        entry.last = e.time;
-        byPid.delete(`live ${pid}`);
-      }
-    }
-  }
-  return [...byPid.entries()].filter(([k]) => !k.startsWith("live ")).map(([, v]) => v);
 }
 
 const session = json("session.json");
@@ -430,6 +340,7 @@ let local = 0;
 let ipPackets = 0;
 let ipUnattributed = 0;
 let selfPackets = 0;
+let selfViaEtw = 0;
 let selfOnlyEtw = 0;
 let controlPackets = 0;
 for (const p of packets) {
@@ -455,7 +366,8 @@ for (const p of packets) {
     controlPackets++;
   const server = p.sport < p.dport ? [p.src, p.sport] : [p.dst, p.dport];
   const label = `${p.proto} → ${nameOf(server[0])}:${server[1]}`;
-  const connection = etwFlowOf(p) ?? connectionOf(p);
+  const flow = etwFlowOf(p);
+  const connection = flow ?? connectionOf(p);
   const process = connection && processAt(connection.pid, p.time);
   if (!process) {
     count(groups["No process in the samples"], `${label} · ${phaseOf(p.time)}`);
@@ -466,8 +378,16 @@ for (const p of packets) {
   ipPackets++;
   const group = groupOf(process, p.time);
   count(groups[group], `${process.name} · ${label} · ${phaseOf(p.time)}`);
-  if (/^halonic-selftest\.exe$/i.test(process.name) && group === "Halonic") {
+  // Only the self-test's own connection, in its own phase, skips the update-check rule.
+  if (
+    selftest &&
+    /^halonic-selftest\.exe$/i.test(process.name) &&
+    process.pid === selftest.pid &&
+    phaseOf(p.time) === "selftest" &&
+    group === "Halonic"
+  ) {
     selfPackets++;
+    if (flow) selfViaEtw++;
     if (!connectionOf(p)) selfOnlyEtw++;
     continue;
   }
@@ -478,9 +398,9 @@ for (const p of packets) {
 if (selftest) {
   if (selftest.exitCode !== 0)
     problems.push(`The self-test's connection to ${selftest.host} failed (curl exit ${selftest.exitCode}).`);
-  else if (selfPackets === 0)
+  else if (selfViaEtw === 0)
     problems.push(
-      "The self-test connection (halonic-selftest.exe in the install folder, to example.org) isn't in the capture as Halonic's: ETW did not close the gap in the process matching.",
+      "No packet of the self-test connection (halonic-selftest.exe in the install folder, to example.org) was matched through ETW as Halonic's: ETW did not close the gap in the process matching.",
     );
 }
 if (ipPackets > 0 && ipUnattributed / ipPackets > UNATTRIBUTED_MAX)
@@ -513,7 +433,7 @@ const out = [
   "### Self-test: a short connection from a Halonic program",
   "",
   selftest
-    ? `- halonic-selftest.exe (pid ${selftest.pid}) connected to ${selftest.host}:${selftest.port} for about ${selftest.milliseconds} ms: ${selfPackets} packets named as Halonic, ${selfOnlyEtw} of them only through ETW (the netstat samples missed them).`
+    ? `- halonic-selftest.exe (pid ${selftest.pid}) connected to ${selftest.host}:${selftest.port} for about ${selftest.milliseconds} ms: ${selfPackets} packets named as Halonic, ${selfViaEtw} matched through ETW, ${selfOnlyEtw} of them only through ETW (the netstat samples missed them).`
     : "- did not run",
   `- ETW events: ${netEvents.length} network, ${procEvents.length} process; ${flows.length} flows. Unattributed IP packets: ${ipUnattributed} of ${ipPackets}.`,
   "",
