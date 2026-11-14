@@ -26,7 +26,14 @@
 #   The helper's publisher is the repository variable SIGNING_PUBLISHER, not
 #   an environment one, because the `studio` job builds it in.
 #
-# Both then sign the final installer for the Tauri updater and write
+# - pack-unsigned (real runs while the repository variable WINDOWS_SIGNING is
+#   not `true`): packs the installer with nothing signed. It holds no Azure
+#   secret (it uses the `release` environment only for the updater key). The board decided that 0.1.0 ships
+#   unsigned (HAL-1197), and SmartScreen warns about it. Set WINDOWS_SIGNING
+#   to `true`, with SIGNING_PUBLISHER and the `release` environment's Azure
+#   details, to turn signing on from 0.1.1.
+#
+# All three then sign the final installer for the Tauri updater and write
 # latest.json (signature inside, no .sig file) and SHA256SUMS, with the
 # updater-manifest action (HAL-7222). Dry runs use a throwaway key made in
 # the job; real runs use the updater key, a secret of the `release`
@@ -211,9 +218,12 @@ jobs:
       - name: Build the app and the programs it ships
         working-directory: apps/studio/src-tauri
         env:
-          HALONIC_SANDBOX_SIGNER: ${{ needs.build.outputs.dry_run == 'true' && env.DRY_RUN_PUBLISHER || vars.SIGNING_PUBLISHER }}
+          # Empty for an unsigned release: the helper then has no publisher to check.
+          DRY_RUN: ${{ needs.build.outputs.dry_run }}
+          WINDOWS_SIGNING: ${{ vars.WINDOWS_SIGNING }}
+          HALONIC_SANDBOX_SIGNER: ${{ needs.build.outputs.dry_run == 'true' && env.DRY_RUN_PUBLISHER || (vars.WINDOWS_SIGNING == 'true' && vars.SIGNING_PUBLISHER) || '' }}
         run: |
-          if (-not $env:HALONIC_SANDBOX_SIGNER) { throw 'No publisher for the sandbox helper: set the repository variable SIGNING_PUBLISHER' }
+          if (-not $env:HALONIC_SANDBOX_SIGNER -and ($env:DRY_RUN -eq 'true' -or $env:WINDOWS_SIGNING -eq 'true')) { throw 'No publisher for the sandbox helper: set the repository variable SIGNING_PUBLISHER' }
           pwsh windows/build-installer.ps1 -Step build
       # What `-Step pack` needs that the checkout doesn't have. The paths are
       # kept relative to src-tauri.
@@ -347,7 +357,7 @@ jobs:
   sign-windows:
     name: Sign and pack the Windows installer
     needs: [build, studio]
-    if: needs.build.outputs.dry_run != 'true'
+    if: needs.build.outputs.dry_run != 'true' && vars.WINDOWS_SIGNING == 'true'
     runs-on: windows-2025
     timeout-minutes: 30
     # The only job that can reach the signing identity. Required reviewers
@@ -441,6 +451,62 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  pack-unsigned:
+    name: Pack the Windows installer (unsigned)
+    needs: [build, studio]
+    if: needs.build.outputs.dry_run != 'true' && vars.WINDOWS_SIGNING != 'true'
+    runs-on: windows-2025
+    timeout-minutes: 30
+    # The `release` environment (and its approval) is here only for the
+    # updater key. There is no Azure login: nothing here can sign with
+    # Authenticode.
+    environment: release
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+        with:
+          cache: false
+      - name: Install the pinned Rust toolchain
+        working-directory: apps/studio/src-tauri
+        run: rustup toolchain install
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-files
+          path: dist
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: studio-build
+          path: apps/studio/src-tauri
+      - name: Pack the installer
+        working-directory: apps/studio/src-tauri
+        shell: pwsh
+        run: pwsh windows/build-installer.ps1 -Step pack
+      - name: Check the installer is unsigned
+        shell: pwsh
+        env:
+          INSTALLER: ${{ needs.build.outputs.installer }}
+        run: |
+          $sig = Get-AuthenticodeSignature "dist/$env:INSTALLER"
+          if ($sig.Status -ne 'NotSigned') { throw "Installer should be unsigned but is $($sig.Status)" }
+      - uses: $/.github/actions/updater-manifest
+        with:
+          tag: ${{ needs.build.outputs.tag }}
+          version: ${{ needs.build.outputs.version }}
+          installer: ${{ needs.build.outputs.installer }}
+          dry-run: "false"
+          private-key: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          password: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-files-signed
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
   # Real runs only. The called workflow uploads to Play, waits for the APK
   # Play signed and checks it (HAL-1203). It shares its artifacts with this
   # run, so draft-release can pick the APK up.
@@ -459,8 +525,8 @@ jobs:
 
   draft-release:
     name: Create draft release
-    needs: [build, studio, sign-test, sign-windows, android]
-    # Exactly one of the two signing jobs runs. Skipped is fine, failed or cancelled (e.g. timed out) is not.
+    needs: [build, studio, sign-test, sign-windows, pack-unsigned, android]
+    # Exactly one of the three signing and packing jobs runs. Skipped is fine, failed or cancelled (e.g. timed out) is not.
     if: ${{ !cancelled() && needs.build.result == 'success' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -469,7 +535,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          # Both signing jobs upload this.
+          # All three jobs upload this (the name is historical).
           name: release-files-signed
           path: dist
       # Real runs: the APK exactly as Play signed it, under its release
@@ -511,6 +577,7 @@ jobs:
           INSTALLER: ${{ needs.build.outputs.installer }}
           APK: ${{ needs.build.outputs.apk }}
           DRY_RUN: ${{ needs.build.outputs.dry_run }}
+          WINDOWS_SIGNING: ${{ vars.WINDOWS_SIGNING }}
           TARGET: ${{ github.sha }}
         run: |
           title="Halonic $VERSION"
@@ -518,6 +585,9 @@ jobs:
           link="[Download for Windows]($base/$INSTALLER) · [Download for Android]($base/$APK)"
           notes="$link"
           flags=()
+          if [ "$DRY_RUN" != "true" ] && [ "$WINDOWS_SIGNING" != "true" ]; then
+            notes="**The Windows installer is not signed yet, so Windows SmartScreen shows \"Windows protected your PC\". Choose More info, then Run anyway. Check the download against SHA256SUMS first.**"$'\n\n'"$link"
+          fi
           if [ "$DRY_RUN" = "true" ]; then
             title="DRY RUN Halonic $VERSION"
             notes="**Dry run, signed with a test certificate and a stub CLI. Do not publish. Delete this draft.**"$'\n\n'"$link"
