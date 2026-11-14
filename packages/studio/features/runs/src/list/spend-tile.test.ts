@@ -40,7 +40,8 @@ verifies("runs.spend-tile", () => {
     expect(tile?.format?.(0.004)).toBe("under €0.01");
     expect(tile?.format?.(0.0004)).toBe("under €0.01");
     expect(tile?.format?.(0.006)).toBe("€0.006");
-    expect(tile?.months.at(-1)?.value).toBeLessThanOrEqual(0);
+    expect(tile?.months.at(-1)).toMatchObject({ value: 0.004, hidden: true });
+    expect(tile?.months.slice(0, -1).every((month) => month.hidden === undefined)).toBe(true);
     expect(tile?.format?.(tile.months.at(-1)?.value ?? 0)).toBe("under €0.01");
   });
 
