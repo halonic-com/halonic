@@ -50,6 +50,7 @@ export class IntegrationConnectorFactory implements ConnectorFactory {
     if (transport.kind !== "integration") {
       throw new Error(`Connector "${config.id}" isn't a local integration.`);
     }
+    process.stderr.write(`TEMP-DIAG create ${config.id}\n`);
     return new LazyIntegrationClient(config.id, () =>
       this.#open({ id: config.id, folder: transport.folder, context }),
     );
@@ -69,7 +70,14 @@ class LazyIntegrationClient implements ConnectorClient {
   }
 
   async listTools(): Promise<ConnectorTool[]> {
-    return await (await this.#client()).listTools();
+    try {
+      const tools = await (await this.#client()).listTools();
+      process.stderr.write(`TEMP-DIAG listed ${JSON.stringify(tools)}\n`);
+      return tools;
+    } catch (e) {
+      process.stderr.write(`TEMP-DIAG list failed ${String(e)}\n`);
+      throw e;
+    }
   }
 
   async callTool(name: string, args: Record<string, unknown>): Promise<string> {
