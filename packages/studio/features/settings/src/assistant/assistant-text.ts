@@ -30,3 +30,18 @@ export const NOT_SET_UP_LINE = "Not set up. Assistant chats use each workspace's
 export function notSaved(what: string): string {
   return `Couldn't save ${what} on this computer.`;
 }
+
+export const HOW_IT_CONNECTS = "How it connects";
+export const HOW_IT_CONNECTS_DETAIL = "Base URL, secret name, local";
+export const BASE_URL = "Base URL";
+export const SECRET_NAME = "Secret name";
+export const LOCAL = "Local";
+export const LOCAL_SENTENCE =
+  "On for a model that runs on this computer or your own network. A local-only workspace can only use local models.";
+
+/** The line of Settings → Assistant when it is served to another device (`settings.ai-agent-view-only`). */
+export const VIEW_ONLY_LINE =
+  "View only here. Change the assistant on the computer running Halonic.";
+export const NOTHING = "Not set";
+export const ON = "On";
+export const OFF = "Off";

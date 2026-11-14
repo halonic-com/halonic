@@ -1,6 +1,7 @@
-import type { HostSettings } from "@halonicjs/app";
-import { Field, Select, Switch } from "@halonicjs/studio-kit";
+import type { HostSetting, HostSettings } from "@halonicjs/app";
+import { Field, Select, Switch, ViewOnlyLine } from "@halonicjs/studio-kit";
 import type { SettingsPlace, SettingsSectionProps } from "@halonicjs/studio-shell";
+import { useState } from "react";
 import { HostSettingsService } from "../api.ts";
 import { checkModel, checkTurnLimit } from "./assistant-checks.ts";
 import { assistantPrefs, turnLimitRange } from "./assistant-prefs.ts";
@@ -11,6 +12,7 @@ import {
   providerDefaults,
 } from "./assistant-providers.ts";
 import * as text from "./assistant-text.ts";
+import { HowItConnects } from "./how-it-connects.tsx";
 import { SavedTextField } from "./saved-text-field.tsx";
 import { useHostSetting } from "./use-host-setting.ts";
 
@@ -49,6 +51,54 @@ export interface AssistantViewProps {
  * <AssistantView settings={hostSettings} announce={say} place="app" />
  */
 export function AssistantView({ settings, announce, place }: AssistantViewProps) {
+  if (place === "served") return <AssistantViewOnly settings={settings} />;
+  return <AssistantEditor settings={settings} announce={announce} place={place} />;
+}
+
+/** The label-over-value rows of the section served to another device. */
+function AssistantViewOnly({ settings }: { readonly settings: HostSettings }) {
+  const provider = useHostSetting(settings, assistantPrefs.provider).value;
+  const shown = <Value extends string | number | boolean>(setting: HostSetting<Value>) =>
+    useHostSetting(settings, setting).value;
+  const model = shown(assistantPrefs.model);
+  const baseUrl = shown(assistantPrefs.baseUrl);
+  const secretName = shown(assistantPrefs.secretName);
+  const local = shown(assistantPrefs.local);
+  const turnLimit = shown(assistantPrefs.turnLimit);
+  const connectorTools = shown(assistantPrefs.connectorTools);
+  const instructions = shown(assistantPrefs.instructions);
+  const orNone = (value: string) => (value === "" ? text.NOTHING : value);
+  const rows: Array<[string, string]> = [[text.PROVIDER, providerDefaults[provider].label]];
+  if (provider !== "not-set-up") {
+    rows.push(
+      [text.MODEL, orNone(model)],
+      [text.BASE_URL, orNone(baseUrl)],
+      [text.SECRET_NAME, orNone(secretName)],
+      [text.LOCAL, local ? text.ON : text.OFF],
+    );
+  }
+  rows.push(
+    [text.TURN_LIMIT, String(turnLimit)],
+    [text.CONNECTOR_TOOLS, connectorTools ? text.ON : text.OFF],
+    [text.INSTRUCTIONS, orNone(instructions)],
+  );
+  return (
+    <div className="mt-5 flex max-w-90 flex-col gap-4">
+      <p className="text-body fg-muted">{text.FIRST_LINE.served}</p>
+      <ViewOnlyLine>{text.VIEW_ONLY_LINE}</ViewOnlyLine>
+      <dl className="flex flex-col gap-3">
+        {rows.map(([label, value]) => (
+          <div key={label}>
+            <dt className="text-small fg-muted">{label}</dt>
+            <dd className="text-body">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function AssistantEditor({ settings, announce, place }: AssistantViewProps) {
   const provider = useHostSetting(settings, assistantPrefs.provider);
   const model = useHostSetting(settings, assistantPrefs.model);
   const baseUrl = useHostSetting(settings, assistantPrefs.baseUrl);
@@ -58,12 +108,14 @@ export function AssistantView({ settings, announce, place }: AssistantViewProps)
   const connectorTools = useHostSetting(settings, assistantPrefs.connectorTools);
   const instructions = useHostSetting(settings, assistantPrefs.instructions);
 
+  const [focusBaseUrl, setFocusBaseUrl] = useState(false);
   const failedLine = (what: string, failed: boolean) => (failed ? text.notSaved(what) : null);
 
   async function pick(picked: string) {
     const to = assistantProviders.find((name) => name === picked);
     if (to === undefined) return;
     const from = provider.value;
+    setFocusBaseUrl(to === "openai-compatible");
     const fields = pickProvider(
       { baseUrl: baseUrl.value, secretName: secretName.value, local: local.value },
       from,
@@ -114,6 +166,12 @@ export function AssistantView({ settings, announce, place }: AssistantViewProps)
     }
   }
 
+  async function toggleLocal(on: boolean) {
+    if (!(await local.save(on))) {
+      announce(`${text.notSaved("Local")} Local is back ${local.value ? "on" : "off"}.`);
+    }
+  }
+
   const chosen: AssistantProvider = provider.value;
   const turnLimitText = turnLimit.value === turnLimitRange.fallback ? "" : String(turnLimit.value);
   return (
@@ -135,6 +193,21 @@ export function AssistantView({ settings, announce, place }: AssistantViewProps)
         save={(value) => saveTyped("the model", model, value)}
         saveError={failedLine("the model", model.failed)}
       />
+      {chosen === "not-set-up" ? null : (
+        <HowItConnects
+          provider={chosen}
+          baseUrl={baseUrl.value}
+          secretName={secretName.value}
+          local={local.value}
+          baseUrlFailed={baseUrl.failed}
+          secretNameFailed={secretName.failed}
+          localFailed={local.failed}
+          saveBaseUrl={(value) => saveTyped("the Base URL", baseUrl, value)}
+          saveSecretName={(value) => saveTyped("the secret name", secretName, value)}
+          toggleLocal={toggleLocal}
+          focusBaseUrl={focusBaseUrl}
+        />
+      )}
       <h4 className="text-body-strong">{text.ANSWERS_GROUP}</h4>
       <SavedTextField
         label={text.TURN_LIMIT}
