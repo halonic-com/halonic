@@ -39,10 +39,11 @@ verifies("recording.capture", () => {
       ]);
       const shown = cast.events.map((event) => event.data).join("");
       expect(shown).toContain("Usage: halonic");
+      // The capture's private marker must not leak into the cast.
       expect(shown).not.toContain("5179");
     });
 
-    test("stops, naming the command, when a command fails", () => {
+    test("stops, naming the exit status, when a command fails", () => {
       expect(() =>
         captureSession({ recording: halonicRecording, binFolder: binWith("exit 3") }),
       ).toThrow(/A command in the session failed \(3\)/);
