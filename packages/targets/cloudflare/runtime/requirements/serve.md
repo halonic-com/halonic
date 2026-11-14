@@ -19,4 +19,4 @@ The workspace is trusted, because the deployer uploaded it. No routine is found 
 - Given `GET /api/unknown`, then it is the same 404 body as `/health/` gets.
 - Given `HALONIC_ALLOWED_HOSTS` is not set, then `GET /api/hello` is 503 with no variable name in the body, and `GET /health` is still 200.
 - Given `HALONIC_DAILY_REQUESTS` of 2, when a third request arrives on the same day, then it is 429 `daily_limit_reached`.
-- Given the right password for the configured hash, `POST /api/login` is 200 with a session cookie; given a wrong one it is 401.
+- Given the right password for the configured hash, when it is posted to `/api/login`, then the answer is 200 with a session cookie; given a wrong one, then it is 401.
