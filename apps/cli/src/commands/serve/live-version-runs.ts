@@ -1,5 +1,7 @@
 import type { RunVersion } from "@halonicjs/events";
 import type { RunExecutor } from "@halonicjs/ports";
+import { plainText } from "../../messages/phrase.ts";
+import { serveMessages } from "../../messages/serve.ts";
 
 /**
  * The executor `serve` gives the server: a start that names no version reads
@@ -21,7 +23,7 @@ export function startsOnLiveVersion(
     start: async (request) => {
       if (request.version !== undefined) return await executor.start(request);
       const version = await liveVersion();
-      if (version === null) throw new Error("No version of the workspace is live yet.");
+      if (version === null) throw new Error(plainText(serveMessages.noLiveVersion().phrase));
       return await executor.start({ ...request, version });
     },
     startAgent: (request) => executor.startAgent(request),
