@@ -2,6 +2,7 @@
 
 - Approval: the wording is Sofia's microcopy revisions 97 to 99 (board-approved T7, T8, T13) and her answers on HAL-9383; Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nf1jw8ISKBiYlsyzd7sOPoqv+UYRj/hZc/nzpJ7WBDobdZMi/VkgOw7cmuovLuFm7BbgX+np0xDBZspKnm5NAQ==
 - Task: HAL-9383
 
 ## What changes
