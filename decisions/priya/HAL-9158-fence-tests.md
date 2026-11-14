@@ -1,6 +1,7 @@
 # Decision: the sandbox fence jobs also run the run checkout attack tests
 
-- Task: HAL-9158 (part 3 of HAL-3125); Liam approves this note in review
+- Task: HAL-9158 (part 3 of HAL-3125)
+- Approval: the task asks for this change; Liam approves this note in his review of this pull request on HAL-9183
 - Kind: internal
 
 ## What changes
