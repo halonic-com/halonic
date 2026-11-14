@@ -56,6 +56,18 @@ verifies("kit.month-bars", () => {
     expect(Number(heights[1])).toBeGreaterThan(0);
   });
 
+  it("draws no bar for a hidden month but still writes its value", () => {
+    const tiny = [
+      { label: "May", value: 0.004, hidden: true },
+      { label: "Jun", value: 30 },
+    ];
+    const { container } = render(<MonthBars title="Bills" months={tiny} emptyText="None" />);
+    const heights = Array.from(container.querySelectorAll("rect"), (r) => r.getAttribute("height"));
+    expect(heights[0]).toBe("0");
+    expect(Number(heights[1])).toBeGreaterThan(0);
+    expect(container.querySelector(".sr-only")?.textContent).toBe("May: 0.004. Jun: 30.");
+  });
+
   it("keeps two months with the same label", () => {
     const twin = [
       { label: "Jun", value: 10 },

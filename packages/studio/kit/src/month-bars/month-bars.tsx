@@ -7,6 +7,8 @@ export interface Month {
   readonly value: number;
   /** What was planned for the month. A month whose value goes over it is drawn amber. */
   readonly budget?: number;
+  /** Draw no bar for this month. Its value is still written in the text and by `format`. */
+  readonly hidden?: boolean;
 }
 
 /** Props for {@link MonthBars}. */
@@ -76,7 +78,7 @@ export function MonthBars({
   const top = Math.max(
     1,
     limit?.value ?? 0,
-    ...shown.flatMap((month) => [month.value, month.budget ?? 0]),
+    ...shown.flatMap((month) => [month.hidden === true ? 0 : month.value, month.budget ?? 0]),
   );
   const plot = HEIGHT - BOTTOM - (limit === undefined ? 0 : LIMIT_HEADROOM);
   const limitY = limit === undefined ? 0 : HEIGHT - BOTTOM - (limit.value / top) * plot;
@@ -105,7 +107,7 @@ export function MonthBars({
           >
             <title>{title}</title>
             {shown.map((month, at) => {
-              const height = (Math.max(0, month.value) / top) * plot;
+              const height = month.hidden === true ? 0 : (Math.max(0, month.value) / top) * plot;
               const x = at * (slot + GAP);
               const fill = barFill(month, at === shown.length - 1);
               return (
