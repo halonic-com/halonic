@@ -17,6 +17,8 @@ export const defaultMaxConnectors = 64;
  */
 export class ConnectorTable {
   private readonly connectors = new Map<string, ConnectorClient>();
+  /** Each connector's secret values, which a failure's log line leaves out. Already in memory for its start. */
+  private readonly secretValues = new Map<string, readonly string[]>();
   private readonly openLimit: OpenLimit;
   private stopping = false;
 
@@ -38,17 +40,24 @@ export class ConnectorTable {
   /**
    * Keeps `client` and returns its new id.
    *
+   * @param secretValues - the values of the connector's own secrets, kept until it closes
    * @returns undefined when the host has started stopping: the caller still owns `client` and closes it
    */
-  add(client: ConnectorClient): string | undefined {
+  add(client: ConnectorClient, secretValues: readonly string[] = []): string | undefined {
     if (this.stopping) return undefined;
     const id = randomUUID();
     this.connectors.set(id, client);
+    this.secretValues.set(id, secretValues);
     return id;
   }
 
   get(id: string): ConnectorClient | undefined {
     return this.connectors.get(id);
+  }
+
+  /** The secret values the connector was opened with; none for an id the table doesn't have. */
+  secretValuesOf(id: string): readonly string[] {
+    return this.secretValues.get(id) ?? [];
   }
 
   /**
@@ -61,6 +70,7 @@ export class ConnectorTable {
     const client = this.connectors.get(id);
     if (client === undefined) return false;
     this.connectors.delete(id);
+    this.secretValues.delete(id);
     await client.close();
     return true;
   }

@@ -264,6 +264,8 @@ function hostServices(
     { sandbox, version, deniedPaths: connectors.deniedPaths, env: process.env },
     connectors.workspaceRoots,
     connectors.trustStore,
+    undefined,
+    (text) => process.stderr.write(text),
   );
   const routes = [
     healthRoute(version),

@@ -104,6 +104,8 @@ export interface Setup {
   /** The host's trust records: the workspace is trusted with {@link trustedFingerprint}, as the default open request has it. */
   trust: MemoryTrustStore;
   made: FakeConnector[];
+  /** What the host wrote to its own log. */
+  logged: string[];
   folders: Folders;
   close(): Promise<void>;
 }
@@ -127,6 +129,7 @@ export async function startRoutes(
   await mkdir(folders.agent, { recursive: true });
   await mkdir(folders.other);
   const made: FakeConnector[] = [];
+  const logged: string[] = [];
   const factory: ConnectorFactory = {
     transport: "stdio",
     create(config, context) {
@@ -145,6 +148,7 @@ export async function startRoutes(
     workspaceRoots: [folders.workspace],
     http: { fetch: async () => new Response("") },
     trustStore: trust,
+    log: (text) => logged.push(text),
     tokens: { get: async () => null, set: async () => {}, remove: async () => {} } as never,
   });
   const server: HostServer = await startHostServer(token, routes);
@@ -153,6 +157,7 @@ export async function startRoutes(
     table,
     trust,
     made,
+    logged,
     folders,
     close: async () => {
       await table.closeAll();
