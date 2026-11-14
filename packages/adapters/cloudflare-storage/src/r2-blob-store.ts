@@ -5,7 +5,7 @@ import { bytesToHex } from "@halonicjs/std";
 const defaultKeyPrefix = "blobs/";
 
 /**
- * The three calls the store makes on an R2 bucket. A Worker's `R2Bucket` binding fits it, and so
+ * The four calls the store makes on an R2 bucket. A Worker's `R2Bucket` binding fits it, and so
  * does a stand-in in a Node test, which has no Cloudflare types.
  */
 export interface BlobBucket {
@@ -16,6 +16,12 @@ export interface BlobBucket {
     value: Uint8Array,
     options: { httpMetadata: { contentType: string } },
   ): Promise<unknown>;
+  /** One page of the objects whose key starts with `prefix`; `cursor` continues a truncated page. */
+  list(options: { prefix: string; cursor?: string }): Promise<{
+    objects: readonly { key: string }[];
+    truncated: boolean;
+    cursor?: string;
+  }>;
 }
 
 /**
@@ -64,6 +70,28 @@ export class R2BlobStore implements BlobStore {
     }
     const object = await this.#bucket.get(this.#keyFor(hash));
     return object === null ? null : new Uint8Array(await object.arrayBuffer());
+  }
+
+  /**
+   * The hash of every blob in the store, in byte order. A key under the prefix that isn't a
+   * blob hash is not a blob of this store and is left out.
+   */
+  async hashes(): Promise<string[]> {
+    const hashes: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await this.#bucket.list(
+        cursor === undefined ? { prefix: this.#prefix } : { prefix: this.#prefix, cursor },
+      );
+      for (const { key } of page.objects) {
+        const hash = key.slice(this.#prefix.length);
+        if (isBlobHash(hash)) {
+          hashes.push(hash);
+        }
+      }
+      cursor = page.truncated ? page.cursor : undefined;
+    } while (cursor !== undefined);
+    return hashes.sort();
   }
 
   #keyFor(hash: string): string {

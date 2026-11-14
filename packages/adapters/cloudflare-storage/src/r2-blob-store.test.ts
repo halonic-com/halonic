@@ -17,6 +17,7 @@ class CountingBucket {
   readonly objects = new Map<string, { bytes: Uint8Array; contentType: string | undefined }>();
   writes = 0;
   reads = 0;
+  pageSize = 1000;
 
   async head(key: string): Promise<unknown> {
     return this.objects.has(key) ? {} : null;
@@ -29,6 +30,20 @@ class CountingBucket {
   ): Promise<void> {
     this.writes += 1;
     this.objects.set(key, { bytes, contentType: options.httpMetadata.contentType });
+  }
+
+  async list(options: { prefix: string; cursor?: string }): Promise<{
+    objects: { key: string }[];
+    truncated: boolean;
+    cursor?: string;
+  }> {
+    const keys = [...this.objects.keys()].filter((key) => key.startsWith(options.prefix)).sort();
+    const start = options.cursor === undefined ? 0 : Number(options.cursor);
+    const page = keys.slice(start, start + this.pageSize);
+    const next = start + this.pageSize;
+    return next < keys.length
+      ? { objects: page.map((key) => ({ key })), truncated: true, cursor: String(next) }
+      : { objects: page.map((key) => ({ key })), truncated: false };
   }
 
   async get(key: string): Promise<{ arrayBuffer(): Promise<ArrayBuffer> } | null> {
@@ -82,6 +97,22 @@ verifies("cloudflare-storage.r2-blob-store", () => {
 
     it("answers null for a blob that isn't there", async () => {
       expect(await storeOver(new CountingBucket()).get(helloHash)).toBeNull();
+    });
+
+    it("lists the hash of every blob, across pages, and nothing else under the prefix", async () => {
+      const bucket = new CountingBucket();
+      bucket.pageSize = 1;
+      const store = storeOver(bucket);
+      const first = await store.put(hello, "text/plain");
+      const second = await store.put(new TextEncoder().encode("world"), "text/plain");
+      bucket.objects.set("blobs/readme.txt", { bytes: hello, contentType: undefined });
+      bucket.objects.set(`other/${helloHash}`, { bytes: hello, contentType: undefined });
+
+      expect(await store.hashes()).toEqual([first.hash, second.hash].sort());
+    });
+
+    it("lists nothing for an empty bucket", async () => {
+      expect(await storeOver(new CountingBucket()).hashes()).toEqual([]);
     });
   });
 });

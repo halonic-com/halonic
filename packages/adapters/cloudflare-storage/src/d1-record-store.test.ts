@@ -224,6 +224,23 @@ verifies("cloudflare-storage.d1-record-store", () => {
       expect(log.length).toBe(1);
     });
 
+    it("names every collection that has a change, in order, once", async () => {
+      const store = new D1RecordStore(sqliteDatabase());
+      const inCollection = (collection: string, id: string): RecordChange => ({
+        ...change(id, "add", { id }, 1),
+        collection,
+      });
+      expect(await store.collections()).toEqual([]);
+
+      await store.append([
+        inCollection("leads", "1"),
+        inCollection("agent", "1"),
+        inCollection("leads", "2"),
+      ]);
+
+      expect(await store.collections()).toEqual(["agent", "leads"]);
+    });
+
     it("compacts an empty collection to nothing", async () => {
       const store = new D1RecordStore(sqliteDatabase());
       await store.compact("leads");
