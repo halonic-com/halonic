@@ -37,6 +37,7 @@ export function PhoneView({ account, steps }: PhoneViewProps) {
       </h2>
       <ViewOnlyLine>
         Set this up on a computer. Google Cloud Console is hard to use on a phone.
+        {account.askAccountType ? " Choose the account type on a computer first." : ""}
       </ViewOnlyLine>
       {problem === undefined ? null : (
         <>
@@ -46,7 +47,9 @@ export function PhoneView({ account, steps }: PhoneViewProps) {
       )}
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-body">
         <dt className="text-fg-muted">Account</dt>
-        <dd>{accountTypeNames[account.record.accountType]}</dd>
+        <dd>
+          {account.askAccountType ? "Not chosen yet" : accountTypeNames[account.record.accountType]}
+        </dd>
         <dt className="text-fg-muted">For</dt>
         <dd>{listNames(account.services.map((service) => service.label))}</dd>
         <dt className="text-fg-muted">Progress</dt>
