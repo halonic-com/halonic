@@ -2,7 +2,7 @@ import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createSocket, type Socket as UdpSocket } from "node:dgram";
 import { lookup } from "node:dns/promises";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:net";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -246,6 +246,17 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
 
   it("A12: reads nothing in the home folder or outside the integration's folder", async () => {
     const outside = join(import.meta.dirname, "..", "package.json");
+    // Links inside the folder it may read, pointing at what it may not: a
+    // junction to the home folder and, where this computer lets a test make
+    // one, a symbolic link to the key file itself.
+    const folders = await attackFolders(base, `a12-${nodeLayer}`);
+    const junction = join(folders.integrationFolder, "home-junction");
+    await symlink(homeFolder, junction, "junction");
+    const fileLink = join(folders.integrationFolder, "key-link");
+    const hasFileLink = await symlink(homeKey, fileLink, "file").then(
+      () => true,
+      () => false, // Windows only lets a test make one with Developer Mode or as an administrator.
+    );
     const { attempts } = await attack(
       `
       const fs = await import("node:fs/promises");
@@ -253,11 +264,25 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
       await attempt("workspace .env", () => fs.readFile(${JSON.stringify(workspaceEnv)}, "utf8"));
       await attempt("list home", async () => (await fs.readdir(${JSON.stringify(homeFolder)})).join(","));
       await attempt("outside file", () => fs.readFile(${JSON.stringify(outside)}, "utf8"));
+      await attempt("key through a junction", () => fs.readFile(${JSON.stringify(join(junction, ".ssh", "id_ed25519"))}, "utf8"));
+      await attempt("list home through a junction", async () => (await fs.readdir(${JSON.stringify(junction)})).join(","));
+      await attempt("key through a file link", () => fs.readFile(${JSON.stringify(fileLink)}, "utf8"));
     `,
       nodeLayer,
+      folders,
     );
-    for (const name of ["ssh key", "workspace .env", "list home", "outside file"]) {
+    const names = [
+      "ssh key",
+      "workspace .env",
+      "list home",
+      "outside file",
+      "key through a junction",
+      "list home through a junction",
+      ...(hasFileLink ? ["key through a file link"] : []),
+    ];
+    for (const name of names) {
       expect(attempts[name]?.outcome, name).toBe("refused");
+      expect(attempts[name]?.detail, name).not.toContain(canary);
     }
   });
 
@@ -379,8 +404,9 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
   });
 
   it("A14: starts no process outside what the box allows", async () => {
-    // With Node's layer on, no process at all. With it off, a program may start
-    // inside the box, but the box's own limits hold (A12, A36 above).
+    // With Node's layer on, no process at all. With it off, a program starts
+    // inside the box, and the box's own limits hold for it: the program the
+    // script starts cannot read the home folder either (A12).
     const cmd = join(windowsFolder, "System32", "cmd.exe");
     const { attempts } = await attack(
       `
@@ -390,15 +416,38 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
         if (run.error) throw run.error;
         return run.stdout;
       });
+      await attempt("shell reads the ssh key", () => {
+        const run = spawnSync(${JSON.stringify(cmd)}, ["/d", "/c", "type", ${JSON.stringify(homeKey)}], { encoding: "utf8" });
+        if (run.error) throw run.error;
+        if (run.status !== 0) throw Object.assign(new Error(run.stderr), { code: "EXIT_" + run.status });
+        return run.stdout;
+      });
     `,
       nodeLayer,
     );
-    if (nodeLayer === "on") expect(attempts["shell"]?.outcome).toBe("refused");
-    else expect(attempts["shell"]).toBeDefined();
+    if (nodeLayer === "on") {
+      expect(attempts["shell"]).toMatchObject({ outcome: "refused", detail: "ERR_ACCESS_DENIED" });
+      expect(attempts["shell reads the ssh key"]).toMatchObject({
+        outcome: "refused",
+        detail: "ERR_ACCESS_DENIED",
+      });
+    } else {
+      // The shell ran, and what the box lets it do is what it lets the script do.
+      expect(attempts["shell"]?.outcome).toBe("allowed");
+      expect(attempts["shell"]?.detail).toContain("started");
+      // It ran and exited with an error; it was not stopped from starting.
+      expect(attempts["shell reads the ssh key"]?.outcome).toBe("refused");
+      expect(attempts["shell reads the ssh key"]?.detail).toMatch(/^EXIT_[1-9]/);
+      expect(attempts["shell reads the ssh key"]?.detail).not.toContain(canary);
+    }
   });
 
   it("A15: starts no worker, add-on, WASI or inspector with Node's layer on", async () => {
     const folders = await attackFolders(base, `a15-${nodeLayer}`);
+    // A real DLL, from the Windows folder the box can read. It is not a Node
+    // add-on, so with Node's layer off Windows loads it and Node then says it
+    // registered no module; a missing or unreadable file would say something else.
+    const dll = join(windowsFolder, "System32", "kernel32.dll");
     const { attempts } = await attack(
       `
       const { Worker } = await import("node:worker_threads");
@@ -407,14 +456,43 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
         worker.on("error", reject);
         worker.on("exit", () => resolve("ran"));
       }));
-      await attempt("add-on", () => { process.dlopen({ exports: {} }, ${JSON.stringify(join(folders.integrationFolder, "attack.mjs"))}); return "loaded"; });
+      await attempt("wasi", async () => { const { WASI } = await import("node:wasi"); new WASI({ version: "preview1" }); return "created"; });
+      await attempt("add-on", () => {
+        try {
+          process.dlopen({ exports: {} }, ${JSON.stringify(dll)});
+        } catch (error) {
+          throw Object.assign(error, { code: error.code + ": " + error.message });
+        }
+        return "loaded";
+      });
+      await attempt("inspector", async () => {
+        const inspector = await import("node:inspector");
+        inspector.open(0, "127.0.0.1");
+        const url = inspector.url();
+        inspector.close();
+        if (url === undefined) throw Object.assign(new Error("no inspector"), { code: "NO_INSPECTOR" });
+        return url;
+      });
       `,
       nodeLayer,
       folders,
     );
-    // Node's layer is what refuses a worker; the add-on is not a binary, so it never loads.
-    expect(attempts["add-on"]?.outcome).toBe("refused");
-    if (nodeLayer === "on") expect(attempts["worker"]?.outcome).toBe("refused");
+    if (nodeLayer === "on") {
+      for (const name of ["worker", "wasi", "add-on", "inspector"]) {
+        expect(attempts[name], name).toMatchObject({ outcome: "refused" });
+      }
+      expect(attempts["add-on"]?.detail).toContain("ERR_ACCESS_DENIED");
+    } else {
+      // The box has no Node rule against these, and a worker is only a thread.
+      expect(attempts["worker"]?.outcome).toBe("allowed");
+      // Creating a WASI object grants nothing: it reaches only the folders a module is given.
+      expect(attempts["wasi"]?.outcome).toBe("allowed");
+      // Windows loads the DLL; Node refuses it because it is no add-on.
+      expect(attempts["add-on"]?.outcome).toBe("refused");
+      expect(attempts["add-on"]?.detail).toContain("did not self-register");
+      // MXC refuses the box a listener on its own loopback (see attack-cases.md).
+      expect(attempts["inspector"]?.outcome).toBe("refused");
+    }
   });
 
   it("A17: sees no key or Halonic variable in its environment", async () => {
