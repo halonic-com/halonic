@@ -344,10 +344,6 @@ export async function openFolder(
 export const agentSandboxOffered = false;
 
 /**
- * Gives the section the agent host's sandbox through the shell, when the build offers it and the
- * shell has an agent host. Without it the section reads Not available.
- */
-/**
  * The page's one updater: the shell keeps each watch channel until the page reloads, so every
  * workspace the window opens shares this one instead of opening its own.
  */
@@ -361,6 +357,10 @@ function updaterOf(ipc: TauriIpc & TauriCallbacks): TauriUpdater {
   return updater;
 }
 
+/**
+ * Gives the section the agent host's sandbox through the shell, when the build offers it and the
+ * shell has an agent host. Without it the section reads Not available.
+ */
 function provideAgentSandbox(services: ServiceRegistry, window: object): void {
   if (!agentSandboxOffered) return;
   const transport = tauriAgentHostTransport(window);
