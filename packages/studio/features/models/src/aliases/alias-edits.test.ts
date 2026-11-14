@@ -1,6 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import {
+  addAlias,
   editAliasFallbacks,
   editAliasPrice,
   editAliasTarget,
@@ -56,6 +57,69 @@ verifies("models.aliases.edit-fallbacks", () => {
     expect(text.indexOf("- default")).toBeLessThan(text.indexOf("- fast"));
     const emptied = textOf(editAliasFallbacks(text, "smart", ""));
     expect(emptied).not.toContain("- default");
+  });
+
+  it("names a fallback that is not an alias and writes nothing", () => {
+    const result = editAliasFallbacks(file, "smart", "default, smartest");
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        field: "fallbacks",
+        message: "There's no model alias called smartest. Pick one from the list.",
+      },
+    });
+  });
+});
+
+verifies("models.aliases.create", () => {
+  it("adds the alias with its provider and model and keeps the rest of the file", () => {
+    const text = textOf(addAlias(file, " cheap ", { provider: "openai", model: " gpt-5-nano " }));
+
+    expect(text).toContain("# the everyday model");
+    expect(text).toMatch(/cheap:\s+provider: openai\s+model: gpt-5-nano/);
+  });
+
+  it("adds the first alias to a file with none", () => {
+    const text = textOf(
+      addAlias("version: 1\naliases: {}\n", "fast", { provider: "ollama", model: "llama3.2" }),
+    );
+
+    expect(text).toMatch(/fast:\s+provider: ollama\s+model: llama3.2/);
+  });
+
+  it("refuses an empty name, a taken name and a name with a slash", () => {
+    const target = { provider: "openai", model: "m" };
+
+    expect(addAlias(file, "  ", target)).toEqual({
+      ok: false,
+      error: { field: "name", message: "Give it a name." },
+    });
+    expect(addAlias(file, "smart", target)).toEqual({
+      ok: false,
+      error: { field: "name", message: "There's already a model alias called smart." },
+    });
+    expect(addAlias(file, "a/b", target)).toEqual({
+      ok: false,
+      error: {
+        field: "name",
+        message:
+          "A name can't contain /. Halonic reads provider/model names as a provider and a model.",
+      },
+    });
+  });
+
+  it("refuses an empty model", () => {
+    expect(addAlias(file, "cheap", { provider: "openai", model: " " })).toEqual({
+      ok: false,
+      error: { field: "model", message: "Give the model's name, like claude-sonnet-5-5." },
+    });
+  });
+
+  it("refuses a file that does not read as models.yaml", () => {
+    const result = addAlias("aliases: [not, a, map", "cheap", { provider: "a", model: "b" });
+
+    expect(result.ok).toBe(false);
   });
 });
 

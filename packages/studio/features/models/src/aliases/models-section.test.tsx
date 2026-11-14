@@ -4,7 +4,7 @@ import type { ItemRef, WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it } from "vitest";
 import type { ModelsFiles, ProviderFile } from "../api.ts";
 import { AliasTab } from "./alias-tab.tsx";
 import { ModelsSection } from "./models-section.tsx";
@@ -13,6 +13,19 @@ import { ModelsSection } from "./models-section.tsx";
 
 let root: Root | undefined;
 let element: HTMLElement | undefined;
+
+beforeEach(() => {
+  // jsdom has `<dialog>` but no `showModal()`; opening it is all these tests need.
+  Object.assign(HTMLDialogElement.prototype, {
+    showModal(this: HTMLDialogElement) {
+      this.setAttribute("open", "");
+    },
+    close(this: HTMLDialogElement) {
+      this.removeAttribute("open");
+    },
+  });
+  Element.prototype.scrollIntoView = () => {};
+});
 
 afterEach(() => {
   act(() => root?.unmount());
@@ -49,6 +62,10 @@ function filesWith(
       for (const listener of listeners) listener();
     },
   };
+}
+
+function buttonNamed(parent: HTMLElement, text: string): HTMLButtonElement | undefined {
+  return [...parent.querySelectorAll("button")].find((b) => b.textContent === text);
 }
 
 async function showSection(files: ModelsFiles, opened: ItemRef[] = []): Promise<HTMLElement> {
@@ -136,7 +153,7 @@ verifies("models.aliases.list", () => {
     const opened: ItemRef[] = [];
     const section = await showSection(filesWith(twoAliases), opened);
 
-    act(() => section.querySelectorAll("button")[2]?.click());
+    act(() => buttonNamed(section, "smart · anthropic / claude-sonnet-5-5")?.click());
 
     expect(opened).toEqual([{ kind: "model-alias", hub: "local", id: "smart" }]);
   });
@@ -175,6 +192,104 @@ verifies("models.aliases.list", () => {
     const section = await showSection(filesWith(new Error("gone")));
 
     expect(section.textContent).toContain("Halonic couldn't read the model aliases.");
+  });
+});
+
+verifies("models.aliases.create", () => {
+  function memory(initial: string | null) {
+    const files = filesWith(initial);
+    const changes: { label: string; text: string }[] = [];
+    files.changeModels = (label, text) => changes.push({ label, text });
+    return { files, changes };
+  }
+
+  async function typeInto(input: HTMLInputElement, value: string) {
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  }
+
+  const dialogInput = (label: string) => {
+    const found = [...document.querySelectorAll("label")].find((l) =>
+      l.textContent?.startsWith(label),
+    );
+    return document.querySelector<HTMLInputElement>(`#${CSS.escape(found?.htmlFor ?? "")}`);
+  };
+
+  async function openDialog(initial: string | null, opened: ItemRef[] = []) {
+    const { files, changes } = memory(initial);
+    const section = await showSection(files, opened);
+    await act(async () => buttonNamed(section, "New alias")?.click());
+    return { section, changes };
+  }
+
+  const create = () =>
+    act(async () => {
+      const button = [...document.querySelectorAll("dialog button")].find((b) =>
+        b.textContent?.startsWith("Create"),
+      );
+      (button as HTMLButtonElement | undefined)?.click();
+    });
+
+  it("offers New alias in the header and in the empty state", async () => {
+    const { section } = await openDialog(null);
+
+    expect(buttonNamed(section, "New alias")).toBeDefined();
+    expect(document.querySelector("dialog")?.textContent).toContain("New model alias");
+    expect(document.querySelector("dialog")?.textContent).toContain(
+      "Agents ask for this name, like fast.",
+    );
+  });
+
+  it("adds the alias as one undo step and opens its tab", async () => {
+    const opened: ItemRef[] = [];
+    const { changes } = await openDialog(twoAliases, opened);
+
+    await typeInto(dialogInput("Name") as HTMLInputElement, "cheap");
+    await typeInto(dialogInput("Model") as HTMLInputElement, "gpt-5-nano");
+    await create();
+
+    expect(changes).toHaveLength(1);
+    expect(changes[0]?.label).toBe("Added model alias cheap");
+    expect(changes[0]?.text).toMatch(/cheap:\s+provider: anthropic\s+model: gpt-5-nano/);
+    expect(opened).toEqual([{ kind: "model-alias", hub: "local", id: "cheap" }]);
+    expect(document.querySelector("dialog")).toBeNull();
+  });
+
+  it("keeps the dialog open and writes nothing while a field is wrong", async () => {
+    const { changes } = await openDialog(twoAliases);
+
+    await create();
+    expect(document.querySelector("dialog")?.textContent).toContain("Give it a name.");
+
+    await typeInto(dialogInput("Name") as HTMLInputElement, "smart");
+    await create();
+    expect(document.querySelector("dialog")?.textContent).toContain(
+      "There's already a model alias called smart.",
+    );
+
+    await typeInto(dialogInput("Name") as HTMLInputElement, "cheap");
+    await create();
+    expect(document.querySelector("dialog")?.textContent).toContain(
+      "Give the model's name, like claude-sonnet-5-5.",
+    );
+    expect(changes).toEqual([]);
+  });
+
+  it("says Nothing was changed when the file can't be read", async () => {
+    const { changes } = await openDialog("aliases: [not, a, map");
+
+    await typeInto(dialogInput("Name") as HTMLInputElement, "cheap");
+    await typeInto(dialogInput("Model") as HTMLInputElement, "m");
+    await create();
+    await act(async () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+
+    expect(document.querySelector("dialog")?.textContent).toContain(
+      "Couldn't create the model alias:",
+    );
+    expect(document.querySelector("dialog")?.textContent).toContain("Nothing was changed.");
+    expect(changes).toEqual([]);
   });
 });
 
