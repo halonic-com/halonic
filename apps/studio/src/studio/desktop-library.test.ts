@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 
-import { ConnectorStatusHostService } from "@halonicjs/studio-feature-library/api";
+import {
+  ConnectorStatusHostService,
+  ListedToolsHostService,
+} from "@halonicjs/studio-feature-library/api";
 import { BrowserDisplayPrefs, DisplaySettings } from "@halonicjs/studio-feature-settings";
 import { createShell } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
@@ -63,6 +66,46 @@ verifies("studio.workspace-connector-status", () => {
     expect((await status.list()).map(({ id, name }) => ({ id, name }))).toEqual([
       { id: "search", name: "Web search" },
     ]);
+    await opened.dispose();
+  });
+});
+
+verifies("studio.workspace-listed-tools", () => {
+  it("gives an opened folder's connector review to the Library, which starts nothing in an untrusted folder", async () => {
+    const connectorPath = "library/connectors/notes.connector.yaml";
+    const connector = [
+      "version: 1",
+      "id: notes",
+      "transport: { stdio: { command: notes-server } }",
+    ].join("\n");
+    const started: string[] = [];
+    const answers: Record<string, unknown> = {
+      fs_list: ["workspace.yaml", connectorPath],
+      folder_location: "/work/acme",
+      folder_entries: [],
+      host_settings_read: {},
+    };
+    const invoke = async (command: string, args?: Record<string, unknown>) => {
+      if (command.startsWith("agent_host")) started.push(command);
+      if (command === "fs_read") {
+        if (args?.["path"] === "workspace.yaml") return acmeSettings;
+        return args?.["path"] === connectorPath ? connector : null;
+      }
+      return answers[command] ?? null;
+    };
+    const internals = { invoke, transformCallback: () => 1, unregisterCallback: () => {} };
+    const shell = createShell({ ...desktopFeatures, host: "desktop-app", platform: "windows" });
+    const opened = await openFolder(
+      shell,
+      { __TAURI_INTERNALS__: internals },
+      "/work/acme",
+      displaySettings(),
+    );
+
+    const tools = opened.workspace.services.get(ListedToolsHostService);
+
+    await expect(tools.review("notes")).rejects.toThrow();
+    expect(started).toEqual([]);
     await opened.dispose();
   });
 });
