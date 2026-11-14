@@ -24,6 +24,7 @@ import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { type LocalEngine, openLocalEngine } from "./local-engine-host.ts";
 import type { LocalHarnessParts } from "./local-harness-host.ts";
+import { removeTestFolder } from "./test/remove-folder.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 
 // The CLI's harness host (HAL-7747), run through the real engine on real
@@ -51,7 +52,8 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await Promise.all(opened.splice(0).map((engine) => engine.close()));
-  await rm(folder, { recursive: true, force: true });
+  // On Windows a file the engine just deleted can stay "delete pending", so a plain `rm` fails with ENOTEMPTY (HAL-9217).
+  await removeTestFolder(folder);
 });
 
 /** A hub whose helper calls the `notes` connector, then whose coder runs in Claude Code. */
