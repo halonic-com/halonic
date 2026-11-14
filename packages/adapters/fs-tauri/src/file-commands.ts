@@ -32,7 +32,14 @@ export const fileCommands = {
    * it over the file, so nothing can come between the check and the write.
    */
   write: "fs_write",
-  /** `{ path }` → nothing; also when there is no file. */
+  /**
+   * `{ path, expected? }` → `{ status: "removed" }`, also when there is no
+   * file. With `expected` (`"absent"`, a digest as `write` takes, or
+   * `"not-text"` for a file that isn't UTF-8 text), the shell removes the
+   * file only when it still holds that, under the same lock as a write, and
+   * otherwise answers `{ status: "changed-on-disk", current }` and removes
+   * nothing.
+   */
   remove: "fs_remove",
   /**
    * `{ channel }` → `{ watchId }`. The channel sends

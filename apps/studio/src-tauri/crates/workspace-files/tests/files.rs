@@ -8,7 +8,8 @@ use std::sync::{Arc, Barrier};
 use std::thread;
 
 use halonic_workspace_files::{
-    FileError, WorkspaceFolder, WriteLocks, WriteOutcome, content_digest,
+    EXPECTED_NOT_TEXT, FileError, RemoveOutcome, WorkspaceFolder, WriteLocks, WriteOutcome,
+    content_digest,
 };
 use support::Scratch;
 
@@ -210,4 +211,61 @@ fn workspace_files_remove_a_file_and_take_a_missing_one_calmly() {
     assert!(scratch.at("agents").is_dir(), "a folder is left alone");
     let refused = folder.remove(".env").map_err(|error| error.kind());
     assert_eq!(refused, Err("private_path"));
+}
+
+#[test]
+fn workspace_files_remove_only_what_the_caller_expected_to_delete() {
+    let scratch = Scratch::new("remove-expected");
+    let locks = WriteLocks::default();
+    let folder = WorkspaceFolder::new(scratch.path().to_owned(), &locks);
+    scratch.put("a.json", "one\n");
+
+    let stale = folder.remove_if("a.json", &content_digest("zero\n"));
+    assert_eq!(
+        stale,
+        Ok(RemoveOutcome::ChangedOnDisk {
+            current: Some("one\n".to_owned())
+        })
+    );
+    assert_eq!(folder.read("a.json"), Ok(Some("one\n".to_owned())));
+
+    let current = folder.remove_if("a.json", &content_digest("one\n"));
+    assert_eq!(current, Ok(RemoveOutcome::Removed));
+    assert_eq!(folder.read("a.json"), Ok(None));
+
+    let gone = folder.remove_if("a.json", "absent");
+    assert_eq!(gone, Ok(RemoveOutcome::Removed));
+    let appeared = folder.remove_if("b.json", &content_digest("one\n"));
+    assert_eq!(appeared, Ok(RemoveOutcome::ChangedOnDisk { current: None }));
+}
+
+#[test]
+fn workspace_files_remove_a_file_that_is_not_text_only_when_told_it_is_not_text() {
+    let scratch = Scratch::new("remove-not-text");
+    let locks = WriteLocks::default();
+    let folder = WorkspaceFolder::new(scratch.path().to_owned(), &locks);
+    std::fs::write(scratch.at("a.json"), [0xff, 0xfe, 0x00]).expect("it writes");
+
+    let text_expected = folder.remove_if("a.json", &content_digest("one\n"));
+    assert_eq!(
+        text_expected,
+        Ok(RemoveOutcome::ChangedOnDisk { current: None })
+    );
+    assert!(scratch.at("a.json").is_file());
+
+    assert_eq!(
+        folder.remove_if("a.json", EXPECTED_NOT_TEXT),
+        Ok(RemoveOutcome::Removed)
+    );
+    assert!(!scratch.at("a.json").exists());
+
+    scratch.put("b.json", "text\n");
+    let now_text = folder.remove_if("b.json", EXPECTED_NOT_TEXT);
+    assert_eq!(
+        now_text,
+        Ok(RemoveOutcome::ChangedOnDisk {
+            current: Some("text\n".to_owned())
+        })
+    );
+    assert!(scratch.at("b.json").is_file());
 }

@@ -30,12 +30,13 @@ use halonic_git_guard::OpenedFolders;
 use halonic_profile::ProfileFolder;
 use halonic_workspace_files::{
     EntryKind, Fence, FileError, FolderEntry, FolderReader, FolderSnapshot, WatchMessage, Watches,
-    WorkspaceFolder, WriteLocks, WriteOutcome,
+    WorkspaceFolder, WriteLocks,
 };
 use serde::{Deserialize, Serialize};
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, Runtime, Webview};
 
+use crate::file_answers::{RemoveAnswer, WriteAnswer};
 use crate::git::GitState;
 use crate::profile::cli_profile;
 
@@ -77,24 +78,6 @@ impl From<FileError> for FileRefusal {
             kind: error.kind(),
             path: error.folder().map(str::to_owned),
             message: error.to_string(),
-        }
-    }
-}
-
-/// What `fs_write` answers: `{ status: "written" }` or
-/// `{ status: "changed-on-disk", current }`.
-#[derive(Debug, PartialEq, Eq, Serialize)]
-#[serde(tag = "status", rename_all = "kebab-case")]
-pub enum WriteAnswer {
-    Written,
-    ChangedOnDisk { current: Option<String> },
-}
-
-impl From<WriteOutcome> for WriteAnswer {
-    fn from(outcome: WriteOutcome) -> Self {
-        match outcome {
-            WriteOutcome::Written => Self::Written,
-            WriteOutcome::ChangedOnDisk { current } => Self::ChangedOnDisk { current },
         }
     }
 }
@@ -305,7 +288,8 @@ pub async fn fs_write<R: Runtime>(
     .await
 }
 
-/// Deletes the file; one that isn't there is fine.
+/// Deletes the file; one that isn't there is fine. With `expected` (`"absent"`,
+/// a digest, or `"not-text"`), it deletes the file only when it still holds that.
 #[tauri::command]
 pub async fn fs_remove<R: Runtime>(
     app: AppHandle<R>,
@@ -313,7 +297,8 @@ pub async fn fs_remove<R: Runtime>(
     folder: Option<FileFolder>,
     source: Option<String>,
     path: String,
-) -> Result<(), FileRefusal> {
+    expected: Option<String>,
+) -> Result<RemoveAnswer, FileRefusal> {
     tool_approvals::check_file(folder, &path)?;
     in_workspace(
         app,
@@ -321,7 +306,10 @@ pub async fn fs_remove<R: Runtime>(
         folder,
         source,
         Making::Removing,
-        move |files| files.remove(&path),
+        move |files| match expected.as_deref() {
+            None => files.remove(&path).map(|()| RemoveAnswer::Removed),
+            Some(expected) => files.remove_if(&path, expected).map(RemoveAnswer::from),
+        },
     )
     .await
 }

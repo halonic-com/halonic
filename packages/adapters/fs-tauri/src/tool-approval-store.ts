@@ -126,9 +126,8 @@ export class TauriToolApprovalStore implements ToolApprovalStore {
 
   /**
    * Forgets one tool's waiting versions. Leaves a newer Halonic's file alone.
-   * Known gap: the shell can't remove a file only when it is unchanged, so a
-   * `noteWaiting` from the CLI that lands between the read and the remove of
-   * the last entry is lost.
+   * The last entry's file is removed only when it still holds what was read,
+   * so a `noteWaiting` from the CLI that lands between is read again, not lost.
    */
   async #forgetWaiting(key: ToolApprovalKey): Promise<void> {
     await this.#change(key, waitingFile, (text) => {
@@ -155,37 +154,53 @@ export class TauriToolApprovalStore implements ToolApprovalStore {
       const text = await this.#readOrClear(source, file);
       const change = next(text);
       if (change === "keep") return;
-      if (change === "remove") {
-        await this.#call(source, fileCommands.remove, { path: file });
-        return;
-      }
-      const answer = await this.#call(source, fileCommands.write, {
-        path: file,
-        text: change.text,
-        expected: text === null ? "absent" : await digestOf(text),
-      });
-      const { status } = (answer ?? {}) as Record<string, unknown>;
-      if (status === "written") return;
-      if (status !== "changed-on-disk") throw noAnswer();
+      const expected = text === null ? "absent" : await digestOf(text);
+      const done =
+        change === "remove"
+          ? await this.#removeIf(source, file, expected)
+          : (await this.#statusOf(source, fileCommands.write, {
+              path: file,
+              text: change.text,
+              expected,
+            })) === "written";
+      if (done) return;
     }
-    throw new KindedError(
-      "unavailable",
-      `The approvals of ${JSON.stringify(source.source)} kept changing, so ${JSON.stringify(file)} was left as it is.`,
+    throw keptChanging(source, file);
+  }
+
+  /** Removes `file` when it still holds `expected`; `false` when another change came first. */
+  async #removeIf(source: SourceKey, file: string, expected: string): Promise<boolean> {
+    return (
+      (await this.#statusOf(source, fileCommands.remove, { path: file, expected })) === "removed"
     );
+  }
+
+  /** Runs a command that answers `{ status }` and gives the status, which is `"changed-on-disk"` when the file changed, or what the command did. */
+  async #statusOf(
+    source: SourceKey,
+    command: string,
+    args: Record<string, unknown>,
+  ): Promise<string> {
+    const { status } = ((await this.#call(source, command, args)) ?? {}) as Record<string, unknown>;
+    if (status === "written" || status === "removed" || status === "changed-on-disk") return status;
+    throw noAnswer();
   }
 
   /**
    * Reads `file`. A file that isn't UTF-8 text is damaged, which the CLI's
-   * store overwrites or drops, so it is removed here and read as absent.
+   * store overwrites or drops, so it is removed here, only while it still
+   * isn't text, and read as absent. A file that changed meanwhile is read again.
    */
   async #readOrClear(source: SourceKey, file: string): Promise<string | null> {
-    try {
-      return await this.#read(source, file);
-    } catch (error) {
-      if (!unreadableText(error)) throw error;
-      await this.#call(source, fileCommands.remove, { path: file });
-      return null;
+    for (let attempt = 0; attempt < maxChangeAttempts; attempt += 1) {
+      try {
+        return await this.#read(source, file);
+      } catch (error) {
+        if (!unreadableText(error)) throw error;
+        if (await this.#removeIf(source, file, "not-text")) return null;
+      }
     }
+    throw keptChanging(source, file);
   }
 
   async #read(source: SourceKey, file: string): Promise<string | null> {
@@ -239,6 +254,13 @@ function callFailure(reason: unknown): Error {
 /** Whether a read failed because the file isn't text, which the stores tell as an unreadable approval. */
 function unreadableText(error: unknown): boolean {
   return errorKindOf(error) === "invalid_input";
+}
+
+function keptChanging(source: SourceKey, file: string): KindedError {
+  return new KindedError(
+    "unavailable",
+    `The approvals of ${JSON.stringify(source.source)} kept changing, so ${JSON.stringify(file)} was left as it is.`,
+  );
 }
 
 function noAnswer(): KindedError {
