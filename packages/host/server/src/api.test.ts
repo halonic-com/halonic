@@ -14,8 +14,8 @@ verifies("server.api", () => {
     expectTypeOf<keyof RequestContext>().toEqualTypeOf<"clientAddress" | "secure">();
   });
 
-  typeTest("gives an error a code and a short message only", () => {
-    expectTypeOf<keyof ServerErrorBody>().toEqualTypeOf<"code" | "message">();
+  typeTest("gives an error a code, a message and an optional fix only", () => {
+    expectTypeOf<keyof ServerErrorBody>().toEqualTypeOf<"code" | "message" | "fix">();
   });
 
   typeTest("takes every outside dependency as a port", () => {

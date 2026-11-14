@@ -2287,6 +2287,9 @@ importers:
       '@halonicjs/routines':
         specifier: workspace:*
         version: link:../../core/routines
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../../core/std
     devDependencies:
       '@halonicjs/testing-contracts':
         specifier: workspace:*
