@@ -195,7 +195,7 @@ verifies("plugins.plugin-actions", () => {
     );
   });
 
-  it("doesn't remove before the connector check has answered", async () => {
+  it("keeps Remove plugin unavailable until the connector check has answered", async () => {
     const { actions, asked } = recordingActions();
     let answer: (uses: readonly PluginUse[]) => void = () => {};
     const slow: PluginActions = {
@@ -208,14 +208,24 @@ verifies("plugins.plugin-actions", () => {
     await act(async () => button("Remove plugin").click());
 
     expect(asked).toEqual([]);
+    expect(document.querySelector("dialog")?.textContent).toContain(
+      "Checking which connectors use it…",
+    );
 
     await act(async () => answer([{ connector: "forecast", workspace: "Acme" }]));
+
+    expect(asked).toEqual([]);
+    expect(document.querySelector("dialog")?.textContent).toContain(
+      "The forecast connector in Acme stops working until you add the plugin again.",
+    );
+
+    await act(async () => button("Remove plugin").click());
 
     expect(asked).toEqual(["remove weather"]);
   });
 
   it("says so when Halonic can't tell which connectors use the plugin", async () => {
-    const { actions } = recordingActions({ fail: "usedBy" });
+    const { actions, asked } = recordingActions({ fail: "usedBy" });
     const { view } = await showPage(withSettings(), actions);
 
     await pick(view, "Remove plugin…");
@@ -223,6 +233,10 @@ verifies("plugins.plugin-actions", () => {
     expect(document.querySelector("dialog")?.textContent).toContain(
       "Halonic couldn't check which connectors use it.",
     );
+
+    await act(async () => button("Remove plugin").click());
+
+    expect(asked).toEqual(["remove weather"]);
   });
 
   it("closes the dialog once removed, before the list drops the plugin", async () => {

@@ -113,6 +113,9 @@ export function stopsWorkingLine(uses: readonly PluginUse[]): string {
 /** Shown in place of the connector sentence when Halonic couldn't look which connectors use it. */
 export const USED_BY_UNKNOWN = "Halonic couldn't check which connectors use it.";
 
+/** Shown while the connector check is pending: why **Remove plugin** isn't pressable yet. */
+export const CHECKING_USED_BY = "Checking which connectors use it…";
+
 /**
  * T13's second sentence, naming only what the plugin keeps (G8): "Its settings, sign-ins and the
  * API key you entered are removed from this computer." `""` when it keeps none of them.
