@@ -66,8 +66,11 @@ control runs in a twin box, not in the runner's box (HAL-9342).
 Name lookups from inside the box leave through Windows' DNS client and are not fenced.
 On `sandbox-mxc` a lookup sent straight to a public DNS server is refused (the A6 canary), but a
 lookup that goes through Windows' DNS client leaves the box by design. Integration data the
-runner handles can therefore still leave through lookups, a few KB a second. This is bounded:
-the runner holds no key in its environment (A17, A25) and its MXC profile has
-`settingsFolder: null` and `keyStore: "denied"`, which `runner-profile.test.ts` checks. If a
-later change gives the runner a secret or the settings folder, `sandbox-mxc` is not fenced for
-the runner again. Decided by the CTO on HAL-9155. MXC stays opt-in.
+runner handles can therefore still leave through lookups, a few KB a second. This gap is
+bounded only by Node's layer and the runner holding no key, nothing in the box
+itself. In particular the profile's `keyStore: "denied"` has no effect on MXC: with Node's layer
+off, a program in the box reads the host user's Credential Manager entries (A36 checks this with
+a real `CredRead`, not just `cmdkey /list`, and fails if the read is ever refused). The runner
+holds no key in its environment (A17, A25) and its MXC profile has `settingsFolder: null`, which
+`runner-profile.test.ts` checks. If a later change gives the runner a secret or the settings
+folder, `sandbox-mxc` is not fenced for the runner again. Decided by the CTO on HAL-9155. MXC stays opt-in.

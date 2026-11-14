@@ -231,6 +231,56 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     }
   });
 
+  it("A36: reads a Credential Manager secret once past Node's layer (known gap)", async () => {
+    // `cmdkey /list` above only shows the vault is not hidden. This asks for
+    // the secret itself, through the same call a program uses (`CredRead`),
+    // and records whether the value comes out. The gap is named: if the box
+    // ever stops the read, this fails, and the gap and `attack-cases.md`
+    // are to be updated.
+    const powershell = join(
+      windowsFolder,
+      "System32",
+      "WindowsPowerShell",
+      "v1.0",
+      "powershell.exe",
+    );
+    const readCredential = `
+      Add-Type -Namespace Halonic -Name Vault -MemberDefinition @'
+        [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        public static extern bool CredRead(string target, int type, int flags, out System.IntPtr credential);
+        [DllImport("advapi32.dll")]
+        public static extern void CredFree(System.IntPtr buffer);
+'@
+      $pointer = [System.IntPtr]::Zero
+      if (-not [Halonic.Vault]::CredRead(${JSON.stringify(credentialTarget).replace(/"/g, "'")}, 1, 0, [ref]$pointer)) {
+        [Console]::Out.Write("CredRead failed: " + [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()); exit 1
+      }
+      # CREDENTIALW: the secret's size is at offset 24 (x64), its bytes at offset 32.
+      $size = [System.Runtime.InteropServices.Marshal]::ReadInt32($pointer, 24)
+      $blob = [System.Runtime.InteropServices.Marshal]::ReadIntPtr($pointer, 32)
+      [Console]::Out.Write([System.Runtime.InteropServices.Marshal]::PtrToStringUni($blob, $size / 2))
+      [Halonic.Vault]::CredFree($pointer)
+    `;
+    const { attempts } = await attack(
+      `
+      const { spawnSync } = await import("node:child_process");
+      await attempt("secret", () => {
+        const run = spawnSync(${JSON.stringify(powershell)}, ["-NoProfile", "-NonInteractive", "-Command", ${JSON.stringify(readCredential)}], { encoding: "utf8" });
+        if (run.error) throw run.error;
+        if (run.status !== 0) throw Object.assign(new Error(run.stdout || run.stderr), { code: "EXIT_" + run.status });
+        // Report whether the secret came out, never the secret itself.
+        return run.stdout === ${JSON.stringify(canary)} ? "read" : "other output";
+      });
+    `,
+      nodeLayer,
+    );
+    if (nodeLayer === "on") {
+      expect(attempts["secret"]?.outcome).toBe("refused");
+    } else {
+      expect(attempts["secret"]).toEqual({ outcome: "allowed", detail: "read" });
+    }
+  });
+
   it("A14: starts no process outside what the box allows", async () => {
     // With Node's layer on, no process at all. With it off, a program may start
     // inside the box, but the box's own limits hold (A12, A36 above).
