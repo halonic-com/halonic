@@ -14,6 +14,7 @@ export class MemorySandboxSettingStore implements SandboxSettingStore {
   }
 
   async save(setting: SandboxSetting): Promise<void> {
+    if (!isSandboxSetting(setting)) throw new Error("The sandbox choice isn't a valid choice.");
     this.#text = JSON.stringify(setting);
   }
 

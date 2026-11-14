@@ -11,10 +11,12 @@ verifies("memory.sandbox-setting-store", () => {
     await expect(store.get()).rejects.toThrow("The sandbox choice can't be read.");
   });
 
-  it("refuses a choice with a backend that isn't listed", async () => {
+  it("refuses to save a choice with a backend that isn't listed, and holds nothing", async () => {
     const store = new MemorySandboxSettingStore();
-    await store.save({ backend: "docker", chosenAt: "2026-11-13T09:00:00.000Z" } as never);
-    await expect(store.get()).rejects.toThrow("The sandbox choice isn't a valid choice.");
+    await expect(
+      store.save({ backend: "docker", chosenAt: "2026-11-13T09:00:00.000Z" } as never),
+    ).rejects.toThrow("The sandbox choice isn't a valid choice.");
+    expect(await store.get()).toBeNull();
   });
 
   it("refuses to damage a choice it doesn't hold", async () => {

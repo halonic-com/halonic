@@ -82,6 +82,18 @@ function storageCases(make: MakeSandboxSettingStore): void {
     if (read !== null) read.chosenAt = "changed";
     expect(await store.get()).toEqual(sandboxChoiceOf("srt"));
   });
+
+  it("refuses to save an invalid choice and keeps the one saved before", async () => {
+    const { store } = await make();
+    await store.save(sandboxChoiceOf("srt"));
+    const invalid = { backend: "docker", chosenAt } as unknown as SandboxSetting;
+    await expect(store.save(invalid)).rejects.toThrow(/isn't a valid choice/);
+    expect(await store.get()).toEqual(sandboxChoiceOf("srt"));
+
+    const extra = { ...sandboxChoiceOf("srt-wsl"), note: "extra" } as unknown as SandboxSetting;
+    await expect(store.save(extra)).rejects.toThrow(/isn't a valid choice/);
+    expect(await store.get()).toEqual(sandboxChoiceOf("srt"));
+  });
 }
 
 function damageCases(make: MakeSandboxSettingStore): void {
