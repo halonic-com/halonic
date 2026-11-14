@@ -145,6 +145,9 @@ verifies("fs-tauri.write-if-unchanged-and-watch", () => {
         answering({ status: "saved" }).write("a.yaml", "1"),
         answering({ status: "changed-on-disk", current: 1 }).write("a.yaml", "1"),
         answering(null).write("a.yaml", "1"),
+        answering({ status: "gone" }).remove("a.yaml"),
+        answering({ status: "changed-on-disk", current: 1 }).remove("a.yaml"),
+        answering(undefined).remove("a.yaml"),
         answering({ watchId: "w1" }).watch({ changed: () => {}, failed: () => {} }),
         answering(null).watch({ changed: () => {}, failed: () => {} }),
       ];
