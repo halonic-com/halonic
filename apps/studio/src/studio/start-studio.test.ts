@@ -96,6 +96,7 @@ let restoreDialogs: () => void;
 
 beforeEach(() => {
   restoreDialogs = fakeModalDialogs();
+  document.title = "Halonic";
   window.matchMedia = desktopMediaQueries;
   element = document.createElement("div");
   document.body.append(element);
