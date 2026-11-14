@@ -112,6 +112,7 @@ export class ChatHarnessTurns {
       runId: turnId,
       hubId: request.hubId,
       agent,
+      version: null,
       // Proposal folders are for runs (HAL-3248): a chat turn has none.
       filesFolder: null,
     };

@@ -98,7 +98,7 @@ export interface LocalHarnessInput {
    * files on disk (`routines watch`): the placement check hashes the
    * agent's file from the run's version. Without it, from disk.
    */
-  readonly versions?: Pick<WorkspaceVersions, "fileBytesOf">;
+  readonly versions?: Pick<WorkspaceVersions, "agentFileOf">;
   /** The workspace's files, which Accept writes (not wired yet) and a proposal's base is read from. */
   readonly store: DefinitionStore;
   readonly digest: Digest;
@@ -307,15 +307,15 @@ async function nodeBridgeServer(input: LocalHarnessInput): Promise<HarnessBridge
  */
 function agentFilesOf(input: LocalHarnessInput): AgentFiles {
   return {
-    bytesOf: async (hubId, agentId, runId) => {
+    bytesOf: async (hubId, agentId, run) => {
+      if (input.versions !== undefined) {
+        return await input.versions.agentFileOf(run, hubId, agentId);
+      }
       const file = filesOf(input.workspace(), "agent").find(
         (each) => each.hub === hubId && each.value.id === agentId,
       );
       if (file === undefined) {
         throw new Error(`Hub "${hubId}" has no agent "${agentId}".`);
-      }
-      if (input.versions !== undefined) {
-        return await input.versions.fileBytesOf(runId, file.path);
       }
       return new Uint8Array(await readFile(join(input.location, file.path)));
     },

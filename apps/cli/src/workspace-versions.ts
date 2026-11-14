@@ -40,12 +40,19 @@ export interface WorkspaceVersions {
     readonly version: RunVersion;
   }): Promise<TrustedVersion>;
   /**
-   * A file as the version a run read has it, never as it is on disk now:
-   * what a harness run's placement choice is checked against (HAL-6477).
+   * A harness agent's file as the version a run read has it, never as it is
+   * on disk now or in the version read last: what the placement choice
+   * "On this computer" is checked against (HAL-6477). A child run is found
+   * by the version it records, as {@link WorkspaceVersions.trustedVersionOf}
+   * finds it.
    *
-   * @throws when that version has no such file
+   * @throws when the run's version can't be read or may not run here, or has no such agent file
    */
-  fileBytesOf(runId: string, path: string): Promise<Uint8Array>;
+  agentFileOf(
+    run: { readonly runId: string; readonly version: RunVersion | null },
+    hubId: string,
+    agentId: string,
+  ): Promise<Uint8Array>;
   /** Forgets what is kept for a run that has ended. */
   forget(runId: string): void;
 }

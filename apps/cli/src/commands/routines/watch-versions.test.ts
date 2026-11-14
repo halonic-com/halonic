@@ -2,11 +2,15 @@ import { cp, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
+import { testGit } from "@halonicjs/adapter-git/testing";
+import type { DefinitionStore } from "@halonicjs/ports";
 import { contractGrant } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
-import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
+import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { removeTestFolder } from "../../test/remove-folder.ts";
+import { openGitHistory } from "../../run-workspace.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { WatchedVersions } from "./watch-versions.ts";
 
@@ -36,6 +40,12 @@ async function watchAcme(): Promise<WatchedVersions> {
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
   versions = await WatchedVersions.open(dir, async () => null);
   return versions;
+}
+
+/** Commits every file in the workspace as a new version and gives its commit. */
+async function commitAll(vcs: GitVcs, store: DefinitionStore): Promise<string> {
+  await vcs.stage(await store.list());
+  return await vcs.commit("A version");
 }
 
 /** A run that read the saved files. */
@@ -140,13 +150,57 @@ verifies("cli.local-engine", () => {
 
   it("gives a run's agent file as its version had it, not as an edit made since", async () => {
     const watched = await watchAcme();
-    const path = filesOf(watched.latest(), "agent")[0]?.path ?? "";
-    const before = await readFile(join(acme, path), "utf8");
+    const agent = filesOf(watched.latest(), "agent")[0];
+    if (agent === undefined) throw new Error("Acme has no agent.");
+    const before = await readFile(join(acme, agent.path), "utf8");
     await watched.definitionsOf("support", "support-reply", savedRun.version, savedRun.runId);
-    await writeFile(join(acme, path), `${before}# edited since\n`);
+    await writeFile(join(acme, agent.path), `${before}# edited since\n`);
 
-    const bytes = await watched.fileBytesOf(savedRun.runId, path);
+    const bytes = await watched.agentFileOf(savedRun, agent.hub ?? "", agent.value.id);
 
     expect(new TextDecoder().decode(bytes)).toBe(before);
+  });
+
+  it("gives a child run's agent file from its own version, after a newer one was read", async () => {
+    const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
+    const git = await testGit();
+    const vcs = new GitVcs(acme, {
+      runner: await GitRunner.create({ git }),
+      author: { name: "Test", email: "test@example.com" },
+    });
+    await vcs.init();
+    const agent = filesOf(await loadWorkspace(dir.store), "agent")[0];
+    if (agent === undefined) throw new Error("Acme has no agent.");
+    const first = await commitAll(vcs, dir.store);
+    const firstText = await readFile(join(acme, agent.path), "utf8");
+    versions = await WatchedVersions.open(dir, (root) => openGitHistory(root, { git }));
+    // A newer version is made and read by another run, so `latest` is no longer the first one.
+    await writeFile(join(acme, agent.path), `${firstText}# second version\n`);
+    const second = await commitAll(vcs, dir.store);
+    await versions.definitionsOf(
+      "support",
+      "support-reply",
+      { reads: "live-version", commit: second, versionDate: "2026-11-10T09:42:00+01:00" },
+      "run-2",
+    );
+
+    // The child run was never started by `definitionsOf`: it names its parent's version.
+    const bytes = await versions.agentFileOf(
+      {
+        runId: "child-of-run-1",
+        version: { reads: "live-version", commit: first, versionDate: "2026-11-10T09:42:00+01:00" },
+      },
+      agent.hub ?? "",
+      agent.value.id,
+    );
+
+    expect(new TextDecoder().decode(bytes)).toBe(firstText);
+    await expect(
+      versions.agentFileOf(
+        { runId: "child-of-run-1", version: null },
+        agent.hub ?? "",
+        agent.value.id,
+      ),
+    ).rejects.toThrow("doesn't name the version");
   });
 });

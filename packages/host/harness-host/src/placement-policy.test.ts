@@ -13,7 +13,7 @@ function filesOf(texts: Record<string, string>): AgentFiles & { read: string[] }
   const read: string[] = [];
   return {
     read,
-    bytesOf: async (hubId, agentId, runId) => {
+    bytesOf: async (hubId, agentId, { runId }) => {
       const key = `${hubId}/${agentId}`;
       read.push(`${key}@${runId}`);
       const text = texts[key];

@@ -53,7 +53,7 @@ afterEach(async () => {
 
 /** The engine over `versions`. It starts no run's connectors, so it reads no version for them. */
 async function openEngine(
-  versions: Omit<WorkspaceVersions, "trustedVersionOf" | "fileBytesOf" | "forget">,
+  versions: Omit<WorkspaceVersions, "trustedVersionOf" | "agentFileOf" | "forget">,
 ): Promise<LocalEngine> {
   const engine = await openLocalEngine({
     workspace,
@@ -62,7 +62,7 @@ async function openEngine(
       trustedVersionOf: async () => {
         throw new Error("This engine starts no connectors.");
       },
-      fileBytesOf: async () => {
+      agentFileOf: async () => {
         throw new Error("This engine runs no harness agent.");
       },
       forget: () => {},

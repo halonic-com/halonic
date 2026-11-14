@@ -79,7 +79,11 @@ export const routinesMessages = defineMessages("routines", {
    * An agent's file that the version a run reads doesn't have: the harness
    * check on "On this computer" can't read it, so the agent doesn't start.
    */
-  noAgentFileInVersion: (path: string) => phrase`The version this run reads has no file ${path}.`,
+  noAgentFileInVersion: (hubId: string, agentId: string) =>
+    phrase`The version this run reads has no agent ${agentId} in hub ${hubId}.`,
+  /** The same for a run that names no version, which has nothing to read the agent's file from. */
+  noVersionForAgentFile: (runId: string) =>
+    phrase`Run ${runId} doesn't name the version it read, so its agent's file can't be checked.`,
   /**
    * A run of a routine whose step keeps failing: "✕ Hourly follow-up got stuck · run 01jd8q · see why with --debug".
    * The watch goes on, and the engine keeps retrying the step.

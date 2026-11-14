@@ -120,5 +120,13 @@ export function harnessAgentOf(agentId: string, filesFolder: string | null): Har
     maxSteps: 6,
     harness: "claude-code",
   };
-  return { runId: "01JD8Q", hubId: "support", agentId, harness: "claude-code", file, filesFolder };
+  return {
+    runId: "01JD8Q",
+    hubId: "support",
+    agentId,
+    harness: "claude-code",
+    file,
+    version: null,
+    filesFolder,
+  };
 }

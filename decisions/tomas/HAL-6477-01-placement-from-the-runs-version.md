@@ -2,13 +2,12 @@
 
 - Approval: scope decided on HAL-6477 and HAL-9301 (Liam); the package owner (Liam) approves this note in review
 - Kind: internal
-- Signature: pending (Liam signs in review)
 
 ## What changes
 
 `harness-host.placement` now reads the agent's file as the version the agent's run uses has it, not
-always as it is on disk now. `AgentFiles.bytesOf` gets the run's id. For `halonic routines watch`, the
-CLI answers from the agent texts taken when the run's version was loaded; for every other run, from
+always as it is on disk now. `AgentFiles.bytesOf` gets the run (its id and the version it read, which the engine now gives every `HarnessAgent`). For `halonic routines watch`, the
+CLI answers from the agent texts taken when the run's version was loaded, found by the run's recorded version, so a child run is found too; for every other run, from
 disk, as before. `cli.local-harness-host` also says the bridge gets no secrets. No example was removed
 or weakened.
 

@@ -223,16 +223,30 @@ export class WatchedVersions implements WorkspaceVersions {
   }
 
   /**
-   * A file as the version a run read has it. A run this watch didn't
-   * start has none kept: the version read last answers for it.
+   * A harness agent's file as the version a run read has it: the load kept
+   * for a run this watch started, else the run's recorded version, loaded
+   * as {@link trustedVersionOf} loads it. A child run starts from the
+   * version its parent read, so it finds the same one.
    *
-   * @throws when the version has no such file
+   * @throws when the run names no version, it can't be read or may not run here, or it has no such agent file
    */
-  async fileBytesOf(runId: string, path: string): Promise<Uint8Array> {
-    const { agentTexts } = this.#versionOfRun.get(runId) ?? this.#latest;
-    const text = agentTexts.get(path);
+  async agentFileOf(
+    run: { readonly runId: string; readonly version: RunVersion | null },
+    hubId: string,
+    agentId: string,
+  ): Promise<Uint8Array> {
+    const kept = this.#versionOfRun.get(run.runId);
+    if (kept === undefined && run.version === null) {
+      throw new Error(plainText(routinesMessages.noVersionForAgentFile(run.runId).phrase));
+    }
+    const { workspace, agentTexts } =
+      kept ?? (await this.#versionAllowedAt(run.version ?? undefined));
+    const file = filesOf(workspace, "agent").find(
+      (each) => each.hub === hubId && each.value.id === agentId,
+    );
+    const text = file === undefined ? undefined : agentTexts.get(file.path);
     if (text === undefined) {
-      throw new Error(plainText(routinesMessages.noAgentFileInVersion(path).phrase));
+      throw new Error(plainText(routinesMessages.noAgentFileInVersion(hubId, agentId).phrase));
     }
     return encodeUtf8(text);
   }

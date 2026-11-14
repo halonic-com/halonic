@@ -16,6 +16,7 @@ export const writerCall: HarnessCall = {
   runId: "run_1",
   hubId: "acme",
   agent: { ...writerAgent("claude-code"), instructions: "Write short mails.", model: "sonnet" },
+  version: { reads: "saved-files" },
   filesFolder: null,
 };
 
