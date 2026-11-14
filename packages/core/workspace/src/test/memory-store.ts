@@ -1,4 +1,4 @@
-import type { DefinitionStore, DefinitionWatch, WriteResult } from "@halonicjs/ports";
+import type { DefinitionStore, DefinitionWatch, RemoveResult, WriteResult } from "@halonicjs/ports";
 
 /**
  * An in-memory `DefinitionStore` for this package's tests, with a log of what
@@ -40,8 +40,9 @@ export class MemoryStore implements DefinitionStore {
     return { status: "written" };
   }
 
-  async remove(path: string): Promise<void> {
+  async remove(path: string): Promise<RemoveResult> {
     this.files.delete(path);
+    return { status: "removed" };
   }
 
   /** Reports nothing: only the tests change these files. */

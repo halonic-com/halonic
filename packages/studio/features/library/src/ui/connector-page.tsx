@@ -24,7 +24,7 @@ export function ConnectorPage({ item, context }: ItemViewProps) {
     );
   }
   return (
-    <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 sm:px-6">
+    <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 wide:px-6">
       <PageBackLinkSlot />
       <h1 tabIndex={-1} className="text-title [overflow-wrap:anywhere]">
         {connector?.name ?? item.id}

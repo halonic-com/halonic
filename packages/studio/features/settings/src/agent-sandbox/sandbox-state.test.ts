@@ -21,7 +21,7 @@ const view = (over: Partial<SandboxFacts>) =>
 verifies("settings.agent-sandbox-state", () => {
   it("shows Needs setting up with the button and the one-prompt hint", () => {
     const v = view({});
-    expect(v.chip).toEqual({ label: "Needs setting up", tone: "warning" });
+    expect(v.chip).toEqual({ label: "Needs setting up", tone: "attention" });
     expect(v.primary).toEqual({ action: "set-up", label: "Set up the sandbox", busy: false });
     expect(v.hint).toBe("Windows asks for administrator rights once.");
   });
@@ -73,7 +73,7 @@ verifies("settings.agent-sandbox-state", () => {
 
   it("asks for a restart with Check again only, never Repair", () => {
     const v = view({ check: { state: "restart-needed" } });
-    expect(v.chip).toEqual({ label: "Restart needed", tone: "warning" });
+    expect(v.chip).toEqual({ label: "Restart needed", tone: "attention" });
     expect(v.lead).toContain("Windows needs to restart");
     expect(v.primary).toBeNull();
     expect(v.secondary).toEqual(["check-again"]);

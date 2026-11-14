@@ -52,10 +52,10 @@ verifies("runs.spend-tile", () => {
     fake.budget(100);
     const root = await show(fake);
 
-    expect(root.querySelector("h3")?.textContent).toBe("Spend per month");
-    expect(root.textContent).toContain("120.40 EUR");
+    expect(root.querySelector("h3")?.textContent).toBe("Estimated spend per month");
+    expect(root.textContent).toContain("€120.40");
     expect(root.querySelector("p.text-attention")?.textContent).toBe(
-      "This month, over the 100.00 EUR budget",
+      "This month, estimated, over the €100.00 budget",
     );
     expect(root.querySelector("line")).not.toBeNull();
     expect(root.querySelectorAll("rect")).toHaveLength(6);
@@ -64,7 +64,7 @@ verifies("runs.spend-tile", () => {
   it("says only This month, and draws no line, without a monthly budget", async () => {
     const root = await show(fakeSource([thisMonth]));
 
-    expect(root.textContent).toContain("This month");
+    expect(root.textContent).toContain("This month, estimated");
     expect(root.querySelector("p.text-attention")).toBeNull();
     expect(root.querySelector("line")).toBeNull();
   });

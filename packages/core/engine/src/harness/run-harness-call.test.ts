@@ -94,6 +94,7 @@ verifies("engine.run-harness", () => {
       agentId: "writer",
       harness: "claude-code",
       file: call.agent,
+      version: call.version,
       filesFolder: null,
     };
     expect(placed).toHaveBeenCalledWith(agent);

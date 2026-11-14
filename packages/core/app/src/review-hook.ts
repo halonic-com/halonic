@@ -3,7 +3,7 @@
 // an edit elsewhere in the file never shows up as the assistant's, and an
 // edit inside one of the assistant's changes accepts it.
 
-import type { WriteOptions, WriteResult } from "@halonicjs/ports";
+import type { RemoveOptions, RemoveResult, WriteOptions, WriteResult } from "@halonicjs/ports";
 import { mergedText, mergeLines } from "@halonicjs/std";
 import { catchUp } from "./review-catch-up.ts";
 import type { ReviewFiles } from "./review-files.ts";
@@ -12,7 +12,7 @@ import type { ReviewRecord } from "./review-record.ts";
 /** Who carries out the writes a `ReviewingDefinitionStore` passes on: the review service's write hook. */
 export interface FileWriter {
   write(path: string, content: string, options?: WriteOptions): Promise<WriteResult>;
-  remove(path: string): Promise<void>;
+  remove(path: string, options?: RemoveOptions): Promise<RemoveResult>;
 }
 
 /**
@@ -42,20 +42,22 @@ export class ReviewWriteHook implements FileWriter {
     });
   }
 
-  remove(path: string): Promise<void> {
+  remove(path: string, options?: RemoveOptions): Promise<RemoveResult> {
     return this.files.turn(path, async () => {
       if (!(await this.files.hasRecord(path))) {
-        await this.files.store.remove(path);
-        return;
+        return this.files.store.remove(path, options);
       }
       const before = await this.files.store.read(path);
       if (before === null) {
         // Already gone: nothing is removed, so the record stays as it is.
-        return;
+        return this.files.store.remove(path, options);
       }
       await this.catchUp(path, before);
-      await this.files.store.remove(path);
-      await this.moveBaseline(path, before, null);
+      const result = await this.files.store.remove(path, options);
+      if (result.status === "removed") {
+        await this.moveBaseline(path, before, null);
+      }
+      return result;
     });
   }
 

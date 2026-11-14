@@ -18,6 +18,10 @@ The `TrustStore`, `RunStore`, `BlobStore`, `RecordStore`, `DefinitionStore`, `Fo
   `record_replace` command. The shell keeps the collections in the profile's record folder for the
   workspace, laid out as `FileRecordStore` in `fs-node` lays it out, under the same write lock, so a
   collection changed on desktop is there for `halonic serve`.
+- `TauriGoogleSetupRecords`: a read-only `RecordStore` over the shell's `google_setup_read` command,
+  which takes no argument and reads the setup records the CLI keeps in the profile's `google/setups`
+  folder, never the sealed secrets beside them. Pass it to `setupRecords` in
+  `@halonicjs/google-setup`; `append` and `compact` are refused.
 - `TauriDefinitionStore`: every call goes to the shell's `fs_list`, `fs_read`, `fs_write` or
   `fs_remove` command, on the plain files of a folder the person opened, the files the CLI's
   `FolderDefinitionStore` reads and writes. `watch()` hears the shell's `fs_watch`.

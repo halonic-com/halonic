@@ -4,6 +4,8 @@ import {
   type DefinitionStore,
   type DefinitionWatch,
   type DefinitionWatchListener,
+  type RemoveOptions,
+  type RemoveResult,
   type WriteOptions,
   type WriteResult,
 } from "@halonicjs/ports";
@@ -97,11 +99,18 @@ export class DryRunDefinitionStore implements DefinitionStore {
   }
 
   /** Records the removal and hides the file from later reads; the store under it is not changed. */
-  async remove(path: string): Promise<void> {
+  async remove(path: string, options: RemoveOptions = {}): Promise<RemoveResult> {
     await this.#checkSourceAccepts(path);
-    await this.#writes.run(path, async () => {
+    return await this.#writes.run(path, async () => {
+      if (options.expected !== undefined) {
+        const current = await this.read(path);
+        if (!(await matchesExpected(current, options.expected, webCryptoDigest))) {
+          return { status: "changed-on-disk", current };
+        }
+      }
       this.#pending.set(path, null);
       this.#changes.push(Object.freeze({ kind: "remove", path }));
+      return { status: "removed" };
     });
   }
 

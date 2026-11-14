@@ -13,6 +13,8 @@ import type {
   GoogleCheckRequest,
   GoogleSetupPorts,
   GoogleSetupSubject,
+  GoogleSignInOutcome,
+  GoogleSignInStart,
   StagedSecretOutcome,
 } from "./api.ts";
 
@@ -81,10 +83,16 @@ export interface FakeGoogleActions extends GoogleAccountActions {
   readonly stagedChecks: Parameters<GoogleAccountActions["checkStagedSecret"]>[0][];
   readonly checks: GoogleCheckRequest[];
   readonly revoked: string[];
+  readonly signInStarts: GoogleSignInStart[];
+  /** The query parameters each callback carried, as the fake read them. */
+  readonly callbacks: Record<string, string | null>[];
   /** What the next calls answer, until it is set again. */
   stagedOutcome: StagedSecretOutcome;
   checkOutcome: GoogleCheckOutcome;
   revokeConfirmed: boolean;
+  signInOutcome: GoogleSignInOutcome;
+  /** The address the next sign-in start answers with. */
+  authUrl: string;
 }
 
 /** Google's side, scripted by the test. A revoke removes the refresh token as the real one does. */
@@ -93,9 +101,25 @@ function fakeGoogleActions(tokens: TokenStore): FakeGoogleActions {
     stagedChecks: [],
     checks: [],
     revoked: [],
+    signInStarts: [],
+    callbacks: [],
+    signInOutcome: { kind: "linkNoLongerValid" },
+    authUrl: "https://accounts.example/auth?state=fake-state",
     stagedOutcome: { kind: "accepted" },
     checkOutcome: { kind: "checked", services: [] },
     revokeConfirmed: true,
+    startSignIn: async (input) => {
+      actions.signInStarts.push(input);
+      return actions.authUrl;
+    },
+    finishSignIn: async (query) => {
+      actions.callbacks.push({
+        state: query.get("state"),
+        code: query.get("code"),
+        error: query.get("error"),
+      });
+      return actions.signInOutcome;
+    },
     checkStagedSecret: async (input) => {
       actions.stagedChecks.push(input);
       return actions.stagedOutcome;
@@ -118,9 +142,12 @@ function fakeGoogleActions(tokens: TokenStore): FakeGoogleActions {
 }
 
 /** The real setup records and secret store over memory, with a source that names the one ledger subject. */
-export function fakeGoogle(
-  clock: Clock,
-): GoogleSetupPorts & { readonly tokens: MemoryTokens; readonly actions: FakeGoogleActions } {
+export function fakeGoogle(clock: Clock): GoogleSetupPorts & {
+  readonly tokens: MemoryTokens;
+  readonly actions: FakeGoogleActions;
+  /** What the open setup item was told, in order. */
+  readonly signedInEvents: GoogleSignInOutcome[];
+} {
   const tokens = memoryTokens();
   let nextId = 0;
   const ids = {
@@ -129,8 +156,11 @@ export function fakeGoogle(
       return `${prefix}_fake${nextId}`;
     },
   };
+  const signedInEvents: GoogleSignInOutcome[] = [];
   return {
     tokens,
+    signedInEvents,
+    signInEvents: { publish: (outcome) => signedInEvents.push(outcome) },
     actions: fakeGoogleActions(tokens),
     setups: setupRecords({ records: memoryRecords(), clock, ids }),
     clientSecrets: clientSecretStore(tokens, ids),

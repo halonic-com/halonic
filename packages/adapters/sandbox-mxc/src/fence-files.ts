@@ -5,7 +5,8 @@
 //   <box folder>\readable\   a folder the box may read:
 //       control.txt            ... a file it can read (the allowed-folder control),
 //       denied.txt             ... a file in `deniedPaths` inside that readable folder,
-//       probe.cjs, probe.json  ... the probe program and its settings.
+//       probe.cjs, probe.json  ... the probe program and its settings,
+//       control-box.json       ... the settings of the control box's probe (no bridge).
 //   <box folder>\hidden\     a folder nothing grants:
 //       canary.txt             ... a file the box can't read,
 //       victim.txt             ... a file it can't change or remove.
@@ -26,6 +27,8 @@ export interface FenceFiles {
   denied: string;
   script: string;
   config: string;
+  /** The settings of the control box's probe, for a profile with no bridge. */
+  controlConfig: string;
   /** Granted to no one. */
   hidden: string;
   canary: string;
@@ -50,6 +53,7 @@ export function fenceFiles(folder: string): FenceFiles {
     denied: inside("readable", "denied.txt"),
     script: inside("readable", "probe.cjs"),
     config: inside("readable", "probe.json"),
+    controlConfig: inside("readable", "control-box.json"),
     hidden: inside("hidden"),
     canary: inside("hidden", "canary.txt"),
     victim: inside("hidden", "victim.txt"),

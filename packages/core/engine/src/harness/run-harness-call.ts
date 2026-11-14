@@ -7,7 +7,12 @@
 // answer. Whatever the harness started is stopped before it returns, and
 // also when the engine stops it on the way.
 
-import { type DeniedPathGroup, type RunEventBody, sandboxOpenedView } from "@halonicjs/events";
+import {
+  type DeniedPathGroup,
+  type RunEventBody,
+  type RunVersion,
+  sandboxOpenedView,
+} from "@halonicjs/events";
 import type { Agent } from "@halonicjs/format";
 import {
   addHarnessEnvironment,
@@ -77,6 +82,8 @@ export interface HarnessCall {
   readonly hubId: string;
   /** The agent's file as the run started with it. */
   readonly agent: Agent;
+  /** The version of the workspace the run read, as {@link HarnessAgent.version} says. */
+  readonly version: RunVersion | null;
   /** Where the agent writes workspace files, as {@link HarnessAgent.filesFolder} says. */
   readonly filesFolder: string | null;
   /** What the call's model calls keep to; a call without it has no budget. */
@@ -148,6 +155,7 @@ export async function runHarnessCall(
     agentId: effect.agent,
     harness: effect.harness,
     file: call.agent,
+    version: call.version,
     filesFolder: call.filesFolder,
   };
   const placement = await options.placement.where(agent);

@@ -1,4 +1,4 @@
-import { isRunTargetNotFound, type RunTargetKind } from "@halonicjs/ports";
+import { isAgentRunsNotAvailable, isRunTargetNotFound, type RunTargetKind } from "@halonicjs/ports";
 import type { ServerPorts, TrustGate } from "./api.ts";
 import { errorResponse, type ServerError, serverErrors } from "./errors.ts";
 
@@ -92,6 +92,8 @@ export function createTrustRoutes({ trust, runs }: TrustRoutePorts): TrustRoutes
     } catch (error) {
       // A wrong name is the caller's mistake; the body doesn't say which hub, workflow or agent, or what exists.
       if (isRunTargetNotFound(error)) return errorResponse(notFoundErrors[error.kind]);
+      // Not built yet, not broken: 501 instead of 500. TODO(engine step 4): remove when the agent loop lands.
+      if (isAgentRunsNotAvailable(error)) return errorResponse(serverErrors.notImplemented);
       throw error;
     }
   }

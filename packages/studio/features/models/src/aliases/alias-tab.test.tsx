@@ -37,6 +37,7 @@ function memoryFiles(initial: string) {
   const changes: { label: string; text: string }[] = [];
   const files: ModelsFiles = {
     readModels: async () => text,
+    readProviders: async () => [],
     changeModels: (label, next) => {
       text = next;
       changes.push({ label, text: next });

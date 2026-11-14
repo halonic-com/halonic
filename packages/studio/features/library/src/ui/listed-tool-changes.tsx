@@ -57,7 +57,7 @@ function Difference({ difference }: { readonly difference: ListedToolDifference 
       <span className="font-mono text-small text-fg-muted [overflow-wrap:anywhere]">
         {difference.path}
       </span>
-      <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="grid min-w-0 grid-cols-1 gap-2 wide:grid-cols-2">
         <Side
           label={listedToolsWords.approvedVersion}
           pieces={pieces}
@@ -74,7 +74,7 @@ function Difference({ difference }: { readonly difference: ListedToolDifference 
         />
       </div>
       {difference.hidden === null ? null : (
-        <p className="flex items-start gap-2 text-small text-warning">
+        <p className="flex items-start gap-2 text-small text-attention">
           <span className="mt-0.5 size-3.5 shrink-0">
             <WarningIcon />
           </span>

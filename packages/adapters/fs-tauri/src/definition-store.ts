@@ -5,6 +5,8 @@ import {
   type DefinitionWatch,
   type DefinitionWatchListener,
   type Digest,
+  type RemoveOptions,
+  type RemoveResult,
   UnreadableWorkspaceFolderError,
   type WriteOptions,
   type WriteResult,
@@ -114,13 +116,21 @@ export class TauriDefinitionStore implements DefinitionStore {
     });
   }
 
-  async remove(path: string): Promise<void> {
+  async remove(path: string, options: RemoveOptions = {}): Promise<RemoveResult> {
     checkPublicWorkspacePath(path);
-    await this.#writes.run(path, async () => {
+    return await this.#writes.run(path, async () => {
+      let result: RemoveResult = { status: "removed" };
+      // A remove the shell refused as changed on disk left the file alone: the watches still report that change.
       await runOwnChange(this.#watches, path, null, webCryptoDigest, async () => {
-        await this.#call(fileCommands.remove, { path });
-        return true;
+        // The shell compares `expected` with the file under its lock, so nothing can come between.
+        const answer = await this.#call(fileCommands.remove, {
+          path,
+          ...(options.expected === undefined ? {} : { expected: options.expected }),
+        });
+        result = checkedRemove(answer);
+        return result.status === "removed";
       });
+      return result;
     });
   }
 
@@ -235,6 +245,17 @@ function noAnswer(): KindedError {
 function checkedWrite(answer: unknown): WriteResult {
   const { status, current } = (answer ?? {}) as Record<string, unknown>;
   if (status === "written") {
+    return { status };
+  }
+  if (status === "changed-on-disk" && (current === null || typeof current === "string")) {
+    return { status, current };
+  }
+  throw noAnswer();
+}
+
+function checkedRemove(answer: unknown): RemoveResult {
+  const { status, current } = (answer ?? {}) as Record<string, unknown>;
+  if (status === "removed") {
     return { status };
   }
   if (status === "changed-on-disk" && (current === null || typeof current === "string")) {

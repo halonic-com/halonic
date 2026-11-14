@@ -2,6 +2,8 @@
 // 15.2). The run row says what `halonic runs` says, word for word, so
 // the two lists read the same.
 
+import { moneyAmount } from "@halonicjs/app";
+
 /** The status chip's word for each standing (mc 15.2, Status chips). */
 export const chipWords = {
   running: "Running",
@@ -174,10 +176,14 @@ export const runPageWords = {
   waitingName: "Waiting",
   failedName: "Run failed",
   budgetName: "Stopped at its budget",
-  /** One tool approval, named by its step until the run page has the approval card's title. */
-  approval: (step: string) =>
-    `Waiting for your approval in the step ${step}. Nothing runs until you decide.`,
-  approvals: (count: number) => `Waiting for ${count} approvals. Nothing runs until you decide.`,
+  /** One tool approval (mc 15.2): who asks and what for, in the words of the Inbox card's title. */
+  approval: (what: string, sends: boolean) =>
+    `Waiting for your approval. ${what}. ${sends ? "Nothing is sent" : "It doesn't run"} until you decide.`,
+  approvals: (count: number, what: string) =>
+    `Waiting for ${count} approvals. ${what}, and ${count - 1} more. Nothing runs until you decide.`,
+  /** What an agent asks to do: "Reporter wants to send an email with Gmail", else the Inbox card's "Sorter wants to use create_note". */
+  approvalAsk: (agent: string, tool: string) =>
+    `${capitalised(agent)} wants to ${toolAction(tool)}`,
   waitStep: (description: string) => `Waiting for you: ${description}`,
   waitStepNoDescription: (step: string) => `Waiting for you in the step ${step}.`,
   timer: (time: string) => `Waiting until ${time}.`,
@@ -325,6 +331,20 @@ export const summaryWords = {
   counted: (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`,
 };
 
+/** Tools whose action has plain words; any other is "use" and its name, as the Inbox card says. */
+const plainToolActions: Readonly<Record<string, string>> = {
+  gmail_send: "send an email with Gmail",
+};
+
+/** "send an email with Gmail", or "use create_note" for a tool without plain words. */
+export function toolAction(tool: string): string {
+  return plainToolActions[tool] ?? `use ${tool}`;
+}
+
+function capitalised(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 /** The receipt's heading: kit 24.2 gives it an `h2`; the word is a team decision under HAL-2282 (HAL-1301). */
 export const receiptWords = {
   heading: "Receipt",
@@ -341,21 +361,26 @@ export const receiptWords = {
   modelTokens: (input: number, output: number) =>
     `${input.toLocaleString("en")} in · ${output.toLocaleString("en")} out`,
   modelCached: "cached, no model call",
+  /** A mix of cached and fresh calls: "2 cached calls". */
+  modelCachedCalls: (calls: number) => `${calls} cached ${calls === 1 ? "call" : "calls"}`,
+  /** A call priced 0: never an amount (mc 15.2). */
+  modelTestNoCost: "built-in test model, no cost",
+  modelNoCost: "no cost",
   modelNoPrice: "No price",
   modelSubscription: "on your subscription",
   /** The total under the model lines; `calls` is the calls without a price. */
   modelsTotal: (amount: string, calls: number) =>
-    `Estimated cost ${amount}${calls === 0 ? "" : ` + ${calls === 1 ? "1 call" : `${calls} calls`} without a price`} · from the prices in Settings › Models`,
+    `Estimated cost ${amount}${calls === 0 ? "" : ` + ${calls === 1 ? "1 call" : `${calls} calls`} without a price`} · from the prices in workspace settings › Models`,
   modelsTotalUnpriced: (calls: number) =>
-    `${calls === 1 ? "1 call" : `${calls} calls`} without a price · from the prices in Settings › Models`,
+    `${calls === 1 ? "1 call" : `${calls} calls`} without a price · from the prices in workspace settings › Models`,
   /** The Read section's one line (RCPT-2.7). */
   read: (things: string) => `Read ${things}`,
   /** One approval the run asked for: what was decided, by whom (RCPT-2.4), and when. */
-  approvalLine: (tool: string, decision: "approved" | "rejected", by: string, time: string) =>
-    `${tool}: ${decision}${by === "" ? "" : ` by ${by}`} at ${time}`,
-  approvalWaiting: (tool: string) => `${tool}: waiting for your answer`,
+  approvalLine: (action: string, decision: "approved" | "rejected", by: string, time: string) =>
+    `${capitalised(action)}: ${decision}${by === "" ? "" : ` by ${by}`} at ${time}`,
+  approvalWaiting: (action: string) => `${capitalised(action)}: waiting for your answer`,
   /** An approval left open when the run ended: nobody can answer it any more. */
-  approvalNotAnswered: (tool: string) => `${tool}: not answered`,
+  approvalNotAnswered: (action: string) => `${capitalised(action)}: not answered`,
   approvalByPerson: "you",
   approvalByRule: "a rule",
 };
@@ -369,14 +394,17 @@ export const homeWords = {
 
 /** Home's Spend tile (HAL-8553): the tile's title, the line under the number, and its empty text. */
 export const spendWords = {
-  title: "Spend per month",
+  title: "Estimated spend per month",
   empty: "No spend yet. When a run costs something, you'll see it here by month.",
   budgetLabel: "Budget",
-  /** An amount as the budget stop writes it: two decimals, then the currency code. */
-  amount: (amount: number, currency: string) => `${amount.toFixed(2)} ${currency}`,
-  thisMonth: "This month",
-  withinBudget: (budget: string) => `This month, within the ${budget} budget`,
-  overBudget: (budget: string) => `This month, over the ${budget} budget`,
+  /** An amount in the money rule (mc 15.2): "€120.40"; under half a cent, "under €0.01", never "€0.00". */
+  amount: (amount: number, currency: string) =>
+    amount > 0 && amount < 0.005
+      ? `under ${moneyAmount(0.01, currency)}`
+      : moneyAmount(amount, currency),
+  thisMonth: "This month, estimated",
+  withinBudget: (budget: string) => `This month, estimated, within the ${budget} budget`,
+  overBudget: (budget: string) => `This month, estimated, over the ${budget} budget`,
 };
 
 /** Ctrl K's run rows (checklist part 1, 1.1). */

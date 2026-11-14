@@ -3,7 +3,7 @@
 // service and no adapter: the host wires `AgentPlacement`, the sandboxes,
 // the harnesses and the bridge server into them.
 
-import type { DeniedPathGroup } from "@halonicjs/events";
+import type { DeniedPathGroup, RunVersion } from "@halonicjs/events";
 import type { Agent } from "@halonicjs/format";
 import type {
   BridgeRecorder,
@@ -45,6 +45,13 @@ export interface HarnessAgent {
    * the allowed sites from here, never from today's files.
    */
   readonly file: Agent;
+  /**
+   * The version of the workspace the run read, as its `run.started` names
+   * it: what a host that runs from versions reads the agent's file from.
+   * `null` for a chat turn, which has no run, and for a run kept before
+   * versions were recorded.
+   */
+  readonly version: RunVersion | null;
   /**
    * Where the agent reads and writes workspace files: its top-level run's
    * proposal folder, a worktree of the workspace in Halonic's data folder;

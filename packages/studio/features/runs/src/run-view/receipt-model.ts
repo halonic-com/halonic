@@ -15,7 +15,13 @@ import type {
 import { draftsOf, readsOf, sendsOf } from "@halonicjs/events";
 import type { SourcedRun } from "../api.ts";
 import { costParts, currentStepName, needsYouLine, took, waitingLine } from "../list/run-row.ts";
-import { lineSeparator, receiptWords, rowLineWords, summaryWords } from "../run-words.ts";
+import {
+  lineSeparator,
+  receiptWords,
+  rowLineWords,
+  summaryWords,
+  toolAction,
+} from "../run-words.ts";
 import { clockTime } from "../time-words.ts";
 import type { RunPageContext } from "./run-page-model.ts";
 
@@ -129,7 +135,7 @@ export interface ApprovalLine {
  *
  * @example
  * approvalLines(events);
- * // [{ callId: "call-1", text: "gmail_send: approved by you at 10:42" }]
+ * // [{ callId: "call-1", text: "Send an email with Gmail: approved by you at 10:42" }]
  */
 export function approvalLines(events: readonly RunEvent[]): ApprovalLine[] {
   const answers = new Map<string, Extract<RunEvent, { type: "approval.resolved" }>>();
@@ -143,18 +149,19 @@ export function approvalLines(events: readonly RunEvent[]): ApprovalLine[] {
   for (const event of events) {
     if (event.type !== "approval.requested") continue;
     const answer = answers.get(event.callId);
+    const action = toolAction(event.tool);
     let text: string;
     if (answer !== undefined) {
       text = receiptWords.approvalLine(
-        event.tool,
+        action,
         answer.approved ? "approved" : "rejected",
         resolver(answer.by),
         clockTime(new Date(answer.at)),
       );
     } else if (ended) {
-      text = receiptWords.approvalNotAnswered(event.tool);
+      text = receiptWords.approvalNotAnswered(action);
     } else {
-      text = receiptWords.approvalWaiting(event.tool);
+      text = receiptWords.approvalWaiting(action);
     }
     lines.push({ callId: event.callId, text });
   }
@@ -209,7 +216,7 @@ export function readLines(events: readonly RunEvent[]): string[] {
  *
  * @example
  * modelLines(events, summary, "EUR");
- * // ["claude-sonnet · 2 calls · 1,204 in · 312 out · €0.008", "Estimated cost €0.008 · from the prices in Settings › Models"]
+ * // ["claude-sonnet · 2 calls · 1,204 in · 312 out · €0.008", "Estimated cost €0.008 · from the prices in workspace settings › Models"]
  */
 export function modelLines(
   events: readonly RunEvent[],
@@ -221,16 +228,7 @@ export function modelLines(
     if (event.type !== "llm.response") continue;
     const totals = models.get(event.model) ?? emptyTotals();
     models.set(event.model, totals);
-    totals.calls++;
-    if (event.cached === true) {
-      totals.cached++;
-      continue;
-    }
-    totals.input += event.usage.inputTokens;
-    totals.output += event.usage.outputTokens;
-    if (event.paidBy === "subscription") totals.subscription++;
-    else if (event.cost === undefined) totals.unpriced++;
-    else totals.cost += event.cost;
+    addCall(totals, event);
   }
   if (models.size === 0) return [];
   const lines = [...models].map(([model, totals]) => modelLine(model, totals, currency));
@@ -238,18 +236,52 @@ export function modelLines(
   return total === undefined ? lines : [...lines, total];
 }
 
+/** One model response into its model's totals. */
+function addCall(totals: ModelTotals, event: Extract<RunEvent, { type: "llm.response" }>): void {
+  totals.calls++;
+  if (event.cached === true) {
+    totals.cached++;
+    return;
+  }
+  totals.input += event.usage.inputTokens;
+  totals.output += event.usage.outputTokens;
+  if (event.paidBy === "subscription") totals.subscription++;
+  else if (event.cost === undefined) totals.unpriced++;
+  else if (event.cost === 0) {
+    // A price of 0 is a call that cost nothing (the test model), never an amount.
+    totals.free++;
+    if (event.provider === testModelProvider) totals.testModel++;
+  } else totals.cost += event.cost;
+}
+
 interface ModelTotals {
   calls: number;
   cached: number;
   subscription: number;
   unpriced: number;
+  /** Calls with a price of 0, and how many of them the built-in test model answered. */
+  free: number;
+  testModel: number;
   input: number;
   output: number;
   cost: number;
 }
 
+/** The id the workspace gives the built-in test model. */
+const testModelProvider = "mock";
+
 function emptyTotals(): ModelTotals {
-  return { calls: 0, cached: 0, subscription: 0, unpriced: 0, input: 0, output: 0, cost: 0 };
+  return {
+    calls: 0,
+    cached: 0,
+    subscription: 0,
+    unpriced: 0,
+    free: 0,
+    testModel: 0,
+    input: 0,
+    output: 0,
+    cost: 0,
+  };
 }
 
 function modelLine(model: string, totals: ModelTotals, currency: string): string {
@@ -257,11 +289,16 @@ function modelLine(model: string, totals: ModelTotals, currency: string): string
   if (totals.cached === totals.calls)
     return [...parts, receiptWords.modelCached].join(lineSeparator);
   parts.push(receiptWords.modelTokens(totals.input, totals.output));
-  const priced = totals.calls - totals.cached - totals.subscription - totals.unpriced;
+  const priced = totals.calls - totals.cached - totals.subscription - totals.unpriced - totals.free;
   if (priced > 0) parts.push(moneyAmount(totals.cost, currency));
   if (totals.unpriced > 0) parts.push(receiptWords.modelNoPrice);
+  if (totals.free > 0) {
+    parts.push(
+      totals.testModel === totals.free ? receiptWords.modelTestNoCost : receiptWords.modelNoCost,
+    );
+  }
   if (totals.subscription > 0) parts.push(receiptWords.modelSubscription);
-  if (totals.cached > 0) parts.push(`${totals.cached} ${receiptWords.modelCached}`);
+  if (totals.cached > 0) parts.push(receiptWords.modelCachedCalls(totals.cached));
   return parts.join(lineSeparator);
 }
 

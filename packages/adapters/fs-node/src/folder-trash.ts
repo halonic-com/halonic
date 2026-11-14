@@ -1,7 +1,7 @@
 import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import type { DefinitionStore, Digest, ExpectedContent } from "@halonicjs/ports";
-import { matchesExpected } from "@halonicjs/std";
+import type { DefinitionStore, Digest, ExpectedContent, RemoveResult } from "@halonicjs/ports";
+import { contentDigest, matchesExpected } from "@halonicjs/std";
 import { writeFlushedFile } from "./flushed-write.ts";
 import { isMissing } from "./links.ts";
 import { makePrivateFolder, readUnlinkedFile } from "./private-files.ts";
@@ -64,11 +64,19 @@ export class FolderTrash {
     await makePrivateFolder(this.#folder);
     const entry: TrashedFile = { path, content: current };
     await writeFlushedFile(this.#fileOf(trashId), JSON.stringify(entry), { mode: 0o600 });
+    // Removes only the text that went into the entry, so an edit made since the read isn't deleted.
+    let removed: RemoveResult;
     try {
-      await this.#store.remove(path);
+      removed = await this.#store.remove(path, {
+        expected: await contentDigest(current, this.#digest),
+      });
     } catch (error) {
       await rm(this.#fileOf(trashId), { force: true });
       throw error;
+    }
+    if (removed.status === "changed-on-disk") {
+      await rm(this.#fileOf(trashId), { force: true });
+      return removed;
     }
     return { status: "done", trashId };
   }

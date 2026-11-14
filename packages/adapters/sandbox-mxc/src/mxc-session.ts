@@ -12,7 +12,7 @@ import type {
 } from "@halonicjs/ports";
 import { watchBlocks } from "./blocked.ts";
 import type { BoxFolder, BoxFolders } from "./box-folders.ts";
-import { type BoxPolicy, boxPolicy, boxRequest, isInside } from "./box-policy.ts";
+import { type BoxPolicy, boxPolicy, boxRequest, isInside, networkOf } from "./box-policy.ts";
 import { BoxProcess } from "./box-process.ts";
 import type { MxcDisk } from "./disk.ts";
 import { type FenceFiles, fenceFiles } from "./fence-files.ts";
@@ -210,6 +210,10 @@ export class MxcSession implements SandboxSession {
         nodeProgram: this.#deps.nodeProgram,
         bridge: this.profile.network.bridge,
         launch: async (command) => (await this.#launch(command, proofPolicy)).asSandboxProcess(),
+        launchControl: async (command, bridge) =>
+          (
+            await this.#launch(command, { ...proofPolicy, network: networkOf(bridge) })
+          ).asSandboxProcess(),
       });
     } catch (error) {
       const why = error instanceof Error ? error.message : String(error);

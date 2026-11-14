@@ -31,6 +31,7 @@ function filesWith(text: string | null | Error): ModelsFiles & { change(): void 
   const listeners = new Set<() => void>();
   return {
     readModels: async () => (text instanceof Error ? Promise.reject(text) : text),
+    readProviders: async () => [],
     changeModels: () => undefined,
     subscribe: (listener) => {
       listeners.add(listener);

@@ -69,8 +69,9 @@ export class MemoryDefinitionStore implements DefinitionStore {
     return { status: "written" };
   }
 
-  async remove(path: string): Promise<void> {
+  async remove(path: string): Promise<{ status: "removed" }> {
     this.files.delete(path);
+    return { status: "removed" };
   }
 
   async watch(): Promise<{ close(): Promise<void> }> {
@@ -120,5 +121,13 @@ export function harnessAgentOf(agentId: string, filesFolder: string | null): Har
     maxSteps: 6,
     harness: "claude-code",
   };
-  return { runId: "01JD8Q", hubId: "support", agentId, harness: "claude-code", file, filesFolder };
+  return {
+    runId: "01JD8Q",
+    hubId: "support",
+    agentId,
+    harness: "claude-code",
+    file,
+    version: null,
+    filesFolder,
+  };
 }

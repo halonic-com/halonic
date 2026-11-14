@@ -1,0 +1,16 @@
+{
+  "identifier": "desktop-google-setups",
+  "description": "On desktop, the app's own page may read the Google setup records the CLI keeps in the profile's google/setups folder, through the read-only google_setup_read command. It takes no argument, so the page names no folder and no collection, and it never reads the sealed client secrets or tokens kept in google/tokens. It is local only, so the Studio the computer serves gets no setup records.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-google-setup-read"
+  ]
+}

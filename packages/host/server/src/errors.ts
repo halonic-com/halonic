@@ -160,6 +160,18 @@ export const serverErrors = {
     code: "google_setup_incomplete",
     message: "Save the client ID and the client secret first.",
   },
+  // TODO(engine step 4): remove with the agent-runs mapping in `trust-routes.ts` when the agent loop lands.
+  notImplemented: {
+    status: 501,
+    code: "not_implemented",
+    message: "Agent runs are not available yet in this version of Halonic.",
+  },
+  signInNeedsThisComputer: {
+    status: 409,
+    code: "sign_in_needs_this_computer",
+    message:
+      "Google sends the sign-in back to the computer that runs Halonic. Finish it there, or run halonic google sign-in on it.",
+  },
   notFound: { status: 404, code: "not_found", message: "There is nothing at this address." },
   internal: {
     status: 500,

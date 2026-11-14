@@ -66,6 +66,22 @@ verifies("fs-tauri.write-if-unchanged-and-watch", () => {
       ]);
     });
 
+    it("sends a remove's expected digest to the shell in one call", async () => {
+      const shell = new FakeFileShell({ opened: [acme], files: { "a.yaml": "1" } });
+      const store = new TauriDefinitionStore(shell, acme);
+      const stale = await contentDigest("0", sha256);
+      const expected = await contentDigest("1", sha256);
+      expect(await store.remove("a.yaml", { expected: stale })).toEqual({
+        status: "changed-on-disk",
+        current: "1",
+      });
+      expect(await store.remove("a.yaml", { expected })).toEqual({ status: "removed" });
+      expect(shell.calls).toEqual([
+        { command: "fs_remove", args: { workspace: acme, path: "a.yaml", expected: stale } },
+        { command: "fs_remove", args: { workspace: acme, path: "a.yaml", expected } },
+      ]);
+    });
+
     it("refuses an unsafe or private path before calling the shell", async () => {
       const shell = new FakeFileShell({ opened: [acme] });
       const store = new TauriDefinitionStore(shell, acme);
@@ -129,6 +145,9 @@ verifies("fs-tauri.write-if-unchanged-and-watch", () => {
         answering({ status: "saved" }).write("a.yaml", "1"),
         answering({ status: "changed-on-disk", current: 1 }).write("a.yaml", "1"),
         answering(null).write("a.yaml", "1"),
+        answering({ status: "gone" }).remove("a.yaml"),
+        answering({ status: "changed-on-disk", current: 1 }).remove("a.yaml"),
+        answering(undefined).remove("a.yaml"),
         answering({ watchId: "w1" }).watch({ changed: () => {}, failed: () => {} }),
         answering(null).watch({ changed: () => {}, failed: () => {} }),
       ];
