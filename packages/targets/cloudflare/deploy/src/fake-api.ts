@@ -85,7 +85,12 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
       const now = (state.now ?? Date.now)();
       // The same rule as the SQL: win when there is no lease or the old one has expired.
       if (!lock || lock.expiresAt <= now) {
-        lock = { id: request.id, label: request.label, startedAt: now, expiresAt: now + request.leaseMs };
+        lock = {
+          id: request.id,
+          label: request.label,
+          startedAt: now,
+          expiresAt: now + request.leaseMs,
+        };
       }
       return lock;
     },
