@@ -1,0 +1,28 @@
+{
+  "name": "@halonicjs/tooling-recording",
+  "private": true,
+  "type": "module",
+  "description": "Records a real terminal session as an asciicast file and draws it as an animated SVG for the README.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "tooling",
+    "owner": "noah",
+    "coverage": {
+      "lines": 80
+    }
+  }
+}

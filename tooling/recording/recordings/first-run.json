@@ -1,0 +1,47 @@
+{
+  "title": "Terminal · Halonic {version}",
+  "alt": "A terminal: halonic init --example acme makes the Acme workspace, halonic test says 5 tests passed, halonic run stops at 'Approve this reply?' and waits, halonic runs send approves it and the run finishes, having sent nothing.",
+  "columns": 80,
+  "rows": 24,
+  "startDelay": 0.4,
+  "rest": 3,
+  "seed": 6395,
+  "commands": [
+    {
+      "run": "halonic init --example acme",
+      "step": "1 Create",
+      "typing": 1.6,
+      "maxWaitForOutput": 0.3,
+      "hold": 2.3
+    },
+    {
+      "run": "cd acme",
+      "typing": 0.5,
+      "hold": 0.4
+    },
+    {
+      "run": "halonic test",
+      "step": "2 Test",
+      "typing": 0.7,
+      "maxWaitForOutput": 0.3,
+      "hold": 3
+    },
+    {
+      "run": "halonic run support-reply --input examples/refund-question.json",
+      "step": "3 Run",
+      "typing": 1.8,
+      "maxWaitForOutput": 0.3,
+      "hold": 3.5
+    },
+    {
+      "run": "halonic runs send {run} approve",
+      "step": "4 Answer",
+      "set": {
+        "run": "halonic runs --status waiting --limit 1 --json | grep -m1 '\"id\"' | grep -oE '[0-9a-z]{6}\"' | tr -d '\"'"
+      },
+      "typing": 1.1,
+      "maxWaitForOutput": 0.3,
+      "hold": 0
+    }
+  ]
+}
