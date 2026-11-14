@@ -72,3 +72,4 @@ export {
 } from "./shell.ts";
 export { TauriToolApprovalStore } from "./tool-approval-store.ts";
 export { TauriTrustStore } from "./trust-store.ts";
+export { readWorkspaceKey, workspaceKeyCommands } from "./workspace-key.ts";

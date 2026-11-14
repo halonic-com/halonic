@@ -36,6 +36,7 @@ const VERBATIM_SHARE_PREFIX: &str = r"\\?\UNC\";
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkspaceFolders {
     platform: Platform,
+    key: String,
     /// The workspace's own folder in the profile.
     pub folder: String,
 }
@@ -92,12 +93,20 @@ impl ProfileFolder {
         let folder = join_path(self.platform, &self.root, &[WORKSPACES_FOLDER_NAME, &key]);
         Ok(WorkspaceFolders {
             platform: self.platform,
+            key,
             folder,
         })
     }
 }
 
 impl WorkspaceFolders {
+    /// The workspace's key: the hash of its real path that names its
+    /// folder, `workspaceKey` in `@halonicjs/profile`. It is the one place
+    /// the key is worked out, so nothing hashes a path a second time.
+    pub fn key(&self) -> &str {
+        &self.key
+    }
+
     /// The folder for the workspace's runs: `runs`, or
     /// `deployments/<id>/runs` for one deployment's runs.
     pub fn runs_folder(&self, deployment_id: Option<&str>) -> Result<String, WorkspaceError> {

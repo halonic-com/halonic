@@ -56,6 +56,7 @@ fn main() {
         "record_read",
         "record_replace",
         "google_setup_read",
+        "workspace_key",
         "update_status",
         "update_watch",
         "update_check",

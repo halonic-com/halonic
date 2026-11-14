@@ -116,3 +116,20 @@ fn workspace_folders_name_why_a_workspace_is_refused() {
         "{message}"
     );
 }
+
+#[test]
+fn workspace_folders_key_is_the_name_of_the_workspace_s_folder() {
+    let profile = ProfileFolder {
+        platform: Platform::Linux,
+        root: "/profile".to_owned(),
+    };
+
+    let folders = profile.workspace_folders("/work/acme").unwrap();
+
+    assert_eq!(folders.key().len(), 32);
+    assert!(folders.key().chars().all(|c| c.is_ascii_hexdigit()));
+    assert_eq!(
+        folders.folder,
+        format!("/profile/workspaces/{}", folders.key())
+    );
+}
