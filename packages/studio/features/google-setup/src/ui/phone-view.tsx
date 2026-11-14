@@ -36,8 +36,7 @@ export function PhoneView({ account, steps }: PhoneViewProps) {
         Google for {account.email}
       </h2>
       <ViewOnlyLine>
-        Set this up on a computer. Google Cloud Console is hard to use on a phone.
-        {account.askAccountType ? " Choose the account type on a computer first." : ""}
+        {`Set this up on a computer. Google Cloud Console is hard to use on a phone.${account.askAccountType ? " Choose the account type on a computer first." : ""}`}
       </ViewOnlyLine>
       {problem === undefined ? null : (
         <>
