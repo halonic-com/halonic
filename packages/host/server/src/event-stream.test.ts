@@ -80,10 +80,11 @@ function setup(options: { ending?: Ending; passwordHash?: string | null } = {}) 
 function get(
   setupResult: { server: Server; host: string },
   path: string,
-  options: { cookie?: string; signal?: AbortSignal } = {},
+  options: { cookie?: string; signal?: AbortSignal; lastEventId?: string } = {},
 ): Promise<Response> {
   const headers: Record<string, string> = { host: setupResult.host };
   if (options.cookie !== undefined) headers["cookie"] = options.cookie;
+  if (options.lastEventId !== undefined) headers["last-event-id"] = options.lastEventId;
   return setupResult.server.handle(
     new Request(`https://${setupResult.host}${path}`, {
       method: "GET",
@@ -136,6 +137,15 @@ describe("run event stream", () => {
       const sent = messages(await (await get(ctx, "/api/runs/run_1/events?after=2")).text());
       expect(sent.map((one) => one.id)).toEqual(["3", undefined]);
       expect(ctx.subscribed[0]?.after).toBe(2);
+    });
+
+    it("resumes from Last-Event-ID over the original after, as a reconnecting client sends it", async () => {
+      const ctx = setup();
+      const response = await get(ctx, "/api/runs/run_1/events?after=0", { lastEventId: "2" });
+      expect(messages(await response.text()).map((one) => one.id)).toEqual(["3", undefined]);
+      expect(ctx.subscribed[0]?.after).toBe(2);
+      const bad = await get(ctx, "/api/runs/run_1/events?after=0", { lastEventId: "x" });
+      expect(bad.status).toBe(400);
     });
 
     it("follows new events until the run ends", async () => {

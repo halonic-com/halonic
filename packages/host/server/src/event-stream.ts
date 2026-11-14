@@ -5,12 +5,15 @@ import { errorResponse, serverErrors } from "./errors.ts";
 type EventStreamPorts = Pick<ServerPorts, "runs" | "runStore" | "errorLog">;
 
 /**
- * The sequence number after which a stream starts, from `?after=`. Absent
- * means from the first event. `null` when it is anything but a whole number
+ * The sequence number after which a stream starts. A `Last-Event-ID` header
+ * wins over `?after=`: a standard client that reconnects by itself repeats the
+ * original URL and names the last id it saw in that header. Absent both means
+ * from the first event. `null` when the value is anything but a whole number
  * written in digits.
  */
 function parseAfter(request: Request): number | null {
-  const value = new URL(request.url).searchParams.get("after");
+  const value =
+    request.headers.get("last-event-id") ?? new URL(request.url).searchParams.get("after");
   if (value === null) {
     return 0;
   }
