@@ -778,6 +778,9 @@ importers:
 
   packages/adapters/fs-node:
     dependencies:
+      '@halonicjs/adapter-tool-approval-kit':
+        specifier: workspace:*
+        version: link:../tool-approval-kit
       '@halonicjs/adapter-watch-kit':
         specifier: workspace:*
         version: link:../watch-kit
@@ -1627,6 +1630,34 @@ importers:
       '@halonicjs/adapter-memory':
         specifier: workspace:*
         version: link:../memory
+      '@halonicjs/testing-contracts':
+        specifier: workspace:*
+        version: link:../../testing/contracts
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../testing/spec
+      '@halonicjs/tooling-config':
+        specifier: workspace:*
+        version: link:../../../tooling/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  packages/adapters/tool-approval-kit:
+    dependencies:
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../core/ports
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../../core/std
+    devDependencies:
       '@halonicjs/testing-contracts':
         specifier: workspace:*
         version: link:../../testing/contracts

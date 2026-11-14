@@ -2,6 +2,14 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readdir, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
+  approvalFrom,
+  formatApproval,
+  formatWaiting,
+  type Read,
+  readApproval,
+  readWaiting,
+} from "@halonicjs/adapter-tool-approval-kit";
+import {
   keptWaitingVersions,
   type ToolApproval,
   type ToolApprovalKey,
@@ -11,14 +19,6 @@ import {
 } from "@halonicjs/ports";
 import { isMissing } from "./links.ts";
 import { withRunLock } from "./run-lock.ts";
-import {
-  approvalFrom,
-  formatApproval,
-  formatWaiting,
-  type Read,
-  readApproval,
-  readWaiting,
-} from "./tool-approval-files.ts";
 
 /** An approval's file name: the SHA-256 of the tool's name, then `.json`. */
 const approvalFile = /^[0-9a-f]{64}\.json$/u;
