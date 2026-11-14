@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: flow-workspace 2.3, microcopy 4.1, states-flow-map (HAL-5878); HAL-1291, HAL-8714
 
-The New workspace dialog shall ask for a name and show the folder it makes, `<parent>/<name>`, with **Change…** picking another parent. While Name is empty, **Create** shall stay pressable and show "Give it a name.". It shall read **Create here**, with "This folder isn't empty. Halonic adds only missing files, and adds .env lines to a .gitignore that lacks them. Nothing else changes.", when the folder holds files, and **Open it**, with "This folder is already a workspace.", when it holds a `workspace.yaml`. **Create** shall call the app's `create` (`createWorkspace` and the trust record) and give the result to the window. If writing fails, then the dialog shall stay open and show "Can't write to this folder: <reason>." under the folder line.
+The New workspace dialog shall ask for a name and show the folder it makes, `<parent>/<name>`, with **Change…** picking another parent. While Name is empty, **Create** shall stay pressable and show "Give it a name.". It shall read **Create here**, with "This folder isn't empty. Halonic adds only missing files, and adds .env lines to a .gitignore that lacks them. Nothing else changes.", when the folder holds files, and **Open it**, with "This folder is already a workspace.", when it holds a `workspace.yaml`. **Create** shall call the app's `create` (`createWorkspace` and the trust record) and give the result to the window. If writing fails, then the dialog shall stay open and show "Can't write to this folder: <reason>." under the folder line. If **Open it** fails, then it shall say "Can't open *folder*: <reason>." there instead, and a problem with the name shall show under **Name**. If the app can't find a parent folder, then the dialog shall show the app's sentence under Folder, and **Create** with a name shall say "Choose a folder." and focus **Change…**.
 
 ## Examples
 
@@ -13,4 +13,6 @@ The New workspace dialog shall ask for a name and show the folder it makes, `<pa
 - Given the folder holds a `notes.txt`, then the button reads **Create here**.
 - Given the folder holds a `workspace.yaml`, when **Open it** is pressed, then the window opens that folder and nothing is written.
 - Given the write fails with "you don't have permission", then the dialog stays open and says "Can't write to this folder: you don't have permission."
+- Given **Open it** fails because the folder isn't there any more, then the dialog says "Can't open Acme: the folder isn't there any more."
+- Given there is no Documents folder and the name is `Acme`, when **Create** is pressed, then the Folder line says "Choose a folder." and **Change…** has focus.
 - Given the files were written but the trust record wasn't saved, then the toast reads "Created Acme Support. Couldn't save trust: <reason>."

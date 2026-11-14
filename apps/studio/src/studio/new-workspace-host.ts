@@ -1,10 +1,11 @@
 import type { TauriFileShell, WorkspaceFolderProbe } from "@halonicjs/adapter-fs-tauri";
 import { TauriDefinitionStore, workspaceFolderCommands } from "@halonicjs/adapter-fs-tauri";
 import type { DefinitionStore } from "@halonicjs/ports";
-import type {
-  CreatedTrust,
-  FolderState,
-  NewWorkspaceHost,
+import {
+  type CreatedTrust,
+  type FolderState,
+  type NewWorkspaceHost,
+  NewWorkspaceRefusal,
 } from "@halonicjs/studio-feature-workspace";
 import { createWorkspace } from "@halonicjs/workspace";
 
@@ -40,8 +41,8 @@ export interface NewWorkspaceHostParts {
  *
  * A folder that is there is read by name only (`probe_workspace_folder`) and opened only after the
  * shell itself asks the person to trust it (`open_workspace_folder`, HAL-8859). Creating in one
- * adds only the missing files and opens it untrusted, since Halonic didn't write all it holds; if
- * they say no, nothing is written.
+ * adds only the missing files and opens it untrusted, since Halonic didn't write all it holds, unless
+ * it was empty, which is trusted at once like a new folder; if they say no, nothing is written.
  *
  * @example
  * const host = newWorkspaceHostOf({ shell, trust, separator: "/" });
@@ -75,16 +76,14 @@ export function newWorkspaceHostOf(parts: NewWorkspaceHostParts): NewWorkspaceHo
       const parent = parentOf(folder, name);
       const there = await probed(shell, parent, name);
       if (there === "empty" || there === "files" || there === "workspace") {
-        return await addedTo(shell, storeOf, parent, name, there);
+        return await addedTo(parts, storeOf, parent, name, there);
       }
       const made = await madeFolder(shell, parent, name);
       const created = await createWorkspace(storeOf(made), { name, ifNotEmpty: "refuse" });
       if (!created.ok) {
-        throw new Error(
-          created.error.kind === "invalid_settings"
-            ? "the name can't be a workspace name"
-            : "the folder isn't empty",
-        );
+        throw created.error.kind === "invalid_settings"
+          ? new NewWorkspaceRefusal("the name can't be a workspace name", "name")
+          : new NewWorkspaceRefusal("the folder isn't empty");
       }
       return await trustOf(parts, made, created.value.skipped.length === 0);
     },
@@ -92,24 +91,28 @@ export function newWorkspaceHostOf(parts: NewWorkspaceHostParts): NewWorkspaceHo
 }
 
 /**
- * Adds the missing files to a folder that is there, after the shell asks the person; it opens
- * untrusted, since Halonic didn't write all it holds. A workspace that is there needs nothing added.
+ * Adds the missing files to a folder that is there, after the shell asks the person. A folder
+ * with files opens untrusted, since Halonic didn't write all it holds; an empty one holds only
+ * what the template wrote, so it is trusted at once. A workspace that is there needs nothing added.
  */
 async function addedTo(
-  shell: TauriFileShell,
+  parts: NewWorkspaceHostParts,
   storeOf: (location: string) => DefinitionStore,
   parent: string,
   name: string,
   there: WorkspaceFolderProbe,
 ): Promise<CreatedTrust> {
-  const opened = await openedFolder(shell, parent, name);
+  const opened = await openedFolder(parts.shell, parent, name);
   if (opened === null) return { kind: "cancelled" };
   if (there === "workspace") return { kind: "untrusted" };
   const added = await createWorkspace(storeOf(opened), { name });
   // `already_workspace`: it became one since the probe; it is open and there is nothing to add.
   if (!added.ok && added.error.kind !== "already_workspace") {
-    throw new Error("the name can't be a workspace name");
+    throw new NewWorkspaceRefusal("the name can't be a workspace name", "name");
   }
+  // An empty folder holds only what the template wrote, so it is trusted at once like a new one.
+  if (there === "empty" && added.ok)
+    return await trustOf(parts, opened, added.value.skipped.length === 0);
   return { kind: "untrusted" };
 }
 
@@ -148,7 +151,7 @@ async function probed(
   try {
     return (await shell.invoke(commands.probe, { parent, name })) as WorkspaceFolderProbe;
   } catch (reason) {
-    throw new Error(reasonOf(reason));
+    throw refusalOf(reason);
   }
 }
 
@@ -164,7 +167,7 @@ async function openedFolder(
     if (typeof opened !== "string") throw new Error("the desktop shell gave no answer");
     return opened;
   } catch (reason) {
-    throw new Error(reasonOf(reason));
+    throw refusalOf(reason);
   }
 }
 
@@ -175,15 +178,26 @@ async function madeFolder(shell: TauriFileShell, parent: string, name: string): 
     if (typeof made !== "string") throw new Error("the desktop shell gave no answer");
     return made;
   } catch (reason) {
-    throw new Error(reasonOf(reason));
+    throw refusalOf(reason);
   }
 }
 
-/** The words for a refusal of `create_workspace_folder`; anything else is an unknown failure. */
+/** The refusal the dialog shows: a name problem goes under Name, the rest under Folder. */
+function refusalOf(reason: unknown): Error {
+  const kind =
+    typeof reason === "object" && reason !== null ? (reason as { kind?: unknown }).kind : undefined;
+  return new NewWorkspaceRefusal(reasonOf(reason), kind === "name_invalid" ? "name" : "folder");
+}
+
+/** The words for a refusal of `create_workspace_folder`; any other refusal is shown as given. */
 export function reasonOf(reason: unknown): string {
   if (reason instanceof Error) return reason.message;
   if (typeof reason !== "object" || reason === null) return "the desktop shell refused";
-  const { kind, reason: why } = reason as { kind?: unknown; reason?: unknown };
+  const {
+    kind,
+    reason: why,
+    message,
+  } = reason as { kind?: unknown; reason?: unknown; message?: unknown };
   switch (kind) {
     case "exists":
       return "a folder with that name is already there";
@@ -200,7 +214,8 @@ export function reasonOf(reason: unknown): string {
     case "name_invalid":
       return why === "empty" ? "the name is empty" : "that isn't a name a folder can have";
     default:
-      return "you don't have permission";
+      // Any other refusal is shown as the shell gave it, never guessed to be a permission problem.
+      return typeof message === "string" && message !== "" ? message : "the desktop shell refused";
   }
 }
 
