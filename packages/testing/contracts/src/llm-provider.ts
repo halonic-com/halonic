@@ -6,7 +6,7 @@ import {
   type LlmProvider,
 } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   chatRequest,
   cutOffAnswer,
@@ -15,6 +15,7 @@ import {
   textAnswer,
   toolAnswer,
 } from "./llm-answers.ts";
+import { waitUntil } from "./wait-until.ts";
 
 /**
  * One provider under test and the model behind it. An HTTP adapter's harness
@@ -144,7 +145,7 @@ function failureCases(make: MakeLlmProvider): void {
     harness.hangNext("");
     const controller = new AbortController();
     const answering = harness.provider.chat(chatRequest(controller.signal));
-    await vi.waitFor(() => expect(harness.calls().started).toBe(1));
+    await waitUntil(() => harness.calls().started === 1);
     const stop = callerStop();
     controller.abort(stop);
     await expect(answering).rejects.toBe(stop);
@@ -222,7 +223,7 @@ function streamFailureCases(make: MakeLlmProvider): void {
     const controller = new AbortController();
     const events: ChatStreamEvent[] = [];
     const reading = readInto(stream(harness.provider, chatRequest(controller.signal)), events);
-    await vi.waitFor(() => expect(joined(events, "text")).toBe("Hel"));
+    await waitUntil(() => joined(events, "text") === "Hel");
     const stop = callerStop();
     controller.abort(stop);
     await expect(reading).rejects.toBe(stop);

@@ -1,7 +1,8 @@
 import type { ScheduledTimer } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { type MakeScheduler, startScheduler } from "./scheduler-harness.ts";
+import { waitUntil } from "./wait-until.ts";
 
 const second = 1000;
 const minute = 60 * second;
@@ -29,6 +30,14 @@ export function schedulerContract(name: string, make: MakeScheduler): void {
       tickAndLimitCases(make);
     });
   });
+}
+
+/** How many different timers were delivered so far. Makes no `expect` calls, so it can be polled. */
+function deliveredCount(s: Started): number {
+  const ids = s.listener.timers.map((timer) =>
+    JSON.stringify([timer.key, timer.timerId, timer.at]),
+  );
+  return new Set(ids).size;
 }
 
 /**
@@ -179,11 +188,10 @@ function duringCallCases(make: MakeScheduler): void {
     await s.scheduler.schedule("run_1", "start-limit", s.inMs(30 * second));
 
     const calling = s.wait(0);
-    await vi.waitFor(() => expect(delivered(s).map((timer) => timer.timerId)).toHaveLength(1));
+    await waitUntil(() => deliveredCount(s) === 1);
     const limited = s.wait(30 * second);
-    await vi.waitFor(() =>
-      expect(delivered(s).map((timer) => timer.timerId)).toEqual(["harness-call", "start-limit"]),
-    );
+    await waitUntil(() => deliveredCount(s) === 2);
+    expect(delivered(s).map((timer) => timer.timerId)).toEqual(["harness-call", "start-limit"]);
     release.resolve();
     await Promise.all([calling, limited]);
   });
