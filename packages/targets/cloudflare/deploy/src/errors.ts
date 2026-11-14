@@ -10,6 +10,7 @@ export type DeployErrorCode =
   | "deploy-locked"
   | "deploy-lock-lost"
   | "bundle-hash-mismatch"
+  | "traffic-split-in-progress"
   | "smoke-test-failed";
 
 /** A deploy failure with a stable code. The message never holds a token or a secret. */
@@ -70,22 +71,39 @@ export function redact(text: string, secrets: readonly string[]): string {
   return safe;
 }
 
-/** The new version failed its self-test. `liveBefore` says whether the old version still serves. */
+/** Why a new version went live before its self-test: nothing was deployed yet, or it carried Durable Object migrations. */
+export type LiveReason = "first-deploy" | "migration";
+
+const liveTails: Record<LiveReason, string> = {
+  "first-deploy": "There was no previous version, so the new one is deployed but not working.",
+  migration:
+    "It carried a Durable Object migration, which Cloudflare only applies by deploying at once, so the new version is deployed but not working.",
+};
+
+function failureTail(liveReason: LiveReason | undefined): string {
+  return liveReason
+    ? liveTails[liveReason]
+    : "Nothing was switched: the previous version is still live.";
+}
+
+/**
+ * The new version failed its self-test. `liveBefore` says whether the old version still serves;
+ * `liveReason` says why the new one was live already when it didn't.
+ */
 export class SmokeTestFailedError extends DeployError {
   readonly failedChecks: readonly string[];
   readonly liveBefore: boolean;
+  readonly liveReason: LiveReason | undefined;
 
-  constructor(failedChecks: readonly string[], liveBefore: boolean) {
+  constructor(failedChecks: readonly string[], liveReason?: LiveReason) {
+    const tail = failureTail(liveReason);
     super(
       "smoke-test-failed",
-      `The new version failed its self-test (${failedChecks.join(", ") || "no answer"}). ${
-        liveBefore
-          ? "Nothing was switched: the previous version is still live."
-          : "There was no previous version, so the new one is deployed but not working."
-      }`,
+      `The new version failed its self-test (${failedChecks.join(", ") || "no answer"}). ${tail}`,
     );
     this.name = "SmokeTestFailedError";
     this.failedChecks = failedChecks;
-    this.liveBefore = liveBefore;
+    this.liveBefore = liveReason === undefined;
+    this.liveReason = liveReason;
   }
 }

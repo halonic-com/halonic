@@ -127,4 +127,62 @@ verifies("deploy.upload", () => {
     const bearer = requests[0]?.headers["authorization"] ?? "";
     expect(bearer).toMatch(/^Bearer [0-9a-f]{64}$/);
   });
+
+  it("drops a leftover 0% version so a deployment never holds three", async () => {
+    const { api, options } = setup(
+      {
+        accounts: [],
+        deployment: [
+          { id: "old", percentage: 100 },
+          { id: "left", percentage: 0 },
+        ],
+      },
+      passing,
+    );
+    await uploadAndSwitch(api, options);
+    expect(api.calls).toContain("deployVersions old:100,v1:0");
+  });
+
+  it("stops before uploading while two versions share traffic", async () => {
+    const { api, options } = setup(
+      {
+        accounts: [],
+        deployment: [
+          { id: "a", percentage: 60 },
+          { id: "b", percentage: 40 },
+        ],
+      },
+      passing,
+    );
+    const error = await uploadAndSwitch(api, options).catch((e: unknown) => e);
+    expect((error as DeployError).code).toBe("traffic-split-in-progress");
+    expect(api.calls).toEqual(["currentDeployment"]);
+  });
+
+  it("names a migration as the reason a live deploy failed its test", async () => {
+    const { api, options } = setup({ accounts: [], deployment: live }, failing);
+    const error = await uploadAndSwitch(api, {
+      ...options,
+      durableObjectMigrations: [{ tag: "v2", new_sqlite_classes: ["B"] }],
+    }).catch((e: unknown) => e);
+    expect((error as SmokeTestFailedError).liveReason).toBe("migration");
+    expect((error as Error).message).toContain("Durable Object migration");
+    expect((error as Error).message).not.toContain("no previous version");
+  });
+
+  it("names a first deploy as the reason, in words", async () => {
+    const { api, options } = setup({ accounts: [] }, failing);
+    const error = await uploadAndSwitch(api, options).catch((e: unknown) => e);
+    expect((error as SmokeTestFailedError).liveReason).toBe("first-deploy");
+    expect((error as Error).message).toContain("no previous version");
+  });
+
+  it("fails clearly when the upload leaves no deployment to read back", async () => {
+    const { api, options } = setup({ accounts: [] }, passing);
+    const emptied = Object.assign(Object.create(api), {
+      currentDeployment: async () => undefined,
+    });
+    const error = await uploadAndSwitch(emptied, options).catch((e: unknown) => e);
+    expect((error as DeployError).code).toBe("cloudflare-request-failed");
+  });
 });

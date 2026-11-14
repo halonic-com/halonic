@@ -5,7 +5,7 @@ import type {
   DurableObjectMigration,
   WorkerUpload,
 } from "./api.ts";
-import { DeployError, SmokeTestFailedError } from "./errors.ts";
+import { DeployError, type LiveReason, SmokeTestFailedError } from "./errors.ts";
 
 /** The variable that opens the Worker's `/self-test` route; the same name the runtime reads. */
 const selfTestTokenVariable = "HALONIC_SELFTEST_TOKEN";
@@ -87,25 +87,54 @@ export async function uploadAndSwitch(
   };
   const previous = await api.currentDeployment(accountId, worker);
   const migrations = options.durableObjectMigrations ?? [];
-  const goesLive = previous === undefined || previous.length === 0 || migrations.length > 0;
+  const liveReason = whyLive(previous, migrations);
+  const goesLive = liveReason !== undefined;
+  const serving = servingVersions(previous, goesLive);
 
   const versionId = goesLive
     ? await deployLive(api, options, upload, migrations)
-    : await uploadDark(api, options, upload, previous);
+    : await uploadDark(api, options, upload, serving);
   report({ step: "uploaded", versionId, live: goesLive });
 
   const url = await api.openWorkersDev(accountId, worker);
   const result = await selfTest(url, worker, goesLive ? undefined : versionId, token, options);
   report({ step: "smoke-test", passed: result.ok });
   if (!result.ok) {
-    if (!goesLive) await restore(api, accountId, worker, previous, report);
-    throw new SmokeTestFailedError(result.failed, !goesLive);
+    if (!goesLive) await restore(api, accountId, worker, serving, report);
+    throw new SmokeTestFailedError(result.failed, liveReason);
   }
   if (!goesLive) {
     await api.deployVersions(accountId, worker, [{ id: versionId, percentage: 100 }]);
     report({ step: "switched", versionId });
   }
   return { versionId };
+}
+
+/** Why this deploy can't be tried before it is live, if it can't. */
+function whyLive(
+  previous: readonly DeployedVersion[] | undefined,
+  migrations: readonly DurableObjectMigration[],
+): LiveReason | undefined {
+  if (!previous || previous.length === 0) return "first-deploy";
+  return migrations.length > 0 ? "migration" : undefined;
+}
+
+/**
+ * The versions that have traffic. A deployment holds two versions at most, so the new 0% version
+ * only fits next to one; a split between two stops the deploy before anything is uploaded.
+ */
+function servingVersions(
+  previous: readonly DeployedVersion[] | undefined,
+  goesLive: boolean,
+): readonly DeployedVersion[] {
+  const serving = (previous ?? []).filter((v) => v.percentage > 0);
+  if (!goesLive && serving.length >= 2) {
+    throw new DeployError(
+      "traffic-split-in-progress",
+      "Two versions are sharing traffic, so there is no room for a third. Finish or roll back the split in Cloudflare first, then deploy again. Nothing was uploaded.",
+    );
+  }
+  return serving;
 }
 
 /** Uploads with the migrations and deploys at once; returns the id of the version now live. */
@@ -117,7 +146,14 @@ async function deployLive(
 ): Promise<string> {
   await api.uploadWorkerLive(options.accountId, options.worker, upload, migrations);
   const now = await api.currentDeployment(options.accountId, options.worker);
-  return now?.[0]?.id ?? "";
+  const id = now?.[0]?.id;
+  if (!id) {
+    throw new DeployError(
+      "cloudflare-request-failed",
+      "Cloudflare took the upload but lists no deployment for the Worker, so the new version can't be tested.",
+    );
+  }
+  return id;
 }
 
 /** Uploads a version and gives it 0% next to the previous one, so only the override header reaches it. */

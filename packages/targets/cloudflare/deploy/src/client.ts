@@ -373,7 +373,7 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
         // The tag marks the Worker as ours, so the next deploy doesn't refuse it.
         const form = uploadForm(upload, {
           tags: [markerTag],
-          migrations: oneMigration(migrations),
+          ...(migrations.length > 0 ? { migrations: oneMigration(migrations) } : {}),
         });
         await request("PUT", workerPath(accountId, worker), undefined, false, form);
       });

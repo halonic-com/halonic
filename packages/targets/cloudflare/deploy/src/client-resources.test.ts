@@ -461,6 +461,16 @@ verifies("deploy.upload", () => {
     expect(metadata.tags).toEqual(["halonic"]);
   });
 
+  it("leaves out migrations when a live upload has none", async () => {
+    const { client, forms } = setupUpload({
+      "PUT /accounts/a1/workers/scripts/w": { result: {} },
+    });
+    await client.uploadWorkerLive("a1", "w", upload, []);
+    const metadata = await metadataOf(forms[0]);
+    expect(metadata).not.toHaveProperty("migrations");
+    expect(metadata.tags).toEqual(["halonic"]);
+  });
+
   it("reads the newest deployment and treats none as undefined", async () => {
     const { client } = setupUpload({
       "GET /accounts/a1/workers/scripts/w/deployments": {
