@@ -134,14 +134,12 @@ function textOf(item: NewLibraryItem, id: string): string {
         fields: { name: { type: "text", required: true } },
       });
     case "connector":
-      // `approve: all` makes every tool the server offers ask a person first,
-      // without naming them, so a tool the server adds later asks too.
       return writeYamlFile({
         version: 1,
         id,
         name,
         ...transportOf(item),
-        tools: { approve: "all" },
+        tools: { approve: approveOf(item) },
       });
   }
 }
