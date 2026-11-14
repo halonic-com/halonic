@@ -388,6 +388,16 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
         deploymentBody(versions),
       );
     },
+    async workersDevEnabled(accountId, worker) {
+      const body = await get(`${workerPath(accountId, worker)}/subdomain`);
+      return (body.result as { enabled?: unknown } | undefined)?.enabled === true;
+    },
+    async closeWorkersDev(accountId, worker) {
+      await request("POST", `${workerPath(accountId, worker)}/subdomain`, {
+        enabled: false,
+        previews_enabled: false,
+      });
+    },
     async openWorkersDev(accountId, worker) {
       await request("POST", `${workerPath(accountId, worker)}/subdomain`, {
         enabled: true,

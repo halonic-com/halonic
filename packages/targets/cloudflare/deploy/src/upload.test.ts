@@ -66,6 +66,66 @@ verifies("deploy.upload", () => {
     expect(events.at(-1)?.step).toBe("kept-previous");
   });
 
+  it("puts workers.dev back off after a passing or failing self-test", async () => {
+    for (const answer of [passing, failing]) {
+      const { api, options } = setup(
+        { accounts: [], deployment: live, workersDevOn: false },
+        answer,
+      );
+      await uploadAndSwitch(api, options).catch(() => {});
+      expect(api.calls).toContain("openWorkersDev w");
+      expect(api.calls).toContain("closeWorkersDev w");
+      expect(await api.workersDevEnabled("a1", "w")).toBe(false);
+    }
+  });
+
+  it("leaves workers.dev on when it was on before", async () => {
+    const { api, options } = setup({ accounts: [], deployment: live }, passing);
+    await uploadAndSwitch(api, options);
+    expect(api.calls.some((c) => c.startsWith("closeWorkersDev"))).toBe(false);
+  });
+
+  it("stops before the switch and says workers.dev is on when it can't be closed after a pass", async () => {
+    const { api, options, events } = setup(
+      { accounts: [], deployment: live, workersDevOn: false, closeFails: true },
+      passing,
+    );
+    await expect(uploadAndSwitch(api, options)).rejects.toThrow(
+      "the previous version is still live and workers.dev is still on",
+    );
+    expect(api.calls).not.toContain("deployVersions v1:100");
+    expect(events.some((e) => e.step === "workers-dev-left-open")).toBe(true);
+  });
+
+  it("says the new version is deployed when the close fails on a live deploy", async () => {
+    const { api, options } = setup(
+      { accounts: [], deployment: live, workersDevOn: false, closeFails: true },
+      passing,
+    );
+    await expect(
+      uploadAndSwitch(api, {
+        ...options,
+        durableObjectMigrations: [{ tag: "v2", new_sqlite_classes: ["B"] }],
+      }),
+    ).rejects.toThrow("The new version is deployed and passed its self-test");
+  });
+
+  it("leaves workers.dev on for a first deploy that reads it off", async () => {
+    const { api, options } = setup({ accounts: [], workersDevOn: false }, passing);
+    await uploadAndSwitch(api, options);
+    expect(api.calls.some((c) => c.startsWith("closeWorkersDev"))).toBe(false);
+    expect(await api.workersDevEnabled("a1", "w")).toBe(true);
+  });
+
+  it("reports workers.dev left open after a failing self-test", async () => {
+    const { api, options, events } = setup(
+      { accounts: [], deployment: live, workersDevOn: false, closeFails: true },
+      failing,
+    );
+    await expect(uploadAndSwitch(api, options)).rejects.toBeInstanceOf(SmokeTestFailedError);
+    expect(events.some((e) => e.step === "workers-dev-left-open")).toBe(true);
+  });
+
   it("does not retry a report that says a check failed", async () => {
     const { api, options, requests } = setup({ accounts: [], deployment: live }, failing);
     await uploadAndSwitch(api, options).catch(() => {});

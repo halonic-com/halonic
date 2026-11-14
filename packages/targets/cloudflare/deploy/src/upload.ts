@@ -17,7 +17,9 @@ export type UploadProgress =
   | { readonly step: "uploaded"; readonly versionId: string; readonly live: boolean }
   | { readonly step: "smoke-test"; readonly passed: boolean }
   | { readonly step: "switched"; readonly versionId: string }
-  | { readonly step: "kept-previous"; readonly versionId: string };
+  | { readonly step: "kept-previous"; readonly versionId: string }
+  /** workers.dev was off before the deploy and could not be turned off again. */
+  | { readonly step: "workers-dev-left-open" };
 
 export interface UploadAndSwitchOptions {
   readonly accountId: string;
@@ -106,8 +108,13 @@ export async function uploadAndSwitch(
     : await uploadDark(api, options, upload, serving);
   report({ step: "uploaded", versionId, live: goesLive });
 
-  const url = await api.openWorkersDev(accountId, worker);
-  const result = await selfTest(url, worker, goesLive ? undefined : versionId, token, options);
+  const result = await selfTestOpen(api, options, {
+    versionId: goesLive ? undefined : versionId,
+    token,
+    keepOpen: liveReason === "first-deploy",
+    goesLive,
+    report,
+  });
   report({ step: "smoke-test", passed: result.ok });
   if (!result.ok) {
     throw await failedSelfTest(
@@ -126,6 +133,56 @@ export async function uploadAndSwitch(
     report({ step: "switched", versionId });
   }
   return { versionId };
+}
+
+/**
+ * Turns workers.dev on, runs the self-test and puts the setting back. A Worker's first deploy
+ * (`keepOpen`) leaves it on: it is the new app's only address. A failed close after a pass throws;
+ * after a failing test the self-test failure stays the error and an event says workers.dev is on.
+ */
+async function selfTestOpen(
+  api: CloudflareApi,
+  options: UploadAndSwitchOptions,
+  run: {
+    readonly versionId: string | undefined;
+    readonly token: string;
+    readonly keepOpen: boolean;
+    readonly goesLive: boolean;
+    readonly report: (event: UploadProgress) => void;
+  },
+): Promise<Awaited<ReturnType<typeof selfTest>>> {
+  const { accountId, worker } = options;
+  const closeAfter = !run.keepOpen && !(await api.workersDevEnabled(accountId, worker));
+  const url = await api.openWorkersDev(accountId, worker);
+  const putBack = () => (closeAfter ? api.closeWorkersDev(accountId, worker) : Promise.resolve());
+  let result: Awaited<ReturnType<typeof selfTest>>;
+  try {
+    result = await selfTest(url, worker, run.versionId, run.token, options);
+  } catch (error) {
+    await putBack().catch(() => run.report({ step: "workers-dev-left-open" }));
+    throw error;
+  }
+  try {
+    await putBack();
+  } catch (cause) {
+    run.report({ step: "workers-dev-left-open" });
+    if (result.ok) throw closeFailed(run.goesLive, cause);
+  }
+  return result;
+}
+
+/** The self-test passed but workers.dev, which was off before the deploy, is still on. */
+function closeFailed(goesLive: boolean, cause: unknown): DeployError {
+  const fix =
+    "Turn it off in the Cloudflare dashboard (the Worker's Settings, Domains & Routes), then deploy again.";
+  const error = new DeployError(
+    "cloudflare-request-failed",
+    goesLive
+      ? `The new version is deployed and passed its self-test, but turning workers.dev off again failed, so workers.dev is still on. ${fix}`
+      : `The new version passed its self-test, but turning workers.dev off again failed, so nothing was switched: the previous version is still live and workers.dev is still on. ${fix}`,
+  );
+  error.cause = cause;
+  return error;
 }
 
 /** Puts the old version back if there is one to protect, and builds the error to throw. */

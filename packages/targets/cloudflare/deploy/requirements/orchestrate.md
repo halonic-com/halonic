@@ -12,7 +12,7 @@ Rationale: one ordered path means nothing goes live without its secrets, and no 
 
 - Step 7: the first deploy of a Worker and a deploy that applies Durable Object migrations upload live and run the self-test afterwards, because Cloudflare applies class changes only with an immediate deploy. A failure then says the new version is deployed. Every other deploy keeps the old version live on failure.
 - All provisioning (database, bucket, Worker) runs before the lock, because the lock lives in the database. Two first deploys at once may both try to create a resource; the loser fails on the create and a second run takes the lock.
-- `deploy` turns the workers.dev address on for every deploy, so a Worker served only from a custom domain gets it back. Preview addresses stay off.
+- `deploy` reads the workers.dev setting before the self-test, turns it on for the test, and puts it back afterwards, also when the self-test fails, so a Worker kept off workers.dev stays off. A Worker's first deploy leaves it on, because that is the new app's only address. If it can't be closed after a passing test, the deploy stops before the switch, or, when the new version is already live, says so. If it can't be closed after a failing test, a `workers-dev-left-open` progress event says it is still on. Preview addresses stay off.
 
 ## Examples
 
@@ -22,3 +22,6 @@ Rationale: one ordered path means nothing goes live without its secrets, and no 
 - Given `plan`, then a fake that fails on any write sees no write, no lock and no question.
 - Given a Worker with traffic and Durable Object migrations, then `live-migration-ahead` is reported before the upload.
 - Given a failing self-test, then the lock is still freed.
+- Given a Worker with workers.dev off, then it is off again after the self-test, whether the test passes or fails.
+- Given a first deploy where workers.dev reads off, then it stays on.
+- Given a close that fails, then the deploy says workers.dev is still on.

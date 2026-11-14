@@ -33,6 +33,10 @@ export interface FakeCloudflareState {
   deployment?: readonly DeployedVersion[];
   /** The workers.dev address `openWorkersDev` returns. */
   workersDev?: string;
+  /** Whether workers.dev is on before the deploy. Defaults to on. */
+  workersDevOn?: boolean;
+  /** Closing workers.dev throws. */
+  closeFails?: boolean;
   /** A migration the Worker's own runner applies just before our batch lands, so our batch fails. */
   racedBy?: string;
 }
@@ -59,6 +63,7 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
   };
   let deployment = state.deployment;
   let versions = 0;
+  let workersDevOn = state.workersDevOn ?? true;
   return {
     calls,
     async currentDeployment() {
@@ -81,8 +86,18 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
       lockWrite(`deployVersions ${next.map((v) => `${v.id}:${v.percentage}`).join(",")}`);
       deployment = next;
     },
+    async workersDevEnabled() {
+      calls.push("workersDevEnabled");
+      return workersDevOn;
+    },
+    async closeWorkersDev(_accountId, worker) {
+      lockWrite(`closeWorkersDev ${worker}`);
+      if (state.closeFails) throw new Error("Cloudflare is down");
+      workersDevOn = false;
+    },
     async openWorkersDev(_accountId, worker) {
       lockWrite(`openWorkersDev ${worker}`);
+      workersDevOn = true;
       return state.workersDev ?? `https://${worker}.test.workers.dev`;
     },
     async listAccounts() {

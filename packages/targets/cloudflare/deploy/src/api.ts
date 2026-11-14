@@ -153,6 +153,10 @@ export interface CloudflareApi {
     worker: string,
     versions: readonly DeployedVersion[],
   ): Promise<void>;
+  /** Whether the Worker's workers.dev address is on now. */
+  workersDevEnabled(accountId: string, worker: string): Promise<boolean>;
   /** Turns the workers.dev address on and preview addresses off, and returns the Worker's workers.dev URL. */
   openWorkersDev(accountId: string, worker: string): Promise<string>;
+  /** Turns the workers.dev address off again, with preview addresses off. */
+  closeWorkersDev(accountId: string, worker: string): Promise<void>;
 }
