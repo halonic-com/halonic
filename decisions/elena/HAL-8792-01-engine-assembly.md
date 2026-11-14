@@ -2,6 +2,7 @@
 
 - Approval: HAL-6602 (Liam, CTO); the note is signed in HAL-9699
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:VaUr/2tbaQBCFB1laQwgXGDHEDPevVL+yBYM5dRXUW0L2KLr2XtYGyP6yZ64QUFYjwyEdfqdbgtOKFZ1P5dmBw==
 - Task: HAL-8792
 
 `assembleEngine` in `packages/core/engine/src/engine-assembly.ts` replaces `localEngine`, which had
