@@ -65,7 +65,7 @@ verifies("app.new-library-item", () => {
 
   it("makes every tool of a new connector ask first, whatever the transport", async () => {
     const transports = [
-      { google: { account: "fin@acme.example" } },
+      { google: { account: "fin@acme.example", askFirst: ["gmail_send"] } },
       { http: { url: "https://notes.acme.dev/mcp" } },
       { stdio: { command: "npx -y @acme/notes-mcp" } },
     ] as const;
@@ -73,7 +73,7 @@ verifies("app.new-library-item", () => {
       const file = await made({ kind: "connector", name: "Notes", hub: "acme", transport });
 
       expect(file.path).toBe("hubs/acme/library/connectors/notes.connector.yaml");
-      expect(file.text).toContain("approve: all");
+      expect(file.text).toContain("google" in transport ? "- gmail_send" : "approve: all");
       expect(file.issues).toEqual([]);
     }
   });
@@ -106,7 +106,7 @@ verifies("app.new-library-item", () => {
       kind: "connector",
       name: "Mail",
       hub: null,
-      transport: { google: { account: "fin@acme.example" } },
+      transport: { google: { account: "fin@acme.example", askFirst: [] } },
       secret: "IGNORED",
     });
 

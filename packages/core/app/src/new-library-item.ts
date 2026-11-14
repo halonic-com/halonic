@@ -9,7 +9,16 @@ import { writeFrontMatter, writeYamlFile } from "@halonicjs/yaml";
 
 /** How a new connector reaches its tools; the same three ways as the New connector dialog. */
 export type NewConnectorTransport =
-  | { readonly google: { readonly account: string } }
+  | {
+      readonly google: {
+        readonly account: string;
+        /**
+         * The Google tools that change or send something, which ask a person first. Reading and
+         * searching don't. The caller gives them: this package doesn't know Google's tool names yet.
+         */
+        readonly askFirst: readonly string[];
+      };
+    }
   | { readonly http: { readonly url: string } }
   /** `command` is one line, such as `npx -y @acme/notes-mcp`; its first word is the program. */
   | { readonly stdio: { readonly command: string } };
@@ -94,6 +103,15 @@ function transportOf(item: Extract<NewLibraryItem, { kind: "connector" }>) {
   };
 }
 
+/**
+ * `all` makes every tool an MCP server offers ask a person first, without naming them, so a tool
+ * the server adds later asks too. Google's tools are known, so only the ones that change or send
+ * something are named; reading and searching don't ask.
+ */
+function approveOf(item: Extract<NewLibraryItem, { kind: "connector" }>): "all" | string[] {
+  return "google" in item.transport ? [...item.transport.google.askFirst] : "all";
+}
+
 function connectionOf(item: Extract<NewLibraryItem, { kind: "connector" }>): string {
   const { transport } = item;
   if ("google" in transport) {
@@ -131,8 +149,9 @@ function textOf(item: NewLibraryItem, id: string): string {
 /**
  * Makes the file for a new skill, collection or connector. The id comes from
  * the name, with `-2`, `-3` when another item of that kind in the same place
- * has it. A new connector asks about every tool (`tools.approve: all`); this
- * is the one place that rule lives. Nothing is connected or started.
+ * has it. A new MCP connector asks about every tool (`tools.approve: all`); a
+ * Google connector asks about the tools that change or send something. This
+ * is the one place those rules live. Nothing is connected or started.
  *
  * @example
  * newLibraryFile(workspace, { kind: "collection", name: "Claims" });
