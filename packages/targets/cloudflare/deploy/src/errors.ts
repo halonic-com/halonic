@@ -8,7 +8,9 @@ export type DeployErrorCode =
   | "schema-newer-than-cli"
   | "invalid-migrations"
   | "deploy-locked"
-  | "deploy-lock-lost";
+  | "deploy-lock-lost"
+  | "bundle-hash-mismatch"
+  | "smoke-test-failed";
 
 /** A deploy failure with a stable code. The message never holds a token or a secret. */
 export class DeployError extends Error {
@@ -66,4 +68,24 @@ export function redact(text: string, secrets: readonly string[]): string {
     if (secret.length > 0) safe = safe.split(secret).join(redactedMarker);
   }
   return safe;
+}
+
+/** The new version failed its self-test. `liveBefore` says whether the old version still serves. */
+export class SmokeTestFailedError extends DeployError {
+  readonly failedChecks: readonly string[];
+  readonly liveBefore: boolean;
+
+  constructor(failedChecks: readonly string[], liveBefore: boolean) {
+    super(
+      "smoke-test-failed",
+      `The new version failed its self-test (${failedChecks.join(", ") || "no answer"}). ${
+        liveBefore
+          ? "Nothing was switched: the previous version is still live."
+          : "There was no previous version, so the new one is deployed but not working."
+      }`,
+    );
+    this.name = "SmokeTestFailedError";
+    this.failedChecks = failedChecks;
+    this.liveBefore = liveBefore;
+  }
 }

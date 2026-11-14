@@ -3,12 +3,15 @@ import type {
   CloudflareApi,
   DeployLease,
   DeployLeaseRequest,
+  DurableObjectMigration,
   FoundResource,
   Migration,
   ResourceRef,
   TokenStatus,
+  WorkerUpload,
 } from "./api.ts";
 import { DeployError, redact } from "./errors.ts";
+import { deploymentBody, oneMigration, uploadForm } from "./upload-form.ts";
 
 /** What the client needs to talk to Cloudflare. */
 export interface CloudflareClientOptions {
@@ -168,16 +171,17 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
   }
 
   /** Sends one request. A network failure or timeout becomes a {@link DeployError}. */
-  async function send(method: string, path: string, json?: unknown): Promise<Response> {
+  async function send(
+    method: string,
+    path: string,
+    json?: unknown,
+    form?: FormData,
+  ): Promise<Response> {
     const where = `${method} ${path}`;
+    const init = requestInit(method, options.token, json, form);
     try {
       return await doFetch(`${baseUrl}${path}`, {
-        method,
-        headers: {
-          authorization: `Bearer ${options.token}`,
-          ...(json === undefined ? {} : { "content-type": "application/json" }),
-        },
-        ...(json === undefined ? {} : { body: JSON.stringify(json) }),
+        ...init,
         signal: AbortSignal.timeout(requestTimeoutMs),
       });
     } catch (cause) {
@@ -191,12 +195,13 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
 
   /** `undefined` for a 404 when `allowMissing` is set; otherwise the envelope. */
   async function request(
-    method: "GET" | "POST",
+    method: "GET" | "POST" | "PUT",
     path: string,
     json?: unknown,
     allowMissing = false,
+    form?: FormData,
   ): Promise<Envelope | undefined> {
-    const response = await send(method, path, json);
+    const response = await send(method, path, json, form);
     if (allowMissing && response.status === 404) return undefined;
     const body = await readEnvelope(response);
     if (!response.ok || body.success !== true) {
@@ -205,8 +210,26 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
     return body;
   }
 
+  /** Secrets going up in one upload are hidden from its errors too, in case Cloudflare echoes them. */
+  let hidden: readonly string[] = [];
   function failed(message: string): DeployError {
-    return new DeployError("cloudflare-request-failed", redact(message, [options.token]));
+    return new DeployError(
+      "cloudflare-request-failed",
+      redact(message, [options.token, ...hidden]),
+    );
+  }
+
+  async function withHidden<T>(upload: WorkerUpload, run: () => Promise<T>): Promise<T> {
+    hidden = Object.values(upload.secrets);
+    try {
+      return await run();
+    } finally {
+      hidden = [];
+    }
+  }
+
+  function workerPath(accountId: string, worker: string): string {
+    return `/accounts/${encodeURIComponent(accountId)}/workers/scripts/${encodeURIComponent(worker)}`;
   }
 
   return {
@@ -306,6 +329,74 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
       const id = await requireDatabase(accountId, databaseName);
       await query(accountId, id, `DELETE FROM ${lockTable} WHERE slot = 1 AND id = ?`, [leaseId]);
     },
+    async currentDeployment(accountId, worker) {
+      const body = await request(
+        "GET",
+        `${workerPath(accountId, worker)}/deployments`,
+        undefined,
+        true,
+      );
+      // Cloudflare lists the newest deployment first.
+      const latest = (body?.result as { deployments?: { versions?: unknown }[] } | undefined)
+        ?.deployments?.[0];
+      if (!latest || !Array.isArray(latest.versions)) return undefined;
+      return (latest.versions as { version_id?: unknown; percentage?: unknown }[]).flatMap((v) =>
+        typeof v.version_id === "string" && typeof v.percentage === "number"
+          ? [{ id: v.version_id, percentage: v.percentage }]
+          : [],
+      );
+    },
+    async uploadVersion(accountId, worker, upload) {
+      return withHidden(upload, async () => {
+        const form = uploadForm(upload, {
+          annotations: upload.message ? { "workers/message": upload.message } : {},
+        });
+        const body = await request(
+          "POST",
+          `${workerPath(accountId, worker)}/versions`,
+          undefined,
+          false,
+          form,
+        );
+        const id = (body?.result as { id?: unknown } | undefined)?.id;
+        if (typeof id !== "string") throw failed(`the upload of ${worker} returned no version id`);
+        return id;
+      });
+    },
+    async uploadWorkerLive(
+      accountId,
+      worker,
+      upload,
+      migrations: readonly DurableObjectMigration[],
+    ) {
+      await withHidden(upload, async () => {
+        // The tag marks the Worker as ours, so the next deploy doesn't refuse it.
+        const form = uploadForm(upload, {
+          tags: [markerTag],
+          migrations: oneMigration(migrations),
+        });
+        await request("PUT", workerPath(accountId, worker), undefined, false, form);
+      });
+    },
+    async deployVersions(accountId, worker, versions) {
+      await request(
+        "POST",
+        `${workerPath(accountId, worker)}/deployments`,
+        deploymentBody(versions),
+      );
+    },
+    async openWorkersDev(accountId, worker) {
+      await request("POST", `${workerPath(accountId, worker)}/subdomain`, {
+        enabled: true,
+        previews_enabled: false,
+      });
+      const body = await get(`/accounts/${encodeURIComponent(accountId)}/workers/subdomain`);
+      const subdomain = (body.result as { subdomain?: unknown } | undefined)?.subdomain;
+      if (typeof subdomain !== "string" || subdomain === "") {
+        throw failed("the account has no workers.dev subdomain");
+      }
+      return `https://${worker}.${subdomain}.workers.dev`;
+    },
     async applyMigration(accountId, databaseName, migration: Migration) {
       const id = await requireDatabase(accountId, databaseName);
       await batch(accountId, id, [
@@ -322,6 +413,18 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
     if (!ref.markedIn) throw failed(`bucket ${ref.name} has no database to hold its marker`);
     return ref.markedIn;
   }
+}
+
+/** The method, headers and body of one request: a form as multipart, JSON otherwise. */
+function requestInit(method: string, token: string, json?: unknown, form?: FormData): RequestInit {
+  const headers: Record<string, string> = { authorization: `Bearer ${token}` };
+  if (form) return { method, headers, body: form };
+  if (json === undefined) return { method, headers };
+  return {
+    method,
+    headers: { ...headers, "content-type": "application/json" },
+    body: JSON.stringify(json),
+  };
 }
 
 async function readEnvelope(response: Response): Promise<Envelope> {
