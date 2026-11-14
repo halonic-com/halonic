@@ -16,3 +16,20 @@ export function aliasTitle(name: string): string {
 export function aliasIntro(name: string): string {
   return `Agents ask for "${name}". Point it at any provider and model; nothing else changes.`;
 }
+
+/** The status line after an edit was saved. */
+export function aliasUpdatedLine(name: string): string {
+  return `Updated model alias ${name}`;
+}
+
+/** The hint under "Fallbacks": the order they are tried in, and which aliases can be named. */
+export function fallbacksHint(otherAliases: readonly string[]): string {
+  const base = "Tried in order when this fails.";
+  return otherAliases.length === 0 ? base : `${base} Other aliases: ${otherAliases.join(", ")}`;
+}
+
+export const PRICE_HEADING = "Price per million tokens";
+export const PRICE_HINT = "Used for the estimated spend and the budget.";
+export const CACHE_PRICES_NOTE =
+  "Emptying both prices also removes this alias's cache prices. Undo (Ctrl Z) brings them back.";
+export const ALIAS_GONE_LINE = "This alias is no longer in models.yaml.";

@@ -15,6 +15,7 @@
   "dependencies": {
     "@halonicjs/format": "workspace:*",
     "@halonicjs/std": "workspace:*",
+    "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/studio-shell": "workspace:*",
     "@halonicjs/yaml": "workspace:*",
     "react": "catalog:"
