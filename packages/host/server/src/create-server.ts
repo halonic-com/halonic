@@ -1,6 +1,7 @@
 import type { CreateServer, RequestContext, ServerConfig } from "./api.ts";
 import { checkDailyRequests } from "./daily-requests.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
+import { createGoogleRoutes, googlePathPrefix, isSecretPath } from "./google-routes.ts";
 import { checkHost, checkOrigin, readBody, withSecurityHeaders } from "./security.ts";
 import { createSignIn, passwordSecretName } from "./sign-in.ts";
 import { createTrustRoutes } from "./trust-routes.ts";
@@ -33,6 +34,8 @@ export const createServer: CreateServer = ({ config, ports }) => {
   const signIn = createSignIn(ports);
   const trustRoutes = createTrustRoutes(ports);
   const webhookRoutes = createWebhookRoutes(ports);
+  const googleRoutes =
+    ports.google === undefined ? null : createGoogleRoutes({ google: ports.google });
 
   async function route(
     request: Request,
@@ -43,6 +46,11 @@ export const createServer: CreateServer = ({ config, ports }) => {
     // A sender signs its request instead of signing in, so this route sits before the sign-in routes.
     if (request.method === "POST" && pathname.startsWith(webhookPathPrefix)) {
       return webhookRoutes.receive(request, pathname.slice(webhookPathPrefix.length), body);
+    }
+    if (pathname.startsWith(googlePathPrefix) && googleRoutes !== null) {
+      return (await signIn.isSignedIn(request, context))
+        ? googleRoutes.handle(request, body, context)
+        : errorResponse(serverErrors.notSignedIn);
     }
     return apiRoute(request, context, body, `${request.method} ${pathname}`);
   }
@@ -103,15 +111,30 @@ export const createServer: CreateServer = ({ config, ports }) => {
     return route(request, context, body.bytes);
   }
 
+  /** Logs method, path and status. A route that takes a secret is left out, and no query string is ever logged. */
+  function logRequest(request: Request, response: Response): void {
+    const { pathname } = new URL(request.url);
+    if (ports.requestLog === undefined || isSecretPath(pathname)) {
+      return;
+    }
+    ports.requestLog.record({ method: request.method, path: pathname, status: response.status });
+  }
+
+  async function respond(request: Request, context: RequestContext): Promise<Response> {
+    try {
+      return withSecurityHeaders(await answer(request, context), request);
+    } catch (cause) {
+      // The cause stays out of the reply: a stack or path would tell a caller about the host.
+      ports.errorLog.record(cause);
+      return withSecurityHeaders(errorResponse(serverErrors.internal), request);
+    }
+  }
+
   return {
     async handle(request, context = {}) {
-      try {
-        return withSecurityHeaders(await answer(request, context), request);
-      } catch (cause) {
-        // The cause stays out of the reply: a stack or path would tell a caller about the host.
-        ports.errorLog.record(cause);
-        return withSecurityHeaders(errorResponse(serverErrors.internal), request);
-      }
+      const response = await respond(request, context);
+      logRequest(request, response);
+      return response;
     },
   };
 };

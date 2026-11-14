@@ -29,6 +29,8 @@ verifies("server.api", () => {
       | "coordination"
       | "requestCounts"
       | "errorLog"
+      | "google"
+      | "requestLog"
       | "clock"
       | "ids"
     >();

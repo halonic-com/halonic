@@ -1,8 +1,13 @@
 export type {
   CreateServer,
   ErrorLog,
+  GoogleSetupPorts,
+  GoogleSetupSource,
+  GoogleSetupSubject,
   RequestContext,
   RequestCountStore,
+  RequestLog,
+  RequestLogEntry,
   Server,
   ServerConfig,
   ServerErrorBody,
