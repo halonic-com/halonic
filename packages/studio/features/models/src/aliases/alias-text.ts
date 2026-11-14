@@ -1,8 +1,23 @@
 /** The words of the alias list and the alias tab (microcopy 6.1; flow-models 2.2 and 2.3). */
 export const MODELS_HEADING = "Models";
-export const NO_ALIASES_LINE =
-  "No model aliases yet. An alias is a short name like `fast` that agents use instead of a provider.";
-export const MODELS_UNREADABLE_LINE = "Halonic couldn't read the model aliases.";
+/** The line under "No model aliases yet"; `fast` is shown in code style. */
+export const NO_ALIASES_TITLE = "No model aliases yet";
+export const NO_ALIASES_BEFORE_EXAMPLE = "An alias is a short name like ";
+export const NO_ALIASES_EXAMPLE = "fast";
+export const NO_ALIASES_AFTER_EXAMPLE = " that agents use instead of a provider.";
+export const MODELS_LOADING_LINE = "Loading models";
+export const MODELS_UNREADABLE_TITLE = "Couldn't load models";
+export const MODELS_UNREADABLE_REASON = "Halonic couldn't read the model aliases.";
+export const TRY_AGAIN = "Try again";
+export const NO_PRICE_LINE = "No price";
+export const ADD_A_PRICE = "Add a price";
+/** What a row of a model on this machine says in place of a price: no cost, nothing to add. */
+export const RUNS_LOCALLY_LINE = "Runs on this machine";
+
+/** The name of an alias row's "Add a price" button, so a screen reader knows whose price it adds. */
+export function addPriceLabel(name: string): string {
+  return `${ADD_A_PRICE} for ${name}`;
+}
 export const ALIAS_KIND_LABEL = "Model alias";
 /** The item kind of an alias tab. */
 export const ALIAS_KIND = "model-alias";
