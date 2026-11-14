@@ -36,12 +36,14 @@ function tool(name: string): ListedToolRow {
     differences: [],
     serverChanged: false,
     leftOutArguments: [],
+    asksBeforeUse: true,
   };
 }
 
 function snapshot(waiting: readonly string[]): ListedToolsSnapshot {
   return {
     sourceName: "Notes",
+    workspaceName: "Acme",
     toReview: waiting.map(tool),
     keepsChanging: [],
     refused: [],
