@@ -33,6 +33,24 @@ export interface Migration {
   readonly statements: readonly string[];
 }
 
+/** What a deploy asks for when it takes the lock. The database fills in the times. */
+export interface DeployLeaseRequest {
+  /** Unique to one deploy; what the conditional writes compare. */
+  readonly id: string;
+  /** What a second deploy is shown, such as `mateo on laptop`. */
+  readonly label: string;
+  /** How long the lease lasts without a renewal. */
+  readonly leaseMs: number;
+}
+
+/** One deploy's claim on the lock, as stored. Times are the database's clock, in milliseconds since the epoch. */
+export interface DeployLease {
+  readonly id: string;
+  readonly label: string;
+  readonly startedAt: number;
+  readonly expiresAt: number;
+}
+
 /**
  * The Cloudflare calls the deploy makes. Everything above the client depends on this port, so
  * it tests with a fake and no network. Later steps add their calls here.
@@ -57,4 +75,27 @@ export interface CloudflareApi {
   ): Promise<readonly string[] | undefined>;
   /** Runs the migration's statements and records its id in one D1 batch, so both happen or neither. */
   applyMigration(accountId: string, databaseName: string, migration: Migration): Promise<void>;
+  /**
+   * Takes the deploy lock when none exists or the old lease has expired, in one conditional
+   * write. The database's clock decides "now", not the caller's, so machines with different
+   * clocks can't both win. Returns the lease in force afterwards: ours when it won,
+   * the holder's when it didn't.
+   */
+  takeDeployLock(
+    accountId: string,
+    databaseName: string,
+    request: DeployLeaseRequest,
+  ): Promise<DeployLease>;
+  /**
+   * Moves the lease's expiry to the database's "now" plus `leaseMs`, only while `leaseId` still
+   * holds it. Returns the lease as stored, or `undefined` when someone else holds the lock.
+   */
+  renewDeployLock(
+    accountId: string,
+    databaseName: string,
+    leaseId: string,
+    leaseMs: number,
+  ): Promise<DeployLease | undefined>;
+  /** Frees the lock, only while `leaseId` still holds it. */
+  releaseDeployLock(accountId: string, databaseName: string, leaseId: string): Promise<void>;
 }

@@ -6,7 +6,9 @@ export type DeployErrorCode =
   | "ambiguous-account"
   | "unmarked-resources"
   | "schema-newer-than-cli"
-  | "invalid-migrations";
+  | "invalid-migrations"
+  | "deploy-locked"
+  | "deploy-lock-lost";
 
 /** A deploy failure with a stable code. The message never holds a token or a secret. */
 export class DeployError extends Error {
@@ -30,6 +32,24 @@ export class UnmarkedResourcesError extends DeployError {
     );
     this.name = "UnmarkedResourcesError";
     this.resources = resources;
+  }
+}
+
+/** Another deploy holds the lock. Says who, and since when, so the user knows whether to wait. */
+export class DeployLockedError extends DeployError {
+  readonly holder: string;
+  readonly startedAt: number;
+  readonly expiresAt: number;
+
+  constructor(holder: string, startedAt: number, expiresAt: number) {
+    super(
+      "deploy-locked",
+      `${holder} is deploying (since ${new Date(startedAt).toISOString()}). Try again when it finishes. If it crashed, its lock frees itself by ${new Date(expiresAt).toISOString()}.`,
+    );
+    this.name = "DeployLockedError";
+    this.holder = holder;
+    this.startedAt = startedAt;
+    this.expiresAt = expiresAt;
   }
 }
 
