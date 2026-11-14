@@ -468,3 +468,48 @@ verifies("integration-runner.start", () => {
     });
   });
 });
+
+verifies("integration-runner.mxc-profile", () => {
+  const mxcMachine: RunnerMachine = {
+    ...machine,
+    platform: "win32",
+    backend: "mxc",
+    systemFiles: null,
+    sandboxFolders: [],
+  };
+  const lists = (folder: string): string[] => {
+    throw new Error(`listed ${folder}`);
+  };
+  const noListing: RunnerDisk = { ...disk, listFolder: lists };
+
+  it("has no network at all: no rule and no bridge", () => {
+    expect(runnerProfile(files, mxcMachine, noListing).network).toEqual({
+      bridge: null,
+      allowedSites: [],
+    });
+  });
+
+  it("grants only the runner's paths to read, and lists nothing", () => {
+    const profile = runnerProfile(files, mxcMachine, noListing);
+    expect(profile.readOnlyPaths).toEqual([
+      files.nodeFolder,
+      files.runnerFile,
+      files.integrationFolder,
+    ]);
+    expect(profile.deniedPaths).toEqual([]);
+    expect(profile.reopenedPaths).toEqual([]);
+  });
+
+  it("uses one folder to write in as the working and the temp folder", () => {
+    const profile = runnerProfile(files, mxcMachine, noListing);
+    expect(profile.workingFolder).toBe(mxcMachine.tempFolder);
+    expect(profile.tempFolder).toBe(mxcMachine.tempFolder);
+    expect(profile.env).toEqual({ TMPDIR: mxcMachine.tempFolder });
+  });
+
+  it("refuses an integration folder that is the home folder", () => {
+    expect(() =>
+      runnerProfile({ ...files, integrationFolder: "/fake-home" }, mxcMachine, noListing),
+    ).toThrow(/is or holds \/fake-home/);
+  });
+});
