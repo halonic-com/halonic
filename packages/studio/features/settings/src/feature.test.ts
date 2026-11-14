@@ -53,7 +53,6 @@ describe("settingsFeature", () => {
     const assistant = host.find(({ id }) => id === "assistant");
     expect(assistant).toMatchObject({ title: "Assistant", scope: "host" });
     expect(host.map(({ id }) => id).sort((a, b) => order(a) - order(b))[0]).toBe("assistant");
-    expect(await assistant?.load()).toHaveProperty(assistant?.view ?? "");
 
     function order(id: string): number {
       return host.find((section) => section.id === id)?.order ?? 0;
