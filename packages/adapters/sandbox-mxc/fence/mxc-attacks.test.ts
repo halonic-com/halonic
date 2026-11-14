@@ -127,6 +127,40 @@ describe("a program trying to get out of the MXC fence", () => {
     await expect(stat(join(folders.outside, "x.txt"))).rejects.toThrow();
   });
 
+  it("doesn't see the environment of the process that runs Halonic", async () => {
+    const name = "HALONIC_FENCE_TEST_HOST_SECRET";
+    process.env[name] = "hunter3";
+    try {
+      const { out, exit } = await node("console.log(JSON.stringify(process.env))");
+      expect(exit.code).toBe(0);
+      expect(out).not.toContain("hunter3");
+      expect(Object.keys(JSON.parse(out) as Record<string, string>)).not.toContain(name);
+    } finally {
+      delete process.env[name];
+    }
+  });
+
+  it("leaves no program of its own running after kill, also one a program started", async () => {
+    const beat = join(folders.work, "heartbeat.txt");
+    const child = `const fs = require('node:fs'); setInterval(() => fs.appendFileSync(${JSON.stringify(beat)}, 'x'), 100);`;
+    const parent =
+      `require('node:child_process').spawn(process.execPath, ['-e', ${JSON.stringify(child)}], { stdio: 'ignore' });` +
+      "setInterval(() => {}, 1000);";
+    const size = async () => (await stat(beat).catch(() => ({ size: 0 }))).size;
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const started = await session.start({ program: process.execPath, args: ["-e", parent] });
+    // The grandchild is alive: its heartbeat grows.
+    const deadline = Date.now() + 15_000;
+    while ((await size()) === 0 && Date.now() < deadline) await wait(200);
+    expect(await size()).toBeGreaterThan(0);
+    await started.kill();
+    await started.exited;
+    await wait(500);
+    const after = await size();
+    await wait(1000);
+    expect(await size()).toBe(after);
+  });
+
   it("is not fenced, and runs nothing, when the denied path holds Halonic's box folders", async () => {
     const trap = await mxc.sandbox.open(profileOver(folders, { deniedPaths: [mxc.dataFolder] }));
     try {
