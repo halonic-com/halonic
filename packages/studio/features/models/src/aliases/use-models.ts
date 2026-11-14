@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { ModelsFiles } from "../api.ts";
 import { type ModelsState, readModels } from "./read-models.ts";
 
-/** The workspace's aliases, read again each time `models.yaml` changes; only the newest read is shown. */
+/** The workspace's aliases and providers, read again each time `models.yaml` or a provider file changes; only the newest read is shown. */
 export function useModels(files: ModelsFiles): ModelsState {
   const [state, setState] = useState<ModelsState>({ status: "loading" });
   useEffect(() => {

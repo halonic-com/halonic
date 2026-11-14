@@ -5,7 +5,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it } from "vitest";
-import type { ModelsFiles } from "../api.ts";
+import type { ModelsFiles, ProviderFile } from "../api.ts";
 import { AliasTab } from "./alias-tab.tsx";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -31,13 +31,13 @@ aliases:
 `;
 
 /** A `models.yaml` in memory that tells the tab about each change, as the app's files do. */
-function memoryFiles(initial: string) {
+function memoryFiles(initial: string, providers: ProviderFile[] = []) {
   let text = initial;
   const listeners = new Set<() => void>();
   const changes: { label: string; text: string }[] = [];
   const files: ModelsFiles = {
     readModels: async () => text,
-    readProviders: async () => [],
+    readProviders: async () => providers,
     changeModels: (label, next) => {
       text = next;
       changes.push({ label, text: next });
@@ -96,7 +96,25 @@ verifies("models.aliases.list", () => {
   });
 });
 
+const providerFiles: ProviderFile[] = [
+  { path: "providers/anthropic.yaml", text: "type: anthropic\nsecret: key\n" },
+  { path: "providers/ollama.yaml", text: "type: ollama\nlocal: true\nname: Ollama\n" },
+  { path: "providers/broken.yaml", text: "type: [" },
+];
+
+function providerOptions(tab: HTMLElement): string[] {
+  const select = tab.querySelector("select");
+  return [...(select?.querySelectorAll("option") ?? [])].map((option) => option.textContent ?? "");
+}
+
 verifies("models.aliases.edit-target", () => {
+  it("offers every provider file, marks local ones and keeps a provider without a file", async () => {
+    const { files } = memoryFiles(workspaceModels.replace("anthropic", "gone"), providerFiles);
+    const tab = await showTab(files);
+
+    expect(providerOptions(tab)).toEqual(["anthropic", "gone", "Ollama (local)"]);
+  });
+
   it("saves a new model name and says so", async () => {
     const { files, changes } = memoryFiles(workspaceModels);
     const tab = await showTab(files);
@@ -149,6 +167,17 @@ verifies("models.aliases.edit-fallbacks", () => {
 });
 
 verifies("models.aliases.edit-price", () => {
+  it("warns that a price of 0 looks free on a cloud provider, not on a local one", async () => {
+    const { files } = memoryFiles(workspaceModels, providerFiles);
+    const cloud = await showTab(files);
+    await typeInto(field(cloud, "Input"), "0");
+    expect(cloud.textContent).toContain("A price of 0 means these calls look free");
+
+    const local = await showTab(files, { kind: "model-alias", hub: "local", id: "default" });
+    await typeInto(field(local, "Input"), "0");
+    expect(local.textContent).not.toContain("A price of 0 means");
+  });
+
   it("waits for the other price instead of calling it wrong, then saves both", async () => {
     const { files, changes } = memoryFiles(workspaceModels);
     const tab = await showTab(files, { kind: "model-alias", hub: "local", id: "fast" });

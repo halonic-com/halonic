@@ -23,7 +23,12 @@ export function AliasTab({ item, context }: ItemViewProps) {
         <p>{ALIAS_GONE_LINE}</p>
       ) : null}
       {state.status === "ready" ? (
-        <AliasFields files={files} models={state.models} name={item.id} />
+        <AliasFields
+          files={files}
+          models={state.models}
+          providers={state.providers}
+          name={item.id}
+        />
       ) : null}
     </div>
   );

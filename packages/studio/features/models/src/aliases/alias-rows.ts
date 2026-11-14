@@ -27,3 +27,20 @@ export function providerChoiceLabel(provider: Provider): string {
   const name = provider.name ?? provider.id;
   return provider.local ? `${name} (local)` : name;
 }
+
+/**
+ * The options of an alias's Provider field: every provider of the workspace, local ones marked,
+ * sorted by label. The alias's own provider is always there, even when it has no file.
+ */
+export function providerChoices(
+  providers: readonly Provider[],
+  current: string,
+): { value: string; label: string }[] {
+  const choices = providers.map((provider) => ({
+    value: provider.id,
+    label: providerChoiceLabel(provider),
+  }));
+  if (!providers.some((provider) => provider.id === current))
+    choices.push({ value: current, label: current });
+  return choices.sort((first, second) => first.label.localeCompare(second.label));
+}
