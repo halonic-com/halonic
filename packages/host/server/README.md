@@ -21,6 +21,10 @@ The server asks the host's trust gate before it starts any run, on every request
 
 The rule is the requirement `server.trust-gate`.
 
+## Harness agents run on the host
+
+An agent in a harness (Claude Code or Codex) runs on the machine the server runs on, through the host's own engine, in the host's sandbox. A start request can't change that: `POST /api/runs` and `POST /api/agent-runs` answer **400** (`bad_request`) when the body names `harness`, `placement`, `sandbox`, `profile`, `workingFolder` or `allowedSites`, and start nothing. The gate and the sign-in apply as for any start. The rule is the requirement `server.harness-on-host`.
+
 ## Daily request ceiling
 
 A deployment can cap how many requests its server answers per UTC day. Set `limits.dailyRequests` on the deployment in `deployments.yaml` (a whole number above zero). There is no default: with no `dailyRequests`, nothing is counted and nothing is capped. The ceiling is the same on `halonic serve` and on Cloudflare.
