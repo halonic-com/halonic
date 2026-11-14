@@ -316,6 +316,44 @@ verifies("google-setup.secret-replace", () => {
     for (const spy of spies) spy.mockRestore();
   });
 
+  it("ignores Cancel while a replacement is being checked, so a late refusal can't leak into the next field", async () => {
+    let answer: (value: SecretReplaceAnswer) => void = () => {};
+    const onReplace = vi.fn(
+      () => new Promise<SecretReplaceAnswer>((resolve) => (answer = resolve)),
+    );
+    const { container } = show({ savedAt: saved, onReplace });
+    await press(button(container, "Replace secret"));
+    await type(input(container), second);
+    await act(async () => button(container, "Save new secret").click());
+    await press(button(container, "Cancel"));
+    expect(input(container).value).toBe(second);
+    await act(async () => answer({ kind: "refused" }));
+    expect(container.textContent).toContain("Google didn't accept this secret.");
+    await press(button(container, "Cancel"));
+    await press(button(container, "Replace secret"));
+    expect(input(container).value).toBe("");
+    expect(container.textContent).not.toContain("Google didn't accept this secret.");
+  });
+
+  it("asks the plain-http question again for a new send after Cancel", async () => {
+    const onReplace = vi
+      .fn<SecretFieldProps["onReplace"]>()
+      .mockRejectedValueOnce(new Error("The store is locked."))
+      .mockResolvedValue({ kind: "accepted", usedBy: [] });
+    const { container } = show({ savedAt: saved, plainHttp: true, onReplace });
+    await press(button(container, "Replace secret"));
+    await type(input(container), second);
+    await press(button(container, "Save new secret"));
+    await press(button(document.body, "Save it anyway"));
+    expect(onReplace).toHaveBeenCalledTimes(1);
+    await press(button(container, "Cancel"));
+    await press(button(container, "Replace secret"));
+    await type(input(container), second);
+    await press(button(container, "Save new secret"));
+    expect(document.querySelector("dialog[open]")).not.toBeNull();
+    expect(onReplace).toHaveBeenCalledTimes(1);
+  });
+
   it("opens already in the new-secret field when Google refused the saved secret", () => {
     const { container } = show({ savedAt: saved, startReplacing: true });
     expect(input(container)).not.toBeNull();

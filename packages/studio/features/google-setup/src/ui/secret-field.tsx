@@ -185,6 +185,7 @@ export function SecretField(props: SecretFieldProps) {
         answerLine={answerLine}
         onReplace={() => {
           setAnswer(null);
+          setProblem(null);
           focusNext.current = "input";
           setReplacing(true);
         }}
@@ -247,10 +248,14 @@ export function SecretField(props: SecretFieldProps) {
             <Button
               variant="ghost"
               onClick={() => {
+                // The host call can't be stopped, and its answer would land on a closed field.
+                if (busy) return;
                 // Nothing typed is kept: a cancelled secret doesn't linger in the input.
                 if (input.current !== null) input.current.value = "";
                 setHasText(false);
                 setProblem(null);
+                // A later secret is a new send, so it asks the plain-http question again.
+                setConfirmed(false);
                 focusNext.current = "replace";
                 setReplacing(false);
               }}
