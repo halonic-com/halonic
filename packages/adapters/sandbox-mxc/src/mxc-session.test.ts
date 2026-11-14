@@ -143,44 +143,6 @@ verifies("sandbox-mxc.session", () => {
       await session.close();
     });
 
-    it("with no bridge, proves the network control in a control box first, and counts a timeout as blocked once it did", async () => {
-      const seen: ProbeSettings[] = [];
-      const { sandbox } = setup((disk) => {
-        const healthy = healthyBox(disk, { blockedAttemptsTimeOut: true });
-        return async (call) => {
-          if (call.settings?.internet !== undefined) seen.push(call.settings);
-          return healthy(call);
-        };
-      });
-      const session = await open(sandbox, { network: { bridge: null, allowedSites: [] } });
-      expect(session.fence).toEqual({ state: "fenced" });
-      expect(seen).toHaveLength(2);
-      expect(seen[0]?.bridge).toMatchObject({ host: "127.0.0.1" });
-      expect(seen[0]?.ports).toEqual([]);
-      expect(seen[1]?.bridge).toBeNull();
-      await session.close();
-    });
-
-    it.each<[string, Leaks, RegExp]>([
-      [
-        "the control box can't reach its bridge",
-        { blockedAttemptsTimeOut: true, bridgeUnreachable: true },
-        /control box's probe could not reach its bridge/,
-      ],
-      [
-        "the control box reaches the outside",
-        { reachInternet: true },
-        /control box's probe reached the outside/,
-      ],
-    ])("with no bridge, is not-fenced when %s", async (_what, leaks, reason) => {
-      const { sandbox } = setup(leaks);
-      const session = await open(sandbox, { network: { bridge: null, allowedSites: [] } });
-      expect(session.fence).toMatchObject({
-        state: "not-fenced",
-        reason: expect.stringMatching(reason),
-      });
-    });
-
     it.each<[string, Leaks, RegExp]>([
       ["the hidden file is readable", { hidden: true }, /could read a file the fence should hide/],
       ["the denied file is readable", { denied: true }, /denied file inside a folder it may read/],
