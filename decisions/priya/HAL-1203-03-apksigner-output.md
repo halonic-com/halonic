@@ -2,6 +2,7 @@
 
 - Approval: the CTO (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:RmhbcaEnbICpFS09U4RelGSg83K+ICv/fnVEsvZqgAAYkZbtdExmbgbJM/PkCPRqWcc7HnqwrntI/I/VOTHgCw==
 - Task: HAL-1203
 
 ## What changes
