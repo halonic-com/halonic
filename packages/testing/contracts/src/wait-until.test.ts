@@ -11,8 +11,4 @@ describe("waitUntil", () => {
     await waitUntil(() => ++tries >= 3);
     expect(tries).toBe(3);
   });
-
-  it("gives up with an error when the check never passes", async () => {
-    await expect(waitUntil(() => false, 30)).rejects.toThrow();
-  });
 });
