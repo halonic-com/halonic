@@ -43,12 +43,14 @@ export interface RequestContext {
   readonly secure?: boolean;
 }
 
-/** The body of every error the server sends: a code and a short message, never a stack, path or secret. */
+/** The body of every error the server sends: a code, a short message and sometimes a fix, never a stack, path or secret. */
 export interface ServerErrorBody {
   /** A stable word a client can switch on, such as `host_not_allowed`. */
   readonly code: string;
   /** One short sentence for a person. */
   readonly message: string;
+  /** What the person can do about it, when the error says. */
+  readonly fix?: string;
 }
 
 /**

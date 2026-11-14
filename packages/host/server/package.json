@@ -30,6 +30,7 @@
     "@halonicjs/format": "workspace:*",
     "@halonicjs/google-setup": "workspace:*",
     "@halonicjs/ports": "workspace:*",
-    "@halonicjs/routines": "workspace:*"
+    "@halonicjs/routines": "workspace:*",
+    "@halonicjs/std": "workspace:*"
   }
 }
