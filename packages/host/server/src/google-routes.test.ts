@@ -235,6 +235,22 @@ describe("google client secret", () => {
       expect(google.tokens.values.size).toBe(0);
     });
 
+    it("checks the headers before the body: a non-JSON body sent as text/plain gets 415, a cross-site one 403", async () => {
+      const { server, google } = setup();
+      const { accountRef } = await google.setups.start({ route, accountType: "personal" });
+
+      const notJson = await putSecret(server, accountRef, fakeSecret, {
+        "content-type": "text/plain",
+      });
+      const crossSiteBadBody = await putSecret(server, accountRef, fakeSecret, {
+        "sec-fetch-site": "cross-site",
+      });
+
+      expect(notJson.status).toBe(415);
+      expect(crossSiteBadBody.status).toBe(403);
+      expect(google.tokens.values.size).toBe(0);
+    });
+
     it("sends nothing over plain http to a non-loopback name unless the person confirmed", async () => {
       const { server, google } = setup({ password: true });
       const { accountRef } = await google.setups.start({ route, accountType: "personal" });

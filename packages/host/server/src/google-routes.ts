@@ -28,13 +28,13 @@ export function isSecretPath(pathname: string): boolean {
 export interface GoogleRoutes {
   /**
    * Answers a request under `/api/google/`. The caller has already checked
-   * the host, the origin, the daily ceiling and the body size, and answers
-   * 401 itself when `signedIn` is false.
+   * the host, the origin, the daily ceiling and the body size, and the
+   * sign-in.
    */
   handle(request: Request, body: Uint8Array, context: RequestContext): Promise<Response>;
 }
 
-/** What the routes need to know about the request besides the request. */
+/** The ports the Google routes work with. */
 type GoogleRoutePorts = { readonly google: GoogleSetupPorts };
 
 /** What a request to save a secret says, once it is checked. */
@@ -74,24 +74,29 @@ function readSecretRequest(body: Uint8Array): SecretRequest | null {
 /**
  * The checks only the secret routes make, on top of the sign-in and the
  * server's own origin check (design 3.3, and the API key's rules in the
- * models flow): the request is the page's own, it is JSON, and the secret
- * travels over HTTPS or stays on this computer, or the person confirmed
- * plain http.
+ * models flow). They look at the headers alone, so they run before the body
+ * is parsed: the request is the page's own and it says it is JSON.
  */
-function refuseSecretRequest(
-  request: Request,
-  context: RequestContext,
-  confirmedPlainHttp: boolean,
-): ServerError | null {
+function refuseSecretHeaders(request: Request): ServerError | null {
   // A browser says where a request comes from; a request with no such header is the Android app or a script.
   const site = request.headers.get("sec-fetch-site");
   if (site !== null && site !== "same-origin") {
     return serverErrors.secretFromOtherSite;
   }
   const contentType = request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
-  if (contentType !== "application/json") {
-    return serverErrors.secretNeedsJson;
-  }
+  return contentType === "application/json" ? null : serverErrors.secretNeedsJson;
+}
+
+/**
+ * The secret travels over HTTPS or stays on this computer, or the person
+ * confirmed plain http. This needs `confirmedPlainHttp`, so it runs after the
+ * body is parsed.
+ */
+function refuseSecretConnection(
+  request: Request,
+  context: RequestContext,
+  confirmedPlainHttp: boolean,
+): ServerError | null {
   const safeToSend = isSecureConnection(request, context) || isLoopbackRequest(request);
   return safeToSend || confirmedPlainHttp ? null : serverErrors.secretNeedsSecureConnection;
 }
@@ -157,13 +162,21 @@ export function createGoogleRoutes({ google }: GoogleRoutePorts): GoogleRoutes {
     context: RequestContext,
     accountRef: string,
   ): Promise<Response> {
+    const headerRefusal = refuseSecretHeaders(request);
+    if (headerRefusal !== null) {
+      return errorResponse(headerRefusal);
+    }
     const secretRequest = readSecretRequest(body);
     if (secretRequest === null) {
       return errorResponse(serverErrors.secretNotAccepted);
     }
-    const refusal = refuseSecretRequest(request, context, secretRequest.confirmedPlainHttp);
-    if (refusal !== null) {
-      return errorResponse(refusal);
+    const connectionRefusal = refuseSecretConnection(
+      request,
+      context,
+      secretRequest.confirmedPlainHttp,
+    );
+    if (connectionRefusal !== null) {
+      return errorResponse(connectionRefusal);
     }
     const record = await readSetup(accountRef);
     if (record === null) {
