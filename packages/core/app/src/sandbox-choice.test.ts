@@ -49,6 +49,9 @@ interface Machine {
   default?: MxcDefault;
   /** Each canary probe waits for this before it reports. */
   probeGate?: () => Promise<void>;
+  /** MXC needs its one-time download; each try answers `downloads` in turn (the last repeats), and a `done` one ends the need. */
+  needsDownload?: boolean;
+  downloads?: Array<{ done: true } | { done: false; problem: string }>;
 }
 
 /** A choice over fake backends, how many trust checks MXC ran, and the most that ran at once. */
@@ -65,9 +68,21 @@ function machine(setup: Machine = {}) {
       open: () => Promise.reject(new Error("srt opens no canary")),
     },
   };
+  let downloadNeeded = setup.needsDownload ?? false;
+  let downloadTries = 0;
   const mxc: SandboxBackend = {
     id: "mxc",
     offered: async () => setup.mxcOffered ?? true,
+    setup: {
+      downloadNeeded: async () => downloadNeeded,
+      download: async () => {
+        const answers = setup.downloads ?? [{ done: true }];
+        const answer = answers[Math.min(downloadTries, answers.length - 1)] ?? { done: true };
+        downloadTries += 1;
+        if (answer.done) downloadNeeded = false;
+        return answer;
+      },
+    },
     sandbox: {
       check: async () => ok,
       open: async (given): Promise<SandboxSession> =>
@@ -93,7 +108,12 @@ function machine(setup: Machine = {}) {
     backends: [srt, mxc],
     ...(setup.default === undefined ? {} : { mxcDefault: setup.default }),
   });
-  return { choice, trustChecks: () => checks, mostAtOnce: () => mostAtOnce };
+  return {
+    choice,
+    trustChecks: () => checks,
+    downloadTries: () => downloadTries,
+    mostAtOnce: () => mostAtOnce,
+  };
 }
 
 verifies("app.sandbox-choice", () => {
@@ -246,7 +266,84 @@ verifies("app.sandbox-choice", () => {
 
   it("keeps MXC opt-in by default, and its states to the closed list", () => {
     expect(mxcDefault).toBe("opt-in");
-    expect(mxcStates).toEqual(["not-offered", "off", "in-use", "not-used", "mxc-check-failed"]);
+    expect(mxcStates).toEqual([
+      "not-offered",
+      "off",
+      "in-use",
+      "not-used",
+      "mxc-check-failed",
+      "setup-needed",
+    ]);
     expectTypeOf<"on-by-default">().not.toMatchTypeOf<MxcState>();
+  });
+
+  it("says setup-needed, runs no check and nothing, when MXC would run but isn't downloaded", async () => {
+    const { choice, trustChecks, downloadTries } = machine({ srt: ok, needsDownload: true });
+    expect(await choice.start({ mxc: "on" })).toEqual({
+      active: null,
+      mxc: {
+        offered: true,
+        setting: "on",
+        effective: "on",
+        state: "setup-needed",
+        setup: "download",
+        reason: "download-needed",
+        missing: [],
+      },
+    });
+    expect(trustChecks()).toBe(0);
+    expect(downloadTries()).toBe(0);
+  });
+
+  it("downloads nothing at start or on a settings change, and only when MXC would run", async () => {
+    const { choice, downloadTries } = machine({ needsDownload: true });
+    expect(await choice.start({ mxc: null })).toMatchObject({ mxc: { state: "off" } });
+    expect(await choice.settingsChanged({ mxc: "off" })).toMatchObject({ mxc: { state: "off" } });
+    await choice.settingsChanged({ mxc: "on" });
+    await choice.sessionNotFenced();
+    expect(downloadTries()).toBe(0);
+
+    const byDefault = machine({ srt: ok, default: "on", needsDownload: true });
+    expect(await byDefault.choice.start({ mxc: null })).toMatchObject({
+      active: "srt",
+      mxc: { state: "not-used" },
+    });
+  });
+
+  it("downloads when asked, then runs the trust check and uses MXC", async () => {
+    const { choice, trustChecks, downloadTries } = machine({ needsDownload: true });
+    await choice.start({ mxc: "on" });
+    expect(await choice.downloadMxc()).toMatchObject({
+      active: "mxc",
+      mxc: { state: "in-use" },
+    });
+    expect(downloadTries()).toBe(1);
+    expect(trustChecks()).toBe(1);
+  });
+
+  it("stays setup-needed with the sentence when the download fails, offline or not, and can try again", async () => {
+    const { choice, downloadTries } = machine({
+      needsDownload: true,
+      downloads: [{ done: false, problem: "koffi: fetch failed" }, { done: true }],
+    });
+    await choice.start({ mxc: "on" });
+    expect(await choice.downloadMxc()).toMatchObject({
+      active: null,
+      mxc: {
+        state: "setup-needed",
+        setup: "download",
+        reason: "download-needed",
+        missing: ["koffi: fetch failed"],
+      },
+    });
+    expect(await choice.downloadMxc()).toMatchObject({ mxc: { state: "in-use" } });
+    expect(downloadTries()).toBe(2);
+  });
+
+  it("downloads nothing when MXC doesn't need it", async () => {
+    const { choice, downloadTries } = machine();
+    await choice.start({ mxc: "on" });
+    await choice.downloadMxc();
+    expect(downloadTries()).toBe(0);
   });
 });

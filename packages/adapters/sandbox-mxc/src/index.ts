@@ -9,6 +9,7 @@ export {
   type MxcSdk,
   type MxcSupport,
   mxcSdkLoader,
+  SdkNotDownloadedError,
   systemMachine,
   type WindowsRelease,
 } from "./machine.ts";
@@ -28,4 +29,5 @@ export {
   type SdkInstall,
   type SdkInstallOptions,
 } from "./sdk-install.ts";
-export { mxcSdkPins, type PinnedPackage } from "./sdk-pins.ts";
+export { mxcSdkPins, mxcSdkPinsFor, type PinnedPackage } from "./sdk-pins.ts";
+export { type MxcSdkSetup, mxcSdkSetup } from "./sdk-setup.ts";

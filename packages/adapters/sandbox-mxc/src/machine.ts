@@ -19,6 +19,14 @@ export interface MxcSdk {
   }>;
 }
 
+/** The SDK isn't downloaded (or isn't verified) yet. The one failure a download fixes, so the machine doesn't keep it. */
+export class SdkNotDownloadedError extends Error {
+  constructor() {
+    super("the SDK isn't downloaded yet");
+    this.name = "SdkNotDownloadedError";
+  }
+}
+
 /** Loads MXC's SDK. */
 export type LoadMxcSdk = () => Promise<MxcSdk>;
 
@@ -38,7 +46,12 @@ export interface WindowsRelease {
  * when the SDK can't be loaded or asked.
  */
 export type MxcSupport =
-  | { loaded: false; problem: string }
+  | {
+      loaded: false;
+      problem: string;
+      /** The SDK isn't on the disk yet: downloading it can fix this. */
+      needsDownload: boolean;
+    }
   | {
       loaded: true;
       /** The tier the SDK picks for a plain box: `base-container` is the one the adapter uses. `null` when the SDK says MXC can't run here. */
@@ -91,7 +104,14 @@ export function systemMachine(loadSdk: LoadMxcSdk = mxcSdkLoader(process.platfor
   let sdk: Promise<MxcSdk> | null = null;
   let support: Promise<MxcSupport> | null = null;
   const loaded = () => {
-    sdk ??= loadSdk();
+    sdk ??= loadSdk().catch((error: unknown) => {
+      // A download fixes this one failure, so the next call tries again.
+      if (error instanceof SdkNotDownloadedError) {
+        sdk = null;
+        support = null;
+      }
+      throw error;
+    });
     return sdk;
   };
   return {
@@ -103,6 +123,7 @@ export function systemMachine(loadSdk: LoadMxcSdk = mxcSdkLoader(process.platfor
         .catch((error: unknown) => ({
           loaded: false as const,
           problem: `MXC's SDK can't be loaded or asked: ${error instanceof Error ? error.message : String(error)}`,
+          needsDownload: error instanceof SdkNotDownloadedError,
         }));
       return support;
     },
@@ -129,11 +150,11 @@ export function windowsReleaseOf(osRelease: string, osVersion: string): WindowsR
  * `loaded: false`, which `check()` reports as `other`.
  *
  * @param platform - the operating system, as Node names it
- * @param importSdk - imports `@microsoft/mxc-sdk/v1`; until the adapter declares the SDK (HAL-7606), the default says it isn't installed
+ * @param importSdk - imports `@microsoft/mxc-sdk/v1`; the host passes {@link MxcSdkSetup.importSdk}, which loads the downloaded SDK. The default says it isn't downloaded
  */
 export function mxcSdkLoader(
   platform: NodeJS.Platform,
-  importSdk: ImportMxcSdk = sdkNotInstalled,
+  importSdk: ImportMxcSdk = sdkNotDownloaded,
 ): LoadMxcSdk {
   return async () => {
     if (platform !== "win32") {
@@ -165,6 +186,6 @@ function mxcSdkOf(module: unknown): MxcSdk {
   };
 }
 
-async function sdkNotInstalled(): Promise<unknown> {
-  throw new Error("this build of Halonic doesn't include it yet");
+async function sdkNotDownloaded(): Promise<unknown> {
+  throw new SdkNotDownloadedError();
 }

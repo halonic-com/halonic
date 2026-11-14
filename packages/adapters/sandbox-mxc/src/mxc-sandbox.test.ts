@@ -95,6 +95,7 @@ verifies("sandbox-mxc.offered", () => {
     it("is offered when the SDK can't be loaded, so the check reports the broken install", async () => {
       const broken = supporting({
         loaded: false,
+        needsDownload: false,
         problem: "MXC's SDK can't be loaded or asked: gone",
       });
       expect(await sandboxOn(broken).offered()).toBe(true);
@@ -153,7 +154,9 @@ verifies("sandbox-mxc.check", () => {
 
     it("says `other` when the SDK can't be loaded", async () => {
       const problem = "MXC's SDK can't be loaded or asked: gone";
-      const check = await sandboxOn(supporting({ loaded: false, problem })).check();
+      const check = await sandboxOn(
+        supporting({ loaded: false, problem, needsDownload: false }),
+      ).check();
       expect(check).toEqual({ ok: false, reason: "other", missing: [problem] });
     });
 
@@ -173,7 +176,9 @@ verifies("sandbox-mxc.check", () => {
 
     it("opens no session where MXC can't start", async () => {
       await expect(
-        sandboxOn(supporting({ loaded: false, problem: "gone" })).open(profile),
+        sandboxOn(supporting({ loaded: false, problem: "gone", needsDownload: false })).open(
+          profile,
+        ),
       ).rejects.toThrow("MXC can't start here: gone");
     });
   });
