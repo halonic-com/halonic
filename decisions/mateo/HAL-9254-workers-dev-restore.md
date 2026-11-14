@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-9254#comment-2a59be56-fbbb-4145-a2d7-6d8a77e38746 (Liam's re-review of #2653 at aef259a2; the fix was asked for in Liam's review of #2652, HAL-9253)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vIOnsys3t3Nrd5E6kIK/972Eb9L4pFnfDLR6pG6YaWMAdLWUzc3KcN2nY5G8MRL4K4pG+1A6FiCMlFh+4BM/AA==
 
 ## What changes
 
