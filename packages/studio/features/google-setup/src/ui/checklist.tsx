@@ -1,7 +1,7 @@
 import { isProjectId, type SetupEdit, type SetupStep, type StepId } from "@halonicjs/google-setup";
 import { Button, Callout, type CalloutHandle, type SecretText } from "@halonicjs/studio-kit";
 import { type ReactNode, type Ref, useEffect, useId, useRef, useState } from "react";
-import type { GoogleSetupAccount, SecretEntry } from "../api.ts";
+import type { GoogleSetupAccount, SecretEntry, SecretReplaceAnswer } from "../api.ts";
 import { connectorProblem } from "../connector-problem.ts";
 import { stepTitle } from "../step-names.ts";
 import { credentialSaves } from "./credential-saves.ts";
@@ -23,6 +23,8 @@ export interface ChecklistProps {
   readonly secretEntry: SecretEntry;
   /** Sends the client secret to the secret store. It rejects when it can't be saved. */
   readonly onSaveSecret: (secret: SecretText) => Promise<void>;
+  /** Sends a new client secret to be checked and swapped in, and answers what Google said. */
+  readonly onReplaceSecret: (secret: SecretText) => Promise<SecretReplaceAnswer>;
   /** **Not now**: closes the item. */
   readonly close: () => void;
 }
@@ -185,6 +187,9 @@ export function Checklist(props: ChecklistProps) {
                       return saves.saveClientId(clientId);
                     },
                     onSaveSecret: saves.saveSecret,
+                    onReplaceSecret: props.onReplaceSecret,
+                    beforeFirstSignIn: account.record.lastSignInAt === null,
+                    needsNewSecret: problem?.actionStep === "credentials",
                     onSecretTyped: setSecretTyped,
                   }}
                   answering={answering}

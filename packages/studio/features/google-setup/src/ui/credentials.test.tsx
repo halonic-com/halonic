@@ -273,3 +273,28 @@ verifies("google-setup.secret-field", () => {
     expect(second.container.textContent).toContain("halonic google secret gaccount_1");
   });
 });
+
+const signedIn = [...upToClient, "client", "credentials", "sign-in"];
+const refused = {
+  clientId,
+  refreshRefused: { reason: "client", at } as const,
+  clientSecret: { clientRef: "gclient_1", savedAt: at },
+  lastSignInAt: at,
+};
+const newSecret = "GOCSPX-fake-2222";
+
+verifies("google-setup.secret-replace", () => {
+  it("opens step 6 at the new-secret field when Google refused the saved secret, and sends it to the host's replace", async () => {
+    const { fake, container } = await open(account(record(signedIn, refused)));
+    // Google refused the saved secret, so step 6 opens with the new-secret field already open.
+    expect(inputs(container).secret).toBeDefined();
+    expect(document.activeElement).not.toBe(inputs(container).secret);
+    await type(inputs(container).secret, newSecret);
+    await press(button(container, "Save new secret"));
+    expect(fake.replacements).toEqual([{ accountRef: "gaccount_1", value: newSecret }]);
+    expect(fake.secrets).toEqual([]);
+    expect(JSON.stringify(edits(fake))).not.toContain(newSecret);
+    expect(container.textContent).toContain("Google accepted the new secret.");
+    expect(container.innerHTML).not.toContain(newSecret);
+  });
+});

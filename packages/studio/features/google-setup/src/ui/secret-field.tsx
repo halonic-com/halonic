@@ -1,6 +1,41 @@
 import { Button, Dialog, Field, Input, SecretText } from "@halonicjs/studio-kit";
-import { type Ref, useEffect, useId, useImperativeHandle, useRef, useState } from "react";
-import { entryHint, type KeptOn, keptLine, savedOn, secretSaveFailed } from "./secret-words.ts";
+import {
+  type ReactNode,
+  type Ref,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
+import type { SecretReplaceAnswer } from "../api.ts";
+import {
+  fieldWords,
+  type KeptOn,
+  keptLine,
+  replaceAccepted,
+  replacedNow,
+  replaceNoNetwork,
+  replaceRefused,
+  savedOn,
+  secretSaveFailed,
+} from "./secret-words.ts";
+
+/** Why the last send didn't take, which decides the sentence under the field. */
+type Problem = "failed" | "refused" | "no-network";
+
+const problemText: Readonly<Record<Problem, string>> = {
+  failed: secretSaveFailed,
+  refused: replaceRefused,
+  "no-network": replaceNoNetwork,
+};
+
+/** What was said when the last replacement went through, until the next one starts. */
+function answerText(answer: SecretReplaceAnswer): string | null {
+  if (answer.kind === "accepted") return replaceAccepted(answer.usedBy);
+  if (answer.kind === "replaced") return replacedNow;
+  return null;
+}
 
 /** What a parent can do to the secret field: put the cursor in it. */
 export interface SecretFieldHandle {
@@ -19,6 +54,17 @@ export interface SecretFieldProps {
   readonly handle: Ref<SecretFieldHandle>;
   /** Sends the secret to the secret store. It rejects when it can't be saved. */
   readonly onSave: (secret: SecretText) => Promise<void>;
+  /**
+   * Sends a new secret to be checked and swapped in (design 4.3). It rejects when the engine
+   * can't do it, and answers what Google said otherwise.
+   */
+  readonly onReplace: (secret: SecretText) => Promise<SecretReplaceAnswer>;
+  /** The setup hasn't been signed in yet, so a new secret replaces the old one at once. */
+  readonly beforeFirstSignIn: boolean;
+  /** Opens already in **Replace secret**'s field: Google refused the saved secret. */
+  readonly startReplacing: boolean;
+  /** The link to the client's page in Google Cloud, shown next to **Replace secret**. */
+  readonly clientsLink: ReactNode;
   /** Told whether the input holds unsaved text, so the checklist doesn't move on and drop it. */
   readonly onTyped: (hasText: boolean) => void;
 }
@@ -32,12 +78,20 @@ export interface SecretFieldProps {
  */
 export function SecretField(props: SecretFieldProps) {
   const { savedAt, keptOn, plainHttp, answering, handle, onSave, onTyped } = props;
+  const { onReplace, beforeFirstSignIn, startReplacing, clientsLink } = props;
   const input = useRef<HTMLInputElement>(null);
   const reason = useId();
   // Only whether something is typed, never what, so Save knows if it can go on.
   const [hasText, setHasText] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [problem, setProblem] = useState<Problem | null>(null);
+  // Whether the field is a new secret for a saved one, and what Google said to the last one.
+  const [replacing, setReplacing] = useState(startReplacing);
+  const [answer, setAnswer] = useState<string | null>(null);
+  const replaceButton = useRef<HTMLButtonElement>(null);
+  const answerLine = useRef<HTMLParagraphElement>(null);
+  // Where focus goes once the view for the new state has rendered.
+  const focusNext = useRef<"input" | "replace" | "answer" | null>(null);
   const [confirming, setConfirming] = useState(false);
   // The plain-http question is asked on the first save only, not again on **Try again**.
   const [confirmed, setConfirmed] = useState(false);
@@ -51,22 +105,43 @@ export function SecretField(props: SecretFieldProps) {
     },
     [onTyped],
   );
+  useEffect(() => {
+    const next = focusNext.current;
+    focusNext.current = null;
+    if (next === "input") input.current?.focus();
+    else if (next === "replace") replaceButton.current?.focus();
+    else if (next === "answer") answerLine.current?.focus();
+  }, [replacing, savedAt]);
 
   async function send() {
     const field = input.current;
     const value = field?.value.trim() ?? "";
     if (field === null || value === "" || busy) return;
     setBusy(true);
-    setFailed(false);
+    setProblem(null);
     try {
-      await onSave(new SecretText(value));
+      if (replacing) {
+        const result = await onReplace(new SecretText(value));
+        if (result.kind === "refused" || result.kind === "no-network") {
+          // The old secret is still in use and the field stays open, with what was typed.
+          setProblem(result.kind);
+          field.focus();
+          return;
+        }
+        setAnswer(answerText(result));
+        setReplacing(false);
+        focusNext.current = "answer";
+      } else {
+        await onSave(new SecretText(value));
+        setAnswer(null);
+      }
       field.value = "";
       setHasText(false);
       // A later secret is a new send, so it asks again.
       setConfirmed(false);
     } catch {
       // The typed value stays in the input so the user can try again. The error never repeats it.
-      setFailed(true);
+      setProblem("failed");
       field.focus();
     } finally {
       setBusy(false);
@@ -99,19 +174,31 @@ export function SecretField(props: SecretFieldProps) {
       {status}
     </div>
   );
-  if (savedAt !== null) {
+  if (savedAt !== null && !replacing) {
     return (
-      <div className="flex flex-col gap-1">
-        <span className="sr-only">Client secret</span>
-        {heading}
-        <p className="text-caption text-fg-subtle">{keptLine(keptOn)}</p>
-      </div>
+      <SavedSecret
+        heading={heading}
+        keptOn={keptOn}
+        clientsLink={clientsLink}
+        answer={answer}
+        replaceButton={replaceButton}
+        answerLine={answerLine}
+        onReplace={() => {
+          setAnswer(null);
+          focusNext.current = "input";
+          setReplacing(true);
+        }}
+      />
     );
   }
 
-  const unavailableText = answering
-    ? "Paste the client secret to save it."
-    : "Can't save while the engine isn't answering.";
+  const words = fieldWords({
+    replacing,
+    beforeFirstSignIn,
+    keptOn,
+    retry: problem === "failed" || problem === "no-network",
+    answering,
+  });
   const canSave = answering && hasText;
   return (
     <>
@@ -128,8 +215,8 @@ export function SecretField(props: SecretFieldProps) {
             <Field
               label="Client secret"
               hideLabel
-              hint={entryHint(keptOn)}
-              error={failed ? secretSaveFailed : null}
+              hint={words.hint}
+              error={problem === null ? null : problemText[problem]}
             >
               <Input
                 ref={input}
@@ -142,7 +229,7 @@ export function SecretField(props: SecretFieldProps) {
                 data-lpignore="true"
                 onChange={(event) => {
                   setHasText(event.target.value.trim() !== "");
-                  setFailed(false);
+                  setProblem(null);
                 }}
               />
             </Field>
@@ -154,19 +241,34 @@ export function SecretField(props: SecretFieldProps) {
             busyLabel="Saving…"
             unavailable={canSave ? undefined : { reason }}
           >
-            {failed ? "Try again" : "Save secret"}
+            {words.button}
           </Button>
+          {replacing ? (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                // Nothing typed is kept: a cancelled secret doesn't linger in the input.
+                if (input.current !== null) input.current.value = "";
+                setHasText(false);
+                setProblem(null);
+                focusNext.current = "replace";
+                setReplacing(false);
+              }}
+            >
+              Cancel
+            </Button>
+          ) : null}
         </div>
         {canSave ? null : (
           <p id={reason} className="text-small text-fg-muted">
-            {unavailableText}
+            {words.unavailable}
           </p>
         )}
-        {failed ? (
+        {problem === null ? null : (
           <p role="alert" className="sr-only">
-            {secretSaveFailed}
+            {problemText[problem]}
           </p>
-        ) : null}
+        )}
       </form>
       {confirming ? (
         <Dialog
@@ -188,5 +290,39 @@ export function SecretField(props: SecretFieldProps) {
         </Dialog>
       ) : null}
     </>
+  );
+}
+
+interface SavedSecretProps {
+  readonly heading: ReactNode;
+  readonly keptOn: KeptOn;
+  readonly clientsLink: ReactNode;
+  /** What Google said to the last replacement, until the next one starts. */
+  readonly answer: string | null;
+  readonly replaceButton: Ref<HTMLButtonElement>;
+  readonly answerLine: Ref<HTMLParagraphElement>;
+  readonly onReplace: () => void;
+}
+
+/** A saved secret: "Saved" with its date, where it is kept, and **Replace secret**. No input. */
+function SavedSecret(props: SavedSecretProps) {
+  const { heading, keptOn, clientsLink, answer } = props;
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="sr-only">Client secret</span>
+      {heading}
+      <p className="text-caption text-fg-subtle">{keptLine(keptOn)}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="ghost" size="sm" ref={props.replaceButton} onClick={props.onReplace}>
+          Replace secret
+        </Button>
+        {clientsLink}
+      </div>
+      {answer === null ? null : (
+        <p ref={props.answerLine} tabIndex={-1} role="status" className="text-small text-fg-muted">
+          {answer}
+        </p>
+      )}
+    </div>
   );
 }

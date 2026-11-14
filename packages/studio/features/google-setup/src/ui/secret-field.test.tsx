@@ -2,6 +2,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { act, createRef } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import type { SecretReplaceAnswer } from "../api.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { SecretField, type SecretFieldHandle, type SecretFieldProps } from "./secret-field.tsx";
@@ -24,6 +25,9 @@ async function settled(): Promise<void> {
 function show(props: Partial<SecretFieldProps> = {}) {
   const handle = createRef<SecretFieldHandle>();
   const onSave = vi.fn(async () => {});
+  const onReplace = vi.fn(
+    async (): Promise<SecretReplaceAnswer> => ({ kind: "accepted", usedBy: [] }),
+  );
   const container = render(
     <SecretField
       savedAt={null}
@@ -32,11 +36,15 @@ function show(props: Partial<SecretFieldProps> = {}) {
       answering
       handle={handle}
       onSave={onSave}
+      onReplace={onReplace}
+      beforeFirstSignIn={false}
+      startReplacing={false}
+      clientsLink={null}
       onTyped={() => {}}
       {...props}
     />,
   );
-  return { container, handle, onSave };
+  return { container, handle, onSave, onReplace };
 }
 
 function input(container: HTMLElement): HTMLInputElement {
@@ -204,5 +212,113 @@ verifies("google-setup.secret-field", () => {
     const { container, handle } = show();
     act(() => handle.current?.focus());
     expect(document.activeElement).toBe(input(container));
+  });
+});
+
+const saved = "2026-11-08T10:41:00.000Z";
+const second = "GOCSPX-fake-1111";
+
+verifies("google-setup.secret-replace", () => {
+  it("opens an empty field with the staged line after Replace secret, and Cancel closes it", async () => {
+    const { container } = show({ savedAt: saved });
+    expect(container.querySelector("input")).toBeNull();
+    await press(button(container, "Replace secret"));
+    expect(document.activeElement).toBe(input(container));
+    expect(container.textContent).toContain(
+      "The saved secret stays in use until Google accepts the new one.",
+    );
+    expect(container.textContent).toMatch(/Saved.*\d{1,2} Nov/);
+    await type(input(container), second);
+    await press(button(container, "Cancel"));
+    expect(container.querySelector("input")).toBeNull();
+    expect(document.activeElement?.textContent).toBe("Replace secret");
+    await press(button(container, "Replace secret"));
+    expect(input(container).value).toBe("");
+  });
+
+  it("sends the trimmed new secret and says Google accepted it, naming a shared client's accounts", async () => {
+    const onReplace = vi.fn(
+      async (): Promise<SecretReplaceAnswer> => ({
+        kind: "accepted",
+        usedBy: ["x@example.com", "y@example.com"],
+      }),
+    );
+    const { container, onSave } = show({ savedAt: saved, onReplace });
+    await press(button(container, "Replace secret"));
+    await type(input(container), `  ${second} `);
+    await press(button(container, "Save new secret"));
+    const sent = (onReplace.mock.calls[0] as unknown as [{ reveal(): string }])[0];
+    expect(sent.reveal()).toBe(second);
+    expect(onSave).not.toHaveBeenCalled();
+    expect(container.querySelector("input")).toBeNull();
+    expect(container.textContent).toContain("Google accepted the new secret.");
+    expect(container.textContent).toContain(
+      "Used by x@example.com and y@example.com, both now on the new secret.",
+    );
+    expect(container.textContent).not.toContain(second);
+    expect(document.activeElement?.getAttribute("role")).toBe("status");
+  });
+
+  it("says the secret replaces the old one now, before the first sign-in", async () => {
+    const onReplace = vi.fn(async (): Promise<SecretReplaceAnswer> => ({ kind: "replaced" }));
+    const { container } = show({ savedAt: saved, beforeFirstSignIn: true, onReplace });
+    await press(button(container, "Replace secret"));
+    expect(container.textContent).toContain(
+      "Not signed in yet, so the new secret replaces the old one now. Step 7 checks it.",
+    );
+    expect(container.textContent).not.toContain("stays in use");
+    await type(input(container), second);
+    await press(button(container, "Save new secret"));
+    expect(container.textContent).toContain("Saved the new secret. Step 7 checks it.");
+  });
+
+  it("keeps the field open with what was typed when Google refuses the secret", async () => {
+    const onReplace = vi.fn(async (): Promise<SecretReplaceAnswer> => ({ kind: "refused" }));
+    const { container } = show({ savedAt: saved, onReplace });
+    await press(button(container, "Replace secret"));
+    await type(input(container), second);
+    await press(button(container, "Save new secret"));
+    expect(container.textContent).toContain(
+      "Google didn't accept this secret. Your old secret is still saved and in use.",
+    );
+    expect(input(container).value).toBe(second);
+    expect(document.activeElement).toBe(input(container));
+    expect(container.innerHTML).not.toContain(second);
+  });
+
+  it("says Google couldn't be reached and offers Try again when offline", async () => {
+    const onReplace = vi.fn(async (): Promise<SecretReplaceAnswer> => ({ kind: "no-network" }));
+    const { container } = show({ savedAt: saved, onReplace });
+    await press(button(container, "Replace secret"));
+    await type(input(container), second);
+    await press(button(container, "Save new secret"));
+    expect(container.textContent).toContain(
+      "Couldn't reach Google to check the new secret. The old one is still in use. Try again when you're online.",
+    );
+    expect(input(container).value).toBe(second);
+    expect(button(container, "Try again")).toBeDefined();
+  });
+
+  it("keeps the value out of every console method and the screen when the engine rejects", async () => {
+    const onReplace = vi.fn(async (): Promise<SecretReplaceAnswer> => {
+      throw new Error(`The store refused ${second}`);
+    });
+    const { container } = show({ savedAt: saved, onReplace });
+    const spies = (["log", "info", "warn", "error", "debug"] as const).map((method) =>
+      vi.spyOn(console, method),
+    );
+    await press(button(container, "Replace secret"));
+    await type(input(container), second);
+    await press(button(container, "Save new secret"));
+    expect(container.textContent).toContain("Couldn't save the secret. Nothing was saved.");
+    expect(container.innerHTML).not.toContain(second);
+    expect(JSON.stringify(spies.map((spy) => spy.mock.calls))).not.toContain(second);
+    for (const spy of spies) spy.mockRestore();
+  });
+
+  it("opens already in the new-secret field when Google refused the saved secret", () => {
+    const { container } = show({ savedAt: saved, startReplacing: true });
+    expect(input(container)).not.toBeNull();
+    expect(document.activeElement).not.toBe(input(container));
   });
 });
