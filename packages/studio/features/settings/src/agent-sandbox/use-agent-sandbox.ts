@@ -8,6 +8,7 @@ import {
   type SandboxOutcome,
   type SandboxRunning,
   SETUP_TIME_LIMIT_MS,
+  sandboxView,
 } from "./sandbox-state.ts";
 import * as text from "./sandbox-text.ts";
 
@@ -31,9 +32,9 @@ export function useAgentSandbox(
   announce: (line: string) => void,
 ): AgentSandboxControls {
   const [check, setCheck] = useState<SandboxCheckFacts>({
-    state: "unknown",
-    reason: "checking.",
+    state: "checking",
   });
+  const [rechecking, setRechecking] = useState(false);
   const [running, setRunning] = useState<SandboxRunning | null>(null);
   const [outcome, setOutcome] = useState<SandboxOutcome | null>(null);
   const alive = useRef(true);
@@ -121,14 +122,30 @@ export function useAgentSandbox(
       check,
       running,
       outcome,
+      rechecking,
     },
     setUp: () => void run(check.state === "needs-repair" ? "repair" : "setup"),
     remove: () => void run("remove"),
     checkAgain: () => {
+      if (rechecking) return;
       setOutcome(null);
-      void readCheck().then((facts) => alive.current && setCheck(facts));
+      setRechecking(true);
+      void readCheck().then((facts) => {
+        if (!alive.current) return;
+        setRechecking(false);
+        setCheck(facts);
+        announceRef.current(text.announceChecked(checkedLine(facts)));
+      });
     },
   };
+}
+
+/** What a check says, for the live region: "ready. Checked today at 09:12." or its reason. */
+function checkedLine(facts: SandboxCheckFacts): string {
+  if (facts.state === "ready")
+    return `ready. Checked ${checkedAtLabel(facts.checkedAt, new Date())}.`;
+  return sandboxView({ available: true, place: "app", check: facts, running: null, outcome: null })
+    .lead;
 }
 
 function reasonOf(error: unknown): string {
