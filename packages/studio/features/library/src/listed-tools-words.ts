@@ -54,7 +54,7 @@ export const listedToolsWords = {
   /** The line under a tool the person approved. Never "safe" or "trusted": approving doesn't vouch for the tool. */
   approvedAsks: "Approved. It still asks before each use.",
   offUntilApproved: "Off until you approve the new version.",
-  /** The badge on the connector's card. */
+  /** The badge on the connector's card. A placeholder: the badge itself lands in its own pull request. */
   waitingBadge: (count: number) =>
     count === 1
       ? "1 tool is waiting for your approval"

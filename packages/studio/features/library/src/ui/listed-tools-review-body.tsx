@@ -84,7 +84,7 @@ export function ListedToolsReviewBody({ model, onRemoved, onOutcome }: ListedToo
                     onClick={() => void model.approveThisVersion(row.name).then(onOutcome)}
                   >
                     {listedToolsWords.turnOnAnyway}
-                    <span className="sr-only"> of {row.name}</span>
+                    <span className="sr-only">: {row.name}</span>
                   </Button>
                 }
               />

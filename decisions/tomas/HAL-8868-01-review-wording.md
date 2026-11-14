@@ -1,6 +1,6 @@
 # Decision: the button for a tool its server keeps changing is "Turn it on anyway"
 
-- Approval: Paperclip task HAL-8868 (Mara's words check on HAL-2213, fix 6; Liam's signature pending)
+- Approval: Paperclip task HAL-8868 (Mara's words check on HAL-2213, fix 6)
 - Kind: user-visible
 - Signature: pending
 

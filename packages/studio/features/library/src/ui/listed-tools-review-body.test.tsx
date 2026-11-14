@@ -208,7 +208,7 @@ describe("the review body", () => {
       const button = [...container.querySelectorAll("button")].find((candidate) =>
         candidate.textContent?.startsWith("Turn it on anyway"),
       );
-      expect(button?.textContent).toBe("Turn it on anyway of sync_tags");
+      expect(button?.textContent).toBe("Turn it on anyway: sync_tags");
       await act(async () => button?.click());
       expect(approvals).toEqual([[{ name: "sync_tags", fingerprint: "htl1:sync_tags-1" }]]);
       // Another tool still waits, so the review stays open.
