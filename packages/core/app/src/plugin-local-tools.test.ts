@@ -272,6 +272,26 @@ verifies("app.plugin-local-tools", () => {
       expect(factory.contexts).toEqual([]);
     });
 
+    it("counts a bridge as a network too: no network on MXC means no bridge and no site", async () => {
+      const { sandbox: mxcSandbox, mxc } = mxcOf({ fences: true });
+      const factory = new TestFactory();
+      const local = new PluginLocalTools({
+        sandbox: new TestSandbox(),
+        mxc,
+        factory,
+        context: {} as Omit<ConnectorFactoryContext, "trust" | "sandbox">,
+        prepare: async () => {
+          const profile = profileNumber(1);
+          const bridge = { kind: "loopback", host: "127.0.0.1", port: 41817 } as const;
+          return { config, profile: { ...profile, network: { ...profile.network, bridge } } };
+        },
+      });
+      const refused = local.connector(lister).callTool("list-files", {});
+      await expect(refused).rejects.toMatchObject({ state: { kind: "network-needs-srt" } });
+      expect(mxcSandbox.sessions).toEqual([]);
+      expect(factory.contexts).toEqual([]);
+    });
+
     it("stays off while MXC doesn't count as a fence, as the switch ships", async () => {
       const { sandbox: mxcSandbox, mxc } = mxcOf();
       const { local, sandbox } = setUp(new TestSandbox(), { mxc, sites: ["api.example.com"] });

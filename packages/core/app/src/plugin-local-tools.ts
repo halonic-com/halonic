@@ -312,7 +312,8 @@ class SessionConnector implements ConnectorClient {
   #sandboxFor(profile: SandboxProfile): Pick<Sandbox, "check" | "open"> {
     const mxc = this.#options.mxc;
     if (mxc === undefined || !(mxc.fences ?? mxcFencesRunner) || !mxc.inUse()) return this.#sandbox;
-    if (profile.network.allowedSites.length > 0) {
+    const { bridge, allowedSites } = profile.network;
+    if (bridge !== null || allowedSites.length > 0) {
       throw new LocalToolUnavailableError(this.id, { kind: "network-needs-srt" });
     }
     return mxc.sandbox;
