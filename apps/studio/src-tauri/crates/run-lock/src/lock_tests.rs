@@ -9,15 +9,15 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 
 /// A computer with a fixed name, on which only `running` processes run.
-struct FakeComputer {
-    host: Option<&'static str>,
-    running: Vec<u32>,
+pub(crate) struct FakeComputer {
+    pub(crate) host: Option<&'static str>,
+    pub(crate) running: Vec<u32>,
 }
 
-const THIS_HOST: &str = "this-computer";
+pub(crate) const THIS_HOST: &str = "this-computer";
 
 impl FakeComputer {
-    fn here() -> Self {
+    pub(crate) fn here() -> Self {
         Self {
             host: Some(THIS_HOST),
             running: vec![std::process::id()],
@@ -36,10 +36,10 @@ impl ThisComputer for FakeComputer {
 }
 
 /// A folder under the system's temporary folder, removed when dropped.
-struct TemporaryFolder(PathBuf);
+pub(crate) struct TemporaryFolder(PathBuf);
 
 impl TemporaryFolder {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         static MADE: AtomicUsize = AtomicUsize::new(0);
         let name = format!(
             "halonic-run-lock-{}-{}",
@@ -53,7 +53,7 @@ impl TemporaryFolder {
     }
 
     /// `r1.lock` in this folder, holding `text` when given.
-    fn lock(&self, text: Option<&str>) -> PathBuf {
+    pub(crate) fn lock(&self, text: Option<&str>) -> PathBuf {
         let file = self.0.join("r1.lock");
         if let Some(text) = text {
             fs::write(&file, text).expect("the lock is planted");
@@ -61,7 +61,7 @@ impl TemporaryFolder {
         file
     }
 
-    fn names(&self) -> Vec<String> {
+    pub(crate) fn names(&self) -> Vec<String> {
         let entries = fs::read_dir(&self.0).expect("the folder is listed");
         entries
             .map(|entry| {
@@ -82,7 +82,7 @@ impl Drop for TemporaryFolder {
 }
 
 /// A lock record taken `age_ms` ago by `pid` on `host`.
-fn record(pid: u32, host: &str, age_ms: i64) -> String {
+pub(crate) fn record(pid: u32, host: &str, age_ms: i64) -> String {
     record_text(pid, host, super::now_ms() - age_ms)
 }
 
@@ -377,4 +377,17 @@ fn run_lock_lets_one_writer_at_a_time_in() {
     });
     assert_eq!(rounds.load(Ordering::SeqCst), 40);
     assert!(folder.names().is_empty());
+}
+
+#[cfg(unix)]
+#[test]
+fn run_lock_is_private_while_held() {
+    let folder = TemporaryFolder::new();
+    let file = folder.lock(None);
+    let mode = with_run_lock(&file, &FakeComputer::here(), || {
+        let metadata = fs::metadata(&file).expect("the lock is there");
+        std::os::unix::fs::PermissionsExt::mode(&metadata.permissions()) & 0o777
+    })
+    .expect("the lock is taken");
+    assert_eq!(mode, 0o600);
 }
