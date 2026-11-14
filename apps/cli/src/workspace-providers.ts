@@ -122,10 +122,20 @@ function providerConfig(file: ProviderFile) {
   };
 }
 
-/** `baseUrl`, else OpenAI's own address or a local server's default one. */
+/**
+ * The address a provider of this type and `baseUrl` calls: `baseUrl`, else
+ * OpenAI's own address or a local server's default one, or `undefined` when
+ * the type has none (Anthropic's adapter then uses its built-in address).
+ * The provider and the serve check on a turn's model settings both read it, so
+ * they can't differ.
+ */
+export function providerAddress(type: string, baseUrl: string | undefined): string | undefined {
+  return baseUrl ?? (type === "openai" ? openAiBaseUrl : defaultLocalBaseUrl(type));
+}
+
+/** {@link providerAddress}, or the error for a provider that has none. */
 function openAiCompatibleAddress(file: ProviderFile): string {
-  const address =
-    file.baseUrl ?? (file.type === "openai" ? openAiBaseUrl : defaultLocalBaseUrl(file.type));
+  const address = providerAddress(file.type, file.baseUrl);
   if (address === undefined) {
     throw new WorkspaceModelError(
       "no-provider-address",

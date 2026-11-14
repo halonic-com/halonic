@@ -332,7 +332,6 @@ export interface ConnectorCallPorts {
   readonly settings: SendingSettings;
 }
 
-/** What the server needs from its host. Every port is replaceable, so a test runs the handler with fakes. */
 /**
  * Which unsaved model settings a chat turn may carry. The host sends the
  * secret a setting names to the setting's address, so the host decides whether
@@ -347,6 +346,7 @@ export interface ModelSettingsGate {
   allows(hubId: string, settings: ChatAgentSettings): Promise<boolean>;
 }
 
+/** What the server needs from its host. Every port is replaceable, so a test runs the handler with fakes. */
 export interface ServerPorts {
   /** Runs workflows; the server only forwards start, send, cancel and subscribe calls to it. */
   readonly runs: RunExecutor;

@@ -1,12 +1,10 @@
 import type { ModelSettingsGate } from "@halonicjs/host-server";
 import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
-import { defaultLocalBaseUrl } from "../../doctor-workspace.ts";
-import { openAiBaseUrl } from "../../workspace-providers.ts";
+import { providerAddress } from "../../workspace-providers.ts";
 
-/** The address a provider of this type calls: `baseUrl`, else the type's own, or `undefined` for the adapter's built-in one. */
+/** The address a provider of this type calls, without a trailing slash, or `undefined` for the adapter's built-in one. */
 function addressOf(type: string, baseUrl: string | undefined): string | undefined {
-  const address = baseUrl ?? (type === "openai" ? openAiBaseUrl : defaultLocalBaseUrl(type));
-  return address?.replace(/\/+$/, "");
+  return providerAddress(type, baseUrl)?.replace(/\/+$/, "");
 }
 
 /**
