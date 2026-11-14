@@ -8,6 +8,13 @@ export {
 export type { TurnEvent, TurnLog } from "./agent/turn-log.ts";
 export { callerSource, type HalonicTool, halonicSource } from "./agent/turn-tools.ts";
 export { monthsSpend } from "./budget/spend.ts";
+export {
+  type AssembledEngine,
+  assembleEngine,
+  type EngineAssemblyOptions,
+  type RoutineEngine,
+  type RoutineTicks,
+} from "./engine-assembly.ts";
 export type {
   HarnessAgent,
   HarnessBridgeHost,
