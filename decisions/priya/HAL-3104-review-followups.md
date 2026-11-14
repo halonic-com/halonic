@@ -3,7 +3,7 @@
 - Requirement: `harness-bridge.github-read` (`packages/adapters/harness-bridge/requirements/github-read.md`)
 - Task: HAL-3104, follow-ups from the reviews of #2660
 - Approval: Liam approves this change in his re-review on HAL-9330 (the comment of 14 Nov, 17:30 UTC)
-- Signature:
+- Kind: internal
 
 ## What changes
 
@@ -29,4 +29,4 @@ patches.
 
 ## Covers
 
-- packages/adapters/harness-bridge/requirements/github-read.md
+- harness-bridge.github-read
