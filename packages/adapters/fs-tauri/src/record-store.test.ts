@@ -231,3 +231,26 @@ verifies("fs-tauri.collections-persist", () => {
     });
   });
 });
+
+verifies("fs-tauri.plugin-records-scope", () => {
+  describe("TauriRecordStore for the plugins scope", () => {
+    it("names the scope and no workspace, and a workspace store names no scope", async () => {
+      const shell = new FakeRecordShell({ opened: [acme] });
+      await new TauriRecordStore(shell, { scope: "plugins" }).append([added("settings", "a")]);
+      await new TauriRecordStore(shell, acme).changes("settings");
+      expect(
+        shell.calls.map((call) =>
+          Object.keys(call.args ?? {}).filter((key) => key !== "appends" && key !== "collection"),
+        ),
+      ).toEqual([["scope"], ["workspace"]]);
+    });
+
+    it("keeps the scope's records apart from every workspace's", async () => {
+      const shell = new FakeRecordShell({ opened: [acme] });
+      const plugins = new TauriRecordStore(shell, { scope: "plugins" });
+      await plugins.append([added("settings", "a")]);
+      expect(await plugins.changes("settings")).toHaveLength(1);
+      expect(await new TauriRecordStore(shell, acme).changes("settings")).toEqual([]);
+    });
+  });
+});
