@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { expect, it } from "vitest";
 import { downloadFraction } from "./updater-progress.ts";
 import type { UpdateState } from "./updater-status.ts";
 
