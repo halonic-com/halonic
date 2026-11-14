@@ -2,6 +2,7 @@
 
 - Approval: the 0.1.0 phone scope is Liam's call on HAL-9390 (the phone layout comes after 0.1.0); one plain sentence is wording that builds on the approved Runs screens, a team decision with no board card (HAL-2282 rule); the CTO signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:YrxTS0peeBKydK+QFaOt046pdLv/11aNWqbOCVjGyzwFLeMiV8HRqZ+En9YnOGBwtOhroo1g+ZC8t2RroZxBAw==
 - Task: HAL-9390
 
 ## What changes
