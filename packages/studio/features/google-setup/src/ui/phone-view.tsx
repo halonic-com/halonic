@@ -41,7 +41,7 @@ export function PhoneView({ account, steps }: PhoneViewProps) {
       {problem === undefined ? null : (
         <>
           <ProblemBanner problem={problem} />
-          <ViewOnlyLine>Fix this on your computer: Workspace settings › Connectors</ViewOnlyLine>
+          <ViewOnlyLine>Fix this on your computer: Library › Connectors</ViewOnlyLine>
         </>
       )}
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-body">

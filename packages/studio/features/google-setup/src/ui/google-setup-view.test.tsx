@@ -210,6 +210,24 @@ verifies("google-setup.checklist", () => {
     ]);
   });
 
+  it("says why the progress wasn't saved, with Try again that saves it again", async () => {
+    const { fake, container } = await open([account(twoDone)]);
+    const save = fake.source.edit;
+    let fails = true;
+    fake.source.edit = async (accountRef, edit) => {
+      if (fails) throw new Error("The disk is full.");
+      await save(accountRef, edit);
+    };
+    await press(button(container, "Done, next"));
+    expect(container.textContent).toContain("Couldn't save your progress: the disk is full.");
+    fails = false;
+    await press(button(container, "Try again"));
+    expect(container.textContent).not.toContain("Couldn't save your progress");
+    expect(fake.edits).toEqual([
+      { accountRef: "gaccount_1", edit: { kind: "step-done", step: "consent" } },
+    ]);
+  });
+
   it("opens the next step and moves focus to its title once the account says step 3 is done", async () => {
     const { fake, container } = await open([account(twoDone)]);
     await act(async () => fake.change([account(record(["project", "apis", "consent"]))]));
@@ -349,7 +367,7 @@ verifies("google-setup.resume-and-start-over", () => {
   it("keeps the question open and says so when the host can't start over", async () => {
     const { fake, container } = await open([account(threeDone)]);
     fake.source.startOver = async () => {
-      throw new Error("no");
+      throw new Error("The engine isn't answering.");
     };
     await press(button(container, "Start over"));
     const confirm = dialog(container)?.querySelector<HTMLElement>("button[id]");
@@ -358,7 +376,14 @@ verifies("google-setup.resume-and-start-over", () => {
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
     });
-    expect(dialog(container)?.textContent).toContain("Couldn't start over. Try again.");
+    expect(dialog(container)?.textContent).toContain(
+      "Couldn't start over: the engine isn't answering.",
+    );
+    expect(
+      [...(dialog(container)?.querySelectorAll("button") ?? [])].some(
+        (candidate) => candidate.textContent === "Try again",
+      ),
+    ).toBe(true);
   });
 
   it("makes Start over unavailable, with its reason, while the engine isn't answering", async () => {

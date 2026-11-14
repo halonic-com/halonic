@@ -253,8 +253,8 @@ function ClientBody({ step }: { readonly step: SetupStep }) {
   return (
     <div className="flex flex-col gap-3">
       <Callout tone="warning">
-        Google shows the client secret only once, right after you click Create. Keep that window
-        open and go on to step 6.
+        Google shows the client secret only once, right after you click Create. The next steps
+        aren't in this version of Halonic yet.
       </Callout>
       <Actions>
         <li>

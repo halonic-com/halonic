@@ -1,8 +1,9 @@
 import type { AccountType } from "@halonicjs/google-setup";
-import { Button, StatusChip } from "@halonicjs/studio-kit";
+import { Button, Callout, StatusChip } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import { accountTypeNames, listNames } from "./account-labels.ts";
 import { AccountTypeQuestion } from "./account-type-question.tsx";
+import { failureLine } from "./failure-line.ts";
 import { OtherWays } from "./other-ways.tsx";
 
 /** Props for {@link AccountHeader}. */
@@ -28,7 +29,8 @@ export interface AccountHeaderProps {
 export function AccountHeader(props: AccountHeaderProps) {
   const { email, serviceNames, accountType, asking, progress, answering, onAccountType } = props;
   const [changing, setChanging] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<string | undefined>(undefined);
+  const retry = useRef<() => void>(() => {});
   const typeLine = useId();
   const changeButton = useRef<HTMLButtonElement>(null);
   // Set when the question closes after **Change**, so focus goes back to it once it is drawn.
@@ -43,18 +45,19 @@ export function AccountHeader(props: AccountHeaderProps) {
 
   function closeQuestion() {
     returnFocus.current = true;
-    setFailed(false);
+    setFailed(undefined);
     setChanging(false);
   }
 
   async function pick(next: AccountType) {
     if (!answering) return;
-    setFailed(false);
+    setFailed(undefined);
     try {
       await onAccountType(next);
       if (changing) closeQuestion();
-    } catch {
-      setFailed(true);
+    } catch (error) {
+      setFailed(failureLine("save the account type", error));
+      retry.current = () => void pick(next);
     }
   }
 
@@ -104,11 +107,11 @@ export function AccountHeader(props: AccountHeaderProps) {
           </Button>
         </div>
       )}
-      {failed ? (
-        <p role="alert" className="text-body text-danger">
-          Couldn't save the account type. Try again.
-        </p>
-      ) : null}
+      {failed === undefined ? null : (
+        <Callout tone="danger" action={{ label: "Try again", onClick: () => retry.current() }}>
+          {failed}
+        </Callout>
+      )}
       <div className="flex flex-wrap items-center gap-x-2">
         <p className="text-body">Uses your own Google app, on this computer.</p>
         <OtherWays services={listNames(serviceNames, "or")} />

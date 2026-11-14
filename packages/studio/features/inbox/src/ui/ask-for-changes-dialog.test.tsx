@@ -15,8 +15,7 @@ afterEach(() => {
 // Invented, shaped like the real thing: a prefix and random-looking characters.
 const googleSecret = `GOCSPX-${"aB3".repeat(8)}`;
 const providerKey = `sk-proj-${"Xy7".repeat(8)}`;
-const googleLine =
-  "This looks like a Google client secret. Messages are kept in the run log. Put it in the secret field of the Google setup instead.";
+const googleLine = "This looks like a Google client secret. Messages are kept in the run log.";
 
 function openDialog() {
   const sent: string[] = [];
