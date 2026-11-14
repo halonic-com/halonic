@@ -1,6 +1,12 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { allFilter, type OverviewHub, overviewSections, sharedFilter } from "./overview-model.ts";
+import {
+  allFilter,
+  hubFilter,
+  type OverviewHub,
+  overviewSections,
+  sharedFilter,
+} from "./overview-model.ts";
 
 const hubs: readonly OverviewHub[] = [
   {
@@ -26,18 +32,27 @@ function shape(query: string, filter = allFilter) {
 verifies("shell.overview.hub-sections-and-pins", () => {
   it("shows every hub, even an empty one, then the shared section, pinned items first", () => {
     expect(shape("")).toEqual([
-      { id: "acme", items: ["summarise", "draft-reply"] },
-      { id: "beta", items: ["billing"] },
-      { id: "empty", items: [] },
+      { id: hubFilter("acme"), items: ["summarise", "draft-reply"] },
+      { id: hubFilter("beta"), items: ["billing"] },
+      { id: hubFilter("empty"), items: [] },
       { id: sharedFilter, items: ["tone"] },
     ]);
   });
 
-  it("names the shared section after the workspace", () => {
-    const names = overviewSections(hubs, shared, { filter: allFilter, query: "" }).map(
-      (section) => section.name,
-    );
-    expect(names.at(-1)).toBe("Shared in Acme");
+  it("hands the page the workspace's name, not a worded heading", () => {
+    const last = overviewSections(hubs, shared, { filter: allFilter, query: "" }).at(-1);
+    expect(last).toMatchObject({ name: "Acme", shared: true });
+  });
+
+  it('keeps a hub called "all" or "shared" apart from the filters', () => {
+    const odd = [
+      { id: "all", name: "all", items: [{ id: "a", name: "A" }] },
+      { id: "shared", name: "shared", items: [{ id: "b", name: "B" }] },
+    ];
+    const ids = overviewSections(odd, shared, { filter: allFilter, query: "" }).map((s) => s.id);
+    expect(new Set(ids).size).toBe(3);
+    const only = overviewSections(odd, shared, { filter: hubFilter("shared"), query: "" });
+    expect(only.map((section) => section.items.map((item) => item.id))).toEqual([["b"]]);
   });
 
   it("leaves the shared section out when nothing is shared", () => {
@@ -49,25 +64,29 @@ verifies("shell.overview.hub-sections-and-pins", () => {
         query: "",
       },
     );
-    expect(sections.map((section) => section.id)).toEqual(["acme", "beta", "empty"]);
+    expect(sections.map((section) => section.id)).toEqual([
+      hubFilter("acme"),
+      hubFilter("beta"),
+      hubFilter("empty"),
+    ]);
   });
 
   it("shows only the picked hub, or only the shared items", () => {
-    expect(shape("", "beta")).toEqual([{ id: "beta", items: ["billing"] }]);
+    expect(shape("", hubFilter("beta"))).toEqual([{ id: hubFilter("beta"), items: ["billing"] }]);
     expect(shape("", sharedFilter)).toEqual([{ id: sharedFilter, items: ["tone"] }]);
   });
 });
 
 verifies("shell.overview.search", () => {
   it("matches the name, id, description and detail, ignoring case", () => {
-    expect(shape("DRAFT")).toEqual([{ id: "acme", items: ["draft-reply"] }]);
-    expect(shape("long mail")).toEqual([{ id: "acme", items: ["summarise"] }]);
-    expect(shape("monthly")).toEqual([{ id: "beta", items: ["billing"] }]);
+    expect(shape("DRAFT")).toEqual([{ id: hubFilter("acme"), items: ["draft-reply"] }]);
+    expect(shape("long mail")).toEqual([{ id: hubFilter("acme"), items: ["summarise"] }]);
+    expect(shape("monthly")).toEqual([{ id: hubFilter("beta"), items: ["billing"] }]);
     expect(shape("tone")).toEqual([{ id: sharedFilter, items: ["tone"] }]);
   });
 
   it("hides the sections without a match", () => {
-    expect(shape("billing").map((section) => section.id)).toEqual(["beta"]);
+    expect(shape("billing").map((section) => section.id)).toEqual([hubFilter("beta")]);
   });
 
   it("shows everything again for a blank search", () => {

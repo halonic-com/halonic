@@ -30,17 +30,27 @@ export const allFilter = "all";
 /** The id of the filter that shows only the shared items. */
 export const sharedFilter = "shared";
 
+/**
+ * The id of the filter, and the key of the section, of one hub. Hub ids are user-chosen, so the
+ * prefix keeps a hub called "all" or "shared" apart from {@link allFilter} and {@link sharedFilter}.
+ */
+export function hubFilter(hubId: string): string {
+  return `hub:${hubId}`;
+}
+
 /** One section of the page: a hub's items, or the shared ones. */
 export interface OverviewSection {
-  /** The hub's id, or {@link sharedFilter}. */
+  /** {@link hubFilter} of the hub, or {@link sharedFilter}. */
   readonly id: string;
+  /** The hub's name, or the workspace's name for the shared section: the page words the heading. */
   readonly name: string;
+  readonly shared: boolean;
   readonly items: readonly OverviewItem[];
 }
 
 /** What decides which sections show. */
 export interface OverviewView {
-  /** {@link allFilter}, {@link sharedFilter} or a hub's id. */
+  /** {@link allFilter}, {@link sharedFilter} or {@link hubFilter} of a hub. */
   readonly filter: string;
   /** The search field's text. */
   readonly query: string;
@@ -64,7 +74,7 @@ function pinnedFirst(items: readonly OverviewItem[]): readonly OverviewItem[] {
 
 /**
  * The sections the page shows. Under "All" that is every hub, even an empty one, then
- * "Shared in <workspace>" when something is shared. A search hides the sections without a match.
+ * the shared section when something is shared. A search hides the sections without a match.
  */
 export function overviewSections(
   hubs: readonly OverviewHub[],
@@ -74,8 +84,8 @@ export function overviewSections(
   const sections: OverviewSection[] = [];
   if (view.filter !== sharedFilter) {
     for (const hub of hubs) {
-      if (view.filter === allFilter || view.filter === hub.id) {
-        sections.push({ id: hub.id, name: hub.name, items: hub.items });
+      if (view.filter === allFilter || view.filter === hubFilter(hub.id)) {
+        sections.push({ id: hubFilter(hub.id), name: hub.name, shared: false, items: hub.items });
       }
     }
   }
@@ -83,7 +93,8 @@ export function overviewSections(
   if (showShared && shared !== undefined && shared.items.length > 0) {
     sections.push({
       id: sharedFilter,
-      name: `Shared in ${shared.workspaceName}`,
+      name: shared.workspaceName,
+      shared: true,
       items: shared.items,
     });
   }

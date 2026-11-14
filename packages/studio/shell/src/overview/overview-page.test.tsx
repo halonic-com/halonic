@@ -12,6 +12,7 @@ afterEach(unmountAll);
 const words: OverviewWords = {
   searchLabel: "Search for skills",
   loadingLabel: "Loading skills",
+  sharedSection: (workspace) => `Shared in ${workspace}`,
   emptySection: (name) => `No skills in ${name} yet`,
   noMatch: (query) => `No results for “${query}”`,
   nothingYet: { title: "No skills yet" },
@@ -116,12 +117,19 @@ verifies("shell.overview.states", () => {
     expect(search(page)).toBeTruthy();
   });
 
+  it("shows nothing-yet, not a no-match line, when there is no hub and the shared list is empty", () => {
+    const page = show({ hubs: [], shared: { workspaceName: "Acme", items: [] } });
+    expect(page.textContent).toContain("No skills yet");
+    expect(page.textContent).not.toContain("No results");
+  });
+
   it("shows the failure with Try again", () => {
     const onTryAgain = vi.fn();
     const page = show({
       failure: { title: "Couldn't load skills", reason: "Halonic isn't answering.", onTryAgain },
     });
     expect(page.textContent).toContain("Couldn't load skills");
+    expect(page.querySelector('input[aria-label="Search for skills"]')).toBeNull();
     const button = Array.from(page.querySelectorAll("button")).find(
       (candidate) => candidate.textContent === "Try again",
     );

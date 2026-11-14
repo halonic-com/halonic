@@ -10,13 +10,16 @@ import {
 
 /**
  * The words the page can't know: each feature passes its own, in the product's voice. The shell
- * adds none, so a Library word never lands in a hub list.
+ * adds none but the "Try again" the shell's other pages share, so a Library word never lands in a
+ * hub list.
  */
 export interface OverviewWords {
   /** The search field's name: "Search for skills". */
   readonly searchLabel: string;
   /** What screen readers hear while the items load: "Loading skills". */
   readonly loadingLabel: string;
+  /** The heading of the shared section: "Shared in Acme". */
+  readonly sharedSection: (workspaceName: string) => string;
   /** A hub with no items, in its own section: "No skills in acme yet". */
   readonly emptySection: (sectionName: string) => string;
   /** Nothing matches the search: "No results for “sorter”". */
@@ -78,6 +81,8 @@ export function OverviewPage({
 }: OverviewPageProps) {
   const [query, setQuery] = useState("");
   const sections = overviewSections(hubs, shared, { filter: allFilter, query });
+  const headingOf = (section: OverviewSection) =>
+    section.shared ? words.sharedSection(section.name) : section.name;
 
   function clearOnEscape(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Escape" && query !== "") {
@@ -91,19 +96,22 @@ export function OverviewPage({
   return (
     <div>
       {tabs}
-      <div className="px-4 py-2">
-        <Input
-          type="search"
-          aria-label={words.searchLabel}
-          leadingIcon={<SearchIcon />}
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={clearOnEscape}
-        />
-      </div>
+      {failure === undefined && (
+        <div className="px-4 py-2">
+          <Input
+            type="search"
+            aria-label={words.searchLabel}
+            leadingIcon={<SearchIcon />}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={clearOnEscape}
+          />
+        </div>
+      )}
       <OverviewBody
         sections={sections}
-        hasAnyItem={hubs.length > 0 || shared !== undefined}
+        headingOf={headingOf}
+        hasAnySection={hubs.length > 0 || (shared?.items.length ?? 0) > 0}
         query={query}
         words={words}
         loading={loading}
@@ -117,7 +125,8 @@ export function OverviewPage({
 
 interface OverviewBodyProps {
   readonly sections: readonly OverviewSection[];
-  readonly hasAnyItem: boolean;
+  readonly hasAnySection: boolean;
+  readonly headingOf: (section: OverviewSection) => string;
   readonly query: string;
   readonly words: OverviewWords;
   readonly loading: boolean;
@@ -126,10 +135,11 @@ interface OverviewBodyProps {
   readonly onOpenInNewTab: (id: string) => void;
 }
 
-/** Everything under the search field: the failure, the loading rows, the states or the sections. */
+/** Everything under the search field (the failed state has no field): the failure, the loading rows, the states or the sections. */
 function OverviewBody({
   sections,
-  hasAnyItem,
+  headingOf,
+  hasAnySection,
   query,
   words,
   loading,
@@ -150,7 +160,7 @@ function OverviewBody({
   if (loading) {
     return <List label={words.loadingLabel} rows={[]} loading loadingLabel={words.loadingLabel} />;
   }
-  if (!hasAnyItem) {
+  if (!hasAnySection) {
     return <EmptyState {...words.nothingYet} />;
   }
   if (sections.length === 0) {
@@ -161,9 +171,9 @@ function OverviewBody({
       {sections.map((section) => (
         <List
           key={section.id}
-          heading={{ name: section.name }}
+          heading={{ name: headingOf(section) }}
           rows={rowsOf(section)}
-          empty={{ plain: true, title: words.emptySection(section.name) }}
+          empty={{ plain: true, title: words.emptySection(headingOf(section)) }}
           onOpen={onOpen}
           onOpenInNewTab={onOpenInNewTab}
         />
