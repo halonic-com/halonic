@@ -134,7 +134,7 @@ verifies("check.guard-notes-own-paths", () => {
     ]);
   });
 
-  test("fails a note added under decisions/ with another name than the branch's, but not one already on the base", async () => {
+  test("fails a note added under decisions/ with another name than the branch's, but never reports one already on the base as a stray", async () => {
     const stray = "decisions/julian/HAL-1337-other-name.md";
     const old = "decisions/julian/HAL-1-old.md";
     const run = async (added: readonly string[]) =>
@@ -154,10 +154,13 @@ verifies("check.guard-notes-own-paths", () => {
           }),
         })
       ).problems.map((problem) => `${problem.file}: ${problem.message}`);
+    // A note already on base is never a stray; editing it is the append-only rule's business.
+    const appendOnly = `${old}: Edits or deletes ${old}, a decision note already on the base branch. Notes on base are append-only: add ${noteFile} and list "${old}" under Covers to change one.`;
     expect(await run([stray])).toEqual([
       `${stray}: ${stray} isn't this branch's note; rename it to ${noteFile}. Only that file is checked and signed.`,
+      appendOnly,
     ]);
-    expect(await run([])).toEqual([]);
+    expect(await run([])).toEqual([appendOnly]);
   });
 
   test("passes it with a user-visible note that lists .github/ and the CTO's signature", async () => {
