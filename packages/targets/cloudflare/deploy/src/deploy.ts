@@ -6,6 +6,9 @@ import { type ProvisionStep, provision } from "./provision.ts";
 import { type UploadProgress, uploadAndSwitch } from "./upload.ts";
 import { versionNote } from "./version-note.ts";
 
+const LOST_AFTER_SWITCH =
+  "The deploy is live, but its lock was lost after traffic switched (another deploy may have taken it over). Check the Worker before deploying again.";
+
 /** Where the deployed files come from: git, not the working folder. */
 export interface DeploySource {
   /** The commit the deploy is taken from (its `HEAD`). The snapshot is read from git objects at this commit. */
@@ -83,6 +86,8 @@ export interface DeployDone {
   readonly mode: "deployed";
   readonly commit: string;
   readonly versionId: string;
+  /** Set when something went wrong after traffic switched. The deploy is live. */
+  readonly warnings?: readonly string[];
 }
 
 /**
@@ -181,9 +186,17 @@ export async function deploy(
           ...(options.message ? { message: options.message } : {}),
         }),
         onProgress: report,
+        beforeTraffic: () => lock.commit(),
         ...options.upload,
       });
-      return { mode: "deployed" as const, commit, versionId };
+      // Past the switch the deploy is live, so a lost lock is a warning, not a failure.
+      const lost = await lock.lostAfterCommit();
+      return {
+        mode: "deployed" as const,
+        commit,
+        versionId,
+        ...(lost ? { warnings: [LOST_AFTER_SWITCH] } : {}),
+      };
     },
   );
 }

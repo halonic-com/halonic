@@ -27,12 +27,21 @@ export interface WithDeployLockOptions {
 export interface DeployLock {
   /** Extends the lease. Call it at each step. Throws `deploy-lock-lost` if another deploy took over. */
   renew(): Promise<void>;
+  /**
+   * Renews the lease and marks the point of no return: call it right before the step that changes
+   * what users see. Throws `deploy-lock-lost` if the lock is gone, while stopping is still safe.
+   * A loss after this no longer fails the run; read it with {@link lostAfterCommit}.
+   */
+  commit(): Promise<void>;
+  /** Checks the lease once more and returns the loss after `commit`, if any. Else undefined. */
+  lostAfterCommit(): Promise<DeployError | undefined>;
 }
 
 /**
  * Runs `fn` while holding the deploy lock. A second deploy gets a {@link DeployLockedError}
  * with the holder and start time. The lease renews in the background during long steps and
- * the lock is freed when `fn` ends, however it ends.
+ * the lock is freed when `fn` ends, however it ends. A loss found after `fn` returns fails the
+ * run only if `fn` never committed; once it has, the work is done and the loss is `fn`'s to report.
  */
 export async function withDeployLock<T>(
   api: CloudflareApi,
@@ -57,6 +66,7 @@ export async function withDeployLock<T>(
   // request went out before the lease was set, so counting from then never overstates it.
   let confirmedUntil = requestedAt + leaseMs;
   let lost: DeployError | undefined;
+  let committed = false;
   const renew = async () => {
     if (lost) throw lost;
     if (options.signal?.aborted) return;
@@ -90,8 +100,19 @@ export async function withDeployLock<T>(
 
   let failure: unknown;
   try {
-    const result = await fn({ renew });
-    if (lost) throw lost;
+    const result = await fn({
+      renew,
+      commit: async () => {
+        await renew();
+        committed = true;
+      },
+      lostAfterCommit: async () => {
+        if (!committed) return undefined;
+        await renew().catch(() => {});
+        return lost;
+      },
+    });
+    if (lost && !committed) throw lost;
     return result;
   } catch (error) {
     failure = error;

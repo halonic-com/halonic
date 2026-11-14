@@ -38,6 +38,8 @@ export interface UploadAndSwitchOptions {
   readonly durableObjectMigrations?: readonly DurableObjectMigration[];
   readonly message?: string;
   readonly onProgress?: (event: UploadProgress) => void;
+  /** Awaited right before the first call that changes live traffic; throw to stop the deploy. */
+  readonly beforeTraffic?: () => Promise<void>;
   /** Tests inject these. */
   readonly fetch?: typeof fetch;
   readonly sleep?: (ms: number) => Promise<void>;
@@ -103,6 +105,7 @@ export async function uploadAndSwitch(
   const goesLive = liveReason !== undefined;
   const serving = servingVersions(previous, goesLive);
 
+  if (goesLive) await options.beforeTraffic?.();
   const versionId = goesLive
     ? await deployLive(api, options, upload, migrations)
     : await uploadDark(api, options, upload, serving);
@@ -129,6 +132,7 @@ export async function uploadAndSwitch(
     );
   }
   if (!goesLive) {
+    await options.beforeTraffic?.();
     await api.deployVersions(accountId, worker, [{ id: versionId, percentage: 100 }]);
     report({ step: "switched", versionId });
   }

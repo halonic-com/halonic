@@ -114,6 +114,29 @@ verifies("deploy.lock", () => {
     expect((error as DeployError).code).toBe("deploy-lock-lost");
   });
 
+  it("does not fail a run whose lock was lost after it committed, and reports the loss", async () => {
+    const clock = { t: 0 };
+    const { api, options } = setup(clock, { accounts: [] });
+    const lostAfter = await withDeployLock(api, options, async (lock) => {
+      await lock.commit();
+      clock.t += 11 * minute;
+      await api.takeDeployLock("a1", "halonic-dev-data", { ...other, leaseMs: minute });
+      return lock.lostAfterCommit();
+    });
+    expect((lostAfter as DeployError).code).toBe("deploy-lock-lost");
+  });
+
+  it("stops at commit when the lock is already lost", async () => {
+    const clock = { t: 0 };
+    const { api, options } = setup(clock, { accounts: [] });
+    const error = await withDeployLock(api, options, async (lock) => {
+      clock.t += 11 * minute;
+      await api.takeDeployLock("a1", "halonic-dev-data", { ...other, leaseMs: minute });
+      await lock.commit();
+    }).catch((e: unknown) => e);
+    expect((error as DeployError).code).toBe("deploy-lock-lost");
+  });
+
   it("survives a failed background renewal while the lease is still ours, and frees the lock", async () => {
     const clock = { t: 0 };
     const state = { accounts: [], renewFails: false };
