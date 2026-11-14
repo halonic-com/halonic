@@ -1,5 +1,5 @@
 import { mkdtempSync } from "node:fs";
-import { cp, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, realpath, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,6 +17,7 @@ import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { heavyTestTimeout } from "../../test/golden.ts";
 import { turnOffLocalOnly } from "../../test/local-only.ts";
 import { pastedKey, pasteKeyIntoProvider } from "../../test/pasted-key.ts";
+import { removeTestFolder } from "../../test/remove-folder.ts";
 import { engineStart, testRunSetup } from "../../test/run-setup.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import {
@@ -58,7 +59,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 /**

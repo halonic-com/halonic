@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
@@ -16,6 +16,7 @@ import { exitCodeOfError } from "./exit-code-for.ts";
 import { runMessages } from "./messages/run.ts";
 import { readSourceListing } from "./source-listing.ts";
 import { FakeMcpServers } from "./test/fake-mcp-servers.ts";
+import { removeTestFolder } from "./test/remove-folder.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import { assertTrustable, cliTrustService, readWorkspaceTrust } from "./workspace-trust.ts";
 
@@ -52,7 +53,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 /** Acme's folder, its loaded `notes` source, and a way to trust it as it is now. */

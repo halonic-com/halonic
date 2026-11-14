@@ -12,6 +12,7 @@ import { type RoutineTicks, runTimerCollection } from "./local-engine-host.ts";
 import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import type { GaveUpRun, StuckTimer } from "./stuck-timers.ts";
+import { removeTestFolder } from "./test/remove-folder.ts";
 import { engineStart } from "./test/run-setup.ts";
 import { waitUntil } from "./test/wait-until.test-helper.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
@@ -30,7 +31,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 const profile = () => ({

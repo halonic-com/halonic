@@ -1,4 +1,4 @@
-import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,6 +13,7 @@ import type { CommandContext } from "./command.ts";
 import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import { stuckTimerWatch } from "./stuck-timers.ts";
+import { removeTestFolder } from "./test/remove-folder.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import {
   engineErrorReporter,
@@ -37,7 +38,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 function setup(): WorkspaceEngineSetup {

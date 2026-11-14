@@ -1,4 +1,4 @@
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,6 +15,7 @@ import { exitCodeOfError } from "../../exit-code-for.ts";
 import type { HarnessProgram } from "../../harness-programs.ts";
 import { runCli } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
+import { removeTestFolder } from "../../test/remove-folder.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import {
   nodeProfileEnvironment,
@@ -63,7 +64,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 /** Acme trusted as it is now. */

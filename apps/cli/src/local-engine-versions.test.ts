@@ -1,4 +1,4 @@
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,6 +11,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { type LocalEngine, openLocalEngine } from "./local-engine-host.ts";
+import { removeTestFolder } from "./test/remove-folder.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "./workspace-runs.ts";
 import type { WorkspaceVersions } from "./workspace-versions.ts";
 
@@ -47,7 +48,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await Promise.all(opened.splice(0).map((engine) => engine.close()));
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 /** The engine over `versions`. It starts no run's connectors, so it reads no version for them. */

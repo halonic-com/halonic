@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, rm, symlink } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ProfileEnvironment } from "@halonicjs/profile";
@@ -6,6 +6,7 @@ import { bytesToHex } from "@halonicjs/std";
 import { completed, started } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { removeTestFolder } from "./test/remove-folder.ts";
 import {
   nodeProfileEnvironment,
   openWorkspaceRuns,
@@ -28,7 +29,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 /** Stores one completed run, `01JD8Q`, for the workspace in `root`. */

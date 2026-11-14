@@ -1,4 +1,4 @@
-import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,6 +11,7 @@ import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type LocalEngine, openLocalEngine } from "../src/local-engine-host.ts";
+import { removeTestFolder } from "../src/test/remove-folder.ts";
 import { nodeProfileEnvironment } from "../src/workspace-runs.ts";
 
 // A harness run in the real srt sandbox (HAL-7811), before HAL-6477 turns
@@ -46,7 +47,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await Promise.all(opened.splice(0).map((engine) => engine.close()));
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 /** A hub whose coder runs in Claude Code, and a workflow of one step that runs it. */

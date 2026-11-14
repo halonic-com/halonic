@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
@@ -21,6 +21,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { openPluginBackend } from "./open-plugin-backend.ts";
 import { PluginConnectorFactory } from "./plugin-connector-factory.ts";
+import { removeTestFolder } from "./test/remove-folder.ts";
 import { webCryptoDigest } from "./workspace-runs.ts";
 import { cliTrustService } from "./workspace-trust.ts";
 
@@ -57,7 +58,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(root, { recursive: true, force: true });
+  await removeTestFolder(root);
 });
 
 async function put(files: Record<string, string>): Promise<void> {

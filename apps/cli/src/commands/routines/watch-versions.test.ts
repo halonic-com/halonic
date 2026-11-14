@@ -1,4 +1,4 @@
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,6 +6,7 @@ import { contractGrant } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
+import { removeTestFolder } from "../../test/remove-folder.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { WatchedVersions } from "./watch-versions.ts";
 
@@ -27,7 +28,7 @@ beforeEach(async () => {
 afterEach(async () => {
   await versions?.close();
   versions = undefined;
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 /** The watch's versions of Acme with history off: the saved files. */

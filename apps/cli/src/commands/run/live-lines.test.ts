@@ -1,4 +1,4 @@
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,6 +15,7 @@ import { type Phrase, plainText } from "../../messages/phrase.ts";
 import { type Clock, type LiveLine, startProgress } from "../../output/progress.ts";
 import type { RunClock } from "../../run-times.ts";
 import { manualClock } from "../../test/manual-clock.ts";
+import { removeTestFolder } from "../../test/remove-folder.ts";
 import { engineStart } from "../../test/run-setup.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { liveLines } from "./live-lines.ts";
@@ -80,7 +81,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 /** What the command did through its context, in order, as plain text. */

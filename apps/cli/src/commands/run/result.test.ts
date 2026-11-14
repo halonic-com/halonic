@@ -1,4 +1,4 @@
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +12,7 @@ import { exitCode } from "../../exit-code.ts";
 import { stoppedResult } from "../../follow-run.ts";
 import { openLocalEngine } from "../../local-engine-host.ts";
 import { plainText } from "../../messages/phrase.ts";
+import { removeTestFolder } from "../../test/remove-folder.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { runResult } from "./result.ts";
 
@@ -58,7 +59,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 /** The run's log up to the moment it entered `state`, as a Ctrl C there would leave it. */

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
@@ -8,6 +8,7 @@ import type { QuestionTerminal } from "../../output/question.ts";
 import { openPluginService, type PluginSetup } from "../../plugin-host.ts";
 import { runCli, type Terminal } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
+import { removeTestFolder } from "../../test/remove-folder.ts";
 import { pluginCommandWith } from "./command.ts";
 
 // The attack P3 lists last: a file in the plugins folder changed after the
@@ -31,7 +32,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 const manifest = `id: weather
