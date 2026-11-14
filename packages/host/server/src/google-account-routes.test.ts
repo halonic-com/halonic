@@ -346,7 +346,7 @@ describe("google check again and disconnect", () => {
 
       const response = await send(state.server, "POST", `${accountRef}/check`);
 
-      expect(await response.json()).toEqual({ kind: "unreachable" });
+      expect(await response.json()).toEqual({ result: "unreachable" });
       expect((await state.google.setups.read(accountRef))?.refreshRefused).toBeNull();
     });
 

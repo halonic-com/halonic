@@ -295,7 +295,7 @@ export function createGoogleRoutes({ google }: GoogleRoutePorts): GoogleRoutes {
         await setups.refreshRefused(accountRef, result);
         return Response.json({ result: result.kind });
       default:
-        return Response.json(result);
+        return Response.json({ result: result.kind });
     }
   }
 
