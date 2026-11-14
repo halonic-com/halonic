@@ -2,6 +2,7 @@
 
 - Approval: Liam asked for this follow-up on HAL-8533 after the review of #2470 (HAL-8530); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:MSxI/Qa/az/AkhvO7Hh1BaPWhe1rinU2rVhK3wJdEN60Lu9nN0Zj7ElQZAHZohmUEfxFiY1fJVECBxX5DYkSBw==
 - Task: HAL-8533
 
 ## What changes
