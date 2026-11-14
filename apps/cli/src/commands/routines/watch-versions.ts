@@ -232,7 +232,7 @@ export class WatchedVersions implements WorkspaceVersions {
     const { agentTexts } = this.#versionOfRun.get(runId) ?? this.#latest;
     const text = agentTexts.get(path);
     if (text === undefined) {
-      throw new Error(`The version this run reads has no file "${path}".`);
+      throw new Error(plainText(routinesMessages.noAgentFileInVersion(path).phrase));
     }
     return encodeUtf8(text);
   }

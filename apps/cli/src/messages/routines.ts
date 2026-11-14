@@ -76,6 +76,11 @@ export const routinesMessages = defineMessages("routines", {
   noHistoryForVersion: (commit: string) =>
     phrase`This workspace has no history, so version ${commit} can't be read.`,
   /**
+   * An agent's file that the version a run reads doesn't have: the harness
+   * check on "On this computer" can't read it, so the agent doesn't start.
+   */
+  noAgentFileInVersion: (path: string) => phrase`The version this run reads has no file ${path}.`,
+  /**
    * A run of a routine whose step keeps failing: "✕ Hourly follow-up got stuck · run 01jd8q · see why with --debug".
    * The watch goes on, and the engine keeps retrying the step.
    */
