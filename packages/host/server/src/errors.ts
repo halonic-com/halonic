@@ -55,6 +55,38 @@ export const serverErrors = {
     code: "webhook_routine_busy",
     message: "The routine is still running. Send this delivery again later.",
   },
+  googleSetupNotFound: {
+    status: 404,
+    code: "google_setup_not_found",
+    message: "There is no Google setup for this account.",
+  },
+  secretFromOtherSite: {
+    status: 403,
+    code: "secret_from_other_site",
+    message: "The client secret is only accepted from this server's own pages.",
+  },
+  secretNeedsJson: {
+    status: 415,
+    code: "json_required",
+    message: "Send the client secret as JSON.",
+  },
+  secretNeedsSecureConnection: {
+    status: 403,
+    code: "secure_connection_required",
+    message:
+      "Send the client secret over HTTPS or from this computer. Over plain http it needs your confirmation.",
+  },
+  secretNotAccepted: {
+    status: 400,
+    code: "secret_not_accepted",
+    message: "That isn't a client secret this server can keep.",
+  },
+  secretNeedsStaging: {
+    status: 409,
+    code: "secret_needs_staging",
+    message:
+      "This client secret is in use. Check a new one with Google before it replaces the old one.",
+  },
   notFound: { status: 404, code: "not_found", message: "There is nothing at this address." },
   internal: {
     status: 500,

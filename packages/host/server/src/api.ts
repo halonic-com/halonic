@@ -1,3 +1,4 @@
+import type { ClientSecretStore, SetupRecords, SetupService } from "@halonicjs/google-setup";
 import type {
   Clock,
   Coordination,
@@ -132,6 +133,52 @@ export interface ErrorLog {
   record(error: unknown): void;
 }
 
+/** One finished request, as the request log sees it. It never holds a query string, a header or a body. */
+export interface RequestLogEntry {
+  readonly method: string;
+  /** The path only, never the query. */
+  readonly path: string;
+  readonly status: number;
+}
+
+/**
+ * Where finished requests are logged, by method, path and status. The server
+ * leaves out the routes that carry a secret, so a host may log every entry
+ * it gets. It must not throw.
+ */
+export interface RequestLog {
+  record(entry: RequestLogEntry): void;
+}
+
+/** The account a Google setup is for and the services it was ticked for. Neither holds a secret. */
+export interface GoogleSetupSubject {
+  /** The Google account's address, which the steps use as the default support and contact e-mail. */
+  readonly account: string;
+  /** The ticked services, with the Google fields of their sheets. */
+  readonly services: readonly SetupService[];
+}
+
+/**
+ * What the host knows about a setup that the setup record doesn't keep: the
+ * account's address and the ticked services come from the connector settings.
+ */
+export interface GoogleSetupSource {
+  /** The subject of a setup, or `null` when no connector uses the account any more. */
+  describe(accountRef: string): Promise<GoogleSetupSubject | null>;
+}
+
+/**
+ * What the Google setup routes need. A host that has no Google setup leaves
+ * the whole group out, and the routes then answer 404.
+ */
+export interface GoogleSetupPorts {
+  /** The saved setup progress, one record per Google account. */
+  readonly setups: SetupRecords;
+  /** Where client secrets are kept. The routes write to it and never read a secret back. */
+  readonly clientSecrets: ClientSecretStore;
+  readonly source: GoogleSetupSource;
+}
+
 /** What the server needs from its host. Every port is replaceable, so a test runs the handler with fakes. */
 export interface ServerPorts {
   /** Runs workflows; the server only forwards start, send, cancel and subscribe calls to it. */
@@ -152,6 +199,10 @@ export interface ServerPorts {
   readonly requestCounts: RequestCountStore;
   /** Where the cause of an unexpected failure goes. The reply to the caller never carries it. */
   readonly errorLog: ErrorLog;
+  /** The Google setup routes' ports. Without them `/api/google/…` answers 404. */
+  readonly google?: GoogleSetupPorts;
+  /** Where finished requests are logged by path. Without it nothing is logged. */
+  readonly requestLog?: RequestLog;
   /** The time; replaced in tests to cross a UTC day. */
   readonly clock: Clock;
   /**

@@ -2275,6 +2275,9 @@ importers:
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../core/format
+      '@halonicjs/google-setup':
+        specifier: workspace:*
+        version: link:../../core/google-setup
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports
