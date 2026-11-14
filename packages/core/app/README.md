@@ -136,7 +136,13 @@ edit. This example is [`examples/edit-save-undo.ts`](examples/edit-save-undo.ts)
 which `src/example.test.ts` runs and checks.
 
 ```ts
-import type { DefinitionStore, DefinitionWatch, Digest, WriteResult } from "@halonicjs/ports";
+import type {
+  DefinitionStore,
+  DefinitionWatch,
+  Digest,
+  RemoveResult,
+  WriteResult,
+} from "@halonicjs/ports";
 import { openWorkspace, workspaceFilesKey } from "@halonicjs/app";
 
 const agentPath = "hubs/acme/agents/clerk.agent.yaml";
@@ -176,9 +182,10 @@ class MapStore implements DefinitionStore {
     this.writes++;
     return { status: "written" };
   }
-  async remove(path: string): Promise<void> {
+  async remove(path: string): Promise<RemoveResult> {
     this.files.delete(path);
     this.writes++;
+    return { status: "removed" };
   }
   // Nothing else changes the map, so there is nothing to watch.
   async watch(): Promise<DefinitionWatch> {
