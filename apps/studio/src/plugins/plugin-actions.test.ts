@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { acme } from "./acme-plugins.testing.ts";
 import { desktopPluginActions } from "./plugin-actions.ts";
 import { PluginFeed } from "./plugin-feed.ts";
@@ -32,6 +32,10 @@ async function setup() {
 }
 
 verifies("studio.desktop-plugins-host", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("trusts what the page showed, then removes the trust and the plugin", async () => {
     const { actions, statusOf, deleted } = await setup();
     expect(statusOf("weather")).toBe("not-trusted");
@@ -79,7 +83,6 @@ verifies("studio.desktop-plugins-host", () => {
     });
     await expect(actions.revoke("weather")).resolves.toBeUndefined();
     expect(onReloadFailed).toHaveBeenCalledWith(failure);
-    vi.restoreAllMocks();
     expect((await load()).length).toBe(3);
   });
 

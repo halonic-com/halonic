@@ -62,7 +62,9 @@ export class PluginFeed implements InstalledPluginFeed {
       })
       .then(() => {
         this.#readAgain = undefined;
-        return this.#start();
+        // A reload() made in the gap after the running read ended has started a read already; a
+        // second one beside it could finish first and then be overwritten by the older result.
+        return this.#reading ?? this.#start();
       });
     return this.#readAgain;
   }

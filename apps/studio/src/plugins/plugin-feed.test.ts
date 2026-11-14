@@ -106,4 +106,35 @@ verifies("studio.desktop-plugins-host", () => {
     expect(load).toHaveBeenCalledTimes(2);
     expect(feed.current().find((each) => each.plugin === "weather")?.status).toBe("on");
   });
+
+  it("never runs two reads at once when a reload lands between a read's end and the next one", async () => {
+    const { service } = acme();
+    const feed = new PluginFeed(service);
+    await feed.reload();
+    const real = service.load.bind(service);
+    const load = vi.spyOn(service, "load");
+    const release: (() => void)[] = [];
+    let running = 0;
+    let mostRunning = 0;
+    load.mockImplementation(async () => {
+      running += 1;
+      mostRunning = Math.max(mostRunning, running);
+      const entries = await real();
+      await new Promise<void>((resolve) => release.push(resolve));
+      running -= 1;
+      return entries;
+    });
+    let inGap: Promise<void> | undefined;
+    const first = feed.reload().then(() => {
+      inGap = feed.reload();
+    });
+    await vi.waitFor(() => expect(release).toHaveLength(1));
+    const queued = feed.reload();
+    release[0]?.();
+    await first;
+    await vi.waitFor(() => expect(release.length).toBeGreaterThanOrEqual(2));
+    for (let next = 1; next < 3 && next < release.length; next += 1) release[next]?.();
+    await Promise.all([queued, inGap]);
+    expect(mostRunning).toBe(1);
+  });
 });
