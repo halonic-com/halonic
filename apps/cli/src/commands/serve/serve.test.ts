@@ -14,7 +14,6 @@ import { fakeSignals } from "../../test/fake-signals.ts";
 import { waitUntil } from "../../test/wait-until.test-helper.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
-import type { RunSetup } from "../run/run.ts";
 import { serveCommandWith } from "./command.ts";
 import type { ServeSetup } from "./serve.ts";
 
