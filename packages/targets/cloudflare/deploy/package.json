@@ -1,0 +1,28 @@
+{
+  "name": "@halonicjs/target-cloudflare-deploy",
+  "private": true,
+  "type": "module",
+  "description": "Deploys the Halonic Worker to Cloudflare: provision, migrate, upload, smoke test, switch traffic.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "targets",
+    "owner": "mateo",
+    "coverage": {
+      "lines": 80
+    }
+  }
+}
