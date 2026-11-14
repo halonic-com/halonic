@@ -63,6 +63,15 @@ verifies("profile.workspace-folders", () => {
     expect(windows.harnessTempFolder()).toBe(`${windows.folder}\\harness-temp`);
   });
 
+  it("keeps the copies of runs with history off and the trash beside the proposal records", async () => {
+    const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);
+    expect(folders.runCopiesFolder()).toBe(`${folders.folder}/run-copies`);
+    expect(folders.trashFolder()).toBe(`${folders.folder}/trash`);
+    const windows = await workspaceFolders(windowsProfile, `${drive}\\Work\\Acme`, digest);
+    expect(windows.runCopiesFolder()).toBe(`${windows.folder}\\run-copies`);
+    expect(windows.trashFolder()).toBe(`${windows.folder}\\trash`);
+  });
+
   it("keys the folder by the SHA-256 of the real path", async () => {
     const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);
     const hash = await digest.sha256(encodeUtf8("/srv/acme/workspace"));

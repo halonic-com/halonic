@@ -9,7 +9,6 @@ import { testGit } from "@halonicjs/adapter-git/testing";
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { ConnectorFactories, WorkflowRuns } from "@halonicjs/app";
 import type { RunVersion } from "@halonicjs/events";
-import { ProposalsNeedHistoryError } from "@halonicjs/host-harness-host";
 import type {
   ConnectorFactory,
   Harness,
@@ -335,15 +334,26 @@ verifies("cli.local-harness-host", () => {
     gitTimeout,
   );
 
-  it("refuses a run whose folder can't be opened, saying how to turn history on", async () => {
-    const fakes = fakesFor({ onStart: async () => {} });
+  it("runs a harness run in a copy of the saved files when the workspace has no history, and keeps its proposal", async () => {
+    const written: string[] = [];
+    const fakes = fakesFor({
+      onStart: async (given) => {
+        written.push(given.workingFolder);
+        await writeFile(join(given.workingFolder, "change.txt"), "the agent's change");
+      },
+    });
     const engine = await openEngine(fakes, false);
 
-    const refused = runChange(engine, { reads: "saved-files" });
+    const { runId, summary } = await runChange(engine, { reads: "saved-files" });
 
-    await expect(refused).rejects.toBeInstanceOf(ProposalsNeedHistoryError);
-    await expect(refused).rejects.toThrow(/git init/);
-    expect(fakes.profiles).toEqual([]);
+    expect(summary).toMatchObject({ status: "completed" });
+    const folders = await workspaceFolderInProfile();
+    // The run wrote in the run side of its copy, never in the workspace.
+    expect(written).toEqual([join(folders, "run-copies", runId, "run", "files/agents/coder")]);
+    expect(existsSync(join(acme, agentFile))).toBe(false);
+    const record = await readFile(join(folders, "proposals", `${runId}.json`), "utf8");
+    expect(record).toContain(agentFile);
+    expect(reported).toEqual([]);
   });
 
   it(

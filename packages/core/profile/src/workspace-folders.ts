@@ -104,6 +104,20 @@ export interface WorkspaceFolders {
    * removes what a stopped engine left there.
    */
   harnessTempFolder(): string;
+  /**
+   * The folder for the copies of the workspace that runs with history off
+   * work in, one per run: a `base` side left as the workspace was, and a
+   * `run` side where the run writes (HAL-6477). Only the engine holding the
+   * workspace's engine lock uses it; the `run` side of a harness run's copy
+   * is the only folder in it the sandbox opens.
+   */
+  runCopiesFolder(): string;
+  /**
+   * The folder for Halonic's own trash of the workspace's files, one entry
+   * per file moved there: what Accept deletes and its Undo puts back
+   * (HAL-6477). It lives here, never in the workspace.
+   */
+  trashFolder(): string;
 }
 
 /**
@@ -173,6 +187,12 @@ export async function workspaceFolders(
     },
     harnessTempFolder(): string {
       return joinPath(profile.platform, folder, "harness-temp");
+    },
+    runCopiesFolder(): string {
+      return joinPath(profile.platform, folder, "run-copies");
+    },
+    trashFolder(): string {
+      return joinPath(profile.platform, folder, "trash");
     },
   };
 }
