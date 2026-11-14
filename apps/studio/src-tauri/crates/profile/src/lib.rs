@@ -29,6 +29,9 @@ const TRUST_FOLDER_NAME: &str = "trust";
 /// Halonic runs.
 const SETTINGS_FOLDER_NAME: &str = "settings";
 
+/// The name of the folder the plugins are kept in, in the profile folder.
+const PLUGINS_FOLDER_NAME: &str = "plugins";
+
 /// The systems Halonic keeps a profile on. `Linux` covers every other
 /// Unix-like system too.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -141,6 +144,14 @@ impl ProfileFolder {
     /// `host_settings_*` commands both keep `host.json` there.
     pub fn settings_folder(&self) -> String {
         join_path(self.platform, &self.root, &[SETTINGS_FOLDER_NAME])
+    }
+
+    /// The folder the installed plugins are kept in, `plugins` in the
+    /// profile folder, as `pluginsFolder` in `@halonicjs/profile` names it.
+    /// The CLI's `halonic plugin` commands and the shell's `plugin_folder_*`
+    /// commands both use it.
+    pub fn plugins_folder(&self) -> String {
+        join_path(self.platform, &self.root, &[PLUGINS_FOLDER_NAME])
     }
 }
 
