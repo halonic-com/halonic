@@ -2499,6 +2499,9 @@ importers:
 
   packages/studio/features/models:
     dependencies:
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../../core/app
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../../core/format
