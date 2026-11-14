@@ -165,7 +165,10 @@ verifies("studio.workspace-runs", () => {
     const runs = new WorkspaceRuns({ runs: engine.stores.store, definitions: acmeFiles() });
 
     expect((await runs.waiting()).map((run) => run.id)).toEqual([runId]);
-    await expect(runs.send()).rejects.toMatchObject({ kind: "unavailable" });
+    await expect(runs.send(runId, "approve")).rejects.toMatchObject({
+      kind: "unavailable",
+      message: `Answer this run from the command line for now: \`halonic runs send ${runId} approve\`.`,
+    });
   });
 
   it("tells its listeners when a run changed at a poll or when the window came to the front", async () => {

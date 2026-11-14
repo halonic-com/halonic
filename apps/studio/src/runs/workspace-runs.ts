@@ -137,10 +137,11 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
     };
   }
 
-  async send(): Promise<RunSummary> {
+  // No engine in the window yet (HAL-6602), so the error tells the user the CLI line to copy.
+  async send(runId: string, event: string): Promise<RunSummary> {
     throw new KindedError(
       "unavailable",
-      "The Studio can't answer a run yet: it has no engine of its own (HAL-6602).",
+      `Answer this run from the command line for now: \`halonic runs send ${runId} ${event}\`.`,
     );
   }
 
