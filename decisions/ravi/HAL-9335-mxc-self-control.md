@@ -2,6 +2,7 @@
 
 - Approval: Liam signs this note in review of the pull request
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:x5QXdem33SGT6OxdTHrfqCItq/JZbdHHjs2OUtTYm6yu0QoWDvP2okpe5P0M3u+gOaDir30SM9sr08nsXzV1Cw==
 - Task: HAL-9342 (ruling), HAL-9335
 
 ## What changes
