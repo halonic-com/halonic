@@ -72,7 +72,7 @@ export function aboutView(status: UpdateStatus, now: Date): AboutView {
     case "never-checked":
       return view(text.NOT_CHECKED);
     case "up-to-date":
-      if (!status.automatic) return view(text.automaticOff(when));
+      if (!status.automatic && status.managed === null) return view(text.automaticOff(when));
       return view(when === null ? "Up to date." : text.upToDate(when));
     case "cant-check":
       return view(text.cantCheck(text.checkReasons[state.reason], when));
