@@ -113,6 +113,32 @@ verifies("app.new-library-item", () => {
     expect(file.text).not.toContain("secret");
   });
 
+  it("never picks the path of a file that failed to load", async () => {
+    const skill = await made(
+      { kind: "skill", name: "Triage", description: "Sort mail", hub: null },
+      { "library/skills/triage/SKILL.md": "---\nname: [broken\n" },
+    );
+    const collection = await made(
+      { kind: "collection", name: "Notes" },
+      { "library/collections/notes.collection.yaml": "id: [broken\n" },
+    );
+
+    expect(skill.path).toBe("library/skills/triage-2/SKILL.md");
+    expect(collection.path).toBe("library/collections/notes-2.collection.yaml");
+  });
+
+  it("refuses a secret that is not a name", async () => {
+    const result = newLibraryFile(await workspaceWith(), {
+      kind: "connector",
+      name: "Notes",
+      hub: null,
+      transport: { http: { url: "https://notes.acme.dev/mcp" } },
+      secret: "sk-live 123",
+    });
+
+    expect(result).toEqual({ ok: false, error: "secret_invalid" });
+  });
+
   it("refuses an empty name, a skill with no description and a connector with no connection", async () => {
     const workspace = await workspaceWith();
     const skill = { kind: "skill", name: "Triage", description: " ", hub: null } as const;

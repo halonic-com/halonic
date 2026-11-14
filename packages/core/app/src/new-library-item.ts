@@ -57,7 +57,11 @@ export type NewLibraryItemError =
   | "name_missing"
   | "description_missing"
   /** A connector needs its account, URL or command. */
-  | "connection_missing";
+  | "connection_missing"
+  /** The secret is a name such as `NOTES_TOKEN`, not a value. */
+  | "secret_invalid";
+
+const secretNamePattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 /** Where a new item's file sits for an id; the same places the kinds register. */
 function pathOf(item: NewLibraryItem, id: string): string {
@@ -72,12 +76,32 @@ function pathOf(item: NewLibraryItem, id: string): string {
   }
 }
 
-/** The ids already used by this kind where the new item would sit. */
-function takenIds(workspace: LoadedWorkspace, item: NewLibraryItem): string[] {
+/**
+ * Every path the workspace knows, whether or not the file loaded: a file that
+ * fails to parse is not among `files`, but writing over it would lose the
+ * person's text.
+ */
+function knownPaths(workspace: LoadedWorkspace): Set<string> {
+  return new Set([
+    ...workspace.files.map((file) => file.path),
+    ...workspace.issues.map((issue) => issue.file),
+    ...workspace.ignored,
+  ]);
+}
+
+/** The first id, from the name's, whose file is not a known path and whose id no loaded item has. */
+function freeId(workspace: LoadedWorkspace, item: NewLibraryItem): string {
   const hub = item.kind === "collection" ? null : item.hub;
-  return filesOf(workspace, item.kind)
+  const taken = filesOf(workspace, item.kind)
     .filter((file) => file.hub === hub)
     .map((file) => file.value.id);
+  const paths = knownPaths(workspace);
+  const base = slugify(item.name);
+  let id = uniqueName(base, taken);
+  for (let suffix = 2; paths.has(pathOf(item, id)); suffix++) {
+    id = uniqueName(`${base}-${suffix}`, taken);
+  }
+  return id;
 }
 
 /**
@@ -147,7 +171,8 @@ function textOf(item: NewLibraryItem, id: string): string {
 /**
  * Makes the file for a new skill, collection or connector. The id comes from
  * the name, with `-2`, `-3` when another item of that kind in the same place
- * has it. A new MCP connector asks about every tool (`tools.approve: all`); a
+ * has it, or when a file already sits at the path, even one that doesn't
+ * load. A new MCP connector asks about every tool (`tools.approve: all`); a
  * Google connector asks about the tools that change or send something. This
  * is the one place those rules live. Nothing is connected or started.
  *
@@ -168,6 +193,9 @@ export function newLibraryFile(
   if (item.kind === "connector" && connectionOf(item).trim() === "") {
     return err("connection_missing");
   }
-  const id = uniqueName(slugify(item.name), takenIds(workspace, item));
+  if (item.kind === "connector" && item.secret && !secretNamePattern.test(item.secret)) {
+    return err("secret_invalid");
+  }
+  const id = freeId(workspace, item);
   return ok({ id, path: pathOf(item, id), text: textOf(item, id) });
 }
