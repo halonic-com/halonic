@@ -104,7 +104,9 @@ async function showItem(feed: InstalledPluginFeed) {
   if (kind === undefined) throw new Error("No plugin kind");
   const View = await loadView<ComponentType<ItemViewProps>>(kind.open);
   const context = {} as WorkspaceContext;
-  const view = render(<View item={pluginPageItem("weather")} context={context} />);
+  const view = render(
+    <View item={pluginPageItem("weather")} context={context} Sections={() => null} />,
+  );
   await act(async () => {});
   return { view, kind, context, opened };
 }
