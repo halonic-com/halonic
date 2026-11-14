@@ -4,6 +4,7 @@
 - Task: HAL-8848, a follow-up from Liam's review of #2545
 - Approval: the task asks for this change on HAL-8848; Liam reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wKyd1HKgD0rGJR9PJzKS/58touYQVOgQ23o+QGOvJpCkdG+QBZWaZMVt2fMLALUIHWgSv2cUT7FM70umjGVdBQ==
 
 ## What changes
 
