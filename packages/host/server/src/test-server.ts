@@ -20,6 +20,7 @@ import type {
   ServerPorts,
   TrustGate,
   WebhookRoutines,
+  WorkspaceInfo,
 } from "./api.ts";
 import { createServer } from "./create-server.ts";
 
@@ -121,6 +122,7 @@ export function testServer(options: {
   google?: GoogleSetupPorts;
   connectors?: ConnectorCallPorts;
   requestLog?: RequestLog;
+  workspace?: WorkspaceInfo;
 }): Server {
   const clock = options.clock ?? new TestClock();
   const ports: ServerPorts = {
@@ -138,6 +140,7 @@ export function testServer(options: {
     errorLog: options.errorLog ?? { record: () => {} },
     ...(options.google === undefined ? {} : { google: options.google }),
     ...(options.connectors === undefined ? {} : { connectors: options.connectors }),
+    ...(options.workspace === undefined ? {} : { workspace: options.workspace }),
     ...(options.requestLog === undefined ? {} : { requestLog: options.requestLog }),
     clock,
     ids: { next: (prefix) => `${prefix}_1` },
