@@ -1,6 +1,13 @@
-import { isRunTargetNotFound } from "@halonicjs/ports";
+import { isRunTargetNotFound, type RunTargetKind } from "@halonicjs/ports";
 import type { ServerPorts, TrustGate } from "./api.ts";
-import { errorResponse, serverErrors } from "./errors.ts";
+import { errorResponse, type ServerError, serverErrors } from "./errors.ts";
+
+/** What a start answers for each kind of missing target. */
+const notFoundErrors: Record<RunTargetKind, ServerError> = {
+  hub: serverErrors.hubNotFound,
+  workflow: serverErrors.workflowNotFound,
+  agent: serverErrors.agentNotFound,
+};
 
 export interface TrustRoutes {
   /** `GET /api/trust`: what the trust check says now, for the Studio to show. Read-only. */
@@ -66,7 +73,7 @@ export function createTrustRoutes({ trust, runs }: TrustRoutePorts): TrustRoutes
       return await start();
     } catch (error) {
       // A wrong name is the caller's mistake; the body doesn't say which hub, workflow or agent, or what exists.
-      if (isRunTargetNotFound(error)) return errorResponse(serverErrors.runTargetNotFound);
+      if (isRunTargetNotFound(error)) return errorResponse(notFoundErrors[error.kind]);
       throw error;
     }
   }

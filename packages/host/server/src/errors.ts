@@ -35,10 +35,21 @@ export const serverErrors = {
     code: "workspace_not_trusted",
     message: "This workspace isn't trusted. Trust it on the computer that runs Halonic first.",
   },
-  runTargetNotFound: {
+  // One code per kind, so a client can rebuild `RunTargetNotFound` without the message naming anything.
+  hubNotFound: {
     status: 404,
-    code: "run_target_not_found",
-    message: "There is no such hub, workflow or agent to run.",
+    code: "hub_not_found",
+    message: "There is no such hub to run.",
+  },
+  workflowNotFound: {
+    status: 404,
+    code: "workflow_not_found",
+    message: "There is no such workflow to run.",
+  },
+  agentNotFound: {
+    status: 404,
+    code: "agent_not_found",
+    message: "There is no such agent to run.",
   },
   unsupportedMediaType: {
     status: 415,
