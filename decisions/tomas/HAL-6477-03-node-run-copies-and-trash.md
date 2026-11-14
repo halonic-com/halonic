@@ -2,7 +2,6 @@
 
 - Approval: scope decided on HAL-6477 and HAL-9301 (Liam); the package owner (Liam) approves this note in review
 - Kind: internal
-- Signature: pending (Liam signs in review)
 
 ## What changes
 
