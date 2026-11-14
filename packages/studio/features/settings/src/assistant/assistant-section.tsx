@@ -17,7 +17,6 @@ import {
   AssistantWorkspaceService,
   HostSettingsService,
 } from "../api.ts";
-import { openModelsCommand } from "../links/workspace-links.tsx";
 import { checkModel, checkTurnLimit } from "./assistant-checks.ts";
 import { assistantPrefs, turnLimitRange } from "./assistant-prefs.ts";
 import {
@@ -42,7 +41,7 @@ const providerOptions = assistantProviders.map((provider) => ({
 export function AssistantSection({ context, closeSettings, place }: SettingsSectionProps) {
   const settings = context.services.get(HostSettingsService);
   const loaded = useLoaded(settings);
-  if (!loaded.ready) return <NotLoaded onTryAgain={loaded.tryAgain} />;
+  if (!loaded.ready) return <NotLoaded reason={loaded.reason} onTryAgain={loaded.tryAgain} />;
   return (
     <AssistantView
       settings={settings}
@@ -58,22 +57,37 @@ export function AssistantSection({ context, closeSettings, place }: SettingsSect
 /** Whether the host settings are loaded, and a way to load them again when they aren't. */
 function useLoaded(settings: HostSettings) {
   const [, redraw] = useState(0);
+  const [reason, setReason] = useState<string | null>(null);
   return {
     ready: settings.loaded,
+    reason,
     tryAgain: () =>
       settings.load().then(
-        () => redraw((count) => count + 1),
-        (error: unknown) => console.error(error),
+        () => {
+          setReason(null);
+          redraw((count) => count + 1);
+        },
+        (error: unknown) => {
+          setReason(
+            `${(error instanceof Error ? error.message : String(error)).replace(/\.+$/, "")}.`,
+          );
+        },
       ),
   };
 }
 
 /** What the section says when the host settings couldn't be read (`settings.ai-agent-section`). */
-function NotLoaded({ onTryAgain }: { readonly onTryAgain: () => void }) {
+function NotLoaded({
+  reason,
+  onTryAgain,
+}: {
+  readonly reason: string | null;
+  readonly onTryAgain: () => Promise<void>;
+}) {
   return (
     <div className="mt-5 flex max-w-90 flex-col gap-4">
       <Callout tone="warning" action={{ label: text.TRY_AGAIN, onClick: onTryAgain }}>
-        {text.NOT_LOADED}
+        {reason === null ? text.NOT_LOADED : text.notLoadedBecause(reason)}
       </Callout>
     </div>
   );
@@ -112,11 +126,8 @@ function navigationOf(context: SettingsSectionProps["context"]): AssistantNaviga
   const go = (command: string) => {
     if (!context.runCommand?.(command)) context.runCommand?.(openWorkspaceCommand);
   };
-  return {
-    openProviderPage: () => go(openModelsCommand),
-    addProvider: () => go(openModelsCommand),
-    openSessionAi: () => go(openSessionAiCommand),
-  };
+  // No provider page or key field exists yet, so the key line gets no links (HAL-9385, B14).
+  return { openSessionAi: () => go(openSessionAiCommand) };
 }
 
 const noWorkspace = () => () => {};
@@ -359,14 +370,16 @@ function AssistantEditor({
       >
         <Select options={providerOptions} value={chosen} onChange={pick} />
       </Field>
-      <SavedTextField
-        label={text.MODEL}
-        placeholder={providerDefaults[chosen].modelPlaceholder}
-        stored={model.value}
-        check={(typed) => checkModel(chosen, typed)}
-        save={(value) => saveTyped("the model", model, value)}
-        saveError={failedLine("the model", model.failed)}
-      />
+      {chosen === "not-set-up" ? null : (
+        <SavedTextField
+          label={text.MODEL}
+          placeholder={providerDefaults[chosen].modelPlaceholder}
+          stored={model.value}
+          check={(typed) => checkModel(chosen, typed)}
+          save={(value) => saveTyped("the model", model, value)}
+          saveError={failedLine("the model", model.failed)}
+        />
+      )}
       {chosen === "not-set-up" ? null : (
         <KeyLine
           provider={chosen}

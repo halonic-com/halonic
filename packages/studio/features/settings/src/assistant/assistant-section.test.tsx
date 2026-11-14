@@ -48,6 +48,10 @@ verifies("settings.ai-agent-section", () => {
     expect(view.textContent).toContain(
       "Not set up. Assistant chats use each workspace's model aliases.",
     );
+    expect(view.textContent).not.toContain("Key");
+    expect([...view.querySelectorAll("label")].map((label) => label.textContent)).not.toContain(
+      "Model",
+    );
     expect(turnLimitBox(view).value).toBe("");
     expect(view.textContent).toContain(
       "Model turns, tool calls included, before it stops and asks to continue.",
@@ -183,6 +187,11 @@ verifies("settings.ai-agent-section", () => {
     expect(view.querySelector("select")).toBeNull();
     const tryAgain = [...view.querySelectorAll("button")].find(
       (b) => b.textContent === "Try again",
+    );
+
+    await act(async () => tryAgain?.click());
+    expect(view.textContent).toContain(
+      "Couldn't load the Assistant settings from this computer: The settings file is locked.",
     );
 
     readable = true;

@@ -97,10 +97,16 @@ export interface AssistantWorkspace {
  * Settings, so the app's workspace service stays free of the window.
  */
 export interface AssistantNavigation {
-  /** Opens the page of the provider that uses the secret name, at its key block. */
-  openProviderPage(secretName: string): void;
-  /** Starts Add provider on the workspace page with the type and the secret name filled in. */
-  addProvider(provider: Exclude<AssistantProvider, "not-set-up">, secretName: string): void;
+  /**
+   * Opens the page of the provider that uses the secret name, at its key block. Without it the key
+   * line shows no link: leave it out until the workspace has provider pages.
+   */
+  openProviderPage?(secretName: string): void;
+  /**
+   * Starts Add provider on the workspace page with the type and the secret name filled in. Left
+   * out for the same reason as `openProviderPage`.
+   */
+  addProvider?(provider: Exclude<AssistantProvider, "not-set-up">, secretName: string): void;
   /** Opens the workspace page at Session AI. */
   openSessionAi(): void;
 }

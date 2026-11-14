@@ -39,59 +39,91 @@ function link(label: React.ReactNode, onPress: () => void) {
  * <KeyLine provider="anthropic" secretName="anthropic-api-key" workspace={w} open={w.current()} closeSettings={close} />
  */
 export function KeyLine(props: KeyLineProps) {
-  const { provider, secretName, workspace, navigate, open, closeSettings, served = false } = props;
+  const { secretName, workspace, open, served = false } = props;
   const stored = useKeyStored(workspace, secretName, served || open !== null, open);
+  return (
+    <div>
+      <div className="text-small text-fg-muted">{text.KEY}</div>
+      <p className="text-body">{keyLineContent(props, stored)}</p>
+    </div>
+  );
+}
+
+const keySet = (
+  <>
+    <span aria-hidden="true">{text.KEY_SET_MARK}</span> {text.KEY_SET}
+  </>
+);
+const keyMissing = (
+  <>
+    <span aria-hidden="true">{text.KEY_MISSING_MARK}</span> {text.KEY_MISSING}
+  </>
+);
+
+/** What the line says for the key's state. The links show only where the navigation has them. */
+function keyLineContent(props: KeyLineProps, stored: Stored): React.ReactNode {
+  const { secretName, workspace, open, served = false } = props;
+  if (secretName === "") return text.KEY_NOT_NEEDED;
+  if (workspace === undefined || (!served && open === null)) {
+    return (
+      <>
+        {keyMissing}. {text.KEY_NO_WORKSPACE}
+      </>
+    );
+  }
+  if (stored === "checking") return <SkeletonBar kind="title" width="1/2" />;
+  if (stored === "unknown") return text.KEY_UNKNOWN;
+  if (served) return stored === "yes" ? text.KEY_SERVED_SET : text.KEY_SERVED_MISSING;
+  return keyActions(props, stored);
+}
+
+/** The line once the key's state is known and Settings isn't served: the word and its link. */
+function keyActions(props: KeyLineProps, stored: Stored): React.ReactNode {
+  const { provider, secretName, navigate, open, closeSettings } = props;
   const press = (go: () => void) => () => {
     closeSettings();
     go();
   };
-  let line: React.ReactNode;
-  if (secretName === "") {
-    line = text.KEY_NOT_NEEDED;
-  } else if (workspace === undefined || (!served && open === null)) {
-    line = text.KEY_NO_WORKSPACE;
-  } else if (stored === "checking") {
-    line = <SkeletonBar kind="title" width="1/2" />;
-  } else if (stored === "unknown") {
-    line = text.KEY_UNKNOWN;
-  } else if (served) {
-    line = stored === "yes" ? text.KEY_SERVED_SET : text.KEY_SERVED_MISSING;
-  } else if (stored === "yes") {
-    line = (
+  const providerPage = navigate?.openProviderPage;
+  const addProvider = navigate?.addProvider;
+  if (stored === "yes" || open?.usesSecret(secretName)) {
+    const label = stored === "yes" ? text.KEY_REPLACE : text.KEY_ADD;
+    return (
       <>
-        {text.KEY_SET} ·{" "}
-        {link(
-          text.KEY_REPLACE,
-          press(() => navigate?.openProviderPage(secretName)),
-        )}
-      </>
-    );
-  } else if (open?.usesSecret(secretName)) {
-    line = (
-      <>
-        {text.KEY_MISSING} ·{" "}
-        {link(
-          text.KEY_ADD,
-          press(() => navigate?.openProviderPage(secretName)),
-        )}
-      </>
-    );
-  } else {
-    line = (
-      <>
-        {text.KEY_MISSING}.{" "}
-        {link(
-          text.keyAddProvider(open?.name ?? ""),
-          press(() => navigate?.addProvider(provider, secretName)),
-        )}
+        {stored === "yes" ? keySet : keyMissing}
+        {providerPage ? (
+          <>
+            {" "}
+            ·{" "}
+            {link(
+              label,
+              press(() => providerPage(secretName)),
+            )}
+          </>
+        ) : null}
       </>
     );
   }
+  const [before, after] = text.keyAddProvider(open?.name ?? "");
+  const sentence = (
+    <>
+      {before}
+      <code>{secretName}</code>
+      {after}
+    </>
+  );
   return (
-    <div>
-      <div className="text-small text-fg-muted">{text.KEY}</div>
-      <p className="text-body">{line}</p>
-    </div>
+    <>
+      {keyMissing}.{" "}
+      {addProvider ? (
+        link(
+          <>{sentence} ›</>,
+          press(() => addProvider(provider, secretName)),
+        )
+      ) : (
+        <>{sentence}.</>
+      )}
+    </>
   );
 }
 
