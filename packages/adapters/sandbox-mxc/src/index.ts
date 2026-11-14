@@ -20,3 +20,12 @@ export type {
   MxcSpawnOptions,
 } from "./mxc-process.ts";
 export { MxcSandbox } from "./mxc-sandbox.ts";
+export {
+  type FetchBytes,
+  installFolder,
+  installMxcSdk,
+  isVerified,
+  type SdkInstall,
+  type SdkInstallOptions,
+} from "./sdk-install.ts";
+export { mxcSdkPins, type PinnedPackage } from "./sdk-pins.ts";
