@@ -416,6 +416,7 @@ export {
   trustCheckFailures,
   trustCheckLeaks,
 } from "./sandbox-trust-check.ts";
+export { type SecretChange, type SecretInput, SecretService } from "./secret-service.ts";
 export {
   type Disposable,
   ServiceError,
