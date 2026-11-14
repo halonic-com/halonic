@@ -242,7 +242,7 @@ The check lists what the plugin can do and reach:
 
 - **Tools for agents:** every tool, as **Reads**, **Changes things** or
   **Sends**. A tool that changes or sends asks a person first.
-- **Programs on this computer:** local tools, each with its command and
+- **Programs:** local tools, each with its command and
   arguments.
 - **Secrets:** each by name and the addresses it goes to, never its value.
   This is the backend's route; a secret named in a local tool's `env` goes to

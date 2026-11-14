@@ -77,7 +77,7 @@ describe("plugin's sentences", () => {
       "Changes things",
       "Sends",
       "asks a person first",
-      "Programs on this computer",
+      "Programs",
       "Secrets",
       "goes only to api.weather.example",
       "Addresses",

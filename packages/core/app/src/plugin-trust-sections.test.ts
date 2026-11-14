@@ -35,7 +35,7 @@ verifies("app.plugin-trust-sections", () => {
   it("has the design's headings, in the design's order", () => {
     expect(pluginTrustSectionOrder.map((section) => pluginTrustSectionHeadings[section])).toEqual([
       "Tools for agents",
-      "Programs on this computer",
+      "Programs",
       "Secrets",
       "Addresses",
       "In Studio",

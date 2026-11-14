@@ -86,7 +86,7 @@ export const TRUST_CHECK_LAST_LINE =
 
 /** The section titles, in the order the dialog shows them (T7). */
 export const TOOLS_SECTION = "Tools for agents";
-export const PROGRAMS_SECTION = "Programs on this computer";
+export const PROGRAMS_SECTION = "Programs";
 export const SECRETS_SECTION = "Secrets";
 export const ADDRESSES_SECTION = "Addresses";
 export const IN_STUDIO_SECTION = "In Studio";
@@ -98,7 +98,7 @@ export function sectionRow(title: string, count: number): string {
 
 /** The first line in Tools for agents (T8). */
 export const TOOLS_INTRO =
-  "Agents can use these through a connector. Each one asks a person first.";
+  "Agents can use these through a connector. Each one asks a person first unless you change that.";
 
 /** After a tool whose answers the plugin marks as untrusted (T8). */
 export const OUTSIDE_TEXT = "its answers are treated as outside text";

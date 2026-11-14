@@ -72,11 +72,6 @@ verifies("app.plugin-trust-sections", () => {
         (section) => pluginTrustSectionHeadings[section],
       ),
     );
-    expect(shownHeadings).toEqual([
-      "Tools for agents",
-      "Programs on this computer",
-      "Secrets",
-      "Addresses",
-    ]);
+    expect(shownHeadings).toEqual(["Tools for agents", "Programs", "Secrets", "Addresses"]);
   });
 });

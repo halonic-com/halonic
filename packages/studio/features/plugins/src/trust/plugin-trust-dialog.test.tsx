@@ -167,7 +167,7 @@ verifies("plugins.plugin-trust-check", () => {
 
     expect(rows.slice(0, 4)).toEqual([
       ["Tools for agents (3)", true],
-      ["Programs on this computer (1)", false],
+      ["Programs (1)", false],
       ["Secrets (1)", false],
       ["Addresses (2)", false],
     ]);
@@ -199,7 +199,7 @@ verifies("plugins.plugin-trust-check", () => {
     const text = dialog().textContent ?? "";
 
     expect(text).toContain(
-      "Agents can use these through a connector. Each one asks a person first.",
+      "Agents can use these through a connector. Each one asks a person first unless you change that.",
     );
     expect(text).toContain("its answers are treated as outside text");
     expect(text).toContain("npx weather-mcp@1.2.3");
