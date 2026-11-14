@@ -70,7 +70,14 @@ function describe({ text, exception }) {
 /** Calls `command` in the page; `closed` when the page went away first. */
 async function invoke(command) {
   const address = await studioPage();
-  const expression = `window.__TAURI_INTERNALS__.invoke(${JSON.stringify(command)})`;
+  // WebView2 lists the page before Tauri has put its bridge in it (HAL-9031),
+  // so the page waits up to 30 s for the bridge before it calls.
+  const expression = `(async () => {
+    for (let i = 0; i < 300 && !window.__TAURI_INTERNALS__; i++) {
+      await new Promise((done) => setTimeout(done, 100));
+    }
+    return window.__TAURI_INTERNALS__.invoke(${JSON.stringify(command)});
+  })()`;
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(address);
     let answered = false;
