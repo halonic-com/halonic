@@ -4,6 +4,8 @@ export { FileConnectionSettingsStore } from "./connection-settings-store.ts";
 export { FolderDefinitionStore, type FolderStoreWatchOptions } from "./definition-store.ts";
 export { writeFlushedFile } from "./flushed-write.ts";
 export { FileSystemFolderReader } from "./folder-reader.ts";
+export { type CopySide, FolderRunCopies } from "./folder-run-copies.ts";
+export { FolderTrash } from "./folder-trash.ts";
 export type { FolderEvents } from "./folder-watch.ts";
 export {
   type HeldLock,
