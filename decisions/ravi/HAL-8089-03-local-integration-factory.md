@@ -2,6 +2,7 @@
 
 - Approval: Liam approved the plan on HAL-8089; the package owner (Liam) signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:adhZutRHED4zlv5tPR5/EStPWcNuA2PQLOmc8EipDHcYr+uCuZAe4uaCDwPm5HNaZDADGiLJYkz8XxQH2issCg==
 - Task: HAL-8089
 
 ## What changes
