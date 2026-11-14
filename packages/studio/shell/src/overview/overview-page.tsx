@@ -96,6 +96,9 @@ function rowsOf(
     id: item.id,
     title: item.name,
     ...(item.detail === undefined ? {} : { meta: item.detail }),
+    ...(item.usedBy === undefined
+      ? {}
+      : { trailing: <span className="text-small text-fg-muted">{item.usedBy}</span> }),
     ...(menuOf === undefined || menuOf(item).length === 0
       ? {}
       : {

@@ -7,6 +7,8 @@ export interface OverviewItem {
   readonly description?: string;
   /** The row's one line under the name: "Runs every morning". */
   readonly detail?: string;
+  /** What uses the item, on the row's right: "Used by 2 agents". The search doesn't read it. */
+  readonly usedBy?: string;
   /** Pinned items come first in their section. */
   readonly pinned?: boolean;
 }
