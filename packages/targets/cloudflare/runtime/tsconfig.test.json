@@ -11,6 +11,7 @@
     "src/scheduled.test.ts",
     "src/password-limit.test.ts",
     "src/self-test.test.ts",
-    "src/serve.test.ts"
+    "src/serve.test.ts",
+    "src/admin.test.ts"
   ]
 }
