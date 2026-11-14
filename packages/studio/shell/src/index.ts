@@ -99,6 +99,22 @@ export { HomeSectionEmpty } from "./home/home-section.tsx";
 export { ItemHeader, type ItemHeaderProps } from "./item-page/item-header.tsx";
 export { ItemPage, type ItemPageChat, type ItemPageProps } from "./item-page/item-page.tsx";
 export { useRememberedView } from "./item-page/remembered-view.ts";
+export {
+  allFilter,
+  type OverviewHub,
+  type OverviewItem,
+  type OverviewSection,
+  type OverviewShared,
+  type OverviewView,
+  overviewSections,
+  sharedFilter,
+} from "./overview/overview-model.ts";
+export {
+  type OverviewFailure,
+  OverviewPage,
+  type OverviewPageProps,
+  type OverviewWords,
+} from "./overview/overview-page.tsx";
 export { PageBackLinkSlot } from "./page/back-link-slot.tsx";
 export { copyDetails, useCopyDetails } from "./page/copy-details.ts";
 export { ItemGone, type ItemGoneProps } from "./page/item-gone.tsx";
