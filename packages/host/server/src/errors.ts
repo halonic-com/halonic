@@ -40,6 +40,22 @@ export const serverErrors = {
     code: "run_target_not_found",
     message: "There is no such hub, workflow or agent to run.",
   },
+  unsupportedMediaType: {
+    status: 415,
+    code: "unsupported_media_type",
+    message: "This address takes only a JSON body, sent as application/json.",
+  },
+  runNotFound: { status: 404, code: "run_not_found", message: "There is no such run." },
+  eventNotAccepted: {
+    status: 409,
+    code: "event_not_accepted",
+    message: "The run doesn't take this event now.",
+  },
+  cancelNotSupported: {
+    status: 501,
+    code: "cancel_not_supported",
+    message: "This server can't cancel a run.",
+  },
   webhookRejected: {
     status: 401,
     code: "webhook_rejected",
