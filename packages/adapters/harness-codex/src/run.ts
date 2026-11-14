@@ -64,7 +64,12 @@ interface Started {
  * - `send` passes a person's answer into the running turn, and a decision
  *   on an `approval.requested` back to the request it came from.
  * - `cancel` stops Codex and everything it started, and resolves once they
- *   have stopped.
+ *   have stopped. When the session can't stop them, it rejects with the
+ *   session's error, which holds no bridge token, and the stream ends with
+ *   that error. The stream ends with "cancelled" only when Codex stopped
+ *   anyway. This holds for any stop that fails, so a failed stop while the
+ *   run is finishing or being cleaned up after a cancel also ends the
+ *   stream with the stop error, not "cancelled".
  */
 export class CodexRun implements HarnessRun {
   readonly #task: HarnessTask;
@@ -240,13 +245,18 @@ export class CodexRun implements HarnessRun {
 
   /**
    * Stops Codex and everything it started. When the session can't stop it,
-   * the run ends with that error, so its reader still hears how it ended.
+   * the run ends with that error, so its reader still hears how it ended,
+   * and the error is returned for the caller that wants to report it too.
    */
-  async #stopCodex(): Promise<void> {
+  async #stopCodex(): Promise<Error | undefined> {
     try {
       await (await this.#launched)?.kill();
+      return undefined;
     } catch (error) {
-      this.#fail(error);
+      // A program that is still running matters more than why it was stopped.
+      const stopError = this.#withoutToken(error);
+      this.#events.fail(stopError);
+      return stopError;
     }
   }
 
@@ -312,8 +322,9 @@ export class CodexRun implements HarnessRun {
     if (this.#events.ended) return;
     this.#cancelled = true;
     // A program that never started has nothing to stop.
-    await this.#stopCodex();
+    const stopError = await this.#stopCodex();
     this.#fail(cancelledError());
+    if (stopError !== undefined) throw stopError;
   }
 
   /** Codex, once its turn has started; an error when the run ended before. */
