@@ -3,16 +3,17 @@
 
 import type { RunSummary } from "@halonicjs/events";
 import type { Agent } from "@halonicjs/format";
-import type {
-  ChatTurnRequest,
-  ChatTurnResponse,
-  ConnectorClient,
-  RunEventListener,
-  RunExecutor,
-  RunSubscription,
-  ScheduledTimer,
-  SendOptions,
-  StartRunRequest,
+import {
+  AgentRunsNotAvailable,
+  type ChatTurnRequest,
+  type ChatTurnResponse,
+  type ConnectorClient,
+  type RunEventListener,
+  type RunExecutor,
+  type RunSubscription,
+  type ScheduledTimer,
+  type SendOptions,
+  type StartRunRequest,
 } from "@halonicjs/ports";
 import type { StopSignal } from "@halonicjs/std";
 import { chatToolCheckOf } from "./agent/check-chat-tool-call.ts";
@@ -142,7 +143,9 @@ export class LocalExecutor implements RunExecutor {
 
   startAgent(): Promise<RunSummary> {
     return Promise.reject(
-      new Error("The local executor can't start agent runs yet; they come with the agent loop."),
+      new AgentRunsNotAvailable(
+        "The local executor can't start agent runs yet; they come with the agent loop.",
+      ),
     );
   }
 

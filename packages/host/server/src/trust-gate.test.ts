@@ -1,4 +1,9 @@
-import { type Coordination, type RunExecutor, RunTargetNotFound } from "@halonicjs/ports";
+import {
+  AgentRunsNotAvailable,
+  type Coordination,
+  type RunExecutor,
+  RunTargetNotFound,
+} from "@halonicjs/ports";
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import type { Server, TrustDecision, TrustGate } from "./api.ts";
@@ -199,6 +204,25 @@ describe("trust gate", () => {
     it("keeps any other failure of a start a 500", async () => {
       const { server } = setup(new ScriptedGate([trusted]), null, new RangeError("odd"));
       expect((await post(server, "/api/runs", workflowStart)).status).toBe(500);
+    });
+
+    it("answers an agent run the executor refuses on purpose with 501 not_implemented", async () => {
+      const { server } = setup(
+        new ScriptedGate([trusted]),
+        null,
+        new AgentRunsNotAvailable("not built yet"),
+      );
+      const response = await post(server, "/api/agent-runs", agentStart);
+      expect(response.status).toBe(501);
+      expect(await response.json()).toEqual({
+        code: "not_implemented",
+        message: "Agent runs are not available yet in this version of Halonic.",
+      });
+    });
+
+    it("keeps any other failure of an agent run a 500", async () => {
+      const { server } = setup(new ScriptedGate([trusted]), null, new RangeError("odd"));
+      expect((await post(server, "/api/agent-runs", agentStart)).status).toBe(500);
     });
 
     it("counts a gate that throws as no trust: 500 and no run", async () => {
