@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "@halonicjs/adapter-system-node": "workspace:*",
-    "@halonicjs/ports": "workspace:*"
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/yaml": "workspace:*"
   },
   "devDependencies": {
     "@halonicjs/adapter-fs-node": "workspace:*",

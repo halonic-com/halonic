@@ -1,6 +1,7 @@
 import { delimiter } from "node:path";
 import { findProgram, isAbsolutePath } from "@halonicjs/adapter-system-node";
 import { type ProcessCall, type ProcessResult, runProcess } from "./node/run-process.ts";
+import { checkRunCheckoutFiles } from "./run-checkout-files.ts";
 
 // The run's one step outside the sandbox: the dependencies, installed from
 // the lockfile before the sandbox starts, so the program inside needs no
@@ -76,13 +77,14 @@ function installArguments(registry: string): string[] {
  * the sandbox and reaches the network, so it is limited to what the
  * lockfile names and starts no program of a package.
  *
- * @throws Error when `folder` isn't absolute, pnpm isn't found, or the install fails or takes too long; the message holds the end of pnpm's own output
+ * @throws Error when `folder` isn't absolute, its settings files or lockfile reach outside it, pnpm isn't found, or the install fails or takes too long; the message holds the end of pnpm's own output
  */
 export async function installRunCheckout(
   folder: string,
   options: RunCheckoutInstallOptions = {},
 ): Promise<void> {
   if (!isAbsolutePath(folder)) throw new Error(`A run folder is absolute, not ${folder}.`);
+  await checkRunCheckoutFiles(folder);
   const environment = options.environment ?? process.env;
   const pnpm = options.pnpm ?? (await findPnpm(environment));
   if (!isAbsolutePath(pnpm)) throw new Error(`The pnpm program must be an absolute path: ${pnpm}`);
