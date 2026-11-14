@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { runCli } from "../../run-cli.ts";
@@ -13,6 +14,7 @@ import { fakeSignals } from "../../test/fake-signals.ts";
 import { waitUntil } from "../../test/wait-until.test-helper.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
+import type { RunSetup } from "../run/run.ts";
 import { serveCommandWith } from "./command.ts";
 
 /** The first start opens the engine and the listener from cold imports. */
@@ -52,9 +54,19 @@ async function trustAcme(): Promise<void> {
 }
 
 function startServe(...args: string[]) {
+  return startServeWith(acmeRunsSetup(acmeRuns), ...args);
+}
+
+/** Like {@link startServe}, for a computer whose home folder is `homeFolder`. */
+function startServeHomedAt(homeFolder: string, ...args: string[]) {
+  const setup = acmeRunsSetup({ ...acmeRuns, profile: { ...acmeRuns.profile, homeFolder } });
+  return startServeWith(setup, ...args);
+}
+
+function startServeWith(setup: RunSetup, ...args: string[]) {
   const io = captureIo(acmeRuns.acme);
   const signals = fakeSignals();
-  const serving = runCli(["serve", ...args], io, [serveCommandWith(acmeRunsSetup(acmeRuns))], {
+  const serving = runCli(["serve", ...args], io, [serveCommandWith(setup)], {
     stop: { signals, exitNow: () => undefined },
   });
   running = { signals, serving };
@@ -86,9 +98,19 @@ verifies("cli.commands.serve.serve", () => {
     await expect(fetch(`${address}/api/hello`)).rejects.toThrow();
   });
 
-  it("tells the workspace's name and folder, never its absolute path", async () => {
+  it("tells a workspace under the home folder by its path from home, with a ~", async () => {
     await trustAcme();
-    const { io } = startServe("--port", "0");
+    const { io } = startServeHomedAt(acmeRuns.folder, "--port", "0");
+    await waitUntil(() => io.stdout.length >= 1, slowStart);
+    const address = addressOf(io.stdout[0]);
+
+    const workspace = await (await fetch(`${address}/api/workspace`)).json();
+    expect(workspace).toEqual({ name: "Acme", sample: false, folder: "~/acme" });
+  });
+
+  it("tells a workspace outside the home folder by its own name only, never its absolute path", async () => {
+    await trustAcme();
+    const { io } = startServeHomedAt(join(acmeRuns.folder, "profile"), "--port", "0");
     await waitUntil(() => io.stdout.length >= 1, slowStart);
     const address = addressOf(io.stdout[0]);
 
