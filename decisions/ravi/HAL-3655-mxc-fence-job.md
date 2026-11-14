@@ -3,6 +3,7 @@
 - Task: HAL-3655
 - Approval: Liam approves this note in review on the review task of HAL-3655
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wA2TDbHhN0BZhDIC5BktkYPvGsLkxjkcQgzQ7u7CE81kKMj4YQRU8mu56nvtwWi5HjbYOOUVcjkt6P+pWhp1Cw==
 
 ## What changes
 
