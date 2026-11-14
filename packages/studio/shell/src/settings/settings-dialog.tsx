@@ -39,6 +39,11 @@ export interface SettingsSectionProps {
   readonly place: SettingsPlace;
   /** `window` in the Settings dialog, `phone` on the phone's Settings page. */
   readonly surface: SettingsSurface;
+  /**
+   * The system's region format as a language tag (`nl-NL`), when the desktop app knows it. The
+   * window's own language is the webview's, which isn't the user's region setting (B17).
+   */
+  readonly regionFormat?: string | undefined;
 }
 
 /**
@@ -57,6 +62,8 @@ export interface SettingsDialogProps {
   /** The open workspace's name, or `undefined` when none is open. */
   readonly workspaceName: string | undefined;
   readonly place: SettingsPlace;
+  /** The system's region format, handed on to each section. */
+  readonly regionFormat?: string | undefined;
   /** The section a caller asked for, such as `assistant` from the session picker. */
   readonly requested?: string | undefined;
   /** The section shown when Settings last closed in this window. */
@@ -107,7 +114,7 @@ const settingsHeight = 640;
  * ) : null}
  */
 export function SettingsDialog(props: SettingsDialogProps) {
-  const { sections, workspaceName, place, announcer, onShown } = props;
+  const { sections, workspaceName, place, announcer, onShown, regionFormat } = props;
   const groups = useMemo(
     () => settingsGroups({ sections, workspaceName, place }),
     [sections, workspaceName, place],
@@ -159,6 +166,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
               closeSettings={props.onClose}
               place={place}
               surface="window"
+              regionFormat={regionFormat}
             />
           )}
         </div>
@@ -216,6 +224,7 @@ export function SectionView({
   place,
   surface,
   page,
+  regionFormat,
 }: SectionViewProps) {
   const View = useSectionView(section);
   return (
@@ -235,7 +244,13 @@ export function SectionView({
       {/* A view that fails to load or draw shows nothing; the list and the other sections keep working. */}
       <ViewErrorBoundary>
         <Suspense fallback={null}>
-          <View context={context} closeSettings={closeSettings} place={place} surface={surface} />
+          <View
+            context={context}
+            closeSettings={closeSettings}
+            place={place}
+            surface={surface}
+            regionFormat={regionFormat}
+          />
         </Suspense>
       </ViewErrorBoundary>
     </section>

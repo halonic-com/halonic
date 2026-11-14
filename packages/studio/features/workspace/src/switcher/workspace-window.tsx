@@ -28,6 +28,8 @@ export interface WorkspaceWindowProps {
   readonly platform: KeyboardPlatform;
   /** The language of the Studio's words, such as `en`, set on `<html lang>`. */
   readonly language: string;
+  /** The system's region format as a language tag, such as `nl-NL`; Formats follows it. */
+  readonly regionFormat?: string | undefined;
   /**
    * What the New workspace dialog needs from the app. Without it the window has no
    * **New workspace…** row or button.
@@ -49,6 +51,7 @@ export function WorkspaceWindow({
   switcher,
   platform,
   language,
+  regionFormat,
   newWorkspace,
 }: WorkspaceWindowProps) {
   const { open } = switcher;
@@ -152,6 +155,7 @@ export function WorkspaceWindow({
         host="desktop-app"
         platform={platform}
         language={language}
+        regionFormat={regionFormat}
         switcher={{ workspace: { name: shown.value.name, folder: shown.location }, menu, busy }}
         badges={
           shown.value.trust === undefined ? undefined : (

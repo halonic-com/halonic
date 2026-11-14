@@ -53,6 +53,8 @@ export interface StudioPhonePageProps extends Omit<StudioPageProps, "location"> 
   readonly onSettings?: (() => void) | undefined;
   /** In the desktop app, or in a browser, as Settings words its saved lines. */
   readonly settingsPlace: SettingsPlace;
+  /** The system's region format, handed on to each Settings section. */
+  readonly regionFormat?: string | undefined;
   /** Where the Settings list's scroll position is kept while a section's page is open. */
   readonly settingsScroll: RefObject<number>;
   /** The open workspace's name, which heads its group in Settings' list. */
@@ -85,6 +87,7 @@ function PhonePageBody({
   switcher,
   onSettings,
   settingsPlace,
+  regionFormat,
   settingsScroll,
   workspaceName,
   ...page
@@ -134,6 +137,7 @@ function PhonePageBody({
           closeSettings={() => places.back()}
           place={settingsPlace}
           surface="phone"
+          regionFormat={regionFormat}
         />
       </div>
     );
