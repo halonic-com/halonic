@@ -350,7 +350,9 @@ function startSummary(content: TrustCheck["content"]): string[] {
     addressCount > 0 ? `list ${counted(addressCount, "address")}` : undefined,
     sites > 0 ? `allow ${counted(sites, "site")}` : undefined,
   ].filter((part) => part !== undefined);
-  return clauses.length === 0 ? [] : [`Will ${listed(clauses)}.`];
+  return clauses.length === 0
+    ? ["Nothing in this workspace starts a program or reaches an address."]
+    : [`Will ${listed(clauses)}.`];
 }
 
 function counted(count: number, noun: string): string {
