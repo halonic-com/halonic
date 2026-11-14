@@ -14,7 +14,7 @@ export default defineConfig({
     expect: { requireAssertions: true },
     testTimeout: 90_000,
     hookTimeout: 90_000,
-    // Each file starts the real box and downloads the SDK into one shared folder.
+    // Every file listens on the same bridge port, so the files run one at a time.
     fileParallelism: false,
   },
 });

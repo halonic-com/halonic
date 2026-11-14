@@ -9,7 +9,7 @@
 - `tooling/check/dependencies.json` gets an entry for `@microsoft/mxc-sdk`, allowed only in
   `@halonicjs/adapter-sandbox-mxc`. It records that the SDK is a one-time download with pinned
   hashes, not a package dependency, which packages it brings and that telemetry stays off.
-- The MXC fence config runs test files one at a time, because each file downloads the SDK into
+- The MXC fence config runs test files one at a time, because every file listens on the same
   one shared folder.
 - The ADR gets an amendment saying the SDK is downloaded on demand.
 
