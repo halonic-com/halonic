@@ -50,6 +50,23 @@ async function studioPage() {
   throw new Error(`no Studio page on DevTools port ${port} (last seen: ${seen})`);
 }
 
+/**
+ * What a refused call said. DevTools only gives `exception.value` for a
+ * thrown string or number; for an Error or an object the text is the bare
+ * "Uncaught" (HAL-8916), so the description, class and preview are kept too.
+ */
+function describe({ text, exception }) {
+  const value = exception?.value;
+  if (value !== undefined) {
+    return JSON.stringify(value);
+  }
+  const parts = [exception?.className, exception?.description, text];
+  if (exception?.preview) {
+    parts.push(JSON.stringify(exception.preview));
+  }
+  return parts.filter(Boolean).join(" | ") || JSON.stringify(exception);
+}
+
 /** Calls `command` in the page; `closed` when the page went away first. */
 async function invoke(command) {
   const address = await studioPage();
@@ -70,8 +87,7 @@ async function invoke(command) {
       socket.close();
       const { result, exceptionDetails } = message.result;
       if (exceptionDetails) {
-        const refusal = exceptionDetails.exception?.value ?? exceptionDetails.text;
-        reject(new Error(`${command} failed: ${JSON.stringify(refusal)}`));
+        reject(new Error(`${command} failed: ${describe(exceptionDetails)}`));
       } else {
         resolve(result.value);
       }
