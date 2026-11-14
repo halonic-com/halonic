@@ -274,3 +274,51 @@ verifies("runtime.listen", () => {
     });
   });
 });
+
+verifies("runtime.listen-abort", () => {
+  describe("listenOnNode request signal", () => {
+    it("aborts the handler's request signal when the client closes the connection early", async () => {
+      let aborted: Promise<boolean> = Promise.resolve(false);
+      const arrived = Promise.withResolvers<void>();
+      const { listening } = await listen({
+        createServer: () => ({
+          async handle(request) {
+            aborted = new Promise((resolve) =>
+              request.signal.addEventListener("abort", () => resolve(true)),
+            );
+            arrived.resolve();
+            return new Promise<Response>(() => undefined);
+          },
+        }),
+      });
+      const outgoing = request({
+        host: "127.0.0.1",
+        port: listening.port,
+        method: "POST",
+        path: "/api/chat-turn",
+        headers: { host: "localhost" },
+      });
+      outgoing.on("error", () => undefined);
+      outgoing.end("{}");
+      await arrived.promise;
+      outgoing.destroy();
+      expect(await aborted).toBe(true);
+    });
+
+    it("leaves the signal alone when the answer was written in full", async () => {
+      let signal: AbortSignal | undefined;
+      const { listening } = await listen({
+        createServer: () => ({
+          async handle(request) {
+            signal = request.signal;
+            return new Response("done");
+          },
+        }),
+      });
+      const answer = await send(listening.port, { headers: { host: "localhost" } });
+      expect(answer.body).toBe("done");
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(signal?.aborted).toBe(false);
+    });
+  });
+});

@@ -51,6 +51,21 @@ export const serverErrors = {
     code: "event_not_accepted",
     message: "The run doesn't take this event now.",
   },
+  secretNameNotAllowed: {
+    status: 400,
+    code: "secret_name_not_allowed",
+    message: "That secret name isn't one a model setting may use.",
+  },
+  modelCallFailed: {
+    status: 502,
+    code: "model_call_failed",
+    message: "The model didn't answer. See the host's error log for the cause.",
+  },
+  requestAborted: {
+    status: 499,
+    code: "request_aborted",
+    message: "The caller closed the request.",
+  },
   cancelNotSupported: {
     status: 501,
     code: "cancel_not_supported",
