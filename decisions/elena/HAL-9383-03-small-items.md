@@ -6,7 +6,7 @@
 
 ## What changes
 
-`plugins.plugin-list` says the row shows the description in quotes, and its example shows the quotes. The other B29 items change no requirement.
+`plugins.plugin-list` says the row shows the description in quotes, and its example shows the quotes. A failed setting or secret save now offers **Try again** (not for a value the host refused), so `plugins.plugin-settings` says so and gains an example. The other B29 items change no requirement.
 
 ## Why
 
@@ -15,3 +15,4 @@ A plugin's description is the plugin's own text, so Studio quotes it everywhere 
 ## Covers
 
 - plugins.plugin-list
+- plugins.plugin-settings

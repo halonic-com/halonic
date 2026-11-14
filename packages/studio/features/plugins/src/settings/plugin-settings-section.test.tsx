@@ -63,6 +63,10 @@ function fakes(options: FakeOptions = {}) {
   const saved: Record<string, unknown>[] = [];
   const keychain = new Map(Object.entries(options.stored ?? {}));
   const waiting: (() => void)[] = [];
+  let locked = options.locked === true;
+  const unlock = () => {
+    locked = false;
+  };
   const release = async () => {
     waiting.shift()?.();
     await settle();
@@ -87,14 +91,14 @@ function fakes(options: FakeOptions = {}) {
   const secrets: PluginSecretStore = {
     get: async (name) => keychain.get(name) ?? null,
     set: async (name, value) => {
-      if (options.locked === true) throw new Error("The keychain is locked.");
+      if (locked) throw new Error("The keychain is locked.");
       keychain.set(name, value);
     },
     remove: async (name) => {
       keychain.delete(name);
     },
   };
-  return { host, secrets, saved, keychain, release };
+  return { host, secrets, saved, keychain, release, unlock };
 }
 
 async function show(options: FakeOptions = {}, off?: { reason: string }) {
@@ -291,17 +295,20 @@ verifies("plugins.plugin-settings", () => {
     });
 
     it("offers Try again after a failed save, and saves again when pressed", async () => {
-      const { view, keychain } = await show({ locked: true });
+      const { view, keychain, unlock } = await show({ locked: true });
       const key = fieldNamed(view, "API key");
       await typeAndLeave(key, "abc");
+      expect(keychain.size).toBe(0);
+      unlock();
       const tryAgain = [...view.querySelectorAll("button")].find(
         (candidate) => candidate.textContent === "Try again",
       );
       expect(tryAgain).toBeDefined();
       act(() => tryAgain?.click());
       await settle();
-      expect(lineUnder(key)).toBe("Couldn't save the secret. The keychain is locked.");
-      expect(keychain.size).toBe(0);
+      expect([...keychain.values()]).toEqual(["abc"]);
+      expect(view.textContent).not.toContain("The keychain is locked.");
+      expect(view.textContent).not.toContain("Try again");
     });
 
     it("has no Try again for a value that doesn't fit", async () => {

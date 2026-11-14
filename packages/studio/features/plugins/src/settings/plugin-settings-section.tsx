@@ -220,7 +220,11 @@ export function PluginSettingsSection({
                 onSave={(secret) =>
                   attemptSave(setting, async () => {
                     const ok = await save(setting, undefined, secret);
-                    if (ok) setSecretSet((now) => ({ ...now, [setting]: true }));
+                    if (ok) {
+                      setSecretSet((now) => ({ ...now, [setting]: true }));
+                      // The closure holds the secret: drop it once it is saved.
+                      delete retries.current[setting];
+                    }
                     return ok;
                   })
                 }
