@@ -1,10 +1,15 @@
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { createServer, type Server } from "node:net";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type { SandboxProcess, SandboxProfile } from "@halonicjs/ports";
 import { BoxFolders } from "../src/box-folders.ts";
-import { systemMachine } from "../src/machine.ts";
+import { mxcSdkLoader, systemMachine } from "../src/machine.ts";
 import { MxcSandbox } from "../src/mxc-sandbox.ts";
+import { mxcSdkSetup } from "../src/sdk-setup.ts";
+
+/** The port the tests give as the bridge; {@link realMxc} listens on it. */
+export const bridgePort = 4100;
 
 /** The real adapter, with box folders under a data folder of its own for this run. */
 export interface RealMxc {
@@ -19,6 +24,8 @@ export interface RealMxc {
 /**
  * The real MXC on this computer. The folders are made under the user's own
  * profile, as Halonic's data folder is: `%TEMP%` is never used for a box.
+ * The SDK is downloaded and verified the way the host does it, into the
+ * data folder, so the run needs no SDK in the lockfile.
  */
 export async function realMxc(): Promise<RealMxc> {
   const local = process.env["LOCALAPPDATA"] ?? join(homedir(), "AppData", "Local");
@@ -29,11 +36,24 @@ export async function realMxc(): Promise<RealMxc> {
   const base = join(folder, "files");
   await mkdir(dataFolder);
   await mkdir(base);
+  // The network control connects to the bridge, so something has to listen there.
+  const bridge = await listenOnBridgePort();
+  const sdk = mxcSdkSetup({ root: join(dataFolder, "mxc-sdk") });
+  const download = await sdk.download();
+  if (!download.done) throw new Error(`MXC's SDK didn't download: ${download.problem}`);
   return {
-    sandbox: new MxcSandbox(systemMachine(), new BoxFolders(dataFolder, process.pid)),
+    sandbox: new MxcSandbox(
+      systemMachine(mxcSdkLoader(process.platform, sdk.importSdk)),
+      new BoxFolders(dataFolder, process.pid),
+    ),
     dataFolder,
     base,
-    remove: () => rm(folder, { recursive: true, force: true }),
+    // The SDK's native module stays loaded in this process, and Windows won't
+    // delete a loaded DLL, so the leftover is the runner's to clean, not a failure.
+    remove: async () => {
+      await new Promise((done) => bridge.close(done));
+      await rm(folder, { recursive: true, force: true }).catch(() => undefined);
+    },
   };
 }
 
@@ -94,7 +114,10 @@ export function profileOver(
     readOnlyPaths: [folders.readOnly, dirname(process.execPath)],
     deniedPaths: [folders.secret],
     env: {},
-    network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
+    network: {
+      bridge: { kind: "loopback", host: "127.0.0.1", port: bridgePort },
+      allowedSites: [],
+    },
     timeLimitMs: 120_000,
     ...overrides,
   };
@@ -115,4 +138,13 @@ async function read(stream: ReadableStream<Uint8Array>): Promise<string> {
   let text = "";
   for await (const chunk of stream) text += decoder.decode(chunk, { stream: true });
   return text + decoder.decode();
+}
+
+/** A server on the bridge port that takes a connection and hangs up. */
+function listenOnBridgePort(): Promise<Server> {
+  return new Promise((resolve, reject) => {
+    const server = createServer((socket) => socket.end());
+    server.once("error", reject);
+    server.listen(bridgePort, "127.0.0.1", () => resolve(server));
+  });
 }

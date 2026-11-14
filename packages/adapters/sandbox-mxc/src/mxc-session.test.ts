@@ -327,6 +327,8 @@ verifies("sandbox-mxc.session", () => {
         CLAUDE_CONFIG_DIR: "settings",
         TEMP: temp,
         TMP: temp,
+        SYSTEMROOT: process.env["SystemRoot"] ?? "C:\\Windows", // leak-guard: allow absolute-path Windows' own folder
+        LOCALAPPDATA: temp,
         NODE_OPTIONS: "--preserve-symlinks --preserve-symlinks-main",
       });
       await session.close();

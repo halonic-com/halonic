@@ -100,7 +100,17 @@ function networkOf(bridge: SandboxBridge | null): MxcNetwork {
   };
 }
 
-/** The variables the profile gave, never the host's. `TEMP` and `TMP` are the temp folder, and Node gets its flags (rule 3). */
+/** The Windows folder, for a host that doesn't say (only a test on another system). */
+const defaultSystemRoot = "C:\\Windows"; // leak-guard: allow absolute-path Windows' own folder
+
+/**
+ * The variables the profile gave, never the host's. `TEMP` and `TMP` are the
+ * temp folder, and Node gets its flags (rule 3). MXC won't start a box without
+ * `SYSTEMROOT` and `LOCALAPPDATA` (and Winsock needs the real `SYSTEMROOT`), so
+ * those two are added when the profile has no own: `SYSTEMROOT` is the host's
+ * Windows folder, which is no secret, and `LOCALAPPDATA` is the temp folder, so
+ * the box learns nothing of the user's profile folder.
+ */
 function boxEnvironment(
   given: Readonly<Record<string, string>>,
   tempFolder: string,
@@ -123,6 +133,10 @@ function boxEnvironment(
     delete environment[nameOf(wanted) ?? wanted];
     environment[wanted] = tempFolder;
   }
+  if (nameOf("SYSTEMROOT") === undefined) {
+    environment["SYSTEMROOT"] = process.env["SystemRoot"] ?? defaultSystemRoot;
+  }
+  if (nameOf("LOCALAPPDATA") === undefined) environment["LOCALAPPDATA"] = tempFolder;
   const flags = symlinkFlags.filter((flag) => !nodeOptions.includes(flag));
   environment[nodeOptionsName] = [...nodeOptions, ...flags].join(" ");
   return environment;

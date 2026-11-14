@@ -144,7 +144,8 @@ verifies("sandbox-mxc.box-request", () => {
   });
 
   describe("boxPolicy: environment", () => {
-    it("gives only the profile's variables, TEMP and TMP as the temp folder, and the Node flags", async () => {
+    it("gives only the profile's variables, TEMP and TMP as the temp folder, SYSTEMROOT and LOCALAPPDATA that MXC needs, and the Node flags", async () => {
+      vi.stubEnv("SystemRoot", "C:\\TestWindows"); // leak-guard: allow absolute-path made-up Windows path for a test
       const { environment } = await boxPolicy(
         { ...profile, env: { CLAUDE_CONFIG_DIR: "C:\\acme\\settings", Temp: "C:\\elsewhere" } }, // leak-guard: allow absolute-path made-up Windows path for a test
         disk(),
@@ -153,8 +154,23 @@ verifies("sandbox-mxc.box-request", () => {
         CLAUDE_CONFIG_DIR: "C:\\acme\\settings", // leak-guard: allow absolute-path made-up Windows path for a test
         TEMP: temp,
         TMP: temp,
+        SYSTEMROOT: "C:\\TestWindows", // leak-guard: allow absolute-path made-up Windows path for a test
+        LOCALAPPDATA: temp,
         NODE_OPTIONS: "--preserve-symlinks --preserve-symlinks-main",
       });
+      vi.unstubAllEnvs();
+    });
+
+    it("keeps the profile's own SYSTEMROOT and LOCALAPPDATA, whatever their case", async () => {
+      const { environment } = await boxPolicy(
+        { ...profile, env: { SystemRoot: "D:\\W", localappdata: "D:\\L" } }, // leak-guard: allow absolute-path made-up Windows path for a test
+        disk(),
+      );
+      expect(environment["SystemRoot"]).toBe("D:\\W"); // leak-guard: allow absolute-path made-up Windows path for a test
+      expect(environment["localappdata"]).toBe("D:\\L"); // leak-guard: allow absolute-path made-up Windows path for a test
+      expect(
+        Object.keys(environment).filter((n) => /^(systemroot|localappdata)$/i.test(n)),
+      ).toHaveLength(2);
     });
 
     it("keeps the host's variables out", async () => {

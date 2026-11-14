@@ -5,6 +5,7 @@ import { join } from "node:path";
 import type { SandboxSession } from "@halonicjs/ports";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
+  bridgePort,
   finish,
   makeFolders,
   makeJunction,
@@ -141,7 +142,7 @@ describe("a program trying to get out of the MXC fence", () => {
       mxc.sandbox.open(
         profileOver(folders, {
           network: {
-            bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 },
+            bridge: { kind: "loopback", host: "127.0.0.1", port: bridgePort },
             allowedSites: ["example.invalid"],
           },
         }),
