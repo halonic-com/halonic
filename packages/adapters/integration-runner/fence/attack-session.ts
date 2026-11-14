@@ -16,10 +16,11 @@
 import { mkdir, mkdtemp, realpath, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { Sandbox, SandboxCommand } from "@halonicjs/ports";
+import type { Sandbox, SandboxCommand, SandboxSession } from "@halonicjs/ports";
 import { runnerCommand } from "../src/halonic/runner-command.ts";
 import {
   diskOnThisMachine,
+  type RunnerBackend,
   type RunnerFiles,
   type RunnerMachine,
   realRunnerPaths,
@@ -124,15 +125,21 @@ export interface RunAttackOptions {
   readonly hidden: Pick<RunnerMachine, "homeFolder" | "socketFolders">;
   /** The sandbox's own folders the profile keeps readable: srt's runtime, or none for `sandbox-host`. */
   readonly sandboxFolders: readonly string[];
+  /** The sandbox the profile is for; srt's shape unless the run is in MXC. */
+  readonly backend?: RunnerBackend;
+}
+
+/** An attack's session and the command that starts its script. */
+export interface OpenedAttack {
+  readonly session: SandboxSession;
+  readonly command: SandboxCommand;
 }
 
 /**
- * Writes the attack script into the integration's folder, opens a session
- * with the runner's profile for it, runs the script and reads its record.
- *
- * @throws when the script prints no record, such as when it never started
+ * Writes the attack script into the integration's folder and opens a session
+ * with the runner's profile for it, without starting the script.
  */
-export async function runAttack(options: RunAttackOptions): Promise<AttackResult> {
+export async function openAttack(options: RunAttackOptions): Promise<OpenedAttack> {
   const scriptFile = join(options.folders.integrationFolder, "attack.mjs");
   await writeFile(scriptFile, `${attemptHelper}\n${options.script}\n`);
   const { files, machine } = realRunnerPaths(
@@ -148,11 +155,22 @@ export async function runAttack(options: RunAttackOptions): Promise<AttackResult
       sandboxFolders: options.sandboxFolders,
       tempFolder: options.folders.tempFolder,
       timeLimitMs: 30_000,
+      ...(options.backend === undefined ? {} : { backend: options.backend }),
     },
   );
   const session = await options.sandbox.open(runnerProfile(files, machine, diskOnThisMachine));
+  return { session, command: attackCommand(files, options.nodeLayer) };
+}
+
+/**
+ * Runs the attack script in a session with the runner's profile and reads its record.
+ *
+ * @throws when the script prints no record, such as when it never started
+ */
+export async function runAttack(options: RunAttackOptions): Promise<AttackResult> {
+  const { session, command } = await openAttack(options);
   try {
-    const started = await session.start(attackCommand(files, options.nodeLayer));
+    const started = await session.start(command);
     await started.stdin.close();
     const [stdout, stderr, exit] = await Promise.all([
       readText(started.stdout),

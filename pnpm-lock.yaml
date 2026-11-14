@@ -1202,6 +1202,9 @@ importers:
       '@halonicjs/adapter-sandbox-host':
         specifier: workspace:*
         version: link:../sandbox-host
+      '@halonicjs/adapter-sandbox-mxc':
+        specifier: workspace:*
+        version: link:../sandbox-mxc
       '@halonicjs/adapter-sandbox-srt':
         specifier: workspace:*
         version: link:../sandbox-srt
