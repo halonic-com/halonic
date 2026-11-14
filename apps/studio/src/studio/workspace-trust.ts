@@ -38,6 +38,7 @@ export interface WorkspaceTrustSources {
 export class WorkspaceTrust {
   readonly #sources: WorkspaceTrustSources;
   #check: TrustCheck | undefined;
+  #failure: string | undefined;
   /** Whether the settled check may answer `isTrusted`: false while a new check runs. */
   #settled = false;
   #subject: TrustSubject | undefined;
@@ -60,6 +61,14 @@ export class WorkspaceTrust {
    */
   get check(): TrustCheck | undefined {
     return this.#check;
+  }
+
+  /**
+   * Why the last check failed, `undefined` while a check runs and after one that finished. Shown
+   * as "Couldn't load workspace settings" with a way to try again.
+   */
+  get failure(): string | undefined {
+    return this.#failure;
   }
 
   /** Calls `listener` whenever a check starts or ends; returns the way to stop. */
@@ -134,6 +143,7 @@ export class WorkspaceTrust {
   async refresh(): Promise<void> {
     const mine = ++this.#latest;
     this.#settled = false;
+    this.#failure = undefined;
     this.#changed();
     try {
       const workspace = await loadWorkspace(this.#sources.definitions);
@@ -144,11 +154,13 @@ export class WorkspaceTrust {
       this.#check = check;
       this.#subject = subject;
       this.#settled = true;
-    } catch {
+    } catch (error) {
       // Fails closed: no check, so no trust.
       if (mine === this.#latest) {
         this.#check = undefined;
         this.#subject = undefined;
+        this.#failure =
+          error instanceof Error && error.message !== "" ? error.message : "unknown error";
       }
     }
     if (mine === this.#latest) this.#changed();

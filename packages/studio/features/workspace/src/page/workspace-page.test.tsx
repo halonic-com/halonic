@@ -24,6 +24,8 @@ const trust = {
   badge: "none",
   status: "trusted",
   trustedAt: "2026-11-03T10:00:00Z",
+  failure: undefined,
+  retry: async () => {},
   review: () => undefined,
   grant: async () => ({ ok: true }),
   remove: async () => ({ ok: true }),

@@ -62,16 +62,21 @@ export type TrustGrantResult =
  */
 export interface WorkspaceTrustControl {
   /**
-   * What the header badge shows: nothing while trusted or before the first answer, else the
-   * "Not trusted yet" badge, whose tooltip changes when the list of trusted workspaces can't be read.
+   * What the header badge shows: nothing while trusted or before the first answer, else
+   * "Not trusted yet" (whose tooltip changes when the list of trusted workspaces can't be read),
+   * "Changed since you trusted it", or "Couldn't load workspace settings" when the check failed.
    */
-  readonly badge: "none" | "not-trusted" | "list-unreadable";
+  readonly badge: "none" | "not-trusted" | "changed" | "list-unreadable" | "failed";
   /**
    * Where the workspace stands, for the workspace page: `trusted`, `not-trusted` (never, or after
-   * **Remove trust**), `changed` since the person trusted it, `list-unreadable`, or `unknown`
-   * before the first answer.
+   * **Remove trust**), `changed` since the person trusted it, `list-unreadable`, `failed` when
+   * the check couldn't run (see {@link failure}), or `unknown` before the first answer.
    */
-  readonly status: "unknown" | "trusted" | "not-trusted" | "changed" | "list-unreadable";
+  readonly status: "unknown" | "trusted" | "not-trusted" | "changed" | "list-unreadable" | "failed";
+  /** Why the check couldn't run, while `status` is `failed`. */
+  readonly failure: string | undefined;
+  /** Runs the check again after it failed. Never rejects. */
+  retry(): Promise<void>;
   /** When the person trusted it, as ISO text, while `status` is `trusted` or `changed`. */
   readonly trustedAt: string | undefined;
   /** The check to show now, `undefined` until the first answer or when the workspace is trusted. */
