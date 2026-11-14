@@ -10,6 +10,7 @@ Where the computer offers MXC, `halonic doctor` shall have an MXC line with MXC'
 
 - Given MXC set to `on` and the SDK not downloaded,
   then the line is ✕ with `download` and `download-needed`; it is a warning when MXC was only on by default.
+
 - Given MXC set to `on` and a trust check that failed with `too-strict`,
   then the line is ✕ with `too-strict`, and `doctor` exits 1.
 - Given MXC on by default and a trust check that failed with `port-reachable`,
