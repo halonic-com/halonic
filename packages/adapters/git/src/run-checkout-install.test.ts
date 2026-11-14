@@ -37,7 +37,34 @@ verifies("git.run-checkout-install", () => {
         "--frozen-lockfile",
         "--prefer-offline",
         "--ignore-scripts",
+        "--ignore-pnpmfile",
+        "--config.manage-package-manager-versions=false",
+        "--pm-on-fail=ignore",
+        "--registry=https://registry.npmjs.org/",
       ]);
+    });
+
+    it("pins the registry on the host's side, and keeps corepack from switching pnpm", async () => {
+      const { run, calls } = fakeRun(0);
+      await installRunCheckout(folder, {
+        pnpm,
+        run,
+        environment: {},
+        registry: "https://mirror.example.com/",
+      });
+      expect(calls[0]?.args).toContain("--registry=https://mirror.example.com/");
+      expect(calls[0]?.env["COREPACK_ENABLE_PROJECT_SPEC"]).toBe("0");
+    });
+
+    it("passes proxy names in any letter case", async () => {
+      const { run, calls } = fakeRun(0);
+      await installRunCheckout(folder, {
+        pnpm,
+        run,
+        environment: { https_proxy: "http://proxy.example.com:8080", no_proxy: "localhost" },
+      });
+      expect(calls[0]?.env["https_proxy"]).toBe("http://proxy.example.com:8080");
+      expect(calls[0]?.env["no_proxy"]).toBe("localhost");
     });
 
     it("gives pnpm only the names it needs, and the given temp folder", async () => {
@@ -69,6 +96,17 @@ verifies("git.run-checkout-install", () => {
       const { run } = fakeRun(1);
       await expect(installRunCheckout(folder, { pnpm, run, environment: {} })).rejects.toThrow(
         "ERR_PNPM_OUTDATED_LOCKFILE",
+      );
+    });
+
+    it("shows pnpm's errors when it writes them to stdout", async () => {
+      const run = async (): Promise<ProcessResult> => ({
+        code: 1,
+        stdout: Buffer.from("ERR_PNPM_FETCH_404 no such package"),
+        stderr: "a warning",
+      });
+      await expect(installRunCheckout(folder, { pnpm, run, environment: {} })).rejects.toThrow(
+        "ERR_PNPM_FETCH_404",
       );
     });
 

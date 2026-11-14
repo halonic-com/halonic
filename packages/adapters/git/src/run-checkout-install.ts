@@ -14,6 +14,8 @@ export interface RunCheckoutInstallOptions {
   tempFolder?: string;
   /** What pnpm starts from, before it is cut down; `process.env` by default. */
   environment?: Readonly<Record<string, string | undefined>>;
+  /** The registry every package comes from, whatever the checkout's own settings say; the npm registry by default. */
+  registry?: string;
   /** Limit on the install; 10 minutes by default. */
   timeoutMs?: number;
   /** Starts the program; the real one by default. Tests give their own, so no program starts. */
@@ -41,16 +43,32 @@ const inheritedNames = new Set([
   "NODE_EXTRA_CA_CERTS",
 ]);
 
-/** The arguments of the install, each a rule of the run's start. */
-const installArguments = [
-  "install",
-  // Exactly what the lockfile says, or the install fails; it never edits it.
-  "--frozen-lockfile",
-  // Packages already in the host's store aren't fetched again.
-  "--prefer-offline",
-  // A package's install script would run here, outside the sandbox.
-  "--ignore-scripts",
-];
+const defaultRegistry = "https://registry.npmjs.org/";
+
+/**
+ * The arguments of the install, each a rule of the run's start. The
+ * checkout holds files that earlier runs committed, and pnpm reads several
+ * of them, so each way they could start a program or redirect the install
+ * is shut here, on the host's side.
+ */
+function installArguments(registry: string): string[] {
+  return [
+    "install",
+    // Exactly what the lockfile says, or the install fails; it never edits it.
+    "--frozen-lockfile",
+    // Packages already in the host's store aren't fetched again.
+    "--prefer-offline",
+    // A package's install script would run here, outside the sandbox.
+    "--ignore-scripts",
+    // The checkout's `.pnpmfile.cjs` is code, and its hooks would run here.
+    "--ignore-pnpmfile",
+    // The checkout's `packageManager` field must not pick, download or run another pnpm.
+    "--config.manage-package-manager-versions=false",
+    "--pm-on-fail=ignore",
+    // The checkout's `.npmrc` and `pnpm-workspace.yaml` can name a registry; the host's choice wins.
+    `--registry=${registry}`,
+  ];
+}
 
 /**
  * Runs `pnpm install --frozen-lockfile` in a run's checkout, with no shell
@@ -71,7 +89,7 @@ export async function installRunCheckout(
   const run = options.run ?? runProcess;
   const result = await run({
     program: pnpm,
-    args: installArguments,
+    args: installArguments(options.registry ?? defaultRegistry),
     cwd: folder,
     env: installEnvironment(environment, options.tempFolder),
     timeoutMs: options.timeoutMs ?? 600_000,
@@ -79,7 +97,7 @@ export async function installRunCheckout(
   });
   if (result.code !== 0) {
     throw new Error(
-      `The install in ${folder} failed with code ${result.code}: ${tail(result.stderr || result.stdout.toString("utf8"))}`,
+      `The install in ${folder} failed with code ${result.code}: ${tail(`${result.stdout.toString("utf8")}\n${result.stderr}`)}`,
     );
   }
 }
@@ -111,6 +129,8 @@ function installEnvironment(
   return {
     ...result,
     CI: "true",
+    // Corepack's pnpm program reads `packageManager` too; it must run the pnpm it holds.
+    COREPACK_ENABLE_PROJECT_SPEC: "0",
     COREPACK_ENABLE_AUTO_PIN: "0",
     npm_config_update_notifier: "false",
   };
@@ -123,7 +143,7 @@ function absoluteFolders(path: string): string {
     .join(delimiter);
 }
 
-/** The last lines of pnpm's output, which say why it stopped. */
+/** The last lines of pnpm's output, which say why it stopped; pnpm writes its errors to stdout, so both are read. */
 function tail(output: string): string {
   return output.trim().split("\n").slice(-10).join("\n");
 }
