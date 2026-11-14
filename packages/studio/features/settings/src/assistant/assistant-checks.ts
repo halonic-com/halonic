@@ -17,7 +17,7 @@ export type FieldCheck<Value> =
 export function checkModel(provider: AssistantProvider, text: string): FieldCheck<string> {
   const model = text.trim();
   if (model === "" && provider !== "not-set-up") {
-    const example = providerDefaults[provider].modelPlaceholder || "claude-sonnet-5-5";
+    const example = providerDefaults[provider].modelPlaceholder || "llama-3.1-8b-instruct";
     return { ok: false, error: `Enter a model name, like ${example}.` };
   }
   return { ok: true, value: model };
@@ -38,7 +38,9 @@ export function checkBaseUrl(provider: AssistantProvider, text: string): FieldCh
   }
   try {
     const url = new URL(address);
-    if ((url.protocol === "http:" || url.protocol === "https:") && url.hostname !== "") {
+    const isWebAddress = url.protocol === "http:" || url.protocol === "https:";
+    // A name and password in the address would be saved in plain text; only a secret's name is kept.
+    if (isWebAddress && url.hostname !== "" && url.username === "" && url.password === "") {
       return { ok: true, value: address };
     }
   } catch {

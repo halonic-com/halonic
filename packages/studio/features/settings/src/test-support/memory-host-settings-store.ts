@@ -2,11 +2,13 @@ import type { HostSettingsStore, HostSettingValue, HostSettingValues } from "@ha
 
 /**
  * A `HostSettingsStore` in memory for tests (a studio feature never uses an adapter). `stored` is
- * what is saved; `failSaves` makes the next saves fail, as a locked file would.
+ * what is saved; `failSaves` makes the next saves fail, as a locked file would, and `failKeys`
+ * makes only the saves of those keys fail.
  */
 export class MemoryHostSettingsStore implements HostSettingsStore {
   readonly stored = new Map<string, HostSettingValue>();
   failSaves = false;
+  readonly failKeys = new Set<string>();
   readonly #listeners = new Set<() => void>();
 
   async read(): Promise<HostSettingValues> {
@@ -14,12 +16,12 @@ export class MemoryHostSettingsStore implements HostSettingsStore {
   }
 
   async set(key: string, value: HostSettingValue): Promise<void> {
-    if (this.failSaves) throw new Error("The settings file is locked.");
+    if (this.failSaves || this.failKeys.has(key)) throw new Error("The settings file is locked.");
     this.stored.set(key, value);
   }
 
   async remove(key: string): Promise<void> {
-    if (this.failSaves) throw new Error("The settings file is locked.");
+    if (this.failSaves || this.failKeys.has(key)) throw new Error("The settings file is locked.");
     this.stored.delete(key);
   }
 
