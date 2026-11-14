@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 /** An example workspace that `halonic init --example <name>` copies. */
@@ -14,10 +15,13 @@ export interface InitExample {
 }
 
 /**
- * The repository's `examples` folder. The CLI runs from its sources, so the
- * examples are found next to them; a packaged CLI must ship this folder with it.
+ * The `examples` folder: the repository's, found next to the sources, or the one the npm package
+ * ships beside its `dist` folder (`tooling/publish` stages the CLI there).
  */
-const examplesFolder = join(import.meta.dirname, "..", "..", "..", "..", "..", "examples");
+const examplesFolder = [
+  join(import.meta.dirname, "..", "..", "..", "..", "..", "examples"),
+  join(import.meta.dirname, "..", "..", "examples"),
+].find((folder) => existsSync(folder)) as string;
 
 /**
  * The examples there are, by name. Acme runs on the test model only and its

@@ -618,7 +618,8 @@ package here is a `packages` error. Adding an entry is a public interface
 change, so it needs Liam's review.
 
 `published` in `policy.json` lists every package that reaches npm. The CLI
-`halonic` is published as it is. A package with `halonic.publish` in its
+`halonic` is bundled to JavaScript by `stage-cli` in tooling/publish, because Node
+doesn't run TypeScript inside `node_modules`. A package with `halonic.publish` in its
 `package.json` stays `private` in the workspace and becomes one subpath of
 its layer's npm package, such as `@halonicjs/adapters/integration-kit`;
 [tooling/publish](../../tooling/publish/README.md) stages that package.
