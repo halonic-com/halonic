@@ -67,8 +67,12 @@ function describe({ text, exception }) {
   return parts.filter(Boolean).join(" | ") || JSON.stringify(exception);
 }
 
-/** Calls `command` in the page; `closed` when the page went away first. */
-async function invoke(command) {
+/**
+ * Calls `command` in the page; `closed` when the page went away first. DevTools
+ * answers `{id, error}` when it can't evaluate yet, as while the page loads or
+ * navigates (HAL-9104): with `waiting` that counts as `closed`, else it rejects.
+ */
+async function invoke(command, { waiting = false } = {}) {
   const address = await studioPage();
   // The page is listed before Tauri has put its bridge into it (HAL-8916:
   // "reading 'invoke'" of undefined), so the call waits in the page for it.
@@ -98,6 +102,14 @@ async function invoke(command) {
       }
       answered = true;
       socket.close();
+      if (message.error) {
+        if (waiting) {
+          resolve("closed");
+        } else {
+          reject(new Error(`${command} failed: ${message.error.message}`));
+        }
+        return;
+      }
       const { result, exceptionDetails } = message.result;
       if (exceptionDetails) {
         reject(new Error(`${command} failed: ${describe(exceptionDetails)}`));
@@ -120,10 +132,15 @@ async function invoke(command) {
  */
 async function waitFor(kind) {
   const deadline = Date.now() + Number(seconds) * 1000;
-  await invoke("update_check");
+  await invoke("update_check", { waiting: true });
   let last = "";
   while (Date.now() < deadline) {
-    const status = await invoke("update_status");
+    const status = await invoke("update_status", { waiting: true });
+    if (status === "closed") {
+      // Not ready yet, or Halonic is restarting: try again.
+      await sleep(2000);
+      continue;
+    }
     const now = status.state.kind;
     if (now !== last) {
       console.log(`${new Date().toISOString()} ${JSON.stringify(status)}`);
