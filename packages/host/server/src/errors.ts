@@ -67,6 +67,11 @@ export const serverErrors = {
     code: "secret_name_not_allowed",
     message: "That secret name isn't one a model setting may use.",
   },
+  modelAddressNotAllowed: {
+    status: 400,
+    code: "model_address_not_allowed",
+    message: "The workspace has no model provider with that address and secret.",
+  },
   modelCallFailed: {
     status: 502,
     code: "model_call_failed",

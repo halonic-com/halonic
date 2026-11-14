@@ -8,7 +8,7 @@ import {
   isSecretName,
   type ToolDefinition,
 } from "@halonicjs/ports";
-import type { ServerPorts } from "./api.ts";
+import type { ModelSettingsGate, ServerPorts } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { isJsonRequest } from "./run-routes.ts";
 import { refuseUnlessTrusted } from "./trust-routes.ts";
@@ -25,7 +25,7 @@ export interface ChatTurnRoutes {
   chatTurn(request: Request, body: Uint8Array): Promise<Response>;
 }
 
-type ChatTurnRoutePorts = Pick<ServerPorts, "runs" | "trust" | "errorLog">;
+type ChatTurnRoutePorts = Pick<ServerPorts, "runs" | "trust" | "modelSettings" | "errorLog">;
 
 /** The longest id, alias or name the routes accept, in UTF-8 bytes. */
 const maxTextBytes = 256;
@@ -155,6 +155,14 @@ function mayUseSecret(name: string | undefined): boolean {
   );
 }
 
+/** Whether the workspace allows the turn's settings: only settings that name a secret are asked. */
+async function mayUseAddress(
+  modelSettings: ModelSettingsGate,
+  turn: ChatTurnRequest,
+): Promise<boolean> {
+  return turn.agent?.secret === undefined || (await modelSettings.allows(turn.hubId, turn.agent));
+}
+
 /** The request the body asks for, built from the listed fields only, or `null` when the body isn't one. */
 function parseChatTurn(body: Uint8Array): ChatTurnRequest | null {
   let parsed: unknown;
@@ -194,6 +202,7 @@ function parseChatTurn(body: Uint8Array): ChatTurnRequest | null {
 export function createChatTurnRoutes({
   runs,
   trust,
+  modelSettings,
   errorLog,
 }: ChatTurnRoutePorts): ChatTurnRoutes {
   return {
@@ -207,6 +216,10 @@ export function createChatTurnRoutes({
       }
       if (!mayUseSecret(turn.agent?.secret)) {
         return errorResponse(serverErrors.secretNameNotAllowed);
+      }
+      // The host sends the secret to the address, so a pair its workspace didn't set up goes nowhere.
+      if (!(await mayUseAddress(modelSettings, turn))) {
+        return errorResponse(serverErrors.modelAddressNotAllowed);
       }
       // The executor runs the tools a turn calls, so a chat turn needs trust just like a start.
       const refusal = await refuseUnlessTrusted(trust);

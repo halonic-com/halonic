@@ -41,6 +41,7 @@ async function serve() {
           },
           coordination: {} as never,
           trust: { check: async () => ({ state: "trusted", message: "" }) },
+          modelSettings: { allows: async () => false },
           webhooks: { find: async () => null },
           requestCounts: new MemoryRequestCountStore(),
           errorLog: { record: (error) => logged.push(error) },
