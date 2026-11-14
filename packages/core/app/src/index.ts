@@ -475,6 +475,7 @@ export {
 } from "./unfenced-runs.ts";
 export { fenceEnd, fenceStart, fenceUntrusted } from "./untrusted-fence.ts";
 export { type ActiveRun, type Wait, waitsInProgress } from "./waits-in-progress.ts";
+export { type ItemUsage, type LibraryItemRef, whoUses } from "./who-uses.ts";
 export {
   type FollowOptions,
   RunFollowStopped,
