@@ -2,6 +2,8 @@
 // 15.2). The run row says what `halonic runs` says, word for word, so
 // the two lists read the same.
 
+import { moneyAmount } from "@halonicjs/app";
+
 /** The status chip's word for each standing (mc 15.2, Status chips). */
 export const chipWords = {
   running: "Running",
@@ -392,14 +394,17 @@ export const homeWords = {
 
 /** Home's Spend tile (HAL-8553): the tile's title, the line under the number, and its empty text. */
 export const spendWords = {
-  title: "Spend per month",
+  title: "Estimated spend per month",
   empty: "No spend yet. When a run costs something, you'll see it here by month.",
   budgetLabel: "Budget",
-  /** An amount as the budget stop writes it: two decimals, then the currency code. */
-  amount: (amount: number, currency: string) => `${amount.toFixed(2)} ${currency}`,
-  thisMonth: "This month",
-  withinBudget: (budget: string) => `This month, within the ${budget} budget`,
-  overBudget: (budget: string) => `This month, over the ${budget} budget`,
+  /** An amount in the money rule (mc 15.2): "€120.40"; under half a cent, "under €0.01", never "€0.00". */
+  amount: (amount: number, currency: string) =>
+    amount > 0 && amount < 0.005
+      ? `under ${moneyAmount(0.01, currency)}`
+      : moneyAmount(amount, currency),
+  thisMonth: "This month, estimated",
+  withinBudget: (budget: string) => `This month, estimated, within the ${budget} budget`,
+  overBudget: (budget: string) => `This month, estimated, over the ${budget} budget`,
 };
 
 /** Ctrl K's run rows (checklist part 1, 1.1). */
