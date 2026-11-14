@@ -3,6 +3,7 @@
 - Task: HAL-9026
 - Approval: Liam's review of #2569 and #2600 on HAL-9026
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2g2BjBYVKw12skI4rq6TMeibEFBOApJjnEuH7MlbPWG/JUTRDxkLBuZGHDZ6714/IcDATdOP3hpSbE9HHrJCAQ==
 
 ## What changes
 
