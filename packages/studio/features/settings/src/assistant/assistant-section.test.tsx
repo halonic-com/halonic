@@ -124,6 +124,20 @@ verifies("settings.ai-agent-section", () => {
       expect(view.textContent).toContain("Couldn't save the turn limit on this computer.");
     });
 
+    it("keeps the old provider and its fields when a later write of the pick fails", async () => {
+      const { view, store, settings, announce } = await setup();
+      store.failKeys.add(assistantPrefs.secretName.key);
+      await change(control(view, "select"), "ollama");
+      expect(control<HTMLSelectElement>(view, "select").value).toBe("not-set-up");
+      expect(settings.get(assistantPrefs.provider)).toBe("not-set-up");
+      expect(settings.get(assistantPrefs.baseUrl)).toBe("");
+      expect(settings.get(assistantPrefs.local)).toBe(false);
+      expect(view.textContent).toContain("Couldn't save the provider on this computer.");
+      expect(announce).toHaveBeenCalledWith(
+        "Couldn't save the provider on this computer. Provider is back to Not set up.",
+      );
+    });
+
     it("clears the line at the next good save", async () => {
       const { view, store } = await setup();
       store.failSaves = true;

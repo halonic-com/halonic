@@ -69,11 +69,26 @@ export function AssistantView({ settings, announce, place }: AssistantViewProps)
       from,
       to,
     );
+    // The provider goes last, so a failure never leaves it next to the old provider's fields.
+    const written: Array<() => Promise<boolean>> = [];
+    const write = async <Value extends string | boolean>(
+      shown: { value: Value; save: (value: Value | undefined) => Promise<boolean> },
+      next: Value | undefined,
+    ) => {
+      const before = shown.value;
+      if (!(await shown.save(next))) return false;
+      written.push(() => shown.save(before));
+      return true;
+    };
     const saved =
-      (await provider.save(to)) &&
-      (await baseUrl.save(fields.baseUrl)) &&
-      (await secretName.save(fields.secretName)) &&
-      (await local.save(fields.local));
+      (await write(baseUrl, fields.baseUrl)) &&
+      (await write(secretName, fields.secretName)) &&
+      (await write(local, fields.local)) &&
+      (await provider.save(to));
+    if (!saved) {
+      for (const undo of written.reverse()) await undo();
+      provider.markFailed();
+    }
     if (!saved) {
       announce(
         `${text.notSaved("the provider")} Provider is back to ${providerDefaults[from].label}.`,

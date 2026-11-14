@@ -1,5 +1,5 @@
 import { Field, Input, isComposing, TextArea } from "@halonicjs/studio-kit";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { FieldCheck } from "./assistant-checks.ts";
 
 /** The props of {@link SavedTextField}. */
@@ -36,17 +36,23 @@ export function SavedTextField<Value>({
 }: SavedTextFieldProps<Value>) {
   const [draft, setDraft] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const saving = useRef(false);
   const shown = draft ?? stored;
 
   async function commit() {
-    if (draft === undefined) return;
+    if (draft === undefined || saving.current) return;
     const checked = check(draft);
     if (!checked.ok) {
       setError(checked.error);
       return;
     }
     setError(null);
-    if (await save(checked.value)) setDraft(undefined);
+    saving.current = true;
+    try {
+      if (await save(checked.value)) setDraft(undefined);
+    } finally {
+      saving.current = false;
+    }
   }
 
   const common = {

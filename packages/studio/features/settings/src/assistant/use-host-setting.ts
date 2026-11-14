@@ -9,6 +9,8 @@ import { useCallback, useEffect, useState } from "react";
 export interface ShownHostSetting<Value extends HostSettingValue> {
   readonly value: Value;
   readonly failed: boolean;
+  /** Shows the failed line without a save of its own, when a change this setting leads did not finish. */
+  readonly markFailed: () => void;
   /** Saves `value`, or puts the setting back to its default when it is `undefined`. Resolves to whether it saved. */
   readonly save: (value: Value | undefined) => Promise<boolean>;
 }
@@ -46,5 +48,6 @@ export function useHostSetting<Value extends HostSettingValue>(
     },
     [settings, setting],
   );
-  return { value, failed, save };
+  const markFailed = useCallback(() => setFailed(true), []);
+  return { value, failed, markFailed, save };
 }
