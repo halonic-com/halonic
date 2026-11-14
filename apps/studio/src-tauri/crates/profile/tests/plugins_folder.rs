@@ -40,3 +40,30 @@ fn plugins_folder_is_plugins_in_the_profile_on_every_platform() {
         );
     }
 }
+
+#[test]
+fn plugin_records_folder_is_plugin_records_in_the_profile_on_every_platform() {
+    let cases = [
+        (
+            Platform::Linux,
+            "/srv/acme/.local/share/halonic",
+            "/srv/acme/.local/share/halonic/plugin-records",
+        ),
+        (
+            Platform::Windows,
+            "<drive>\\Users\\acme\\halonic",
+            "<drive>\\Users\\acme\\halonic\\plugin-records",
+        ),
+    ];
+    for (platform, root, expected) in cases {
+        let profile = ProfileFolder {
+            platform,
+            root: with_drive(root),
+        };
+        assert_eq!(
+            profile.plugin_records_folder(),
+            with_drive(expected),
+            "{platform:?}"
+        );
+    }
+}
