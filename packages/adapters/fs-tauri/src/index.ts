@@ -63,4 +63,5 @@ export {
   trustCommands,
   trustRefusalKinds,
 } from "./shell.ts";
+export { TauriToolApprovalStore } from "./tool-approval-store.ts";
 export { TauriTrustStore } from "./trust-store.ts";

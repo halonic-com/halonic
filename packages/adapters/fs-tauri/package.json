@@ -2,7 +2,7 @@
   "name": "@halonicjs/adapter-fs-tauri",
   "private": true,
   "type": "module",
-  "description": "The TrustStore, RunStore, BlobStore, RecordStore, DefinitionStore, FolderReader and HostSettingsStore ports over the Studio shell's trust_*, run_*, blob_*, record_*, fs_*, folder_* and host_settings_* commands, sharing the trust folder, the run, blob and record folders, the workspace files and the host settings with the CLI and one opened-folder list with git.",
+  "description": "The TrustStore, RunStore, BlobStore, RecordStore, DefinitionStore, FolderReader, HostSettingsStore and ToolApprovalStore ports over the Studio shell's trust_*, run_*, blob_*, record_*, fs_*, folder_* and host_settings_* commands, sharing the trust folder, the run, blob and record folders, the workspace files, the host settings and the tool approvals with the CLI and one opened-folder list with git.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@halonicjs/adapter-tool-approval-kit": "workspace:*",
     "@halonicjs/adapter-watch-kit": "workspace:*",
     "@halonicjs/events": "workspace:*",
     "@halonicjs/ports": "workspace:*",

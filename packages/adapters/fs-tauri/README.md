@@ -1,6 +1,6 @@
 # @halonicjs/adapter-fs-tauri
 
-The `TrustStore`, `RunStore`, `BlobStore`, `RecordStore`, `DefinitionStore`, `FolderReader` and `HostSettingsStore` ports for the Studio desktop app.
+The `TrustStore`, `RunStore`, `BlobStore`, `RecordStore`, `DefinitionStore`, `FolderReader`, `HostSettingsStore` and `ToolApprovalStore` ports for the Studio desktop app.
 
 - `TauriTrustStore`: every call goes to the shell's `trust_get`, `trust_list`, `trust_grant` or
   `trust_revoke` command. The shell keeps the records in the `trust` folder of the profile, laid out
@@ -28,6 +28,10 @@ The `TrustStore`, `RunStore`, `BlobStore`, `RecordStore`, `DefinitionStore`, `Fo
   `host_settings_set` or `host_settings_remove` command. The shell keeps the settings in the
   profile's `settings/host.json`, as `FileHostSettingsStore` in `fs-node` keeps them, so the CLI and
   the desktop app share them. See [Host settings](#host-settings).
+- `TauriToolApprovalStore`: every call goes to the shell's `fs_*` commands with the folder
+  `"tool-approvals"` and the key's source. The shell keeps the files `FileToolApprovalStore` in
+  `fs-node` keeps, so the CLI and the desktop app share them. See
+  [Tool approvals](#tool-approvals).
 
 - **Layer:** adapters
 - **Owner:** priya
@@ -265,6 +269,31 @@ An answer that isn't the settings also rejects with `unavailable`. The package e
 `HostSettingsRefusalKind`, and `isHostSettingsRefusal`. The tests run the host settings contract
 against a fake shell; the file rules on real files are proved by the Rust tests of
 `crates/host-settings`.
+
+## Tool approvals
+
+`new TauriToolApprovalStore(shell)` keeps a source's approvals of listed tools and its waiting
+versions. The page names a workspace it opened and a source, never a path: the shell works out the
+source's folder in the CLI's profile, refuses one inside the workspace, takes the folder's lock for
+each write and keeps the files private to the user. The file text comes from
+`@halonicjs/adapter-tool-approval-kit`, the code `FileToolApprovalStore` uses too.
+
+A write names the text the store read, so when another write came between, the store reads and
+decides again, up to 5 times, then rejects with `unavailable`. A file that isn't exactly as Halonic
+writes it, or that a newer Halonic wrote, rejects with `UnreadableToolApprovalError`, and a newer
+Halonic's file is never overwritten.
+
+| The shell says | The adapter rejects with |
+| --- | --- |
+| `unsafe_path`, `private_path` | a `RangeError` |
+| `folder_not_open` | a `KindedError` `denied` |
+| `not_text` | an `UnreadableToolApprovalError` naming the tool or the file, from `get` and `list`; `approve`, `revoke` and `noteWaiting` treat the file as damaged, as the CLI's store does |
+| any other refusal | a `KindedError` `unavailable`, with the shell's message |
+| not a refusal at all, such as a page without the capability | a `KindedError` `unavailable`, without text |
+
+The package exports `TauriToolApprovalStore`. The tests run the tool approval store contract against
+a fake shell; the folder rules on real files are proved by the Rust tests in
+`apps/studio/src-tauri`.
 
 ## Example
 
