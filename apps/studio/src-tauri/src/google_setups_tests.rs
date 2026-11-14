@@ -108,7 +108,9 @@ fn google_setup_command_refuses_a_setup_log_that_is_a_symbolic_link() {
     let profile = Profile::new("linked");
     let outside = Profile::new("linked-target");
     outside.plant(&["elsewhere.jsonl"], "{\"id\":\"elsewhere\"}\n");
-    let folder = Path::new(&profile.folder().root).join("google").join("setups");
+    let folder = Path::new(&profile.folder().root)
+        .join("google")
+        .join("setups");
     std::fs::create_dir_all(&folder).unwrap();
     std::os::unix::fs::symlink(
         Path::new(&outside.folder().root).join("elsewhere.jsonl"),
