@@ -15,11 +15,9 @@
   "dependencies": {
     "@halonicjs/format": "workspace:*",
     "@halonicjs/std": "workspace:*",
-    "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/studio-shell": "workspace:*",
     "@halonicjs/yaml": "workspace:*",
-    "react": "catalog:",
-    "react-dom": "catalog:"
+    "react": "catalog:"
   },
   "devDependencies": {
     "@halonicjs/testing-spec": "workspace:*",
@@ -27,6 +25,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "react-dom": "catalog:",
     "jsdom": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

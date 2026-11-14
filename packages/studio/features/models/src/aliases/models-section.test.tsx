@@ -91,6 +91,20 @@ verifies("models.aliases.list", () => {
     expect(section.textContent).toContain("No model aliases yet");
   });
 
+  it("shows the newest read when an older one finishes late", async () => {
+    const files = filesWith(twoAliases);
+    let finishOld: (text: string) => void = () => undefined;
+    files.readModels = () => new Promise((resolve) => (finishOld = resolve));
+    const section = await showSection(files);
+    files.readModels = async () => "version: 1\naliases: {}\n";
+    await act(async () => files.change());
+
+    await act(async () => finishOld(twoAliases));
+
+    expect(section.textContent).toContain("No model aliases yet");
+    expect(section.querySelector("li")).toBeNull();
+  });
+
   it("says so when the file can't be read", async () => {
     const section = await showSection(filesWith("aliases: [not, a, map"));
 
