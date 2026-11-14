@@ -10,7 +10,7 @@
 `halonic routines watch` is running." `init --example` adds a `halonic routines watch` step to its
 next steps when the copy has routines.
 
-The requirement `cli.commands.routines.list` gains this line, and the three goldens that print it
+The requirement `cli.commands.routines.list` gains this line, `cli.commands.init.copy-example` gains the `watch` step, and the three goldens that print it
 (`init/golden/example.txt`, `routines/golden/acme-routines.txt`,
 `routines/golden/acme-routines-two-hubs.txt`) are updated. No test was weakened or skipped.
 
@@ -22,6 +22,7 @@ hint that nothing fires unless the watcher runs (HAL-9080 gap 5).
 ## Covers
 
 - cli.commands.routines.list
+- cli.commands.init.copy-example
 - apps/cli/src/commands/init/golden/example.txt
 - apps/cli/src/commands/routines/golden/acme-routines.txt
 - apps/cli/src/commands/routines/golden/acme-routines-two-hubs.txt
