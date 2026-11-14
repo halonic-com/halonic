@@ -33,6 +33,32 @@ The client's address is `CF-Connecting-IP`. The workspace is trusted, since the 
 Starting a run answers 501 and no webhook is found yet: the Worker doesn't run workflows or load routines
 from the snapshot yet.
 
+## Export and import routes (the contract for the CLI)
+
+`halonic deploy export` and `import` talk to the Worker through routes that exist only while a one-job
+admin key is set (requirement `runtime.admin-key`, ADR 5.6). A normal deployment has none: `/admin/...` is
+the same neutral 404 as any unknown path.
+
+**The secret.** `admin-key-hash` (the Workers secret `HALONIC_SECRET_ADMIN_KEY_HASH`) holds the SHA-256 of
+the key in lower-case hex, never the key. The CLI makes a key for the job (32 random bytes, base64url), sets
+the secret to its hash, runs the job and removes the secret when the job ends, success or failure.
+
+**Calling a route.** Send the key as `Authorization: Bearer <key>`, never in a URL, to one of the
+deployment's own host names (`HALONIC_ALLOWED_HOSTS`), with no `Origin` header. A request to any other
+name, such as a preview address, or with an `Origin`, never reaches a route. A missing or wrong key is 401
+`{"code":"unauthorized","message":"..."}`. Every answer carries `Cache-Control: no-store`.
+
+| Route | Request | Answer |
+| --- | --- | --- |
+| `GET /admin/export` | none | 200 JSON: the manifest of `@halonicjs/format/runtime-export` (`formatVersion`, `deployment`, `exportedAt`, `files` with `path`, `bytes`, `sha256`) |
+| `GET /admin/export/files/<path>` | `<path>` is one of the manifest's paths (`runs/<run id>.jsonl`, `records/<hash>.jsonl`, `blobs/<xx>/<sha256>`) | 200 the file's bytes as `application/octet-stream`; 404 for a path the manifest doesn't list |
+| `PUT /admin/import/files/<path>` | the file's bytes as the body, `<path>` in the same three shapes | 204; the file is only staged |
+| `POST /admin/import` | the manifest as JSON | 200 `{"imported":{"runs":n,"records":n,"blobs":n}}` once every staged file matches the manifest's size and SHA-256 and is applied; 409 `{"code":"files_missing" or "files_differ","paths":[...]}` and nothing applied otherwise |
+
+Today every one of these routes answers 501 `{"code":"not_implemented"}` after the key check: the answers come
+in the next parts of HAL-9486, with the paths and shapes above unchanged. The CLI side can be written
+against this table now.
+
 ## Durable Object classes
 
 `wrangler.toml` lists the classes in one migration with SQLite storage. The
@@ -74,7 +100,7 @@ rule is the requirement `runtime.password-limit`.
 
 ## Tests
 
-`routes.test.ts`, `serve.test.ts` and `worker.node.test.ts` run in Node. `serve-workerd.test.ts` runs the API in workerd with real Durable Objects. `worker-scheduled.test.ts` runs the cron in workerd with a recording routines object. `worker.test.ts` runs
+`routes.test.ts`, `serve.test.ts`, `admin.test.ts` and `worker.node.test.ts` run in Node. `serve-workerd.test.ts` runs the API in workerd with real Durable Objects. `worker-scheduled.test.ts` runs the cron in workerd with a recording routines object. `worker.test.ts` runs
 `src/test/worker.spec.ts` inside workerd through the part 1 harness
 (`@halonicjs/target-cloudflare-testing`), against the real Worker and real
 Durable Objects.
