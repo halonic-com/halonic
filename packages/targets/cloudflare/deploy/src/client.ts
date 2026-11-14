@@ -2,6 +2,7 @@ import type {
   CloudflareAccount,
   CloudflareApi,
   FoundResource,
+  Migration,
   ResourceRef,
   TokenStatus,
 } from "./api.ts";
@@ -26,6 +27,8 @@ interface Envelope {
 
 /** The Worker tag that marks a Worker as made by Halonic. */
 export const markerTag = "halonic";
+/** The table the Worker's own migration runner uses, so the two never disagree about what ran. */
+const migrationsTable = "schema_migrations";
 const defaultBaseUrl = "https://api.cloudflare.com/client/v4";
 const requestTimeoutMs = 30_000;
 const accountsPerPage = 50;
@@ -50,6 +53,22 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
   ): Promise<Envelope> {
     const path = `/accounts/${encodeURIComponent(accountId)}/d1/database/${encodeURIComponent(databaseId)}/query`;
     return (await request("POST", path, { sql, params })) as Envelope;
+  }
+
+  /** Runs statements as one D1 batch: all of them or none. */
+  async function batch(
+    accountId: string,
+    id: string,
+    statements: readonly { sql: string; params?: readonly string[] }[],
+  ): Promise<void> {
+    const path = `/accounts/${encodeURIComponent(accountId)}/d1/database/${encodeURIComponent(id)}/query`;
+    await request("POST", path, { batch: statements });
+  }
+
+  async function requireDatabase(accountId: string, name: string): Promise<string> {
+    const id = await databaseId(accountId, name);
+    if (!id) throw failed(`database ${name} not found`);
+    return id;
   }
 
   /** The database id for a name, or `undefined` when there is none. */
@@ -223,6 +242,28 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
     async adoptResource(accountId, ref) {
       if (ref.kind === "database") await mark(accountId, ref.name, ref);
       else if (ref.kind === "bucket") await mark(accountId, requireMarkedIn(ref), ref);
+    },
+    async appliedMigrations(accountId, databaseName) {
+      const id = await requireDatabase(accountId, databaseName);
+      try {
+        const body = await query(accountId, id, `SELECT id FROM ${migrationsTable} ORDER BY id`);
+        const rows = (body.result as { results?: { id?: unknown }[] }[] | undefined)?.[0]?.results;
+        return (rows ?? []).flatMap((row) => (typeof row.id === "string" ? [row.id] : []));
+      } catch (error) {
+        // A database that has never been migrated has no table yet.
+        if (error instanceof DeployError && /no such table/i.test(error.message)) return [];
+        throw error;
+      }
+    },
+    async applyMigration(accountId, databaseName, migration: Migration) {
+      const id = await requireDatabase(accountId, databaseName);
+      await batch(accountId, id, [
+        {
+          sql: `CREATE TABLE IF NOT EXISTS ${migrationsTable} (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+        },
+        ...migration.statements.map((sql) => ({ sql })),
+        { sql: `INSERT INTO ${migrationsTable} (id) VALUES (?)`, params: [migration.id] },
+      ]);
     },
   };
 

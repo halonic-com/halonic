@@ -2,6 +2,7 @@ import type {
   CloudflareAccount,
   CloudflareApi,
   FoundResource,
+  Migration,
   ResourceRef,
   TokenStatus,
 } from "./api.ts";
@@ -16,6 +17,8 @@ export interface FakeCloudflareState {
   resources?: Record<string, FoundResource>;
   /** Makes every call that changes something throw, to prove a mode writes nothing. */
   failOnWrite?: boolean;
+  /** Migration ids already applied. */
+  applied?: readonly string[];
 }
 
 /** A {@link CloudflareApi} in memory that records each call, for tests of everything above the client. */
@@ -32,6 +35,7 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
     calls.push(`${call} ${key(ref)}`);
     resources[key(ref)] = { marked };
   };
+  const applied = [...(state.applied ?? [])];
   return {
     calls,
     async listAccounts() {
@@ -55,6 +59,15 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
     },
     async adoptResource(_accountId, ref) {
       write("adoptResource", ref, true);
+    },
+    async appliedMigrations() {
+      calls.push("appliedMigrations");
+      return [...applied];
+    },
+    async applyMigration(_accountId, _databaseName, migration: Migration) {
+      if (state.failOnWrite) throw new Error(`unexpected write: applyMigration ${migration.id}`);
+      calls.push(`applyMigration ${migration.id}`);
+      applied.push(migration.id);
     },
   };
 }

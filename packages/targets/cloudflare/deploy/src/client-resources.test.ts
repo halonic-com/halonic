@@ -248,3 +248,55 @@ verifies("deploy.provision", () => {
     ).rejects.toThrow(/x-data not found/);
   });
 });
+
+verifies("deploy.migrate", () => {
+  it("reads the applied ids, and treats a missing table as none", async () => {
+    const seen: string[] = [];
+    const rows = (results: unknown) => ({ result: [{ results }] });
+    const run = async (route: Route) => {
+      const client = createCloudflareClient({
+        token,
+        baseUrl: "https://cf.test",
+        fetch: cloudflare({ ...lookup, "POST /accounts/a1/d1/database/d1/query": route }, seen),
+      });
+      return client.appliedMigrations("a1", "w-data");
+    };
+    expect(await run(rows([{ id: "0001-a" }, { id: "0002-b" }]))).toEqual(["0001-a", "0002-b"]);
+    expect(
+      await run({
+        success: false,
+        status: 400,
+        errors: [{ code: 7500, message: "no such table: schema_migrations" }],
+      }),
+    ).toEqual([]);
+    await expect(
+      run({ success: false, status: 500, errors: [{ code: 1, message: "boom" }] }),
+    ).rejects.toThrow(/boom/);
+  });
+
+  it("sends a migration and its record as one batch", async () => {
+    const seen: string[] = [];
+    const bodies: { batch?: { sql: string; params?: unknown }[] }[] = [];
+    const client = createCloudflareClient({
+      token,
+      baseUrl: "https://cf.test",
+      fetch: cloudflare(
+        { ...lookup, "POST /accounts/a1/d1/database/d1/query": { result: [] } },
+        seen,
+        bodies as never,
+      ),
+    });
+    await client.applyMigration("a1", "w-data", {
+      id: "0001-a",
+      statements: ["CREATE TABLE t (x TEXT)"],
+    });
+    const sent = bodies.at(-1)?.batch ?? [];
+    expect(seen.filter((s) => s.endsWith("/query"))).toHaveLength(1);
+    expect(sent.map((s) => s.sql.split(" ").slice(0, 3).join(" "))).toEqual([
+      "CREATE TABLE IF",
+      "CREATE TABLE t",
+      "INSERT INTO schema_migrations",
+    ]);
+    expect(sent.at(-1)?.params).toEqual(["0001-a"]);
+  });
+});

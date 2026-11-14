@@ -4,7 +4,9 @@ export type DeployErrorCode =
   | "token-inactive"
   | "no-account"
   | "ambiguous-account"
-  | "unmarked-resources";
+  | "unmarked-resources"
+  | "schema-newer-than-cli"
+  | "invalid-migrations";
 
 /** A deploy failure with a stable code. The message never holds a token or a secret. */
 export class DeployError extends Error {

@@ -27,6 +27,12 @@ export interface FoundResource {
   readonly marked: boolean;
 }
 
+/** One schema step: statements that run together, once per database. Same shape as the Worker's own. */
+export interface Migration {
+  readonly id: string;
+  readonly statements: readonly string[];
+}
+
 /**
  * The Cloudflare calls the deploy makes. Everything above the client depends on this port, so
  * it tests with a fake and no network. Later steps add their calls here.
@@ -44,4 +50,8 @@ export interface CloudflareApi {
   createResource(accountId: string, ref: ResourceRef): Promise<void>;
   /** Marks an existing database or bucket as ours, so a deploy may use it. */
   adoptResource(accountId: string, ref: ResourceRef): Promise<void>;
+  /** The ids of the migrations the database has applied; empty when it has none yet. */
+  appliedMigrations(accountId: string, databaseName: string): Promise<readonly string[]>;
+  /** Runs the migration's statements and records its id in one D1 batch, so both happen or neither. */
+  applyMigration(accountId: string, databaseName: string, migration: Migration): Promise<void>;
 }
