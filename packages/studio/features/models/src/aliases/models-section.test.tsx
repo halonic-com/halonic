@@ -258,6 +258,30 @@ verifies("models.aliases.create", () => {
     expect(changes).toHaveLength(1);
   });
 
+  it("names the providers in the list as the design does, and saves the id", async () => {
+    const files = filesWith(twoAliases, {
+      providers: {
+        ollama: "version: 1\nid: ollama\nname: Ollama\ntype: ollama\nlocal: true\n",
+        test: "version: 1\nid: test\nname: Test model\ntype: mock\n",
+      },
+    });
+    const changes: { label: string; text: string }[] = [];
+    files.changeModels = (label, text) => changes.push({ label, text });
+    const section = await showSection(files);
+    await act(async () => buttonNamed(section, "New alias")?.click());
+
+    // The first provider, anthropic, has no file and shows its id.
+    expect(document.querySelector("dialog")?.textContent).toContain("anthropic");
+    await act(async () => {
+      document
+        .querySelector<HTMLElement>("dialog [role=combobox], dialog button[aria-haspopup]")
+        ?.click();
+    });
+    const shown = document.body.textContent ?? "";
+    expect(shown).toContain("Ollama (local)");
+    expect(shown).toContain("Test model (built-in)");
+  });
+
   it("adds the alias as one undo step and opens its tab", async () => {
     const opened: ItemRef[] = [];
     const { changes } = await openDialog(twoAliases, opened);
@@ -321,6 +345,7 @@ it("titles an alias tab with the alias and says what pointing it does", async ()
   );
 
   expect(element.querySelector("h1")?.textContent).toBe("Alias: smart");
+  expect(element.querySelector("h1 .font-mono")?.textContent).toBe("smart");
   expect(element.textContent).toContain(
     'Agents ask for "smart". Point it at any provider and model; nothing else changes.',
   );

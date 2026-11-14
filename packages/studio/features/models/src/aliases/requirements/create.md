@@ -9,7 +9,7 @@ When the user chooses **New alias**, the models feature shall ask for a name, a 
 ## Examples
 
 - Given the Models section, then **New alias** is in its header, and in the empty state under "No model aliases yet".
-- Given the dialog, then it has **Name** ("Agents ask for this name, like `fast`."), **Provider**, **Model**, **Cancel** and **Create**, and focus starts on Name.
+- Given the dialog, then it has **Name** ("Agents ask for this name, like `fast`."), **Provider** (listed by display name, "Ollama (local)", "Test model (built-in)"; the id is what is saved), **Model**, **Cancel** and **Create**, and focus starts on Name.
 - Given the user types `cheap` and `gpt-5-nano` and presses **Create**,
   then `models.yaml` is saved with `cheap: { provider: <picked>, model: gpt-5-nano }`, the undo step is "Added model alias cheap" and the tab "Alias: cheap" opens. Price and Fallbacks are edited there.
 - Given Name is empty, then it says "Give it a name.".

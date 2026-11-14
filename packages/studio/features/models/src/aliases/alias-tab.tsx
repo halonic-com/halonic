@@ -6,10 +6,10 @@ import { AliasFields } from "./alias-fields.tsx";
 import {
   ALIAS_GONE_LINE,
   ALIAS_KIND_LABEL,
+  ALIAS_TITLE_PREFIX,
   ALIAS_UNREADABLE_TITLE,
   aliasIntro,
   aliasLoadingLine,
-  aliasTitle,
   GO_TO_MODELS,
   MODELS_PAGE_ITEM,
   MODELS_UNREADABLE_REASON,
@@ -31,7 +31,10 @@ export function AliasTab({ item, context }: ItemViewProps) {
   return (
     <div className="flex w-full flex-col gap-3 px-6 py-5">
       <p className="text-label uppercase text-fg-subtle">{ALIAS_KIND_LABEL}</p>
-      <h1 className="text-title">{aliasTitle(item.id)}</h1>
+      <h1 className="text-title">
+        {ALIAS_TITLE_PREFIX}
+        <span className="font-mono">{item.id}</span>
+      </h1>
       <p>{aliasIntro(item.id)}</p>
       {state.status === "loading" ? <LoadingLine name={item.id} retry={retry} /> : null}
       {state.status === "unreadable" ? (
