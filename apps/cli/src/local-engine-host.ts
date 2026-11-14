@@ -411,11 +411,15 @@ function engineOn(
             try {
               await connectors?.runs.runConnectors.closeAll();
             } finally {
-              // Even when a connector failed to close: git and the copies are released all the same.
+              // The runners are stopped: their temp folders go. Even when a connector failed to close: git and the copies are released all the same.
               try {
-                await harnessHost.close();
+                await input.runConnectors?.dispose?.();
               } finally {
-                await programFolders.close();
+                try {
+                  await harnessHost.close();
+                } finally {
+                  await programFolders.close();
+                }
               }
             }
           }

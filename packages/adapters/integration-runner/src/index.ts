@@ -34,6 +34,7 @@ export {
   type StartLocalRunner,
 } from "./halonic/local-integration.ts";
 export { type LoadPluginBackendOptions, loadPluginBackend } from "./halonic/plugin-backend.ts";
+export { runnerFile } from "./halonic/runner-file-path.ts";
 export {
   type RunnerDisk,
   type RunnerFiles,

@@ -377,6 +377,9 @@ importers:
       '@halonicjs/adapter-http-node':
         specifier: workspace:*
         version: link:../../packages/adapters/http-node
+      '@halonicjs/adapter-integration-runner':
+        specifier: workspace:*
+        version: link:../../packages/adapters/integration-runner
       '@halonicjs/adapter-mcp':
         specifier: workspace:*
         version: link:../../packages/adapters/mcp

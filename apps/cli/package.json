@@ -27,6 +27,7 @@
     "@halonicjs/adapter-harness-kit": "workspace:*",
     "@halonicjs/adapter-http-kit": "workspace:*",
     "@halonicjs/adapter-http-node": "workspace:*",
+    "@halonicjs/adapter-integration-runner": "workspace:*",
     "@halonicjs/adapter-mcp": "workspace:*",
     "@halonicjs/adapter-memory": "workspace:*",
     "@halonicjs/adapter-model-anthropic": "workspace:*",

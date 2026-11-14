@@ -20,6 +20,12 @@ const trustFolderName = "trust";
 /** The name of the folder in the profile that holds the sandbox's crash journals. */
 const sandboxJournalFolderName = "sandbox-journals";
 
+/** The name of the folder in the profile that holds the user's yes to run code without the sandbox. */
+const unfencedRunsFolderName = "unfenced-runs";
+
+/** The name of the folder in the profile that holds a runner's private temp folders. */
+const runnerTempFolderName = "runner-temp";
+
 /** The name of the folder in the profile that holds the plugins, one folder each. */
 const pluginsFolderName = "plugins";
 
@@ -122,6 +128,32 @@ export function trustFolder(profile: ProfileFolder): string {
  */
 export function sandboxJournalFolder(profile: ProfileFolder): string {
   return joinPath(profile.platform, profile.root, sandboxJournalFolderName);
+}
+
+/**
+ * The folder for the user's saved yes to run plugin and integration code
+ * without the sandbox, `unfenced-runs` in the profile folder. Never inside a
+ * workspace, so an agent that edits the workspace can't give the yes.
+ *
+ * @example
+ * unfencedRunsFolder({ platform: "linux", root: "/srv/acme/.local/share/halonic" });
+ * // "/srv/acme/.local/share/halonic/unfenced-runs"
+ */
+export function unfencedRunsFolder(profile: ProfileFolder): string {
+  return joinPath(profile.platform, profile.root, unfencedRunsFolderName);
+}
+
+/**
+ * The folder the runners' private temp folders are made in, `runner-temp` in
+ * the profile folder: outside the shared `/tmp`, which the runner's profile
+ * hides, so the one folder a runner may write to is kept apart from it.
+ *
+ * @example
+ * runnerTempFolder({ platform: "linux", root: "/srv/acme/.local/share/halonic" });
+ * // "/srv/acme/.local/share/halonic/runner-temp"
+ */
+export function runnerTempFolder(profile: ProfileFolder): string {
+  return joinPath(profile.platform, profile.root, runnerTempFolderName);
 }
 
 /**
