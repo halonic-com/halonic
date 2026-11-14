@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1294 (T11); flow-settings 5 and 6 (HAL-646); g5-frames T11-F13 and F16 (HAL-1143)
 
-The shell shall say, under the name of a `display` settings section, where its values are saved: "Saved on this computer, for every workspace." in the desktop app, and "Saved in this browser. The computer running Halonic keeps its own." in a browser, and "Saved on this phone. Your computer keeps its own." on the phone's Settings page. A `workspace` or `host` section shall have no such line from the shell. The shell shall tell each section's view whether it shows in the desktop app or in a browser.
+The shell shall say, under the name of a `display` settings section, where its values are saved: "Saved on this computer, for every workspace." in the desktop app, and "Saved in this browser. The computer running Halonic keeps its own." in a browser, and "Saved on this phone. Your computer keeps its own." on the phone's Settings page when Studio is served (a narrow desktop-app window still says "this computer"). A `workspace` or `host` section shall have no such line from the shell. The shell shall tell each section's view whether it shows in the desktop app or in a browser.
 
 ## Examples
 

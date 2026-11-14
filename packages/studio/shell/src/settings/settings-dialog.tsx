@@ -234,7 +234,7 @@ export function SectionView({
       )}
       {section.scope === "display" ? (
         <p className="mt-1 text-small text-fg-muted">
-          {surface === "phone" ? phoneSavedLine : displaySavedLines[place]}
+          {place === "served" && surface === "phone" ? phoneSavedLine : displaySavedLines[place]}
         </p>
       ) : null}
       {/* A view that fails to load or draw shows nothing; the list and the other sections keep working. */}
