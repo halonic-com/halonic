@@ -2,6 +2,7 @@
 
 - Approval: Julian's yes on HAL-9592, signed by the approver in review of the pull request
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:/+/mfYffN7S7HjoPjr8ijXZ2otgAY2ZNSiyCLg7tYJJEeLCbdphwqJsT7HhJd/LEQrQ/HwsvW9m/9OJ3TGEWAw==
 - Task: HAL-9335
 
 ## What changes
