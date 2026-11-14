@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { createShell } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -224,6 +225,63 @@ verifies("inbox.page", () => {
       await act(() => inbox.refresh());
       expect(rows(root)).toHaveLength(1);
       expect(root.textContent).toContain("The engine isn't answering. Showing what it said last.");
+    });
+  });
+
+  describe("on a phone", () => {
+    async function openPhone(runs: InboxRuns) {
+      const inbox = new Inbox(runs);
+      const root = render(
+        <PresentationProvider presentation="phone">
+          <InboxView inbox={inbox} now={() => new Date(2026, 10, 8, 10, 43)} />
+        </PresentationProvider>,
+      );
+      await settled();
+      return { root, inbox };
+    }
+
+    const hidden = (root: HTMLElement, pane: "list" | "item") =>
+      root.querySelector(`[data-pane="${pane}"]`)?.classList.contains("hidden") === true;
+
+    it("shows the list as the whole page, with its heading for screen readers only", async () => {
+      const { root } = await openPhone(fakeRuns([notes, review]).runs);
+      expect(root.querySelector("h1")?.parentElement?.classList.contains("sr-only")).toBe(true);
+      expect(root.querySelector(".w-90")).toBeNull();
+      expect(rows(root)).toHaveLength(2);
+      expect(hidden(root, "item")).toBe(true);
+      expect(hidden(root, "list")).toBe(false);
+    });
+
+    it("opens an item as a page in place of the list, and Back to Inbox returns to the row", async () => {
+      const { root } = await openPhone(fakeRuns([notes, review]).runs);
+      await click(rowCell(root, 1));
+      expect(root.querySelector("section h2")?.textContent).toBe("Approve this reply?");
+      expect(hidden(root, "list")).toBe(true);
+      await click(button(root, "Back to Inbox"));
+      expect(root.querySelector("section h2")).toBeNull();
+      expect(hidden(root, "list")).toBe(false);
+      expect(document.activeElement).toBe(rowCell(root, 1));
+    });
+
+    it("opens the item Home's Needs you asked for", async () => {
+      const runs = fakeRuns([notes, review]).runs;
+      const inbox = new Inbox(runs);
+      await inbox.refresh();
+      inbox.requestOpen(inbox.state.items[1]?.key ?? "");
+      const root = render(
+        <PresentationProvider presentation="phone">
+          <InboxView inbox={inbox} />
+        </PresentationProvider>,
+      );
+      await settled();
+      expect(root.querySelector("section h2")?.textContent).toBe("Approve this reply?");
+      expect(button(root, "Back to Inbox")).toBeDefined();
+    });
+
+    it("has no Back link on the desktop", async () => {
+      const { root } = await openPage(fakeRuns([notes, review]).runs);
+      await click(rowCell(root, 1));
+      expect(root.textContent).not.toContain("Back to Inbox");
     });
   });
 });

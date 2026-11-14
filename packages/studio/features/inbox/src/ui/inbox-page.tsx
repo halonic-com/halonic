@@ -1,6 +1,7 @@
-import { EmptyState, List } from "@halonicjs/studio-kit";
+import { Button, EmptyState, List, usePresentation } from "@halonicjs/studio-kit";
 import { errorMessageFor, type PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
 import { InboxService } from "../api.ts";
 import type { Inbox } from "../inbox.ts";
 import type { InboxItem } from "../inbox-items.ts";
@@ -38,7 +39,11 @@ export interface InboxViewProps {
  * A setup item opens its source's view (`SetupPane`); **Not now** and Escape close it and put
  * focus back on its row.
  *
- * Not here yet: notices, the request form, the narrow and phone layouts (HAL-1305), and
+ * On a phone (HAL-8778, phone layout 5) the list is the whole page, and an open item replaces it
+ * as a page with **Back to Inbox**; the top bar already says "Inbox", so the page's own heading is
+ * for screen readers only.
+ *
+ * Not here yet: notices, the request form, the narrow layout (HAL-1305), and
  * **Open run**, which comes with the run page.
  */
 export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
@@ -76,15 +81,18 @@ export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
     const row = list.current?.querySelector<HTMLElement>(
       'tr[aria-current="true"] [role="gridcell"]',
     );
-    setOpen(null);
+    // On a phone the list is hidden until the item closes, and a hidden row can't take focus.
+    flushSync(() => setOpen(null));
     row?.focus();
   };
   const failedFirst = !state.loaded && state.error !== undefined;
+  const phone = usePresentation() === "phone";
+  const itemPage = phone && open !== null;
 
   return (
     <div className="flex h-full min-h-0 w-full">
-      <div className="flex w-90 shrink-0 flex-col border-e border-border">
-        <header className="flex items-center px-4 py-3">
+      <div data-pane="list" className={listPaneClass(phone, itemPage)}>
+        <header className={phone ? "sr-only" : "flex items-center px-4 py-3"}>
           <h1 className="text-title">Inbox</h1>
         </header>
         {state.loaded && state.error !== undefined ? (
@@ -116,8 +124,18 @@ export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
           )}
         </div>
       </div>
-      <div className="flex min-w-0 flex-1 justify-center overflow-y-auto">
+      <div
+        data-pane="item"
+        className={`${phone && open === null ? "hidden" : "flex"} min-w-0 flex-1 justify-center overflow-y-auto`}
+      >
         <div className="flex w-full max-w-190 flex-col">
+          {itemPage ? (
+            <div className="px-2 pt-2">
+              <Button variant="ghost" size="touch" onClick={close}>
+                Back to Inbox
+              </Button>
+            </div>
+          ) : null}
           {open === null ? (
             <NothingOpen loaded={state.loaded} waiting={state.items.length} />
           ) : (
@@ -135,6 +153,12 @@ export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
       </div>
     </div>
   );
+}
+
+/** The list's column: 360 px beside the card, the whole page on a phone, and gone while an item is open. */
+function listPaneClass(phone: boolean, itemOpen: boolean): string {
+  if (!phone) return "flex w-90 shrink-0 flex-col border-e border-border";
+  return `${itemOpen ? "hidden" : "flex"} w-full flex-col`;
 }
 
 /**
