@@ -31,6 +31,15 @@ try {
 
 `secrets` is the `Secrets` port the bridge reads the agent's provider key from.
 
+## GitHub read tools
+
+`GitHubReadTools` is a `BridgeTools` with four read-only tools on one repository fixed when it is made
+(`github_get_pull_request`, `github_get_pull_request_diff`, `github_list_pull_request_files`,
+`github_get_pull_request_checks`), so a harness run in a sandbox can read a pull request through the
+bridge. The engine offers them next to its own tools. The token is read from `Secrets` on each call and
+goes only to `api.github.com`; the bridge records each call as `tool.called` and `tool.result`
+(requirement `harness-bridge.github-read`).
+
 ## What the bridge does
 
 - **Host and origin.** A request whose `Host` isn't `127.0.0.1` or `localhost`

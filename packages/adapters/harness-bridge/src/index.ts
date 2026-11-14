@@ -1,3 +1,9 @@
+export {
+  defaultGitHubReadLimits,
+  type GitHubReadLimits,
+  GitHubReadTools,
+  type GitHubReadToolsOptions,
+} from "./github-read-tools.ts";
 export { socketBridgeName } from "./listener.ts";
 export type { Fetch, UpstreamLimits } from "./pass-through.ts";
 export type { BodyLimits } from "./read-body.ts";
