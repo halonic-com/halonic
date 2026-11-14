@@ -37,8 +37,11 @@ verifies("runs.spend-tile", () => {
 
   it("never reads a tiny amount as 0.00", () => {
     const tile = spendTile([run("a", "2026-11-02T00:00:00.000Z", 0.004)], at, "EUR", undefined);
-    expect(tile?.format?.(0.004)).toBe("€0.004");
-    expect(tile?.format?.(0.0004)).toBe("under €0.001");
+    expect(tile?.format?.(0.004)).toBe("under €0.01");
+    expect(tile?.format?.(0.0004)).toBe("under €0.01");
+    expect(tile?.format?.(0.006)).toBe("€0.006");
+    expect(tile?.months.at(-1)?.value).toBeLessThanOrEqual(0);
+    expect(tile?.format?.(tile.months.at(-1)?.value ?? 0)).toBe("under €0.01");
   });
 
   it("without a monthly budget has no line, no amber and says only This month", () => {

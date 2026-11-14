@@ -31,16 +31,24 @@ export function spendTile(
   return {
     months: spend.map((month) => ({
       label: monthName(month),
-      value: month.spent,
+      value: isTiny(month.spent) ? -month.spent : month.spent,
       ...(monthly === undefined ? {} : { budget: monthly }),
     })),
-    format: (value) => spendWords.amount(value, currency),
+    format: (value) => spendWords.amount(Math.abs(value), currency),
     note: {
       text,
       ...(over ? { attention: true } : {}),
     },
     ...(monthly === undefined ? {} : { limit: { value: monthly, label: spendWords.budgetLabel } }),
   };
+}
+
+/**
+ * An amount under half a cent. The kit draws a negative value with no height, so a tiny month is
+ * handed over negated: it gets no bar, and `format` takes the sign off again to read "under €0.01".
+ */
+function isTiny(spent: number): boolean {
+  return spent > 0 && spent < 0.005;
 }
 
 /** A month's short English name ("Jun"), for a `YYYY-MM` month. */

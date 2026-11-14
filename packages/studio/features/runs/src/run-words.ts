@@ -374,8 +374,11 @@ export const spendWords = {
   title: "Estimated spend per month",
   empty: "No spend yet. When a run costs something, you'll see it here by month.",
   budgetLabel: "Budget",
-  /** An amount in the one money rule (mc 1.2): "€5.08", "€0.004", never "0.00 EUR". */
-  amount: (amount: number, currency: string) => moneyAmount(amount, currency),
+  /** An amount in the money rule (mc 15.2): "€120.40"; under half a cent, "under €0.01", never "€0.00". */
+  amount: (amount: number, currency: string) =>
+    amount > 0 && amount < 0.005
+      ? `under ${moneyAmount(0.01, currency)}`
+      : moneyAmount(amount, currency),
   thisMonth: "This month, estimated",
   withinBudget: (budget: string) => `This month, estimated, within the ${budget} budget`,
   overBudget: (budget: string) => `This month, estimated, over the ${budget} budget`,
