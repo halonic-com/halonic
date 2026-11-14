@@ -176,8 +176,9 @@ jobs:
           tarball="$PWD/cli-package/$CLI_TARBALL"
           clean=$(mktemp -d)
           cd "$clean"
-          npm init -y > /dev/null
-          npm install "$tarball" --no-audit --no-fund
+          # The tarball is a file dependency, so this is a plain `npm install`.
+          printf '{"private":true,"dependencies":{"halonic":"file:%s"}}\n' "$tarball" > package.json
+          npm install --no-audit --no-fund
           [ "$(./node_modules/.bin/halonic --version)" = "Halonic $VERSION" ]
           # `doctor` exits 1 when it finds a problem, such as a sandbox that
           # can't start on this runner. The check is that it runs to the end.
