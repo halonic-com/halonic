@@ -3,6 +3,7 @@
 - Task: HAL-8805, the `halonic secret` command (#2542), reviewed on HAL-8824
 - Approval: Liam approves this note in review on HAL-8824 and signs it as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:quJEmwJCBjlJFR8qXeafRnT8ochZpFLzRvmYHCv2Um0Vu+gBxD57ZUN1iCKHt1WahR84AMKsYrg6ZK+mo+wPBQ==
 
 ## What changes
 
