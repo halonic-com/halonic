@@ -74,6 +74,12 @@ export interface NoteCheckRun {
 export async function checkNotes(run: NoteCheckRun): Promise<Report> {
   const report = new Report("guard-notes");
   const file = decisionNoteFile(run.branch);
+  for (const path of strayNotes(run, file)) {
+    report.error(
+      path,
+      `${path} isn't this branch's note; rename it to ${file}. Only that file is checked and signed.`,
+    );
+  }
   const { touched, exports, changed } = touchedPaths(run);
   const text = run.git.readFile(run.pull.head, file);
   if (text === undefined) {
@@ -127,6 +133,21 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
     report.error(file, `The note's approval isn't verified: ${verdict.reason}.`);
   }
   return report;
+}
+
+/**
+ * The files the pull request adds under `decisions/` other than the branch's
+ * note. No check reads them, so they could carry an unsigned note. Notes
+ * already on the base branch stay as they are.
+ */
+function strayNotes(run: NoteCheckRun, file: string): string[] {
+  return run.changed.filter(
+    (path) =>
+      path.startsWith("decisions/") &&
+      path !== file &&
+      run.git.readFile(run.pull.head, path) !== undefined &&
+      run.git.readFile(run.mergeBase, path) === undefined,
+  );
 }
 
 /**
