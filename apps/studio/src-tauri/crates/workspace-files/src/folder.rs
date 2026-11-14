@@ -153,7 +153,11 @@ impl<'a> WorkspaceFolder<'a> {
         let _turn = self.locks.turn(&file);
         let current = match self.current_text(path) {
             Ok(current) => current,
-            Err(FileError::NotText { .. }) if expected == EXPECTED_NOT_TEXT => None,
+            // Still not text, as the caller read it: nothing to compare, remove it.
+            Err(FileError::NotText { .. }) if expected == EXPECTED_NOT_TEXT => {
+                self.delete(path, &file)?;
+                return Ok(RemoveOutcome::Removed);
+            }
             Err(FileError::NotText { .. }) => {
                 return Ok(RemoveOutcome::ChangedOnDisk { current: None });
             }

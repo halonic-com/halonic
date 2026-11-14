@@ -348,6 +348,59 @@ verifies("fs-tauri.tool-approval-store", () => {
       expect(files.get("waiting.json")).toBe(rewritten);
     });
 
+    it("gives up with an unavailable error when the damaged waiting file keeps changing", async () => {
+      const shell = openShell();
+      const store = new TauriToolApprovalStore(shell);
+      const files = shell.approvalsOf(workspace, "notes").files;
+      files.set("waiting.json", "{}");
+      const invoke = shell.invoke.bind(shell);
+      shell.invoke = async (command, args) => {
+        if (command === "fs_read" && args?.["path"] === "waiting.json")
+          shell.refuseNext("not_text");
+        return await invoke(command, args);
+      };
+      const error = await rejection(store.noteWaiting(lookup, waitingVersion(1)));
+      expect(errorKindOf(error)).toBe("unavailable");
+    });
+
+    it("keeps a waiting file that became text between its read as damaged and its removal", async () => {
+      const shell = openShell();
+      const store = new TauriToolApprovalStore(shell);
+      const files = shell.approvalsOf(workspace, "notes").files;
+      files.set("waiting.json", notText);
+      const invoke = shell.invoke.bind(shell);
+      let interrupted = false;
+      shell.invoke = async (command, args) => {
+        if (command === "fs_remove" && !interrupted) {
+          interrupted = true;
+          files.set("waiting.json", notText);
+          const answer = await invoke(command, { ...args, expected: "sha256:other" });
+          expect(answer).toEqual({ status: "changed-on-disk", current: null });
+        }
+        return await invoke(command, args);
+      };
+      await store.approve(toolApproval());
+      expect(interrupted).toBe(true);
+    });
+
+    it("reads again when the damaged waiting file was removed by another program before its removal", async () => {
+      const shell = openShell();
+      const store = new TauriToolApprovalStore(shell);
+      const files = shell.approvalsOf(workspace, "notes").files;
+      files.set("waiting.json", notText);
+      const invoke = shell.invoke.bind(shell);
+      let interrupted = false;
+      shell.invoke = async (command, args) => {
+        if (command === "fs_remove" && !interrupted) {
+          interrupted = true;
+          files.delete("waiting.json");
+        }
+        return await invoke(command, args);
+      };
+      expect(await store.noteWaiting(lookup, waitingVersion(1))).toEqual([waitingVersion(1)]);
+      expect(interrupted).toBe(true);
+    });
+
     it("removes a waiting file that isn't text when it approves", async () => {
       const shell = openShell();
       const store = new TauriToolApprovalStore(shell);

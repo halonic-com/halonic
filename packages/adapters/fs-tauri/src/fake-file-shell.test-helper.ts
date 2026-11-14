@@ -15,6 +15,9 @@ async function digestOf(text: string): Promise<string> {
   return `sha256:${[...hash].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 }
 
+/** A file the shell holds that isn't UTF-8 text. */
+export const notText = Symbol("not text");
+
 /** Whether the file (`undefined` for none) is what `expected` names: `"absent"`, `"not-text"` or a digest. */
 async function holdsExpected(
   current: string | typeof notText | undefined,
@@ -24,9 +27,6 @@ async function holdsExpected(
   if (current === notText) return expected === "not-text";
   return (await digestOf(current)) === expected;
 }
-
-/** A file the shell holds that isn't UTF-8 text. */
-export const notText = Symbol("not text");
 
 /**
  * A shell that answers the `fs_*` commands as the Rust shell does, written

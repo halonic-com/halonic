@@ -158,11 +158,12 @@ export class TauriToolApprovalStore implements ToolApprovalStore {
       const done =
         change === "remove"
           ? await this.#removeIf(source, file, expected)
-          : (await this.#statusOf(source, fileCommands.write, {
-              path: file,
-              text: change.text,
-              expected,
-            })) === "written";
+          : (await this.#statusOf(
+              source,
+              fileCommands.write,
+              { path: file, text: change.text, expected },
+              "written",
+            )) === "written";
       if (done) return;
     }
     throw keptChanging(source, file);
@@ -171,18 +172,21 @@ export class TauriToolApprovalStore implements ToolApprovalStore {
   /** Removes `file` when it still holds `expected`; `false` when another change came first. */
   async #removeIf(source: SourceKey, file: string, expected: string): Promise<boolean> {
     return (
-      (await this.#statusOf(source, fileCommands.remove, { path: file, expected })) === "removed"
+      (await this.#statusOf(source, fileCommands.remove, { path: file, expected }, "removed")) ===
+      "removed"
     );
   }
 
-  /** Runs a command that answers `{ status }` and gives the status, which is `"changed-on-disk"` when the file changed, or what the command did. */
+  /** Runs a command that answers `{ status }` and gives the status, which is `"changed-on-disk"` when the file changed, or `done`, what the command does when it works. */
   async #statusOf(
     source: SourceKey,
     command: string,
     args: Record<string, unknown>,
+    done: "written" | "removed",
   ): Promise<string> {
     const { status } = ((await this.#call(source, command, args)) ?? {}) as Record<string, unknown>;
-    if (status === "written" || status === "removed" || status === "changed-on-disk") return status;
+    if (status === done) return done;
+    if (status === "changed-on-disk") return status;
     throw noAnswer();
   }
 
