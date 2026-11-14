@@ -217,7 +217,12 @@ export class WorkspaceListedTools implements ListedToolsHost {
 
 /** The folder's own name, as the CLI names an unnamed workspace: the last part of its path. */
 function folderNameOf(location: string): string {
-  return location.split(/[\\/]/).filter((part) => part !== "").at(-1) ?? location;
+  return (
+    location
+      .split(/[\\/]/)
+      .filter((part) => part !== "")
+      .at(-1) ?? location
+  );
 }
 
 /** A connector whose tools are built in lists none, so there is nothing to approve. */
