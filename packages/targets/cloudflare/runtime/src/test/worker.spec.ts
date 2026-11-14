@@ -18,7 +18,7 @@ describe("the Worker in workerd", () => {
     expect(await response.json()).toEqual({ status: "ok" });
   });
 
-  it("refuses an API path while host/server isn't on main", async () => {
+  it("answers an API path with 404 when it is given no bindings to serve with", async () => {
     const response = await entry.default.fetch(new Request("https://cloud.example/api/hello"));
     expect(response.status).toBe(404);
   });

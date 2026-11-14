@@ -20,6 +20,8 @@ function bindings(overrides: Record<string, unknown> = {}) {
     BLOBS: { head: async () => null },
     DEFINITIONS: {},
     ...secrets,
+    HALONIC_ALLOWED_HOSTS: "cloud.example",
+    HALONIC_DEPLOYMENT_ID: "main",
     HALONIC_SELFTEST_TOKEN: token,
     ...overrides,
   };
@@ -61,7 +63,10 @@ verifies("runtime.self-test", () => {
     it("falls through to a 404 in the Worker", async () => {
       const env = bindings({ HALONIC_SELFTEST_TOKEN: undefined });
       const response = await worker.fetch(
-        new Request("https://cloud.example/self-test", { method: "POST", headers: authorized }),
+        new Request("https://cloud.example/self-test", {
+          method: "POST",
+          headers: { ...authorized, host: "cloud.example" },
+        }),
         env as never,
       );
       expect(response.status).toBe(404);
