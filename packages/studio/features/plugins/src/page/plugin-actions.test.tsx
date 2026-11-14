@@ -12,6 +12,7 @@ import { installFakePopover } from "../test-support/popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import {
   goesAwayLine,
+  onToastBody,
   type PluginActions,
   type PluginRemoveOutcome,
   type PluginUse,
@@ -299,6 +300,23 @@ verifies("plugins.plugin-actions", () => {
         "Its tool, command, card and panel go away on this computer.",
       );
       expect(goesAwayLine(undefined)).toBe("It goes away from this computer.");
+    });
+
+    it("names only what the plugin adds in the is-on toast, plural as Remove is", () => {
+      expect(onToastBody(weather().manifest)).toBe(
+        "Its command is in Ctrl K and its card is on Home.",
+      );
+      expect(onToastBody(undefined)).toBeUndefined();
+      const manifest = weather().manifest;
+      const ui = manifest?.ui;
+      if (manifest === undefined || ui === undefined) throw new Error("No manifest");
+      const two = <T,>(items: T[]) => [...items, ...items];
+      expect(
+        onToastBody({ ...manifest, ui: { ...ui, commands: two(ui.commands), cards: [] } }),
+      ).toBe("Its commands are in Ctrl K.");
+      expect(onToastBody({ ...manifest, ui: { ...ui, cards: two(ui.cards) } })).toBe(
+        "Its command is in Ctrl K and its cards are on Home.",
+      );
     });
 
     it("names only what the plugin keeps, and leaves the sentence out when it keeps nothing", () => {

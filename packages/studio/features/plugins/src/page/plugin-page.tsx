@@ -65,7 +65,7 @@ export function PluginPage({
   const [saveState, setSaveState] = useState<SettingsSaveState | undefined>(undefined);
   const [removing, setRemoving] = useState(false);
   const [reviewing, setReviewing] = useState(false);
-  const { run, toastRemoved } = usePageActions();
+  const { run, toastOn, toastRemoved } = usePageActions();
   const manifest = plugin.manifest;
   const off = plugin.status === "on" ? undefined : { reason: statusId };
   return (
@@ -110,6 +110,7 @@ export function PluginPage({
           manifest={manifest}
           trust={actions.trust}
           onClose={() => setReviewing(false)}
+          onTrusted={() => toastOn(plugin.name, manifest)}
         />
       ) : null}
       {removing ? (

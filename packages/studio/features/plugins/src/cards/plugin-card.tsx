@@ -4,6 +4,8 @@ import {
   Button,
   Card,
   DashedRingIcon,
+  Menu,
+  MoreIcon,
   RefreshIcon,
   SKELETON_AFTER_MS,
   SkeletonBar,
@@ -16,8 +18,11 @@ import { PluginResult } from "../ui/plugin-result.tsx";
 import {
   cantLoadLine,
   cardFailedLine,
+  cardMenuLabel,
   DETAILS,
+  HIDE_ON_HOME,
   notTrustedLine,
+  OPEN_PLUGIN,
   REVIEW,
   refreshLabel,
 } from "./card-text.ts";
@@ -44,6 +49,11 @@ export interface PluginCardProps {
   readonly onReview: () => void;
   /** Details, on a card whose plugin can't load: opens the plugin's page. */
   readonly onDetails: () => void;
+  /**
+   * **Hide on Home**, in the ⋮ menu: the app remembers the card as hidden. Left out where the
+   * card isn't on Home, so the menu has only **Open plugin**.
+   */
+  readonly onHide?: (() => void) | undefined;
 }
 
 type Run =
@@ -65,7 +75,15 @@ type Run =
  * <PluginCard plugin={{ id: "weather", name: "Weather" }} status="on" card={today}
  *   caller={pluginTools} onReview={review} onDetails={openPage} />
  */
-export function PluginCard({ plugin, status, card, caller, onReview, onDetails }: PluginCardProps) {
+export function PluginCard({
+  plugin,
+  status,
+  card,
+  caller,
+  onReview,
+  onDetails,
+  onHide,
+}: PluginCardProps) {
   const [run, setRun] = useState<Run>({ kind: "loading" });
   const [attempt, setAttempt] = useState(0);
   // The call whose answer is current: a newer call, a plugin that's turned off or a card that's
@@ -104,6 +122,24 @@ export function PluginCard({ plugin, status, card, caller, onReview, onDetails }
               onClick={callAgain}
             />
           ) : null}
+          <Menu
+            align="end"
+            entries={[
+              { id: "open", label: OPEN_PLUGIN, onSelect: onDetails },
+              ...(onHide === undefined
+                ? []
+                : [{ id: "hide", label: HIDE_ON_HOME, onSelect: onHide }]),
+            ]}
+            trigger={(trigger) => (
+              <Button
+                {...trigger}
+                variant="ghost"
+                size="sm"
+                icon={<MoreIcon />}
+                label={cardMenuLabel(card.title)}
+              />
+            )}
+          />
         </div>
         <div className="min-h-16" aria-busy={status === "on" && run.kind === "loading"}>
           {status === "on" ? (

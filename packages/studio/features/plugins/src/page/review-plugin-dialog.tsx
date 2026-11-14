@@ -14,6 +14,8 @@ export interface ReviewPluginDialogProps {
   readonly trust: PluginActions["trust"];
   /** After **Trust** is saved, and on **Not now** and Escape. */
   readonly onClose: () => void;
+  /** After **Trust** is saved, before `onClose`: the page says "*name* is on" in a toast. */
+  readonly onTrusted?: () => void;
 }
 
 /**
@@ -26,7 +28,13 @@ export interface ReviewPluginDialogProps {
  * <ReviewPluginDialog plugin={weather} manifest={manifest} trust={actions.trust}
  *   onClose={() => setReviewing(false)} />
  */
-export function ReviewPluginDialog({ plugin, manifest, trust, onClose }: ReviewPluginDialogProps) {
+export function ReviewPluginDialog({
+  plugin,
+  manifest,
+  trust,
+  onClose,
+  onTrusted,
+}: ReviewPluginDialogProps) {
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | undefined>(undefined);
 
@@ -35,6 +43,7 @@ export function ReviewPluginDialog({ plugin, manifest, trust, onClose }: ReviewP
     setFailure(undefined);
     try {
       await trust(plugin.plugin);
+      onTrusted?.();
       onClose();
       return;
     } catch (error) {
