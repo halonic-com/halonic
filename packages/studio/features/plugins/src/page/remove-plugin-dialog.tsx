@@ -1,5 +1,5 @@
 import { Dialog } from "@halonicjs/studio-kit";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { messageOf } from "../message-of.ts";
 import {
   actionFailedLine,
@@ -30,7 +30,8 @@ export interface RemovePluginDialogProps {
  * "Remove *name*?" (T13, F18, checklist 6.5): the kit Dialog sm, **Cancel** focused, **Remove
  * plugin** in `danger`. It names only what the plugin adds and keeps (G8). The connector sentence
  * is added when a connector uses the plugin, in any workspace on this computer (G4); if Halonic
- * can't tell, the dialog says so. When a secret can't be
+ * can't tell, the dialog says so. **Remove plugin** waits for that check, so the warning is never
+ * skipped. When a secret can't be
  * deleted, it stays open and says which; pressing **Remove plugin** again finishes the job.
  *
  * @example
@@ -49,11 +50,18 @@ export function RemovePluginDialog({
   const keeps = removedFromComputerLine(plugin.manifest);
   const [uses, setUses] = useState<readonly PluginUse[] | "unknown" | undefined>(undefined);
 
+  /** Settles once the connector check has answered or failed; Remove waits for it. */
+  const checked = useRef<Promise<void>>(Promise.resolve());
+
   useEffect(() => {
     let current = true;
-    usedBy(plugin.plugin).then(
-      (found) => current && setUses(found),
-      () => current && setUses("unknown"),
+    checked.current = usedBy(plugin.plugin).then(
+      (found) => {
+        if (current) setUses(found);
+      },
+      () => {
+        if (current) setUses("unknown");
+      },
     );
     return () => {
       current = false;
@@ -64,6 +72,7 @@ export function RemovePluginDialog({
     setBusy(true);
     setFailure(undefined);
     try {
+      await checked.current;
       const outcome = await remove(plugin.plugin);
       if (outcome.kind === "removed") {
         onRemoved();

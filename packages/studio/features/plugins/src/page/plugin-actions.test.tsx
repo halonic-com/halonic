@@ -195,6 +195,25 @@ verifies("plugins.plugin-actions", () => {
     );
   });
 
+  it("doesn't remove before the connector check has answered", async () => {
+    const { actions, asked } = recordingActions();
+    let answer: (uses: readonly PluginUse[]) => void = () => {};
+    const slow: PluginActions = {
+      ...actions,
+      usedBy: () => new Promise((resolve) => (answer = resolve)),
+    };
+    const { view } = await showPage(withSettings(), slow);
+
+    await pick(view, "Remove plugin…");
+    await act(async () => button("Remove plugin").click());
+
+    expect(asked).toEqual([]);
+
+    await act(async () => answer([{ connector: "forecast", workspace: "Acme" }]));
+
+    expect(asked).toEqual(["remove weather"]);
+  });
+
   it("says so when Halonic can't tell which connectors use the plugin", async () => {
     const { actions } = recordingActions({ fail: "usedBy" });
     const { view } = await showPage(withSettings(), actions);
