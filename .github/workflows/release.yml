@@ -1,8 +1,9 @@
 # Release workflow: builds the release files and creates a DRAFT GitHub
 # Release. It never publishes: a person publishes the draft by hand.
 #
-# Real runs are still refused: the CLI is packed from a stub. The installer
-# is the real Studio build (HAL-7491). The updater files are added by their
+# The CLI is the real package, built by `stage-cli` in tooling/publish and
+# checked in a clean folder (HAL-9558). The installer is the real Studio build
+# (HAL-7491). The updater files are added by their
 # own task. The APK comes from the Android Play build (android-play.yml),
 # called on real runs only: it is the APK Play signed, checked against Play's
 # app signing key. Dry runs ship a placeholder so the file name and checksum
@@ -152,32 +153,50 @@ jobs:
             echo "publisher=$publisher"
             echo "signed=$signed"
           } >> "$GITHUB_OUTPUT"
-      - name: Refuse a real release until the real build exists
-        if: steps.plan.outputs.dry_run != 'true'
-        run: |
-          echo "::error::Only dry runs are supported. The CLI package is still a stub."
-          exit 1
-      - name: Build the CLI package (stub)
+      - uses: $/.github/actions/setup
+      # The CLI package, built the way users install it: bundled to plain
+      # JavaScript (Node won't run TypeScript inside node_modules), packed with
+      # npm, then installed into an empty folder and run. A tarball that
+      # doesn't install or start fails the run before anything is uploaded.
+      - name: Build the CLI package
         env:
           VERSION: ${{ steps.plan.outputs.version }}
           CLI_TARBALL: ${{ steps.plan.outputs.cli_tarball }}
         run: |
-          mkdir -p cli-package cli-stub
-          cat > cli-stub/package.json <<JSON
-          {"name": "halonic-cli-stub", "version": "$VERSION", "private": true,
-           "description": "Placeholder for the CLI package in release dry runs."}
-          JSON
-          echo "console.log('placeholder')" > cli-stub/index.js
-          (cd cli-stub && npm pack --pack-destination ../cli-package --silent)
-          mv cli-package/halonic-cli-stub-*.tgz "cli-package/$CLI_TARBALL"
-      - uses: $/.github/actions/setup
+          pnpm --filter @halonicjs/adapter-integration-runner build
+          pnpm --filter @halonicjs/tooling-publish run stage-cli "$VERSION"
+          mkdir -p cli-package
+          (cd tooling/publish/dist/cli && npm pack --pack-destination ../../../../cli-package --silent)
+          mv "cli-package/halonic-$VERSION.tgz" "cli-package/$CLI_TARBALL"
+      - name: Check the CLI package in a clean folder
+        env:
+          VERSION: ${{ steps.plan.outputs.version }}
+          CLI_TARBALL: ${{ steps.plan.outputs.cli_tarball }}
+        run: |
+          tarball="$PWD/cli-package/$CLI_TARBALL"
+          clean=$(mktemp -d)
+          cd "$clean"
+          npm init -y > /dev/null
+          npm install "$tarball" --no-audit --no-fund
+          [ "$(./node_modules/.bin/halonic --version)" = "Halonic $VERSION" ]
+          # `doctor` exits 1 when it finds a problem, such as a sandbox that
+          # can't start on this runner. The check is that it runs to the end.
+          code=0
+          ./node_modules/.bin/halonic doctor | tee doctor.txt || code=$?
+          [ "$code" -le 1 ]
+          grep -q "^Halonic $VERSION" doctor.txt
+          grep -q "Disk" doctor.txt
+          # The files the package must carry beside the bundle.
+          test -f node_modules/halonic/dist/runner.mjs
+          test -d node_modules/halonic/examples/acme
+          test -f node_modules/halonic/node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js
       # The Rust crates' licences are read with `cargo metadata`, on the
       # toolchain pinned in rust-toolchain.toml.
       - name: Install the pinned Rust toolchain
         working-directory: apps/studio/src-tauri
         run: rustup toolchain install
       # The SBOM tool is `pnpm sbom` (pinned by packageManager), so no new
-      # tool is added. Until the CLI package exists, both SBOMs cover every
+      # tool is added. Both SBOMs cover every
       # production dependency of the workspace, as the installer's notices
       # do (build-installer.ps1). The check fails the run when a library is
       # not on tooling/check/dependencies.json or a ref in the dependency
@@ -595,7 +614,7 @@ jobs:
             title="DRY RUN Halonic $VERSION"
             how="signed with a test certificate"
             [ "$SIGNED" = "true" ] || how="unsigned"
-            notes="**Dry run, $how, with a stub CLI. Do not publish. Delete this draft.**"$'\n\n'"$link"
+            notes="**Dry run, $how, with placeholder files for the APK. Do not publish. Delete this draft.**"$'\n\n'"$link"
             flags+=(--prerelease)
           fi
           gh release create "$TAG" dist/* --draft \

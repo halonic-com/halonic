@@ -9,7 +9,7 @@ small workspace packages stay private and keep their own names.
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-publish` (`stageLayer`, `rewriteSpecifiers`, `buildWorkerBundle`)
-- **Requirements:** `publish.staged-package`, `publish.matching-versions`, `publish.packed-import`, `publish.worker-bundle`
+- **Requirements:** `publish.staged-package`, `publish.matching-versions`, `publish.packed-import`, `publish.worker-bundle`, `publish.staged-cli`
 
 ## Example
 
@@ -66,6 +66,18 @@ so the adapters and the testing package always ship together.
 
 Only subpaths we are ready to keep stable are published: adding `halonic.publish` to a package adds it to
 the public API of its layer package and needs Liam's review.
+
+## The CLI package
+
+`pnpm --filter @halonicjs/tooling-publish run stage-cli 0.1.0` writes the publishable copy of `halonic` (from
+`apps/cli`) to `tooling/publish/dist/cli`; build the integration runner file first with
+`pnpm --filter @halonicjs/adapter-integration-runner build`. Node won't run TypeScript inside `node_modules`, so
+the CLI and all the workspace code and libraries it imports are bundled into `dist/cli/main.js`, which imports
+Node's own modules only. Beside it ship `dist/runner.mjs`, the `examples` folder and the sandbox runtime as a
+bundled dependency: it is the copy the workspace runs, with our patch, and the sandbox starts it as a program.
+`bin/halonic.js` keeps its Node version check. The release workflow packs this folder and installs the tarball
+into an empty folder to run `halonic --version` and `halonic doctor` before it uploads anything. The rule is the
+requirement `publish.staged-cli`.
 
 ## Releasing
 
