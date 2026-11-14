@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -27,6 +28,15 @@ function createNoteItem(args: unknown = { title: "Refund for Sam", body: "" }): 
   if (item?.kind !== "approval") throw new Error("expected an approval item");
   return item;
 }
+
+const manual = () =>
+  new KindedError(
+    "unavailable",
+    "Studio can't answer runs yet. Answer this one from the command line.",
+    {
+      fix: "halonic runs send 7k2m9p approve",
+    },
+  );
 
 /** A clock the test moves, and a card on it. */
 function openCard(overrides: Partial<ApprovalCardProps> = {}) {
@@ -325,6 +335,29 @@ verifies("inbox.approval-card", () => {
       expect(root.textContent).toContain("Rejected by you at");
     });
 
+    it("shows the command to copy, with no Try again, when only the command line can answer", async () => {
+      const { root, later } = openCard({
+        decisions: {
+          approve: async () => {
+            throw manual();
+          },
+          reject: async () => waitingRun("r47"),
+          askForChanges: async () => waitingRun("r47"),
+        },
+      });
+      later(2);
+      await press(button(root, "Approve"));
+      const slot = root.querySelector("[role='alert']");
+      expect(slot?.textContent).toContain("Studio can't answer runs yet.");
+      expect(slot?.querySelector("code, [class*='font-mono']")?.textContent).toBe(
+        "halonic runs send 7k2m9p approve",
+      );
+      expect(root.querySelector("button[aria-label='Copy command']")).not.toBeNull();
+      expect(root.textContent).not.toContain("Try again");
+      expect(root.textContent).not.toContain("Couldn't record your decision.");
+      expect(button(root, "Approve")).toBeDefined();
+    });
+
     it("opens the run", async () => {
       const onOpenRun = vi.fn();
       const { root } = openCard({ onOpenRun });
@@ -427,6 +460,28 @@ verifies("inbox.approval-card", () => {
       expect(document.querySelector("dialog")?.textContent).toContain(
         "Couldn't record your decision.",
       );
+      expect(noteField().value).toBe("Use the shorter title");
+    });
+
+    it("says the command sends Reject without the note, and gives it to copy", async () => {
+      const { root, later } = openCard({
+        decisions: {
+          approve: async () => waitingRun("r47"),
+          reject: async () => waitingRun("r47"),
+          askForChanges: async () => {
+            throw manual();
+          },
+        },
+      });
+      later(2);
+      await press(button(root, "Ask for changes"));
+      await type("Use the shorter title");
+      await press(dialogButton("Send note"));
+      await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+      const text = document.querySelector("dialog")?.textContent ?? "";
+      expect(text).toContain("The command sends Reject without your note.");
+      expect(text).toContain("halonic runs send 7k2m9p approve");
+      expect(text).not.toContain("Try again");
       expect(noteField().value).toBe("Use the shorter title");
     });
 

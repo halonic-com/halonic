@@ -9,6 +9,8 @@ import {
   CardHeader,
   DecidedBar,
   FailedLine,
+  type ManualAnswer,
+  manualAnswerOf,
   type NextItem,
   useEveryMinute,
 } from "./card-parts.tsx";
@@ -29,7 +31,11 @@ export interface WaitCardProps {
 }
 
 type CardState =
-  | { readonly kind: "open"; readonly failed: string | null }
+  | {
+      readonly kind: "open";
+      readonly failed: string | null;
+      readonly manual: ManualAnswer | null;
+    }
   | { readonly kind: "answering"; readonly event: string }
   | { readonly kind: "answered"; readonly event: string; readonly at: Date };
 
@@ -100,7 +106,7 @@ export function WaitCard(props: WaitCardProps) {
   const titleId = useId();
   const heading = useRef<HTMLHeadingElement>(null);
   const answered = useRef<CalloutHandle>(null);
-  const [state, setState] = useState<CardState>({ kind: "open", failed: null });
+  const [state, setState] = useState<CardState>({ kind: "open", failed: null, manual: null });
   const [usableAt] = useState(() => now().getTime());
   const guard = useDecisionGuard(usableAt, () => now().getTime());
   useEveryMinute();
@@ -116,8 +122,8 @@ export function WaitCard(props: WaitCardProps) {
     try {
       await decisions.answer(item, event);
       setState({ kind: "answered", event, at: now() });
-    } catch {
-      setState({ kind: "open", failed: event });
+    } catch (error) {
+      setState({ kind: "open", failed: event, manual: manualAnswerOf(error) });
     }
   }
 
@@ -218,7 +224,10 @@ function AnswerBar({ accepts, labels, state, guard, onAnswer }: AnswerBarProps) 
       onPointerDownCapture={guard.onPointerDownCapture}
       onKeyDownCapture={guard.onKeyDownCapture}
     >
-      <FailedLine onRetry={failed === null ? null : () => onAnswer(failed)} />
+      <FailedLine
+        onRetry={failed === null ? null : () => onAnswer(failed)}
+        manual={state.kind === "open" ? state.manual : null}
+      />
       {first === undefined ? null : answerButton(first, true)}
       {others.length === 0 ? null : (
         <div className="flex gap-2">{others.map((event) => answerButton(event, false))}</div>

@@ -1,4 +1,5 @@
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
+import { shortRunId } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
 import type { RunStore } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
@@ -167,7 +168,8 @@ verifies("studio.workspace-runs", () => {
     expect((await runs.waiting()).map((run) => run.id)).toEqual([runId]);
     await expect(runs.send(runId, "approve")).rejects.toMatchObject({
       kind: "unavailable",
-      message: `Answer this run from the command line for now: \`halonic runs send ${runId} approve\`.`,
+      message: "Studio can't answer runs yet. Answer this one from the command line.",
+      fix: `halonic runs send ${shortRunId(runId)} approve`,
     });
   });
 

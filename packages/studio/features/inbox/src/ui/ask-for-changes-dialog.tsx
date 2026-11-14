@@ -1,4 +1,4 @@
-import { Button, Dialog, Field, TextArea } from "@halonicjs/studio-kit";
+import { Button, CommandBox, Dialog, Field, TextArea } from "@halonicjs/studio-kit";
 import { useRef, useState } from "react";
 import { secretHold } from "../plain/secret-hold.ts";
 
@@ -13,6 +13,8 @@ export interface AskForChangesDialogProps {
   readonly busy: boolean;
   /** "Couldn't record your decision." after a failed send, read from the dialog's alert slot. */
   readonly error: string | undefined;
+  /** The command line that sends a `reject` without the note, shown to copy under the field. */
+  readonly command?: string | undefined;
   /** Sends the note; only called with text in it. */
   readonly onSend: (note: string) => void;
   /** Cancel, the ✕ and Escape. Focus goes back to **Ask for changes**. */
@@ -71,6 +73,11 @@ export function AskForChangesDialog(props: AskForChangesDialogProps) {
           }}
         />
       </Field>
+      {props.command === undefined ? null : (
+        <div className="mt-3">
+          <CommandBox command={props.command} />
+        </div>
+      )}
       {held === null ? null : (
         <div className="mt-3">
           <Button variant="secondary" onClick={() => props.onSend(note)}>

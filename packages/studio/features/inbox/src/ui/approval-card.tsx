@@ -13,6 +13,8 @@ import {
   DecidedBar,
   FailedLine,
   failedText,
+  type ManualAnswer,
+  manualAnswerOf,
   type NextItem,
   useEveryMinute,
 } from "./card-parts.tsx";
@@ -44,7 +46,11 @@ export type Decided =
   | { readonly kind: Decision }
   | { readonly kind: "note"; readonly note: string };
 type CardState =
-  | { readonly kind: "open"; readonly failed: Decision | null }
+  | {
+      readonly kind: "open";
+      readonly failed: Decision | null;
+      readonly manual: ManualAnswer | null;
+    }
   | { readonly kind: "deciding"; readonly decision: Decision }
   | { readonly kind: "decided"; readonly decided: Decided; readonly at: Date };
 
@@ -53,6 +59,17 @@ interface NoteForm {
   readonly open: boolean;
   readonly busy: boolean;
   readonly failed: boolean;
+  /** Set when the note can only go by the command line, which sends `reject` without it. */
+  readonly manual: ManualAnswer | null;
+}
+
+/** What the command line does with a note: `runs send` takes no note, so only the reject goes. */
+const rejectOnlyText = "The command sends Reject without your note.";
+
+/** The note dialog's alert text: the command-line sentence, the plain failure, or nothing. */
+function noteError(form: NoteForm): string | undefined {
+  if (form.manual !== null) return `${form.manual.message} ${rejectOnlyText}`;
+  return form.failed ? failedText : undefined;
 }
 
 const busyLabels: Record<Decision, string> = { approve: "Approving…", reject: "Rejecting…" };
@@ -88,9 +105,14 @@ export function ApprovalCard(props: ApprovalCardProps) {
   const title = approvalTitle(item, agentName, subagentName);
   const heading = useRef<HTMLHeadingElement>(null);
   const decided = useRef<CalloutHandle>(null);
-  const [state, setState] = useState<CardState>({ kind: "open", failed: null });
+  const [state, setState] = useState<CardState>({ kind: "open", failed: null, manual: null });
   const [note, setNote] = useState("");
-  const [form, setForm] = useState<NoteForm>({ open: false, busy: false, failed: false });
+  const [form, setForm] = useState<NoteForm>({
+    open: false,
+    busy: false,
+    failed: false,
+    manual: null,
+  });
   const [usableAt] = useState(() => now().getTime());
   const guard = useDecisionGuard(usableAt, () => now().getTime());
   useEveryMinute();
@@ -106,21 +128,21 @@ export function ApprovalCard(props: ApprovalCardProps) {
     try {
       await (decision === "approve" ? decisions.approve(item) : decisions.reject(item));
       setState({ kind: "decided", decided: { kind: decision }, at: now() });
-    } catch {
-      setState({ kind: "open", failed: decision });
+    } catch (error) {
+      setState({ kind: "open", failed: decision, manual: manualAnswerOf(error) });
     }
   }
 
   async function sendNote(text: string) {
     if (form.busy || state.kind !== "open") return;
-    setForm({ open: true, busy: true, failed: false });
+    setForm({ open: true, busy: true, failed: false, manual: null });
     try {
       await decisions.askForChanges(item, text);
-      setForm({ open: false, busy: false, failed: false });
+      setForm({ open: false, busy: false, failed: false, manual: null });
       setState({ kind: "decided", decided: { kind: "note", note: text }, at: now() });
-    } catch {
+    } catch (error) {
       // The dialog stays open with the note, and says so in its alert slot (flow-inbox 5.4).
-      setForm({ open: true, busy: false, failed: true });
+      setForm({ open: true, busy: false, failed: true, manual: manualAnswerOf(error) });
     }
   }
 
@@ -161,9 +183,10 @@ export function ApprovalCard(props: ApprovalCardProps) {
           note={note}
           onNoteChange={setNote}
           busy={form.busy}
-          error={form.failed ? failedText : undefined}
+          error={noteError(form)}
+          command={form.manual?.command}
           onSend={sendNote}
-          onCancel={() => setForm({ open: false, busy: false, failed: false })}
+          onCancel={() => setForm({ open: false, busy: false, failed: false, manual: null })}
         />
       ) : null}
     </section>
@@ -218,7 +241,10 @@ function DecisionBar({ state, guard, onDecide, onAskForChanges }: DecisionBarPro
       onPointerDownCapture={guard.onPointerDownCapture}
       onKeyDownCapture={guard.onKeyDownCapture}
     >
-      <FailedLine onRetry={failed === null ? null : () => onDecide(failed)} />
+      <FailedLine
+        onRetry={failed === null ? null : () => onDecide(failed)}
+        manual={state.kind === "open" ? state.manual : null}
+      />
       <div className="flex flex-wrap justify-end gap-2">
         <Button
           busy={busy("reject")}

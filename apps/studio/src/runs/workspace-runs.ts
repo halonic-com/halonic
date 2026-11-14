@@ -1,4 +1,10 @@
-import { defaultCurrency, type HubWorkflow, hubWorkflows, workflowIn } from "@halonicjs/app";
+import {
+  defaultCurrency,
+  type HubWorkflow,
+  hubWorkflows,
+  shortRunId,
+  workflowIn,
+} from "@halonicjs/app";
 import { type RoutineClock, routineClocks } from "@halonicjs/app/routines";
 import { type RunEvent, type RunSummary, sendsOf } from "@halonicjs/events";
 import type { DefinitionStore, DefinitionWatch, RunStore } from "@halonicjs/ports";
@@ -137,11 +143,13 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
     };
   }
 
-  // No engine in the window yet (HAL-6602), so the error tells the user the CLI line to copy.
+  // No engine in the window yet (HAL-6602), so the error gives the CLI line to copy as its `fix`.
+  // The CLI takes the short id, as Studio shows it.
   async send(runId: string, event: string): Promise<RunSummary> {
     throw new KindedError(
       "unavailable",
-      `Answer this run from the command line for now: \`halonic runs send ${runId} ${event}\`.`,
+      "Studio can't answer runs yet. Answer this one from the command line.",
+      { fix: `halonic runs send ${shortRunId(runId)} ${event}` },
     );
   }
 
