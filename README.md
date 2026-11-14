@@ -12,6 +12,12 @@ Halonic is a local-first Studio, engine and command-line tool for designing,
 running and supervising AI agent workflows. Workflows, agents and settings live
 as plain files in your own git repository.
 
+[![A terminal: halonic init --example acme makes the Acme workspace, halonic test says 5 tests passed, halonic run stops at 'Approve this reply?' and waits, halonic runs send approves it and the run finishes, having sent nothing. The example only drafts replies. Nothing is sent.](docs/assets/readme/first-run-still.svg)](docs/assets/readme/first-run.svg)
+
+*The example only drafts replies. Nothing is sent.*
+*Real output from Halonic 0.1.0. Typing and pauses are paced for reading.*
+Click the picture to watch it play.
+
 **Built by humans with the help of AI.** [How Halonic is built](#how-halonic-is-built)
 
 ## Studio
