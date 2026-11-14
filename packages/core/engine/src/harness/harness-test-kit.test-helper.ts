@@ -123,6 +123,8 @@ export class FakeHarness implements Harness {
   events: HarnessEvent[] = [];
   error: Error | undefined;
   hangs = false;
+  /** When set, `cancel()` rejects with it, as it does when a program can't be stopped. */
+  cancelError: Error | undefined;
   /** When set, runs once the program has started, before it reports its events. */
   whileRunning: (() => void) | undefined;
   /** How many event streams ran their own clean-up, as a generator's `finally` does when it is ended. */
@@ -147,7 +149,7 @@ export class FakeHarness implements Harness {
   start(task: HarnessTask): HarnessRun {
     this.tasks.push(task);
     this.#steps.push("harness.start");
-    const { events, error, hangs, whileRunning, sent } = this;
+    const { events, error, hangs, whileRunning, sent, cancelError } = this;
     const steps = this.#steps;
     const cancelled = Promise.withResolvers<void>();
     const cleanedUp = () => {
@@ -194,6 +196,7 @@ export class FakeHarness implements Harness {
       cancel: async () => {
         steps.push("harness.cancel");
         cancelled.resolve();
+        if (cancelError !== undefined) throw cancelError;
       },
     };
   }

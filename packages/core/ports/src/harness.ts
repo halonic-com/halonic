@@ -169,7 +169,11 @@ export interface HarnessRun extends AsyncIterable<HarnessEvent> {
    * @throws when the run has ended, or no `approval.requested` with that `callId` is waiting
    */
   send(input: HarnessInput): Promise<void>;
-  /** Stops the run. Resolves once every program it started has stopped; does nothing on a run that has ended. */
+  /**
+   * Stops the run. Resolves once every program it started has stopped; does nothing on a run that has ended.
+   *
+   * @throws when a program it started can't be stopped, so it may still be running; the error never contains the bridge token
+   */
   cancel(): Promise<void>;
 }
 
