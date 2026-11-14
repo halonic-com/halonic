@@ -3,6 +3,7 @@
 - Task: HAL-9336, found on halonic#2664
 - Approval: Liam, in review of HAL-9336 (his signature is added there)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ZxqDGy5kqXNSc8dMO6DEPHmr0UAdY83fxQBLX19yDn1VLsBVFuxz2fhSg8Yx1C8/FcqPi4wPgDqM9yPyECw5CA==
 
 ## What changes
 
