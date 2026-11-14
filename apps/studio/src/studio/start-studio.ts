@@ -36,6 +36,7 @@ import {
   AssistantWorkspaceService,
   DisplaySettingsService,
   HostSettingsService,
+  RestartRunsService,
   UpdaterService,
 } from "@halonicjs/studio-feature-settings/api";
 import {
@@ -78,6 +79,7 @@ import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
 import { newWorkspaceHostOf } from "./new-workspace-host.ts";
 import { openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
+import { restartRunsOfWindow } from "./restart-runs.ts";
 import { trustedSourcesOf } from "./trusted-sources.ts";
 import { hostSettingsOf } from "./window-host-settings.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
@@ -320,6 +322,7 @@ export async function openFolder(
   provideAgentSandbox(services, window);
   if (ipc !== undefined) {
     services.provide(UpdaterService, updaterOf(ipc));
+    services.provide(RestartRunsService, restartRunsOfWindow);
   }
   const assistant = provideAssistant(services, files, location, name, scope);
   if (ipc !== undefined && files !== undefined) {
