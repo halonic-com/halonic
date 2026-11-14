@@ -16,7 +16,7 @@ body:
     attributes:
       label: Before you report
       options:
-        - label: I read the pinned Known issues in 0.1.0 issue and searched the open issues, and this isn't there yet.
+        - label: I searched existing issues and the Known issues list.
           required: true
   - type: textarea
     id: ran

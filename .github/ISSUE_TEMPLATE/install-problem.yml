@@ -14,7 +14,7 @@ body:
     attributes:
       label: Before you report
       options:
-        - label: I read the pinned Known issues and searched the open issues, and this isn't there yet.
+        - label: I searched existing issues and the Known issues list.
           required: true
   - type: dropdown
     id: step
