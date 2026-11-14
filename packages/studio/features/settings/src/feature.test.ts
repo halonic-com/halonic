@@ -102,6 +102,7 @@ verifies("settings.section-commands", () => {
       assistant: "Assistant",
       "trusted-sources": "Trusted sources",
       "agent-sandbox": "Agent sandbox",
+      about: "About Halonic",
       models: "Models",
       developer: "Developer",
     };
@@ -124,8 +125,9 @@ verifies("settings.section-commands", () => {
     expect(titlesFor(context)).toEqual(["Appearance", "Formats"]);
   });
 
-  it("names each of the five sections as its row", () => {
+  it("names each of the six sections as its row", () => {
     expect(titlesFor(contextWith(sectionsByName)).sort()).toEqual([
+      "About Halonic",
       "Agent sandbox",
       "Appearance",
       "Assistant",

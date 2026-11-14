@@ -56,8 +56,8 @@ function fakeHost(first: UpdateStatus) {
   };
 }
 
-async function show(host: UpdaterHost, announce = vi.fn()) {
-  const view = render(<AboutHostView host={host} announce={announce} />);
+async function show(host: UpdaterHost, announce = vi.fn(), onRestart?: () => void) {
+  const view = render(<AboutHostView host={host} announce={announce} onRestart={onRestart} />);
   await act(async () => {});
   return { view, announce };
 }
@@ -164,6 +164,17 @@ verifies("settings.about-section", () => {
     expect(view.querySelector('input[type="checkbox"]')).toBeNull();
     expect(view.querySelectorAll("button")).toHaveLength(1);
     expect(button(view, "Check now")).toBeDefined();
+  });
+
+  it("offers Restart to update for a ready update only where the restart flow is there", async () => {
+    const { host } = fakeHost(statusOf({ kind: "ready", version: "0.1.1", notesUrl }));
+    const without = await show(host);
+    expect(() => button(without.view, "Restart to update")).toThrow();
+    const onRestart = vi.fn();
+    const { view } = await show(host, vi.fn(), onRestart);
+    await click(button(view, "Restart to update"));
+    expect(onRestart).toHaveBeenCalledOnce();
+    expect(host.restart).not.toHaveBeenCalled();
   });
 
   it("says so, in words, when a press gets no answer", async () => {

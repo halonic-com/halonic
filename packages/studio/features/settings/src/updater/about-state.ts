@@ -4,7 +4,7 @@ import { downloadFraction } from "./updater-progress.ts";
 import type { UpdateStatus } from "./updater-status.ts";
 
 /** A button the status line can offer. Each starts only on a press. */
-export type AboutAction = "download" | "cancel" | "try-again";
+export type AboutAction = "download" | "cancel" | "try-again" | "restart";
 
 /** The bar under the downloading line. */
 export interface AboutProgress {
@@ -93,7 +93,10 @@ export function aboutView(status: UpdateStatus, now: Date): AboutView {
     case "signature-mismatch":
       return view(text.signatureMismatch(state.version, status.current), { callout: true });
     case "ready":
-      return view(text.ready(state.version), { notesUrl: state.notesUrl });
+      return view(text.ready(state.version), {
+        actions: buttons("restart"),
+        notesUrl: state.notesUrl,
+      });
     case "did-not-install":
       return view(text.didNotInstall(state.version, status.current), {
         actions: buttons("try-again"),

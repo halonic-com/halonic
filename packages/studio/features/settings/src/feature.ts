@@ -4,10 +4,13 @@ import {
   AssistantWorkspaceService,
   DisplaySettingsService,
   HostSettingsService,
+  RestartRunsService,
   UpdaterService,
 } from "./api.ts";
 import { agentCharactersPref, themePref } from "./appearance/appearance-prefs.ts";
 import { onOrOff, themeNames } from "./appearance/appearance-text.ts";
+import { createRestartFlow, RestartFlowService } from "./updater/restart-flow.ts";
+import { updateCommands } from "./updater/update-commands.ts";
 
 /**
  * The sections this feature adds to Settings, in no particular order: the shell lists them by
@@ -86,6 +89,7 @@ export const sectionsByName: readonly string[] = [
   "assistant",
   "trusted-sources",
   "agent-sandbox",
+  "about",
 ];
 
 /**
@@ -95,15 +99,31 @@ export const sectionsByName: readonly string[] = [
  * (`settings.section-commands`), named as its row, which opens Settings on it. It reads the
  * window's display settings from the app (`DisplaySettingsService`) and the computer's host
  * settings (`HostSettingsService`). It reads the updater, the agent sandbox and the Assistant's
- * workspace only if the app gives them.
+ * workspace only if the app gives them. For updates it adds the status bar's Restart to update,
+ * the restart dialog and update toasts (`settings.restart-flow`), and the Ctrl K commands Check for
+ * Halonic updates and Restart to update Halonic.
  */
 export const settingsFeature = defineFeature({
   id: "settings",
   title: "Settings",
   needs: [DisplaySettingsService, HostSettingsService],
   // Only the desktop app gives these; served Studio and the demo show the sections without them.
-  wants: [UpdaterService, AgentSandboxService, AssistantWorkspaceService],
+  provides: [RestartFlowService],
+  wants: [UpdaterService, RestartRunsService, AgentSandboxService, AssistantWorkspaceService],
   register(studio) {
+    studio.services.provide(RestartFlowService, createRestartFlow);
+    studio.statusBar.add({
+      id: "settings.restart-item",
+      order: 1000,
+      view: "RestartStatusItem",
+      load: () => import("./updater/restart-status-item.tsx"),
+    });
+    studio.dialogs.add({
+      id: "settings.restart-host",
+      order: 10,
+      view: "RestartHost",
+      load: () => import("./updater/restart-host.tsx"),
+    });
     for (const section of settingsSections) {
       studio.settings.add(section);
     }
@@ -111,6 +131,10 @@ export const settingsFeature = defineFeature({
       id: "settings.open",
       title: "Settings",
       run: (context) => context.openSettings?.(),
+    });
+    studio.commands.addSource({
+      id: "settings.update",
+      commands: (context) => updateCommands(context),
     });
     studio.commands.addSource({
       id: "settings.section",
