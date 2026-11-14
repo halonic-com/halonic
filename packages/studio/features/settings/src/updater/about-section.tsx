@@ -1,6 +1,7 @@
 import {
   Button,
   Callout,
+  CopyButton,
   ExternalLink,
   SkeletonBar,
   Switch,
@@ -105,6 +106,7 @@ export function AboutHostView({ host, announce, onRestart }: AboutHostViewProps)
           )}
         </div>
       )}
+      {status.managed === null ? null : <ManagedBlock command={status.managed.command} />}
       {status.managed === null ? (
         <Switch checked={status.automatic} onChange={updater.setAutomatic}>
           <span className="flex flex-col">
@@ -126,6 +128,21 @@ function NoAnswer({ onRetry }: { readonly onRetry: () => void }) {
       <Button variant="ghost" size="sm" onClick={onRetry}>
         {text.TRY_AGAIN}
       </Button>
+    </div>
+  );
+}
+
+/** Scoop keeps Halonic up to date: the command to run, with Copy, in place of the switch. */
+function ManagedBlock({ command }: { readonly command: string }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-small text-fg-muted">
+        {text.managedBy("Scoop")} {text.RUN_IN_TERMINAL}
+      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <code className="rounded-sm bg-surface-muted px-2 py-1 text-small">{command}</code>
+        <CopyButton text={command} label={text.copyCommandLabel} />
+      </div>
     </div>
   );
 }
