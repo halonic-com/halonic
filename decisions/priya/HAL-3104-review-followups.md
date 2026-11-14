@@ -4,6 +4,7 @@
 - Task: HAL-3104, follow-ups from the reviews of #2660
 - Approval: Liam approves this change in his re-review on HAL-9330 (the comment of 14 Nov, 17:30 UTC)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5ARdt1iEEq+geD13eagwmc/aGN2gv8cwZNFAOPJ/tA0mE8tX/sIq/W/r1X9UPKbXl5TS1scEF3EbawHLl4cADw==
 
 ## What changes
 
