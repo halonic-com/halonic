@@ -108,14 +108,34 @@ afterEach(async () => {
   restoreDialogs();
 });
 
+const acme = { name: "Acme", sample: false, folder: "~/Projects/acme" };
+
 verifies("studio.entry", () => {
   it("shows the window tabs and Home, as the served Studio in a browser", async () => {
-    started = startStudio({ element, window, userAgent: "Mozilla/5.0 (X11; Linux x86_64)" });
+    started = startStudio({
+      element,
+      window,
+      userAgent: "Mozilla/5.0 (X11; Linux x86_64)",
+      fetch: async () => Response.json(acme),
+    });
     await drawn(element);
 
     expect(started.host).toBe("served");
     expect(element.querySelector(tabsSelector)).not.toBeNull();
     expect(element.querySelector(headingSelector)?.textContent).toBe("Home");
+  });
+
+  it("opens the window with no workspace name when the computer doesn't answer", async () => {
+    started = startStudio({
+      element,
+      window,
+      userAgent: "Mozilla/5.0 (X11; Linux x86_64)",
+      fetch: async () => new Response("{}", { status: 401 }),
+    });
+    await drawn(element);
+
+    expect(element.querySelector('button[aria-label^="Workspace: "]')).toBeNull();
+    expect(document.title).not.toContain("Acme");
   });
 
   it("keeps the served Studio's host settings in memory, as it has no shell", async () => {
