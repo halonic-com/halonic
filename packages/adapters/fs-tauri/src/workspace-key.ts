@@ -16,23 +16,27 @@ export const workspaceKeyCommands = {
 
 const keyPattern = /^[0-9a-f]{32}$/;
 
-/** The error for a shell answer that is missing or has the wrong shape. */
-function noKeyAnswer(): KindedError {
-  return new KindedError(
-    "unavailable",
-    "The desktop shell gave no answer to the workspace key call.",
-  );
+/** The error for a shell answer that is missing or has the wrong shape; `cause` is the failure behind it, if any. */
+function noKeyAnswer(...cause: [unknown?]): KindedError {
+  const message = "The desktop shell gave no answer to the workspace key call.";
+  return cause.length === 0
+    ? new KindedError("unavailable", message)
+    : new KindedError("unavailable", message, { cause: cause[0] });
 }
 
 /** Turns a failed key call into an error: `denied` for a folder that isn't open, `unavailable` otherwise. */
 function keyFailure(reason: unknown): KindedError {
   if (isRecordRefusal(reason) && reason.kind === "folder_not_open") {
-    return new KindedError("denied", `The workspace key call was refused: ${reason.message}`);
+    return new KindedError("denied", `The workspace key call was refused: ${reason.message}`, {
+      cause: reason,
+    });
   }
   if (isRecordRefusal(reason) && reason.kind === "io") {
-    return new KindedError("unavailable", `The workspace key call failed: ${reason.message}`);
+    return new KindedError("unavailable", `The workspace key call failed: ${reason.message}`, {
+      cause: reason,
+    });
   }
-  return noKeyAnswer();
+  return noKeyAnswer(reason);
 }
 
 /**

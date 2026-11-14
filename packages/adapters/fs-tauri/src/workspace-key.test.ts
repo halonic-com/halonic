@@ -87,5 +87,16 @@ verifies("fs-tauri.workspace-key", () => {
         "unavailable",
       );
     });
+
+    it.each([
+      ["a call that fails", new Error("no IPC")],
+      ["a refusal that the folder isn't open", { kind: "folder_not_open", message: "not open" }],
+      ["a refusal with an io failure", { kind: "io", message: "profile unreadable" }],
+    ])("keeps the original failure as the cause of %s", async (_name, reason) => {
+      const failure = await rejection(
+        readWorkspaceKey(shellAnswering(undefined, reason), "/work/acme"),
+      );
+      expect((failure as Error).cause).toBe(reason);
+    });
   });
 });

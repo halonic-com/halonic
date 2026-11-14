@@ -121,3 +121,19 @@ fn workspace_key_command_answers_the_key_and_no_path() {
     assert_eq!(json, format!("{{\"key\":\"{}\"}}", answer.key));
     assert!(!json.contains("workspace-key-no-path"));
 }
+
+#[test]
+fn workspace_key_command_is_granted_to_the_local_main_window_only() {
+    // A remote page must never ask for keys: the served Studio would then
+    // learn which workspaces the person has opened.
+    let capability: serde_json::Value =
+        serde_json::from_str(include_str!("../capabilities/desktop-workspace-key.json"))
+            .expect("the capability is JSON");
+    assert_eq!(capability["local"], true);
+    assert_eq!(capability["windows"], serde_json::json!(["main"]));
+    assert!(capability.get("remote").is_none(), "{capability}");
+    assert_eq!(
+        capability["permissions"],
+        serde_json::json!(["allow-workspace-key"])
+    );
+}
