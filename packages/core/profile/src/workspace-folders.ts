@@ -98,6 +98,20 @@ export interface WorkspaceFolders {
    */
   proposalRecordsFolder(): string;
   /**
+   * The folder for the copies of the workspace that harness runs with history
+   * off write in, one per top-level run (HAL-3248): the run's `base` side
+   * and the `run` side its agents work in. Only the engine holding the
+   * workspace's engine lock uses it; the agent's own `run` folder in it is
+   * the sandbox's to open, nothing else in the profile is.
+   */
+  runCopiesFolder(): string;
+  /**
+   * The folder for Halonic's own trash: the files Accept moved out of the
+   * workspace, one entry each, until Undo puts them back. It lives here,
+   * never in the workspace, so a pull can't make an entry.
+   */
+  trashFolder(): string;
+  /**
    * The folder for the temp folders of harness sessions, one per sandbox
    * session. The session's host removes its own when the session closes;
    * only the engine holding the workspace's engine lock uses it, and it
@@ -170,6 +184,12 @@ export async function workspaceFolders(
     },
     proposalRecordsFolder(): string {
       return joinPath(profile.platform, folder, "proposals");
+    },
+    runCopiesFolder(): string {
+      return joinPath(profile.platform, folder, "run-copies");
+    },
+    trashFolder(): string {
+      return joinPath(profile.platform, folder, "trash");
     },
     harnessTempFolder(): string {
       return joinPath(profile.platform, folder, "harness-temp");

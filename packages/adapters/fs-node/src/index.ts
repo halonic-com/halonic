@@ -4,6 +4,7 @@ export { FileConnectionSettingsStore } from "./connection-settings-store.ts";
 export { FolderDefinitionStore, type FolderStoreWatchOptions } from "./definition-store.ts";
 export { writeFlushedFile } from "./flushed-write.ts";
 export { FileSystemFolderReader } from "./folder-reader.ts";
+export { FolderTrash } from "./folder-trash.ts";
 export type { FolderEvents } from "./folder-watch.ts";
 export {
   type HeldLock,
@@ -24,6 +25,7 @@ export {
 export { makePrivateFolder, readUnlinkedFile } from "./private-files.ts";
 export { FileRecordStore } from "./record-store.ts";
 export { renameOver } from "./rename-over.ts";
+export { FolderRunCopies } from "./run-copies.ts";
 export { FolderRunStore, type FolderRunStoreOptions } from "./run-store.ts";
 export { FileSandboxSettingStore } from "./sandbox-setting-store.ts";
 export { FileToolApprovalStore } from "./tool-approval-store.ts";

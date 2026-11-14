@@ -821,6 +821,9 @@ importers:
       '@halonicjs/adapter-watch-kit':
         specifier: workspace:*
         version: link:../watch-kit
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../core/app
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../../core/events
@@ -837,9 +840,6 @@ importers:
       '@halonicjs/adapter-memory':
         specifier: workspace:*
         version: link:../memory
-      '@halonicjs/app':
-        specifier: workspace:*
-        version: link:../../core/app
       '@halonicjs/testing-contracts':
         specifier: workspace:*
         version: link:../../testing/contracts

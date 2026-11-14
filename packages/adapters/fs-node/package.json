@@ -14,6 +14,7 @@
   "dependencies": {
     "@halonicjs/adapter-tool-approval-kit": "workspace:*",
     "@halonicjs/adapter-watch-kit": "workspace:*",
+    "@halonicjs/app": "workspace:*",
     "@halonicjs/events": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*",
@@ -21,7 +22,6 @@
   },
   "devDependencies": {
     "@halonicjs/adapter-memory": "workspace:*",
-    "@halonicjs/app": "workspace:*",
     "@halonicjs/testing-contracts": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
