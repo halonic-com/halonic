@@ -169,7 +169,10 @@ verifies("settings.ai-agent-section", () => {
     const settings = new HostSettings(store);
     await settings.load().catch(() => undefined);
     const context = {
-      services: { get: (key: unknown) => (key === HostSettingsService ? settings : undefined) },
+      services: {
+        get: (key: unknown) => (key === HostSettingsService ? settings : undefined),
+        find: () => undefined,
+      },
       announcer: { announce: vi.fn() },
     } as unknown as SettingsSectionProps["context"];
     const view = render(

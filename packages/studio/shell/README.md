@@ -9,21 +9,27 @@ stack, engine, save state, tabs) have no React; `ShellFrame`, `WindowTabStrip`, 
 - **Owner:** elena
 - **Public API:** `@halonicjs/studio-shell`
 
-A feature declares itself once with `defineFeature`: its id, title, the services it `needs` and
-the services it `provides`. `createShell` checks that the features fit together, then calls each
+A feature declares itself once with `defineFeature`: its id, title, the services it `needs`,
+the services it `wants` and the services it `provides`. `createShell` checks that the features fit together, then calls each
 feature's `register` once, after the features whose services it needs. Any problem throws a
 `ShellError` that names the features involved, and nothing is half-registered.
 
 Services belong to one open workspace, so a feature gives a _factory_ for each service. Each time
 a workspace opens, `shell.services.instantiate(registry)` builds them into that workspace's
 registry (such as `ServiceRegistry` from `@halonicjs/app`), in dependency order. A factory can only
-look up services its feature lists in `needs` or `provides`; a service of its own feature is built
-first, and a cycle between them throws a `ShellError`.
+look up services its feature lists in `needs`, `wants` or `provides`; a service of its own feature is
+built first, and a cycle between them throws a `ShellError`.
+
+A `wants` service is optional: the feature uses it if the app or another feature provides it.
+`services.find(key)` returns it, or `undefined` when nobody provided it, and `services.get(key)`
+throws for it. A key the feature doesn't list throws from both, so a forgotten key fails loudly
+instead of looking like a missing service. A feature that provides a wanted service is registered
+first, as for `needs`, but nobody providing it is no error.
 
 | Part | What it does | Requirement |
 | --- | --- | --- |
 | `defineFeature`, `createShell` | register features in dependency order; refuse bad graphs | `shell.feature-registry` |
-| `serviceKey`, `studio.services` | provide services per workspace; lookups limited to `needs` | `shell.feature-services` |
+| `serviceKey`, `studio.services` | provide services per workspace; lookups limited to `needs`, `wants` and `provides` | `shell.feature-services` |
 | `TabSet` | a workspace's window tabs, each with Back and Forward | `shell.tab-set` |
 | `WindowTabStrip` | the window tabs in the title bar, one Tab stop | `shell.window-tab-strip` |
 | `hintKeys` | the Kbd keys of a shortcut, Ctrl or ⌘ for the platform | `shell.key-hints` |

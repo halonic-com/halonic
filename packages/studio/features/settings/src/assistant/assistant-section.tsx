@@ -8,7 +8,7 @@ import {
   Switch,
   ViewOnlyLine,
 } from "@halonicjs/studio-kit";
-import { type SettingsPlace, type SettingsSectionProps, ShellError } from "@halonicjs/studio-shell";
+import type { SettingsPlace, SettingsSectionProps } from "@halonicjs/studio-shell";
 import { useState, useSyncExternalStore } from "react";
 import {
   type AssistantNavigation,
@@ -96,13 +96,7 @@ export interface AssistantViewProps {
 
 /** The app's workspace for the Assistant, or none when the window gives none. */
 function workspaceOf(context: SettingsSectionProps["context"]): AssistantWorkspace | undefined {
-  try {
-    return context.services.get(AssistantWorkspaceService);
-  } catch (error) {
-    // Only "the feature doesn't list it" means no workspace; anything else is a bug to surface.
-    if (error instanceof ShellError) return undefined;
-    throw error;
-  }
+  return context.services.find(AssistantWorkspaceService);
 }
 
 /** The command that opens the workspace page at Session AI, once the page has it. */

@@ -1,5 +1,5 @@
 import { Button, Callout, Dialog, StatusChip, type StatusChipTone } from "@halonicjs/studio-kit";
-import { type SettingsSectionProps, ShellError } from "@halonicjs/studio-shell";
+import type { SettingsSectionProps } from "@halonicjs/studio-shell";
 import { useState } from "react";
 import { type AgentSandboxHost, AgentSandboxService } from "../api.ts";
 import {
@@ -137,11 +137,5 @@ export function AgentSandboxView({
 
 /** The app's sandbox host, or none when the app gives none (served Studio, or a build without it). */
 function hostOf(context: SettingsSectionProps["context"]): AgentSandboxHost | undefined {
-  try {
-    return context.services.get(AgentSandboxService);
-  } catch (error) {
-    // Only "the feature doesn't list it" means no host; anything else is a bug to surface.
-    if (error instanceof ShellError) return undefined;
-    throw error;
-  }
+  return context.services.find(AgentSandboxService);
 }
