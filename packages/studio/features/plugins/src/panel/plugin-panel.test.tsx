@@ -61,7 +61,7 @@ async function showPanel(feed: PluginPanelFeed) {
   const View = await loadView<ComponentType<ItemViewProps>>(kind.open);
   const view = render(
     <>
-      <View item={pluginPanelItem("weather")} context={context} />
+      <View item={pluginPanelItem("weather")} context={context} Sections={() => null} />
       <PluginCommandHost opener={opener} caller={caller} />
     </>,
   );

@@ -76,7 +76,15 @@ export function StudioPage({
   const item = itemOfLocationKey(location.key);
   const kind = item === undefined ? undefined : contributions.itemKinds.get(item.kind);
   if (item !== undefined && kind !== undefined) {
-    const view = <ItemView kind={kind} item={item} context={contextFor(kind.featureId)} />;
+    const view = (
+      <ItemView
+        kind={kind}
+        item={item}
+        context={contextFor(kind.featureId)}
+        sections={contributions.itemPage.sectionsFor(kind.kind)}
+        contextFor={contextFor}
+      />
+    );
     if (!backLink || kind.place === undefined) {
       return view;
     }

@@ -2,7 +2,12 @@ import { createShell, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { TrustedSourcesService, WorkspacePageService } from "./api.ts";
-import { openTrustCommand, openWorkspaceCommand, workspaceFeature } from "./feature.ts";
+import {
+  openModelsCommand,
+  openTrustCommand,
+  openWorkspaceCommand,
+  workspaceFeature,
+} from "./feature.ts";
 
 describe("workspaceFeature", () => {
   it("is registered under its folder name", () => {
@@ -22,7 +27,7 @@ verifies("workspace.workspace-page", () => {
     expect(await kind?.open.load()).toHaveProperty(kind?.open.view ?? "");
   });
 
-  it.each([openWorkspaceCommand, openTrustCommand])(
+  it.each([openWorkspaceCommand, openTrustCommand, openModelsCommand])(
     "%s opens the page in the active tab",
     async (id) => {
       const opened: unknown[] = [];

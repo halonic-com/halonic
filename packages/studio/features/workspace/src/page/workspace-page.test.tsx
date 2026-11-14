@@ -41,6 +41,7 @@ function show(facts: Facts): HTMLElement {
         <WorkspacePage
           item={{ kind: "workspace", hub: "local", id: "settings" }}
           context={context}
+          Sections={() => <p className="added-section">Models</p>}
         />
       </ToastStoreProvider>,
     ),
@@ -55,6 +56,14 @@ verifies("workspace.workspace-page", () => {
     expect(page.querySelector("h1")?.textContent).toBe("Workspace settings");
     expect(page.textContent).toContain("Trust");
     expect(page.textContent).toContain("Remove trust");
+  });
+
+  it("places the sections other features add after Trust", () => {
+    const page = show({ name: "Acme", trust });
+
+    const text = page.textContent ?? "";
+    expect(text.indexOf("Remove trust")).toBeLessThan(text.indexOf("Models"));
+    expect(page.querySelector(".added-section")).not.toBeNull();
   });
 
   it("shows no Trust section without a folder to trust", () => {
