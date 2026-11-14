@@ -12,7 +12,9 @@ export type DeployErrorCode =
   | "bundle-hash-mismatch"
   | "reserved-binding-name"
   | "traffic-split-in-progress"
-  | "smoke-test-failed";
+  | "smoke-test-failed"
+  | "uncommitted-changes"
+  | "deploy-aborted";
 
 /** A deploy failure with a stable code. The message never holds a token or a secret. */
 export class DeployError extends Error {
