@@ -60,7 +60,17 @@ export function etwFlows(events) {
     if (flow) {
       flow.first = Math.min(flow.first, e.time);
       flow.last = Math.max(flow.last, e.time);
-    } else flows.set(key, { proto, pid: Number(PID), a, ap: ports[0], b, bp: ports[1], first: e.time, last: e.time });
+    } else
+      flows.set(key, {
+        proto,
+        pid: Number(PID),
+        a,
+        ap: ports[0],
+        b,
+        bp: ports[1],
+        first: e.time,
+        last: e.time,
+      });
   }
   return [...flows.values()];
 }

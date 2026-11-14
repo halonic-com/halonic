@@ -171,7 +171,10 @@ const control = json("control.json");
 if (control?.address) control.address = normalize(control.address);
 const samples = json("processes.json");
 const selftest = json("selftest.json");
-const text = (name) => read(name)?.toString("utf8").replace(/^\uFEFF/, "");
+const text = (name) =>
+  read(name)
+    ?.toString("utf8")
+    .replace(/^\uFEFF/, "");
 const netEvents = parseEtw(text("net.xml") ?? "");
 const procEvents = parseEtw(text("proc.xml") ?? "");
 const UNATTRIBUTED_MAX = 0.02;
@@ -180,9 +183,13 @@ if (!session) problems.push("There is no session.json: the capture script stoppe
 if (!pcap || pcap.length === 0) problems.push("There is no capture.");
 if (!samples) problems.push("There are no process samples (processes.json).");
 if (netEvents.length === 0)
-  problems.push("There are no ETW network events (net.xml): the capture can't name the process of a short connection.");
+  problems.push(
+    "There are no ETW network events (net.xml): the capture can't name the process of a short connection.",
+  );
 if (procEvents.filter((e) => e.id === 1).length === 0)
-  problems.push("There are no ETW process starts (proc.xml): the process tree is only from the samples.");
+  problems.push(
+    "There are no ETW process starts (proc.xml): the process tree is only from the samples.",
+  );
 if (!selftest) problems.push("The self-test never ran: there is no selftest.json.");
 if (!control) problems.push("The control never ran: there is no control.json.");
 else if (!control.ok) problems.push(`The control fetch failed: ${control.error ?? "no answer"}.`);
@@ -264,8 +271,14 @@ const etwFlowOf = (p) => {
     .filter((f) => f.proto === p.proto && f.first - WINDOW <= p.time && p.time <= f.last + WINDOW)
     .filter(
       (f) =>
-        (f.a === normalize(p.src) && f.b === normalize(p.dst) && same(p.sport, f.ap) && same(p.dport, f.bp)) ||
-        (f.a === normalize(p.dst) && f.b === normalize(p.src) && same(p.dport, f.ap) && same(p.sport, f.bp)),
+        (f.a === normalize(p.src) &&
+          f.b === normalize(p.dst) &&
+          same(p.sport, f.ap) &&
+          same(p.dport, f.bp)) ||
+        (f.a === normalize(p.dst) &&
+          f.b === normalize(p.src) &&
+          same(p.dport, f.ap) &&
+          same(p.sport, f.bp)),
     )
     .sort((x, y) => Math.abs(x.first - p.time) - Math.abs(y.first - p.time))[0];
 };
@@ -397,7 +410,9 @@ for (const p of packets) {
 
 if (selftest) {
   if (selftest.exitCode !== 0)
-    problems.push(`The self-test's connection to ${selftest.host} failed (curl exit ${selftest.exitCode}).`);
+    problems.push(
+      `The self-test's connection to ${selftest.host} failed (curl exit ${selftest.exitCode}).`,
+    );
   else if (selfViaEtw === 0)
     problems.push(
       "No packet of the self-test connection (halonic-selftest.exe in the install folder, to example.org) was matched through ETW as Halonic's: ETW did not close the gap in the process matching.",
