@@ -30,6 +30,7 @@ import {
   runStoreContract,
   sandboxSettingStoreContract,
   schedulerContract,
+  scopedRecordStore,
   secretStoreContract,
   secretsContract,
   tokenStoreContract,
@@ -80,6 +81,8 @@ definitionStoreContract("memory", async (files) => new MemoryDefinitionStore(fil
 runStoreContract("memory", async () => new MemoryRunStore());
 blobStoreContract("memory", async () => new MemoryBlobStore());
 recordStoreContract("memory", async () => new MemoryRecordStore());
+// A view of one shared store, as the Cloudflare target uses it: still a store that starts empty.
+recordStoreContract("memory, scoped view", async () => scopedRecordStore(new MemoryRecordStore()));
 secretsContract("memory", async (values) => new MemorySecrets(values));
 tokenStoreContract("memory", async () => new MemoryTokenStore());
 let lastSecretStore = new MemorySecretStore();
