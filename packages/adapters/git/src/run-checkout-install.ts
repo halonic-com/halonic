@@ -66,7 +66,7 @@ function installArguments(registry: string): string[] {
     // The checkout's `packageManager` field must not pick, download or run another pnpm.
     "--config.manage-package-manager-versions=false",
     "--pm-on-fail=ignore",
-    // The checkout's `.npmrc` and `pnpm-workspace.yaml` can name a registry; the host's choice wins.
+    // Settings files are checked before this, but the registry is the host's choice in any case.
     `--registry=${registry}`,
   ];
 }
@@ -77,21 +77,22 @@ function installArguments(registry: string): string[] {
  * the sandbox and reaches the network, so it is limited to what the
  * lockfile names and starts no program of a package.
  *
- * @throws Error when `folder` isn't absolute, its settings files or lockfile reach outside it, pnpm isn't found, or the install fails or takes too long; the message holds the end of pnpm's own output
+ * @throws Error when `folder` isn't absolute, its settings files or lockfile reach outside it or name a source other than the registry, pnpm isn't found, or the install fails or takes too long; the message holds the end of pnpm's own output
  */
 export async function installRunCheckout(
   folder: string,
   options: RunCheckoutInstallOptions = {},
 ): Promise<void> {
   if (!isAbsolutePath(folder)) throw new Error(`A run folder is absolute, not ${folder}.`);
-  await checkRunCheckoutFiles(folder);
+  const registry = options.registry ?? defaultRegistry;
+  await checkRunCheckoutFiles(folder, registry);
   const environment = options.environment ?? process.env;
   const pnpm = options.pnpm ?? (await findPnpm(environment));
   if (!isAbsolutePath(pnpm)) throw new Error(`The pnpm program must be an absolute path: ${pnpm}`);
   const run = options.run ?? runProcess;
   const result = await run({
     program: pnpm,
-    args: installArguments(options.registry ?? defaultRegistry),
+    args: installArguments(registry),
     cwd: folder,
     env: installEnvironment(environment, options.tempFolder),
     timeoutMs: options.timeoutMs ?? 600_000,
