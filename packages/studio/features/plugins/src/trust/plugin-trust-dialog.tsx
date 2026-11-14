@@ -18,6 +18,7 @@ import {
   IN_STUDIO_LINE,
   IN_STUDIO_SECTION,
   inStudioRow,
+  keepButton,
   NOT_NOW,
   OUTSIDE_TEXT,
   PROGRAMS_SECTION,
@@ -39,6 +40,7 @@ import {
   trustSummary,
   trustTitle,
   unchangedRow,
+  updateNotSavedLine,
   VERSION,
 } from "./trust-text.ts";
 
@@ -55,8 +57,13 @@ export interface PluginTrustDialogProps {
   readonly busy?: boolean;
   /** Why trust wasn't saved, from the host; the dialog stays open. */
   readonly failure?: string | undefined;
+  /**
+   * For `reason="update"`: the version the person has now, which **Keep** names, and for a git
+   * plugin the newer commit. `manifest` is the new version, `origin` where it comes from now.
+   */
+  readonly update?: { readonly keep: string; readonly toCommit?: string | undefined } | undefined;
   readonly onTrust: () => void;
-  /** **Not now** and Escape: the plugin stays off. */
+  /** **Not now** and Escape, or **Keep** for an update: the plugin stays as it was. */
   readonly onNotNow: () => void;
 }
 
@@ -79,21 +86,32 @@ export function PluginTrustDialog(props: PluginTrustDialogProps) {
   const summary = trustSummary(content.counts);
   return (
     <Dialog
-      title={trustTitle(reason, manifest.name, props.trustedOn)}
+      title={trustTitle(reason, manifest.name, props.trustedOn, manifest.version)}
       size="md"
       closeButton={false}
-      cancelLabel={NOT_NOW}
+      cancelLabel={props.update === undefined ? NOT_NOW : keepButton(props.update.keep)}
       footnote={TRUST_CHECK_LAST_LINE}
       confirm={{ label: trustButton(reason), busyLabel: TRUSTING }}
       busy={props.busy ?? false}
-      {...(props.failure === undefined ? {} : { error: trustNotSavedLine(props.failure) })}
+      {...(props.failure === undefined
+        ? {}
+        : {
+            error:
+              reason === "update"
+                ? updateNotSavedLine(props.failure)
+                : trustNotSavedLine(props.failure),
+          })}
       onConfirm={props.onTrust}
       onCancel={props.onNotNow}
     >
       <div className="flex flex-col gap-3">
-        <SourceLine version={manifest.version} origin={props.origin} />
-        {reason === "changed" ? (
-          <Changes summary={props.changes} />
+        <SourceLine
+          version={manifest.version}
+          origin={props.origin}
+          toCommit={props.update?.toCommit}
+        />
+        {reason === "changed" || reason === "update" ? (
+          <Changes summary={props.changes} intro={reason === "changed"} />
         ) : (
           <>
             {summary === "" ? null : <p className="text-body text-fg">{summary}</p>}
@@ -109,9 +127,12 @@ export function PluginTrustDialog(props: PluginTrustDialogProps) {
 function SourceLine({
   version,
   origin,
+  toCommit,
 }: {
   readonly version: string;
   readonly origin: PluginOrigin | undefined;
+  /** An update's newer commit, shown after the one the plugin has: `3f9c2a1 → 8be41d0`. */
+  readonly toCommit?: string | undefined;
 }) {
   return (
     <p className="text-small text-fg-muted wrap-anywhere">
@@ -126,6 +147,12 @@ function SourceLine({
               {originText(origin)}
               {AT}
               <code className="font-mono">{origin.commit}</code>
+              {toCommit === undefined ? null : (
+                <>
+                  {ARROW}
+                  <code className="font-mono">{toCommit}</code>
+                </>
+              )}
             </>
           )}
         </>
@@ -273,13 +300,20 @@ function Section({
 }
 
 /** What changed (design section 6): the rows, then what stayed as it was, closed. */
-function Changes({ summary }: { readonly summary: PluginChangeSummary | undefined }) {
+function Changes({
+  summary,
+  intro,
+}: {
+  readonly summary: PluginChangeSummary | undefined;
+  /** The "off until you look" line: true for an edited file, false for an update, which isn't off. */
+  readonly intro: boolean;
+}) {
   if (summary === undefined || !summary.readable) {
     return <p className="text-body text-fg">{CHANGED_UNREADABLE}</p>;
   }
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-body text-fg">{CHANGED_INTRO}</p>
+      {intro ? <p className="text-body text-fg">{CHANGED_INTRO}</p> : null}
       <ul className="flex list-none flex-col gap-2">
         {summary.rows.map((row, index) => (
           <ChangeLine key={index} row={row} />

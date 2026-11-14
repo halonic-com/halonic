@@ -11,7 +11,17 @@ import {
   onLine,
   trustedDay,
 } from "./page-text.ts";
-import { CHECK_AGAIN, CHECKING, OPEN_FOLDER, REVIEW, REVIEW_CHANGES } from "./plugin-actions.ts";
+import {
+  CHECK_AGAIN,
+  CHECK_FOR_UPDATES,
+  CHECKING,
+  CHECKING_FOR_UPDATES,
+  OPEN_FOLDER,
+  REVIEW,
+  REVIEW_CHANGES,
+  UPDATE_FROM_FOLDER,
+  upToDateLine,
+} from "./plugin-actions.ts";
 import type { InstalledPlugin, PluginLoadProblem } from "./plugin-pages.ts";
 
 /** The one status box (T12): on, not trusted yet, changed, or the can't-load Callout. */
@@ -22,6 +32,7 @@ export function StatusBox({
   onCheckAgain,
   onOpenFolder,
   onReview,
+  update,
 }: {
   readonly id: string;
   readonly plugin: InstalledPlugin;
@@ -30,6 +41,8 @@ export function StatusBox({
   readonly onOpenFolder: () => void;
   /** Opens the trust check, for a plugin that isn't trusted or has changed. */
   readonly onReview: () => void;
+  /** The update action of a plugin that is on and was added from somewhere; none otherwise. */
+  readonly update?: UpdateControl | undefined;
 }) {
   const [checking, setChecking] = useState(false);
   if (plugin.status === "cant-load") {
@@ -76,6 +89,7 @@ export function StatusBox({
         {box.line === "" ? null : (
           <p className="text-small text-fg-muted wrap-anywhere">{box.line}</p>
         )}
+        {plugin.status === "on" && update !== undefined ? <UpdateAction update={update} /> : null}
         {plugin.status === "on" || plugin.manifest === undefined ? null : (
           <div className="mt-2">
             <Button variant="secondary" size="sm" onClick={onReview}>
@@ -84,6 +98,38 @@ export function StatusBox({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** What the status box's update action shows: the button, its busy state, or its result. */
+export interface UpdateControl {
+  /** A folder plugin copies its folder again; a git plugin looks for a newer commit. */
+  readonly fromFolder: boolean;
+  readonly state: "idle" | "checking" | { readonly upToDate: string };
+  readonly onCheck: () => void;
+}
+
+/** **Check for updates** (or **Update from folder**), turning into "Up to date (*version*)". */
+function UpdateAction({ update }: { readonly update: UpdateControl }) {
+  if (typeof update.state === "object") {
+    return (
+      <p role="status" className="mt-2 text-small text-fg-muted">
+        {upToDateLine(update.state.upToDate)}
+      </p>
+    );
+  }
+  return (
+    <div className="mt-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        busy={update.state === "checking"}
+        busyLabel={CHECKING_FOR_UPDATES}
+        onClick={update.onCheck}
+      >
+        {update.fromFolder ? UPDATE_FROM_FOLDER : CHECK_FOR_UPDATES}
+      </Button>
     </div>
   );
 }

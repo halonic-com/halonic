@@ -15,6 +15,7 @@ import {
   onToastBody,
   type PluginActions,
   type PluginRemoveOutcome,
+  type PluginUpdateCheck,
   type PluginUse,
   removedFromComputerLine,
   stopsWorkingLine,
@@ -37,6 +38,7 @@ afterEach(() => {
 function recordingActions(
   options: {
     readonly fail?: keyof PluginActions;
+    readonly update?: PluginUpdateCheck;
     readonly removed?: PluginRemoveOutcome;
     readonly uses?: readonly PluginUse[];
   } = {},
@@ -57,6 +59,11 @@ function recordingActions(
       if (options.fail === "usedBy") throw new Error("The store is locked.");
       return options.uses ?? [];
     },
+    checkForUpdate: async (plugin) => {
+      step("checkForUpdate", `check ${plugin}`);
+      return options.update ?? { kind: "up-to-date" };
+    },
+    applyUpdate: async (plugin) => step("applyUpdate", `update ${plugin}`),
     reload: async () => step("reload", "reload"),
     openFolder: async (plugin) => step("openFolder", `open ${plugin}`),
   };
@@ -141,6 +148,7 @@ verifies("plugins.plugin-actions", () => {
     expect(view.querySelector('button[aria-label="More actions for Weather"]')).not.toBeNull();
     expect(menuItems(view)).toEqual([
       "Open panel",
+      "Check for updates",
       "Open folder",
       "Remove trust",
       "Remove plugin…",
