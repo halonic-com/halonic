@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { mxcSdkPinsFor, type PinnedPackage } from "./sdk-pins.ts";
 import { readTarball } from "./tar-reader.ts";
@@ -38,6 +38,8 @@ export interface SdkInstallOptions {
 
 const markerName = ".verified";
 const leftoverMark = ".installing-";
+/** Another process (Studio or the CLI) may be writing a younger temporary folder right now, so only older ones count as cut short. */
+const leftoverMinAgeMs = 60 * 60 * 1000;
 
 interface UnpackedFile {
   path: string;
@@ -94,12 +96,15 @@ async function writeFolder(folder: string, files: readonly UnpackedFile[]): Prom
   }
 }
 
-/** Removes the temporary folders an install that was cut short left behind. */
+/** Removes the temporary folders an install that was cut short left behind, leaving younger ones to the install that may still be writing them. */
 async function removeLeftovers(root: string): Promise<void> {
   const names = await readdir(root).catch(() => []);
   for (const name of names) {
-    if (name.includes(leftoverMark))
-      await rm(join(root, basename(name)), { recursive: true, force: true });
+    if (!name.includes(leftoverMark)) continue;
+    const path = join(root, basename(name));
+    const info = await stat(path).catch(() => null);
+    if (info !== null && Date.now() - info.mtimeMs >= leftoverMinAgeMs)
+      await rm(path, { recursive: true, force: true });
   }
 }
 

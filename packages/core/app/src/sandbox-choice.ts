@@ -189,15 +189,19 @@ export class SandboxChoiceService {
    * calls this only when the person picks MXC; starting, a settings change
    * and the CLI never download by themselves. A download that fails leaves
    * MXC `setup-needed`, with the sentence behind it.
+   *
+   * Pass the settings with the person's pick (`mxc: "on"`): choosing again
+   * uses them, so the pick takes effect without a separate settings change.
    */
-  downloadMxc(): Promise<SandboxChoice> {
+  downloadMxc(settings: SandboxSettings = this.#settings): Promise<SandboxChoice> {
     return this.#enqueue(async () => {
+      this.#settings = settings;
       const setup = this.#mxc.setup;
       if (setup !== undefined && (await setup.downloadNeeded())) {
         const result = await setup.download();
         this.#downloadProblem = result.done ? null : result.problem;
       }
-      return this.#decide(this.#settings);
+      return this.#decide(settings);
     });
   }
 
