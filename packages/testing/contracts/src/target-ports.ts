@@ -1,4 +1,3 @@
-import { verifies } from "@halonicjs/testing-spec";
 import { describe } from "vitest";
 import { blobStoreContract, type MakeBlobStore } from "./blob-store.ts";
 import { clockContract, type MakeClock } from "./clock.ts";
@@ -51,17 +50,15 @@ export interface TargetPorts {
  * targetPortContracts("cloudflare", { clock, blobs, records, secrets, tokens, definitions, coordination, scheduler, passwords });
  */
 export function targetPortContracts(targetName: string, ports: TargetPorts): void {
-  verifies("contracts.target-ports", () => {
-    describe(`Target port contracts: ${targetName}`, () => {
-      clockContract(targetName, ports.clock);
-      blobStoreContract(targetName, ports.blobs);
-      recordStoreContract(targetName, ports.records);
-      secretsContract(targetName, ports.secrets);
-      tokenStoreContract(targetName, ports.tokens);
-      definitionSourceContract(targetName, ports.definitions);
-      coordinationContract(targetName, ports.coordination);
-      schedulerContract(targetName, ports.scheduler);
-      passwordHasherContract(targetName, ports.passwords.make, ports.passwords.format);
-    });
+  describe(`Target port contracts: ${targetName}`, () => {
+    clockContract(targetName, ports.clock);
+    blobStoreContract(targetName, ports.blobs);
+    recordStoreContract(targetName, ports.records);
+    secretsContract(targetName, ports.secrets);
+    tokenStoreContract(targetName, ports.tokens);
+    definitionSourceContract(targetName, ports.definitions);
+    coordinationContract(targetName, ports.coordination);
+    schedulerContract(targetName, ports.scheduler);
+    passwordHasherContract(targetName, ports.passwords.make, ports.passwords.format);
   });
 }
