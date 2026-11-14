@@ -19,6 +19,7 @@ import type {
   SandboxUnavailableReason,
 } from "@halonicjs/ports";
 import type { PluginToolSet } from "./plugin-contributions.ts";
+import { mxcFencesRunner } from "./runner-fence.ts";
 
 /** The tools of one local tool of a trusted plugin. */
 export type LocalToolSet = PluginToolSet & { readonly part: `local:${string}` };
@@ -38,7 +39,8 @@ export type LocalToolState =
   | { readonly kind: "sandbox-unavailable"; readonly reason: SandboxUnavailableReason };
 
 /**
- * Why a local tool can't run: a load state other than `ready`, or
+ * Why a local tool can't run: a load state other than `ready`,
+ * `network-needs-srt` when MXC is in use and the tool declares a network, or
  * `sandbox-not-fenced` when the session opened without a proven fence.
  * Local tools run only fenced (plugins ADR, sections 4 and 6), so a session
  * whose fence is anything but `fenced` (`off` for the launcher, which has
@@ -49,6 +51,7 @@ export type LocalToolState =
  */
 export type LocalToolUnavailable =
   | Exclude<LocalToolState, { kind: "ready" }>
+  | { readonly kind: "network-needs-srt" }
   | {
       readonly kind: "sandbox-not-fenced";
       readonly fence: Exclude<SandboxFence["state"], "fenced">;
@@ -62,10 +65,27 @@ export interface LocalToolOpening {
   readonly profile: SandboxProfile;
 }
 
+/**
+ * MXC as the sandbox for local tools on Windows 11, for those that declare no
+ * network. Its SDK v1 has no rule per host name, so a local tool with any
+ * network, or a pinned package, which is fetched from a registry, never runs
+ * on it.
+ */
+export interface LocalToolMxc {
+  /** The `sandbox-mxc` sandbox. */
+  readonly sandbox: Pick<Sandbox, "check" | "open">;
+  /** Whether the sandbox choice has MXC in use right now. Read before every session opens. */
+  inUse(): boolean;
+  /** Whether MXC counts as a fence for local tools; {@link mxcFencesRunner} when left out. */
+  readonly fences?: boolean;
+}
+
 /** What {@link PluginLocalTools} needs from the host. */
 export interface PluginLocalToolsOptions {
   /** The sandbox local tools run in, or `null` on a host that has none. */
   readonly sandbox: Pick<Sandbox, "check" | "open"> | null;
+  /** MXC, for Windows 11; left out where the host has none. It stays off while {@link mxcFencesRunner} is `false`. */
+  readonly mxc?: LocalToolMxc;
   /** The factory that starts a program only in the session it is given (`connector-stdio-sandbox`). */
   readonly factory: ConnectorFactory;
   /** Everything a connector needs besides its trust grant and session, which come from here. */
@@ -244,11 +264,12 @@ class SessionConnector implements ConnectorClient {
         `Local tool "${this.id}" was prepared as connector "${config.id}", so Halonic doesn't open it.`,
       );
     }
+    const sandbox = this.#sandboxFor(profile);
     let session: SandboxSession;
     try {
-      session = await this.#sandbox.open(profile);
+      session = await sandbox.open(profile);
     } catch (error) {
-      throw await this.#whyNotOpened(error);
+      throw await this.#whyNotOpened(sandbox, error);
     }
     if (this.#closed) {
       await session.close();
@@ -282,9 +303,24 @@ class SessionConnector implements ConnectorClient {
     await closeBoth(opened);
   }
 
+  /**
+   * The sandbox this session opens in: MXC while the sandbox choice has it in
+   * use and it counts as a fence, otherwise the host's own. On MXC a tool
+   * with a network of its own is refused here, because MXC's `open` would
+   * refuse its profile with an error no one could word.
+   */
+  #sandboxFor(profile: SandboxProfile): Pick<Sandbox, "check" | "open"> {
+    const mxc = this.#options.mxc;
+    if (mxc === undefined || !(mxc.fences ?? mxcFencesRunner) || !mxc.inUse()) return this.#sandbox;
+    if (profile.network.allowedSites.length > 0) {
+      throw new LocalToolUnavailableError(this.id, { kind: "network-needs-srt" });
+    }
+    return mxc.sandbox;
+  }
+
   /** A sandbox that can't start here is a load state; any other failure is the error itself. */
-  async #whyNotOpened(error: unknown): Promise<unknown> {
-    const check = await this.#sandbox.check();
+  async #whyNotOpened(sandbox: Pick<Sandbox, "check" | "open">, error: unknown): Promise<unknown> {
+    const check = await sandbox.check();
     if (check.ok) return error;
     return new LocalToolUnavailableError(this.id, {
       kind: "sandbox-unavailable",
@@ -304,6 +340,8 @@ function describe(state: LocalToolUnavailable): string {
       return "it needs the desktop app, because this one has no sandbox";
     case "sandbox-unavailable":
       return `its sandbox can't start here (${state.reason})`;
+    case "network-needs-srt":
+      return "it declares a network, and the Windows 11 sandbox can't allow single sites yet";
     case "sandbox-not-fenced":
       return `its sandbox session has no proven fence (${state.fence})`;
   }

@@ -210,6 +210,7 @@ export {
 } from "./plugin-installs.ts";
 export {
   isLocalToolSet,
+  type LocalToolMxc,
   type LocalToolOpening,
   type LocalToolSet,
   type LocalToolState,
