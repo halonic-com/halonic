@@ -12,7 +12,7 @@ In `.github/workflows/release.yml`, the `build` job decides the publisher built 
 - `studio` builds the helper with that publisher, or with none.
 - `sign-windows` (real runs) first checks the setup. With a publisher it needs all three Azure secrets of the `release` environment and signs as before. With none it needs no Azure secret at all, skips Azure login and both signing steps, packs, and checks that the installer has no signature. A publisher without the secrets, or secrets without a publisher, fails the run.
 - `sign-test` (dry runs) with `unsigned` on makes no certificate, signs nothing, checks that the installer, the installed helper and its copy have no signature, and that the helper still sets up and removes the sandbox.
-- Both still write `latest.json` and `SHA256SUMS` (LF) with the updater-manifest action. `draft-release` is unchanged: it already lets a skipped signing job through.
+- Both still write `latest.json` and `SHA256SUMS` (LF) with the updater-manifest action. `draft-release` already lets a skipped signing job through. When the installer is unsigned, it starts the draft's notes with a line that SmartScreen will warn, how to run it anyway, and to check the download against `SHA256SUMS` first.
 
 ## Why
 

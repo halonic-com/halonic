@@ -588,6 +588,9 @@ jobs:
           link="[Download for Windows]($base/$INSTALLER) · [Download for Android]($base/$APK)"
           notes="$link"
           flags=()
+          if [ "$SIGNED" != "true" ]; then
+            notes="**The Windows installer is not signed yet, so Windows SmartScreen shows \"Windows protected your PC\". Choose More info, then Run anyway. Check the download against SHA256SUMS first.**"$'\n\n'"$link"
+          fi
           if [ "$DRY_RUN" = "true" ]; then
             title="DRY RUN Halonic $VERSION"
             how="signed with a test certificate"
