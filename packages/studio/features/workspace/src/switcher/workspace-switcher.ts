@@ -297,9 +297,15 @@ export class WorkspaceSwitcher {
     }
   }
 
-  /** Stops every open workspace's services, when the window goes. */
+  /**
+   * Saves what is waiting in every open workspace, then stops their services, when the window
+   * goes (save model 1.6). The window can't ask anything, so a save that fails is not retried
+   * here: the failed-save toast from the workspace's save state is all the user gets, and the
+   * workspace closes with those changes lost.
+   */
   async dispose(): Promise<void> {
     for (const slot of this.open.all) {
+      await slot.value.saving?.saveNow();
       await this.#closeSlot(slot.location);
     }
   }
