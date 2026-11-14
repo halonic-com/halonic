@@ -45,9 +45,10 @@ function priceLabel(price: ModelAlias["price"], currency: string): string | unde
   return `${moneyAmount(price.input, currency)} in · ${moneyAmount(price.output, currency)} out per million tokens`;
 }
 
-/** A provider as the alias editor's provider list shows it: local ones say so. */
+/** A provider as the alias editor's provider list shows it: the test model and local ones say so. */
 export function providerChoiceLabel(provider: Provider): string {
   const name = provider.name ?? provider.id;
+  if (provider.type === "mock") return `${name} (built-in)`;
   return provider.local ? `${name} (local)` : name;
 }
 

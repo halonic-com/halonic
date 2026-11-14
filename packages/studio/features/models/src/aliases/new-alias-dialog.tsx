@@ -22,6 +22,8 @@ export interface NewAliasDialogProps {
   readonly files: ModelsFiles;
   /** The providers to pick from: those the aliases use and those with a file. */
   readonly providers: readonly string[];
+  /** What to call a provider in the list, by id; one without a label shows its id. */
+  readonly labels?: ReadonlyMap<string, string>;
   /** After the alias is written: the caller opens its tab. */
   readonly onCreated: (name: string) => void;
   readonly onCancel: () => void;
@@ -39,6 +41,7 @@ export interface NewAliasDialogProps {
 export function NewAliasDialog({
   files,
   providers,
+  labels,
   onCreated,
   onCancel,
   returnFocus,
@@ -117,7 +120,7 @@ export function NewAliasDialog({
             />
           ) : (
             <Select
-              options={providers.map((id) => ({ value: id, label: id }))}
+              options={providers.map((id) => ({ value: id, label: labels?.get(id) ?? id }))}
               value={provider}
               onChange={setProvider}
             />

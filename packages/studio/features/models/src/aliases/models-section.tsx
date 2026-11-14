@@ -2,7 +2,7 @@ import { Button, EmptyState } from "@halonicjs/studio-kit";
 import type { ItemPageSectionViewProps } from "@halonicjs/studio-shell";
 import { useId, useRef, useState } from "react";
 import { ModelsFilesService } from "../api.ts";
-import { type AliasRow, aliasRows } from "./alias-rows.ts";
+import { type AliasRow, aliasRows, providerChoiceLabel } from "./alias-rows.ts";
 import {
   ADD_A_PRICE,
   ALIAS_KIND,
@@ -53,6 +53,7 @@ export function ModelsSection({ context }: ItemPageSectionViewProps) {
         <NewAliasDialog
           files={files}
           providers={providersOf(state)}
+          labels={providerLabels(state)}
           returnFocus={() => newButton.current}
           onCancel={() => setCreating(false)}
           onCreated={(name) => {
@@ -144,5 +145,14 @@ function RowPrice({
         {ADD_A_PRICE}
       </button>
     </>
+  );
+}
+
+/** What the provider list calls each provider that has a file, by id; the saved value stays the id. */
+function providerLabels(state: ModelsState): ReadonlyMap<string, string> {
+  return new Map(
+    state.status === "ready"
+      ? state.providers.map((provider) => [provider.id, providerChoiceLabel(provider)])
+      : [],
   );
 }

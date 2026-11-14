@@ -22,9 +22,12 @@ export const ALIAS_KIND_LABEL = "Model alias";
 /** The item kind of an alias tab. */
 export const ALIAS_KIND = "model-alias";
 
-/** The title of an alias's tab and page. */
+/** The words before the alias name in the page's title, which sets the name in mono. */
+export const ALIAS_TITLE_PREFIX = "Alias: ";
+
+/** The title of an alias's tab, a plain label in the tab strip. */
 export function aliasTitle(name: string): string {
-  return `Alias: ${name}`;
+  return `${ALIAS_TITLE_PREFIX}${name}`;
 }
 
 /** The sentence under the title of an alias's tab. */
