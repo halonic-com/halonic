@@ -2,7 +2,7 @@
 
 - Approval: HAL-9557. Liam wrote this pull request, so Julian approves the note in review.
 - Kind: internal
-- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:lGefSzleus5QKwt2tNJnUWA26UD7EakQj6tJ/uCtUT4ciDoeS0MEZupvLFGxiw2bT20vIRwaTMG5Zbr4BYeqDA==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ZmPb11RWZt8X1wqHbepI1n0CJykS2iwXV33DBOhqIFqbPBADnf6gzNRIVM8APf0C5NXM6Fbh9OXyO+gms69vCA==
 - Task: HAL-9557
 
 ## What changes
