@@ -11,6 +11,7 @@
 //! turns the answer into a `PathBuf` only when it uses it.
 
 mod native_path;
+mod tool_approval_folders;
 mod workspace_folders;
 
 use std::fmt;

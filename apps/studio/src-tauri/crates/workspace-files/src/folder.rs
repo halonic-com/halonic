@@ -28,6 +28,7 @@ pub struct WorkspaceFolder<'a> {
     root: PathBuf,
     locks: &'a WriteLocks,
     fence: Fence,
+    private_files: bool,
 }
 
 impl<'a> WorkspaceFolder<'a> {
@@ -39,6 +40,18 @@ impl<'a> WorkspaceFolder<'a> {
             root,
             locks,
             fence: Fence::Outside,
+            private_files: false,
+        }
+    }
+
+    /// The same folder, writing every file private to the user (`600` on
+    /// systems with modes), as the stores in `fs-node` write theirs. A
+    /// replaced file takes the private mode too, not its old one.
+    #[must_use]
+    pub fn private_files(self) -> Self {
+        Self {
+            private_files: true,
+            ..self
         }
     }
 
@@ -160,7 +173,7 @@ impl<'a> WorkspaceFolder<'a> {
         }
         let folder = self.create_folders(path)?;
         let temporary = folder.join(temporary_write_name());
-        let written = write_flushed(&temporary, text, existing.as_ref())
+        let written = write_flushed(&temporary, text, existing.as_ref(), self.private_files)
             .and_then(|()| fs::rename(&temporary, native_path(&self.root, path)));
         if let Err(error) = written {
             // The write's own error is the one to report; a temporary file
@@ -231,17 +244,30 @@ fn matches_expected(current: Option<&str>, expected: &str) -> bool {
 }
 
 /// Creates `file`, which must not exist yet, with `text`, flushed to disk.
-/// A replaced file's permissions carry over, such as a script's execute bit.
-fn write_flushed(file: &Path, text: &str, replaced: Option<&Metadata>) -> io::Result<()> {
-    let mut created = OpenOptions::new().write(true).create_new(true).open(file)?;
+/// A replaced file's permissions carry over, such as a script's execute bit,
+/// unless the file is `private`: it is created private to the user instead.
+fn write_flushed(
+    file: &Path,
+    text: &str,
+    replaced: Option<&Metadata>,
+    private: bool,
+) -> io::Result<()> {
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    if private {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let mut created = options.open(file)?;
     created.write_all(text.as_bytes())?;
     created.sync_all()?;
     #[cfg(unix)]
-    if let Some(replaced) = replaced {
+    if let Some(replaced) = replaced.filter(|_| !private) {
         created.set_permissions(replaced.permissions())?;
     }
     #[cfg(not(unix))]
-    let _ = replaced;
+    let _ = (replaced, private);
     Ok(())
 }
 

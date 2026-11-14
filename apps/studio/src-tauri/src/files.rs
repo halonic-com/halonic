@@ -10,7 +10,10 @@
 //! `fs_remove` also take an optional `folder`: `"review"` works in the
 //! workspace's review folder in the profile instead (HAL-1291), which the
 //! shell works out itself, as `reviewFolder` in `@halonicjs/profile` does,
-//! so the page never names a path outside an opened folder.
+//! so the page never names a path outside an opened folder. `"tool-approvals"`
+//! works in the approvals of one source in the workspace (HAL-8868): the
+//! `source` call argument names it, and the shell works out the folder (see
+//! `tool_approvals.rs`).
 //!
 //! The profile is off limits in a workspace (HAL-7039): with the home folder
 //! opened, a workspace path could otherwise reach the trust records, the
@@ -131,6 +134,9 @@ pub enum FileFolder {
     /// The assistant's changes to review: one record per file, kept in the
     /// workspace's folder in the profile, never in the workspace (HAL-3417).
     Review,
+    /// One source's approvals of listed tools in the opened workspace, kept
+    /// in the profile and never in the workspace (HAL-8868). Needs `source`.
+    ToolApprovals,
 }
 
 /// The real path of `workspace`, which must be a folder the person opened
@@ -172,11 +178,13 @@ pub(crate) fn review_root(
 
 /// Whether a call may make the folder it works in when it isn't there yet:
 /// only a write does, so reading the review folder of a workspace that has
-/// none leaves the profile as it was.
+/// none leaves the profile as it was. A remove makes nothing, but is told
+/// apart from a read because the tool approvals' lock is held for it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Making {
+pub(crate) enum Making {
     Folder,
     Nothing,
+    Removing,
 }
 
 /// Runs `call` on the folder of the workspace the page named, on a worker
@@ -185,6 +193,7 @@ async fn in_workspace<R, T, F>(
     app: AppHandle<R>,
     workspace: PathBuf,
     folder: Option<FileFolder>,
+    source: Option<String>,
     making: Making,
     call: F,
 ) -> Result<T, FileRefusal>
@@ -196,6 +205,7 @@ where
     tauri::async_runtime::spawn_blocking(move || {
         let opened = app.state::<GitState>().folders();
         let profile = cli_profile(&app).map_err(FileRefusal::io)?;
+        let state = app.state::<FileState>();
         let (root, fence) = match folder.unwrap_or_default() {
             FileFolder::Workspace => {
                 let root = workspace_root(&opened, &workspace)?;
@@ -209,8 +219,13 @@ where
                 }
                 (root, Fence::Outside)
             }
+            FileFolder::ToolApprovals => {
+                let root =
+                    tool_approvals::source_root(&opened, &profile, &workspace, source.as_deref())?;
+                let files = WorkspaceFolder::new(root.clone(), &state.locks).private_files();
+                return tool_approvals::run(&root, making, files, call);
+            }
         };
-        let state = app.state::<FileState>();
         Ok(call(
             WorkspaceFolder::new(root, &state.locks).fenced(fence),
         )?)
@@ -219,17 +234,25 @@ where
     .map_err(FileRefusal::io)?
 }
 
-/// Every file under `dir` (`null` for the whole workspace), sorted.
+/// Every file under `dir` (`null` for the whole workspace), sorted. `source`
+/// goes with the `"tool-approvals"` folder, and is ignored for the others.
 #[tauri::command]
 pub async fn fs_list<R: Runtime>(
     app: AppHandle<R>,
     workspace: PathBuf,
     folder: Option<FileFolder>,
+    source: Option<String>,
     dir: Option<String>,
 ) -> Result<Vec<String>, FileRefusal> {
-    in_workspace(app, workspace, folder, Making::Nothing, move |files| {
-        files.list(dir.as_deref())
-    })
+    tool_approvals::check_list(folder, dir.as_deref())?;
+    in_workspace(
+        app,
+        workspace,
+        folder,
+        source,
+        Making::Nothing,
+        move |files| files.list(dir.as_deref()),
+    )
     .await
 }
 
@@ -239,11 +262,18 @@ pub async fn fs_read<R: Runtime>(
     app: AppHandle<R>,
     workspace: PathBuf,
     folder: Option<FileFolder>,
+    source: Option<String>,
     path: String,
 ) -> Result<Option<String>, FileRefusal> {
-    in_workspace(app, workspace, folder, Making::Nothing, move |files| {
-        files.read(&path)
-    })
+    tool_approvals::check_file(folder, &path)?;
+    in_workspace(
+        app,
+        workspace,
+        folder,
+        source,
+        Making::Nothing,
+        move |files| files.read(&path),
+    )
     .await
 }
 
@@ -254,15 +284,24 @@ pub async fn fs_write<R: Runtime>(
     app: AppHandle<R>,
     workspace: PathBuf,
     folder: Option<FileFolder>,
+    source: Option<String>,
     path: String,
     text: String,
     expected: Option<String>,
 ) -> Result<WriteAnswer, FileRefusal> {
-    in_workspace(app, workspace, folder, Making::Folder, move |files| {
-        files
-            .write(&path, &text, expected.as_deref())
-            .map(WriteAnswer::from)
-    })
+    tool_approvals::check_file(folder, &path)?;
+    in_workspace(
+        app,
+        workspace,
+        folder,
+        source,
+        Making::Folder,
+        move |files| {
+            files
+                .write(&path, &text, expected.as_deref())
+                .map(WriteAnswer::from)
+        },
+    )
     .await
 }
 
@@ -272,11 +311,18 @@ pub async fn fs_remove<R: Runtime>(
     app: AppHandle<R>,
     workspace: PathBuf,
     folder: Option<FileFolder>,
+    source: Option<String>,
     path: String,
 ) -> Result<(), FileRefusal> {
-    in_workspace(app, workspace, folder, Making::Nothing, move |files| {
-        files.remove(&path)
-    })
+    tool_approvals::check_file(folder, &path)?;
+    in_workspace(
+        app,
+        workspace,
+        folder,
+        source,
+        Making::Removing,
+        move |files| files.remove(&path),
+    )
     .await
 }
 
@@ -435,6 +481,9 @@ fn look_while_open(
     }
     FolderSnapshot::of(root, fence)
 }
+
+#[path = "tool_approvals.rs"]
+mod tool_approvals;
 
 #[cfg(test)]
 #[path = "files_tests.rs"]
