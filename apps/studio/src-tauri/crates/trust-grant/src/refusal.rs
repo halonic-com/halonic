@@ -4,7 +4,8 @@ use serde::Serialize;
 /// Why a trust command was refused: a stable `kind`, one of
 /// `trustRefusalKinds` in `packages/adapters/fs-tauri`, and a message for
 /// the log. An `unreadable` refusal also names the record's location, when
-/// the store can tell it, and its file.
+/// the store can tell it, and its file. A `name_invalid` refusal also gives
+/// the stable `reason` the name was refused for.
 #[derive(Debug, Serialize)]
 pub struct TrustRefusal {
     kind: &'static str,
@@ -13,6 +14,8 @@ pub struct TrustRefusal {
     location: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     file: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reason: Option<&'static str>,
 }
 
 impl TrustRefusal {
@@ -23,6 +26,16 @@ impl TrustRefusal {
             message: message.into(),
             location: None,
             file: None,
+            reason: None,
+        }
+    }
+
+    /// A refusal that also says why, in a stable word the page can turn
+    /// into a sentence.
+    pub fn because(kind: &'static str, reason: &'static str, message: impl Into<String>) -> Self {
+        Self {
+            reason: Some(reason),
+            ..Self::new(kind, message)
         }
     }
 
@@ -35,6 +48,11 @@ impl TrustRefusal {
     /// The refusal's kind, as the page reads it.
     pub fn kind(&self) -> &'static str {
         self.kind
+    }
+
+    /// The stable reason of a refusal that gives one.
+    pub fn reason(&self) -> Option<&'static str> {
+        self.reason
     }
 }
 

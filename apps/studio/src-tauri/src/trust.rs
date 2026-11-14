@@ -14,12 +14,15 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use halonic_git_guard::plain_path;
 use halonic_profile::join_path;
 use halonic_trust_grant::{PickedFolders, TrustRefusal, TrustState};
 use halonic_trust_store::FileTrustStore;
+use halonic_workspace_files::Fence;
 use serde_json::Value;
 use tauri::{AppHandle, Manager, Runtime};
 
+use crate::files::profile_fence;
 use crate::git::GitState;
 use crate::native_dialogs::{ask_to_trust, pick_folder as show_folder_picker};
 use crate::profile::cli_profile;
@@ -75,6 +78,71 @@ pub async fn pick_folder<R: Runtime>(app: AppHandle<R>) -> Result<Option<String>
                 state.pick(&folders, choose)
             }
         }
+    })
+    .await
+}
+
+/// The person's Documents folder, in the form grants give locations, or
+/// `null` when this computer has none (some Linux setups). The page only
+/// shows it; `create_workspace_folder` reads the folder itself, never the
+/// page's word for it.
+#[tauri::command]
+pub async fn documents_folder<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Option<String>, TrustRefusal> {
+    on_worker(app, |app| Ok(documents_location(app))).await
+}
+
+fn documents_location<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
+    let documents = app.path().document_dir().ok()?;
+    let canonical = std::fs::canonicalize(documents).ok()?;
+    if !canonical.is_dir() {
+        return None;
+    }
+    plain_path(&canonical).into_string().ok()
+}
+
+/// Shows the folder picker for the place a new workspace goes in, and keeps
+/// the answer in the shell's memory for `create_workspace_folder`. Unlike
+/// `pick_folder`, the folder is not opened and not remembered in the
+/// profile, so it doesn't show in Recent. Answers its location, or `null`
+/// when the person picks nothing.
+#[tauri::command]
+pub async fn pick_parent_folder<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Option<String>, TrustRefusal> {
+    on_worker(app, |app| {
+        app.state::<TrustState>()
+            .pick_parent(|| show_folder_picker(app))
+    })
+    .await
+}
+
+/// Makes the folder `name` in `parent` and opens it as a picked folder, so
+/// the file commands accept it. `parent` must be the Documents folder or a
+/// folder the person chose with `pick_parent_folder` in this session; the
+/// name must be one plain folder name; a folder that exists is never
+/// adopted. No trust record is written: the page asks for trust as for any
+/// picked folder. Answers the new folder's location.
+#[tauri::command]
+pub async fn create_workspace_folder<R: Runtime>(
+    app: AppHandle<R>,
+    parent: String,
+    name: String,
+) -> Result<String, TrustRefusal> {
+    on_worker(app, move |app| {
+        let profile = cli_profile(app).map_err(TrustRefusal::io)?;
+        let list = picked_folders(app)?;
+        let folders = app.state::<GitState>().folders();
+        let documents = app.path().document_dir().ok();
+        app.state::<TrustState>().create_workspace(
+            &folders,
+            &list,
+            documents.as_deref(),
+            |parent| profile_fence(&profile, parent) == Fence::Whole,
+            &parent,
+            &name,
+        )
     })
     .await
 }

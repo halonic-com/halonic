@@ -4,7 +4,8 @@
 //! follows the page's title. The page may call the `connect` command
 //! (capabilities/connect-page.json) and, on desktop, `git`
 //! (capabilities/desktop-git.json), the `secret_*` commands
-//! (capabilities/desktop-secrets.json) and `pick_folder` and the `trust_*`
+//! (capabilities/desktop-secrets.json) and `pick_folder`, `documents_folder`,
+//! `pick_parent_folder`, `create_workspace_folder` and the `trust_*`
 //! commands (capabilities/desktop-trust.json) and the `host_settings_*`
 //! commands (capabilities/desktop-host-settings.json) and the `run_*` commands
 //! (capabilities/desktop-runs.json) and the `agent_host_*` commands
@@ -118,6 +119,9 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             secrets::secret_set,
             secrets::secret_delete,
             trust::pick_folder,
+            trust::documents_folder,
+            trust::pick_parent_folder,
+            trust::create_workspace_folder,
             trust::trust_get,
             trust::trust_list,
             trust::trust_folders_found,

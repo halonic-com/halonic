@@ -2,7 +2,8 @@
 //! checklist): every app and plugin command the shell knows is refused when
 //! the request comes from the computer's address, while the connect page
 //! may still call `connect` and, on desktop, `git`, the `secret_*`
-//! commands, `pick_folder`, the `trust_*` commands, the `host_settings_*`
+//! commands, `pick_folder`, `documents_folder`, `pick_parent_folder`,
+//! `create_workspace_folder`, the `trust_*` commands, the `host_settings_*`
 //! commands, the `run_*` commands, the `agent_host_*` commands, the `fs_*`
 //! commands, the `blob_*` and `record_*` commands and the `update_*`
 //! commands.
@@ -101,6 +102,9 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "secret_set",
         "secret_delete",
         "pick_folder",
+        "documents_folder",
+        "pick_parent_folder",
+        "create_workspace_folder",
         "trust_get",
         "trust_list",
         "trust_folders_found",
@@ -453,6 +457,9 @@ fn served_page_test_sees_trust_granted_to_the_local_main_window_only() {
         capability["permissions"],
         json!([
             "allow-pick-folder",
+            "allow-documents-folder",
+            "allow-pick-parent-folder",
+            "allow-create-workspace-folder",
             "allow-trust-get",
             "allow-trust-list",
             "allow-trust-folders-found",
