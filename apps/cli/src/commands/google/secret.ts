@@ -4,7 +4,6 @@
 // it isn't in shell history. It is saved by the same rules as the Studio's
 // `PUT /api/google/setups/<ref>/secret`, and nothing but "Saved" is printed.
 
-import { SetupRecordError, type SetupRecords } from "@halonicjs/google-setup";
 import {
   type CommandContext,
   type CommandInput,
@@ -15,6 +14,7 @@ import {
 import { exitCode } from "../../exit-code.ts";
 import { type GoogleSetup, openGoogleHost } from "../../google-host.ts";
 import { googleMessages } from "../../messages/google.ts";
+import { readSetup } from "./read-setup.ts";
 
 /**
  * Saves the client secret typed at the hidden prompt for the account whose
@@ -78,23 +78,4 @@ export async function saveGoogleSecret(
     lines: [googleMessages.secretSaved().phrase],
     json: { saved: true },
   };
-}
-
-/** The record for the ref, or the "no such account" refusal; a damaged record is an error as it is. */
-async function readSetup(setups: SetupRecords, accountRef: string) {
-  try {
-    const record = await setups.read(accountRef);
-    if (record !== null) {
-      return record;
-    }
-  } catch (error) {
-    if (!(error instanceof SetupRecordError && error.reason === "not-found")) {
-      throw error;
-    }
-  }
-  throw new OwnLineError(
-    "not_found",
-    googleMessages.unknownAccount(),
-    googleMessages.unknownAccountFix(),
-  );
 }

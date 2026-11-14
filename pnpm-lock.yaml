@@ -431,6 +431,9 @@ importers:
       '@halonicjs/google-setup':
         specifier: workspace:*
         version: link:../../packages/core/google-setup
+      '@halonicjs/host-google-sign-in':
+        specifier: workspace:*
+        version: link:../../packages/host/google-sign-in
       '@halonicjs/host-harness-host':
         specifier: workspace:*
         version: link:../../packages/host/harness-host
