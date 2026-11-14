@@ -3,6 +3,7 @@
 - Task: HAL-8714
 - Approval: Liam approves this note in review on the review task HAL-8814
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mnny8gJVgyUHMALhaHpI1EKpmin+7P7aH5Toj4fwm9odoR4JmwCjcbQY419MmQa6RL3HE8FlBS4oVDYISossAg==
 
 ## What changes
 
