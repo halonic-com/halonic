@@ -152,6 +152,13 @@ export { integrationsFolder, readLocalIntegrations } from "./local-integrations.
 export { defaultCurrency, moneyAmount } from "./money-amount.ts";
 export { lastMonths, type MonthSpend, monthOf, monthStartOf, spendByMonth } from "./month-spend.ts";
 export {
+  type NewConnectorTransport,
+  type NewLibraryFile,
+  type NewLibraryItem,
+  type NewLibraryItemError,
+  newLibraryFile,
+} from "./new-library-item.ts";
+export {
   type OpenWorkspaceOptions,
   openWorkspace,
   reviewServiceKey,
