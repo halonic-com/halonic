@@ -33,7 +33,7 @@ export function openTrustsOf(shell: Shell): Set<WorkspaceTrust> {
 }
 
 /** The version written into the trust records the Studio saves, the one the CLI writes. */
-const halonicVersion = "0.1.0";
+export const halonicVersion = "0.1.0";
 
 /** The trust of the workspace in `location`, read through the shell as the CLI reads it. */
 export function workspaceTrustOf(ipc: TauriIpc & TauriCallbacks, location: string): WorkspaceTrust {
