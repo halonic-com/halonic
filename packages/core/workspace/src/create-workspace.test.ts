@@ -19,18 +19,41 @@ verifies("workspace.create", () => {
         name: "Acme",
         written: [".gitignore", "workspace.yaml"],
         skipped: [],
+        amended: [],
       },
     });
     expect(created.files).toEqual(initialised.files);
   });
 
-  it("writes only the file that is missing and leaves an existing .gitignore as it is", async () => {
-    const store = new MemoryStore({ ".gitignore": "node_modules/\n" });
+  it("writes only the file that is missing and leaves a .gitignore that keeps .env out as it is", async () => {
+    const store = new MemoryStore({ ".gitignore": ".env\n.env.*\nnode_modules/\n" });
     const result = await createWorkspace(store, { name: "Acme" });
 
     expect(result.ok && result.value.written).toEqual(["workspace.yaml"]);
     expect(result.ok && result.value.skipped).toEqual([".gitignore"]);
-    expect(store.files.get(".gitignore")).toBe("node_modules/\n");
+    expect(result.ok && result.value.amended).toEqual([]);
+    expect(store.files.get(".gitignore")).toBe(".env\n.env.*\nnode_modules/\n");
+  });
+
+  it("adds the .env lines a .gitignore lacks at its end and says it amended it", async () => {
+    const store = new MemoryStore({ ".gitignore": "node_modules/" });
+    const result = await createWorkspace(store, { name: "Acme" });
+
+    expect(result.ok && result.value.written).toEqual(["workspace.yaml"]);
+    expect(result.ok && result.value.skipped).toEqual([]);
+    expect(result.ok && result.value.amended).toEqual([".gitignore"]);
+    expect(store.files.get(".gitignore")).toBe("node_modules/\n.env\n.env.*\n");
+  });
+
+  it("adds only the .env line that is missing, and none when .env* is there", async () => {
+    const partial = new MemoryStore({ ".gitignore": ".env\n" });
+    await createWorkspace(partial, { name: "Acme" });
+    const wide = new MemoryStore({ ".gitignore": ".env*\n" });
+    const result = await createWorkspace(wide, { name: "Acme" });
+
+    expect(partial.files.get(".gitignore")).toBe(".env\n.env.*\n");
+    expect(wide.files.get(".gitignore")).toBe(".env*\n");
+    expect(result.ok && result.value.skipped).toEqual([".gitignore"]);
   });
 
   it("adds both files beside files that are not part of the template", async () => {
@@ -86,6 +109,13 @@ verifies("workspace.create", () => {
       store.failOn = "workspace.yaml";
       await expect(createWorkspace(store, { name: "Acme" })).rejects.toThrow("cannot write");
       expect([...store.files.keys()]).toEqual([".gitignore"]);
+    });
+
+    it("puts back the text of a .gitignore it amended", async () => {
+      const store = new MemoryStore({ ".gitignore": "node_modules/\n" });
+      store.failOn = "workspace.yaml";
+      await expect(createWorkspace(store, { name: "Acme" })).rejects.toThrow("cannot write");
+      expect(store.files.get(".gitignore")).toBe("node_modules/\n");
     });
   });
 });

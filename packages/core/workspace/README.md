@@ -169,11 +169,13 @@ New workspace dialog (requirement [`workspace.create`](requirements/create.md)).
 `.gitignore` and `workspace.yaml`, but with `ifNotEmpty: "add-missing"` (the default) a folder that already
 has files is fine: it writes only the template files the store lacks and changes nothing that is there.
 `ifNotEmpty: "refuse"` gives `initWorkspace`'s rule (`not_empty`). A success is a `CreatedWorkspace`: the
-`location`, `id`, `name`, the paths `written` and the paths `skipped`, so a caller can decide what that
+`location`, `id`, `name`, the paths `written`, the paths `skipped` and the paths `amended`, so a caller can decide what that
 means (the Studio makes no trust record when anything was skipped). The errors, `CreateWorkspaceError`, are
 `invalid_settings` (with the problems), `not_empty` and `already_workspace` (the store has a `workspace.yaml`,
 so open it instead). A failed write removes the files this call wrote and throws the write's error.
-An existing `.gitignore` is never edited, so one that doesn't list `.env` stays as it is.
+An existing `.gitignore` that doesn't keep `.env` files out of git gets the missing `.env` and `.env.*` lines
+at its end (listed in `amended`); nothing else in it changes, and a failed write puts it back as it was.
+A `!.env` line already there doesn't count as keeping `.env` out: the lines are added after it, so they win.
 
 `gitIgnorePath` and `gitIgnoreLines` are that file's name and its lines, and `settingsPath` is where a
 workspace's own settings live (`workspace.yaml`).

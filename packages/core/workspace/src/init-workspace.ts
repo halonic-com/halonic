@@ -107,6 +107,11 @@ export interface CreatedWorkspace {
   readonly written: readonly string[];
   /** The paths the template has that were already there and were left as they are. */
   readonly skipped: readonly string[];
+  /**
+   * The paths that were already there and had lines added: a `.gitignore` that didn't keep `.env`
+   * files out of git. Nothing of what was there changed; the lines were added at the end.
+   */
+  readonly amended: readonly string[];
 }
 
 /** Why `createWorkspace` wrote nothing. */
@@ -128,7 +133,8 @@ export type CreateWorkspaceError =
  * `workspace.yaml` is never touched: that is `already_workspace`, so the
  * Studio can offer to open it. The settings are checked before anything is
  * written, and a failed write of `workspace.yaml` removes the files this
- * call wrote, so the call can be repeated.
+ * call wrote and puts back the `.gitignore` it amended, so the call can be
+ * repeated.
  *
  * The same caveat as {@link initWorkspace} holds: the listing and the writes
  * are not one step.
@@ -165,22 +171,74 @@ export async function createWorkspace(
   ];
   const written: string[] = [];
   const skipped: string[] = [];
+  const amended: string[] = [];
+  /** What an amended file held before, to put it back when a later write fails. */
+  const before = new Map<string, string>();
   try {
     for (const [path, content] of template) {
-      if (existing.has(path)) {
+      if (!existing.has(path)) {
+        await store.write(path, content);
+        written.push(path);
+      } else if (await amendGitIgnore(store, path, before)) {
+        amended.push(path);
+      } else {
         skipped.push(path);
-        continue;
       }
-      await store.write(path, content);
-      written.push(path);
     }
   } catch (error) {
-    for (const path of written) {
-      await removeQuietly(store, path);
-    }
+    await undoWrites(store, written, before);
     throw error;
   }
-  return ok({ location: store.location, id, name: options.name, written, skipped });
+  return ok({ location: store.location, id, name: options.name, written, skipped, amended });
+}
+
+/** Removes the files a failed call wrote and puts back the text of the ones it amended. */
+async function undoWrites(
+  store: DefinitionStore,
+  written: readonly string[],
+  before: ReadonlyMap<string, string>,
+): Promise<void> {
+  for (const path of written) {
+    await removeQuietly(store, path);
+  }
+  for (const [path, original] of before) {
+    await store.write(path, original).catch(() => {});
+  }
+}
+
+/**
+ * Adds the secrets lines to an existing `.gitignore` that lacks them, keeping its old text in
+ * `before`. Says whether it changed the file; any other file, and a `.gitignore` that keeps `.env`
+ * out already, is left alone.
+ */
+async function amendGitIgnore(
+  store: DefinitionStore,
+  path: string,
+  before: Map<string, string>,
+): Promise<boolean> {
+  const original = path === gitIgnorePath ? await store.read(path) : null;
+  const added = original === null ? undefined : withIgnoredSecrets(original);
+  if (original === null || added === undefined) {
+    return false;
+  }
+  await store.write(path, added);
+  before.set(path, original);
+  return true;
+}
+
+/**
+ * A `.gitignore`'s text with the secrets lines it lacks added at its end, or `undefined` when it
+ * keeps `.env` files out already. A line counts when it is exactly that line, or `.env*`, which
+ * covers both.
+ */
+function withIgnoredSecrets(text: string): string | undefined {
+  const lines = new Set(text.split(/\r?\n/).map((line) => line.trim()));
+  const missing = lines.has(".env*") ? [] : gitIgnoreLines.filter((line) => !lines.has(line));
+  if (missing.length === 0) {
+    return undefined;
+  }
+  const separator = text === "" || text.endsWith("\n") ? "" : "\n";
+  return `${text}${separator}${missing.join("\n")}\n`;
 }
 
 /**
