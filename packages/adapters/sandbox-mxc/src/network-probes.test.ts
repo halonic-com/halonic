@@ -39,6 +39,14 @@ verifies("sandbox-mxc.canary", () => {
       expect(judgeNetwork(report(timedOut, null), asked).unproven).toHaveLength(1);
     });
 
+    it("counts a timeout as blocked when a box with no bridge talked to itself, and as unproven when it could not", () => {
+      const timedOut = [attempt("timeout")];
+      const talkedToItself = { host: "127.0.0.1", port: 49152, state: "connected", code: null } as const;
+      expect(judgeNetwork(report(timedOut, talkedToItself), asked).unproven).toEqual([]);
+      const silent = { ...talkedToItself, state: "timeout" } as const;
+      expect(judgeNetwork(report(timedOut, silent), asked).unproven).toHaveLength(1);
+    });
+
     it("counts an error that is no refusal as unproven, whatever the control says", () => {
       const failed = [attempt("failed", "UNKNOWN")];
       const found = judgeNetwork(report(failed, attempt("connected")), asked);

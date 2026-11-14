@@ -8,7 +8,9 @@
 //   - the system refused it (`refused`: ECONNREFUSED, EACCES, EPERM, no route), or
 //   - nothing came back (`timeout`) while the network control, a connection to
 //     the bridge, which the box is allowed, did connect: the network works in
-//     there, so the silence is the fence.
+//     there, so the silence is the fence. A box with no bridge has the probe
+//     talk to itself instead (a TCP connection and a UDP datagram on the box's
+//     own loopback), which proves the same thing and reaches nothing outside.
 // Anything else is unproven, and an unproven result proves nothing.
 
 import type { SandboxBridge } from "@halonicjs/ports";
@@ -43,10 +45,17 @@ export function networkSettings(bridge: SandboxBridge | null): {
   dns: readonly NetworkTarget[];
   lan: readonly NetworkTarget[];
   bridge: NetworkTarget | null;
+  selfControl: boolean;
 } {
   const control =
     bridge !== null && bridge.kind === "loopback" ? { host: bridge.host, port: bridge.port } : null;
-  return { internet: internetTargets, dns: dnsTargets, lan: lanTargets(), bridge: control };
+  return {
+    internet: internetTargets,
+    dns: dnsTargets,
+    lan: lanTargets(),
+    bridge: control,
+    selfControl: control === null,
+  };
 }
 
 /** What the probe's network attempts found. */
@@ -99,7 +108,7 @@ export function judgeNetwork(report: LeakReport, asked: NetworkAsked): NetworkJu
 function describe(kind: string, { host, port, state, code }: NetworkAttempt): string {
   const how =
     state === "timeout"
-      ? "timed out, and the box could not reach its bridge to show that its network works"
+      ? "timed out, and the box could not show that its network works: its network control, a connection to its bridge or to itself, failed"
       : `failed with ${code ?? "an unknown error"}, which is not a refusal`;
   return `the ${kind} attempt to ${host}:${port} ${how}`;
 }

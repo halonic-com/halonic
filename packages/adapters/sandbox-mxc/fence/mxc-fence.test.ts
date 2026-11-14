@@ -47,6 +47,17 @@ describe("MxcSandbox with the real fence", () => {
     expect(session.fence).toEqual({ state: "fenced" });
   });
 
+  it("proves the fence of a profile with no bridge, the probe talking to itself as the network control", async () => {
+    const noBridge = await mxc.sandbox.open(
+      profileOver(folders, { network: { bridge: null, allowedSites: [] } }),
+    );
+    try {
+      expect(noBridge.fence).toEqual({ state: "fenced" });
+    } finally {
+      await noBridge.close();
+    }
+  });
+
   it("runs a program and gives its output and exit code", async () => {
     const { out, exit } = await node("console.log('hi'); process.exit(3)");
     expect(out.trim()).toBe("hi");

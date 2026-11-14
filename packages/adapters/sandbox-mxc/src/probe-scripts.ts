@@ -14,7 +14,9 @@
  *
  * Settings: `{ control, hidden, denied, writes: [{ create, existing }],
  * ports: [{ host, port }], lan: [{ host, port }], internet: [{ host, port }],
- * dns: [{ host, port }], bridge: { host, port } | null }`.
+ * dns: [{ host, port }], bridge: { host, port } | null, selfControl: boolean }`.
+ * With no bridge and `selfControl` set, the network control is the probe
+ * talking to itself: see `talkToSelf`.
  *
  * It prints `{ control, hidden, denied, ports, lan, internet, dns, network }`. A file
  * is `readable` or `hidden`. A network attempt is `{ host, port, state, code }`:
@@ -102,6 +104,46 @@ const ask = (target) =>
       finish("failed", error.code);
     }
   });
+// The network control of a box with no bridge: a TCP connection from the probe
+// to its own listener and a UDP datagram to its own socket, both on the box's
+// own loopback. It shows that Winsock and the network stack work in the box,
+// without reaching anything outside the probe's process. Both sockets are
+// closed before the probe prints.
+const talkToSelf = async () => {
+  const loopback = "127.0.0.1";
+  const server = net.createServer((socket) => socket.destroy());
+  const udp = dgram.createSocket("udp4");
+  let target = { host: loopback, port: 0 };
+  try {
+    await new Promise((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(0, loopback, resolve);
+    });
+    target = { host: loopback, port: server.address().port };
+    const tcp = await reach(target);
+    if (tcp.state !== "connected") return tcp;
+    await new Promise((resolve, reject) => {
+      udp.once("error", reject);
+      udp.bind(0, loopback, resolve);
+    });
+    let silence = null;
+    const heard = new Promise((resolve, reject) => {
+      udp.once("message", resolve);
+      silence = setTimeout(
+        () => reject(Object.assign(new Error("silence"), { code: "ETIMEDOUT" })),
+        attemptTimeoutMs,
+      );
+    });
+    udp.send("self", udp.address().port, loopback);
+    await heard.finally(() => clearTimeout(silence));
+    return outcome(target, "connected");
+  } catch (error) {
+    return outcome(target, stateOf(error), error.code);
+  } finally {
+    udp.close();
+    server.close();
+  }
+};
 async function main() {
   const report = {
     control: readState(config.control),
@@ -119,7 +161,7 @@ async function main() {
     Promise.all((config.lan ?? []).map(reach)),
     Promise.all((config.internet ?? []).map(reach)),
     Promise.all((config.dns ?? []).map(ask)),
-    config.bridge ? reach(config.bridge) : null,
+    config.bridge ? reach(config.bridge) : config.selfControl ? talkToSelf() : null,
   ]);
   console.log(JSON.stringify(report));
 }
@@ -178,7 +220,7 @@ export interface LeakReport {
   lan: NetworkAttempt[];
   internet: NetworkAttempt[];
   dns: NetworkAttempt[];
-  /** The bridge, the network control; `null` when the box has none. */
+  /** The network control: the bridge, or for a box with none the probe talking to itself; `null` when there is none. */
   network: NetworkAttempt | null;
 }
 

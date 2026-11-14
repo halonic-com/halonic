@@ -164,6 +164,39 @@ verifies("sandbox-mxc.session", () => {
       }
     });
 
+    it("with no bridge and selfControl set, reports the probe's own TCP connection and UDP datagram as the network control", async () => {
+      writeFileSync(join(folder, "probe.cjs"), leakProbeScript);
+      const settings = {
+        control: "x",
+        hidden: "x",
+        denied: "x",
+        ports: [],
+        bridge: null,
+        selfControl: true,
+      };
+      writeFileSync(join(folder, "probe.json"), JSON.stringify(settings));
+      const { stdout } = await execFileAsync(process.execPath, [
+        join(folder, "probe.cjs"),
+        join(folder, "probe.json"),
+      ]);
+      expect(parseLeakReport(stdout)?.network).toMatchObject({
+        host: "127.0.0.1",
+        state: "connected",
+        code: null,
+      });
+    });
+
+    it("reports no network control with no bridge and no selfControl", async () => {
+      writeFileSync(join(folder, "probe.cjs"), leakProbeScript);
+      const settings = { control: "x", hidden: "x", denied: "x", ports: [], bridge: null };
+      writeFileSync(join(folder, "probe.json"), JSON.stringify(settings));
+      const { stdout } = await execFileAsync(process.execPath, [
+        join(folder, "probe.cjs"),
+        join(folder, "probe.json"),
+      ]);
+      expect(parseLeakReport(stdout)?.network).toBeNull();
+    });
+
     it("reports a DNS answer as connected", async () => {
       const server = createSocket("udp4");
       server.on("message", (message, remote) => server.send(message, remote.port, remote.address));

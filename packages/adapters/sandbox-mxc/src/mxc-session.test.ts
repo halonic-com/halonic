@@ -143,6 +143,32 @@ verifies("sandbox-mxc.session", () => {
       await session.close();
     });
 
+    it("with no bridge, makes the probe talk to itself as the network control, and counts a timeout as blocked once it did", async () => {
+      const seen: ProbeSettings[] = [];
+      const { sandbox } = setup((disk) => {
+        const healthy = healthyBox(disk, { blockedAttemptsTimeOut: true });
+        return async (call) => {
+          if (call.settings?.internet !== undefined) seen.push(call.settings);
+          return healthy(call);
+        };
+      });
+      const session = await open(sandbox, {
+        network: { bridge: null, allowedSites: [] },
+      });
+      expect(session.fence).toEqual({ state: "fenced" });
+      expect(seen[0]).toMatchObject({ bridge: null, selfControl: true });
+      await session.close();
+    });
+
+    it("with no bridge, is not-fenced when a timeout comes and the probe could not talk to itself", async () => {
+      const { sandbox } = setup({ blockedAttemptsTimeOut: true, bridgeUnreachable: true });
+      const session = await open(sandbox, { network: { bridge: null, allowedSites: [] } });
+      expect(session.fence).toMatchObject({
+        state: "not-fenced",
+        reason: expect.stringMatching(/did not prove the block.*could not show that its network works/),
+      });
+    });
+
     it.each<[string, Leaks, RegExp]>([
       ["the hidden file is readable", { hidden: true }, /could read a file the fence should hide/],
       ["the denied file is readable", { denied: true }, /denied file inside a folder it may read/],
@@ -166,7 +192,7 @@ verifies("sandbox-mxc.session", () => {
       [
         "blocked probes time out and the bridge can't be reached",
         { blockedAttemptsTimeOut: true, bridgeUnreachable: true },
-        /did not prove the block.*could not reach its bridge/,
+        /did not prove the block.*could not show that its network works/,
       ],
       ["the allowed folder can't be read", { controlUnreadable: true }, /proves nothing/],
     ])(
