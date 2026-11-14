@@ -2,7 +2,7 @@ import type { CreateServer, RequestContext, ServerConfig } from "./api.ts";
 import { checkDailyRequests } from "./daily-requests.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { createGoogleRoutes, googlePathPrefix, isSecretPath } from "./google-routes.ts";
-import { createRunRoutes, parseRunId, runPathPrefix } from "./run-routes.ts";
+import { createRunRoutes, isJsonRequest, parseRunId, runPathPrefix } from "./run-routes.ts";
 import { checkHost, checkOrigin, readBody, withSecurityHeaders } from "./security.ts";
 import { createSignIn, passwordSecretName } from "./sign-in.ts";
 import { createTrustRoutes } from "./trust-routes.ts";
@@ -89,6 +89,22 @@ export const createServer: CreateServer = ({ config, ports }) => {
     return apiRoute(request, context, body, `${request.method} ${pathname}`);
   }
 
+  async function startRoute(
+    request: Request,
+    context: RequestContext,
+    body: Uint8Array,
+    isWorkflow: boolean,
+  ): Promise<Response> {
+    if (!(await signIn.isSignedIn(request, context))) {
+      return errorResponse(serverErrors.notSignedIn);
+    }
+    // A cross-site form can only send a non-JSON type, so it never starts a run, even with no password.
+    if (!isJsonRequest(request)) {
+      return errorResponse(serverErrors.unsupportedMediaType);
+    }
+    return isWorkflow ? trustRoutes.startWorkflow(body) : trustRoutes.startAgent(body);
+  }
+
   async function apiRoute(
     request: Request,
     context: RequestContext,
@@ -117,12 +133,7 @@ export const createServer: CreateServer = ({ config, ports }) => {
           : errorResponse(serverErrors.notSignedIn);
       case "POST /api/runs":
       case "POST /api/agent-runs":
-        if (!(await signIn.isSignedIn(request, context))) {
-          return errorResponse(serverErrors.notSignedIn);
-        }
-        return endpoint === "POST /api/runs"
-          ? trustRoutes.startWorkflow(body)
-          : trustRoutes.startAgent(body);
+        return startRoute(request, context, body, endpoint === "POST /api/runs");
       default:
         return errorResponse(serverErrors.notFound);
     }

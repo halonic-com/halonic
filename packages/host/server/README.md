@@ -10,7 +10,7 @@ The `Request → Response` handler behind `halonic serve` and the cloud Worker. 
 
 The server asks the host's trust gate before it starts any run, on every request. It keeps no answer from before, so a workspace that changed since you trusted it starts nothing.
 
-- `POST /api/runs` starts a workflow and `POST /api/agent-runs` starts one agent. Both need a sign-in when a password is set.
+- `POST /api/runs` starts a workflow and `POST /api/agent-runs` starts one agent. Both need a sign-in when a password is set and `Content-Type: application/json` (anything else answers 415).
 - `GET /api/runs/<runId>` answers a run's summary, `POST /api/runs/<runId>/events` delivers an event (`{ event, payload?, callId? }`) and `POST /api/runs/<runId>/cancel` cancels. They need a sign-in when a password is set, and the two POSTs need `Content-Type: application/json`. Delivering an event needs a trusted workspace; cancelling does not.
 - When the workspace isn't trusted (new, changed since it was trusted, unreadable or refused), both answer **403** with the code `workspace_not_trusted` and start nothing.
 - When the trust check itself fails, both answer **500** with the code `internal_error` and start nothing. A failed check counts as no trust.
