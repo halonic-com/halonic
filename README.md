@@ -12,6 +12,8 @@ Halonic is a local-first Studio, engine and command-line tool for designing,
 running and supervising AI agent workflows. Workflows, agents and settings live
 as plain files in your own git repository.
 
+**Built by humans with the help of AI.** [How Halonic is built](#how-halonic-is-built)
+
 ## Studio
 
 Studio is the desktop app, for Windows. Its installer comes with the 0.1.0
@@ -113,12 +115,44 @@ output can include your home folder.
   your prompts on your computer.
 - The 0.1.0 command line doesn't check for updates.
 
+## How Halonic is built
+
+**Built by humans with the help of AI**
+
+People decide what Halonic is, plan the work and say yes to every release. AI
+agents do much of the writing: code, tests and docs. We say so up front, so you
+can judge the result for yourself.
+
+**How the work goes**
+
+1. **People plan.** Direction, design and release decisions are made by people.
+   The work is split into tasks, and each task has an owner.
+2. **Requirements come first.** Features are written down as requirements
+   before they are built.
+3. **Tests prove it.** Each requirement is proven by tests that run on every
+   change. The rule is that nothing that works may break. A test that guards a
+   requirement can't be deleted or weakened without an approved decision note.
+   A check for this runs on every change today; it reports and doesn't block
+   yet.
+4. **Every change is reviewed and checked.** Every change goes through a pull
+   request, a review and the automated checks before it merges: tests, licence
+   and dependency checks, and a check for leaked secrets.
+5. **A person says yes to every release.** Nothing is released or published
+   without a person's yes, and a person at Korse Holding is accountable for it.
+   A person can stop or override anything an agent does.
+
+Tests lower the risk of a broken feature; they don't remove it. This is a first
+release, so expect rough edges, and tell us about them.
+
+More in [CONTRIBUTING.md](CONTRIBUTING.md#how-halonic-is-built).
+
 ## Help and contributing
 
 - Questions and help: [SUPPORT.md](SUPPORT.md), or ask in
   [Q&A](https://github.com/halonic-com/halonic/discussions/new?category=q-a)
 - How to contribute: [CONTRIBUTING.md](CONTRIBUTING.md)
 - How Halonic is built, with people always in the loop:
+  [above](#how-halonic-is-built) and in
   [CONTRIBUTING.md](CONTRIBUTING.md#how-halonic-is-built)
 - Security: [SECURITY.md](SECURITY.md)
 - Licence: [Apache License 2.0](LICENSE), see also [NOTICE](NOTICE) and
