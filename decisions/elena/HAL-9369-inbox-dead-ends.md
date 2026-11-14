@@ -2,6 +2,7 @@
 
 - Approval: wording and scope decided by the team on HAL-9369 (from Sofia's design-check, HAL-9316 A1/A2); the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:h1WgJgknbcR19q8WX3HhD+CmB5dMSZs2pIgGiBQufYBrPAIiPDDgVYGLjLai2FzvhYcLKdauqz31+gtP6O0YAw==
 - Task: HAL-9369
 
 ## What changes
