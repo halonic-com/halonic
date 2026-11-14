@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-8868 (Mara's words check on HAL-2213, fix 6)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:s3rDyCDQ3S1OkkhZg9yn58AFAgz8tx46orWB3MbNwq/0so8vFWnM+cJkv3FRcLIuxYDiRCPj9jJYr037NTmtBg==
 
 Two requirements named the button of a tool its server keeps changing **Approve this version**.
 Mara's words check (HAL-2213) found that the name reads like the normal approval, when this tool
