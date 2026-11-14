@@ -155,11 +155,10 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     // client, outside the box. A hosts-file name would prove nothing: if the
     // box fenced the client, Windows would read the hosts file inside the box.
     // Needs admin rights and a free port 53, which a CI runner has.
-    // On windows-11-arm no query arrives: the lookup from the box fails or
-    // times out. Whether the box fences the client or the client refuses the
-    // box for another reason (a missing capability) is not known from here, so
-    // the probe prints the error and the time it took. A profile that grants
-    // that capability needs this test re-checked.
+    // On windows-11-arm no query arrives: the lookup from the box fails within
+    // milliseconds (`ENOTFOUND`). The test cannot tell whether the box fences
+    // the client or the client refuses a box without a network capability, so
+    // a profile that grants that capability needs this test re-checked.
     // Both Node layers see the same, as Node's permission model does not
     // cover name lookups.
     const suffix = Math.random().toString(36).slice(2);
@@ -217,7 +216,16 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
       console.log(
         `A6 in-box lookup, Node's layer ${nodeLayer}: ${inBox?.outcome} (${inBox?.detail}) after ${attempts["milliseconds"]?.detail} ms`,
       );
-      expect(inBox?.outcome, "the lookup from the box did not resolve").not.toBe("allowed");
+      // Why it fails, so a change in the reason shows up too. With Node's layer
+      // on, Node itself refuses the lookup. With it off, the lookup comes back
+      // "not found" within a few milliseconds: no timeout, and no query out.
+      expect(inBox?.outcome, "the lookup from the box failed at once").toBe("refused");
+      expect(inBox?.detail, "the lookup's error").toBe(
+        nodeLayer === "on" ? "ERR_ACCESS_DENIED" : "ENOTFOUND",
+      );
+      expect(Number(attempts["milliseconds"]?.detail), "the lookup did not wait").toBeLessThan(
+        5000,
+      );
       expect(
         received.some((query) => query.includes(label)),
         "no query from the box reached the server",

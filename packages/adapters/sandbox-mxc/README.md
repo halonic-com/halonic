@@ -112,10 +112,14 @@ through it): the bridge is the box's only network control, and nothing probes it
 These are the limits in [the ADR](../../../docs/adr/2026-11-10-mxc-sandbox-backend.md). The
 first is a leak the box can't stop; the trust check reports it rather than catching it.
 
-- **Name lookups leave the box.** They go through Windows' DNS client service, which runs
-  outside the box. A program can't open a connection, but it can encode data in the names it
-  looks up, slowly. The canary reports `nameLookupsLeave: true`. Showing it in `halonic doctor`
-  is Planned with the host wiring (HAL-3309); doctor doesn't know about MXC today.
+- **Name lookups may leave the box (not confirmed).** They go through Windows' DNS client
+  service, which runs outside the box. On `windows-11-arm` the fence test for A6 (HAL-9605)
+  shows a lookup from the box sends no query to a counting DNS server and fails at once
+  (`ENOTFOUND`; `ERR_ACCESS_DENIED` with Node's layer on). The test can't tell a fenced client
+  from one that turns away a box without a network capability, so a profile that grants that
+  capability needs it re-checked. The canary still reports `nameLookupsLeave: true` as a
+  cautious assumption. Showing it in `halonic doctor` is Planned with the host wiring
+  (HAL-3309); doctor doesn't know about MXC today.
 - **pnpm and other tools that look up the drive root don't work.** They walk up to `C:\`, which
   the box can't read (`EPERM lstat 'C:'`). Halonic doesn't run them outside the box instead,
   because that would run package scripts without the fence, and it doesn't make the drive root

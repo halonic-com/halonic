@@ -110,18 +110,22 @@ no trust check, no session and nothing new for the person to read.
 These are written down in the threat model, the README and `halonic doctor`
 (HAL-3308), not hidden:
 
-- **Name lookups leave the box.** Lookups go through the Windows DNS client
-  service, which runs outside the box and answers for any box that may use
-  the network. A program in the box can't open a connection, but it can
-  encode data in the names it looks up (DNS tunnelling). That is slow, a few
-  KB/s, but it moves whole files. So any file the program can read can leave
-  the machine this way: the working folder, the read-only paths and the
-  `settingsFolder`. For a harness, `settingsFolder` is its own settings
-  folder (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`): its settings, its session
-  history and, if the person signed the harness in there, its sign-in
-  token. The run token is in the program's environment and can leave too;
-  it is only good for this run's bridge. MXC has no setting that turns this
-  off (HAL-3365).
+- **Name lookups may leave the box (not confirmed).** Lookups go through the
+  Windows DNS client service, which runs outside the box. The worry was that
+  a program in the box could encode data in the names it looks up (DNS
+  tunnelling), slowly, a few KB/s. On `windows-11-arm` the test in
+  `runner-attacks.mxc.test.ts` did not show it (HAL-9605): a lookup from the
+  box sent no query to a counting DNS server that an outside lookup reached,
+  and failed within milliseconds (`ENOTFOUND`; `ERR_ACCESS_DENIED` with
+  Node's layer on). The test cannot tell whether the box fences the client or
+  the client turns away a box without a network capability. A profile that
+  grants that capability needs the test re-checked. Until then, treat the
+  leak as unconfirmed, not proven, and keep what bounds it: the runner has no
+  key in its environment and no settings folder. For a harness,
+  `settingsFolder` is its own settings folder (`CLAUDE_CONFIG_DIR`,
+  `CODEX_HOME`) with its session history and sign-in token, so a harness
+  profile would need this checked first. MXC has no setting that turns the
+  DNS client off (HAL-3365).
 - **pnpm and similar tools fail.** Their own code walks up to the drive root,
   which the box can't read. We don't run them outside the box for the agent,
   because that runs untrusted package scripts without the fence. We don't
@@ -186,8 +190,8 @@ When more than one fails, the check reports the first in this order, so a
 leak is reported before a failed control.
 
 The probe also looks up a never-used name through the DNS client service and
-records whether it got out. Under this policy it always does. That is the
-known limit above: `doctor` shows it, and it doesn't fail the check, because
+records whether it got out. It assumes it does, to stay on the safe side (see
+the known limit above; HAL-9605 did not confirm it): `doctor` shows it, and it doesn't fail the check, because
 a failure there would switch MXC off on every machine.
 
 **On failure,** MXC is off for this start of Halonic only. The person's

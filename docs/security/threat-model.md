@@ -493,13 +493,17 @@ routes, isn't built yet, so no app uses the host today.
 
 #### Known limits
 
-- **MXC: names leave the box.** Lookups go through Windows' DNS client
-  service, outside the box. A program can't connect anywhere, but it can
-  encode what it can read, including its settings folder and the run token,
-  in the names it looks up: a few KB a second. MXC has no setting to stop it
-  (HAL-3365). The canary reports it as `nameLookupsLeave: true`. That
-  `halonic doctor` says so while MXC is in use is **Planned** with the host
-  wiring (HAL-3309); doctor doesn't know about MXC today.
+- **MXC: names may leave the box (not confirmed).** Lookups go through Windows'
+  DNS client service, outside the box. A program could encode what it can read
+  in the names it looks up. On `windows-11-arm` a test (HAL-9605) shows a
+  lookup from the box sends no query to a counting DNS server and fails at
+  once (`ENOTFOUND`, or `ERR_ACCESS_DENIED` with Node's layer on). Whether the
+  box fences the client or the client turns the box away for lack of a network
+  capability is not known; a profile that grants that capability needs the
+  test re-checked. The canary still reports `nameLookupsLeave: true` as a
+  cautious assumption. That `halonic doctor` says so while MXC is in use is
+  **Planned** with the host wiring (HAL-3309); doctor doesn't know about MXC
+  today.
 - **MXC: pnpm and other tools that look up the drive root don't work.** They
   fail with `EPERM` on `C:\`. Halonic doesn't run them outside the box
   instead, because that runs untrusted package scripts without the fence, and
