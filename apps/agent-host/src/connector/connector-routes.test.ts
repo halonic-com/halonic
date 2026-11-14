@@ -71,7 +71,8 @@ verifies("agent-host.connector-routes", () => {
       expect(JSON.parse(answer)).toEqual({
         error: {
           kind: "connector_failed",
-          message: "The connector couldn't finish this request. The agent host's log has the detail.",
+          message:
+            "The connector couldn't finish this request. The agent host's log has the detail.",
         },
       });
       expect(answer).not.toContain("/some/folder");
