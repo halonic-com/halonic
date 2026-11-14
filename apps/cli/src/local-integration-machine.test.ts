@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, realpath, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cliConnectorFactories } from "./connector-machine.ts";
 import { IntegrationConnectorFactory } from "./integration-connector-factory.ts";
 import { computerIntegrationMachine } from "./local-integration-machine.ts";
+import { removeTestFolder } from "./test/remove-folder.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { profilePlatformOf } from "./workspace-runs.ts";
 
@@ -28,7 +29,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(base, { recursive: true, force: true });
+  await removeTestFolder(base);
 });
 
 const environment = (): ProfileEnvironment => ({

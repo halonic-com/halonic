@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MemoryTrustStore } from "@halonicjs/adapter-memory";
@@ -9,6 +9,7 @@ import { exitCode } from "../../exit-code.ts";
 import type { QuestionTerminal } from "../../output/question.ts";
 import { runCli, type Terminal } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
+import { removeTestFolder } from "../../test/remove-folder.ts";
 import { otherUseBesidesHalonic, type SandboxSetter, sandboxCommandWith } from "./command.ts";
 
 let folder: string;
@@ -18,7 +19,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 /** Windows, where setup and remove answer `setup` and `removal` and count their calls. */

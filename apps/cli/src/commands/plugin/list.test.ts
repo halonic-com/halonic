@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
@@ -8,6 +8,7 @@ import { exitCode } from "../../exit-code.ts";
 import { openPluginService, type PluginSetup } from "../../plugin-host.ts";
 import { runCli } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
+import { removeTestFolder } from "../../test/remove-folder.ts";
 import { pluginCommandWith } from "./command.ts";
 
 let folder: string;
@@ -26,7 +27,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 const manifest = (id: string, name: string) =>

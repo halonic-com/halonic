@@ -1,9 +1,10 @@
-import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
+import { removeTestFolder } from "./test/remove-folder.ts";
 import { programWorkingFolders } from "./working-folders.ts";
 
 let temp: string;
@@ -24,7 +25,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(temp, { recursive: true, force: true });
+  await removeTestFolder(temp);
 });
 
 verifies("cli.local-engine", () => {

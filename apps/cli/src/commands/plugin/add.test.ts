@@ -8,6 +8,7 @@ import type { QuestionTerminal } from "../../output/question.ts";
 import { openPluginService, type PluginSetup } from "../../plugin-host.ts";
 import { runCli, type Terminal } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
+import { removeTestFolder } from "../../test/remove-folder.ts";
 import { pluginCommandWith } from "./command.ts";
 
 const fullFingerprint = /^hpf1:[0-9a-f]{64}$/u;
@@ -28,7 +29,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 const manifest = (id: string, name: string) => `id: ${id}

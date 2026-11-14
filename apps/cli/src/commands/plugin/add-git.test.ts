@@ -1,4 +1,4 @@
-import { access, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
@@ -9,6 +9,7 @@ import { openPluginService, type PluginSetup } from "../../plugin-host.ts";
 import { runCli, type Terminal } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
 import { manualClock } from "../../test/manual-clock.ts";
+import { removeTestFolder } from "../../test/remove-folder.ts";
 import { pluginCommandWith } from "./command.ts";
 import { type GitExporter, type GitSource, gitSourceOf } from "./git-source.ts";
 
@@ -55,7 +56,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 /** A terminal where the user answers y to every question. */

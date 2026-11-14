@@ -1,4 +1,4 @@
-import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,6 +26,7 @@ import { readSourceListing } from "./source-listing.ts";
 import { captureIo } from "./test/capture-io.ts";
 import { heavyTestTimeout } from "./test/golden.ts";
 import { turnOffLocalOnly } from "./test/local-only.ts";
+import { removeTestFolder } from "./test/remove-folder.ts";
 import { testRunSetup } from "./test/run-setup.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "./workspace-runs.ts";
@@ -79,13 +80,13 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 /** Writes `connectors` as Acme's connector files, in place of the ones it has. */
 async function writeConnectors(connectors: readonly Connector[]): Promise<void> {
   const library = join(acme, "library", "connectors");
-  await rm(library, { recursive: true, force: true });
+  await removeTestFolder(library);
   await mkdir(library, { recursive: true });
   for (const { id, version: _version, ...file } of connectors) {
     // JSON is YAML, and writes every value as it is, `${HOME}` and a Cyrillic host included.

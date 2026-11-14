@@ -45,6 +45,9 @@ Don't run `pnpm verify` by default: CI runs the full suite (HAL-2418).
 - Global options such as `--debug` are read once, in `runCli` (`src/global-options.ts`), and
   taken out of the command line before a command sees it. No command reads `--debug`: only
   `printError` uses it, to add the error's own text, causes and stack.
+- A test clears its temporary folder with `removeTestFolder` (`src/test/remove-folder.ts`), never a
+  plain `rm`, and closes every engine it opened first. An ENOTEMPTY in that cleanup means something
+  still writes after its `close` resolved: fix that `close`, not the test (HAL-9323).
 - Anything the CLI builds that takes `Secrets` (commands, the engine, providers, integrations)
   gets the instance `runCli` wrapped with `rememberedSecrets`, from the command's
   `context.secrets`, never a raw adapter. That wrapper tells `printError`'s scrubber every

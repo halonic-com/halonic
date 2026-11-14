@@ -1,4 +1,4 @@
-import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,6 +16,7 @@ import {
   localRunConnectors,
   type RunConnectorsEngine,
 } from "./local-run-connectors.ts";
+import { removeTestFolder } from "./test/remove-folder.ts";
 
 const acmeExample = fileURLToPath(new URL("../../../examples/acme", import.meta.url));
 
@@ -26,7 +27,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 /**

@@ -1,5 +1,5 @@
 import { mkdtempSync } from "node:fs";
-import { chmod, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,6 +17,7 @@ import { goldenText, heavyTestTimeout, runGolden } from "../../test/golden.ts";
 import { checklistProblems } from "../../test/golden-checklist.ts";
 import { turnOffLocalOnly } from "../../test/local-only.ts";
 import { pastedKey, pasteKeyIntoProvider } from "../../test/pasted-key.ts";
+import { removeTestFolder } from "../../test/remove-folder.ts";
 import { engineStart, testRunSetup } from "../../test/run-setup.ts";
 import { leakedAddressParts, userInfoConnectorYaml } from "../../test/user-info-connector.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
@@ -39,7 +40,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   // Backstop: the engine is closed by now, but a slow runner may still be finishing a file.
-  await rm(folder, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  await removeTestFolder(folder);
 });
 
 /** A profile folder of its own, so each golden mode starts with no runs. */

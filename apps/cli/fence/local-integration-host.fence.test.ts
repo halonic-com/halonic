@@ -1,4 +1,4 @@
-import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,6 +11,7 @@ import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CommandContext } from "../src/command.ts";
 import { runMessages } from "../src/messages/run.ts";
+import { removeTestFolder } from "../src/test/remove-folder.ts";
 import { openWorkspaceDir } from "../src/workspace-dir.ts";
 import { openWorkspaceEngine } from "../src/workspace-engine.ts";
 import { nodeProfileEnvironment } from "../src/workspace-runs.ts";
@@ -110,7 +111,7 @@ beforeEach(async () => {
 afterEach(async () => {
   if (savedHome === undefined) delete process.env[homeKey];
   else process.env[homeKey] = savedHome;
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 async function put(files: Record<string, string>): Promise<void> {
