@@ -2,6 +2,7 @@
 
 - Approval: Liam signs this note in review on the review task of HAL-9335
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:XGCdiswDTIx0YZTgGn/IjkuacbO6oKeC5GxJesxkMtLzfkNn74C4yOO6xQnomSiHxHLNwWCbxFyRp0Z60t04Cg==
 - Task: HAL-9335
 
 ## What changes
