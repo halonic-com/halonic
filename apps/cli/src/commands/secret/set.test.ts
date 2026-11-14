@@ -1,6 +1,8 @@
+import { maxSecretValueLength } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
+import { readCapped } from "../../secret-host.ts";
 import { pipe, secret, secretFixture, typing } from "../../test/secret-setup.ts";
 
 let fixture: Awaited<ReturnType<typeof secretFixture>>;
@@ -172,10 +174,9 @@ verifies("cli.commands.secret.set", () => {
     expect(await fixture.store().names()).toEqual([]);
   });
 
-  it("scrubs a typed value from an error printed afterwards", async () => {
-    // A name with the value pasted into it: the service's refusal must not repeat it.
+  it("doesn't repeat a refused name that holds a pasted value", async () => {
     const pasted = `sk-${"é".repeat(40)}`;
-    const { terminal, stdin } = typing(pasted);
+    const { terminal, stdin, written } = typing(pasted);
 
     const { code, io } = await secret(
       fixture.folder,
@@ -185,6 +186,47 @@ verifies("cli.commands.secret.set", () => {
     );
 
     expect(code).toBe(exitCode.usage);
+    // The name is refused before any prompt, so nothing is asked or typed.
+    expect(written()).toBe("");
     expect(io.stderr.join("\n")).not.toContain("éééé");
+  });
+
+  it("scrubs a value typed at the prompt from the refusal printed afterwards", async () => {
+    const tooLong = `${"é".repeat(70000)}`;
+    const { terminal, stdin } = typing(tooLong);
+
+    const { code, io } = await secret(
+      fixture.folder,
+      { ...fixture.setup, stdin },
+      ["set", "openai-key"],
+      terminal,
+    );
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr.join("\n")).not.toContain("éééé");
+    expect(await fixture.store().names()).toEqual([]);
+  });
+
+  it("stops reading a pipe a little past the longest value", async () => {
+    let read = 0;
+    async function* endless() {
+      for (;;) {
+        read += 1;
+        yield "x".repeat(1000);
+      }
+    }
+
+    const text = await readCapped(endless());
+
+    expect(text.length).toBeGreaterThan(maxSecretValueLength + 2);
+    expect(read).toBeLessThan(100);
+  });
+
+  it("reads a small pipe whole, also from byte chunks that split a character", async () => {
+    const bytes = Buffer.from(`${value}é\n`);
+
+    const text = await readCapped([bytes.subarray(0, bytes.length - 2), bytes.subarray(-2)]);
+
+    expect(text).toBe(`${value}é\n`);
   });
 });
