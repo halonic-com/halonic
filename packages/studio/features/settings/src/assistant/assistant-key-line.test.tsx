@@ -143,6 +143,12 @@ verifies("settings.ai-agent-key-line", () => {
     expect(keyLine(view)).not.toContain("is local only");
   });
 
+  it("does not warn about a cloud model while no provider is set up", async () => {
+    const { workspace } = fakeWorkspace({ ...acme, localOnly: true });
+    const { view } = await setup(workspace, "app", "not-set-up");
+    expect(keyLine(view)).not.toContain("is local only");
+  });
+
   it("says the workspace sets its own model, with a link to Session AI", async () => {
     const { workspace, calls } = fakeWorkspace({ ...acme, sessionModel: "smart" });
     const { view, closeSettings } = await setup(workspace);

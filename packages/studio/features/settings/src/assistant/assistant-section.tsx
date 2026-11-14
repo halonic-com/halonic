@@ -292,7 +292,7 @@ function AssistantEditor({
   return (
     <div className="mt-5 flex max-w-90 flex-col gap-4">
       <p className="text-body fg-muted">{text.FIRST_LINE[place]}</p>
-      {open?.localOnly && !local.value ? (
+      {chosen !== "not-set-up" && open?.localOnly && !local.value ? (
         <Callout tone="warning">{text.localOnlyWarning(open.name)}</Callout>
       ) : null}
       {open === null || workspace === undefined ? null : (

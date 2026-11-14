@@ -80,7 +80,7 @@ export interface AssistantWorkspaceFacts {
  * The open workspace, for the Assistant's key line, its local-only warning and its "sets its own"
  * line. The app gives it where a window has workspaces. Reads and links only: Settings never saves
  * a key or changes a workspace (HAL-119: keys are entered on the provider page). The `open…` and
- * `add…` methods run after Settings has closed (`settings.ai-agent-workspace`).
+ * `add…` methods run after Settings has closed.
  */
 export interface AssistantWorkspace {
   /** The open workspace, or `null` with none open. The same object until something in it changes. */

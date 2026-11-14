@@ -100,20 +100,24 @@ function useKeyStored(
   canAsk: boolean,
   open: AssistantWorkspaceFacts | null,
 ): Stored {
-  const [stored, setStored] = useState<Stored>("checking");
+  const [answer, setAnswer] = useState<{ readonly name: string; readonly stored: Stored }>({
+    name: secretName,
+    stored: "checking",
+  });
   const asks = secretName !== "" && workspace !== undefined && canAsk;
   // `open` is only a reason to ask again when the workspace changes.
   useEffect(() => {
     if (!asks) return;
     let current = true;
-    setStored("checking");
+    setAnswer({ name: secretName, stored: "checking" });
     workspace.keyStored(secretName).then(
-      (yes) => current && setStored(yes ? "yes" : "no"),
-      () => current && setStored("unknown"),
+      (yes) => current && setAnswer({ name: secretName, stored: yes ? "yes" : "no" }),
+      () => current && setAnswer({ name: secretName, stored: "unknown" }),
     );
     return () => {
       current = false;
     };
   }, [asks, workspace, secretName, open]);
-  return stored;
+  // An answer for another secret name is stale: show the wait until the new one comes.
+  return answer.name === secretName ? answer.stored : "checking";
 }
