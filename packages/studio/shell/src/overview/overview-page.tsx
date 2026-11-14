@@ -11,7 +11,7 @@ import {
   PlusIcon,
   SearchIcon,
 } from "@halonicjs/studio-kit";
-import { type KeyboardEvent, type ReactNode, useState } from "react";
+import { type KeyboardEvent, type ReactNode, useRef, useState } from "react";
 import {
   allFilter,
   currentFilter,
@@ -45,11 +45,14 @@ export interface OverviewWords {
   readonly sharedSection: (workspaceName: string) => string;
   /** A hub with no items, in its own section: "No skills in acme yet". */
   readonly emptySection: (sectionName: string) => string;
-  /** Nothing matches the search: "No results for “sorter”". */
+  /** Nothing matches the search: `No skills match "sorter".` The shell adds **Clear search**. */
   readonly noMatch: (query: string) => string;
   /** No hub and nothing shared: "No skills yet". */
   readonly nothingYet: { readonly title: string; readonly description?: string };
 }
+
+/** The button under "No skills match …", which the shell draws itself (microcopy 1.1 and 11.1). */
+const CLEAR_SEARCH = "Clear search";
 
 /** Why the items couldn't load, shown in place of the list. */
 export interface OverviewFailure {
@@ -128,6 +131,7 @@ export function OverviewPage({
   tabs,
 }: OverviewPageProps) {
   const [query, setQuery] = useState("");
+  const searchField = useRef<HTMLInputElement>(null);
   const [chosen, setChosen] = useState(allFilter);
   const [menu, setMenu] = useState<{ item: OverviewItem; target: ContextMenuTarget }>();
   const chips = overviewChips(hubs, shared, { all: words.allChip, shared: words.sharedChip });
@@ -145,6 +149,11 @@ export function OverviewPage({
     }
   }
 
+  function clearSearch() {
+    setQuery("");
+    searchField.current?.focus();
+  }
+
   return (
     <div>
       {tabs}
@@ -153,6 +162,7 @@ export function OverviewPage({
           <div className="flex items-center gap-2 px-4 py-2">
             <div className="min-w-0 flex-1">
               <Input
+                ref={searchField}
                 type="search"
                 aria-label={words.searchLabel}
                 leadingIcon={<SearchIcon />}
@@ -182,6 +192,7 @@ export function OverviewPage({
         headingOf={headingOf}
         hasAnySection={hubs.length > 0 || (shared?.items.length ?? 0) > 0}
         query={query}
+        onClearSearch={clearSearch}
         words={words}
         loading={loading}
         failure={failure}
@@ -207,6 +218,7 @@ interface OverviewBodyProps {
   readonly hasAnySection: boolean;
   readonly headingOf: (section: OverviewSection) => string;
   readonly query: string;
+  readonly onClearSearch: () => void;
   readonly words: OverviewWords;
   readonly loading: boolean;
   readonly failure: OverviewFailure | undefined;
@@ -222,6 +234,7 @@ function OverviewBody({
   headingOf,
   hasAnySection,
   query,
+  onClearSearch,
   words,
   loading,
   failure,
@@ -247,7 +260,13 @@ function OverviewBody({
     return <EmptyState {...words.nothingYet} />;
   }
   if (sections.length === 0) {
-    return <EmptyState plain title={words.noMatch(query.trim())} />;
+    return (
+      <EmptyState
+        plain
+        title={words.noMatch(query.trim())}
+        action={{ label: CLEAR_SEARCH, onClick: onClearSearch }}
+      />
+    );
   }
   return (
     <>

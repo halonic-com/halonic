@@ -365,6 +365,12 @@ export const homeWords = {
   label: "Recent runs",
   empty: "No runs yet. When an agent or workflow runs, you'll see it here.",
   seeAll: "See all runs",
+  /** Under the empty line, so Home never ends on nothing (empty-home-checklist 1, scope b); `halonic run` is shown as code. */
+  startNote: [
+    "Studio shows what your agents are doing and lets you read each run. To start one, use the command line: ",
+    "halonic run",
+    ".",
+  ],
 };
 
 /** Home's Spend tile (HAL-8553): the tile's title, the line under the number, and its empty text. */
