@@ -30,5 +30,8 @@ await blobs.get(ref.hash); // the bytes
 The `BlobStore` contract runs inside `workerd` over a real R2 binding, through
 `@halonicjs/target-cloudflare-testing` (`blob-store.test.ts`). `leftover-a.test.ts` and
 `leftover-b.test.ts` start their own `workerd` and must each find an empty bucket, so whichever runs
-second shows nothing carries over between test files. `r2-blob-store.test.ts` covers the code in
-Node with a small stand-in bucket, because Node's coverage can't see code that runs in `workerd`.
+second shows nothing carries over between test files. `r2-blob-store.test.ts`,
+`r2-definition-source.test.ts`, `d1-record-store.test.ts` and `d1-run-list.test.ts` run what the
+contracts don't reach (the keys written, migrations that fail, overlapping compacts) inside `workerd`
+too, over real R2 and D1 bindings. Nothing here runs in Node: the coverage of `src` comes from `workerd`
+(see the coverage section of `@halonicjs/target-cloudflare-testing`).

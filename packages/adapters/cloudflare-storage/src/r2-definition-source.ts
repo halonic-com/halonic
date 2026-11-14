@@ -15,7 +15,7 @@ import {
 } from "./definition-snapshot.ts";
 import { routineIndexPath } from "./webhook-routines.ts";
 
-/** The one R2 call the source makes. A Worker's `R2Bucket` binding fits it, and so does a stand-in in a Node test. */
+/** The one R2 call the source makes. A Worker's `R2Bucket` binding fits it, and so does a wrapper around one, which a test uses to count the reads. */
 export interface SnapshotBucket {
   get(key: string): Promise<{ arrayBuffer(): Promise<ArrayBuffer> } | null>;
 }

@@ -1,122 +1,18 @@
+import { runSuitesInWorkerd } from "@halonicjs/target-cloudflare-testing";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
-import { R2BlobStore } from "./r2-blob-store.ts";
 
-/**
- * A stand-in, not the proof. This file runs the store on a map-backed bucket in Node so the
- * package has coverage. The real proof is the contract suite in `blob-store.workerd.test.ts`,
- * which runs the store over a real R2 binding in workerd.
- */
-
-/**
- * The few R2 calls the store makes, over a map, counting the writes. It is here for what the
- * contract run inside workerd can't show: that a second put writes nothing, and the coverage
- * of this file, which Node can't measure while the code runs in workerd.
- */
-class CountingBucket {
-  readonly objects = new Map<string, { bytes: Uint8Array; contentType: string | undefined }>();
-  writes = 0;
-  reads = 0;
-  pageSize = 1000;
-
-  async head(key: string): Promise<unknown> {
-    return this.objects.has(key) ? {} : null;
-  }
-
-  async put(
-    key: string,
-    bytes: Uint8Array,
-    options: { httpMetadata: { contentType: string } },
-  ): Promise<void> {
-    this.writes += 1;
-    this.objects.set(key, { bytes, contentType: options.httpMetadata.contentType });
-  }
-
-  async list(options: { prefix: string; cursor?: string }): Promise<{
-    objects: { key: string }[];
-    truncated: boolean;
-    cursor?: string;
-  }> {
-    const keys = [...this.objects.keys()].filter((key) => key.startsWith(options.prefix)).sort();
-    const start = options.cursor === undefined ? 0 : Number(options.cursor);
-    const page = keys.slice(start, start + this.pageSize);
-    const next = start + this.pageSize;
-    return next < keys.length
-      ? { objects: page.map((key) => ({ key })), truncated: true, cursor: String(next) }
-      : { objects: page.map((key) => ({ key })), truncated: false };
-  }
-
-  async get(key: string): Promise<{ arrayBuffer(): Promise<ArrayBuffer> } | null> {
-    this.reads += 1;
-    const stored = this.objects.get(key);
-    return stored === undefined
-      ? null
-      : { arrayBuffer: async () => new Uint8Array(stored.bytes).buffer };
-  }
-}
-
-const helloHash = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
-const hello = new TextEncoder().encode("hello");
-
-function storeOver(bucket: CountingBucket, prefix?: string): R2BlobStore {
-  return new R2BlobStore(bucket, prefix);
-}
-
-verifies("cloudflare-storage.r2-blob-store", () => {
-  describe("the R2 objects", () => {
-    it("keeps a blob under its prefix and hash, with the put's media type", async () => {
-      const bucket = new CountingBucket();
-      await storeOver(bucket).put(hello, "text/plain");
-
-      expect([...bucket.objects.keys()]).toEqual([`blobs/${helloHash}`]);
-      expect(bucket.objects.get(`blobs/${helloHash}`)?.contentType).toBe("text/plain");
-    });
-
-    it("uses the prefix it is given", async () => {
-      const bucket = new CountingBucket();
-      await storeOver(bucket, "mine/").put(hello, "text/plain");
-
-      expect([...bucket.objects.keys()]).toEqual([`mine/${helloHash}`]);
-    });
-
-    it("writes nothing when the bytes are already stored", async () => {
-      const bucket = new CountingBucket();
-      const store = storeOver(bucket);
-      await store.put(hello, "text/plain");
-      await store.put(hello, "application/json");
-
-      expect(bucket.writes).toBe(1);
-    });
-
-    it("doesn't call R2 for a hash that isn't 64 lowercase hex characters", async () => {
-      const bucket = new CountingBucket();
-
-      expect(await storeOver(bucket).get("../other")).toBeNull();
-      expect(bucket.reads).toBe(0);
-    });
-
-    it("answers null for a blob that isn't there", async () => {
-      expect(await storeOver(new CountingBucket()).get(helloHash)).toBeNull();
-    });
-  });
+// What the R2 blob store does to a real R2 bucket, run inside workerd: the keys and media types it
+// writes, and when it doesn't call R2.
+await runSuitesInWorkerd([new URL("./r2-blob-store-cases.workerd.test.ts", import.meta.url)], {
+  r2Buckets: ["BLOBS"],
+  wrap: (register) => verifies("cloudflare-storage.r2-blob-store", register),
 });
 
-verifies("cloudflare-storage.r2-blob-store-hashes", () => {
-  describe("hashes", () => {
-    it("lists the hash of every blob, across pages, and nothing else under the prefix", async () => {
-      const bucket = new CountingBucket();
-      bucket.pageSize = 1;
-      const store = storeOver(bucket);
-      const first = await store.put(hello, "text/plain");
-      const second = await store.put(new TextEncoder().encode("world"), "text/plain");
-      bucket.objects.set("blobs/readme.txt", { bytes: hello, contentType: undefined });
-      bucket.objects.set(`other/${helloHash}`, { bytes: hello, contentType: undefined });
-
-      expect(await store.hashes()).toEqual([first.hash, second.hash].sort());
-    });
-
-    it("lists nothing for an empty bucket", async () => {
-      expect(await storeOver(new CountingBucket()).hashes()).toEqual([]);
-    });
-  });
-});
+// Which hashes it lists from a real R2 bucket, in a workerd of its own, as its own requirement.
+await runSuitesInWorkerd(
+  [new URL("./r2-blob-store-hashes-cases.workerd.test.ts", import.meta.url)],
+  {
+    r2Buckets: ["BLOBS"],
+    wrap: (register) => verifies("cloudflare-storage.r2-blob-store-hashes", register),
+  },
+);
