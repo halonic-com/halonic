@@ -291,6 +291,14 @@ under `.github/`, `tooling/check/` and `.gitattributes`, where the CTO's
 signed `internal` note is enough, unless the change reaches a trust root
 (see the two guardians above).
 
+**Notes on `main` are append-only.** A pull request that edits or deletes a
+`decisions/` note the base branch already has, other than its own note, fails the
+note check. The notes are the record of what was approved, so nobody rewrites
+an `Approval` or `Covers` line quietly. If there is a real case for it (a typo
+fix), the pull request needs a `user-visible` note of its own that lists the
+edited note's path under Covers, signed like any other (a deleted note's path
+counts too).
+
 **Two guardians for the trust roots.** A change to the guard's trust roots needs
 two `- Signature:` lines from two different guardians, one under the other in
 the header, both over the same text above. The trust roots are

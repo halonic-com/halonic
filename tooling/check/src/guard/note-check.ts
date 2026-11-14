@@ -1,6 +1,11 @@
 import { Report } from "../lib/problems.ts";
 import { type PullRequest, signedApprovals } from "./approvals.ts";
-import { decisionNoteFile, parseDecisionNote } from "./decision-notes.ts";
+import {
+  type DecisionNote,
+  type DecisionNoteProblem,
+  decisionNoteFile,
+  parseDecisionNote,
+} from "./decision-notes.ts";
 import { guardedPaths, onlyExtraExportsChanged, policyFile } from "./guarded-paths.ts";
 import { approversFile, type GitObjects } from "./signatures.ts";
 
@@ -68,8 +73,9 @@ export interface NoteCheckRun {
  * pull request that touches an own path needs a `user-visible` note listing
  * it, and any note it adds must carry a valid signature, two different
  * guardians' for a change to a trust root. A change to `policy.json` in `extraExports`
- * only needs a note that lists `policy.json`, of either kind. The
- * test-result comparison stays in the requirement guard.
+ * only needs a note that lists `policy.json`, of either kind. A change to
+ * or deletion of a note already on the base branch needs a `user-visible`
+ * note that lists each such path. The test-result comparison stays in the requirement guard.
  */
 export async function checkNotes(run: NoteCheckRun): Promise<Report> {
   const report = new Report("guard-notes");
@@ -82,7 +88,11 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
   }
   const { touched, exports, changed } = touchedPaths(run);
   const text = run.git.readFile(run.pull.head, file);
+  const rewritten = rewrittenNotes(run, file);
   if (text === undefined) {
+    for (const path of rewritten) {
+      report.error(path, rewrittenWithoutNote(path, file));
+    }
     for (const path of touched) {
       report.error(
         path,
@@ -99,9 +109,7 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
   }
   const parsed = parseDecisionNote(file, text);
   if (!parsed.ok) {
-    for (const problem of parsed.problems) {
-      report.error(file, `Malformed decision note: ${problem.message}`, problem.line);
-    }
+    reportMalformed(report, file, parsed.problems);
     return report;
   }
   const reachesRoot = changed.some((each) => isTrustRoot(each));
@@ -111,6 +119,9 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
       file,
       `Changes the guard's own paths (${needUser.join(", ")}), so the note's Kind must be user-visible.`,
     );
+  }
+  for (const message of rewrittenNoteProblems(rewritten, parsed.note)) {
+    report.error(file, message);
   }
   const unlisted = (path: string): boolean => !parsed.note.covers.includes(path);
   for (const path of touched.filter(unlisted)) {
@@ -133,6 +144,59 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
     report.error(file, `The note's approval isn't verified: ${verdict.reason}.`);
   }
   return report;
+}
+
+/** The folder of decision notes. */
+export const decisionsFolder = "decisions/";
+
+/**
+ * The notes under `decisions/` that the pull request edits or deletes and
+ * that the base branch already has, other than the branch's own note. Notes
+ * on base are append-only: they are the record of what was approved. A
+ * rename counts as a delete of the old path.
+ */
+function rewrittenNotes(run: NoteCheckRun, ownNote: string): string[] {
+  return run.changed.filter(
+    (path) =>
+      path.startsWith(decisionsFolder) &&
+      path !== ownNote &&
+      run.git.readFile(run.mergeBase, path) !== undefined,
+  );
+}
+
+function reportMalformed(
+  report: Report,
+  file: string,
+  problems: readonly DecisionNoteProblem[],
+): void {
+  for (const problem of problems) {
+    report.error(file, `Malformed decision note: ${problem.message}`, problem.line);
+  }
+}
+
+/** The error for a rewritten note on base when the branch has no note at all. */
+function rewrittenWithoutNote(path: string, file: string): string {
+  return `Edits or deletes ${path}, a decision note already on the base branch. Notes on base are append-only: add ${file} and list "${path}" under Covers to change one.`;
+}
+
+/**
+ * What is wrong with the note's cover for the notes on base that the pull
+ * request rewrites: each one must be listed by path, so the signature
+ * covers its object at the head (or "missing" for a deletion).
+ */
+function rewrittenNoteProblems(rewritten: readonly string[], note: DecisionNote): string[] {
+  const problems = rewritten
+    .filter((path) => !note.covers.includes(path))
+    .map(
+      (path) =>
+        `Edits or deletes ${path}, a decision note already on the base branch, but the note doesn't list "${path}" under Covers.`,
+    );
+  if (rewritten.length > 0 && note.kind !== "user-visible") {
+    problems.push(
+      `Edits or deletes decision notes already on the base branch (${rewritten.join(", ")}), so the note's Kind must be user-visible.`,
+    );
+  }
+  return problems;
 }
 
 /**
