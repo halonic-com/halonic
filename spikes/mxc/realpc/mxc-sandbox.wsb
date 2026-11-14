@@ -1,0 +1,25 @@
+<!-- Halonic MXC diagnosis in Windows Sandbox (HAL-3503). Host folders: the scripts (read-only) and an empty output folder. -->
+<Configuration>
+  <Networking>Enable</Networking>
+  <vGPU>Disable</vGPU>
+  <ClipboardRedirection>Disable</ClipboardRedirection>
+  <PrinterRedirection>Disable</PrinterRedirection>
+  <AudioInput>Disable</AudioInput>
+  <VideoInput>Disable</VideoInput>
+  <MemoryInMB>4096</MemoryInMB>
+  <MappedFolders>
+    <MappedFolder>
+      <HostFolder>C:\HalonicSandbox\scripts</HostFolder> <!-- leak-guard: allow absolute-path Windows Sandbox needs an absolute host path -->
+      <SandboxFolder>C:\halonic\scripts</SandboxFolder> <!-- leak-guard: allow absolute-path path inside the throwaway sandbox -->
+      <ReadOnly>true</ReadOnly>
+    </MappedFolder>
+    <MappedFolder>
+      <HostFolder>C:\HalonicSandbox\out</HostFolder> <!-- leak-guard: allow absolute-path Windows Sandbox needs an absolute host path -->
+      <SandboxFolder>C:\halonic\out</SandboxFolder> <!-- leak-guard: allow absolute-path path inside the throwaway sandbox -->
+      <ReadOnly>false</ReadOnly>
+    </MappedFolder>
+  </MappedFolders>
+  <LogonCommand>
+    <Command>cmd.exe /c start "Halonic MXC diagnosis" cmd.exe /c C:\halonic\scripts\mxc-sandbox-run.cmd</Command> <!-- leak-guard: allow absolute-path path inside the throwaway sandbox -->
+  </LogonCommand>
+</Configuration>

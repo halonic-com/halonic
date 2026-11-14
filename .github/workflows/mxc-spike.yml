@@ -1,0 +1,173 @@
+# THROWAWAY (HAL-2396, HAL-2444, HAL-2545): MXC process-container spike on a Windows runner.
+# Draft pull request only; closed once the result is written up.
+name: MXC spike
+
+on:
+  pull_request:
+    paths:
+      - spikes/mxc/**
+      - .github/workflows/mxc-spike.yml
+
+permissions:
+  contents: read
+
+jobs:
+  mxc:
+    name: MXC on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # windows-2025 is Windows Server; windows-11-arm is the only hosted Windows 11 image.
+        os: [windows-2025, windows-11-arm]
+    timeout-minutes: 45
+    env:
+      # Round 2 finding: Node, git and pnpm only start in the container with the UI policy enabled.
+      SPIKE_UI: "1"
+      SPIKE_ROOTREAD: "1"
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.21.0
+      - name: Host facts, tool paths, Node imports
+        run: |
+          [System.Environment]::OSVersion.VersionString
+          Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber | Format-List | Out-String
+          node --version
+          (Get-Command node).Source
+          (Get-Command git).Source
+          npm install -g pnpm@10 2>&1 | Select-Object -Last 2
+          (Get-Command pnpm).Source
+          $dumpbin = Get-ChildItem "${env:ProgramFiles}\Microsoft Visual Studio", "${env:ProgramFiles(x86)}\Microsoft Visual Studio" -Recurse -Filter dumpbin.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($dumpbin) { & $dumpbin.FullName /dependents (Get-Command node).Source } else { "dumpbin not found" }
+        continue-on-error: true
+      - name: Install the MXC SDK
+        working-directory: spikes/mxc
+        run: npm install --no-audit --no-fund
+      - name: 0. Host prep (admin step, windows-2025 only; the DACL tier asks for it)
+        if: matrix.os == 'windows-2025'
+        working-directory: spikes/mxc
+        run: |
+          $prep = Resolve-Path "node_modules\@microsoft\mxc-sdk\bin\x64\wxc-host-prep.exe"
+          & $prep prepare-system-drive; "system-drive exit $LASTEXITCODE"
+          & $prep prepare-null-device; "null-device exit $LASTEXITCODE"
+        continue-on-error: true
+      - name: 1. Native canaries (cmd.exe and curl.exe inside), elevated
+        working-directory: spikes/mxc
+        run: node probe2.mjs native
+        continue-on-error: true
+        timeout-minutes: 15
+      - name: 2. Node, git, pnpm readable inside, elevated
+        working-directory: spikes/mxc
+        run: node probe2.mjs node
+        continue-on-error: true
+        timeout-minutes: 20
+      - name: 2a. Original canaries run BY NODE inside the container
+        working-directory: spikes/mxc
+        run: node probe2.mjs nodefence
+        continue-on-error: true
+        timeout-minutes: 10
+      - name: 2b. Why did the start fail (event log, sxstrace)
+        run: |
+          Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = (Get-Date).AddMinutes(-30) } -MaxEvents 40 -ErrorAction SilentlyContinue |
+            Where-Object { $_.ProviderName -match 'Application Error|SideBySide|Windows Error Reporting' } |
+            Select-Object -First 8 | ForEach-Object { $_.TimeCreated; $_.Message.Substring(0, [Math]::Min(500, $_.Message.Length)) }
+          Get-Command sxstrace -ErrorAction SilentlyContinue | Select-Object Source
+        continue-on-error: true
+      # A plain local user, no admin group. Everything lives under the system drive so that user can read it.
+      - name: 4. Normal user, create account and copy the spike
+        if: matrix.os == 'windows-11-arm'
+        run: |
+          $bytes = New-Object byte[] 18
+          [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+          $pw = [Convert]::ToBase64String($bytes) + "aA1!"
+          Write-Host "::add-mask::$pw"
+          $sec = ConvertTo-SecureString $pw -AsPlainText -Force
+          New-LocalUser -Name mxcuser -Password $sec -PasswordNeverExpires | Out-Null
+          Add-LocalGroupMember -Group "Users" -Member mxcuser -ErrorAction SilentlyContinue
+          "MXC_PW=$pw" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          New-Item -ItemType Directory $env:SystemDrive\mxc-spike | Out-Null
+          Copy-Item -Recurse spikes\mxc\* $env:SystemDrive\mxc-spike\
+          icacls $env:SystemDrive\mxc-spike /grant "Users:(OI)(CI)M" /T | Out-Null
+          icacls (Split-Path (Get-Command node).Source) /grant "Users:(OI)(CI)RX" | Out-Null
+          Get-LocalGroupMember -Group Administrators | Select-Object Name
+      - name: 4b. Normal user, native canaries and node
+        if: matrix.os == 'windows-11-arm'
+        continue-on-error: true
+        timeout-minutes: 10
+        run: |
+          $sec = ConvertTo-SecureString $env:MXC_PW -AsPlainText -Force
+          $cred = New-Object System.Management.Automation.PSCredential("$env:COMPUTERNAME\mxcuser", $sec)
+          $node = (Get-Command node).Source
+          foreach ($m in "native", "node", "nodefence") {
+            $out = "$env:SystemDrive\mxc-spike\out-$m.txt"; $err = "$env:SystemDrive\mxc-spike\err-$m.txt"
+            $p = Start-Process -FilePath $node -ArgumentList "probe2.mjs", $m -WorkingDirectory $env:SystemDrive\mxc-spike `
+              -Credential $cred -LoadUserProfile -Wait -PassThru -RedirectStandardOutput $out -RedirectStandardError $err `
+              -Environment @{ SPIKE_ROOT = "$env:SystemDrive\mxc-spike\data"; SPIKE_UI = "1"; SPIKE_ROOTREAD = "1" } 2>&1
+            Write-Host "=== normal user, $m, exit $($p.ExitCode)"
+            Get-Content $out -ErrorAction SilentlyContinue
+            Get-Content $err -ErrorAction SilentlyContinue
+          }
+      # Round 4 (HAL-3503)
+      - name: 7. Diagnosis script, as this (elevated) runner user
+        working-directory: spikes/mxc/realpc
+        run: cmd /c "mxc-diag.cmd < NUL"
+        env:
+          # v4 (HAL-3503): also put the real PC's AppData capability-SID ACE on fresh folders.
+          MXC_ACE_REPRO: "1"
+        continue-on-error: true
+        timeout-minutes: 20
+      - name: 7b. Diagnosis script, as the plain local user (no admin)
+        if: matrix.os == 'windows-11-arm'
+        continue-on-error: true
+        timeout-minutes: 20
+        run: |
+          Copy-Item spikes\mxc\realpc\mxc-diag.cmd $env:SystemDrive\mxc-spike\
+          $sec = ConvertTo-SecureString $env:MXC_PW -AsPlainText -Force
+          $cred = New-Object System.Management.Automation.PSCredential("$env:COMPUTERNAME\mxcuser", $sec)
+          # v2 (HAL-3503): Start-Process keeps the runner's profile variables, so v1 tried the runner admin's AppData and stopped.
+          $userHome = "$env:SystemDrive\Users\mxcuser"
+          $userEnv = @{ USERPROFILE = $userHome; LOCALAPPDATA = "$userHome\AppData\Local"; APPDATA = "$userHome\AppData\Roaming"; TEMP = "$userHome\AppData\Local\Temp"; TMP = "$userHome\AppData\Local\Temp"; USERNAME = "mxcuser"; MXC_ACE_REPRO = "1" }
+          $out = "$env:SystemDrive\mxc-spike\out-diag.txt"; $err = "$env:SystemDrive\mxc-spike\err-diag.txt"
+          $p = Start-Process -FilePath cmd.exe -ArgumentList '/c', 'mxc-diag.cmd < NUL' -WorkingDirectory $env:SystemDrive\mxc-spike `
+            -Credential $cred -LoadUserProfile -Wait -PassThru -RedirectStandardOutput $out -RedirectStandardError $err `
+            -Environment $userEnv
+          Write-Host "=== diagnosis as normal user, exit $($p.ExitCode)"
+          Get-Content $out -ErrorAction SilentlyContinue
+          Get-Content $err -ErrorAction SilentlyContinue
+      # Round 3 (HAL-2545)
+      - name: 5. pnpm install --offline, pnpm -v and a small build inside BaseContainer (symlink flags, no drive-root grant)
+        if: matrix.os == 'windows-11-arm'
+        working-directory: spikes/mxc
+        run: node probe3.mjs
+        continue-on-error: true
+        timeout-minutes: 20
+      - name: 6. Real-PC check script, as this (elevated) runner user
+        working-directory: spikes/mxc/realpc
+        run: cmd /c "mxc-check.cmd < NUL"
+        continue-on-error: true
+        timeout-minutes: 15
+      - name: 6b. Real-PC check script, as the plain local user (no admin)
+        if: matrix.os == 'windows-11-arm'
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          Copy-Item spikes\mxc\realpc\mxc-check.cmd $env:SystemDrive\mxc-spike\
+          $sec = ConvertTo-SecureString $env:MXC_PW -AsPlainText -Force
+          $cred = New-Object System.Management.Automation.PSCredential("$env:COMPUTERNAME\mxcuser", $sec)
+          # v2 (HAL-3503): Start-Process keeps the runner's profile variables, so v1 tried the runner admin's AppData and stopped.
+          $userHome = "$env:SystemDrive\Users\mxcuser"
+          $userEnv = @{ USERPROFILE = $userHome; LOCALAPPDATA = "$userHome\AppData\Local"; APPDATA = "$userHome\AppData\Roaming"; TEMP = "$userHome\AppData\Local\Temp"; TMP = "$userHome\AppData\Local\Temp"; USERNAME = "mxcuser" }
+          $out = "$env:SystemDrive\mxc-spike\out-realpc.txt"; $err = "$env:SystemDrive\mxc-spike\err-realpc.txt"
+          $p = Start-Process -FilePath cmd.exe -ArgumentList '/c', 'mxc-check.cmd < NUL' -WorkingDirectory $env:SystemDrive\mxc-spike `
+            -Credential $cred -LoadUserProfile -Wait -PassThru -RedirectStandardOutput $out -RedirectStandardError $err `
+            -Environment $userEnv
+          Write-Host "=== real-PC script as normal user, exit $($p.ExitCode)"
+          Get-Content $out -ErrorAction SilentlyContinue
+          Get-Content $err -ErrorAction SilentlyContinue
