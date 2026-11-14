@@ -20,6 +20,20 @@ verifies("models.aliases.list", () => {
     ]);
   });
 
+  it("labels a price per million tokens, or none", () => {
+    const models = {
+      version: 1,
+      aliases: {
+        smart: { ...target, provider: "a", model: "m", price: { input: 3, output: 15 } },
+        fast: { ...target, provider: "b", model: "n" },
+      },
+    } as unknown as Models;
+    expect(aliasRows(models).map((row) => row.price)).toEqual([
+      undefined,
+      "€3 in · €15 out per million tokens",
+    ]);
+  });
+
   it("gives no rows for no aliases", () => {
     expect(aliasRows({ version: 1, aliases: {} } as unknown as Models)).toEqual([]);
   });
