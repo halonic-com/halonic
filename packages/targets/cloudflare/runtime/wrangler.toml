@@ -22,6 +22,10 @@ class_name = "RoutinesObject"
 tag = "v1"
 new_sqlite_classes = ["CoordinationObject", "RunObject", "RoutinesObject"]
 
+# The cron: every minute, the routine tick and the watchdog (scheduled() in src/worker.ts).
+[triggers]
+crons = ["* * * * *"]
+
 # Storage. The Cloudflare connection creates what these name on the first deploy.
 [[d1_databases]]
 binding = "DB"

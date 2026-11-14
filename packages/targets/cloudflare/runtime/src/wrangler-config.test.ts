@@ -47,6 +47,10 @@ verifies("runtime.durable-object-migrations", () => {
       expect(config).not.toMatch(/^(deleted_classes|renamed_classes)\s*=/m);
     });
 
+    it("triggers the cron every minute, so the routine tick and the watchdog run", () => {
+      expect(config).toMatch(/^\[triggers\]\s*\ncrons\s*=\s*\["\* \* \* \* \*"\]/m);
+    });
+
     it("runs with the compatibility date the harness tests with", () => {
       expect(valuesOf("compatibility_date")).toEqual([compatibilityDate]);
     });

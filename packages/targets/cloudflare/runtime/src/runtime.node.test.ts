@@ -8,6 +8,7 @@ const namespace = { idFromName: (name: string) => name, get: () => ({}) };
 const bindings = {
   COORDINATION: namespace,
   RUN: namespace,
+  ROUTINES: namespace,
   DB: {},
   BLOBS: {},
   DEFINITIONS: {},
@@ -26,7 +27,14 @@ verifies("runtime.configuration", () => {
   describe("the wiring in Node", () => {
     it("names the bindings an env lacks", () => {
       expect(missingBindings(envWithout("BLOBS"))).toEqual(["BLOBS"]);
-      expect(missingBindings({})).toEqual(["COORDINATION", "RUN", "DB", "BLOBS", "DEFINITIONS"]);
+      expect(missingBindings({})).toEqual([
+        "COORDINATION",
+        "RUN",
+        "ROUTINES",
+        "DB",
+        "BLOBS",
+        "DEFINITIONS",
+      ]);
     });
 
     it("names the secrets that aren't configured, after the bindings", async () => {

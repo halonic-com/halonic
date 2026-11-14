@@ -5,6 +5,10 @@ import { verifies } from "@halonicjs/testing-spec";
 await runSuitesInWorkerd([new URL("./test/runtime.spec.ts", import.meta.url)], {
   d1Databases: ["DB"],
   r2Buckets: ["BLOBS", "DEFINITIONS"],
-  durableObjects: { COORDINATION: "CoordinationObject", RUN: "RunObject" },
+  durableObjects: {
+    COORDINATION: "CoordinationObject",
+    RUN: "RunObject",
+    ROUTINES: "RoutinesObject",
+  },
   wrap: (register) => verifies("runtime.configuration", register),
 });
