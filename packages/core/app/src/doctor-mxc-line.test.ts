@@ -27,9 +27,27 @@ verifies("app.doctor-mxc", () => {
       setting: "on",
       effective: "on",
       reason: "too-strict",
+      setup: null,
       missing,
       nameLookupsLeave: null,
     });
+  });
+
+  it("fails for a person who set MXC to on and warns for the default while the download is open", () => {
+    const waiting = {
+      ...offered,
+      state: "setup-needed",
+      setup: "download",
+      reason: "download-needed",
+      missing: [] as string[],
+    } as const;
+    expect(lineFor({ ...waiting, setting: "on" })).toMatchObject({
+      status: "failed",
+      state: "setup-needed",
+      setup: "download",
+      reason: "download-needed",
+    });
+    expect(lineFor(waiting)).toMatchObject({ status: "warning", setup: "download" });
   });
 
   it("warns when MXC was only on by default and its trust check failed", () => {
@@ -46,6 +64,7 @@ verifies("app.doctor-mxc", () => {
       setting: null,
       effective: "on",
       reason: null,
+      setup: null,
       missing: [],
       nameLookupsLeave: true,
     });
