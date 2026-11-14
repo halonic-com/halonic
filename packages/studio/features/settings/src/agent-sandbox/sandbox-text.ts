@@ -71,3 +71,20 @@ export const toastNotRemoved = (cause: string) => `The agent sandbox wasn't remo
 
 /** When the check after a setup still doesn't pass and the host gave no reason. */
 export const STILL_NEEDS_SETUP = "the check still says the sandbox needs setting up.";
+
+/** The first line, and **New agents run** under the status (microcopy ST 9.1). */
+export const FIRST_LINE =
+  "Agents run in a sandbox unless you choose otherwise. There they can only write to their working folder, and the network is off.";
+export const NEW_AGENTS_RUN = "New agents run";
+export const RUN_IN_SANDBOX = "In a sandbox (recommended)";
+export const RUN_ON_THIS_COMPUTER = "On this computer";
+export const NEW_AGENTS_HINT =
+  "Each agent can be changed on its Harness page. This applies on this computer only.";
+export const NEW_AGENTS_VIEW_ONLY =
+  "View only here. Change where agents run on the computer running Halonic.";
+export const newAgentsNotSaved = "Couldn't save where new agents run on this computer.";
+
+export const RUN_HERE_TITLE = "Run new agents on this computer?";
+export const RUN_HERE_BODY =
+  "New agents will have your access to files and the network, without the sandbox. Agents you already have keep their setting. This applies on this computer only.";
+export const RUN_HERE_CONFIRM = "Run new agents on this computer";
