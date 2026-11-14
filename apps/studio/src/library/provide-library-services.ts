@@ -47,6 +47,7 @@ export function provideLibraryServices(
       definitions: new TauriDefinitionStore(parts.files, parts.location),
       refusals: new RefusalsFeed(),
       onFocus: parts.onFocus,
+      onWatchError: (error) => console.error(error),
     }),
   );
   if (parts.transport === undefined) return;

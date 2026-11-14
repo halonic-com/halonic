@@ -19,6 +19,8 @@ export interface WorkspaceConnectorStatusOptions {
    * then too; returns a function that stops it.
    */
   readonly onFocus?: (listener: () => void) => () => void;
+  /** Called with the error when the files can't be watched; the Studio logs it. */
+  readonly onWatchError?: (error: unknown) => void;
 }
 
 /**
@@ -83,11 +85,15 @@ export class WorkspaceConnectorStatus implements ConnectorStatusHost {
     };
     const stopRefusals = this.#options.refusals.subscribe(tell);
     const stopFocus = this.#options.onFocus?.(tell) ?? (() => {});
+    const reportWatchError = (error: unknown) => this.#options.onWatchError?.(error);
     // A watch that fails or never opens costs only the live update: the files are still read
-    // again on focus.
+    // again on focus. The error is reported, not swallowed.
     const watch: Promise<DefinitionWatch | undefined> = this.#options.definitions
-      .watch({ changed: tell, failed: () => {} })
-      .catch(() => undefined);
+      .watch({ changed: tell, failed: reportWatchError })
+      .catch((error: unknown) => {
+        reportWatchError(error);
+        return undefined;
+      });
     this.#stopWatching = () => {
       stopRefusals();
       stopFocus();
