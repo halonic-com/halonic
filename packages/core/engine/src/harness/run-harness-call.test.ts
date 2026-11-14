@@ -263,6 +263,35 @@ verifies("engine.run-harness-failures", () => {
     expect(ports.steps.slice(-3)).toEqual(["harness.cancel", "session.close", "bridge.close"]);
   });
 
+  it("ends the event stream and reports the failed stop when cancel() rejects", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [finished("Done")];
+    ports.harness.cancelError = new Error("The program is still running.");
+
+    const { error } = await runOn(ports);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toContain("may still be running");
+    expect((error as Error).message).toContain("The program is still running.");
+    expect(ports.harness.streamsCleanedUp).toBe(1);
+    expect(ports.steps.slice(-3)).toEqual(["harness.cancel", "session.close", "bridge.close"]);
+  });
+
+  it("keeps the step's own error as the cause of a failed stop", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [{ type: "tool.called", agent: "writer", tool: "Read", args: {} }];
+    const original = new Error("The program stopped.");
+    ports.harness.error = original;
+    ports.harness.cancelError = new Error("The program is still running.");
+
+    const { error } = await runOn(ports);
+
+    expect((error as Error).message).toContain("may still be running");
+    expect((error as Error).cause).toBe(original);
+    expect(ports.harness.streamsCleanedUp).toBe(1);
+    expect(ports.steps.slice(-3)).toEqual(["harness.cancel", "session.close", "bridge.close"]);
+  });
+
   it("passes on a failure after the first event as it is", async () => {
     const ports = harnessPorts();
     ports.harness.events = [{ type: "tool.called", agent: "writer", tool: "Read", args: {} }];

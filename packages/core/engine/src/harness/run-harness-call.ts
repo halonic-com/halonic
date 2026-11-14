@@ -247,15 +247,16 @@ async function runInBridge(
       };
       const run = harness.start(task, session, bridge);
       const events = run[Symbol.asyncIterator]();
+      let result: { output: unknown } | undefined;
+      let failure: unknown;
       try {
-        return await followRun(started, run, events, timeoutMs);
-      } finally {
-        await run.cancel();
-        // Only after `cancel()`: the port then ends the stream, so a read
-        // still waiting settles and `return()` doesn't wait behind it. A
-        // harness written as a generator runs its own clean-up here.
-        await events.return?.();
+        result = { output: await followRun(started, run, events, timeoutMs) };
+      } catch (error) {
+        failure = error;
       }
+      await stopRun(harness, run, events, result === undefined ? { error: failure } : undefined);
+      if (result === undefined) throw failure;
+      return result.output;
     } finally {
       await session.close();
       stopReports();
@@ -266,6 +267,40 @@ async function runInBridge(
     await bridge.close();
     await log.settled();
   }
+}
+
+/**
+ * Stops the harness run and ends its event stream. The stream ends even when
+ * `cancel()` rejects, so a harness written as a generator still runs its own
+ * clean-up. A program that couldn't be stopped may still be running, so that
+ * failure is what the step reports, in place of its own result or error;
+ * `original` stays as its `cause`.
+ *
+ * @param original - the error the step was ending with, if it was ending with one
+ * @throws Error when the run couldn't be stopped
+ */
+async function stopRun(
+  harness: Harness,
+  run: HarnessRun,
+  events: AsyncIterator<HarnessEvent>,
+  original: { error: unknown } | undefined,
+): Promise<void> {
+  let stopFailure: { error: unknown } | undefined;
+  try {
+    await run.cancel();
+  } catch (error) {
+    stopFailure = { error };
+  }
+  // Only after `cancel()`: the port then ends the stream, so a read
+  // still waiting settles and `return()` doesn't wait behind it. A
+  // harness written as a generator runs its own clean-up here.
+  await events.return?.();
+  if (stopFailure === undefined) return;
+  const reason =
+    stopFailure.error instanceof Error ? stopFailure.error.message : String(stopFailure.error);
+  throw new Error(`${harness.name} couldn't be stopped, so it may still be running: ${reason}`, {
+    cause: original === undefined ? stopFailure.error : original.error,
+  });
 }
 
 /** What the steps of a harness call share once it knows its harness. */
