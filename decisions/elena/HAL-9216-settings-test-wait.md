@@ -3,6 +3,7 @@
 - Task: HAL-9216
 - Approval: Liam approved halonic#2643 on HAL-9216 (14 Nov), a test-only change; Liam signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/drbYlOZCjm8JyzyU0e/4dfXuZ4odAwGNf/rshh1qLHLk02MXPXAOb7tcqeVt5TpA2GY/Zg7+yXVX/K6tpOaCw==
 
 `apps/studio/src/studio/start-studio.test.ts` gives each of the three waits in the test "opens Settings on Ctrl , with Appearance and a host section under On this computer" its own 8 s ceiling and gives the test a 28 s timeout. On a busy CI runner the first lazy load of the Settings dialog compiles code under coverage, so the three waits together went past the 5 s default and removed unrelated pull requests from the merge queue.
 
