@@ -1,6 +1,7 @@
 import type {
   CloudflareAccount,
   CloudflareApi,
+  DeployLease,
   FoundResource,
   Migration,
   ResourceRef,
@@ -21,6 +22,8 @@ export interface FakeCloudflareState {
   applied?: readonly string[];
   /** The database doesn't exist yet. */
   noDatabase?: boolean;
+  /** A deploy lease already in the lock table. */
+  lock?: DeployLease;
   /** A migration the Worker's own runner applies just before our batch lands, so our batch fails. */
   racedBy?: string;
 }
@@ -40,6 +43,11 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
     resources[key(ref)] = { marked };
   };
   const applied = [...(state.applied ?? [])];
+  let lock = state.lock;
+  const lockWrite = (call: string) => {
+    if (state.failOnWrite) throw new Error(`unexpected write: ${call}`);
+    calls.push(call);
+  };
   return {
     calls,
     async listAccounts() {
@@ -67,6 +75,22 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
     async appliedMigrations() {
       calls.push("appliedMigrations");
       return state.noDatabase ? undefined : [...applied];
+    },
+    async takeDeployLock(_accountId, _db, lease) {
+      lockWrite(`takeDeployLock ${lease.id}`);
+      // The same rule as the SQL: win when there is no lease or the old one has expired.
+      if (!lock || lock.expiresAt <= lease.startedAt) lock = lease;
+      return lock;
+    },
+    async renewDeployLock(_accountId, _db, leaseId, expiresAt) {
+      lockWrite(`renewDeployLock ${leaseId}`);
+      if (lock?.id !== leaseId) return false;
+      lock = { ...lock, expiresAt };
+      return true;
+    },
+    async releaseDeployLock(_accountId, _db, leaseId) {
+      lockWrite(`releaseDeployLock ${leaseId}`);
+      if (lock?.id === leaseId) lock = undefined;
     },
     async applyMigration(_accountId, _databaseName, migration: Migration) {
       if (state.failOnWrite) throw new Error(`unexpected write: applyMigration ${migration.id}`);

@@ -33,6 +33,16 @@ export interface Migration {
   readonly statements: readonly string[];
 }
 
+/** One deploy's claim on the lock. Times are milliseconds since the epoch. */
+export interface DeployLease {
+  /** Unique to one deploy; what the conditional writes compare. */
+  readonly id: string;
+  /** What a second deploy is shown, such as `mateo on laptop`. */
+  readonly label: string;
+  readonly startedAt: number;
+  readonly expiresAt: number;
+}
+
 /**
  * The Cloudflare calls the deploy makes. Everything above the client depends on this port, so
  * it tests with a fake and no network. Later steps add their calls here.
@@ -57,4 +67,19 @@ export interface CloudflareApi {
   ): Promise<readonly string[] | undefined>;
   /** Runs the migration's statements and records its id in one D1 batch, so both happen or neither. */
   applyMigration(accountId: string, databaseName: string, migration: Migration): Promise<void>;
+  /**
+   * Takes the deploy lock when none exists or the old lease has expired (`lease.startedAt` is
+   * "now"), in one conditional write. Returns the lease in force afterwards: ours when it won,
+   * the holder's when it didn't.
+   */
+  takeDeployLock(accountId: string, databaseName: string, lease: DeployLease): Promise<DeployLease>;
+  /** Moves the lease's expiry to `expiresAt`, only while `leaseId` still holds it. Returns whether it does. */
+  renewDeployLock(
+    accountId: string,
+    databaseName: string,
+    leaseId: string,
+    expiresAt: number,
+  ): Promise<boolean>;
+  /** Frees the lock, only while `leaseId` still holds it. */
+  releaseDeployLock(accountId: string, databaseName: string, leaseId: string): Promise<void>;
 }

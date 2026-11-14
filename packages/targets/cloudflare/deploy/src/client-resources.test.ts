@@ -309,3 +309,77 @@ verifies("deploy.migrate", () => {
     expect(sent.at(-1)?.params).toEqual(["0001-a"]);
   });
 });
+
+verifies("deploy.lock", () => {
+  const lease = { id: "mine", label: "mateo on laptop", startedAt: 5_000, expiresAt: 605_000 };
+  const row = (id: string) => ({
+    result: [
+      { results: [] },
+      { results: [] },
+      { results: [{ id, label: "ana", started_at: 1000, expires_at: 2000 }] },
+    ],
+  });
+
+  it("takes the lock in one conditional batch and returns the lease in force", async () => {
+    const seen: string[] = [];
+    const bodies: { batch?: { sql: string; params?: unknown }[] }[] = [];
+    const client = createCloudflareClient({
+      token,
+      baseUrl: "https://cf.test",
+      fetch: cloudflare(
+        { ...lookup, "POST /accounts/a1/d1/database/d1/query": row("other") },
+        seen,
+        bodies as never,
+      ),
+    });
+    const held = await client.takeDeployLock("a1", "w-data", lease);
+    expect(held).toEqual({ id: "other", label: "ana", startedAt: 1000, expiresAt: 2000 });
+    const batch = bodies[0]?.batch ?? [];
+    expect(batch).toHaveLength(3);
+    expect(batch[1]?.sql).toMatch(
+      /ON CONFLICT\(slot\) DO UPDATE .* WHERE .*expires_at <= excluded\.started_at/,
+    );
+    expect(batch[1]?.params).toEqual(["mine", "mateo on laptop", "5000", "605000"]);
+    expect(JSON.stringify(batch)).not.toContain(token);
+  });
+
+  it("renews only its own lease, and frees only its own lease", async () => {
+    const seen: string[] = [];
+    const bodies: { batch?: unknown[]; sql?: string; params?: unknown }[] = [];
+    const client = createCloudflareClient({
+      token,
+      baseUrl: "https://cf.test",
+      fetch: cloudflare(
+        {
+          ...lookup,
+          "POST /accounts/a1/d1/database/d1/query": {
+            result: [
+              { results: [] },
+              { results: [{ id: "mine", label: "x", started_at: 1, expires_at: 2 }] },
+            ],
+          },
+        },
+        seen,
+        bodies as never,
+      ),
+    });
+    expect(await client.renewDeployLock("a1", "w-data", "mine", 9_000)).toBe(true);
+    expect(await client.renewDeployLock("a1", "w-data", "someone-else", 9_000)).toBe(false);
+    await client.releaseDeployLock("a1", "w-data", "mine");
+    const release = bodies.at(-1);
+    expect(release?.sql).toMatch(/DELETE FROM _halonic_deploy_lock WHERE slot = 1 AND id = \?/);
+    expect(release?.params).toEqual(["mine"]);
+  });
+
+  it("fails when the lock can't be read back", async () => {
+    const client = createCloudflareClient({
+      token,
+      baseUrl: "https://cf.test",
+      fetch: cloudflare(
+        { ...lookup, "POST /accounts/a1/d1/database/d1/query": { result: [] } },
+        [],
+      ),
+    });
+    await expect(client.takeDeployLock("a1", "w-data", lease)).rejects.toThrow(/read back/);
+  });
+});
