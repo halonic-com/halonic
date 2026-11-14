@@ -91,6 +91,8 @@ beforeEach(async () => {
       "transport:",
       "  integration:",
       "    folder: notes",
+      // The workspace is local-only: only a connector that says it is local is started.
+      "local: true",
       "tools:",
       "  allow: [read-note]",
       "  read: [read-note]",
