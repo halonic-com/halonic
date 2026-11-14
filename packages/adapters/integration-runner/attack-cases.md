@@ -34,7 +34,7 @@ One difference from the design: A30 on plain `http` is refused as `scheme-not-al
 | A20 | a key in the URL, an error or the log | `adapters/integration-kit/src/limited-http.test.ts` (the request log), `adapters/integration-runner/src/halonic/call-limits.test.ts` (errors and stderr on the bridge) |
 | A21 | flooding the bridge | `adapters/integration-runner/src/halonic/attacks.test.ts`, `call-limits.test.ts`, `request-size.test.ts`, `src/bridge.refusals.test.ts` |
 | A22 | lying about the fence | `adapters/integration-runner/src/halonic/attacks.test.ts`, `start-runner.test.ts`, `src/host-runner.test.ts` |
-| A23 | breaking the fence on purpose | no test tagged A23 yet; `start-runner.test.ts` covers a failed fence proof |
+| A23 | breaking the fence on purpose | `adapters/sandbox-mxc/src/mxc-session.mid-run.test.ts` (MXC fails after the proof: nothing starts unfenced; a kill that fails is reported); `adapters/integration-runner/src/halonic/start-runner.test.ts` covers a failed fence proof |
 | A24 | unbounded memory | `adapters/integration-runner/src/runner-file.test.ts` (heap), `src/halonic/runner-profile.test.ts` (`prlimit`); open on macOS, Windows and Linux without `prlimit` |
 | A25 | carrying a key out | `adapters/integration-kit/src/secret-in-request.test.ts`, `adapters/integration-runner/src/halonic/kit-attacks.test.ts` |
 | A26 | a second or late `ready` | `adapters/integration-runner/src/halonic/strict-protocol.test.ts`, `attacks.test.ts` |
