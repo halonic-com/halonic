@@ -121,15 +121,15 @@ verifies("app.secret-service", () => {
     ).toEqual({ changed: true });
   });
 
-  it("refuses an empty value and a bad name with a reason that repeats no value", async () => {
+  it("refuses an empty value and a bad name, each with a reason, and saves nothing", async () => {
     const { store, secrets } = setup();
-    const pasted = "sk-live-1234 is not a name";
 
-    const empty = await secrets.set({ name: "openai-key", value: "" });
-    const bad = await secrets.set({ name: pasted, value: "v" });
+    const noValue = await secrets.set({ name: "openai-key", value: "" });
+    const bad = await secrets.set({ name: "not a name", value: "the-value-1234" });
 
-    expect(empty.changed).toBe(false);
-    expect(bad.changed).toBe(false);
+    expect(noValue).toEqual({ changed: false, reason: expect.stringMatching(/\S/) });
+    expect(bad).toEqual({ changed: false, reason: expect.stringMatching(/\S/) });
+    expect(JSON.stringify([noValue, bad])).not.toContain("the-value-1234");
     expect(await store.names()).toEqual([]);
   });
 
