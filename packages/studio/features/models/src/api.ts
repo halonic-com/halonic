@@ -45,7 +45,7 @@ export interface ModelsFiles {
   readProviders(): Promise<ProviderFile[]>;
   /** Replaces the text of `models.yaml` as one undo step, named by `label`. */
   changeModels(label: string, text: string): void;
-  /** Calls `listener` after `models.yaml` may have changed; returns the way to stop. */
+  /** Calls `listener` after `models.yaml` or a provider file may have changed; returns the way to stop. */
   subscribe(listener: () => void): () => void;
 }
 

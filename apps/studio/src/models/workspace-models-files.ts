@@ -18,6 +18,9 @@ const MODELS_PATH = "models.yaml";
 /** The folder of the workspace's provider files. */
 const PROVIDERS_DIR = "providers";
 
+/** A provider file: `providers/<id>.yaml`, directly in the folder, as the engine loads them. */
+const PROVIDER_PATH = /^providers\/[^/]+\.yaml$/;
+
 /**
  * The Models feature's `models.yaml` (`studio.workspace-models-files`), over the workspace's
  * files, so an edit is unsaved, saved by itself and undone with Ctrl Z.
@@ -37,7 +40,9 @@ export class WorkspaceModelsFiles implements ModelsFiles {
   }
 
   async readProviders(): Promise<ProviderFile[]> {
-    const paths = await this.#parts.files.list(PROVIDERS_DIR);
+    const paths = (await this.#parts.files.list(PROVIDERS_DIR)).filter((path) =>
+      PROVIDER_PATH.test(path),
+    );
     const files = await Promise.all(
       paths.map(async (path) => ({ path, text: await this.#parts.files.read(path) })),
     );
