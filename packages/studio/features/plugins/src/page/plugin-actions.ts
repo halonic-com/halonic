@@ -34,6 +34,13 @@ export type PluginUpdateCheck =
       readonly changes?: PluginTrustChanges | undefined;
     };
 
+/** The newer version the person saw in the dialog and trusted: what `applyUpdate` may install. */
+export interface PluginUpdateApproval {
+  readonly version: string;
+  /** A git plugin's newer commit; a folder plugin has none. */
+  readonly toCommit?: string | undefined;
+}
+
 /**
  * What a plugin's page asks the app to do. Each one throws when it can't, with a message for the
  * person; the page says it in a toast.
@@ -53,10 +60,12 @@ export interface PluginActions {
    */
   readonly checkForUpdate: (plugin: string) => Promise<PluginUpdateCheck>;
   /**
-   * **Trust and update**: puts the newer version found by the last `checkForUpdate` in place of
-   * the old one and trusts it, as one step. It throws when it can't, and then the old version stays.
+   * **Trust and update**: puts the newer version the person approved in place of the old one and
+   * trusts it, as one step. `approved` is what the dialog showed. The app installs only the copy it
+   * saved for that version (and commit), and throws if it has none, so a later check can never
+   * install a version the person didn't see. It throws when it can't, and then the old version stays.
    */
-  readonly applyUpdate: (plugin: string) => Promise<void>;
+  readonly applyUpdate: (plugin: string, approved: PluginUpdateApproval) => Promise<void>;
   /** **Check again**: reads the plugins folder again, so the feed has the plugin as it is now. */
   readonly reload: () => Promise<void>;
   /** **Open folder**: shows the plugin's folder in the computer's file manager. */

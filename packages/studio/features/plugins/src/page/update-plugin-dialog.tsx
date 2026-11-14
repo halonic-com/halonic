@@ -41,7 +41,10 @@ export function UpdatePluginDialog({
     setBusy(true);
     setFailure(undefined);
     try {
-      await applyUpdate(plugin.plugin);
+      await applyUpdate(plugin.plugin, {
+        version: found.manifest.version,
+        toCommit: found.toCommit,
+      });
       onUpdated();
       return;
     } catch (error) {

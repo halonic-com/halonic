@@ -14,7 +14,7 @@ export function trustTitle(
   trustedOn?: string | undefined,
   version?: string | undefined,
 ): string {
-  if (reason === "update") return `Update ${name} to ${version ?? "its new version"}?`;
+  if (reason === "update") return `Update ${name} to ${version}?`;
   if (reason === "changed") {
     return trustedOn === undefined
       ? `${name} changed since you trusted it`

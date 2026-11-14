@@ -115,12 +115,12 @@ verifies("plugins.plugin-updates", () => {
 
   it("updates and closes on Trust and update, and stays open with the reason when it can't", async () => {
     const found = newer();
-    const asked: string[] = [];
+    const asked: unknown[] = [];
     let fail = true;
     await show(weather(), {
       checkForUpdate: async () => found,
-      applyUpdate: async (plugin) => {
-        asked.push(plugin);
+      applyUpdate: async (plugin, approved) => {
+        asked.push([plugin, approved]);
         if (fail) throw new Error("The disk is full.");
       },
     });
@@ -140,7 +140,11 @@ verifies("plugins.plugin-updates", () => {
     fail = false;
     await press("Trust and update");
 
-    expect(asked).toEqual(["weather", "weather"]);
+    const approved = { version: "1.3.0", toCommit: found.toCommit };
+    expect(asked).toEqual([
+      ["weather", approved],
+      ["weather", approved],
+    ]);
     expect(document.body.textContent).not.toContain("Update Weather to 1.3.0?");
   });
 

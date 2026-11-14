@@ -63,7 +63,8 @@ function recordingActions(
       step("checkForUpdate", `check ${plugin}`);
       return options.update ?? { kind: "up-to-date" };
     },
-    applyUpdate: async (plugin) => step("applyUpdate", `update ${plugin}`),
+    applyUpdate: async (plugin, approved) =>
+      step("applyUpdate", `update ${plugin} to ${approved.version}`),
     reload: async () => step("reload", "reload"),
     openFolder: async (plugin) => step("openFolder", `open ${plugin}`),
   };
