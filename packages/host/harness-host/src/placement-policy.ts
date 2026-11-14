@@ -14,6 +14,8 @@ export interface AgentFiles {
    * `halonic run`'s sandbox check hashes too, so both see the same choice.
    * A host that runs from the files on disk reads them; a host whose runs
    * start from other versions reads the run's own, never today's.
+   * The routines path re-encodes the text as UTF-8, so a file with a BOM or bytes
+   * that aren't UTF-8 hashes differently there and is fenced (it fails closed).
    *
    * @param run - the run the agent works in and the version it read
    * @throws when the hub has no agent with this id in that version, or the version can't be read

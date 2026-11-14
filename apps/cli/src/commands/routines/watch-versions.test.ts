@@ -9,8 +9,8 @@ import { contractGrant } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { removeTestFolder } from "../../test/remove-folder.ts";
 import { openGitHistory } from "../../run-workspace.ts";
+import { removeTestFolder } from "../../test/remove-folder.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { WatchedVersions } from "./watch-versions.ts";
 
