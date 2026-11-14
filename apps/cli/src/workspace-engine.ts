@@ -271,7 +271,11 @@ function computerRunConnectors(
         sandbox: new SrtSandbox(undefined, undefined, privateJournalFolder(profile)),
         deniedPaths: [profile.root],
       },
-      openLocalIntegration(integrations),
+      (request) =>
+        openLocalIntegration(integrations)(request).catch((e: unknown) => {
+          process.stderr.write(`TEMP-DIAG ${e instanceof Error ? (e.stack ?? e.message) : String(e)}\n`);
+          throw e;
+        }),
     ),
     // The CLI connects no built-in Google connector yet, the only kind that reads sign-ins.
     context: { http: machine.http, tokens: machine.tokens },
