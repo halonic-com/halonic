@@ -231,7 +231,7 @@ function AssistantViewOnly({ settings, workspace }: AssistantViewProps) {
   );
   return (
     <div className="mt-5 flex max-w-90 flex-col gap-4">
-      <p className="text-body text-fg-muted">{text.FIRST_LINE.served}</p>
+      <p className="text-small text-fg-muted">{text.FIRST_LINE.served}</p>
       <ViewOnlyLine>{text.VIEW_ONLY_LINE}</ViewOnlyLine>
       <SetsItsOwn open={open} link={null} />
       <dl className="flex flex-col gap-3">
@@ -338,7 +338,7 @@ function AssistantEditor({
   const turnLimitText = turnLimit.value === turnLimitRange.fallback ? "" : String(turnLimit.value);
   return (
     <div className="mt-5 flex max-w-90 flex-col gap-4">
-      <p className="text-body text-fg-muted">{text.FIRST_LINE[place]}</p>
+      <p className="text-small text-fg-muted">{text.FIRST_LINE[place]}</p>
       {chosen !== "not-set-up" && open?.localOnly && !local.value ? (
         <Callout tone="warning">{text.localOnlyWarning(open.name)}</Callout>
       ) : null}
