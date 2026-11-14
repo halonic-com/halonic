@@ -1,6 +1,7 @@
 import {
   DurableCoordination,
   DurableScheduler,
+  defaultCoordinationObjectName,
   defaultRoutinesObjectName,
   Watchdog,
 } from "@halonicjs/adapter-cloudflare-durable";
@@ -38,6 +39,21 @@ export interface Runtime {
   readonly passwords: PasswordHasher;
 }
 
+/** How a runtime is built, beyond its `env`. */
+export interface RuntimeOptions {
+  /**
+   * Puts the blobs, the snapshots and every Durable Object name under this scope, so a test gets
+   * storage of its own from the bindings it shares. A deployment never sets it. The Durable
+   * Objects are named `scope` itself (the scheduler's, `scope` and the key).
+   */
+  scope?: string;
+}
+
+/** Where in R2 a scope's keys go. */
+export function scopedKeyPrefix(scope: string): string {
+  return `${scope}/`;
+}
+
 /**
  * Names what the deployment lacks: bindings first, then the secrets that are
  * not configured. Reads each secret only to see that it is there.
@@ -60,11 +76,18 @@ export async function missingConfiguration(env: Partial<RuntimeEnv>): Promise<st
  *
  * @throws ConfigurationError when a binding or a secret is missing; the message names them, never a value
  *
+ * @param env - the Worker's bindings and secrets
+ * @param options - only a test sets any
+ *
  * @example
  * const runtime = await createRuntime(env);
  * await runtime.watchdog.sweep();
  */
-export async function createRuntime(env: RuntimeEnv): Promise<Runtime> {
+export async function createRuntime(
+  env: RuntimeEnv,
+  options: RuntimeOptions = {},
+): Promise<Runtime> {
+  const { scope } = options;
   const missing = await missingConfiguration(env);
   if (missing.length > 0) {
     throw new ConfigurationError(missing);
@@ -73,17 +96,21 @@ export async function createRuntime(env: RuntimeEnv): Promise<Runtime> {
   const secrets = workerSecrets(env);
   const records = new D1RecordStore(env.DB);
   const runs = new D1RunList(env.DB);
-  const scheduler = new DurableScheduler({ namespace: env.RUN });
+  const definitionOptions = scope === undefined ? {} : { keyPrefix: scopedKeyPrefix(scope) };
+  const scheduler = new DurableScheduler({ namespace: env.RUN, namePrefix: scope ?? "" });
   return {
     clock,
     secrets,
     records,
     runs,
-    blobs: new R2BlobStore(env.BLOBS),
-    definitions: new R2DefinitionSource(env.DEFINITIONS),
-    coordination: new DurableCoordination({ namespace: env.COORDINATION }),
+    blobs: new R2BlobStore(env.BLOBS, scope === undefined ? undefined : scopedKeyPrefix(scope)),
+    definitions: new R2DefinitionSource(env.DEFINITIONS, definitionOptions),
+    coordination: new DurableCoordination({
+      namespace: env.COORDINATION,
+      objectName: scope ?? defaultCoordinationObjectName,
+    }),
     scheduler,
-    routines: env.ROUTINES.get(env.ROUTINES.idFromName(defaultRoutinesObjectName)),
+    routines: env.ROUTINES.get(env.ROUTINES.idFromName(scope ?? defaultRoutinesObjectName)),
     watchdog: new Watchdog({ runs, scheduler, clock }),
     tokens: createTokenStore({ records, secrets, clock }),
     passwords: limitPasswordLength(createPbkdf2ChainHasher()),

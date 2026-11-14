@@ -32,6 +32,8 @@ export interface Matchers {
   toHaveLength(expected: number): void;
   /** An array or a set that has `expected` (found with `===`), or a string that contains it. */
   toContain(expected: unknown): void;
+  /** A string that contains `expected`, or that a regular expression `expected` finds a match in. */
+  toMatch(expected: string | RegExp): void;
   /** A value made by `expected`, a class, or one of its subclasses. */
   toBeInstanceOf(expected: ErrorClass): void;
   /** A number at or above `expected`. */
@@ -104,6 +106,10 @@ const matchers: Record<keyof Matchers, MatcherImplementation> = {
   toContain: (actual, expected) => ({
     pass: contains(actual, expected),
     expectation: `to contain ${describeValue(expected)}`,
+  }),
+  toMatch: (actual, expected) => ({
+    pass: matchesText(requireText(actual), expected),
+    expectation: `to match ${describeValue(expected)}`,
   }),
   toBeInstanceOf: (actual, expected) => ({
     pass: actual instanceof requireClass(expected),
@@ -290,6 +296,22 @@ function requireComparable(value: unknown, role: "actual" | "expected"): number 
     return value;
   }
   throw new TypeError(`${role} value must be number or bigint, received ${describeValue(value)}`);
+}
+
+/** Vitest throws a `TypeError` from `toMatch` for a value that isn't a string, also under `not`. */
+function requireText(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  throw new TypeError(`toMatch expects to receive a string, received ${describeValue(value)}`);
+}
+
+/** A string `expected` is looked for in `text`, a pattern is run on it, and anything else matches nothing. */
+function matchesText(text: string, expected: unknown): boolean {
+  if (typeof expected === "string") {
+    return text.includes(expected);
+  }
+  return expected instanceof RegExp && expected.test(text);
 }
 
 /** Vitest fails `toMatchObject` on a value that isn't an object, and `not` turns that into a pass. */

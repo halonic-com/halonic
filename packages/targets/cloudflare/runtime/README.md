@@ -65,3 +65,11 @@ rule is the requirement `runtime.password-limit`.
 `src/test/worker.spec.ts` inside workerd through the part 1 harness
 (`@halonicjs/target-cloudflare-testing`), against the real Worker and real
 Durable Objects.
+
+`target.test.ts` runs the target contract suite from `@halonicjs/testing-contracts` (HAL-6803):
+the contract of every port, built the way `createRuntime` builds it, and the capability refusals
+(no port for programs or git, definitions and secrets that can only be read). Each case builds its
+runtime with a `scope` (`runtime.scope`), which puts its blobs, snapshot and Durable Object names
+under a name of its own on the shared bindings. The Durable Objects are the Worker's classes with a
+clock the suite moves (`@halonicjs/adapter-cloudflare-durable/testing`). Refusal at validation and
+run time (`capability-missing`) and the HTTP surface wait for `host/server` (HAL-195).

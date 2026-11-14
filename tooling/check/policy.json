@@ -30,6 +30,9 @@
     "@halonicjs/studio-services"
   ],
   "extraExports": {
+    "@halonicjs/adapter-cloudflare-durable": [
+      "./testing"
+    ],
     "@halonicjs/adapter-git": [
       "./testing"
     ],
