@@ -1,6 +1,6 @@
 # Decision: the updater interface gets a scenario for listeners that stop
 
-- Approval: the user approves this note on HAL-9010 (the change adds a scenario and changes no existing behaviour)
+- Approval: HAL-9010 (Liam, CTO; the change adds a scenario and changes no existing behaviour)
 - Kind: internal
 - Task: HAL-1295
 
