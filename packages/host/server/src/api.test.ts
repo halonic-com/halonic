@@ -32,6 +32,7 @@ verifies("server.api", () => {
       | "errorLog"
       | "connectors"
       | "workspace"
+      | "studioPage"
       | "google"
       | "requestLog"
       | "clock"

@@ -16,6 +16,7 @@ import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import type { RunSetup } from "../run/run.ts";
 import { serveCommandWith } from "./command.ts";
+import type { ServeSetup } from "./serve.ts";
 
 /** The first start opens the engine and the listener from cold imports. */
 const slowStart = { timeout: 10_000 };
@@ -63,7 +64,7 @@ function startServeHomedAt(homeFolder: string, ...args: string[]) {
   return startServeWith(setup, ...args);
 }
 
-function startServeWith(setup: RunSetup, ...args: string[]) {
+function startServeWith(setup: ServeSetup, ...args: string[]) {
   const io = captureIo(acmeRuns.acme);
   const signals = fakeSignals();
   const serving = runCli(["serve", ...args], io, [serveCommandWith(setup)], {
@@ -116,6 +117,33 @@ verifies("cli.commands.serve.serve", () => {
 
     const workspace = await (await fetch(`${address}/api/workspace`)).json();
     expect(workspace).toEqual({ name: "Acme", sample: false, folder: "acme" });
+  });
+
+  it("serves the built Studio page at / with the page's own content security policy", async () => {
+    await trustAcme();
+    const studioFolder = join(acmeRuns.folder, "studio-build");
+    await writeFiles(studioFolder, { "studio.html": "<title>Halonic</title>" });
+    const { io } = startServeWith({ ...acmeRunsSetup(acmeRuns), studioFolder }, "--port", "0");
+    await waitUntil(() => io.stdout.length >= 1, slowStart);
+    const address = addressOf(io.stdout[0]);
+
+    const page = await fetch(`${address}/`);
+    expect(page.status).toBe(200);
+    expect(await page.text()).toBe("<title>Halonic</title>");
+    expect(page.headers.get("content-security-policy")).toContain("script-src 'self'");
+    expect((await fetch(`${address}/api/hello`)).status).toBe(200);
+    expect(io.stdout.join("\n")).not.toContain("isn't built");
+  });
+
+  it("starts without a built Studio page, says so, and answers 404 at /", async () => {
+    await trustAcme();
+    const studioFolder = join(acmeRuns.folder, "no-studio-build");
+    const { io } = startServeWith({ ...acmeRunsSetup(acmeRuns), studioFolder }, "--port", "0");
+    await waitUntil(() => io.stdout.length >= 3, slowStart);
+    const address = addressOf(io.stdout[0]);
+
+    expect(io.stdout[2]).toContain("The Studio page isn't built");
+    expect((await fetch(`${address}/`)).status).toBe(404);
   });
 
   it("asks the trust gate again for every request, so an edit after the start shows as changed", async () => {

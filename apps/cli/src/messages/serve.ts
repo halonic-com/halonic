@@ -31,6 +31,9 @@ export const serveMessages = defineMessages("serve", {
   /** The line under {@link serving} when the sign-in password is not set, so only this computer can open it. */
   noPassword: () =>
     phrase`No sign-in password is set, so only this computer can open it. Set one with: halonic secret set serve-password`,
+  /** The line under {@link serving} when the Studio page isn't built, so the address shows no page. */
+  studioNotBuilt: () =>
+    phrase`The Studio page isn't built, so the address shows no page yet. Build it with: pnpm --filter @halonicjs/app-studio build`,
   /** A request failed in a way the caller isn't told about; the cause goes to `--debug`. */
   requestFailed: (reason: string) => phrase`A request failed: ${reason}`,
   /** The workspace is trusted on this computer, as it is now. */

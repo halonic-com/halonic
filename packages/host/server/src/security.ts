@@ -85,8 +85,13 @@ export function checkOrigin(request: Request): ServerError | null {
 /** The headers every response carries, so a browser never sniffs, frames, caches or leaks a reply. */
 export function withSecurityHeaders(response: Response, request: Request): Response {
   const headers = new Headers(response.headers);
+  // A route that serves a page brings its own policy, because the default allows nothing.
+  const contentSecurityPolicy = headers.get("Content-Security-Policy");
   for (const [name, value] of Object.entries(securityHeaders)) {
     headers.set(name, value);
+  }
+  if (contentSecurityPolicy !== null) {
+    headers.set("Content-Security-Policy", contentSecurityPolicy);
   }
   if (new URL(request.url).protocol === "https:") {
     headers.set("Strict-Transport-Security", "max-age=31536000");

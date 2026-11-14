@@ -11,3 +11,4 @@ export {
   NetworkNeedsPasswordError,
   NoNetworkAddressError,
 } from "./listen.ts";
+export { openStudioPageFolder } from "./studio-page-folder.ts";

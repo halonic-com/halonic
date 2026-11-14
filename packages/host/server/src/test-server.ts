@@ -18,6 +18,7 @@ import type {
   Server,
   ServerConfig,
   ServerPorts,
+  StudioPage,
   TrustGate,
   WebhookRoutines,
   WorkspaceInfo,
@@ -123,6 +124,7 @@ export function testServer(options: {
   connectors?: ConnectorCallPorts;
   requestLog?: RequestLog;
   workspace?: WorkspaceInfo;
+  studioPage?: StudioPage;
 }): Server {
   const clock = options.clock ?? new TestClock();
   const ports: ServerPorts = {
@@ -141,6 +143,7 @@ export function testServer(options: {
     ...(options.google === undefined ? {} : { google: options.google }),
     ...(options.connectors === undefined ? {} : { connectors: options.connectors }),
     ...(options.workspace === undefined ? {} : { workspace: options.workspace }),
+    ...(options.studioPage === undefined ? {} : { studioPage: options.studioPage }),
     ...(options.requestLog === undefined ? {} : { requestLog: options.requestLog }),
     clock,
     ids: { next: (prefix) => `${prefix}_1` },
