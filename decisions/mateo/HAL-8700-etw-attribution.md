@@ -3,6 +3,7 @@
 - Task: HAL-8700 (for HAL-7050, the 0.1.0 release candidate; builds on HAL-8688)
 - Approval: HAL-8720 (decided by Liam: ETW instead of a host list) and the review on HAL-9003; Liam approves this note in review and signs it
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:l/8XC1Vbmwgnj20T20XVeg9xnBKlyo9ZbA1mbDyTCPlg6dTdHGTqKTDRCfXFu6jyG7Jm6C9FK33IBM+NchqoBg==
 
 ## What changes
 
