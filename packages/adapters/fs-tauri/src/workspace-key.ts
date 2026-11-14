@@ -1,11 +1,13 @@
-import { noAnswer, recordFailure } from "./record-store.ts";
+import { KindedError } from "@halonicjs/std";
+
+import { isRecordRefusal } from "./record-commands.ts";
 import type { TauriShell } from "./shell.ts";
 
 /**
  * The shell's workspace key command. It only reads: the key of a workspace
  * the person opened, which names the workspace's folder in the profile. It
  * answers the key and no path. A refusal has the shape of
- * {@link RecordRefusal}: `folder_not_open` for a folder that isn't open, or `io`.
+ * a record refusal (`RecordRefusal`): `folder_not_open` for a folder that isn't open, or `io`.
  */
 export const workspaceKeyCommands = {
   /** `{ workspace }` → `{ key }`: the 32 lower-case hex characters that name the workspace's folder. */
@@ -13,6 +15,25 @@ export const workspaceKeyCommands = {
 } as const;
 
 const keyPattern = /^[0-9a-f]{32}$/;
+
+/** The error for a shell answer that is missing or has the wrong shape. */
+function noKeyAnswer(): KindedError {
+  return new KindedError(
+    "unavailable",
+    "The desktop shell gave no answer to the workspace key call.",
+  );
+}
+
+/** Turns a failed key call into an error: `denied` for a folder that isn't open, `unavailable` otherwise. */
+function keyFailure(reason: unknown): KindedError {
+  if (isRecordRefusal(reason) && reason.kind === "folder_not_open") {
+    return new KindedError("denied", `The workspace key call was refused: ${reason.message}`);
+  }
+  if (isRecordRefusal(reason) && reason.kind === "io") {
+    return new KindedError("unavailable", `The workspace key call failed: ${reason.message}`);
+  }
+  return noKeyAnswer();
+}
 
 /**
  * The key of a workspace, as the shell works it out from the workspace's
@@ -29,11 +50,11 @@ export async function readWorkspaceKey(shell: TauriShell, workspace: string): Pr
   try {
     answer = await shell.invoke(workspaceKeyCommands.read, { workspace });
   } catch (reason) {
-    throw recordFailure(reason);
+    throw keyFailure(reason);
   }
   const { key } = (answer ?? {}) as Record<string, unknown>;
   if (typeof key !== "string" || !keyPattern.test(key)) {
-    throw noAnswer();
+    throw noKeyAnswer();
   }
   return key;
 }

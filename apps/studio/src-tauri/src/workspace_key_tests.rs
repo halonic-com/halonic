@@ -86,6 +86,20 @@ fn workspace_key_command_answers_the_same_key_for_a_roundabout_path() {
 }
 
 #[test]
+fn workspace_key_command_gives_a_folder_inside_the_workspace_a_key_of_its_own() {
+    let workspace = Workspace::new("inside");
+    std::fs::create_dir_all(workspace.path().join("sub")).unwrap();
+    let opened = OpenedFolders::new();
+    opened.open(workspace.path()).unwrap();
+
+    let root = answer_for(&opened, workspace.path()).unwrap();
+    let inside = answer_for(&opened, &workspace.path().join("sub"))
+        .expect("a folder inside an opened workspace is accepted");
+
+    assert_ne!(root, inside);
+}
+
+#[test]
 fn workspace_key_command_refuses_a_folder_that_isn_t_opened() {
     let workspace = Workspace::new("not-opened");
 

@@ -49,6 +49,25 @@ verifies("fs-tauri.workspace-key", () => {
       expect(errorKindOf(await rejection(readWorkspaceKey(shell, "/work/acme")))).toBe("denied");
     });
 
+    it("rejects as unavailable when the shell can't work the key out", async () => {
+      const shell = shellAnswering(undefined, { kind: "io", message: "profile unreadable" });
+      const failure = await rejection(readWorkspaceKey(shell, "/work/acme"));
+      expect(errorKindOf(failure)).toBe("unavailable");
+      expect((failure as Error).message).toContain("profile unreadable");
+    });
+
+    it("words its errors for the key call, not the record store", async () => {
+      const refused = await rejection(
+        readWorkspaceKey(
+          shellAnswering(undefined, { kind: "folder_not_open", message: "not open" }),
+          "/work/acme",
+        ),
+      );
+      const silent = await rejection(readWorkspaceKey(shellAnswering(undefined), "/work/acme"));
+      expect((refused as Error).message).toContain("workspace key");
+      expect((silent as Error).message).toContain("workspace key");
+    });
+
     it.each([
       ["no answer", undefined],
       ["a path instead of a key", { key: "/profile/workspaces/abc" }],
