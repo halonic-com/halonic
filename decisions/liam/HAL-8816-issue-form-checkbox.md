@@ -3,6 +3,7 @@
 - Task: HAL-8816 (wording approved by the board on HAL-6498, known-issues rev 3i §2)
 - Approval: Maya reviews it on HAL-8823, Liam signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:sitfBceS8gszs+tCUF8L32l1yeSiggsktmpzvD+U35ufgfeb1Iq30dyJ2kyqoSaDYf05VtPsajhJadKbzCZLDA==
 
 ## What changes
 
