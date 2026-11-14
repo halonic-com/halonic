@@ -177,7 +177,14 @@ describe("a program trying to get out of the MXC fence", () => {
           args: ["-NoProfile", "-NonInteractive", "-EncodedCommand", encoded],
         }),
       );
-      expect(out + err).not.toContain(value);
+      // Control: the same script on the host must read it, or the box's "failed" proves nothing.
+      const control = execFileSync(
+        "powershell.exe",
+        ["-NoProfile", "-NonInteractive", "-EncodedCommand", encoded],
+        { encoding: "utf8" },
+      );
+      console.log(`A36 canary host control: ${control.split("\n")[0]?.trim()}`);
+      expect(out + err + control).not.toContain(value);
       console.log(`A36 canary: exit ${exit.code}, output: ${out.trim()}`);
       console.log(`A36 canary stderr (first 300 chars): ${err.trim().slice(0, 300)}`);
     } finally {
