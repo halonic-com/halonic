@@ -7,7 +7,7 @@ import { chainedSecrets, openSecretStore } from "./secret-host.ts";
 
 let folder: string;
 const profile = () => ({
-  platform: "linux" as const,
+  platform: process.platform,
   homeFolder: folder,
   variables: { HALONIC_HOME: join(folder, "profile") },
 });
