@@ -4,7 +4,7 @@
 // the old ones did and store the same runs, apart from the allowed
 // differences and the known gaps. The compare, the rules and both lists live
 // in testing-parity; this file only feeds it the CLI's results.
-import { cp, mkdtemp, rm } from "node:fs/promises";
+import { cp, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FileAgentPlacementStore } from "@halonicjs/adapter-fs-node";
@@ -29,6 +29,7 @@ import { runCommandWith } from "./commands/run/command.ts";
 import { testCommandWith } from "./commands/test/command.ts";
 import { runCli } from "./run-cli.ts";
 import { captureIo } from "./test/capture-io.ts";
+import { removeTestFolder } from "./test/remove-folder.ts";
 import { openWorkspaceDir } from "./workspace-dir.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns, webCryptoDigest } from "./workspace-runs.ts";
 import { assertTrustable, cliTrustService, readWorkspaceTrust } from "./workspace-trust.ts";
@@ -99,7 +100,7 @@ async function callOnce(call: BaseCliCall): Promise<NewCliCall> {
       runs: stored,
     };
   } finally {
-    await rm(folder, { recursive: true, force: true });
+    await removeTestFolder(folder);
   }
 }
 
