@@ -88,7 +88,12 @@ start_capture() {
   if [ "$os" = Linux ]; then
     sudo ip netns exec "$ns" tcpdump -i any -nn -U -Z root -w "$capture" 2>"$capture.log" &
   else
-    sudo tcpdump -i any -nn -U -w "$capture" 2>"$capture.log" &
+    # The kernel's capture buffer limit is 512 KB by default, which caps -B,
+    # so a burst of packets while tcpdump writes drops some (HAL-8724).
+    # Raise the limit, then ask for a 32 MB buffer.
+    sudo sysctl -w debug.bpf_maxbufsize=33554432 >"$artifacts/bpf.txt" 2>&1 || true
+    sysctl debug.bpf_bufsize debug.bpf_maxbufsize >>"$artifacts/bpf.txt" 2>&1 || true
+    sudo tcpdump -i any -nn -U -B 32768 -w "$capture" 2>"$capture.log" &
   fi
   tcpdump_pid=$!
   for _ in $(seq 50); do grep -q 'listening on' "$capture.log" 2>/dev/null && return; sleep 0.2; done
@@ -104,6 +109,7 @@ stop_capture() {
   tcpdump_pid=""
   local dropped
   dropped="$(sed -nE 's/^([0-9]+) packets? dropped by kernel$/\1/p' "$capture.log")"
+  [ "$os" = Linux ] || netstat -m >"$artifacts/netstat-m.txt" 2>&1 || true
   [ "$dropped" = 0 ] || fail "tcpdump dropped ${dropped:-an unknown number of} packets (see capture.$ext.log)."
   sudo chown "$user" "$capture"
 }
