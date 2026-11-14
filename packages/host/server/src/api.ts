@@ -346,6 +346,23 @@ export interface ModelSettingsGate {
   allows(hubId: string, settings: ChatAgentSettings): Promise<boolean>;
 }
 
+/** What the host knows about the workspace the server shows. It holds absolute paths, so it never goes to a caller as it is. */
+export interface WorkspaceFacts {
+  /** The workspace's name, from `workspace.yaml`, or the folder's own name when it has none. */
+  readonly name: string;
+  /** Whether this is the sample workspace. */
+  readonly sample: boolean;
+  /** The workspace's folder, as an absolute path. */
+  readonly folder: string;
+  /** The home folder of the account the server runs as, or `null` when the host has none. */
+  readonly home: string | null;
+}
+
+/** Which workspace the server shows. Read-only. */
+export interface WorkspaceInfo {
+  describe(): Promise<WorkspaceFacts>;
+}
+
 /** What the server needs from its host. Every port is replaceable, so a test runs the handler with fakes. */
 export interface ServerPorts {
   /** Runs workflows; the server only forwards start, send, cancel and subscribe calls to it. */
@@ -373,6 +390,8 @@ export interface ServerPorts {
   readonly errorLog: ErrorLog;
   /** The connector-call route's ports. Without them `/api/connector-calls` answers 404. */
   readonly connectors?: ConnectorCallPorts;
+  /** Which workspace this is, for `GET /api/workspace`. Without it that route answers 404. */
+  readonly workspace?: WorkspaceInfo;
   /** The Google setup routes' ports. Without them `/api/google/…` answers 404. */
   readonly google?: GoogleSetupPorts;
   /** Where finished requests are logged by path. Without it nothing is logged. */

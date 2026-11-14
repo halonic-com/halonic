@@ -175,6 +175,13 @@ export const runPageWords = {
   updatesLive: "updates live",
   loading: (shortId: string) => `Loading run ${shortId}`,
   loadFailed: (shortId: string) => `Couldn't load run ${shortId}`,
+  /** The skeleton under the banner while the run's log is read (mc 15.2). */
+  loadingLog: "Loading the run",
+  logFailed: "Couldn't read this run's log",
+  /** The red banner for a log with a damaged line; no "inside Halonic", as the cause may be a disk. */
+  damagedLog: (line: number) =>
+    `Part of this run's log can't be read. Line ${line} is damaged. Everything before it is shown, so the receipt may be incomplete.`,
+  damagedLogName: "Damaged run log",
   notHere: "This run isn't in this workspace any more.",
   reviewInInbox: "Review in Inbox",
   openRun: (shortId: string) => `Open run ${shortId}`,
@@ -230,6 +237,9 @@ export const everyStepWords = {
     waiting: "waiting",
     running: "running",
   },
+  /** A screen reader's name for the row under a step that was refused sites (mc 23.2, 19.3). */
+  blockedIn: (sites: number, step: string) =>
+    `Blocked ${sites} ${sites === 1 ? "site" : "sites"}, in the step ${step}`,
   took: (took: string) => `Took ${took}`,
   failed: (took: string) => `Failed after ${took}`,
   /** mc 15.2 revision 70, "Cancelled, the step's timeline line". */

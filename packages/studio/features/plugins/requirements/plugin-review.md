@@ -13,7 +13,10 @@ The Studio shall give the status box of a plugin's page that isn't trusted yet a
   then the dialog "Trust Weather?" opens with **Not now** focused.
 - Given the same,
   when the person presses **Trust**,
-  then the app trusts `weather` and the dialog closes.
+  then the app trusts `weather`, the dialog closes and a toast says "Weather is on" with "Its command is in Ctrl K and its card is on Home."
+- Given the plugin has a command and no card,
+  when the person presses **Trust**,
+  then the toast says "*name* is on" with "Its command is in Ctrl K."; with a card and no command, "Its card is on Home."; with neither, the title alone. The body names only what the plugin adds, and several of a kind are plural: "Its commands are in Ctrl K."
 - Given the same,
   when the person presses **Not now**,
   then the dialog closes and nothing is trusted.

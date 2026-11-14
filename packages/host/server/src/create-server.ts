@@ -22,6 +22,7 @@ import {
 import { createSignIn, passwordSecretName } from "./sign-in.ts";
 import { createTrustRoutes } from "./trust-routes.ts";
 import { createWebhookRoutes, webhookPathPrefix } from "./webhooks.ts";
+import { createWorkspaceRoutes } from "./workspace-routes.ts";
 
 function checkConfig(config: ServerConfig): void {
   if (config.allowedHosts.length === 0) {
@@ -84,6 +85,8 @@ export const createServer: CreateServer = ({ config, ports }) => {
         return runRoutes.cancel(request, runId);
     }
   }
+  const workspaceRoutes =
+    ports.workspace === undefined ? null : createWorkspaceRoutes(ports.workspace);
   const googleRoutes =
     ports.google === undefined ? null : createGoogleRoutes({ google: ports.google });
 
@@ -182,6 +185,10 @@ export const createServer: CreateServer = ({ config, ports }) => {
         return (await signIn.isSignedIn(request, context))
           ? trustRoutes.show()
           : errorResponse(serverErrors.notSignedIn);
+      case "GET /api/workspace":
+        return workspaceRoutes === null
+          ? errorResponse(serverErrors.notFound)
+          : whenSignedIn(request, context, () => workspaceRoutes.show());
       case "POST /api/runs":
       case "POST /api/agent-runs":
         return startRoute(request, context, body, endpoint === "POST /api/runs");

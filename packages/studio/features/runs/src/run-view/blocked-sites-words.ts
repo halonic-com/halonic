@@ -30,6 +30,8 @@ export const blockedSitesWords = {
   "sandbox.blocked-sites.log-more.many": "and {count} more sites",
   "sandbox.blocked-sites.banner-many":
     "The sandbox stopped {agent} from reaching {count} sites that aren't in its allowed sites, such as {site}.",
+  "sandbox.blocked-sites.banner-one":
+    "The sandbox stopped {agent} from reaching {site}, which isn't in its allowed sites.",
   "sandbox.blocked-sites.banner-action": "See the step",
 } as const satisfies Readonly<Record<string, string>>;
 

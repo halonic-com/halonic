@@ -32,6 +32,8 @@ verifies("runs.run-view.live-or-saved", () => {
     expect(container.querySelector(`[aria-describedby='${tooltip?.id}']`)?.textContent).toBe(
       "Ran the live version from 10:42.",
     );
+    // A keyboard reaches the commit too.
+    expect(container.querySelector("p span")?.getAttribute("tabindex")).toBe("0");
   });
 
   it("r3: a version made on an earlier day gives the day and the time", () => {

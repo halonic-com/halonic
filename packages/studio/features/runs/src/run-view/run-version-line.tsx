@@ -34,7 +34,8 @@ function LineWithTooltip({ text, tooltip }: { readonly text: string; readonly to
   return (
     <>
       <p className={lineClasses}>
-        <span {...anchor} {...trigger}>
+        {/* biome-ignore lint/a11y/noNoninteractiveTabindex: the commit tooltip shows on focus; it is the only way for a keyboard to read it */}
+        <span tabIndex={0} className="rounded-xs focus-ring" {...anchor} {...trigger}>
           {text}
         </span>
       </p>

@@ -431,6 +431,9 @@ importers:
       '@halonicjs/google-setup':
         specifier: workspace:*
         version: link:../../packages/core/google-setup
+      '@halonicjs/host-google-sign-in':
+        specifier: workspace:*
+        version: link:../../packages/host/google-sign-in
       '@halonicjs/host-harness-host':
         specifier: workspace:*
         version: link:../../packages/host/harness-host
@@ -1183,9 +1186,15 @@ importers:
 
   packages/adapters/integration-runner:
     dependencies:
+      '@halonicjs/adapter-http-kit':
+        specifier: workspace:*
+        version: link:../http-kit
       '@halonicjs/adapter-integration-kit':
         specifier: workspace:*
         version: link:../integration-kit
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../core/app
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../core/format
@@ -2499,6 +2508,9 @@ importers:
 
   packages/studio/features/models:
     dependencies:
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../../core/app
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../../core/format

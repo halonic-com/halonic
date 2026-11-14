@@ -66,6 +66,36 @@ export function removedToast(name: string): string {
   return `${name} removed`;
 }
 
+/** The toast after **Trust** (T11): the name, then where its command and card are. */
+export function onToast(name: string): string {
+  return `${name} is on`;
+}
+
+/**
+ * The toast's body, naming only what the plugin adds: "Its command is in Ctrl K and its card is
+ * on Home." Only a command: "Its command is in Ctrl K."; only a card: "Its card is on Home."
+ * Several follow the Remove sentence's plural ("Its commands are in Ctrl K"). `undefined` when it
+ * adds neither, so the toast is the title alone.
+ */
+export function onToastBody(manifest: Plugin | undefined): string | undefined {
+  const commands = manifest?.ui?.commands.length ?? 0;
+  const cards = manifest?.ui?.cards.length ?? 0;
+  const parts = [
+    commands === 0
+      ? undefined
+      : `${commands === 1 ? "its command is" : "its commands are"} in Ctrl K`,
+    cards === 0 ? undefined : `${cards === 1 ? "its card is" : "its cards are"} on Home`,
+  ].filter((part) => part !== undefined);
+  if (parts.length === 0) return undefined;
+  return `${capitalised(parts.join(" and "))}.`;
+}
+
+/** The toast after **Not now** on a plugin that was just added (T11). */
+export function addedOffToast(name: string): string {
+  return `${name} is added but off`;
+}
+export const ADDED_OFF_TOAST_BODY = "Nothing from it runs until you trust it.";
+
 const list = new Intl.ListFormat("en-GB", { type: "conjunction" });
 
 /**

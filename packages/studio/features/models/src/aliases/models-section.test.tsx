@@ -5,7 +5,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it } from "vitest";
-import type { ModelsFiles } from "../api.ts";
+import type { ModelsFiles, ProviderFile } from "../api.ts";
 import { AliasTab } from "./alias-tab.tsx";
 import { ModelsSection } from "./models-section.tsx";
 
@@ -27,11 +27,19 @@ aliases:
   default: { provider: ollama, model: llama3.2 }
 `;
 
-function filesWith(text: string | null | Error): ModelsFiles & { change(): void } {
+function providerFiles(byId: Record<string, string> = {}): ProviderFile[] {
+  return Object.entries(byId).map(([id, text]) => ({ path: `providers/${id}.yaml`, text }));
+}
+
+function filesWith(
+  text: string | null | Error,
+  others: { workspace?: string; providers?: Record<string, string> } = {},
+): ModelsFiles & { change(): void } {
   const listeners = new Set<() => void>();
   return {
     readModels: async () => (text instanceof Error ? Promise.reject(text) : text),
-    readProviders: async () => [],
+    readProviders: async () => providerFiles(others.providers),
+    readWorkspace: async () => others.workspace ?? null,
     changeModels: () => undefined,
     subscribe: (listener) => {
       listeners.add(listener);
@@ -61,23 +69,74 @@ verifies("models.aliases.list", () => {
 
     expect(section.querySelector("h2")?.textContent).toBe("Models");
     expect([...section.querySelectorAll("li")].map((row) => row.textContent)).toEqual([
-      "default · ollama / llama3.2",
-      "smart · anthropic / claude-sonnet-5-5",
+      "default · ollama / llama3.2· No price ·Add a price",
+      "smart · anthropic / claude-sonnet-5-5· No price ·Add a price",
     ]);
+  });
+
+  it("says a local model with no price runs on this machine, with nothing to add", async () => {
+    const files = filesWith(twoAliases, {
+      providers: { ollama: "version: 1\nid: ollama\ntype: ollama\nlocal: true\n" },
+    });
+    const section = await showSection(files);
+
+    expect([...section.querySelectorAll("li")].map((row) => row.textContent)).toEqual([
+      "default · ollama / llama3.2· Runs on this machine",
+      "smart · anthropic / claude-sonnet-5-5· No price ·Add a price",
+    ]);
+    expect(section.querySelector("[aria-label='Add a price for smart']")).not.toBeNull();
+    expect(section.querySelector("[aria-label='Add a price for default']")).toBeNull();
+  });
+
+  it("writes prices in the workspace's budget currency", async () => {
+    const files = filesWith(
+      "version: 1\naliases:\n  smart: { provider: anthropic, model: m, price: { input: 3, output: 15 } }\n",
+      { workspace: "version: 1\nid: acme\nname: Acme\nbudget: { currency: USD }\n" },
+    );
+    const section = await showSection(files);
+
+    expect(section.querySelector("li")?.textContent).toContain(
+      "$3.00 in · $15.00 out per million tokens",
+    );
+    expect(section.textContent).not.toContain("€");
   });
 
   it("says what an alias is when there are none", async () => {
     const section = await showSection(filesWith(null));
 
-    expect(section.textContent).toContain("No model aliases yet. An alias is a short name like");
+    expect(section.textContent).toContain("No model aliases yetAn alias is a short name like fast");
     expect(section.querySelector("li")).toBeNull();
+    expect(section.querySelector("code")?.textContent).toBe("fast");
+    expect(section.textContent).not.toContain("`");
+  });
+
+  it("says Loading models while it reads", async () => {
+    const files = filesWith(twoAliases);
+    files.readModels = () => new Promise(() => undefined);
+    const section = await showSection(files);
+
+    expect(section.textContent).toContain("Loading models");
+  });
+
+  it("reads again on Try again", async () => {
+    const files = filesWith(new Error("gone"));
+    const section = await showSection(files);
+    expect(section.textContent).toContain("Couldn't load models");
+    files.readModels = async () => twoAliases;
+
+    const retry = [...section.querySelectorAll("button")].find(
+      (b) => b.textContent === "Try again",
+    );
+    await act(async () => retry?.click());
+
+    expect(section.textContent).toContain("smart · anthropic");
   });
 
   it("opens the alias tab of the row that is clicked", async () => {
     const opened: ItemRef[] = [];
     const section = await showSection(filesWith(twoAliases), opened);
 
-    act(() => section.querySelectorAll("button")[1]?.click());
+    act(() => section.querySelectorAll("button")[2]?.click());
 
     expect(opened).toEqual([{ kind: "model-alias", hub: "local", id: "smart" }]);
   });

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -13,6 +14,7 @@ import type { InstalledPlugin } from "./plugin-pages.ts";
 
 let removePopover = () => {};
 beforeEach(() => {
+  toasts = createToastStore();
   fakeModal();
   removePopover = installFakePopover();
 });
@@ -22,14 +24,18 @@ afterEach(() => {
   removePopover();
 });
 
+let toasts = createToastStore();
+
 async function show(plugin: InstalledPlugin, trust: PluginActions["trust"]) {
   const view = render(
-    <PluginPage
-      plugin={plugin}
-      {...noSettings()}
-      actions={{ ...noActions().actions, trust }}
-      onOpenPanel={() => {}}
-    />,
+    <ToastStoreProvider store={toasts}>
+      <PluginPage
+        plugin={plugin}
+        {...noSettings()}
+        actions={{ ...noActions().actions, trust }}
+        onOpenPanel={() => {}}
+      />
+    </ToastStoreProvider>,
   );
   await act(async () => {});
   return view;
@@ -76,6 +82,33 @@ verifies("plugins.plugin-review", () => {
 
     expect(asked).toEqual(["weather"]);
     expect(document.querySelector("dialog")).toBeNull();
+    expect(toasts.list().map((toast) => [toast.title, toast.text])).toEqual([
+      ["Weather is on", "Its command is in Ctrl K and its card is on Home."],
+    ]);
+  });
+
+  it("names only what the plugin adds in the toast", async () => {
+    const base = weather("not-trusted");
+    const ui = base.manifest?.ui;
+    if (base.manifest === undefined || ui === undefined) throw new Error("No manifest");
+    const without = (change: { commands?: never[]; cards?: never[] }): InstalledPlugin => ({
+      ...base,
+      manifest: { ...base.manifest, ui: { ...ui, ...change } } as NonNullable<typeof base.manifest>,
+    });
+    const bodies: (string | undefined)[] = [];
+    for (const plugin of [
+      without({ cards: [] }),
+      without({ commands: [] }),
+      without({ commands: [], cards: [] }),
+    ]) {
+      toasts = createToastStore();
+      await show(plugin, async () => {});
+      await press("Review");
+      await press("Trust");
+      bodies.push(toasts.list()[0]?.text);
+      unmountAll();
+    }
+    expect(bodies).toEqual(["Its command is in Ctrl K.", "Its card is on Home.", undefined]);
   });
 
   it("trusts nothing on Not now", async () => {
@@ -86,6 +119,7 @@ verifies("plugins.plugin-review", () => {
     await press("Review");
     await press("Not now");
     expect(asked).toEqual([]);
+    expect(toasts.list()).toEqual([]);
     expect(document.querySelector("dialog")).toBeNull();
   });
 

@@ -12,15 +12,19 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act, type ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PluginCommandArgs, PluginToolCaller } from "../commands/plugin-command-dialog.tsx";
+import { installFakePopover } from "../test-support/popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { PluginCard, type PluginCardStatus, type PluginCardUi } from "./plugin-card.tsx";
 import { type PluginCardFeed, type PluginCards, pluginHomeCards } from "./plugin-home-cards.ts";
 
+let removePopover = () => {};
 beforeEach(() => {
   vi.useFakeTimers();
+  removePopover = installFakePopover();
 });
 afterEach(() => {
   unmountAll();
+  removePopover();
   vi.useRealTimers();
 });
 
@@ -71,7 +75,7 @@ function callerWithAnswers() {
   return { caller, calls, answer };
 }
 
-function showCard(caller: PluginToolCaller, status: PluginCardStatus = "on") {
+function showCard(caller: PluginToolCaller, status: PluginCardStatus = "on", onHide?: () => void) {
   const review = vi.fn();
   const details = vi.fn();
   const view = render(
@@ -82,6 +86,7 @@ function showCard(caller: PluginToolCaller, status: PluginCardStatus = "on") {
       caller={caller}
       onReview={review}
       onDetails={details}
+      onHide={onHide}
     />,
   );
   return { view, review, details };
@@ -185,6 +190,26 @@ verifies("plugins.plugin-cards", () => {
     act(() => button(view, "Details").click());
     expect(details).toHaveBeenCalledOnce();
     expect(calls).toEqual([]);
+  });
+
+  it("has a ⋮ menu with Open plugin, and Hide on Home only where the card is on Home", () => {
+    const { caller } = callerWithAnswers();
+    const items = (view: HTMLElement) =>
+      [...view.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent?.trim());
+
+    const panel = showCard(caller);
+    act(() => button(panel.view, "More actions for Today's weather").click());
+    expect(items(panel.view)).toEqual(["Open plugin"]);
+    act(() => panel.view.querySelector<HTMLElement>('[role="menuitem"]')?.click());
+    expect(panel.details).toHaveBeenCalledOnce();
+    unmountAll();
+
+    const hide = vi.fn();
+    const home = showCard(caller, "on", hide);
+    act(() => button(home.view, "More actions for Today's weather").click());
+    expect(items(home.view)).toEqual(["Open plugin", "Hide on Home"]);
+    act(() => home.view.querySelectorAll<HTMLElement>('[role="menuitem"]')[1]?.click());
+    expect(hide).toHaveBeenCalledOnce();
   });
 
   describe("Home's Cards section", () => {

@@ -34,6 +34,12 @@ export {
   loadLocalIntegration,
   type StartLocalRunner,
 } from "./halonic/local-integration.ts";
+export {
+  type OpenPluginBackend,
+  type OpenPluginBackendRequest,
+  openPluginBackend,
+  type PluginBackendMachine,
+} from "./halonic/open-plugin-backend.ts";
 export { type LoadPluginBackendOptions, loadPluginBackend } from "./halonic/plugin-backend.ts";
 export { runnerFile } from "./halonic/runner-file-path.ts";
 export {

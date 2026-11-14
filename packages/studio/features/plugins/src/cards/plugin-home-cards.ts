@@ -33,6 +33,8 @@ export interface PluginHomeCardsOptions {
   readonly review: (plugin: string) => void;
   /** Details on a card whose plugin can't load: opens its page. */
   readonly details: (plugin: string) => void;
+  /** **Hide on Home** in a card's ⋮ menu: the app keeps the card out of Home from now on. */
+  readonly hide?: (plugin: string, card: string) => void;
 }
 
 /**

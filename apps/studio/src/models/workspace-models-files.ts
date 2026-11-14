@@ -14,6 +14,7 @@ export interface ModelsFilesParts {
 
 /** The workspace's `models.yaml`, as the file the Models pages read and change. */
 const MODELS_PATH = "models.yaml";
+const WORKSPACE_PATH = "workspace.yaml";
 
 /** The folder of the workspace's provider files. */
 const PROVIDERS_DIR = "providers";
@@ -47,6 +48,10 @@ export class WorkspaceModelsFiles implements ModelsFiles {
       paths.map(async (path) => ({ path, text: await this.#parts.files.read(path) })),
     );
     return files.flatMap(({ path, text }) => (text === null ? [] : [{ path, text }]));
+  }
+
+  readWorkspace(): Promise<string | null> {
+    return this.#parts.files.read(WORKSPACE_PATH);
   }
 
   changeModels(label: string, text: string): void {

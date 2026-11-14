@@ -13,7 +13,7 @@ export function homeCardsView(
   };
 }
 
-function HomeCards({ feed, caller, review, details }: PluginHomeCardsOptions) {
+function HomeCards({ feed, caller, review, details, hide }: PluginHomeCardsOptions) {
   const plugins = useSyncExternalStore(feed.subscribe, feed.current);
   const phone = usePresentation() === "phone";
   const cards = plugins.flatMap((plugin) => plugin.cards.map((card) => ({ plugin, card })));
@@ -29,6 +29,7 @@ function HomeCards({ feed, caller, review, details }: PluginHomeCardsOptions) {
           caller={caller}
           onReview={() => review(plugin.plugin)}
           onDetails={() => details(plugin.plugin)}
+          onHide={hide === undefined ? undefined : () => hide(plugin.plugin, card.id)}
         />
       ))}
     </div>

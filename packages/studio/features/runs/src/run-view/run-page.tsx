@@ -15,10 +15,11 @@ import { loadFailureReason } from "../load-failure.ts";
 import { emptyListWords, runPageWords } from "../run-words.ts";
 import { type RunsList, RunsListService } from "../runs-list.ts";
 import { RunsOnComputer } from "../ui/runs-on-computer.tsx";
+import { BlockedFailureBanner, blockedFailure } from "./blocked-banner.tsx";
 import { Details } from "./details.tsx";
 import { detailRows } from "./details-model.ts";
 import { EveryStep, useRunLog } from "./every-step.tsx";
-import { everyStep } from "./every-step-model.ts";
+import { everyStep, type StepEntry } from "./every-step-model.ts";
 import { Receipt } from "./receipt.tsx";
 import {
   approvalLines,
@@ -98,7 +99,8 @@ function DesktopRun({
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
   const state = useSyncExternalStore(subscribe, () => list.state);
   const run = state.runs.find((candidate) => candidate.summary.id === runId);
-  const log = useRunLog(list.source, runId, run?.summary.lastSeq ?? 0, state);
+  const logRead = useRunLog(list.source, runId, run?.summary.lastSeq ?? 0, state);
+  const log = logRead.events;
   const [openEntry, setOpenEntry] = useState<string>();
   const title = runPageWords.title(shortRunId(runId));
   const retry = () => void list.refresh();
@@ -114,14 +116,21 @@ function DesktopRun({
     return (
       <div className="flex min-h-full w-full items-start">
         <RunLayout run={run} context={context} showingLast={state.error !== undefined}>
-          <Banner
-            banner={runBanner(run, context)}
+          <PageBanner
+            run={run}
+            context={context}
+            log={log}
+            entries={entries}
             reviewInInbox={reviewInInbox}
             openRun={openRun}
+            onSeeStep={setOpenEntry}
           />
+          <DamagedLogBanner line={logRead.damagedLine} />
           <div className="grid items-start gap-6 wide:grid-cols-[minmax(0,1fr)_16rem]">
             <div className="flex min-w-0 flex-col gap-4">
-              {log === undefined ? null : (
+              {log === undefined ? (
+                <LogUnread failure={logRead.failure} retry={logRead.retry} />
+              ) : (
                 <>
                   <Receipt
                     summary={summaryLine(run, log, context)}
@@ -194,6 +203,39 @@ function DesktopRun({
   );
 }
 
+/** The red banner for a log with a damaged line; nothing for a log that reads whole. */
+function DamagedLogBanner({ line }: { readonly line: number | undefined }) {
+  if (line === undefined) return null;
+  return (
+    <section aria-label={runPageWords.damagedLogName}>
+      <Callout tone="danger">{runPageWords.damagedLog(line)}</Callout>
+    </section>
+  );
+}
+
+/** What stands where the receipt and Every step go while the log isn't read: a skeleton, or why not. */
+function LogUnread({ failure, retry }: { readonly failure: unknown; readonly retry: () => void }) {
+  if (failure === undefined) {
+    return (
+      <List
+        label={runPageWords.loadingLog}
+        rows={[]}
+        loading
+        loadingLabel={runPageWords.loadingLog}
+      />
+    );
+  }
+  return (
+    <EmptyState
+      tone="error"
+      align="start"
+      title={runPageWords.logFailed}
+      description={loadFailureReason(failure)}
+      action={{ label: "Try again", onClick: retry }}
+    />
+  );
+}
+
 /** The header, the engine line while the engine doesn't answer, then what goes under them. */
 function RunLayout({
   run,
@@ -225,6 +267,33 @@ function RunLayout({
       ) : null}
       {children}
     </div>
+  );
+}
+
+/** The page's one banner: the sandbox's failed banner for a run it stopped, else the usual one. */
+function PageBanner({
+  run,
+  context,
+  log,
+  entries,
+  reviewInInbox,
+  openRun,
+  onSeeStep,
+}: {
+  readonly run: SourcedRun;
+  readonly context: RunPageContext;
+  readonly log: readonly RunEvent[] | undefined;
+  readonly entries: readonly StepEntry[];
+  readonly reviewInInbox: (() => void) | undefined;
+  readonly openRun: ((runId: string) => void) | undefined;
+  readonly onSeeStep: (entryId: string) => void;
+}) {
+  const blocked = log === undefined ? undefined : blockedFailure(run.summary, log, entries);
+  if (blocked !== undefined) {
+    return <BlockedFailureBanner failure={blocked} onSeeStep={onSeeStep} />;
+  }
+  return (
+    <Banner banner={runBanner(run, context)} reviewInInbox={reviewInInbox} openRun={openRun} />
   );
 }
 

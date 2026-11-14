@@ -38,6 +38,7 @@ function memoryFiles(initial: string) {
   const files: ModelsFiles = {
     readModels: async () => text,
     readProviders: async () => [],
+    readWorkspace: async () => null,
     changeModels: (label, next) => {
       text = next;
       changes.push({ label, text: next });

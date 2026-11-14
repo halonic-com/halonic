@@ -15,6 +15,16 @@ import type { TauriShell } from "./shell.ts";
  */
 const compactTries = 5;
 
+/**
+ * A record folder that belongs to no workspace: the shell works out the
+ * profile's folder for the scope itself. `plugins` is where installed
+ * plugins keep their settings and install records, the CLI's
+ * `pluginRecordsFolder`.
+ */
+export interface TauriRecordScope {
+  readonly scope: "plugins";
+}
+
 /** A collection's log as the shell read it. */
 interface StoredLog {
   lines: string;
@@ -29,7 +39,7 @@ interface StoredLog {
  * and writes, under the same write lock. So a collection changed on desktop
  * is there for `halonic serve`, and the other way round.
  *
- * The page names the workspace and the collection, never a path. Everything
+ * The page names the workspace (or a fixed scope) and the collection, never a path. Everything
  * that isn't file work happens here, with the `RecordStore` port's rules
  * that `fs-node` uses too: writing changes as lines and reading them back,
  * and folding a collection for a compact. A compact reads the log with its
@@ -39,15 +49,17 @@ interface StoredLog {
  */
 export class TauriRecordStore implements RecordStore {
   readonly #shell: TauriShell;
-  readonly #workspace: string;
+  readonly #place: Readonly<Record<string, string>>;
 
   /**
    * @param shell - the shell's IPC, usually `window.__TAURI_INTERNALS__`
-   * @param workspace - the workspace folder, as the person opened it in the shell
+   * @param place - the workspace folder, as the person opened it in the
+   *   shell, or `{ scope: "plugins" }` for the plugins' records
    */
-  constructor(shell: TauriShell, workspace: string) {
+  constructor(shell: TauriShell, place: string | TauriRecordScope) {
     this.#shell = shell;
-    this.#workspace = workspace;
+    // The shell takes a workspace or a scope, never both.
+    this.#place = typeof place === "string" ? { workspace: place } : { scope: place.scope };
   }
 
   async append(changes: readonly RecordChange[]): Promise<void> {
@@ -105,7 +117,7 @@ export class TauriRecordStore implements RecordStore {
   /** Runs one command on this store's record folder, turning a refusal into an error. */
   async #call(command: string, args: Record<string, unknown>): Promise<unknown> {
     try {
-      return await this.#shell.invoke(command, { workspace: this.#workspace, ...args });
+      return await this.#shell.invoke(command, { ...this.#place, ...args });
     } catch (reason) {
       throw recordFailure(reason);
     }

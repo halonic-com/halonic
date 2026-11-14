@@ -43,15 +43,17 @@ pub const PROGRESS_EVERY: Duration = Duration::from_millis(500);
 /// Whether an automatic check is due. Times are milliseconds since 1970,
 /// read from the wall clock, so a computer that slept past the 24 hours
 /// checks when it wakes. A last check in the future (the clock went back)
-/// counts as due.
+/// counts as due. A managed install (Scoop) has no switch, so it counts as
+/// automatic whatever the stored setting says.
 pub fn check_due(
     automatic: bool,
+    managed: bool,
     since_ready: Duration,
     checked_this_run: bool,
     last_attempt: Option<u64>,
     now: u64,
 ) -> bool {
-    if !automatic || since_ready < FIRST_CHECK_AFTER {
+    if !(automatic || managed) || since_ready < FIRST_CHECK_AFTER {
         return false;
     }
     if !checked_this_run {
@@ -78,15 +80,23 @@ mod tests {
         let ready = FIRST_CHECK_AFTER;
         assert!(!check_due(
             true,
+            false,
             ready - Duration::from_millis(1),
             false,
             None,
             NOW
         ));
-        assert!(check_due(true, ready, false, Some(NOW - 1), NOW));
-        assert!(!check_due(true, ready, true, Some(NOW - DAY + 1), NOW));
-        assert!(check_due(true, ready, true, Some(NOW - DAY), NOW));
-        assert!(check_due(true, ready, true, None, NOW));
+        assert!(check_due(true, false, ready, false, Some(NOW - 1), NOW));
+        assert!(!check_due(
+            true,
+            false,
+            ready,
+            true,
+            Some(NOW - DAY + 1),
+            NOW
+        ));
+        assert!(check_due(true, false, ready, true, Some(NOW - DAY), NOW));
+        assert!(check_due(true, false, ready, true, None, NOW));
         assert_eq!(CHECK_EVERY.as_millis(), u128::from(DAY));
     }
 
@@ -94,12 +104,14 @@ mod tests {
     fn update_state_never_checks_by_itself_when_automatic_is_off() {
         assert!(!check_due(
             false,
+            false,
             Duration::from_secs(3600),
             false,
             None,
             NOW
         ));
         assert!(!check_due(
+            false,
             false,
             Duration::from_secs(3600),
             true,
@@ -109,7 +121,35 @@ mod tests {
     }
 
     #[test]
+    fn update_state_checks_a_managed_install_even_when_automatic_is_off() {
+        assert!(check_due(false, true, FIRST_CHECK_AFTER, false, None, NOW));
+        assert!(!check_due(
+            false,
+            true,
+            FIRST_CHECK_AFTER,
+            true,
+            Some(NOW - DAY + 1),
+            NOW
+        ));
+        assert!(check_due(
+            false,
+            true,
+            FIRST_CHECK_AFTER,
+            true,
+            Some(NOW - DAY),
+            NOW
+        ));
+    }
+
+    #[test]
     fn update_state_checks_when_the_clock_went_back() {
-        assert!(check_due(true, FIRST_CHECK_AFTER, true, Some(NOW + 1), NOW));
+        assert!(check_due(
+            true,
+            false,
+            FIRST_CHECK_AFTER,
+            true,
+            Some(NOW + 1),
+            NOW
+        ));
     }
 }
