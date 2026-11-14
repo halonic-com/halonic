@@ -1,4 +1,4 @@
-# Decision: the SDK's dependency entry, and one-at-a-time fence test files
+# Decision: the SDK's dependency entry
 
 - Approval: Liam's approval of part (c) of the on-demand download plan on HAL-7607 (the board's answer on HAL-7606); Liam signs this note in review of the PR
 - Kind: internal

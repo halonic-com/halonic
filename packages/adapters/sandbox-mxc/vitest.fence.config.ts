@@ -14,7 +14,5 @@ export default defineConfig({
     expect: { requireAssertions: true },
     testTimeout: 90_000,
     hookTimeout: 90_000,
-    // Every file listens on the same bridge port, so the files run one at a time.
-    fileParallelism: false,
   },
 });
