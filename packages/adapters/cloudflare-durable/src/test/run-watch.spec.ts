@@ -7,7 +7,6 @@
 import { env } from "cloudflare:workers";
 import type { RunEvent } from "@halonicjs/events";
 import { completed, entered, started } from "@halonicjs/testing-contracts";
-import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { cases, SuiteClock, type TestRunObject } from "./test-run-object.ts";
 
@@ -40,20 +39,18 @@ async function readEvents(stream: ReadableStream<Uint8Array>): Promise<RunEvent[
     .map((line) => JSON.parse(line) as RunEvent);
 }
 
-verifies("cloudflare-durable.run-events", () => {
-  describe("RunObject watch in workerd", () => {
-    it("streams stored and new events across the call, and closes after the ending event", async () => {
-      const { runId, object } = newRunObject();
-      await object.append(runId, 0, [started(runId), entered(runId, 2)]);
-      const stream = await object.watch(1);
-      await object.append(runId, 2, [entered(runId, 3)]);
-      await object.append(runId, 3, [completed(runId, 4)]);
-      expect((await readEvents(stream)).map((event) => event.seq)).toEqual([2, 3, 4]);
-    });
+describe("RunObject watch in workerd", () => {
+  it("streams stored and new events across the call, and closes after the ending event", async () => {
+    const { runId, object } = newRunObject();
+    await object.append(runId, 0, [started(runId), entered(runId, 2)]);
+    const stream = await object.watch(1);
+    await object.append(runId, 2, [entered(runId, 3)]);
+    await object.append(runId, 3, [completed(runId, 4)]);
+    expect((await readEvents(stream)).map((event) => event.seq)).toEqual([2, 3, 4]);
+  });
 
-    it("refuses a run with no events", async () => {
-      const { object } = newRunObject();
-      await expect(object.watch()).rejects.toThrow("no events");
-    });
+  it("refuses a run with no events", async () => {
+    const { object } = newRunObject();
+    await expect(object.watch()).rejects.toThrow("no events");
   });
 });
