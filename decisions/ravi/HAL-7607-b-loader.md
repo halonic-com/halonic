@@ -10,8 +10,8 @@
   `download` and the reason code `download-needed`. They show while MXC's SDK isn't downloaded
   yet, and only `downloadMxc()` downloads, when the person picks MXC. Start, a settings change
   and a `not-fenced` session never download. The sandbox port stays at version 3.
-- `tooling/check/process-starters.json` gets one entry, for
-  `packages/adapters/sandbox-mxc/src/sdk-setup.ts`. Its `import()` has a computed name, because
+- `packages/adapters/sandbox-mxc/src/sdk-setup.ts` uses the process-starts entry that merged
+  on its own in #2554 (HAL-8865). Its `import()` has a computed name, because
   a download can't have a fixed one. It imports one file only, inside the install folder for
   the exact pins, and only after the verified marker is there. `importSdk` refuses a folder
   under a skill's `scripts/` folder, as written or through a symbolic link, and the entry's
@@ -29,4 +29,3 @@ folders is the same check every other adapter that starts a program uses.
 - app.sandbox-choice
 - app.doctor-mxc
 - sandbox-mxc.sdk-install
-- tooling/check/
