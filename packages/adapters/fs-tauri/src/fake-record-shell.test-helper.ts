@@ -3,6 +3,9 @@ import type { ShellCall } from "./fake-shell.test-helper.ts";
 import type { RecordRefusal, RecordRefusalKind } from "./record-commands.ts";
 import type { TauriShell } from "./shell.ts";
 
+/** Where the plugins scope's folder is kept, apart from any workspace path. */
+export const pluginsScopeKey = "scope:plugins";
+
 /**
  * A shell that answers the `record_*` commands as the Rust shell does,
  * written out on its own rather than from the adapter: one record folder
@@ -62,11 +65,7 @@ export class FakeRecordShell implements TauriShell {
       this.#nextRefusal = undefined;
       throw refusal(kind, `refused by the test (${kind})`);
     }
-    const workspace = String(args["workspace"]);
-    if (!this.opened.includes(workspace)) {
-      throw refusal("folder_not_open", `${workspace} is not an opened folder`);
-    }
-    const folder = this.#folder(workspace);
+    const folder = this.#folder(this.#placeOf(args));
     switch (command) {
       case "record_append":
         return this.#append(folder, args["appends"] as { collection: string; lines: string }[]);
@@ -110,6 +109,24 @@ export class FakeRecordShell implements TauriShell {
       folder.set(collection, lines);
     }
     return { status: "replaced" };
+  }
+
+  /** The folder key a call names: an opened workspace, or the plugins scope; both or neither is refused. */
+  #placeOf(args: Record<string, unknown>): string {
+    const { workspace, scope } = args;
+    if ((workspace === undefined) === (scope === undefined)) {
+      throw refusal("io", "a record call names a workspace or a scope, and not both");
+    }
+    if (scope !== undefined) {
+      if (scope !== "plugins") {
+        throw refusal("io", "unknown scope");
+      }
+      return pluginsScopeKey;
+    }
+    if (!this.opened.includes(String(workspace))) {
+      throw refusal("folder_not_open", `${String(workspace)} is not an opened folder`);
+    }
+    return String(workspace);
   }
 
   #folder(workspace: string): Map<string, string> {

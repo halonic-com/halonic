@@ -7,7 +7,7 @@ import type { TauriShell } from "./shell.ts";
 const encoder = new TextEncoder();
 
 /** The shape of the contract's folder tree, restated so this helper needs no testing package at runtime. */
-interface FolderTree {
+export interface FolderTree {
   readonly files?: Readonly<Record<string, Uint8Array | string>>;
   readonly folders?: readonly string[];
   readonly links?: Readonly<Record<string, string>>;
