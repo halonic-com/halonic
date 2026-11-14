@@ -31,6 +31,7 @@ verifies("server.api", () => {
       | "requestCounts"
       | "errorLog"
       | "connectors"
+      | "workspace"
       | "google"
       | "requestLog"
       | "clock"
