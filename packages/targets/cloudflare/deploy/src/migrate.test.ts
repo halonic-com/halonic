@@ -42,6 +42,34 @@ verifies("deploy.migrate", () => {
     expect(await migrate(api, { ...base, plan: true })).toEqual(["0002-b", "0003-c"]);
   });
 
+  it("plans every migration as pending when the database doesn't exist yet", async () => {
+    const api = fakeCloudflareApi({ accounts: [], noDatabase: true, failOnWrite: true });
+    expect(await migrate(api, { ...base, plan: true })).toEqual(migrations.map((m) => m.id));
+  });
+
+  it("stops when applying and the database doesn't exist", async () => {
+    const api = fakeCloudflareApi({ accounts: [], noDatabase: true });
+    const error = await migrate(api, base).catch((e: unknown) => e);
+    expect((error as DeployError).code).toBe("cloudflare-request-failed");
+    expect(api.calls).toEqual(["appliedMigrations"]);
+  });
+
+  it("carries on when the Worker applied the migration first", async () => {
+    const api = fakeCloudflareApi({ accounts: [], applied: ["0001-a"], racedBy: "0002-b" });
+    await migrate(api, base);
+    expect(api.calls).toEqual([
+      "appliedMigrations",
+      "applyMigration 0002-b",
+      "appliedMigrations",
+      "applyMigration 0003-c",
+    ]);
+  });
+
+  it("rejects a name that isn't a plain Worker name", async () => {
+    const api = fakeCloudflareApi({ accounts: [] });
+    await expect(migrate(api, { ...base, worker: "Bad Name; DROP" })).rejects.toThrow(RangeError);
+  });
+
   it("rejects duplicate ids", async () => {
     const api = fakeCloudflareApi({ accounts: [] });
     const dup = [...migrations, migrations[0] as (typeof migrations)[number]];

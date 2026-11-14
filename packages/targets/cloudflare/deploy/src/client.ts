@@ -244,7 +244,8 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
       else if (ref.kind === "bucket") await mark(accountId, requireMarkedIn(ref), ref);
     },
     async appliedMigrations(accountId, databaseName) {
-      const id = await requireDatabase(accountId, databaseName);
+      const id = await databaseId(accountId, databaseName);
+      if (!id) return undefined;
       try {
         const body = await query(accountId, id, `SELECT id FROM ${migrationsTable} ORDER BY id`);
         const rows = (body.result as { results?: { id?: unknown }[] }[] | undefined)?.[0]?.results;

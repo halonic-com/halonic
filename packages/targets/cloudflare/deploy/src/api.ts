@@ -50,8 +50,11 @@ export interface CloudflareApi {
   createResource(accountId: string, ref: ResourceRef): Promise<void>;
   /** Marks an existing database or bucket as ours, so a deploy may use it. */
   adoptResource(accountId: string, ref: ResourceRef): Promise<void>;
-  /** The ids of the migrations the database has applied; empty when it has none yet. */
-  appliedMigrations(accountId: string, databaseName: string): Promise<readonly string[]>;
+  /** The ids of the migrations the database has applied (empty when it has none yet); `undefined` when the database doesn't exist. */
+  appliedMigrations(
+    accountId: string,
+    databaseName: string,
+  ): Promise<readonly string[] | undefined>;
   /** Runs the migration's statements and records its id in one D1 batch, so both happen or neither. */
   applyMigration(accountId: string, databaseName: string, migration: Migration): Promise<void>;
 }

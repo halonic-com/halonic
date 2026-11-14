@@ -1,5 +1,6 @@
 import type { CloudflareApi, Migration } from "./api.ts";
 import { DeployError } from "./errors.ts";
+import { databaseNameFor } from "./provision.ts";
 
 export interface MigrateOptions {
   readonly accountId: string;
@@ -20,8 +21,12 @@ export async function migrate(
   if (known.size !== options.migrations.length)
     throw new DeployError("invalid-migrations", "Two migrations have the same id.");
 
-  const database = `${options.worker}-data`;
-  const applied = await api.appliedMigrations(options.accountId, database);
+  const database = databaseNameFor(options.worker);
+  const found = await api.appliedMigrations(options.accountId, database);
+  // Plan runs before the first deploy has made the database, so nothing is applied yet.
+  if (found === undefined && !options.plan)
+    throw new DeployError("cloudflare-request-failed", `database ${database} not found`);
+  const applied = found ?? [];
   // A database ahead of this CLI was migrated by a newer Halonic. Running on would deploy
   // code that doesn't know its schema, so stop and ask for an update.
   const ahead = applied.filter((id) => !known.has(id));
@@ -34,8 +39,16 @@ export async function migrate(
   const done = new Set(applied);
   const pending = options.migrations.filter((migration) => !done.has(migration.id));
   if (!options.plan) {
-    for (const migration of pending)
-      await api.applyMigration(options.accountId, database, migration);
+    for (const migration of pending) {
+      try {
+        await api.applyMigration(options.accountId, database, migration);
+      } catch (error) {
+        // The Worker runs its own migrations on start. If it applied this one first, our
+        // batch hit the primary key and rolled back; that is fine, so only fail if it's still missing.
+        const now = await api.appliedMigrations(options.accountId, database);
+        if (!now?.includes(migration.id)) throw error;
+      }
+    }
   }
   return pending.map((migration) => migration.id);
 }

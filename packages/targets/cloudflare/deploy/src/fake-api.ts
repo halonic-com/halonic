@@ -19,6 +19,10 @@ export interface FakeCloudflareState {
   failOnWrite?: boolean;
   /** Migration ids already applied. */
   applied?: readonly string[];
+  /** The database doesn't exist yet. */
+  noDatabase?: boolean;
+  /** A migration the Worker's own runner applies just before our batch lands, so our batch fails. */
+  racedBy?: string;
 }
 
 /** A {@link CloudflareApi} in memory that records each call, for tests of everything above the client. */
@@ -62,11 +66,15 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
     },
     async appliedMigrations() {
       calls.push("appliedMigrations");
-      return [...applied];
+      return state.noDatabase ? undefined : [...applied];
     },
     async applyMigration(_accountId, _databaseName, migration: Migration) {
       if (state.failOnWrite) throw new Error(`unexpected write: applyMigration ${migration.id}`);
       calls.push(`applyMigration ${migration.id}`);
+      if (state.racedBy === migration.id) {
+        applied.push(migration.id);
+        throw new Error(`UNIQUE constraint failed: schema_migrations.id (${migration.id})`);
+      }
       applied.push(migration.id);
     },
   };

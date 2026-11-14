@@ -274,6 +274,15 @@ verifies("deploy.migrate", () => {
     ).rejects.toThrow(/boom/);
   });
 
+  it("reports a missing database as undefined, not an error", async () => {
+    const client = createCloudflareClient({
+      token,
+      baseUrl: "https://cf.test",
+      fetch: cloudflare({ "GET /accounts/a1/d1/database?name=x-data": { result: [] } }, []),
+    });
+    expect(await client.appliedMigrations("a1", "x-data")).toBeUndefined();
+  });
+
   it("sends a migration and its record as one batch", async () => {
     const seen: string[] = [];
     const bodies: { batch?: { sql: string; params?: unknown }[] }[] = [];

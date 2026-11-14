@@ -13,3 +13,5 @@ Rationale: a failed deploy must leave the database in a state the previous versi
 - Given a database with migrations 1 and 2 applied and a version that knows 1 to 3, then the deploy applies 3 only.
 - Given a database that has applied a migration this version doesn't know, then the deploy stops with `schema-newer-than-cli` and applies nothing.
 - Given `plan` mode, then it lists the pending migrations and no call that changes something is made.
+- Given `plan` mode and a database that doesn't exist yet, then every migration is listed as pending; without `plan` it is an error.
+- Given the Worker applies a migration between the deploy's read and its batch, then the deploy reads the applied ids again and carries on.
