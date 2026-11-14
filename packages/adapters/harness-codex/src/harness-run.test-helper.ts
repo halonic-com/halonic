@@ -7,6 +7,7 @@ import {
   type SandboxProfile,
   type SandboxSession,
 } from "@halonicjs/ports";
+import { type FakeProgram, FakeSandboxSession } from "@halonicjs/testing-contracts";
 import { MemorySettingsFolder } from "./fake-codex.test-helper.ts";
 import { codexHarness } from "./harness.ts";
 
@@ -56,6 +57,11 @@ export function engineSessionOptions<Program>(
 ): { profile: SandboxProfile; program: Program } {
   const env = addHarnessEnvironment(profile.env, newHarness().environment?.(bridge, profile) ?? {});
   return { profile: { ...profile, env }, program };
+}
+
+/** A session opened the way the engine opens one, running `program` as `codex`. */
+export function openSession(program: FakeProgram, profile = engineProfile): FakeSandboxSession {
+  return new FakeSandboxSession(engineSessionOptions(program, profile));
 }
 
 /**

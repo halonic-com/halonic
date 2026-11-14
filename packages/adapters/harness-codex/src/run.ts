@@ -67,7 +67,9 @@ interface Started {
  *   have stopped. When the session can't stop them, it rejects with the
  *   session's error, which holds no bridge token, and the stream ends with
  *   that error. The stream ends with "cancelled" only when Codex stopped
- *   anyway.
+ *   anyway. This holds for any stop that fails, so a failed stop while the
+ *   run is finishing or being cleaned up after a cancel also ends the
+ *   stream with the stop error, not "cancelled".
  */
 export class CodexRun implements HarnessRun {
   readonly #task: HarnessTask;
