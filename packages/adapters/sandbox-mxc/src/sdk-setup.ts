@@ -1,11 +1,16 @@
-import { join } from "node:path";
+import { realpath } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { type PathLookup, skillScriptsRefusal, touchesSkillScripts } from "@halonicjs/format";
 import { type ImportMxcSdk, SdkNotDownloadedError } from "./machine.ts";
 import { installFolder, installMxcSdk, isVerified, type SdkInstallOptions } from "./sdk-install.ts";
 import { mxcSdkPinsFor } from "./sdk-pins.ts";
 
 /** Where `@microsoft/mxc-sdk/v1` is, inside an install folder (the SDK's `exports["./v1"].import`). */
 const sdkEntry = join("node_modules", "@microsoft", "mxc-sdk", "dist", "v1", "index.js");
+
+/** Node's way to find where a path leads, for the shared skill `scripts/` check. */
+const nodePaths: PathLookup = { resolve, realpath };
 
 /** What the host asks of the one-time SDK download. */
 export interface MxcSdkSetup {
@@ -46,8 +51,13 @@ export function mxcSdkSetup(options: SdkInstallOptions): MxcSdkSetup {
       return running;
     },
     importSdk: async () => {
+      const entry = join(folder, sdkEntry);
+      // Halonic never runs a file under a skill's scripts/ folder (HAL-188),
+      // not even a verified download that a link has moved there.
+      const start = { cwd: folder, program: entry, args: [] };
+      if (await touchesSkillScripts(start, nodePaths)) throw new Error(skillScriptsRefusal);
       if (!(await isVerified(folder, pins))) throw new SdkNotDownloadedError();
-      return import(pathToFileURL(join(folder, sdkEntry)).href);
+      return import(pathToFileURL(entry).href);
     },
   };
 }

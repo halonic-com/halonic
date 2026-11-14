@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@halonicjs/app": "workspace:*",
+    "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*"
   }
 }

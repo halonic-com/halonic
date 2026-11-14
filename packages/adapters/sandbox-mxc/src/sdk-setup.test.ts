@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
@@ -8,6 +8,7 @@ import { fakeRegistry, pinFor, tarball } from "./fake-registry.test-helper.ts";
 import { type MxcMachine, mxcSdkLoader, systemMachine } from "./machine.ts";
 import { MemoryDisk } from "./memory-disk.test-helper.ts";
 import { MxcSandbox } from "./mxc-sandbox.ts";
+import { installFolder } from "./sdk-install.ts";
 import { mxcSdkSetup } from "./sdk-setup.ts";
 
 /** An SDK module like the real one: the three calls the adapter reads. */
@@ -104,6 +105,44 @@ verifies("sandbox-mxc.sdk-setup", () => {
       expect(await sandbox.download()).toMatchObject({ done: false });
       online = true;
       expect(await sandbox.download()).toEqual({ done: true });
+    });
+  });
+
+  describe("importing the downloaded SDK", () => {
+    it("imports nothing when the marker is missing", async () => {
+      const folder = installFolder(root, pins);
+      const entry = join(folder, "node_modules", "@microsoft", "mxc-sdk", "dist", "v1");
+      await mkdir(entry, { recursive: true });
+      await writeFile(join(entry, "index.js"), "globalThis.mxcSdkWasImported = true;");
+      const setup = mxcSdkSetup({ root, pins, fetchBytes: fakeRegistry({}).fetchBytes });
+      await expect(setup.importSdk()).rejects.toThrow();
+      expect(Reflect.has(globalThis, "mxcSdkWasImported")).toBe(false);
+    });
+
+    it("refuses a root inside a skill's scripts/ folder, written out", async () => {
+      const scripts = join(root, "skills", "mail", "scripts");
+      await mkdir(scripts, { recursive: true });
+      const setup = mxcSdkSetup({
+        root: scripts,
+        pins,
+        fetchBytes: fakeRegistry(answers()).fetchBytes,
+      });
+      expect(await setup.download()).toEqual({ done: true });
+      await expect(setup.importSdk()).rejects.toThrow("scripts/ folder");
+    });
+
+    it("refuses a root that a symbolic link leads into a skill's scripts/ folder", async () => {
+      const scripts = join(root, "skills", "mail", "scripts");
+      await mkdir(scripts, { recursive: true });
+      const link = join(root, "data");
+      await symlink(scripts, link, "dir");
+      const setup = mxcSdkSetup({
+        root: link,
+        pins,
+        fetchBytes: fakeRegistry(answers()).fetchBytes,
+      });
+      expect(await setup.download()).toEqual({ done: true });
+      await expect(setup.importSdk()).rejects.toThrow("scripts/ folder");
     });
   });
 
