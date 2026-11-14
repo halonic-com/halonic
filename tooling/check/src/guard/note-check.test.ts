@@ -3,45 +3,22 @@ import { dirname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
+import {
+  base,
+  baseFiles,
+  branch,
+  cto,
+  head,
+  julian,
+  note,
+  noteFile,
+  pull,
+  signed,
+} from "../test/note-fixture.ts";
 import { approvers, type Files, fakeGit, keyPair } from "../test/signing-fixture.ts";
-import type { PullRequest } from "./approvals.ts";
 import { policyFile } from "./guarded-paths.ts";
 import { checkNotes, trustRoots } from "./note-check.ts";
-import {
-  approversFile,
-  coveredObjects,
-  coveredPaths,
-  signatureLine,
-  signedText,
-} from "./signatures.ts";
-
-const julian = keyPair();
-const cto = keyPair();
-const branch = "julian/HAL-1337-example";
-const noteFile = `decisions/${branch}.md`;
-const base = "b".repeat(40);
-const head = "a".repeat(40);
-const pull: PullRequest = { repo: "halonic-com/halonic", number: 7, head, base };
-const baseFiles: Files = {
-  [approversFile]: approvers({
-    internal: [cto.publicKey],
-    "user-visible": [cto.publicKey],
-    guardians: [cto.publicKey, julian.publicKey],
-  }),
-  ".github/workflows/ci.yml": "on: pull_request\n",
-};
-
-const note = (kind: string, ...covers: string[]) => `# Decision: change CI
-
-- Approval: https://paperclip.example/HAL/issues/HAL-1337
-- Kind: ${kind}
-
-The build needs a new step.
-
-## Covers
-
-${covers.map((entry) => `- ${entry}`).join("\n")}
-`;
+import { approversFile, signatureLine, signedText } from "./signatures.ts";
 
 /** Runs the check on a pull request that changes ci.yml and adds `text`, signed by `signer`. */
 async function errorsOf(
@@ -245,17 +222,6 @@ async function policyErrorsOf(
     git: fakeGit({ [base]: before, [head]: files }),
   });
   return report.problems.map((problem) => `${problem.file}: ${problem.message}`);
-}
-
-/** `text` with a signature line over its Covers paths at the head, made with `privatePem`. */
-function signed(text: string, headFiles: Files, privatePem: string | readonly string[]): string {
-  const git = fakeGit({ [base]: baseFiles, [head]: headFiles });
-  const kind = text.includes("Kind: internal") ? "internal" : "user-visible";
-  const covers = (text.split("## Covers")[1] ?? "").match(/(?<=^- ).+$/gm) ?? [];
-  const objects = coveredObjects(coveredPaths(covers, git, head, base), git, head);
-  const facts = { repo: pull.repo, pr: pull.number, kind, unsigned: text, objects } as const;
-  const lines = [privatePem].flat().map((pem) => `${signatureLine(signedText(facts), pem)}\n`);
-  return text.replace(/(- Kind: .*\n)/, `$1${lines.join("")}`);
 }
 
 verifies("check.guard-extra-exports", () => {
@@ -466,90 +432,6 @@ verifies("check.guard-two-guardians", () => {
       changed: [changed],
       mergeBase: base,
       git: fakeGit({ [base]: one, [head]: files }),
-    });
-    expect(report.problems).toEqual([]);
-  });
-});
-
-verifies("check.guard-notes-append-only", () => {
-  const oldNote = "decisions/kim/HAL-1-old.md";
-  const baseWithNote: Files = { ...baseFiles, [oldNote]: note("internal", "turbo.json") };
-
-  /** A pull request that edits (or, with `deleted`, deletes) the old note and adds `text`. */
-  const edited = { ...baseWithNote, [oldNote]: note("internal", "turbo.json", "extra") };
-  const { [oldNote]: _gone, ...deletedFiles } = baseWithNote;
-
-  async function errors(text: string | undefined, deleted = false): Promise<string[]> {
-    const headFiles = deleted ? deletedFiles : edited;
-    const files = text === undefined ? headFiles : { ...headFiles, [noteFile]: text };
-    return (
-      await checkNotes({
-        pull,
-        branch,
-        changed: [oldNote],
-        mergeBase: base,
-        git: fakeGit({ [base]: baseWithNote, [head]: files }),
-      })
-    ).problems.map((problem) => `${problem.file}: ${problem.message}`);
-  }
-
-  const withNote = (kind: string, ...covers: string[]) =>
-    signed(note(kind, ...covers), edited, cto.privatePem);
-
-  test("fails an edit or a deletion of a note on base without a note", async () => {
-    const expected = [expect.stringContaining(`${oldNote}: Edits or deletes ${oldNote}`)];
-    expect(await errors(undefined)).toEqual(expected);
-    expect(await errors(undefined, true)).toEqual(expected);
-  });
-
-  test("fails a note that doesn't list the path, or an internal one", async () => {
-    expect(await errors(withNote("user-visible", "turbo.json"))).toEqual([
-      expect.stringContaining(`doesn't list "${oldNote}" under Covers`),
-    ]);
-    expect(await errors(withNote("internal", oldNote))).toEqual([
-      expect.stringContaining("Kind must be user-visible"),
-    ]);
-  });
-
-  test("passes a user-visible note that lists the path, for an edit and a deletion", async () => {
-    const sign = (files: Files) => signed(note("user-visible", oldNote), files, cto.privatePem);
-    const run = async (files: Files) =>
-      (
-        await checkNotes({
-          pull,
-          branch,
-          changed: [oldNote, noteFile],
-          mergeBase: base,
-          git: fakeGit({ [base]: baseWithNote, [head]: { ...files, [noteFile]: sign(files) } }),
-        })
-      ).problems;
-    expect(await run(edited)).toEqual([]);
-    expect(await run(deletedFiles)).toEqual([]);
-  });
-
-  test("fails an edit of the branch's own note when base already has it", async () => {
-    const report = await checkNotes({
-      pull,
-      branch,
-      changed: [noteFile],
-      mergeBase: base,
-      git: fakeGit({
-        [base]: { ...baseWithNote, [noteFile]: note("internal", "turbo.json") },
-        [head]: { ...baseWithNote, [noteFile]: note("internal", "turbo.json", "extra") },
-      }),
-    });
-    const messages = report.problems.map((problem) => problem.message);
-    expect(messages).not.toEqual([]);
-    expect(messages[0]).toContain(`Edits or deletes ${noteFile}`);
-  });
-
-  test("ignores the branch's own note when new and a note added in the pull request", async () => {
-    const report = await checkNotes({
-      pull,
-      branch,
-      changed: [noteFile, "decisions/kim/HAL-2-new.md"],
-      mergeBase: base,
-      git: fakeGit({ [base]: baseWithNote, [head]: baseWithNote }),
     });
     expect(report.problems).toEqual([]);
   });
