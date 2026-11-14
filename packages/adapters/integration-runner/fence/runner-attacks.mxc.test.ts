@@ -1,5 +1,6 @@
 import { execFileSync, spawn } from "node:child_process";
 import { createSocket, type Socket as UdpSocket } from "node:dgram";
+import { lookup } from "node:dns/promises";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:net";
@@ -184,6 +185,15 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     try {
       nrpt(`Add-DnsClientNrptRule -Namespace '.${namespace}' -NameServers '127.0.0.1'`);
       flush();
+      // Control: the same lookup outside the box must reach the server.
+      // Without it, a silent server would not say whether the box or the
+      // setup is the reason.
+      const controlLabel = `control-${suffix}`;
+      await lookup(`${controlLabel}.${namespace}`).catch(() => undefined);
+      expect(
+        received.some((query) => query.includes(controlLabel)),
+        "the control lookup outside the box reached the server (setup)",
+      ).toBe(true);
       await attack(
         `
         const dns = await import("node:dns/promises");
