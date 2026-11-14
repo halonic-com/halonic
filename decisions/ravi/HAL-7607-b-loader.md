@@ -2,6 +2,7 @@
 
 - Approval: Liam's plan and notes for the on-demand download on HAL-7607 (the board's answer on HAL-7606); Liam signs this note in review of the loader PR
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:aFmtYnCJpNaCoeGoabIi8ReLicFsJrcISy51zfIbdylvuXt9fmYP6QIP6xskODdFLrGqCO3sRFsv47jYc9gvAA==
 - Task: HAL-7607
 
 ## What changes
