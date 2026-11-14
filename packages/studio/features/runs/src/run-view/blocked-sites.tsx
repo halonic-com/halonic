@@ -18,7 +18,7 @@ export interface BlockedSitesLineProps {
 }
 
 /**
- * "Blocked 3 sites" under a step's meta line, in warning tone, never danger: a blocked site isn't
+ * "Blocked 3 sites" under a step's meta line, in attention tone, never danger: a blocked site isn't
  * always why a step failed. A button named by its text (`runs.run-view.blocked-sites`).
  */
 export function BlockedSitesLine({ step, expanded, onOpen }: BlockedSitesLineProps) {
@@ -27,7 +27,7 @@ export function BlockedSitesLine({ step, expanded, onOpen }: BlockedSitesLinePro
       type="button"
       aria-expanded={expanded}
       onClick={onOpen}
-      className="inline-flex items-center gap-1.5 rounded-xs text-small font-medium text-warning focus-ring [&>svg]:size-4"
+      className="inline-flex items-center gap-1.5 rounded-xs text-small font-medium text-attention focus-ring [&>svg]:size-4"
     >
       <WarningIcon />
       {stepSummaryText(step.sites.length + step.moreSites)}

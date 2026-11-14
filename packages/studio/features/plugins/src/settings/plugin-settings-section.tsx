@@ -298,7 +298,7 @@ function SecretRow({ plugin, field, isSet, error, off, onSave }: SecretRowProps)
   const [draft, setDraft] = useState("");
   const hint: ReactNode = (
     <>
-      <StatusChip tone={isSet ? "neutral" : "warning"}>
+      <StatusChip tone={isSet ? "neutral" : "attention"}>
         {isSet ? SECRET_SET : SECRET_NOT_SET}
       </StatusChip>{" "}
       {field.help === undefined ? null : <span className="block">{field.help}</span>}

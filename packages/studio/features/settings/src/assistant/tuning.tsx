@@ -59,7 +59,7 @@ export function Tuning(props: TuningProps) {
   return (
     <Disclosure summary={text.TUNING}>
       <div className="flex flex-col gap-4">
-        <p className="text-small fg-muted">{text.TUNING_HINT}</p>
+        <p className="text-small text-fg-muted">{text.TUNING_HINT}</p>
         {numberField(text.TEMPERATURE, "the temperature", props.temperature, checkTemperature)}
         {numberField(text.TOP_P, "top-p", props.topP, checkTopP)}
         {numberField(text.MAX_TOKENS, "max tokens", props.maxTokens, checkMaxTokens)}

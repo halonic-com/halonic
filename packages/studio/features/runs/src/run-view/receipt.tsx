@@ -41,7 +41,7 @@ export function Receipt({
       <TextSection id="receipt-models" heading={receiptWords.modelsHeading} lines={models} />
       {approvals.length === 0 ? null : (
         <section aria-labelledby="receipt-approvals" className="flex flex-col gap-1">
-          <h3 id="receipt-approvals" className="text-small text-fg-muted">
+          <h3 id="receipt-approvals" className="text-label uppercase text-fg-muted">
             {receiptWords.approvalsHeading}
           </h3>
           <ul className="flex flex-col gap-1 text-small">
@@ -70,7 +70,7 @@ function TextSection({
   if (lines.length === 0) return null;
   return (
     <section aria-labelledby={id} className="flex flex-col gap-1">
-      <h3 id={id} className="text-small text-fg-muted">
+      <h3 id={id} className="text-label uppercase text-fg-muted">
         {heading}
       </h3>
       <ul className="flex flex-col gap-1 text-small">

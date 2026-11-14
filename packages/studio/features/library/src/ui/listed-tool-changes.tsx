@@ -74,7 +74,7 @@ function Difference({ difference }: { readonly difference: ListedToolDifference 
         />
       </div>
       {difference.hidden === null ? null : (
-        <p className="flex items-start gap-2 text-small text-warning">
+        <p className="flex items-start gap-2 text-small text-attention">
           <span className="mt-0.5 size-3.5 shrink-0">
             <WarningIcon />
           </span>

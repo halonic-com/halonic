@@ -89,13 +89,13 @@ describe("blocked sites words", () => {
 });
 
 verifies("runs.run-view.blocked-sites", () => {
-  it("names the step's sites once under its meta line, as a warning button named by its text", () => {
+  it("names the step's sites once under its meta line, as an attention button named by its text", () => {
     const onOpen = vi.fn();
     const container = render(<BlockedSitesLine step={install} expanded={false} onOpen={onOpen} />);
 
     const button = container.querySelector("button");
     expect(button?.textContent).toBe("Blocked 2 sites");
-    expect(button?.className).toContain("text-warning");
+    expect(button?.className).toContain("text-attention");
     expect(button?.getAttribute("aria-expanded")).toBe("false");
     act(() => button?.click());
     expect(onOpen).toHaveBeenCalledOnce();

@@ -26,7 +26,7 @@ export interface DetailsProps {
 export function Details({ rows, version, logRead, runId, now }: DetailsProps) {
   return (
     <section aria-labelledby="run-details" className="flex flex-col gap-3">
-      <h2 id="run-details" className="text-section">
+      <h2 id="run-details" className="text-label uppercase text-fg-muted">
         {detailsWords.heading}
       </h2>
       <dl className="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-3 gap-y-2 text-small">

@@ -71,7 +71,7 @@ export interface AgentSandboxViewProps {
 }
 
 const chipTones: Record<NonNullable<SandboxView["chip"]>["tone"], StatusChipTone> = {
-  warning: "warning",
+  attention: "attention",
   neutral: "neutral",
   success: "success",
 };
