@@ -1,7 +1,9 @@
+import type { HostSettings } from "@halonicjs/app";
 import { Button, Callout, Dialog, StatusChip, type StatusChipTone } from "@halonicjs/studio-kit";
 import type { SettingsSectionProps } from "@halonicjs/studio-shell";
-import { useState } from "react";
-import { type AgentSandboxHost, AgentSandboxService } from "../api.ts";
+import { type ReactNode, useState } from "react";
+import { type AgentSandboxHost, AgentSandboxService, HostSettingsService } from "../api.ts";
+import { NewAgentsRunControl } from "./new-agents-run.tsx";
 import {
   type SandboxFacts,
   type SandboxStep,
@@ -18,6 +20,7 @@ export function AgentSandboxSection({ context, place }: SettingsSectionProps) {
     <AgentSandboxHostView
       host={host}
       place={place}
+      settings={context.services.get(HostSettingsService)}
       announce={(line) => context.announcer.announce(line)}
     />
   );
@@ -27,12 +30,19 @@ export function AgentSandboxSection({ context, place }: SettingsSectionProps) {
 export interface AgentSandboxHostViewProps {
   readonly host: AgentSandboxHost | undefined;
   readonly place: SandboxFacts["place"];
+  /** Where **New agents run** is kept; without it, or before it loads, the control isn't shown. */
+  readonly settings?: HostSettings | undefined;
   /** Says a result in the dialog: the settings container's live region. */
   readonly announce: (line: string) => void;
 }
 
 /** The section over a host: its state, its buttons and the Remove dialog. */
-export function AgentSandboxHostView({ host, place, announce }: AgentSandboxHostViewProps) {
+export function AgentSandboxHostView({
+  host,
+  place,
+  settings,
+  announce,
+}: AgentSandboxHostViewProps) {
   const sandbox = useAgentSandbox(host, place, announce);
   const [removing, setRemoving] = useState(false);
   return (
@@ -42,6 +52,11 @@ export function AgentSandboxHostView({ host, place, announce }: AgentSandboxHost
         onSetUp={sandbox.setUp}
         onRemove={() => setRemoving(true)}
         onCheckAgain={sandbox.checkAgain}
+        newAgents={
+          settings?.loaded ? (
+            <NewAgentsRunControl settings={settings} viewOnly={place === "served"} />
+          ) : null
+        }
       />
       {removing ? (
         <Dialog
@@ -68,6 +83,8 @@ export interface AgentSandboxViewProps {
   /** Opens the Remove dialog; nothing is removed until it is confirmed. */
   readonly onRemove: () => void;
   readonly onCheckAgain: () => void;
+  /** **New agents run**, under the buttons, or nothing when it can't be shown. */
+  readonly newAgents?: ReactNode;
 }
 
 const chipTones: Record<NonNullable<SandboxView["chip"]>["tone"], StatusChipTone> = {
@@ -87,6 +104,7 @@ export function AgentSandboxView({
   onSetUp,
   onRemove,
   onCheckAgain,
+  newAgents = null,
 }: AgentSandboxViewProps) {
   const view = sandboxView(facts, new Date());
   const buttons = {
@@ -95,6 +113,7 @@ export function AgentSandboxView({
   } as const;
   return (
     <div className="mt-5 flex max-w-120 flex-col gap-4">
+      <p className="text-body text-fg-muted">{text.FIRST_LINE}</p>
       {view.chip ? (
         <StatusChip tone={chipTones[view.chip.tone]}>{view.chip.label}</StatusChip>
       ) : null}
@@ -131,6 +150,7 @@ export function AgentSandboxView({
         ))}
       </div>
       {view.hint ? <p className="text-small text-fg-muted">{view.hint}</p> : null}
+      {newAgents}
     </div>
   );
 }
