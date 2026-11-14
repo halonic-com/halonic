@@ -1,0 +1,17 @@
+{
+  "identifier": "desktop-engine-lock",
+  "description": "On desktop, the app's own page may hold a workspace's engine lock through the engine_lock_* commands: the one engine a workspace may have open, in the same file and format as the CLI's (crates/run-lock). The shell keeps the lock for the window, so a page reload takes it back. The page names a workspace the person opened, never a path. It is local only, so the Studio the computer serves gets no lock.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-engine-lock-hold",
+    "allow-engine-lock-release"
+  ]
+}

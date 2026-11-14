@@ -9,7 +9,8 @@
 //! `probe_workspace_folder`, `open_workspace_folder` and the `trust_*`
 //! commands (capabilities/desktop-trust.json) and the `host_settings_*`
 //! commands (capabilities/desktop-host-settings.json) and the `run_*` commands
-//! (capabilities/desktop-runs.json) and the `agent_host_*` commands
+//! (capabilities/desktop-runs.json) and the `engine_lock_*` commands
+//! (capabilities/desktop-engine-lock.json) and the `agent_host_*` commands
 //! (capabilities/desktop-agent-host.json) and the `fs_*` commands
 //! (capabilities/desktop-files.json, with the read-only `folder_*` commands) and the `blob_*` commands
 //! (capabilities/desktop-blobs.json) and the `record_*` commands
@@ -25,6 +26,7 @@ mod agent_host;
 mod blobs;
 mod command_paths;
 mod connect;
+mod engine_lock;
 mod file_answers;
 mod files;
 mod git;
@@ -58,6 +60,7 @@ pub fn run() {
         .expect("the Studio shell could not start")
         .run(|app, event| {
             if matches!(event, RunEvent::Exit) {
+                app.state::<engine_lock::EngineLockState>().release_all();
                 #[cfg(desktop)]
                 updates::install_at_quit(app);
                 #[cfg(mobile)]
@@ -76,6 +79,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(halonic_trust_grant::TrustState::default())
         .manage(host_settings::HostSettingsState::default())
         .manage(runs::RunState::default())
+        .manage(engine_lock::EngineLockState::default())
         .manage(records::RecordState::default())
         .manage(agent_host::AgentHostState::default())
         .manage(files::FileState::default());
@@ -115,6 +119,10 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         })
         .on_window_event(|window, event| {
             if matches!(event, WindowEvent::Destroyed) {
+                window
+                    .app_handle()
+                    .state::<engine_lock::EngineLockState>()
+                    .release_window(window.label());
                 agent_host::end_page_streams(window.app_handle(), window.label());
                 files::end_page_watches(window.app_handle(), window.label());
                 #[cfg(desktop)]
@@ -148,6 +156,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             runs::run_events,
             runs::run_snapshot,
             runs::run_logs,
+            engine_lock::engine_lock_hold,
+            engine_lock::engine_lock_release,
             agent_host::agent_host_request,
             agent_host::agent_host_stream,
             agent_host::agent_host_stream_end,
