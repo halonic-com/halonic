@@ -187,6 +187,7 @@ export {
 } from "./secrets.ts";
 export {
   definitionWriteMethods,
+  type MakeTargetCapabilityHarness,
   presentMethods,
   refusedPortNames,
   secretWriteMethods,

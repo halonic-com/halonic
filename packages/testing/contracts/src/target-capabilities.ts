@@ -14,6 +14,9 @@ export interface TargetCapabilityHarness {
   secrets: object;
 }
 
+/** Makes the target's ports as it wires them, with what it was configured with. */
+export type MakeTargetCapabilityHarness = () => Promise<TargetCapabilityHarness>;
+
 /** A capability a target refuses, and the methods or ports that would give it. */
 interface Refusal {
   /** The capability as multi-cloud ADR 5.5 names it. */
@@ -66,17 +69,21 @@ export function targetCapabilityRefusals(
 ): void {
   verifies("contracts.target-capabilities", () => {
     describe(`Target capability refusals: ${targetName}`, () => {
-      it("wires no port for a capability it refuses", () => {
-        expect(wiredRefusedPorts(harness.wiredPorts)).toEqual([]);
+      it("wires no port for a capability it refuses", async () => {
+        const { wiredPorts } = await make();
+        expect(wiredRefusedPorts(wiredPorts)).toEqual([]);
       });
 
-      it("hands out definitions that can't be written, removed or watched", () => {
-        expect(presentMethods(harness.definitions, definitionWriteMethods)).toEqual([]);
+      it("hands out definitions that can't be written, removed or watched", async () => {
+        const { definitions } = await make();
+        expect(presentMethods(definitions, definitionWriteMethods)).toEqual([]);
+        expect("read" in definitions).toBe(true);
       });
 
-      it("hands out secrets that can only be read", () => {
-        expect(presentMethods(harness.secrets, secretWriteMethods)).toEqual([]);
-        expect("get" in harness.secrets).toBe(true);
+      it("hands out secrets that can only be read", async () => {
+        const { secrets } = await make();
+        expect(presentMethods(secrets, secretWriteMethods)).toEqual([]);
+        expect("get" in secrets).toBe(true);
       });
     });
   });
