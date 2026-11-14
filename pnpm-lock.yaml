@@ -428,6 +428,9 @@ importers:
       '@halonicjs/host-harness-host':
         specifier: workspace:*
         version: link:../../packages/host/harness-host
+      '@halonicjs/host-server':
+        specifier: workspace:*
+        version: link:../../packages/host/server
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../packages/core/ports
