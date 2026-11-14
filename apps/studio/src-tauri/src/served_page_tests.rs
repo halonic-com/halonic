@@ -139,6 +139,10 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "folder_entries",
         "folder_read",
         "folder_location",
+        "plugin_folder_entries",
+        "plugin_folder_read",
+        "plugin_folder_location",
+        "plugin_folder_reveal",
         "plugin:opener|open_url",
         "plugin:event|listen",
     ] {
@@ -403,6 +407,26 @@ fn served_page_test_sees_files_granted_to_the_local_main_window_only() {
             "allow-folder-entries",
             "allow-folder-read",
             "allow-folder-location"
+        ])
+    );
+}
+
+#[test]
+fn served_page_test_sees_the_plugin_folder_granted_to_the_local_main_window_only() {
+    // A remote page must never reach the plugin folder: the served Studio
+    // could then read every installed plugin's files.
+    let text = include_str!("../capabilities/desktop-plugin-folder.json");
+    let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
+    assert_eq!(capability["local"], true);
+    assert_eq!(capability["windows"], json!(["main"]));
+    assert!(capability.get("remote").is_none(), "{capability}");
+    assert_eq!(
+        capability["permissions"],
+        json!([
+            "allow-plugin-folder-entries",
+            "allow-plugin-folder-read",
+            "allow-plugin-folder-location",
+            "allow-plugin-folder-reveal"
         ])
     );
 }

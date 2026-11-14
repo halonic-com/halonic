@@ -1,0 +1,19 @@
+{
+  "identifier": "desktop-plugin-folder",
+  "description": "On desktop, the app's own page may list and read the installed plugins, and show the plugins folder or one plugin's folder in the file manager, through the plugin_folder_* commands (src/plugin_folder.rs). The shell works out the profile's plugins folder itself, follows no link and never lets the page name a path outside it. It is local only, so the Studio the computer serves gets no plugin folder.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-plugin-folder-entries",
+    "allow-plugin-folder-read",
+    "allow-plugin-folder-location",
+    "allow-plugin-folder-reveal"
+  ]
+}

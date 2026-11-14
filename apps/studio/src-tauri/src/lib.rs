@@ -29,6 +29,7 @@ mod git;
 mod host_settings;
 mod native_dialogs;
 mod navigation;
+mod plugin_folder;
 mod profile;
 mod records;
 mod runs;
@@ -154,6 +155,10 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             files::folder_entries,
             files::folder_read,
             files::folder_location,
+            plugin_folder::plugin_folder_entries,
+            plugin_folder::plugin_folder_read,
+            plugin_folder::plugin_folder_location,
+            plugin_folder::plugin_folder_reveal,
             blobs::blob_put,
             blobs::blob_get,
             records::record_append,
