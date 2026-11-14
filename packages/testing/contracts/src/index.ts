@@ -186,6 +186,17 @@ export {
   tokenStoreContract,
 } from "./secrets.ts";
 export {
+  definitionWriteMethods,
+  type MakeTargetCapabilityHarness,
+  presentMethods,
+  refusedPortNames,
+  secretWriteMethods,
+  type TargetCapabilityHarness,
+  targetCapabilityRefusals,
+  wiredRefusedPorts,
+} from "./target-capabilities.ts";
+export { type TargetPorts, targetPortContracts } from "./target-ports.ts";
+export {
   listedToolFingerprint,
   type MakeToolApprovalStore,
   type ToolApprovalStoreHarness,
