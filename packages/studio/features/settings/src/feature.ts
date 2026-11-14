@@ -9,6 +9,7 @@ import {
 } from "./api.ts";
 import { agentCharactersPref, themePref } from "./appearance/appearance-prefs.ts";
 import { onOrOff, themeNames } from "./appearance/appearance-text.ts";
+import { agentSandboxSummary, assistantSummary } from "./section-summaries.ts";
 import { createRestartFlow, RestartFlowService } from "./updater/restart-flow.ts";
 import { updateCommands } from "./updater/update-commands.ts";
 
@@ -19,6 +20,7 @@ import { updateCommands } from "./updater/update-commands.ts";
 export const settingsSections: readonly SettingsSectionContribution[] = [
   {
     id: "models",
+    icon: "models",
     title: "Models",
     scope: "workspace",
     order: 10,
@@ -27,6 +29,7 @@ export const settingsSections: readonly SettingsSectionContribution[] = [
   },
   {
     id: "trust",
+    icon: "trust",
     title: "Trust",
     scope: "workspace",
     order: 20,
@@ -35,6 +38,7 @@ export const settingsSections: readonly SettingsSectionContribution[] = [
   },
   {
     id: "appearance",
+    icon: "appearance",
     title: "Appearance",
     scope: "display",
     order: 10,
@@ -47,6 +51,7 @@ export const settingsSections: readonly SettingsSectionContribution[] = [
   },
   {
     id: "formats",
+    icon: "formats",
     title: "Formats",
     scope: "display",
     order: 20,
@@ -55,22 +60,27 @@ export const settingsSections: readonly SettingsSectionContribution[] = [
   },
   {
     id: "assistant",
+    icon: "assistant",
     title: "Assistant",
     scope: "host",
     order: 10,
+    summary: assistantSummary,
     view: "AssistantSection",
     load: () => import("./assistant/assistant-section.tsx"),
   },
   {
     id: "agent-sandbox",
+    icon: "agent-sandbox",
     title: "Agent sandbox",
     scope: "host",
     order: 30,
+    summary: agentSandboxSummary,
     view: "AgentSandboxSection",
     load: () => import("./agent-sandbox/agent-sandbox-section.tsx"),
   },
   {
     id: "about",
+    icon: "about",
     title: "About Halonic",
     scope: "host",
     order: 60,

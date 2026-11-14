@@ -3,6 +3,7 @@ import {
   List,
   type ListGroup,
   type ListRow,
+  SectionIcon,
   SettingsIcon,
 } from "@halonicjs/studio-kit";
 import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -181,7 +182,7 @@ export function SettingsListPage({
     id: section.id,
     title: section.title,
     ...metaOf(summaries[section.id]),
-    icon: <SettingsIcon />,
+    icon: section.icon === undefined ? <SettingsIcon /> : <SectionIcon name={section.icon} />,
     trailing: (
       <span aria-hidden="true" className="size-icon-md text-fg-subtle *:size-full">
         <ChevronRightIcon />
