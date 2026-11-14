@@ -1,0 +1,16 @@
+{
+  "identifier": "desktop-workspace-key",
+  "description": "On desktop, the app's own page may ask for the key of a workspace the person opened, through the read-only workspace_key command, so it can look up what the profile keeps for that workspace by key. It answers the key and no path, and refuses a folder that isn't open. It is local only, so the Studio the computer serves gets no keys.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-workspace-key"
+  ]
+}
