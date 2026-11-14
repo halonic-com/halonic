@@ -48,6 +48,9 @@ async function commitAll(vcs: GitVcs, store: DefinitionStore): Promise<string> {
   return await vcs.commit("A version");
 }
 
+/** This test starts a real git repository and commits twice, which can take longer than 5 s on a busy runner. */
+const slowTest = { timeout: 60_000 };
+
 /** A run that read the saved files. */
 const savedRun = { runId: "run-1", version: { reads: "saved-files" } } as const;
 
@@ -161,46 +164,54 @@ verifies("cli.local-engine", () => {
     expect(new TextDecoder().decode(bytes)).toBe(before);
   });
 
-  it("gives a child run's agent file from its own version, after a newer one was read", async () => {
-    const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
-    const git = await testGit();
-    const vcs = new GitVcs(acme, {
-      runner: await GitRunner.create({ git }),
-      author: { name: "Test", email: "test@example.com" },
-    });
-    await vcs.init();
-    const agent = filesOf(await loadWorkspace(dir.store), "agent")[0];
-    if (agent === undefined) throw new Error("Acme has no agent.");
-    const first = await commitAll(vcs, dir.store);
-    const firstText = await readFile(join(acme, agent.path), "utf8");
-    versions = await WatchedVersions.open(dir, (root) => openGitHistory(root, { git }));
-    // A newer version is made and read by another run, so `latest` is no longer the first one.
-    await writeFile(join(acme, agent.path), `${firstText}# second version\n`);
-    const second = await commitAll(vcs, dir.store);
-    await versions.definitionsOf(
-      "support",
-      "support-reply",
-      { reads: "live-version", commit: second, versionDate: "2026-11-10T09:42:00+01:00" },
-      "run-2",
-    );
+  it(
+    "gives a child run's agent file from its own version, after a newer one was read",
+    slowTest,
+    async () => {
+      const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
+      const git = await testGit();
+      const vcs = new GitVcs(acme, {
+        runner: await GitRunner.create({ git }),
+        author: { name: "Test", email: "test@example.com" },
+      });
+      await vcs.init();
+      const agent = filesOf(await loadWorkspace(dir.store), "agent")[0];
+      if (agent === undefined) throw new Error("Acme has no agent.");
+      const first = await commitAll(vcs, dir.store);
+      const firstText = await readFile(join(acme, agent.path), "utf8");
+      versions = await WatchedVersions.open(dir, (root) => openGitHistory(root, { git }));
+      // A newer version is made and read by another run, so `latest` is no longer the first one.
+      await writeFile(join(acme, agent.path), `${firstText}# second version\n`);
+      const second = await commitAll(vcs, dir.store);
+      await versions.definitionsOf(
+        "support",
+        "support-reply",
+        { reads: "live-version", commit: second, versionDate: "2026-11-10T09:42:00+01:00" },
+        "run-2",
+      );
 
-    // The child run was never started by `definitionsOf`: it names its parent's version.
-    const bytes = await versions.agentFileOf(
-      {
-        runId: "child-of-run-1",
-        version: { reads: "live-version", commit: first, versionDate: "2026-11-10T09:42:00+01:00" },
-      },
-      agent.hub ?? "",
-      agent.value.id,
-    );
-
-    expect(new TextDecoder().decode(bytes)).toBe(firstText);
-    await expect(
-      versions.agentFileOf(
-        { runId: "child-of-run-1", version: null },
+      // The child run was never started by `definitionsOf`: it names its parent's version.
+      const bytes = await versions.agentFileOf(
+        {
+          runId: "child-of-run-1",
+          version: {
+            reads: "live-version",
+            commit: first,
+            versionDate: "2026-11-10T09:42:00+01:00",
+          },
+        },
         agent.hub ?? "",
         agent.value.id,
-      ),
-    ).rejects.toThrow("doesn't name the version");
-  });
+      );
+
+      expect(new TextDecoder().decode(bytes)).toBe(firstText);
+      await expect(
+        versions.agentFileOf(
+          { runId: "child-of-run-1", version: null },
+          agent.hub ?? "",
+          agent.value.id,
+        ),
+      ).rejects.toThrow("doesn't name the version");
+    },
+  );
 });
