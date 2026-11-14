@@ -1183,9 +1183,15 @@ importers:
 
   packages/adapters/integration-runner:
     dependencies:
+      '@halonicjs/adapter-http-kit':
+        specifier: workspace:*
+        version: link:../http-kit
       '@halonicjs/adapter-integration-kit':
         specifier: workspace:*
         version: link:../integration-kit
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../core/app
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../core/format
