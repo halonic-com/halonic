@@ -2,12 +2,14 @@
 exit 0
 stdout:
   Weekly report   Mondays at 09:00   Next 16 Nov 09:00   \e[2mNever ran\e[22m
+  \e[2mRoutines start on time only while `halonic routines watch` is running.\e[22m
 stderr:
 
 ## NO_COLOR: halonic routines
 exit 0
 stdout:
   Weekly report   Mondays at 09:00   Next 16 Nov 09:00   Never ran
+  Routines start on time only while `halonic routines watch` is running.
 stderr:
 
 ## --json: halonic routines

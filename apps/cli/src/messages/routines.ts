@@ -41,6 +41,9 @@ export const routinesMessages = defineMessages("routines", {
     dim("Add one as workflows/routines/<id>.routine.yaml in a hub."),
   ],
 
+  /** The dim line under the list: a routine starts on time only while `watch` runs. */
+  watchHint: () => [dim("Routines start on time only while `halonic routines watch` is running.")],
+
   /** `watch`'s line in `halonic routines --help`. */
   watchSummary: () => phrase`Start the routines on time until you stop it`,
   /** What `watch` was doing, for "✕ Couldn't watch the routines in acme: …". */

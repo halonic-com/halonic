@@ -23,6 +23,7 @@ import { routinesCommandWith } from "./command.ts";
 
 /** The Acme example, with its Weekly report routine on Mondays at 09:00. */
 const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import.meta.url));
+const hint = "Routines start on time only while `halonic routines watch` is running.";
 const golden = (name: string) => join(import.meta.dirname, "golden", name);
 
 let acmeRuns: AcmeRuns;
@@ -115,6 +116,7 @@ verifies("cli.commands.routines.list", () => {
       expect(code).toBe(exitCode.ok);
       expect(io.stdout).toEqual([
         "Morning check   Daily at 08:00   Next tomorrow 08:00   Never ran",
+        hint,
       ]);
     });
 
@@ -123,7 +125,7 @@ verifies("cli.commands.routines.list", () => {
 
       const { io } = await routinesIn();
 
-      expect(io.stdout).toEqual(["Hourly check   Every hour (UTC)   Next 13:00   Never ran"]);
+      expect(io.stdout).toEqual(["Hourly check   Every hour (UTC)   Next 13:00   Never ran", hint]);
     });
 
     it("says Off for a routine that's off, whatever its trigger", async () => {
@@ -133,7 +135,7 @@ verifies("cli.commands.routines.list", () => {
 
       const { io } = await routinesIn();
 
-      expect(io.stdout).toEqual(["Paused check   Every 15 minutes   Off   Never ran"]);
+      expect(io.stdout).toEqual(["Paused check   Every 15 minutes   Off   Never ran", hint]);
     });
 
     it("says No set time for a routine no clock starts", async () => {
@@ -141,7 +143,7 @@ verifies("cli.commands.routines.list", () => {
 
       const { io } = await routinesIn();
 
-      expect(io.stdout).toEqual(["By hand   Manual only   No set time   Never ran"]);
+      expect(io.stdout).toEqual(["By hand   Manual only   No set time   Never ran", hint]);
     });
 
     it("gives the last run its start and the runs list's status", async () => {
@@ -159,6 +161,7 @@ verifies("cli.commands.routines.list", () => {
       // The waiting run started at 10:40, after the finished one at 10:31.
       expect(io.stdout).toEqual([
         "Morning check   Daily at 08:00   Next tomorrow 08:00   Last 10:40 · ! Needs you",
+        hint,
       ]);
     });
 
@@ -173,6 +176,7 @@ verifies("cli.commands.routines.list", () => {
       expect(io.stdout).toEqual([
         "Hourly check   Every hour (UTC)   Next 13:00    Never ran",
         "By hand        Manual only        No set time   Never ran",
+        hint,
       ]);
     });
 
@@ -194,6 +198,7 @@ verifies("cli.commands.routines.list", () => {
       expect(io.stdout).toEqual([
         "Morning check reports   Manual only      No set time           Never ran",
         "Morning check support   Daily at 08:00   Next tomorrow 08:00   Never ran",
+        hint,
       ]);
     });
 
@@ -208,6 +213,7 @@ verifies("cli.commands.routines.list", () => {
       expect(io.stdout).toEqual([
         "By hand support   Manual only   No set time   Never ran",
         "By hand           Manual only   No set time   Never ran",
+        hint,
       ]);
     });
   });
