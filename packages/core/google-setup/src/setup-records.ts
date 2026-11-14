@@ -1,5 +1,6 @@
 import type { Clock, IdGenerator, RecordStore } from "@halonicjs/ports";
 import type { AccountType } from "./account-type.ts";
+import { type ConnectorLink, isConnectorLink } from "./connector-link.ts";
 import type { RefreshRefusal } from "./refresh-answer.ts";
 import { editedValues, type SetupEdit } from "./setup-edit.ts";
 import type { SetupRoute } from "./setup-input.ts";
@@ -33,6 +34,8 @@ export interface SetupRecordsOptions {
 export interface NewSetup {
   readonly route: SetupRoute;
   readonly accountType: AccountType;
+  /** The connector this setup is for. */
+  readonly connector: ConnectorLink;
 }
 
 /**
@@ -40,7 +43,12 @@ export interface NewSetup {
  * D5). It never holds a secret or a token: see `SetupValues`.
  */
 export interface SetupRecords {
-  /** Starts a record under a new random account ref. */
+  /**
+   * Starts a record under a new random account ref.
+   *
+   * @throws SetupRecordError `refused` when the connector link breaks the
+   *   name rules; nothing is written then
+   */
   start(setup: NewSetup): Promise<SetupRecord>;
 
   /**
@@ -60,6 +68,14 @@ export interface SetupRecords {
    *   edit would make an invalid record; nothing is written then
    */
   update(accountRef: string, edit: SetupEdit): Promise<SetupRecord>;
+
+  /**
+   * The setup of one connector in one workspace, or `null` when it has none.
+   * Both parts of the link must match, so a record for workspace A's `gmail`
+   * is never the answer for workspace B's `gmail`. When a connector has more
+   * than one record, the one started last wins.
+   */
+  forConnector(workspace: string, id: string): Promise<SetupRecord | null>;
 
   /** The records whose client secret is the one under this ref: "Used by x and y". */
   usingClient(clientRef: string): Promise<SetupRecord[]>;
@@ -110,7 +126,7 @@ export interface SetupRecords {
  *
  * @example
  * const setups = setupRecords({ records, clock, ids });
- * const { accountRef } = await setups.start({ route, accountType: "personal" });
+ * const { accountRef } = await setups.start({ route, accountType: "personal", connector });
  * await setups.update(accountRef, { kind: "step-done", step: "project" });
  */
 export function setupRecords(options: SetupRecordsOptions): SetupRecords {
@@ -119,11 +135,15 @@ export function setupRecords(options: SetupRecordsOptions): SetupRecords {
 
   return {
     async start(setup) {
+      if (!isConnectorLink(setup.connector)) {
+        throw new SetupRecordError("refused");
+      }
       const now = clock.now().toISOString();
       const values: SetupValues = {
         route: setup.route,
         accountType: setup.accountType,
         startedAt: now,
+        connector: { workspace: setup.connector.workspace, id: setup.connector.id },
         projectId: null,
         stepsDone: {},
         inProductionTickedAt: null,
@@ -158,6 +178,8 @@ export function setupRecords(options: SetupRecordsOptions): SetupRecords {
       const now = clock.now().toISOString();
       return stored.write(accountRef, values, editedValues(values, edit, now), now);
     },
+
+    forConnector: (workspace, id) => stored.forConnector({ workspace, id }),
 
     usingClient: (clientRef) => stored.usingClient(clientRef),
 

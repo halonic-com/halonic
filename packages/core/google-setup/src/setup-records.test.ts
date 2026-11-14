@@ -15,6 +15,9 @@ const fakeSecret = "fake-client-secret-one";
 
 const route: SetupRoute = { app: "own", runsOn: "this-computer" };
 
+/** An invented connector for the setups these tests start. */
+const connector = { workspace: "0123456789abcdef0123456789abcdef", id: "gmail" };
+
 const ledgerEnableUrl =
   "https://console.cloud.google.com/apis/library/ledger.googleapis.com?project=halonic-x1";
 
@@ -77,12 +80,13 @@ async function errorOf(call: Promise<unknown>): Promise<SetupRecordError> {
 verifies("google-setup.setup-record", () => {
   it("starts a record under a new account ref in _google_setups", async () => {
     const setups = newSetups();
-    const setup = await setups.start({ route, accountType: "personal" });
+    const setup = await setups.start({ route, accountType: "personal", connector });
     expect(setup).toEqual({
       accountRef: "gaccount_1",
       route,
       accountType: "personal",
       startedAt: "2026-01-01T00:00:00.000Z",
+      connector,
       projectId: null,
       stepsDone: {},
       inProductionTickedAt: null,
@@ -100,7 +104,7 @@ verifies("google-setup.setup-record", () => {
 
   it("stamps each step with its own time, and reopening one drops only its tick", async () => {
     const setups = newSetups();
-    const { accountRef } = await setups.start({ route, accountType: "workspace" });
+    const { accountRef } = await setups.start({ route, accountType: "workspace", connector });
     await setups.update(accountRef, { kind: "step-done", step: "project" });
     const both = await setups.update(accountRef, { kind: "step-done", step: "apis" });
     expect(both.stepsDone).toEqual({
@@ -113,7 +117,7 @@ verifies("google-setup.setup-record", () => {
 
   it("saves the setup values each edit changes, and they read back the same", async () => {
     const setups = newSetups();
-    const { accountRef } = await setups.start({ route, accountType: "workspace" });
+    const { accountRef } = await setups.start({ route, accountType: "workspace", connector });
     await setups.update(accountRef, { kind: "account-type", accountType: "personal" });
     await setups.update(accountRef, { kind: "project-id", projectId: "halonic-x1" });
     await setups.update(accountRef, { kind: "in-production", ticked: true });
@@ -145,7 +149,7 @@ verifies("google-setup.setup-record", () => {
 
   it("keeps each of B3's check kinds with its fields and reads it back the same", async () => {
     const setups = newSetups();
-    const { accountRef } = await setups.start({ route, accountType: "personal" });
+    const { accountRef } = await setups.start({ route, accountType: "personal", connector });
     for (const [index, result] of everyKind.entries()) {
       await setups.update(accountRef, {
         kind: "service-checked",
@@ -165,7 +169,7 @@ verifies("google-setup.setup-record", () => {
 
   it("keeps the last sign-in when one comes back, and only clears the wait when one is dropped", async () => {
     const setups = newSetups();
-    const { accountRef } = await setups.start({ route, accountType: "personal" });
+    const { accountRef } = await setups.start({ route, accountType: "personal", connector });
     const waiting = await setups.update(accountRef, { kind: "sign-in-started" });
     expect(waiting.signInStartedAt).toBe("2026-01-01T00:00:01.000Z");
 
@@ -185,8 +189,8 @@ verifies("google-setup.setup-record", () => {
 
   it("lists every record and reads an unknown account ref as null", async () => {
     const setups = newSetups();
-    await setups.start({ route, accountType: "personal" });
-    await setups.start({ route, accountType: "workspace" });
+    await setups.start({ route, accountType: "personal", connector });
+    await setups.start({ route, accountType: "workspace", connector });
     expect((await setups.list()).map((setup) => setup.accountRef)).toEqual([
       "gaccount_1",
       "gaccount_2",
@@ -205,12 +209,13 @@ verifies("google-setup.setup-record", () => {
 
 verifies("google-setup.setup-record-holds-no-secret", () => {
   it("holds exactly the listed values, so there is no place for a secret or a token", async () => {
-    const setup = await newSetups().start({ route, accountType: "personal" });
+    const setup = await newSetups().start({ route, accountType: "personal", connector });
     expect(Object.keys(setup).sort()).toEqual([
       "accountRef",
       "accountType",
       "clientId",
       "clientSecret",
+      "connector",
       "inProductionTickedAt",
       "lastSignInAt",
       "projectId",
@@ -225,7 +230,7 @@ verifies("google-setup.setup-record-holds-no-secret", () => {
 
   it("refuses a client secret as the client ID, writes nothing and doesn't repeat it", async () => {
     const setups = newSetups();
-    const { accountRef } = await setups.start({ route, accountType: "personal" });
+    const { accountRef } = await setups.start({ route, accountType: "personal", connector });
     const written = records.log.length;
     for (const clientId of [fakeSecret, `GOCSPX-${fakeSecret}`]) {
       const error = await errorOf(setups.update(accountRef, { kind: "client-id", clientId }));
@@ -237,7 +242,7 @@ verifies("google-setup.setup-record-holds-no-secret", () => {
 
   it("refuses refs, project IDs and service ids that break their rules", async () => {
     const setups = newSetups();
-    const { accountRef } = await setups.start({ route, accountType: "personal" });
+    const { accountRef } = await setups.start({ route, accountType: "personal", connector });
     const written = records.log.length;
     const refused = [
       setups.update(accountRef, { kind: "client-secret-saved", clientRef: "gclient_1_staged" }),
@@ -257,7 +262,7 @@ verifies("google-setup.setup-record-holds-no-secret", () => {
 
   it("refuses a check result with free text, another link or an extra key, and writes nothing", async () => {
     const setups = newSetups();
-    const { accountRef } = await setups.start({ route, accountType: "personal" });
+    const { accountRef } = await setups.start({ route, accountType: "personal", connector });
     const written = records.log.length;
     // Each holds the fake secret, so the test also shows no message repeats it.
     const refused = [
@@ -281,7 +286,7 @@ verifies("google-setup.setup-record-holds-no-secret", () => {
 
   it("refuses an apiOff result that is only part there or a scope list that is empty", async () => {
     const setups = newSetups();
-    const { accountRef } = await setups.start({ route, accountType: "personal" });
+    const { accountRef } = await setups.start({ route, accountType: "personal", connector });
     const { enableUrl: _link, ...withoutLink } = ledgerApiOff;
     const refused: readonly ServiceCheckOutcome[] = [
       withoutLink,
@@ -301,8 +306,8 @@ verifies("google-setup.setup-record-holds-no-secret", () => {
 
   it("reports a stored record with an extra value as damaged and leaves it out of the list", async () => {
     const setups = newSetups();
-    const { accountRef } = await setups.start({ route, accountType: "personal" });
-    await setups.start({ route, accountType: "workspace" });
+    const { accountRef } = await setups.start({ route, accountType: "personal", connector });
+    await setups.start({ route, accountType: "workspace", connector });
     records.log.push({
       at: "2026-01-01T00:01:00.000Z",
       collection: "_google_setups",
@@ -322,8 +327,8 @@ verifies("google-setup.setup-record-holds-no-secret", () => {
 
   it("reports a stored apiOff result with another host as damaged and leaves it out of the list", async () => {
     const setups = newSetups();
-    const { accountRef } = await setups.start({ route, accountType: "personal" });
-    await setups.start({ route, accountType: "workspace" });
+    const { accountRef } = await setups.start({ route, accountType: "personal", connector });
+    await setups.start({ route, accountType: "workspace", connector });
     const otherHost = { ...ledgerApiOff, api: `${fakeSecret}.example.com` };
     records.log.push({
       at: "2026-01-01T00:01:00.000Z",
@@ -352,7 +357,7 @@ describe("setup records and other collections", () => {
       op: "add",
       values: {},
     });
-    await setups.start({ route, accountType: "personal" });
+    await setups.start({ route, accountType: "personal", connector });
     expect(await setups.list()).toHaveLength(1);
     expect(records.log.filter((change) => change.collection !== "_google_setups")).toHaveLength(1);
   });

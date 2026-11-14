@@ -1,4 +1,5 @@
 import { foldRecords, type RecordStore } from "@halonicjs/ports";
+import type { ConnectorLink } from "./connector-link.ts";
 import type { RecordUpdate } from "./refresh-refused.ts";
 import {
   parseSetupValues,
@@ -35,6 +36,9 @@ export interface StoredSetups {
 
   /** Every valid record. A damaged one is left out. */
   listValid(): Promise<SetupRecord[]>;
+
+  /** The valid record linked to this connector; the one started last when there are several. */
+  forConnector(link: ConnectorLink): Promise<SetupRecord | null>;
 
   /** The valid records whose client secret is the one under this ref. */
   usingClient(clientRef: string): Promise<SetupRecord[]>;
@@ -139,6 +143,18 @@ export function storedSetups(records: RecordStore): StoredSetups {
     },
 
     listValid,
+
+    async forConnector(link) {
+      const linked = (await listValid()).filter(
+        ({ connector }) => connector.workspace === link.workspace && connector.id === link.id,
+      );
+      // ISO times sort as text; a tie keeps the later record in the log.
+      const latest = linked.reduce<SetupRecord | null>(
+        (best, setup) => (best === null || setup.startedAt >= best.startedAt ? setup : best),
+        null,
+      );
+      return latest;
+    },
 
     async usingClient(clientRef) {
       return (await listValid()).filter((setup) => setup.clientSecret?.clientRef === clientRef);

@@ -14,6 +14,9 @@ const fakeRefreshToken = "fake-refresh-token";
 const fakeSecret = "fake-client-secret-one";
 
 const route: SetupRoute = { app: "own", runsOn: "this-computer" };
+
+/** An invented connector for the setups these tests start. */
+const connector = { workspace: "0123456789abcdef0123456789abcdef", id: "gmail" };
 const signInRefused = { kind: "signInRefused" } as const;
 const clientRefused = { kind: "clientRefused" } as const;
 
@@ -40,7 +43,7 @@ function fixture(): Fixture {
 
 /** A personal account signed in with the client secret under `clientRef`. */
 async function signedIn(setups: SetupRecords, clientRef: string): Promise<string> {
-  const { accountRef } = await setups.start({ route, accountType: "personal" });
+  const { accountRef } = await setups.start({ route, accountType: "personal", connector });
   await setups.update(accountRef, { kind: "client-secret-saved", clientRef });
   await setups.update(accountRef, { kind: "signed-in" });
   return accountRef;
@@ -79,7 +82,7 @@ verifies("google-setup.refresh-refused", () => {
 
   it("reads a record written before the field as not refused, and fails a malformed one", async () => {
     const { records, setups } = fixture();
-    const { accountRef } = await setups.start({ route, accountType: "personal" });
+    const { accountRef } = await setups.start({ route, accountType: "personal", connector });
     const added = records.log[0];
     if (added?.values == null) {
       throw new Error("expected the record's add");

@@ -42,6 +42,7 @@ async function newAccount(): Promise<string> {
   const record = await openGoogleHost(setup).setups.start({
     route: { app: "own", runsOn: "this-computer" },
     accountType: "personal",
+    connector: { workspace: "0123456789abcdef0123456789abcdef", id: "gmail" },
   });
   return record.accountRef;
 }

@@ -1,5 +1,6 @@
 import { type Infer, parse, s } from "@halonicjs/schema-kit";
 import { isReasonCode } from "./check-answer.ts";
+import { connectorIdPattern, workspaceKeyPattern } from "./connector-link.ts";
 import { enableApiUrl, isApiHost, isProjectId } from "./console-links.ts";
 import type { StepId } from "./setup-step.ts";
 import { isSetupRef } from "./store-names.ts";
@@ -173,6 +174,13 @@ const setupValues = s
     accountType: s.enum(["workspace", "personal"]),
     /** When the setup was started, for "You started this on 8 Nov". */
     startedAt: time,
+    /** The connector this account's setup belongs to (see `ConnectorLink`). */
+    connector: s
+      .object({
+        workspace: s.string().regex(workspaceKeyPattern),
+        id: s.string().regex(connectorIdPattern),
+      })
+      .strict(),
     projectId: s.string().refine(isProjectId).nullable(),
     stepsDone: s.object(stepTicks).strict(),
     /** When the user ticked "In production" (personal accounts, step 3). */
