@@ -148,18 +148,23 @@ describe("a program trying to get out of the MXC fence", () => {
     // never the value. This records the result; it doesn't judge it yet (HAL-9368).
     const target = "mxc-a36-canary";
     const value = randomBytes(16).toString("hex");
+    // No Add-Type: the box has no PowerShell cmdlets for it, so the call is declared by reflection.
     const readCredential = [
-      "$stage = 'compile'",
+      "$stage = 'declare'",
       "try {",
-      "Add-Type -Namespace Canary -Name Cred -MemberDefinition @'",
-      '[DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]',
-      "public static extern bool CredReadW(string target, int type, int flags, out System.IntPtr credential);",
-      "'@",
+      "$builder = [AppDomain]::CurrentDomain.DefineDynamicAssembly([Reflection.AssemblyName]::new('canary'), 'Run')",
+      "$type = $builder.DefineDynamicModule('canary').DefineType('Cred', 'Public,Class')",
+      "$read = $type.DefinePInvokeMethod('CredReadW', 'advapi32.dll', 'Public,Static,PinvokeImpl', 'Standard', [bool], @([string], [int], [int], [IntPtr].MakeByRefType()), 'Winapi', 'Unicode')",
+      "$read.SetImplementationFlags('PreserveSig')",
+      "$last = $type.DefinePInvokeMethod('GetLastError', 'kernel32.dll', 'Public,Static,PinvokeImpl', 'Standard', [int], @(), 'Winapi', 'Unicode')",
+      "$last.SetImplementationFlags('PreserveSig')",
+      "$made = $type.CreateType()",
       "$stage = 'read'",
-      "$pointer = [System.IntPtr]::Zero",
-      `if ([Canary.Cred]::CredReadW('${target}', 1, 0, [ref]$pointer)) { 'read ok' }`,
-      "else { 'read failed ' + [System.Runtime.InteropServices.Marshal]::GetLastWin32Error() }",
+      `$arguments = [object[]]@('${target}', 1, 0, [IntPtr]::Zero)`,
+      "if ($made.GetMethod('CredReadW').Invoke($null, $arguments)) { 'read ok' }",
+      "else { 'read failed ' + $made.GetMethod('GetLastError').Invoke($null, @()) }",
       "} catch { 'script failed at ' + $stage + ': ' + $_.Exception.GetType().Name + ' ' + $_.Exception.Message.Substring(0, [Math]::Min(200, $_.Exception.Message.Length)) }",
+      `'listed by cmdkey: ' + [bool]((cmdkey /list:${target} 2>&1 | Out-String) -match '${target}')`,
     ].join("\n");
     const encoded = Buffer.from(readCredential, "utf16le").toString("base64");
     execFileSync("cmdkey", [`/generic:${target}`, "/user:canary", `/pass:${value}`], {
