@@ -54,3 +54,30 @@ export const REASONING_EFFORT = "Reasoning effort";
 export const TUNING_HINT = "Empty means the provider's default.";
 export const STOP_HINT = "One stop sequence per line. Empty means the provider's default.";
 export const PROVIDER_DEFAULT = "Provider default";
+
+export const KEY = "Key";
+export const KEY_NOT_NEEDED = "No key needed.";
+export const KEY_SET = "● Key set";
+export const KEY_MISSING = "○ No key";
+export const KEY_REPLACE = "Replace it on the provider page ›";
+export const KEY_ADD = "Add it on the provider page ›";
+export const KEY_NO_WORKSPACE = "○ No key. Open a workspace to add it.";
+export const KEY_UNKNOWN = "Couldn't check for a key.";
+export const KEY_SERVED_SET = "Set on the computer running Halonic";
+export const KEY_SERVED_MISSING = "No key on the computer running Halonic";
+
+/** The tail of the key line when no provider of the open workspace uses the secret name. */
+export function keyAddProvider(workspace: string): string {
+  return `Add a provider that uses the secret name to ${workspace} ›`;
+}
+
+/** The warning above the fields (`settings.ai-agent.local-only-warning`). */
+export function localOnlyWarning(workspace: string): string {
+  return `${workspace} is local only, so it can't use this cloud model.`;
+}
+
+/** The line when the open workspace sets its own assistant model. */
+export function setsItsOwn(workspace: string, model: string): string {
+  return `${workspace} sets its own assistant model (${model}).`;
+}
+export const WORKSPACE_SETTINGS = "Workspace settings ›";
