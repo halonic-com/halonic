@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { FileAgentPlacementStore } from "@halonicjs/adapter-fs-node";
@@ -223,9 +224,10 @@ verifies("cli.commands.serve.harness", () => {
         return summary.status === "completed";
       }, slowTest);
       expect(fenced).toHaveLength(1);
-      const workingFolder = fenced[0]?.workingFolder ?? "";
-      expect(workingFolder).toContain(acmeRuns.folder);
-      expect(workingFolder.startsWith(acmeRuns.acme)).toBe(false);
+      // Windows may give a temp folder as its 8.3 short name, so compare real paths.
+      const workingFolder = realpathSync.native(fenced[0]?.workingFolder ?? "");
+      expect(workingFolder).toContain(realpathSync.native(acmeRuns.folder));
+      expect(workingFolder.startsWith(realpathSync.native(acmeRuns.acme))).toBe(false);
     },
   );
 
