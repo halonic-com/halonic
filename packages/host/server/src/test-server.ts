@@ -105,6 +105,20 @@ export class FakeCoordination implements Partial<Coordination> {
   }
 }
 
+/** The ports a test may leave out: only the ones it passed in are set. */
+function optionalPorts(
+  options: Pick<ServerPorts, "google" | "connectors" | "workspace" | "studioPage" | "requestLog">,
+): Partial<ServerPorts> {
+  const { google, connectors, workspace, studioPage, requestLog } = options;
+  return {
+    ...(google === undefined ? {} : { google }),
+    ...(connectors === undefined ? {} : { connectors }),
+    ...(workspace === undefined ? {} : { workspace }),
+    ...(studioPage === undefined ? {} : { studioPage }),
+    ...(requestLog === undefined ? {} : { requestLog }),
+  };
+}
+
 /** A server built from fakes, for tests. `passwordHash` null means no password is configured. */
 export function testServer(options: {
   passwordHash: string | null;
@@ -140,11 +154,7 @@ export function testServer(options: {
     webhooks: options.webhooks ?? { find: async () => null },
     requestCounts: options.requestCounts ?? unusedPort("requestCounts"),
     errorLog: options.errorLog ?? { record: () => {} },
-    ...(options.google === undefined ? {} : { google: options.google }),
-    ...(options.connectors === undefined ? {} : { connectors: options.connectors }),
-    ...(options.workspace === undefined ? {} : { workspace: options.workspace }),
-    ...(options.studioPage === undefined ? {} : { studioPage: options.studioPage }),
-    ...(options.requestLog === undefined ? {} : { requestLog: options.requestLog }),
+    ...optionalPorts(options),
     clock,
     ids: { next: (prefix) => `${prefix}_1` },
   };
