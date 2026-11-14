@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-619; plan 4.4; root `AGENTS.md` ("fake timers instead of sleeps")
 
-The Node scheduler shall wake itself with the timer function it was given, set for the earlier of the next due timer and the next tick, so nothing has to call it. After `close`, it shall set no more wake-ups and deliver nothing more, and `close` shall resolve once the deliveries in progress have settled.
+The Node scheduler shall wake itself with the timer function it was given, set for the earlier of the next due timer and the next tick, so nothing has to call it. After `close`, it shall set no more wake-ups and deliver nothing more, `schedule` and `cancel` shall reject with a "scheduler is closed" error and write nothing, and `close` shall resolve once the deliveries in progress have settled.
 
 ## Examples
 
