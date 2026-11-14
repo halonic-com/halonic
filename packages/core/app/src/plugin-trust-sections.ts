@@ -24,7 +24,7 @@ export const pluginTrustSectionOrder: readonly PluginTrustSection[] = [
 /** Each section's heading, word for word from the design. Studio adds the count after it. */
 export const pluginTrustSectionHeadings: Readonly<Record<PluginTrustSection, string>> = {
   tools: "Tools for agents",
-  programs: "Programs on this computer",
+  programs: "Programs",
   secrets: "Secrets",
   addresses: "Addresses",
   "in-studio": "In Studio",

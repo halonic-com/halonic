@@ -2,7 +2,7 @@
 // before it asks (cli-output 3.6): the same sections, headings and order as
 // Studio's trust check (microcopy 24 T6-T9, CHECK P8), taken from the shared
 // `pluginTrustSections` (app.plugin-trust-sections): Tools for agents,
-// Programs on this computer, Secrets, Addresses, then the last line. Studio's
+// Programs, Secrets, Addresses, then the last line. Studio's
 // "In Studio" section is left out: 0.1 has no Studio to draw the plugin's
 // settings, commands, cards or panel, and that part carries no code
 // (HAL-6417). Every word comes from the catalogue; this file only decides

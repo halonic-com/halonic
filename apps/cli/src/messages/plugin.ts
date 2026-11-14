@@ -48,7 +48,7 @@ export const pluginMessages = defineMessages("plugin", {
   sends: () => phrase`Sends`,
   /** After a tool that waits for a person: "post_alert · asks a person first". */
   asksFirst: () => phrase`asks a person first`,
-  programsHeading: () => phrase`Programs on this computer`,
+  programsHeading: () => phrase`Programs`,
   secretsHeading: () => phrase`Secrets`,
   /** After a secret's name: "goes only to api.weather.example". */
   secretGoesTo: (host: string) => phrase`goes only to ${host}`,
