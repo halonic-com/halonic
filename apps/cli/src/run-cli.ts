@@ -198,6 +198,11 @@ async function runCommandLine(
       debugging: options.debug,
       printAhead: (line) => printer.ahead(line),
       ask: (question) => printer.ask(question, watch.signal),
+      askSecret: async (prompt, refusal) => {
+        const value = await printer.askSecret(prompt, refusal, watch.signal);
+        if (value !== undefined) scrubber.remember(value);
+        return value;
+      },
       signal: watch.signal,
     };
     return await runCommand(path, pathArgs, context, printer, options, watch);

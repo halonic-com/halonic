@@ -31,6 +31,11 @@ export interface QuestionTerminal {
    * `signal` was aborted, which stops the reading.
    */
   readLine(signal?: AbortSignal): Promise<string | undefined>;
+  /**
+   * Like {@link readLine}, but what the user types isn't shown. Left out
+   * where the terminal can't hide it, which then asks nothing.
+   */
+  readSecret?(signal?: AbortSignal): Promise<string | undefined>;
 }
 
 /**
@@ -115,4 +120,33 @@ export async function askYesNo(
 function isYes(answer: string | undefined): boolean {
   const word = answer?.trim().toLowerCase();
   return word === "y" || word === "yes";
+}
+
+/**
+ * Asks for a value the user types without it being shown, such as a password,
+ * and returns it, or `undefined` when stdin ended before anything was typed.
+ * The prompt is written without a newline; the Enter isn't shown, so a newline
+ * follows the answer. It asks only where {@link Asking.canAsk} is true and the
+ * terminal can hide the answer; otherwise it asks nothing and throws `refusal`.
+ * Ctrl C or SIGTERM while it waits ends the prompt like a question (see
+ * `askYesNo`). An empty line is an empty answer, not `undefined`.
+ *
+ * @param signal - the command's stop signal; once aborted, nothing is asked
+ */
+export async function askSecret(
+  prompt: Message,
+  refusal: () => Error,
+  asking: Asking,
+  signal?: AbortSignal,
+): Promise<string | undefined> {
+  const { terminal } = asking;
+  if (!asking.canAsk || terminal.readSecret === undefined) {
+    throw refusal();
+  }
+  signal?.throwIfAborted();
+  terminal.write(asking.render(questionMessages.secret(prompt.phrase).phrase));
+  const answer = await terminal.readSecret(signal);
+  terminal.write("\n");
+  signal?.throwIfAborted();
+  return answer;
 }

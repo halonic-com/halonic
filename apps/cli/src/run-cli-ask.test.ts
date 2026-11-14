@@ -20,6 +20,7 @@ const testMessages = defineMessages("test", {
   trusted: () => phrase`${markPart("done")} Trusted Acme.`,
   notTrusted: () => phrase`Left Acme untrusted.`,
   checking: () => phrase`Check Acme`,
+  password: () => phrase`Password`,
 });
 
 /** `trust`'s refusal without a terminal: the reason, then the flags, and exit 3 (F6). */
@@ -162,5 +163,56 @@ verifies("cli.questions", () => {
       "live (erase)",
       "ask Trust Acme on this computer? [y/N] ",
     ]);
+  });
+});
+
+verifies("cli.secret-prompt", () => {
+  const passwordCommand: CliCommand = {
+    ...trustCommand,
+    name: "password",
+    async run(_input, context) {
+      const value = await context.askSecret(testMessages.password(), notTrusted);
+      throw new Error(`The password ${value} was refused.`);
+    },
+  };
+
+  it("scrubs a typed value from the error the command then fails with", async () => {
+    const io = captureIo("/work");
+    const { terminal, written } = terminalTyping();
+    const hiding: Terminal = {
+      ...terminal,
+      questions: {
+        write: (text) => written.push(text),
+        readLine: async () => undefined,
+        readSecret: async () => "hunter2-hunter2",
+      },
+    };
+    expect(await runCli(["password"], io, [passwordCommand], { terminal: hiding })).toBe(
+      exitCode.failed,
+    );
+    expect(written).toEqual(["Password: ", "\n"]);
+    expect(io.stderr.join("\n")).not.toContain("hunter2-hunter2");
+  });
+
+  it("asks nothing and refuses with --json, in CI or when the terminal can't hide the answer", async () => {
+    const cases = [
+      { args: ["password", "--json"], env: {}, hides: true },
+      { args: ["password"], env: { CI: "true" }, hides: true },
+      { args: ["password"], env: {}, hides: false },
+    ];
+    for (const { args, env, hides } of cases) {
+      const io = captureIo("/work");
+      const { terminal, written } = terminalTyping("y");
+      const questions: QuestionTerminal = {
+        write: (text) => written.push(text),
+        readLine: async () => "y",
+        ...(hides ? { readSecret: async () => "hunter2" } : {}),
+      };
+      const there = { ...terminal, env: { ...terminal.env, ...env }, questions };
+      expect(await runCli(args, io, [passwordCommand], { terminal: there })).toBe(
+        exitCode.notTrusted,
+      );
+      expect(written).toEqual([]);
+    }
   });
 });

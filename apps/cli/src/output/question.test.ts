@@ -6,6 +6,7 @@ import { trustMessages } from "../messages/trust.ts";
 import { NotTrustedError } from "../not-trusted.ts";
 import {
   type AskInputs,
+  askSecret,
   askYesNo,
   canAsk,
   type Question,
@@ -143,5 +144,69 @@ verifies("cli.questions", () => {
         "there's no terminal to ask you",
       );
     });
+  });
+});
+
+const passwordPrompt = defineMessages("test", { password: () => phrase`Password` });
+
+/** A terminal that can hide the answer, where the user types `values`, one each. */
+function hiding(...values: string[]): QuestionTerminal & { readonly written: string[] } {
+  return { ...typing(), readSecret: async () => values.shift() };
+}
+
+verifies("cli.secret-prompt", () => {
+  const refusal = () => new Error("no terminal");
+  const asking = (terminal: QuestionTerminal, canAsk = true) => ({
+    canAsk,
+    terminal,
+    render: plainText,
+  });
+
+  it("writes the prompt, reads the value and ends the line itself", async () => {
+    const terminal = hiding("hunter2");
+    const value = await askSecret(passwordPrompt.password(), refusal, asking(terminal));
+    expect(value).toBe("hunter2");
+    expect(terminal.written).toEqual(["Password: ", "\n"]);
+  });
+
+  it("gives an empty value as empty and a stdin that ended as no value", async () => {
+    const terminal = hiding("");
+    expect(await askSecret(passwordPrompt.password(), refusal, asking(terminal))).toBe("");
+    expect(await askSecret(passwordPrompt.password(), refusal, asking(terminal))).toBeUndefined();
+  });
+
+  it("asks nothing and refuses when nobody can answer or the terminal can't hide the answer", async () => {
+    const cannotHide = typing("secret");
+    for (const [terminal, canAsk] of [
+      [hiding("secret"), false],
+      [cannotHide, true],
+    ] as const) {
+      await expect(
+        askSecret(passwordPrompt.password(), refusal, asking(terminal, canAsk)),
+      ).rejects.toThrow("no terminal");
+      expect(terminal.written).toEqual([]);
+    }
+  });
+
+  it("asks nothing once the signal is aborted, and ends the line when it is aborted while waiting", async () => {
+    const stopped = new AbortController();
+    stopped.abort();
+    const never = hiding("x");
+    await expect(
+      askSecret(passwordPrompt.password(), refusal, asking(never), stopped.signal),
+    ).rejects.toThrow();
+    expect(never.written).toEqual([]);
+    const waiting = new AbortController();
+    const terminal = {
+      ...typing(),
+      readSecret: async () => {
+        waiting.abort();
+        return undefined;
+      },
+    };
+    await expect(
+      askSecret(passwordPrompt.password(), refusal, asking(terminal), waiting.signal),
+    ).rejects.toThrow();
+    expect(terminal.written).toEqual(["Password: ", "\n"]);
   });
 });

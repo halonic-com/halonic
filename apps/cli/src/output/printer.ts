@@ -1,5 +1,6 @@
 import type { SecretScrubber } from "@halonicjs/std";
 import type { CliIo, CommandResult, StoppedResult } from "../command.ts";
+import type { Message } from "../messages/define.ts";
 import { type Phrase, phrase, renderPhrase } from "../messages/phrase.ts";
 import { stopMessages } from "../messages/stop.ts";
 import { NotTrustedError } from "../not-trusted.ts";
@@ -15,7 +16,7 @@ import { type Paint, paintFor } from "./paint.ts";
 import { printable } from "./printable.ts";
 import { printedAhead } from "./printed-ahead.ts";
 import { type Clock, type Progress, startProgress } from "./progress.ts";
-import { type Asking, askYesNo, type Question } from "./question.ts";
+import { type Asking, askSecret, askYesNo, type Question } from "./question.ts";
 import type { SharedLine } from "./shared-line.ts";
 import type { OutputStyle } from "./style.ts";
 
@@ -80,6 +81,16 @@ export interface Printer {
    * its answer ends and throws (see `askYesNo`).
    */
   ask(question: Question, signal?: AbortSignal): Promise<boolean>;
+  /**
+   * Asks for a value on stderr without showing what is typed (see
+   * `askSecret`). A live line is taken away first. Where nobody can answer it
+   * asks nothing and throws `refusal`.
+   */
+  askSecret(
+    prompt: Message,
+    refusal: () => Error,
+    signal?: AbortSignal,
+  ): Promise<string | undefined>;
 }
 
 export interface PrinterOptions {
@@ -203,6 +214,10 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
     ask(question, signal) {
       liveLine?.clear();
       return askYesNo(question, asking, signal);
+    },
+    askSecret(prompt, refusal, signal) {
+      liveLine?.clear();
+      return askSecret(prompt, refusal, asking, signal);
     },
   };
 }
