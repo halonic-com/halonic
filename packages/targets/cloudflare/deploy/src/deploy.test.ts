@@ -86,6 +86,8 @@ verifies("deploy.orchestrate", () => {
     expect(at("takeDeployLock")).toBeLessThan(at("applyMigration"));
     expect(at("applyMigration")).toBeLessThan(at("uploadVersion"));
     expect(calls.at(-1)).toMatch(/^releaseDeployLock/);
+    // `status` reads the commit and bundle back from this note.
+    expect(api.messages).toEqual([`halonic c0ffee ${hash.slice(0, 12)}`]);
   });
 
   it("asks for secrets before it creates anything", async () => {

@@ -10,6 +10,7 @@ import type {
   TokenStatus,
   WorkerUpload,
 } from "./api.ts";
+import { manageCalls } from "./client-manage-calls.ts";
 import { DeployError, redact } from "./errors.ts";
 import { deploymentBody, oneMigration, uploadForm } from "./upload-form.ts";
 
@@ -195,7 +196,7 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
 
   /** `undefined` for a 404 when `allowMissing` is set; otherwise the envelope. */
   async function request(
-    method: "GET" | "POST" | "PUT",
+    method: "GET" | "POST" | "PUT" | "DELETE",
     path: string,
     json?: unknown,
     allowMissing = false,
@@ -235,7 +236,16 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
     return `/accounts/${encodeURIComponent(accountId)}/workers/scripts/${encodeURIComponent(worker)}`;
   }
 
+  const { workersDevAddress, ...manage } = manageCalls({
+    get,
+    request,
+    failed,
+    workerPath,
+    databaseId,
+  });
+
   return {
+    ...manage,
     async listAccounts() {
       const accounts: CloudflareAccount[] = [];
       for (let page = 1; page <= maxAccountPages; page += 1) {
@@ -332,23 +342,6 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
       const id = await requireDatabase(accountId, databaseName);
       await query(accountId, id, `DELETE FROM ${lockTable} WHERE slot = 1 AND id = ?`, [leaseId]);
     },
-    async currentDeployment(accountId, worker) {
-      const body = await request(
-        "GET",
-        `${workerPath(accountId, worker)}/deployments`,
-        undefined,
-        true,
-      );
-      // Cloudflare lists the newest deployment first.
-      const latest = (body?.result as { deployments?: { versions?: unknown }[] } | undefined)
-        ?.deployments?.[0];
-      if (!latest || !Array.isArray(latest.versions)) return undefined;
-      return (latest.versions as { version_id?: unknown; percentage?: unknown }[]).flatMap((v) =>
-        typeof v.version_id === "string" && typeof v.percentage === "number"
-          ? [{ id: v.version_id, percentage: v.percentage }]
-          : [],
-      );
-    },
     async uploadVersion(accountId, worker, upload) {
       return withHidden(upload, async () => {
         const form = uploadForm(upload, {
@@ -376,6 +369,7 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
         // The tag marks the Worker as ours, so the next deploy doesn't refuse it.
         const form = uploadForm(upload, {
           tags: [markerTag],
+          ...(upload.message ? { annotations: { "workers/message": upload.message } } : {}),
           ...(migrations.length > 0 ? { migrations: oneMigration(migrations) } : {}),
         });
         await request("PUT", workerPath(accountId, worker), undefined, false, form);
@@ -403,12 +397,7 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
         enabled: true,
         previews_enabled: false,
       });
-      const body = await get(`/accounts/${encodeURIComponent(accountId)}/workers/subdomain`);
-      const subdomain = (body.result as { subdomain?: unknown } | undefined)?.subdomain;
-      if (typeof subdomain !== "string" || subdomain === "") {
-        throw failed("the account has no workers.dev subdomain");
-      }
-      return `https://${worker}.${subdomain}.workers.dev`;
+      return workersDevAddress(accountId, worker);
     },
     async applyMigration(accountId, databaseName, migration: Migration) {
       const id = await requireDatabase(accountId, databaseName);

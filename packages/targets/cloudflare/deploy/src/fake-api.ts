@@ -4,10 +4,13 @@ import type {
   DeployedVersion,
   DeployLease,
   FoundResource,
+  ListedResource,
   Migration,
   ResourceRef,
   TokenStatus,
+  VersionInfo,
 } from "./api.ts";
+import { DeployError } from "./errors.ts";
 
 /** What a fake Cloudflare knows. */
 export interface FakeCloudflareState {
@@ -31,6 +34,16 @@ export interface FakeCloudflareState {
   now?: () => number;
   /** The versions serving traffic; none means the Worker was never deployed. */
   deployment?: readonly DeployedVersion[];
+  /** Earlier deployments, newest first, after `deployment`. */
+  earlier?: readonly (readonly DeployedVersion[])[];
+  /** Version messages by version id. */
+  versionMessages?: Record<string, string>;
+  /** The workers.dev address is off. */
+  workersDevOff?: boolean;
+  /** What listing the account returns. */
+  listed?: readonly ListedResource[];
+  /** Deleting this bucket fails because it holds files. */
+  fullBucket?: string;
   /** The workers.dev address `openWorkersDev` returns. */
   workersDev?: string;
   /** Whether workers.dev is on before the deploy. Defaults to on. */
@@ -42,8 +55,11 @@ export interface FakeCloudflareState {
 }
 
 /** A {@link CloudflareApi} in memory that records each call, for tests of everything above the client. */
-export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & { calls: string[] } {
+export function fakeCloudflareApi(
+  state: FakeCloudflareState,
+): CloudflareApi & { calls: string[]; messages: (string | undefined)[] } {
   const calls: string[] = [];
+  const messages: (string | undefined)[] = [];
   const answer = (value: TokenStatus | Error | undefined): TokenStatus => {
     if (value instanceof Error) throw value;
     return value ?? { active: true };
@@ -61,30 +77,64 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
     if (state.failOnWrite) throw new Error(`unexpected write: ${call}`);
     calls.push(call);
   };
-  let deployment = state.deployment;
+  const history: (readonly DeployedVersion[])[] = [
+    ...(state.deployment ? [state.deployment] : []),
+    ...(state.earlier ?? []),
+  ];
+  const deploy = (next: readonly DeployedVersion[]) => history.unshift(next);
   let versions = 0;
   let workersDevOn = state.workersDevOn ?? true;
   return {
     calls,
+    messages,
     async currentDeployment() {
       calls.push("currentDeployment");
-      return deployment;
+      return history[0];
+    },
+    async deploymentHistory() {
+      calls.push("deploymentHistory");
+      return [...history];
+    },
+    async versionInfo(_accountId, _worker, versionId): Promise<VersionInfo | undefined> {
+      calls.push(`versionInfo ${versionId}`);
+      const message = state.versionMessages?.[versionId];
+      return message === undefined ? undefined : { id: versionId, message, createdAt: 1_000 };
+    },
+    async workersDevUrl(_accountId, worker) {
+      calls.push(`workersDevUrl ${worker}`);
+      return state.workersDevOff
+        ? undefined
+        : (state.workersDev ?? `https://${worker}.test.workers.dev`);
+    },
+    async listResources(_accountId, kind, prefix) {
+      calls.push(`listResources ${kind} ${prefix}`);
+      return (state.listed ?? []).filter((r) => r.kind === kind && r.name.startsWith(prefix));
+    },
+    async deleteResource(_accountId, ref) {
+      if (state.failOnWrite) throw new Error(`unexpected write: deleteResource ${key(ref)}`);
+      if (ref.kind === "bucket" && state.fullBucket === ref.name) {
+        throw new DeployError("bucket-not-empty", `Bucket ${ref.name} still holds files.`);
+      }
+      calls.push(`deleteResource ${key(ref)}`);
+      delete resources[key(ref)];
     },
     async uploadVersion(_accountId, worker, upload) {
       lockWrite(`uploadVersion ${worker}`);
       versions += 1;
+      messages.push(upload.message);
       calls.push(`secrets ${Object.keys(upload.secrets).sort().join(",")}`);
       return `v${versions}`;
     },
     async uploadWorkerLive(_accountId, worker, upload, migrations) {
       lockWrite(`uploadWorkerLive ${worker} ${migrations.map((m) => m.tag).join(",")}`);
       calls.push(`secrets ${Object.keys(upload.secrets).sort().join(",")}`);
+      messages.push(upload.message);
       versions += 1;
-      deployment = [{ id: `v${versions}`, percentage: 100 }];
+      deploy([{ id: `v${versions}`, percentage: 100 }]);
     },
     async deployVersions(_accountId, _worker, next) {
       lockWrite(`deployVersions ${next.map((v) => `${v.id}:${v.percentage}`).join(",")}`);
-      deployment = next;
+      deploy(next);
     },
     async workersDevEnabled() {
       calls.push("workersDevEnabled");

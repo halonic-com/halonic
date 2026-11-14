@@ -83,6 +83,22 @@ export interface DeployedVersion {
   readonly percentage: number;
 }
 
+/** One version Cloudflare knows, with the note the deploy left on it. */
+export interface VersionInfo {
+  readonly id: string;
+  /** The version's message, as the deploy wrote it (see `versionNote`). */
+  readonly message?: string;
+  /** When it was uploaded, in milliseconds since the epoch. */
+  readonly createdAt?: number;
+}
+
+/** A resource found by listing an account, with when it was made. */
+export interface ListedResource {
+  readonly kind: ResourceKind;
+  readonly name: string;
+  readonly createdAt: number;
+}
+
 /**
  * The Cloudflare calls the deploy makes. Everything above the client depends on this port, so
  * it tests with a fake and no network. Later steps add their calls here.
@@ -159,4 +175,29 @@ export interface CloudflareApi {
   openWorkersDev(accountId: string, worker: string): Promise<string>;
   /** Turns the workers.dev address off again, with preview addresses off. */
   closeWorkersDev(accountId: string, worker: string): Promise<void>;
+
+  /** Every deployment of the Worker, newest first; empty when it has none or doesn't exist. */
+  deploymentHistory(
+    accountId: string,
+    worker: string,
+  ): Promise<readonly (readonly DeployedVersion[])[]>;
+  /** One version's message and upload time; `undefined` when Cloudflare doesn't know it. Reads only. */
+  versionInfo(
+    accountId: string,
+    worker: string,
+    versionId: string,
+  ): Promise<VersionInfo | undefined>;
+  /** The Worker's workers.dev URL, or `undefined` when that address is off. Unlike `openWorkersDev`, changes nothing. */
+  workersDevUrl(accountId: string, worker: string): Promise<string | undefined>;
+  /** Every Worker, database or bucket in the account whose name starts with `prefix`. Reads only. */
+  listResources(
+    accountId: string,
+    kind: ResourceKind,
+    prefix: string,
+  ): Promise<readonly ListedResource[]>;
+  /**
+   * Deletes a Worker, database or bucket by name; nothing happens when it is already gone.
+   * A bucket that still holds objects is refused with `bucket-not-empty`.
+   */
+  deleteResource(accountId: string, ref: ResourceRef): Promise<void>;
 }

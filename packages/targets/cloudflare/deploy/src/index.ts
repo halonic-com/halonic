@@ -6,11 +6,13 @@ export type {
   DeployLeaseRequest,
   DurableObjectMigration,
   FoundResource,
+  ListedResource,
   Migration,
   ResourceKind,
   ResourceRef,
   TokenKind,
   TokenStatus,
+  VersionInfo,
   WorkerBinding,
   WorkerUpload,
 } from "./api.ts";
@@ -27,6 +29,8 @@ export type {
   DeploySource,
 } from "./deploy.ts";
 export { deploy } from "./deploy.ts";
+export type { DestroyOptions, DestroyResult, DestroyStep } from "./destroy.ts";
+export { destroy } from "./destroy.ts";
 export type { DeployErrorCode } from "./errors.ts";
 export {
   DeployError,
@@ -41,6 +45,14 @@ export type { MigrateOptions } from "./migrate.ts";
 export { migrate } from "./migrate.ts";
 export type { ProvisionAction, ProvisionOptions, ProvisionStep } from "./provision.ts";
 export { provision, resourcesFor } from "./provision.ts";
+export type { RollbackOptions, RollbackResult } from "./rollback.ts";
+export { rollback } from "./rollback.ts";
+export type { DeployStatus, Health, StatusOptions, StatusVersion } from "./status.ts";
+export { status } from "./status.ts";
+export type { CloudflareSweeper } from "./sweeper.ts";
+export { cloudflareSweeper } from "./sweeper.ts";
 export { tokenKind } from "./token.ts";
 export type { UploadAndSwitchOptions, UploadProgress } from "./upload.ts";
 export { uploadAndSwitch } from "./upload.ts";
+export type { VersionNote } from "./version-note.ts";
+export { parseVersionNote, versionNote } from "./version-note.ts";
