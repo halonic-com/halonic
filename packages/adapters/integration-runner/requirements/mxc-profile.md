@@ -11,6 +11,9 @@ When the runner starts in `sandbox-mxc`, Halonic shall give it a profile of read
 - Given the MXC backend and a runner start,
   when the profile is built,
   then `network` is `{ bridge: null, allowedSites: [] }` and `deniedPaths` and `reopenedPaths` are empty.
+- Given the MXC backend and a runner start,
+  when the profile is built,
+  then `settingsFolder` is `null`, `keyStore` is `denied` and the environment holds only `TMPDIR`, so no reusable credential reaches the runner.
 - Given an integration folder inside the home folder, on MXC,
   when the profile is built,
   then only that folder is granted to read, and the home folder is not listed.

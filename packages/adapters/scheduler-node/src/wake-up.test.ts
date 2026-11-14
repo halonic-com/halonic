@@ -46,7 +46,8 @@ verifies("scheduler-node.wake-up", () => {
       await s.scheduler.schedule("run_1", "wait", s.inMs(second));
       await s.scheduler.close();
       expect(s.timers.pendingCount).toBe(0);
-      await s.scheduler.schedule("run_1", "later", s.inMs(minute));
+      // Rejects (see scheduler-node.closed); either way it sets no wake-up.
+      await s.scheduler.schedule("run_1", "later", s.inMs(minute)).catch(() => {});
       expect(s.timers.pendingCount).toBe(0);
       await s.wait(2 * minute);
       expect(s.listener.timers).toEqual([]);

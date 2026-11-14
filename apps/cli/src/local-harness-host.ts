@@ -15,6 +15,8 @@ import { join } from "node:path";
 import {
   FileAgentPlacementStore,
   FolderDefinitionStore,
+  FolderRunCopies,
+  FolderTrash,
   makePrivateFolder,
 } from "@halonicjs/adapter-fs-node";
 import type { GitRunnerOptions } from "@halonicjs/adapter-git";
@@ -35,7 +37,6 @@ import {
   type HarnessHost,
   harnessHostOf,
   refusingApprovals,
-  refusingTrash,
 } from "@halonicjs/host-harness-host";
 import type {
   Clock,
@@ -155,7 +156,7 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
   const fenced =
     parts.fenced ??
     new SrtSandbox(undefined, undefined, privateJournalFolder(profile), {
-      sweepRoots: [tempRoot, folders.proposalWorktreesFolder()],
+      sweepRoots: [tempRoot, folders.proposalWorktreesFolder(), folders.runCopiesFolder()],
     });
   const git = lazyProposalGit({
     location: input.location,
@@ -181,15 +182,23 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
     clock: input.clock,
     proposals: {
       vcs: git.vcs,
-      // No copies yet: a workspace without history refuses a run that writes files, saying how to turn it on.
-      copies: null,
+      // With history off, a run that writes files works in a plain copy of the saved files.
+      copies: new FolderRunCopies(folders.runCopiesFolder()),
       records: new FolderDefinitionStore(folders.proposalRecordsFolder()),
       store: input.store,
-      trash: refusingTrash,
+      trash: new FolderTrash({
+        folder: folders.trashFolder(),
+        store: input.store,
+        digest: input.digest,
+      }),
       onEndFailed: (_runId, error) => input.reportError(error),
     },
   });
-  const kept = [folders.proposalRecordsFolder(), folders.proposalWorktreesFolder()];
+  const kept = [
+    folders.proposalRecordsFolder(),
+    folders.proposalWorktreesFolder(),
+    folders.runCopiesFolder(),
+  ];
   return {
     ...built,
     // Nothing kept means nothing to clear, so git isn't started for a workspace that never ran a harness agent.

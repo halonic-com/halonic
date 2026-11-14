@@ -1,5 +1,5 @@
 import { checkOutsideRunCall, type OutsideRunCall } from "@halonicjs/app";
-import type { ServerPorts } from "./api.ts";
+import type { ConnectorCallPorts, ServerPorts } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { isJsonRequest } from "./run-routes.ts";
 import { refuseUnlessTrusted } from "./trust-routes.ts";
@@ -23,6 +23,7 @@ type ConnectorRoutePorts = Pick<ServerPorts, "connectors" | "trust" | "errorLog"
 /** The longest connector id or tool name the route accepts, in UTF-8 bytes. */
 const maxNameBytes = 256;
 
+/** A connector id or tool name is caller text: the host looks it up in its own list and never reads it as a path. */
 function isName(value: unknown): value is string {
   return (
     typeof value === "string" &&
@@ -71,9 +72,14 @@ export function createConnectorRoutes({
   }
 
   /** Runs a call the gate let through. A failure answers a fixed text; the cause goes to the log. */
-  async function run(request: Request, target: Target, args: unknown): Promise<Response> {
+  async function run(
+    port: ConnectorCallPorts,
+    request: Request,
+    target: Target,
+    args: unknown,
+  ): Promise<Response> {
     try {
-      return Response.json({ result: await connectors?.call(target, args, request.signal) });
+      return Response.json({ result: await port.call(target, args, request.signal) });
     } catch (error) {
       if (request.signal.aborted) return errorResponse(serverErrors.requestAborted);
       errorLog.record(error);
@@ -97,7 +103,7 @@ export function createConnectorRoutes({
         if (check.error !== undefined) errorLog.record(check.error);
         return refusal(check.reason);
       }
-      return run(request, target, parsed.args);
+      return run(connectors, request, target, parsed.args);
     },
   };
 }
