@@ -3,6 +3,7 @@
 - Task: HAL-2738
 - Approval: Liam approves this note in review on the review task HAL-9172
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:EI+uIXGOnbf0FO2Ms/ofOUq4oc2Yar3/vMTdL6/AGyxvr1cF83tG0ptUlK+O0XKJftrS+1q3Kn0ZZJoWQZh0Cg==
 
 ## What changes
 
