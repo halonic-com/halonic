@@ -10,9 +10,11 @@ import { type FakeProgram, FakeSandboxSession, idleProgram } from "@halonicjs/te
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import {
+  assistantLine,
   claudeFinishing,
   MemorySettingsFolder,
   withExitReason,
+  withInputFailingAfterPrompt,
 } from "./fake-claude.test-helper.ts";
 import { claudeCodeHarness } from "./harness.ts";
 
@@ -99,6 +101,28 @@ verifies("harness-claude-code.start", () => {
       await expect(run.send({ type: "answer", text: "More." })).rejects.toThrow(
         "The Claude Code run has ended.",
       );
+    });
+
+    it("rejects a message with the run-ended error when the live run's input write fails, and the run still ends", async () => {
+      const inner = openSession(async (io) => {
+        await io.readLine();
+        io.write(`${assistantLine("Working.")}\n`);
+        // The program waits for a message that never arrives.
+        await io.readLine();
+        return 1;
+      });
+      const session = withInputFailingAfterPrompt(inner);
+      const run = harness.start(task, session, bridge);
+      const reading = readAll(run);
+      await inner.whenStarted();
+
+      await expect(run.send({ type: "answer", text: "More." })).rejects.toThrow(
+        "The Claude Code run has ended.",
+      );
+      await run.cancel();
+
+      const { error } = await reading;
+      expect(String(error)).toContain("The Claude Code run was cancelled.");
     });
 
     it("cancels without error once the run has ended", async () => {

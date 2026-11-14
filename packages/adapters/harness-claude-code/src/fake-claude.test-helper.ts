@@ -105,3 +105,33 @@ export function withExitReason(
     },
   };
 }
+
+/**
+ * `session`, except that each program it starts takes its first write on
+ * standard input, the prompt, and fails every write after it, as a program
+ * that closed its input or exited mid-write does.
+ */
+export function withInputFailingAfterPrompt(session: SandboxSession): SandboxSession {
+  return {
+    profile: session.profile,
+    get fence() {
+      return session.fence;
+    },
+    onBlocked: (listener) => session.onBlocked(listener),
+    close: () => session.close(),
+    start: async (command) => {
+      const process = await session.start(command);
+      const real = process.stdin.getWriter();
+      let writes = 0;
+      const stdin = new WritableStream<Uint8Array>({
+        write: async (chunk) => {
+          writes += 1;
+          if (writes > 1) throw new Error("write EPIPE");
+          await real.write(chunk);
+        },
+        close: () => real.close(),
+      });
+      return { ...process, stdin, kill: () => process.kill() };
+    },
+  };
+}
