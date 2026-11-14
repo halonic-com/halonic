@@ -27,6 +27,11 @@ param(
   [string]$AgentHost
 )
 $ErrorActionPreference = 'Stop'
+# The release workflow sets HALONIC_SANDBOX_SIGNER to an empty string for an
+# unsigned run. Cargo's option_env! reads that as a publisher with no name, and
+# the helper would then refuse its own copy with exit 35 (HAL-9057). Unset, it
+# means no publisher, as in dev builds.
+if (-not $env:HALONIC_SANDBOX_SIGNER) { Remove-Item Env:HALONIC_SANDBOX_SIGNER -ErrorAction SilentlyContinue }
 $shell = Split-Path -Parent $PSScriptRoot
 $repo = (Resolve-Path (Join-Path $shell '../../..')).Path
 $triple = 'x86_64-pc-windows-msvc'
