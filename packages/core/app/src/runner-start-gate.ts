@@ -9,8 +9,21 @@
 // saved yes for running without the fence never stands in for trust.
 
 import type { Sandbox, SandboxCheck, SandboxFence } from "@halonicjs/ports";
-import { type RunnerFence, type RunnerUnfencedReason, runnerFence } from "./runner-fence.ts";
+import {
+  mxcFencesRunner,
+  type RunnerBackend,
+  type RunnerFence,
+  type RunnerUnfencedReason,
+  runnerFence,
+} from "./runner-fence.ts";
 import type { UnfencedRunDecision, UnfencedRuns } from "./unfenced-runs.ts";
+
+/** The sandbox a start is fenced by, and what decides whether it counts as a fence. */
+interface FencedSandbox {
+  readonly sandbox: Sandbox;
+  readonly backend: RunnerBackend;
+  readonly mxcFences: boolean;
+}
 
 /** A decision that lets code run without the sandbox. */
 type Allowed = Extract<UnfencedRunDecision, { run: "allowed" }>;
@@ -25,8 +38,25 @@ export interface GatedRunner {
   close(): Promise<void>;
 }
 
-/** Starts the runner in the sandbox the gate picked. */
-export type StartInSandbox<Runner extends GatedRunner> = (sandbox: Sandbox) => Promise<Runner>;
+/**
+ * Starts the runner in the sandbox the gate picked. `backend` says which
+ * fenced backend it is, so the start builds that backend's profile; the
+ * launcher's sandbox gets `srt`'s, as before.
+ */
+export type StartInSandbox<Runner extends GatedRunner> = (
+  sandbox: Sandbox,
+  backend: RunnerBackend,
+) => Promise<Runner>;
+
+/** MXC as the fenced sandbox on Windows 11, once the sandbox choice picks it. */
+export interface MxcFence {
+  /** The `sandbox-mxc` sandbox. */
+  readonly sandbox: Sandbox;
+  /** Whether the sandbox choice has MXC in use right now (`active` is `mxc`). Read at every start. */
+  inUse(): boolean;
+  /** Whether MXC counts as a fence for the runner; {@link mxcFencesRunner} when left out. */
+  readonly fencesRunner?: boolean;
+}
 
 /**
  * What came of a start.
@@ -56,6 +86,8 @@ export interface RunnerStartGateOptions {
   readonly platform: string;
   /** The fenced sandbox (`sandbox-srt`): its check decides, and the code starts in it when it passes. */
   readonly fenced: Sandbox;
+  /** MXC, for Windows 11; left out where the host has none. */
+  readonly mxc?: MxcFence;
   /** The launcher's sandbox without a fence (`sandbox-host`), for the confirmed path only. */
   readonly launcher: Sandbox;
   /** The user's saved yes, and the runs Take back stops. */
@@ -75,12 +107,14 @@ export class RunnerStartGate {
   readonly #platform: string;
   readonly #fenced: Sandbox;
   readonly #launcher: Sandbox;
+  readonly #mxc: MxcFence | undefined;
   readonly #runs: UnfencedRuns;
 
   constructor(options: RunnerStartGateOptions) {
     this.#platform = options.platform;
     this.#fenced = options.fenced;
     this.#launcher = options.launcher;
+    this.#mxc = options.mxc;
     this.#runs = options.runs;
   }
 
@@ -93,8 +127,9 @@ export class RunnerStartGate {
   async start<Runner extends GatedRunner>(
     startIn: StartInSandbox<Runner>,
   ): Promise<GatedStart<Runner>> {
-    const check = await this.#fenced.check();
-    const fence = runnerFence({ platform: this.#platform, check });
+    const { sandbox: fenced, backend, mxcFences } = this.#fencedSandbox();
+    const check = await fenced.check();
+    const fence = runnerFence({ platform: this.#platform, check, backend, mxcFences });
     const decision = await this.#runs.decide(fence);
     switch (decision.run) {
       case "needs-yes":
@@ -102,18 +137,38 @@ export class RunnerStartGate {
       case "stopped":
         return { run: "stopped" };
       case "fenced":
-        return this.#startFenced(startIn, check);
+        return this.#startFenced(startIn, check, { sandbox: fenced, backend, mxcFences });
       case "allowed":
         return this.#startUnfenced(startIn, fence, decision);
     }
   }
 
+  /** The fenced sandbox for this start: MXC while the sandbox choice has it in use, else srt. */
+  #fencedSandbox(): FencedSandbox {
+    const mxc = this.#mxc;
+    if (mxc !== undefined && mxc.inUse()) {
+      return {
+        sandbox: mxc.sandbox,
+        backend: "mxc",
+        mxcFences: mxc.fencesRunner ?? mxcFencesRunner,
+      };
+    }
+    return { sandbox: this.#fenced, backend: "srt", mxcFences: false };
+  }
+
   async #startFenced<Runner extends GatedRunner>(
     startIn: StartInSandbox<Runner>,
     check: SandboxCheck,
+    { sandbox, backend, mxcFences }: FencedSandbox,
   ): Promise<GatedStart<Runner>> {
-    const runner = await startIn(this.#fenced);
-    const proven = runnerFence({ platform: this.#platform, check, proof: runner.fence });
+    const runner = await startIn(sandbox, backend);
+    const proven = runnerFence({
+      platform: this.#platform,
+      check,
+      proof: runner.fence,
+      backend,
+      mxcFences,
+    });
     if (proven.state !== "fenced") {
       // A fenced sandbox refuses to start on a failed proof; this holds even if one didn't.
       await runner.close();
@@ -127,7 +182,7 @@ export class RunnerStartGate {
     fence: RunnerFence,
     allowed: Allowed,
   ): Promise<GatedStart<Runner>> {
-    const runner = await startIn(this.#launcher);
+    const runner = await startIn(this.#launcher, "srt");
     if (runner.fence.state !== "off") {
       await runner.close();
       throw new Error(

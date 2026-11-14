@@ -107,7 +107,7 @@ class PluginBackendOpening {
     const runnerMachine = await this.#machine.runnerMachine();
     const gated = await starts.start(
       this.#request.plugin,
-      (sandbox, trusted): Promise<StartedRunner> => {
+      (sandbox, trusted, backend): Promise<StartedRunner> => {
         this.#requireReadPlugin(trusted, readPlugin);
         this.#requireTrustedFiles(trusted);
         return begin({
@@ -117,7 +117,7 @@ class PluginBackendOpening {
             file: join(trusted.location, readPlugin.backend?.entry ?? ""),
             exportName: "default",
           },
-          machine: runnerMachine,
+          machine: { ...runnerMachine, backend },
           settings: bridge.settings,
           tools: bridge.tools,
           http: bridge.http,
