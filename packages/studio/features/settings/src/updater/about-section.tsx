@@ -99,10 +99,12 @@ function DownloadBar({ progress }: { readonly progress: AboutProgress }) {
       aria-valuetext={progress.valueText}
       className="h-1 w-full max-w-90 overflow-hidden rounded-full bg-surface-muted"
     >
-      <div
-        className="h-full bg-primary"
-        style={{ width: `${known ? Math.round(progress.fraction * 100) : 100}%` }}
-      />
+      {progress.fraction === null ? null : (
+        <div
+          className="h-full bg-primary"
+          style={{ width: `${Math.round(progress.fraction * 100)}%` }}
+        />
+      )}
     </div>
   );
 }

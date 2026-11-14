@@ -118,7 +118,7 @@ verifies("settings.about-section", () => {
     expect(view.textContent).toContain("Halonic 0.1.1 is ready.");
   });
 
-  it("gives an unknown total a bar without a value", async () => {
+  it("gives an unknown total an empty bar without a value", async () => {
     const { host } = fakeHost(
       statusOf({
         kind: "downloading",
@@ -132,6 +132,7 @@ verifies("settings.about-section", () => {
     const bar = view.querySelector('[role="progressbar"]');
     expect(bar?.hasAttribute("aria-valuenow")).toBe(false);
     expect(bar?.getAttribute("aria-valuetext")).toBe("0.4 MB");
+    expect(bar?.childElementCount).toBe(0);
   });
 
   it("shows a signature that doesn't match in a Callout with Report a problem", async () => {
