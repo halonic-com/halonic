@@ -2,6 +2,7 @@
 
 - Approval: the board approved the phone layout frames in HAL-330 (section 5) and HAL-544; Liam approved #2530 in HAL-8784; **Back to Inbox** is a team decision under HAL-2282
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:n4Li4quI+YcmSWQYzgZ9Cb+0+pZIJaXZGP6wVUmVgfyaqCK2vdebRadnJm8Kax8KEyvQNdpQEaIPpP7gunMpBQ==
 - Task: HAL-8778
 
 ## What changes
