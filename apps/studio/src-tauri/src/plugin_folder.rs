@@ -177,7 +177,9 @@ pub async fn plugin_folder_location<R: Runtime>(
 }
 
 /// Shows the plugins folder, or the folder of the plugin `plugin`, in the
-/// file manager. Answers whether there was a folder to show.
+/// file manager. The file manager opens the parent and selects the folder, so
+/// the plugins folder is shown inside the profile. Answers whether there was a
+/// folder to show.
 #[tauri::command]
 pub async fn plugin_folder_reveal<R: Runtime>(
     app: AppHandle<R>,
