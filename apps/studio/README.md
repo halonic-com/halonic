@@ -20,6 +20,15 @@ comes to the front, and tells the page only when a run changed. The window has
 no engine of its own yet, so answering a run in the Inbox fails as
 `unavailable` until it does (HAL-6602; `studio.workspace-runs`).
 
+## Library in the desktop app
+
+The desktop app registers the Library feature. For each open folder it gives the feature the
+folder's connector files, each shown as connected, and a list of what the engine refused from
+them. The window has no chat or engine yet, so nothing records a refusal and that list stays empty
+until it does, the way the Inbox fails as `unavailable`. It reads the files again when one changes
+or the window comes to the front. Google connectors are left out until the app reads the account's
+sign-in (`studio.workspace-connector-status`).
+
 ## Settings in the desktop app
 
 The desktop app registers the Settings feature too (`desktopFeatures`), so the
