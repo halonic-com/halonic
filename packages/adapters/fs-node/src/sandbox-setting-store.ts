@@ -43,6 +43,7 @@ export class FileSandboxSettingStore implements SandboxSettingStore {
   }
 
   async save(setting: SandboxSetting): Promise<void> {
+    if (!isSandboxSetting(setting)) throw new Error("The sandbox choice isn't a valid choice.");
     // Only the fields of a choice are written, so `get` can read it back.
     const record =
       setting.backend === "none"

@@ -14,6 +14,7 @@ export class MemorySandboxSettingStore implements SandboxSettingStore {
   }
 
   async save(setting: SandboxSetting): Promise<void> {
+    if (!isSandboxSetting(setting)) throw new Error("The sandbox choice isn't a valid choice.");
     this.#text = JSON.stringify(setting);
   }
 
@@ -35,16 +36,11 @@ export class MemorySandboxSettingStore implements SandboxSettingStore {
   }
 }
 
-/** Reads a choice, and refuses one that isn't exactly a sandbox choice. */
+/** Reads the saved text. Only `save` (which checks the choice) and `damage` write it. */
 function parseSetting(text: string): SandboxSetting {
-  let setting: unknown;
   try {
-    setting = JSON.parse(text);
+    return JSON.parse(text) as SandboxSetting;
   } catch (error) {
     throw new Error("The sandbox choice can't be read.", { cause: error });
   }
-  if (!isSandboxSetting(setting)) {
-    throw new Error("The sandbox choice isn't a valid choice.");
-  }
-  return setting;
 }
