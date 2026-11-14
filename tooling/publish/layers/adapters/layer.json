@@ -1,6 +1,6 @@
 {
   "name": "@halonicjs/adapters",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Halonic's adapters for code outside the engine. @halonicjs/adapters/integration-kit is what an integration imports: the port types, runTool and the errors the host raises. No dependencies.",
   "dependencies": {},
   "peerDependencies": {}
