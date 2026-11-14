@@ -3,11 +3,13 @@ import {
   type TauriFileShell,
   TauriRunStore,
 } from "@halonicjs/adapter-fs-tauri";
-import type { ServiceRegistry } from "@halonicjs/app";
+import { type ServiceRegistry, type WorkspaceScope, workspaceFilesKey } from "@halonicjs/app";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
+import { ModelsFilesService } from "@halonicjs/studio-feature-models/api";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import { type TauriIpc, tauriAgentHostTransport } from "@halonicjs/studio-services";
 import { provideLibraryServices } from "../library/provide-library-services.ts";
+import { WorkspaceModelsFiles } from "../models/workspace-models-files.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
 
@@ -18,13 +20,22 @@ export interface FolderServiceParts {
   readonly window: object;
   readonly trust: WorkspaceTrust;
   readonly location: string;
+  /** The open workspace, whose files and events the Models feature reads. */
+  readonly scope: WorkspaceScope;
 }
 
 /** Gives the folder in `location` the services its features read through the shell. */
 export function provideFolderServices(
   services: ServiceRegistry,
-  { ipc, files, window, trust, location }: FolderServiceParts,
+  { ipc, files, window, trust, location, scope }: FolderServiceParts,
 ): void {
+  services.provide(
+    ModelsFilesService,
+    new WorkspaceModelsFiles({
+      files: services.get(workspaceFilesKey),
+      onChange: (listener) => scope.events.on("files.changed", listener),
+    }),
+  );
   provideWorkspaceRuns(services, { ipc, files, window }, location);
   provideLibraryServices(services, {
     ipc,

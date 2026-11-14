@@ -19,6 +19,8 @@ import {
   ConnectorStatusHostService,
   ListedToolsHostService,
 } from "@halonicjs/studio-feature-library/api";
+import { modelsFeature } from "@halonicjs/studio-feature-models";
+import { ModelsFilesService } from "@halonicjs/studio-feature-models/api";
 import { runsFeature } from "@halonicjs/studio-feature-runs";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import {
@@ -176,12 +178,20 @@ export function startStudio(page: StudioPage, desktop = desktopFeatures): Starte
  * ({@link openFolder}).
  */
 export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = {
-  features: [inboxFeature, libraryFeature, runsFeature, settingsFeature, workspaceFeature],
+  features: [
+    inboxFeature,
+    libraryFeature,
+    modelsFeature,
+    runsFeature,
+    settingsFeature,
+    workspaceFeature,
+  ],
   hostServices: [
     ConnectorStatusHostService,
     ListedToolsHostService,
     InboxRunsService,
     RunsSourceService,
+    ModelsFilesService,
     DisplaySettingsService,
     HostSettingsService,
     AssistantWorkspaceService,
@@ -353,8 +363,8 @@ export async function openFolder(
     services.provide(RestartRunsService, restartRunsOfWindow);
   }
   const assistant = provideAssistant(services, files, location, name, scope);
-  if (ipc !== undefined && files !== undefined && trust !== undefined) {
-    provideFolderServices(services, { ipc, files, window, trust, location });
+  if (ipc !== undefined && files !== undefined && trust !== undefined && scope !== undefined) {
+    provideFolderServices(services, { ipc, files, window, trust, location, scope });
   }
   shell.services.instantiate(services);
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name });

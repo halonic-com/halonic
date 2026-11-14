@@ -26,3 +26,20 @@ export interface Models {
 
 /** The open workspace's models. The Models feature provides it for each open workspace. */
 export const ModelsService: ServiceKey<Models> = serviceKey<Models>("models");
+
+/**
+ * The open workspace's `models.yaml` as the Models pages read and change it. The app provides it
+ * for each open folder, over the workspace's files, so a change is unsaved, saved by itself and
+ * undone with Ctrl Z like any other.
+ */
+export interface ModelsFiles {
+  /** The text of `models.yaml` with unsaved changes applied; `null` when the workspace has none. */
+  readModels(): Promise<string | null>;
+  /** Replaces the text of `models.yaml` as one undo step, named by `label`. */
+  changeModels(label: string, text: string): void;
+  /** Calls `listener` after `models.yaml` may have changed; returns the way to stop. */
+  subscribe(listener: () => void): () => void;
+}
+
+/** The workspace's `models.yaml`, provided by the app for each open folder. */
+export const ModelsFilesService: ServiceKey<ModelsFiles> = serviceKey<ModelsFiles>("models.files");

@@ -1,4 +1,3 @@
-import { createShell } from "@halonicjs/studio-shell";
 import { describe, expect, it } from "vitest";
 import { ModelsService } from "./api.ts";
 import { modelsFeature } from "./feature.ts";
@@ -12,7 +11,7 @@ describe("modelsFeature", () => {
     expect(ModelsService.name).toBe("models");
   });
 
-  it("registers in the shell without needing anything from the app", () => {
-    expect(() => createShell({ features: [modelsFeature] })).not.toThrow();
+  it("needs the workspace's models file from the app", () => {
+    expect(modelsFeature.needs.map((key) => key.name)).toEqual(["models.files"]);
   });
 });
