@@ -3,6 +3,7 @@
 - Task: HAL-9045 (board decision on HAL-1197 and HAL-9016, 14 Nov: "Ship unsigned")
 - Approval: the board decided to ship 0.1.0 unsigned; Mateo reviews the pull request, Liam signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QXUNkik0swc+yvLaMKhqlHLTTu49ISLxj7uya7hvIs5LNsR7ENaZwDLdC7AF/6xDd/ddFpvMVNI/OoeLJvhRBg==
 
 ## What changes
 
