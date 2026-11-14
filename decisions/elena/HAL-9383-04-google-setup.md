@@ -1,0 +1,24 @@
+# Decision: the Inbox secret hold points at no field that isn't there
+
+- Approval: the wording is Sofia's microcopy revisions 97 to 99 (board-approved T7, T8, T13) and her answers on HAL-9383; Liam signs this note with the pull request
+- Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:aPaKuEXVSoiqImXLMTP7YB1JlZ2qdpCln89tWLlTLhVQgkwrOpWT8bWxDx+LRcY/EqmmNHFqsNHP+RUflUHpBA==
+- Task: HAL-9383
+
+## What changes
+
+`inbox.secret-hold`: until the Google setup's step 6 has a body (HAL-713) the Google line is "This looks like a Google client secret. Messages are kept in the run log."; the full line comes back with step 6. On a phone the pointers end "on your computer instead". Microcopy 10.2.
+
+## Why
+
+A line must not point at a field that isn't there (Sofia, HAL-9383 B30). The Google setup can't be done on a phone, so the phone line says where the field is.
+
+A failed save in the Google setup now says why: "Couldn't save your progress: *reason*." and "Couldn't save the account type: *reason*." with **Try again**; Start over says "Couldn't start over: *reason*." Microcopy 1.1. The phone pointer reads "Library › Connectors". The requirements say so.
+
+## Covers
+
+- inbox.secret-hold
+- google-setup.checklist
+- google-setup.account-header
+- google-setup.connector-problem
+- google-setup.resume-and-start-over

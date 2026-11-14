@@ -1,9 +1,10 @@
 import { isProjectId, type SetupEdit, type SetupStep, type StepId } from "@halonicjs/google-setup";
-import { Button } from "@halonicjs/studio-kit";
+import { Button, Callout, type CalloutHandle } from "@halonicjs/studio-kit";
 import { type ReactNode, type Ref, useEffect, useId, useRef, useState } from "react";
 import type { GoogleSetupAccount } from "../api.ts";
 import { connectorProblem } from "../connector-problem.ts";
 import { stepTitle } from "../step-names.ts";
+import { failureLine } from "./failure-line.ts";
 import { ProblemBanner } from "./problem-banner.tsx";
 import { StepBody } from "./step-body.tsx";
 import { StepMark, type StepState, stepStateWords } from "./step-mark.tsx";
@@ -54,7 +55,9 @@ export function Checklist({ account, steps, answering, onEdit, close }: Checklis
     () => steps.find((step) => problem?.reopenAt.includes(step.id))?.id ?? null,
   );
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<string | undefined>(undefined);
+  // What **Try again** runs: the save that failed.
+  const retry = useRef<() => void>(() => {});
   // The project ID as typed in step 1, until it is saved with **Done, next**.
   const [typedProjectId, setTypedProjectId] = useState<string | null>(null);
   const [projectIdError, setProjectIdError] = useState<string | null>(null);
@@ -65,7 +68,7 @@ export function Checklist({ account, steps, answering, onEdit, close }: Checklis
   // Focus goes to the title of the step that opens, also when the item first opens. An error
   // belongs to the step it was shown in, so it goes when another step opens.
   useEffect(() => {
-    setFailed(false);
+    setFailed(undefined);
     setProjectIdError(null);
     if (openId !== undefined) titles.current.get(openId)?.focus({ preventScroll: true });
   }, [openId]);
@@ -78,14 +81,15 @@ export function Checklist({ account, steps, answering, onEdit, close }: Checklis
     const projectId = open.id === "project" ? projectIdToSave() : undefined;
     if (projectId === "invalid") return;
     setBusy(true);
-    setFailed(false);
+    setFailed(undefined);
     try {
       if (projectId !== undefined) await onEdit({ kind: "project-id", projectId });
       await onEdit({ kind: "step-done", step: open.id });
       setTypedProjectId(null);
       setEditing(null);
-    } catch {
-      setFailed(true);
+    } catch (error) {
+      setFailed(failureLine("save your progress", error));
+      retry.current = () => void doneNext();
     } finally {
       setBusy(false);
     }
@@ -140,13 +144,17 @@ export function Checklist({ account, steps, answering, onEdit, close }: Checklis
                     setTypedProjectId(text);
                     setProjectIdError(null);
                   }}
-                  onInProduction={(ticked) =>
-                    void onEdit({ kind: "in-production", ticked }).catch(() => setFailed(true))
-                  }
+                  onInProduction={function tick(ticked: boolean) {
+                    onEdit({ kind: "in-production", ticked }).catch((error: unknown) => {
+                      setFailed(failureLine("save your progress", error));
+                      retry.current = () => tick(ticked);
+                    });
+                  }}
                   onEditProject={() => setEditing("project")}
                   answering={answering}
                   busy={busy}
                   failed={failed}
+                  onRetry={() => retry.current()}
                   onDone={() => void doneNext()}
                   close={close}
                 />
@@ -216,15 +224,22 @@ interface OpenStepProps {
   readonly onEditProject: () => void;
   readonly answering: boolean;
   readonly busy: boolean;
-  readonly failed: boolean;
+  /** The reason the last save failed, as a sentence. */
+  readonly failed: string | undefined;
+  readonly onRetry: () => void;
   readonly onDone: () => void;
   readonly close: () => void;
 }
 
 /** What an open step shows under its title: why, **Not now** and **Done, next**. */
 function OpenStep(props: OpenStepProps) {
-  const { step, account, answering, busy, failed, onDone, close } = props;
+  const { step, account, answering, busy, failed, onRetry, onDone, close } = props;
   const reason = useId();
+  const callout = useRef<CalloutHandle>(null);
+  // A failure that appears because of what you did takes focus, so a screen reader reads it.
+  useEffect(() => {
+    if (failed !== undefined) callout.current?.focus();
+  }, [failed]);
   const tickMissing = needsTick(step, account);
   const unavailableText = answering
     ? "Tick 'In production' to go on."
@@ -264,11 +279,16 @@ function OpenStep(props: OpenStepProps) {
           {unavailableText}
         </p>
       )}
-      {failed ? (
-        <p role="alert" className="text-body text-danger">
-          Couldn't save your progress. Try again.
-        </p>
-      ) : null}
+      {failed === undefined ? null : (
+        <Callout
+          tone="danger"
+          announce="focus"
+          ref={callout}
+          action={{ label: "Try again", onClick: onRetry }}
+        >
+          {failed}
+        </Callout>
+      )}
     </div>
   );
 }

@@ -146,8 +146,6 @@ verifies("google-setup.connector-problem", () => {
     const container = await open([refused("sign-in")], "phone");
     expect(container.querySelectorAll("button")).toHaveLength(0);
     expect(container.textContent).toContain("Google no longer accepts the sign-in");
-    expect(container.textContent).toContain(
-      "Fix this on your computer: Workspace settings › Connectors",
-    );
+    expect(container.textContent).toContain("Fix this on your computer: Library › Connectors");
   });
 });

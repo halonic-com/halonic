@@ -1,6 +1,7 @@
 import { Button, Dialog } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import { listNames } from "./account-labels.ts";
+import { failureLine } from "./failure-line.ts";
 
 /** Props for {@link StartOver}. */
 export interface StartOverProps {
@@ -41,7 +42,7 @@ export function StartOver(props: StartOverProps) {
   const [asking, setAsking] = useState(false);
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<string | undefined>(undefined);
   const link = useRef<HTMLButtonElement>(null);
   const { title, body } = question(props);
 
@@ -54,13 +55,13 @@ export function StartOver(props: StartOverProps) {
 
   async function confirm() {
     setBusy(true);
-    setFailed(false);
+    setFailed(undefined);
     try {
       await onStartOver();
       setAsking(false);
       setDone(true);
-    } catch {
-      setFailed(true);
+    } catch (error) {
+      setFailed(failureLine("start over", error));
     } finally {
       setBusy(false);
     }
@@ -87,12 +88,14 @@ export function StartOver(props: StartOverProps) {
           title={title}
           confirm={{ label: "Start over", variant: "danger", busyLabel: "Starting over…" }}
           busy={busy}
-          error={failed ? "Couldn't start over. Try again." : ""}
+          error={failed ?? ""}
           onConfirm={() => void confirm()}
           onCancel={() => setAsking(false)}
           returnFocus={() => link.current}
         >
-          <p>{body}</p>
+          <div className="flex flex-col gap-3">
+            <p>{body}</p>
+          </div>
         </Dialog>
       ) : null}
     </>
