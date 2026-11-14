@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import type { HarnessEvent } from "@halonicjs/ports";
-import { FakeSandboxSession } from "@halonicjs/testing-contracts";
+import { type FakeProgram, FakeSandboxSession } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { codexConfigText } from "./config.ts";
@@ -17,12 +17,17 @@ import {
 import {
   bridge,
   engineProfile,
+  engineSessionOptions,
   newHarness,
-  openSession,
   readAll,
   task,
   withKill,
 } from "./harness-run.test-helper.ts";
+
+/** A session opened the way the engine opens one, running `program` as `codex`. */
+function openSession(program: FakeProgram, profile = engineProfile): FakeSandboxSession {
+  return new FakeSandboxSession(engineSessionOptions(program, profile));
+}
 
 const configPath = join("/agents/writer/settings", "config.toml");
 

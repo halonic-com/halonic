@@ -1,14 +1,21 @@
+import { type FakeProgram, FakeSandboxSession } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { fakeCodex } from "./fake-codex.test-helper.ts";
 import {
   bridge,
+  engineProfile,
+  engineSessionOptions,
   newHarness,
-  openSession,
   readAll,
   task,
   withKill,
 } from "./harness-run.test-helper.ts";
+
+/** A session opened the way the engine opens one, running `program` as `codex`. */
+function openSession(program: FakeProgram, profile = engineProfile): FakeSandboxSession {
+  return new FakeSandboxSession(engineSessionOptions(program, profile));
+}
 
 verifies("harness-codex.start", () => {
   describe("codexHarness: stopping Codex", () => {
