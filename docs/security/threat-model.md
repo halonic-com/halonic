@@ -411,8 +411,28 @@ start, in this order, because its fix comes first.
   agent on this computer only after a warning you confirm. That is the "this
   computer" choice below, never a fallback Halonic makes by itself. The
   Windows mode needs a security review before it becomes the default
-  (HAL-196). Microsoft's process container (MXC) as an extra Windows 11
-  option waits on the board (HAL-2546).
+  (HAL-196).
+- **Windows 11 with MXC** (opt-in): Microsoft's process container, a second
+  sandbox on Windows 11 Home, Pro and Enterprise (the adapter is `sandbox-mxc`,
+  **On `main`**). It lets a program read and write only its working, temp and
+  settings folders, read the read-only folders it was given, and nothing else;
+  a denied file stays hidden even inside a folder it may read. The program has
+  no network but Halonic's bridge: the internet, the local network and every
+  other port on your computer are closed. MXC is **not offered** on Windows 10,
+  Windows Server or any computer where Microsoft's container reports a weaker
+  mode, and nothing about it shows there. Before MXC runs, and after every
+  change to the sandbox settings, a trust check starts a short test session
+  that tries to read hidden files, write where it may not, and reach other
+  ports, the internet and DNS, while two controls prove the box isn't too
+  strict. If the check fails, **MXC switches itself off for that start of
+  Halonic**, with one reason code, and nothing runs in another sandbox in its
+  place, even when you chose MXC: the next start checks again. MXC needs a
+  one-time download of Microsoft's SDK, pinned and checked by hash, which
+  starts only when you pick MXC. MXC is **opt-in**: making it the default and
+  the Settings switch are **Planned** (HAL-3310, HAL-3309, the screen waits
+  for HAL-3290), and no release ships it before the check on a real PC has
+  passed (HAL-2546) and the security review (HAL-3307). Its known limits are
+  in 4.6.
 
 #### "This computer"
 
@@ -468,6 +488,24 @@ routes, isn't built yet, so no app uses the host today.
 
 #### Known limits
 
+- **MXC: names leave the box.** Lookups go through Windows' DNS client
+  service, outside the box. A program can't connect anywhere, but it can
+  encode what it can read, including its settings folder and the run token,
+  in the names it looks up: a few KB a second. MXC has no setting to stop it
+  (HAL-3365). `halonic doctor` says so while MXC is in use.
+- **MXC: pnpm and other tools that look up the drive root don't work.** They
+  fail with `EPERM` on `C:\`. Halonic doesn't run them outside the box
+  instead, because that runs untrusted package scripts without the fence, and
+  doesn't make the drive root readable, because that shows every file name on
+  the drive. Node scripts and git work. A limit, not a leak.
+- **MXC: `cmd /c dir` is refused, even on the box's own folder.** Tools that
+  list folders through Node work, and so does reading and writing files.
+  Scripts and `.cmd` shims that shell out to `dir` fail. A limit, not a leak.
+- **MXC: the permission that lets the box reach the bridge works both ways.**
+  In CI the box couldn't reach the internet and the host couldn't connect in,
+  but CI has no local network. The trust check probes the router and another
+  local address at every start, and the real-PC check (HAL-2546) tests both
+  directions. Until it has passed, MXC ships in no release.
 - **Subscription sign-in (D43).** An agent signed in with your Claude or
   ChatGPT plan keeps that token in its own settings folder, inside the
   sandbox, and the provider's sites are allowed. A tricked agent can read the
