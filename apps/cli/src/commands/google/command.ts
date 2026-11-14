@@ -38,7 +38,7 @@ export function googleCommandWith(
       },
       {
         name: "sign-in",
-        usage: "<account> --connection <id>",
+        usage: "<account> [--connection <id>]",
         summary: googleMessages.signInSummary(),
         action: () => googleMessages.signInAction(),
         options: {

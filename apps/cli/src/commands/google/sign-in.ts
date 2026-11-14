@@ -1,10 +1,10 @@
-// `halonic google sign-in <account> --connection <id>`: signs a Google account
-// in on this computer. The connection (a Google connector of the workspace)
-// gives the address that must sign in; the integrations of the workspace that
+// `halonic google sign-in <account> [--connection <id>]`: signs a Google account
+// in on this computer. The connector the setup record is linked to (a Google
+// connector of the workspace in `--dir`) gives the address that must sign in; the integrations of the workspace that
 // ask for Google scopes give the services. The command prints the sign-in
 // address (or opens it, where a browser opener is given) and waits for
 // Google's answer on a loopback port. The sign-in package does the rest.
-// Nothing here prints the connection's address, the code or a token: a
+// Nothing here prints the connector's address, the code or a token: a
 // failure is told by its kind only.
 
 import { realpath } from "node:fs/promises";
@@ -17,6 +17,7 @@ import {
   startGoogleSignIn,
 } from "@halonicjs/host-google-sign-in";
 import type { Clock, HttpClient } from "@halonicjs/ports";
+import { profileFolder, workspaceFolders } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { filesOf, type LocalIntegrationInput, loadWorkspace } from "@halonicjs/workspace";
 import {
@@ -31,9 +32,9 @@ import { type GoogleSetup, openGoogleHost } from "../../google-host.ts";
 import { type CallbackListener, callbackPath, listenForCallback } from "../../loopback-callback.ts";
 import { googleMessages } from "../../messages/google.ts";
 import type { Phrase } from "../../messages/phrase.ts";
-import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
+import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts";
 import { workspaceIntegrations, workspaceNameOf } from "../../workspace-trust.ts";
 import { readSetup } from "./read-setup.ts";
 
@@ -65,7 +66,7 @@ function googleHostClass(url: URL) {
 /**
  * Signs the account in and records the result.
  *
- * @throws UsageError without an account or `--connection`, or with more
+ * @throws UsageError without an account, or with more
  * @throws OwnLineError for each way the sign-in can end without tokens saved
  */
 export async function signInGoogle(
@@ -75,7 +76,11 @@ export async function signInGoogle(
 ): Promise<CommandResult> {
   const [accountRef, ...extra] = input.positionals;
   const typedConnection = input.options["connection"];
-  if (accountRef === undefined || typeof typedConnection !== "string" || extra.length > 0) {
+  if (
+    accountRef === undefined ||
+    (typedConnection !== undefined && typeof typedConnection !== "string") ||
+    extra.length > 0
+  ) {
     throw new UsageError(googleMessages.signInNeedsMore(), googleMessages.signInUsage());
   }
   const host = openGoogleHost(setup);
@@ -105,29 +110,40 @@ export async function signInGoogle(
   const dir = await openWorkspaceDir(input, context);
   const workspace = await loadWorkspace(dir.store);
   const name = workspaceNameOf(workspace, dir);
-  const connections = filesOf(workspace, "connector").map((file) => file.value);
-  const connection = connections.find((candidate) => candidate.id === typedConnection);
-  if (connection === undefined) {
-    const near = nearMatch(
-      typedConnection,
-      connections.map((candidate) => candidate.id),
+  const location = await realpath(dir.root);
+  const key = await workspaceKeyOf(setup, location);
+  const link = record.connector;
+  if (link.workspace !== key) {
+    throw new OwnLineError(
+      "invalid_input",
+      googleMessages.signInOtherWorkspace(),
+      googleMessages.signInOtherWorkspaceFix(),
     );
+  }
+  if (typedConnection !== undefined && typedConnection !== link.id) {
+    throw new OwnLineError(
+      "invalid_input",
+      googleMessages.signInOtherConnection(printable(typedConnection)),
+      googleMessages.signInOtherConnectionFix(),
+    );
+  }
+  const connections = filesOf(workspace, "connector").map((file) => file.value);
+  const connection = connections.find((candidate) => candidate.id === link.id);
+  if (connection === undefined) {
     throw new OwnLineError(
       "not_found",
-      googleMessages.unknownConnection(printable(typedConnection), printable(name)),
-      near === undefined
-        ? googleMessages.seeConnections()
-        : googleMessages.didYouMean(printable(near)),
+      googleMessages.unknownConnection(printable(link.id), printable(name)),
+      googleMessages.seeConnections(),
     );
   }
   if (!("google" in connection.transport)) {
     throw new OwnLineError(
       "invalid_input",
-      googleMessages.notGoogle(printable(typedConnection)),
+      googleMessages.notGoogle(printable(link.id)),
       googleMessages.notGoogleFix(),
     );
   }
-  const services = googleServices(await workspaceIntegrations(await realpath(dir.root), dir.shown));
+  const services = googleServices(await workspaceIntegrations(location, dir.shown));
   if (services.length === 0) {
     throw new OwnLineError(
       "invalid_input",
@@ -158,6 +174,16 @@ export async function signInGoogle(
   } finally {
     await listener.close();
   }
+}
+
+/** The workspace's key in the profile, as the record's link names it. */
+async function workspaceKeyOf(setup: GoogleSetup, location: string): Promise<string> {
+  const folders = await workspaceFolders(
+    profileFolder(setup.profile ?? nodeProfileEnvironment()),
+    location,
+    webCryptoDigest,
+  );
+  return folders.folder.split(/[\\/]/).at(-1) ?? "";
 }
 
 async function listen(setup: GoogleSignInMachine): Promise<CallbackListener> {
@@ -242,7 +268,10 @@ async function runSignIn(run: SignInRun): Promise<GoogleSignInResult> {
     context.signal,
     AbortSignal.timeout(run.setup.waitMs ?? signInWaitMs),
   ]);
-  const query = await run.listener.firstCallback(waiting, new URL(url).searchParams.get("state") ?? "");
+  const query = await run.listener.firstCallback(
+    waiting,
+    new URL(url).searchParams.get("state") ?? "",
+  );
   waitingLine.end();
   if (query === undefined) {
     await host.setups.update(accountRef, { kind: "sign-in-dropped" });

@@ -1,8 +1,9 @@
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { tokenKeySecret } from "@halonicjs/adapter-token-store";
 import type { HttpClient } from "@halonicjs/ports";
+import { profileFolder, workspaceFolders } from "@halonicjs/profile";
 import { encodeBase64url, encodeUtf8 } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -12,6 +13,7 @@ import { type CallbackListener, callbackPath, listenForCallback } from "../../lo
 import { runCli, type Terminal } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
 import { typing } from "../../test/secret-setup.ts";
+import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts";
 import { googleCommandWith } from "./command.ts";
 import type { GoogleSignInMachine } from "./sign-in.ts";
 
@@ -82,16 +84,27 @@ tools: []
 `;
 
 /** A setup record that has its client ID and a saved fake secret. */
-async function readyAccount(): Promise<string> {
+async function readyAccount(connector = "mailbox", folderOfWorkspace = acme): Promise<string> {
   const host = openGoogleHost(setup);
   const record = await host.setups.start({
     route: { app: "own", runsOn: "this-computer" },
     accountType: "personal",
+    connector: { workspace: await keyOf(folderOfWorkspace), id: connector },
   });
   await host.setups.update(record.accountRef, { kind: "client-id", clientId });
   const clientRef = await host.clientSecrets.saveClientSecret(fakeClientSecret);
   await host.setups.update(record.accountRef, { kind: "client-secret-saved", clientRef });
   return record.accountRef;
+}
+
+/** The workspace's key in the profile, as the setup record's link holds it. */
+async function keyOf(workspace: string): Promise<string> {
+  const folders = await workspaceFolders(
+    profileFolder(setup.profile ?? nodeProfileEnvironment()),
+    await realpath(workspace),
+    webCryptoDigest,
+  );
+  return folders.folder.split(/[\\/]/).at(-1) ?? "";
 }
 
 function idToken(email: string): string {
@@ -194,7 +207,7 @@ verifies("cli.commands.google.sign-in", () => {
     const browser = fakeBrowser(goodAnswer);
     const google = fakeGoogle();
 
-    const { code, io, printed } = await signIn([accountRef, "--connection", "mailbox"], {
+    const { code, io, printed } = await signIn([accountRef], {
       ...browser.machine,
       http: google,
     });
@@ -219,7 +232,7 @@ verifies("cli.commands.google.sign-in", () => {
     const accountRef = await readyAccount();
     const browser = fakeBrowser(goodAnswer, { opens: false });
 
-    const { code, io } = await signIn([accountRef, "--connection", "mailbox"], {
+    const { code, io } = await signIn([accountRef], {
       ...browser.machine,
       http: fakeGoogle(),
     });
@@ -231,7 +244,7 @@ verifies("cli.commands.google.sign-in", () => {
   it("saves nothing when another Google account signs in", async () => {
     const accountRef = await readyAccount();
 
-    const { code, printed } = await signIn([accountRef, "--connection", "mailbox"], {
+    const { code, printed } = await signIn([accountRef], {
       ...fakeBrowser(goodAnswer).machine,
       http: fakeGoogle("someone.else@example.com"),
     });
@@ -247,7 +260,7 @@ verifies("cli.commands.google.sign-in", () => {
   it("says so when the person cancels at Google", async () => {
     const accountRef = await readyAccount();
 
-    const { code } = await signIn([accountRef, "--connection", "mailbox"], {
+    const { code } = await signIn([accountRef], {
       ...fakeBrowser((state) => `state=${state}&error=access_denied`).machine,
       http: fakeGoogle(),
     });
@@ -260,7 +273,7 @@ verifies("cli.commands.google.sign-in", () => {
     const accountRef = await readyAccount();
     const never = fakeBrowser(goodAnswer).machine;
 
-    const { code, printed } = await signIn([accountRef, "--connection", "mailbox"], {
+    const { code, printed } = await signIn([accountRef], {
       ...never,
       openBrowser: async () => true,
       waitMs: 20,
@@ -271,8 +284,8 @@ verifies("cli.commands.google.sign-in", () => {
     expect((await openGoogleHost(setup).setups.read(accountRef))?.signInStartedAt).toBeNull();
   });
 
-  it("needs an account and --connection", async () => {
-    for (const args of [[], ["gaccount_x"], ["--connection", "mailbox"]]) {
+  it("needs an account", async () => {
+    for (const args of [[], ["--connection", "mailbox"]]) {
       const { code, io } = await signIn(args, fakeBrowser(goodAnswer).machine);
 
       expect(code).toBe(exitCode.usage);
@@ -280,31 +293,54 @@ verifies("cli.commands.google.sign-in", () => {
     }
   });
 
-  it("refuses an unknown account, a connection that isn't Google, and a missing secret", async () => {
+  it("refuses an unknown account, a missing secret, and a record whose connector can't be used", async () => {
     const machine = fakeBrowser(goodAnswer).machine;
-    expect((await signIn(["gaccount_x", "--connection", "mailbox"], machine)).code).toBe(
-      exitCode.notFound,
-    );
-    const accountRef = await readyAccount();
-    expect((await signIn([accountRef, "--connection", "bank"], machine)).code).toBe(exitCode.usage);
+    expect((await signIn(["gaccount_x"], machine)).code).toBe(exitCode.notFound);
     const bare = await openGoogleHost(setup).setups.start({
       route: { app: "own", runsOn: "this-computer" },
       accountType: "personal",
+      connector: { workspace: await keyOf(acme), id: "mailbox" },
     });
-    const missing = await signIn([bare.accountRef, "--connection", "mailbox"], machine);
+    const missing = await signIn([bare.accountRef], machine);
     expect(missing.code).not.toBe(exitCode.ok);
     expect(missing.printed).toContain("client");
+
+    const bank = await readyAccount("bank");
+    expect((await signIn([bank], machine)).code).toBe(exitCode.usage);
+    const gone = await readyAccount("gone");
+    const goneRun = await signIn([gone], machine);
+    expect(goneRun.code).toBe(exitCode.notFound);
+    expect(goneRun.printed).toContain("Use the connection's file name");
+  });
+
+  it("refuses a record linked to another workspace, and a --connection that isn't its connector", async () => {
+    const machine = fakeBrowser(goodAnswer).machine;
+    const other = await mkdtemp(join(folder, "other-"));
+    const elsewhere = await readyAccount("mailbox", other);
+    const wrongWorkspace = await signIn([elsewhere], machine);
+    expect(wrongWorkspace.code).toBe(exitCode.usage);
+    expect(wrongWorkspace.printed).toContain("another workspace");
+
+    const accountRef = await readyAccount();
+    const wrongConnection = await signIn([accountRef, "--connection", "bank"], machine);
+    expect(wrongConnection.code).toBe(exitCode.usage);
+    expect(wrongConnection.printed).toContain("isn't set up for the connection");
+  });
+
+  it("accepts --connection when it is the record's connector", async () => {
+    const accountRef = await readyAccount();
+    const { code } = await signIn([accountRef, "--connection", "mailbox"], {
+      ...fakeBrowser(goodAnswer).machine,
+      http: fakeGoogle(),
+    });
+    expect(code).toBe(exitCode.ok);
   });
 
   it("never takes a secret from the terminal", async () => {
     const accountRef = await readyAccount();
     const { terminal, written } = typing(fakeClientSecret);
 
-    await signIn(
-      [accountRef, "--connection", "mailbox"],
-      fakeBrowser(goodAnswer).machine,
-      terminal,
-    );
+    await signIn([accountRef], fakeBrowser(goodAnswer).machine, terminal);
 
     expect(written()).toBe("");
   });
@@ -333,7 +369,9 @@ verifies("cli.loopback-callback", () => {
       expect(answered.headers.get("cache-control")).toBe("no-store");
       expect(answered.headers.get("referrer-policy")).toBe("no-referrer");
       expect((await waiting)?.get("state")).toBe("s1");
-      expect((await listener.firstCallback(AbortSignal.timeout(5000), "s1"))?.get("state")).toBe("s1");
+      expect((await listener.firstCallback(AbortSignal.timeout(5000), "s1"))?.get("state")).toBe(
+        "s1",
+      );
     } finally {
       await listener.close();
     }

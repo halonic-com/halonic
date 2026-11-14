@@ -51,9 +51,17 @@ export const googleMessages = defineMessages("google", {
   signInSummary: () => phrase`Sign a Google account in, in the browser of this computer`,
   /** What `sign-in` was doing, for "✕ Couldn't sign in: …". */
   signInAction: () => phrase`sign in`,
-  signInNeedsMore: () => phrase`halonic google sign-in needs an account and --connection.`,
-  signInUsage: () => phrase`halonic google sign-in <account> --connection <id> [--dir <folder>]`,
-  signInConnectionOption: () => phrase`The Google connection whose address signs in`,
+  signInNeedsMore: () => phrase`halonic google sign-in needs an account.`,
+  signInUsage: () => phrase`halonic google sign-in <account> [--connection <id>] [--dir <folder>]`,
+  signInConnectionOption: () =>
+    phrase`Check that the account is set up for this connection; it signs in the address of the account's own connection either way`,
+  signInOtherWorkspace: () => phrase`This account was set up for another workspace.`,
+  signInOtherWorkspaceFix: () =>
+    phrase`Run the command in the workspace the account was set up for, or use --dir.`,
+  signInOtherConnection: (connection: string) =>
+    phrase`This account isn't set up for the connection "${connection}".`,
+  signInOtherConnectionFix: () =>
+    phrase`Leave out --connection, or name the connection the account was set up for.`,
   signInNoClientId: () => phrase`This account has no client ID yet.`,
   signInNoClientIdFix: () => phrase`Finish the client step of the setup in the Studio first.`,
   signInNoSecret: () => phrase`This account has no client secret yet.`,
