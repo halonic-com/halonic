@@ -1,6 +1,7 @@
 import { Button, Dialog } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import { listNames } from "./account-labels.ts";
+import { useNotAnswering } from "./not-answering.tsx";
 
 /** Props for {@link StartOver}. */
 export interface StartOverProps {
@@ -37,6 +38,7 @@ function question(props: StartOverProps): { title: string; body: string } {
  */
 export function StartOver(props: StartOverProps) {
   const { answering, onStartOver, onStartedOver } = props;
+  const notAnswering = useNotAnswering();
   const reason = useId();
   const [asking, setAsking] = useState(false);
   const [done, setDone] = useState(false);
@@ -79,7 +81,7 @@ export function StartOver(props: StartOverProps) {
       </Button>
       {answering ? null : (
         <span id={reason} className="text-small text-fg-muted">
-          The engine isn't answering.
+          {notAnswering}
         </span>
       )}
       {asking ? (
