@@ -2,6 +2,7 @@
 
 - Approval: the words are the board-approved microcopy T11 and T15 (HAL-1801); Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:YBFpeiZ6q+OBY1DhZ2i4EwbzAjlpHXtg5FilhLe3f9xKbyLPFSffGTdHbvn8gjKCqWwGFE8NFklsbZ40QtpRBw==
 - Task: HAL-9383
 
 ## What changes
