@@ -63,13 +63,13 @@ pub const UNINSTALL_KEY: &str =
 /// (HAL-7385, S-4).
 pub const SIGNER: Option<&str> = option_env!("HALONIC_SANDBOX_SIGNER");
 
-/// The SHA-256 of the `srt-win.exe` sandbox-runtime 0.0.81 ships for this
+/// The SHA-256 of the `srt-win.exe` sandbox-runtime 0.0.82 ships for this
 /// computer's architecture. `tests/srt_win_hash.rs` checks it against the
 /// installed package, so an srt update can't ship without a new value.
 #[cfg(target_arch = "aarch64")]
-pub const SRT_WIN_SHA256: &str = "c7b204c8fab94059dbf7a6a805b844abad3deb82614e07e4b8d4b5bb5c4374f7";
+pub const SRT_WIN_SHA256: &str = "1900da4dbaa867c3a2c198a5bf3384393352c674615c510a00453605d0d59c9d";
 #[cfg(not(target_arch = "aarch64"))]
-pub const SRT_WIN_SHA256: &str = "a8e22bc098ac1146ec9b9151d5f1770c05b897cd1ac588161e1287a248cc9176";
+pub const SRT_WIN_SHA256: &str = "f925865c6c41a3ce83a5ce94c4edcc8f5c77d3cbfc5a44f4ee1806127f77c84c";
 
 /// The SHA-256 of the `vcruntime140.dll` for this computer's architecture,
 /// from Microsoft's Visual C++ Redistributable 14.44 (the release

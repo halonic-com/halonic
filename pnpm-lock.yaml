@@ -165,8 +165,8 @@ settings:
 catalogs:
   default:
     '@anthropic-ai/sandbox-runtime':
-      specifier: 0.0.81
-      version: 0.0.81
+      specifier: 0.0.82
+      version: 0.0.82
     '@biomejs/biome':
       specifier: 2.6.5
       version: 2.6.5
@@ -253,7 +253,7 @@ overrides:
   '@anthropic-ai/sandbox-runtime>zod': 4.6.7
 
 patchedDependencies:
-  '@anthropic-ai/sandbox-runtime@0.0.81': aa3c87c5b1a3188def67673ada104e53ec3011f95bf55bccbaa905a7e4668e7c
+  '@anthropic-ai/sandbox-runtime@0.0.82': 1ca568e7e133bc798f7caa4a458b4be20f90b6c362dfe46fa0fc8872b242b382
 
 importers:
 
@@ -1516,7 +1516,7 @@ importers:
     dependencies:
       '@anthropic-ai/sandbox-runtime':
         specifier: 'catalog:'
-        version: 0.0.81(patch_hash=aa3c87c5b1a3188def67673ada104e53ec3011f95bf55bccbaa905a7e4668e7c)
+        version: 0.0.82(patch_hash=1ca568e7e133bc798f7caa4a458b4be20f90b6c362dfe46fa0fc8872b242b382)
       '@halonicjs/adapter-system-node':
         specifier: workspace:*
         version: link:../system-node
@@ -3349,8 +3349,8 @@ importers:
 
 packages:
 
-  '@anthropic-ai/sandbox-runtime@0.0.81':
-    resolution: {integrity: sha512-bjHDu87gjIR7+Oxy9jPiK3v8CvSELCzfpXa3fjqfSKdvlZET2iF51xcXILWPayTpowB3xtZeQVf2JR916nVW/w==, tarball: https://registry.npmjs.org/@anthropic-ai/sandbox-runtime/-/sandbox-runtime-0.0.81.tgz}
+  '@anthropic-ai/sandbox-runtime@0.0.82':
+    resolution: {integrity: sha512-SCPWkuhLw4ieL+06Jp72yFevltS0s2GD1kMOZdSJ6XxeuqTcoyAa1EDwiLxuONp6szNEOD7x02+vYxPa0oAWwg==, tarball: https://registry.npmjs.org/@anthropic-ai/sandbox-runtime/-/sandbox-runtime-0.0.82.tgz}
     engines: {node: '>=22.12.0'}
     hasBin: true
 
@@ -5856,9 +5856,12 @@ packages:
   zod@4.6.7:
     resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==, tarball: https://registry.npmjs.org/zod/-/zod-4.6.7.tgz}
 
+ignoredOptionalDependencies:
+  - '@microsoft/mxc-sdk'
+
 snapshots:
 
-  '@anthropic-ai/sandbox-runtime@0.0.81(patch_hash=aa3c87c5b1a3188def67673ada104e53ec3011f95bf55bccbaa905a7e4668e7c)':
+  '@anthropic-ai/sandbox-runtime@0.0.82(patch_hash=1ca568e7e133bc798f7caa4a458b4be20f90b6c362dfe46fa0fc8872b242b382)':
     dependencies:
       '@pondwader/socks5-server': 1.0.10
       commander: 12.1.0

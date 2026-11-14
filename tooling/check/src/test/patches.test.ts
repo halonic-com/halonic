@@ -11,8 +11,8 @@ import {
 } from "./fixture-repo.ts";
 
 // The real catalog pins srt to an exact version; the tests patch that one.
-const srt = "@anthropic-ai/sandbox-runtime@0.0.81";
-const file = "patches/@anthropic-ai__sandbox-runtime@0.0.81.patch";
+const srt = "@anthropic-ai/sandbox-runtime@0.0.82";
+const file = "patches/@anthropic-ai__sandbox-runtime@0.0.82.patch";
 const patchText = "diff --git a/dist/a.js b/dist/a.js\n-old\n+new\n";
 
 function allowing(entry: Record<string, unknown> = {}): string {
@@ -173,7 +173,7 @@ describe("tooling/check: allowed patches", () => {
       found({ patchesAllowed: allowing(entry) }).errors.some((m) => m.includes("allowed[0]"));
     expect(bad({ extra: 1 })).toBe(true);
     expect(bad({ package: "@anthropic-ai/sandbox-runtime" })).toBe(true);
-    expect(bad({ package: "@anthropic-ai/sandbox-runtime@^0.0.81" })).toBe(true);
+    expect(bad({ package: "@anthropic-ai/sandbox-runtime@^0.0.82" })).toBe(true);
     expect(bad({ file: "elsewhere/x.patch" })).toBe(true);
     expect(bad({ sha256: "ABC" })).toBe(true);
     expect(bad({ reason: "short" })).toBe(true);
