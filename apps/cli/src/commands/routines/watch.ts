@@ -13,7 +13,8 @@
 // scheduler delivers their timers, and those missed while nothing ran as
 // soon as it opens (docs/specs/workflow-semantics.md, "Timers").
 
-import { type RoutineScheduler, workspaceRoutineScheduler } from "@halonicjs/app";
+import { workspaceRoutineScheduler } from "@halonicjs/app";
+import type { RoutineScheduler } from "@halonicjs/app/routines";
 import type { RunStore } from "@halonicjs/ports";
 import { DEFAULT_TICK_POLICY, type PlacedRoutine } from "@halonicjs/routines";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";

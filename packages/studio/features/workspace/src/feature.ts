@@ -10,6 +10,8 @@ import {
 export const openWorkspaceCommand = "workspace.open";
 /** The command that opens the workspace page at Trust; Settings' **Open Trust** runs it. */
 export const openTrustCommand = "workspace.open-trust";
+/** The command that opens the workspace page at Models; Settings' **Open Models** runs it. */
+export const openModelsCommand = "workspace.open-models";
 
 /**
  * The Workspace feature (`workspace.feature`). It adds the `workspace` item kind, the page of the
@@ -40,6 +42,7 @@ export const workspaceFeature = defineFeature({
     for (const [id, title] of [
       [openWorkspaceCommand, WORKSPACE_PAGE_TITLE],
       [openTrustCommand, "Workspace trust"],
+      [openModelsCommand, "Workspace models"],
     ] as const) {
       studio.commands.add({ id, title, run: (context) => context.openItem?.(WORKSPACE_PAGE_ITEM) });
     }

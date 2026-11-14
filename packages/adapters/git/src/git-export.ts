@@ -21,12 +21,12 @@ export interface GitExport {
 /** The refs a caller may name: no option, no revision syntax, nothing git would read as a range or a path. */
 const plainRef = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 
-function isPlainRef(ref: string): boolean {
+export function isPlainRef(ref: string): boolean {
   return plainRef.test(ref) && !ref.includes("..") && !ref.includes("//") && !/[./]$/.test(ref);
 }
 
 /** A full commit id: 40 hex digits, or 64 with SHA-256. */
-const fullCommitId = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+export const fullCommitId = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 
 /**
  * Refuses a git address that is not an `https://` or `ssh://` one, that
@@ -167,7 +167,7 @@ async function remoteHeadBranch(git: ExportGit, address: string): Promise<string
   return branch !== undefined && isPlainRef(branch) ? branch : undefined;
 }
 
-async function mustSucceed(
+export async function mustSucceed(
   result: { code: number | null; stderr: string },
   step: string,
 ): Promise<void> {

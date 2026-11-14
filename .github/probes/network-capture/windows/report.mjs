@@ -4,18 +4,29 @@
 // check to GitHub, or when the control isn't in the capture.
 //
 // pktmon's packets name no process, so each packet is matched to the
-// connection `netstat` sampled with the same addresses and ports at that time,
-// and that connection's process is put in one of three groups:
+// connection ETW (Microsoft-Windows-Kernel-Network, net.xml) logged with the
+// same addresses and ports at that time, which names the process even for a
+// connection of a few milliseconds. The `netstat` samples are only the
+// fallback for a packet ETW has no event for. The process tree comes from ETW's
+// process starts (proc.xml), joined with the process samples. The process is
+// put in one of three groups:
 //   - Halonic: the installer, a program in the install folder, or a program
 //     one of those started (but not WebView2);
 //   - WebView2: msedgewebview2.exe;
 //   - Windows and others: everything else (the runner, DNS, updates).
 // DNS goes out from a Windows service, so lookups land in the last group. A
-// packet whose connection was never sampled is listed on its own.
+// packet no source could match is listed on its own and counted; more than
+// UNATTRIBUTED_MAX of the IP packets fails the job.
+//
+// The self-test (selftest.json) is a deliberate connection of under 100 ms from
+// a program in the install folder; the report must find it in the ETW events
+// and name it as Halonic through ETW, or it fails: that is the proof ETW
+// closed the gap, not just that some source named the process.
 //
 // Usage: report.mjs <capture folder>
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { etwFlows, etwProcesses, normalize, parseEtw, swap16 } from "./etw.mjs";
 
 const dir = process.argv[2];
 const read = (name) => {
@@ -72,11 +83,6 @@ export function readPcapng(buffer) {
 }
 
 const ip4 = (b, at) => `${b[at]}.${b[at + 1]}.${b[at + 2]}.${b[at + 3]}`;
-/** The compressed, lower-case form of an address, so capture and netstat agree. */
-export function normalize(address) {
-  const bare = address.replace(/%.*$/, "").replace(/^\[|\]$/g, "");
-  return bare.includes(":") ? new URL(`http://[${bare}]`).hostname.slice(1, -1) : bare;
-}
 const ip6 = (b, at) =>
   normalize(Array.from({ length: 8 }, (_, i) => b.readUInt16BE(at + i * 2).toString(16)).join(":"));
 
@@ -164,10 +170,27 @@ const session = json("session.json");
 const control = json("control.json");
 if (control?.address) control.address = normalize(control.address);
 const samples = json("processes.json");
+const selftest = json("selftest.json");
+const text = (name) =>
+  read(name)
+    ?.toString("utf8")
+    .replace(/^\uFEFF/, "");
+const netEvents = parseEtw(text("net.xml") ?? "");
+const procEvents = parseEtw(text("proc.xml") ?? "");
+const UNATTRIBUTED_MAX = 0.02;
 const pcap = read("capture.pcapng");
 if (!session) problems.push("There is no session.json: the capture script stopped early.");
 if (!pcap || pcap.length === 0) problems.push("There is no capture.");
 if (!samples) problems.push("There are no process samples (processes.json).");
+if (netEvents.length === 0)
+  problems.push(
+    "There are no ETW network events (net.xml): the capture can't name the process of a short connection.",
+  );
+if (procEvents.filter((e) => e.id === 1).length === 0)
+  problems.push(
+    "There are no ETW process starts (proc.xml): the process tree is only from the samples.",
+  );
+if (!selftest) problems.push("The self-test never ran: there is no selftest.json.");
 if (!control) problems.push("The control never ran: there is no control.json.");
 else if (!control.ok) problems.push(`The control fetch failed: ${control.error ?? "no answer"}.`);
 
@@ -178,7 +201,9 @@ const packets =
 const WINDOW = 1500;
 const installDir = (session?.installDir ?? "\0").toLowerCase();
 const setup = (session?.setup ?? "\0").toLowerCase();
-const table = samples?.processes ?? [];
+const lastTime = Math.max(0, ...Object.values(session?.phases ?? {}).map((w) => w.end));
+const table = [...(samples?.processes ?? []), ...etwProcesses(procEvents, lastTime + 60_000)];
+const flows = etwFlows(netEvents);
 const processAt = (pid, time) =>
   table
     .filter((p) => p.pid === pid)
@@ -186,7 +211,14 @@ const processAt = (pid, time) =>
   table.find((p) => p.pid === pid);
 const isHalonicProgram = (p) => {
   const path = (p.path ?? "").toLowerCase();
-  return path === setup || path.startsWith(installDir);
+  // ETW names the image as an NT path (\\Device\\HarddiskVolume3\\Users\\...): compare without the drive.
+  const bare = installDir.replace(/^[a-z]:/, "");
+  return (
+    path === setup ||
+    path.startsWith(installDir) ||
+    (bare.length > 4 && path.includes(bare)) ||
+    (setup.length > 4 && path.endsWith(setup.replace(/^.*[\\/]/, "")) && p.etw)
+  );
 };
 /** Halonic, WebView2 or Windows and others, for a process and its parents. */
 function groupOf(process, time) {
@@ -231,6 +263,25 @@ const connectionOf = (p) =>
       );
     })
     .sort((a, b) => b.first - a.first)[0];
+
+/** The ETW flow of a packet: same protocol and endpoints (either way round, ports as logged or byte-swapped) at that time. */
+const etwFlowOf = (p) => {
+  const same = (x, y) => x === y || swap16(x) === y;
+  return flows
+    .filter((f) => f.proto === p.proto && f.first - WINDOW <= p.time && p.time <= f.last + WINDOW)
+    .filter(
+      (f) =>
+        (f.a === normalize(p.src) &&
+          f.b === normalize(p.dst) &&
+          same(p.sport, f.ap) &&
+          same(p.dport, f.bp)) ||
+        (f.a === normalize(p.dst) &&
+          f.b === normalize(p.src) &&
+          same(p.dport, f.ap) &&
+          same(p.sport, f.bp)),
+    )
+    .sort((x, y) => Math.abs(x.first - p.time) - Math.abs(y.first - p.time))[0];
+};
 
 // DNS: every address the capture saw an answer for, and the names asked for.
 const names = new Map();
@@ -299,6 +350,11 @@ const groups = {
 const count = (map, key) => map.set(key, (map.get(key) ?? 0) + 1);
 const failures = [];
 let local = 0;
+let ipPackets = 0;
+let ipUnattributed = 0;
+let selfPackets = 0;
+let selfViaEtw = 0;
+let selfOnlyEtw = 0;
 let controlPackets = 0;
 for (const p of packets) {
   if (p.other && !p.proto) {
@@ -323,17 +379,49 @@ for (const p of packets) {
     controlPackets++;
   const server = p.sport < p.dport ? [p.src, p.sport] : [p.dst, p.dport];
   const label = `${p.proto} → ${nameOf(server[0])}:${server[1]}`;
-  const connection = connectionOf(p);
+  const flow = etwFlowOf(p);
+  const connection = flow ?? connectionOf(p);
   const process = connection && processAt(connection.pid, p.time);
   if (!process) {
     count(groups["No process in the samples"], `${label} · ${phaseOf(p.time)}`);
+    ipUnattributed++;
+    ipPackets++;
     continue;
   }
+  ipPackets++;
   const group = groupOf(process, p.time);
   count(groups[group], `${process.name} · ${label} · ${phaseOf(p.time)}`);
+  // Only the self-test's own connection, in its own phase, skips the update-check rule.
+  if (
+    selftest &&
+    /^halonic-selftest\.exe$/i.test(process.name) &&
+    process.pid === selftest.pid &&
+    phaseOf(p.time) === "selftest" &&
+    group === "Halonic"
+  ) {
+    selfPackets++;
+    if (flow) selfViaEtw++;
+    if (!connectionOf(p)) selfOnlyEtw++;
+    continue;
+  }
   if (group === "Halonic" && !isUpdateHost(server[0]))
     failures.push(`${process.name} → ${nameOf(server[0])}:${server[1]} (${phaseOf(p.time)})`);
 }
+
+if (selftest) {
+  if (selftest.exitCode !== 0)
+    problems.push(
+      `The self-test's connection to ${selftest.host} failed (curl exit ${selftest.exitCode}).`,
+    );
+  else if (selfViaEtw === 0)
+    problems.push(
+      "No packet of the self-test connection (halonic-selftest.exe in the install folder, to example.org) was matched through ETW as Halonic's: ETW did not close the gap in the process matching.",
+    );
+}
+if (ipPackets > 0 && ipUnattributed / ipPackets > UNATTRIBUTED_MAX)
+  problems.push(
+    `${ipUnattributed} of ${ipPackets} IP packets (${((100 * ipUnattributed) / ipPackets).toFixed(1)} %) match no process; the limit is ${UNATTRIBUTED_MAX * 100} %.`,
+  );
 
 const total = (m) => [...m.values()].reduce((a, b) => a + b, 0);
 const rows = (m) =>
@@ -345,7 +433,7 @@ const section = (heading, m) =>
 const out = [
   "## Session on Windows (x64)",
   "",
-  `${packets.length} packets at the network cards: ${total(groups.Halonic)} from Halonic, ${total(groups.WebView2)} from WebView2, ${total(groups["Windows and others"])} from Windows and others, ${total(groups["No process in the samples"])} with no process in the samples, ${controlPackets} of them the control's. Loopback isn't captured at the cards (${local} seen).`,
+  `${packets.length} packets at the network cards: ${total(groups.Halonic)} from Halonic, ${total(groups.WebView2)} from WebView2, ${total(groups["Windows and others"])} from Windows and others, ${total(groups["No process in the samples"])} with no process in ETW or the samples, ${controlPackets} of them the control's. Loopback isn't captured at the cards (${local} seen).`,
   "",
   "Phases: " +
     Object.entries(session?.phases ?? {})
@@ -357,6 +445,13 @@ const out = [
   `- DNS lookup of example.com: ${lookedUp ? "seen" : "not seen"}${answers.size > 0 ? ` (answers: ${[...answers].join(", ")})` : ""}`,
   `- SYN to ${control?.address ?? "example.com"}:443: ${connected ? "seen" : "not seen"}`,
   "",
+  "### Self-test: a short connection from a Halonic program",
+  "",
+  selftest
+    ? `- halonic-selftest.exe (pid ${selftest.pid}) connected to ${selftest.host}:${selftest.port} for about ${selftest.milliseconds} ms: ${selfPackets} packets named as Halonic, ${selfViaEtw} matched through ETW, ${selfOnlyEtw} of them only through ETW (the netstat samples missed them).`
+    : "- did not run",
+  `- ETW events: ${netEvents.length} network, ${procEvents.length} process; ${flows.length} flows. Unattributed IP packets: ${ipUnattributed} of ${ipPackets}.`,
+  "",
   "### Halonic's traffic that is not the update check",
   "",
   ...(failures.length > 0 ? [...new Set(failures)].map((f) => `- ${f}`) : ["none"]),
@@ -365,7 +460,7 @@ const out = [
   ...section("WebView2, for review", groups.WebView2),
   ...section("Windows and others (runner, DNS, system), for review", groups["Windows and others"]),
   ...section(
-    "No process in the samples (short connections, ARP, closed connections), for review",
+    "No process in ETW or the samples (ARP, packets before ETW started), for review",
     groups["No process in the samples"],
   ),
   ...section("DNS names asked for (any program)", asked),
@@ -373,7 +468,7 @@ const out = [
   "",
   "- Onboarding: nobody clicks through it here, so the capture shows the app on its first screen. What the app does after each onboarding step is only read in the code.",
   "- Anything a signed-in or configured app sends (model providers, sign-in), and what an update does once one is found (download, install, restart).",
-  "- A connection shorter than the 0.2 s sampling is never matched to a process; its packets are in the last table.",
+  "- Packets before ETW started or from the network cards' own ARP and similar are in the last table; the job fails above a share of IP packets set in the report.",
   "",
 ];
 if (failures.length > 0)

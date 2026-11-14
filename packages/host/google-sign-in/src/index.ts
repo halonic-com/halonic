@@ -5,6 +5,11 @@ export {
   checkGoogleServicesAgain,
   type GoogleCheckAgainResult,
 } from "./check-again.ts";
+export {
+  type CheckStagedClientSecretPorts,
+  checkStagedClientSecret,
+  type StagedSecretCheckResult,
+} from "./check-staged-secret.ts";
 export { createPendingSignIns } from "./pending-sign-ins.ts";
 export { createPkcePair, type PkcePair, pkceChallenge } from "./pkce.ts";
 export { type GoogleRevokeResult, googleRevokeEndpoint, revokeGoogleSignIn } from "./revoke.ts";

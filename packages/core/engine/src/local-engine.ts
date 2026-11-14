@@ -2,11 +2,8 @@
 // scheduler. `app` can't import the engine, so every host that runs the
 // engine in its own process (Studio services, the CLI) puts them together here.
 
-import {
-  type RoutineScheduler,
-  type WorkspaceRoutineSchedulerOptions,
-  workspaceRoutineScheduler,
-} from "@halonicjs/app";
+import { type WorkspaceRoutineSchedulerOptions, workspaceRoutineScheduler } from "@halonicjs/app";
+import type { RoutineScheduler } from "@halonicjs/app/routines";
 import type { Scheduler, SchedulerListener } from "@halonicjs/ports";
 import { LocalExecutor } from "./local-executor.ts";
 import type { LocalExecutorOptions } from "./local-executor-options.ts";

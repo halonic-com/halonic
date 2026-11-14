@@ -41,6 +41,7 @@ jobs:
       sandbox-fence: ${{ steps.diff.outputs.sandbox-fence }}
       sandbox: ${{ steps.diff.outputs.sandbox }}
       windows: ${{ steps.diff.outputs.windows }}
+      sandbox-mxc: ${{ steps.diff.outputs.sandbox-mxc }}
       android: ${{ steps.diff.outputs.android }}
       agent_host: ${{ steps.diff.outputs.agent_host }}
       studio: ${{ steps.diff.outputs.studio }}
@@ -64,6 +65,7 @@ jobs:
             "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-srt|harness-bridge|system-node|integration-runner|integration-kit|connector-stdio-sandbox)/|apps/cli/(fence/|src/(local-harness-host|open-local-integration|local-integration-machine|integration-connector-factory|workspace-engine))|packages/core/ports/|pnpm-lock\.yaml$)"
             "sandbox=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-[^/]+|system-node|git)/|packages/core/ports/)"
             "windows=^(\.github/workflows/ci\.yml$|\.github/actions/|pnpm-lock\.yaml$|apps/(cli|agent-host)/|packages/adapters/(fs-node|harness-kit|harness-claude-code|harness-codex|mcp|memory|system-node|http-kit|integration-kit)/|packages/core/(workspace|app|events|format|ports|profile|routines|schema-kit|std|workflow|yaml)/|packages/testing/(contracts|spec|parity|integration)/|tooling/(config|publish)/)"
+            "sandbox-mxc=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/sandbox-mxc/|packages/core/app/(src|requirements)/sandbox-|packages/core/ports/|pnpm-lock\.yaml$)"
             "android=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|apps/studio/src/connect/|apps/studio/connect\.html$|apps/studio/vite\.config\.ts$|apps/studio/package\.json$|pnpm-lock\.yaml$)"
             "agent_host=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/agent-host/|package\.json$)"
             "studio=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/|packages/studio/)"
@@ -1428,6 +1430,36 @@ jobs:
         working-directory: apps/cli
         run: pnpm test:fence
 
+  sandbox-mxc-fence:
+    # The real MXC fence on Windows 11 (HAL-3305, ADR 2026-11-10): the
+    # contract suite, the fence proof and the attack cases under
+    # packages/adapters/sandbox-mxc run the actual process container and try
+    # to get out. Required from the first merge (HAL-3645): MXC is opt-in,
+    # but a person can switch it on, so it never runs report-only. It runs
+    # on every change to the adapter, the sandbox choice and trust check in
+    # core/app, the port, and the lockfile, so an @microsoft/mxc-sdk bump
+    # runs it. windows-11-arm is the only hosted runner with the
+    # BaseContainer tier; there MXC must be offered, so a fence test never
+    # skips itself here. --fail-if-no-match keeps a missing package or
+    # script from passing silently. No cache: see the setup action.
+    name: Sandbox fence (MXC on Windows 11)
+    needs: changes
+    if: needs.changes.outputs.sandbox-mxc == 'true'
+    runs-on: windows-11-arm
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+        with:
+          cache: false
+      - name: Fence tests
+        shell: bash
+        run: pnpm --filter @halonicjs/adapter-sandbox-mxc --fail-if-no-match run test:fence
+
   sandbox-os:
     # The sandbox and launcher packages, and the git adapter, on the other
     # two systems (plan phase 3): they start processes, build paths and read
@@ -2344,6 +2376,7 @@ jobs:
         tauri-keychain-macos,
         sandbox-fence,
         sandbox-fence-macos,
+        sandbox-mxc-fence,
         sandbox-os,
         sandbox-windows,
         agent-host,
