@@ -89,6 +89,21 @@ export type WriteResult =
   | { readonly status: "written" }
   | { readonly status: "changed-on-disk"; readonly current: string | null };
 
+/** Options for {@link DefinitionStore.remove}. */
+export interface RemoveOptions {
+  /** Remove only if the file still holds this. Leave it out to remove the file whatever it holds. */
+  readonly expected?: ExpectedContent;
+}
+
+/**
+ * What {@link DefinitionStore.remove} did. `changed-on-disk` means the file
+ * no longer held what the caller expected, so nothing was removed; `current`
+ * is its text now, or `null` when it is gone.
+ */
+export type RemoveResult =
+  | { readonly status: "removed" }
+  | { readonly status: "changed-on-disk"; readonly current: string | null };
+
 /**
  * One workspace file that changed outside Halonic. `removed` means it is gone
  * at the end of the batch; a file removed and created again, as many editors
@@ -125,8 +140,13 @@ export interface DefinitionStore extends DefinitionSource {
    * read and, if not, writes nothing and returns `changed-on-disk`.
    */
   write(path: string, content: string, options?: WriteOptions): Promise<WriteResult>;
-  /** Deletes a file. Deleting a file that isn't there is not an error. */
-  remove(path: string): Promise<void>;
+  /**
+   * Deletes a file. Deleting a file that isn't there is not an error. With
+   * `expected`, it first checks the file still holds what the caller last
+   * read and, if not, removes nothing and returns `changed-on-disk`, so an
+   * edit made since is not deleted.
+   */
+  remove(path: string, options?: RemoveOptions): Promise<RemoveResult>;
   /**
    * Reports the files that change from outside Halonic (save model 6):
    * another editor, a sync tool, `git pull`. A change is one whose text

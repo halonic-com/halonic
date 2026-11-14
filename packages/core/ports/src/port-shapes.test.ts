@@ -46,7 +46,7 @@ const definitions: DefinitionStore = {
   read: async () => "id: acme\n",
   version: async () => "v1",
   write: async () => ({ status: "written" }),
-  remove: async () => {},
+  remove: async () => ({ status: "removed" }),
   watch: async () => ({ close: async () => {} }),
 };
 

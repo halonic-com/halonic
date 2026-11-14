@@ -62,6 +62,8 @@ export {
   type ExpectedContent,
   isPrivateWorkspacePath,
   isUnreadableWorkspaceFolderError,
+  type RemoveOptions,
+  type RemoveResult,
   segmentAsOpened,
   UnreadableWorkspaceFolderError,
   type WorkspaceFileChange,

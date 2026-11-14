@@ -1,4 +1,11 @@
-import type { DefinitionStore, DefinitionWatch, WriteOptions, WriteResult } from "@halonicjs/ports";
+import type {
+  DefinitionStore,
+  DefinitionWatch,
+  RemoveOptions,
+  RemoveResult,
+  WriteOptions,
+  WriteResult,
+} from "@halonicjs/ports";
 import { KeyedQueue, matchesExpected, type Sha256 } from "@halonicjs/std";
 
 /**
@@ -73,12 +80,23 @@ export class TestDefinitionStore implements DefinitionStore {
     });
   }
 
-  async remove(path: string): Promise<void> {
+  async remove(path: string, options: RemoveOptions = {}): Promise<RemoveResult> {
     this.check(path);
-    await this.writes.run(path, async () => {
+    const { expected } = options;
+    if (expected !== undefined && this.digest === null) {
+      throw new Error("TestDefinitionStore needs a digest to remove with `expected`.");
+    }
+    return await this.writes.run(path, async () => {
+      if (expected !== undefined && this.digest !== null) {
+        const current = this.files.get(path) ?? null;
+        if (!(await matchesExpected(current, expected, this.digest))) {
+          return { status: "changed-on-disk", current };
+        }
+      }
       this.log.push(`remove ${path}`);
       this.files.delete(path);
       this.saves++;
+      return { status: "removed" };
     });
   }
 

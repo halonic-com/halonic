@@ -5,11 +5,19 @@ import {
   type DefinitionWatch,
   type DefinitionWatchListener,
   type Digest,
+  type RemoveOptions,
+  type RemoveResult,
   UnreadableWorkspaceFolderError,
   type WriteOptions,
   type WriteResult,
 } from "@halonicjs/ports";
-import { bytesToHex, type ErrorKind, KeyedQueue, KindedError } from "@halonicjs/std";
+import {
+  bytesToHex,
+  type ErrorKind,
+  KeyedQueue,
+  KindedError,
+  matchesExpected,
+} from "@halonicjs/std";
 import {
   type FileRefusalKind,
   fileCommands,
@@ -114,13 +122,22 @@ export class TauriDefinitionStore implements DefinitionStore {
     });
   }
 
-  async remove(path: string): Promise<void> {
+  async remove(path: string, options: RemoveOptions = {}): Promise<RemoveResult> {
     checkPublicWorkspacePath(path);
-    await this.#writes.run(path, async () => {
+    return await this.#writes.run(path, async () => {
+      const { expected } = options;
+      if (expected !== undefined) {
+        // The shell's remove has no `expected` yet, so this checks just before it asks.
+        const current = await this.read(path);
+        if (!(await matchesExpected(current, expected, webCryptoDigest))) {
+          return { status: "changed-on-disk", current };
+        }
+      }
       await runOwnChange(this.#watches, path, null, webCryptoDigest, async () => {
         await this.#call(fileCommands.remove, { path });
         return true;
       });
+      return { status: "removed" };
     });
   }
 

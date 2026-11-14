@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: save model 1.7 (HAL-1102), routing note task 3 (HAL-3236), HAL-3247, HAL-3383; `DefinitionStore` port v2
 
-When `write(path, content, { expected })` is called, the `DefinitionStore` port shall write only if the file still holds what the caller last read: `expected` is that text's digest (`sha256:` and the 64 lowercase hex characters of the SHA-256 of its UTF-8 bytes, as `contentDigest` works it out) or `absent` for a file that should not exist yet. The store shall return `written`, or `changed-on-disk` with the file's current text (`null` when it is gone) and write nothing. Writes and removes of the same path from one store shall run one after another, so another write or a remove from that store never comes between the check and the write. A write without `expected` shall replace the file as before. `@halonicjs/std` shall export `contentDigest` and `matchesExpected` (`std.content-digest`), so every store compares the same way. The `definition-store` contract suite shall check every adapter against this.
+When `write(path, content, { expected })` is called, the `DefinitionStore` port shall write only if the file still holds what the caller last read: `expected` is that text's digest (`sha256:` and the 64 lowercase hex characters of the SHA-256 of its UTF-8 bytes, as `contentDigest` works it out) or `absent` for a file that should not exist yet. The store shall return `written`, or `changed-on-disk` with the file's current text (`null` when it is gone) and write nothing. Writes and removes of the same path from one store shall run one after another, so another write or a remove from that store never comes between the check and the write. A write without `expected` shall replace the file as before. `remove(path, { expected })` shall do the same for a remove (HAL-9343): it shall return `removed`, or `changed-on-disk` with the file's current text (`null` when it is gone) and remove nothing; a remove without `expected` shall remove the file whatever it holds. `@halonicjs/std` shall export `contentDigest` and `matchesExpected` (`std.content-digest`), so every store compares the same way. The `definition-store` contract suite shall check every adapter against this.
 
 ## Examples
 
@@ -26,6 +26,9 @@ When `write(path, content, { expected })` is called, the `DefinitionStore` port 
 - Given `a.yaml` = "1",
   when it is written with the digest of "1" and removed at the same time,
   then the write is `written` and `a.yaml` is gone afterwards; when the remove comes first, the write is `changed-on-disk` with current `null`.
+- Given `a.yaml` = "3" after Halonic read "1",
+  when it is removed with the digest of "1",
+  then the result is `changed-on-disk` with current "3", and `a.yaml` stays "3"; removed with the digest of "3", the result is `removed`.
 - Given the text "hello",
   when `contentDigest` is asked for it,
   then it is `sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824`.
