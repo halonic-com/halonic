@@ -1,0 +1,16 @@
+{
+  "identifier": "desktop-plugin-folder-remove",
+  "description": "On desktop, the app's own page may delete one installed plugin's folder from the profile's plugins folder, through the plugin_folder_remove command (src/plugin_folder_remove.rs). It is its own capability, apart from reading the plugins, so the grant to write is easy to see. The shell works out the plugins folder itself, follows no link and takes one plugin name, never a path. It is local only, so the Studio the computer serves cannot remove a plugin.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-plugin-folder-remove"
+  ]
+}

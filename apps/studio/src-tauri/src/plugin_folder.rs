@@ -5,9 +5,10 @@
 //! themselves, as `pluginsFolder` in `@halonicjs/profile` names it.
 //!
 //! No command takes a path for the root: the shell works out the folder
-//! itself. They only read. A link is listed and never followed, a link
+//! itself. These only read. A link is listed and never followed, a link
 //! as the plugins folder itself is refused, and a special file is never
-//! opened (the `halonic-workspace-files` reader's rules). `plugin_folder_reveal`
+//! opened (the `halonic-workspace-files` reader's rules). The one command that
+//! writes, `plugin_folder_remove`, is in `plugin_folder_remove.rs`. `plugin_folder_reveal`
 //! shows the plugins folder, or one plugin's folder, in the file manager,
 //! and nothing else.
 
@@ -24,7 +25,7 @@ use crate::files::{EntryAnswer, FileRefusal};
 use crate::profile::cli_profile;
 
 /// The plugins folder of `profile`.
-fn plugins_root(profile: &ProfileFolder) -> PathBuf {
+pub(crate) fn plugins_root(profile: &ProfileFolder) -> PathBuf {
     PathBuf::from(profile.plugins_folder())
 }
 
@@ -32,7 +33,7 @@ fn plugins_root(profile: &ProfileFolder) -> PathBuf {
 /// folder yet: nothing is created, and no plugin is installed. A link, or
 /// anything that isn't a folder, is refused: the reader would follow a link
 /// that is its own root.
-fn plugins_reader(root: &Path) -> Result<Option<FolderReader>, FileError> {
+pub(crate) fn plugins_reader(root: &Path) -> Result<Option<FolderReader>, FileError> {
     let seen = match fs::symlink_metadata(root) {
         Ok(seen) => seen,
         Err(error) if error.kind() == ErrorKind::NotFound => return Ok(None),
@@ -52,7 +53,7 @@ fn plugins_reader(root: &Path) -> Result<Option<FolderReader>, FileError> {
     Ok(Some(FolderReader::new(real)))
 }
 
-fn io(path: &str, error: &std::io::Error) -> FileError {
+pub(crate) fn io(path: &str, error: &std::io::Error) -> FileError {
     FileError::Io {
         message: format!("{path:?}: {error}"),
     }
@@ -124,7 +125,7 @@ fn location_of_root(reader: &FolderReader) -> Result<String, FileError> {
 
 /// Runs `call` on the plugins folder of the CLI's profile, on a worker
 /// thread: it reads files.
-async fn in_plugins_folder<R, T, F>(app: AppHandle<R>, call: F) -> Result<T, FileRefusal>
+pub(crate) async fn in_plugins_folder<R, T, F>(app: AppHandle<R>, call: F) -> Result<T, FileRefusal>
 where
     R: Runtime,
     T: Send + 'static,
