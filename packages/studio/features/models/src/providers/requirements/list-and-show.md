@@ -11,6 +11,6 @@ The Providers section of the workspace page shall list the providers in `provide
 - Given `providers/anthropic.yaml` (type anthropic, secret anthropic) and `providers/ollama.yaml` (name Ollama, type ollama, local),
   when the user opens "Workspace settings…",
   then Providers lists "Anthropic · anthropic · cloud" and then "Ollama · ollama · local".
-- Given the user opens "Anthropic", then the page shows Type "anthropic", Base URL "default", Secret "anthropic", and a link to `providers/anthropic.yaml`.
-- Given no providers, then the section says "No providers yet (providers/)."
-- Given `privacy.localOnly: true`, then the page of "Anthropic" says "Blocked: this workspace is set to local only."
+- Given the user opens "Anthropic", then the page shows Type "anthropic", Base URL "The provider's own", Secret name "anthropic", and a link to `providers/anthropic.yaml`.
+- Given no providers, then the section says "No providers yet. A provider is the company or local server that runs your models, like Anthropic or Ollama."
+- Given `privacy.localOnly: true`, then the page of "Anthropic" says "Acme is local only, so it can't use this provider." (Acme being the workspace name)

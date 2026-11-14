@@ -103,7 +103,7 @@ verifies("models.providers.list-and-show", () => {
       "Type",
       "anthropic",
       "Base URL",
-      "default",
+      "The provider's own",
       "Secret name",
       "anthropic",
       "File",

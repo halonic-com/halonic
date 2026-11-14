@@ -13,7 +13,7 @@ export function blockedLocalOnlyLine(workspaceName: string | undefined): string 
   return `${workspaceName ?? "This workspace"} is local only, so it can't use this provider.`;
 }
 export const PROVIDER_GONE_LINE = "This provider is no longer in providers/.";
-export const DEFAULT_BASE_URL = "default";
+export const DEFAULT_BASE_URL = "The provider's own";
 export const NO_SECRET = "none";
 
 /** The title of a provider's tab and page. */

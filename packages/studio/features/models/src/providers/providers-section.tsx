@@ -43,7 +43,7 @@ export function ProvidersSection({ context }: ItemPageSectionViewProps) {
       {state.status === "ready" && state.providerFiles.length === 0 ? (
         <p>{NO_PROVIDERS_LINE}</p>
       ) : null}
-      {state.status === "ready" ? (
+      {state.status === "ready" && state.providerFiles.length > 0 ? (
         <ul className="flex flex-col">
           {providerRows(state.providerFiles).map((row) => (
             <li key={row.id}>
