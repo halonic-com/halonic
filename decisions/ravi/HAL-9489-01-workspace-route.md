@@ -3,6 +3,7 @@
 - Task: HAL-9489
 - Approval: Liam's decision on HAL-9482 (served Studio); Liam reviews the code and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:fKdus3Iiwizzh4Q8h2I4rJJs71TbJb4E/O7lqdb3uLSSt2+ht2kIzCWfN7EMFpLU/k2XLgdMR0msNWEiAWmHAA==
 
 ## What changes
 
