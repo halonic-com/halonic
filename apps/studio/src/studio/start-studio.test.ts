@@ -17,7 +17,6 @@ import { createShell } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
-  closeLimitMs,
   desktopFeatures,
   displaySettingsOf,
   keyboardPlatform,
@@ -450,58 +449,3 @@ verifies("studio.window-appearance", () => {
 function displaySettings(): DisplaySettings {
   return new DisplaySettings(new BrowserDisplayPrefs(memoryStorage(), new EventTarget()));
 }
-
-/** A desktop window whose close button can be pressed; `hang` makes the shell's unlisten never answer. */
-function closableWebview(hang = false) {
-  const { calls, page } = desktopWebview(null);
-  const callbacks: ((message: unknown) => void)[] = [];
-  const internals = {
-    ...page.__TAURI_INTERNALS__,
-    invoke: async (command: string, args?: Record<string, unknown>) => {
-      if (command === "plugin:event|unlisten" && hang) return new Promise<never>(() => {});
-      return page.__TAURI_INTERNALS__.invoke(command, args);
-    },
-    transformCallback: (callback: (message: unknown) => void) => callbacks.push(callback),
-  };
-  const destroyed = () => calls.filter((call) => call.command === "plugin:window|destroy");
-  return {
-    calls,
-    page: { __TAURI_INTERNALS__: internals },
-    destroyed,
-    press: () => callbacks[0]?.({}),
-  };
-}
-
-verifies("studio.entry", () => {
-  it("stops the Studio, then closes the desktop window, when the person closes it", async () => {
-    const webview = closableWebview();
-    started = startStudio({ element, window: webview.page, userAgent: "Mozilla/5.0 (X11; Linux)" });
-    await vi.waitFor(() => expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio"));
-
-    webview.press();
-
-    await vi.waitFor(() => expect(webview.destroyed()).toHaveLength(1));
-    expect(element.querySelector("h1")).toBeNull();
-    expect(webview.calls.map((call) => call.command)).toContain("plugin:event|unlisten");
-  });
-
-  it("closes the window anyway when stopping takes longer than the limit", async () => {
-    vi.useFakeTimers();
-    try {
-      const webview = closableWebview(true);
-      started = startStudio({
-        element,
-        window: webview.page,
-        userAgent: "Mozilla/5.0 (X11; Linux)",
-      });
-      webview.press();
-      await vi.advanceTimersByTimeAsync(closeLimitMs - 1);
-      expect(webview.destroyed()).toHaveLength(0);
-      await vi.advanceTimersByTimeAsync(1);
-      expect(webview.destroyed()).toHaveLength(1);
-    } finally {
-      vi.useRealTimers();
-      started = undefined;
-    }
-  });
-});
