@@ -8,10 +8,10 @@ function refusal(status: number, body: RefusalBody, headers?: Record<string, str
   return Response.json(body, headers === undefined ? { status } : { status, headers });
 }
 
-const healthPath = "/health";
+export const healthPath = "/health";
 
 /**
- * Answers a request while the Worker has no API behind it (HAL-6802). Only
+ * Answers a request without the API behind it (HAL-6802): the health route, and a 404 for the rest. Only
  * `GET` and `HEAD` on `/health` answer, with 200 and `{"status":"ok"}`: no
  * version, no configuration, no names of what is bound, so a caller who isn't
  * signed in learns nothing about the deployment. Every other path is 404 and
