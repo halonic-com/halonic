@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
     "test": "vitest run",
-    "stage": "node src/cli/stage.ts"
+    "stage": "node src/cli/stage.ts",
+    "stage-cli": "node src/cli/stage-cli.ts"
   },
   "devDependencies": {
     "@halonicjs/testing-spec": "workspace:*",
