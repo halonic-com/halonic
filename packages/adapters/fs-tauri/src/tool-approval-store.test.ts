@@ -252,6 +252,33 @@ verifies("fs-tauri.tool-approval-store", () => {
       expect(isUnreadableToolApprovalError(await rejection(store.get(lookup)))).toBe(true);
     });
 
+    it("names files by the hashes the CLI's store uses, fixed here so a change in hashText shows", async () => {
+      expect(await hashText("lookup")).toBe(
+        "6a7ef6b04498ace6346e6d74712b9ddc4f4f362370b48986239596c5dc567cb3",
+      );
+      // A lone surrogate, which UTF-8 would turn into U+FFFD.
+      expect(await hashText("\ud800")).toBe(
+        "205022e3428b7c8276cf247b36e4e512db5651e5cb3472c253d9ee893a8ac750",
+      );
+    });
+
+    it("treats a file that isn't text as damaged when it approves, revokes or notes waiting", async () => {
+      const shell = openShell();
+      const store = new TauriToolApprovalStore(shell);
+      const files = shell.approvalsOf(workspace, "notes").files;
+      await store.approve(toolApproval());
+      shell.refuseNext("not_text", "fs_read");
+      await store.approve(toolApproval({}, 2));
+      expect(await store.get(lookup)).toEqual(toolApproval({}, 2));
+      await store.noteWaiting(lookup, waitingVersion(1));
+      shell.refuseNext("not_text", "fs_read");
+      await store.revoke(lookup);
+      expect(files.has("waiting.json")).toBe(false);
+      await store.noteWaiting(lookup, waitingVersion(1));
+      shell.refuseNext("not_text", "fs_read");
+      expect(await store.noteWaiting(lookup, waitingVersion(2))).toEqual([waitingVersion(2)]);
+    });
+
     it("rejects a list when a file's tool doesn't hash to its name", async () => {
       const shell = openShell();
       const store = new TauriToolApprovalStore(shell);

@@ -287,8 +287,9 @@ Halonic's file is never overwritten.
 | --- | --- |
 | `unsafe_path`, `private_path` | a `RangeError` |
 | `folder_not_open` | a `KindedError` `denied` |
-| `not_text` | an `UnreadableToolApprovalError` naming the tool or the file |
-| anything else | a `KindedError` `unavailable`, without its text |
+| `not_text` | an `UnreadableToolApprovalError` naming the tool or the file, from `get` and `list`; `approve`, `revoke` and `noteWaiting` treat the file as damaged, as the CLI's store does |
+| any other refusal | a `KindedError` `unavailable`, with the shell's message |
+| not a refusal at all, such as a page without the capability | a `KindedError` `unavailable`, without text |
 
 The package exports `TauriToolApprovalStore`. The tests run the tool approval store contract against
 a fake shell; the folder rules on real files are proved by the Rust tests in

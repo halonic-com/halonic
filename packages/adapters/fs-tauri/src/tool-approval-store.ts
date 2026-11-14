@@ -124,7 +124,12 @@ export class TauriToolApprovalStore implements ToolApprovalStore {
     return versions;
   }
 
-  /** Forgets one tool's waiting versions. Leaves a newer Halonic's file alone. */
+  /**
+   * Forgets one tool's waiting versions. Leaves a newer Halonic's file alone.
+   * Known gap: the shell can't remove a file only when it is unchanged, so a
+   * `noteWaiting` from the CLI that lands between the read and the remove of
+   * the last entry is lost.
+   */
   async #forgetWaiting(key: ToolApprovalKey): Promise<void> {
     await this.#change(key, waitingFile, (text) => {
       if (text === null) return "keep";
@@ -147,7 +152,7 @@ export class TauriToolApprovalStore implements ToolApprovalStore {
     next: (text: string | null) => Change,
   ): Promise<void> {
     for (let attempt = 0; attempt < maxChangeAttempts; attempt += 1) {
-      const text = await this.#read(source, file);
+      const text = await this.#readOrClear(source, file);
       const change = next(text);
       if (change === "keep") return;
       if (change === "remove") {
@@ -167,6 +172,20 @@ export class TauriToolApprovalStore implements ToolApprovalStore {
       "unavailable",
       `The approvals of ${JSON.stringify(source.source)} kept changing, so ${JSON.stringify(file)} was left as it is.`,
     );
+  }
+
+  /**
+   * Reads `file`. A file that isn't UTF-8 text is damaged, which the CLI's
+   * store overwrites or drops, so it is removed here and read as absent.
+   */
+  async #readOrClear(source: SourceKey, file: string): Promise<string | null> {
+    try {
+      return await this.#read(source, file);
+    } catch (error) {
+      if (!unreadableText(error)) throw error;
+      await this.#call(source, fileCommands.remove, { path: file });
+      return null;
+    }
   }
 
   async #read(source: SourceKey, file: string): Promise<string | null> {
