@@ -696,7 +696,11 @@ works today.
   headers; a body limit enforced while streaming; errors that carry a code and
   a short message only; HMAC-signed, replay-protected webhooks; the daily
   request ceiling. The outside-a-run connector gate (see the
-  [port list ADR](../adr/2026-11-07-port-list-and-versions.md)) is **Planned**.
+  [port list ADR](../adr/2026-11-07-port-list-and-versions.md)) is **On `main`**:
+  `POST /api/connector-calls` asks `checkOutsideRunCall` before every call, so
+  only a `read` tool the connector's lists allow runs, with declared
+  arguments, and a write, send or approve call is refused
+  (`server.outside-run-connector-gate`).
 
 #### Agents in a harness on the serve host
 

@@ -3,7 +3,7 @@ import type { ToolRisk } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { ConnectorCallPorts, Server, TrustDecision } from "./api.ts";
-import { testServer } from "./test-server.ts";
+import { FakePasswordHasher, testServer } from "./test-server.ts";
 
 const trusted: TrustDecision = { state: "trusted", message: "Trusted." };
 type Target = Omit<OutsideRunCall, "args">;
@@ -36,6 +36,7 @@ function setup(
     lists?: Target["lists"];
     call?: () => Promise<string>;
     withPorts?: boolean;
+    passwordHash?: string;
   } = {},
 ) {
   const seen: Seen = { found: [], called: [], logged: [] };
@@ -61,7 +62,13 @@ function setup(
     settings: { checkSending: async () => options.sending ?? { allowed: true } },
   };
   const server = testServer({
-    passwordHash: null,
+    passwordHash: options.passwordHash ?? null,
+    ...(options.passwordHash === undefined
+      ? {}
+      : {
+          passwordHasher: new FakePasswordHasher(),
+          config: { allowedHosts: ["halonic.acme.example"] },
+        }),
     trust: { check: async () => options.state ?? trusted },
     errorLog: { record: (error) => seen.logged.push(error) },
     ...(options.withPorts === false ? {} : { connectors }),
@@ -69,11 +76,11 @@ function setup(
   return { server, seen };
 }
 
-function call(server: Server, body: unknown, type = "application/json") {
+function call(server: Server, body: unknown, type = "application/json", host = "localhost") {
   return server.handle(
     new Request("http://localhost/api/connector-calls", {
       method: "POST",
-      headers: { host: "localhost", ...(type === "" ? {} : { "content-type": type }) },
+      headers: { host, ...(type === "" ? {} : { "content-type": type }) },
       body: typeof body === "string" ? body : JSON.stringify(body),
     }),
   );
@@ -83,9 +90,9 @@ const read = { connector: "mail", tool: "read", arguments: { query: "invoices" }
 
 async function refusedWith(response: Response, code: string, status: number) {
   expect(response.status).toBe(status);
-  return ((await response.json()) as { code: string; message: string }).message.length > 0
-    ? code
-    : "";
+  const body = (await response.json()) as { code: string; message: string };
+  expect(body.code).toBe(code);
+  return body.message;
 }
 
 describe("connector call route", () => {
@@ -105,6 +112,22 @@ describe("connector call route", () => {
         expect(await refusedWith(response, "connector_call_refused", 403)).not.toBe("");
       }
       expect(seen.called).toEqual([]);
+    });
+
+    it("refuses a call with no session when a password is set, and asks the host nothing", async () => {
+      const { server, seen } = setup({ passwordHash: "hash:correct horse" });
+      const response = await call(server, read, "application/json", "halonic.acme.example");
+      expect(response.status).toBe(401);
+      expect(seen.found).toEqual([]);
+      expect(seen.called).toEqual([]);
+    });
+
+    it("answers 400 to a name over 256 bytes and takes one of 256", async () => {
+      const { server, seen } = setup();
+      expect((await call(server, { ...read, tool: "t".repeat(257) })).status).toBe(400);
+      expect(seen.found).toEqual([]);
+      expect((await call(server, { ...read, tool: "t".repeat(256) })).status).toBe(404);
+      expect(seen.found).toEqual([`mail/${"t".repeat(256)}`]);
     });
 
     it("refuses an approve-listed read tool and a tool the allow list leaves out", async () => {
