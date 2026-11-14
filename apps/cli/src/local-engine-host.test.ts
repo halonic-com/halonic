@@ -1,15 +1,5 @@
 import { spawnSync } from "node:child_process";
-import {
-  cp,
-  mkdir,
-  mkdtemp,
-  readdir,
-  readFile,
-  rm,
-  stat,
-  symlink,
-  writeFile,
-} from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readdir, readFile, stat, symlink, writeFile } from "node:fs/promises";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,6 +17,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { engineLockFile, type LocalEngine, openLocalEngine } from "./local-engine-host.ts";
+import { removeTestFolder } from "./test/remove-folder.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "./workspace-runs.ts";
 
 /** The Acme example, on the test model: Support reply takes Sam's email down the refund path. */
@@ -57,7 +48,8 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await Promise.all(opened.splice(0).map((engine) => engine.close()));
-  await rm(folder, { recursive: true, force: true });
+  // On Windows a file the engine just deleted can stay "delete pending", so a plain `rm` fails with ENOTEMPTY (HAL-9217).
+  await removeTestFolder(folder);
 });
 
 async function openEngine(): Promise<LocalEngine> {
