@@ -64,6 +64,8 @@ export async function openBridge(
     endedConnections: new WeakSet(),
   };
   const server = createServer((request, response) => {
+    // HAL-8158 experiment: let the client close first, so a late write can't hit a closed socket.
+    (response as unknown as { shouldKeepAlive: boolean }).shouldKeepAlive = true;
     const handler = serve(context, request, response);
     handlers.add(handler);
     void handler.finally(() => handlers.delete(handler));
