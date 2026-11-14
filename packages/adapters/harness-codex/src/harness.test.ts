@@ -1,13 +1,5 @@
 import { join } from "node:path";
-import {
-  addHarnessEnvironment,
-  type HarnessBridge,
-  type HarnessEvent,
-  type HarnessRun,
-  type HarnessTask,
-  type SandboxProfile,
-  type SandboxSession,
-} from "@halonicjs/ports";
+import type { HarnessEvent } from "@halonicjs/ports";
 import { type FakeProgram, FakeSandboxSession } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -22,89 +14,17 @@ import {
   fakeTurnId,
   MemorySettingsFolder,
 } from "./fake-codex.test-helper.ts";
-import { codexHarness } from "./harness.ts";
-
-/** A probe the run cases never ask: they don't call `detect`. */
-const unusedProbe = {
-  ask: async () => {
-    throw new Error("The run cases don't detect Codex");
-  },
-};
-
-function newHarness(settings = new MemorySettingsFolder()) {
-  return codexHarness({ probe: unusedProbe, settings, ownSandbox: async () => true });
-}
-
-const task: HarnessTask = {
-  runId: "run-1",
-  hubId: "acme",
-  agentId: "writer",
-  instructions: "Answer in one short sentence.",
-  prompt: "Name a colour of the sea.",
-  model: "gpt-5.5",
-};
-
-const bridge: HarnessBridge = {
-  url: "http://127.0.0.1:4100",
-  token: `made-up-token-${crypto.randomUUID()}`,
-};
-
-const engineProfile: SandboxProfile = {
-  workingFolder: "/agents/writer/work",
-  tempFolder: "/sessions/one/temp",
-  settingsFolder: "/agents/writer/settings",
-  readOnlyPaths: [],
-  deniedPaths: [],
-  env: { PATH: "/usr/bin", HOME: "/agents/writer/home" },
-  network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
-  timeLimitMs: 60_000,
-};
+import {
+  bridge,
+  engineProfile,
+  engineSessionOptions,
+  newHarness,
+  readAll,
+  task,
+  withKill,
+} from "./harness-run.test-helper.ts";
 
 const configPath = join("/agents/writer/settings", "config.toml");
-
-/** A session opened the way the engine opens one, running `program` as `codex`. */
-function openSession(program: FakeProgram, profile = engineProfile): FakeSandboxSession {
-  const env = addHarnessEnvironment(profile.env, newHarness().environment?.(bridge, profile) ?? {});
-  return new FakeSandboxSession({ profile: { ...profile, env }, program });
-}
-
-/**
- * `session`, except that each `kill` of a program it started goes through
- * `kill`, which gets the real one to call.
- */
-function withKill(
-  session: SandboxSession,
-  kill: (realKill: () => Promise<void>) => Promise<void>,
-): SandboxSession {
-  return {
-    profile: session.profile,
-    get fence() {
-      return session.fence;
-    },
-    onBlocked: (listener) => session.onBlocked(listener),
-    close: () => session.close(),
-    start: async (command) => {
-      const process = await session.start(command);
-      return {
-        stdin: process.stdin,
-        stdout: process.stdout,
-        stderr: process.stderr,
-        exited: process.exited,
-        kill: () => kill(() => process.kill()),
-      };
-    },
-  };
-}
-
-async function readAll(run: HarnessRun): Promise<{ events: HarnessEvent[]; error?: unknown }> {
-  const events: HarnessEvent[] = [];
-  try {
-    for await (const event of run) events.push(event);
-  } catch (error) {
-    return { events, error };
-  }
-  return { events };
-}
 
 /** A command item and its approval request, as Codex sends them when a rule asks for an OK. */
 async function askForCommand(codex: Parameters<Parameters<typeof fakeCodex>[0]>[0]) {
@@ -116,6 +36,11 @@ async function askForCommand(codex: Parameters<Parameters<typeof fakeCodex>[0]>[
     command: "touch a",
     cwd: "/w",
   });
+}
+
+/** A session opened the way the engine opens one, running `program` as `codex`. */
+function openSession(program: FakeProgram, profile = engineProfile): FakeSandboxSession {
+  return new FakeSandboxSession(engineSessionOptions(program, profile));
 }
 
 verifies("harness-codex.start", () => {
