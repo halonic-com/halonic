@@ -4,6 +4,7 @@
  */
 import type { SetupEdit, SetupRecord, SetupService } from "@halonicjs/google-setup";
 import type { InboxSetupSource } from "@halonicjs/studio-feature-inbox/api";
+import type { SecretText } from "@halonicjs/studio-kit";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
 /** One Google account as the host reads it from the setup records and the connector settings. */
@@ -33,8 +34,33 @@ export interface GoogleSetupAccount {
   readonly clientSharedWith: readonly string[];
 }
 
+/**
+ * Where the client secret can be typed (design 4.1). The host knows how Studio reaches it, so the
+ * view never guesses from the address bar.
+ */
+export type SecretEntry =
+  /** The field is there. `keptOn` says which computer keeps the secret, for the hint's words. */
+  | {
+      readonly kind: "field";
+      readonly keptOn: "this-computer" | "host-computer";
+      /** Served over plain http: the first save asks for a confirm, since the secret travels unencrypted. */
+      readonly plainHttp: boolean;
+    }
+  /**
+   * There is no field: the browser demo, or a served Studio without a password. `commandExists`
+   * says whether `halonic google secret <account>` can be shown instead (it is a later feature of
+   * the host, so it is false until the host has it).
+   */
+  | {
+      readonly kind: "unavailable";
+      readonly reason: "demo" | "no-password";
+      readonly commandExists: boolean;
+    };
+
 /** The Google accounts of the open workspace. The app provides it. */
 export interface GoogleSetupAccounts {
+  /** How the client secret is entered on this host. It doesn't change while the workspace is open. */
+  readonly secretEntry: SecretEntry;
   /** Every connected account, whether its setup needs you or not. */
   list(): Promise<readonly GoogleSetupAccount[]>;
   /**
@@ -42,6 +68,13 @@ export interface GoogleSetupAccounts {
    * It rejects when the engine can't save it; nothing changes then.
    */
   edit(accountRef: string, edit: SetupEdit): Promise<void>;
+  /**
+   * Sends the client secret to the secret store on its own request, never as part of the setup
+   * record (design 4.2). The host keeps it and records only that it is saved, then tells the
+   * listeners. It rejects when it can't be saved; nothing was saved then. The rejection never
+   * holds the secret.
+   */
+  saveClientSecret(accountRef: string, secret: SecretText): Promise<void>;
   /**
    * **Start over**: removes the account's setup, its sign-in and its client secret (unless another
    * account uses the client), and leaves a fresh setup at step 1 that `list` returns. It never

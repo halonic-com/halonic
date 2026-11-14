@@ -21,6 +21,7 @@ import { type ReactNode, useId } from "react";
 import { listNames } from "./account-labels.ts";
 import { ConsoleLink } from "./console-link.tsx";
 import { CopyLine } from "./copy-line.tsx";
+import { CredentialsBody, type CredentialsBodyProps } from "./credentials-body.tsx";
 
 /** Props for {@link StepBody}. */
 export interface StepBodyProps {
@@ -33,6 +34,8 @@ export interface StepBodyProps {
   readonly projectId: string;
   readonly projectIdError: string | null;
   readonly answering: boolean;
+  /** What step 6 needs: the saved client ID and secret, and how each is saved. */
+  readonly credentials: Omit<CredentialsBodyProps, "step" | "answering">;
   /** A service's name from its id, for "Needed by …". Studio never knows the services itself. */
   readonly serviceName: (id: string) => string;
   readonly onProjectId: (text: string) => void;
@@ -43,8 +46,8 @@ export interface StepBodyProps {
 
 /**
  * What an open step shows under its one sentence: the actions to take in Google, with the
- * values to copy and the links, all from the step the generator made. Steps 6 and 7 have their
- * bodies in later pull requests (HAL-713, HAL-714).
+ * values to copy and the links, all from the step the generator made. Step 7 has its body in a
+ * later pull request (HAL-714).
  */
 export function StepBody(props: StepBodyProps) {
   const { step } = props;
@@ -58,8 +61,9 @@ export function StepBody(props: StepBodyProps) {
     case "scopes":
       return <ScopesBody step={step} accountType={props.accountType} />;
     case "client":
-      return <ClientBody step={step} />;
+      return <ClientBody {...props} step={step} />;
     case "credentials":
+      return <CredentialsBody {...props.credentials} step={step} answering={props.answering} />;
     case "sign-in":
       return null;
   }
@@ -249,12 +253,18 @@ function ScopesBody({
   );
 }
 
-function ClientBody({ step }: { readonly step: SetupStep }) {
+/**
+ * Step 5 is finished by the client ID, which is typed in step 6's fields. Google shows the secret
+ * only once, so those fields are here too: the ID and the secret are pasted before its window
+ * closes, and step 6 shows them again for a change.
+ */
+function ClientBody(props: StepBodyProps) {
+  const { step } = props;
   return (
     <div className="flex flex-col gap-3">
       <Callout tone="warning">
-        Google shows the client secret only once, right after you click Create. The next steps
-        aren't in this version of Halonic yet.
+        Google shows the client secret only once, right after you click Create. Keep its window open
+        until you have pasted the client ID and the secret below.
       </Callout>
       <Actions>
         <li>
@@ -267,6 +277,7 @@ function ClientBody({ step }: { readonly step: SetupStep }) {
         </li>
         <li>Click "Create".</li>
       </Actions>
+      <CredentialsBody {...props.credentials} step={step} answering={props.answering} />
     </div>
   );
 }

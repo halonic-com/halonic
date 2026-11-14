@@ -1,5 +1,6 @@
 import type { SetupEdit, SetupRecord, SetupService } from "@halonicjs/google-setup";
-import type { GoogleSetupAccount, GoogleSetupAccounts } from "./api.ts";
+import type { SecretText } from "@halonicjs/studio-kit";
+import type { GoogleSetupAccount, GoogleSetupAccounts, SecretEntry } from "./api.ts";
 
 // Invented services, so the tests prove Studio doesn't know Gmail or Drive.
 
@@ -58,13 +59,37 @@ export function account(
   };
 }
 
-/** Accounts whose list a test sets, telling the source as a host does. */
-export function fakeAccounts(initial: readonly GoogleSetupAccount[]) {
+/** The secret field as the desktop app has it. */
+export const desktopEntry: SecretEntry = {
+  kind: "field",
+  keptOn: "this-computer",
+  plainHttp: false,
+};
+
+/**
+ * Accounts whose list a test sets, telling the source as a host does. `entry` is how the secret
+ * is entered. `saveSecret` is what saving a secret does: it records the value (a fake, in a test)
+ * and may reject.
+ */
+export function fakeAccounts(
+  initial: readonly GoogleSetupAccount[],
+  options: {
+    readonly entry?: SecretEntry;
+    readonly saveSecret?: (accountRef: string, value: string) => Promise<void>;
+  } = {},
+) {
   let accounts = initial;
   const listeners = new Set<() => void>();
   const edits: { accountRef: string; edit: SetupEdit }[] = [];
   const startOvers: string[] = [];
+  const secrets: { accountRef: string; value: string }[] = [];
   const source: GoogleSetupAccounts = {
+    secretEntry: options.entry ?? desktopEntry,
+    saveClientSecret: async (accountRef: string, secret: SecretText) => {
+      const value = secret.reveal();
+      await options.saveSecret?.(accountRef, value);
+      secrets.push({ accountRef, value });
+    },
     list: async () => accounts,
     edit: async (accountRef, edit) => {
       edits.push({ accountRef, edit });
@@ -82,6 +107,8 @@ export function fakeAccounts(initial: readonly GoogleSetupAccount[]) {
     listeners,
     /** Every edit the view asked to save, in order. */
     edits,
+    /** Every secret the view sent to the secret store, in order. Fake values only. */
+    secrets,
     /** The account refs the view asked to start over, in order. */
     startOvers,
     change: (next: readonly GoogleSetupAccount[]) => {

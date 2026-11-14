@@ -1,12 +1,13 @@
 import { isProjectId, type SetupEdit, type SetupStep, type StepId } from "@halonicjs/google-setup";
-import { Button, Callout, type CalloutHandle } from "@halonicjs/studio-kit";
+import { Button, Callout, type CalloutHandle, type SecretText } from "@halonicjs/studio-kit";
 import { type ReactNode, type Ref, useEffect, useId, useRef, useState } from "react";
-import type { GoogleSetupAccount } from "../api.ts";
+import type { GoogleSetupAccount, SecretEntry } from "../api.ts";
 import { connectorProblem } from "../connector-problem.ts";
 import { stepTitle } from "../step-names.ts";
+import { credentialSaves } from "./credential-saves.ts";
 import { failureLine } from "./failure-line.ts";
 import { ProblemBanner } from "./problem-banner.tsx";
-import { StepBody } from "./step-body.tsx";
+import { StepBody, type StepBodyProps } from "./step-body.tsx";
 import { StepMark, type StepState, stepStateWords } from "./step-mark.tsx";
 import { foldedValue, stepWhy } from "./step-text.ts";
 
@@ -18,6 +19,10 @@ export interface ChecklistProps {
   readonly answering: boolean;
   /** Saves one change to the setup record. It rejects when it can't be saved. */
   readonly onEdit: (edit: SetupEdit) => Promise<void>;
+  /** How the client secret is entered on this host. */
+  readonly secretEntry: SecretEntry;
+  /** Sends the client secret to the secret store. It rejects when it can't be saved. */
+  readonly onSaveSecret: (secret: SecretText) => Promise<void>;
   /** **Not now**: closes the item. */
   readonly close: () => void;
 }
@@ -46,7 +51,8 @@ function hasDoneButton(step: SetupStep): boolean {
  * title, why it is there and **Not now** and **Done, next**, and later steps show only their
  * titles. Each step's title is a heading and takes focus when the step opens.
  */
-export function Checklist({ account, steps, answering, onEdit, close }: ChecklistProps) {
+export function Checklist(props: ChecklistProps) {
+  const { account, steps, answering, onEdit, close } = props;
   const current = currentStep(account, steps);
   const problem = connectorProblem(account);
   // A step opened with Edit, until **Done, next** goes on to the current one. An account Google
@@ -74,6 +80,7 @@ export function Checklist({ account, steps, answering, onEdit, close }: Checklis
   }, [openId]);
 
   if (current === undefined || open === undefined) return null;
+  const saves = credentialSaves(account, onEdit, props.onSaveSecret);
 
   async function doneNext() {
     if (!answering || busy || open === undefined) return;
@@ -151,6 +158,14 @@ export function Checklist({ account, steps, answering, onEdit, close }: Checklis
                     });
                   }}
                   onEditProject={() => setEditing("project")}
+                  credentials={{
+                    clientId: account.record.clientId,
+                    secretSavedAt: account.record.clientSecret?.savedAt ?? null,
+                    entry: props.secretEntry,
+                    accountRef: account.record.accountRef,
+                    onSaveClientId: saves.saveClientId,
+                    onSaveSecret: saves.saveSecret,
+                  }}
                   answering={answering}
                   busy={busy}
                   failed={failed}
@@ -222,6 +237,7 @@ interface OpenStepProps {
   readonly onProjectId: (text: string) => void;
   readonly onInProduction: (ticked: boolean) => void;
   readonly onEditProject: () => void;
+  readonly credentials: StepBodyProps["credentials"];
   readonly answering: boolean;
   readonly busy: boolean;
   /** The reason the last save failed, as a sentence. */
@@ -258,6 +274,7 @@ function OpenStep(props: OpenStepProps) {
         onProjectId={props.onProjectId}
         onInProduction={props.onInProduction}
         onEditProject={props.onEditProject}
+        credentials={props.credentials}
       />
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" onClick={close}>
