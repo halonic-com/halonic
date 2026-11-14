@@ -3,11 +3,12 @@
 // `halonic secret` command and every command that reads a secret use the same
 // file.
 
+import { StringDecoder } from "node:string_decoder";
 import { EnvSecrets, firstSecret } from "@halonicjs/adapter-env-secrets";
 import { createScryptHasher } from "@halonicjs/adapter-password-scrypt";
 import { FileSecretStore } from "@halonicjs/adapter-secrets-file";
 import { SecretService } from "@halonicjs/app";
-import type { PasswordHasher, Secrets } from "@halonicjs/ports";
+import { maxSecretValueLength, type PasswordHasher, type Secrets } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder, secretsFile } from "@halonicjs/profile";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 
@@ -48,18 +49,30 @@ export function openSecretService(setup: SecretSetup): SecretService {
   });
 }
 
-/** This process's stdin: a terminal, or a pipe read whole as text. */
+/** This process's stdin: a terminal, or a pipe read as text, up to a little past the longest secret. */
 export const processStdin: SecretStdin = {
   get isTerminal() {
     return process.stdin.isTTY === true;
   },
-  async read() {
-    process.stdin.setEncoding("utf8");
-    let text = "";
-    for await (const chunk of process.stdin) text += chunk;
-    return text;
-  },
+  read: () => readCapped(process.stdin),
 };
+
+/**
+ * Reads `stream` as text, and stops a little past the longest value a secret
+ * can have: room for a closing line ending and one character more, so the
+ * service still refuses the value as too long while a large file piped in by
+ * mistake is never loaded into memory.
+ */
+export async function readCapped(stream: AsyncIterable<string | Buffer>): Promise<string> {
+  const limit = maxSecretValueLength + 3;
+  const decoder = new StringDecoder("utf8");
+  let text = "";
+  for await (const chunk of stream) {
+    text += typeof chunk === "string" ? chunk : decoder.write(chunk);
+    if (text.length >= limit) break;
+  }
+  return text;
+}
 
 /**
  * The secrets every command reads: the environment first, then the secrets
