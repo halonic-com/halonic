@@ -183,6 +183,7 @@ export function PluginsList({
         <RemovePluginDialog
           plugin={removing}
           remove={actions.remove}
+          usedBy={actions.usedBy}
           onRemoved={() => {
             setRemoving(undefined);
             toastRemoved(removing.name);

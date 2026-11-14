@@ -106,6 +106,7 @@ export function noActions(): { actions: PluginActions } {
       remove: async () => ({ kind: "removed" }),
       reload: async () => {},
       openFolder: async () => {},
+      usedBy: async () => [],
     },
   };
 }
