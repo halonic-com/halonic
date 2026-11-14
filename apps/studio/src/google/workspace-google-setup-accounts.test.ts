@@ -205,16 +205,14 @@ verifies("studio.workspace-google-setup-accounts", () => {
 
   describe("changes", () => {
     it("refuses a step, a secret and Start over with a plain message, and changes no record", async () => {
-      const { accounts, setups, records } = await accountsOf();
+      const { accounts, records } = await accountsOf();
       const before = JSON.stringify(await records.changes("_google_setups"));
-      const mail = (await setups.forConnector(acmeKey, "mail")) as SetupRecord;
 
       for (const attempt of [accounts.edit(), accounts.saveClientSecret(), accounts.startOver()]) {
         await expect(attempt).rejects.toThrow("can't be saved in the Halonic app yet");
       }
 
       expect(JSON.stringify(await records.changes("_google_setups"))).toBe(before);
-      expect(mail.stepsDone).toEqual({});
     });
   });
 
@@ -242,6 +240,35 @@ verifies("studio.workspace-google-setup-accounts", () => {
       stop();
 
       expect(stopFocus).toHaveBeenCalledTimes(1);
+    });
+
+    it("tells its listeners when a connector file changed, and not after the last one leaves", async () => {
+      const definitions = acmeDefinitions();
+      const { setups } = await accountsOf();
+      const accounts = new WorkspaceGoogleSetupAccounts({
+        definitions,
+        folder: acmeFolder(),
+        digest: webCryptoDigest,
+        setups,
+        workspaceKey: async () => acmeKey,
+      });
+      const heard = vi.fn();
+
+      const watching = vi.spyOn(definitions, "watch");
+
+      const stop = accounts.subscribe(heard);
+      await watching.mock.results[0]?.value;
+      definitions.changeOutside({
+        "library/connectors/mail.connector.yaml": connector("mail", "sam.new@acme.example"),
+      });
+      expect(heard).toHaveBeenCalledTimes(1);
+      stop();
+      await vi.waitFor(() => expect(heard).toHaveBeenCalledTimes(1));
+      definitions.changeOutside({
+        "library/connectors/mail.connector.yaml": connector("mail", "sam@acme.example"),
+      });
+
+      expect(heard).toHaveBeenCalledTimes(1);
     });
 
     it("reports a watch that fails, and goes on", async () => {

@@ -23,8 +23,8 @@ export interface GoogleAccountParts {
  * runs the engine held, so the count is 0 rather than a guess.
  *
  * `askAccountType` is true for an address Studio can't tell, until the setup has any progress:
- * the record keeps no answer of its own, and a person who went on past the first question has
- * answered it.
+ * every record has an `accountType`, but it doesn't keep whether the person chose it, so a
+ * person who went on past the first question is taken to have answered it.
  */
 export function googleAccountOf(parts: GoogleAccountParts): GoogleSetupAccount {
   const { email, record, services, clientSharedWith } = parts;
