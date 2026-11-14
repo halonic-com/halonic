@@ -12,6 +12,12 @@ The app provides `GoogleSetupAccountsService`: each account with its setup recor
 its services and how many routines wait for it. The feature adds its source to the Inbox when a
 workspace opens. Step counts and names come from `setupSteps`, so Studio never names a service.
 
+The same service says how the client secret is entered (`secretEntry`: the field, kept on this
+computer or on the one that runs Halonic, or no field in the browser demo and for a served Studio
+without a password) and sends it to the secret store (`saveClientSecret`, on its own request). The
+secret is a kit `SecretText` from the input to that call: it is never part of an edit, the setup
+record, an error or a log line. Steps 5 and 6 show the client ID and the secret fields.
+
 ## Example
 
 ```ts
