@@ -22,7 +22,7 @@ function shellOf(answers: Record<string, unknown>) {
 
 function hostOf(answers: Record<string, unknown>, trust = vi.fn(async () => undefined)) {
   const store = new MemoryDefinitionStore();
-  const { shell, calls } = shellOf(answers);
+  const { shell, calls } = shellOf({ probe_workspace_folder: "new", ...answers });
   const host = newWorkspaceHostOf({ shell, storeOf: () => store, trust, separator: "/" });
   return { host, store, calls, trust };
 }
@@ -48,7 +48,7 @@ verifies("studio.new-workspace", () => {
     });
     const result = await host.create("/work/Acme Support", "Acme Support");
     expect(result).toEqual({ kind: "trusted" });
-    expect(calls[0]).toEqual([
+    expect(calls[1]).toEqual([
       "create_workspace_folder",
       { parent: "/work", name: "Acme Support" },
     ]);
@@ -97,7 +97,7 @@ verifies("studio.new-workspace", () => {
         separator,
       });
       await host.create(host.folderOf(parent, "Acme"), "Acme");
-      expect(calls[0]).toEqual(["create_workspace_folder", { parent, name: "Acme" }]);
+      expect(calls[1]).toEqual(["create_workspace_folder", { parent, name: "Acme" }]);
     }
   });
 
@@ -106,5 +106,57 @@ verifies("studio.new-workspace", () => {
     expect(reasonOf({ kind: "name_invalid", reason: "empty" })).toBe("the name is empty");
     expect(reasonOf({ kind: "io" })).toBe("you don't have permission");
     expect(reasonOf("nope")).toBe("the desktop shell refused");
+  });
+
+  it("probes a folder by name and shows an empty one like a new one", async () => {
+    const answers = ["new", "empty", "files", "workspace"];
+    const { host, calls } = hostOf({ probe_workspace_folder: () => answers.shift() });
+    expect(await host.probe("/work/Acme")).toBe("new");
+    expect(await host.probe("/work/Acme")).toBe("new");
+    expect(await host.probe("/work/Acme")).toBe("not-empty");
+    expect(await host.probe("/work/Acme")).toBe("workspace");
+    expect(calls[0]).toEqual(["probe_workspace_folder", { parent: "/work", name: "Acme" }]);
+    expect((await hostOf({}).host.probe("/Acme")) satisfies string).toBe("new");
+  });
+
+  it("opens a workspace that is there only through the shell's question", async () => {
+    const { host, calls } = hostOf({ open_workspace_folder: "/work/Acme" });
+    expect(await host.open?.("/work/Acme")).toBe("/work/Acme");
+    expect(calls[0]).toEqual(["open_workspace_folder", { parent: "/work", name: "Acme" }]);
+    const declined = hostOf({ open_workspace_folder: null });
+    expect(await declined.host.open?.("/work/Acme")).toBeUndefined();
+  });
+
+  it("adds the missing files to a folder with files, after the shell asks, and opens it untrusted", async () => {
+    const { host, store, calls, trust } = hostOf({
+      probe_workspace_folder: "files",
+      open_workspace_folder: "/work/Acme",
+    });
+    expect(await host.create("/work/Acme", "Acme")).toEqual({ kind: "untrusted" });
+    expect(calls.map(([command]) => command)).toEqual([
+      "probe_workspace_folder",
+      "open_workspace_folder",
+    ]);
+    expect(await store.list()).toContain("workspace.yaml");
+    expect(trust).not.toHaveBeenCalled();
+  });
+
+  it("writes nothing when the person says no to opening the folder", async () => {
+    const { host, store } = hostOf({
+      probe_workspace_folder: "empty",
+      open_workspace_folder: null,
+    });
+    expect(await host.create("/work/Acme", "Acme")).toEqual({ kind: "cancelled" });
+    expect(await store.list()).toEqual([]);
+  });
+
+  it("says why the shell refused to open the folder", async () => {
+    const { host } = hostOf({
+      probe_workspace_folder: "files",
+      open_workspace_folder: { reject: { kind: "folder_changed", message: "x" } },
+    });
+    await expect(host.create("/work/Acme", "Acme")).rejects.toThrow(
+      "the folder changed while you were asked",
+    );
   });
 });
