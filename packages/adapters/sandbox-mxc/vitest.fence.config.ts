@@ -8,6 +8,8 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     include: ["fence/**/*.test.ts"],
+    // The files share the bridge port, and real boxes are slow enough alone.
+    fileParallelism: false,
     environment: "node",
     expect: { requireAssertions: true },
     testTimeout: 90_000,
