@@ -18,6 +18,7 @@ export function startsOnLiveVersion(
   executor: RunExecutor,
   liveVersion: () => Promise<RunVersion | null>,
 ): RunExecutor {
+  const cancel = executor.cancel?.bind(executor);
   return {
     id: executor.id,
     start: async (request) => {
@@ -29,7 +30,7 @@ export function startsOnLiveVersion(
     startAgent: (request) => executor.startAgent(request),
     send: (runId, event, payload, options) => executor.send(runId, event, payload, options),
     subscribe: (runId, afterSeq, listener) => executor.subscribe(runId, afterSeq, listener),
-    ...(executor.cancel === undefined ? {} : { cancel: (runId) => executor.cancel?.(runId) }),
+    ...(cancel === undefined ? {} : { cancel }),
     chatTurn: (request) => executor.chatTurn(request),
-  } as RunExecutor;
+  };
 }
