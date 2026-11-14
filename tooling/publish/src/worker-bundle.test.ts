@@ -55,7 +55,8 @@ verifies("publish.worker-bundle", () => {
     it("holds no absolute path, no source map and no token", async () => {
       const { script } = await buildWorkerBundle(entryPoint);
       expect(script).not.toMatch(/\/(?:home|Users|paperclip|tmp)\//);
-      expect(script).not.toMatch(/[A-Za-z]:\\/);
+      // A drive letter on its own, then a name: not the `s:\/` inside the `https:\/\/` of a bundled pattern.
+      expect(script).not.toMatch(/(?<![A-Za-z0-9])[A-Za-z]:\\[A-Za-z0-9_.-]/);
       expect(script).not.toContain("sourceMappingURL");
     });
   });
