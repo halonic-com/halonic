@@ -112,7 +112,7 @@ export function testServer(options: {
   coordination?: Coordination;
   requestCounts?: RequestCountStore;
   runs?: RunExecutor;
-  runStore?: Pick<RunStore, "list">;
+  runStore?: Pick<RunStore, "list" | "get">;
   trust?: TrustGate;
   webhooks?: WebhookRoutines;
   google?: GoogleSetupPorts;
@@ -121,7 +121,7 @@ export function testServer(options: {
   const clock = options.clock ?? new TestClock();
   const ports: ServerPorts = {
     runs: options.runs ?? unusedPort("runs"),
-    runStore: options.runStore ?? { list: async () => [] },
+    runStore: options.runStore ?? { list: async () => [], get: async () => null },
     trust: options.trust ?? unusedPort("trust"),
     secrets: options.secrets ?? {
       get: async (name) => (name === "serve-password" ? options.passwordHash : null),

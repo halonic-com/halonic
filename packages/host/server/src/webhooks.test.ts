@@ -63,7 +63,10 @@ function setup(
     return { id: "run_1" };
   };
   const runs = { start: run, startAgent: run } as unknown as RunExecutor;
-  const runStore = { list: async () => options.going ?? [] } as unknown as Pick<RunStore, "list">;
+  const runStore = {
+    list: async () => options.going ?? [],
+    get: async () => null,
+  } as unknown as Pick<RunStore, "list" | "get">;
   const placed = options.placed === undefined ? routine() : options.placed;
   const found: string[] = [];
   const webhooks: WebhookRoutines = {

@@ -2,6 +2,7 @@ import type { CreateServer, RequestContext, ServerConfig } from "./api.ts";
 import { checkDailyRequests } from "./daily-requests.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { createGoogleRoutes, googlePathPrefix, isSecretPath } from "./google-routes.ts";
+import { createRunRoutes, parseRunId, runPathPrefix } from "./run-routes.ts";
 import { checkHost, checkOrigin, readBody, withSecurityHeaders } from "./security.ts";
 import { createSignIn, passwordSecretName } from "./sign-in.ts";
 import { createTrustRoutes } from "./trust-routes.ts";
@@ -34,6 +35,36 @@ export const createServer: CreateServer = ({ config, ports }) => {
   const signIn = createSignIn(ports);
   const trustRoutes = createTrustRoutes(ports);
   const webhookRoutes = createWebhookRoutes(ports);
+  const runRoutes = createRunRoutes(ports);
+
+  /** `/api/runs/<runId>` and `/api/runs/<runId>/<action>`: the routes of one run, behind the sign-in. */
+  async function runRoute(
+    request: Request,
+    context: RequestContext,
+    body: Uint8Array,
+    rest: string,
+  ): Promise<Response> {
+    const [segment, action, ...more] = rest.split("/");
+    const runId = parseRunId(segment ?? "");
+    if (runId === null || more.length > 0) {
+      return errorResponse(serverErrors.notFound);
+    }
+    const endpoint = `${request.method} ${action ?? ""}`;
+    if (!["GET ", "POST events", "POST cancel"].includes(endpoint)) {
+      return errorResponse(serverErrors.notFound);
+    }
+    if (!(await signIn.isSignedIn(request, context))) {
+      return errorResponse(serverErrors.notSignedIn);
+    }
+    switch (endpoint) {
+      case "GET ":
+        return runRoutes.summary(runId);
+      case "POST events":
+        return runRoutes.send(request, runId, body);
+      default:
+        return runRoutes.cancel(request, runId);
+    }
+  }
   const googleRoutes =
     ports.google === undefined ? null : createGoogleRoutes({ google: ports.google });
 
@@ -46,6 +77,9 @@ export const createServer: CreateServer = ({ config, ports }) => {
     // A sender signs its request instead of signing in, so this route sits before the sign-in routes.
     if (request.method === "POST" && pathname.startsWith(webhookPathPrefix)) {
       return webhookRoutes.receive(request, pathname.slice(webhookPathPrefix.length), body);
+    }
+    if (pathname.startsWith(runPathPrefix)) {
+      return runRoute(request, context, body, pathname.slice(runPathPrefix.length));
     }
     if (pathname.startsWith(googlePathPrefix) && googleRoutes !== null) {
       return (await signIn.isSignedIn(request, context))
