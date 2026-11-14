@@ -49,6 +49,7 @@
     "@halonicjs/profile": "workspace:*",
     "@halonicjs/routines": "workspace:*",
     "@halonicjs/std": "workspace:*",
+    "@halonicjs/target-node-runtime": "workspace:*",
     "@halonicjs/test-runner": "workspace:*",
     "@halonicjs/workspace": "workspace:*"
   },

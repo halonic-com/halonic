@@ -144,7 +144,9 @@ verifies("runtime.listen", () => {
 
     it("says how to set a password when it refuses", () => {
       expect(new NetworkNeedsPasswordError().message).toContain("password");
-      expect(new NetworkNeedsPasswordError().message).toContain("halonic secret");
+      expect(new NetworkNeedsPasswordError().message).toContain(
+        "halonic secret set serve-password",
+      );
     });
 
     it("refuses the network when the computer has no address", async () => {

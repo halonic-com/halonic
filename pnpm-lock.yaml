@@ -443,6 +443,9 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../packages/core/std
+      '@halonicjs/target-node-runtime':
+        specifier: workspace:*
+        version: link:../../packages/targets/node/runtime
       '@halonicjs/test-runner':
         specifier: workspace:*
         version: link:../../packages/core/test-runner
