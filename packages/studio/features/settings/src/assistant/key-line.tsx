@@ -1,6 +1,6 @@
 import { inlineLinkClasses, SkeletonBar } from "@halonicjs/studio-kit";
 import { useEffect, useState } from "react";
-import type { AssistantWorkspace, AssistantWorkspaceFacts } from "../api.ts";
+import type { AssistantNavigation, AssistantWorkspace, AssistantWorkspaceFacts } from "../api.ts";
 import type { AssistantProvider } from "./assistant-providers.ts";
 import * as text from "./assistant-text.ts";
 
@@ -10,6 +10,8 @@ export interface KeyLineProps {
   readonly provider: Exclude<AssistantProvider, "not-set-up">;
   readonly secretName: string;
   readonly workspace: AssistantWorkspace | undefined;
+  /** Where the links lead; without it the line has none. */
+  readonly navigate?: AssistantNavigation | undefined;
   /** The open workspace, or `null`. */
   readonly open: AssistantWorkspaceFacts | null;
   /** Closes Settings before a link opens a page. */
@@ -37,7 +39,7 @@ function link(label: React.ReactNode, onPress: () => void) {
  * <KeyLine provider="anthropic" secretName="anthropic-api-key" workspace={w} open={w.current()} closeSettings={close} />
  */
 export function KeyLine(props: KeyLineProps) {
-  const { provider, secretName, workspace, open, closeSettings, served = false } = props;
+  const { provider, secretName, workspace, navigate, open, closeSettings, served = false } = props;
   const stored = useKeyStored(workspace, secretName, served || open !== null, open);
   const press = (go: () => void) => () => {
     closeSettings();
@@ -60,7 +62,7 @@ export function KeyLine(props: KeyLineProps) {
         {text.KEY_SET} ·{" "}
         {link(
           text.KEY_REPLACE,
-          press(() => workspace.openProviderPage(secretName)),
+          press(() => navigate?.openProviderPage(secretName)),
         )}
       </>
     );
@@ -70,7 +72,7 @@ export function KeyLine(props: KeyLineProps) {
         {text.KEY_MISSING} ·{" "}
         {link(
           text.KEY_ADD,
-          press(() => workspace.openProviderPage(secretName)),
+          press(() => navigate?.openProviderPage(secretName)),
         )}
       </>
     );
@@ -80,7 +82,7 @@ export function KeyLine(props: KeyLineProps) {
         {text.KEY_MISSING}.{" "}
         {link(
           text.keyAddProvider(open?.name ?? ""),
-          press(() => workspace.addProvider(provider, secretName)),
+          press(() => navigate?.addProvider(provider, secretName)),
         )}
       </>
     );

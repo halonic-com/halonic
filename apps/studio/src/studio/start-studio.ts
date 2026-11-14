@@ -30,6 +30,7 @@ import {
 } from "@halonicjs/studio-feature-settings";
 import {
   AgentSandboxService,
+  AssistantWorkspaceService,
   DisplaySettingsService,
   HostSettingsService,
 } from "@halonicjs/studio-feature-settings/api";
@@ -51,6 +52,7 @@ import {
   hostSettingsStoreKey,
   provideShellHostSettings,
   provideShellSecrets,
+  secretsKey,
   type TauriCallbacks,
   TauriChannel,
   type TauriIpc,
@@ -69,6 +71,7 @@ import {
 } from "@halonicjs/studio-shell";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
+import { OpenFolderAssistant } from "./assistant-workspace.ts";
 import { newWorkspaceHostOf } from "./new-workspace-host.ts";
 import { trustedSourcesOf } from "./trusted-sources.ts";
 import { hostSettingsOf } from "./window-host-settings.ts";
@@ -175,6 +178,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     RunsSourceService,
     DisplaySettingsService,
     HostSettingsService,
+    AssistantWorkspaceService,
     WorkspacePageService,
     TrustedSourcesService,
   ],
@@ -308,6 +312,7 @@ export async function openFolder(
   provideShellHostSettings(services, window);
   services.provide(HostSettingsService, await hostSettingsOf(services, window));
   provideAgentSandbox(services, window);
+  const assistant = provideAssistant(services, files, location, name, scope);
   if (ipc !== undefined && files !== undefined) {
     provideWorkspaceRuns(services, { ipc, files, window }, location);
   }
@@ -320,6 +325,7 @@ export async function openFolder(
     trust: trustView,
     dispose: () => {
       if (trust !== undefined) open.delete(trust);
+      assistant?.dispose();
       return scope === undefined ? services.dispose() : scope.close();
     },
   };
@@ -373,6 +379,30 @@ function provideAgentSandbox(services: ServiceRegistry, window: object): void {
   const transport = tauriAgentHostTransport(window);
   if (transport !== undefined)
     services.provide(AgentSandboxService, new AgentHostSandboxFacts(transport));
+}
+
+/**
+ * Gives the folder to Settings › Assistant (`settings.ai-agent-key-line`): its facts from its
+ * files, read again when they change, and whether the keychain holds a key. Without the shell's
+ * files there is nothing to read, so it gives nothing.
+ */
+function provideAssistant(
+  services: ServiceRegistry,
+  files: TauriFileShell | undefined,
+  location: string,
+  name: string,
+  scope: WorkspaceScope | undefined,
+): OpenFolderAssistant | undefined {
+  if (files === undefined) return undefined;
+  const assistant = new OpenFolderAssistant({
+    definitions: new TauriDefinitionStore(files, location),
+    name,
+    secrets: services.has(secretsKey) ? services.get(secretsKey) : undefined,
+    onChange: (listener) => scope?.events.on("files.changed", listener) ?? (() => {}),
+    onError: (error) => console.error(error),
+  });
+  services.provide(AssistantWorkspaceService, assistant);
+  return assistant;
 }
 
 /** Saves the scope's files by themselves, through the workspace's save state (`workspace.saves-itself`). */

@@ -79,8 +79,7 @@ export interface AssistantWorkspaceFacts {
 /**
  * The open workspace, for the Assistant's key line, its local-only warning and its "sets its own"
  * line. The app gives it where a window has workspaces. Reads and links only: Settings never saves
- * a key or changes a workspace (HAL-119: keys are entered on the provider page). The `open…` and
- * `add…` methods run after Settings has closed.
+ * a key or changes a workspace (HAL-119: keys are entered on the provider page).
  */
 export interface AssistantWorkspace {
   /** The open workspace, or `null` with none open. The same object until something in it changes. */
@@ -89,6 +88,13 @@ export interface AssistantWorkspace {
   subscribe(listener: () => void): () => void;
   /** Whether a key is stored under the secret name, as the workspace's secret store knows it. */
   keyStored(secretName: string): Promise<boolean>;
+}
+
+/**
+ * Where the Assistant's links lead. Each runs after Settings has closed. The window gives them to
+ * Settings, so the app's workspace service stays free of the window.
+ */
+export interface AssistantNavigation {
   /** Opens the page of the provider that uses the secret name, at its key block. */
   openProviderPage(secretName: string): void;
   /** Starts Add provider on the workspace page with the type and the secret name filled in. */

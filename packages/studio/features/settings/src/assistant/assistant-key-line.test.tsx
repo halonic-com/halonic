@@ -3,7 +3,7 @@ import { HostSettings } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import type { AssistantWorkspace, AssistantWorkspaceFacts } from "../api.ts";
+import type { AssistantNavigation, AssistantWorkspace, AssistantWorkspaceFacts } from "../api.ts";
 import { click } from "../test-support/controls.ts";
 import { MemoryHostSettingsStore } from "../test-support/memory-host-settings-store.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -19,6 +19,9 @@ const acme: AssistantWorkspaceFacts = {
   usesSecret: () => true,
 };
 
+/** The links of the workspace made last: each test makes one workspace and shows it. */
+let lastNavigate: AssistantNavigation | undefined;
+
 function fakeWorkspace(initial: AssistantWorkspaceFacts | null, stored: boolean | Error = true) {
   let facts = initial;
   const listeners = new Set<() => void>();
@@ -33,17 +36,20 @@ function fakeWorkspace(initial: AssistantWorkspaceFacts | null, stored: boolean 
       if (stored instanceof Error) throw stored;
       return stored;
     },
+  };
+  const navigate: AssistantNavigation = {
     openProviderPage: (name) => calls.push(`provider ${name}`),
     addProvider: (type, name) => calls.push(`add ${type} ${name}`),
     openSessionAi: () => calls.push("session-ai"),
   };
+  lastNavigate = navigate;
   const change = async (next: AssistantWorkspaceFacts | null) => {
     facts = next;
     await act(async () => {
       for (const listener of listeners) listener();
     });
   };
-  return { workspace, calls, change };
+  return { workspace, navigate, calls, change };
 }
 
 async function setup(
@@ -62,6 +68,7 @@ async function setup(
       announce={vi.fn()}
       place={place}
       workspace={workspace}
+      navigate={lastNavigate}
       closeSettings={closeSettings}
     />,
   );

@@ -11,11 +11,13 @@ import {
 import { type SettingsPlace, type SettingsSectionProps, ShellError } from "@halonicjs/studio-shell";
 import { useState, useSyncExternalStore } from "react";
 import {
+  type AssistantNavigation,
   type AssistantWorkspace,
   type AssistantWorkspaceFacts,
   AssistantWorkspaceService,
   HostSettingsService,
 } from "../api.ts";
+import { openModelsCommand } from "../links/workspace-links.tsx";
 import { checkModel, checkTurnLimit } from "./assistant-checks.ts";
 import { assistantPrefs, turnLimitRange } from "./assistant-prefs.ts";
 import {
@@ -47,6 +49,7 @@ export function AssistantSection({ context, closeSettings, place }: SettingsSect
       announce={(line) => context.announcer.announce(line)}
       place={place}
       workspace={workspaceOf(context)}
+      navigate={navigationOf(context)}
       closeSettings={closeSettings}
     />
   );
@@ -85,6 +88,8 @@ export interface AssistantViewProps {
   readonly place: SettingsPlace;
   /** The open workspace, when the app gives one: the key line, the warning and the "sets its own" line need it. */
   readonly workspace?: AssistantWorkspace | undefined;
+  /** Where the key line's and the "sets its own" line's links lead; the window gives it. */
+  readonly navigate?: AssistantNavigation | undefined;
   /** Closes Settings before a link opens a page. */
   readonly closeSettings?: () => void;
 }
@@ -98,6 +103,26 @@ function workspaceOf(context: SettingsSectionProps["context"]): AssistantWorkspa
     if (error instanceof ShellError) return undefined;
     throw error;
   }
+}
+
+/** The command that opens the workspace page at Session AI, once the page has it. */
+const openSessionAiCommand = "workspace.open-session-ai";
+/** The command that opens the workspace page whatever it holds, the one the page has today. */
+const openWorkspaceCommand = "workspace.open";
+
+/**
+ * The links' targets, through the window's commands. The workspace page has no provider or Session
+ * AI section yet, so a command nobody added falls back to the page itself.
+ */
+function navigationOf(context: SettingsSectionProps["context"]): AssistantNavigation {
+  const go = (command: string) => {
+    if (!context.runCommand?.(command)) context.runCommand?.(openWorkspaceCommand);
+  };
+  return {
+    openProviderPage: () => go(openModelsCommand),
+    addProvider: () => go(openModelsCommand),
+    openSessionAi: () => go(openSessionAiCommand),
+  };
 }
 
 const noWorkspace = () => () => {};
@@ -233,6 +258,7 @@ function AssistantEditor({
   announce,
   place,
   workspace,
+  navigate,
   closeSettings,
 }: AssistantViewProps) {
   const open = useOpenWorkspace(workspace);
@@ -327,7 +353,7 @@ function AssistantEditor({
           open={open}
           link={() => {
             closeSettings?.();
-            workspace.openSessionAi();
+            navigate?.openSessionAi();
           }}
         />
       )}
@@ -352,6 +378,7 @@ function AssistantEditor({
           provider={chosen}
           secretName={secretName.value}
           workspace={workspace}
+          navigate={navigate}
           open={open}
           closeSettings={closeSettings ?? (() => {})}
         />
