@@ -60,6 +60,14 @@ export const settingsSections: readonly SettingsSectionContribution[] = [
     view: "AgentSandboxSection",
     load: () => import("./agent-sandbox/agent-sandbox-section.tsx"),
   },
+  {
+    id: "about",
+    title: "About Halonic",
+    scope: "host",
+    order: 60,
+    view: "AboutSection",
+    load: () => import("./updater/about-section.tsx"),
+  },
 ];
 
 /**
