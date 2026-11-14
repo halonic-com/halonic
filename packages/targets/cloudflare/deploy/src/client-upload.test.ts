@@ -144,6 +144,16 @@ verifies("deploy.upload", () => {
     expect(await client.currentDeployment("a1", "none")).toBeUndefined();
   });
 
+  it("reads the workers.dev setting and closes it with previews off", async () => {
+    const { client, bodies } = setupUpload({
+      "GET /accounts/a1/workers/scripts/w/subdomain": { result: { enabled: false } },
+      "POST /accounts/a1/workers/scripts/w/subdomain": { result: {} },
+    });
+    expect(await client.workersDevEnabled("a1", "w")).toBe(false);
+    await client.closeWorkersDev("a1", "w");
+    expect(bodies[0]).toEqual({ enabled: false, previews_enabled: false });
+  });
+
   it("deploys by percentage and opens workers.dev with previews off", async () => {
     const { client, bodies } = setupUpload({
       "POST /accounts/a1/workers/scripts/w/deployments": { result: {} },
