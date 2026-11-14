@@ -159,10 +159,14 @@ verifies("settings.restart-flow", () => {
   it("offers Restart to update in Ctrl K only while an update is ready", async () => {
     const { context, flow, set } = await mount(statusOf({ kind: "up-to-date" }));
     const titlesNow = () => updateCommands(context).map((command) => command.title);
-    expect(titlesNow()).toEqual(["Check for Halonic updates"]);
+    expect(titlesNow()).toEqual(["About Halonic", "Check for Halonic updates"]);
     set(statusOf(ready));
     expect(flow.canRestart()).toBe(true);
-    expect(titlesNow()).toEqual(["Check for Halonic updates", "Restart to update Halonic"]);
+    expect(titlesNow()).toEqual([
+      "About Halonic",
+      "Check for Halonic updates",
+      "Restart to update Halonic",
+    ]);
   });
 
   it("says that a download started and that it is ready, once each, never a percentage", async () => {

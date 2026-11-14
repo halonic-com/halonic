@@ -89,7 +89,6 @@ export const sectionsByName: readonly string[] = [
   "assistant",
   "trusted-sources",
   "agent-sandbox",
-  "about",
 ];
 
 /**
@@ -101,7 +100,7 @@ export const sectionsByName: readonly string[] = [
  * settings (`HostSettingsService`). It reads the updater, the agent sandbox and the Assistant's
  * workspace only if the app gives them. For updates it adds the status bar's Restart to update,
  * the restart dialog and update toasts (`settings.restart-flow`), and the Ctrl K commands Check for
- * Halonic updates and Restart to update Halonic.
+ * Halonic updates, About Halonic and Restart to update Halonic.
  */
 export const settingsFeature = defineFeature({
   id: "settings",

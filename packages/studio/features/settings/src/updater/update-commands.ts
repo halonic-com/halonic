@@ -7,12 +7,20 @@ import * as text from "./restart-text.ts";
 /**
  * The update commands Ctrl K lists (`settings.update-commands`): "Check for Halonic updates"
  * wherever the app has an updater, and "Restart to update Halonic" only while an update is ready.
- * "About Halonic" is a section command. Without an updater there are none.
+ * "About Halonic" opens Settings on its section, also without an updater: the section then says
+ * where updates are installed. The others need an updater.
  */
 export function updateCommands(context?: WorkspaceContext): readonly CommandContribution[] {
-  const host = context?.services.find(UpdaterService);
-  if (context === undefined || host === undefined) return [];
+  if (context === undefined) return [];
+  const about: CommandContribution = {
+    id: "settings.update.about",
+    title: text.ABOUT_COMMAND,
+    run: (runContext) => runContext.openSettings?.("about"),
+  };
+  const host = context.services.find(UpdaterService);
+  if (host === undefined) return [about];
   const commands: CommandContribution[] = [
+    about,
     {
       id: "settings.update.check",
       title: text.CHECK_COMMAND,
