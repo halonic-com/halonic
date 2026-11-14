@@ -19,6 +19,8 @@ import {
 import { systemClock } from "@halonicjs/std";
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
+import { libraryFeature } from "@halonicjs/studio-feature-library";
+import { ConnectorStatusHostService, RefusalsFeed } from "@halonicjs/studio-feature-library/api";
 import { runsFeature } from "@halonicjs/studio-feature-runs";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import {
@@ -68,6 +70,7 @@ import {
   type StudioHost,
   StudioWorkspace,
 } from "@halonicjs/studio-shell";
+import { WorkspaceConnectorStatus } from "../library/workspace-connector-status.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
@@ -172,8 +175,9 @@ export function startStudio(page: StudioPage, desktop = desktopFeatures): Starte
  * ({@link openFolder}).
  */
 export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = {
-  features: [inboxFeature, runsFeature, settingsFeature, workspaceFeature],
+  features: [inboxFeature, libraryFeature, runsFeature, settingsFeature, workspaceFeature],
   hostServices: [
+    ConnectorStatusHostService,
     InboxRunsService,
     RunsSourceService,
     DisplaySettingsService,
@@ -315,6 +319,7 @@ export async function openFolder(
   const assistant = provideAssistant(services, files, location, name, scope);
   if (ipc !== undefined && files !== undefined) {
     provideWorkspaceRuns(services, { ipc, files, window }, location);
+    provideConnectorStatus(services, { files, window }, location);
   }
   shell.services.instantiate(services);
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name });
@@ -397,6 +402,25 @@ function provideWorkspaceRuns(
   });
   services.provide(RunsSourceService, runs);
   services.provide(InboxRunsService, runs);
+}
+
+/**
+ * Gives the Library the workspace's connectors and what the engine refused from them
+ * (`studio.workspace-connector-status`).
+ */
+function provideConnectorStatus(
+  services: ServiceRegistry,
+  { files, window }: { files: TauriFileShell; window: object },
+  location: string,
+): void {
+  services.provide(
+    ConnectorStatusHostService,
+    new WorkspaceConnectorStatus({
+      definitions: new TauriDefinitionStore(files, location),
+      refusals: new RefusalsFeed(),
+      onFocus: (listener) => focusOf(window, listener),
+    }),
+  );
 }
 
 /** Calls `listener` whenever the page's window comes to the front; returns a function that stops it. */

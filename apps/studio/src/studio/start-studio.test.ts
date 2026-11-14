@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { reviewServiceKey, workspaceFilesKey } from "@halonicjs/app";
+import { ConnectorStatusHostService } from "@halonicjs/studio-feature-library/api";
 import {
   BrowserDisplayPrefs,
   DisplaySettings,
@@ -442,6 +443,52 @@ verifies("studio.window-appearance", () => {
 
     expect(outcome).toMatchObject({ saved: false, superseded: false, back: "system" });
     expect(settings.get(themePref)).toBe("system");
+  });
+});
+
+verifies("studio.workspace-connector-status", () => {
+  it("registers the Library in the desktop app", () => {
+    const shell = createShell({ ...desktopFeatures, host: "desktop-app", platform: "windows" });
+
+    expect(shell.features.map((feature) => feature.id)).toContain("library");
+  });
+
+  it("gives an opened folder's connectors to the Library", async () => {
+    const connectorPath = "library/connectors/search.connector.yaml";
+    const connector = [
+      "version: 1",
+      "id: search",
+      "name: Web search",
+      "transport: { http: { url: https://search.acme.example/mcp } }",
+    ].join("\n");
+    const answers: Record<string, unknown> = {
+      fs_list: ["workspace.yaml", connectorPath],
+      folder_location: "/work/acme",
+      folder_entries: [],
+      host_settings_read: {},
+    };
+    const invoke = async (command: string, args?: Record<string, unknown>) => {
+      if (command === "fs_read") {
+        if (args?.["path"] === "workspace.yaml") return acmeSettings;
+        return args?.["path"] === connectorPath ? connector : null;
+      }
+      return answers[command] ?? null;
+    };
+    const internals = { invoke, transformCallback: () => 1, unregisterCallback: () => {} };
+    const shell = createShell({ ...desktopFeatures, host: "desktop-app", platform: "windows" });
+
+    const opened = await openFolder(
+      shell,
+      { __TAURI_INTERNALS__: internals },
+      "/work/acme",
+      displaySettings(),
+    );
+
+    const status = opened.workspace.services.get(ConnectorStatusHostService);
+    expect((await status.list()).map(({ id, name }) => ({ id, name }))).toEqual([
+      { id: "search", name: "Web search" },
+    ]);
+    await opened.dispose();
   });
 });
 
