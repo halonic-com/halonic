@@ -1,6 +1,6 @@
 # @halonicjs/host-server
 
-The `Request → Response` handler behind `halonic serve` and the cloud Worker. `createServer` builds the handler with its security layer: the `Host` check (loopback names only when no password is set), the exact `Origin` check, strict response headers, a body limit enforced while the body streams, and errors that are a code and a short message. `GET /api/hello`, the sign-in routes, `GET /api/trust` and the two routes that start a run answer; every other path answers 404 for now. Web-standard APIs only, with every outside dependency behind a port.
+The `Request → Response` handler behind `halonic serve` and the cloud Worker. `createServer` builds the handler with its security layer: the `Host` check (loopback names only when no password is set), the exact `Origin` check, strict response headers, a body limit enforced while the body streams, and errors that are a code and a short message. `GET /api/hello`, the sign-in routes, `GET /api/trust`, the routes that start, follow and steer a run, and `POST /api/chat-turn` (one model turn; agent settings name the API key's secret and never carry it, and a closed request aborts the model call) answer; every other path answers 404 for now. Web-standard APIs only, with every outside dependency behind a port.
 
 - **Layer:** host
 - **Owner:** elena

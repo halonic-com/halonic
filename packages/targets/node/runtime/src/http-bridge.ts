@@ -21,10 +21,16 @@ export async function answerRequest(
     outgoing.writeHead(400).end();
     return;
   }
+  // A client that closes the connection before the answer is written aborts the request, so a model call stops with it.
+  const closed = new AbortController();
+  outgoing.once("close", () => {
+    if (!outgoing.writableFinished) closed.abort();
+  });
   const hasBody = incoming.method !== "GET" && incoming.method !== "HEAD";
   const request = new Request(`http://localhost${path}`, {
     method: incoming.method ?? "GET",
     headers: toHeaders(incoming),
+    signal: closed.signal,
     ...(hasBody ? { body: Readable.toWeb(incoming) as WebReadableStream, duplex: "half" } : {}),
   });
   const context =

@@ -1,4 +1,5 @@
 import type { CreateServer, RequestContext, ServerConfig } from "./api.ts";
+import { chatTurnPath, createChatTurnRoutes } from "./chat-turn-routes.ts";
 import { checkDailyRequests } from "./daily-requests.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { createGoogleRoutes, googlePathPrefix, isSecretPath } from "./google-routes.ts";
@@ -36,6 +37,7 @@ export const createServer: CreateServer = ({ config, ports }) => {
   const trustRoutes = createTrustRoutes(ports);
   const webhookRoutes = createWebhookRoutes(ports);
   const runRoutes = createRunRoutes(ports);
+  const chatTurnRoutes = createChatTurnRoutes(ports);
 
   /** `/api/runs/<runId>` and `/api/runs/<runId>/<action>`: the routes of one run, behind the sign-in. */
   async function runRoute(
@@ -68,6 +70,17 @@ export const createServer: CreateServer = ({ config, ports }) => {
   const googleRoutes =
     ports.google === undefined ? null : createGoogleRoutes({ google: ports.google });
 
+  /** Answers `serve` when the caller is signed in (or no password is set), and 401 otherwise. */
+  async function whenSignedIn(
+    request: Request,
+    context: RequestContext,
+    serve: () => Promise<Response> | Response,
+  ): Promise<Response> {
+    return (await signIn.isSignedIn(request, context))
+      ? serve()
+      : errorResponse(serverErrors.notSignedIn);
+  }
+
   async function route(
     request: Request,
     context: RequestContext,
@@ -78,13 +91,14 @@ export const createServer: CreateServer = ({ config, ports }) => {
     if (request.method === "POST" && pathname.startsWith(webhookPathPrefix)) {
       return webhookRoutes.receive(request, pathname.slice(webhookPathPrefix.length), body);
     }
+    if (request.method === "POST" && pathname === chatTurnPath) {
+      return whenSignedIn(request, context, () => chatTurnRoutes.chatTurn(request, body));
+    }
     if (pathname.startsWith(runPathPrefix)) {
       return runRoute(request, context, body, pathname.slice(runPathPrefix.length));
     }
     if (pathname.startsWith(googlePathPrefix) && googleRoutes !== null) {
-      return (await signIn.isSignedIn(request, context))
-        ? googleRoutes.handle(request, body, context)
-        : errorResponse(serverErrors.notSignedIn);
+      return whenSignedIn(request, context, () => googleRoutes.handle(request, body, context));
     }
     return apiRoute(request, context, body, `${request.method} ${pathname}`);
   }
