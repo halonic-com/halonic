@@ -35,7 +35,15 @@ export function Details({ rows, version, logRead, runId, now }: DetailsProps) {
             {row.tooltip === undefined ? (
               row.value
             ) : (
-              <Tooltip text={row.tooltip}>{(props) => <span {...props}>{row.value}</span>}</Tooltip>
+              <Tooltip text={row.tooltip}>
+                {(props) => (
+                  // Focusable, so a keyboard reaches the tooltip as a pointer does.
+                  // biome-ignore lint/a11y/noNoninteractiveTabindex: the tooltip shows on focus; it is the only way for a keyboard to read it
+                  <span tabIndex={0} className="rounded-xs focus-ring" {...props}>
+                    {row.value}
+                  </span>
+                )}
+              </Tooltip>
             )}
           </Row>
         ))}
