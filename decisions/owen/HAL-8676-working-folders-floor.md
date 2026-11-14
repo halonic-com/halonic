@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-8676; Liam approves this note in review on HAL-8679
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Bf2eSjWPbsGorSIes6Dc/40vHxFTR50G7yYyB6hxuBwlR1Ys8xssE7dD0Jz21L9kzlTfGG3agZ1Y8t/iWEjgDg==
 
 The connector routes (HAL-2310) took the agents' working folders only from the caller. The list is no longer only the caller's:
 
