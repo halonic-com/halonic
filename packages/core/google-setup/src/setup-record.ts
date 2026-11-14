@@ -1,5 +1,6 @@
 import { type Infer, parse, s } from "@halonicjs/schema-kit";
 import { isReasonCode } from "./check-answer.ts";
+import { isClientId } from "./client-id.ts";
 import { connectorIdPattern, workspaceKeyPattern } from "./connector-link.ts";
 import { enableApiUrl, isApiHost, isProjectId } from "./console-links.ts";
 import type { StepId } from "./setup-step.ts";
@@ -32,13 +33,6 @@ const stepTicks: Record<StepId, ReturnType<typeof time.optional>> = {
 
 /** A client or account ref, checked as the token names check it (plan D2). */
 const ref = s.string().refine(isSetupRef);
-
-/**
- * A Google OAuth client ID, such as `1234-abc.apps.googleusercontent.com`.
- * Only lower-case letters, digits and the fixed ending, so a client secret
- * pasted into the wrong field (`GOCSPX-…`) can never be saved as one.
- */
-const clientIdPattern = /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/;
 
 /** A service id from an integration sheet, such as `gmail`. */
 const serviceIdPattern = /^[a-z][a-z0-9-]{0,63}$/;
@@ -185,7 +179,7 @@ const setupValues = s
     stepsDone: s.object(stepTicks).strict(),
     /** When the user ticked "In production" (personal accounts, step 3). */
     inProductionTickedAt: time.nullable(),
-    clientId: s.string().regex(clientIdPattern).nullable(),
+    clientId: s.string().refine(isClientId).nullable(),
     /**
      * The ref of the client secret in the `TokenStore` and when it was saved.
      * Never the secret itself. Accounts that share a client hold the same ref.
