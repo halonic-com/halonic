@@ -101,11 +101,13 @@ export { ItemPage, type ItemPageChat, type ItemPageProps } from "./item-page/ite
 export { useRememberedView } from "./item-page/remembered-view.ts";
 export {
   allFilter,
+  type OverviewChip,
   type OverviewHub,
   type OverviewItem,
   type OverviewSection,
   type OverviewShared,
   type OverviewView,
+  overviewChips,
   overviewSections,
   sharedFilter,
 } from "./overview/overview-model.ts";

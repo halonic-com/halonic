@@ -2,8 +2,10 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import {
   allFilter,
+  currentFilter,
   hubFilter,
   type OverviewHub,
+  overviewChips,
   overviewSections,
   sharedFilter,
 } from "./overview-model.ts";
@@ -92,4 +94,36 @@ verifies("shell.overview.search", () => {
   it("shows everything again for a blank search", () => {
     expect(shape("  ")).toEqual(shape(""));
   });
+});
+
+const chipWords = { all: "All", shared: (workspace: string) => `Shared in ${workspace}` };
+const chipHubs: readonly OverviewHub[] = [
+  { id: "acme", name: "acme", items: [] },
+  { id: "all", name: "all", items: [] },
+];
+
+it("has All, one chip per hub, then Shared only when something is shared", () => {
+  expect(overviewChips(chipHubs, undefined, chipWords).map((chip) => chip.label)).toEqual([
+    "All",
+    "acme",
+    "all",
+  ]);
+  const shared = { workspaceName: "Acme", items: [{ id: "x", name: "X" }] };
+  expect(overviewChips(chipHubs, shared, chipWords).at(-1)).toEqual({
+    value: sharedFilter,
+    label: "Shared in Acme",
+  });
+  expect(overviewChips(chipHubs, { workspaceName: "Acme", items: [] }, chipWords)).toHaveLength(3);
+});
+
+it("keeps a hub called all apart from the All chip", () => {
+  const values = overviewChips(chipHubs, undefined, chipWords).map((chip) => chip.value);
+  expect(new Set(values).size).toBe(3);
+});
+
+it("falls back to All when the chosen hub has gone", () => {
+  const chips = overviewChips(chipHubs, undefined, chipWords);
+  expect(currentFilter(hubFilter("acme"), chips)).toBe(hubFilter("acme"));
+  expect(currentFilter(hubFilter("gone"), chips)).toBe(allFilter);
+  expect(currentFilter(sharedFilter, chips)).toBe(allFilter);
 });

@@ -3,6 +3,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
+import { installFakePopover } from "../test-support/fake-popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import type { OverviewHub } from "./overview-model.ts";
 import { OverviewPage, type OverviewPageProps, type OverviewWords } from "./overview-page.tsx";
@@ -12,6 +13,10 @@ afterEach(unmountAll);
 const words: OverviewWords = {
   searchLabel: "Search for skills",
   loadingLabel: "Loading skills",
+  chipsLabel: "Hub",
+  allChip: "All",
+  sharedChip: (workspace) => `Shared in ${workspace}`,
+  moreLabel: (name) => `More actions for ${name}`,
   sharedSection: (workspace) => `Shared in ${workspace}`,
   emptySection: (name) => `No skills in ${name} yet`,
   noMatch: (query) => `No results for “${query}”`,
@@ -145,5 +150,66 @@ verifies("shell.overview.states", () => {
     });
     expect(page.textContent).toContain("Loading skills");
     vi.useRealTimers();
+  });
+});
+
+function press(page: HTMLElement, selector: string): void {
+  const element = page.querySelector<HTMLElement>(selector);
+  if (element === null) {
+    throw new Error(`nothing matches ${selector}`);
+  }
+  act(() => element.click());
+}
+
+verifies("shell.overview.filters-new-and-menu", () => {
+  it("limits the sections to the chosen hub chip", () => {
+    const page = show();
+    expect(page.querySelectorAll('input[type="radio"]')).toHaveLength(4);
+    press(page, 'input[type="radio"][value="hub:beta"]');
+    expect(headings(page)).toEqual(["beta"]);
+  });
+
+  it("shows no chips with one section only and a Shared chip when something is shared", () => {
+    expect(show({ hubs: [] }).querySelector('[role="radiogroup"]')).toBeNull();
+    unmountAll();
+    const page = show({ shared: { workspaceName: "Acme", items: [{ id: "tone", name: "Tone" }] } });
+    press(page, 'input[type="radio"][value="shared"]');
+    expect(headings(page)).toEqual(["Shared in Acme"]);
+  });
+
+  it("calls the feature's create handler from the New button, even with nothing yet", () => {
+    const onClick = vi.fn();
+    const page = show({ hubs: [], newButton: { label: "New skill", onClick } });
+    const button = Array.from(page.querySelectorAll("button")).find(
+      (candidate) => candidate.textContent === "New skill",
+    );
+    act(() => button?.click());
+    expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it("has a ⋮ button only on rows with menu items, and opens the feature's menu", () => {
+    const restorePopover = installFakePopover();
+    const onSelect = vi.fn();
+    const page = show({
+      itemMenu: (item) =>
+        item.id === "summarise" ? [{ id: "rename", label: "Rename…", onSelect }] : [],
+    });
+    expect(page.querySelectorAll('button[aria-label^="More actions for"]')).toHaveLength(1);
+    press(page, 'button[aria-label="More actions for Summarise"]');
+    const entry = Array.from(document.querySelectorAll<HTMLElement>('[role="menuitem"]')).find(
+      (item) => item.textContent === "Rename…",
+    );
+    act(() => entry?.click());
+    expect(onSelect).toHaveBeenCalledOnce();
+    restorePopover();
+  });
+
+  it("keeps the chips, search and New button out of the failed state", () => {
+    const page = show({
+      failure: { title: "Couldn't load skills", onTryAgain: () => undefined },
+      newButton: { label: "New skill", onClick: () => undefined },
+    });
+    expect(page.querySelector('[role="radiogroup"]')).toBeNull();
+    expect(page.textContent).not.toContain("New skill");
   });
 });
