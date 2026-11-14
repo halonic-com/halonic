@@ -41,4 +41,11 @@ verifies("kit.dialog", () => {
       /\.backdrop\\:ease-\\\(--ease-enter\\\)::backdrop\s*\{[^}]*var\(--ease-enter\)/,
     );
   });
+
+  it("writes a rule for the max-width tokens the app uses, and none for Tailwind's own sizes", async () => {
+    const css = await buildCss(["max-w-dialog-sm", "max-w-reading", "max-w-md"]);
+    expect(css).toContain("max-width: var(--container-dialog-sm)");
+    expect(css).toContain("max-width: var(--container-reading)");
+    expect(css).not.toContain("max-w-md");
+  });
 });
