@@ -93,6 +93,20 @@ verifies("agent-host.connector-routes", () => {
       expect(logged).not.toContain("fake-value-for-test");
     });
 
+    it("leaves the connector's secret values out of the log when a later request fails", async () => {
+      // The program starts on the first tools or call request, so a start failure comes here.
+      const connector = await opened({
+        secrets: { "notes-key": "fake-value-for-test", other: "fake" },
+      });
+      const failing = setup?.made[0];
+      if (failing) failing.failWith = new Error("Start failed with fake-value-for-test set.");
+      const response = await post(setup?.url ?? "", "/v1/connectors/tools", { connector });
+      expect(response.status).toBe(502);
+      const logged = setup?.logged.join("") ?? "";
+      expect(logged).toContain("Start failed with [secret value] set.");
+      expect(logged).not.toContain("value-for-test");
+    });
+
     it("gives the factory the workspace and the agents' folders as real paths", async () => {
       setup = await startRoutes();
       const link = join(setup.folders.base, "agent-link");

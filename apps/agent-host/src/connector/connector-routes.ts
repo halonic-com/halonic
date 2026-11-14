@@ -82,7 +82,7 @@ export function connectorRoutes(deps: ConnectorRouteDeps): HostRoute[] {
         if (body === undefined) return;
         const client = connectors.get(body.connector);
         if (client === undefined) return sendUnknown(response);
-        await answering(deps, response, async () =>
+        await answering(deps, body.connector, response, async () =>
           sendJson(response, 200, await client.listTools()),
         );
       },
@@ -97,7 +97,7 @@ export function connectorRoutes(deps: ConnectorRouteDeps): HostRoute[] {
         if (client === undefined) return sendUnknown(response);
         const options: ConnectorCallOptions =
           body.idempotencyKey === undefined ? {} : { idempotencyKey: body.idempotencyKey };
-        await answering(deps, response, async () => {
+        await answering(deps, body.connector, response, async () => {
           const text = await client.callTool(body.tool, body.args, options);
           sendJson(response, 200, { text });
         });
@@ -109,7 +109,7 @@ export function connectorRoutes(deps: ConnectorRouteDeps): HostRoute[] {
       handle: async (request, response) => {
         const body = await readCheckedBody(request, response, connectorBody);
         if (body === undefined) return;
-        await answering(deps, response, async () => {
+        await answering(deps, body.connector, response, async () => {
           if (await connectors.close(body.connector)) sendJson(response, 200, { closed: true });
           else sendUnknown(response);
         });
@@ -158,7 +158,7 @@ function openHandler(deps: ConnectorRouteDeps): HostRoute["handle"] {
         return;
       }
       const client = deps.factory.create(configOf(body), context);
-      const id = connectors.add(client);
+      const id = connectors.add(client, Object.values(body.secrets));
       if (id === undefined) {
         // The host began stopping while the folders were checked: nothing else will close this one.
         await client.close();
@@ -217,20 +217,23 @@ function memorySecrets(values: Readonly<Record<string, string>>): Secrets {
 /** Runs `answer`, and answers 502 `connector_failed` when it throws. */
 async function answering(
   deps: ConnectorRouteDeps,
+  connector: string,
   response: Parameters<typeof sendError>[0],
   answer: () => Promise<void>,
 ): Promise<void> {
+  // Read before `answer` runs: a close forgets the connector's values before it can fail.
+  const secretValues = deps.connectors.secretValuesOf(connector);
   try {
     await answer();
   } catch (error) {
-    failed(deps, response, error, []);
+    failed(deps, response, error, secretValues);
   }
 }
 
 /**
  * Answers 502 with the fixed reason and keeps the detail in the host's log.
  *
- * @param secretValues - values to leave out of the log line (the open request's own secrets)
+ * @param secretValues - values to leave out of the log line (the connector's own secrets)
  */
 function failed(
   deps: ConnectorRouteDeps,
@@ -246,8 +249,10 @@ function failed(
 }
 
 function withoutValues(text: string, values: readonly string[]): string {
+  // Longest first, so a value that holds a shorter one isn't left half replaced.
   return values
     .filter((value) => value !== "")
+    .sort((first, second) => second.length - first.length)
     .reduce((kept, value) => kept.split(value).join("[secret value]"), text);
 }
 
