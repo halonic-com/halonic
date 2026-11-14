@@ -25,7 +25,8 @@ import { type RealMxc, realMxc } from "./mxc-sandbox.ts";
 // and with it off, so the box alone stands between the script and the
 // computer. That is what an integration has once it gets past the module hook
 // and Node's layer. `mxcFencesRunner` stays off until every case here has
-// passed, A6 and A23 included.
+// passed, A6 and A23 included. A36 past Node's layer is a recorded gap (HAL-9362):
+// it expects what gets through, so a gap that closes fails too.
 
 let mxc: RealMxc;
 let base: string;
@@ -203,7 +204,10 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     expect(agentConnections).toBe(connectionsBefore);
   });
 
-  it("A36: reaches no credential in the Credential Manager", async () => {
+  it("A36: reaches the Credential Manager once past Node's layer (known gap)", async () => {
+    // With Node's layer on, the runner can't start the program that asks for
+    // the credential. Without it, the box doesn't hide the host user's
+    // vault: the entry is there to read (decision on HAL-9362).
     const cmdkey = join(windowsFolder, "System32", "cmdkey.exe");
     const { attempts } = await attack(
       `
@@ -217,7 +221,11 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     `,
       nodeLayer,
     );
-    expect(attempts["credential"]?.detail).not.toBe("listed");
+    if (nodeLayer === "on") {
+      expect(attempts["credential"]).toMatchObject({ outcome: "refused", detail: "ERR_ACCESS_DENIED" });
+    } else {
+      expect(attempts["credential"]).toEqual({ outcome: "allowed", detail: "listed" });
+    }
   });
 
   it("A14: starts no process outside what the box allows", async () => {

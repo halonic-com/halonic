@@ -47,7 +47,7 @@ One difference from the design: A30 on plain `http` is refused as `scheme-not-al
 | A33 | frames outside the protocol | `adapters/integration-runner/src/halonic/strict-protocol.test.ts`, `attacks.test.ts` |
 | A34 | loading code around the static checks | `adapters/integration-runner/src/runner-file.test.ts` |
 | A35 | Unix sockets on disk | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts` |
-| A36 | the OS key store | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts`, `adapters/sandbox-srt/fence/srt-keychain.test.ts` |
+| A36 | the OS key store | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts`, `runner-attacks.mxc.test.ts`, `adapters/sandbox-srt/fence/srt-keychain.test.ts`; on MXC and native Windows only Node's layer covers it, and past that layer it is a recorded gap, like A39 |
 | A37 | work outside a call | `adapters/integration-runner/src/bridge.refusals.test.ts`, `src/halonic/call-limits.test.ts`, `call-requests.test.ts`, `attacks.test.ts` |
 | A38 | replaying a fence proof | `adapters/integration-runner/src/halonic/attacks.test.ts`, `strict-protocol.test.ts` |
 | A39 | ending Halonic's host on native Windows | fence: `runner-attacks.windows.test.ts`; a recorded gap |
