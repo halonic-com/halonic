@@ -15,23 +15,32 @@ interface Envelope {
   readonly success?: boolean;
   readonly errors?: readonly { readonly code?: number; readonly message?: string }[];
   readonly result?: unknown;
+  readonly result_info?: { readonly page?: number; readonly total_pages?: number };
 }
 
 const defaultBaseUrl = "https://api.cloudflare.com/client/v4";
+const requestTimeoutMs = 30_000;
+const accountsPerPage = 50;
+// A guard against a server that never stops paging.
+const maxAccountPages = 100;
 
 /** The real {@link CloudflareApi}, over `fetch`. */
 export function createCloudflareClient(options: CloudflareClientOptions): CloudflareApi {
   const doFetch = options.fetch ?? fetch;
   const baseUrl = options.baseUrl ?? defaultBaseUrl;
 
-  async function get(path: string): Promise<unknown> {
+  async function get(path: string): Promise<Envelope> {
     const where = `GET ${path}`;
     let response: Response;
     try {
       response = await doFetch(`${baseUrl}${path}`, {
         headers: { authorization: `Bearer ${options.token}` },
+        signal: AbortSignal.timeout(requestTimeoutMs),
       });
     } catch (cause) {
+      if (cause instanceof Error && cause.name === "TimeoutError") {
+        throw failed(`${where} timed out after ${requestTimeoutMs / 1000} s`);
+      }
       const reason = cause instanceof Error ? cause.message : "unknown error";
       throw failed(`${where} failed: ${reason}`);
     }
@@ -39,7 +48,7 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
     if (!response.ok || body.success !== true) {
       throw failed(`${where} was refused (HTTP ${response.status})${describe(body)}`);
     }
-    return body.result;
+    return body;
   }
 
   function failed(message: string): DeployError {
@@ -48,13 +57,27 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
 
   return {
     async listAccounts() {
-      return accountsFrom(await get("/accounts"));
+      const accounts: CloudflareAccount[] = [];
+      for (let page = 1; page <= maxAccountPages; page += 1) {
+        const body = await get(`/accounts?per_page=${accountsPerPage}&page=${page}`);
+        if (!Array.isArray(body.result)) throw failed("unexpected response from GET /accounts");
+        accounts.push(...accountsFrom(body.result));
+        const totalPages = body.result_info?.total_pages;
+        const done =
+          typeof totalPages === "number"
+            ? page >= totalPages
+            : body.result.length < accountsPerPage;
+        if (done) break;
+      }
+      return accounts;
     },
     async verifyUserToken() {
-      return statusFrom(await get("/user/tokens/verify"));
+      return statusFrom((await get("/user/tokens/verify")).result);
     },
     async verifyAccountToken(accountId) {
-      return statusFrom(await get(`/accounts/${encodeURIComponent(accountId)}/tokens/verify`));
+      return statusFrom(
+        (await get(`/accounts/${encodeURIComponent(accountId)}/tokens/verify`)).result,
+      );
     },
   };
 }
@@ -73,8 +96,7 @@ function describe(body: Envelope): string {
   return `: ${errors.map((error) => `${error.code ?? "?"} ${error.message ?? ""}`.trim()).join("; ")}`;
 }
 
-function accountsFrom(result: unknown): readonly CloudflareAccount[] {
-  if (!Array.isArray(result)) return [];
+function accountsFrom(result: readonly unknown[]): readonly CloudflareAccount[] {
   const accounts: CloudflareAccount[] = [];
   for (const entry of result as readonly { id?: unknown; name?: unknown }[]) {
     if (typeof entry.id === "string") {

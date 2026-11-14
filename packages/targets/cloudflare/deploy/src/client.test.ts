@@ -73,6 +73,57 @@ verifies("deploy.credentials", () => {
       },
     });
     const error = await client.listAccounts().catch((caught: unknown) => caught);
+    expect((error as DeployError).code).toBe("cloudflare-request-failed");
     expect((error as DeployError).message).not.toContain(token);
+  });
+
+  it("reads every page of accounts", async () => {
+    const seen: string[] = [];
+    const pages = [
+      { success: true, result: [{ id: "a1" }], result_info: { page: 1, total_pages: 2 } },
+      {
+        success: true,
+        result: [{ id: "a2", name: "Two" }],
+        result_info: { page: 2, total_pages: 2 },
+      },
+    ];
+    const client = createCloudflareClient({
+      token,
+      baseUrl: "https://cf.test",
+      fetch: async (input) => {
+        seen.push(String(input));
+        return new Response(JSON.stringify(pages[seen.length - 1]));
+      },
+    });
+    expect(await client.listAccounts()).toEqual([
+      { id: "a1", name: "a1" },
+      { id: "a2", name: "Two" },
+    ]);
+    expect(seen).toEqual([
+      "https://cf.test/accounts?per_page=50&page=1",
+      "https://cf.test/accounts?per_page=50&page=2",
+    ]);
+  });
+
+  it("reports a response without an account list instead of an empty one", async () => {
+    const client = createCloudflareClient({
+      token,
+      fetch: replying(200, { success: true, result: { id: "a1" } }),
+    });
+    const error = await client.listAccounts().catch((caught: unknown) => caught);
+    expect((error as DeployError).code).toBe("cloudflare-request-failed");
+    expect((error as DeployError).message).toContain("unexpected response");
+  });
+
+  it("reports a request that times out", async () => {
+    const client = createCloudflareClient({
+      token,
+      fetch: async () => {
+        throw new DOMException("The operation timed out.", "TimeoutError");
+      },
+    });
+    const error = await client.listAccounts().catch((caught: unknown) => caught);
+    expect((error as DeployError).code).toBe("cloudflare-request-failed");
+    expect((error as DeployError).message).toContain("timed out");
   });
 });
