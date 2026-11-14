@@ -3,8 +3,9 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type { SandboxProcess, SandboxProfile } from "@halonicjs/ports";
 import { BoxFolders } from "../src/box-folders.ts";
-import { systemMachine } from "../src/machine.ts";
+import { mxcSdkLoader, systemMachine } from "../src/machine.ts";
 import { MxcSandbox } from "../src/mxc-sandbox.ts";
+import { mxcSdkSetup } from "../src/sdk-setup.ts";
 
 /** The real adapter, with box folders under a data folder of its own for this run. */
 export interface RealMxc {
@@ -19,6 +20,8 @@ export interface RealMxc {
 /**
  * The real MXC on this computer. The folders are made under the user's own
  * profile, as Halonic's data folder is: `%TEMP%` is never used for a box.
+ * The SDK is downloaded and verified the way the host does it, into the
+ * data folder, so the run needs no SDK in the lockfile.
  */
 export async function realMxc(): Promise<RealMxc> {
   const local = process.env["LOCALAPPDATA"] ?? join(homedir(), "AppData", "Local");
@@ -29,8 +32,11 @@ export async function realMxc(): Promise<RealMxc> {
   const base = join(folder, "files");
   await mkdir(dataFolder);
   await mkdir(base);
+  const sdk = mxcSdkSetup({ root: join(dataFolder, "mxc-sdk") });
+  const download = await sdk.download();
+  if (!download.done) throw new Error(`MXC's SDK didn't download: ${download.problem}`);
   return {
-    sandbox: new MxcSandbox(systemMachine(), new BoxFolders(dataFolder, process.pid)),
+    sandbox: new MxcSandbox(systemMachine(mxcSdkLoader(process.platform, sdk.importSdk)), new BoxFolders(dataFolder, process.pid)),
     dataFolder,
     base,
     remove: () => rm(folder, { recursive: true, force: true }),
