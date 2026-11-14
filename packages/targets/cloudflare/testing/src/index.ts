@@ -4,7 +4,7 @@
  * calls; `buildTestWorker` and `WorkerdRunner` are its parts, also meant for
  * the live test run against a Cloudflare account (HAL-198).
  */
-export { buildTestWorker } from "./node/build-test-worker.ts";
+export { buildCoveredTestWorker, buildTestWorker } from "./node/build-test-worker.ts";
 export { missingShimApis } from "./node/matcher-check.ts";
 export {
   type RunSuitesOptions,

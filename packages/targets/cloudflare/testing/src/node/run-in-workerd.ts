@@ -2,7 +2,12 @@
 import type {} from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it } from "vitest";
 import type { CaseResult, CaseTree } from "../worker/protocol.ts";
-import { buildTestWorker } from "./build-test-worker.ts";
+import { buildCoveredTestWorker, buildTestWorker } from "./build-test-worker.ts";
+import {
+  mapToSourceFiles,
+  workerdCoverageDirVariable,
+  writeWorkerdCoverage,
+} from "./workerd-coverage.ts";
 import { type WorkerdBindings, WorkerdRunner } from "./workerd-runner.ts";
 
 /** What {@link runSuitesInWorkerd} takes besides the suite files. */
@@ -45,9 +50,23 @@ export async function runSuitesInWorkerd(
   options: RunSuitesOptions = {},
 ): Promise<void> {
   const { wrap = (register) => register(), ...bindings } = options;
-  const script = await buildTestWorker(suiteFiles);
-  const runner = await WorkerdRunner.start(script, bindings);
-  afterAll(() => runner.stop());
+  // Set for a coverage run (see `workerdCoverageDirVariable`): build the Worker to count what runs.
+  const coverageDir = process.env[workerdCoverageDirVariable];
+  const build = coverageDir === undefined ? undefined : await buildCoveredTestWorker(suiteFiles);
+  const runner =
+    build === undefined
+      ? await WorkerdRunner.start(await buildTestWorker(suiteFiles), bindings)
+      : await WorkerdRunner.start(build.script, bindings, { coverage: true });
+  afterAll(async () => {
+    try {
+      if (build !== undefined && coverageDir !== undefined) {
+        const counted = await mapToSourceFiles(await runner.coverage(), build);
+        await writeWorkerdCoverage(coverageDir, counted);
+      }
+    } finally {
+      await runner.stop();
+    }
+  });
   // If collection fails, the file fails before any test runs and afterAll may never run.
   try {
     const tree = await runner.cases();

@@ -70,6 +70,37 @@ The code under `src/worker` runs in workerd and is typechecked against
 `miniflare`, `esbuild` and this package are test tooling and never ship in a
 runtime bundle.
 
+## Coverage
+
+Node's coverage can't see code that runs in workerd, so this package counts
+it inside workerd and hands it to Vitest (HAL-7728). A package that declares
+`"runtime": "workers"` gets this from the shared preset, which sets
+`HALONIC_WORKERD_COVERAGE_DIR` for the run. With the variable set,
+`runSuitesInWorkerd` does this:
+
+1. `buildCoveredTestWorker` builds the Worker with `src/worker/coverage-start.ts`
+   first and a source map beside it. That file opens a `node:inspector`
+   session in the Worker and starts V8's precise coverage, before the suites
+   and the code under test load, so their top-level code counts too.
+2. `WorkerdRunner.start(…, { coverage: true })` starts workerd with
+   `nodejs_compat` and workerd's two inspector flags
+   (`enable_nodejs_inspector_module`, `enable_nodejs_inspector_local_dev`).
+   The second one is local development only, and Miniflare's `--experimental`
+   allows it. A coverage run therefore has `nodejs_compat` on, which a
+   Worker deployed without it doesn't have.
+3. When the runner stops, `GET /coverage` takes the counts and
+   `mapToSourceFiles` takes them back to the source files through the source
+   map. The result is in each file's own offsets, with no types removed or
+   moved, which is what Vitest's provider reads for a `.ts` file.
+4. `tooling/config`'s coverage provider reads those files at the end of the
+   run, converts them as it would a Node script and adds them to the report.
+   A file that no Node test loaded is replaced by workerd's version; a file
+   both loaded shows what each run covered.
+
+A mapped range is as exact as the source map: it can be a few characters off at
+the edges of a block, never in another file. Run a package without coverage
+(`--coverage.enabled=false`) and none of this happens.
+
 ## Example
 
 A suite file registers cases by calling a contract suite:

@@ -5,7 +5,7 @@
  * the CI account, HAL-198) then lists the cases and runs them one by one.
  */
 
-import { type CaseResult, workerPaths } from "./protocol.ts";
+import { type CaseResult, coverageHook, type RawCoverage, workerPaths } from "./protocol.ts";
 import { registry } from "./vitest-shim.ts";
 
 /**
@@ -22,6 +22,9 @@ export const testWorker = {
     if (request.method === "POST" && path === workerPaths.run) {
       return Response.json(await runRequested(request));
     }
+    if (request.method === "GET" && path === workerPaths.coverage) {
+      return takeCoverage();
+    }
     return new Response(`The test Worker has no ${request.method} ${path}.`, { status: 404 });
   },
 } satisfies ExportedHandler;
@@ -32,4 +35,12 @@ async function runRequested(request: Request): Promise<CaseResult> {
     throw new Error(`${workerPaths.run} needs a JSON body { "id": "<case ID>" }.`);
   }
   return registry.run(body.id);
+}
+
+async function takeCoverage(): Promise<Response> {
+  const take = (globalThis as { [coverageHook]?: () => Promise<RawCoverage> })[coverageHook];
+  if (take === undefined) {
+    return new Response("This test Worker was not built for coverage.", { status: 404 });
+  }
+  return Response.json(await take());
 }

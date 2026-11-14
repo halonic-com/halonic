@@ -8,6 +8,7 @@ const packageRoot = fileURLToPath(new URL("../../", import.meta.url));
 const workerFolder = path.join(packageRoot, "src", "worker");
 const shimFile = path.join(workerFolder, "vitest-shim.ts");
 const testWorkerFile = path.join(workerFolder, "test-worker.ts");
+const coverageStartFile = path.join(workerFolder, "coverage-start.ts");
 const contractsFolder = path.dirname(
   fileURLToPath(import.meta.resolve("@halonicjs/testing-contracts")),
 );
@@ -72,7 +73,43 @@ const contractsWithoutSideEffects: Plugin = {
  *   calling a matcher the shim doesn't have
  */
 export async function buildTestWorker(suiteFiles: readonly (string | URL)[]): Promise<string> {
+  return (await bundleTestWorker(suiteFiles, { coverage: false })).script;
+}
+
+/** A test Worker built for coverage: its script, and the map from the script back to the source files. */
+export interface CoveredTestWorker {
+  readonly script: string;
+  /** The source map as JSON. Its `sources` are paths relative to this package's folder. */
+  readonly sourceMap: string;
+  /** The folder the map's `sources` are relative to. */
+  readonly sourceRoot: string;
+}
+
+/**
+ * Like {@link buildTestWorker}, for a Worker that counts which code runs
+ * (`coverage-start.ts` loads first). Start it with `WorkerdRunner.start(…, { coverage: true })`.
+ *
+ * @param suiteFiles - absolute paths or `file:` URLs of the suite files
+ * @returns the Worker's script and its source map
+ * @throws Error when the bundle doesn't build (see {@link buildTestWorker})
+ */
+export async function buildCoveredTestWorker(
+  suiteFiles: readonly (string | URL)[],
+): Promise<CoveredTestWorker> {
+  const { script, sourceMap } = await bundleTestWorker(suiteFiles, { coverage: true });
+  if (sourceMap === undefined) {
+    throw new Error("esbuild built the test Worker for coverage but returned no source map.");
+  }
+  return { script, sourceMap, sourceRoot: packageRoot };
+}
+
+async function bundleTestWorker(
+  suiteFiles: readonly (string | URL)[],
+  { coverage }: { coverage: boolean },
+): Promise<{ script: string; sourceMap: string | undefined }> {
   const entry = [
+    // First, so counting starts before any other module in the bundle runs.
+    ...(coverage ? [`import ${JSON.stringify(coverageStartFile)};`] : []),
     `export { testWorker as default } from ${JSON.stringify(testWorkerFile)};`,
     // `export *`, not `import`, so a suite file can export Durable Object classes: workerd finds them on the Worker's exports.
     ...suiteFiles.map((file) => `export * from ${JSON.stringify(toPath(file))};`),
@@ -90,8 +127,13 @@ export async function buildTestWorker(suiteFiles: readonly (string | URL)[]): Pr
     platform: "neutral",
     mainFields: ["module", "main"],
     target: "es2024",
-    // workerd provides `cloudflare:workers` (the bindings in `env`) when the Worker loads.
-    external: ["cloudflare:*"],
+    // workerd provides `cloudflare:workers` (the bindings in `env`) when the Worker loads, and
+    // `node:inspector` for a Worker built for coverage.
+    external: ["cloudflare:*", "node:inspector"],
+    // The map is only for coverage: it takes the counts back to the source files.
+    ...(coverage
+      ? { sourcemap: "external", sourcesContent: false, outfile: "test-worker.js" }
+      : {}),
     write: false,
     metafile: true,
     logLevel: "silent",
@@ -103,11 +145,12 @@ export async function buildTestWorker(suiteFiles: readonly (string | URL)[]): Pr
     );
   });
   await checkShimApis(result.metafile);
-  const [script] = result.outputFiles;
+  const script = result.outputFiles.find((file) => !file.path.endsWith(".map"));
   if (script === undefined) {
     throw new Error("esbuild built the test Worker but returned no file.");
   }
-  return script.text;
+  const sourceMap = result.outputFiles.find((file) => file.path.endsWith(".map"));
+  return { script: script.text, sourceMap: sourceMap?.text };
 }
 
 /** Reads the test files that ended up in the bundle and fails on matchers the shim lacks. */
