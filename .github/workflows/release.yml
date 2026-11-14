@@ -26,6 +26,15 @@
 #   The helper's publisher is the repository variable SIGNING_PUBLISHER, not
 #   an environment one, because the `studio` job builds it in.
 #
+# Unsigned (board, HAL-9045: 0.1.0 ships unsigned, signing follows in 0.1.1).
+# While SIGNING_PUBLISHER is not set, a real run builds the helper with no
+# publisher in it, so it skips its own-copy check as dev builds do, and
+# sign-windows packs the installer without any signature: no Azure, no test
+# certificate. sign-windows fails when that and the `release` environment's
+# Azure secrets disagree, so setting both (HAL-58) turns signing back on and
+# a half-done setup never ships unsigned by mistake. A dry run with
+# `unsigned` on tests this path in sign-test.
+#
 # Both then sign the final installer for the Tauri updater and write
 # latest.json (signature inside, no .sig file) and SHA256SUMS, with the
 # updater-manifest action (HAL-7222). Dry runs use a throwaway key made in
@@ -52,6 +61,11 @@ on:
         required: true
         default: true
         type: boolean
+      unsigned:
+        description: "Dry runs: no certificate at all, as a real run without signing set up"
+        required: false
+        default: false
+        type: boolean
 
 permissions: {}
 
@@ -77,6 +91,8 @@ jobs:
       version: ${{ steps.plan.outputs.version }}
       installer: ${{ steps.plan.outputs.installer }}
       apk: ${{ steps.plan.outputs.apk }}
+      publisher: ${{ steps.plan.outputs.publisher }}
+      signed: ${{ steps.plan.outputs.signed }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -91,7 +107,9 @@ jobs:
           EVENT: ${{ github.event_name }}
           INPUT_TAG: ${{ github.event.inputs.tag }}
           INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
+          INPUT_UNSIGNED: ${{ github.event.inputs.unsigned }}
           REF_NAME: ${{ github.ref_name }}
+          SIGNING_PUBLISHER: ${{ vars.SIGNING_PUBLISHER }}
         run: |
           if [ "$EVENT" = "workflow_dispatch" ]; then
             tag="$INPUT_TAG"
@@ -106,6 +124,22 @@ jobs:
           esac
           case "$tag" in *-test*) dry_run=true ;; esac
           version="${tag#v}"
+          # The publisher built into the sandbox helper. None means the
+          # Windows files ship unsigned (HAL-9045).
+          if [ "$dry_run" = "true" ]; then
+            publisher="$DRY_RUN_PUBLISHER"
+            [ "$INPUT_UNSIGNED" = "true" ] && publisher=""
+          else
+            publisher="$SIGNING_PUBLISHER"
+          fi
+          signed=false
+          [ -n "$publisher" ] && signed=true
+          # So any dry run shows what a real run would do today.
+          if [ -n "$SIGNING_PUBLISHER" ]; then
+            echo "::notice::SIGNING_PUBLISHER is set: a real run signs the Windows files"
+          else
+            echo "::notice::SIGNING_PUBLISHER is not set: a real run ships the Windows files unsigned"
+          fi
           # The release file names live here and nowhere else. They are the
           # names agreed in HAL-1119.
           {
@@ -115,6 +149,8 @@ jobs:
             echo "installer=Halonic-$version-windows-x64-setup.exe"
             echo "apk=Halonic-$version-android.apk"
             echo "cli_tarball=halonic-cli-$version.tgz"
+            echo "publisher=$publisher"
+            echo "signed=$signed"
           } >> "$GITHUB_OUTPUT"
       - name: Refuse a real release until the real build exists
         if: steps.plan.outputs.dry_run != 'true'
@@ -210,11 +246,10 @@ jobs:
           if ($app -ne $env:VERSION) { throw "tauri.conf.json says $app, the tag says $env:VERSION" }
       - name: Build the app and the programs it ships
         working-directory: apps/studio/src-tauri
+        # Empty when the run is unsigned: the helper then has no publisher.
         env:
-          HALONIC_SANDBOX_SIGNER: ${{ needs.build.outputs.dry_run == 'true' && env.DRY_RUN_PUBLISHER || vars.SIGNING_PUBLISHER }}
-        run: |
-          if (-not $env:HALONIC_SANDBOX_SIGNER) { throw 'No publisher for the sandbox helper: set the repository variable SIGNING_PUBLISHER' }
-          pwsh windows/build-installer.ps1 -Step build
+          HALONIC_SANDBOX_SIGNER: ${{ needs.build.outputs.publisher }}
+        run: pwsh windows/build-installer.ps1 -Step build
       # What `-Step pack` needs that the checkout doesn't have. The paths are
       # kept relative to src-tauri.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -228,7 +263,7 @@ jobs:
           retention-days: 7
 
   sign-test:
-    name: Sign and pack with a test certificate (dry run)
+    name: Sign and pack with a test certificate, or unsigned (dry run)
     needs: [build, studio]
     if: needs.build.outputs.dry_run == 'true'
     runs-on: windows-2025
@@ -260,6 +295,7 @@ jobs:
       # as it will the real publisher's for users, and the helper's check of
       # its own copy runs as it will for them. The runner is thrown away.
       - name: Make a throwaway certificate and trust it on this runner
+        if: needs.build.outputs.signed == 'true'
         run: |
           $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=$env:DRY_RUN_PUBLISHER" `
             -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddDays(1)
@@ -272,6 +308,7 @@ jobs:
           "THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
           "SIGNTOOL=$($signtool.FullName)" >> $env:GITHUB_ENV
       - name: Sign the sandbox helper
+        if: needs.build.outputs.signed == 'true'
         run: |
           & $env:SIGNTOOL sign /sha1 $env:THUMBPRINT /fd SHA256 /tr http://timestamp.acs.microsoft.com /td SHA256 `
             apps\studio\src-tauri\binaries\halonic-sandbox-elevate-x86_64-pc-windows-msvc.exe
@@ -279,7 +316,7 @@ jobs:
       - name: Pack the installer
         working-directory: apps/studio/src-tauri
         env:
-          HALONIC_SANDBOX_SIGNER: ${{ env.DRY_RUN_PUBLISHER }}
+          HALONIC_SANDBOX_SIGNER: ${{ needs.build.outputs.publisher }}
           INSTALLER: ${{ needs.build.outputs.installer }}
         run: |
           pwsh windows/build-installer.ps1 -Step pack
@@ -289,17 +326,25 @@ jobs:
           $built = "Halonic-$version-windows-x64-setup.exe"
           if ($built -ne $env:INSTALLER) { Move-Item -Force "../../../dist/$built" "../../../dist/$env:INSTALLER" }
       - name: Sign the installer
+        if: needs.build.outputs.signed == 'true'
         env:
           INSTALLER: ${{ needs.build.outputs.installer }}
         run: |
           & $env:SIGNTOOL sign /sha1 $env:THUMBPRINT /fd SHA256 /tr http://timestamp.acs.microsoft.com /td SHA256 "dist\$env:INSTALLER"
           if ($LASTEXITCODE -ne 0) { throw "signtool sign failed" }
+      # Unsigned, every file must have no signature at all, and the helper,
+      # with no publisher built in, must still set up the sandbox.
       - name: Install it, then check the helper inside
         env:
           INSTALLER: ${{ needs.build.outputs.installer }}
+          SIGNED: ${{ needs.build.outputs.signed }}
         run: |
           function Assert-Signed([string]$file) {
             $sig = Get-AuthenticodeSignature $file
+            if ($env:SIGNED -ne 'true') {
+              if ($sig.Status -ne 'NotSigned') { throw "$file : expected no signature, found $($sig.Status)" }
+              return "$(Split-Path -Leaf $file): not signed, as expected"
+            }
             if ($sig.Status -ne 'Valid') { throw "$file : signature is $($sig.Status)" }
             $name = $sig.SignerCertificate.GetNameInfo('SimpleName', $false)
             if ($name -ne $env:DRY_RUN_PUBLISHER) { throw "$file is signed by '$name'" }
@@ -330,7 +375,7 @@ jobs:
           Assert-Signed $copy
           $code = Invoke-Helper $copy 'remove'
           if ($code -ne 0) { throw "remove exited $code" }
-          'The signed helper accepted its own copy, set up the sandbox and removed it.'
+          'The helper accepted its own copy, set up the sandbox and removed it.'
       - uses: $/.github/actions/updater-manifest
         with:
           tag: ${{ needs.build.outputs.tag }}
@@ -345,7 +390,7 @@ jobs:
           retention-days: 7
 
   sign-windows:
-    name: Sign and pack the Windows installer
+    name: Sign (when set up) and pack the Windows installer
     needs: [build, studio]
     if: needs.build.outputs.dry_run != 'true'
     runs-on: windows-2025
@@ -376,10 +421,28 @@ jobs:
         with:
           name: studio-build
           path: apps/studio/src-tauri
+      # Signing needs both halves: the publisher built into the helper
+      # (SIGNING_PUBLISHER) and the Azure secrets here. Neither means an
+      # unsigned release (HAL-9045); only one is a mistake in the setup.
+      - name: Check the signing setup
+        shell: pwsh
+        env:
+          SIGNED: ${{ needs.build.outputs.signed }}
+          AZURE_SET: ${{ secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' }}
+          AZURE_ANY: ${{ secrets.AZURE_CLIENT_ID != '' || secrets.AZURE_TENANT_ID != '' || secrets.AZURE_SUBSCRIPTION_ID != '' }}
+        run: |
+          if ($env:SIGNED -eq 'true') {
+            if ($env:AZURE_SET -ne 'true') { throw 'SIGNING_PUBLISHER is set, but the release environment lacks an Azure secret. Set all three (HAL-58), or unset SIGNING_PUBLISHER to ship unsigned.' }
+            'Signing with Azure Artifact Signing.'
+          } else {
+            if ($env:AZURE_ANY -eq 'true') { throw 'The release environment has Azure secrets, but SIGNING_PUBLISHER is not set, so the helper was built unsigned. Set it and run again.' }
+            '::warning::Azure signing is not set up: the installer and the sandbox helper ship unsigned (HAL-9045).'
+          }
       # Signs in with the app registration's federated identity (OIDC), so
       # there is no client secret. The three ids are secrets of the
       # `release` environment.
       - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        if: needs.build.outputs.signed == 'true'
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -387,6 +450,7 @@ jobs:
       # Only the helper: srt-win.exe next to it is checked against the hash
       # built into the helper, and signing would change its bytes.
       - name: Sign the sandbox helper
+        if: needs.build.outputs.signed == 'true'
         uses: Azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2.0.0
         with:
           endpoint: ${{ vars.SIGNING_ENDPOINT }}
@@ -397,15 +461,15 @@ jobs:
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
       # Refuses to pack a helper that isn't validly signed by this publisher.
+      # Unsigned, there is no publisher and nothing to check.
       - name: Pack the installer
         working-directory: apps/studio/src-tauri
         shell: pwsh
         env:
-          HALONIC_SANDBOX_SIGNER: ${{ vars.SIGNING_PUBLISHER }}
-        run: |
-          if (-not $env:HALONIC_SANDBOX_SIGNER) { throw 'No publisher for the sandbox helper: set the repository variable SIGNING_PUBLISHER' }
-          pwsh windows/build-installer.ps1 -Step pack
+          HALONIC_SANDBOX_SIGNER: ${{ needs.build.outputs.publisher }}
+        run: pwsh windows/build-installer.ps1 -Step pack
       - name: Sign the installer
+        if: needs.build.outputs.signed == 'true'
         uses: Azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2.0.0
         with:
           endpoint: ${{ vars.SIGNING_ENDPOINT }}
@@ -420,8 +484,13 @@ jobs:
         shell: pwsh
         env:
           INSTALLER: ${{ needs.build.outputs.installer }}
+          SIGNED: ${{ needs.build.outputs.signed }}
         run: |
           $sig = Get-AuthenticodeSignature "dist/$env:INSTALLER"
+          if ($env:SIGNED -ne 'true') {
+            if ($sig.Status -ne "NotSigned") { throw "Expected an unsigned installer, found $($sig.Status)" }
+            return
+          }
           if ($sig.Status -ne "Valid") { throw "Installer signature is $($sig.Status)" }
           if (-not $sig.TimeStamperCertificate) { throw "Installer has no timestamp" }
       # Signing changed the installer's bytes, so the updater signature is
@@ -511,6 +580,7 @@ jobs:
           INSTALLER: ${{ needs.build.outputs.installer }}
           APK: ${{ needs.build.outputs.apk }}
           DRY_RUN: ${{ needs.build.outputs.dry_run }}
+          SIGNED: ${{ needs.build.outputs.signed }}
           TARGET: ${{ github.sha }}
         run: |
           title="Halonic $VERSION"
@@ -520,7 +590,9 @@ jobs:
           flags=()
           if [ "$DRY_RUN" = "true" ]; then
             title="DRY RUN Halonic $VERSION"
-            notes="**Dry run, signed with a test certificate and a stub CLI. Do not publish. Delete this draft.**"$'\n\n'"$link"
+            how="signed with a test certificate"
+            [ "$SIGNED" = "true" ] || how="unsigned"
+            notes="**Dry run, $how, with a stub CLI. Do not publish. Delete this draft.**"$'\n\n'"$link"
             flags+=(--prerelease)
           fi
           gh release create "$TAG" dist/* --draft \

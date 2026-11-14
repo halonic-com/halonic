@@ -83,7 +83,11 @@ administrator rights, once, and the uninstaller asks again to remove the sandbox
 The release runs the script in two steps, `-Step build` and `-Step pack`, and
 signs the sandbox helper in between, so the helper inside the installer is
 signed too (HAL-7491). With `HALONIC_SANDBOX_SIGNER` set, `pack` refuses a
-helper that isn't validly signed by that publisher.
+helper that isn't validly signed by that publisher. Until Azure signing is set up
+(the repository variable `SIGNING_PUBLISHER` and the `release` environment's
+Azure secrets), a release ships the installer and the helper unsigned, as
+0.1.0 does (HAL-9045): the helper is built with no publisher, and nothing is
+signed.
 
 What it shows (design: the install flow, sections 2.2 to 2.7):
 
