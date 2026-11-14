@@ -130,16 +130,25 @@ describe("google sign-in start", () => {
       const state = setup({ password: true });
       const accountRef = await readySetup(state);
 
+      const loginResponse = await state.server.handle(
+        new Request("http://localhost/api/login", {
+          method: "POST",
+          headers: { host: "localhost", "content-type": "application/json" },
+          body: JSON.stringify({ password: "pw" }),
+        }),
+      );
+      const cookie = loginResponse.headers.get("set-cookie")?.split(";")[0] ?? "";
+
       const noSession = await startSignIn(state.server, accountRef, {}, "http://localhost");
       const otherSite = await startSignIn(
         state.server,
         accountRef,
-        { "sec-fetch-site": "cross-site" },
+        { cookie, "sec-fetch-site": "cross-site" },
         "http://localhost",
       );
 
       expect(noSession.status).toBe(401);
-      expect(otherSite.status).toBe(401);
+      expect(otherSite.status).toBe(403);
       expect(state.google.actions.signInStarts).toEqual([]);
     });
 
@@ -224,7 +233,33 @@ describe("google sign-in callback", () => {
 
       expect(await response.text()).toContain("no longer valid");
       expect((await state.google.setups.read(accountRef))?.signInStartedAt).toBeNull();
-      expect(state.google.signedInEvents).toEqual([{ kind: "linkNoLongerValid" }]);
+      expect(state.google.signedInEvents).toEqual([]);
+    });
+
+    it("still tells the open item how the sign-in ended when the record can't be updated", async () => {
+      const state = setup();
+      const accountRef = await readySetup(state);
+      state.google.actions.signInOutcome = { kind: "cancelled", accountRef };
+      state.google.setups.update = async () => {
+        throw new Error("the setup is gone");
+      };
+
+      const response = await callback(state.server, `state=${fakeState}&error=access_denied`);
+
+      expect(response.status).toBe(500);
+      expect(state.google.signedInEvents).toEqual([{ kind: "cancelled", accountRef }]);
+    });
+
+    it("answers 404 for the callback when it didn't come over a loopback name", async () => {
+      const state = setup({ password: true });
+      const response = await state.server.handle(
+        new Request(`http://${lanHost}/api/google/callback?${codeQuery}`, {
+          headers: { host: lanHost },
+        }),
+      );
+
+      expect(response.status).toBe(404);
+      expect(state.google.actions.callbacks).toEqual([]);
     });
 
     it("keeps the code out of the log and the error log when the exchange throws", async () => {

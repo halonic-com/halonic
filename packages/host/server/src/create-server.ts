@@ -12,7 +12,13 @@ import {
 } from "./google-routes.ts";
 import { googleCallbackPath } from "./google-sign-in-routes.ts";
 import { createRunRoutes, isJsonRequest, parseRunId, runPathPrefix } from "./run-routes.ts";
-import { checkHost, checkOrigin, readBody, withSecurityHeaders } from "./security.ts";
+import {
+  checkHost,
+  checkOrigin,
+  isLoopbackRequest,
+  readBody,
+  withSecurityHeaders,
+} from "./security.ts";
 import { createSignIn, passwordSecretName } from "./sign-in.ts";
 import { createTrustRoutes } from "./trust-routes.ts";
 import { createWebhookRoutes, webhookPathPrefix } from "./webhooks.ts";
@@ -101,7 +107,10 @@ export const createServer: CreateServer = ({ config, ports }) => {
   ): Promise<Response> {
     // The redirect carries the sign-in's `state` instead of a session, and the browser it reaches may hold none.
     if (request.method === "GET" && new URL(request.url).pathname === googleCallbackPath) {
-      return routes.callback(request);
+      // Google sends a Desktop-app client back to a loopback address only, so a served instance doesn't expose this route on its own name.
+      return isLoopbackRequest(request)
+        ? routes.callback(request)
+        : errorResponse(serverErrors.notFound);
     }
     return whenSignedIn(request, context, () => routes.handle(request, body, context));
   }

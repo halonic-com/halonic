@@ -329,7 +329,7 @@ export function createGoogleRoutes({ google }: GoogleRoutePorts): GoogleRoutes {
     });
   }
 
-  /** `POST /api/google/setups/<ref>/sign-in`: starts the sign-in, see {@link GoogleSignInRoutes.start}. */
+  /** `POST /api/google/setups/<ref>/sign-in`: starts the sign-in, see `start` in `createGoogleSignInRoutes`. */
   async function startSignIn(request: Request, accountRef: string): Promise<Response> {
     const refusal = refuseOtherSite(request);
     if (refusal !== null) {

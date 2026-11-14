@@ -113,8 +113,12 @@ export function createGoogleSignInRoutes({
 
     async callback(request) {
       const outcome = await actions.finishSignIn(new URL(request.url).searchParams);
+      // Tell the open item first: the sign-in has ended whether or not the record can still be updated (the setup may be gone).
+      // A link that is no longer valid has no account and anyone can cause it, so only the page says it.
+      if (outcome.kind !== "linkNoLongerValid") {
+        signInEvents.publish(outcome);
+      }
       await record(outcome);
-      signInEvents.publish(outcome);
       return callbackPage(outcome);
     },
   };
