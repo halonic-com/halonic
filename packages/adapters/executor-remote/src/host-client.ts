@@ -86,11 +86,23 @@ export class HostClient {
 
   /** Signs in. A host that stops answering ends in a `TimeoutError` rejection, which counts as a try that can be repeated. */
   async #login(): Promise<void> {
-    const response = await this.#once("/api/login", {
-      method: "POST",
-      body: { password: this.#password },
-      signal: AbortSignal.timeout(this.#loginTimeoutMs),
-    });
+    // A plain timer rather than `AbortSignal.timeout`, whose timer is unref'd and which a fake clock can't drive.
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      controller.abort(
+        Object.assign(new Error("The sign-in timed out."), { name: "TimeoutError" }),
+      );
+    }, this.#loginTimeoutMs);
+    let response: Response;
+    try {
+      response = await this.#once("/api/login", {
+        method: "POST",
+        body: { password: this.#password },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
     if (!response.ok) {
       throw await readHostError(response);
     }
