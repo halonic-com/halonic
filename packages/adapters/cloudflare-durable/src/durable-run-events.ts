@@ -50,7 +50,8 @@ export class DurableRunEvents<Id = unknown> {
    */
   subscribe(runId: string, afterSeq: number, listener: RunEventListener): RunSubscription {
     const subscription = new Subscription(listener);
-    void subscription.follow(() => this.#object(runId).watch(afterSeq));
+    // `follow` reports every failure to the listener; a listener that throws must not escape.
+    subscription.follow(() => this.#object(runId).watch(afterSeq)).catch(() => {});
     return subscription;
   }
 
@@ -83,6 +84,7 @@ class Subscription implements RunSubscription {
       }
       this.#finish();
     } catch (error) {
+      this.#release(error);
       this.#finish(error instanceof Error ? error : new Error(String(error)));
     }
   }
@@ -90,7 +92,12 @@ class Subscription implements RunSubscription {
   /** Cancelling the reader ends a read that is waiting, and frees the watcher in the run object. */
   close(): void {
     this.#closed = true;
-    void this.#reader?.cancel().catch(() => {});
+    this.#release();
+  }
+
+  /** Frees the watcher; every way out that is not the stream's own end must come through here. */
+  #release(reason?: unknown): void {
+    void this.#reader?.cancel(reason).catch(() => {});
   }
 
   /** Tells the listener the stream is over, unless the caller closed the subscription first. */

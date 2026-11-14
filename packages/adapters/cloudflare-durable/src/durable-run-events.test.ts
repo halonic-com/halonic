@@ -115,6 +115,35 @@ verifies("cloudflare-durable.run-events-subscription", () => {
       expect(told).toEqual(["error: no events"]);
     });
 
+    it("frees the watcher when a line is not JSON", async () => {
+      const object = fakeObject();
+      const { told, closed, listener } = noteListener();
+      new DurableRunEvents({ namespace: object.namespace }).subscribe(runId, 0, listener);
+      object.sendBytes(new TextEncoder().encode("not json\n"));
+      await closed;
+      expect(told).toHaveLength(1);
+      expect(String(told[0])).toMatch(/^error: /);
+      expect(object.wasCancelled()).toBe(true);
+    });
+
+    it("frees the watcher when the listener throws", async () => {
+      const object = fakeObject();
+      let resolveClosed!: (error: Error | undefined) => void;
+      const closed = new Promise<Error | undefined>((resolve) => {
+        resolveClosed = resolve;
+      });
+      const listener: RunEventListener = {
+        onEvent: () => {
+          throw new Error("listener broke");
+        },
+        onClose: (error) => resolveClosed(error),
+      };
+      new DurableRunEvents({ namespace: object.namespace }).subscribe(runId, 0, listener);
+      object.send(started(runId));
+      expect((await closed)?.message).toBe("listener broke");
+      expect(object.wasCancelled()).toBe(true);
+    });
+
     it("never calls the listener before subscribe returns", async () => {
       const object = fakeObject();
       object.send(started(runId));
