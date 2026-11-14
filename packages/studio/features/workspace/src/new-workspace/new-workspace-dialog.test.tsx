@@ -9,6 +9,7 @@ import {
   type FolderState,
   NewWorkspaceDialog,
   type NewWorkspaceHost,
+  NewWorkspaceRefusal,
 } from "./new-workspace-dialog.tsx";
 import { createdLine } from "./new-workspace-text.ts";
 
@@ -47,11 +48,12 @@ async function show(
     state?: FolderState;
     create?: NewWorkspaceHost["create"];
     open?: NewWorkspaceHost["open"];
+    defaultParent?: NewWorkspaceHost["defaultParent"];
   } = {},
 ): Promise<Seen> {
   const seen: Seen = { created: [], opened: [], trust: [] };
   const host: NewWorkspaceHost = {
-    defaultParent: async () => "~/Documents",
+    defaultParent: options.defaultParent ?? (async () => "~/Documents"),
     pickParent: async () => "~/Work",
     folderOf: (parent, name) => `${parent}/${name}`,
     probe: async () => options.state ?? "new",
@@ -165,6 +167,51 @@ verifies("workspace.new-workspace-dialog", () => {
       "Can't write to this folder: you don't have permission.",
     );
     expect(seen.created).toEqual([]);
+  });
+
+  it("words a failed Open as Can't open, not as a write error", async () => {
+    await show({
+      state: "workspace",
+      open: async () => {
+        throw new Error("the folder isn't there any more");
+      },
+    });
+    await type("Acme");
+    await click("Open it");
+    expect(document.body.textContent).toContain(
+      "Can't open Acme: the folder isn't there any more.",
+    );
+    expect(document.body.textContent).not.toContain("Can't write");
+  });
+
+  it("shows a name problem under Name, not under Folder", async () => {
+    await show({
+      create: async () => {
+        throw new NewWorkspaceRefusal("that isn't a name a folder can have", "name");
+      },
+    });
+    await type("A/B");
+    await click("Create");
+    expect(document.body.textContent).toContain("That isn't a name a folder can have.");
+    expect(document.body.textContent).not.toContain("Can't write");
+  });
+
+  it("shows why there is no folder, and asks to choose one with Change… focused", async () => {
+    const seen = await show({
+      defaultParent: async () => {
+        throw new Error("This computer has no Documents folder; choose a folder.");
+      },
+    });
+    expect(document.body.textContent).toContain("This computer has no Documents folder");
+    await click("Create");
+    expect(document.body.textContent).toContain("Give it a name.");
+    await type("Acme");
+    await click("Create");
+    expect(document.body.textContent).toContain("Choose a folder.");
+    expect(document.activeElement).toBe(button("Change…"));
+    await click("Change…");
+    await click("Create");
+    expect(seen.created).toEqual(["~/Work/Acme"]);
   });
 
   it("words the toast, with the trust failure when the record wasn't saved", () => {

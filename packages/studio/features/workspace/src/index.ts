@@ -5,6 +5,7 @@ export {
   NewWorkspaceDialog,
   type NewWorkspaceDialogProps,
   type NewWorkspaceHost,
+  NewWorkspaceRefusal,
 } from "./new-workspace/new-workspace-dialog.tsx";
 export { createdLine, NEW_WORKSPACE_MENU_ROW } from "./new-workspace/new-workspace-text.ts";
 export {

@@ -3,9 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import {
   ALREADY_WORKSPACE_NOTE,
   CHANGE_FOLDER,
+  CHOOSE_A_FOLDER,
   CREATE,
   CREATE_HERE,
   CREATING,
+  cantOpenLine,
   cantWriteLine,
   FOLDER_FIELD,
   GIVE_IT_A_NAME,
@@ -13,9 +15,24 @@ import {
   NAME_FIELD,
   NEW_WORKSPACE_TITLE,
   NOT_EMPTY_NOTE,
+  nameProblemLine,
   OPEN_IT,
   OPENING,
 } from "./new-workspace-text.ts";
+
+/**
+ * A refusal the host puts on the field it is about: `name` shows under **Name**, anything else
+ * under **Folder**. The message is the reason, as the host gives it.
+ */
+export class NewWorkspaceRefusal extends Error {
+  readonly field: "name" | "folder";
+
+  constructor(message: string, field: "name" | "folder" = "folder") {
+    super(message);
+    this.name = "NewWorkspaceRefusal";
+    this.field = field;
+  }
+}
 
 /** What a folder holds, as far as the dialog needs to know. */
 export type FolderState = "new" | "not-empty" | "workspace";
@@ -33,7 +50,7 @@ export type CreatedTrust =
 
 /** What the app does for the dialog: the folders, `createWorkspace` and the trust record. */
 export interface NewWorkspaceHost {
-  /** The parent the folder starts in: the person's Documents. */
+  /** The parent the folder starts in: the person's Documents. Rejects with why there is none. */
   defaultParent(): Promise<string>;
   /** Asks the folder picker for a parent folder; `undefined` when cancelled. */
   pickParent?(): Promise<string | undefined>;
@@ -87,14 +104,20 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
   const [state, setState] = useState<FolderState>("new");
   const [nameError, setNameError] = useState<string | undefined>(undefined);
   const [writeError, setWriteError] = useState<string | undefined>(undefined);
+  /** Why the first parent folder couldn't be found, or "Choose a folder." after Create without one. */
+  const [parentError, setParentError] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const nameField = useRef<HTMLInputElement>(null);
+  const changeButton = useRef<HTMLButtonElement>(null);
   const trimmed = name.trim();
   const folder = parent === undefined ? undefined : host.folderOf(parent, trimmed);
 
   useEffect(() => {
     let current = true;
-    host.defaultParent().then((path) => current && setParent(path));
+    host.defaultParent().then(
+      (path) => current && setParent(path),
+      (error) => current && setParentError(reasonOf(error)),
+    );
     return () => {
       current = false;
     };
@@ -116,6 +139,17 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
     };
   }, [host, folder, trimmed]);
 
+  /** Puts a refusal where it belongs: a name problem under Name, the rest under Folder. */
+  function refused(error: unknown, line: (reason: string) => string) {
+    const reason = reasonOf(error);
+    if (error instanceof NewWorkspaceRefusal && error.field === "name") {
+      setNameError(nameProblemLine(reason));
+      nameField.current?.focus();
+    } else {
+      setWriteError(line(reason));
+    }
+  }
+
   async function openIt(target: string) {
     setWriteError(undefined);
     setBusy(true);
@@ -126,7 +160,7 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
         return;
       }
     } catch (error) {
-      setWriteError(cantWriteLine(error instanceof Error ? error.message : String(error)));
+      refused(error, (reason) => cantOpenLine(trimmed, reason));
     }
     setBusy(false);
   }
@@ -136,9 +170,14 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
       await openIt(folder);
       return;
     }
-    if (trimmed === "" || folder === undefined) {
+    if (trimmed === "") {
       setNameError(GIVE_IT_A_NAME);
       nameField.current?.focus();
+      return;
+    }
+    if (folder === undefined) {
+      setParentError(CHOOSE_A_FOLDER);
+      changeButton.current?.focus();
       return;
     }
     setWriteError(undefined);
@@ -151,7 +190,7 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
       }
       onCreated(folder, trimmed, made);
     } catch (error) {
-      setWriteError(cantWriteLine(error instanceof Error ? error.message : String(error)));
+      refused(error, cantWriteLine);
       setBusy(false);
     }
   }
@@ -159,7 +198,10 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
   async function change() {
     if (busy) return;
     const picked = await host.pickParent?.();
-    if (picked !== undefined) setParent(picked);
+    if (picked !== undefined) {
+      setParent(picked);
+      setParentError(undefined);
+    }
   }
 
   return (
@@ -189,11 +231,11 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
             }}
           />
         </Field>
-        <Field label={FOLDER_FIELD} error={writeError ?? null}>
+        <Field label={FOLDER_FIELD} error={writeError ?? parentError ?? null}>
           <div className="flex items-center gap-2">
             <span className="min-w-0 flex-1 truncate">{trimmed === "" ? parent : folder}</span>
             {host.pickParent === undefined ? null : (
-              <Button variant="secondary" onClick={() => void change()}>
+              <Button ref={changeButton} variant="secondary" onClick={() => void change()}>
                 {CHANGE_FOLDER}
               </Button>
             )}
@@ -203,4 +245,8 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
       </div>
     </Dialog>
   );
+}
+
+function reasonOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

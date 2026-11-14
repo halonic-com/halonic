@@ -5,6 +5,7 @@ export const NAME_FIELD = "Name";
 export const FOLDER_FIELD = "Folder";
 export const CHANGE_FOLDER = "Change…";
 export const GIVE_IT_A_NAME = "Give it a name.";
+export const CHOOSE_A_FOLDER = "Choose a folder.";
 export const LOCAL_ONLY_NOTE =
   "Starts local only, with a model on this computer (Ollama). You can add cloud models later.";
 export const NOT_EMPTY_NOTE =
@@ -19,6 +20,17 @@ export const OPENING = "Opening…";
 /** "Can't write to this folder: you don't have permission." */
 export function cantWriteLine(reason: string): string {
   return `Can't write to this folder: ${reason.replace(/\.$/, "")}.`;
+}
+
+/** "Can't open Acme: the folder isn't there any more." */
+export function cantOpenLine(folder: string, reason: string): string {
+  return `Can't open ${folder}: ${reason.replace(/\.$/, "")}.`;
+}
+
+/** A name problem under **Name**: "The name is empty." */
+export function nameProblemLine(reason: string): string {
+  const sentence = reason.replace(/\.$/, "");
+  return `${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}.`;
 }
 
 /** The toast after a workspace was created; the trust record's failure, when it failed, follows. */

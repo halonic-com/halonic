@@ -104,7 +104,10 @@ verifies("studio.new-workspace", () => {
   it("words the shell's refusals", () => {
     expect(reasonOf({ kind: "parent_not_chosen" })).toBe("that isn't a folder you chose");
     expect(reasonOf({ kind: "name_invalid", reason: "empty" })).toBe("the name is empty");
-    expect(reasonOf({ kind: "io" })).toBe("you don't have permission");
+    expect(reasonOf({ kind: "io", message: "Permission denied (os error 13)" })).toBe(
+      "Permission denied (os error 13)",
+    );
+    expect(reasonOf({ kind: "io" })).toBe("the desktop shell refused");
     expect(reasonOf("nope")).toBe("the desktop shell refused");
   });
 
@@ -141,6 +144,16 @@ verifies("studio.new-workspace", () => {
     expect(trust).not.toHaveBeenCalled();
   });
 
+  it("trusts an empty folder at once, since the template wrote everything in it", async () => {
+    const { host, store, trust } = hostOf({
+      probe_workspace_folder: "empty",
+      open_workspace_folder: "/work/Acme",
+    });
+    expect(await host.create("/work/Acme", "Acme")).toEqual({ kind: "trusted" });
+    expect(await store.list()).toContain("workspace.yaml");
+    expect(trust).toHaveBeenCalledWith("/work/Acme");
+  });
+
   it("opens a workspace that is already there untrusted and writes nothing", async () => {
     const { host, store, trust } = hostOf({
       probe_workspace_folder: "workspace",
@@ -168,6 +181,21 @@ verifies("studio.new-workspace", () => {
     });
     expect(await host.create("/work/Acme", "Acme")).toEqual({ kind: "cancelled" });
     expect(await store.list()).toEqual([]);
+  });
+
+  it("puts a name problem on the name and the rest on the folder", async () => {
+    const name = hostOf({
+      probe_workspace_folder: "new",
+      create_workspace_folder: { reject: { kind: "name_invalid", reason: "empty" } },
+    });
+    await expect(name.host.create("/work/Acme", "Acme")).rejects.toMatchObject({ field: "name" });
+    const other = hostOf({
+      probe_workspace_folder: "new",
+      create_workspace_folder: { reject: { kind: "exists" } },
+    });
+    await expect(other.host.create("/work/Acme", "Acme")).rejects.toMatchObject({
+      field: "folder",
+    });
   });
 
   it("says why the shell refused to open the folder", async () => {
