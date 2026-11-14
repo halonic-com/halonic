@@ -2,7 +2,6 @@
 
 - Approval: Liam signs this note in review of the pull request
 - Kind: internal
-- Signature: UNSIGNED
 - Task: HAL-9342 (ruling), HAL-9335
 
 ## What changes
