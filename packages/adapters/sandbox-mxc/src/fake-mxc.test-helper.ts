@@ -61,8 +61,6 @@ export interface ProbeSettings {
   internet?: { host: string; port: number }[];
   dns?: { host: string; port: number }[];
   bridge?: { host: string; port: number } | null;
-  /** With no bridge: the probe talks to itself on the box's loopback as the network control. */
-  selfControl?: boolean;
   writes?: { create: string; existing: string }[];
   folder?: string;
   name?: string;
@@ -187,7 +185,7 @@ export interface Leaks {
   networkFailsWith?: string;
   /** Attempts that are blocked time out, rather than being refused. */
   blockedAttemptsTimeOut?: boolean;
-  /** The probe can't reach the bridge, or talk to itself when there is none: the network control fails. */
+  /** The probe can't reach the bridge, the network control. */
   bridgeUnreachable?: boolean;
   writeOutside?: boolean;
   /** Node can't list or write the working folder. */
@@ -237,13 +235,6 @@ function leakReport(settings: ProbeSettings, leaks: Leaks): FakeResult {
     return { ...target, state: "refused", code: "ECONNREFUSED" };
   };
   const bridge = settings.bridge ?? null;
-  const controlWorks = leaks.networkFailsWith === undefined && leaks.bridgeUnreachable !== true;
-  const networkControl = () => {
-    if (bridge !== null) return attempt(controlWorks)(bridge);
-    return settings.selfControl === true
-      ? attempt(controlWorks)({ host: "127.0.0.1", port: 49152 })
-      : null;
-  };
   const report = {
     control: leaks.controlUnreadable === true ? "hidden" : "readable",
     hidden: leaks.hidden === true ? "readable" : "hidden",
@@ -252,7 +243,10 @@ function leakReport(settings: ProbeSettings, leaks: Leaks): FakeResult {
     lan: (settings.lan ?? []).map(attempt(leaks.reachLan === true)),
     internet: (settings.internet ?? []).map(attempt(leaks.reachInternet === true)),
     dns: (settings.dns ?? []).map(attempt(leaks.reachDns === true)),
-    network: networkControl(),
+    network:
+      bridge === null
+        ? null
+        : attempt(leaks.networkFailsWith === undefined && leaks.bridgeUnreachable !== true)(bridge),
   };
   return { stdout: `${JSON.stringify(report)}\n`, exitCode: 0 };
 }

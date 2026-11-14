@@ -79,7 +79,7 @@ export async function boxPolicy(profile: SandboxProfile, disk: MxcDisk): Promise
  * loopback at all. Never an egress rule: it doesn't reach the bridge, and
  * any rule adds the `internetClient` permission.
  */
-function networkOf(bridge: SandboxBridge | null): MxcNetwork {
+export function networkOf(bridge: SandboxBridge | null): MxcNetwork {
   if (bridge === null) {
     return { egress: { default: "deny" }, ingress: { default: "deny", hostLoopback: "deny" } };
   }

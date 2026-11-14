@@ -1,4 +1,4 @@
-# Decision: a box with no bridge proves its network control by talking to itself
+# Decision: a box with no bridge proves its network control in a control box
 
 - Approval: Liam signs this note in review of the pull request
 - Kind: internal
@@ -7,22 +7,23 @@
 
 ## What changes
 
-- `sandbox-mxc` fence proof: when the profile has no bridge, the probe program opens a TCP listener
-  and a UDP socket on the box's own `127.0.0.1`, connects to the listener and sends itself one
-  datagram. Both must work. That is the network control: a timeout to the outside then means the
-  policy dropped it. Profiles with a bridge keep the bridge as the control.
-- `sandbox-mxc.session` has the new wording and examples (self-control works: `fenced`; fails:
-  `not-fenced`).
-- `integration-runner.mxc-profile` and the HAL-9155 ruling stay as they are: no bridge, no
-  loopback rule, no DNS. The sockets live inside the probe's process and close before the
-  caller's programs start.
+- `sandbox-mxc` fence proof: when the profile has no bridge, the session first runs a control box:
+  the same policy with a dead-end loopback bridge (a listener of the adapter that takes a connection
+  and drops it), on the same computer, right before the real proof. Its probe must reach its bridge
+  and be blocked from every outside address. Only then does a timeout in the real box count as
+  blocked. Profiles with a bridge keep the bridge as the control.
+- `sandbox-mxc.session` has the new wording and examples. `attack-cases.md` of the runner states the
+  limit: the control runs in a twin box, not in the runner's box.
+- `integration-runner.mxc-profile` and the HAL-9155 ruling stay as they are: the runner's own box
+  still has no bridge, no loopback rule and no DNS. The control box is a separate, short-lived
+  box that holds no caller program.
 
 ## Why
 
-The runner's no-bridge profile could never get a `fenced` proof, so `mxcFencesRunner` could not be
-flipped. A dead-end bridge was rejected (it brings back the name-lookup leak), and so was dropping
-the control (a broken Winsock would look like a working fence). Fallback if MXC blocks the
-self-connection on `windows-11-arm`: a control box (option 2 of HAL-9342).
+The runner's no-bridge profile could never get a `fenced` proof. Option 4 (the probe talks to
+itself inside the box) was tried first, as Liam ruled, and failed on `windows-11-arm`: MXC refuses
+the probe's own loopback socket with EACCES (CI run 43623375655). So this is the ruling's fallback,
+option 2.
 
 ## Covers
 

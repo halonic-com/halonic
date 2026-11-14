@@ -8,9 +8,9 @@
 //   - the system refused it (`refused`: ECONNREFUSED, EACCES, EPERM, no route), or
 //   - nothing came back (`timeout`) while the network control, a connection to
 //     the bridge, which the box is allowed, did connect: the network works in
-//     there, so the silence is the fence. A box with no bridge has the probe
-//     talk to itself instead (a TCP connection and a UDP datagram on the box's
-//     own loopback), which proves the same thing and reaches nothing outside.
+//     there, so the silence is the fence.
+//   - the same holds for a box with no bridge, whose network control is a
+//     control box: see `fence-proof.ts`.
 // Anything else is unproven, and an unproven result proves nothing.
 
 import type { SandboxBridge } from "@halonicjs/ports";
@@ -45,17 +45,10 @@ export function networkSettings(bridge: SandboxBridge | null): {
   dns: readonly NetworkTarget[];
   lan: readonly NetworkTarget[];
   bridge: NetworkTarget | null;
-  selfControl: boolean;
 } {
   const control =
     bridge !== null && bridge.kind === "loopback" ? { host: bridge.host, port: bridge.port } : null;
-  return {
-    internet: internetTargets,
-    dns: dnsTargets,
-    lan: lanTargets(),
-    bridge: control,
-    selfControl: control === null,
-  };
+  return { internet: internetTargets, dns: dnsTargets, lan: lanTargets(), bridge: control };
 }
 
 /** What the probe's network attempts found. */
@@ -80,9 +73,17 @@ export interface NetworkAsked {
   dns: number;
 }
 
-/** Reads the network part of a leak report. A missing attempt is unproven, never blocked. */
-export function judgeNetwork(report: LeakReport, asked: NetworkAsked): NetworkJudgement {
-  const controlConnected = report.network?.state === "connected";
+/**
+ * Reads the network part of a leak report. A missing attempt is unproven, never blocked.
+ * `controlBoxProven` says that the network control the report lacks, for a box with no
+ * bridge, was shown by a control box instead.
+ */
+export function judgeNetwork(
+  report: LeakReport,
+  asked: NetworkAsked,
+  controlBoxProven = false,
+): NetworkJudgement {
+  const controlConnected = controlBoxProven || report.network?.state === "connected";
   const unproven: string[] = [];
   const read = (kind: string, attempts: readonly NetworkAttempt[], expected: number): boolean => {
     if (attempts.length !== expected) {
@@ -91,7 +92,7 @@ export function judgeNetwork(report: LeakReport, asked: NetworkAsked): NetworkJu
     for (const attempt of attempts) {
       if (attempt.state === "connected") continue;
       const silenceIsFence = attempt.state === "timeout" && controlConnected;
-      if (attempt.state !== "refused" && !silenceIsFence) unproven.push(describe(kind, attempt, report.network));
+      if (attempt.state !== "refused" && !silenceIsFence) unproven.push(describe(kind, attempt));
     }
     return attempts.some((attempt) => attempt.state === "connected");
   };
@@ -105,21 +106,10 @@ export function judgeNetwork(report: LeakReport, asked: NetworkAsked): NetworkJu
 }
 
 /** The sentence for an attempt that proves nothing. */
-function describe(
-  kind: string,
-  { host, port, state, code }: NetworkAttempt,
-  control: NetworkAttempt | null,
-): string {
+function describe(kind: string, { host, port, state, code }: NetworkAttempt): string {
   const how =
     state === "timeout"
-      ? `timed out, and the box could not show that its network works: its network control, a connection to its bridge or to itself, ${controlOutcome(control)}`
+      ? "timed out, and the box could not show that its network works: its bridge could not be reached, or no control box showed it"
       : `failed with ${code ?? "an unknown error"}, which is not a refusal`;
   return `the ${kind} attempt to ${host}:${port} ${how}`;
-}
-
-/** How the network control ended, for the sentence of an unproven attempt. */
-function controlOutcome(control: NetworkAttempt | null): string {
-  if (control === null) return "was not run";
-  if (control.state === "timeout") return "timed out";
-  return `failed (${control.code ?? control.state})`;
 }
