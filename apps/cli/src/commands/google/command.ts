@@ -1,14 +1,16 @@
 import type { CliCommand } from "../../command.ts";
 import type { ConnectionSetup } from "../../connection-settings-host.ts";
+import type { GoogleSetup } from "../../google-host.ts";
 import { googleMessages } from "../../messages/google.ts";
 import { dirOption } from "../../workspace-dir.ts";
 import { allowSending } from "./allow-sending.ts";
+import { saveGoogleSecret } from "./secret.ts";
 
 /**
  * `halonic google`, with the setup passed in so tests can fix the profile
  * folder and the clock. Without a subcommand it prints its help.
  */
-export function googleCommandWith(setup: ConnectionSetup): CliCommand {
+export function googleCommandWith(setup: ConnectionSetup & GoogleSetup): CliCommand {
   return {
     name: "google",
     usage: "",
@@ -22,6 +24,14 @@ export function googleCommandWith(setup: ConnectionSetup): CliCommand {
         action: () => googleMessages.allowSendingAction(),
         options: { dir: dirOption },
         run: (input, context) => allowSending(input, context, setup),
+      },
+      {
+        name: "secret",
+        usage: "<account>",
+        summary: googleMessages.secretSummary(),
+        action: () => googleMessages.secretAction(),
+        options: {},
+        run: (input, context) => saveGoogleSecret(input, context, setup),
       },
     ],
   };

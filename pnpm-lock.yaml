@@ -413,6 +413,9 @@ importers:
       '@halonicjs/adapter-system-node':
         specifier: workspace:*
         version: link:../../packages/adapters/system-node
+      '@halonicjs/adapter-token-store':
+        specifier: workspace:*
+        version: link:../../packages/adapters/token-store
       '@halonicjs/app':
         specifier: workspace:*
         version: link:../../packages/core/app
@@ -425,6 +428,9 @@ importers:
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../packages/core/format
+      '@halonicjs/google-setup':
+        specifier: workspace:*
+        version: link:../../packages/core/google-setup
       '@halonicjs/host-harness-host':
         specifier: workspace:*
         version: link:../../packages/host/harness-host
