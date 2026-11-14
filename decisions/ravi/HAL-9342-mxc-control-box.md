@@ -11,7 +11,8 @@
   the same policy with a dead-end loopback bridge (a listener of the adapter that takes a connection
   and drops it), on the same computer, right before the real proof. Its probe must reach its bridge
   and be blocked from every outside address. Only then does a timeout in the real box count as
-  blocked. Profiles with a bridge keep the bridge as the control.
+  blocked, and only on a target where the control box also timed out: a target it was refused on
+  stays unproven. Profiles with a bridge keep the bridge as the control.
 - `sandbox-mxc.session` has the new wording and examples. `attack-cases.md` of the runner states the
   limit: the control runs in a twin box, not in the runner's box.
 - `integration-runner.mxc-profile` and the HAL-9155 ruling stay as they are: the runner's own box

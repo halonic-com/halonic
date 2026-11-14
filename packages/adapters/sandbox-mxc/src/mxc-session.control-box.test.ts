@@ -55,7 +55,34 @@ verifies("sandbox-mxc.session", () => {
       await session.close();
     });
 
+    it("is not-fenced when a target was refused in the control box but timed out in the box", async () => {
+      const { sandbox } = setup({
+        blockedAttemptsTimeOut: true,
+        inControlBox: { blockedAttemptsTimeOut: false },
+      });
+      const session = await sandbox.open(profile, {});
+      expect(session.fence).toMatchObject({
+        state: "not-fenced",
+        reason: expect.stringMatching(
+          /attempt to \S+ timed out, but the control box got refused, so its evidence does not carry over/,
+        ),
+      });
+    });
+
     it.each<[string, Leaks, RegExp]>([
+      [
+        "the control box's probe does not report",
+        { inControlBox: { silent: true } },
+        /control box's probe did not report/,
+      ],
+      [
+        "the control box's attempt fails with no refusal",
+        {
+          blockedAttemptsTimeOut: true,
+          inControlBox: { blockedAttemptsTimeOut: false, networkFailsWith: "UNKNOWN" },
+        },
+        /control box/,
+      ],
       [
         "the control box can't reach its bridge",
         { blockedAttemptsTimeOut: true, bridgeUnreachable: true },

@@ -39,10 +39,17 @@ verifies("sandbox-mxc.canary", () => {
       expect(judgeNetwork(report(timedOut, null), asked).unproven).toHaveLength(1);
     });
 
-    it("counts a timeout as blocked when a control box showed the network works", () => {
+    it("counts a timeout as blocked only where the control box timed out too", () => {
       const timedOut = [attempt("timeout")];
-      expect(judgeNetwork(report(timedOut, null), asked, true).unproven).toEqual([]);
-      expect(judgeNetwork(report(timedOut, null), asked, false).unproven).toHaveLength(1);
+      const key = "198.51.100.7:443";
+      const timedOutInControl = new Map<string, AttemptState>([[key, "timeout"]]);
+      const refusedInControl = new Map<string, AttemptState>([[key, "refused"]]);
+      expect(judgeNetwork(report(timedOut, null), asked, timedOutInControl).unproven).toEqual([]);
+      expect(judgeNetwork(report(timedOut, null), asked, refusedInControl).unproven).toEqual([
+        expect.stringContaining(`${key} timed out, but the control box got refused`),
+      ]);
+      expect(judgeNetwork(report(timedOut, null), asked, new Map()).unproven).toHaveLength(1);
+      expect(judgeNetwork(report(timedOut, null), asked).unproven).toHaveLength(1);
     });
 
     it("counts an error that is no refusal as unproven, whatever the control says", () => {

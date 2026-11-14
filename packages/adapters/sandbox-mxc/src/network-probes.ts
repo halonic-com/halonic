@@ -10,12 +10,13 @@
 //     the bridge, which the box is allowed, did connect: the network works in
 //     there, so the silence is the fence.
 //   - the same holds for a box with no bridge, whose network control is a
-//     control box: see `fence-proof.ts`.
+//     control box: a timeout counts only on a target where the control box
+//     timed out too (`ControlBoxStates`, see `fence-proof.ts`).
 // Anything else is unproven, and an unproven result proves nothing.
 
 import type { SandboxBridge } from "@halonicjs/ports";
 import { lanTargets } from "./lan-targets.ts";
-import type { LeakReport, NetworkAttempt } from "./probe-scripts.ts";
+import type { AttemptState, LeakReport, NetworkAttempt } from "./probe-scripts.ts";
 
 /** An address and a port the probe tries. */
 export interface NetworkTarget {
@@ -73,31 +74,55 @@ export interface NetworkAsked {
   dns: number;
 }
 
+/** The state of each attempt a control box made, keyed by `host:port`. */
+export type ControlBoxStates = ReadonlyMap<string, AttemptState>;
+
+/** The key of a target in {@link ControlBoxStates}. */
+export function targetKey({ host, port }: NetworkTarget): string {
+  return `${host}:${port}`;
+}
+
+/** The states of the lan, internet and dns attempts of a control box's report. */
+export function controlBoxStates(report: LeakReport): ControlBoxStates {
+  const attempts = [...report.lan, ...report.internet, ...report.dns];
+  return new Map(attempts.map((attempt) => [targetKey(attempt), attempt.state]));
+}
+
 /**
  * Reads the network part of a leak report. A missing attempt is unproven, never blocked.
- * `controlBoxProven` says that the network control the report lacks, for a box with no
- * bridge, was shown by a control box instead.
+ * `controlBox` is what a control box showed for a box with no bridge, which has no network
+ * control of its own: a timeout then counts as blocked only on a target where the control
+ * box timed out too, because a target it was refused on shows the two boxes differ there.
+ * The ports of this computer are the exception: a control box doesn't try them, so for them
+ * a control box that reached its bridge is enough.
  */
 export function judgeNetwork(
   report: LeakReport,
   asked: NetworkAsked,
-  controlBoxProven = false,
+  controlBox: ControlBoxStates | null = null,
 ): NetworkJudgement {
-  const controlConnected = controlBoxProven || report.network?.state === "connected";
+  const controlConnected = controlBox === null && report.network?.state === "connected";
   const unproven: string[] = [];
-  const read = (kind: string, attempts: readonly NetworkAttempt[], expected: number): boolean => {
+  const read = (
+    kind: string,
+    attempts: readonly NetworkAttempt[],
+    expected: number,
+    perTarget = true,
+  ): boolean => {
     if (attempts.length !== expected) {
       unproven.push(`the probe reported ${attempts.length} ${kind} attempts, not ${expected}`);
     }
     for (const attempt of attempts) {
-      if (attempt.state === "connected") continue;
-      const silenceIsFence = attempt.state === "timeout" && controlConnected;
-      if (attempt.state !== "refused" && !silenceIsFence) unproven.push(describe(kind, attempt));
+      if (attempt.state === "connected" || attempt.state === "refused") continue;
+      const controlTimedOut =
+        controlBox !== null && (!perTarget || controlBox.get(targetKey(attempt)) === "timeout");
+      const silenceIsFence = attempt.state === "timeout" && (controlConnected || controlTimedOut);
+      if (!silenceIsFence) unproven.push(describe(kind, attempt, controlBox));
     }
     return attempts.some((attempt) => attempt.state === "connected");
   };
   return {
-    portReached: read("local port", report.ports, asked.ports),
+    portReached: read("local port", report.ports, asked.ports, false),
     lanReached: read("local network", report.lan, asked.lan),
     internetReached: read("internet", report.internet, asked.internet),
     dnsReached: read("DNS", report.dns, asked.dns),
@@ -106,10 +131,25 @@ export function judgeNetwork(
 }
 
 /** The sentence for an attempt that proves nothing. */
-function describe(kind: string, { host, port, state, code }: NetworkAttempt): string {
-  const how =
-    state === "timeout"
-      ? "timed out, and the box could not show that its network works: its bridge could not be reached, or no control box showed it"
-      : `failed with ${code ?? "an unknown error"}, which is not a refusal`;
-  return `the ${kind} attempt to ${host}:${port} ${how}`;
+function describe(
+  kind: string,
+  { host, port, state, code }: NetworkAttempt,
+  controlBox: ControlBoxStates | null,
+): string {
+  return `the ${kind} attempt to ${host}:${port} ${howItFailed(state, code, controlBox?.get(targetKey({ host, port })), controlBox !== null)}`;
+}
+
+function howItFailed(
+  state: AttemptState,
+  code: string | null,
+  controlState: AttemptState | undefined,
+  hasControlBox: boolean,
+): string {
+  if (state !== "timeout")
+    return `failed with ${code ?? "an unknown error"}, which is not a refusal`;
+  if (!hasControlBox) {
+    return "timed out, and the box could not show that its network works: its bridge could not be reached";
+  }
+  const there = controlState === undefined ? "made no attempt there" : `got ${controlState}`;
+  return `timed out, but the control box ${there}, so its evidence does not carry over to this target`;
 }

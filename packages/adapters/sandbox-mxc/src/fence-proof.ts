@@ -13,15 +13,24 @@
 // runs a control box first: the same policy with a dead-end bridge, on the same
 // computer, right before. If the control box reached its bridge and every
 // attempt it made to the outside was blocked, a timeout in the real box counts
-// as blocked too. The limit: the control runs in a twin box, not in the box
-// that is proven.
+// as blocked too, but only on a target where the control box timed out as well:
+// where it was refused instead, the two boxes behaved differently and the
+// control's evidence does not carry over. The limit: the control runs in a twin
+// box, not in the box that is proven. Cost: a profile with no bridge runs two
+// probes at `open`, up to 15 s each, and both count against the time limit.
 
 import type { SandboxBridge, SandboxCommand, SandboxFence, SandboxProcess } from "@halonicjs/ports";
 import type { MxcDisk } from "./disk.ts";
 import { type FenceFiles, writeFenceFiles } from "./fence-files.ts";
 import { hostAddressTargets } from "./lan-targets.ts";
 import { type LoopbackListener, listenOnLoopback, listenOnLoopbacks } from "./loopback-listener.ts";
-import { judgeNetwork, type NetworkAsked, networkSettings } from "./network-probes.ts";
+import {
+  type ControlBoxStates,
+  controlBoxStates,
+  judgeNetwork,
+  type NetworkAsked,
+  networkSettings,
+} from "./network-probes.ts";
 import { type LeakReport, parseLeakReport } from "./probe-scripts.ts";
 import { errorLine, runToEnd } from "./run-to-end.ts";
 
@@ -58,11 +67,11 @@ export async function proveFence(input: FenceProofInput): Promise<SandboxFence> 
     await writeFenceFiles(input.disk, files);
     const ports = [...listeners.map(({ host, port }) => ({ host, port })), ...hostAddressTargets()];
     const network = networkSettings(input.bridge);
-    let controlBoxProven = false;
+    let controlBox: ControlBoxStates | null = null;
     if (input.bridge === null) {
       const control = await proveControlBox(input, network);
-      if (control !== null) return notFenced(control);
-      controlBoxProven = true;
+      if (typeof control === "string") return notFenced(control);
+      controlBox = control;
     }
     const settings = {
       control: files.control,
@@ -97,7 +106,7 @@ export async function proveFence(input: FenceProofInput): Promise<SandboxFence> 
         internet: network.internet.length,
         dns: network.dns.length,
       },
-      controlBoxProven,
+      controlBox,
     );
     if (problem !== null) return notFenced(problem);
     return { state: "fenced" };
@@ -113,12 +122,13 @@ export async function proveFence(input: FenceProofInput): Promise<SandboxFence> 
  * Runs the control box for a profile with no bridge: its probe must reach a dead-end
  * bridge, the network control, and be blocked from every address outside.
  *
- * @returns the sentence for why the control box proved nothing, or `null` when it showed that the network works
+ * @returns the sentence for why the control box proved nothing, or the state of each of its
+ * attempts, so that the real box's timeouts are matched target by target
  */
 async function proveControlBox(
   input: FenceProofInput,
   network: ReturnType<typeof networkSettings>,
-): Promise<string | null> {
+): Promise<string | ControlBoxStates> {
   const bridge = await listenOnLoopback("127.0.0.1");
   if (bridge === null) return "the control box's bridge could not listen on 127.0.0.1";
   try {
@@ -156,7 +166,7 @@ async function proveControlBox(
     if (found.lanReached || found.internetReached || found.dnsReached) {
       return "the control box's probe reached the outside, so it can't stand in for the box";
     }
-    return null;
+    return controlBoxStates(report);
   } finally {
     bridge.close();
   }
@@ -166,7 +176,7 @@ async function proveControlBox(
 function problemWith(
   report: LeakReport,
   asked: NetworkAsked,
-  controlBoxProven: boolean,
+  controlBox: ControlBoxStates | null,
 ): string | null {
   if (report.control !== "readable") {
     return "the fence probe could not read the allowed folder, so its result proves nothing";
@@ -177,7 +187,7 @@ function problemWith(
   if (report.denied !== "hidden") {
     return "a program inside the fence could read a denied file inside a folder it may read";
   }
-  const found = judgeNetwork(report, asked, controlBoxProven);
+  const found = judgeNetwork(report, asked, controlBox);
   if (found.portReached) {
     return "a program inside the fence could connect to a port of this computer it should not reach";
   }
