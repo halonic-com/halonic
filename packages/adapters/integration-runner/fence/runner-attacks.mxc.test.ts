@@ -250,13 +250,19 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     const readCredential = `
       function Step($name) { [Console]::Error.WriteLine("step: " + $name) }
       Step "start"
-      $assembly = [System.AppDomain]::CurrentDomain.DefineDynamicAssembly((New-Object System.Reflection.AssemblyName "HalonicVault"), [System.Reflection.Emit.AssemblyBuilderAccess]::Run)
+      $name = New-Object System.Reflection.AssemblyName "HalonicVault"
+      Step "assembly name"
+      $assembly = [System.AppDomain]::CurrentDomain.DefineDynamicAssembly($name, [System.Reflection.Emit.AssemblyBuilderAccess]::Run)
+      Step "assembly"
       $type = $assembly.DefineDynamicModule("HalonicVault").DefineType("Vault", "Public,Class")
+      Step "type"
       $flags = [System.Reflection.MethodAttributes]"Public,Static,PinvokeImpl"
       $read = $type.DefinePInvokeMethod("CredRead", "advapi32.dll", $flags, [System.Reflection.CallingConventions]::Standard, [bool], [type[]]@([string], [int], [int], [System.IntPtr].MakeByRefType()), [System.Runtime.InteropServices.CallingConvention]::Winapi, [System.Runtime.InteropServices.CharSet]::Unicode)
+      Step "CredRead declared"
       $read.SetImplementationFlags($read.GetMethodImplementationFlags() -bor [System.Reflection.MethodImplAttributes]::PreserveSig)
       $free = $type.DefinePInvokeMethod("CredFree", "advapi32.dll", $flags, [System.Reflection.CallingConventions]::Standard, [void], [type[]]@([System.IntPtr]), [System.Runtime.InteropServices.CallingConvention]::Winapi, [System.Runtime.InteropServices.CharSet]::Unicode)
       $free.SetImplementationFlags($free.GetMethodImplementationFlags() -bor [System.Reflection.MethodImplAttributes]::PreserveSig)
+      Step "CredFree declared"
       $vault = $type.CreateType()
       Step "built"
       $arguments = [object[]]@('${credentialTarget.replaceAll("'", "''")}', 1, 0, [System.IntPtr]::Zero)
