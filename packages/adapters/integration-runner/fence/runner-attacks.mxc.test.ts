@@ -1,7 +1,7 @@
 import { execFileSync, spawn } from "node:child_process";
 import { createSocket, type Socket as UdpSocket } from "node:dgram";
 import { existsSync } from "node:fs";
-import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:net";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -47,8 +47,7 @@ const canary = `canary-${Math.random().toString(36).slice(2)}`;
 const credentialTarget = `halonic-fence-attack-${Math.random().toString(36).slice(2)}`;
 /** The Windows folder, where `cmd.exe` and `cmdkey.exe` are. Windows always sets it. */
 const windowsFolder = process.env["SystemRoot"] ?? "";
-/** The file Windows' DNS client reads names from before it asks any server. */
-const hostsFile = join(windowsFolder, "System32", "drivers", "etc", "hosts");
+const powershell = join(windowsFolder, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
 
 beforeAll(async () => {
   mxc = await realMxc();
@@ -150,29 +149,56 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     // A lookup by name (`dns.lookup`, so also `fetch` and `net.connect`) goes
     // to the Windows DNS client service on this computer, outside the box.
     // The box doesn't fence it, so integration data can leave in lookups.
-    // Proof that the lookup got out of the box: a name that only the host's
-    // DNS client knows, from the hosts file, comes back with its address.
-    // Needs the right to write the hosts file, which a CI runner has. If the
-    // box ever fences the client, the lookup fails and this test fails too:
-    // then move A6 to the refusals above and drop the recorded gap in
-    // attack-cases.md. Both Node layers see the same, as Node's permission
-    // model does not cover name lookups.
-    const name = `halonic-gap-${Math.random().toString(36).slice(2)}.test`;
-    const hostsBefore = await readFile(hostsFile, "utf8");
+    // Proof that the query left the box: an NRPT rule sends every name under
+    // a made-up namespace to a DNS server of this test on 127.0.0.1:53, which
+    // counts what it receives. The box refuses a direct send to that server
+    // (the case above), so a query arriving there came from the DNS client,
+    // outside the box. A hosts-file name would prove nothing: if the box
+    // fenced the client, Windows would read the hosts file inside the box.
+    // Needs admin rights and a free port 53, which a CI runner has. If the box
+    // ever fences the client, no query arrives and this test fails: then move
+    // A6 to the refusals above and drop the recorded gap in attack-cases.md.
+    // Both Node layers see the same, as Node's permission model does not
+    // cover name lookups.
+    const suffix = Math.random().toString(36).slice(2);
+    const namespace = `halonic-gap-${suffix}.test`;
+    const label = `leak-${canary}`;
+    const received: string[] = [];
+    const server = createSocket("udp4");
+    server.on("message", (query, remote) => {
+      received.push(query.toString("latin1"));
+      // Answer "no such name", so the lookup ends at once.
+      const answer = Buffer.from(query);
+      answer[2] = 0x81;
+      answer[3] = 0x83;
+      server.send(answer, remote.port, remote.address);
+    });
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.bind(53, "127.0.0.1", resolve);
+    });
+    const rule = `halonic-gap-${suffix}`;
+    const nrpt = (command: string) =>
+      execFileSync(powershell, ["-NoProfile", "-NonInteractive", "-Command", command]);
+    const flush = () => execFileSync(join(windowsFolder, "System32", "ipconfig.exe"), ["/flushdns"]);
     try {
-      await appendFile(hostsFile, `\r\n127.0.0.1 ${name}\r\n`);
-      execFileSync(join(windowsFolder, "System32", "ipconfig.exe"), ["/flushdns"]);
-      const { attempts } = await attack(
+      nrpt(`Add-DnsClientNrptRule -Name '${rule}' -Namespace '.${namespace}' -NameServers '127.0.0.1'`);
+      flush();
+      await attack(
         `
         const dns = await import("node:dns/promises");
-        await attempt("lookup", async () => (await dns.lookup(${JSON.stringify(name)})).address);
+        await attempt("lookup", async () => (await dns.lookup(${JSON.stringify(`${label}.${namespace}`)})).address);
       `,
         nodeLayer,
       );
-      expect(attempts["lookup"]).toEqual({ outcome: "allowed", detail: "127.0.0.1" });
+      expect(received.some((query) => query.includes(label)), "the query reached the server").toBe(true);
     } finally {
-      await writeFile(hostsFile, hostsBefore);
-      execFileSync(join(windowsFolder, "System32", "ipconfig.exe"), ["/flushdns"]);
+      try {
+        nrpt(`Remove-DnsClientNrptRule -Name '${rule}' -Force`);
+      } finally {
+        flush();
+        server.close();
+      }
     }
   });
 

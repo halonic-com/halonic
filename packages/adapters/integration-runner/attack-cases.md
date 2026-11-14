@@ -64,9 +64,11 @@ control runs in a twin box, not in the runner's box (HAL-9342).
 ## Recorded gap on MXC (A6)
 
 Name lookups from inside the box leave through Windows' DNS client and are not fenced.
-`runner-attacks.mxc.test.ts` expects this on `windows-11-arm`: a name only the host's hosts file
-knows resolves inside the box, with Node's layer on and off. If the box starts fencing the client,
-the test fails and this gap is closed.
+`runner-attacks.mxc.test.ts` expects this on `windows-11-arm`: an NRPT rule sends a made-up
+namespace to a counting DNS server on the host, and a lookup from inside the box must make its
+query arrive there, with Node's layer on and off. The box refuses a direct send to that server,
+so a query arriving means it went through the DNS client outside the box. If the box starts
+fencing the client, no query arrives, the test fails and this gap is closed.
 On `sandbox-mxc` a lookup sent straight to a public DNS server is refused (the A6 canary), but a
 lookup that goes through Windows' DNS client leaves the box by design. Integration data the
 runner handles can therefore still leave through lookups, a few KB a second. This is bounded:
