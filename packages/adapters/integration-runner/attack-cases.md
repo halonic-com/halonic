@@ -17,7 +17,7 @@ One difference from the design: A30 on plain `http` is refused as `scheme-not-al
 | A3 | a redirect to an undeclared host | `adapters/integration-kit/src/limited-http.test.ts` |
 | A4 | going around the kit | fence: `adapters/integration-runner/fence/runner-attacks.test.ts`, `runner-attacks.windows.test.ts` |
 | A5 | a host check before any lookup | `adapters/http-node/src/address-check.test.ts` |
-| A6 | DNS from inside the fence | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts`; on MXC a lookup sent straight to a public DNS server is refused, but name lookups from inside the box leave through Windows' DNS client and are not fenced (a recorded gap, see below) |
+| A6 | DNS from inside the fence | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts`; on MXC a lookup sent straight to a public DNS server is refused, and a name lookup from the box sends no query out; why is not settled (see below; `runner-attacks.mxc.test.ts` expects no query and fails if one arrives) |
 | A7 | a public host whose answer is a private address | `adapters/http-node/src/address-check.test.ts`, `adapters/http-kit/src/address-class.test.ts` |
 | A8 | DNS rebinding | `adapters/http-node/src/address-check.test.ts` |
 | A9 | a home-network host whose answer is public or link-local | `adapters/http-node/src/address-check.test.ts`, `adapters/http-kit/src/address-class.test.ts` |
@@ -61,13 +61,20 @@ probe as blocked only where a control box (the same policy with a dead-end bridg
 computer right before) reached its bridge and timed out on that same target. The network
 control runs in a twin box, not in the runner's box (HAL-9342).
 
-## Recorded gap on MXC (A6)
+## A6 on MXC: name lookups through Windows' DNS client
 
-Name lookups from inside the box leave through Windows' DNS client and are not fenced.
-On `sandbox-mxc` a lookup sent straight to a public DNS server is refused (the A6 canary), but a
-lookup that goes through Windows' DNS client leaves the box by design. Integration data the
-runner handles can therefore still leave through lookups, a few KB a second. This is bounded:
-the runner holds no key in its environment (A17, A25) and its MXC profile has
-`settingsFolder: null` and `keyStore: "denied"`, which `runner-profile.test.ts` checks. If a
-later change gives the runner a secret or the settings folder, `sandbox-mxc` is not fenced for
-the runner again. Decided by the CTO on HAL-9155. MXC stays opt-in.
+Not a confirmed gap on `windows-11-arm`. `runner-attacks.mxc.test.ts` shows it: an NRPT rule sends
+a made-up namespace to a counting DNS server on the host. A lookup of a name in it from outside
+the box (the control, which must arrive) reaches that server. The same lookup from inside the box
+sends no query there, and fails within milliseconds: `ERR_ACCESS_DENIED` with Node's layer on
+(Node's own refusal) and `ENOTFOUND` with it off. The test cannot tell whether the box fences the
+DNS client or the client turns away a box that has no network capability. If the cause is that
+missing capability, a profile that grants it needs this test re-checked. The test fails if a query
+from the box ever arrives, if the error changes, or if the control does not arrive (a broken setup
+never counts as fenced).
+The older claim, that lookups leave the box by design and carry data out, is therefore not backed
+by a test. `sandbox-mxc`'s canary still reports `nameLookupsLeave: true` as a cautious
+assumption. Even if lookups did leave, it is bounded: the runner holds no key in its environment
+(A17, A25) and its MXC profile has `settingsFolder: null` and `keyStore: "denied"`, which
+`runner-profile.test.ts` checks. If a later change gives the runner a secret or the settings
+folder, re-check this. MXC stays opt-in (CTO decision on HAL-9155).
