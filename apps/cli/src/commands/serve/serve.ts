@@ -45,6 +45,7 @@ import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts
 import { trustedGrant, workspaceNameOf } from "../../workspace-trust.ts";
 import { type VersionChecks, WatchedVersions } from "../routines/watch-versions.ts";
 import type { RunSetup } from "../run/run.ts";
+import { startsOnLiveVersion } from "./live-version-runs.ts";
 
 /** What `serve` uses on this computer, so tests can fix the password hasher and the network. */
 export interface ServeSetup extends RunSetup {
@@ -187,7 +188,7 @@ async function listenOnComputer(
   const countFolder = join(folders.folder, "serve-requests");
   await makePrivateFolder(countFolder);
   const ports: ServerPorts = {
-    runs: parts.executor,
+    runs: startsOnLiveVersion(parts.executor, () => versions.routines.runVersion()),
     runStore: parts.runs,
     secrets: context.secrets,
     passwordHasher: setup.hasher ?? createScryptHasher(),

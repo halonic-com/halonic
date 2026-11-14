@@ -692,6 +692,24 @@ design the code will be held to. Only what is marked **On `main`** works today.
   carry a code and a short message only; HMAC-signed, replay-protected
   webhooks.
 
+#### Agents in a harness on the serve host
+
+An agent in Claude Code or Codex that a served start runs is a program on the
+computer that serves, started with the rights of the person who owns it, so the
+caller of the API (a phone, a page, a script, or anyone on the network when
+`--network` is on) must not steer where or how it runs. The rules of
+[4.6](#46-agents-in-a-sandbox-b8) hold unchanged: the fence, the bridge and the
+trust fingerprint belong to the host, and nothing in a request reaches them.
+
+| Threat | Mitigation | Mark |
+| --- | --- | --- |
+| A caller moves an agent out of its sandbox, onto "this computer", into another folder or to other sites, or swaps its harness, by naming that in the start | `POST /api/runs` and `POST /api/agent-runs` answer 400 to a body that names `harness`, `placement`, `sandbox`, `profile`, `workingFolder` or `allowedSites`, before the trust gate is asked, and start nothing. The executor gets only the fields the route validated. Where and how an agent runs comes from its file and from the choices a person made at the computer, never from a request | **In review** (`server.harness-on-host`) |
+| A caller starts a harness agent in a workspace that changed after it was trusted | The trust gate is asked again on every start, as for any run; the harness is part of the trust fingerprint (4.6), so a changed harness asks for trust again | **On `main`** (`server.trust-gate`, `workspace.trust-agents`) |
+| A served run of a harness agent starts a program the sandbox check would have refused | Each served run is checked for the sandbox before it starts, as for `routines watch`; a computer that can't start the sandbox runs no such agent, and the choice "this computer" is never a fallback | **In review** (`cli.commands.serve.harness`) |
+| A caller picks the version an agent works in | The start routes never pass a version. A served start reads the live version, as a routine's run does, and the agent works in a copy of it in Halonic's profile, so it can't change the workspace files | **In review** (`cli.commands.serve.harness`) |
+| The agent's work leaves the host through the API | The agent's changes stay in a proposal folder in the profile until a person accepts them at the computer. No route accepts one | **On `main`** (`harness-host`); Accept itself **Planned** |
+| A harness agent makes `serve` a way to run commands for anyone who signs in | A signed-in caller can start only what the trusted workspace defines, never a command of their own. Known limit: anyone with the password can start the trusted workspace's agents and spend its model budget; the daily request ceiling, where one is set, caps that | **On `main`** (`server.daily-requests`) |
+
 Pieces already on `main` that `serve` will build on:
 
 | Piece | Mark |
