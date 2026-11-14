@@ -89,7 +89,7 @@ export function KeyLine(props: KeyLineProps) {
   }
   return (
     <div>
-      <div className="text-small fg-muted">{text.KEY}</div>
+      <div className="text-small text-fg-muted">{text.KEY}</div>
       <p className="text-body">{line}</p>
     </div>
   );

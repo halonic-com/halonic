@@ -58,7 +58,7 @@ export interface SandboxFacts {
   readonly outcome: SandboxOutcome | null;
 }
 
-export type ChipTone = "warning" | "neutral" | "success";
+export type ChipTone = "attention" | "neutral" | "success";
 export type SandboxAction = "remove" | "check-again";
 
 export interface SandboxStep {
@@ -132,7 +132,7 @@ function checkedView(
     case "needs-repair":
       return {
         ...none,
-        chip: { label: "Needs repair", tone: "warning" },
+        chip: { label: "Needs repair", tone: "attention" },
         lead: text.needsRepair(check.reason),
         callout,
         hint: hint(text.REPAIR_HINT),
@@ -150,7 +150,7 @@ function checkedView(
     case "restart-needed":
       return {
         ...none,
-        chip: { label: "Restart needed", tone: "warning" },
+        chip: { label: "Restart needed", tone: "attention" },
         lead: text.RESTART_NEEDED,
         callout,
         secondary: ["check-again"],
@@ -166,7 +166,7 @@ function checkedView(
     case "needs-setup":
       return {
         ...none,
-        chip: { label: "Needs setting up", tone: "warning" },
+        chip: { label: "Needs setting up", tone: "attention" },
         lead: text.NEEDS_SETUP,
         callout,
         hint: hint(text.ADMIN_ONCE),

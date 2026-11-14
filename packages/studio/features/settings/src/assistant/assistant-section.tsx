@@ -156,7 +156,7 @@ function SetsItsOwn({
 }) {
   if (open === null || open.sessionModel === null) return null;
   return (
-    <p className="text-small fg-muted">
+    <p className="text-small text-fg-muted">
       {text.setsItsOwn(open.name, open.sessionModel)}
       {link === null ? null : (
         <>
@@ -231,13 +231,13 @@ function AssistantViewOnly({ settings, workspace }: AssistantViewProps) {
   );
   return (
     <div className="mt-5 flex max-w-90 flex-col gap-4">
-      <p className="text-body fg-muted">{text.FIRST_LINE.served}</p>
+      <p className="text-body text-fg-muted">{text.FIRST_LINE.served}</p>
       <ViewOnlyLine>{text.VIEW_ONLY_LINE}</ViewOnlyLine>
       <SetsItsOwn open={open} link={null} />
       <dl className="flex flex-col gap-3">
         {rows.map(([label, value]) => (
           <div key={label}>
-            <dt className="text-small fg-muted">{label}</dt>
+            <dt className="text-small text-fg-muted">{label}</dt>
             <dd className="text-body">{value}</dd>
           </div>
         ))}
@@ -338,7 +338,7 @@ function AssistantEditor({
   const turnLimitText = turnLimit.value === turnLimitRange.fallback ? "" : String(turnLimit.value);
   return (
     <div className="mt-5 flex max-w-90 flex-col gap-4">
-      <p className="text-body fg-muted">{text.FIRST_LINE[place]}</p>
+      <p className="text-body text-fg-muted">{text.FIRST_LINE[place]}</p>
       {chosen !== "not-set-up" && open?.localOnly && !local.value ? (
         <Callout tone="warning">{text.localOnlyWarning(open.name)}</Callout>
       ) : null}

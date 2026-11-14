@@ -116,7 +116,7 @@ function TrustRow({ row }: { readonly row: TrustRowView }) {
         <span className="break-all font-mono text-small">{row.detail}</span>
       </p>
       {row.warning === undefined ? null : (
-        <p className="m-0 text-small text-warning">{row.warning}</p>
+        <p className="m-0 text-small text-attention">{row.warning}</p>
       )}
       {row.lines.map(([label, value]) => (
         <p key={`${label}:${value}`} className="m-0 text-small">
