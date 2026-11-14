@@ -3,6 +3,7 @@
 // are only ever a value in these lines.
 
 import type { Plugin } from "@halonicjs/format";
+import { quoted } from "../page/page-text.ts";
 
 /** The tab's name, and the list's accessible name. */
 export const PLUGINS = "Plugins";
@@ -77,6 +78,8 @@ export function addsLine(manifest: Plugin): string {
 /** The row's line under the name: the description, then what it adds. */
 export function rowMeta(manifest: Plugin | undefined): string | undefined {
   if (manifest === undefined) return undefined;
-  const line = [manifest.description, addsLine(manifest)].filter((part) => part !== "").join(" · ");
+  const line = [manifest.description === "" ? "" : quoted(manifest.description), addsLine(manifest)]
+    .filter((part) => part !== "")
+    .join(" · ");
   return line === "" ? undefined : line;
 }

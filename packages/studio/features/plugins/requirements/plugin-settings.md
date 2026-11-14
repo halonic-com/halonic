@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1740; plugin screens design section 7 (HAL-1739); UX acceptance checklist 6.3 (HAL-1952)
 
-The Studio shall show a plugin's settings from its `ui.settings` as label-over-field rows with the kit part for each type, shall save a setting when the person leaves its field or makes a pick, and shall show a `secret` setting as "Set" or "Not set" with the line "Stored in your secrets as *name*. Sent only to *hosts*." and never its value. When a value can't be saved, then the Studio shall say why under that field, put a pick or a switch back and keep typed text. While the plugin is off, the Studio shall keep the settings readable and save nothing.
+The Studio shall show a plugin's settings from its `ui.settings` as label-over-field rows with the kit part for each type, shall save a setting when the person leaves its field or makes a pick, and shall show a `secret` setting as "Set" or "Not set" with the line "Stored in your secrets as *name*. Sent only to *hosts*." and never its value. When a value can't be saved, then the Studio shall say why under that field, put a pick or a switch back and keep typed text. When the save failed (the host or the keychain couldn't take it) rather than the value being refused, the Studio shall also offer **Try again** under that field, which saves the same value again; a value the host refused has no **Try again**. While the plugin is off, the Studio shall keep the settings readable and save nothing.
 
 ## Examples
 
@@ -19,6 +19,12 @@ The Studio shall show a plugin's settings from its `ui.settings` as label-over-f
 - Given the keychain is locked,
   when the person saves an API key,
   then the field says "Couldn't save the secret: The keychain is locked." and the typed key stays in the field.
+- Given the keychain is locked and the person saved an API key,
+  when they unlock it and choose **Try again** under the field,
+  then the key is saved again and the error and **Try again** go.
+- Given the host refuses a City value as not fitting,
+  when the field shows its reason,
+  then there is no **Try again**.
 - Given the plugin isn't trusted yet,
   when the person leaves the City field,
   then nothing is saved.

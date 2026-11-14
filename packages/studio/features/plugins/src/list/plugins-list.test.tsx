@@ -103,7 +103,9 @@ verifies("plugins.plugin-list", () => {
     expect(text()).toContain("Installed on this computer");
     expect(text()).toContain("Built in");
     expect(text()).toContain("Weather");
-    expect(text()).toContain("The forecast where you are. · 1 tool · 1 command · 1 card · a panel");
+    expect(text()).toContain(
+      "“The forecast where you are.” · 1 tool · 1 command · 1 card · a panel",
+    );
     expect(text()).toContain("1.2.0 · trusted 3 Nov");
   });
 

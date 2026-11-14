@@ -6,8 +6,13 @@
 /** The section's heading on the plugin page. */
 export const SETTINGS_HEADING = "Settings";
 
-/** Reading the setting values failed: microcopy 13.1 "Section can't load", with the reason under it. */
-export const SETTINGS_NOT_LOADED = "Couldn't load the settings";
+/**
+ * Reading the setting values failed: microcopy 13.1 "Section can't load" in the shape of 8.5's
+ * "Couldn't load Support reply's settings", with the reason under it.
+ */
+export function settingsNotLoadedTitle(name: string): string {
+  return `Couldn't load ${name}'s settings`;
+}
 export const TRY_AGAIN = "Try again";
 
 /** A secret setting's state, next to its label. "Not set" is amber. */
