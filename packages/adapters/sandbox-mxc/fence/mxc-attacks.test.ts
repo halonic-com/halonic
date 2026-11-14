@@ -149,14 +149,17 @@ describe("a program trying to get out of the MXC fence", () => {
     const target = "mxc-a36-canary";
     const value = randomBytes(16).toString("hex");
     const readCredential = [
-      "$ErrorActionPreference = 'Stop'",
+      "$stage = 'compile'",
+      "try {",
       "Add-Type -Namespace Canary -Name Cred -MemberDefinition @'",
       '[DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]',
       "public static extern bool CredReadW(string target, int type, int flags, out System.IntPtr credential);",
       "'@",
+      "$stage = 'read'",
       "$pointer = [System.IntPtr]::Zero",
       `if ([Canary.Cred]::CredReadW('${target}', 1, 0, [ref]$pointer)) { 'read ok' }`,
       "else { 'read failed ' + [System.Runtime.InteropServices.Marshal]::GetLastWin32Error() }",
+      "} catch { 'script failed at ' + $stage + ': ' + $_.Exception.GetType().Name + ' ' + $_.Exception.Message.Substring(0, [Math]::Min(200, $_.Exception.Message.Length)) }",
     ].join("\n");
     const encoded = Buffer.from(readCredential, "utf16le").toString("base64");
     execFileSync("cmdkey", [`/generic:${target}`, "/user:canary", `/pass:${value}`], {
