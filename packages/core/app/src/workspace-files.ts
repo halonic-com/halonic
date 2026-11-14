@@ -96,6 +96,22 @@ export class WorkspaceFiles {
   }
 
   /**
+   * The file paths under a folder, saved files and unsaved changes together (requirement
+   * `app.workspace-list`): an unsaved new file is listed, an unsaved delete is left out.
+   *
+   * @param dir - the folder, such as "providers"
+   */
+  async list(dir: string): Promise<string[]> {
+    const paths = new Set(await this.store.list(dir));
+    for (const [path, text] of Object.entries(this.changes)) {
+      if (!path.startsWith(`${dir}/`)) continue;
+      if (text === null) paths.delete(path);
+      else paths.add(path);
+    }
+    return [...paths].sort();
+  }
+
+  /**
    * Changes files without saving them, as one undo step.
    *
    * @param label - says what changed, such as "Renamed state s to ask"

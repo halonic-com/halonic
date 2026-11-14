@@ -9,6 +9,10 @@ function setup() {
   const models = new WorkspaceModelsFiles({
     files: {
       read: async (path) => store[path] ?? null,
+      list: async (dir) =>
+        Object.keys(store)
+          .filter((path) => path.startsWith(`${dir}/`))
+          .sort(),
       change: (label, made) => changes.push({ label, changes: made }),
     },
     onChange: (listener) => {
@@ -50,5 +54,21 @@ verifies("models.aliases.edit-target", () => {
     expect(listeners.size).toBe(1);
     stop();
     expect(listeners.size).toBe(0);
+  });
+});
+
+verifies("models.providers.list-and-show", () => {
+  it("reads only the providers/<id>.yaml files, with their paths", async () => {
+    const { store, models } = setup();
+    store["providers/b.yaml"] = "id: b\n";
+    store["providers/a.yaml"] = "id: a\n";
+    store["providers/README.md"] = "notes\n";
+    store["providers/old/x.yaml"] = "id: x\n";
+    store["providers/x.yml"] = "id: x\n";
+
+    expect(await models.readProviders()).toEqual([
+      { path: "providers/a.yaml", text: "id: a\n" },
+      { path: "providers/b.yaml", text: "id: b\n" },
+    ]);
   });
 });
