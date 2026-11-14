@@ -225,7 +225,12 @@ verifies("cli.commands.secret.set", () => {
   it("reads a small pipe whole, also from byte chunks that split a character", async () => {
     const bytes = Buffer.from(`${value}é\n`);
 
-    const text = await readCapped([bytes.subarray(0, bytes.length - 2), bytes.subarray(-2)]);
+    async function* chunks() {
+      yield bytes.subarray(0, bytes.length - 2);
+      yield bytes.subarray(-2);
+    }
+
+    const text = await readCapped(chunks());
 
     expect(text).toBe(`${value}é\n`);
   });
