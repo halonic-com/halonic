@@ -76,6 +76,12 @@ export const routinesMessages = defineMessages("routines", {
   noHistoryForVersion: (commit: string) =>
     phrase`This workspace has no history, so version ${commit} can't be read.`,
   /**
+   * The placement check asks for an agent the run's version doesn't have:
+   * never expected, since the run's own definitions named the agent.
+   */
+  noAgentInVersion: (hubId: string, agentId: string) =>
+    phrase`Hub "${hubId}" has no agent "${agentId}".`,
+  /**
    * A run of a routine whose step keeps failing: "✕ Hourly follow-up got stuck · run 01jd8q · see why with --debug".
    * The watch goes on, and the engine keeps retrying the step.
    */

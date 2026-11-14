@@ -235,7 +235,7 @@ export class WatchedVersions implements WorkspaceVersions {
     );
     const text = file === undefined ? null : read.textOf(file.path);
     if (text === null) {
-      throw new Error(`Hub "${hubId}" has no agent "${agentId}".`);
+      throw new Error(plainText(routinesMessages.noAgentInVersion(hubId, agentId).phrase));
     }
     return new TextEncoder().encode(text);
   }
