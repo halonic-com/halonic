@@ -101,6 +101,7 @@ async function deleteSteps(
  * finishes the job.
  *
  * @throws DeployError `destroy-refused` when a resource exists but isn't marked as ours
+ * @throws DeployError `destroy-changed` when a resource appeared or went away while the user confirmed
  * @throws DeployError `bucket-not-empty` when the bucket still holds files
  */
 export async function destroy(api: CloudflareApi, options: DestroyOptions): Promise<DestroyResult> {
@@ -128,6 +129,15 @@ export async function destroy(api: CloudflareApi, options: DestroyOptions): Prom
   });
   if (held.id !== lock.id) throw new DeployLockedError(held.label, held.startedAt, held.expiresAt);
   try {
+    // A deploy may have finished while the user was at the prompt. Look again, now that nothing can
+    // change, and delete only what the user was shown.
+    const now = await planSteps(api, accountId, refs);
+    if (now.some((step, i) => step.action !== steps[i]?.action)) {
+      throw new DeployError(
+        "destroy-changed",
+        "What exists changed while you were confirming, so nothing was deleted. Run destroy again to see the new list.",
+      );
+    }
     await deleteSteps(api, options, refs, steps, lock);
   } catch (error) {
     // If the database is gone so is the lock; if not, free it. Don't hide the real error.

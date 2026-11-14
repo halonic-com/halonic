@@ -83,6 +83,26 @@ verifies("deploy.destroy", () => {
     expect(deletes(api.calls)).toEqual(["deleteResource worker halonic-dev"]);
   });
 
+  it("deletes nothing when a deploy finished while the user was confirming", async () => {
+    const api = fakeCloudflareApi({
+      accounts: [],
+      resources: {
+        "bucket halonic-dev-blobs": { marked: true },
+        "database halonic-dev-data": { marked: true },
+      },
+    });
+    const error = (await destroy(api, {
+      ...base,
+      confirm: async () => {
+        await api.createResource("a1", { kind: "worker", name: "halonic-dev" });
+        return true;
+      },
+    }).catch((e: unknown) => e)) as DeployError;
+    expect(error.code).toBe("destroy-changed");
+    expect(deletes(api.calls)).toEqual([]);
+    expect(api.calls.at(-1)).toMatch(/^releaseDeployLock/);
+  });
+
   it("stops with deploy-locked while a deploy runs", async () => {
     const api = fakeCloudflareApi({
       accounts: [],

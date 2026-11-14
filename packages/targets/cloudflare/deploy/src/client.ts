@@ -28,7 +28,11 @@ interface Envelope {
   readonly success?: boolean;
   readonly errors?: readonly { readonly code?: number; readonly message?: string }[];
   readonly result?: unknown;
-  readonly result_info?: { readonly page?: number; readonly total_pages?: number };
+  readonly result_info?: {
+    readonly page?: number;
+    readonly total_pages?: number;
+    readonly cursor?: string;
+  };
 }
 
 /** The Worker tag that marks a Worker as made by Halonic. */

@@ -9,7 +9,10 @@ import { DeployError } from "./errors.ts";
 
 /** What the calls below borrow from the client: its request plumbing. */
 export interface ClientPlumbing {
-  get(path: string): Promise<{ readonly result?: unknown }>;
+  get(path: string): Promise<{
+    readonly result?: unknown;
+    readonly result_info?: { readonly cursor?: unknown };
+  }>;
   request(
     method: "GET" | "DELETE",
     path: string,
@@ -75,29 +78,42 @@ export function manageCalls(
     return `https://${worker}.${subdomain}.workers.dev`;
   }
 
-  /** One page of names and creation times; `more` says a full page came back. */
+  /**
+   * One page of names and creation times. `next` says how to ask for the page after it: a page
+   * number for D1, a cursor for R2 (which ignores `page`), or nothing on the last page.
+   */
   async function listPage(
     accountId: string,
     kind: ResourceKind,
     prefix: string,
-    page: number,
-  ): Promise<{ rows: { name: unknown; created: unknown }[]; more: boolean }> {
+    after: string | undefined,
+  ): Promise<{ rows: { name: unknown; created: unknown }[]; next: string | undefined }> {
     const account = encodeURIComponent(accountId);
-    const paging = `per_page=${listPageSize}&page=${page}`;
     const name = encodeURIComponent(prefix);
     if (kind === "worker") {
       const body = await get(`/accounts/${account}/workers/scripts`);
-      return { rows: asRows(body.result, "id", "created_on"), more: false };
+      return { rows: asRows(body.result, "id", "created_on"), next: undefined };
     }
     if (kind === "database") {
-      const body = await get(`/accounts/${account}/d1/database?name=${name}&${paging}`);
+      const page = Number(after ?? "1");
+      const body = await get(
+        `/accounts/${account}/d1/database?name=${name}&per_page=${listPageSize}&page=${page}`,
+      );
       const rows = asRows(body.result, "name", "created_at");
-      return { rows, more: rows.length === listPageSize };
+      return { rows, next: rows.length === listPageSize ? String(page + 1) : undefined };
     }
-    const body = await get(`/accounts/${account}/r2/buckets?name_contains=${name}&${paging}`);
+    const cursor = after === undefined ? "" : `&cursor=${encodeURIComponent(after)}`;
+    const body = await get(
+      `/accounts/${account}/r2/buckets?name_contains=${name}&per_page=${listPageSize}${cursor}`,
+    );
     const buckets = (body.result as { buckets?: unknown } | undefined)?.buckets;
     const rows = asRows(buckets, "name", "creation_date");
-    return { rows, more: rows.length === listPageSize };
+    const next = body.result_info?.cursor;
+    return {
+      rows,
+      next:
+        rows.length === listPageSize && typeof next === "string" && next !== "" ? next : undefined,
+    };
   }
 
   async function listResources(
@@ -105,18 +121,20 @@ export function manageCalls(
     kind: ResourceKind,
     prefix: string,
   ): Promise<readonly ListedResource[]> {
-    const found: ListedResource[] = [];
+    const found = new Map<string, ListedResource>();
+    let after: string | undefined;
     for (let page = 1; page <= maxPages; page += 1) {
-      const { rows, more } = await listPage(accountId, kind, prefix, page);
+      const { rows, next } = await listPage(accountId, kind, prefix, after);
       for (const { name, created } of rows) {
         const at = Date.parse(String(created));
         if (typeof name === "string" && name.startsWith(prefix) && !Number.isNaN(at)) {
-          found.push({ kind, name, createdAt: at });
+          found.set(name, { kind, name, createdAt: at });
         }
       }
-      if (!more) break;
+      if (next === undefined || next === after) break;
+      after = next;
     }
-    return found;
+    return [...found.values()];
   }
 
   async function deleteBucket(accountId: string, name: string): Promise<void> {

@@ -18,6 +18,7 @@ export type DeployErrorCode =
   | "not-deployed"
   | "nothing-to-roll-back"
   | "destroy-refused"
+  | "destroy-changed"
   | "bucket-not-empty";
 
 /** A deploy failure with a stable code. The message never holds a token or a secret. */

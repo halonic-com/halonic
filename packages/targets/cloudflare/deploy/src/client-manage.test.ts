@@ -8,6 +8,7 @@ const token = ["cfut", "abcdef0123456789"].join("_");
 interface Route {
   readonly status?: number;
   readonly result?: unknown;
+  readonly result_info?: unknown;
   readonly errors?: readonly { code: number; message: string }[];
 }
 
@@ -19,7 +20,12 @@ function client(routes: Record<string, Route>, seen: string[]) {
     if (!route) return new Response("{}", { status: 404 });
     const status = route.status ?? 200;
     return new Response(
-      JSON.stringify({ success: status < 400, result: route.result, errors: route.errors }),
+      JSON.stringify({
+        success: status < 400,
+        result: route.result,
+        result_info: route.result_info,
+        errors: route.errors,
+      }),
       { status },
     );
   }) as typeof fetch;
@@ -86,7 +92,7 @@ verifies("deploy.destroy", () => {
         "GET /accounts/a1/d1/database?name=hlt-&per_page=100&page=1": {
           result: [{ name: "hlt-1-1-w-data", created_at: "2026-11-14T10:00:00Z" }],
         },
-        "GET /accounts/a1/r2/buckets?name_contains=hlt-&per_page=100&page=1": {
+        "GET /accounts/a1/r2/buckets?name_contains=hlt-&per_page=100": {
           result: { buckets: [{ name: "hlt-1-1-w-blobs", creation_date: "2026-11-14T10:00:00Z" }] },
         },
       },
@@ -101,6 +107,28 @@ verifies("deploy.destroy", () => {
     expect((await api.listResources("a1", "bucket", "hlt-")).map((r) => r.name)).toEqual([
       "hlt-1-1-w-blobs",
     ]);
+  });
+
+  it("pages R2 buckets by cursor and drops repeated names", async () => {
+    const seen: string[] = [];
+    const bucket = (n: number) => ({ name: `hlt-b${n}`, creation_date: "2026-11-14T10:00:00Z" });
+    const first = Array.from({ length: 100 }, (_, i) => bucket(i));
+    const api = client(
+      {
+        "GET /accounts/a1/r2/buckets?name_contains=hlt-&per_page=100": {
+          result: { buckets: first },
+          result_info: { cursor: "c1" },
+        },
+        "GET /accounts/a1/r2/buckets?name_contains=hlt-&per_page=100&cursor=c1": {
+          result: { buckets: [bucket(99), bucket(100)] },
+        },
+      },
+      seen,
+    );
+    const names = (await api.listResources("a1", "bucket", "hlt-")).map((r) => r.name);
+    expect(names).toHaveLength(101);
+    expect(new Set(names).size).toBe(101);
+    expect(seen).toHaveLength(2);
   });
 
   it("deletes each kind, and treats a missing one as done", async () => {
