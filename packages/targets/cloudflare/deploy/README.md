@@ -2,6 +2,8 @@
 
 Deploys the Halonic Worker to Cloudflare: provision, migrate, upload, smoke test, switch traffic
 (ADR 5.6, HAL-6704). `deploy()` runs the steps in order; the pieces (client, provision, migrate, lock, upload) are also exported.
+`status`, `rollback` and `destroy` (HAL-6705) read what is live, switch back to the previous version, and remove what a deploy created;
+`cloudflareSweeper` lists and deletes `hlt-` names for the live-test sweeper, through the same `deleteResource` call `destroy` uses.
 The deviations from ADR 5.6 are in `requirements/orchestrate.md`.
 
 - **Layer:** targets

@@ -4,8 +4,10 @@ import { expect, it } from "vitest";
 import { type DeployOptions, type DeployProgress, deploy } from "./deploy.ts";
 import type { DeployError } from "./errors.ts";
 import { fakeCloudflareApi } from "./fake-api.ts";
+import { parseVersionNote, startsLike } from "./version-note.ts";
 
 const script = "export default {};";
+const commit = "c0ffee0123456789abcdef0123456789abcdef01";
 const hash = createHash("sha256").update(script).digest("hex");
 const passing = JSON.stringify({ ok: true, checks: [] });
 const live = [{ id: "old", percentage: 100 }];
@@ -29,7 +31,7 @@ function setup(
     worker: "w",
     environment: "production",
     source: {
-      commit: async () => "c0ffee",
+      commit: async () => commit,
       changedFileCount: async () => changed,
     },
     validate: async () => {
@@ -68,7 +70,7 @@ verifies("deploy.orchestrate", () => {
       deployment: live,
     });
     const done = await deploy(api, options);
-    expect(done).toEqual({ mode: "deployed", commit: "c0ffee", versionId: "v1" });
+    expect(done).toEqual({ mode: "deployed", commit: commit, versionId: "v1" });
     expect(log).toEqual(["validate", "test", "prepare"]);
     expect(events.map((e) => e.step)).toEqual([
       "validated",
@@ -86,6 +88,12 @@ verifies("deploy.orchestrate", () => {
     expect(at("takeDeployLock")).toBeLessThan(at("applyMigration"));
     expect(at("applyMigration")).toBeLessThan(at("uploadVersion"));
     expect(calls.at(-1)).toMatch(/^releaseDeployLock/);
+    // `status` reads the commit and bundle back from this note.
+    expect(api.messages).toEqual([`halonic ${commit.slice(0, 12)} ${hash.slice(0, 12)}`]);
+    const note = parseVersionNote(api.messages[0]);
+    expect(note).toBeDefined();
+    expect(startsLike(commit, note?.commit ?? "")).toBe(true);
+    expect(startsLike(hash, note?.bundleHash ?? "")).toBe(true);
   });
 
   it("asks for secrets before it creates anything", async () => {

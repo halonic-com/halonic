@@ -4,6 +4,7 @@ import { withDeployLock } from "./lock.ts";
 import { migrate } from "./migrate.ts";
 import { type ProvisionStep, provision } from "./provision.ts";
 import { type UploadProgress, uploadAndSwitch } from "./upload.ts";
+import { versionNote } from "./version-note.ts";
 
 /** Where the deployed files come from: git, not the working folder. */
 export interface DeploySource {
@@ -174,7 +175,11 @@ export async function deploy(
         bindings: payload.bindings,
         secrets: payload.secrets,
         durableObjectMigrations: doMigrations,
-        ...(options.message ? { message: options.message } : {}),
+        message: versionNote({
+          commit,
+          bundleHash: payload.bundle.hash,
+          ...(options.message ? { message: options.message } : {}),
+        }),
         onProgress: report,
         ...options.upload,
       });

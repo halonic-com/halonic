@@ -14,7 +14,12 @@ export type DeployErrorCode =
   | "traffic-split-in-progress"
   | "smoke-test-failed"
   | "uncommitted-changes"
-  | "deploy-aborted";
+  | "deploy-aborted"
+  | "not-deployed"
+  | "nothing-to-roll-back"
+  | "destroy-refused"
+  | "destroy-changed"
+  | "bucket-not-empty";
 
 /** A deploy failure with a stable code. The message never holds a token or a secret. */
 export class DeployError extends Error {
