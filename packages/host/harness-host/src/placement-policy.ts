@@ -10,12 +10,21 @@ import type { HarnessAgent, PlacementAnswer, PlacementPolicy } from "@halonicjs/
 /** The agents' files in the workspace, as the host reads them. */
 export interface AgentFiles {
   /**
-   * The agent's file exactly as it is on disk now, the bytes `halonic run`'s
-   * sandbox check hashes too, so both see the same choice.
+   * The agent's file exactly as the version the run uses has it, the bytes
+   * `halonic run`'s sandbox check hashes too, so both see the same choice.
+   * A host that runs from the files on disk reads them; a host whose runs
+   * start from other versions reads the run's own, never today's.
+   * The routines path re-encodes the text as UTF-8, so a file with a BOM or bytes
+   * that aren't UTF-8 hashes differently there and is fenced (it fails closed).
    *
-   * @throws when the hub has no agent with this id
+   * @param run - the run the agent works in and the version it read
+   * @throws when the hub has no agent with this id in that version, or the version can't be read
    */
-  bytesOf(hubId: string, agentId: string): Promise<Uint8Array>;
+  bytesOf(
+    hubId: string,
+    agentId: string,
+    run: Pick<HarnessAgent, "runId" | "version">,
+  ): Promise<Uint8Array>;
 }
 
 /**
@@ -43,7 +52,7 @@ export class FilePlacementPolicy implements PlacementPolicy {
 
   /** @throws what {@link AgentFiles.bytesOf} throws: the harness doesn't start */
   async where(agent: HarnessAgent): Promise<PlacementAnswer> {
-    const file = await this.#files.bytesOf(agent.hubId, agent.agentId);
+    const file = await this.#files.bytesOf(agent.hubId, agent.agentId, agent);
     const answer = await this.#reader.where({
       location: this.#location,
       agent: agent.agentId,

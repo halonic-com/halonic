@@ -23,6 +23,7 @@ const call: HarnessCall = {
   runId: "run_1",
   hubId: "acme",
   agent: writerAgent("claude-code"),
+  version: null,
   filesFolder: null,
 };
 

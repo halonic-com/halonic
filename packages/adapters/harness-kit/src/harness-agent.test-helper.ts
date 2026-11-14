@@ -31,6 +31,7 @@ export function writerAgent(filesFolder: string | null, file: Agent = writerFile
     agentId: "writer",
     harness: "claude-code",
     file,
+    version: null,
     filesFolder,
   };
 }
