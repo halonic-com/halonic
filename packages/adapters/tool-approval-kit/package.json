@@ -2,7 +2,7 @@
   "name": "@halonicjs/adapter-tool-approval-kit",
   "private": true,
   "type": "module",
-  "description": "Tool Approval Kit.",
+  "description": "The tool-approval file format that the file-based approval stores share: text in, text out, no file access.",
   "exports": {
     ".": "./src/index.ts"
   },

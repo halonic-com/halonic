@@ -25,6 +25,7 @@ verifies("fs-node.tool-approval-files", () => {
         value: waiting,
       });
     });
+
     it("does not believe damaged text, or a file a newer Halonic wrote", () => {
       const approval = toolApproval();
       const text = formatApproval(approval);
