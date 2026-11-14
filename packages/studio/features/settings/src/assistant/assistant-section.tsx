@@ -1,9 +1,21 @@
 import type { HostSettings } from "@halonicjs/app";
 import type { HostSettingValue } from "@halonicjs/ports";
-import { Field, Select, Switch, ViewOnlyLine } from "@halonicjs/studio-kit";
-import type { SettingsPlace, SettingsSectionProps } from "@halonicjs/studio-shell";
-import { useState } from "react";
-import { HostSettingsService } from "../api.ts";
+import {
+  Callout,
+  Field,
+  inlineLinkClasses,
+  Select,
+  Switch,
+  ViewOnlyLine,
+} from "@halonicjs/studio-kit";
+import { type SettingsPlace, type SettingsSectionProps, ShellError } from "@halonicjs/studio-shell";
+import { useState, useSyncExternalStore } from "react";
+import {
+  type AssistantWorkspace,
+  type AssistantWorkspaceFacts,
+  AssistantWorkspaceService,
+  HostSettingsService,
+} from "../api.ts";
 import { checkModel, checkTurnLimit } from "./assistant-checks.ts";
 import { assistantPrefs, turnLimitRange } from "./assistant-prefs.ts";
 import {
@@ -14,6 +26,7 @@ import {
 } from "./assistant-providers.ts";
 import * as text from "./assistant-text.ts";
 import { HowItConnects } from "./how-it-connects.tsx";
+import { KeyLine } from "./key-line.tsx";
 import { SavedTextField } from "./saved-text-field.tsx";
 import { Tuning } from "./tuning.tsx";
 import { type ShownHostSetting, useHostSetting } from "./use-host-setting.ts";
@@ -24,12 +37,14 @@ const providerOptions = assistantProviders.map((provider) => ({
 }));
 
 /** Settings → Assistant as the settings container shows it. */
-export function AssistantSection({ context, place }: SettingsSectionProps) {
+export function AssistantSection({ context, closeSettings, place }: SettingsSectionProps) {
   return (
     <AssistantView
       settings={context.services.get(HostSettingsService)}
       announce={(line) => context.announcer.announce(line)}
       place={place}
+      workspace={workspaceOf(context)}
+      closeSettings={closeSettings}
     />
   );
 }
@@ -41,6 +56,34 @@ export interface AssistantViewProps {
   /** Says a failed save in the dialog: the settings container's live region. */
   readonly announce: (line: string) => void;
   readonly place: SettingsPlace;
+  /** The open workspace, when the app gives one: the key line, the warning and the "sets its own" line need it. */
+  readonly workspace?: AssistantWorkspace | undefined;
+  /** Closes Settings before a link opens a page. */
+  readonly closeSettings?: () => void;
+}
+
+/** The app's workspace for the Assistant, or none when the window gives none. */
+function workspaceOf(context: SettingsSectionProps["context"]): AssistantWorkspace | undefined {
+  try {
+    return context.services.get(AssistantWorkspaceService);
+  } catch (error) {
+    // Only "the feature doesn't list it" means no workspace; anything else is a bug to surface.
+    if (error instanceof ShellError) return undefined;
+    throw error;
+  }
+}
+
+const noWorkspace = () => () => {};
+const noFacts = () => null;
+
+/** The open workspace's facts, drawn again when they change. */
+function useOpenWorkspace(
+  workspace: AssistantWorkspace | undefined,
+): AssistantWorkspaceFacts | null {
+  return useSyncExternalStore(
+    workspace === undefined ? noWorkspace : (listener) => workspace.subscribe(listener),
+    workspace === undefined ? noFacts : () => workspace.current(),
+  );
 }
 
 /**
@@ -52,9 +95,33 @@ export interface AssistantViewProps {
  * @example
  * <AssistantView settings={hostSettings} announce={say} place="app" />
  */
-export function AssistantView({ settings, announce, place }: AssistantViewProps) {
-  if (place === "served") return <AssistantViewOnly settings={settings} />;
-  return <AssistantEditor settings={settings} announce={announce} place={place} />;
+export function AssistantView(props: AssistantViewProps) {
+  if (props.place === "served") return <AssistantViewOnly {...props} />;
+  return <AssistantEditor {...props} />;
+}
+
+/** The line under the warning when the open workspace sets its own model, with its link unless served. */
+function SetsItsOwn({
+  open,
+  link,
+}: {
+  readonly open: AssistantWorkspaceFacts | null;
+  readonly link: (() => void) | null;
+}) {
+  if (open === null || open.sessionModel === null) return null;
+  return (
+    <p className="text-small fg-muted">
+      {text.setsItsOwn(open.name, open.sessionModel)}
+      {link === null ? null : (
+        <>
+          {" "}
+          <button type="button" className={inlineLinkClasses} onClick={link}>
+            {text.WORKSPACE_SETTINGS}
+          </button>
+        </>
+      )}
+    </p>
+  );
 }
 
 /** A tuning setting for {@link Tuning}: an empty value puts the setting back to its default. */
@@ -69,8 +136,20 @@ function tuned<Value extends HostSettingValue>(
   };
 }
 
+function ServedKey(props: {
+  readonly provider: AssistantProvider;
+  readonly secretName: string;
+  readonly workspace: AssistantWorkspace | undefined;
+  readonly open: AssistantWorkspaceFacts | null;
+}) {
+  const { provider, ...rest } = props;
+  if (provider === "not-set-up") return null;
+  return <KeyLine provider={provider} closeSettings={() => {}} served {...rest} />;
+}
+
 /** The label-over-value rows of the section served to another device. */
-function AssistantViewOnly({ settings }: { readonly settings: HostSettings }) {
+function AssistantViewOnly({ settings, workspace }: AssistantViewProps) {
+  const open = useOpenWorkspace(workspace);
   const provider = useHostSetting(settings, assistantPrefs.provider).value;
   const model = useHostSetting(settings, assistantPrefs.model).value;
   const baseUrl = useHostSetting(settings, assistantPrefs.baseUrl).value;
@@ -108,6 +187,7 @@ function AssistantViewOnly({ settings }: { readonly settings: HostSettings }) {
     <div className="mt-5 flex max-w-90 flex-col gap-4">
       <p className="text-body fg-muted">{text.FIRST_LINE.served}</p>
       <ViewOnlyLine>{text.VIEW_ONLY_LINE}</ViewOnlyLine>
+      <SetsItsOwn open={open} link={null} />
       <dl className="flex flex-col gap-3">
         {rows.map(([label, value]) => (
           <div key={label}>
@@ -116,11 +196,19 @@ function AssistantViewOnly({ settings }: { readonly settings: HostSettings }) {
           </div>
         ))}
       </dl>
+      <ServedKey provider={provider} secretName={secretName} workspace={workspace} open={open} />
     </div>
   );
 }
 
-function AssistantEditor({ settings, announce, place }: AssistantViewProps) {
+function AssistantEditor({
+  settings,
+  announce,
+  place,
+  workspace,
+  closeSettings,
+}: AssistantViewProps) {
+  const open = useOpenWorkspace(workspace);
   const provider = useHostSetting(settings, assistantPrefs.provider);
   const model = useHostSetting(settings, assistantPrefs.model);
   const baseUrl = useHostSetting(settings, assistantPrefs.baseUrl);
@@ -204,6 +292,18 @@ function AssistantEditor({ settings, announce, place }: AssistantViewProps) {
   return (
     <div className="mt-5 flex max-w-90 flex-col gap-4">
       <p className="text-body fg-muted">{text.FIRST_LINE[place]}</p>
+      {open?.localOnly && !local.value ? (
+        <Callout tone="warning">{text.localOnlyWarning(open.name)}</Callout>
+      ) : null}
+      {open === null || workspace === undefined ? null : (
+        <SetsItsOwn
+          open={open}
+          link={() => {
+            closeSettings?.();
+            workspace.openSessionAi();
+          }}
+        />
+      )}
       <h4 className="text-body-strong">{text.MODEL_GROUP}</h4>
       <Field
         label={text.PROVIDER}
@@ -220,6 +320,15 @@ function AssistantEditor({ settings, announce, place }: AssistantViewProps) {
         save={(value) => saveTyped("the model", model, value)}
         saveError={failedLine("the model", model.failed)}
       />
+      {chosen === "not-set-up" ? null : (
+        <KeyLine
+          provider={chosen}
+          secretName={secretName.value}
+          workspace={workspace}
+          open={open}
+          closeSettings={closeSettings ?? (() => {})}
+        />
+      )}
       {chosen === "not-set-up" ? null : (
         <HowItConnects
           provider={chosen}

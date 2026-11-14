@@ -5,6 +5,7 @@
 import type { HostSettings } from "@halonicjs/app";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { SandboxCheckFacts, SandboxOutcome } from "./agent-sandbox/sandbox-state.ts";
+import type { AssistantProvider } from "./assistant/assistant-providers.ts";
 import type { DisplaySettings } from "./display-settings.ts";
 
 /**
@@ -62,3 +63,40 @@ export interface AgentSandboxHost {
 /** The agent sandbox the host runs, when the app has one. */
 export const AgentSandboxService: ServiceKey<AgentSandboxHost> =
   serviceKey<AgentSandboxHost>("settings.agent-sandbox");
+
+/** What Settings › Assistant needs to know of the workspace open in the window. */
+export interface AssistantWorkspaceFacts {
+  /** The workspace's name, as its heading says it. */
+  readonly name: string;
+  /** True while the workspace has `privacy.localOnly` on. */
+  readonly localOnly: boolean;
+  /** The model alias the workspace sets for its own assistant chats, or `null` when it sets none. */
+  readonly sessionModel: string | null;
+  /** Whether a provider of this workspace uses the secret name. */
+  usesSecret(secretName: string): boolean;
+}
+
+/**
+ * The open workspace, for the Assistant's key line, its local-only warning and its "sets its own"
+ * line. The app gives it where a window has workspaces. Reads and links only: Settings never saves
+ * a key or changes a workspace (HAL-119: keys are entered on the provider page). The `open…` and
+ * `add…` methods run after Settings has closed (`settings.ai-agent-workspace`).
+ */
+export interface AssistantWorkspace {
+  /** The open workspace, or `null` with none open. The same object until something in it changes. */
+  current(): AssistantWorkspaceFacts | null;
+  /** Calls `listener` when `current()` changes. Returns the function that stops it. */
+  subscribe(listener: () => void): () => void;
+  /** Whether a key is stored under the secret name, as the workspace's secret store knows it. */
+  keyStored(secretName: string): Promise<boolean>;
+  /** Opens the page of the provider that uses the secret name, at its key block. */
+  openProviderPage(secretName: string): void;
+  /** Starts Add provider on the workspace page with the type and the secret name filled in. */
+  addProvider(provider: Exclude<AssistantProvider, "not-set-up">, secretName: string): void;
+  /** Opens the workspace page at Session AI. */
+  openSessionAi(): void;
+}
+
+/** The open workspace, when the window has one to tell the Assistant about. */
+export const AssistantWorkspaceService: ServiceKey<AssistantWorkspace> =
+  serviceKey<AssistantWorkspace>("settings.assistant-workspace");

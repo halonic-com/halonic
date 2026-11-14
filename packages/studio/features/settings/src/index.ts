@@ -1,6 +1,9 @@
 export {
   type AgentSandboxHost,
   AgentSandboxService,
+  type AssistantWorkspace,
+  type AssistantWorkspaceFacts,
+  AssistantWorkspaceService,
   DisplaySettingsService,
   HostSettingsService,
   type SandboxCheckFacts,
