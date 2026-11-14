@@ -80,7 +80,7 @@ verifies("google-setup.connector-problem", () => {
     const container = await open([refused("sign-in", { inProductionTickedAt: signedInAt })]);
     expect(openStepNumber(container)).toBe(7);
     expect(container.textContent).toContain(
-      "Google no longer accepts Halonic's sign-in for x@example.com. This happens when access is removed in your Google account or when the password changes. Nothing was sent.",
+      "Google no longer accepts the sign-in for x@example.com. This happens when access is removed in your Google account or when the password changes. Nothing was sent.",
     );
     expect(buttonNames(container)).toContain("Sign in with Google");
   });
@@ -145,7 +145,7 @@ verifies("google-setup.connector-problem", () => {
   it("has no button on a phone and says to fix it on the computer", async () => {
     const container = await open([refused("sign-in")], "phone");
     expect(container.querySelectorAll("button")).toHaveLength(0);
-    expect(container.textContent).toContain("Google no longer accepts Halonic's sign-in");
+    expect(container.textContent).toContain("Google no longer accepts the sign-in");
     expect(container.textContent).toContain(
       "Fix this on your computer: Workspace settings › Connectors",
     );
