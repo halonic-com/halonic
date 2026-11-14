@@ -141,6 +141,26 @@ verifies("studio.new-workspace", () => {
     expect(trust).not.toHaveBeenCalled();
   });
 
+  it("opens a workspace that is already there untrusted and writes nothing", async () => {
+    const { host, store, trust } = hostOf({
+      probe_workspace_folder: "workspace",
+      open_workspace_folder: "/work/Acme",
+    });
+    expect(await host.create("/work/Acme", "Acme")).toEqual({ kind: "untrusted" });
+    expect(await store.list()).toEqual([]);
+    expect(trust).not.toHaveBeenCalled();
+  });
+
+  it("opens untrusted when the folder became a workspace after the probe", async () => {
+    const { host, store, trust } = hostOf({
+      probe_workspace_folder: "files",
+      open_workspace_folder: "/work/Acme",
+    });
+    await store.write("workspace.yaml", "id: acme\nname: Acme\n");
+    expect(await host.create("/work/Acme", "Acme")).toEqual({ kind: "untrusted" });
+    expect(trust).not.toHaveBeenCalled();
+  });
+
   it("writes nothing when the person says no to opening the folder", async () => {
     const { host, store } = hostOf({
       probe_workspace_folder: "empty",

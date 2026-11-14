@@ -75,11 +75,7 @@ export function newWorkspaceHostOf(parts: NewWorkspaceHostParts): NewWorkspaceHo
       const parent = parentOf(folder, name);
       const there = await probed(shell, parent, name);
       if (there === "empty" || there === "files" || there === "workspace") {
-        const opened = await openedFolder(shell, parent, name);
-        if (opened === null) return { kind: "cancelled" };
-        const added = await createWorkspace(storeOf(opened), { name });
-        if (!added.ok) throw new Error("the name can't be a workspace name");
-        return { kind: "untrusted" };
+        return await addedTo(shell, storeOf, parent, name, there);
       }
       const made = await madeFolder(shell, parent, name);
       const created = await createWorkspace(storeOf(made), { name, ifNotEmpty: "refuse" });
@@ -93,6 +89,28 @@ export function newWorkspaceHostOf(parts: NewWorkspaceHostParts): NewWorkspaceHo
       return await trustOf(parts, made, created.value.skipped.length === 0);
     },
   };
+}
+
+/**
+ * Adds the missing files to a folder that is there, after the shell asks the person; it opens
+ * untrusted, since Halonic didn't write all it holds. A workspace that is there needs nothing added.
+ */
+async function addedTo(
+  shell: TauriFileShell,
+  storeOf: (location: string) => DefinitionStore,
+  parent: string,
+  name: string,
+  there: WorkspaceFolderProbe,
+): Promise<CreatedTrust> {
+  const opened = await openedFolder(shell, parent, name);
+  if (opened === null) return { kind: "cancelled" };
+  if (there === "workspace") return { kind: "untrusted" };
+  const added = await createWorkspace(storeOf(opened), { name });
+  // `already_workspace`: it became one since the probe; it is open and there is nothing to add.
+  if (!added.ok && added.error.kind !== "already_workspace") {
+    throw new Error("the name can't be a workspace name");
+  }
+  return { kind: "untrusted" };
 }
 
 /** Whether `path` is a filesystem root: `/`, `\\`, or a drive root such as `D:\\` or `D:/`. */
