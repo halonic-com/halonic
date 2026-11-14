@@ -78,8 +78,14 @@ function sandbox(check: SandboxCheck): Sandbox {
 }
 
 /** Everything the opener uses, with a runner that answers `answer` and counts its starts and stops. */
-async function setup(options: { check?: SandboxCheck; runnerBuilt?: boolean } = {}) {
-  const { check = passes, runnerBuilt = true } = options;
+async function setup(
+  options: {
+    check?: SandboxCheck;
+    runnerBuilt?: boolean;
+    beforeTrustCheck?: () => Promise<void>;
+  } = {},
+) {
+  const { check = passes, runnerBuilt = true, beforeTrustCheck } = options;
   const trust = cliTrustService(new MemoryTrustStore(), clock);
   const subject = async () => ({
     location: root,
@@ -107,6 +113,7 @@ async function setup(options: { check?: SandboxCheck; runnerBuilt?: boolean } = 
     transport: { fetch: async () => new Response("{}") } as never,
     trustCheck: async (): Promise<TrustCheck> => {
       seen.checks += 1;
+      await beforeTrustCheck?.();
       return await trust.check(await subject());
     },
     runnerMachine: async () => ({
@@ -166,6 +173,19 @@ verifies("cli.open-local-integration", () => {
       await put({ "integrations/notes/backend/index.js": "export default { changed: true };\n" });
       await expect(client().callTool("read-note", {})).rejects.toThrow(
         /Connector "notes" didn't start: .*only once the workspace is trusted/,
+      );
+      expect(seen.starts).toBe(0);
+    });
+
+    it("refuses when the sheet it read is not the trusted one, even if the folder is put back before the start", async () => {
+      const { seen, client } = await setup({
+        beforeTrustCheck: async () => await put({ "integrations/notes/integration.yaml": sheet }),
+      });
+      await put({
+        "integrations/notes/integration.yaml": sheet.replace("api.example.com", "evil.example.com"),
+      });
+      await expect(client().callTool("read-note", {})).rejects.toThrow(
+        /Connector "notes" didn't start: .*changed since the workspace was trusted/,
       );
       expect(seen.starts).toBe(0);
     });

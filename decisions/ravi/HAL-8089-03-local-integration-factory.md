@@ -7,15 +7,17 @@
 
 ## What changes
 
-The sandbox job in `.github/workflows/ci.yml` gains two steps (build the integration runner,
-then `test:fence` for `apps/cli`) and watches `apps/cli/fence/` for changes. Nothing is
-removed or loosened.
+In `.github/workflows/ci.yml`, in the sandbox job (both the Linux and the macOS variant):
+
+- A new step builds the integration runner (`pnpm build` in `packages/adapters/integration-runner`) in front of the CLI fence tests.
+- The existing step "Harness run through the fence" is renamed "CLI runs through the fence". It still runs `pnpm test:fence` in `apps/cli`; its comment now also names the local integration run.
+- The `sandbox-fence` path filter, which already watches `apps/cli/fence/` and `apps/cli/src/local-harness-host`, also watches `open-local-integration`, `local-integration-machine`, `integration-connector-factory` and `workspace-engine` in `apps/cli/src`.
+
+Nothing is removed or loosened.
 
 ## Why
 
-The end-to-end test starts a local integration in the real runner and the real sandbox. It
-can only run where the sandbox exists, which is that job. The `apps/cli` fence tests were not
-in any CI job before, so this also puts the existing harness fence test in CI.
+Main already runs the `apps/cli` fence tests in that job. The new end-to-end test in them starts a local integration in the real runner and the real sandbox, so the runner must be built first, which is the new step. The filter change makes the fence jobs run when the code the end-to-end test covers changes, not only when the harness host or the fence folder does.
 
 ## Covers
 

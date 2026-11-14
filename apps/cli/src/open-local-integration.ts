@@ -21,6 +21,7 @@ import {
 } from "@halonicjs/adapter-integration-runner";
 import {
   type IntegrationFolder,
+  IntegrationNotTrustedError,
   integrationsFolder,
   type RunnerStartGate,
   readIntegrationFolder,
@@ -100,12 +101,12 @@ class LocalIntegrationOpening {
       digest: this.#machine.digest,
       gate: this.#machine.gate,
     });
-    const { sheet } = await this.#read();
+    const { sheet, code } = await this.#read();
     const loaded = await loadLocalIntegration({
       sheet,
       approvedSheet: sheet,
       folder,
-      start: (bridge) => this.#start(starts, folder, bridge),
+      start: (bridge) => this.#start(starts, folder, code, bridge),
       transport: this.#machine.transport,
       secrets: context.secrets,
       tokens: context.tokens,
@@ -130,9 +131,26 @@ class LocalIntegrationOpening {
     return read.value;
   }
 
+  /**
+   * The sheet the loader enforces came from the first read. At every start its
+   * code must be the code the workspace trusted, so a sheet edited before the
+   * read and put back before the start can't set the runner's hosts and secrets.
+   * Anything else is left to `TrustedRunnerStart`, which reads the folder again.
+   */
+  #requireTrustedCode(trust: TrustCheck, readCode: string): void {
+    if (trust.status !== "trusted") return;
+    const trusted = (trust.content.integrations ?? []).find(
+      (integration) => integration.folder === this.#folder,
+    );
+    if (trusted !== undefined && trusted.code !== readCode) {
+      throw new IntegrationNotTrustedError(this.#folder, "code-changed");
+    }
+  }
+
   async #start(
     starts: TrustedRunnerStart,
     folder: string,
+    readCode: string,
     bridge: LocalRunnerBridge,
   ): Promise<RunnerConnection> {
     const { runtime, runnerExists = existsSync, startRunner: begin = startRunner } = this.#machine;
@@ -140,6 +158,7 @@ class LocalIntegrationOpening {
       throw new Error("the integration runner isn't built");
     }
     const trust = await this.#machine.trustCheck(this.#request.context);
+    this.#requireTrustedCode(trust, readCode);
     const runnerMachine = await this.#machine.runnerMachine();
     const gated = await starts.start(
       { trust, folder: this.#folder, settings: bridge.settings },

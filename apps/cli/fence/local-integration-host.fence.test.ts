@@ -216,7 +216,7 @@ describe("a local integration started by a run in the real runner and srt sandbo
       await put({ "integrations/notes/backend/index.js": `${backend}// edited after trust\n` });
 
       // The grant is read from the files as they are now, so the change is refused at the door.
-      await expect(runReport()).rejects.toThrow();
+      await expect(runReport()).rejects.toThrow(/only once the workspace is trusted/);
     },
     runTimeout,
   );
