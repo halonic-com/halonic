@@ -2,6 +2,7 @@
 
 - Approval: follow-ups from the reviews of halonic-com/halonic#2556 (HAL-8089 slice 4), tracked on HAL-8900. Liam approves this note in review of this PR.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0i9Hn6XikYZTGl/TETuXBDkZeS+XJkQfW4Wj275pjiTbFMASHnzXR5KJJj5XcuRkudqGCykwlFiLCcynycqAAA==
 - Task: HAL-8900
 
 ## What changes
