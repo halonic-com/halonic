@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { isRetryable, RemoteHostError } from "./errors.ts";
 import { errorBody, fakeHost, loginResponse, summaryOf } from "./fake-host.test-helper.ts";
 import { createRemoteExecutor } from "./remote-executor.ts";
@@ -22,6 +22,10 @@ function hostWithPassword(password: string) {
 
 verifies("executor-remote.session", () => {
   describe("sign-in", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     it("signs in on a 401, repeats the call with the cookie and keeps the cookie", async () => {
       const host = hostWithPassword("open sesame");
       const executor = createRemoteExecutor({
@@ -137,11 +141,14 @@ verifies("executor-remote.session", () => {
         baseUrl,
         password: "pw",
         fetch: fetcher,
-        loginTimeoutMs: 20,
+        loginTimeoutMs: 30_000,
         reportError: () => {},
       });
 
-      const error = await executor.send("run_1", "approve").catch((thrown: unknown) => thrown);
+      vi.useFakeTimers();
+      const sending = executor.send("run_1", "approve").catch((thrown: unknown) => thrown);
+      await vi.advanceTimersByTimeAsync(30_000);
+      const error = await sending;
 
       expect((error as Error).name).toBe("TimeoutError");
       expect(isRetryable(error)).toBe(true);
