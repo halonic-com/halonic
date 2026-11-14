@@ -43,7 +43,11 @@ interface Seen {
 }
 
 async function show(
-  options: { state?: FolderState; create?: NewWorkspaceHost["create"] } = {},
+  options: {
+    state?: FolderState;
+    create?: NewWorkspaceHost["create"];
+    open?: NewWorkspaceHost["open"];
+  } = {},
 ): Promise<Seen> {
   const seen: Seen = { created: [], opened: [], trust: [] };
   const host: NewWorkspaceHost = {
@@ -52,6 +56,7 @@ async function show(
     folderOf: (parent, name) => `${parent}/${name}`,
     probe: async () => options.state ?? "new",
     create: options.create ?? (async () => ({ kind: "trusted" })),
+    ...(options.open === undefined ? {} : { open: options.open }),
   };
   container = document.createElement("div");
   document.body.append(container);
@@ -121,6 +126,31 @@ verifies("workspace.new-workspace-dialog", () => {
     await click("Open it");
     expect(second.opened).toEqual(["~/Documents/Acme"]);
     expect(seen.created).toEqual([]);
+  });
+
+  it("opens the location the shell answers, and stays open when the person says no", async () => {
+    const yes = await show({ state: "workspace", open: async (folder) => `${folder}!` });
+    await type("Acme");
+    await click("Open it");
+    expect(yes.opened).toEqual(["~/Documents/Acme!"]);
+    act(() => root?.unmount());
+    container?.remove();
+    const no = await show({ state: "workspace", open: async () => undefined });
+    await type("Acme");
+    await click("Open it");
+    expect(no.opened).toEqual([]);
+    expect(button("Open it").disabled).toBe(false);
+  });
+
+  it("stays open and writes nothing when the person says no to Create here", async () => {
+    const seen = await show({
+      state: "not-empty",
+      create: async () => ({ kind: "cancelled" }),
+    });
+    await type("Acme");
+    await click("Create here");
+    expect(seen.created).toEqual([]);
+    expect(button("Create here").disabled).toBe(false);
   });
 
   it("shows why a write failed under the folder and stays open", async () => {

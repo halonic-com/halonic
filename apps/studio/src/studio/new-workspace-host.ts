@@ -1,14 +1,19 @@
-import type { TauriFileShell } from "@halonicjs/adapter-fs-tauri";
-import { TauriDefinitionStore } from "@halonicjs/adapter-fs-tauri";
+import type { TauriFileShell, WorkspaceFolderProbe } from "@halonicjs/adapter-fs-tauri";
+import { TauriDefinitionStore, workspaceFolderCommands } from "@halonicjs/adapter-fs-tauri";
 import type { DefinitionStore } from "@halonicjs/ports";
-import type { CreatedTrust, NewWorkspaceHost } from "@halonicjs/studio-feature-workspace";
+import type {
+  CreatedTrust,
+  FolderState,
+  NewWorkspaceHost,
+} from "@halonicjs/studio-feature-workspace";
 import { createWorkspace } from "@halonicjs/workspace";
 
-/** The shell's commands for a new workspace's folder (`create_workspace_folder` and its two helpers). */
+/** The shell's commands for a new workspace's folder (`create_workspace_folder`, its two helpers, and the probe and open of a folder that is there). */
 const commands = {
   documents: "documents_folder",
   pickParent: "pick_parent_folder",
   create: "create_workspace_folder",
+  ...workspaceFolderCommands,
 } as const;
 
 /** What {@link newWorkspaceHostOf} needs of the desktop app. */
@@ -33,9 +38,10 @@ export interface NewWorkspaceHostParts {
  * wrote whole is trusted at once; if any file was skipped, or the record can't be saved, it opens
  * untrusted and the dialog says which.
  *
- * The shell never adopts a folder that exists, so a folder that is there can't be created in or
- * opened from this dialog: {@link NewWorkspaceHost.probe} says `new`, and `create` is refused as
- * "already there" (see the requirement's Not yet).
+ * A folder that is there is read by name only (`probe_workspace_folder`) and opened only after the
+ * shell itself asks the person to trust it (`open_workspace_folder`, HAL-8859). Creating in one
+ * adds only the missing files and opens it untrusted, since Halonic didn't write all it holds; if
+ * they say no, nothing is written.
  *
  * @example
  * const host = newWorkspaceHostOf({ shell, trust, separator: "/" });
@@ -57,9 +63,20 @@ export function newWorkspaceHostOf(parts: NewWorkspaceHostParts): NewWorkspaceHo
     },
     folderOf: (parent, name) =>
       parent.endsWith(separator) ? `${parent}${name}` : `${parent}${separator}${name}`,
-    probe: async () => "new",
+    probe: async (folder) => {
+      const { parent, name } = splitFolder(folder, separator);
+      return stateOf(await probed(shell, parent, name));
+    },
+    open: async (folder) => {
+      const { parent, name } = splitFolder(folder, separator);
+      return (await openedFolder(shell, parent, name)) ?? undefined;
+    },
     create: async (folder, name) => {
       const parent = parentOf(folder, name);
+      const there = await probed(shell, parent, name);
+      if (there === "empty" || there === "files" || there === "workspace") {
+        return await addedTo(shell, storeOf, parent, name, there);
+      }
       const made = await madeFolder(shell, parent, name);
       const created = await createWorkspace(storeOf(made), { name, ifNotEmpty: "refuse" });
       if (!created.ok) {
@@ -74,6 +91,28 @@ export function newWorkspaceHostOf(parts: NewWorkspaceHostParts): NewWorkspaceHo
   };
 }
 
+/**
+ * Adds the missing files to a folder that is there, after the shell asks the person; it opens
+ * untrusted, since Halonic didn't write all it holds. A workspace that is there needs nothing added.
+ */
+async function addedTo(
+  shell: TauriFileShell,
+  storeOf: (location: string) => DefinitionStore,
+  parent: string,
+  name: string,
+  there: WorkspaceFolderProbe,
+): Promise<CreatedTrust> {
+  const opened = await openedFolder(shell, parent, name);
+  if (opened === null) return { kind: "cancelled" };
+  if (there === "workspace") return { kind: "untrusted" };
+  const added = await createWorkspace(storeOf(opened), { name });
+  // `already_workspace`: it became one since the probe; it is open and there is nothing to add.
+  if (!added.ok && added.error.kind !== "already_workspace") {
+    throw new Error("the name can't be a workspace name");
+  }
+  return { kind: "untrusted" };
+}
+
 /** Whether `path` is a filesystem root: `/`, `\\`, or a drive root such as `D:\\` or `D:/`. */
 function isRoot(path: string): boolean {
   return /^([\\/]|[A-Za-z]:[\\/])$/.test(path);
@@ -86,6 +125,47 @@ function isRoot(path: string): boolean {
 function parentOf(folder: string, name: string): string {
   const head = folder.endsWith(name) ? folder.slice(0, folder.length - name.length) : folder;
   return head.length > 1 && !isRoot(head) ? head.slice(0, -1) : head;
+}
+
+/** What the dialog shows for what the probe found: an empty folder is made like a new one. */
+function stateOf(found: WorkspaceFolderProbe): FolderState {
+  if (found === "files") return "not-empty";
+  return found === "workspace" ? "workspace" : "new";
+}
+
+/** `<parent>` and `<name>` of a folder the host's `folderOf` made: the name follows the last separator. */
+function splitFolder(folder: string, separator: string): { parent: string; name: string } {
+  const name = folder.slice(folder.lastIndexOf(separator) + 1);
+  return { parent: parentOf(folder, name), name };
+}
+
+/** What the shell found at `<parent>/<name>`; a refusal becomes the reason the dialog shows. */
+async function probed(
+  shell: TauriFileShell,
+  parent: string,
+  name: string,
+): Promise<WorkspaceFolderProbe> {
+  try {
+    return (await shell.invoke(commands.probe, { parent, name })) as WorkspaceFolderProbe;
+  } catch (reason) {
+    throw new Error(reasonOf(reason));
+  }
+}
+
+/** Opens the folder after the shell asks the person; `null` when they say no. */
+async function openedFolder(
+  shell: TauriFileShell,
+  parent: string,
+  name: string,
+): Promise<string | null> {
+  try {
+    const opened = await shell.invoke(commands.open, { parent, name });
+    if (opened === null) return null;
+    if (typeof opened !== "string") throw new Error("the desktop shell gave no answer");
+    return opened;
+  } catch (reason) {
+    throw new Error(reasonOf(reason));
+  }
 }
 
 /** Makes the folder through the shell; a refusal becomes the reason the dialog shows. */
@@ -113,6 +193,10 @@ export function reasonOf(reason: unknown): string {
       return "Halonic keeps its own files there";
     case "folder_missing":
       return "the folder isn't there any more";
+    case "folder_changed":
+      return "the folder changed while you were asked";
+    case "busy":
+      return "another question is waiting for your answer";
     case "name_invalid":
       return why === "empty" ? "the name is empty" : "that isn't a name a folder can have";
     default:

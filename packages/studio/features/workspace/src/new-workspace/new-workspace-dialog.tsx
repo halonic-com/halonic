@@ -27,7 +27,9 @@ export type CreatedTrust =
   /** It skipped a file that was there, so the workspace opens untrusted (HAL-65 decision 1). */
   | { readonly kind: "untrusted" }
   /** The files were written but the record wasn't; it opens untrusted. */
-  | { readonly kind: "not-saved"; readonly reason: string };
+  | { readonly kind: "not-saved"; readonly reason: string }
+  /** The person said no when the shell asked to open a folder that was there; nothing was written. */
+  | { readonly kind: "cancelled" };
 
 /** What the app does for the dialog: the folders, `createWorkspace` and the trust record. */
 export interface NewWorkspaceHost {
@@ -39,6 +41,11 @@ export interface NewWorkspaceHost {
   folderOf(parent: string, name: string): string;
   /** Whether the folder is new, holds files or is a workspace already. */
   probe(folder: string): Promise<FolderState>;
+  /**
+   * **Open it**: the shell asks the person to confirm, then opens the folder; its location, or
+   * `undefined` when they say no. Without it the folder is opened as it is.
+   */
+  open?(folder: string): Promise<string | undefined>;
   /** Lays the workspace out (`createWorkspace`) and saves its trust record. Rejects with why it can't write. */
   create(folder: string, name: string): Promise<CreatedTrust>;
 }
@@ -109,9 +116,24 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
     };
   }, [host, folder, trimmed]);
 
+  async function openIt(target: string) {
+    setWriteError(undefined);
+    setBusy(true);
+    try {
+      const location = host.open === undefined ? target : await host.open(target);
+      if (location !== undefined) {
+        onOpen(location);
+        return;
+      }
+    } catch (error) {
+      setWriteError(cantWriteLine(error instanceof Error ? error.message : String(error)));
+    }
+    setBusy(false);
+  }
+
   async function confirm() {
     if (state === "workspace" && folder !== undefined) {
-      onOpen(folder);
+      await openIt(folder);
       return;
     }
     if (trimmed === "" || folder === undefined) {
@@ -122,7 +144,12 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
     setWriteError(undefined);
     setBusy(true);
     try {
-      onCreated(folder, trimmed, await host.create(folder, trimmed));
+      const made = await host.create(folder, trimmed);
+      if (made.kind === "cancelled") {
+        setBusy(false);
+        return;
+      }
+      onCreated(folder, trimmed, made);
     } catch (error) {
       setWriteError(cantWriteLine(error instanceof Error ? error.message : String(error)));
       setBusy(false);
