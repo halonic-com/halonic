@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-6704 (deploy engine PR 5), plan [HAL-6704](/HAL/issues/HAL-6704#document-plan); free-plan decision HAL-6804
+- Source: HAL-6704 (deploy engine PR 5); free-plan decision HAL-6804
 
 The Worker's `fetch()` shall answer `POST /self-test` only when `env.HALONIC_SELFTEST_TOKEN` is set to a non-empty string and the request carries `Authorization: Bearer <that value>`, compared in constant time. Without the variable the path shall answer 404 as any unknown path does; with the variable and a missing or wrong token it shall answer 401 with a code and a short message. A `GET` on the path shall answer 405 with `Allow: POST`.
 
@@ -15,7 +15,7 @@ An authorized call shall run these checks and answer 200 with `{"ok": <boolean>,
 
 The answer shall carry only the check names and booleans: no error message, no value of a secret or of the token, no name of anything bound to the Worker.
 
-Rationale: `halonic deploy` runs these checks against a version that is not live and switches traffic only if they pass. The route must be useless to anyone but the deployer, who sets the token for that upload.
+Rationale: `halonic deploy` runs these checks against a version that is not live and switches traffic only if they pass. The version that passed is the one that goes live, so the route and its token stay in production. The route stays closed because the token is random, made for that one upload, and kept by nobody after the checks ran; the route is useless to anyone but the deployer during that window and to nobody after it.
 
 ## Examples
 

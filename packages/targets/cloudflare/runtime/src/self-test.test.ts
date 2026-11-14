@@ -88,7 +88,7 @@ verifies("runtime.self-test", () => {
       const { passwords, runs } = hasher();
       const response = await answerSelfTest(
         new Request("https://cloud.example/self-test", { method: "POST", headers: authorized }),
-        bindings(),
+        bindings() as never,
         passwords,
       );
       expect(response?.status).toBe(200);
@@ -151,7 +151,7 @@ verifies("runtime.self-test", () => {
       const { passwords } = hasher(false);
       const response = await answerSelfTest(
         new Request("https://cloud.example/self-test", { method: "POST", headers: authorized }),
-        bindings(),
+        bindings() as never,
         passwords,
       );
       expect(await response?.json()).toMatchObject({
