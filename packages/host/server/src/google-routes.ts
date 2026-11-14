@@ -7,6 +7,7 @@ import {
 } from "@halonicjs/google-setup";
 import type { GoogleCheckOutcome, GoogleSetupPorts, RequestContext } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
+import { createGoogleSignInRoutes } from "./google-sign-in-routes.ts";
 import { checkSecretRequest, refuseOtherSite } from "./secret-request.ts";
 
 /** Every Google setup route starts with this path. */
@@ -34,6 +35,11 @@ export interface GoogleRoutes {
    * sign-in.
    */
   handle(request: Request, body: Uint8Array, context: RequestContext): Promise<Response>;
+  /**
+   * Answers Google's redirect to `googleCallbackPath`. The caller has checked
+   * the host and the body size but not the sign-in: the `state` is the proof.
+   */
+  callback(request: Request): Promise<Response>;
 }
 
 /** The ports the Google routes work with. */
@@ -41,6 +47,7 @@ type GoogleRoutePorts = { readonly google: GoogleSetupPorts };
 
 export function createGoogleRoutes({ google }: GoogleRoutePorts): GoogleRoutes {
   const { setups, clientSecrets, source, tokens, actions } = google;
+  const signInRoutes = createGoogleSignInRoutes({ google });
 
   /** The record, or `null` when there is none or the ref isn't one. A damaged record is an error for the caller. */
   async function readSetup(accountRef: string): Promise<SetupRecord | null> {
@@ -322,7 +329,21 @@ export function createGoogleRoutes({ google }: GoogleRoutePorts): GoogleRoutes {
     });
   }
 
+  /** `POST /api/google/setups/<ref>/sign-in`: starts the sign-in, see {@link GoogleSignInRoutes.start}. */
+  async function startSignIn(request: Request, accountRef: string): Promise<Response> {
+    const refusal = refuseOtherSite(request);
+    if (refusal !== null) {
+      return errorResponse(refusal);
+    }
+    const record = await readSetup(accountRef);
+    if (record === null) {
+      return errorResponse(serverErrors.googleSetupNotFound);
+    }
+    return signInRoutes.start(request, accountRef, record);
+  }
+
   return {
+    callback: (request) => signInRoutes.callback(request),
     async handle(request, body, context) {
       const { pathname } = new URL(request.url);
       if (!pathname.startsWith(setupsPrefix)) {
@@ -343,6 +364,8 @@ export function createGoogleRoutes({ google }: GoogleRoutePorts): GoogleRoutes {
           return discardStagedSecret(request, accountRef);
         case "POST /check":
           return checkAgain(request, accountRef);
+        case "POST /sign-in":
+          return startSignIn(request, accountRef);
         case "POST /disconnect":
           return disconnect(request, accountRef);
         default:

@@ -166,6 +166,12 @@ export const serverErrors = {
     code: "not_implemented",
     message: "Agent runs are not available yet in this version of Halonic.",
   },
+  signInNeedsThisComputer: {
+    status: 409,
+    code: "sign_in_needs_this_computer",
+    message:
+      "Google sends the sign-in back to the computer that runs Halonic. Finish it there, or run halonic google sign-in on it.",
+  },
   notFound: { status: 404, code: "not_found", message: "There is nothing at this address." },
   internal: {
     status: 500,

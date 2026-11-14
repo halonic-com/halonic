@@ -219,6 +219,55 @@ export interface GoogleCheckRequest {
   readonly refreshRefused: SetupValues["refreshRefused"];
 }
 
+/** What a sign-in starts from. Nothing here is a secret. */
+export interface GoogleSignInStart {
+  readonly accountRef: string;
+  readonly clientId: string;
+  readonly clientRef: string;
+  /** The server's own port and the callback path Google sends the browser back to. */
+  readonly redirect: { readonly port: number; readonly path: string };
+  /** The connector's address, the login hint. Personal data: never logged. */
+  readonly account: string;
+  readonly services: readonly SetupService[];
+  readonly projectId?: string;
+}
+
+/**
+ * How a sign-in ended. No kind holds a code, a token or a secret. `wrongAccount`
+ * holds the address Google confirmed, which is personal data: it goes only to
+ * the open setup item, never to a log or a page.
+ */
+export type GoogleSignInOutcome =
+  | {
+      readonly kind: "signedIn";
+      readonly accountRef: string;
+      readonly services: readonly ServiceResult[];
+    }
+  | { readonly kind: "wrongAccount"; readonly accountRef: string; readonly signedInAs: string }
+  | {
+      readonly kind:
+        | "cancelled"
+        | "adminBlocked"
+        | "outsideOrganisation"
+        | "googleError"
+        | "incompleteCallback"
+        | "wrongClientSecret"
+        | "codeRefused"
+        | "noRefreshToken"
+        | "noClientSecret"
+        | "unreachable"
+        | "idTokenRefused"
+        | "unexpectedAnswer";
+      readonly accountRef: string;
+    }
+  | { readonly kind: "linkNoLongerValid" };
+
+/** Where the open setup item hears how a sign-in ended: the desktop app pushes it, a served page reads it. */
+export interface GoogleSignInEvents {
+  /** Hands over an outcome. It must not throw. */
+  publish(outcome: GoogleSignInOutcome): void;
+}
+
 /**
  * The calls to Google that the routes make. A host package may not use an
  * adapter, so the target passes in the sign-in package's functions, with the
@@ -231,6 +280,10 @@ export interface GoogleAccountActions {
     readonly clientId: string;
     readonly clientRef: string;
   }): Promise<StagedSecretOutcome>;
+  /** Makes the account's pending sign-in and gives the address to open in the browser. It holds no secret, and no verifier. */
+  startSignIn(input: GoogleSignInStart): Promise<string>;
+  /** Finishes a sign-in from the query parameters Google sent back to the callback. */
+  finishSignIn(query: { get(name: string): string | null }): Promise<GoogleSignInOutcome>;
   /** Refreshes the token and checks each ticked service. */
   checkAgain(input: GoogleCheckRequest): Promise<GoogleCheckOutcome>;
   /** Asks Google to revoke the account's refresh token and removes it from the token store, whether Google answers or not. */
@@ -256,6 +309,8 @@ export interface GoogleSetupPorts {
   /** What talks to Google, wired by the target from the sign-in package. */
   readonly actions: GoogleAccountActions;
   readonly source: GoogleSetupSource;
+  /** Where a finished sign-in is announced to the open setup item. */
+  readonly signInEvents: GoogleSignInEvents;
 }
 
 /**
