@@ -22,6 +22,7 @@ Device-wide settings such as the theme live outside any scope.
 | `HostSettings` | the settings kept where Halonic runs (assistant, sandbox default): each with a check and a fallback, saved one at a time, put back to the fallback with `reset` (which removes the saved value), changes made elsewhere reported by key, also those made during `load` | `app.host-settings` |
 | `UndoHistory` | one workspace-wide undo, 200 steps, typing in one file is one step | `app.workspace-undo` |
 | `openWorkspace` | a scope with the files service and `workspace.save`, `undo`, `redo` | `app.workspace-save` |
+| `SecretService` | sets, removes and lists secrets for `halonic secret`: refuses `token-key` and `halonic_token_*`, keeps `serve-password` only as a hash and only when typed twice (at most 1024 characters), reasons never repeat a value | `app.secret-service` |
 | `RoutineScheduler` | starts due routine runs on each `Scheduler` tick, idempotently, with catch-up | `app.routine-scheduler` |
 | `RoutineOverlap` | what a routine does with a due time while its run is going: skip, queue or allow | `app.routine-overlap` |
 | `QueuedTimes` | a routine's queued due times (count, first, last), read with `RoutineScheduler.queuedTimes()` without a tick | `app.scheduler-reads-queue` |
