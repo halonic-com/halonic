@@ -3,6 +3,7 @@
 - Task: HAL-9381, from Sofia's design check (B32, B37)
 - Approval: Liam, in review of HAL-9381 (his signature is added there)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:sC+bkpJtRvisYWcfupW6wT65QMkHUCPxPu7wsBt3HdVtF+/iwAZTdjg0UoYnubYP37BBikhuFfyogE8jyO4aBw==
 
 ## What changes
 
