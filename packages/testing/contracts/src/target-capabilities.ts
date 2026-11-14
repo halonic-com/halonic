@@ -65,7 +65,7 @@ export function wiredRefusedPorts(wiredPorts: object): string[] {
  */
 export function targetCapabilityRefusals(
   targetName: string,
-  harness: TargetCapabilityHarness,
+  make: MakeTargetCapabilityHarness,
 ): void {
   verifies("contracts.target-capabilities", () => {
     describe(`Target capability refusals: ${targetName}`, () => {
