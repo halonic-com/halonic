@@ -14,6 +14,8 @@ use crate::refusal::TrustRefusal;
 
 mod new_workspace;
 
+pub use new_workspace::FolderProbe;
+
 /// The largest record a grant saves, as JSON text. A real record is a few
 /// hundred bytes; the limit keeps a broken page from filling the profile.
 const MAX_RECORD_BYTES: usize = 1024 * 1024;

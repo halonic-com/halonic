@@ -40,6 +40,28 @@ export const trustCommands = {
   revoke: "trust_revoke",
 } as const;
 
+/**
+ * The shell's commands for a folder `<parent>/<name>` that may already exist, for the New workspace
+ * dialog (HAL-8859). `parent` and `name` are checked as `create_workspace_folder` checks them.
+ */
+export const workspaceFolderCommands = {
+  /**
+   * `{ parent, name }` → a {@link WorkspaceFolderProbe}. Reads names only, never a file's contents.
+   * A link or a file at the path is refused as `exists`.
+   */
+  probe: "probe_workspace_folder",
+  /**
+   * `{ parent, name }` → the folder's location, or `null` when the person says no. The shell opens
+   * the folder as a picked folder only after it asks them the trust question itself. Refused as
+   * `folder_missing` when it isn't there, `busy` while another dialog shows and `folder_changed`
+   * when it was swapped while the question showed. No trust record is written.
+   */
+  open: "open_workspace_folder",
+} as const;
+
+/** What `probe_workspace_folder` found: nothing there, an empty folder, other files, or a `workspace.yaml`. */
+export type WorkspaceFolderProbe = "new" | "empty" | "files" | "workspace";
+
 /** Why the shell refused a trust call: the `kind` of its error, which names no secret. */
 export const trustRefusalKinds = [
   /** The record exists but can't be read; `location` names it when the shell can tell. */
@@ -62,7 +84,7 @@ export const trustRefusalKinds = [
   /** `reopen_folder`: nothing is at the picked folder's path any more. */
   "folder_missing",
   /**
-   * `reopen_folder`: the picked folder's path now leads to another folder, through a link swapped
+   * `reopen_folder`, `open_workspace_folder`: the folder's path now leads to another folder, through a link swapped
    * in, or the folder was deleted and made again.
    */
   "folder_changed",
@@ -70,9 +92,9 @@ export const trustRefusalKinds = [
   "name_invalid",
   /** `create_workspace_folder`: the parent isn't Documents or a folder the person chose. */
   "parent_not_chosen",
-  /** `create_workspace_folder`: the new folder would be the shell's own profile, or inside it. */
+  /** `create_workspace_folder` and the commands of {@link workspaceFolderCommands}: the new folder would be the shell's own profile, or inside it. */
   "parent_private",
-  /** `create_workspace_folder`: a folder of that name is already in the parent; it is never adopted. */
+  /** `create_workspace_folder`: a folder of that name is already in the parent; it is never adopted. The probe and open commands send it for a link or a file at the path. */
   "exists",
 ] as const;
 

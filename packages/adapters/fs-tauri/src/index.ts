@@ -62,5 +62,7 @@ export {
   type TrustRefusalKind,
   trustCommands,
   trustRefusalKinds,
+  type WorkspaceFolderProbe,
+  workspaceFolderCommands,
 } from "./shell.ts";
 export { TauriTrustStore } from "./trust-store.ts";

@@ -105,6 +105,8 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "documents_folder",
         "pick_parent_folder",
         "create_workspace_folder",
+        "probe_workspace_folder",
+        "open_workspace_folder",
         "trust_get",
         "trust_list",
         "trust_folders_found",
