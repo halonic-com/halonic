@@ -33,3 +33,5 @@ export const PRICE_HINT = "Used for the estimated spend and the budget.";
 export const CACHE_PRICES_NOTE =
   "Emptying both prices also removes this alias's cache prices. Undo (Ctrl Z) brings them back.";
 export const ALIAS_GONE_LINE = "This alias is no longer in models.yaml.";
+export const ZERO_PRICE_WARNING =
+  "A price of 0 means these calls look free in your estimated spend.";
