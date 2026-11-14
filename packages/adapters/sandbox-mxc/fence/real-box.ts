@@ -39,7 +39,9 @@ export async function realMxc(): Promise<RealMxc> {
     sandbox: new MxcSandbox(systemMachine(mxcSdkLoader(process.platform, sdk.importSdk)), new BoxFolders(dataFolder, process.pid)),
     dataFolder,
     base,
-    remove: () => rm(folder, { recursive: true, force: true }),
+    // The SDK's native module stays loaded in this process, and Windows won't
+    // delete a loaded DLL, so the leftover is the runner's to clean, not a failure.
+    remove: () => rm(folder, { recursive: true, force: true }).catch(() => undefined),
   };
 }
 
