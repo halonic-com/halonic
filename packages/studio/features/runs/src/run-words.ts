@@ -144,6 +144,11 @@ export const emptyListWords = {
   showingLast: "The engine isn't answering. Showing what it said last.",
 };
 
+/** What the Runs list and the run page say on a phone in 0.1.0 (HAL-9390): the phone only approves for now. */
+export const phoneWords = {
+  onComputer: "Runs open on your computer for now.",
+};
+
 /** The Runs page's own words (checklist part 1, 1.2, 1.3 and R-D1). */
 export const pageWords = {
   title: "Runs",
