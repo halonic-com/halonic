@@ -8,7 +8,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   type AttackFolders,
   attackFolders,
-  fenceTestBase,
   type NodeLayer,
   openAttack,
   runAttack,
@@ -49,7 +48,8 @@ const windowsFolder = process.env["SystemRoot"] ?? "";
 
 beforeAll(async () => {
   mxc = await realMxc();
-  base = await fenceTestBase("ra-");
+  // Under the user's profile, as the integration folders are in production, not in `%TEMP%`.
+  base = mxc.base;
   // A home folder of its own, so the test never touches the real one.
   homeFolder = join(base, "home");
   homeKey = join(homeFolder, ".ssh", "id_ed25519");
