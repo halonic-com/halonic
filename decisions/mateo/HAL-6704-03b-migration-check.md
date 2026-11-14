@@ -3,7 +3,6 @@
 - Task: HAL-6704 (deploy engine, part 3b; rule decided in HAL-6804)
 - Approval: the task asks for this change; Liam approves this note in review and signs it
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:whARc1aJcdhnjE/+MOr2LP1ogK/QiGlu36OH4Q5EzOfAs6fDG9U16crm8Ridh5RTFyn9rGlCc1egWWuBLUq6CQ==
 
 ## What changes
 
