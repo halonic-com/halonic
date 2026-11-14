@@ -321,6 +321,16 @@ verifies("app.sandbox-choice", () => {
     expect(trustChecks()).toBe(1);
   });
 
+  it("uses the settings it is given, so a pick made while MXC was off takes effect", async () => {
+    const { choice } = machine({ needsDownload: true });
+    await choice.start({ mxc: "off" });
+    expect(await choice.downloadMxc({ mxc: "on" })).toMatchObject({
+      active: "mxc",
+      mxc: { state: "in-use" },
+    });
+    expect((await choice.sessionNotFenced()).mxc).toMatchObject({ state: "in-use" });
+  });
+
   it("stays setup-needed with the sentence when the download fails, offline or not, and can try again", async () => {
     const { choice, downloadTries } = machine({
       needsDownload: true,

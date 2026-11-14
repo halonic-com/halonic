@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
@@ -139,11 +139,18 @@ verifies("sandbox-mxc.sdk-install", () => {
     expect(result).toMatchObject({ installed: false, reason: "failed" });
   });
 
-  it("removes the folders a cut-short install left behind", async () => {
-    await mkdir(join(root, "mxc-sdk-abc.installing-0123"), { recursive: true });
+  it("removes the folders a cut-short install left behind, but not a young one another process may be writing", async () => {
+    const old = join(root, "mxc-sdk-abc.installing-0123");
+    const young = join(root, "mxc-sdk-abc.installing-4567");
+    await mkdir(old, { recursive: true });
+    await mkdir(young, { recursive: true });
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    await utimes(old, twoHoursAgo, twoHoursAgo);
     const registry = fakeRegistry(answers());
     await installMxcSdk({ root, pins, fetchBytes: registry.fetchBytes });
-    expect((await readdir(root)).filter((name) => name.includes(".installing-"))).toEqual([]);
+    expect((await readdir(root)).filter((name) => name.includes(".installing-"))).toEqual([
+      "mxc-sdk-abc.installing-4567",
+    ]);
   });
 
   it("names a missing pinned file in the problem, apart from no network", async () => {
