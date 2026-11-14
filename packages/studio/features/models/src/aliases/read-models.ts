@@ -17,10 +17,12 @@ export type ModelsState =
       readonly localProviders: ReadonlySet<string>;
     };
 
-/** The workspace's aliases; no `models.yaml` is no aliases, a file that doesn't parse is unreadable. */
+/** The workspace's aliases and providers; no `models.yaml` is no aliases, a file that doesn't parse is unreadable. */
 export async function readModels(files: ModelsFiles): Promise<ModelsState> {
-  const providers = await readProviders(files);
-  const text = await files.readModels().catch(() => undefined);
+  const [providers, text] = await Promise.all([
+    readProviders(files),
+    files.readModels().catch(() => undefined),
+  ]);
   if (text === undefined) return { status: "unreadable" };
   const models = text === null ? ({ version: 1, aliases: {} } as Models) : parseModels(text);
   if (models === undefined) return { status: "unreadable" };
