@@ -60,9 +60,13 @@ export interface WorkspaceEngineSetup {
   /**
    * The engine's clock and ids; the computer's own by default. `onWokeUp`
    * hears each wake-up once its deliveries have settled, so a test that
-   * moves the clock can wait for them.
+   * moves the clock can wait for them. `harnessParts` and `git` are the Node parts of the
+   * harness host, which a test replaces (`serve`'s harness runs, HAL-9224).
    */
-  readonly engine?: Pick<LocalEngineInput, "clock" | "ids" | "setTimer" | "onWokeUp">;
+  readonly engine?: Pick<
+    LocalEngineInput,
+    "clock" | "ids" | "setTimer" | "onWokeUp" | "harnessParts" | "git"
+  >;
   /** The sandbox and the "On this computer" choices; this computer's, in `profile`, by default. */
   readonly sandboxGate?: () => SandboxGateHost;
   /** How long a stopped command waits for the engine to close; {@link stoppedCloseLimitMs} by default. */
