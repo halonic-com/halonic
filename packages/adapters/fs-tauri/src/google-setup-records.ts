@@ -19,7 +19,8 @@ export class TauriGoogleSetupRecords implements RecordStore {
 
   /**
    * @param shell - the shell's IPC, usually `window.__TAURI_INTERNALS__`
-   * @param collection - the collection the setup records are in, `setupCollection` in `@halonicjs/google-setup`
+   * @param collection - the collection the setup records are in, `setupCollection` in `@halonicjs/google-setup`;
+   *   the shell always answers `_google_setups`, whatever is passed, so any other name reads as no records
    */
   constructor(shell: TauriShell, collection: string) {
     this.#shell = shell;

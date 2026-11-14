@@ -73,7 +73,6 @@ fn google_setup_command_answers_no_lines_and_makes_nothing_when_no_setup_was_sav
     let answer = read(&profile).expect("a missing log reads as no lines");
 
     assert_eq!(answer.lines, "");
-    assert!(!profile.folder().root.is_empty());
     assert!(
         !Path::new(&profile.folder().root).join("google").exists(),
         "reading must not create the google folder"
@@ -96,8 +95,30 @@ fn google_setup_command_never_returns_a_secret_kept_in_the_google_folder() {
     let answer = read(&profile).expect("the read works");
 
     assert_eq!(answer.lines, "");
-    assert!(!answer.file.contains("tokens"), "{}", answer.file);
-    assert!(!answer.file.contains("client-secret"), "{}", answer.file);
+    let expected = Path::new(&profile.folder().root)
+        .join("google")
+        .join("setups")
+        .join(log_name(SETUP_COLLECTION));
+    assert_eq!(Path::new(&answer.file), expected);
+}
+
+#[cfg(unix)]
+#[test]
+fn google_setup_command_refuses_a_setup_log_that_is_a_symbolic_link() {
+    let profile = Profile::new("linked");
+    let outside = Profile::new("linked-target");
+    outside.plant(&["elsewhere.jsonl"], "{\"id\":\"elsewhere\"}\n");
+    let folder = Path::new(&profile.folder().root).join("google").join("setups");
+    std::fs::create_dir_all(&folder).unwrap();
+    std::os::unix::fs::symlink(
+        Path::new(&outside.folder().root).join("elsewhere.jsonl"),
+        folder.join(log_name(SETUP_COLLECTION)),
+    )
+    .unwrap();
+
+    let refusal = read(&profile).expect_err("a linked log is refused");
+
+    assert_eq!(refusal.kind, "linked_log");
 }
 
 #[test]

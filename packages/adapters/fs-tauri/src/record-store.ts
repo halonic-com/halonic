@@ -154,6 +154,7 @@ export function recordFailure(reason: unknown): Error {
   );
 }
 
+/** The error for a shell answer that is missing or has the wrong shape. */
 export function noAnswer(): KindedError {
   return new KindedError("unavailable", "The desktop shell gave no answer to the record call.");
 }
