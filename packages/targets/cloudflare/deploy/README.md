@@ -2,7 +2,7 @@
 
 Deploys the Halonic Worker to Cloudflare: provision, migrate, upload, smoke test, switch traffic
 (ADR 5.6, HAL-6704). `deploy()` runs the steps in order; the pieces (client, provision, migrate, lock, upload) are also exported.
-The deviations from ADR 5.6 are in `requirements/deploy.md`.
+The deviations from ADR 5.6 are in `requirements/orchestrate.md`.
 
 - **Layer:** targets
 - **Owner:** mateo
