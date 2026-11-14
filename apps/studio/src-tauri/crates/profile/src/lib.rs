@@ -32,6 +32,9 @@ const SETTINGS_FOLDER_NAME: &str = "settings";
 /// The name of the folder the plugins are kept in, in the profile folder.
 const PLUGINS_FOLDER_NAME: &str = "plugins";
 
+/// The name of the folder in the profile that holds the plugins' records.
+const PLUGIN_RECORDS_FOLDER_NAME: &str = "plugin-records";
+
 /// The systems Halonic keeps a profile on. `Linux` covers every other
 /// Unix-like system too.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -152,6 +155,14 @@ impl ProfileFolder {
     /// commands both use it.
     pub fn plugins_folder(&self) -> String {
         join_path(self.platform, &self.root, &[PLUGINS_FOLDER_NAME])
+    }
+
+    /// The record folder of the plugins, `plugin-records` in the profile
+    /// folder, as `pluginRecordsFolder` in `@halonicjs/profile` names it.
+    /// The CLI's `halonic plugin` commands keep each plugin's install record
+    /// and settings values there.
+    pub fn plugin_records_folder(&self) -> String {
+        join_path(self.platform, &self.root, &[PLUGIN_RECORDS_FOLDER_NAME])
     }
 }
 
