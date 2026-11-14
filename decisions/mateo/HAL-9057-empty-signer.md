@@ -11,3 +11,7 @@
 ## Why
 
 The workflow sets that variable to an empty string for an unsigned run. Cargo's `option_env!` reads an empty string as a publisher with no name, so the helper checked its own copy against "" and refused it with exit 35. The dry run with `unsigned` on failed at "Install it, then check the helper inside". A real unsigned release would have shipped a helper that cannot set up the sandbox. With the variable unset the helper is built as dev builds are, with no check.
+
+## Covers
+
+- apps/studio/src-tauri/windows/build-installer.ps1
