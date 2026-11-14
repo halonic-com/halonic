@@ -10,10 +10,11 @@ import type {
 } from "@halonicjs/ports";
 import { FakeSandboxSession, idleProgram } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { PluginToolSet } from "./plugin-contributions.ts";
 import {
   isLocalToolSet,
+  type LocalToolMxc,
   type LocalToolSet,
   LocalToolUnavailableError,
   localToolConnectorId,
@@ -102,16 +103,26 @@ class TestFactory implements ConnectorFactory {
   }
 }
 
-function setUp(sandbox: TestSandbox | null = new TestSandbox()) {
+/** The profile of session `n` with `sites` as its allowed sites. */
+function profileWithSites(n: number, sites: readonly string[]): SandboxProfile {
+  const profile = profileNumber(n);
+  return { ...profile, network: { ...profile.network, allowedSites: [...sites] } };
+}
+
+function setUp(
+  sandbox: TestSandbox | null = new TestSandbox(),
+  options: { mxc?: LocalToolMxc; sites?: readonly string[] } = {},
+) {
   const factory = new TestFactory();
   let prepared = 0;
   const local = new PluginLocalTools({
     sandbox,
+    ...(options.mxc === undefined ? {} : { mxc: options.mxc }),
     factory,
     context: {} as Omit<ConnectorFactoryContext, "trust" | "sandbox">,
     prepare: async () => {
       prepared += 1;
-      return { config, profile: profileNumber(prepared) };
+      return { config, profile: profileWithSites(prepared, options.sites ?? []) };
     },
   });
   return { local, factory, sandbox };
@@ -228,5 +239,82 @@ verifies("app.plugin-local-tools", () => {
       'was prepared as connector "other"',
     );
     expect(sandbox.sessions).toEqual([]);
+  });
+
+  describe("on MXC", () => {
+    function mxcOf(options: { inUse?: boolean; fences?: boolean } = {}) {
+      const sandbox = new TestSandbox();
+      const mxc: LocalToolMxc = {
+        sandbox,
+        inUse: () => options.inUse ?? true,
+        ...(options.fences === undefined ? {} : { fences: options.fences }),
+      };
+      return { sandbox, mxc };
+    }
+
+    it("runs a local tool that declares no network in MXC, with the fence proof checked as for any sandbox", async () => {
+      const { sandbox: mxcSandbox, mxc } = mxcOf({ fences: true });
+      const { local, sandbox } = setUp(new TestSandbox(), { mxc });
+      expect(await local.connector(lister).callTool("list-files", {})).toBe(
+        "/data/local-tools/files-lister-1",
+      );
+      expect(mxcSandbox.sessions).toHaveLength(1);
+      expect(sandbox?.sessions).toEqual([]);
+    });
+
+    it("refuses a local tool that declares a network, before MXC's open, and starts nothing", async () => {
+      const { sandbox: mxcSandbox, mxc } = mxcOf({ fences: true });
+      const { local, factory } = setUp(new TestSandbox(), { mxc, sites: ["api.example.com"] });
+      const refused = local.connector(lister).callTool("list-files", {});
+      await expect(refused).rejects.toThrow(LocalToolUnavailableError);
+      await expect(refused).rejects.toMatchObject({ state: { kind: "network-needs-srt" } });
+      expect(mxcSandbox.sessions).toEqual([]);
+      expect(factory.contexts).toEqual([]);
+    });
+
+    it("counts a bridge as a network too: no network on MXC means no bridge and no site", async () => {
+      const { sandbox: mxcSandbox, mxc } = mxcOf({ fences: true });
+      const factory = new TestFactory();
+      const local = new PluginLocalTools({
+        sandbox: new TestSandbox(),
+        mxc,
+        factory,
+        context: {} as Omit<ConnectorFactoryContext, "trust" | "sandbox">,
+        prepare: async () => {
+          const profile = profileNumber(1);
+          const bridge = { kind: "loopback", host: "127.0.0.1", port: 41817 } as const;
+          return { config, profile: { ...profile, network: { ...profile.network, bridge } } };
+        },
+      });
+      const refused = local.connector(lister).callTool("list-files", {});
+      await expect(refused).rejects.toMatchObject({ state: { kind: "network-needs-srt" } });
+      expect(mxcSandbox.sessions).toEqual([]);
+      expect(factory.contexts).toEqual([]);
+    });
+
+    it("stays off while MXC doesn't count as a fence, as the switch ships", async () => {
+      const { sandbox: mxcSandbox, mxc } = mxcOf();
+      const { local, sandbox } = setUp(new TestSandbox(), { mxc, sites: ["api.example.com"] });
+      await local.connector(lister).callTool("list-files", {});
+      expect(mxcSandbox.sessions).toEqual([]);
+      expect(sandbox?.sessions).toHaveLength(1);
+    });
+
+    it("leaves the host's sandbox alone while the sandbox choice doesn't have MXC in use", async () => {
+      const { sandbox: mxcSandbox, mxc } = mxcOf({ inUse: false, fences: true });
+      const { local, sandbox } = setUp(new TestSandbox(), { mxc, sites: ["api.example.com"] });
+      await local.connector(lister).callTool("list-files", {});
+      expect(mxcSandbox.sessions).toEqual([]);
+      expect(sandbox?.sessions).toHaveLength(1);
+    });
+
+    it("still refuses a session whose fence is not proven", async () => {
+      const { sandbox: mxcSandbox, mxc } = mxcOf({ fences: true });
+      mxcSandbox.fence = { state: "not-fenced", reason: "a probe got through" };
+      const { local } = setUp(new TestSandbox(), { mxc });
+      await expect(local.connector(lister).callTool("list-files", {})).rejects.toMatchObject({
+        state: { kind: "sandbox-not-fenced", fence: "not-fenced" },
+      });
+    });
   });
 });
