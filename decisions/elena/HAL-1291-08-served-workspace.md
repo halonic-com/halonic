@@ -3,6 +3,7 @@
 - Task: HAL-1291
 - Approval: Liam approved halonic#2769 on HAL-9704 (14 Nov); Liam signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nkVJhpLvl3jsi6GyTxpondJ/zULpMkX0TTeAmInCHVo83WsGPRs3E1dAw1DXimj2mfTolkOZBgXAgLjByCXvCw==
 
 This pull request makes the served Studio show the workspace the computer serves, with the phone picker sheet. It changes the served Studio only: the desktop app's start, and the tests of `studio.open-folder` and `studio.settings` in `apps/studio/src/studio/start-studio.test.ts`, are unchanged.
 
