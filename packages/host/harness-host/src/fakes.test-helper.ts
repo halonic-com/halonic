@@ -69,8 +69,9 @@ export class MemoryDefinitionStore implements DefinitionStore {
     return { status: "written" };
   }
 
-  async remove(path: string): Promise<void> {
+  async remove(path: string): Promise<{ status: "removed" }> {
     this.files.delete(path);
+    return { status: "removed" };
   }
 
   async watch(): Promise<{ close(): Promise<void> }> {
