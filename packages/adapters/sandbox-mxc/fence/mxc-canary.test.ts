@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { BoxFolders } from "../src/box-folders.ts";
 import { MxcCanary } from "../src/canary.ts";
-import { makeFolders, type RealMxc, realMxc, type TestFolders } from "./real-box.ts";
+import { bridgePort, makeFolders, type RealMxc, realMxc, type TestFolders } from "./real-box.ts";
 
 /** The trust-check canary against the real fence: it opens, finds no leak and no too-strict control. */
 describe("MxcCanary with the real fence", () => {
@@ -21,7 +21,7 @@ describe("MxcCanary with the real fence", () => {
   it("finds nothing leaking, and every control working", async () => {
     const canary = new MxcCanary({
       projectFolder: folders.work,
-      bridgePort: 4100,
+      bridgePort,
       boxes: new BoxFolders(join(mxc.dataFolder, "canary"), process.pid),
     });
     const session = await mxc.sandbox.open(await canary.profile());
