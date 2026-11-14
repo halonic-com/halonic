@@ -102,9 +102,31 @@ verifies("settings.ai-agent-key-line", () => {
   it("starts Add provider filled in when no provider uses the name", async () => {
     const { workspace, calls } = fakeWorkspace({ ...acme, usesSecret: () => false }, false);
     const { view } = await setup(workspace);
-    expect(keyLine(view)).toContain("○ No key. Add a provider that uses the secret name to Acme ›");
-    await click(buttonNamed(view, "Add a provider that uses the secret name to Acme ›"));
+    expect(keyLine(view)).toContain(
+      "○ No key. Add a provider that uses anthropic-api-key to Acme ›",
+    );
+    expect(view.querySelector("code")?.textContent).toBe("anthropic-api-key");
+    await click(buttonNamed(view, "Add a provider that uses anthropic-api-key to Acme ›"));
     expect(calls).toEqual(["add anthropic anthropic-api-key"]);
+  });
+
+  it("hides the dots from screen readers and shows no link while the navigation has none", async () => {
+    const { workspace } = fakeWorkspace({ ...acme, usesSecret: () => false }, false);
+    lastNavigate = { openSessionAi: () => {} };
+    const { view } = await setup(workspace);
+    expect(keyLine(view)).toContain(
+      "○ No key. Add a provider that uses anthropic-api-key to Acme.",
+    );
+    expect(view.querySelector("p [aria-hidden=true]")?.textContent).toBe("○");
+    expect(() =>
+      buttonNamed(view, "Add a provider that uses anthropic-api-key to Acme ›"),
+    ).toThrow();
+    unmountAll();
+    const stored = fakeWorkspace(acme, true);
+    lastNavigate = { openSessionAi: () => {} };
+    const { view: setView } = await setup(stored.workspace);
+    expect(keyLine(setView)).toContain("● Key set");
+    expect(keyLine(setView)).not.toContain("provider page");
   });
 
   it("asks to open a workspace with none open, or without a workspace service", async () => {

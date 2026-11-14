@@ -29,6 +29,8 @@ export const NOT_SET_UP_LINE = "Not set up. Assistant chats use each workspace's
 /** The Callout when the computer's host settings can't be read, with its button. */
 export const NOT_LOADED = "Couldn't load the Assistant settings from this computer.";
 export const TRY_AGAIN = "Try again";
+export const notLoadedBecause = (reason: string) =>
+  `Couldn't load the Assistant settings from this computer: ${reason}`;
 
 /** The line under a control whose save failed. */
 export function notSaved(what: string): string {
@@ -61,18 +63,21 @@ export const PROVIDER_DEFAULT = "Provider default";
 
 export const KEY = "Key";
 export const KEY_NOT_NEEDED = "No key needed.";
-export const KEY_SET = "● Key set";
-export const KEY_MISSING = "○ No key";
+export const KEY_SET = "Key set";
+export const KEY_MISSING = "No key";
+/** The dots before the two key words; the words say it, so a screen reader skips them. */
+export const KEY_SET_MARK = "●";
+export const KEY_MISSING_MARK = "○";
 export const KEY_REPLACE = "Replace it on the provider page ›";
 export const KEY_ADD = "Add it on the provider page ›";
-export const KEY_NO_WORKSPACE = "○ No key. Open a workspace to add it.";
+export const KEY_NO_WORKSPACE = "Open a workspace to add it.";
 export const KEY_UNKNOWN = "Couldn't check for a key.";
 export const KEY_SERVED_SET = "Set on the computer running Halonic";
 export const KEY_SERVED_MISSING = "No key on the computer running Halonic";
 
-/** The tail of the key line when no provider of the open workspace uses the secret name. */
-export function keyAddProvider(workspace: string): string {
-  return `Add a provider that uses the secret name to ${workspace} ›`;
+/** The key line when no provider of the open workspace uses the secret name: before and after the name. */
+export function keyAddProvider(workspace: string): readonly [string, string] {
+  return ["Add a provider that uses ", ` to ${workspace}`];
 }
 
 /** The warning above the fields (`settings.ai-agent.local-only-warning`). */
