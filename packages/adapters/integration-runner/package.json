@@ -12,7 +12,8 @@
     "lint": "biome check .",
     "test": "vitest run",
     "test:fence": "vitest run --config vitest.fence.config.ts",
-    "test:fence:windows": "vitest run --config vitest.fence-windows.config.ts"
+    "test:fence:windows": "vitest run --config vitest.fence-windows.config.ts",
+    "test:fence:mxc": "vitest run --config vitest.fence-mxc.config.ts"
   },
   "dependencies": {
     "@halonicjs/adapter-integration-kit": "workspace:*",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@halonicjs/adapter-sandbox-host": "workspace:*",
+    "@halonicjs/adapter-sandbox-mxc": "workspace:*",
     "@halonicjs/adapter-sandbox-srt": "workspace:*",
     "@halonicjs/testing-sign-in": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
