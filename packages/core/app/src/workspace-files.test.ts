@@ -256,7 +256,11 @@ verifies("app.workspace-save", () => {
 
 verifies("app.workspace-list", () => {
   it("lists saved and unsaved files under a folder, without unsaved deletes", async () => {
-    const { files } = open({ "providers/a.yaml": "a", "providers/c.yaml": "c", "models.yaml": "m" });
+    const { files } = open({
+      "providers/a.yaml": "a",
+      "providers/c.yaml": "c",
+      "models.yaml": "m",
+    });
     files.change("Added b", { "providers/b.yaml": "b" });
     files.change("Deleted c", { "providers/c.yaml": null });
     files.change("Changed models", { "models.yaml": "m2" });
