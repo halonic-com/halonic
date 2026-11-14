@@ -907,6 +907,9 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports
+      '@halonicjs/yaml':
+        specifier: workspace:*
+        version: link:../../core/yaml
     devDependencies:
       '@halonicjs/adapter-fs-node':
         specifier: workspace:*
