@@ -24,6 +24,7 @@ export const commandOrder: readonly string[] = [
   "trust",
   "plugin",
   "secret",
+  "google",
   "tools",
   "extract",
   "doctor",
