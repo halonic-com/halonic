@@ -3,7 +3,7 @@ import { createSocket, type Socket as UdpSocket } from "node:dgram";
 import { lookup } from "node:dns/promises";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, symlink, writeFile } from "node:fs/promises";
-import { createServer, type Server } from "node:net";
+import { connect, createServer, type Server } from "node:net";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -107,6 +107,33 @@ async function attack(script: string, nodeLayer: NodeLayer, folders?: AttackFold
     sandboxFolders: [],
     backend: "mxc",
   });
+}
+
+/** A port on this computer's loopback that nothing is using right now. */
+async function freePort(): Promise<number> {
+  const probe = createServer();
+  await new Promise<void>((resolve) => probe.listen(0, "127.0.0.1", resolve));
+  const { port } = probe.address() as { port: number };
+  await new Promise<void>((resolve) => probe.close(() => resolve()));
+  return port;
+}
+
+/** Tries to connect to `port` on loopback until `ms` pass; true once one connects. */
+async function connectWhileListening(port: number, ms: number): Promise<boolean> {
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    const connected = await new Promise<boolean>((resolve) => {
+      const socket = connect({ host: "127.0.0.1", port });
+      socket.on("connect", () => {
+        socket.destroy();
+        resolve(true);
+      });
+      socket.on("error", () => resolve(false));
+    });
+    if (connected) return true;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  return false;
 }
 
 const layers: readonly NodeLayer[] = ["on", "off"];
@@ -491,9 +518,35 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
       // Windows loads the DLL; Node refuses it because it is no add-on.
       expect(attempts["add-on"]?.outcome).toBe("refused");
       expect(attempts["add-on"]?.detail).toContain("did not self-register");
-      // MXC refuses the box a listener on its own loopback (see attack-cases.md).
-      expect(attempts["inspector"]).toMatchObject({ outcome: "refused", detail: "NO_INSPECTOR" });
+      // MXC has no rule against a listener on the box's own loopback (see attack-cases.md).
+      expect(attempts["inspector"]?.outcome).toBe("allowed");
+      expect(attempts["inspector"]?.detail).toMatch(/^ws:\/\/127\.0\.0\.1:\d+\//);
     }
+  });
+
+  it.runIf(nodeLayer === "off")("A15: a listener on the box's own loopback, and who can reach it", async () => {
+    // Recorded gap (HAL-9606): the MXC profile has no network rule for a listener on
+    // the box's own loopback, so the box can open one (the inspector did). This test
+    // finds out whether a process outside the box can connect to it.
+    const port = await freePort();
+    const boxRun = attack(
+      `
+      const net = await import("node:net");
+      await attempt("listener", () => new Promise((resolve, reject) => {
+        const server = net.createServer((connection) => { connection.end(); server.close(); resolve("reached from outside"); });
+        server.on("error", reject);
+        server.listen(${port}, "127.0.0.1", () => setTimeout(() => { server.close(); resolve("listening, not reached"); }, 8000));
+      }));
+      `,
+      nodeLayer,
+    );
+    const reached = await connectWhileListening(port, 7000);
+    const { attempts } = await boxRun;
+    expect(attempts["listener"]?.outcome).toBe("allowed");
+    expect({ listener: attempts["listener"]?.detail, connectedFromOutside: reached }).toEqual({
+      listener: "reached from outside",
+      connectedFromOutside: true,
+    });
   });
 
   it("A17: sees no key or Halonic variable in its environment", async () => {
