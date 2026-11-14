@@ -13,4 +13,4 @@ If a numbered migration file in a `migrations` folder (a `.ts` file, so also one
 - Given `ALTER TABLE a ADD COLUMN note TEXT NOT NULL`, then the check fails; with `DEFAULT ''` or with no NOT NULL, it passes.
 - Given `CREATE TABLE` and `CREATE INDEX` statements, then the check passes.
 - Given a comment that mentions `DROP TABLE`, or a file outside a `migrations` folder, then the check passes.
-- Given `.sql` migration files, they are out of scope: the check reads only numbered `.ts` migration files.
+- Given `.sql` migration files, then the check ignores them: it reads only numbered `.ts` migration files.
