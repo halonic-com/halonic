@@ -120,7 +120,8 @@ fn held_lock_renew_gives_up_a_lock_older_than_the_stale_limit() {
 /// The mode bits of `file`: the lock is private (`fs.run-store-private-files`).
 #[cfg(unix)]
 fn mode_of(file: &std::path::Path) -> u32 {
-    std::os::unix::fs::PermissionsExt::mode(&fs::metadata(file).expect("the file is there")) & 0o777
+    let metadata = fs::metadata(file).expect("the file is there");
+    std::os::unix::fs::PermissionsExt::mode(&metadata.permissions()) & 0o777
 }
 
 #[cfg(unix)]
