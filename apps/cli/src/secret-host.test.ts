@@ -4,10 +4,11 @@ import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { chainedSecrets, openSecretStore } from "./secret-host.ts";
+import { profilePlatformOf } from "./workspace-runs.ts";
 
 let folder: string;
 const profile = () => ({
-  platform: process.platform,
+  platform: profilePlatformOf(process.platform),
   homeFolder: folder,
   variables: { HALONIC_HOME: join(folder, "profile") },
 });
