@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-8865 (the entry as written, approved for HAL-7607)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DAwdYNNOvr3YrGMwPB9yKJYUQDejJBn61fQiFsk8kS++yjjcwi1Nt24h0cqChFOhQrjx1WnWvjmK4Z8vouRsAg==
 
 `tooling/check/process-starters.json` lists every file that may start a process or load code,
 each with a reason and a test. This pull request adds one entry, for
