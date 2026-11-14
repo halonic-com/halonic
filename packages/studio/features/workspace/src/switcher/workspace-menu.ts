@@ -1,5 +1,6 @@
 import type { MenuEntry, MenuItem } from "@halonicjs/studio-kit";
 import { hintKeys, type KeyboardPlatform } from "@halonicjs/studio-shell";
+import { NEW_WORKSPACE_MENU_ROW } from "../new-workspace/new-workspace-text.ts";
 import { WORKSPACE_MENU_ROW } from "../page/workspace-page-text.ts";
 import type { RememberedWorkspace } from "./recent-workspaces.ts";
 
@@ -14,6 +15,8 @@ export interface WorkspaceMenuOptions {
   readonly platform: KeyboardPlatform;
   /** Shows the workspace in that folder, opening it first when it isn't open. */
   readonly onOpen: (location: string) => void;
+  /** Opens the New workspace dialog; without it the menu has no New workspace… row. */
+  readonly onNewWorkspace?: () => void;
   /** Asks the folder picker for a folder and opens it. */
   readonly onOpenFolder: () => void;
   /** Opens the shown workspace's page. */
@@ -29,8 +32,8 @@ export interface WorkspaceMenuOptions {
  * heading and its divider go too. An open workspace shows its Ctrl 1 to Ctrl 9 key
  * (`workspace.switcher.ctrl-number-keys`).
  *
- * New workspace… joins the menu with the dialog it opens, so the menu never has a row that does
- * nothing.
+ * **New workspace…** comes just above **Open a folder…** once the app gives the menu the dialog
+ * it opens (`onNewWorkspace`), so the menu never has a row that does nothing.
  *
  * @example
  * <WorkspaceSwitcher workspace={{ name: "Acme", folder: "/work/acme" }} menu={workspaceMenu(options)} />
@@ -51,8 +54,13 @@ export function workspaceMenu(options: WorkspaceMenuOptions): readonly MenuEntry
           },
           { id: "close-workspace", label: "Close workspace", onSelect: options.onClose },
         ];
+  const newWorkspace: readonly MenuEntry[] =
+    options.onNewWorkspace === undefined
+      ? []
+      : [{ id: "new-workspace", label: NEW_WORKSPACE_MENU_ROW, onSelect: options.onNewWorkspace }];
   return [
     ...recent,
+    ...newWorkspace,
     { id: "open-folder", label: "Open a folder…", onSelect: options.onOpenFolder },
     ...shownRows,
   ];

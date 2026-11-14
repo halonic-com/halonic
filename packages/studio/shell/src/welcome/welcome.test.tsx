@@ -65,6 +65,22 @@ verifies("shell.welcome-open", () => {
     expect(openButton(root).getAttribute("aria-busy")).not.toBe("true");
   });
 
+  it("shows New workspace… only with a dialog to open, and a press opens it", async () => {
+    const without = render(<Welcome onOpenFolder={async () => undefined} />);
+    expect(without.textContent).not.toContain("New workspace…");
+    unmountAll();
+    const onNewWorkspace = vi.fn();
+    const root = render(
+      <Welcome onOpenFolder={async () => undefined} onNewWorkspace={onNewWorkspace} />,
+    );
+    const button = [...root.querySelectorAll("button")].find((each) =>
+      each.textContent?.includes("New workspace…"),
+    );
+
+    await act(async () => button?.click());
+    expect(onNewWorkspace).toHaveBeenCalledOnce();
+  });
+
   it("caps the column at a width the theme defines, so a long path can't widen it", () => {
     const root = render(<Welcome onOpenFolder={async () => undefined} />);
 

@@ -45,6 +45,15 @@ verifies("workspace.workspace-menu", () => {
     expect(outline(workspaceMenu(options()))).toEqual(["Open a folder…"]);
   });
 
+  it("puts New workspace… above Open a folder… once there is a dialog to open", () => {
+    const onNewWorkspace = vi.fn();
+    const menu = workspaceMenu(options({ onNewWorkspace }));
+
+    expect(outline(menu)).toEqual(["New workspace…", "Open a folder…"]);
+    item(menu, "New workspace…").onSelect();
+    expect(onNewWorkspace).toHaveBeenCalledOnce();
+  });
+
   it("lists Recent first, then Open a folder…, then Workspace settings… and Close workspace", () => {
     const menu = workspaceMenu(
       options({ recent: [acme, beta], open: [acme.location], shown: acme.location }),
