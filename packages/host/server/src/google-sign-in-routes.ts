@@ -1,4 +1,4 @@
-import type { SetupRecord } from "@halonicjs/google-setup";
+import { refreshTokenName, type SetupRecord, SetupRecordError } from "@halonicjs/google-setup";
 import type { GoogleSetupPorts, GoogleSignInOutcome } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { isLoopbackRequest } from "./security.ts";
@@ -68,7 +68,7 @@ export function createGoogleSignInRoutes({
 }: {
   readonly google: GoogleSetupPorts;
 }): GoogleSignInRoutes {
-  const { setups, source, actions, signInEvents } = google;
+  const { setups, source, actions, signInEvents, tokens } = google;
 
   /** Keeps how the sign-in ended on the record: the token's account and the checks, or that the sign-in is over. */
   async function record(outcome: GoogleSignInOutcome): Promise<void> {
@@ -82,6 +82,27 @@ export function createGoogleSignInRoutes({
     await setups.update(outcome.accountRef, { kind: "signed-in" });
     for (const { service, result } of outcome.services) {
       await setups.update(outcome.accountRef, { kind: "service-checked", service, result });
+    }
+  }
+
+  /**
+   * Whether the setup was deleted between the start and the callback. The
+   * finished sign-in has stored a refresh token by then and no record points
+   * at it, so it is removed here: left behind, it would sit in the token
+   * store with nobody able to disconnect it. Any other failure keeps the
+   * token, since the record still names it and Disconnect still finds it.
+   */
+  async function recordOrRemoveToken(outcome: GoogleSignInOutcome): Promise<boolean> {
+    try {
+      await record(outcome);
+      return true;
+    } catch (error) {
+      const setupGone = error instanceof SetupRecordError && error.reason === "not-found";
+      if (!setupGone || outcome.kind !== "signedIn") {
+        throw error;
+      }
+      await tokens.remove(refreshTokenName(outcome.accountRef));
+      return false;
     }
   }
 
@@ -118,8 +139,9 @@ export function createGoogleSignInRoutes({
       if (outcome.kind !== "linkNoLongerValid") {
         signInEvents.publish(outcome);
       }
-      await record(outcome);
-      return callbackPage(outcome);
+      const recorded = await recordOrRemoveToken(outcome);
+      // A sign-in whose setup is gone saved nothing, so the page must not say "signed in".
+      return callbackPage(recorded ? outcome : { kind: "linkNoLongerValid" });
     },
   };
 }

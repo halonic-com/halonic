@@ -1,3 +1,4 @@
+import { refreshTokenName } from "@halonicjs/google-setup";
 import type { Coordination } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -286,6 +287,48 @@ describe("google sign-in callback", () => {
       const server = testServer({ passwordHash: null });
       const response = await callback(server, codeQuery);
       expect(response.status).toBe(404);
+    });
+  });
+});
+
+describe("google sign-in callback with no setup", () => {
+  verifies("server.google-sign-in-orphan-token", () => {
+    it("removes the token a finished sign-in stored when the setup was deleted meanwhile", async () => {
+      const state = setup();
+      const accountRef = await readySetup(state);
+      state.google.actions.signInOutcome = { kind: "signedIn", accountRef, services: [] };
+      const tokenName = refreshTokenName(accountRef);
+      // The real finish stores the refresh token before the callback updates the record.
+      const finish = state.google.actions.finishSignIn;
+      state.google.actions.finishSignIn = async (query) => {
+        await state.google.tokens.set(tokenName, "fake-refresh-token-0000000001");
+        return finish(query);
+      };
+      await state.google.setups.remove(accountRef);
+
+      const response = await callback(state.server, codeQuery);
+      const page = await response.text();
+
+      expect(response.status).toBe(200);
+      expect(page).toContain("no longer valid");
+      expect(await state.google.tokens.get(tokenName)).toBeNull();
+      expect(state.errors).toEqual([]);
+    });
+
+    it("keeps the token when the record can't be updated for another reason", async () => {
+      const state = setup();
+      const accountRef = await readySetup(state);
+      state.google.actions.signInOutcome = { kind: "signedIn", accountRef, services: [] };
+      const tokenName = refreshTokenName(accountRef);
+      await state.google.tokens.set(tokenName, "fake-refresh-token-0000000001");
+      state.google.setups.update = async () => {
+        throw new Error("the disk is full");
+      };
+
+      const response = await callback(state.server, codeQuery);
+
+      expect(response.status).toBe(500);
+      expect(await state.google.tokens.get(tokenName)).not.toBeNull();
     });
   });
 });
