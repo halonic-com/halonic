@@ -177,12 +177,12 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
       server.once("error", reject);
       server.bind(53, "127.0.0.1", resolve);
     });
-    const rule = `halonic-gap-${suffix}`;
     const nrpt = (command: string) =>
       execFileSync(powershell, ["-NoProfile", "-NonInteractive", "-Command", command]);
-    const flush = () => execFileSync(join(windowsFolder, "System32", "ipconfig.exe"), ["/flushdns"]);
+    const flush = () =>
+      execFileSync(join(windowsFolder, "System32", "ipconfig.exe"), ["/flushdns"]);
     try {
-      nrpt(`Add-DnsClientNrptRule -Name '${rule}' -Namespace '.${namespace}' -NameServers '127.0.0.1'`);
+      nrpt(`Add-DnsClientNrptRule -Namespace '.${namespace}' -NameServers '127.0.0.1'`);
       flush();
       await attack(
         `
@@ -191,10 +191,15 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
       `,
         nodeLayer,
       );
-      expect(received.some((query) => query.includes(label)), "the query reached the server").toBe(true);
+      expect(
+        received.some((query) => query.includes(label)),
+        "the query reached the server",
+      ).toBe(true);
     } finally {
       try {
-        nrpt(`Remove-DnsClientNrptRule -Name '${rule}' -Force`);
+        nrpt(
+          `Get-DnsClientNrptRule | Where-Object { $_.Namespace -contains '.${namespace}' } | Remove-DnsClientNrptRule -Force`,
+        );
       } finally {
         flush();
         server.close();
