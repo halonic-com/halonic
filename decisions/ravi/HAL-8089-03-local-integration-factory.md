@@ -2,7 +2,6 @@
 
 - Approval: Liam approved the plan on HAL-8089; the package owner (Liam) signs this note in review
 - Kind: internal
-- Signature: pending
 - Task: HAL-8089
 
 ## What changes
