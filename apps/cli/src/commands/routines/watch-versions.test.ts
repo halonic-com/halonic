@@ -137,4 +137,16 @@ verifies("cli.local-engine", () => {
     expect(providersOf(older.workspace)).toEqual(["mock", "ollama"]);
     expect(providersOf(ended.workspace)).toEqual(["mock", "ollama"]);
   });
+
+  it("gives a run's agent file as its version had it, not as an edit made since", async () => {
+    const watched = await watchAcme();
+    const path = filesOf(watched.latest(), "agent")[0]?.path ?? "";
+    const before = await readFile(join(acme, path), "utf8");
+    await watched.definitionsOf("support", "support-reply", savedRun.version, savedRun.runId);
+    await writeFile(join(acme, path), `${before}# edited since\n`);
+
+    const bytes = await watched.fileBytesOf(savedRun.runId, path);
+
+    expect(new TextDecoder().decode(bytes)).toBe(before);
+  });
 });

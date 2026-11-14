@@ -51,6 +51,7 @@ import { lazyProposalGit } from "./lazy-proposal-git.ts";
 import { placementFolder } from "./sandbox-gate-machine.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
 import { halonicVersion } from "./version.ts";
+import type { WorkspaceVersions } from "./workspace-versions.ts";
 
 /**
  * How long one harness call may last before the sandbox stops its program,
@@ -74,7 +75,7 @@ export interface LocalHarnessParts {
   readonly launcher?: HarnessRunsOptions["sandboxes"]["this-computer"];
   /** The harnesses, by their `id`. */
   readonly harnesses?: HarnessRunsOptions["harnesses"];
-  /** Opens each run's bridge; Node's, reading provider keys from `secrets`, by default. */
+  /** Opens each run's bridge; Node's, which reads no secret, by default. */
   readonly bridgeServer?: HarnessBridgeServer;
   /** The system the CLI runs on; `process.platform` by default. */
   readonly platform?: NodeJS.Platform;
@@ -92,10 +93,14 @@ export interface LocalHarnessInput {
   readonly environment: ProfileEnvironment;
   /** The files the engine runs, read when a run starts, for where an agent runs and its folders. */
   workspace(): LoadedWorkspace;
+  /**
+   * The files a run read, when runs start from other versions than the
+   * files on disk (`routines watch`): the placement check hashes the
+   * agent's file from the run's version. Without it, from disk.
+   */
+  readonly versions?: Pick<WorkspaceVersions, "fileBytesOf">;
   /** The workspace's files, which Accept writes (not wired yet) and a proposal's base is read from. */
   readonly store: DefinitionStore;
-  /** The CLI's remembered secrets: the bridge reads provider keys from them, nothing else does. */
-  readonly secrets: Secrets;
   readonly digest: Digest;
   readonly clock: Clock;
   /** Which git makes the worktrees; the one on the `PATH` by default. */
@@ -233,6 +238,15 @@ const bridgeServices: BridgeServices = {
   approvals: refusingApprovals,
 };
 
+/**
+ * What the bridge reads provider keys from: nothing. Every agent signs in
+ * with its own program (`bridgeServices`), so no key is needed, and a key
+ * the CLI remembers never reaches the bridge. A host that serves a provider
+ * key must pass the secrets it reads it from, and the HAL-6477 sign-in
+ * decision comes first.
+ */
+const noSecrets: Secrets = { get: async () => null };
+
 /** Claude Code and Codex, found where the launcher would start them. */
 function nodeHarnesses(): NonNullable<LocalHarnessParts["harnesses"]> {
   const probe = createProgramProbe();
@@ -281,20 +295,27 @@ async function nodeBridgeServer(input: LocalHarnessInput): Promise<HarnessBridge
   const socketFolder = join(input.profile.root, bridgeSocketsFolder);
   if (sockets) await makePrivateFolder(socketFolder);
   return new NodeHarnessBridgeServer({
-    secrets: input.secrets,
+    secrets: noSecrets,
     ...(sockets ? { socketFolder } : {}),
   });
 }
 
-/** The agents' files as they are on disk now, found by hub and id in the loaded workspace. */
+/**
+ * The agents' files, found by hub and id in the loaded workspace: as the
+ * run's version has them when runs start from versions, else as they are on
+ * disk now.
+ */
 function agentFilesOf(input: LocalHarnessInput): AgentFiles {
   return {
-    bytesOf: async (hubId, agentId) => {
+    bytesOf: async (hubId, agentId, runId) => {
       const file = filesOf(input.workspace(), "agent").find(
         (each) => each.hub === hubId && each.value.id === agentId,
       );
       if (file === undefined) {
         throw new Error(`Hub "${hubId}" has no agent "${agentId}".`);
+      }
+      if (input.versions !== undefined) {
+        return await input.versions.fileBytesOf(runId, file.path);
       }
       return new Uint8Array(await readFile(join(input.location, file.path)));
     },

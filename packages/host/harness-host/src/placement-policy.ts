@@ -10,12 +10,15 @@ import type { HarnessAgent, PlacementAnswer, PlacementPolicy } from "@halonicjs/
 /** The agents' files in the workspace, as the host reads them. */
 export interface AgentFiles {
   /**
-   * The agent's file exactly as it is on disk now, the bytes `halonic run`'s
-   * sandbox check hashes too, so both see the same choice.
+   * The agent's file exactly as the version the run uses has it, the bytes
+   * `halonic run`'s sandbox check hashes too, so both see the same choice.
+   * A host that runs from the files on disk reads them; a host whose runs
+   * start from other versions reads the run's own, never today's.
    *
+   * @param runId - the run the agent works in
    * @throws when the hub has no agent with this id
    */
-  bytesOf(hubId: string, agentId: string): Promise<Uint8Array>;
+  bytesOf(hubId: string, agentId: string, runId: string): Promise<Uint8Array>;
 }
 
 /**
@@ -43,7 +46,7 @@ export class FilePlacementPolicy implements PlacementPolicy {
 
   /** @throws what {@link AgentFiles.bytesOf} throws: the harness doesn't start */
   async where(agent: HarnessAgent): Promise<PlacementAnswer> {
-    const file = await this.#files.bytesOf(agent.hubId, agent.agentId);
+    const file = await this.#files.bytesOf(agent.hubId, agent.agentId, agent.runId);
     const answer = await this.#reader.where({
       location: this.#location,
       agent: agent.agentId,

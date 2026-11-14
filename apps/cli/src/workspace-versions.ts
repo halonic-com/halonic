@@ -39,6 +39,13 @@ export interface WorkspaceVersions {
     readonly runId: string;
     readonly version: RunVersion;
   }): Promise<TrustedVersion>;
+  /**
+   * A file as the version a run read has it, never as it is on disk now:
+   * what a harness run's placement choice is checked against (HAL-6477).
+   *
+   * @throws when that version has no such file
+   */
+  fileBytesOf(runId: string, path: string): Promise<Uint8Array>;
   /** Forgets what is kept for a run that has ended. */
   forget(runId: string): void;
 }
