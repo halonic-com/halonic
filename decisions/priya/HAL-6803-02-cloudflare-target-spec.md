@@ -2,7 +2,6 @@
 
 - Approval: HAL-6803 (Liam, CTO)
 - Kind: internal
-- Signature: 
 
 `@halonicjs/adapter-cloudflare-durable` adds `./testing` to its `exports` (`extraExports` in
 `tooling/check/policy.json`), as `adapter-git` has. It holds the Durable Object classes whose clock
