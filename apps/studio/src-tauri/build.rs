@@ -50,6 +50,7 @@ fn main() {
         "record_append",
         "record_read",
         "record_replace",
+        "google_setup_read",
         "update_status",
         "update_watch",
         "update_check",

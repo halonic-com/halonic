@@ -26,6 +26,8 @@ export {
   isFolderRefusal,
 } from "./folder-commands.ts";
 export { TauriFolderReader } from "./folder-reader.ts";
+export { googleSetupCommands } from "./google-setup-commands.ts";
+export { TauriGoogleSetupRecords } from "./google-setup-records.ts";
 export {
   type HostSettingsRefusal,
   type HostSettingsRefusalKind,

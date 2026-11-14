@@ -13,7 +13,8 @@
 //! (capabilities/desktop-agent-host.json) and the `fs_*` commands
 //! (capabilities/desktop-files.json, with the read-only `folder_*` commands) and the `blob_*` commands
 //! (capabilities/desktop-blobs.json) and the `record_*` commands
-//! (capabilities/desktop-records.json) and the `update_*` commands
+//! (capabilities/desktop-records.json) and the read-only `google_setup_read`
+//! command (capabilities/desktop-google-setups.json) and the `update_*` commands
 //! (capabilities/desktop-updates.json) and the page's close request
 //! (capabilities/desktop-window.json); the Studio it then opens is
 //! served by the computer and gets no command at all. The navigation guard keeps
@@ -26,6 +27,7 @@ mod connect;
 mod file_answers;
 mod files;
 mod git;
+mod google_setups;
 mod host_settings;
 mod native_dialogs;
 mod navigation;
@@ -159,6 +161,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             records::record_append,
             records::record_read,
             records::record_replace,
+            google_setups::google_setup_read,
             #[cfg(desktop)]
             updates::update_status,
             #[cfg(desktop)]

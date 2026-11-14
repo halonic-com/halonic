@@ -18,7 +18,7 @@ use crate::workspace_data::{DataRefusal, in_workspace};
 /// The shell's record folders, so its writes take turns.
 #[derive(Debug, Default)]
 pub struct RecordState {
-    folders: RecordFolders<OperatingSystem>,
+    pub(crate) folders: RecordFolders<OperatingSystem>,
 }
 
 impl From<RecordStoreError> for DataRefusal {

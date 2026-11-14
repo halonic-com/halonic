@@ -141,7 +141,7 @@ const errorKinds: Readonly<
  * shape (a missing capability, a broken IPC call) is `unavailable`, and its
  * text is dropped: the adapter can't vouch for it.
  */
-function recordFailure(reason: unknown): Error {
+export function recordFailure(reason: unknown): Error {
   if (!isRecordRefusal(reason)) {
     return noAnswer();
   }
@@ -154,6 +154,6 @@ function recordFailure(reason: unknown): Error {
   );
 }
 
-function noAnswer(): KindedError {
+export function noAnswer(): KindedError {
   return new KindedError("unavailable", "The desktop shell gave no answer to the record call.");
 }
