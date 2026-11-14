@@ -205,6 +205,9 @@ function RunLayout({
           </StatusChip>
         </div>
         <p className="text-small text-fg-muted">{header.line}</p>
+        {header.catchUpLine === undefined ? null : (
+          <p className="text-small text-fg-muted">{header.catchUpLine}</p>
+        )}
       </header>
       {showingLast ? (
         <p className="text-small text-fg-muted">{emptyListWords.showingLast}</p>
