@@ -110,7 +110,8 @@ through it): the bridge is the box's only network control, and nothing probes it
 ## Known limits
 
 These are the limits in [the ADR](../../../docs/adr/2026-11-10-mxc-sandbox-backend.md). The
-first is a leak the box can't stop; the trust check reports it rather than catching it.
+first is a possible leak, not confirmed; the trust check reports it as a cautious
+assumption.
 
 - **Name lookups may leave the box (not confirmed).** They go through Windows' DNS client
   service, which runs outside the box. On `windows-11-arm` the fence test for A6 (HAL-9605)

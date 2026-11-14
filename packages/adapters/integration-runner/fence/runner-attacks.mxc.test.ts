@@ -156,11 +156,12 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     // box fenced the client, Windows would read the hosts file inside the box.
     // Needs admin rights and a free port 53, which a CI runner has.
     // On windows-11-arm no query arrives: the lookup from the box fails within
-    // milliseconds (`ENOTFOUND`). The test cannot tell whether the box fences
+    // milliseconds (`ERR_ACCESS_DENIED` with Node's layer on, `ENOTFOUND` with
+    // it off). The test cannot tell whether the box fences
     // the client or the client refuses a box without a network capability, so
     // a profile that grants that capability needs this test re-checked.
-    // Both Node layers see the same, as Node's permission model does not
-    // cover name lookups.
+    // With Node's layer on, Node refuses the lookup before the box is
+    // involved, so only the layer-off run tests the box.
     const suffix = Math.random().toString(36).slice(2);
     const namespace = `halonic-gap-${suffix}.test`;
     const label = `leak-${canary}`;

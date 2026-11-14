@@ -189,10 +189,10 @@ rule 6).
 When more than one fails, the check reports the first in this order, so a
 leak is reported before a failed control.
 
-The probe also looks up a never-used name through the DNS client service and
-records whether it got out. It assumes it does, to stay on the safe side (see
-the known limit above; HAL-9605 did not confirm it): `doctor` shows it, and it doesn't fail the check, because
-a failure there would switch MXC off on every machine.
+The canary does not probe name lookups. It reports `nameLookupsLeave: true` as
+a fixed, cautious value (see the known limit above; HAL-9605 did not confirm
+it). `doctor` shows it, and it doesn't fail the check, because a failure there
+would switch MXC off on every machine.
 
 **On failure,** MXC is off for this start of Halonic only. The person's
 setting stays as they left it, and the next start checks again. Halonic never
