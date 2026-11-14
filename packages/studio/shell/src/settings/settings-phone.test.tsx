@@ -301,3 +301,15 @@ verifies("shell.settings-list-page", () => {
     expect((container.querySelector("main") as HTMLElement).scrollTop).toBe(120);
   });
 });
+
+verifies("shell.settings-saved-line", () => {
+  it("says the values are saved on the phone, under a display section's name", async () => {
+    const { container, tapRow, tapMore } = await renderPhone();
+    tapMore();
+    await tapRow("Settings");
+    await tapRow("Formats");
+    expect(container.querySelector("section h1 + p")?.textContent).toBe(
+      "Saved on this phone. Your computer keeps its own.",
+    );
+  });
+});

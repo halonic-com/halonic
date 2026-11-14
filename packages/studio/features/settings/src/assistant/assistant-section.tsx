@@ -8,7 +8,7 @@ import {
   Switch,
   ViewOnlyLine,
 } from "@halonicjs/studio-kit";
-import type { SettingsPlace, SettingsSectionProps } from "@halonicjs/studio-shell";
+import type { SettingsPlace, SettingsSectionProps, SettingsSurface } from "@halonicjs/studio-shell";
 import { useState, useSyncExternalStore } from "react";
 import {
   type AssistantNavigation,
@@ -39,7 +39,7 @@ const providerOptions = assistantProviders.map((provider) => ({
 }));
 
 /** Settings → Assistant as the settings container shows it. */
-export function AssistantSection({ context, closeSettings, place }: SettingsSectionProps) {
+export function AssistantSection({ context, closeSettings, place, surface }: SettingsSectionProps) {
   const settings = context.services.get(HostSettingsService);
   const loaded = useLoaded(settings);
   if (!loaded.ready) return <NotLoaded onTryAgain={loaded.tryAgain} />;
@@ -48,6 +48,7 @@ export function AssistantSection({ context, closeSettings, place }: SettingsSect
       settings={settings}
       announce={(line) => context.announcer.announce(line)}
       place={place}
+      surface={surface}
       workspace={workspaceOf(context)}
       navigate={navigationOf(context)}
       closeSettings={closeSettings}
@@ -86,6 +87,8 @@ export interface AssistantViewProps {
   /** Says a failed save in the dialog: the settings container's live region. */
   readonly announce: (line: string) => void;
   readonly place: SettingsPlace;
+  /** `phone` on the phone's Settings page: the view-only line says "on a phone". */
+  readonly surface?: SettingsSurface | undefined;
   /** The open workspace, when the app gives one: the key line, the warning and the "sets its own" line need it. */
   readonly workspace?: AssistantWorkspace | undefined;
   /** Where the key line's and the "sets its own" line's links lead; the window gives it. */
@@ -193,8 +196,30 @@ function ServedKey(props: {
   return <KeyLine provider={provider} closeSettings={() => {}} served {...rest} />;
 }
 
+/** The view-only line, then what the section says about Not set up and a local-only workspace. */
+function ViewOnlyNotes(props: {
+  readonly surface: SettingsSurface | undefined;
+  readonly provider: AssistantProvider;
+  readonly open: AssistantWorkspaceFacts | null;
+  readonly local: boolean;
+}) {
+  const { surface, provider, open, local } = props;
+  const notSetUp = provider === "not-set-up";
+  return (
+    <>
+      <ViewOnlyLine>
+        {surface === "phone" ? text.VIEW_ONLY_PHONE_LINE : text.VIEW_ONLY_LINE}
+      </ViewOnlyLine>
+      {notSetUp ? <p className="text-small text-fg-muted">{text.NOT_SET_UP_LINE}</p> : null}
+      {!notSetUp && open?.localOnly && !local ? (
+        <Callout tone="warning">{text.localOnlyWarning(open.name)}</Callout>
+      ) : null}
+    </>
+  );
+}
+
 /** The label-over-value rows of the section served to another device. */
-function AssistantViewOnly({ settings, workspace }: AssistantViewProps) {
+function AssistantViewOnly({ settings, workspace, surface }: AssistantViewProps) {
   const open = useOpenWorkspace(workspace);
   const provider = useHostSetting(settings, assistantPrefs.provider).value;
   const model = useHostSetting(settings, assistantPrefs.model).value;
@@ -232,7 +257,7 @@ function AssistantViewOnly({ settings, workspace }: AssistantViewProps) {
   return (
     <div className="mt-5 flex max-w-90 flex-col gap-4">
       <p className="text-body text-fg-muted">{text.FIRST_LINE.served}</p>
-      <ViewOnlyLine>{text.VIEW_ONLY_LINE}</ViewOnlyLine>
+      <ViewOnlyNotes surface={surface} provider={provider} open={open} local={local} />
       <SetsItsOwn open={open} link={null} />
       <dl className="flex flex-col gap-3">
         {rows.map(([label, value]) => (
