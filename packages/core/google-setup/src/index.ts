@@ -13,6 +13,7 @@ export {
   readGoogleCheckAnswer,
 } from "./check-answer.ts";
 export type { ApiOff, ServiceCheckOutcome, ServiceResult } from "./check-result.ts";
+export { isClientId } from "./client-id.ts";
 export { ClientSecretError, type ClientSecretErrorReason } from "./client-secret-error.ts";
 export {
   type ClientSecretRemoval,
