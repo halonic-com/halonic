@@ -46,8 +46,8 @@ verifies("deploy.provision", () => {
     const error = await provision(api, base).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(UnmarkedResourcesError);
     expect((error as UnmarkedResourcesError).resources).toEqual([
-      { kind: "database", name: "halonic-dev-data", markedIn: undefined },
-      { kind: "worker", name: "halonic-dev", markedIn: undefined },
+      { kind: "database", name: "halonic-dev-data" },
+      { kind: "worker", name: "halonic-dev" },
     ]);
     expect(api.calls.some((c) => c.startsWith("createResource"))).toBe(false);
   });

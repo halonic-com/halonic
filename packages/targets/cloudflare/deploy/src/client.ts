@@ -41,10 +41,15 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
     return (await request("GET", path)) as Envelope;
   }
 
-  /** Runs one SQL statement on a D1 database. */
-  async function query(accountId: string, databaseId: string, sql: string): Promise<Envelope> {
+  /** Runs one SQL statement on a D1 database. Values go in `params`, never into the SQL text. */
+  async function query(
+    accountId: string,
+    databaseId: string,
+    sql: string,
+    params: readonly string[] = [],
+  ): Promise<Envelope> {
     const path = `/accounts/${encodeURIComponent(accountId)}/d1/database/${encodeURIComponent(databaseId)}/query`;
-    return (await request("POST", path, { sql })) as Envelope;
+    return (await request("POST", path, { sql, params })) as Envelope;
   }
 
   /** The database id for a name, or `undefined` when there is none. */
@@ -58,35 +63,72 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
   }
 
   /** Whether the `_halonic_marker` table lists `kind:name`. A missing table means "no". */
-  async function isMarked(accountId: string, databaseName: string, ref: ResourceRef) {
-    const id = await databaseId(accountId, databaseName);
-    if (!id) return false;
+  async function isMarked(accountId: string, id: string, ref: ResourceRef) {
     try {
       const body = await query(
         accountId,
         id,
-        `SELECT 1 AS found FROM _halonic_marker WHERE resource = '${ref.kind}:${ref.name}'`,
+        "SELECT 1 AS found FROM _halonic_marker WHERE resource = ?",
+        [`${ref.kind}:${ref.name}`],
       );
       const rows = (body.result as { results?: unknown[] }[] | undefined)?.[0]?.results;
       return Array.isArray(rows) && rows.length > 0;
-    } catch {
-      return false;
+    } catch (error) {
+      // Only D1's "no such table" answer means "not marked". A timeout, a 5xx or a token
+      // without D1 access must surface, or the user is told to adopt for the wrong reason.
+      if (error instanceof DeployError && /no such table/i.test(error.message)) return false;
+      throw error;
     }
   }
 
+  /** Writes the marker row for `ref` into the database named `databaseName`. */
   async function mark(accountId: string, databaseName: string, ref: ResourceRef) {
     const id = await databaseId(accountId, databaseName);
     if (!id) throw failed(`database ${databaseName} not found`);
+    await markIn(accountId, id, ref);
+  }
+
+  async function markIn(accountId: string, id: string, ref: ResourceRef) {
     await query(
       accountId,
       id,
       "CREATE TABLE IF NOT EXISTS _halonic_marker (resource TEXT PRIMARY KEY)",
     );
-    await query(
-      accountId,
-      id,
-      `INSERT OR IGNORE INTO _halonic_marker (resource) VALUES ('${ref.kind}:${ref.name}')`,
+    await query(accountId, id, "INSERT OR IGNORE INTO _halonic_marker (resource) VALUES (?)", [
+      `${ref.kind}:${ref.name}`,
+    ]);
+  }
+
+  async function findWorker(accountId: string, workerName: string) {
+    const body = await request(
+      "GET",
+      `/accounts/${encodeURIComponent(accountId)}/workers/scripts/${encodeURIComponent(workerName)}/script-settings`,
+      undefined,
+      true,
     );
+    if (!body) return undefined;
+    const tags = (body.result as { tags?: unknown } | undefined)?.tags;
+    return { marked: Array.isArray(tags) && tags.includes(markerTag) } satisfies FoundResource;
+  }
+
+  async function findDatabase(accountId: string, ref: ResourceRef) {
+    const id = await databaseId(accountId, ref.name);
+    if (!id) return undefined;
+    return { marked: await isMarked(accountId, id, ref) } satisfies FoundResource;
+  }
+
+  async function findBucket(accountId: string, ref: ResourceRef) {
+    const bucket = await request(
+      "GET",
+      `/accounts/${encodeURIComponent(accountId)}/r2/buckets/${encodeURIComponent(ref.name)}`,
+      undefined,
+      true,
+    );
+    if (!bucket) return undefined;
+    const holder = ref.markedIn ? await databaseId(accountId, ref.markedIn) : undefined;
+    return {
+      marked: holder ? await isMarked(accountId, holder, ref) : false,
+    } satisfies FoundResource;
   }
 
   /** Sends one request. A network failure or timeout becomes a {@link DeployError}. */
@@ -156,40 +198,26 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
       );
     },
     async findResource(accountId, ref) {
-      const account = encodeURIComponent(accountId);
-      const name = encodeURIComponent(ref.name);
-      if (ref.kind === "worker") {
-        const body = await request(
-          "GET",
-          `/accounts/${account}/workers/scripts/${name}/script-settings`,
-          undefined,
-          true,
-        );
-        if (!body) return undefined;
-        const tags = (body.result as { tags?: unknown } | undefined)?.tags;
-        return { marked: Array.isArray(tags) && tags.includes(markerTag) } satisfies FoundResource;
-      }
-      if (ref.kind === "database") {
-        if (!(await databaseId(accountId, ref.name))) return undefined;
-        return { marked: await isMarked(accountId, ref.name, ref) };
-      }
-      const bucket = await request(
-        "GET",
-        `/accounts/${account}/r2/buckets/${name}`,
-        undefined,
-        true,
-      );
-      if (!bucket) return undefined;
-      return { marked: ref.markedIn ? await isMarked(accountId, ref.markedIn, ref) : false };
+      if (ref.kind === "worker") return findWorker(accountId, ref.name);
+      if (ref.kind === "database") return findDatabase(accountId, ref);
+      return findBucket(accountId, ref);
     },
     async createResource(accountId, ref) {
       const account = encodeURIComponent(accountId);
       if (ref.kind === "database") {
-        await request("POST", `/accounts/${account}/d1/database`, { name: ref.name });
-        await mark(accountId, ref.name, ref);
+        const created = await request("POST", `/accounts/${account}/d1/database`, {
+          name: ref.name,
+        });
+        const id = (created?.result as { uuid?: unknown } | undefined)?.uuid;
+        if (typeof id !== "string") throw failed(`database ${ref.name} was created without an id`);
+        // The database can't be marked first. If this write fails, the next deploy finds an
+        // unmarked database and the way out is `adopt`.
+        await markIn(accountId, id, ref);
       } else if (ref.kind === "bucket") {
-        await request("POST", `/accounts/${account}/r2/buckets`, { name: ref.name });
+        // Mark first: a marker for a bucket that doesn't exist is harmless (the next run
+        // creates it), while a bucket without its marker would be refused as not ours.
         await mark(accountId, requireMarkedIn(ref), ref);
+        await request("POST", `/accounts/${account}/r2/buckets`, { name: ref.name });
       }
     },
     async adoptResource(accountId, ref) {

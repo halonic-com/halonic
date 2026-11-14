@@ -69,6 +69,7 @@ async function classify(
     else if (options.adopt) found.push({ ref, action: "adopt" });
     else unmarked.push(ref);
   }
-  if (unmarked.length > 0) throw new UnmarkedResourcesError(unmarked);
+  if (unmarked.length > 0)
+    throw new UnmarkedResourcesError(unmarked.map(({ kind, name }) => ({ kind, name })));
   return found;
 }
