@@ -25,6 +25,11 @@ import type { ConnectorFactory, HttpClient, Sandbox, TokenStore } from "@halonic
 import { profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { nodeCommandSearch } from "./command-paths.ts";
+import {
+  IntegrationConnectorFactory,
+  type OpenIntegration,
+} from "./integration-connector-factory.ts";
+import { type OpenPluginBackend, PluginConnectorFactory } from "./plugin-connector-factory.ts";
 import { nodeSandboxWorks } from "./sandbox-works.ts";
 import { halonicVersion } from "./version.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
@@ -79,7 +84,8 @@ const connectorSessionLimitMs = 24 * 60 * 60_000;
 const connectorCallLimitMs = 5 * 60_000;
 
 /**
- * The CLI's `stdio` and `http` factories. A `stdio` program starts with
+ * The CLI's `stdio` and `http` factories, and `integration` when it is given
+ * `openIntegration`. A `stdio` program starts with
  * `starter`, inheriting `env`; a pinned one is found in `env` too.
  *
  * With a `fence`, a program starts in a sandbox session of its own while the
@@ -90,6 +96,8 @@ export function cliConnectorFactories(
   starter: ProgramStarter,
   env: Readonly<Record<string, string | undefined>>,
   fence?: ConnectorFence,
+  openIntegration?: OpenIntegration,
+  openPlugin?: OpenPluginBackend,
 ): ConnectorFactories {
   const clientInfo = { name: "halonic", version: halonicVersion };
   const runners = createRunnerSearch(env);
@@ -103,6 +111,9 @@ export function cliConnectorFactories(
   return new ConnectorFactories([
     fence === undefined ? unfenced : sessionFactory(fence, unfenced, env, runners, clientInfo),
     new McpHttpConnectorFactory({ clientInfo }),
+    // Only with a way to open one in the runner: no in-process start for a local integration or a plugin's backend.
+    ...(openIntegration === undefined ? [] : [new IntegrationConnectorFactory(openIntegration)]),
+    ...(openPlugin === undefined ? [] : [new PluginConnectorFactory(openPlugin)]),
   ]);
 }
 

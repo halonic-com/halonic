@@ -74,6 +74,7 @@ verifies("sandbox-mxc.sdk-loading", () => {
       expect(await systemMachine(mxcSdkLoader(os, importSdk)).mxcSupport()).toEqual({
         loaded: false,
         problem: `MXC's SDK can't be loaded or asked: it runs only on Windows, and this is ${os}`,
+        needsDownload: false,
       });
       expect(importSdk.count()).toBe(0);
     });
@@ -104,13 +105,11 @@ verifies("sandbox-mxc.sdk-loading", () => {
       await expect(mxc.open(profile)).rejects.toThrow("MXC can't start here");
     });
 
-    it("says other until this build declares the SDK", async () => {
+    it("says other until the SDK is downloaded", async () => {
       expect(await sandboxOn(windows11()).check()).toMatchObject({
         ok: false,
         reason: "other",
-        missing: [
-          "MXC's SDK can't be loaded or asked: this build of Halonic doesn't include it yet",
-        ],
+        missing: ["MXC's SDK can't be loaded or asked: the SDK isn't downloaded yet"],
       });
     });
 

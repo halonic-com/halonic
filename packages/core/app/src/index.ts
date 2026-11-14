@@ -392,6 +392,7 @@ export {
   type StartInSandbox,
 } from "./runner-start-gate.ts";
 export {
+  type BackendSetup,
   type MxcDefault,
   type MxcSetting,
   type MxcState,

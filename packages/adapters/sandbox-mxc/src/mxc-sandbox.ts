@@ -13,6 +13,7 @@ import type { BoxFolders } from "./box-folders.ts";
 import { fileDisk, type MxcDisk } from "./disk.ts";
 import type { MxcMachine } from "./machine.ts";
 import { MxcSession } from "./mxc-session.ts";
+import type { MxcSdkSetup } from "./sdk-setup.ts";
 
 /** Windows 11's first build. Windows 10 stops below it. */
 const firstWindows11Build = 22000;
@@ -36,22 +37,53 @@ export class MxcSandbox implements Sandbox {
   readonly #boxes: BoxFolders;
   readonly #disk: MxcDisk;
   readonly #nodeProgram: string;
+  readonly #sdkSetup: Pick<MxcSdkSetup, "download"> | undefined;
 
   /**
    * @param machine - what the adapter asks of this computer and MXC's SDK
    * @param boxes - makes each session's own box folder under Halonic's data folder
    * @param options.disk - the disk; the real one by default
    * @param options.nodeProgram - the Node program the fence proof runs as; the one running Halonic by default
+   * @param options.sdkSetup - downloads MXC's SDK when {@link download} is called; without it there is nothing to download
    */
   constructor(
     machine: MxcMachine,
     boxes: BoxFolders,
-    options: { disk?: MxcDisk; nodeProgram?: string } = {},
+    options: {
+      disk?: MxcDisk;
+      nodeProgram?: string;
+      sdkSetup?: Pick<MxcSdkSetup, "download">;
+    } = {},
   ) {
     this.#machine = machine;
     this.#boxes = boxes;
     this.#disk = options.disk ?? fileDisk;
     this.#nodeProgram = options.nodeProgram ?? process.execPath;
+    this.#sdkSetup = options.sdkSetup;
+  }
+
+  /**
+   * Whether MXC is offered here but its SDK still has to be downloaded once.
+   * `check()` says `other` meanwhile. Never throws.
+   */
+  async downloadNeeded(): Promise<boolean> {
+    try {
+      if (!(await this.offered())) return false;
+      const support = await this.#machine.mxcSupport();
+      return !support.loaded && support.needsDownload;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Downloads MXC's SDK (see {@link MxcSdkSetup.download}). The host calls it
+   * only when the person picks MXC. Never throws.
+   */
+  async download(): Promise<{ done: true } | { done: false; problem: string }> {
+    if (this.#sdkSetup === undefined)
+      return { done: false, problem: "there is no download set up" };
+    return this.#sdkSetup.download();
   }
 
   /**

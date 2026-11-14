@@ -68,6 +68,7 @@ import {
 } from "@halonicjs/studio-shell";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
+import { newWorkspaceHostOf } from "./new-workspace-host.ts";
 import { trustedSourcesOf } from "./trusted-sources.ts";
 import { WorkspaceTrust } from "./workspace-trust.ts";
 import { WorkspaceTrustView } from "./workspace-trust-control.ts";
@@ -216,6 +217,7 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     switcher,
     platform,
     language: studioLanguage,
+    ...newWorkspaceOf(page.window, platform),
   });
   return {
     host: "desktop-app",
@@ -225,6 +227,30 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
       await switcher.dispose();
     },
   };
+}
+
+/**
+ * The New workspace dialog's host (`studio.new-workspace`), over the shell's folder and file
+ * commands. Without the channel the file commands need, the window has no New workspace row.
+ */
+function newWorkspaceOf(window: object, platform: KeyboardPlatform) {
+  const channelIpc = tauriChannelIpc(window);
+  if (channelIpc === undefined) return {};
+  const newWorkspace = newWorkspaceHostOf({
+    shell: shellFiles(channelIpc),
+    separator: platform === "windows" ? "\\" : "/",
+    trust: async (folder) => {
+      const trust = workspaceTrustOf(channelIpc, folder);
+      await trust.refresh();
+      const check = trust.check;
+      const fingerprint =
+        check === undefined || check.status === "refused" ? undefined : check.fingerprint;
+      if (fingerprint === undefined) throw new Error("Halonic couldn't read the new workspace");
+      const granted = await trust.grant(fingerprint);
+      if (!granted.ok) throw new Error(granted.reason);
+    },
+  });
+  return { newWorkspace };
 }
 
 /**

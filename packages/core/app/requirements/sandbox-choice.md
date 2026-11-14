@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-3306; docs/adr/2026-11-10-mxc-sandbox-backend.md ("Choosing a sandbox on Windows", "The trust check"); board decision HAL-2546; the plan on HAL-3292
 
-The sandbox choice shall pick, on Windows, the person's explicit choice (an MXC setting of `on`) first, then srt when its check passes, then MXC when the MXC setting isn't set and the MXC default is on, and otherwise no sandbox; elsewhere srt when its check passes. An MXC setting that isn't set shall follow one MXC default, which is opt-in. Before MXC runs, the choice shall run MXC's trust check, at startup, after every change to the sandbox settings and when a session's fence proof is `not-fenced`. When the check fails, MXC shall be off until Halonic starts again, nothing shall run in another backend in its place, and the person's setting shall stay as they left it. The choice shall report the active backend and MXC's offer, setting, setting in effect and state as codes from closed lists, with the failed check's reason and the sentences behind it for logs.
+The sandbox choice shall pick, on Windows, the person's explicit choice (an MXC setting of `on`) first, then srt when its check passes, then MXC when the MXC setting isn't set and the MXC default is on, and otherwise no sandbox; elsewhere srt when its check passes. An MXC setting that isn't set shall follow one MXC default, which is opt-in. Before MXC runs, the choice shall run MXC's trust check, at startup, after every change to the sandbox settings and when a session's fence proof is `not-fenced`. When the check fails, MXC shall be off until Halonic starts again, nothing shall run in another backend in its place, and the person's setting shall stay as they left it. When MXC would run but its one-time download isn't done, the choice shall not run the trust check, nothing shall run in another backend in MXC's place, and MXC's state shall be `setup-needed` with the setup code `download` and the reason code `download-needed` (also when the last download try failed, offline or not, with the sentence behind it for logs). The choice shall download only when the host calls `downloadMxc()`, which the host does when the person picks MXC; starting, a settings change and a `not-fenced` session never download, and a successful download is followed by the trust check. The choice shall report the active backend and MXC's offer, setting, setting in effect and state as codes from closed lists, with the failed check's reason and the sentences behind it for logs.
 
 ## Examples
 
@@ -18,6 +18,12 @@ The sandbox choice shall pick, on Windows, the person's explicit choice (an MXC 
   then MXC is checked and runs, because the person chose it.
 - Given MXC set to `on` and a trust check that fails with `too-strict`,
   then nothing runs, MXC is `mxc-check-failed` with `too-strict`, and the setting is still `on`.
+- Given MXC set to `on`, srt working on Windows and the SDK not downloaded,
+  then nothing runs, no trust check runs, MXC is `setup-needed` with `download` and `download-needed`, and nothing was downloaded.
+- Given MXC `setup-needed` and the host calling `downloadMxc()` with a registry that answers,
+  then the SDK is downloaded, the trust check runs and MXC is in use.
+- Given a download that fails,
+  then MXC stays `setup-needed` with `download-needed` and the sentence, and the next `downloadMxc()` tries again.
 - Given a trust check that failed in this start,
   then a settings change or a `not-fenced` session runs no new check and MXC stays off; a new start checks again.
 - Given MXC in use and a session whose fence proof is `not-fenced`,

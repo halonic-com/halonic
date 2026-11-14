@@ -377,6 +377,9 @@ importers:
       '@halonicjs/adapter-http-node':
         specifier: workspace:*
         version: link:../../packages/adapters/http-node
+      '@halonicjs/adapter-integration-runner':
+        specifier: workspace:*
+        version: link:../../packages/adapters/integration-runner
       '@halonicjs/adapter-mcp':
         specifier: workspace:*
         version: link:../../packages/adapters/mcp
@@ -392,6 +395,9 @@ importers:
       '@halonicjs/adapter-model-openai':
         specifier: workspace:*
         version: link:../../packages/adapters/model-openai
+      '@halonicjs/adapter-password-scrypt':
+        specifier: workspace:*
+        version: link:../../packages/adapters/password-scrypt
       '@halonicjs/adapter-sandbox-host':
         specifier: workspace:*
         version: link:../../packages/adapters/sandbox-host
@@ -401,6 +407,9 @@ importers:
       '@halonicjs/adapter-scheduler-node':
         specifier: workspace:*
         version: link:../../packages/adapters/scheduler-node
+      '@halonicjs/adapter-secrets-file':
+        specifier: workspace:*
+        version: link:../../packages/adapters/secrets-file
       '@halonicjs/adapter-system-node':
         specifier: workspace:*
         version: link:../../packages/adapters/system-node
@@ -1425,6 +1434,9 @@ importers:
       '@halonicjs/app':
         specifier: workspace:*
         version: link:../../core/app
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../core/format
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports

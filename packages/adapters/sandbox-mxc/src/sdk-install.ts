@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { mxcSdkPins, type PinnedPackage } from "./sdk-pins.ts";
+import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
+import { mxcSdkPinsFor, type PinnedPackage } from "./sdk-pins.ts";
 import { readTarball } from "./tar-reader.ts";
 
 /** Fetches the bytes at `url`, following no redirect. It throws when the computer is offline or the answer isn't a success. */
@@ -18,8 +18,12 @@ export type SdkInstall =
     }
   | {
       installed: false;
-      /** `offline`: no answer from the registry, so trying again later may work. `rejected`: we got bytes, but they are not the pinned ones or not safe to unpack. */
-      reason: "offline" | "rejected";
+      /**
+       * `offline`: no good answer from the registry (no network, or it answered 404 or 5xx), so trying again later may work; `problem` says which.
+       * `rejected`: we got bytes, but they are not the pinned ones or not safe to unpack.
+       * `failed`: the files couldn't be written, such as a full disk or no permission.
+       */
+      reason: "offline" | "rejected" | "failed";
       problem: string;
     };
 
@@ -28,11 +32,17 @@ export interface SdkInstallOptions {
   root: string;
   /** Replaces the real registry fetch in tests. */
   fetchBytes?: FetchBytes;
-  /** Replaces {@link mxcSdkPins} in tests. */
+  /** Replaces the pins for this processor ({@link mxcSdkPinsFor}) in tests. */
   pins?: readonly PinnedPackage[];
 }
 
 const markerName = ".verified";
+const leftoverMark = ".installing-";
+
+interface UnpackedFile {
+  path: string;
+  content: Buffer;
+}
 const registryHost = "registry.npmjs.org";
 
 /**
@@ -41,10 +51,11 @@ const registryHost = "registry.npmjs.org";
  * tarball is fetched and its SHA-512 checked before any byte is unpacked; the
  * files go into a temporary folder next to the target, the folder is renamed
  * into place in one step, and the `.verified` marker is written last, so a
- * half-finished install never counts as installed.
+ * half-finished install never counts as installed. It never throws: a disk
+ * that can't be written gives `failed`.
  */
 export async function installMxcSdk(options: SdkInstallOptions): Promise<SdkInstall> {
-  const pins = options.pins ?? mxcSdkPins;
+  const pins = options.pins ?? mxcSdkPinsFor(process.arch);
   const folder = installFolder(options.root, pins);
   if (await isVerified(folder, pins)) return { installed: true, folder, downloaded: false };
 
@@ -54,10 +65,24 @@ export async function installMxcSdk(options: SdkInstallOptions): Promise<SdkInst
   const unpacked = await unpackAll(pins, tarballs);
   if ("installed" in unpacked) return unpacked;
 
-  await rm(folder, { recursive: true, force: true });
-  const temp = `${folder}.installing-${randomBytes(6).toString("hex")}`;
   try {
-    for (const file of unpacked.files) {
+    await removeLeftovers(options.root);
+    // Another install may have finished while this one downloaded: never remove a finished folder.
+    if (await isVerified(folder, pins)) return { installed: true, folder, downloaded: false };
+    await rm(folder, { recursive: true, force: true });
+    await writeFolder(folder, unpacked.files);
+    await writeFile(join(folder, markerName), markerText(pins));
+  } catch (error) {
+    return { installed: false, reason: "failed", problem: describe(error) };
+  }
+  return { installed: true, folder, downloaded: true };
+}
+
+/** Writes `files` into a temporary folder next to `folder` and renames it into place in one step. */
+async function writeFolder(folder: string, files: readonly UnpackedFile[]): Promise<void> {
+  const temp = `${folder}${leftoverMark}${randomBytes(6).toString("hex")}`;
+  try {
+    for (const file of files) {
       const target = join(temp, file.path);
       await mkdir(dirname(target), { recursive: true });
       await writeFile(target, file.content);
@@ -67,12 +92,22 @@ export async function installMxcSdk(options: SdkInstallOptions): Promise<SdkInst
     await rm(temp, { recursive: true, force: true });
     throw error;
   }
-  await writeFile(join(folder, markerName), markerText(pins));
-  return { installed: true, folder, downloaded: true };
+}
+
+/** Removes the temporary folders an install that was cut short left behind. */
+async function removeLeftovers(root: string): Promise<void> {
+  const names = await readdir(root).catch(() => []);
+  for (const name of names) {
+    if (name.includes(leftoverMark))
+      await rm(join(root, basename(name)), { recursive: true, force: true });
+  }
 }
 
 /** Where the install of exactly these pins lives. A new pin gets a new folder. */
-export function installFolder(root: string, pins: readonly PinnedPackage[] = mxcSdkPins): string {
+export function installFolder(
+  root: string,
+  pins: readonly PinnedPackage[] = mxcSdkPinsFor(process.arch),
+): string {
   const id = createHash("sha256").update(markerText(pins)).digest("hex").slice(0, 12);
   return join(root, `mxc-sdk-${id}`);
 }
@@ -118,10 +153,8 @@ async function fetchVerified(
 async function unpackAll(
   pins: readonly PinnedPackage[],
   tarballs: readonly Buffer[],
-): Promise<
-  { files: { path: string; content: Buffer }[] } | Extract<SdkInstall, { installed: false }>
-> {
-  const files: { path: string; content: Buffer }[] = [];
+): Promise<{ files: UnpackedFile[] } | Extract<SdkInstall, { installed: false }>> {
+  const files: UnpackedFile[] = [];
   for (const [index, pin] of pins.entries()) {
     try {
       for (const file of readTarball(tarballs[index] as Buffer)) {
@@ -157,6 +190,9 @@ function describe(error: unknown): string {
 const fetchFromRegistry: FetchBytes = async (url) => {
   if (!isRegistryUrl(url)) throw new Error(`refusing to fetch ${url}`);
   const response = await fetch(url, { redirect: "error" });
-  if (!response.ok) throw new Error(`the registry answered ${response.status}`);
+  if (!response.ok)
+    throw new Error(
+      `the registry answered ${response.status}${response.status === 404 ? " (the pinned file is not published)" : ""}`,
+    );
   return Buffer.from(await response.arrayBuffer());
 };

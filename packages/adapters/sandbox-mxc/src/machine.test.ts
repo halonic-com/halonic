@@ -60,6 +60,7 @@ verifies("sandbox-mxc.offered", () => {
       const expected = {
         loaded: false,
         problem: "MXC's SDK can't be loaded or asked: Cannot find package '@microsoft/mxc-sdk'",
+        needsDownload: false,
       };
       expect(await machine.mxcSupport()).toEqual(expected);
       expect(await machine.mxcSupport()).toEqual(expected);
@@ -77,6 +78,7 @@ verifies("sandbox-mxc.offered", () => {
       expect(await systemMachine(async () => throwing).mxcSupport()).toEqual({
         loaded: false,
         problem: "MXC's SDK can't be loaded or asked: wxc-exec --probe failed",
+        needsDownload: false,
       });
     });
   });

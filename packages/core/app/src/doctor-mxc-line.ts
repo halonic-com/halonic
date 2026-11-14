@@ -13,8 +13,10 @@ export interface MxcLine extends DoctorLine {
   setting: MxcSetting;
   /** The setting in effect: the person's, or the default when they haven't set it. */
   effective: "on" | "off";
-  /** Why the trust check failed, or `null` when it didn't. */
-  reason: TrustCheckFailure | null;
+  /** Why the trust check failed, `download-needed` while the download is open, or `null` when neither. */
+  reason: TrustCheckFailure | "download-needed" | null;
+  /** What the person still has to do, or `null`. */
+  setup: "download" | null;
   /** The sentences behind `reason`, for `--debug` only. */
   missing: string[];
   /**
@@ -39,7 +41,7 @@ export function mxcLine(choice: SandboxChoice): MxcLine | undefined {
   const { mxc } = choice;
   if (mxc.state === "not-offered") return undefined;
   const facts = { check: "mxc", setting: mxc.setting, effective: mxc.effective } as const;
-  const passed = { reason: null, missing: [] };
+  const passed = { reason: null, setup: null, missing: [] };
 
   switch (mxc.state) {
     case "off":
@@ -59,6 +61,17 @@ export function mxcLine(choice: SandboxChoice): MxcLine | undefined {
         status: mxc.setting === "on" ? "failed" : "warning",
         state: mxc.state,
         reason: mxc.reason,
+        setup: null,
+        missing: [...mxc.missing],
+        nameLookupsLeave: null,
+      };
+    case "setup-needed":
+      return {
+        ...facts,
+        status: mxc.setting === "on" ? "failed" : "warning",
+        state: mxc.state,
+        reason: mxc.reason,
+        setup: mxc.setup,
         missing: [...mxc.missing],
         nameLookupsLeave: null,
       };

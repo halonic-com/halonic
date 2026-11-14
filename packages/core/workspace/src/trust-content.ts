@@ -74,7 +74,7 @@ export interface TrustContent {
 export interface ConnectorTrustContent {
   version?: unknown;
   id: string;
-  /** `stdio`, `http` or `google`, so switching transport is a change. */
+  /** `stdio`, `http`, `google`, `integration` or `plugin`, so switching transport is a change. */
   transport: string;
   /** The transport's settings, normalised. */
   settings: Record<string, unknown>;
@@ -233,6 +233,21 @@ function transportContent(
     const settings = { account: google.account, client: google.client };
     return { kind: "google", settings: withUnknown(settings, google, googleFields) };
   }
+  return runnerTransportContent(transport);
+}
+
+/** The transports that run in the runner, or one the schema doesn't know yet. */
+function runnerTransportContent(transport: Connector["transport"]): TransportContent {
+  if ("integration" in transport) {
+    // The folder's code and sheet are in `integrations`; this names which folder the connector runs.
+    const { integration } = transport;
+    const settings = { folder: posixPath.normalize(integration.folder) };
+    return { kind: "integration", settings: withUnknown(settings, integration, integrationFields) };
+  }
+  if ("plugin" in transport) {
+    const { plugin } = transport;
+    return { kind: "plugin", settings: withUnknown({ id: plugin.id }, plugin, pluginFields) };
+  }
   return unknownTransport(transport);
 }
 
@@ -255,6 +270,8 @@ function toolsContent(tools: Connector["tools"]): Record<string, unknown> {
 const stdioFields = new Set(["command", "args", "env", "secretEnv", "inheritEnv", "cwd", "sites"]);
 const httpFields = new Set(["url", "headers"]);
 const googleFields = new Set(["account", "client"]);
+const integrationFields = new Set(["folder"]);
+const pluginFields = new Set(["id"]);
 const toolsFields = new Set(["allow", "approve"]);
 
 /** Adds the fields of `source` that aren't in `known`, as written, under `unknown`. */

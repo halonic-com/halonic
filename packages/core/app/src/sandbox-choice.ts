@@ -30,6 +30,16 @@ export interface SandboxBackend {
   sandbox: Pick<Sandbox, "check" | "open">;
   /** The trust check's canary, for a backend used only after it passes one. MXC needs one. */
   canary?: TrustCanary;
+  /** The backend's one-time download, for a backend that needs one before it can run. MXC's SDK is one. */
+  setup?: BackendSetup;
+}
+
+/** A backend's one-time download. It starts only when the host calls {@link SandboxChoiceService.downloadMxc}, which the host does when the person picks MXC. */
+export interface BackendSetup {
+  /** Whether the backend is offered here but still needs its download. Never throws. */
+  downloadNeeded(): Promise<boolean>;
+  /** Downloads it. Never throws: a failure is `done: false` with a sentence for logs and support. */
+  download(): Promise<{ done: true } | { done: false; problem: string }>;
 }
 
 /** What a missing MXC setting means. */
@@ -58,8 +68,16 @@ export interface SandboxSettings {
  * - `in-use`: MXC passed its trust check and runs the steps.
  * - `not-used`: MXC would run, but srt came first.
  * - `mxc-check-failed`: the trust check failed, so MXC is off until Halonic starts again.
+ * - `setup-needed`: MXC would run, but its one-time download isn't done (`setup: "download"`, `reason: "download-needed"`, also when the last try was offline). The trust check hasn't run.
  */
-export const mxcStates = ["not-offered", "off", "in-use", "not-used", "mxc-check-failed"] as const;
+export const mxcStates = [
+  "not-offered",
+  "off",
+  "in-use",
+  "not-used",
+  "mxc-check-failed",
+  "setup-needed",
+] as const;
 
 /** A state of MXC: one of {@link mxcStates}. */
 export type MxcState = (typeof mxcStates)[number];
@@ -83,6 +101,15 @@ export type MxcStatus = {
       state: "mxc-check-failed";
       reason: TrustCheckFailure;
       /** The sentences behind the reason, for logs and support, not for people. */
+      missing: string[];
+    }
+  | {
+      state: "setup-needed";
+      /** What the person still has to do: the one-time download. */
+      setup: "download";
+      /** Why MXC isn't running: the download isn't done, or the last try couldn't finish. */
+      reason: "download-needed";
+      /** The sentence behind the last failed download, for logs and support, not for people; empty before the first try. */
       missing: string[];
     }
 );
@@ -129,6 +156,7 @@ export class SandboxChoiceService {
   #settings: SandboxSettings = { mxc: null };
   #choice: SandboxChoice | null = null;
   #mxcFailure: TrustCheckResult | null = null;
+  #downloadProblem: string | null = null;
   #queue: Promise<unknown> = Promise.resolve();
 
   /** @throws when a backend in {@link sandboxBackendIds} is missing, or MXC has no canary */
@@ -156,6 +184,23 @@ export class SandboxChoiceService {
     return this.#update(this.#settings);
   }
 
+  /**
+   * Downloads MXC's SDK when it is still needed, then chooses again. The host
+   * calls this only when the person picks MXC; starting, a settings change
+   * and the CLI never download by themselves. A download that fails leaves
+   * MXC `setup-needed`, with the sentence behind it.
+   */
+  downloadMxc(): Promise<SandboxChoice> {
+    return this.#enqueue(async () => {
+      const setup = this.#mxc.setup;
+      if (setup !== undefined && (await setup.downloadNeeded())) {
+        const result = await setup.download();
+        this.#downloadProblem = result.done ? null : result.problem;
+      }
+      return this.#decide(this.#settings);
+    });
+  }
+
   /** The latest choice, or `null` before {@link SandboxChoiceService.start}. */
   current(): SandboxChoice | null {
     return this.#choice;
@@ -163,13 +208,19 @@ export class SandboxChoiceService {
 
   /** One update at a time, so two triggers never run two trust checks at once. */
   #update(settings: SandboxSettings): Promise<SandboxChoice> {
-    const next = this.#queue.then(async () => {
-      this.#settings = settings;
-      this.#choice = await this.#choose(settings.mxc);
-      return this.#choice;
-    });
+    return this.#enqueue(() => this.#decide(settings));
+  }
+
+  #enqueue(task: () => Promise<SandboxChoice>): Promise<SandboxChoice> {
+    const next = this.#queue.then(task);
     this.#queue = next.catch(() => undefined);
     return next;
+  }
+
+  async #decide(settings: SandboxSettings): Promise<SandboxChoice> {
+    this.#settings = settings;
+    this.#choice = await this.#choose(settings.mxc);
+    return this.#choice;
   }
 
   async #choose(setting: MxcSetting): Promise<SandboxChoice> {
@@ -187,6 +238,21 @@ export class SandboxChoiceService {
     // An MXC setting of `on` is the person's explicit choice and comes before srt.
     if (setting !== "on" && srt !== null)
       return { active: srt, mxc: { ...facts, state: "not-used" } };
+
+    // Nothing was tried yet, so nothing falls through to srt: the person picked MXC.
+    if ((await this.#mxc.setup?.downloadNeeded()) === true) {
+      const missing = this.#downloadProblem === null ? [] : [this.#downloadProblem];
+      return {
+        active: null,
+        mxc: {
+          ...facts,
+          state: "setup-needed",
+          setup: "download",
+          reason: "download-needed",
+          missing,
+        },
+      };
+    }
 
     const trust = await this.#trustCheck();
     if (trust.passed) {

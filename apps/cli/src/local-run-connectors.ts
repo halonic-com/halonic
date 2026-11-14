@@ -24,6 +24,8 @@ export interface LocalRunConnectorsInput {
    * version it read instead.
    */
   readonly trust: TrustGrant | null;
+  /** Frees what the factories made on this computer, such as the runners' temp folders; called once the connectors have closed. */
+  dispose?(): Promise<void>;
 }
 
 /** A version of the workspace a run read, with the grant of its trust check. */

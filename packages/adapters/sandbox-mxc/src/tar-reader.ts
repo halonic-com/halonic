@@ -14,7 +14,13 @@ const blockSize = 512;
  * every path under one top folder such as `package/`). It refuses the whole
  * tarball when any entry has an absolute path, a `..` part, or is a link, a
  * device or any other kind than a file or folder, so nothing can land outside
- * the folder it is unpacked to.
+ * the folder it is unpacked to. It also refuses names Windows treats
+ * specially (`:`, control characters, a trailing dot or space, device names
+ * such as `CON`).
+ *
+ * Pax headers (types `x` and `g`, which npm writes for paths longer than
+ * ustar holds) are refused like any other kind. A future pin with such paths
+ * needs a change here.
  */
 export function readTarball(gzipped: Buffer): TarFile[] {
   const tar = gunzipSync(gzipped);
@@ -55,10 +61,7 @@ function entryPath(header: Buffer): string {
 function text(header: Buffer, from: number, length: number): string {
   const field = header.subarray(from, from + length);
   const end = field.indexOf(0);
-  return field
-    .subarray(0, end === -1 ? length : end)
-    .toString("utf8")
-    .trim();
+  return field.subarray(0, end === -1 ? length : end).toString("utf8");
 }
 
 /** The path itself when it stays inside the folder it is unpacked to; throws otherwise. */
@@ -69,7 +72,14 @@ function safePath(path: string): string {
     path.includes("\\") ||
     /^[A-Za-z]:/.test(path) ||
     parts.length === 0 ||
-    parts.some((part) => part === ".." || part === ".");
+    parts.some((part) => part === ".." || part === "." || windowsSpecial(part));
   if (escapes) throw new Error(`Tarball entry "${path}" would land outside its folder`);
   return parts.join("/");
+}
+
+/** Whether Windows would read this name as a stream, a device or another name than it says. */
+function windowsSpecial(part: string): boolean {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what this refuses
+  if (/[:\u0000-\u001f]/.test(part) || /[. ]$/.test(part)) return true;
+  return /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i.test(part);
 }

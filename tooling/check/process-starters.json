@@ -41,6 +41,10 @@
       "reason": "Asks an installed program such as claude for its version. It refuses names with a slash and starts only the absolute path findProgram resolved from the absolute PATH folders of the launcher's environment, which no skill sets (never the current folder; on Windows only an .exe).",
       "scriptsTest": "packages/adapters/sandbox-host/src/program-probe.attack.test.ts"
     },
+    "packages/adapters/sandbox-mxc/src/sdk-setup.ts": {
+      "reason": "Imports one file only, node_modules/@microsoft/mxc-sdk/dist/v1/index.js inside the install folder for the exact pins, and only after isVerified has seen the marker. Every byte under that folder was checked against a sha512 pinned in sdk-pins.ts before it was unpacked. The SDK then loads koffi's native build and starts MXC's own wxc-exec, which is the point of the MXC backend. It never runs anything under a skill's scripts/ folder: importSdk refuses a root there, as written or through a symbolic link.",
+      "scriptsTest": "packages/adapters/sandbox-mxc/src/sdk-setup.test.ts"
+    },
     "packages/adapters/sandbox-srt/scripts/windows-fence-probe.mjs": {
       "reason": "CI tooling for the Windows fence proof (HAL-1919), run by hand and by the report-only sandbox-windows job, never shipped. It starts only Node with the srt CLI from this package's node_modules and a child script it writes to a temporary folder, both with fixed arguments. It never loads a skill.",
       "scriptsTest": "packages/adapters/sandbox-srt/src/srt-runner.starts.test.ts"
