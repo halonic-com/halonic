@@ -51,6 +51,38 @@ export interface DeployLease {
   readonly expiresAt: number;
 }
 
+/** One binding in the Worker's upload metadata, in Cloudflare's own shape (`{ type, name, ... }`). Never a secret value. */
+export interface WorkerBinding {
+  readonly type: string;
+  readonly name: string;
+  readonly [field: string]: unknown;
+}
+
+/** One Durable Object migration step, as the script upload takes it. */
+export interface DurableObjectMigration {
+  readonly tag: string;
+  readonly new_sqlite_classes?: readonly string[];
+  readonly [field: string]: unknown;
+}
+
+/** What goes up: the prebuilt script, its bindings and its secrets. */
+export interface WorkerUpload {
+  /** The Worker as one ES module script. */
+  readonly script: string;
+  readonly compatibilityDate: string;
+  readonly bindings: readonly WorkerBinding[];
+  /** Uploaded as `secret_text` bindings in the same request, so a version never runs without them. */
+  readonly secrets: Readonly<Record<string, string>>;
+  /** A short note shown with the version in Cloudflare's dashboard. */
+  readonly message?: string;
+}
+
+/** One version in a deployment, with the share of traffic it gets. */
+export interface DeployedVersion {
+  readonly id: string;
+  readonly percentage: number;
+}
+
 /**
  * The Cloudflare calls the deploy makes. Everything above the client depends on this port, so
  * it tests with a fake and no network. Later steps add their calls here.
@@ -98,4 +130,29 @@ export interface CloudflareApi {
   ): Promise<DeployLease | undefined>;
   /** Frees the lock, only while `leaseId` still holds it. */
   releaseDeployLock(accountId: string, databaseName: string, leaseId: string): Promise<void>;
+  /** The versions that serve traffic now; `undefined` when the Worker has no deployment yet. */
+  currentDeployment(
+    accountId: string,
+    worker: string,
+  ): Promise<readonly DeployedVersion[] | undefined>;
+  /** Uploads a version that serves nothing yet and returns its id. Can't carry Durable Object migrations. */
+  uploadVersion(accountId: string, worker: string, upload: WorkerUpload): Promise<string>;
+  /**
+   * Uploads the script and deploys it at once, with Durable Object migrations. Cloudflare
+   * only applies a class change this way, and it can't be tried before it is live.
+   */
+  uploadWorkerLive(
+    accountId: string,
+    worker: string,
+    upload: WorkerUpload,
+    migrations: readonly DurableObjectMigration[],
+  ): Promise<void>;
+  /** Sets which versions serve traffic; the percentages add up to 100. */
+  deployVersions(
+    accountId: string,
+    worker: string,
+    versions: readonly DeployedVersion[],
+  ): Promise<void>;
+  /** Turns the workers.dev address on and preview addresses off, and returns the Worker's workers.dev URL. */
+  openWorkersDev(accountId: string, worker: string): Promise<string>;
 }

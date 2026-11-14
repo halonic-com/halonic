@@ -1,6 +1,7 @@
 import type {
   CloudflareAccount,
   CloudflareApi,
+  DeployedVersion,
   DeployLease,
   FoundResource,
   Migration,
@@ -28,6 +29,10 @@ export interface FakeCloudflareState {
   renewFails?: boolean;
   /** The database's clock in milliseconds, which decides lease times. Defaults to `Date.now`. */
   now?: () => number;
+  /** The versions serving traffic; none means the Worker was never deployed. */
+  deployment?: readonly DeployedVersion[];
+  /** The workers.dev address `openWorkersDev` returns. */
+  workersDev?: string;
   /** A migration the Worker's own runner applies just before our batch lands, so our batch fails. */
   racedBy?: string;
 }
@@ -52,8 +57,34 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
     if (state.failOnWrite) throw new Error(`unexpected write: ${call}`);
     calls.push(call);
   };
+  let deployment = state.deployment;
+  let versions = 0;
   return {
     calls,
+    async currentDeployment() {
+      calls.push("currentDeployment");
+      return deployment;
+    },
+    async uploadVersion(_accountId, worker, upload) {
+      lockWrite(`uploadVersion ${worker}`);
+      versions += 1;
+      calls.push(`secrets ${Object.keys(upload.secrets).sort().join(",")}`);
+      return `v${versions}`;
+    },
+    async uploadWorkerLive(_accountId, worker, upload, migrations) {
+      lockWrite(`uploadWorkerLive ${worker} ${migrations.map((m) => m.tag).join(",")}`);
+      calls.push(`secrets ${Object.keys(upload.secrets).sort().join(",")}`);
+      versions += 1;
+      deployment = [{ id: `v${versions}`, percentage: 100 }];
+    },
+    async deployVersions(_accountId, _worker, next) {
+      lockWrite(`deployVersions ${next.map((v) => `${v.id}:${v.percentage}`).join(",")}`);
+      deployment = next;
+    },
+    async openWorkersDev(_accountId, worker) {
+      lockWrite(`openWorkersDev ${worker}`);
+      return state.workersDev ?? `https://${worker}.test.workers.dev`;
+    },
     async listAccounts() {
       calls.push("listAccounts");
       return state.accounts;

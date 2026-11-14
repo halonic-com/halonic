@@ -8,7 +8,11 @@ export type DeployErrorCode =
   | "schema-newer-than-cli"
   | "invalid-migrations"
   | "deploy-locked"
-  | "deploy-lock-lost";
+  | "deploy-lock-lost"
+  | "bundle-hash-mismatch"
+  | "reserved-binding-name"
+  | "traffic-split-in-progress"
+  | "smoke-test-failed";
 
 /** A deploy failure with a stable code. The message never holds a token or a secret. */
 export class DeployError extends Error {
@@ -63,7 +67,56 @@ export const redactedMarker = "[redacted]";
 export function redact(text: string, secrets: readonly string[]): string {
   let safe = text;
   for (const secret of secrets) {
-    if (secret.length > 0) safe = safe.split(secret).join(redactedMarker);
+    if (secret.length === 0) continue;
+    // Also the forms an echo can take: JSON-escaped (without its quotes) and URL-encoded.
+    const forms = new Set([
+      secret,
+      JSON.stringify(secret).slice(1, -1),
+      encodeURIComponent(secret),
+    ]);
+    for (const form of forms) safe = safe.split(form).join(redactedMarker);
   }
   return safe;
+}
+
+/** Why a new version went live before its self-test: nothing was deployed yet, or it carried Durable Object migrations. */
+export type LiveReason = "first-deploy" | "migration";
+
+const liveTails: Record<LiveReason, string> = {
+  "first-deploy": "There was no previous version, so the new one is deployed but not working.",
+  migration:
+    "It carried a Durable Object migration, which Cloudflare only applies by deploying at once, so the new version is deployed but not working.",
+};
+
+function failureTail(liveReason: LiveReason | undefined): string {
+  return liveReason
+    ? liveTails[liveReason]
+    : "Nothing was switched: the previous version is still live.";
+}
+
+/**
+ * The new version failed its self-test. `liveBefore` says whether the old version still serves;
+ * `liveReason` says why the new one was live already when it didn't.
+ */
+export class SmokeTestFailedError extends DeployError {
+  readonly failedChecks: readonly string[];
+  readonly liveBefore: boolean;
+  readonly liveReason: LiveReason | undefined;
+
+  readonly restoreFailed: boolean;
+
+  constructor(failedChecks: readonly string[], liveReason?: LiveReason, restoreFailed = false) {
+    const tail = restoreFailed
+      ? "Putting the previous version back also failed: check the deployment in the Cloudflare dashboard."
+      : failureTail(liveReason);
+    super(
+      "smoke-test-failed",
+      `The new version failed its self-test (${failedChecks.join(", ") || "no answer"}). ${tail}`,
+    );
+    this.name = "SmokeTestFailedError";
+    this.failedChecks = failedChecks;
+    this.liveBefore = liveReason === undefined;
+    this.liveReason = liveReason;
+    this.restoreFailed = restoreFailed;
+  }
 }
