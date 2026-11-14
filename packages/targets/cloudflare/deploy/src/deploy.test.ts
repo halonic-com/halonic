@@ -40,10 +40,13 @@ function setup(
     },
     prepare: async () => {
       log.push("prepare");
-      return { bindings: [], secrets: { HALONIC_SECRET_SERVE_PASSWORD: "x" } };
+      return {
+        bundle: { script, hash },
+        bindings: [],
+        secrets: { HALONIC_SECRET_SERVE_PASSWORD: "x" },
+      };
     },
     migrations: [{ id: "0001", statements: ["CREATE TABLE a (x TEXT)"] }],
-    bundle: { script, hash },
     compatibilityDate: "2026-07-30",
     label: "mateo on test",
     onProgress: (event) => events.push(event),
@@ -92,7 +95,7 @@ verifies("deploy.orchestrate", () => {
       ...options,
       prepare: async () => {
         asked.push(...api.calls.filter((c) => c.startsWith("create")));
-        return { bindings: [], secrets: {} };
+        return { bundle: { script, hash }, bindings: [], secrets: {} };
       },
     });
     expect(asked).toEqual([]);
@@ -131,7 +134,7 @@ verifies("deploy.orchestrate", () => {
     expect(log).not.toContain("test");
   });
 
-  it("plan changes nothing, takes no lock and asks for no secrets", async () => {
+  it("plan changes nothing, takes no lock, runs no tests and asks for no secrets", async () => {
     const { api, log, options } = setup({ accounts: [], failOnWrite: true, noDatabase: true }, 1);
     const result = await deploy(api, { ...options, plan: true });
     expect(result.mode).toBe("plan");
@@ -139,7 +142,7 @@ verifies("deploy.orchestrate", () => {
       expect(result.migrations).toEqual(["0001"]);
       expect(result.resources.map((r) => r.action)).toEqual(["create", "create", "create"]);
     }
-    expect(log).not.toContain("prepare");
+    expect(log).toEqual(["validate"]);
     expect(api.calls.some((c) => c.includes("DeployLock"))).toBe(false);
   });
 
@@ -181,7 +184,7 @@ verifies("deploy.orchestrate", () => {
       signal: controller.signal,
       prepare: async () => {
         controller.abort();
-        return { bindings: [], secrets: {} };
+        return { bundle: { script, hash }, bindings: [], secrets: {} };
       },
     }).catch((e: unknown) => e)) as DeployError;
     expect(error.code).toBe("deploy-aborted");

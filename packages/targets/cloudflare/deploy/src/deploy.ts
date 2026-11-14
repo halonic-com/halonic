@@ -15,6 +15,8 @@ export interface DeploySource {
 
 /** What the caller builds from the snapshot at `commit`, once the missing secrets are known. */
 export interface DeployPayload {
+  /** The Worker script built from the snapshot at `commit`, so what is uploaded is what the result names. */
+  readonly bundle: { readonly script: string; readonly hash: string };
   readonly bindings: WorkerUpload["bindings"];
   /** The Worker's own secrets. Sent in the upload; never logged. */
   readonly secrets: WorkerUpload["secrets"];
@@ -28,13 +30,12 @@ export interface DeployOptions {
   readonly source: DeploySource;
   /** Checks the workspace (ADR 5.6 step 1). Throws to stop the deploy. */
   readonly validate: () => Promise<void>;
-  /** Runs the workspace tests (step 2). Called for `production` only. Throws to stop the deploy. */
+  /** Runs the workspace tests (step 2). Called for a `production` deploy, not for `plan`. Throws to stop the deploy. */
   readonly test: () => Promise<void>;
-  /** Asks for missing secrets and builds the upload from the snapshot at `commit` (steps 3–4). Not called by `plan`. */
+  /** Asks for missing secrets and builds the bundle and the upload from the snapshot at `commit` (steps 3–4). Not called by `plan`. */
   readonly prepare: (commit: string) => Promise<DeployPayload>;
   readonly migrations: readonly Migration[];
   readonly durableObjectMigrations?: readonly DurableObjectMigration[];
-  readonly bundle: { readonly script: string; readonly hash: string };
   readonly compatibilityDate: string;
   /** Lists what would happen and changes nothing: no lock, no questions, no writes. */
   readonly plan?: boolean;
@@ -44,7 +45,7 @@ export interface DeployOptions {
   readonly adopt?: boolean;
   /** What a second deploy is shown as the holder of the lock. */
   readonly label: string;
-  /** Aborted on Ctrl C. The lock is freed and the deploy stops. */
+  /** Aborted on Ctrl C. The deploy stops at the next step and the lock is freed. */
   readonly signal?: AbortSignal;
   readonly message?: string;
   readonly onProgress?: (event: DeployProgress) => void;
@@ -84,7 +85,7 @@ export interface DeployDone {
 }
 
 /**
- * Runs ADR 5.6 steps 1–9 in order: validate, test, snapshot from git, secrets, provision, migrate,
+ * Runs ADR 5.6 steps 1–9 in order: validate, test (not for `plan`), snapshot from git, secrets, provision, migrate,
  * upload, smoke test, switch. The lock is taken before anything changes and freed at the end.
  *
  * @throws DeployError `uncommitted-changes` for a production deploy with uncommitted files
@@ -105,7 +106,7 @@ export async function deploy(
 
   await options.validate();
   report({ step: "validated" });
-  if (production) {
+  if (production && !options.plan) {
     await options.test();
     report({ step: "tested" });
   }
@@ -138,8 +139,8 @@ export async function deploy(
   const payload = await options.prepare(commit);
   checkAborted();
 
-  // Nothing is created before the secrets are in hand, and nothing changes outside the lock.
-  // The lock lives in the database, so the database is made first.
+  // Nothing is created before the secrets are in hand. Provisioning (database, bucket, Worker) runs
+  // before the lock because the lock lives in the database; migrate, upload and switch run inside it.
   const resources = await provision(api, { accountId, worker, ...adopt });
   report({ step: "provisioned", resources });
 
@@ -168,7 +169,7 @@ export async function deploy(
       const { versionId } = await uploadAndSwitch(api, {
         accountId,
         worker,
-        bundle: options.bundle,
+        bundle: payload.bundle,
         compatibilityDate: options.compatibilityDate,
         bindings: payload.bindings,
         secrets: payload.secrets,
