@@ -37,6 +37,13 @@ verifies("models.aliases.edit-target", () => {
     expect(await models.readModels()).toBeNull();
   });
 
+  it("reads workspace.yaml, or null", async () => {
+    const { store, models } = setup();
+    store["workspace.yaml"] = "id: acme\n";
+
+    expect(await models.readWorkspace()).toBe("id: acme\n");
+  });
+
   it("changes models.yaml as one named step", () => {
     const { changes, models } = setup();
 

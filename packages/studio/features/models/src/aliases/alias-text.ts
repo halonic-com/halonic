@@ -11,6 +11,13 @@ export const MODELS_UNREADABLE_REASON = "Halonic couldn't read the model aliases
 export const TRY_AGAIN = "Try again";
 export const NO_PRICE_LINE = "No price";
 export const ADD_A_PRICE = "Add a price";
+/** What a row of a model on this machine says in place of a price: no cost, nothing to add. */
+export const RUNS_LOCALLY_LINE = "Runs on this machine";
+
+/** The name of an alias row's "Add a price" button, so a screen reader knows whose price it adds. */
+export function addPriceLabel(name: string): string {
+  return `${ADD_A_PRICE} for ${name}`;
+}
 export const ALIAS_KIND_LABEL = "Model alias";
 /** The item kind of an alias tab. */
 export const ALIAS_KIND = "model-alias";

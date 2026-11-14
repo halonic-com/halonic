@@ -2,10 +2,11 @@ import { EmptyState } from "@halonicjs/studio-kit";
 import type { ItemPageSectionViewProps } from "@halonicjs/studio-shell";
 import { useId } from "react";
 import { ModelsFilesService } from "../api.ts";
-import { aliasRows } from "./alias-rows.ts";
+import { type AliasRow, aliasRows } from "./alias-rows.ts";
 import {
   ADD_A_PRICE,
   ALIAS_KIND,
+  addPriceLabel,
   MODELS_HEADING,
   MODELS_LOADING_LINE,
   MODELS_UNREADABLE_REASON,
@@ -15,6 +16,7 @@ import {
   NO_ALIASES_EXAMPLE,
   NO_ALIASES_TITLE,
   NO_PRICE_LINE,
+  RUNS_LOCALLY_LINE,
   TRY_AGAIN,
 } from "./alias-text.ts";
 import type { ModelsState } from "./read-models.ts";
@@ -67,7 +69,7 @@ function AliasList({
       />
     );
   }
-  const rows = aliasRows(state.models);
+  const rows = aliasRows(state.models, state);
   if (rows.length === 0) {
     return (
       <EmptyState
@@ -91,18 +93,28 @@ function AliasList({
           <button type="button" className="text-left" onClick={() => open(row.name)}>
             {row.label}
           </button>
-          {row.price === undefined ? (
-            <>
-              <span>· {NO_PRICE_LINE} ·</span>
-              <button type="button" onClick={() => open(row.name)}>
-                {ADD_A_PRICE}
-              </button>
-            </>
-          ) : (
-            <span>· {row.price}</span>
-          )}
+          <RowPrice row={row} open={open} />
         </li>
       ))}
     </ul>
+  );
+}
+
+function RowPrice({
+  row,
+  open,
+}: {
+  readonly row: AliasRow;
+  readonly open: (name: string) => void;
+}) {
+  if (row.price !== undefined) return <span>· {row.price}</span>;
+  if (row.runsLocally) return <span>· {RUNS_LOCALLY_LINE}</span>;
+  return (
+    <>
+      <span>· {NO_PRICE_LINE} ·</span>
+      <button type="button" aria-label={addPriceLabel(row.name)} onClick={() => open(row.name)}>
+        {ADD_A_PRICE}
+      </button>
+    </>
   );
 }
