@@ -1,6 +1,9 @@
 export type {
   CreateServer,
   ErrorLog,
+  GoogleAccountActions,
+  GoogleCheckOutcome,
+  GoogleCheckRequest,
   GoogleSetupPorts,
   GoogleSetupSource,
   GoogleSetupSubject,
@@ -13,6 +16,7 @@ export type {
   ServerErrorBody,
   ServerOptions,
   ServerPorts,
+  StagedSecretOutcome,
   TrustDecision,
   TrustGate,
   TrustState,

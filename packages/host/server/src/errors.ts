@@ -129,6 +129,22 @@ export const serverErrors = {
     message:
       "This client secret is in use. Check a new one with Google before it replaces the old one.",
   },
+  secretNotSaved: {
+    status: 409,
+    code: "secret_not_saved",
+    message: "Save a client secret first.",
+  },
+  secretNeedsNoStaging: {
+    status: 409,
+    code: "secret_needs_no_staging",
+    message:
+      "Nothing signed in with this client yet, so a new secret replaces the old one directly.",
+  },
+  googleSetupIncomplete: {
+    status: 409,
+    code: "google_setup_incomplete",
+    message: "Save the client ID and the client secret first.",
+  },
   notFound: { status: 404, code: "not_found", message: "There is nothing at this address." },
   internal: {
     status: 500,
