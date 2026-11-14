@@ -31,6 +31,6 @@ Don't run `pnpm verify` by default: CI runs the full suite (HAL-2418).
   call and never call `requestTelemetryConsent` (HAL-7603).
 - MXC's SDK is not a dependency: it is downloaded on demand, one pinned version, checked against the
   integrity in `src/sdk-packages.ts` (`requirements/sdk-download.md`, HAL-7606). Never add it to a
-  `package.json`. `pnpm fetch-sdk <data folder>` downloads it the same way for the fence job.
+  `package.json`. `pnpm fetch-sdk <data folder>` downloads it the same way, for example before the fence tests.
 - Never shell out to `cmd /c dir` inside the box, in code or tests: Windows 11 refuses it there.
   Use Node's `readdir`.

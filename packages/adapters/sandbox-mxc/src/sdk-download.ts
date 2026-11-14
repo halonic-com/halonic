@@ -1,5 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { gunzipSync } from "node:zlib";
@@ -73,8 +73,9 @@ export async function downloadMxcSdk(
   packages: readonly SdkPackage[] = sdkPackagesFor(process.arch),
 ): Promise<void> {
   if (await isSdkDownloaded(sdkFolder, packages)) return;
-  const building = `${sdkFolder}.downloading`;
-  await rm(building, { recursive: true, force: true });
+  // Each download unpacks into a folder of its own, so two at once never mix their files.
+  await mkdir(dirname(sdkFolder), { recursive: true });
+  const building = await mkdtemp(`${sdkFolder}.downloading-`);
   try {
     for (const sdkPackage of packages) {
       const tarball = await tarballOf(sdkPackage, fetchTarball);
@@ -82,8 +83,11 @@ export async function downloadMxcSdk(
     }
     await writeFile(markerOf(building), listOf(packages));
     await rm(sdkFolder, { recursive: true, force: true });
-    await mkdir(dirname(sdkFolder), { recursive: true });
     await rename(building, sdkFolder);
+  } catch (error) {
+    // A download that finished first has already filled `sdkFolder`; that is as good as ours.
+    if (await isSdkDownloaded(sdkFolder, packages)) return;
+    throw error;
   } finally {
     await rm(building, { recursive: true, force: true });
   }

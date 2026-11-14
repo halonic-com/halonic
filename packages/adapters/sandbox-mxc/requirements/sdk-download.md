@@ -8,9 +8,13 @@ The sandbox-mxc adapter shall not carry MXC's SDK as a dependency. It shall down
 
 ## Examples
 
-- Given a registry that serves the three pinned tarballs,
+- Given a registry that serves the pinned tarballs (four on a 64-bit Intel or AMD computer: the SDK,
+  `koffi`, `semver` and koffi's compiled part),
   when the download runs,
-  then the three packages are unpacked into the SDK folder, and a second run fetches nothing.
+  then every package is unpacked into the SDK folder, and a second run fetches nothing.
+- Given two downloads running at the same time,
+  when both finish,
+  then the SDK folder holds one complete download and is marked finished.
 - Given a tarball whose bytes don't match its pinned integrity,
   when the download runs,
   then it is refused and no SDK folder is left behind.

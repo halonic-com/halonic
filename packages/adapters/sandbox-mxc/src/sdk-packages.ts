@@ -12,9 +12,9 @@ export interface SdkPackage {
 /**
  * Everything MXC's SDK needs when the adapter uses `spawn` (HAL-7606, the
  * board's "yes, on demand"): the SDK and the two packages it loads at once,
- * `koffi` and `semver`, and koffi's compiled part for Windows on this processor. Not `node-pty`: the SDK loads it only for its
- * terminal path, which the adapter never takes. Bumping one entry runs the
- * MXC fence job, which fetches this same list.
+ * `koffi` and `semver`, and koffi's compiled part for Windows on this processor.
+ * Not `node-pty`: the SDK loads it only for its terminal path, which the
+ * adapter never takes. `pnpm fetch-sdk` downloads this same list.
  */
 export const sdkPackages: readonly SdkPackage[] = [
   {

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
@@ -87,6 +87,18 @@ verifies("sandbox-mxc.sdk-download", () => {
     expect(fetchTarball.count()).toBe(2);
   });
 
+  it("keeps two downloads at once apart, leaving one complete SDK", async () => {
+    await Promise.all([
+      downloadMxcSdk(sdkFolder, registry(), packages),
+      downloadMxcSdk(sdkFolder, registry(), packages),
+    ]);
+    expect(await isSdkDownloaded(sdkFolder, packages)).toBe(true);
+    expect(await readdir(dataFolder)).toEqual(["mxc-sdk"]);
+    expect(await readFile(join(sdkFolder, "node_modules/helper/index.js"), "utf8")).toBe(
+      "module.exports = 1;",
+    );
+  });
+
   it("downloads again when a pin changed", async () => {
     await downloadMxcSdk(sdkFolder, registry(), packages);
     expect(await isSdkDownloaded(sdkFolder, [sdk.sdkPackage])).toBe(false);
@@ -103,7 +115,7 @@ verifies("sandbox-mxc.sdk-download", () => {
       "helper@1.0.0 doesn't match its pinned integrity",
     );
     expect(existsSync(sdkFolder)).toBe(false);
-    expect(existsSync(`${sdkFolder}.downloading`)).toBe(false);
+    expect(await readdir(dataFolder)).toEqual([]);
   });
 
   it("fails without touching an earlier download when the network is down", async () => {

@@ -1,6 +1,6 @@
 // Downloads MXC's SDK into Halonic's data folder: `node src/fetch-sdk.ts <data folder>`.
-// The MXC fence job runs it before the fence tests, so CI takes the same
-// download path as a user's computer.
+// It takes the same download path as a user's computer, so a person or a CI job
+// can fetch the SDK ahead of the fence tests.
 
 import { downloadMxcSdk, sdkFolderOf } from "./sdk-download.ts";
 
