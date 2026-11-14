@@ -3,7 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { ManualClock } from "./fakes.test-helper.ts";
 import type { RunHealth } from "./run-object-api.ts";
-import { Watchdog, watchdogTimerId, whyStuck } from "./watchdog.ts";
+import { defaultMaxRunsPerSweep, Watchdog, watchdogTimerId, whyStuck } from "./watchdog.ts";
 
 const minute = 60 * 1000;
 const hour = 60 * minute;
@@ -96,7 +96,7 @@ verifies("cloudflare-durable.watchdog", () => {
     });
 
     it("checks every run when there are more than it asks at once", async () => {
-      const t = newWatchdog();
+      const t = newWatchdog(25);
       for (let run = 0; run < 25; run++) {
         t.add(`run_${run}`, "waiting", { lastEventAt: null, overdueMs: 10 * minute, ended: false });
       }
@@ -171,6 +171,17 @@ verifies("cloudflare-durable.watchdog-limits", () => {
         t.clock.advance(minute);
       }
       expect(checked.size).toBe(25);
+    });
+
+    it("stays within the calls of one invocation when every run in the group is stuck", async () => {
+      const callLimit = 50;
+      const callsBeforeTheRuns = 2; // the run list and the routines tick
+      const t = manyStuckRuns(100, defaultMaxRunsPerSweep);
+      const report = await t.watchdog.sweep();
+      const checks = report.woken.length + report.failed.length;
+      const wakes = t.scheduled.length;
+      expect(wakes).toBe(defaultMaxRunsPerSweep);
+      expect(callsBeforeTheRuns + checks + wakes).toBeLessThanOrEqual(callLimit);
     });
 
     it("checks everything at once when the runs fit the limit", async () => {

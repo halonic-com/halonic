@@ -9,11 +9,13 @@ export const defaultQuietAfterMs = 10 * 60 * 1000;
 /** A timer that has been due this long without delivery is stuck: the alarm normally delivers it within seconds. */
 export const defaultOverdueAfterMs = 2 * 60 * 1000;
 /**
- * How many runs one sweep checks at most. Every run costs a call to its object, and a woken run one more,
- * and a Worker invocation may make only so many calls (50 on the free plan). Runs beyond this are
+ * How many runs one sweep checks at most. A Worker invocation may make only so many calls (50 on the
+ * free plan). A sweep makes two before it checks any run (the run list and the routines tick), and then
+ * at worst two per run: one to check it and one to wake it when it is stuck. With 20 runs that is
+ * 2 + 20 * 2 = 42 calls even when every run is stuck, which leaves some slack. Runs beyond this are
  * checked on later sweeps, in turn ({@link Watchdog}).
  */
-export const defaultMaxRunsPerSweep = 40;
+export const defaultMaxRunsPerSweep = 20;
 
 /** The id of the timer that wakes a run; the engine handles it as a request to look at the run again. */
 export const watchdogTimerId = "watchdog";

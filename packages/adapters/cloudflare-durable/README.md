@@ -122,10 +122,13 @@ event, and how long its earliest timer has been due without delivery.
 - **A run that has ended is never woken.** `health()` says whether the run's own log
   has ended, and the watchdog trusts that over the run list, which may lag. A run that
   ended but is still listed as running is not woken every minute.
-- **A limit on calls.** A sweep checks at most 40 runs (`maxRunsPerSweep`), because each
-  is a call to its object and one Worker invocation may make only so many. It takes the
+- **A limit on calls.** A sweep checks at most 20 runs (`maxRunsPerSweep`), because each
+  is a call to its object (and a stuck one a second call to wake it), and one Worker
+  invocation may make only so many: 50 on the free plan, so 2 + 20 * 2 = 42 at worst. It takes the
   runs in the order of their ids, in groups of that size, and picks the group by the
-  minute, so every run is checked within a few minutes. The report's `deferred` is the
+  minute, so every run is checked within a few minutes. This assumes the cron runs every
+  minute: a cron every N minutes, where N shares a factor with the number of groups,
+  would keep picking the same group. The report's `deferred` is the
   count left for later.
 - A run whose check or wake fails is in the report's `failed`; the others go on.
 

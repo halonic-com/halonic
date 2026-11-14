@@ -30,7 +30,11 @@ export interface RoutinesStateOptions {
  * which passes each tick to the listener (the routine scheduler of
  * `@halonicjs/app`), one tick at a time. The scheduler keeps `lastTick` in
  * `Coordination` and gives each fire a fixed id, so a repeated or late tick
- * starts nothing twice; this class only makes sure no two ticks run at once.
+ * starts nothing twice; this class keeps ticks from running at once.
+ * The one exception is a tick given up on after a timeout: it keeps running while
+ * the next one starts, so two can overlap. That is safe, because the fixed fire
+ * ids stop a routine from starting twice, and a late `lastTick` write from the
+ * hung tick is safe for the same reason.
  *
  * A tick that arrives while another is running shares that tick instead of
  * starting a second one. A tick that rejects is not retried: the next tick
