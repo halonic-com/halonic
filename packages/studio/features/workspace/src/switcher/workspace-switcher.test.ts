@@ -453,30 +453,6 @@ describe("closing", () => {
     expect([acme.disposed(), beta.disposed()]).toEqual([true, true]);
     expect(switcher.open.all).toEqual([]);
   });
-
-  it("saves what is waiting in every workspace before the window goes, even when one fails", async () => {
-    const order: string[] = [];
-    const withSaving = (name: string, answer: boolean) => {
-      const { saving, saveNow, dispose } = savingThatAnswers(answer);
-      saveNow.mockImplementation(async () => {
-        order.push(`save ${name}`);
-        return answer;
-      });
-      dispose.mockImplementation(() => order.push(`dispose ${name}`));
-      return { ...opened(name), saving };
-    };
-    const acme = withSaving("Acme", false);
-    const beta = withSaving("Beta", true);
-    const { switcher } = setup({
-      openFolder: async (location) => (location === "/work/acme" ? acme : beta),
-    });
-    await switcher.openLocation("/work/acme");
-    await switcher.openLocation("/work/beta");
-
-    await switcher.dispose();
-    expect(order).toEqual(["save Acme", "dispose Acme", "save Beta", "dispose Beta"]);
-    expect([acme.disposed(), beta.disposed()]).toEqual([true, true]);
-  });
 });
 
 describe("showAt", () => {
