@@ -1,17 +1,13 @@
-import { hostSetting } from "@halonicjs/app";
+import { type NewAgentsRun, newAgentsRun } from "@halonicjs/app";
 
-/** Where an agent made from now on runs: in the sandbox, or on this computer without one. */
-export type NewAgentsRun = "sandbox" | "this-computer";
+export type { NewAgentsRun };
 
 /**
- * The sandbox's host setting (`settings.new-agents-run`): kept where Halonic runs, for every
+ * The sandbox's host setting (`sandbox.new-agents`): kept where Halonic runs, for every
  * workspace on the computer, never in a workspace. A value that can't be read reads as the
- * sandbox, so a damaged file never moves an agent out of it.
+ * sandbox, so a damaged file never moves an agent out of it. The engine's creation path reads
+ * the same definition (`newAgentPlacement`).
  */
 export const sandboxPrefs = {
-  newAgents: hostSetting<NewAgentsRun>(
-    "sandbox.new-agents",
-    "sandbox",
-    (value): value is NewAgentsRun => value === "sandbox" || value === "this-computer",
-  ),
+  newAgents: newAgentsRun,
 };
