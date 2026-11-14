@@ -76,6 +76,7 @@ verifies("profile.workspace-folders", () => {
     const folders = await workspaceFolders(profile, "/srv/acme/workspace", digest);
     const hash = await digest.sha256(encodeUtf8("/srv/acme/workspace"));
     expect(folders.folder.endsWith(bytesToHex(hash).slice(0, 32))).toBe(true);
+    expect(folders.key).toBe(bytesToHex(hash).slice(0, 32));
   });
 
   it("gives two workspaces different folders", async () => {
