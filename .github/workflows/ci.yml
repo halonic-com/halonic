@@ -1417,10 +1417,14 @@ jobs:
       - name: Local tool attacks through the fence
         working-directory: packages/adapters/connector-stdio-sandbox
         run: pnpm test:fence
-      - name: Harness run through the fence
-        # A stand-in program run by the CLI's harness host in the real
-        # sandbox: the profile root is hidden, only the run's own folders are
-        # writable and the file lands in the proposal.
+      - name: Build the integration runner
+        working-directory: packages/adapters/integration-runner
+        run: pnpm build
+      - name: CLI runs through the fence
+        # A run starts a local integration in the built runner and the real
+        # sandbox (HAL-8089), and a stand-in program run by the CLI's harness
+        # host runs in the real sandbox: the profile root is hidden, only the
+        # run's own folders are writable and the file lands in the proposal.
         working-directory: apps/cli
         run: pnpm test:fence
 
