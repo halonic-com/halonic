@@ -3,7 +3,6 @@
 - Task: HAL-8805, the `halonic secret` command (#2542), reviewed on HAL-8824
 - Approval: Liam approves this note in review on HAL-8824 and signs it as the CTO
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:quJEmwJCBjlJFR8qXeafRnT8ochZpFLzRvmYHCv2Um0Vu+gBxD57ZUN1iCKHt1WahR84AMKsYrg6ZK+mo+wPBQ==
 
 ## What changes
 
@@ -22,8 +21,9 @@ it belongs in the service so every caller gets the same answer.
 
 ## Tests
 
-No test was weakened or skipped. `secret-service.test.ts` gains a case for the new sentence.
+No test was weakened or skipped. `secret-service.test.ts` gains a case for the new sentence. No test of `contracts.host-settings-store` was changed; its expect count differs by one only because of `vi.waitFor` retries in the shared contract helper.
 
 ## Covers
 
 - app.secret-service
+- contracts.host-settings-store
