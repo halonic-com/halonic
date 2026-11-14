@@ -86,6 +86,16 @@ verifies("cli.commands.serve.serve", () => {
     await expect(fetch(`${address}/api/hello`)).rejects.toThrow();
   });
 
+  it("tells the workspace's name and folder, never its absolute path", async () => {
+    await trustAcme();
+    const { io } = startServe("--port", "0");
+    await waitUntil(() => io.stdout.length >= 1, slowStart);
+    const address = addressOf(io.stdout[0]);
+
+    const workspace = await (await fetch(`${address}/api/workspace`)).json();
+    expect(workspace).toEqual({ name: "Acme", sample: false, folder: "acme" });
+  });
+
   it("asks the trust gate again for every request, so an edit after the start shows as changed", async () => {
     await trustAcme();
     const { io } = startServe("--port", "0");

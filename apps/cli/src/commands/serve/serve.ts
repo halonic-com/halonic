@@ -175,11 +175,9 @@ async function listenOnComputer(
   parts: RoutineEngine,
   listen: { readonly port: number; readonly network: boolean },
 ): Promise<Listening> {
-  const folders = await workspaceFolders(
-    profileFolder(setup.profile ?? nodeProfileEnvironment()),
-    await realpath(dir.root),
-    webCryptoDigest,
-  );
+  const environment = setup.profile ?? nodeProfileEnvironment();
+  const root = await realpath(dir.root);
+  const folders = await workspaceFolders(profileFolder(environment), root, webCryptoDigest);
   // A failure the caller isn't told about: the cause goes to `--debug`.
   const logRequestFailure = (error: unknown): void =>
     context.debug(
@@ -199,6 +197,16 @@ async function listenOnComputer(
     webhooks: {
       find: async (key) =>
         (await versions.routines.list()).find((placed) => routineKey(placed) === key) ?? null,
+    },
+    workspace: {
+      // Read at every request, so a rename in `workspace.yaml` shows at once.
+      describe: async () => ({
+        name: workspaceNameOf(versions.latest(), dir),
+        // No workspace is marked as the sample yet: Welcome has none until HAL-9089 is decided.
+        sample: false,
+        folder: root,
+        home: environment.homeFolder,
+      }),
     },
     requestCounts: openDiskRequestCountStore(countFolder, parts.clock),
     errorLog: { record: logRequestFailure },
