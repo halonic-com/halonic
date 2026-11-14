@@ -2,6 +2,7 @@
 
 - Approval: Liam approved the edit in the review of #2354 (HAL-8763); the example wording is a team decision under HAL-2282
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:fzr+nXu1BXkxfSyVJGcxHbW4E+5B0j+CyXXugNNMhKbKOWDE/6NyzwsGFNUK0IOH9w7vR2q/IXjahh5txuw1Ag==
 - Task: HAL-8123
 
 ## What changes
