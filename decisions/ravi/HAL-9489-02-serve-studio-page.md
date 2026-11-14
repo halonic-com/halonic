@@ -3,7 +3,7 @@
 - Task: HAL-9489
 - Approval: Liam's decision on HAL-9482 (served Studio and its page route); Priya reviews the security side, Liam reviews the code and signs this note as the CTO
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:W4Ud7OD5/+/CrKZI32RNlIUt93ycz0Q+8Jbs5rvRuIx3v5QmOZP4pnWaAy64uglhJw8tML+ftku0n9dNYQD2Cw==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:iEQcfBSSCBns5KjW5H13xGK0KTK1nhK7Q1yFWoMyhD5Ek1gXGYxJu2EPuCbv4+yGH5Lm9KteRS44AHIurgnUAg==
 
 ## What changes
 
