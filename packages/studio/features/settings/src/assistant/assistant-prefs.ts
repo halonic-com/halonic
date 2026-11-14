@@ -14,6 +14,23 @@ export function isTurnLimit(value: unknown): value is number {
   );
 }
 
+/** The tuning ranges the agent file allows (`ModelParams`): temperature 0 to 2, top-p 0 to 1. */
+export const tuningRanges = { temperature: { min: 0, max: 2 }, topP: { min: 0, max: 1 } } as const;
+
+/** What a model may be asked to reason about before it answers; "" leaves it to the provider. */
+export const reasoningEfforts = ["", "low", "medium", "high"] as const;
+/** One of {@link reasoningEfforts}. */
+export type ReasoningEffort = (typeof reasoningEfforts)[number];
+
+const isNumberIn =
+  (range: { min: number; max: number }) =>
+  (value: unknown): value is number =>
+    typeof value === "number" && value >= range.min && value <= range.max;
+const orNull =
+  (accepts: (value: unknown) => value is number) =>
+  (value: unknown): value is number | null =>
+    value === null || accepts(value);
+
 const isText = (value: unknown): value is string => typeof value === "string";
 const isFlag = (value: unknown): value is boolean => typeof value === "boolean";
 
@@ -38,4 +55,27 @@ export const assistantPrefs = {
   turnLimit: hostSetting("assistant.turn-limit", turnLimitRange.fallback, isTurnLimit),
   connectorTools: hostSetting("assistant.connector-tools", true, isFlag),
   instructions: hostSetting("assistant.instructions", "", isText),
+  /** Tuning (`settings.ai-agent-tuning`): `null`, empty or "" means the provider's own default. */
+  temperature: hostSetting<number | null>(
+    "assistant.temperature",
+    null,
+    orNull(isNumberIn(tuningRanges.temperature)),
+  ),
+  topP: hostSetting<number | null>("assistant.top-p", null, orNull(isNumberIn(tuningRanges.topP))),
+  maxTokens: hostSetting<number | null>(
+    "assistant.max-tokens",
+    null,
+    orNull((value): value is number => Number.isInteger(value) && (value as number) > 0),
+  ),
+  stop: hostSetting<readonly string[]>(
+    "assistant.stop",
+    [],
+    (value): value is readonly string[] =>
+      Array.isArray(value) && value.every((item) => typeof item === "string" && item !== ""),
+  ),
+  reasoningEffort: hostSetting<ReasoningEffort>(
+    "assistant.reasoning-effort",
+    "",
+    (value): value is ReasoningEffort => reasoningEfforts.some((effort) => effort === value),
+  ),
 };

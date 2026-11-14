@@ -1,4 +1,5 @@
 import type { HostSettings } from "@halonicjs/app";
+import type { HostSettingValue } from "@halonicjs/ports";
 import { Field, Select, Switch, ViewOnlyLine } from "@halonicjs/studio-kit";
 import type { SettingsPlace, SettingsSectionProps } from "@halonicjs/studio-shell";
 import { useState } from "react";
@@ -14,7 +15,8 @@ import {
 import * as text from "./assistant-text.ts";
 import { HowItConnects } from "./how-it-connects.tsx";
 import { SavedTextField } from "./saved-text-field.tsx";
-import { useHostSetting } from "./use-host-setting.ts";
+import { Tuning } from "./tuning.tsx";
+import { type ShownHostSetting, useHostSetting } from "./use-host-setting.ts";
 
 const providerOptions = assistantProviders.map((provider) => ({
   value: provider,
@@ -55,6 +57,18 @@ export function AssistantView({ settings, announce, place }: AssistantViewProps)
   return <AssistantEditor settings={settings} announce={announce} place={place} />;
 }
 
+/** A tuning setting for {@link Tuning}: an empty value puts the setting back to its default. */
+function tuned<Value extends HostSettingValue>(
+  shown: ShownHostSetting<Value>,
+  isEmpty: (value: Value) => boolean,
+) {
+  return {
+    value: shown.value,
+    failed: shown.failed,
+    save: (value: Value) => shown.save(isEmpty(value) ? undefined : value),
+  };
+}
+
 /** The label-over-value rows of the section served to another device. */
 function AssistantViewOnly({ settings }: { readonly settings: HostSettings }) {
   const provider = useHostSetting(settings, assistantPrefs.provider).value;
@@ -65,6 +79,11 @@ function AssistantViewOnly({ settings }: { readonly settings: HostSettings }) {
   const turnLimit = useHostSetting(settings, assistantPrefs.turnLimit).value;
   const connectorTools = useHostSetting(settings, assistantPrefs.connectorTools).value;
   const instructions = useHostSetting(settings, assistantPrefs.instructions).value;
+  const temperature = useHostSetting(settings, assistantPrefs.temperature).value;
+  const topP = useHostSetting(settings, assistantPrefs.topP).value;
+  const maxTokens = useHostSetting(settings, assistantPrefs.maxTokens).value;
+  const stop = useHostSetting(settings, assistantPrefs.stop).value;
+  const reasoningEffort = useHostSetting(settings, assistantPrefs.reasoningEffort).value;
   const orNone = (value: string) => (value === "" ? text.NOTHING : value);
   const rows: Array<[string, string]> = [[text.PROVIDER, providerDefaults[provider].label]];
   if (provider !== "not-set-up") {
@@ -73,6 +92,11 @@ function AssistantViewOnly({ settings }: { readonly settings: HostSettings }) {
       [text.BASE_URL, orNone(baseUrl)],
       [text.SECRET_NAME, orNone(secretName)],
       [text.LOCAL, local ? text.ON : text.OFF],
+      [text.TEMPERATURE, temperature === null ? text.PROVIDER_DEFAULT : String(temperature)],
+      [text.TOP_P, topP === null ? text.PROVIDER_DEFAULT : String(topP)],
+      [text.MAX_TOKENS, maxTokens === null ? text.PROVIDER_DEFAULT : String(maxTokens)],
+      [text.STOP, stop.length === 0 ? text.PROVIDER_DEFAULT : stop.join(", ")],
+      [text.REASONING_EFFORT, reasoningEffort === "" ? text.PROVIDER_DEFAULT : reasoningEffort],
     );
   }
   rows.push(
@@ -105,6 +129,11 @@ function AssistantEditor({ settings, announce, place }: AssistantViewProps) {
   const turnLimit = useHostSetting(settings, assistantPrefs.turnLimit);
   const connectorTools = useHostSetting(settings, assistantPrefs.connectorTools);
   const instructions = useHostSetting(settings, assistantPrefs.instructions);
+  const temperature = useHostSetting(settings, assistantPrefs.temperature);
+  const topP = useHostSetting(settings, assistantPrefs.topP);
+  const maxTokens = useHostSetting(settings, assistantPrefs.maxTokens);
+  const stop = useHostSetting(settings, assistantPrefs.stop);
+  const reasoningEffort = useHostSetting(settings, assistantPrefs.reasoningEffort);
 
   const [focusBaseUrl, setFocusBaseUrl] = useState(false);
   const failedLine = (what: string, failed: boolean) => (failed ? text.notSaved(what) : null);
@@ -204,6 +233,20 @@ function AssistantEditor({ settings, announce, place }: AssistantViewProps) {
           saveSecretName={(value) => saveTyped("the secret name", secretName, value)}
           toggleLocal={toggleLocal}
           focusBaseUrl={focusBaseUrl}
+        />
+      )}
+      {chosen === "not-set-up" ? null : (
+        <Tuning
+          temperature={tuned(temperature, (value) => value === null)}
+          topP={tuned(topP, (value) => value === null)}
+          maxTokens={tuned(maxTokens, (value) => value === null)}
+          stop={tuned(stop, (value) => value.length === 0)}
+          reasoningEffort={tuned(reasoningEffort, (value) => value === "")}
+          saveTyped={async (what, save) => {
+            const saved = await save();
+            if (!saved) announce(text.notSaved(what));
+            return saved;
+          }}
         />
       )}
       <h4 className="text-body-strong">{text.ANSWERS_GROUP}</h4>
