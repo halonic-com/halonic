@@ -12,6 +12,7 @@ import {
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { NewWorkspaceHost } from "../new-workspace/new-workspace-dialog.tsx";
 import { type MountedWorkspaceWindow, mountWorkspaceWindow } from "./mount-workspace-window.tsx";
 import { RecentWorkspaces } from "./recent-workspaces.ts";
 import type { WorkspaceSaving } from "./workspace-saving.ts";
@@ -68,6 +69,7 @@ function start(
   gone: string[] = [],
   saving?: WorkspaceSaving,
   features: readonly Feature[] = [],
+  newWorkspace?: NewWorkspaceHost,
 ): { shell: Shell; switcher: WorkspaceSwitcher } {
   const shell = createShell({ features, host: "desktop-app", platform: "windows" });
   const storage = new Map<string, string>();
@@ -99,6 +101,7 @@ function start(
       switcher,
       platform: "windows",
       language: "en",
+      ...(newWorkspace === undefined ? {} : { newWorkspace }),
     });
   });
   return { shell, switcher };
@@ -138,6 +141,49 @@ verifies("workspace.workspace-window", () => {
     await act(async () => open?.click());
     expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: acme");
     expect(shell.toasts.list().map((toast) => toast.title)).toEqual(["Opened acme"]);
+  });
+
+  it('creates a workspace from Welcome\'s New workspace… and opens it with "Created acme"', async () => {
+    const { shell } = start([], [], undefined, [], {
+      defaultParent: async () => "/docs",
+      folderOf: (parent, name) => `${parent}/${name}`,
+      probe: async () => "new",
+      create: async () => ({ kind: "trusted" }),
+    });
+    // jsdom has `<dialog>` but no `showModal()`; opening it is all this needs.
+    Object.assign(HTMLDialogElement.prototype, {
+      showModal(this: HTMLDialogElement) {
+        this.setAttribute("open", "");
+      },
+      close(this: HTMLDialogElement) {
+        this.removeAttribute("open");
+      },
+    });
+    const newButton = [...element.querySelectorAll("button")].find((each) =>
+      each.textContent?.includes("New workspace…"),
+    );
+
+    await act(async () => newButton?.click());
+    const name = document.querySelector<HTMLInputElement>("input");
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+      setter?.call(name, "acme");
+      name?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const create = [...document.querySelectorAll("button")].find((each) =>
+      each.textContent?.startsWith("Create"),
+    );
+    await act(async () => create?.click());
+    await act(async () => {});
+
+    expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: acme");
+    expect(shell.toasts.list().map((toast) => toast.title)).toEqual(["Created acme"]);
+  });
+
+  it("has no New workspace… on Welcome without the app's dialog", () => {
+    start([]);
+
+    expect(element.textContent).not.toContain("New workspace…");
   });
 
   it("shows the workspace at a position on Ctrl and its number", async () => {

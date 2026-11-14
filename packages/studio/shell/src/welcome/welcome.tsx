@@ -26,6 +26,10 @@ export interface WelcomeProps {
    * couldn't, else with `undefined`: opened, or the picker was cancelled.
    */
   readonly onOpenFolder: () => Promise<WelcomeOpenProblem | undefined>;
+  /**
+   * Opens the New workspace dialog; without it Welcome has no **New workspace…** button.
+   */
+  readonly onNewWorkspace?: (() => void) | undefined;
   /** The workspaces remembered on this device; without it, or while it's empty, none show. */
   readonly recent?: WelcomeRecentList | undefined;
 }
@@ -42,7 +46,8 @@ type Opening = { readonly from: "picker" } | { readonly from: "recent"; readonly
 /**
  * The window while no workspace is open (`shell.welcome.open-action`, microcopy 3.2): "Halonic
  * Studio", what a workspace is, and **Open folder**, the one primary button, centred with no
- * sidebar and no tabs. While the folder opens the button reads "Opening…" and is busy: it keeps
+ * sidebar and no tabs. With the app's New workspace dialog, **New workspace…** sits under it as
+ * a secondary button. While the folder opens the button reads "Opening…" and is busy: it keeps
  * focus and ignores presses. A folder that fails to open says why under the text in the danger
  * colour, and the button works again (`shell.welcome.cant-open`); a reason Halonic can't explain
  * comes with **Copy details**. Cancelling the picker changes
@@ -56,7 +61,7 @@ type Opening = { readonly from: "picker" } | { readonly from: "recent"; readonly
  * @example
  * <Welcome onOpenFolder={openFolder} recent={{ workspaces, onOpen, onRemove }} />
  */
-export function Welcome({ onOpenFolder, recent }: WelcomeProps) {
+export function Welcome({ onOpenFolder, onNewWorkspace, recent }: WelcomeProps) {
   const [opening, setOpening] = useState<Opening | undefined>(undefined);
   const [shownProblem, setShownProblem] = useState<ShownProblem | undefined>(undefined);
   /** Where focus goes once a removed row is gone: a row's location, or `null` for Open folder. */
@@ -137,6 +142,11 @@ export function Welcome({ onOpenFolder, recent }: WelcomeProps) {
         >
           Open folder
         </Button>
+        {onNewWorkspace === undefined ? null : (
+          <Button variant="secondary" onClick={() => opening === undefined && onNewWorkspace()}>
+            New workspace…
+          </Button>
+        )}
         <p role="alert" className="text-body text-danger break-words empty:hidden">
           {problem === undefined ? null : `Can't open ${problem.folder}: ${problem.reason}`}
         </p>

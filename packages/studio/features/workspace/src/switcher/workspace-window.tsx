@@ -5,8 +5,13 @@ import {
   WelcomeWindow,
   type WindowActions,
 } from "@halonicjs/studio-shell";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { openWorkspaceCommand } from "../feature.ts";
+import {
+  NewWorkspaceDialog,
+  type NewWorkspaceHost,
+} from "../new-workspace/new-workspace-dialog.tsx";
+import { createdLine } from "../new-workspace/new-workspace-text.ts";
 import { WorkspaceTrustBadge } from "../trust/workspace-trust-badge.tsx";
 import { CloseWorkspaceDialog } from "./close-workspace-dialog.tsx";
 import { workspaceMenu } from "./workspace-menu.ts";
@@ -23,6 +28,11 @@ export interface WorkspaceWindowProps {
   readonly platform: KeyboardPlatform;
   /** The language of the Studio's words, such as `en`, set on `<html lang>`. */
   readonly language: string;
+  /**
+   * What the New workspace dialog needs from the app. Without it the window has no
+   * **New workspace…** row or button.
+   */
+  readonly newWorkspace?: NewWorkspaceHost;
 }
 
 /**
@@ -34,8 +44,16 @@ export interface WorkspaceWindowProps {
  * @example
  * <WorkspaceWindow shell={shell} switcher={switcher} platform="windows" language="en" />
  */
-export function WorkspaceWindow({ shell, switcher, platform, language }: WorkspaceWindowProps) {
+export function WorkspaceWindow({
+  shell,
+  switcher,
+  platform,
+  language,
+  newWorkspace,
+}: WorkspaceWindowProps) {
   const { open } = switcher;
+  const [creating, setCreating] = useState(false);
+  const askNewWorkspace = newWorkspace === undefined ? undefined : () => setCreating(true);
   const shown = useSyncExternalStore(
     (onChange) => open.subscribe(onChange),
     () => open.shown,
@@ -78,18 +96,38 @@ export function WorkspaceWindow({ shell, switcher, platform, language }: Workspa
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [switcher, platform]);
 
-  if (shown === undefined) {
-    return (
-      <WelcomeWindow
-        shell={shell}
-        language={language}
-        onOpenFolder={() => switcher.pickAndOpen()}
-        recent={{
-          workspaces: switcher.recent.list(),
-          onOpen: (location) => switcher.openLocation(location),
-          onRemove: (location) => switcher.removeFromRecent(location),
+  const dialog =
+    creating && newWorkspace !== undefined ? (
+      <NewWorkspaceDialog
+        host={newWorkspace}
+        onCancel={() => setCreating(false)}
+        onOpen={(folder) => {
+          setCreating(false);
+          void switcher.fromMenu(() => switcher.openLocation(folder));
+        }}
+        onCreated={(folder, name, trust) => {
+          setCreating(false);
+          const toast = createdLine(name, trust.kind === "not-saved" ? trust.reason : undefined);
+          void switcher.fromMenu(() => switcher.openLocation(folder, toast));
         }}
       />
+    ) : null;
+  if (shown === undefined) {
+    return (
+      <>
+        <WelcomeWindow
+          shell={shell}
+          language={language}
+          onOpenFolder={() => switcher.pickAndOpen()}
+          onNewWorkspace={askNewWorkspace}
+          recent={{
+            workspaces: switcher.recent.list(),
+            onOpen: (location) => switcher.openLocation(location),
+            onRemove: (location) => switcher.removeFromRecent(location),
+          }}
+        />
+        {dialog}
+      </>
     );
   }
   const menu = (window: WindowActions) =>
@@ -99,6 +137,7 @@ export function WorkspaceWindow({ shell, switcher, platform, language }: Workspa
       shown: shown.location,
       platform,
       onOpen: (location) => void switcher.fromMenu(() => switcher.openLocation(location), true),
+      ...(askNewWorkspace === undefined ? {} : { onNewWorkspace: askNewWorkspace }),
       onOpenFolder: () => void switcher.fromMenu(() => switcher.pickAndOpen()),
       onWorkspaceSettings: () => window.runCommand(openWorkspaceCommand),
       onClose: () => void switcher.closeShown(),
@@ -125,6 +164,7 @@ export function WorkspaceWindow({ shell, switcher, platform, language }: Workspa
           )
         }
       />
+      {dialog}
       {closeRequest === undefined ? null : (
         <CloseWorkspaceDialog
           request={closeRequest}

@@ -123,9 +123,10 @@ export class WorkspaceSwitcher {
 
   /**
    * Shows the workspace in a folder, opening it first when it isn't open, as a Recent row does:
-   * the app reopens the folder the user picked before, then opens the workspace in it.
+   * the app reopens the folder the user picked before, then opens the workspace in it. A
+   * `toast` replaces "Opened Acme", as "Created Acme" does after the New workspace dialog.
    */
-  async openLocation(location: string): Promise<WelcomeOpenProblem | undefined> {
+  async openLocation(location: string, toast?: string): Promise<WelcomeOpenProblem | undefined> {
     if (this.#busy) {
       return undefined;
     }
@@ -139,7 +140,7 @@ export class WorkspaceSwitcher {
           return cantReopenProblem(location, error);
         }
       }
-      return await this.#open(location);
+      return await this.#open(location, toast);
     } catch (error) {
       return cantOpenProblem(location, error);
     } finally {
@@ -303,7 +304,7 @@ export class WorkspaceSwitcher {
     }
   }
 
-  async #open(location: string): Promise<WelcomeOpenProblem | undefined> {
+  async #open(location: string, toast?: string): Promise<WelcomeOpenProblem | undefined> {
     if (this.open.find(location) !== undefined) {
       this.open.show(location);
       this.#remember();
@@ -317,7 +318,7 @@ export class WorkspaceSwitcher {
     }
     this.open.add(location, opened);
     this.#remember();
-    this.#options.toasts.show({ tone: "success", title: `Opened ${opened.name}` });
+    this.#options.toasts.show({ tone: "success", title: toast ?? `Opened ${opened.name}` });
     return undefined;
   }
 
