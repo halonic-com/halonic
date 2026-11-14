@@ -79,7 +79,8 @@ export const sectionsByName: readonly string[] = [
  * which the shell owns, the command **Settings** (`settings.open`), which opens it through the
  * window's `openSettings`, and a command per section in `sectionsByName` that a feature added
  * (`settings.section-commands`), named as its row, which opens Settings on it. It reads the
- * window's display settings from the app (`DisplaySettingsService`) and the computer's host settings (`HostSettingsService`).
+ * window's display settings from the app (`DisplaySettingsService`) and the computer's host
+ * settings (`HostSettingsService`).
  */
 export const settingsFeature = defineFeature({
   id: "settings",

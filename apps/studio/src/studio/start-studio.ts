@@ -325,13 +325,13 @@ export async function openFolder(
   };
 }
 
-/** The host settings of every window, loaded once and shared by the folders open in it. */
+/** The host settings of every window: one object, shared by the folders open in it. */
 const windowHostSettings = new WeakMap<object, Promise<HostSettings>>();
 
 /**
  * The window's host settings over the profile's store, the same object for every folder open in
- * the window (`settings.ai-agent-prefs`). When they can't be read, the folder still opens: it gets
- * settings that aren't loaded, so only Settings › Assistant says so, and the next folder tries again.
+ * the window (`settings.ai-agent-prefs`). When they can't be read, the folder still opens: Settings
+ * › Assistant says so and loads this same object again on Try again.
  */
 function hostSettingsOf(services: ServiceRegistry, window: object): Promise<HostSettings> {
   const known = windowHostSettings.get(window);
@@ -342,16 +342,15 @@ function hostSettingsOf(services: ServiceRegistry, window: object): Promise<Host
       : new MemoryHostSettingsStore(),
     { onRefreshError: (error) => console.error(error) },
   );
-  const loaded = settings.load().then(
+  const opened = settings.load().then(
     () => settings,
     (error: unknown) => {
       console.error(error);
-      windowHostSettings.delete(window);
       return settings;
     },
   );
-  windowHostSettings.set(window, loaded);
-  return loaded;
+  windowHostSettings.set(window, opened);
+  return opened;
 }
 
 /** The trust of every folder open in a window, so removing a trusted source reaches all of them. */

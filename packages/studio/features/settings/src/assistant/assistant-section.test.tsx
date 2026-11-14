@@ -1,13 +1,15 @@
 // @vitest-environment jsdom
 import { HostSettings } from "@halonicjs/app";
+import type { SettingsSectionProps } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { HostSettingsService } from "../api.ts";
 import { change, control, typeAndLeave } from "../test-support/controls.ts";
 import { MemoryHostSettingsStore } from "../test-support/memory-host-settings-store.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { assistantPrefs } from "./assistant-prefs.ts";
-import { AssistantView } from "./assistant-section.tsx";
+import { AssistantSection, AssistantView } from "./assistant-section.tsx";
 
 afterEach(unmountAll);
 
@@ -152,5 +154,38 @@ verifies("settings.ai-agent-section", () => {
     const { view, store } = await setup();
     await act(async () => store.changeElsewhere("assistant.turn-limit", 20));
     expect(turnLimitBox(view).value).toBe("20");
+  });
+});
+
+verifies("settings.ai-agent-section", () => {
+  it("says it couldn't load when the settings can't be read, and loads them on Try again", async () => {
+    const store = new MemoryHostSettingsStore();
+    let readable = false;
+    const read = store.read.bind(store);
+    store.read = async () => {
+      if (!readable) throw new Error("The settings file is locked.");
+      return read();
+    };
+    const settings = new HostSettings(store);
+    await settings.load().catch(() => undefined);
+    const context = {
+      services: { get: (key: unknown) => (key === HostSettingsService ? settings : undefined) },
+      announcer: { announce: vi.fn() },
+    } as unknown as SettingsSectionProps["context"];
+    const view = render(
+      <AssistantSection context={context} place="app" surface="window" closeSettings={() => {}} />,
+    );
+
+    expect(view.textContent).toContain("Couldn't load the Assistant settings from this computer.");
+    expect(view.querySelector("select")).toBeNull();
+    const tryAgain = [...view.querySelectorAll("button")].find(
+      (b) => b.textContent === "Try again",
+    );
+
+    readable = true;
+    await act(async () => tryAgain?.click());
+
+    expect(view.textContent).not.toContain("Couldn't load");
+    expect(control<HTMLSelectElement>(view, "select").value).toBe("not-set-up");
   });
 });
