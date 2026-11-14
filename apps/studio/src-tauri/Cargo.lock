@@ -1614,6 +1614,7 @@ dependencies = [
  "halonic-process-probe",
  "halonic-profile",
  "halonic-record-store",
+ "halonic-run-lock",
  "halonic-run-store",
  "halonic-secrets",
  "halonic-trust-grant",

@@ -168,7 +168,7 @@ fn keyed_path(platform: Platform, real_path: &str) -> String {
 /// A Windows path without the verbatim prefix: `\\?\` before a drive is
 /// dropped, and `\\?\UNC\server\share` (`UNC` in any case) becomes
 /// `\\server\share`.
-fn without_verbatim_prefix(path: &str) -> String {
+pub(crate) fn without_verbatim_prefix(path: &str) -> String {
     let share_prefix = path.get(..VERBATIM_SHARE_PREFIX.len());
     if share_prefix.is_some_and(|prefix| prefix.eq_ignore_ascii_case(VERBATIM_SHARE_PREFIX)) {
         return format!(r"\\{}", &path[VERBATIM_SHARE_PREFIX.len()..]);

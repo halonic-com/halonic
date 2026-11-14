@@ -4,7 +4,7 @@
 //! Requirements `profile.trust-folder` and `profile.settings-folder`; these
 //! tests' names start with `trust_folder_` and `settings_folder_`.
 
-use halonic_profile::{Platform, ProfileEnvironment, ProfileError, profile_folder};
+use halonic_profile::{Platform, ProfileEnvironment, ProfileError, ProfileFolder, profile_folder};
 use serde_json::Value;
 
 /// The cases, shared with the TypeScript package's tests.
@@ -113,4 +113,55 @@ fn trust_folder_reads_the_platform_this_build_runs_on() {
         Platform::Linux
     };
     assert_eq!(Platform::current(), expected);
+}
+
+/// The cases for a source's folder in `tool-approvals`, shared with the
+/// store in `fs-node`. `<drive>` is written for a Windows drive, as above.
+const SOURCE_FOLDERS: &str = include_str!(
+    "../../../../../../packages/adapters/fs-node/src/golden/tool-approval-source-folders.json"
+);
+
+#[test]
+fn tool_approval_source_folder_matches_every_golden_case() {
+    let profile = ProfileFolder {
+        platform: Platform::Linux,
+        root: "/srv/acme/.local/share/halonic".to_owned(),
+    };
+    let cases: Vec<Value> = serde_json::from_str(SOURCE_FOLDERS).unwrap();
+    assert!(!cases.is_empty());
+    for case in cases {
+        let location = case["location"].as_str().unwrap();
+        let source = case["source"].as_str().unwrap();
+        let folder = case["folder"].as_str().unwrap();
+        assert_eq!(
+            profile.tool_approval_source_folder(location, source),
+            format!("/srv/acme/.local/share/halonic/tool-approvals/{folder}"),
+            "{location:?} {source:?}"
+        );
+    }
+}
+
+#[test]
+fn tool_approval_source_folder_drops_the_verbatim_prefix_on_windows() {
+    let profile = ProfileFolder {
+        platform: Platform::Windows,
+        root: with_drive(r"<drive>\Users\acme\halonic"),
+    };
+    let plain = profile.tool_approval_source_folder(&with_drive(r"<drive>\work\acme"), "notes");
+    let verbatim =
+        profile.tool_approval_source_folder(&with_drive(r"\\?\<drive>\work\acme"), "notes");
+    assert_eq!(plain, verbatim);
+    assert!(plain.starts_with(&with_drive(r"<drive>\Users\acme\halonic\tool-approvals\")));
+}
+
+#[test]
+fn tool_approval_folder_is_tool_approvals_in_the_profile() {
+    let profile = ProfileFolder {
+        platform: Platform::Linux,
+        root: "/srv/acme/.local/share/halonic".to_owned(),
+    };
+    assert_eq!(
+        profile.tool_approval_folder(),
+        "/srv/acme/.local/share/halonic/tool-approvals"
+    );
 }

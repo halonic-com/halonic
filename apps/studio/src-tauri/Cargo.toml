@@ -40,6 +40,7 @@ halonic-login-shell = { path = "crates/login-shell" }
 halonic-process-probe = { path = "crates/process-probe" }
 halonic-profile = { path = "crates/profile" }
 halonic-record-store = { path = "crates/record-store" }
+halonic-run-lock = { path = "crates/run-lock" }
 halonic-run-store = { path = "crates/run-store" }
 halonic-secrets = { path = "crates/secrets" }
 halonic-trust-grant = { path = "crates/trust-grant" }
