@@ -114,6 +114,23 @@ verifies("cli.secret-prompt", () => {
     expect(await value).toBe("ab");
   });
 
+  it("takes the key after a lone Escape as part of it, so Esc then Enter doesn't end the value", async () => {
+    const stdin = terminal();
+    const value = new SecretReader(stdin, () => undefined).readSecret();
+    let ended = false;
+    void value.then(() => {
+      ended = true;
+    });
+    stdin.write("ab");
+    stdin.write("\u001b");
+    stdin.write("\r");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    // The Enter was the Escape's second key, like Alt+Enter: still waiting, nothing added.
+    expect(ended).toBe(false);
+    stdin.write("c\r");
+    expect(await value).toBe("abc");
+  });
+
   it("shares what was typed ahead with the line reader, in order", async () => {
     const stdin = terminal();
     const ahead = new TypeAhead();

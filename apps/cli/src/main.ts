@@ -1,4 +1,3 @@
-import { EnvSecrets } from "@halonicjs/adapter-env-secrets";
 import { profileFolder } from "@halonicjs/profile";
 import { commands } from "./generated/commands.ts";
 import { readGlobalOptions } from "./global-options.ts";
@@ -8,6 +7,7 @@ import { exitOnceWritten, quietOnClosedPipe, stopExitCode } from "./output/stop.
 import { TypeAhead } from "./output/type-ahead.ts";
 import { runCli } from "./run-cli.ts";
 import { recoverSandboxSessions } from "./sandbox-journals.ts";
+import { chainedSecrets } from "./secret-host.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 
 // A reader that stops reading, such as `head`, ends the output, not the command.
@@ -48,8 +48,9 @@ const code = await runCli(
       },
       ...(process.stdin.isTTY === true ? { questions: stdinQuestions() } : {}),
     },
-    // `runCli` wraps it, so every key a command reads is scrubbed from what it prints.
-    secrets: new EnvSecrets(process.env),
+    // The environment first, then the secrets file `halonic secret` writes. `runCli` wraps it,
+    // so every key a command reads is scrubbed from what it prints.
+    secrets: chainedSecrets(process.env),
     stop: {
       signals: process,
       exitNow,
