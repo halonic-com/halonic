@@ -88,7 +88,7 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
   }
   const { touched, exports, changed } = touchedPaths(run);
   const text = run.git.readFile(run.pull.head, file);
-  const rewritten = rewrittenNotes(run, file);
+  const rewritten = rewrittenNotes(run);
   if (text === undefined) {
     for (const path of rewritten) {
       report.error(path, rewrittenWithoutNote(path, file));
@@ -151,16 +151,15 @@ export const decisionsFolder = "decisions/";
 
 /**
  * The notes under `decisions/` that the pull request edits or deletes and
- * that the base branch already has, other than the branch's own note. Notes
- * on base are append-only: they are the record of what was approved. A
+ * that the base branch already has. Notes on base are append-only: they are the
+ * record of what was approved. This includes a note at the branch's own path
+ * when base already has it, since a branch name can repeat an old one. A
  * rename counts as a delete of the old path.
  */
-function rewrittenNotes(run: NoteCheckRun, ownNote: string): string[] {
+function rewrittenNotes(run: NoteCheckRun): string[] {
   return run.changed.filter(
     (path) =>
-      path.startsWith(decisionsFolder) &&
-      path !== ownNote &&
-      run.git.readFile(run.mergeBase, path) !== undefined,
+      path.startsWith(decisionsFolder) && run.git.readFile(run.mergeBase, path) !== undefined,
   );
 }
 

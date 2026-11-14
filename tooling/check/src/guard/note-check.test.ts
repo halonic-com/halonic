@@ -527,7 +527,23 @@ verifies("check.guard-notes-append-only", () => {
     expect(await run(deletedFiles)).toEqual([]);
   });
 
-  test("ignores the branch's own note and a note added in the pull request", async () => {
+  test("fails an edit of the branch's own note when base already has it", async () => {
+    const report = await checkNotes({
+      pull,
+      branch,
+      changed: [noteFile],
+      mergeBase: base,
+      git: fakeGit({
+        [base]: { ...baseWithNote, [noteFile]: note("internal", "turbo.json") },
+        [head]: { ...baseWithNote, [noteFile]: note("internal", "turbo.json", "extra") },
+      }),
+    });
+    const messages = report.problems.map((problem) => problem.message);
+    expect(messages).not.toEqual([]);
+    expect(messages[0]).toContain(`Edits or deletes ${noteFile}`);
+  });
+
+  test("ignores the branch's own note when new and a note added in the pull request", async () => {
     const report = await checkNotes({
       pull,
       branch,
