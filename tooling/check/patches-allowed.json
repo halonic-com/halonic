@@ -1,9 +1,9 @@
 {
   "allowed": [
     {
-      "package": "@anthropic-ai/sandbox-runtime@0.0.81",
-      "file": "patches/@anthropic-ai__sandbox-runtime@0.0.81.patch",
-      "sha256": "aa3c87c5b1a3188def67673ada104e53ec3011f95bf55bccbaa905a7e4668e7c",
+      "package": "@anthropic-ai/sandbox-runtime@0.0.82",
+      "file": "patches/@anthropic-ai__sandbox-runtime@0.0.82.patch",
+      "sha256": "1ca568e7e133bc798f7caa4a458b4be20f90b6c362dfe46fa0fc8872b242b382",
       "reason": "Adds network.denyMachLookup: macOS Mach services denied at the end of the Seatbelt profile, where they win over srt's built-in allows. sandbox-srt uses it to deny com.apple.SecurityServer and com.apple.securityd.xpc to the untrusted profile, so code in the fence can't read the Keychain (attack case A36, design HAL-958 section 6, HAL-6346). srt has allowMachLookup but no way to take a service away. Also keeps the Windows egress check's loopback probe from failing: srt binds an ephemeral port outside the proxy range [60080,60089] in 5 attempts, closing each one in the range, and Windows hands out ports in sequence, so a start that lands at 60080 fails every attempt. The patch keeps those listeners open until it finds a port outside the range, with one attempt more than the range has ports (HAL-7431).",
       "remove-when": "Each part can go on its own: the Mach-service denies when srt can deny a Mach service itself (proposed upstream) or sandbox-srt no longer runs on Seatbelt; the port search when srt's verifyWindowsWfpEgress finds a port outside the range by itself, or sandbox-srt no longer runs on Windows"
     }

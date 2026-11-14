@@ -15,7 +15,7 @@ packages:
 # One version line per shared dependency. Packages use "catalog:" and the
 # check fails on any other version for an external dependency.
 catalog:
-  "@anthropic-ai/sandbox-runtime": 0.0.81
+  "@anthropic-ai/sandbox-runtime": 0.0.82
   "@biomejs/biome": 2.6.5
   "@noble/hashes": 2.4.0
   "@changesets/cli": ^3.0.3
@@ -75,6 +75,12 @@ blockExoticSubdeps: true
 # Fail when a package loses its trusted-publisher status (a hijack sign).
 trustPolicy: no-downgrade
 
+# sandbox-runtime 0.0.82 lists @microsoft/mxc-sdk as an optional dependency.
+# The user approved that SDK only as a one-time download by the MXC adapter,
+# not as a package dependency (HAL-7606), so it is never installed from here.
+ignoredOptionalDependencies:
+  - "@microsoft/mxc-sdk"
+
 # One shared copy of the dependencies for every agent worktree.
 enableGlobalVirtualStore: true
 
@@ -92,4 +98,4 @@ saveWorkspaceProtocol: rolling
 overrides:
   "@anthropic-ai/sandbox-runtime>zod": 4.6.7
 patchedDependencies:
-  "@anthropic-ai/sandbox-runtime@0.0.81": patches/@anthropic-ai__sandbox-runtime@0.0.81.patch
+  "@anthropic-ai/sandbox-runtime@0.0.82": patches/@anthropic-ai__sandbox-runtime@0.0.82.patch
