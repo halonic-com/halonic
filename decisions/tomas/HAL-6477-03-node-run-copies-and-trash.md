@@ -2,7 +2,6 @@
 
 - Approval: scope decided on HAL-6477 and HAL-9301 (Liam); the package owner (Liam) approves this note in review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:RSnwf+1vq6jdiCw3MeYu1zHwioKwia30iYRGt3CDfc5ZGhC0gYYaOoLpsz/Y6bI+wbiN1wWQD556X9innpw/BQ==
 
 ## What changes
 
@@ -14,6 +13,10 @@ copy and keeps the proposal, because the refusal no longer happens in the CLI. `
 refuses harness agents (`refuseHarnessAgents`), so no person sees the change yet. No other example
 was removed or weakened.
 
+The new tests of `FolderRunCopies` and `FolderTrash` each have one test that runs only on Unix, with
+`it.runIf(unix)`, because it makes a symbolic link, the way the record store's link tests already
+skip Windows.
+
 ## Why
 
 HAL-6477 turns harness agents on in `halonic run`, with history off as well as on. The host needs a
@@ -24,3 +27,5 @@ and, as with the proposal folders (HAL-7747), a harness run must never write in 
 
 - profile.workspace-folders
 - cli.local-harness-host
+- packages/adapters/fs-node/src/folder-run-copies.test.ts
+- packages/adapters/fs-node/src/folder-trash.test.ts
