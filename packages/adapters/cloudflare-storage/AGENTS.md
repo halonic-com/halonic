@@ -25,6 +25,6 @@ Don't run `pnpm verify` by default: CI runs the full suite (HAL-2418).
 - Runs in the Worker (`"runtime": "workers"`). The storage binding comes in through the constructor, so the
   adapter never imports `cloudflare:*` itself; only the `*.workerd.test.ts` suites do, to read the test
   Worker's bindings.
-- The proof is the contract suite run inside workerd through `@halonicjs/target-cloudflare-testing`. Coverage of `src` comes from `r2-blob-store.test.ts` and `d1-record-store.test.ts`, which use stand-ins (a small bucket, Node's SQLite), because Node's coverage can't see code that runs in workerd. Each says so in its header.
+- The proof is the suites run inside workerd through `@halonicjs/target-cloudflare-testing`: the contract suites, and the `*-cases.workerd.test.ts` files for what they don't reach, each started by a `*.test.ts` that wraps them in `verifies()`. Coverage of `src` is counted inside workerd and added to the report by the shared preset, so there is no stand-in Node test (a map for a bucket, Node's SQLite for D1). Don't add one; add a case that runs in workerd.
 - D1: values reach the database only through `bind`; the collection name is never part of the SQL. The injection cases in `record-store-injection.workerd.test.ts` guard that. Schema changes are a new file in `src/migrations/`, never an edit of one that shipped.
 - No outside library, and no `node:*`: this code is part of the Worker bundle.
