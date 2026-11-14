@@ -3,6 +3,7 @@
 - Task: HAL-8986
 - Approval: Liam approves this note in review on HAL-8986
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jXMlVoLUKbAej+RyeT3EqYmTg+CX8y4vdYX+qyHSismTv8uiRXIEh1MAxMwNfzbT+fJ4ENesGW4ENuZEoFz0Dw==
 
 ## What changes
 
