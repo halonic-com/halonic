@@ -69,7 +69,7 @@ the public API of its layer package and needs Liam's review.
 
 ## The CLI package
 
-`pnpm --filter @halonicjs/tooling-publish run stage-cli 0.1.0` writes the publishable copy of `halonic` (from
+`pnpm --filter @halonicjs/tooling-publish run stage-cli 0.1.0 dist/THIRD-PARTY-NOTICES.txt` (the notices come from `pnpm check:sbom --notices`) writes the publishable copy of `halonic` (from
 `apps/cli`) to `tooling/publish/dist/cli`; build the integration runner file first with
 `pnpm --filter @halonicjs/adapter-integration-runner build`. Node won't run TypeScript inside `node_modules`, so
 the CLI and all the workspace code and libraries it imports are bundled into `dist/cli/main.js`, which imports

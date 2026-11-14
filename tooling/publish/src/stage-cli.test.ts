@@ -33,7 +33,9 @@ beforeAll(async () => {
   if (!existsSync(join(root, "packages/adapters/integration-runner/dist/runner.mjs"))) {
     runOk("pnpm", ["--filter", "@halonicjs/adapter-integration-runner", "build"], root);
   }
-  const staged = await stageCli(root, version, join(scratch, "cli"));
+  const notices = join(scratch, "THIRD-PARTY-NOTICES.txt");
+  writeFileSync(notices, "notices\n");
+  const staged = await stageCli(root, version, notices, join(scratch, "cli"));
   const tarballs = join(scratch, "tarballs");
   mkdirSync(tarballs);
   const tarball = runOk(
@@ -83,9 +85,21 @@ verifies("publish.staged-cli", () => {
     expect(existsSync(join(installed, "src"))).toBe(false);
   });
 
+  it("carries the third-party notices", () => {
+    expect(
+      readFileSync(join(consumer, "node_modules/halonic/THIRD-PARTY-NOTICES.txt"), "utf8"),
+    ).toBe("notices\n");
+  });
+
+  it("refuses to stage when the notices file is missing", async () => {
+    await expect(
+      stageCli(root, version, join(scratch, "none.txt"), join(scratch, "never")),
+    ).rejects.toThrow("check:sbom --notices");
+  });
+
   it("refuses to stage when the runner file isn't built", async () => {
-    await expect(stageCli(scratch, version, join(scratch, "never"))).rejects.toThrow(
-      "pnpm --filter @halonicjs/adapter-integration-runner build",
-    );
+    await expect(
+      stageCli(scratch, version, join(scratch, "THIRD-PARTY-NOTICES.txt"), join(scratch, "never")),
+    ).rejects.toThrow("pnpm --filter @halonicjs/adapter-integration-runner build");
   });
 });

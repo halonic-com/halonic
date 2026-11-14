@@ -36,12 +36,17 @@ const sandboxRuntime = "@anthropic-ai/sandbox-runtime";
  * workspace runs, because the sandbox starts its command line as a program.
  * `bin/halonic.js` keeps its Node version check and imports the bundle.
  *
+ * The bundle carries third-party code whose licences need their notices, so
+ * `THIRD-PARTY-NOTICES.txt` is copied into the package.
+ *
  * @param version the version of the package and of `halonic --version`
- * @throws Error when the runner file isn't built, or the bundle imports a package that isn't Node's own
+ * @param noticesFile the `THIRD-PARTY-NOTICES.txt` written by `pnpm check:sbom --notices`
+ * @throws Error when the notices file or the runner file is missing, or the bundle imports a package that isn't Node's own
  */
 export async function stageCli(
   root: string,
   version: string,
+  noticesFile: string,
   outputDirectory?: string,
 ): Promise<StagedCli> {
   const cliDirectory = join(root, "apps/cli");
@@ -50,6 +55,11 @@ export async function stageCli(
   if (!existsSync(runnerFile)) {
     throw new Error(
       "The integration runner file isn't built. Run `pnpm --filter @halonicjs/adapter-integration-runner build` first.",
+    );
+  }
+  if (!existsSync(noticesFile)) {
+    throw new Error(
+      `The third-party notices file ${noticesFile} doesn't exist. Write it first with \`pnpm check:sbom --notices\`.`,
     );
   }
   rmSync(directory, { recursive: true, force: true });
@@ -74,6 +84,7 @@ export async function stageCli(
   );
   cpSync(join(cliDirectory, "bin/node-floor.js"), join(directory, "bin/node-floor.js"));
   for (const name of ["LICENSE", "NOTICE"]) cpSync(join(root, name), join(directory, name));
+  cpSync(noticesFile, join(directory, "THIRD-PARTY-NOTICES.txt"));
   cpSync(join(cliDirectory, "README.md"), join(directory, "README.md"));
   writeManifest(directory, version, bundled);
   return { directory, name: "halonic", version };
@@ -203,7 +214,16 @@ function writeManifest(directory: string, version: string, bundled: Map<string, 
     // The sandbox runtime carries our patch, so it ships inside the tarball instead of coming from npm.
     dependencies: { [sandboxRuntime]: runtimeVersion },
     bundleDependencies: [...bundled.keys()].sort(),
-    files: ["bin", "dist", "examples", "node_modules", "README.md", "LICENSE", "NOTICE"],
+    files: [
+      "bin",
+      "dist",
+      "examples",
+      "node_modules",
+      "README.md",
+      "LICENSE",
+      "NOTICE",
+      "THIRD-PARTY-NOTICES.txt",
+    ],
     publishConfig: { access: "public", provenance: true },
   };
   writeFileSync(join(directory, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
