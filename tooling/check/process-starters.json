@@ -41,6 +41,10 @@
       "reason": "Asks an installed program such as claude for its version. It refuses names with a slash and starts only the absolute path findProgram resolved from the absolute PATH folders of the launcher's environment, which no skill sets (never the current folder; on Windows only an .exe).",
       "scriptsTest": "packages/adapters/sandbox-host/src/program-probe.attack.test.ts"
     },
+    "packages/adapters/sandbox-mxc/src/sdk-download.ts": {
+      "reason": "Imports MXC's SDK from the folder it downloaded it to (HAL-7607), with a file URL built from that folder and a fixed path inside it. The folder holds only packages whose integrity matches the one pinned in the repository, and it refuses a folder under a skill's scripts/ folder.",
+      "scriptsTest": "packages/adapters/sandbox-mxc/src/sdk-download.test.ts"
+    },
     "packages/adapters/sandbox-srt/scripts/windows-fence-probe.mjs": {
       "reason": "CI tooling for the Windows fence proof (HAL-1919), run by hand and by the report-only sandbox-windows job, never shipped. It starts only Node with the srt CLI from this package's node_modules and a child script it writes to a temporary folder, both with fixed arguments. It never loads a skill.",
       "scriptsTest": "packages/adapters/sandbox-srt/src/srt-runner.starts.test.ts"
