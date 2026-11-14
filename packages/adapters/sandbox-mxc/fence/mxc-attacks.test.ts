@@ -1,3 +1,5 @@
+import { execFileSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { stat } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { createServer, type Server } from "node:net";
@@ -137,6 +139,41 @@ describe("a program trying to get out of the MXC fence", () => {
       expect(Object.keys(JSON.parse(out) as Record<string, string>)).not.toContain(name);
     } finally {
       delete process.env[name];
+    }
+  });
+
+  it("records whether it can read a credential of the Windows Credential Manager (A36)", async () => {
+    // A throwaway generic credential with a random value, made on the host and
+    // always deleted. The boxed program logs only "read ok" or the error code,
+    // never the value. This records the result; it doesn't judge it yet (HAL-9368).
+    const target = "mxc-a36-canary";
+    const value = randomBytes(16).toString("hex");
+    const readCredential = [
+      "$ErrorActionPreference = 'Stop'",
+      "Add-Type -Namespace Canary -Name Cred -MemberDefinition @'",
+      '[DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]',
+      "public static extern bool CredReadW(string target, int type, int flags, out System.IntPtr credential);",
+      "'@",
+      "$pointer = [System.IntPtr]::Zero",
+      `if ([Canary.Cred]::CredReadW('${target}', 1, 0, [ref]$pointer)) { 'read ok' }`,
+      "else { 'read failed ' + [System.Runtime.InteropServices.Marshal]::GetLastWin32Error() }",
+    ].join("\n");
+    const encoded = Buffer.from(readCredential, "utf16le").toString("base64");
+    execFileSync("cmdkey", [`/generic:${target}`, "/user:canary", `/pass:${value}`], {
+      stdio: "ignore",
+    });
+    try {
+      const { out, err, exit } = await finish(
+        await session.start({
+          program: "powershell.exe",
+          args: ["-NoProfile", "-NonInteractive", "-EncodedCommand", encoded],
+        }),
+      );
+      expect(out + err).not.toContain(value);
+      console.log(`A36 canary: exit ${exit.code}, output: ${out.trim()}`);
+      console.log(`A36 canary stderr (first 300 chars): ${err.trim().slice(0, 300)}`);
+    } finally {
+      execFileSync("cmdkey", [`/delete:${target}`], { stdio: "ignore" });
     }
   });
 
