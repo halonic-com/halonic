@@ -156,14 +156,17 @@ export class NodeScheduler implements Scheduler {
   }
 
   /**
-   * Stops waking up and delivering, and resolves when the deliveries in
-   * progress and the changes still queued for the store have settled, so
-   * nothing writes to the store once it has resolved.
+   * Stops waking up and delivering, and resolves when the load, the
+   * deliveries in progress and the changes still queued for the store have
+   * settled, so nothing writes to the store once it has resolved.
    */
   async close(): Promise<void> {
     this.#closed = true;
     this.#cancelWakeUp?.();
     this.#cancelWakeUp = undefined;
+    // The load compacts the log, a write even for a scheduler that was never
+    // called (HAL-9323). A failed load was reported when it failed.
+    await this.#loaded.catch(() => undefined);
     await Promise.all([...this.#deliveries.values(), this.#tickInProgress]);
     // After the deliveries: each records its result as one more change.
     await this.#lastChange;

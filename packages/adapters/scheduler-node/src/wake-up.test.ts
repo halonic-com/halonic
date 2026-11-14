@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { startScheduler } from "./harness.test-helper.ts";
+import { newWorld, startScheduler } from "./harness.test-helper.ts";
 
 const second = 1000;
 const minute = 60 * second;
@@ -75,6 +75,28 @@ verifies("scheduler-node.wake-up", () => {
       await closed;
       expect(writeEnded).toBe(true);
       await scheduled;
+    });
+
+    it("writes nothing to the store after close has resolved, even when it closes while still loading", async () => {
+      const world = newWorld();
+      let releaseCompact = () => {};
+      const compactHeld = new Promise<void>((resolve) => {
+        releaseCompact = resolve;
+      });
+      const compact = world.store.compact.bind(world.store);
+      let compactEnded = false;
+      world.store.compact = async (collection) => {
+        await compactHeld;
+        await compact(collection);
+        compactEnded = true;
+      };
+      // Nothing is scheduled: the load's compact is the only write.
+      const s = startScheduler(world);
+      const closed = s.scheduler.close();
+      await Promise.resolve();
+      releaseCompact();
+      await closed;
+      expect(compactEnded).toBe(true);
     });
 
     it("reports a store that fails while a delivery is recorded, and delivers the timer again a retry later", async () => {
