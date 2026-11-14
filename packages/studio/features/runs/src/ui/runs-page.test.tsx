@@ -179,7 +179,7 @@ verifies("runs.list", () => {
       const goToWorkflows = vi.fn();
       const { root } = await openPage(fakeSource([]).source, goToWorkflows);
       expect(root.textContent).toContain("No runs yet");
-      expect(root.textContent).toContain("Start one from a workflow's Run button");
+      expect(root.textContent).toContain("To start one today, type halonic run in a terminal");
       expect(root.querySelector("[role=radiogroup]")).toBeNull();
       await click(control(root, "Go to Workflows"));
       expect(goToWorkflows).toHaveBeenCalled();
