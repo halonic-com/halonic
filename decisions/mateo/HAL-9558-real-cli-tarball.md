@@ -3,7 +3,6 @@
 - Task: HAL-9558
 - Approval: Liam approves this note in review on HAL-9558
 - Kind: internal
-- Signature: ed25519:sha256:UNSIGNED:UNSIGNED
 
 ## What changes
 
