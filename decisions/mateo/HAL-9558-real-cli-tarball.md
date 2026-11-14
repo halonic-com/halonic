@@ -3,6 +3,7 @@
 - Task: HAL-9558
 - Approval: Liam approves this note in review on HAL-9558
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/9hkUwfIDdIkfNRZ9IzlDNNT3VU3hXwvNgh1qVORb2TzkSZJHKvVLWxc6cq2oT9QY8C/XKoF6ZA+u6831g0dCA==
 
 ## What changes
 
