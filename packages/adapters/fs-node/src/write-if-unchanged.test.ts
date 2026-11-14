@@ -35,20 +35,6 @@ verifies("ports.definition-store-write-if-unchanged", () => {
       expect(await readFile(join(root, "a.yaml"), "utf8")).toBe("3");
     });
 
-    it("doesn't remove a file another program changed since it was read", async () => {
-      const { root, store } = await folderWith({ "a.yaml": "1", "b.yaml": "1" });
-      await writeFile(join(root, "a.yaml"), "3", "utf8");
-      const expected = await contentDigest("1", digest);
-
-      expect(await store.remove("a.yaml", { expected })).toEqual({
-        status: "changed-on-disk",
-        current: "3",
-      });
-      expect(await readFile(join(root, "a.yaml"), "utf8")).toBe("3");
-      expect(await store.remove("b.yaml", { expected })).toEqual({ status: "removed" });
-      expect(await store.read("b.yaml")).toBeNull();
-    });
-
     it("writes when the file is unchanged, and creates one expected to be absent", async () => {
       const { root, store } = await folderWith({ "a.yaml": "1" });
       expect(

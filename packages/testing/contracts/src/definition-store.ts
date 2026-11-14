@@ -271,6 +271,29 @@ function writeIfUnchangedCases(make: MakeDefinitionStore): void {
     expect(await store.read("c.yaml")).toBe("new");
   });
 
+  it("removes only a file that still holds what was last read", async () => {
+    const store = await make({ "a.yaml": "3", "b.yaml": "1" });
+    const expected = await digestOf("1");
+    expect(await store.remove("a.yaml", { expected })).toEqual({
+      status: "changed-on-disk",
+      current: "3",
+    });
+    expect(await store.read("a.yaml")).toBe("3");
+    expect(await store.remove("b.yaml", { expected })).toEqual({ status: "removed" });
+    expect(await store.read("b.yaml")).toBeNull();
+  });
+
+  it("gives null as the current text when a remove expects a file that is gone", async () => {
+    const store = await make({ "b.yaml": "1" });
+    const before = await store.version();
+    expect(await store.remove("a.yaml", { expected: await digestOf("1") })).toEqual({
+      status: "changed-on-disk",
+      current: null,
+    });
+    expect(await store.list()).toEqual(["b.yaml"]);
+    expect(await store.version()).toBe(before);
+  });
+
   it("refuses an unsafe or private path with a RangeError before comparing", async () => {
     const store = await make({ "a.yaml": "1", ".env": "A=1" });
     const before = await store.version();
@@ -278,6 +301,7 @@ function writeIfUnchangedCases(make: MakeDefinitionStore): void {
     for (const path of [...unsafeDefinitionPaths, ...privateDefinitionPaths]) {
       for (const expected of expectations) {
         await expect(store.write(path, "x", { expected }), path).rejects.toThrow(RangeError);
+        await expect(store.remove(path, { expected }), path).rejects.toThrow(RangeError);
       }
     }
     expect(await store.list()).toEqual(["a.yaml"]);
