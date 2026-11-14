@@ -222,7 +222,10 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
       nodeLayer,
     );
     if (nodeLayer === "on") {
-      expect(attempts["credential"]).toMatchObject({ outcome: "refused", detail: "ERR_ACCESS_DENIED" });
+      expect(attempts["credential"]).toMatchObject({
+        outcome: "refused",
+        detail: "ERR_ACCESS_DENIED",
+      });
     } else {
       expect(attempts["credential"]).toEqual({ outcome: "allowed", detail: "listed" });
     }
