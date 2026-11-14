@@ -187,6 +187,10 @@ export interface Leaks {
   blockedAttemptsTimeOut?: boolean;
   /** The probe can't reach the bridge, the network control. */
   bridgeUnreachable?: boolean;
+  /** What differs in a control box (a probe given a bridge), on top of the other leaks. */
+  inControlBox?: Leaks;
+  /** The probe prints no report. */
+  silent?: boolean;
   writeOutside?: boolean;
   /** Node can't list or write the working folder. */
   workFolderBroken?: boolean;
@@ -201,8 +205,10 @@ export function healthyBox(disk: MemoryDisk, leaks: Leaks = {}): Behavior {
     if (settings === null) return quietProgram;
     if (settings.folder !== undefined) return workReport(leaks);
     if (script?.endsWith("probe.cjs") !== true) return quietProgram;
-    await actOutside(disk, settings, leaks);
-    return leakReport(settings, leaks);
+    const here = settings.bridge ? { ...leaks, ...leaks.inControlBox } : leaks;
+    await actOutside(disk, settings, here);
+    if (here.silent === true) return quietProgram;
+    return leakReport(settings, here);
   };
 }
 

@@ -53,6 +53,14 @@ One difference from the design: A30 on plain `http` is refused as `scheme-not-al
 | A39 | ending Halonic's host on native Windows | fence: `runner-attacks.windows.test.ts`; a recorded gap |
 | A40 | a secret placed another way than the sheet says | `adapters/integration-kit/src/secret-placement.test.ts`, `testing/integration/src/fixtures/attacks.ts` |
 
+## The limit of the MXC network proof
+
+The runner's MXC profile has no bridge, so the box has no network control of its own: MXC refuses
+a process in the box a listener on its own loopback. The fence proof therefore counts a timed-out
+probe as blocked only where a control box (the same policy with a dead-end bridge, run on the same
+computer right before) reached its bridge and timed out on that same target. The network
+control runs in a twin box, not in the runner's box (HAL-9342).
+
 ## Recorded gap on MXC (A6)
 
 Name lookups from inside the box leave through Windows' DNS client and are not fenced.

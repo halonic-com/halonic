@@ -166,7 +166,7 @@ verifies("sandbox-mxc.session", () => {
       [
         "blocked probes time out and the bridge can't be reached",
         { blockedAttemptsTimeOut: true, bridgeUnreachable: true },
-        /did not prove the block.*could not reach its bridge/,
+        /did not prove the block.*could not show that its network works/,
       ],
       ["the allowed folder can't be read", { controlUnreadable: true }, /proves nothing/],
     ])(
