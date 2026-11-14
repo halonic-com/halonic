@@ -3,12 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 import { onWindowCloseRequested } from "./tauri-close.ts";
 
 /** A webview whose close button can be pressed: `press()` runs the page's registered listener. */
-function webview() {
+function webview(failing: string[] = []) {
   const calls: [string, Record<string, unknown> | undefined][] = [];
   const callbacks = new Map<number, (message: unknown) => void>();
   const internals = {
     invoke: async (command: string, args?: Record<string, unknown>) => {
       calls.push([command, args]);
+      if (failing.includes(command)) throw new Error(`${command} refused`);
       return command === "plugin:event|listen" ? 41 : null;
     },
     transformCallback: (callback: (message: unknown) => void) => {
@@ -82,6 +83,33 @@ verifies("services.tauri-ipc", () => {
         "plugin:event|unlisten",
         { event: "tauri://close-requested", eventId: 41 },
       ]);
+    });
+
+    it("reports a window that will not close", async () => {
+      const { page, press } = webview(["plugin:window|destroy"]);
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      onWindowCloseRequested(page, async () => {});
+      press();
+      await settle();
+      expect(error).toHaveBeenCalledTimes(1);
+      error.mockRestore();
+    });
+
+    it("gives the callback back when listening is refused, and stops quietly", async () => {
+      const { page, calls, registered } = webview(["plugin:event|listen"]);
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      const stop = onWindowCloseRequested(page, async () => {});
+      await stop();
+      expect(registered()).toBe(0);
+      expect(error).toHaveBeenCalledTimes(1);
+      expect(calls.map(([command]) => command)).toEqual(["plugin:event|listen"]);
+      error.mockRestore();
+    });
+
+    it("stops quietly when the unlisten call is refused", async () => {
+      const { page } = webview(["plugin:event|unlisten"]);
+      const stop = onWindowCloseRequested(page, async () => {});
+      await expect(stop()).resolves.toBeUndefined();
     });
   });
 });
