@@ -65,7 +65,9 @@ interface Started {
  *   on an `approval.requested` back to the request it came from.
  * - `cancel` stops Codex and everything it started, and resolves once they
  *   have stopped. When the session can't stop them, it rejects with the
- *   session's error, which holds no bridge token.
+ *   session's error, which holds no bridge token, and the stream ends with
+ *   that error. The stream ends with "cancelled" only when Codex stopped
+ *   anyway.
  */
 export class CodexRun implements HarnessRun {
   readonly #task: HarnessTask;
