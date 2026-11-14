@@ -22,7 +22,7 @@ mod write_locks;
 
 pub use error::FileError;
 pub use fence::Fence;
-pub use folder::{WorkspaceFolder, WriteOutcome, content_digest};
+pub use folder::{EXPECTED_NOT_TEXT, RemoveOutcome, WorkspaceFolder, WriteOutcome, content_digest};
 pub use folder_reader::{EntryKind, FolderEntry, FolderReader};
 pub use watch::{FolderSnapshot, WatchMessage, Watches};
 pub use workspace_path::{

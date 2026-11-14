@@ -21,6 +21,7 @@ mod agent_host;
 mod blobs;
 mod command_paths;
 mod connect;
+mod file_answers;
 mod files;
 mod git;
 mod host_settings;

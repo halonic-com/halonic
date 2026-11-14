@@ -20,6 +20,19 @@ pub enum WriteOutcome {
     ChangedOnDisk { current: Option<String> },
 }
 
+/// What [`WorkspaceFolder::remove_if`] did: `Removed` (also when there was no
+/// file), or `ChangedOnDisk` when the file no longer held what the caller
+/// expected, with its text now (`None` when it isn't UTF-8 text).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RemoveOutcome {
+    Removed,
+    ChangedOnDisk { current: Option<String> },
+}
+
+/// The `expected` of [`WorkspaceFolder::remove_if`] for a file that isn't
+/// UTF-8 text, which has no digest.
+pub const EXPECTED_NOT_TEXT: &str = "not-text";
+
 /// A folder the person opened, as `FolderDefinitionStore` in `fs-node`
 /// keeps it: plain files under the root, never through a link, and never
 /// in its [`Fence`].
@@ -127,10 +140,42 @@ impl<'a> WorkspaceFolder<'a> {
         self.check(path)?;
         let file = native_path(&self.root, path);
         let _turn = self.locks.turn(&file);
+        self.delete(path, &file)
+    }
+
+    /// Deletes the file only when it still holds `expected` (`"absent"`, a
+    /// [`content_digest`], or [`EXPECTED_NOT_TEXT`]); otherwise it deletes
+    /// nothing. The check and the delete happen in one turn on the file, as
+    /// in [`WorkspaceFolder::write`].
+    pub fn remove_if(&self, path: &str, expected: &str) -> Result<RemoveOutcome, FileError> {
+        self.check(path)?;
+        let file = native_path(&self.root, path);
+        let _turn = self.locks.turn(&file);
+        let current = match self.current_text(path) {
+            Ok(current) => current,
+            // Still not text, as the caller read it: nothing to compare, remove it.
+            Err(FileError::NotText { .. }) if expected == EXPECTED_NOT_TEXT => {
+                self.delete(path, &file)?;
+                return Ok(RemoveOutcome::Removed);
+            }
+            Err(FileError::NotText { .. }) => {
+                return Ok(RemoveOutcome::ChangedOnDisk { current: None });
+            }
+            Err(error) => return Err(error),
+        };
+        if !matches_expected(current.as_deref(), expected) {
+            return Ok(RemoveOutcome::ChangedOnDisk { current });
+        }
+        self.delete(path, &file)?;
+        Ok(RemoveOutcome::Removed)
+    }
+
+    /// Deletes the file at a checked path, while holding its turn.
+    fn delete(&self, path: &str, file: &Path) -> Result<(), FileError> {
         if !entry_at(&self.root, path)?.is_some_and(|entry| entry.is_file()) {
             return Ok(());
         }
-        match fs::remove_file(&file) {
+        match fs::remove_file(file) {
             Err(error) if !is_missing(&error) => Err(FileError::io(path, &error)),
             // Another program removed it in the meantime: it is gone, as asked.
             _ => Ok(()),

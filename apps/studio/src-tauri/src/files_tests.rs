@@ -7,13 +7,13 @@ use std::path::PathBuf;
 use halonic_git_guard::OpenedFolders;
 use halonic_profile::{Platform, ProfileFolder};
 use halonic_workspace_files::{
-    EntryKind, Fence, FileError, FolderEntry, WatchMessage, WriteOutcome,
+    EntryKind, Fence, FileError, FolderEntry, RemoveOutcome, WatchMessage, WriteOutcome,
 };
 use serde_json::{Value, json};
 
 use super::{
-    EntryAnswer, FileFolder, FileRefusal, WatchEvent, WatchStart, WriteAnswer, profile_fence,
-    review_root, workspace_root,
+    EntryAnswer, FileFolder, FileRefusal, RemoveAnswer, WatchEvent, WatchStart, WriteAnswer,
+    profile_fence, review_root, workspace_root,
 };
 
 fn as_json(value: impl serde::Serialize) -> Value {
@@ -137,6 +137,17 @@ fn files_answer_in_the_shapes_the_adapter_reads() {
         json!({"status": "changed-on-disk", "current": null})
     );
     let changed = WriteAnswer::from(WriteOutcome::ChangedOnDisk {
+        current: Some("one\n".to_owned()),
+    });
+    assert_eq!(
+        as_json(changed),
+        json!({"status": "changed-on-disk", "current": "one\n"})
+    );
+    assert_eq!(
+        as_json(RemoveAnswer::from(RemoveOutcome::Removed)),
+        json!({"status": "removed"})
+    );
+    let changed = RemoveAnswer::from(RemoveOutcome::ChangedOnDisk {
         current: Some("one\n".to_owned()),
     });
     assert_eq!(

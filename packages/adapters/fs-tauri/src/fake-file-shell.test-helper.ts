@@ -18,6 +18,16 @@ async function digestOf(text: string): Promise<string> {
 /** A file the shell holds that isn't UTF-8 text. */
 export const notText = Symbol("not text");
 
+/** Whether the file (`undefined` for none) is what `expected` names: `"absent"`, `"not-text"` or a digest. */
+async function holdsExpected(
+  current: string | typeof notText | undefined,
+  expected: string,
+): Promise<boolean> {
+  if (current === undefined) return expected === "absent";
+  if (current === notText) return expected === "not-text";
+  return (await digestOf(current)) === expected;
+}
+
 /**
  * A shell that answers the `fs_*` commands as the Rust shell does, written
  * out on its own rather than from the adapter: files kept in memory by
@@ -164,8 +174,7 @@ export class FakeFileShell implements TauriFileShell {
           args["expected"] as string | null,
         );
       case "fs_remove":
-        this.files.delete(this.#checked(args["path"]));
-        return null;
+        return await this.#remove(this.#checked(args["path"]), args["expected"]);
       case "fs_watch": {
         const watchId = this.#nextWatch++;
         this.#watches.set(watchId, String(args["channel"]));
@@ -231,6 +240,15 @@ export class FakeFileShell implements TauriFileShell {
     }
     this.files.set(path, text);
     return { status: "written" };
+  }
+
+  async #remove(path: string, expected: unknown): Promise<unknown> {
+    const current = this.files.get(path);
+    if (typeof expected === "string" && !(await holdsExpected(current, expected))) {
+      return { status: "changed-on-disk", current: typeof current === "string" ? current : null };
+    }
+    this.files.delete(path);
+    return { status: "removed" };
   }
 
   /** The path, refused as the shell refuses it: unsafe, private, or through a link. */
