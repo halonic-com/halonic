@@ -23,6 +23,7 @@
     "@halonicjs/studio-feature-google-setup": "workspace:*",
     "@halonicjs/studio-feature-inbox": "workspace:*",
     "@halonicjs/studio-feature-library": "workspace:*",
+    "@halonicjs/studio-feature-models": "workspace:*",
     "@halonicjs/studio-feature-plugins": "workspace:*",
     "@halonicjs/studio-feature-runs": "workspace:*",
     "@halonicjs/studio-feature-settings": "workspace:*",
