@@ -150,4 +150,15 @@ verifies("app.secret-service", () => {
     expect(await secrets.remove("serve-password")).toEqual({ changed: true });
     expect(await store.get("serve-password")).toBeNull();
   });
+
+  it("tells before a value is typed whether a name is refused or needs the value twice", () => {
+    const { secrets } = setup();
+
+    expect(secrets.planSet("openai-key")).toEqual({ typedTwice: false });
+    expect(secrets.planSet("Serve_Password")).toEqual({ typedTwice: true });
+    expect(secrets.planSet("Token_Key")).toMatchObject({
+      reason: expect.stringContaining("sign-in tokens"),
+    });
+    expect(secrets.planSet("not a name")).toHaveProperty("reason");
+  });
 });

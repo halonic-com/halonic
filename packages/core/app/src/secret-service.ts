@@ -69,6 +69,19 @@ export class SecretService {
     this.hasher = options.hasher;
   }
 
+  /**
+   * What setting `name` needs, so a command can tell the person before they
+   * type a value: the reason the name is refused, or whether the value must
+   * be typed twice (the sign-in password).
+   */
+  planSet(name: string): { readonly reason: string } | { readonly typedTwice: boolean } {
+    const refusal = this.refuseName(name);
+    if (refusal !== null && !refusal.changed) {
+      return { reason: refusal.reason };
+    }
+    return { typedTwice: secretKey(name) === servePasswordKey };
+  }
+
   /** Saves a secret, replacing the one under the same name. */
   async set(input: SecretInput): Promise<SecretChange> {
     const refusal = this.refuseName(input.name);
