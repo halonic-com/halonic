@@ -85,7 +85,8 @@ export class WorkspaceListedTools implements ListedToolsHost {
       return nothingToReview(sourceName);
     }
     return listedToolsSnapshot(sourceName, reviewListedTools(await this.#check(source)), {
-      workspaceName: filesOf(source.workspace, "workspace")[0]?.value.name ?? sourceName,
+      workspaceName:
+        filesOf(source.workspace, "workspace")[0]?.value.name ?? folderNameOf(source.location),
       asksBeforeUse: (toolName) => needsApproval(source.connector.tools, toolName),
     });
   }
@@ -212,6 +213,11 @@ export class WorkspaceListedTools implements ListedToolsHost {
       ),
     );
   }
+}
+
+/** The folder's own name, as the CLI names an unnamed workspace: the last part of its path. */
+function folderNameOf(location: string): string {
+  return location.split(/[\\/]/).filter((part) => part !== "").at(-1) ?? location;
 }
 
 /** A connector whose tools are built in lists none, so there is nothing to approve. */

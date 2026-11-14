@@ -301,7 +301,30 @@ describe("the review dialog", () => {
       expect(container.textContent).not.toContain("Approve all");
       expect(container.textContent).not.toContain("Approve selected");
       await act(async () => button(container, "Close").click());
-      expect(closes).toEqual([null]);
+      expect(closes).toEqual(["Nothing approved. 1 tool from Notes server stays off."]);
+    });
+
+    it("shows a failure and a changed-again note on the Close-only screen", async () => {
+      const tools = { ...snapshot([], ["send"]), keepsChanging: [row("sync_tags")] };
+      const model = new ListedToolsReviewModel(
+        {
+          review: async () => tools,
+          approve: async () => ({ approved: [], changed: ["sync_tags"] }),
+          removeApproval: async () => {
+            throw new Error("The disk is full.");
+          },
+          subscribe: () => () => {},
+        },
+        "notes",
+      );
+      const container = render(
+        <ListedToolsReviewDialog model={model} sourceName="Notes server" onClose={() => {}} />,
+      );
+      await act(() => model.refresh());
+      await act(async () => button(container, "Turn it on anyway: sync_tags").click());
+      expect(container.textContent).toContain("sync_tags");
+      await act(async () => button(container, "Remove approval for send").click());
+      expect(container.textContent).toContain("Couldn't remove your approval for send:");
     });
 
     it("says nothing is waiting, with the Approved group and no buttons", async () => {

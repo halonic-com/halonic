@@ -89,9 +89,17 @@ export function ListedToolsReviewDialog({
         onCancel={() => finish(removedToast.current)}
       >
         <p>{listedToolsWords.topLine}</p>
+        {state.changedAgain.map((name) => (
+          <Callout key={name} tone="warning">
+            {listedToolsWords.changedAgain(name)}
+          </Callout>
+        ))}
         <ListedToolsReviewBody model={model} onRemoved={rememberRemoved} onOutcome={close} />
+        {state.approveError === undefined ? null : (
+          <Callout tone="danger">{state.approveError}</Callout>
+        )}
         <div className="flex justify-end">
-          <Button variant="secondary" onClick={() => finish(removedToast.current)}>
+          <Button variant="secondary" onClick={() => close(model.approveNone())}>
             {listedToolsWords.close}
           </Button>
         </div>
