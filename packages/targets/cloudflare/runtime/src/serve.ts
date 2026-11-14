@@ -47,11 +47,12 @@ export function serverPortsOf(runtime: Runtime): ServerPorts {
 /**
  * `CF-Connecting-IP` is set by Cloudflare's edge and replaces any value the
  * caller sent, so it is the one header the server may take as the client's
- * address. Every request reaches a Worker over HTTPS.
+ * address. The scheme is left to the server, which reads it from the request
+ * URL: a Worker also gets plain-HTTP requests when the zone doesn't force HTTPS.
  */
 function contextOf(request: Request) {
   const clientAddress = request.headers.get("cf-connecting-ip");
-  return clientAddress === null ? { secure: true } : { clientAddress, secure: true };
+  return clientAddress === null ? {} : { clientAddress };
 }
 
 /** Answers every request that isn't `/health` with 503 and no detail when the deployment is incomplete. */

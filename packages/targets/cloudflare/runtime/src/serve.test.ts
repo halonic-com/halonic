@@ -110,6 +110,21 @@ verifies("runtime.serve", () => {
       },
     );
 
+    it("reads the scheme from the request, so a plain-http request gets no Secure cookie", async () => {
+      const send = (scheme: string) =>
+        worker.fetch(
+          new Request(`${scheme}://halonic.example.com/api/logout`, {
+            method: "POST",
+            headers: { host: "halonic.example.com" },
+          }),
+          envWith({}),
+        );
+      const secure = await send("https");
+      const plain = await send("http");
+      expect(secure.headers.get("set-cookie")).toContain("Secure");
+      expect(plain.headers.get("set-cookie")).not.toContain("Secure");
+    });
+
     it("answers an unknown path with the neutral 404 the health route gives", async () => {
       const unknown = await ask(envWith({}), "/api/nothing-here");
       const neutral = await ask(envWith({}), "/health/");
