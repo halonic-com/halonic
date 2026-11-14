@@ -177,6 +177,8 @@ async function listenOnComputer(
 ): Promise<Listening> {
   const environment = setup.profile ?? nodeProfileEnvironment();
   const root = await realpath(dir.root);
+  // Resolved like `root`, so a link or a short Windows name can't hide that the workspace is under home.
+  const home = await realpath(environment.homeFolder).catch(() => environment.homeFolder);
   const folders = await workspaceFolders(profileFolder(environment), root, webCryptoDigest);
   // A failure the caller isn't told about: the cause goes to `--debug`.
   const logRequestFailure = (error: unknown): void =>
@@ -205,7 +207,7 @@ async function listenOnComputer(
         // No workspace is marked as the sample yet: Welcome has none until HAL-9089 is decided.
         sample: false,
         folder: root,
-        home: environment.homeFolder,
+        home,
       }),
     },
     requestCounts: openDiskRequestCountStore(countFolder, parts.clock),
