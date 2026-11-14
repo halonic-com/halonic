@@ -1,3 +1,4 @@
+import { PassThrough } from "node:stream";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { type CliCommand, UsageError } from "./command.ts";
@@ -8,8 +9,10 @@ import { pluginMessages } from "./messages/plugin.ts";
 import { trustMessages } from "./messages/trust.ts";
 import { NotTrustedError } from "./not-trusted.ts";
 import type { QuestionTerminal } from "./output/question.ts";
+import { SecretReader, type TerminalInput } from "./output/secret-reader.ts";
 import { runCli, type Terminal } from "./run-cli.ts";
 import { captureIo } from "./test/capture-io.ts";
+import { fakeSignals } from "./test/fake-signals.ts";
 import { manualClock } from "./test/manual-clock.ts";
 
 const testMessages = defineMessages("test", {
@@ -214,5 +217,41 @@ verifies("cli.secret-prompt", () => {
       );
       expect(written).toEqual([]);
     }
+  });
+
+  it("stops the command at Ctrl C even when the signal arrives after the key, instead of giving it no value", async () => {
+    const io = captureIo("/work");
+    const signals = fakeSignals();
+    const stdin = Object.assign(new PassThrough(), { setRawMode: () => undefined });
+    // As the real process: SIGINT is delivered on a later turn of the event loop.
+    const reader = new SecretReader(stdin as TerminalInput, () => {
+      setTimeout(() => signals.send("SIGINT"), 5);
+    });
+    const { terminal } = terminalTyping();
+    const seen: unknown[] = [];
+    const asking: CliCommand = {
+      ...passwordCommand,
+      async run(_input, context) {
+        seen.push(await context.askSecret(testMessages.password(), notTrusted));
+        return { exitCode: exitCode.ok, lines: [], json: {} };
+      },
+    };
+    const there: Terminal = {
+      ...terminal,
+      questions: {
+        write: () => undefined,
+        readLine: async () => undefined,
+        readSecret: (signal) => reader.readSecret(signal),
+      },
+    };
+    const running = runCli(["password"], io, [asking], {
+      terminal: there,
+      stop: { signals, exitNow: () => undefined },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    stdin.write("pass\u0003");
+    expect(await running).toBe(130);
+    expect(seen).toEqual([]);
+    expect(io.stderr).toEqual(["Stopped."]);
   });
 });

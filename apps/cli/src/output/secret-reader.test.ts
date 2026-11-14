@@ -1,7 +1,9 @@
 import { PassThrough } from "node:stream";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
+import { LineReader } from "./line-reader.ts";
 import { SecretReader, type TerminalInput } from "./secret-reader.ts";
+import { TypeAhead } from "./type-ahead.ts";
 
 /** A terminal input that records each switch of raw mode. */
 function terminal(): PassThrough & TerminalInput & { readonly rawModes: boolean[] } {
@@ -27,7 +29,7 @@ verifies("cli.secret-prompt", () => {
     const stdin = terminal();
     const reader = new SecretReader(stdin, () => undefined);
     const value = reader.readSecret();
-    stdin.write("ab\u007f\bc\u001bd\n");
+    stdin.write("ab\u007f\bc\u0001d\n");
     expect(await value).toBe("cd");
   });
 
@@ -68,14 +70,68 @@ verifies("cli.secret-prompt", () => {
     expect(await value).toBeUndefined();
   });
 
-  it("calls onInterrupt on Ctrl C and goes back to showing what is typed", async () => {
+  it("calls onInterrupt on Ctrl C and keeps waiting until the signal is aborted, then shows what is typed again", async () => {
     const stdin = terminal();
     let interrupted = 0;
+    const stop = new AbortController();
     const reader = new SecretReader(stdin, () => interrupted++);
-    const value = reader.readSecret();
-    stdin.write("pass\u0003");
-    expect(await value).toBeUndefined();
+    let settled = false;
+    const value = reader.readSecret(stop.signal).then((v) => {
+      settled = true;
+      return v;
+    });
+    stdin.write("pass\u0003more\r");
+    await new Promise((resolve) => setTimeout(resolve, 5));
     expect(interrupted).toBe(1);
+    expect(settled).toBe(false);
+    expect(stdin.rawModes).toEqual([true]);
+    stop.abort();
+    expect(await value).toBeUndefined();
+    expect(stdin.rawModes).toEqual([true, false]);
+  });
+
+  it("gives no value on Ctrl C when no signal could abort it", async () => {
+    const stdin = terminal();
+    const value = new SecretReader(stdin, () => undefined).readSecret();
+    stdin.write("\u0003");
+    expect(await value).toBeUndefined();
+    expect(stdin.rawModes).toEqual([true, false]);
+  });
+
+  it("drops whole escape sequences, such as arrow and Delete keys, and keeps what follows", async () => {
+    const stdin = terminal();
+    const value = new SecretReader(stdin, () => undefined).readSecret();
+    stdin.write("a\u001b[Db\u001b[3~c\u001bOHd\u001bxe\r");
+    expect(await value).toBe("abcde");
+  });
+
+  it("drops an escape sequence that comes in two chunks", async () => {
+    const stdin = terminal();
+    const value = new SecretReader(stdin, () => undefined).readSecret();
+    stdin.write("a\u001b");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    stdin.write("[3~b\r");
+    expect(await value).toBe("ab");
+  });
+
+  it("shares what was typed ahead with the line reader, in order", async () => {
+    const stdin = terminal();
+    const ahead = new TypeAhead();
+    const lines = new LineReader(stdin, ahead);
+    const secrets = new SecretReader(stdin, () => undefined, ahead);
+    stdin.write("y\nsecret\nn\n");
+    expect(await lines.readLine()).toBe("y");
+    expect(await secrets.readSecret()).toBe("secret");
+    expect(await lines.readLine()).toBe("n");
+  });
+
+  it("gives no value at once for a second prompt after stdin ended", async () => {
+    const stdin = terminal();
+    const reader = new SecretReader(stdin, () => undefined);
+    const first = reader.readSecret();
+    stdin.end();
+    expect(await first).toBeUndefined();
+    expect(await reader.readSecret()).toBeUndefined();
     expect(stdin.rawModes).toEqual([true, false]);
   });
 

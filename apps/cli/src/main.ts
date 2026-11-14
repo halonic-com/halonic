@@ -5,6 +5,7 @@ import { readGlobalOptions } from "./global-options.ts";
 import { LineReader } from "./output/line-reader.ts";
 import { SecretReader, type TerminalInput } from "./output/secret-reader.ts";
 import { exitOnceWritten, quietOnClosedPipe, stopExitCode } from "./output/stop.ts";
+import { TypeAhead } from "./output/type-ahead.ts";
 import { runCli } from "./run-cli.ts";
 import { recoverSandboxSessions } from "./sandbox-journals.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
@@ -64,9 +65,12 @@ if (Object.values<number>(stopExitCode).includes(code)) {
 
 /** Questions on the real terminal: written to stderr, answered on stdin. */
 function stdinQuestions() {
-  const lines = new LineReader(process.stdin);
-  const secrets = new SecretReader(process.stdin as TerminalInput, () =>
-    process.kill(process.pid, "SIGINT"),
+  const ahead = new TypeAhead();
+  const lines = new LineReader(process.stdin, ahead);
+  const secrets = new SecretReader(
+    process.stdin as TerminalInput,
+    () => process.kill(process.pid, "SIGINT"),
+    ahead,
   );
   return {
     write: (text: string) => process.stderr.write(text),
