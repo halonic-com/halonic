@@ -1,4 +1,4 @@
-import { ListHeading } from "@halonicjs/studio-kit";
+import { ListHeading, SectionIcon, type SectionIconName } from "@halonicjs/studio-kit";
 import { type FocusEvent, type KeyboardEvent, type RefObject, useId, useState } from "react";
 import { listedSections, type SettingsGroup } from "./settings-groups.ts";
 
@@ -69,6 +69,7 @@ export function SettingsNav({ groups, current, onShow, navRef }: SettingsNavProp
                 key={section.id}
                 id={section.id}
                 title={section.title}
+                icon={section.icon}
                 current={section.id === current}
                 tabStop={section.id === tabStop}
                 onFocus={() => setFocused(section.id)}
@@ -85,6 +86,7 @@ export function SettingsNav({ groups, current, onShow, navRef }: SettingsNavProp
 function SettingsRow(props: {
   readonly id: string;
   readonly title: string;
+  readonly icon: SectionIconName | undefined;
   readonly current: boolean;
   readonly tabStop: boolean;
   readonly onFocus: () => void;
@@ -101,6 +103,11 @@ function SettingsRow(props: {
         onFocus={props.onFocus}
         onClick={props.onShow}
       >
+        {props.icon === undefined ? null : (
+          <span className="size-icon-md shrink-0 *:size-full">
+            <SectionIcon name={props.icon} />
+          </span>
+        )}
         <span className="min-w-0 flex-1 wrap-break-word">{props.title}</span>
       </button>
     </li>
