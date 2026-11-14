@@ -10,7 +10,7 @@ const started = vi.hoisted(() => [] as { file: string; args: readonly string[] }
 const answerOf = vi.hoisted(() => (args: readonly string[]): string => {
   if (args.includes("--sandbox-check")) return '{"ok":true,"reason":null,"missing":[]}\n';
   if (args.includes("--profile-folder")) return "halonic-agent-host 1.2.3\n";
-  return "0.0.81\n";
+  return "0.0.82\n";
 });
 /** The served host: it prints its handshake, and exits once its input ends. */
 const servingHost = vi.hoisted(() => async () => {

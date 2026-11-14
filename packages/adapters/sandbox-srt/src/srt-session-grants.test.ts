@@ -12,7 +12,7 @@ const windows = { ...linux, platform: "win32" as const, hasWindowsSandbox: async
 /** Grants on a fake `srt-win` that records what it was asked and answers from `answer`. */
 function fakeGrants(
   answer: (args: string[]) => Partial<SrtWinResult> = () => ({}),
-  version = "0.0.81",
+  version = "0.0.82",
 ) {
   const calls: string[][] = [];
   const grants = new KeptGrants(

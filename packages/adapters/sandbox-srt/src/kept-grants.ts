@@ -3,7 +3,7 @@ import { win32 } from "node:path";
 import { installedSrtVersion } from "./srt-runner.ts";
 
 /** The versions of sandbox-runtime whose `srt-win acl forget` this module was tried against. */
-export const testedSrtVersions: readonly string[] = ["0.0.81"];
+export const testedSrtVersions: readonly string[] = ["0.0.82"];
 
 /** What one `srt-win` call gave. */
 export interface SrtWinResult {
