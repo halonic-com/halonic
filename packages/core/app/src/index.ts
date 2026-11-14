@@ -360,6 +360,8 @@ export {
 export { type RunStanding, type RunWait, runStanding, runWait } from "./run-standing.ts";
 export { type RunStep, runSteps, type StepEnd } from "./run-steps.ts";
 export {
+  mxcFencesRunner,
+  type RunnerBackend,
   type RunnerFence,
   type RunnerFenceInputs,
   type RunnerUnfencedReason,
@@ -369,6 +371,7 @@ export {
 export {
   type GatedRunner,
   type GatedStart,
+  type MxcFence,
   RunnerStartGate,
   type RunnerStartGateOptions,
   type StartInSandbox,

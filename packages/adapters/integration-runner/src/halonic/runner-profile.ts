@@ -32,6 +32,13 @@
 // Known limits). A folder on the way that can't be listed fails the start
 // there, because its entries couldn't be denied.
 //
+// MXC (`sandbox-mxc`, Windows 11) is the other way round: it reads and writes
+// only what a grant names, so there is nothing to hide, nothing to deny by
+// name and nothing to list. Its profile is the runner's paths as read-only
+// grants and the one temp folder, which is also the working folder. It has
+// no egress rule and no bridge, so the box has no network at all, and it
+// takes no `reopenedPaths` (HAL-3403).
+//
 // The fence denies a path's real place as well as the path as written. So the
 // profile works on real paths only: `realRunnerPaths` resolves every path
 // before the profile is built, and an entry denied by name that is a symlink
@@ -74,7 +81,12 @@ export interface RunnerMachine {
   readonly timeLimitMs: number;
   /** The system, as `process.platform` names it; this one unless a test passes another. */
   readonly platform?: NodeJS.Platform;
+  /** The sandbox the profile is for; `srt` unless the start gate picked MXC. */
+  readonly backend?: RunnerBackend;
 }
+
+/** The sandbox backends a runner starts in with a fence: `srt` (`sandbox-srt`) and `mxc` (`sandbox-mxc`). */
+export type RunnerBackend = "srt" | "mxc";
 
 /** What the profile reads from disk. */
 export interface RunnerDisk {
@@ -222,6 +234,7 @@ export function runnerProfile(
   machine: RunnerMachine,
   disk: RunnerDisk = diskOnThisMachine,
 ): SandboxProfile {
+  if (machine.backend === "mxc") return mxcRunnerProfile(files, machine);
   const readOnlyPaths = [
     files.nodeFolder,
     files.runnerFile,
@@ -236,6 +249,29 @@ export function runnerProfile(
     settingsFolder: null,
     readOnlyPaths,
     ...hiding(machine, kept, disk),
+    env: { TMPDIR: machine.tempFolder },
+    network: { bridge: null, allowedSites: [] },
+    timeLimitMs: machine.timeLimitMs,
+    keyStore: "denied",
+  };
+}
+
+/**
+ * The profile for MXC: read grants for Node's folder, the runner and the
+ * integration's folder, one folder to write in, and no network. The sandbox's
+ * own folders are srt's and not needed. A path that is, or holds, the home
+ * folder or a socket folder is refused as for srt, because a grant on it
+ * would open everything inside it.
+ */
+function mxcRunnerProfile(files: RunnerFiles, machine: RunnerMachine): SandboxProfile {
+  refuseKeptHoldingHidden(files, { ...machine, sandboxFolders: [], systemFiles: null });
+  return {
+    workingFolder: machine.tempFolder,
+    tempFolder: machine.tempFolder,
+    settingsFolder: null,
+    readOnlyPaths: [files.nodeFolder, files.runnerFile, files.integrationFolder],
+    deniedPaths: [],
+    reopenedPaths: [],
     env: { TMPDIR: machine.tempFolder },
     network: { bridge: null, allowedSites: [] },
     timeLimitMs: machine.timeLimitMs,

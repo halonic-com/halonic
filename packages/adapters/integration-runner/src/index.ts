@@ -37,6 +37,7 @@ export {
 export { type LoadPluginBackendOptions, loadPluginBackend } from "./halonic/plugin-backend.ts";
 export { runnerFile } from "./halonic/runner-file-path.ts";
 export {
+  type RunnerBackend,
   type RunnerDisk,
   type RunnerFiles,
   type RunnerMachine,

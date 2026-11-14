@@ -162,12 +162,12 @@ class LocalIntegrationOpening {
     const runnerMachine = await this.#machine.runnerMachine();
     const gated = await starts.start(
       { trust, folder: this.#folder, settings: bridge.settings },
-      (sandbox): Promise<StartedRunner> =>
+      (sandbox, backend): Promise<StartedRunner> =>
         begin({
           sandbox,
           files: { ...runtime, integrationFolder: folder },
           entry: { file: join(folder, DEFAULT_BACKEND_ENTRY), exportName: "default" },
-          machine: runnerMachine,
+          machine: { ...runnerMachine, backend },
           settings: bridge.settings,
           tools: bridge.tools,
           http: bridge.http,

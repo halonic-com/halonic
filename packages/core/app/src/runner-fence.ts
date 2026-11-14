@@ -36,6 +36,18 @@ export const runnerUnfencedReasons = [
 export type RunnerUnfencedReason = (typeof runnerUnfencedReasons)[number];
 
 /**
+ * Whether MXC counts as a fence for the runner on Windows 11. It stays
+ * `false` until the attack cases A1 to A40 have passed on MXC on
+ * `windows-11-arm`, A6 (DNS) and A23 (MXC fails mid-run) among them, and
+ * Julian's review of that run is on HAL-3307 (HAL-3403). Turning it on is
+ * changing this to `true`, and nothing else.
+ */
+export const mxcFencesRunner = false;
+
+/** The sandbox backends the runner may be fenced by: `srt` (`sandbox-srt`) and `mxc` (`sandbox-mxc`). */
+export type RunnerBackend = "srt" | "mxc";
+
+/**
  * The fence status of plugin and integration code on this computer.
  *
  * - `fenced`: it runs in the sandbox.
@@ -57,13 +69,19 @@ export interface RunnerFenceInputs {
   readonly check: SandboxCheck;
   /** The session's fence proof, once the code is started; left out for the trust check. */
   readonly proof?: SandboxFence;
+  /** The backend the sandbox choice picked, which `check` belongs to; `srt` when left out. */
+  readonly backend?: RunnerBackend;
+  /** Whether MXC counts as a fence for the runner; {@link mxcFencesRunner} when left out. */
+  readonly mxcFences?: boolean;
 }
 
 /**
  * The fence status of plugin and integration code, from this computer's
  * sandbox check and, once started, the session's fence proof.
  *
- * On Windows it is always `not-fenced` with `windows`, even when the agent
+ * On Windows 11 with MXC chosen, and {@link mxcFencesRunner} on, the status
+ * follows MXC's own check and fence proof like any other sandbox. Otherwise,
+ * on Windows it is always `not-fenced` with `windows`, even when the agent
  * sandbox is set up there and its fence proof passes: the sandbox fences
  * files there, but its network filter doesn't hold, so nothing may suggest
  * a partial sandbox (I5 design 4.3.3, Julian's build condition (b)).
@@ -79,8 +97,15 @@ export interface RunnerFenceInputs {
  * runnerFence({ platform: "win32", check: { ok: true, reason: null, missing: [] }, proof: { state: "fenced" } });
  * // { state: "not-fenced", reason: "windows" }
  */
-export function runnerFence({ platform, check, proof }: RunnerFenceInputs): RunnerFence {
-  if (platform === "win32") {
+export function runnerFence({
+  platform,
+  check,
+  proof,
+  backend = "srt",
+  mxcFences = mxcFencesRunner,
+}: RunnerFenceInputs): RunnerFence {
+  const mxc = backend === "mxc" && mxcFences;
+  if (platform === "win32" && !mxc) {
     return { state: "not-fenced", reason: "windows" };
   }
   if (!check.ok) {

@@ -59,29 +59,49 @@ class FakeRunner implements GatedRunner {
 
 interface Setup {
   platform?: string;
+  /** MXC on Windows 11: whether the sandbox choice has it in use, whether it counts as a fence, and its check. */
+  mxc?: { inUse: boolean; fences: boolean; check?: SandboxCheck; proof?: SandboxFence };
   check?: SandboxCheck;
   /** The fence proof a runner reports, by the sandbox it started in. */
   proofs?: { fenced?: SandboxFence; launcher?: SandboxFence };
 }
 
-function setup({ platform = "linux", check = passes, proofs = {} }: Setup = {}) {
+function setup({ platform = "linux", check = passes, proofs = {}, mxc }: Setup = {}) {
   const store = new TestUnfencedRunConsentStore();
   const runs = new UnfencedRuns({ store, clock });
   const fenced = sandbox("fenced", check);
   const launcher = sandbox("launcher");
-  const gate = new RunnerStartGate({ platform, fenced, launcher, runs });
+  const gate = new RunnerStartGate({
+    platform,
+    fenced,
+    launcher,
+    runs,
+    ...(mxc === undefined
+      ? {}
+      : {
+          mxc: {
+            sandbox: sandbox("mxc", mxc.check ?? passes),
+            inUse: () => mxc.inUse,
+            fencesRunner: mxc.fences,
+          },
+        }),
+  });
   const started: FakeRunner[] = [];
-  const startIn = async (picked: Sandbox) => {
+  const backends: string[] = [];
+  const startIn = async (picked: Sandbox, backend: string) => {
+    backends.push(backend);
     const name = (picked as Sandbox & { name: string }).name;
-    const proof =
-      name === "fenced"
-        ? (proofs.fenced ?? { state: "fenced" })
-        : (proofs.launcher ?? { state: "off" });
+    const proofByName: Record<string, SandboxFence> = {
+      mxc: mxc?.proof ?? { state: "fenced" },
+      fenced: proofs.fenced ?? { state: "fenced" },
+      launcher: proofs.launcher ?? { state: "off" },
+    };
+    const proof = proofByName[name] ?? { state: "off" };
     const runner = new FakeRunner(name, proof);
     started.push(runner);
     return runner;
   };
-  return { store, runs, gate, started, startIn };
+  return { store, runs, gate, started, startIn, backends };
 }
 
 verifies("app.runner-start-gate", () => {
@@ -126,6 +146,40 @@ verifies("app.runner-start-gate", () => {
       await runs.allow("windows");
       expect((await gate.start(startIn)).run).toBe("unfenced");
       expect(started.map((runner) => runner.startedIn)).toEqual(["launcher"]);
+    });
+
+    it("starts in MXC on Windows when MXC is in use and counts as a fence", async () => {
+      const { gate, started, startIn, backends } = setup({
+        platform: "win32",
+        mxc: { inUse: true, fences: true },
+      });
+      expect((await gate.start(startIn)).run).toBe("fenced");
+      expect(started.map((runner) => runner.startedIn)).toEqual(["mxc"]);
+      expect(backends).toEqual(["mxc"]);
+    });
+
+    it("keeps Windows not fenced while MXC doesn't yet count as a fence for the runner", async () => {
+      const { gate, started, startIn } = setup({
+        platform: "win32",
+        mxc: { inUse: true, fences: false },
+      });
+      expect(await gate.start(startIn)).toEqual({ run: "needs-yes", reason: "windows" });
+      expect(started).toEqual([]);
+    });
+
+    it("keeps Windows not fenced when the sandbox choice doesn't have MXC in use", async () => {
+      const { gate, startIn } = setup({ platform: "win32", mxc: { inUse: false, fences: true } });
+      expect(await gate.start(startIn)).toEqual({ run: "needs-yes", reason: "windows" });
+    });
+
+    it("stops an MXC runner whose fence failed, and never falls back to the launcher (A23)", async () => {
+      const { gate, runs, started, startIn } = setup({
+        platform: "win32",
+        mxc: { inUse: true, fences: true, proof: { state: "not-fenced", reason: "went away" } },
+      });
+      await runs.allow("windows");
+      expect(await gate.start(startIn)).toEqual({ run: "stopped" });
+      expect(started.map((runner) => [runner.startedIn, runner.closed])).toEqual([["mxc", 1]]);
     });
 
     it("stops a runner that started while Take back ran", async () => {

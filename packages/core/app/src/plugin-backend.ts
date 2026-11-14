@@ -15,6 +15,7 @@ import type { Digest, FolderReader, Sandbox } from "@halonicjs/ports";
 import { type PluginFolder, type PluginProblem, readPluginFolder } from "./plugin-folder.ts";
 import { pluginSecretNames } from "./plugin-secret-names.ts";
 import type { PluginSettingValues } from "./plugin-settings.ts";
+import type { RunnerBackend } from "./runner-fence.ts";
 import type { GatedRunner, GatedStart, RunnerStartGate } from "./runner-start-gate.ts";
 import type { TrustService } from "./trust-service.ts";
 
@@ -76,6 +77,7 @@ export interface TrustedPluginBackend extends PluginFolder {
 export type StartTrustedBackend<Runner extends GatedRunner> = (
   sandbox: Sandbox,
   trusted: TrustedPluginBackend,
+  backend: RunnerBackend,
 ) => Promise<Runner>;
 
 /** What {@link PluginBackendStart} needs from the host. */
@@ -123,7 +125,7 @@ export class PluginBackendStart {
     startIn: StartTrustedBackend<Runner>,
   ): Promise<GatedStart<Runner>> {
     const trusted = await this.#checkTrust(id);
-    return await this.#options.gate.start((sandbox) => startIn(sandbox, trusted));
+    return await this.#options.gate.start((sandbox, backend) => startIn(sandbox, trusted, backend));
   }
 
   async #checkTrust(id: string): Promise<TrustedPluginBackend> {
