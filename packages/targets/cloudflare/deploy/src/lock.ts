@@ -45,33 +45,45 @@ export async function withDeployLock<T>(
   const database = databaseNameFor(options.worker);
   const id = options.id ?? crypto.randomUUID();
 
-  const startedAt = now();
+  const requestedAt = now();
   const held = await api.takeDeployLock(options.accountId, database, {
     id,
     label: options.label,
-    startedAt,
-    expiresAt: startedAt + leaseMs,
-  } satisfies DeployLease);
+    leaseMs,
+  });
   if (held.id !== id) throw new DeployLockedError(held.label, held.startedAt, held.expiresAt);
 
+  // The database's clock sets the lease; ours only measures how long ago it was confirmed. The
+  // request went out before the lease was set, so counting from then never overstates it.
+  let confirmedUntil = requestedAt + leaseMs;
   let lost: DeployError | undefined;
   const renew = async () => {
     if (lost) throw lost;
     if (options.signal?.aborted) return;
-    if (!(await api.renewDeployLock(options.accountId, database, id, now() + leaseMs))) {
+    const sentAt = now();
+    let lease: DeployLease | undefined;
+    try {
+      lease = await api.renewDeployLock(options.accountId, database, id, leaseMs);
+    } catch (error) {
+      // A failed call says nothing about who holds the lock. The lease is still ours until the
+      // last confirmed expiry, and the next renewal tries again.
+      if (now() < confirmedUntil) return;
+      lost = toLost(error);
+      throw lost;
+    }
+    if (!lease) {
       lost = new DeployError(
         "deploy-lock-lost",
         "Another deploy took over the lock while this one was running, so this one stopped.",
       );
       throw lost;
     }
+    confirmedUntil = Math.max(confirmedUntil, sentAt + leaseMs);
   };
-  // A failed background renewal is picked up by the next `renew` or the check after `fn`.
+  // A lost lease is picked up by the next `renew` or the check after `fn`.
   const stopRenewing = schedule(
     () => {
-      renew().catch((error: unknown) => {
-        lost ??= error instanceof DeployError ? error : toLost(error);
-      });
+      renew().catch(() => {});
     },
     Math.max(1, Math.floor(leaseMs / 3)),
   );
@@ -95,7 +107,10 @@ export async function withDeployLock<T>(
 
 function toLost(error: unknown): DeployError {
   const reason = error instanceof Error ? error.message : "unknown error";
-  return new DeployError("deploy-lock-lost", `The deploy lock could not be renewed: ${reason}`);
+  return new DeployError(
+    "deploy-lock-lost",
+    `The deploy lock could not be renewed before it ran out: ${reason}`,
+  );
 }
 
 function intervalSchedule(run: () => void, ms: number): () => void {

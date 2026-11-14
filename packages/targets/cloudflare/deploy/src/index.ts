@@ -2,6 +2,7 @@ export type {
   CloudflareAccount,
   CloudflareApi,
   DeployLease,
+  DeployLeaseRequest,
   FoundResource,
   Migration,
   ResourceKind,

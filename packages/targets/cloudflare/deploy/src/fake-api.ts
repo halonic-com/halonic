@@ -24,6 +24,10 @@ export interface FakeCloudflareState {
   noDatabase?: boolean;
   /** A deploy lease already in the lock table. */
   lock?: DeployLease;
+  /** Every renewal throws, as a dropped connection would. Can be switched on mid-test. */
+  renewFails?: boolean;
+  /** The database's clock in milliseconds, which decides lease times. Defaults to `Date.now`. */
+  now?: () => number;
   /** A migration the Worker's own runner applies just before our batch lands, so our batch fails. */
   racedBy?: string;
 }
@@ -76,17 +80,21 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
       calls.push("appliedMigrations");
       return state.noDatabase ? undefined : [...applied];
     },
-    async takeDeployLock(_accountId, _db, lease) {
-      lockWrite(`takeDeployLock ${lease.id}`);
+    async takeDeployLock(_accountId, _db, request) {
+      lockWrite(`takeDeployLock ${request.id}`);
+      const now = (state.now ?? Date.now)();
       // The same rule as the SQL: win when there is no lease or the old one has expired.
-      if (!lock || lock.expiresAt <= lease.startedAt) lock = lease;
+      if (!lock || lock.expiresAt <= now) {
+        lock = { id: request.id, label: request.label, startedAt: now, expiresAt: now + request.leaseMs };
+      }
       return lock;
     },
-    async renewDeployLock(_accountId, _db, leaseId, expiresAt) {
+    async renewDeployLock(_accountId, _db, leaseId, leaseMs) {
       lockWrite(`renewDeployLock ${leaseId}`);
-      if (lock?.id !== leaseId) return false;
-      lock = { ...lock, expiresAt };
-      return true;
+      if (state.renewFails) throw new Error("renewal failed");
+      if (lock?.id !== leaseId) return undefined;
+      lock = { ...lock, expiresAt: (state.now ?? Date.now)() + leaseMs };
+      return lock;
     },
     async releaseDeployLock(_accountId, _db, leaseId) {
       lockWrite(`releaseDeployLock ${leaseId}`);

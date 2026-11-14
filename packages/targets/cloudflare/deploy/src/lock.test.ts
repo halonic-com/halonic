@@ -14,20 +14,22 @@ const other: DeployLease = {
 };
 
 function setup(clock: { t: number }, state: Parameters<typeof fakeCloudflareApi>[0]) {
-  const api = fakeCloudflareApi(state);
+  const api = fakeCloudflareApi({ now: () => clock.t, ...state });
   const ticks: (() => void)[] = [];
+  const intervals: number[] = [];
   const options = {
     accountId: "a1",
     worker: "halonic-dev",
     label: "mateo on laptop",
     id: "mine",
     now: () => clock.t,
-    schedule: (run: () => void) => {
+    schedule: (run: () => void, ms: number) => {
+      intervals.push(ms);
       ticks.push(run);
       return () => ticks.splice(0);
     },
   };
-  return { api, options, ticks };
+  return { api, options, ticks, intervals };
 }
 
 verifies("deploy.lock", () => {
@@ -67,8 +69,9 @@ verifies("deploy.lock", () => {
 
   it("renews at each step and in the background during a long step", async () => {
     const clock = { t: 0 };
-    const { api, options, ticks } = setup(clock, { accounts: [] });
+    const { api, options, ticks, intervals } = setup(clock, { accounts: [] });
     await withDeployLock(api, options, async (lock) => {
+      expect(intervals).toEqual([(10 * minute) / 3]);
       clock.t += 4 * minute;
       await lock.renew();
       clock.t += 4 * minute;
@@ -85,11 +88,7 @@ verifies("deploy.lock", () => {
     const error = await withDeployLock(api, options, async (lock) => {
       // The lease ran out unseen and another deploy took it.
       clock.t += 11 * minute;
-      await api.takeDeployLock("a1", "halonic-dev-data", {
-        ...other,
-        startedAt: clock.t,
-        expiresAt: clock.t + minute,
-      });
+      await api.takeDeployLock("a1", "halonic-dev-data", { ...other, leaseMs: minute });
       await lock.renew();
     }).catch((e: unknown) => e);
     expect((error as DeployError).code).toBe("deploy-lock-lost");
@@ -97,8 +96,7 @@ verifies("deploy.lock", () => {
     const again = await api.takeDeployLock("a1", "halonic-dev-data", {
       ...other,
       id: "third",
-      startedAt: clock.t,
-      expiresAt: clock.t + minute,
+      leaseMs: minute,
     });
     expect(again.id).toBe("other");
   });
@@ -108,16 +106,48 @@ verifies("deploy.lock", () => {
     const { api, options, ticks } = setup(clock, { accounts: [] });
     const error = await withDeployLock(api, options, async () => {
       clock.t += 11 * minute;
-      await api.takeDeployLock("a1", "halonic-dev-data", {
-        ...other,
-        startedAt: clock.t,
-        expiresAt: clock.t + minute,
-      });
+      await api.takeDeployLock("a1", "halonic-dev-data", { ...other, leaseMs: minute });
       ticks[0]?.();
       await new Promise((resolve) => setTimeout(resolve, 0));
       return "finished";
     }).catch((e: unknown) => e);
     expect((error as DeployError).code).toBe("deploy-lock-lost");
+  });
+
+  it("survives a failed background renewal while the lease is still ours, and frees the lock", async () => {
+    const clock = { t: 0 };
+    const state = { accounts: [], renewFails: false };
+    const { api, options, ticks } = setup(clock, state);
+    const result = await withDeployLock(api, options, async (lock) => {
+      clock.t += 3 * minute;
+      state.renewFails = true;
+      ticks[0]?.();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await lock.renew();
+      state.renewFails = false;
+      return "finished";
+    });
+    expect(result).toBe("finished");
+    expect(api.calls.at(-1)).toBe("releaseDeployLock mine");
+  });
+
+  it("gives up once renewals have failed until the last confirmed expiry", async () => {
+    const clock = { t: 0 };
+    const state = { accounts: [], renewFails: true };
+    const { api, options } = setup(clock, state);
+    const error = await withDeployLock(api, options, async (lock) => {
+      clock.t += 10 * minute;
+      await lock.renew();
+    }).catch((e: unknown) => e);
+    expect((error as DeployError).code).toBe("deploy-lock-lost");
+  });
+
+  it("decides expiry by the database's clock, not the deploying machine's", async () => {
+    // This machine's clock is an hour ahead of the database's, so the lease isn't expired.
+    const { api, options } = setup({ t: 0 }, { accounts: [], lock: other, now: () => 2_000 });
+    await expect(
+      withDeployLock(api, { ...options, now: () => 60 * minute }, async () => "ok"),
+    ).rejects.toBeInstanceOf(DeployLockedError);
   });
 
   it("frees the lock when the deploy throws, and keeps the deploy's error", async () => {

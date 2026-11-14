@@ -311,7 +311,7 @@ verifies("deploy.migrate", () => {
 });
 
 verifies("deploy.lock", () => {
-  const lease = { id: "mine", label: "mateo on laptop", startedAt: 5_000, expiresAt: 605_000 };
+  const lease = { id: "mine", label: "mateo on laptop", leaseMs: 600_000 };
   const row = (id: string) => ({
     result: [
       { results: [] },
@@ -339,7 +339,9 @@ verifies("deploy.lock", () => {
     expect(batch[1]?.sql).toMatch(
       /ON CONFLICT\(slot\) DO UPDATE .* WHERE .*expires_at <= excluded\.started_at/,
     );
-    expect(batch[1]?.params).toEqual(["mine", "mateo on laptop", "5000", "605000"]);
+    // The database's clock sets the times; only the lease length is sent.
+    expect(batch[1]?.sql).toContain("strftime('%s','now')");
+    expect(batch[1]?.params).toEqual(["mine", "mateo on laptop", "600000"]);
     expect(JSON.stringify(batch)).not.toContain(token);
   });
 
@@ -363,8 +365,13 @@ verifies("deploy.lock", () => {
         bodies as never,
       ),
     });
-    expect(await client.renewDeployLock("a1", "w-data", "mine", 9_000)).toBe(true);
-    expect(await client.renewDeployLock("a1", "w-data", "someone-else", 9_000)).toBe(false);
+    expect(await client.renewDeployLock("a1", "w-data", "mine", 9_000)).toEqual({
+      id: "mine",
+      label: "x",
+      startedAt: 1,
+      expiresAt: 2,
+    });
+    expect(await client.renewDeployLock("a1", "w-data", "someone-else", 9_000)).toBeUndefined();
     await client.releaseDeployLock("a1", "w-data", "mine");
     const release = bodies.at(-1);
     expect(release?.sql).toMatch(/DELETE FROM _halonic_deploy_lock WHERE slot = 1 AND id = \?/);

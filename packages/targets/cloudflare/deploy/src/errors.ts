@@ -44,7 +44,7 @@ export class DeployLockedError extends DeployError {
   constructor(holder: string, startedAt: number, expiresAt: number) {
     super(
       "deploy-locked",
-      `${holder} is deploying (since ${new Date(startedAt).toISOString()}). Wait for it to finish, or try again after ${new Date(expiresAt).toISOString()}.`,
+      `${holder} is deploying (since ${new Date(startedAt).toISOString()}). Try again when it finishes. If it crashed, its lock frees itself by ${new Date(expiresAt).toISOString()}.`,
     );
     this.name = "DeployLockedError";
     this.holder = holder;

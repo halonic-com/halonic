@@ -2,6 +2,7 @@ import type {
   CloudflareAccount,
   CloudflareApi,
   DeployLease,
+  DeployLeaseRequest,
   FoundResource,
   Migration,
   ResourceRef,
@@ -31,6 +32,8 @@ export const markerTag = "halonic";
 /** The table the Worker's own migration runner uses, so the two never disagree about what ran. */
 const migrationsTable = "schema_migrations";
 const lockTable = "_halonic_deploy_lock";
+/** The database's clock in milliseconds. Second precision, which suits a ten-minute lease and works on every SQLite. */
+const nowMs = "(CAST(strftime('%s','now') AS INTEGER) * 1000)";
 const createLockTable = `CREATE TABLE IF NOT EXISTS ${lockTable} (slot INTEGER PRIMARY KEY CHECK (slot = 1), id TEXT NOT NULL, label TEXT NOT NULL, started_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)`;
 const defaultBaseUrl = "https://api.cloudflare.com/client/v4";
 const requestTimeoutMs = 30_000;
@@ -270,15 +273,16 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
         throw error;
       }
     },
-    async takeDeployLock(accountId, databaseName, lease: DeployLease) {
+    async takeDeployLock(accountId, databaseName, request: DeployLeaseRequest) {
       const id = await requireDatabase(accountId, databaseName);
       const results = await batch(accountId, id, [
         { sql: createLockTable },
         {
-          // Wins only when no lease exists or the old one ran out. The row's id is always 1,
-          // so two deploys racing for it can't both insert.
-          sql: `INSERT INTO ${lockTable} (slot, id, label, started_at, expires_at) VALUES (1, ?, ?, CAST(? AS INTEGER), CAST(? AS INTEGER)) ON CONFLICT(slot) DO UPDATE SET id = excluded.id, label = excluded.label, started_at = excluded.started_at, expires_at = excluded.expires_at WHERE ${lockTable}.expires_at <= excluded.started_at`,
-          params: [lease.id, lease.label, String(lease.startedAt), String(lease.expiresAt)],
+          // Wins only when no lease exists or the old one ran out, by the database's clock
+          // (`excluded.started_at` is its "now"). The row's slot is always 1, so two deploys
+          // racing for it can't both insert.
+          sql: `INSERT INTO ${lockTable} (slot, id, label, started_at, expires_at) VALUES (1, ?, ?, ${nowMs}, ${nowMs} + CAST(? AS INTEGER)) ON CONFLICT(slot) DO UPDATE SET id = excluded.id, label = excluded.label, started_at = excluded.started_at, expires_at = excluded.expires_at WHERE ${lockTable}.expires_at <= excluded.started_at`,
+          params: [request.id, request.label, String(request.leaseMs)],
         },
         { sql: `SELECT id, label, started_at, expires_at FROM ${lockTable} WHERE slot = 1` },
       ]);
@@ -286,16 +290,17 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
       if (!held) throw failed("the deploy lock could not be read back");
       return held;
     },
-    async renewDeployLock(accountId, databaseName, leaseId, expiresAt) {
+    async renewDeployLock(accountId, databaseName, leaseId, leaseMs) {
       const id = await requireDatabase(accountId, databaseName);
       const results = await batch(accountId, id, [
         {
-          sql: `UPDATE ${lockTable} SET expires_at = CAST(? AS INTEGER) WHERE slot = 1 AND id = ?`,
-          params: [String(expiresAt), leaseId],
+          sql: `UPDATE ${lockTable} SET expires_at = ${nowMs} + CAST(? AS INTEGER) WHERE slot = 1 AND id = ?`,
+          params: [String(leaseMs), leaseId],
         },
         { sql: `SELECT id, label, started_at, expires_at FROM ${lockTable} WHERE slot = 1` },
       ]);
-      return leaseFrom(results)?.id === leaseId;
+      const held = leaseFrom(results);
+      return held?.id === leaseId ? held : undefined;
     },
     async releaseDeployLock(accountId, databaseName, leaseId) {
       const id = await requireDatabase(accountId, databaseName);
