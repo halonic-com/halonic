@@ -2,6 +2,7 @@
 
 - Approval: HAL-9101, proposed by Liam in the review of #2615 (HAL-9100); the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Sgs8Jp8ErXzYPEmUchjjDSvifi9QeClIOQrJUoQ9UHqDIPQTroHBHIAwchYUAC81OhwXyT1FlfNCQ6jwyUuXDA==
 - Task: HAL-9101
 
 ## What changes
