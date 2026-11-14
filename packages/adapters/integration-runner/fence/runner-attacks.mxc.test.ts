@@ -524,13 +524,15 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     }
   });
 
-  it.runIf(nodeLayer === "off")("A15: a listener on the box's own loopback, and who can reach it", async () => {
-    // Recorded gap (HAL-9606): the MXC profile has no network rule for a listener on
-    // the box's own loopback, so the box can open one (the inspector did). This test
-    // finds out whether a process outside the box can connect to it.
-    const port = await freePort();
-    const boxRun = attack(
-      `
+  it.runIf(nodeLayer === "off")(
+    "A15: a listener on the box's own loopback, and who can reach it",
+    async () => {
+      // The MXC profile has no network rule against a listener on the box's own loopback,
+      // so the box can open one (the inspector did). The first run on windows-11-arm showed
+      // that a process outside the box cannot connect to it (HAL-9606).
+      const port = await freePort();
+      const boxRun = attack(
+        `
       const net = await import("node:net");
       await attempt("listener", () => new Promise((resolve, reject) => {
         const server = net.createServer((connection) => { connection.end(); server.close(); resolve("reached from outside"); });
@@ -538,16 +540,17 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
         server.listen(${port}, "127.0.0.1", () => setTimeout(() => { server.close(); resolve("listening, not reached"); }, 8000));
       }));
       `,
-      nodeLayer,
-    );
-    const reached = await connectWhileListening(port, 7000);
-    const { attempts } = await boxRun;
-    expect(attempts["listener"]?.outcome).toBe("allowed");
-    expect({ listener: attempts["listener"]?.detail, connectedFromOutside: reached }).toEqual({
-      listener: "reached from outside",
-      connectedFromOutside: true,
-    });
-  });
+        nodeLayer,
+      );
+      const reached = await connectWhileListening(port, 7000);
+      const { attempts } = await boxRun;
+      expect(attempts["listener"]?.outcome).toBe("allowed");
+      expect({ listener: attempts["listener"]?.detail, connectedFromOutside: reached }).toEqual({
+        listener: "listening, not reached",
+        connectedFromOutside: false,
+      });
+    },
+  );
 
   it("A17: sees no key or Halonic variable in its environment", async () => {
     process.env["HALONIC_FENCE_TEST_HOST_SECRET"] = canary;
