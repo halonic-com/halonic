@@ -1,50 +1,12 @@
-import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { gzipSync } from "node:zlib";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
+import { fakeRegistry, pinFor, tarball } from "./fake-registry.test-helper.ts";
 import { installMxcSdk } from "./sdk-install.ts";
-import { mxcSdkPins, type PinnedPackage } from "./sdk-pins.ts";
-
-/** One 512-byte ustar header and the padded content of an entry. */
-function tarEntry(path: string, content: string, type = "0"): Buffer {
-  const header = Buffer.alloc(512);
-  header.write(path, 0, "utf8");
-  header.write("0000644\0", 100);
-  header.write(`${Buffer.byteLength(content).toString(8).padStart(11, "0")}\0`, 124);
-  header.write(type, 156);
-  header.write("ustar\0", 257);
-  header.write("        ", 148);
-  let sum = 0;
-  for (const byte of header) sum += byte;
-  header.write(`${sum.toString(8).padStart(6, "0")}\0 `, 148);
-  const body = Buffer.alloc(Math.ceil(Buffer.byteLength(content) / 512) * 512);
-  body.write(content);
-  return Buffer.concat([header, body]);
-}
-
-/** A gzipped tarball of `entries` (path and content), npm-style. */
-function tarball(entries: Array<[string, string] | [string, string, string]>): Buffer {
-  const parts = entries.map(([path, content, type]) => tarEntry(path, content, type));
-  return gzipSync(Buffer.concat([...parts, Buffer.alloc(1024)]));
-}
-
-function integrityOf(bytes: Buffer): string {
-  return `sha512-${createHash("sha512").update(bytes).digest("base64")}`;
-}
-
-/** A pinned package whose tarball is `bytes`, with the real pin's name. */
-function pinFor(name: string, bytes: Buffer): PinnedPackage {
-  return {
-    name,
-    version: "1.0.0",
-    tarballUrl: `https://registry.npmjs.org/${name}/-/x-1.0.0.tgz`,
-    integrity: integrityOf(bytes),
-  };
-}
+import { mxcSdkPins, mxcSdkPinsFor, type PinnedPackage } from "./sdk-pins.ts";
 
 const sdkBytes = tarball([
   ["package/package.json", '{"name":"@microsoft/mxc-sdk"}'],
@@ -52,19 +14,6 @@ const sdkBytes = tarball([
 ]);
 const koffiBytes = tarball([["package/index.js", "module.exports = {}"]]);
 const pins = [pinFor("@microsoft/mxc-sdk", sdkBytes), pinFor("koffi", koffiBytes)];
-
-/** A fake registry that answers by address and counts its answers. */
-function fakeRegistry(bytesByUrl: Record<string, Buffer | Error>) {
-  const calls: string[] = [];
-  const fetchBytes = async (url: string) => {
-    calls.push(url);
-    const answer = bytesByUrl[url];
-    if (!answer) throw new Error("no such package");
-    if (answer instanceof Error) throw answer;
-    return answer;
-  };
-  return { fetchBytes, calls };
-}
 
 const answers = () => ({
   [pins[0]?.tarballUrl as string]: sdkBytes,
@@ -78,8 +27,14 @@ verifies("sandbox-mxc.sdk-install", () => {
   });
   afterEach(() => rm(root, { recursive: true, force: true }));
 
-  it("pins three packages, all https on the npm registry, without node-pty", () => {
-    expect(mxcSdkPins.map((pin) => pin.name)).toEqual(["@microsoft/mxc-sdk", "koffi", "semver"]);
+  it("pins the SDK, koffi with its Windows builds and semver, all https on the npm registry, without node-pty", () => {
+    expect(mxcSdkPins.map((pin) => pin.name)).toEqual([
+      "@microsoft/mxc-sdk",
+      "koffi",
+      "semver",
+      "@koromix/koffi-win32-x64",
+      "@koromix/koffi-win32-arm64",
+    ]);
     for (const pin of mxcSdkPins) {
       expect(pin.tarballUrl.startsWith("https://registry.npmjs.org/")).toBe(true);
       expect(pin.integrity).toMatch(/^sha512-[A-Za-z0-9+/]+=*$/);
@@ -137,6 +92,12 @@ verifies("sandbox-mxc.sdk-install", () => {
     ["has a Windows drive path", "C:/outside.js", "0"], // leak-guard: allow absolute-path made-up Windows path for a test
     ["is a symbolic link", "package/link", "2"],
     ["is a hard link", "package/hard", "1"],
+    ["names a Windows stream", "package/x.js:evil", "0"],
+    ["names a Windows device", "package/CON", "0"],
+    ["names a Windows device with an extension", "package/nul.txt", "0"],
+    ["ends in a dot", "package/x.js.", "0"],
+    ["ends in a space", "package/x.js ", "0"],
+    ["has a control character", "package/x\u0001.js", "0"],
   ])(
     "rejects a tarball with an entry that %s, even with a matching hash",
     async (_what, path, type) => {
@@ -168,5 +129,39 @@ verifies("sandbox-mxc.sdk-install", () => {
     const result = await installMxcSdk({ root, pins: odd, fetchBytes: registry.fetchBytes });
     expect(result).toMatchObject({ installed: false, reason: "rejected" });
     expect(registry.calls).toEqual([]);
+  });
+
+  it("says failed, and leaves nothing, when the disk can't be written", async () => {
+    const registry = fakeRegistry(answers());
+    const blocked = join(root, "not-a-folder");
+    await writeFile(blocked, "a file where the install folder should go");
+    const result = await installMxcSdk({ root: blocked, pins, fetchBytes: registry.fetchBytes });
+    expect(result).toMatchObject({ installed: false, reason: "failed" });
+  });
+
+  it("removes the folders a cut-short install left behind", async () => {
+    await mkdir(join(root, "mxc-sdk-abc.installing-0123"), { recursive: true });
+    const registry = fakeRegistry(answers());
+    await installMxcSdk({ root, pins, fetchBytes: registry.fetchBytes });
+    expect((await readdir(root)).filter((name) => name.includes(".installing-"))).toEqual([]);
+  });
+
+  it("names a missing pinned file in the problem, apart from no network", async () => {
+    const registry = fakeRegistry({
+      [pins[0]?.tarballUrl as string]: new Error(
+        "the registry answered 404 (the pinned file is not published)",
+      ),
+    });
+    const result = await installMxcSdk({ root, pins, fetchBytes: registry.fetchBytes });
+    expect(result).toMatchObject({ installed: false, reason: "offline" });
+  });
+
+  it.each([
+    ["x64", "@koromix/koffi-win32-x64"],
+    ["arm64", "@koromix/koffi-win32-arm64"],
+  ] as const)("downloads only the native koffi build for %s", (cpu, native) => {
+    const names = mxcSdkPinsFor(cpu).map((pin) => pin.name);
+    expect(names).toContain(native);
+    expect(names.filter((name) => name.startsWith("@koromix/"))).toEqual([native]);
   });
 });
