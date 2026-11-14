@@ -106,11 +106,7 @@ export function RunView({
             reviewInInbox={reviewInInbox}
             openRun={openRun}
           />
-          {logRead.damagedLine === undefined ? null : (
-            <section aria-label={runPageWords.damagedLogName}>
-              <Callout tone="danger">{runPageWords.damagedLog(logRead.damagedLine)}</Callout>
-            </section>
-          )}
+          <DamagedLogBanner line={logRead.damagedLine} />
           <div className="grid items-start gap-6 wide:grid-cols-[minmax(0,1fr)_16rem]">
             <div className="flex min-w-0 flex-col gap-4">
               {log === undefined ? (
@@ -185,6 +181,16 @@ export function RunView({
         />
       )}
     </div>
+  );
+}
+
+/** The red banner for a log with a damaged line; nothing for a log that reads whole. */
+function DamagedLogBanner({ line }: { readonly line: number | undefined }) {
+  if (line === undefined) return null;
+  return (
+    <section aria-label={runPageWords.damagedLogName}>
+      <Callout tone="danger">{runPageWords.damagedLog(line)}</Callout>
+    </section>
   );
 }
 
