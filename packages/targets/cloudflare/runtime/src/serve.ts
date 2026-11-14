@@ -19,6 +19,11 @@ const deployerTrust: ServerPorts["trust"] = {
   },
 };
 
+/** The Worker sends no chat turn to a model yet, so it names no unsaved model setting a turn could use. */
+const noUnsavedModelSettings: ServerPorts["modelSettings"] = {
+  allows: async () => false,
+};
+
 /** What goes to the Worker's log for a failed request: the kind of error, never its message, which could carry a value. */
 const workerErrorLog: ServerPorts["errorLog"] = {
   record(error) {
@@ -35,6 +40,7 @@ export function serverPortsOf(runtime: Runtime): ServerPorts {
     passwordHasher: runtime.passwords,
     coordination: runtime.coordination,
     trust: deployerTrust,
+    modelSettings: noUnsavedModelSettings,
     // No routine is found yet: a webhook answers like an unknown address until the Worker loads routines from the snapshot.
     webhooks: { find: async () => null },
     requestCounts: new CoordinationRequestCountStore(runtime.coordination),
