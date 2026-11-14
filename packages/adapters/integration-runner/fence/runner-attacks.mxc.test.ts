@@ -246,19 +246,33 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     );
     const readCredential = `
       Add-Type -Namespace Halonic -Name Vault -MemberDefinition @'
+        // CREDENTIALW, declared so the marshaller lays it out for this machine.
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        public struct Credential {
+          public int Flags;
+          public int Type;
+          public string TargetName;
+          public string Comment;
+          public System.Runtime.InteropServices.ComTypes.FILETIME LastWritten;
+          public int CredentialBlobSize;
+          public System.IntPtr CredentialBlob;
+          public int Persist;
+          public int AttributeCount;
+          public System.IntPtr Attributes;
+          public string TargetAlias;
+          public string UserName;
+        }
         [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         public static extern bool CredRead(string target, int type, int flags, out System.IntPtr credential);
         [DllImport("advapi32.dll")]
         public static extern void CredFree(System.IntPtr buffer);
 '@
       $pointer = [System.IntPtr]::Zero
-      if (-not [Halonic.Vault]::CredRead(${JSON.stringify(credentialTarget).replace(/"/g, "'")}, 1, 0, [ref]$pointer)) {
+      if (-not [Halonic.Vault]::CredRead('${credentialTarget.replaceAll("'", "''")}', 1, 0, [ref]$pointer)) {
         [Console]::Out.Write("CredRead failed: " + [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()); exit 1
       }
-      # CREDENTIALW: the secret's size is at offset 24 (x64), its bytes at offset 32.
-      $size = [System.Runtime.InteropServices.Marshal]::ReadInt32($pointer, 24)
-      $blob = [System.Runtime.InteropServices.Marshal]::ReadIntPtr($pointer, 32)
-      [Console]::Out.Write([System.Runtime.InteropServices.Marshal]::PtrToStringUni($blob, $size / 2))
+      $credential = [System.Runtime.InteropServices.Marshal]::PtrToStructure($pointer, [Type][Halonic.Vault+Credential])
+      [Console]::Out.Write([System.Runtime.InteropServices.Marshal]::PtrToStringUni($credential.CredentialBlob, $credential.CredentialBlobSize / 2))
       [Halonic.Vault]::CredFree($pointer)
     `;
     const { attempts } = await attack(
