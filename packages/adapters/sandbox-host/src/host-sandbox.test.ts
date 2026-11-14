@@ -269,7 +269,8 @@ verifies("sandbox-host.start", () => {
     }, 15_000);
 
     it("reports a stop, not a timeout, when the session was closed before the limit", async () => {
-      const session = await createHostSandbox().open(profile({ timeLimitMs: 1_000 }));
+      // A limit far past the test's own, so a slow start on a busy runner can't run it out first (HAL-8997).
+      const session = await createHostSandbox().open(profile({ timeLimitMs: 600_000 }));
       const program = await session.start({
         program: node,
         args: ["-e", "setInterval(() => {}, 1000)"],
