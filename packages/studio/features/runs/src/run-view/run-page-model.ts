@@ -3,7 +3,7 @@
 // page only draws what these return.
 
 import { runWait, shortRunId } from "@halonicjs/app";
-import type { RunSummary } from "@halonicjs/events";
+import type { PendingApproval, RunSummary } from "@halonicjs/events";
 import type { RunWorkflow, SourcedRun } from "../api.ts";
 import { currentStepName, type RunChip, runRow } from "../list/run-row.ts";
 import { lineSeparator, runPageWords } from "../run-words.ts";
@@ -91,9 +91,7 @@ export function runBanner(run: SourcedRun, context: RunPageContext): RunBanner |
   const wait = runWait(summary);
   switch (wait.kind) {
     case "approvals":
-      return needsYou(
-        wait.count === 1 ? runPageWords.approval(step) : runPageWords.approvals(wait.count),
-      );
+      return needsYou(approvalText(wait.oldest, wait.count));
     case "step":
       return needsYou(
         wait.title === null
@@ -107,6 +105,14 @@ export function runBanner(run: SourcedRun, context: RunPageContext): RunBanner |
     case "none":
       return undefined;
   }
+}
+
+/** The approval banner's sentence, built from the oldest approval (mc 15.2); the Inbox card has the rest. */
+function approvalText(oldest: PendingApproval, count: number): string {
+  const what = runPageWords.approvalAsk(oldest.subagent ?? oldest.agent, oldest.tool);
+  return count === 1
+    ? runPageWords.approval(what, oldest.tool === "gmail_send")
+    : runPageWords.approvals(count, what);
 }
 
 /** A failed run: the budget stop, the cancelled note, or R24's general banner. */

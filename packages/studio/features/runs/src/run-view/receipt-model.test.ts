@@ -136,8 +136,8 @@ verifies("runs.run-view.receipt-approvals", () => {
       [4, answered("c2", "drive_save", false, "rule")],
     ]);
     expect(approvalLines(events).map((entry) => entry.text)).toEqual([
-      "gmail_send: approved by you at 10:42",
-      "drive_save: rejected by a rule at 10:44",
+      "Send an email with Gmail: approved by you at 10:42",
+      "Use drive_save: rejected by a rule at 10:44",
     ]);
   });
 
@@ -147,15 +147,21 @@ verifies("runs.run-view.receipt-approvals", () => {
       [2, answered("c1", "gmail_send", true)],
     ]);
     expect(approvalLines(events).map((entry) => entry.text)).toEqual([
-      "gmail_send: approved at 10:42",
+      "Send an email with Gmail: approved at 10:42",
     ]);
   });
 
   it("says an approval still open is waiting, and has no lines for a run that asked none", () => {
     expect(approvalLines(logOf(id, [[1, asked("c1", "gmail_send")]])).map((e) => e.text)).toEqual([
-      "gmail_send: waiting for your answer",
+      "Send an email with Gmail: waiting for your answer",
     ]);
     expect(approvalLines(logOf(id, []))).toEqual([]);
+  });
+
+  it('names a tool without plain words as the Inbox card does, "use" and its name', () => {
+    expect(approvalLines(logOf(id, [[1, asked("c1", "create_note")]])).map((e) => e.text)).toEqual([
+      "Use create_note: waiting for your answer",
+    ]);
   });
 
   it("says an approval left open on a run that ended was not answered", () => {
@@ -167,7 +173,7 @@ verifies("runs.run-view.receipt-approvals", () => {
           [2, failed],
         ]),
       ).map((e) => e.text),
-    ).toEqual(["gmail_send: not answered"]);
+    ).toEqual(["Send an email with Gmail: not answered"]);
   });
 });
 
@@ -259,7 +265,7 @@ verifies("runs.run-view.receipt-models-cost", () => {
       lines([modelCall("sonnet", { cost: 0.004 }), modelCall("sonnet", { cost: 0.0043 })]),
     ).toEqual([
       "sonnet · 2 calls · 2,000 in · 600 out · €0.008",
-      "Estimated cost €0.008 · from the prices in Settings › Models",
+      "Estimated cost €0.008 · from the prices in workspace settings › Models",
     ]);
   });
 
@@ -278,10 +284,10 @@ verifies("runs.run-view.receipt-models-cost", () => {
     ).toEqual([
       "sonnet · 1 call · 1,000 in · 300 out · €0.008",
       "odd · 1 call · 1,000 in · 300 out · No price",
-      "Estimated cost €0.008 + 1 call without a price · from the prices in Settings › Models",
+      "Estimated cost €0.008 + 1 call without a price · from the prices in workspace settings › Models",
     ]);
     expect(lines([modelCall("odd")], { cost: 0, unpricedCalls: 1 }).at(-1)).toBe(
-      "1 call without a price · from the prices in Settings › Models",
+      "1 call without a price · from the prices in workspace settings › Models",
     );
   });
 
@@ -292,6 +298,29 @@ verifies("runs.run-view.receipt-models-cost", () => {
         unpricedCalls: 0,
       }),
     ).toEqual(["sonnet · 1 call · 1,000 in · 300 out · on your subscription"]);
+  });
+
+  it("says the built-in test model costs nothing, with no amount and no Cost total (#2429)", () => {
+    const free = { cost: 0, unpricedCalls: 0 };
+    expect(
+      lines([{ ...modelCall("scripted", { cost: 0 }), provider: "mock" } as RunEventBody], free),
+    ).toEqual(["scripted · 1 call · 1,000 in · 300 out · built-in test model, no cost"]);
+    expect(lines([modelCall("scripted", { cost: 0 })], free)).toEqual([
+      "scripted · 1 call · 1,000 in · 300 out · no cost",
+    ]);
+  });
+
+  it('counts cached calls among fresh ones as "2 cached calls"', () => {
+    expect(
+      lines(
+        [
+          modelCall("sonnet", { cost: 0.004 }),
+          modelCall("sonnet", { cached: true }),
+          modelCall("sonnet", { cached: true }),
+        ],
+        { cost: 0.004, unpricedCalls: 0 },
+      )[0],
+    ).toBe("sonnet · 3 calls · 1,000 in · 300 out · €0.004 · 2 cached calls");
   });
 
   it("has no lines for a run that made no model call", () => {

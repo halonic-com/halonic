@@ -59,11 +59,15 @@ verifies("runs.run-page", () => {
         kind: "callout",
         tone: "warning",
         name: "Waiting for you",
-        lines: ["Waiting for your approval in the step Send. Nothing runs until you decide."],
+        lines: [
+          "Waiting for your approval. Reporter wants to send an email with Gmail. Nothing is sent until you decide.",
+        ],
         action: { kind: "review-in-inbox" },
       });
       expect(page({ approvals: [approvalAt(1), approvalAt(2)] }).banner).toMatchObject({
-        lines: ["Waiting for 2 approvals. Nothing runs until you decide."],
+        lines: [
+          "Waiting for 2 approvals. Reporter wants to send an email with Gmail, and 1 more. Nothing runs until you decide.",
+        ],
       });
     });
 

@@ -61,7 +61,7 @@ verifies("runs.run-page", () => {
 
     const banner = root.querySelector('section[aria-label="Waiting for you"]');
     expect(banner?.textContent).toContain(
-      "Waiting for your approval in the step Send. Nothing runs until you decide.",
+      "Waiting for your approval. Reporter wants to send an email with Gmail. Nothing is sent until you decide.",
     );
     await act(async () => button(root, "Review in Inbox").click());
     expect(reviewInInbox).toHaveBeenCalledOnce();
