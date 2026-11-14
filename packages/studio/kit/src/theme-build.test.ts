@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildCss, ruleSelectors } from "./test/build-css.spec.ts";
 
@@ -280,5 +282,36 @@ describe("theme.css built by Tailwind: the ActionBar", () => {
     const css = await buildCss(["basis-[calc(50%-var(--spacing))]", "min-w-fit"]);
     expect(css).toMatch(/flex-basis: calc\(50% - var\(--spacing\)\);/);
     expect(css).toMatch(/min-width: fit-content;/);
+  });
+});
+
+/** The `.tsx` files that draw the app, tests aside, under every Studio package's `src`. */
+function appSources(folder: string): string[] {
+  return readdirSync(folder, { withFileTypes: true }).flatMap((entry) => {
+    const file = path.join(folder, entry.name);
+    if (entry.isDirectory()) return entry.name === "node_modules" ? [] : appSources(file);
+    return /\.tsx$/.test(entry.name) && !/\.test\./.test(entry.name) ? [file] : [];
+  });
+}
+
+describe("theme.css built by Tailwind: breakpoints", () => {
+  it("writes nothing for Tailwind's own sm:, md:, lg: and xl: (the theme clears them)", async () => {
+    const css = await buildCss(["sm:flex", "md:flex", "lg:flex", "xl:flex", "2xl:flex"]);
+    expect(css).not.toMatch(/\\:flex/);
+  });
+
+  it("uses no breakpoint variant the theme doesn't define, so no layout class compiles to nothing", () => {
+    const studio = path.join(import.meta.dirname, "../..");
+    const used = ["kit", "features", "shell", "services"]
+      .flatMap((name) => {
+        try {
+          return appSources(path.join(studio, name));
+        } catch {
+          return [];
+        }
+      })
+      .filter((file) => /(?<![\w-])(?:sm|md|lg|xl|2xl):[\w[(-]/.test(readFileSync(file, "utf8")))
+      .map((file) => path.relative(studio, file));
+    expect(used).toEqual([]);
   });
 });

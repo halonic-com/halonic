@@ -105,7 +105,7 @@ export function RunView({
             reviewInInbox={reviewInInbox}
             openRun={openRun}
           />
-          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
+          <div className="grid items-start gap-6 wide:grid-cols-[minmax(0,1fr)_16rem]">
             <div className="flex min-w-0 flex-col gap-4">
               {log === undefined ? null : (
                 <>
