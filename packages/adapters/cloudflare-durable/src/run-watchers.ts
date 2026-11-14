@@ -25,6 +25,10 @@ export function eventLine(event: RunEvent): Uint8Array {
   return encoder.encode(`${JSON.stringify(event)}\n`);
 }
 
+function byteLength(events: readonly RunEvent[]): number {
+  return events.reduce((total, event) => total + eventLine(event).byteLength, 0);
+}
+
 /** Whether the event ends its run. */
 export function isEndingEvent(event: RunEvent): boolean {
   return endingEventTypes.has(event.type);
@@ -74,7 +78,9 @@ export class RunWatchers {
           if (watcher !== undefined) this.#watchers.delete(watcher);
         },
       },
-      new ByteLengthQueuingStrategy({ highWaterMark: maxUnreadBytes }),
+      // The stored events are already in memory and are queued at once, so they get room of their
+      // own: the limit is for the live events a reader leaves unread, not for a backlog it is about to read.
+      new ByteLengthQueuingStrategy({ highWaterMark: maxUnreadBytes + byteLength(stored) }),
     );
   }
 

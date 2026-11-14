@@ -142,6 +142,14 @@ verifies("cloudflare-durable.run-events", () => {
       expect(() => watchers.open(0, [started(runId)])).toThrow(RangeError);
     });
 
+    it("gives a reader a stored backlog bigger than the limit, even when an event arrives before it reads", async () => {
+      const watchers = new RunWatchers();
+      const big = (seq: number) => entered(runId, seq, "x".repeat(2 * 1024 * 1024));
+      const stream = watchers.open(0, [started(runId), big(2), big(3), big(4)]);
+      watchers.publish([completed(runId, 5)]);
+      expect(await readAll(stream)).toEqual([1, 2, 3, 4, 5]);
+    });
+
     it("errors a stream whose reader fell too far behind, and frees its place", async () => {
       const watchers = new RunWatchers();
       const stream = watchers.open(0, [started(runId)]);
