@@ -3,6 +3,7 @@
 - Approval: HAL-9693, follow-up of the review of halonic#2770 (HAL-9689), under the board's design for guarded trust roots (HAL-1337)
 - Kind: user-visible
 - Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:0MZFmU7lCL93hC8ruvhMfNNIULtXn0e6PF+Fvvkd/GkgC+G9e/fOCmpD/VU5wntmMxMzzZrXVxsIyxU5pCK2AQ==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2/Z1ApYz4WLR/LeUGM5lNp2r9wPr2yarshjGwCfkMvsEe1MP1pm0USwnLTAh/VTpCu4o+8KcY3rMLJ8BJmBaDQ==
 
 The note check never read a decision note that is already on the base branch, so a pull request could quietly rewrite the record of what was approved, such as its Approval or Covers lines. The note check now fails any edit or deletion of such a note, other than the branch's own. A real case (a typo fix) needs a `user-visible` note of its own that lists the edited note's path under Covers and is signed like any other. This changes the note check, a trust root, so two guardians sign. A new requirement, a test and a paragraph in `docs/guides/checks.md` come with it.
 
