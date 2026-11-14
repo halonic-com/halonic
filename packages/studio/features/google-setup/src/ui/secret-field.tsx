@@ -1,5 +1,5 @@
 import { Button, Dialog, Field, Input, SecretText } from "@halonicjs/studio-kit";
-import { type Ref, useId, useImperativeHandle, useRef, useState } from "react";
+import { type Ref, useEffect, useId, useImperativeHandle, useRef, useState } from "react";
 import { entryHint, type KeptOn, keptLine, savedOn, secretSaveFailed } from "./secret-words.ts";
 
 /** What a parent can do to the secret field: put the cursor in it. */
@@ -19,6 +19,8 @@ export interface SecretFieldProps {
   readonly handle: Ref<SecretFieldHandle>;
   /** Sends the secret to the secret store. It rejects when it can't be saved. */
   readonly onSave: (secret: SecretText) => Promise<void>;
+  /** Told whether the input holds unsaved text, so the checklist doesn't move on and drop it. */
+  readonly onTyped: (hasText: boolean) => void;
 }
 
 /**
@@ -29,7 +31,7 @@ export interface SecretFieldProps {
  * length or a hash.
  */
 export function SecretField(props: SecretFieldProps) {
-  const { savedAt, keptOn, plainHttp, answering, handle, onSave } = props;
+  const { savedAt, keptOn, plainHttp, answering, handle, onSave, onTyped } = props;
   const input = useRef<HTMLInputElement>(null);
   const reason = useId();
   // Only whether something is typed, never what, so Save knows if it can go on.
@@ -37,7 +39,18 @@ export function SecretField(props: SecretFieldProps) {
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  // The plain-http question is asked on the first save only, not again on **Try again**.
+  const [confirmed, setConfirmed] = useState(false);
   useImperativeHandle(handle, () => ({ focus: () => input.current?.focus() }));
+  useEffect(() => {
+    onTyped(hasText);
+  }, [hasText, onTyped]);
+  useEffect(
+    () => () => {
+      onTyped(false);
+    },
+    [onTyped],
+  );
 
   async function send() {
     const field = input.current;
@@ -60,7 +73,7 @@ export function SecretField(props: SecretFieldProps) {
 
   function save() {
     if (!answering || !hasText || busy) return;
-    if (plainHttp) setConfirming(true);
+    if (plainHttp && !confirmed) setConfirming(true);
     else void send();
   }
 
@@ -119,7 +132,7 @@ export function SecretField(props: SecretFieldProps) {
               <Input
                 ref={input}
                 type="password"
-                autoComplete="off"
+                autoComplete="new-password"
                 autoCapitalize="off"
                 autoCorrect="off"
                 spellCheck={false}
@@ -159,6 +172,7 @@ export function SecretField(props: SecretFieldProps) {
           confirm={{ label: "Save it anyway", variant: "danger", busyLabel: "Saving…" }}
           onConfirm={() => {
             setConfirming(false);
+            setConfirmed(true);
             void send();
           }}
           onCancel={() => setConfirming(false)}

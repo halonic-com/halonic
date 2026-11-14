@@ -32,6 +32,7 @@ function show(props: Partial<SecretFieldProps> = {}) {
       answering
       handle={handle}
       onSave={onSave}
+      onTyped={() => {}}
       {...props}
     />,
   );
@@ -68,7 +69,7 @@ verifies("google-setup.secret-field", () => {
     const { container } = show();
     const field = input(container);
     expect(field.type).toBe("password");
-    expect(field.getAttribute("autocomplete")).toBe("off");
+    expect(field.getAttribute("autocomplete")).toBe("new-password");
     expect(field.getAttribute("spellcheck")).toBe("false");
     const names = [...container.querySelectorAll("button")].map(
       (b) => `${b.textContent} ${b.getAttribute("aria-label") ?? ""}`,
@@ -170,6 +171,33 @@ verifies("google-setup.secret-field", () => {
     expect(document.activeElement?.textContent).toBe("Cancel");
     await press(button(document.body, "Save it anyway"));
     expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks over plain http on the first save only, not on Try again", async () => {
+    const onSave = vi
+      .fn<SecretFieldProps["onSave"]>()
+      .mockRejectedValueOnce(new Error("The store is locked."))
+      .mockResolvedValue(undefined);
+    const { container } = show({ plainHttp: true, onSave });
+    await type(input(container), fake);
+    await press(button(container, "Save secret"));
+    await press(button(document.body, "Save it anyway"));
+    expect(onSave).toHaveBeenCalledTimes(1);
+    await press(button(container, "Try again"));
+    expect(document.querySelector("dialog[open]")).toBeNull();
+    expect(onSave).toHaveBeenCalledTimes(2);
+  });
+
+  it("tells its parent whether unsaved text is in the input, and that it is gone on unmount", async () => {
+    const onTyped = vi.fn();
+    const { container } = show({ onTyped });
+    await type(input(container), fake);
+    expect(onTyped).toHaveBeenLastCalledWith(true);
+    await type(input(container), "");
+    expect(onTyped).toHaveBeenLastCalledWith(false);
+    await type(input(container), fake);
+    unmountAll();
+    expect(onTyped).toHaveBeenLastCalledWith(false);
   });
 
   it("moves focus into the input when asked", () => {

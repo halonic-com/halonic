@@ -82,6 +82,15 @@ verifies("google-setup.client-id-field", () => {
     expect(status.textContent).toBe(clientIdShapeError);
   });
 
+  it("shows the shape reason as soon as the field is left, without waiting for the pause", async () => {
+    const { container } = show();
+    await type(input(container), "1234-abc");
+    await act(async () =>
+      input(container).dispatchEvent(new FocusEvent("focusout", { bubbles: true })),
+    );
+    expect(reasonOf(button(container, "Save client ID"))).toBe(clientIdShapeError);
+  });
+
   it("empties the field at once for a client secret and moves focus to the secret field", async () => {
     const { container, onSecretPasted } = show();
     await type(input(container), "GOCSPX-fake-0000");

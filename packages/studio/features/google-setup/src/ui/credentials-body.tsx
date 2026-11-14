@@ -19,6 +19,8 @@ export interface CredentialsBodyProps {
   readonly answering: boolean;
   readonly onSaveClientId: (clientId: string) => Promise<void>;
   readonly onSaveSecret: (secret: SecretText) => Promise<void>;
+  /** Told whether the secret field holds unsaved text. */
+  readonly onSecretTyped: (hasText: boolean) => void;
 }
 
 /** What stands in for the secret field where it can't be shown, by the reason the host gives. */
@@ -67,6 +69,7 @@ export function CredentialsBody(props: CredentialsBodyProps) {
           answering={props.answering}
           handle={secret}
           onSave={props.onSaveSecret}
+          onTyped={props.onSecretTyped}
         />
       ) : (
         <SecretUnavailable entry={entry} accountRef={props.accountRef} />

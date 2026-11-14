@@ -118,6 +118,7 @@ export function ClientIdField(props: ClientIdFieldProps) {
               spellCheck={false}
               onChange={(event) => typed(event.target.value)}
               onBlur={() => {
+                if (text.trim() !== "") setChecked(true);
                 if (wrongShape) setAnnouncement(clientIdShapeError);
               }}
             />

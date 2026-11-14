@@ -98,6 +98,36 @@ verifies("google-setup.client-id-field", () => {
     ]);
   });
 
+  it("keeps step 5 open, with the typed secret, while the client ID is saved", async () => {
+    const setup = account(record(upToClient));
+    const { fake, container } = await open(setup);
+    await type(inputs(container).secret, fakeSecret);
+    await type(inputs(container).id, clientId);
+    await press(button(container, "Save client ID"));
+    // The host now has the client ID and step 5 done, so step 6 would be the current step.
+    fake.change([account(record([...upToClient, "client"], { clientId }))]);
+    await settled();
+    expect(inputs(container).secret.value).toBe(fakeSecret);
+    await press(button(container, "Save secret"));
+    expect(fake.secrets).toEqual([{ accountRef: "gaccount_1", value: fakeSecret }]);
+    expect(edits(fake)).toContainEqual({ kind: "step-done", step: "credentials" });
+  });
+
+  it("says the progress wasn't saved, not the client ID, when only the step tick fails", async () => {
+    const { container } = await open(account(record(upToClient)), {
+      edit: async (edit) => {
+        if (edit.kind === "step-done") throw new Error("The engine isn't answering.");
+      },
+    });
+    await type(inputs(container).id, clientId);
+    await press(button(container, "Save client ID"));
+    expect(container.textContent).toContain(
+      "Couldn't save your progress: the engine isn't answering.",
+    );
+    expect(container.textContent).not.toContain("Couldn't save the client ID");
+    expect(inputs(container).id.value).toBe("");
+  });
+
   it("moves focus to the secret field when a secret is pasted into the client ID", async () => {
     const { container } = await open(account(record(upToClient)));
     await type(inputs(container).id, fakeSecret);
@@ -157,6 +187,22 @@ verifies("google-setup.secret-field", () => {
     expect(JSON.stringify(fake.edits)).not.toContain(fakeSecret);
     expect(container.innerHTML).not.toContain(fakeSecret);
     for (const spy of lines) spy.mockRestore();
+  });
+
+  it("says the progress wasn't saved, not the secret, when only the step tick fails", async () => {
+    const { fake, container } = await open(account(withId), {
+      edit: async () => {
+        throw new Error("The engine isn't answering.");
+      },
+    });
+    await type(inputs(container).secret, fakeSecret);
+    await press(button(container, "Save secret"));
+    expect(fake.secrets).toHaveLength(1);
+    expect(container.textContent).toContain(
+      "Couldn't save your progress: the engine isn't answering.",
+    );
+    expect(container.textContent).not.toContain("Nothing was saved");
+    expect(inputs(container).secret.value).toBe("");
   });
 
   it("shows the browser demo's sentence and no secret field", async () => {

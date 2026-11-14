@@ -67,7 +67,11 @@ export function Checklist(props: ChecklistProps) {
   // The project ID as typed in step 1, until it is saved with **Done, next**.
   const [typedProjectId, setTypedProjectId] = useState<string | null>(null);
   const [projectIdError, setProjectIdError] = useState<string | null>(null);
-  const open = steps.find((step) => step.id === editing) ?? current;
+  // Whether the secret field holds text that isn't saved, and the step to keep open while it does.
+  // Saving the client ID in step 5 ticks it, which would open step 6 and drop the typed secret.
+  const [secretTyped, setSecretTyped] = useState(false);
+  const [holding, setHolding] = useState<StepId | null>(null);
+  const open = steps.find((step) => step.id === (editing ?? holding)) ?? current;
   const openId = open?.id;
   const titles = useRef(new Map<StepId, HTMLHeadingElement>());
 
@@ -79,8 +83,16 @@ export function Checklist(props: ChecklistProps) {
     if (openId !== undefined) titles.current.get(openId)?.focus({ preventScroll: true });
   }, [openId]);
 
+  // The hold ends once the typed secret is saved or cleared.
+  useEffect(() => {
+    if (!secretTyped) setHolding(null);
+  }, [secretTyped]);
+
   if (current === undefined || open === undefined) return null;
-  const saves = credentialSaves(account, onEdit, props.onSaveSecret);
+  const saves = credentialSaves(account, onEdit, props.onSaveSecret, (error, retryTick) => {
+    setFailed(failureLine("save your progress", error));
+    retry.current = retryTick;
+  });
 
   async function doneNext() {
     if (!answering || busy || open === undefined) return;
@@ -163,8 +175,12 @@ export function Checklist(props: ChecklistProps) {
                     secretSavedAt: account.record.clientSecret?.savedAt ?? null,
                     entry: props.secretEntry,
                     accountRef: account.record.accountRef,
-                    onSaveClientId: saves.saveClientId,
+                    onSaveClientId: (clientId: string) => {
+                      if (secretTyped) setHolding(step.id);
+                      return saves.saveClientId(clientId);
+                    },
                     onSaveSecret: saves.saveSecret,
+                    onSecretTyped: setSecretTyped,
                   }}
                   answering={answering}
                   busy={busy}

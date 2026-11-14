@@ -69,13 +69,15 @@ export const desktopEntry: SecretEntry = {
 /**
  * Accounts whose list a test sets, telling the source as a host does. `entry` is how the secret
  * is entered. `saveSecret` is what saving a secret does: it records the value (a fake, in a test)
- * and may reject.
+ * and may reject. `edit` may reject an edit.
  */
 export function fakeAccounts(
   initial: readonly GoogleSetupAccount[],
   options: {
     readonly entry?: SecretEntry;
     readonly saveSecret?: (accountRef: string, value: string) => Promise<void>;
+    /** Runs before an edit is recorded, and may reject: the edit then isn't saved. */
+    readonly edit?: (edit: SetupEdit) => Promise<void>;
   } = {},
 ) {
   let accounts = initial;
@@ -92,6 +94,7 @@ export function fakeAccounts(
     },
     list: async () => accounts,
     edit: async (accountRef, edit) => {
+      await options.edit?.(edit);
       edits.push({ accountRef, edit });
     },
     startOver: async (accountRef) => {
