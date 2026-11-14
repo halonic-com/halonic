@@ -14,7 +14,9 @@ import {
   goesAwayLine,
   type PluginActions,
   type PluginRemoveOutcome,
+  type PluginUse,
   removedFromComputerLine,
+  stopsWorkingLine,
 } from "./plugin-actions.ts";
 import { PluginPage } from "./plugin-page.tsx";
 import type { InstalledPlugin } from "./plugin-pages.ts";
@@ -32,7 +34,11 @@ afterEach(() => {
 
 /** Page actions that record what they were asked, failing or answering as the test says. */
 function recordingActions(
-  options: { readonly fail?: keyof PluginActions; readonly removed?: PluginRemoveOutcome } = {},
+  options: {
+    readonly fail?: keyof PluginActions;
+    readonly removed?: PluginRemoveOutcome;
+    readonly uses?: readonly PluginUse[];
+  } = {},
 ) {
   const asked: string[] = [];
   const step = (name: keyof PluginActions, detail: string) => {
@@ -45,6 +51,10 @@ function recordingActions(
     remove: async (plugin) => {
       step("remove", `remove ${plugin}`);
       return options.removed ?? { kind: "removed" };
+    },
+    usedBy: async () => {
+      if (options.fail === "usedBy") throw new Error("The store is locked.");
+      return options.uses ?? [];
     },
     reload: async () => step("reload", "reload"),
     openFolder: async (plugin) => step("openFolder", `open ${plugin}`),
@@ -172,6 +182,63 @@ verifies("plugins.plugin-actions", () => {
     expect(toastTitles()).toEqual(["Weather removed"]);
   });
 
+  it("says which connector stops working when one uses the plugin", async () => {
+    const { actions } = recordingActions({
+      uses: [{ connector: "forecast", workspace: "Acme" }],
+    });
+    const { view } = await showPage(withSettings(), actions);
+
+    await pick(view, "Remove plugin…");
+
+    expect(document.querySelector("dialog")?.textContent).toContain(
+      "Its tool, command, card and panel go away on this computer. The forecast connector in Acme stops working until you add the plugin again.",
+    );
+  });
+
+  it("keeps Remove plugin unavailable until the connector check has answered", async () => {
+    const { actions, asked } = recordingActions();
+    let answer: (uses: readonly PluginUse[]) => void = () => {};
+    const slow: PluginActions = {
+      ...actions,
+      usedBy: () => new Promise((resolve) => (answer = resolve)),
+    };
+    const { view } = await showPage(withSettings(), slow);
+
+    await pick(view, "Remove plugin…");
+    await act(async () => button("Remove plugin").click());
+
+    expect(asked).toEqual([]);
+    expect(document.querySelector("dialog")?.textContent).toContain(
+      "Checking which connectors use it…",
+    );
+
+    await act(async () => answer([{ connector: "forecast", workspace: "Acme" }]));
+
+    expect(asked).toEqual([]);
+    expect(document.querySelector("dialog")?.textContent).toContain(
+      "The forecast connector in Acme stops working until you add the plugin again.",
+    );
+
+    await act(async () => button("Remove plugin").click());
+
+    expect(asked).toEqual(["remove weather"]);
+  });
+
+  it("says so when Halonic can't tell which connectors use the plugin", async () => {
+    const { actions, asked } = recordingActions({ fail: "usedBy" });
+    const { view } = await showPage(withSettings(), actions);
+
+    await pick(view, "Remove plugin…");
+
+    expect(document.querySelector("dialog")?.textContent).toContain(
+      "Halonic couldn't check which connectors use it.",
+    );
+
+    await act(async () => button("Remove plugin").click());
+
+    expect(asked).toEqual(["remove weather"]);
+  });
+
   it("closes the dialog once removed, before the list drops the plugin", async () => {
     const { view } = await showPage(withSettings(), recordingActions().actions);
 
@@ -211,6 +278,22 @@ verifies("plugins.plugin-actions", () => {
   });
 
   describe("what Remove names", () => {
+    it("names the connectors that stop working, grouped by workspace", () => {
+      expect(stopsWorkingLine([])).toBe("");
+      expect(stopsWorkingLine([{ connector: "forecast", workspace: "Acme" }])).toBe(
+        "The forecast connector in Acme stops working until you add the plugin again.",
+      );
+      expect(
+        stopsWorkingLine([
+          { connector: "forecast", workspace: "Acme" },
+          { connector: "radar", workspace: "Acme" },
+          { connector: "forecast", workspace: "Home" },
+        ]),
+      ).toBe(
+        "The forecast and radar connectors in Acme and the forecast connector in Home stop working until you add the plugin again.",
+      );
+    });
+
     it("names only what the plugin adds", () => {
       expect(goesAwayLine(withSettings().manifest)).toBe(
         "Its tool, command, card and panel go away on this computer.",

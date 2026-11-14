@@ -116,6 +116,7 @@ export function PluginPage({
         <RemovePluginDialog
           plugin={plugin}
           remove={actions.remove}
+          usedBy={actions.usedBy}
           onRemoved={() => {
             // Closed here, so it doesn't sit on "Removing…" until the list drops the plugin.
             setRemoving(false);

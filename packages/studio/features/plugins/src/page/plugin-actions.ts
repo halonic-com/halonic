@@ -11,6 +11,12 @@ export type PluginRemoveOutcome =
   /** One of its secrets couldn't be deleted; its folder and settings are kept, so removing again finishes. */
   | { readonly kind: "secret"; readonly secret: string; readonly reason: string };
 
+/** A connector that uses a plugin, and the workspace it is in. Plugins are installed per computer. */
+export interface PluginUse {
+  readonly connector: string;
+  readonly workspace: string;
+}
+
 /**
  * What a plugin's page asks the app to do. Each one throws when it can't, with a message for the
  * person; the page says it in a toast.
@@ -22,6 +28,8 @@ export interface PluginActions {
   readonly revoke: (plugin: string) => Promise<void>;
   /** **Remove plugin**: core's `PluginService.remove`, with the keychain deleting its secrets. */
   readonly remove: (plugin: string) => Promise<PluginRemoveOutcome>;
+  /** The connectors, in any workspace on this computer, whose transport is this plugin. */
+  readonly usedBy: (plugin: string) => Promise<readonly PluginUse[]>;
   /** **Check again**: reads the plugins folder again, so the feed has the plugin as it is now. */
   readonly reload: () => Promise<void>;
   /** **Open folder**: shows the plugin's folder in the computer's file manager. */
@@ -80,6 +88,33 @@ export function goesAwayLine(manifest: Plugin | undefined): string {
   if (parts.length === 0) return "It goes away from this computer.";
   return `Its ${list.format(parts)} go away on this computer.`;
 }
+
+/**
+ * T13's connector sentence: "The *connector* connector in *workspace* stops working until you add
+ * the plugin again." Several in one workspace share it ("The *a* and *b* connectors in *w* stop
+ * working…"); several workspaces are listed in turn. `""` when no connector uses the plugin.
+ */
+export function stopsWorkingLine(uses: readonly PluginUse[]): string {
+  if (uses.length === 0) return "";
+  const byWorkspace = new Map<string, string[]>();
+  for (const use of uses) {
+    const names = byWorkspace.get(use.workspace) ?? [];
+    if (!names.includes(use.connector)) names.push(use.connector);
+    byWorkspace.set(use.workspace, names);
+  }
+  const groups = [...byWorkspace].map(
+    ([workspace, names]) =>
+      `the ${list.format(names)} ${names.length === 1 ? "connector" : "connectors"} in ${workspace}`,
+  );
+  const total = [...byWorkspace.values()].reduce((count, names) => count + names.length, 0);
+  return `${capitalised(list.format(groups))} ${total === 1 ? "stops" : "stop"} working until you add the plugin again.`;
+}
+
+/** Shown in place of the connector sentence when Halonic couldn't look which connectors use it. */
+export const USED_BY_UNKNOWN = "Halonic couldn't check which connectors use it.";
+
+/** Shown while the connector check is pending: why **Remove plugin** isn't pressable yet. */
+export const CHECKING_USED_BY = "Checking which connectors use it…";
 
 /**
  * T13's second sentence, naming only what the plugin keeps (G8): "Its settings, sign-ins and the
