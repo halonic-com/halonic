@@ -501,6 +501,13 @@ package's own run still runs its tests, without a floor. `pnpm check` allows
 when the named package lists this one in `dependencies` or `devDependencies`
 and runs its tests through the shared preset.
 
+**Code that runs in workerd.** Node's coverage can't see code running in
+workerd, so a package that declares `"runtime": "workers"` is measured another
+way: the preset gives it a coverage provider that adds what workerd counted to
+the Node run's report. The contract suites run through
+`@halonicjs/target-cloudflare-testing` count this way, with no stand-in Node
+test beside them. How it works is in that package's README.
+
 In a pull request, CI compares the floor of every package whose `package.json`
 the pull request changes with its floor at the merge base (where the branch left
 the target branch), and fails if a value went down or was removed (`pnpm check:coverage-floors <base> <head>`).

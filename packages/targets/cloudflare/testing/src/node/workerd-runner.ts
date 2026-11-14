@@ -1,5 +1,10 @@
 import { Miniflare } from "miniflare";
-import { type CaseResult, type SuiteNode, workerPaths } from "../worker/protocol.ts";
+import {
+  type CaseResult,
+  type RawCoverage,
+  type SuiteNode,
+  workerPaths,
+} from "../worker/protocol.ts";
 
 /**
  * The compatibility date the test Worker runs with. It can't be later than
@@ -33,6 +38,24 @@ export interface WorkerdBindings {
   durableObjects?: Readonly<Record<string, string>>;
   /** Names of D1 databases, such as `"DB"`, read as `env.DB`. */
   d1Databases?: readonly string[];
+}
+
+/**
+ * What a Worker built for coverage needs from workerd: a `node:inspector`
+ * module whose `Session` reaches the Worker's own V8 inspector. That is
+ * workerd's local-development switch (Miniflare already starts workerd with
+ * `--experimental`, which it requires); it is never on in production.
+ */
+const coverageFlags = [
+  "nodejs_compat",
+  "enable_nodejs_inspector_module",
+  "enable_nodejs_inspector_local_dev",
+];
+
+/** What {@link WorkerdRunner.start} takes besides the script and the bindings. */
+export interface WorkerdStartOptions {
+  /** On for a script from `buildCoveredTestWorker`; then {@link WorkerdRunner.coverage} works. */
+  coverage?: boolean;
 }
 
 /** Binds each class with SQLite storage, so objects can use `ctx.storage.sql`. */
@@ -71,13 +94,19 @@ export class WorkerdRunner {
    *
    * @param script - an ES module Worker, from `buildTestWorker`
    * @param bindings - the storage the Worker gets, empty when workerd starts
+   * @param options - `coverage`, for a script built for it
    * @returns the running Worker
    */
-  static async start(script: string, bindings: WorkerdBindings = {}): Promise<WorkerdRunner> {
+  static async start(
+    script: string,
+    bindings: WorkerdBindings = {},
+    options: WorkerdStartOptions = {},
+  ): Promise<WorkerdRunner> {
     const miniflare = new Miniflare({
       modules: true,
       script,
       compatibilityDate,
+      ...(options.coverage ? { compatibilityFlags: coverageFlags } : {}),
       durableObjects: sqliteBacked(bindings.durableObjects ?? {}),
       ...inMemoryStorage,
       r2Buckets: [...(bindings.r2Buckets ?? [])],
@@ -106,6 +135,16 @@ export class WorkerdRunner {
   async run(id: string): Promise<CaseResult> {
     const body = JSON.stringify({ id });
     return (await this.#fetchJson(workerPaths.run, { method: "POST", body })) as CaseResult;
+  }
+
+  /**
+   * Takes the V8 coverage counted since the Worker loaded.
+   *
+   * @returns V8's coverage of the Worker's script, in offsets into that script
+   * @throws Error when the Worker wasn't built and started for coverage
+   */
+  async coverage(): Promise<RawCoverage> {
+    return (await this.#fetchJson(workerPaths.coverage, { method: "GET" })) as RawCoverage;
   }
 
   /** Stops workerd. */

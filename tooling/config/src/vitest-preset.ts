@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig, mergeConfig, type ViteUserConfig } from "vitest/config";
-import { coverageSettings } from "./coverage.ts";
+import { coverageSettings, runsInWorkers } from "./coverage.ts";
 import { usesFastCheck } from "./fast-check-seed.ts";
 import { NoSkippedTestsReporter } from "./no-skipped-reporter.ts";
 import { UnrunTestFilesReporter } from "./unrun-files-reporter.ts";
@@ -10,6 +10,11 @@ export const testResultsFile = "test-results/vitest.json";
 
 /** The setup file that gives fast-check a fixed seed (see `fastCheckSeed`). */
 export const fastCheckSetupFile = fileURLToPath(new URL("./fast-check-setup.ts", import.meta.url));
+
+/** The coverage module for a package that runs in workerd (see `WorkerdCoverageProvider`). */
+const workerdCoverageProviderFile = fileURLToPath(
+  new URL("./workerd-coverage-provider.ts", import.meta.url),
+);
 
 /** How many test workers a run uses outside CI, unless `HALONIC_TEST_WORKERS` says otherwise. */
 const localTestWorkers = 2;
@@ -120,7 +125,10 @@ export function definePackageTestConfig(overrides: ViteUserConfig = {}): ViteUse
       ],
       coverage: {
         enabled: true,
-        provider: "v8",
+        // A package that runs in workerd adds what workerd counted to the V8 report.
+        ...(runsInWorkers(process.cwd())
+          ? { provider: "custom", customProviderModule: workerdCoverageProviderFile }
+          : { provider: "v8" }),
         include: coverage.include,
         exclude: coverage.exclude,
         allowExternal: coverage.allowExternal,
