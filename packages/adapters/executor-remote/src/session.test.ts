@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { RemoteHostError } from "./errors.ts";
+import { isRetryable, RemoteHostError } from "./errors.ts";
 import { errorBody, fakeHost, loginResponse, summaryOf } from "./fake-host.test-helper.ts";
 import { createRemoteExecutor } from "./remote-executor.ts";
 
@@ -122,6 +122,68 @@ verifies("executor-remote.session", () => {
       await expect(executor.send("run_1", "approve")).rejects.toMatchObject({
         code: "unexpected_response",
       });
+    });
+
+    it("gives up on a sign-in the host never answers, as a try that can be repeated", async () => {
+      const fetcher = (request: Request) =>
+        new Promise<Response>((resolve, reject) => {
+          if (new URL(request.url).pathname !== "/api/login") {
+            resolve(errorBody(401, "not_signed_in"));
+            return;
+          }
+          request.signal.addEventListener("abort", () => reject(request.signal.reason));
+        });
+      const executor = createRemoteExecutor({
+        baseUrl,
+        password: "pw",
+        fetch: fetcher,
+        loginTimeoutMs: 20,
+        reportError: () => {},
+      });
+
+      const error = await executor.send("run_1", "approve").catch((thrown: unknown) => thrown);
+
+      expect((error as Error).name).toBe("TimeoutError");
+      expect(isRetryable(error)).toBe(true);
+    });
+  });
+
+  describe("a password over plain http", () => {
+    const open =
+      (url: string, extra: { allowPlainHttp?: boolean } = {}) =>
+      () =>
+        createRemoteExecutor({
+          baseUrl: url,
+          password: "pw",
+          reportError: () => {},
+          ...extra,
+        });
+
+    it("is refused for a host that isn't loopback", () => {
+      expect(open("http://halonic.example:4173")).toThrow(RangeError);
+      expect(open("http://192.168.1.5")).toThrow(RangeError);
+    });
+
+    it("is allowed on loopback and over https", () => {
+      for (const url of [
+        "http://127.0.0.1:4173",
+        "http://localhost:4173",
+        "http://[::1]:4173",
+        "https://halonic.example",
+      ]) {
+        expect(open(url)).not.toThrow();
+      }
+    });
+
+    it("is allowed when the caller says so, and a host without password needs no say", () => {
+      expect(open("http://halonic.example", { allowPlainHttp: true })).not.toThrow();
+      expect(() =>
+        createRemoteExecutor({ baseUrl: "http://halonic.example", reportError: () => {} }),
+      ).not.toThrow();
+    });
+
+    it("never puts the password in the refusal", () => {
+      expect(() => open("http://halonic.example")()).toThrow(/^(?!.*\bpw\b)/);
     });
   });
 });

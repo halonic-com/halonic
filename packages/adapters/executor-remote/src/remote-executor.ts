@@ -22,6 +22,10 @@ export interface RemoteExecutorOptions {
   readonly baseUrl: string;
   /** The host's sign-in password. Leave it out for a host that has none (it answers only on loopback). */
   readonly password?: string;
+  /** Allows the password to go to an `http:` host that isn't on loopback, where anyone on the path can read it. Off when absent. */
+  readonly allowPlainHttp?: boolean;
+  /** How long a sign-in may take before it fails as a try that can be repeated; 30 seconds when absent. */
+  readonly loginTimeoutMs?: number;
   /** Sends the requests; the global `fetch` when absent. */
   readonly fetch?: Fetcher;
   /** Gets what a connection listener throws, so one faulty listener can't break the reconnect loop. */
@@ -51,6 +55,24 @@ function timerWait(ms: number, signal: AbortSignal): Promise<void> {
     }
     signal.addEventListener("abort", done);
   });
+}
+
+/** Whether `http:` to this host stays on the machine. */
+function isLoopbackHost(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+}
+
+/** Refuses to send a password over plain `http:` to a host that isn't loopback, unless the caller allowed it. */
+function refuseOpenPassword(options: RemoteExecutorOptions): void {
+  if (options.password === undefined || options.allowPlainHttp === true) {
+    return;
+  }
+  const url = new URL(options.baseUrl);
+  if (url.protocol === "http:" && !isLoopbackHost(url.hostname)) {
+    throw new RangeError(
+      `The password would go over plain http to ${url.hostname}. Use https, or set allowPlainHttp to accept the risk.`,
+    );
+  }
 }
 
 function refuseUnsupported(request: StartRunRequest | StartAgentRequest): void {
@@ -102,10 +124,12 @@ function asRunTargetNotFound(
  * it resumes after a break. Uses `fetch` only, so it runs wherever `fetch` does.
  */
 export function createRemoteExecutor(options: RemoteExecutorOptions): RunExecutor {
+  refuseOpenPassword(options);
   const client = new HostClient(
     options.baseUrl,
     options.password,
     options.fetch ?? ((request) => fetch(request)),
+    options.loginTimeoutMs,
   );
   const tracker = new ConnectionTracker(options.reportError);
   const streamOptions = {
