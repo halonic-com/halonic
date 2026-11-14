@@ -1,5 +1,6 @@
 // The public API of @halonicjs/testing-sign-in: a fake OAuth provider and a rig that wires the
 // host's sign-in code and the kit's loader to it. Attack tests T1 to T22 use both.
+export { currentToken, refreshWhileFirstTokenLives } from "./attack-helpers.test-helper.ts";
 export { clientSecretName, exampleSheetRecord, signInName } from "./example-sheet.ts";
 export {
   type BrowserChoice,
