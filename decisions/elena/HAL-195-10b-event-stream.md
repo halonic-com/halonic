@@ -3,6 +3,7 @@
 - Task: HAL-195
 - Approval: Liam approves this note in review on the review task of PR 2625 (HAL-9128)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TL+cqCNDh5BfGC9NSat8vjDoxNwr5aaCcrY6shEoU+bxao35OMQjRzavvt2/x4wLcaRxhpJyd47cClTj+jAnBg==
 
 ## What changes
 
