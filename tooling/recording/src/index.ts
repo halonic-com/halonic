@@ -5,4 +5,6 @@ export { captureSession, captureVersion } from "./capture.ts";
 export { paceCast } from "./pace.ts";
 export type { RecordedCommand, Recording } from "./recording.ts";
 export { parseRecording } from "./recording.ts";
+export type { Tape } from "./tape.ts";
+export { playCast } from "./terminal.ts";
 export { titleWithVersion, versionFromOutput } from "./version.ts";
