@@ -19,6 +19,11 @@ export {
   defaultCoordinationObjectName,
 } from "./durable-coordination.ts";
 export {
+  DurableRunStore,
+  type DurableRunStoreOptions,
+  type RunListReader,
+} from "./durable-run-store.ts";
+export {
   DurableScheduler,
   type DurableSchedulerOptions,
   type RunObjectNamespace,

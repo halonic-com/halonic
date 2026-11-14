@@ -6,7 +6,8 @@
     "src/worker.node.test.ts",
     "src/scheduled.test.ts",
     "src/password-limit.test.ts",
-    "src/self-test.test.ts"
+    "src/self-test.test.ts",
+    "src/serve.test.ts"
   ],
   "exclude": []
 }
