@@ -23,6 +23,10 @@ export interface Secrets {
    * The secret's value, or `null` when it isn't configured.
    *
    * @throws RangeError when the name breaks the rule above
+   *
+   * Any error `get` throws, for this or any other reason, never holds the
+   * secret's value in its message or its cause, so a caller may show the
+   * message.
    */
   get(name: string): Promise<string | null>;
 }

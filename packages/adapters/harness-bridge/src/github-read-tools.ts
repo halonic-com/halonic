@@ -15,13 +15,20 @@ const githubApi = "https://api.github.com";
 export interface GitHubReadLimits {
   /** How long GitHub may take to answer one call, in milliseconds. */
   timeoutMs: number;
-  /** The most text one result holds, and the most of GitHub's answer the bridge reads; a longer one is cut and says so. */
+  /** The most text one result holds, and the most of a diff the bridge reads; a longer one is cut and says so. */
   maxResultBytes: number;
+  /**
+   * The most of a JSON answer the bridge reads. It is larger than
+   * {@link maxResultBytes} because GitHub's raw answer (a file's patch, a
+   * check's output) is far bigger than the trimmed result built from it.
+   */
+  maxAnswerBytes: number;
 }
 
 export const defaultGitHubReadLimits: GitHubReadLimits = {
   timeoutMs: 30_000,
   maxResultBytes: 200_000,
+  maxAnswerBytes: 2_000_000,
 };
 
 export interface GitHubReadToolsOptions {
@@ -190,10 +197,14 @@ export class GitHubReadTools implements BridgeTools {
     const text = async (path: string, accept = "application/vnd.github+json") =>
       readCapped(await get(path, accept), this.#limits.maxResultBytes);
     const json = async (path: string) => {
-      const { text: body, cut } = await text(path);
+      const { maxAnswerBytes } = this.#limits;
+      const { text: body, cut } = await readCapped(
+        await get(path, "application/vnd.github+json"),
+        maxAnswerBytes,
+      );
       if (cut) {
         throw new GitHubReadError(
-          `GitHub's answer is longer than the ${this.#limits.maxResultBytes} bytes the bridge reads.`,
+          `GitHub's answer is longer than the ${maxAnswerBytes} bytes the bridge reads.`,
         );
       }
       try {

@@ -14,7 +14,7 @@ interface Sent {
 /** The tools over a fake GitHub that answers each path with `replies`, and what it was sent. */
 function toolsWith(
   replies: Record<string, Response>,
-  options: { secret?: string | null; maxResultBytes?: number } = {},
+  options: { secret?: string | null; maxResultBytes?: number; maxAnswerBytes?: number } = {},
 ) {
   const sent: Sent[] = [];
   const fetch: Fetch = async (input, init) => {
@@ -30,7 +30,11 @@ function toolsWith(
     secret: "GITHUB_READ_TOKEN",
     secrets: { get: async () => secret },
     fetch,
-    limits: { timeoutMs: 1000, maxResultBytes: options.maxResultBytes ?? 10_000 },
+    limits: {
+      timeoutMs: 1000,
+      maxResultBytes: options.maxResultBytes ?? 10_000,
+      maxAnswerBytes: options.maxAnswerBytes ?? 1_000_000,
+    },
   });
   return { tools, sent };
 }
@@ -178,10 +182,27 @@ verifies("harness-bridge.github-read", () => {
       expect(pulled).toBeLessThan(10);
     });
 
-    it("answers an error for a JSON answer longer than the limit", async () => {
+    it("lists 100 files with big patches, though GitHub's answer is far over the result limit", async () => {
+      const files = Array.from({ length: 100 }, (_, index) => ({
+        filename: `f${index}.ts`,
+        status: "modified",
+        additions: 1,
+        deletions: 1,
+        patch: "+".repeat(3000),
+      }));
+      const { tools } = toolsWith(
+        { "/repos/halonic-com/halonic/pulls/12/files?per_page=100": json(files) },
+        { maxResultBytes: 50_000, maxAnswerBytes: 1_000_000 },
+      );
+      const answer = await tools.call("github_list_pull_request_files", { number: 12 }, { signal });
+      expect(answer.outcome).toBe("ok");
+      expect(JSON.parse(answer.result).files).toHaveLength(100);
+    });
+
+    it("answers an error for a JSON answer longer than the answer limit", async () => {
       const { tools } = toolsWith(
         { "/repos/halonic-com/halonic/pulls/12": json({ title: "x".repeat(100) }) },
-        { maxResultBytes: 10 },
+        { maxAnswerBytes: 10 },
       );
       const answer = await tools.call("github_get_pull_request", { number: 12 }, { signal });
       expect(answer.outcome).toBe("error");
