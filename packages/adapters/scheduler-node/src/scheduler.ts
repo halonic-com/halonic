@@ -100,6 +100,7 @@ export class NodeScheduler implements Scheduler {
   }
 
   async schedule(key: string, timerId: string, at: string): Promise<void> {
+    this.#assertOpen();
     checkIdLength("key", key);
     checkIdLength("timer id", timerId);
     if (Number.isNaN(Date.parse(at))) {
@@ -114,6 +115,7 @@ export class NodeScheduler implements Scheduler {
   }
 
   async cancel(key: string, timerId: string): Promise<void> {
+    this.#assertOpen();
     await this.#change(async (timers) => {
       const slot = timerSlot(key, timerId);
       if (!timers.has(slot)) return;
@@ -242,6 +244,11 @@ export class NodeScheduler implements Scheduler {
         this.#tickInProgress = undefined;
         this.#armWakeUp();
       });
+  }
+
+  /** Rejects a call made after `close()`; deliveries still settling call `#change` directly. */
+  #assertOpen(): void {
+    if (this.#closed) throw new Error("The scheduler is closed.");
   }
 
   /** Runs one change to the timers after the changes before it, then moves the wake-up. */
