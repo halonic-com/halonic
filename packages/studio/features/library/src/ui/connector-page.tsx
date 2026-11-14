@@ -2,7 +2,10 @@ import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studi
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { ConnectorStatusHostService } from "../connector-status-host.ts";
 import { ConnectorStatusModel } from "../connector-status-model.ts";
+import { ListedToolsHostService } from "../listed-tools-host.ts";
+import { ListedToolsReviewModel } from "../listed-tools-review-model.ts";
 import { ConnectorStatusSection } from "./connector-status-section.tsx";
+import { ListedToolsWaiting } from "./listed-tools-waiting.tsx";
 
 /**
  * The `connector` item kind's page, kept thin so the full connector page (HAL-751) can replace it
@@ -13,6 +16,12 @@ export function ConnectorPage({ item, context }: ItemViewProps) {
   const model = useMemo(() => new ConnectorStatusModel(host, item.id), [host, item.id]);
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
   const { loaded, connector } = useSyncExternalStore(subscribe, () => model.state);
+  const listedTools = context.services.find(ListedToolsHostService);
+  const toolsModel = useMemo(
+    () =>
+      listedTools === undefined ? undefined : new ListedToolsReviewModel(listedTools, item.id),
+    [listedTools, item.id],
+  );
 
   if (loaded && connector === undefined) {
     return (
@@ -29,6 +38,9 @@ export function ConnectorPage({ item, context }: ItemViewProps) {
       <h1 tabIndex={-1} className="text-title [overflow-wrap:anywhere]">
         {connector?.name ?? item.id}
       </h1>
+      {toolsModel === undefined ? null : (
+        <ListedToolsWaiting model={toolsModel} sourceName={connector?.name ?? item.id} />
+      )}
       <ConnectorStatusSection
         model={model}
         announceState={(key, text) => context.announcer.announceState(key, text)}
