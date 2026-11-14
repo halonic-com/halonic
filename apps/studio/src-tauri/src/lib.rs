@@ -32,6 +32,7 @@ mod host_settings;
 mod native_dialogs;
 mod navigation;
 mod plugin_folder;
+mod plugin_folder_remove;
 mod profile;
 mod records;
 mod runs;
@@ -161,6 +162,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             plugin_folder::plugin_folder_read,
             plugin_folder::plugin_folder_location,
             plugin_folder::plugin_folder_reveal,
+            plugin_folder_remove::plugin_folder_remove,
             blobs::blob_put,
             blobs::blob_get,
             records::record_append,

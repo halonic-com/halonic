@@ -49,6 +49,7 @@ fn main() {
         "plugin_folder_read",
         "plugin_folder_location",
         "plugin_folder_reveal",
+        "plugin_folder_remove",
         "blob_put",
         "blob_get",
         "record_append",
