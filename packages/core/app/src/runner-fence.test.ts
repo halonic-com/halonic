@@ -1,7 +1,12 @@
 import { type SandboxCheck, sandboxUnavailableReasons } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { mxcFencesLocalTools, mxcFencesRunner, runnerFence, runnerUnfencedReasons } from "./runner-fence.ts";
+import {
+  mxcFencesLocalTools,
+  mxcFencesRunner,
+  runnerFence,
+  runnerUnfencedReasons,
+} from "./runner-fence.ts";
 
 const passes: SandboxCheck = { ok: true, reason: null, missing: [] };
 
