@@ -3,6 +3,7 @@
 - Task: HAL-8724 (for HAL-7050, the 0.1.0 release candidate; builds on HAL-8688)
 - Approval: the task asks for this change; Liam approves this note in review on HAL-8738 and signs it
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:aYngDVknXe2iU2URCkcqGbCu3yPUwutgx+Z3OqaDniw1/Xue0ywFfH/Q30CkcdbKncxdR+j5gU0Y32gIh21+BA==
 
 ## What changes
 
