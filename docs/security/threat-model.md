@@ -418,15 +418,19 @@ start, in this order, because its fix comes first.
   settings folders, read the read-only folders it was given, and nothing else;
   a denied file stays hidden even inside a folder it may read. The program has
   no network but Halonic's bridge: the internet, the local network and every
-  other port on your computer are closed. MXC is **not offered** on Windows 10,
-  Windows Server or any computer where Microsoft's container reports a weaker
-  mode, and nothing about it shows there. Before MXC runs, and after every
-  change to the sandbox settings, a trust check starts a short test session
-  that tries to read hidden files, write where it may not, and reach other
-  ports, the internet and DNS, while two controls prove the box isn't too
-  strict. If the check fails, **MXC switches itself off for that start of
-  Halonic**, with one reason code, and nothing runs in another sandbox in its
-  place, even when you chose MXC: the next start checks again. MXC needs a
+  other port on your computer are closed. The adapter, **On `main`**, offers
+  MXC only on Windows 11 and reports "not offered" elsewhere. It has the trust
+  check as a canary: a short test session that tries to read hidden files,
+  write where it may not, and reach other ports, the router, another local
+  address, the internet and DNS, while two controls prove the box isn't too
+  strict. What the host does with it is **Planned** (HAL-3309, HAL-3310):
+  nothing outside the adapter uses MXC today, so no app starts it. The plan:
+  MXC is hidden on Windows 10, Windows Server and any computer where
+  Microsoft's container reports a weaker mode; the check runs before MXC runs
+  and after every change to the sandbox settings; and if it fails, **MXC
+  switches itself off for that start of Halonic**, with one reason code, and
+  nothing runs in another sandbox in its place, even when you chose MXC: the
+  next start checks again. MXC needs a
   one-time download of Microsoft's SDK, pinned and checked by hash, which
   starts only when you pick MXC. MXC is **opt-in**: making it the default and
   the Settings switch are **Planned** (HAL-3310, HAL-3309, the screen waits
@@ -492,7 +496,9 @@ routes, isn't built yet, so no app uses the host today.
   service, outside the box. A program can't connect anywhere, but it can
   encode what it can read, including its settings folder and the run token,
   in the names it looks up: a few KB a second. MXC has no setting to stop it
-  (HAL-3365). `halonic doctor` says so while MXC is in use.
+  (HAL-3365). The canary reports it as `nameLookupsLeave: true`. That
+  `halonic doctor` says so while MXC is in use is **Planned** with the host
+  wiring (HAL-3309); doctor doesn't know about MXC today.
 - **MXC: pnpm and other tools that look up the drive root don't work.** They
   fail with `EPERM` on `C:\`. Halonic doesn't run them outside the box
   instead, because that runs untrusted package scripts without the fence, and
@@ -504,8 +510,9 @@ routes, isn't built yet, so no app uses the host today.
 - **MXC: the permission that lets the box reach the bridge works both ways.**
   In CI the box couldn't reach the internet and the host couldn't connect in,
   but CI has no local network. The trust check probes the router and another
-  local address at every start, and the real-PC check (HAL-2546) tests both
-  directions. Until it has passed, MXC ships in no release.
+  local address, and the real-PC check (HAL-2546) tests both directions. The
+  probes don't cover the bridge itself (`CONNECT`, or another host or port
+  through it): the bridge is the box's only network control and isn't probed. Until it has passed, MXC ships in no release.
 - **Subscription sign-in (D43).** An agent signed in with your Claude or
   ChatGPT plan keeps that token in its own settings folder, inside the
   sandbox, and the provider's sites are allowed. A tricked agent can read the

@@ -103,16 +103,19 @@ denied.", are not reported, so a program that doesn't print its errors reports n
 
 **Not covered yet.** `reopenedPaths` makes `open` throw: MXC's denied paths win over every
 grant, so a path inside one can't be reopened. The refusal of files under a skill's `scripts/`
-folder, which `sandbox-srt` applies, isn't ported.
+folder, which `sandbox-srt` applies, isn't ported. The probes cover the router and other
+private addresses, but not the bridge itself (`CONNECT`, or a request for another host or port
+through it): the bridge is the box's only network control, and nothing probes it yet.
 
 ## Known limits
 
-These are the limits in [the ADR](../../../docs/adr/2026-11-10-mxc-sandbox-backend.md). None
-of them is a leak the trust check misses.
+These are the limits in [the ADR](../../../docs/adr/2026-11-10-mxc-sandbox-backend.md). The
+first is a leak the box can't stop; the trust check reports it rather than catching it.
 
 - **Name lookups leave the box.** They go through Windows' DNS client service, which runs
   outside the box. A program can't open a connection, but it can encode data in the names it
-  looks up, slowly. The canary reports `nameLookupsLeave: true` and `halonic doctor` shows it.
+  looks up, slowly. The canary reports `nameLookupsLeave: true`. Showing it in `halonic doctor`
+  is Planned with the host wiring (HAL-3309); doctor doesn't know about MXC today.
 - **pnpm and other tools that look up the drive root don't work.** They walk up to `C:\`, which
   the box can't read (`EPERM lstat 'C:'`). Halonic doesn't run them outside the box instead,
   because that would run package scripts without the fence, and it doesn't make the drive root
@@ -121,6 +124,10 @@ of them is a leak the trust check misses.
 - **`cmd /c dir` is refused, even on the box's own folder.** Tools that list folders through
   Node (`readdirSync`) work, and so does reading and writing files. A script or `.cmd` shim that
   shells out to `dir` fails. This is a limit, not a leak.
+- **The permission that lets the box reach the bridge works both ways.** In CI the box couldn't
+  reach the internet and the host couldn't connect in, but CI has no local network. The probes
+  cover the router and another local address, and the real-PC check (HAL-2546) tests both
+  directions. Until it has passed, MXC ships in no release.
 
 ## Example
 
