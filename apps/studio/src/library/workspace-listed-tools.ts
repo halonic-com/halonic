@@ -21,7 +21,12 @@ import type {
 } from "@halonicjs/ports";
 import type { ListedToolsHost, ListedToolsSnapshot } from "@halonicjs/studio-feature-library/api";
 import { listedToolsSnapshot } from "@halonicjs/studio-feature-library/api";
-import { filesOf, harnessWorkingFolders, loadWorkspace } from "@halonicjs/workspace";
+import {
+  filesOf,
+  harnessWorkingFolders,
+  type LoadedWorkspace,
+  loadWorkspace,
+} from "@halonicjs/workspace";
 import type { ToolLister } from "../connect/agent-host-tool-lister.ts";
 import type { WorkspaceTrust } from "../studio/workspace-trust.ts";
 
@@ -34,8 +39,8 @@ export interface WorkspaceListedToolsOptions {
   readonly definitions: DefinitionSource;
   /** The whole folder, for its real location and its agents' real working folders. */
   readonly folder: FolderReader;
-  /** The folder's trust, checked again before every start. */
-  readonly trust: Pick<WorkspaceTrust, "check" | "isTrusted" | "refresh">;
+  /** The folder's trust, checked on the files a start reads, before every start. */
+  readonly trust: Pick<WorkspaceTrust, "checkLoaded">;
   /** Where approvals are kept: the profile's `tool-approvals`, which the CLI reads too. */
   readonly approvals: ToolApprovalStore;
   readonly digest: Digest;
@@ -47,8 +52,9 @@ export interface WorkspaceListedToolsOptions {
   readonly listTools: ToolLister;
 }
 
-/** One connector of the workspace, and the workspace's real location. */
+/** One connector of the workspace, from the single read that trust is checked on and that starts it. */
 interface OpenedSource {
+  readonly workspace: LoadedWorkspace;
   readonly connector: Connector;
   readonly location: string;
 }
@@ -56,7 +62,8 @@ interface OpenedSource {
 /**
  * The listed tools of one open workspace's connectors (requirement `studio.workspace-listed-tools`),
  * read the way `halonic tools review` reads them: the workspace must be trusted as it is now, or
- * nothing starts. The server is read again for every review and every approval, so a person
+ * nothing starts. Each call reads the files once, and trust is checked on that read, so what
+ * starts is what was found trusted. The server is read again for every review and every approval, so a person
  * approves the version it lists now, never a remembered one. A rejected call says why, and the
  * review dialog shows it.
  *
@@ -84,9 +91,28 @@ export class WorkspaceListedTools implements ListedToolsHost {
     connectorId: string,
     picks: readonly ListedToolPick[],
   ): Promise<ListedToolsApproval> {
-    const check = await this.#check(await this.#open(connectorId));
+    const source = await this.#open(connectorId);
+    if ("google" in source.connector.transport) {
+      throw new Error("this connector's tools are built in, so there is nothing to approve");
+    }
+    const check = await this.#check(source);
     const approved: string[] = [];
     const changed: string[] = [];
+    try {
+      await this.#approveAll(check, picks, approved, changed);
+    } finally {
+      // Picks saved before a refusal still changed what is approved.
+      if (approved.length > 0) this.#changed();
+    }
+    return { approved, changed };
+  }
+
+  async #approveAll(
+    check: ListedToolApprovalCheck,
+    picks: readonly ListedToolPick[],
+    approved: string[],
+    changed: string[],
+  ): Promise<void> {
     for (const pick of picks) {
       const result = await approveNamedTool(
         check,
@@ -100,12 +126,11 @@ export class WorkspaceListedTools implements ListedToolsHost {
         continue;
       }
       if (result.outcome !== "approved" && result.outcome !== "already_approved") {
-        throw new Error(refusalOf(pick.name, result));
+        const saved = approved.length > 0 ? ` (${approved.join(", ")} were approved first)` : "";
+        throw new Error(refusalOf(pick.name, result) + saved);
       }
       approved.push(pick.name);
     }
-    this.#changed();
-    return { approved, changed };
   }
 
   async removeApproval(connectorId: string, toolName: string): Promise<void> {
@@ -139,21 +164,19 @@ export class WorkspaceListedTools implements ListedToolsHost {
     }
     const location = await this.#options.folder.locationOf();
     if (location === null) throw new Error("the workspace folder has no location");
-    return { connector, location };
+    return { workspace, connector, location };
   }
 
   /** Starts the connector and checks what it lists against the approvals, as a run would. */
-  async #check({ connector, location }: OpenedSource): Promise<ListedToolApprovalCheck> {
+  async #check({ workspace, connector, location }: OpenedSource): Promise<ListedToolApprovalCheck> {
     if ("http" in connector.transport) {
       throw new Error("Studio can't check the tools of an http server yet");
     }
-    const { trust } = this.#options;
-    await trust.refresh();
-    const grant = trust.check?.status === "trusted" ? trust.check.grant : undefined;
-    if (!trust.isTrusted() || grant === undefined) {
+    const trusted = await this.#options.trust.checkLoaded(workspace);
+    if (trusted.status !== "trusted") {
       throw new Error("this workspace isn't trusted yet, so nothing was started");
     }
-    const workspace = await loadWorkspace(this.#options.definitions);
+    const grant = trusted.grant;
     const listed = await this.#options.listTools(connectorConfigOf(connector), {
       secrets: this.#options.secrets,
       tokens: this.#options.tokens,

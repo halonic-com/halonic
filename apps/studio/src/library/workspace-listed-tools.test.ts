@@ -31,37 +31,43 @@ function acmeFiles(extra: Record<string, string> = {}): MemoryDefinitionStore {
 }
 
 /** A trust that answers as the page's does, without reading a folder. */
-function trustedAs(trusted: boolean): Pick<WorkspaceTrust, "check" | "isTrusted" | "refresh"> {
+function trustedAs(trusted: boolean): Pick<WorkspaceTrust, "checkLoaded"> {
   return {
-    check: trusted
-      ? ({ status: "trusted", grant } as unknown as WorkspaceTrust["check"])
-      : ({ status: "new" } as unknown as WorkspaceTrust["check"]),
-    isTrusted: () => trusted,
-    refresh: async () => undefined,
+    checkLoaded: async () =>
+      (trusted ? { status: "trusted", grant } : { status: "new" }) as unknown as Awaited<
+        ReturnType<WorkspaceTrust["checkLoaded"]>
+      >,
   };
 }
 
 function hostOf(
-  options: { trusted?: boolean; tools?: ConnectorTool[]; files?: MemoryDefinitionStore } = {},
+  options: {
+    trusted?: boolean;
+    tools?: ConnectorTool[];
+    files?: MemoryDefinitionStore;
+    trust?: Pick<WorkspaceTrust, "checkLoaded">;
+  } = {},
 ) {
   const started: ConnectorFactoryContext[] = [];
+  const startedConfigs: unknown[] = [];
   const approvals = new MemoryToolApprovalStore();
   const host = new WorkspaceListedTools({
     definitions: options.files ?? acmeFiles(),
     folder: new MemoryFolderReader(),
-    trust: trustedAs(options.trusted ?? true),
+    trust: options.trust ?? trustedAs(options.trusted ?? true),
     approvals,
     digest: webCryptoDigest,
     clock: new ManualClock(),
     secrets: new MemorySecrets(),
     tokens: new MemoryTokenStore(),
     http: { fetch: () => Promise.reject(new Error("This test reaches no server.")) },
-    listTools: async (_config, context) => {
+    listTools: async (config, context) => {
       started.push(context);
+      startedConfigs.push(config);
       return options.tools ?? [readNote];
     },
   });
-  return { host, started, approvals };
+  return { host, started, startedConfigs, approvals };
 }
 
 verifies("studio.workspace-listed-tools", () => {
@@ -86,6 +92,27 @@ verifies("studio.workspace-listed-tools", () => {
       await expect(host.review("notes")).rejects.toThrow("isn't trusted");
 
       expect(started).toEqual([]);
+    });
+
+    it("starts what it found trusted, even when the files change right after the check", async () => {
+      const files = acmeFiles();
+      const trust: Pick<WorkspaceTrust, "checkLoaded"> = {
+        checkLoaded: async (workspace) => {
+          const checked = await trustedAs(true).checkLoaded(workspace);
+          // A pull or a tool rewrites the connector after the check, before anything starts.
+          await files.write(
+            "library/connectors/notes.connector.yaml",
+            "name: Notes\ntransport:\n  stdio:\n    command: evil-server\n",
+          );
+          return checked;
+        },
+      };
+      const { host, startedConfigs } = hostOf({ files, trust });
+
+      await host.review("notes");
+
+      expect(JSON.stringify(startedConfigs)).toContain("acme-notes-server");
+      expect(JSON.stringify(startedConfigs)).not.toContain("evil-server");
     });
 
     it("says so for a connector the workspace doesn't have", async () => {
@@ -151,6 +178,37 @@ verifies("studio.workspace-listed-tools", () => {
       await expect(
         host.approve("notes", [{ name: "gone", fingerprint: "htl1:abc" }]),
       ).rejects.toThrow('doesn\'t list "gone"');
+    });
+  });
+
+  describe("approve, partly refused", () => {
+    it("tells its listeners about the picks saved before a refusal, and says they were saved", async () => {
+      const { host } = hostOf();
+      const heard: string[] = [];
+      host.subscribe(() => heard.push("changed"));
+      const [row] = (await host.review("notes")).toReview;
+
+      await expect(
+        host.approve("notes", [
+          { name: "read_note", fingerprint: row?.fingerprint ?? "" },
+          { name: "gone", fingerprint: "htl1:abc" },
+        ]),
+      ).rejects.toThrow("read_note were approved first");
+
+      expect(heard).toEqual(["changed"]);
+      expect((await host.review("notes")).approved).toEqual(["read_note"]);
+    });
+
+    it("starts nothing to approve a Google connector's tools", async () => {
+      const files = acmeFiles({
+        "library/connectors/mail.connector.yaml":
+          "transport: { google: { account: sam@acme.example } }\n",
+      });
+      const { host, started } = hostOf({ files });
+
+      await expect(host.approve("mail", [])).rejects.toThrow("nothing to approve");
+
+      expect(started).toEqual([]);
     });
   });
 
