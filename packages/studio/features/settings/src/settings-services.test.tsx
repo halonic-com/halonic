@@ -17,6 +17,7 @@ import {
 import { AssistantSection } from "./assistant/assistant-section.tsx";
 import { DisplaySettings } from "./display-settings.ts";
 import { settingsFeature } from "./feature.ts";
+import { FormatsSection } from "./formats/formats-section.tsx";
 import { MemoryHostSettingsStore } from "./test-support/memory-host-settings-store.ts";
 import { render, unmountAll } from "./test-support/render.tsx";
 import { AboutSection } from "./updater/about-section.tsx";
@@ -129,5 +130,22 @@ verifies("settings.feature", () => {
     const stranger = { name: "settings.stranger" } as ServiceKey<unknown>;
     expect(() => context.services.find(stranger)).toThrow("doesn't list it in needs or wants");
     expect(() => context.services.get(stranger)).toThrow("doesn't list it in needs or wants");
+  });
+});
+
+verifies("settings.formats-section", () => {
+  it("follows the system's region format the shell passes, not the window's language", async () => {
+    const context = await sectionContext([]);
+    const view = render(
+      <FormatsSection
+        context={context}
+        place="app"
+        surface="window"
+        closeSettings={() => {}}
+        regionFormat="nl-NL"
+      />,
+    );
+    expect(view.textContent).toContain("Follow this computer: Dutch (Netherlands)");
+    expect(view.textContent).toContain("45,00");
   });
 });

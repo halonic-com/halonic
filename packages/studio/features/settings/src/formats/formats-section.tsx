@@ -16,17 +16,18 @@ import {
 import { FORMAT, FORMAT_NOT_SAVED } from "./formats-text.ts";
 
 /**
- * Settings → Formats as the settings container shows it. "Follow" follows the browser's language
- * for now; the desktop shell's system region format comes with the desktop `DisplayPrefs` adapter.
+ * Settings → Formats as the settings container shows it. "Follow" follows the system's region
+ * format the shell passes in the desktop app, else the browser's language: the webview's language
+ * isn't the user's region setting, as English Windows with Dutch region settings shows.
  */
-export function FormatsSection({ context, place, surface }: SettingsSectionProps) {
+export function FormatsSection({ context, place, surface, regionFormat }: SettingsSectionProps) {
   return (
     <FormatsView
       settings={context.services.get(DisplaySettingsService)}
       announce={(text) => context.announcer.announce(text)}
       place={place}
       surface={surface}
-      followTag={navigator.language}
+      followTag={regionFormat ?? navigator.language}
     />
   );
 }

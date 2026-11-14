@@ -65,6 +65,11 @@ export interface StudioWindowProps {
   /** The language of the Studio's words, such as `en`, set on `<html lang>`. */
   readonly language: string;
   /**
+   * The system's region format as a language tag, such as `nl-NL`, read by the desktop app.
+   * Formats' "Follow this computer" uses it; without it Formats follows the browser's language.
+   */
+  readonly regionFormat?: string | undefined;
+  /**
    * The sidebar's workspace switcher, once the app has a workspace menu (T3). The menu is a list of
    * rows, or a function of the window's actions for rows that open a page (**Workspace settings…**).
    */
@@ -290,6 +295,7 @@ export function StudioWindow(props: StudioWindowProps) {
           switcher={props.phoneSwitcher}
           onSettings={() => openSettings()}
           settingsPlace={host === "desktop-app" ? "app" : "served"}
+          regionFormat={props.regionFormat}
           settingsScroll={settingsScroll}
           workspaceName={workspace.name}
           shell={shell}
@@ -320,6 +326,7 @@ export function StudioWindow(props: StudioWindowProps) {
           sections={contributions.settings.list()}
           workspaceName={workspace.name}
           place={host === "desktop-app" ? "app" : "served"}
+          regionFormat={props.regionFormat}
           requested={settings.requested}
           lastShown={settings.lastShown}
           onShown={settings.remember}
