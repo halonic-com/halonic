@@ -62,7 +62,7 @@ jobs:
         run: |
           areas=(
             "tauri=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|tooling/check/licence-texts/crates/)"
-            "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-srt|harness-bridge|system-node|integration-runner|integration-kit|connector-stdio-sandbox)/|apps/cli/(fence/|src/(local-harness-host|open-local-integration|local-integration-machine|integration-connector-factory|workspace-engine))|packages/core/ports/|pnpm-lock\.yaml$)"
+            "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-srt|harness-bridge|system-node|integration-runner|integration-kit|connector-stdio-sandbox|git)/|apps/cli/(fence/|src/(local-harness-host|open-local-integration|local-integration-machine|integration-connector-factory|workspace-engine))|packages/core/ports/|pnpm-lock\.yaml$)"
             "sandbox=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-[^/]+|system-node|git)/|packages/core/ports/)"
             "windows=^(\.github/workflows/ci\.yml$|\.github/actions/|pnpm-lock\.yaml$|apps/(cli|agent-host)/|packages/adapters/(fs-node|harness-kit|harness-claude-code|harness-codex|mcp|memory|system-node|http-kit|integration-kit)/|packages/core/(workspace|app|events|format|ports|profile|routines|schema-kit|std|workflow|yaml)/|packages/testing/(contracts|spec|parity|integration)/|tooling/(config|publish)/)"
             "sandbox-mxc=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/sandbox-mxc/|packages/core/app/(src|requirements)/sandbox-|packages/core/ports/|pnpm-lock\.yaml$)"
@@ -1369,6 +1369,12 @@ jobs:
       - name: Local tool attacks through the fence
         working-directory: packages/adapters/connector-stdio-sandbox
         run: pnpm test:fence
+      - name: Run checkout attacks through the fence
+        # A run's program in a real session on a real run checkout: no git
+        # hook or setting planted, the shared repository and everything outside
+        # the checkout unchanged, no network (HAL-9158).
+        working-directory: packages/adapters/git
+        run: pnpm test:fence
       - name: Build the integration runner
         working-directory: packages/adapters/integration-runner
         run: pnpm build
@@ -1418,6 +1424,12 @@ jobs:
         run: pnpm test:fence
       - name: Local tool attacks through the fence
         working-directory: packages/adapters/connector-stdio-sandbox
+        run: pnpm test:fence
+      - name: Run checkout attacks through the fence
+        # A run's program in a real session on a real run checkout: no git
+        # hook or setting planted, the shared repository and everything outside
+        # the checkout unchanged, no network (HAL-9158).
+        working-directory: packages/adapters/git
         run: pnpm test:fence
       - name: Build the integration runner
         working-directory: packages/adapters/integration-runner
