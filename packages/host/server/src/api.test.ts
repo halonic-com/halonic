@@ -23,6 +23,7 @@ verifies("server.api", () => {
       | "runs"
       | "runStore"
       | "trust"
+      | "modelSettings"
       | "webhooks"
       | "secrets"
       | "passwordHasher"

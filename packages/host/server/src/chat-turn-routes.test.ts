@@ -1,7 +1,7 @@
 import type { ChatTurnRequest, Coordination, RunExecutor } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import type { Server, TrustDecision, TrustGate } from "./api.ts";
+import type { ModelSettingsGate, Server, TrustDecision, TrustGate } from "./api.ts";
 import { FakeCoordination, FakePasswordHasher, TestClock, testServer } from "./test-server.ts";
 
 const trusted: TrustDecision = { state: "trusted", message: "Trusted." };
@@ -20,6 +20,8 @@ const valid = {
   tools: [{ name: "lookup", description: "Looks up.", parameters: { type: "object" } }],
 };
 
+const setupWithGate = (allows: ModelSettingsGate["allows"]) => setup({ modelSettings: { allows } });
+
 interface Calls {
   turns: ChatTurnRequest[];
   logged: unknown[];
@@ -30,6 +32,7 @@ function setup(
     state?: TrustDecision;
     passwordHash?: string | null;
     chatTurn?: (request: ChatTurnRequest) => Promise<unknown>;
+    modelSettings?: ModelSettingsGate;
   } = {},
 ) {
   const calls: Calls = { turns: [], logged: [] };
@@ -46,6 +49,7 @@ function setup(
     clock,
     runs,
     trust,
+    ...(options.modelSettings === undefined ? {} : { modelSettings: options.modelSettings }),
     errorLog: { record: (error) => calls.logged.push(error) },
     passwordHasher: new FakePasswordHasher(),
     coordination: new FakeCoordination(clock) as unknown as Coordination,
@@ -280,6 +284,48 @@ describe("chat turn route", () => {
       expect(text).not.toContain("sk-abc");
       expect(text).not.toContain("llm.internal");
       expect(calls.logged).toEqual([cause]);
+    });
+  });
+});
+
+describe("chat turn model address", () => {
+  verifies("server.chat-turn-model-address", () => {
+    it("refuses settings the gate doesn't allow, before the trust gate and the executor", async () => {
+      const asked: unknown[] = [];
+      const { server, calls } = setupWithGate(async (hubId, settings) => {
+        asked.push([hubId, settings]);
+        return false;
+      });
+      const response = await turn(server, {
+        ...valid,
+        agent: {
+          type: "openai",
+          model: "m",
+          baseUrl: "https://other.example/v1",
+          secret: "openai-key",
+          local: false,
+        },
+      });
+      expect(response.status).toBe(400);
+      expect(await codeOf(response)).toBe("model_address_not_allowed");
+      expect(asked).toHaveLength(1);
+      expect(calls.turns).toEqual([]);
+    });
+
+    it("forwards settings the gate allows, and doesn't ask for settings without a secret", async () => {
+      const asked: unknown[] = [];
+      const { server, calls } = setupWithGate(async (...args) => {
+        asked.push(args);
+        return true;
+      });
+      const withSecret = { type: "openai", model: "m", secret: "openai-key", local: false };
+      expect((await turn(server, { ...valid, agent: withSecret })).status).toBe(200);
+      expect(
+        (await turn(server, { ...valid, agent: { type: "ollama", model: "m", local: true } }))
+          .status,
+      ).toBe(200);
+      expect(asked).toHaveLength(1);
+      expect(calls.turns).toHaveLength(2);
     });
   });
 });

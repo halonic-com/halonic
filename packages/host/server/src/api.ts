@@ -7,6 +7,7 @@ import type {
   SetupValues,
 } from "@halonicjs/google-setup";
 import type {
+  ChatAgentSettings,
   Clock,
   Coordination,
   IdGenerator,
@@ -331,6 +332,20 @@ export interface ConnectorCallPorts {
   readonly settings: SendingSettings;
 }
 
+/**
+ * Which unsaved model settings a chat turn may carry. The host sends the
+ * secret a setting names to the setting's address, so the host decides whether
+ * that pair is one its workspace has set up.
+ */
+export interface ModelSettingsGate {
+  /**
+   * Whether `settings` may be used in a turn for `hubId`. A pair of address
+   * and secret the workspace's providers don't name, and a hub the workspace
+   * doesn't have, are refused.
+   */
+  allows(hubId: string, settings: ChatAgentSettings): Promise<boolean>;
+}
+
 /** What the server needs from its host. Every port is replaceable, so a test runs the handler with fakes. */
 export interface ServerPorts {
   /** Runs workflows; the server only forwards start, send, cancel and subscribe calls to it. */
@@ -348,6 +363,8 @@ export interface ServerPorts {
   readonly coordination: Coordination;
   /** The trust check: every route that starts a run asks it first. */
   readonly trust: TrustGate;
+  /** The check on a chat turn's unsaved model settings, made before the executor is asked. */
+  readonly modelSettings: ModelSettingsGate;
   /** The routines with a webhook trigger; `POST /api/webhooks/<hub>/<routine>` starts one. */
   readonly webhooks: WebhookRoutines;
   /** The daily request counter. */

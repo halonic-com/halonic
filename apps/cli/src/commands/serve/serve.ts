@@ -46,6 +46,7 @@ import { trustedGrant, workspaceNameOf } from "../../workspace-trust.ts";
 import { type VersionChecks, WatchedVersions } from "../routines/watch-versions.ts";
 import type { RunSetup } from "../run/run.ts";
 import { startsOnLiveVersion } from "./live-version-runs.ts";
+import { workspaceModelSettings } from "./model-settings-gate.ts";
 
 /** What `serve` uses on this computer, so tests can fix the password hasher and the network. */
 export interface ServeSetup extends RunSetup {
@@ -194,6 +195,7 @@ async function listenOnComputer(
     passwordHasher: setup.hasher ?? createScryptHasher(),
     coordination: parts.coordination,
     trust: workspaceTrustGate(dir, setup.trust()),
+    modelSettings: workspaceModelSettings(() => versions.latest()),
     webhooks: {
       find: async (key) =>
         (await versions.routines.list()).find((placed) => routineKey(placed) === key) ?? null,

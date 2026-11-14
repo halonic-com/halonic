@@ -12,6 +12,7 @@ import type {
   ConnectorCallPorts,
   ErrorLog,
   GoogleSetupPorts,
+  ModelSettingsGate,
   RequestCountStore,
   RequestLog,
   Server,
@@ -115,6 +116,7 @@ export function testServer(options: {
   runs?: RunExecutor;
   runStore?: Pick<RunStore, "list" | "get">;
   trust?: TrustGate;
+  modelSettings?: ModelSettingsGate;
   webhooks?: WebhookRoutines;
   google?: GoogleSetupPorts;
   connectors?: ConnectorCallPorts;
@@ -125,6 +127,7 @@ export function testServer(options: {
     runs: options.runs ?? unusedPort("runs"),
     runStore: options.runStore ?? { list: async () => [], get: async () => null },
     trust: options.trust ?? unusedPort("trust"),
+    modelSettings: options.modelSettings ?? { allows: async () => true },
     secrets: options.secrets ?? {
       get: async (name) => (name === "serve-password" ? options.passwordHash : null),
     },

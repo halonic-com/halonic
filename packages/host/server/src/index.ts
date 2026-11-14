@@ -11,6 +11,7 @@ export type {
   GoogleSignInEvents,
   GoogleSignInOutcome,
   GoogleSignInStart,
+  ModelSettingsGate,
   RequestContext,
   RequestCountStore,
   RequestLog,
