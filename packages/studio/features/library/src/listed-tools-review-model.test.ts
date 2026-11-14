@@ -211,13 +211,13 @@ verifies("library.listed-tools-review", () => {
 });
 
 verifies("library.listed-tools-review-states", () => {
-  it("keeps the review open on Approve this version while other tools wait", async () => {
+  it("keeps the review open on Turn it on anyway while other tools wait", async () => {
     const model = await opened(new FakeHost(snapshot({ keepsChanging: [row("flaky")] })));
     expect(await model.approveThisVersion("flaky")).toEqual({ kind: "stay" });
     expect(model.state.snapshot?.approved).toEqual(["flaky"]);
   });
 
-  it("closes with the toast on Approve this version once nothing is left to decide", async () => {
+  it("closes with the toast on Turn it on anyway once nothing is left to decide", async () => {
     const model = await opened(
       new FakeHost(snapshot({ toReview: [], keepsChanging: [row("flaky")] })),
     );

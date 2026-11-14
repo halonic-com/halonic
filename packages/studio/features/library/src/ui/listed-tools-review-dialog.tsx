@@ -92,7 +92,7 @@ export function ListedToolsReviewDialog({
       alternative={{
         label: searching
           ? listedToolsWords.approveAllShown(shown.toReview.length)
-          : listedToolsWords.approveAll,
+          : listedToolsWords.approveAll(shown.toReview.length),
         onClick: () => void model.approveAll().then(close),
       }}
       cancelLabel={listedToolsWords.approveNone}

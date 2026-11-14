@@ -103,7 +103,7 @@ describe("the review dialog", () => {
       const footer = [...(container.querySelector("footer")?.querySelectorAll("button") ?? [])];
       expect(footer.map((candidate) => candidate.textContent?.replace("Approving…", ""))).toEqual([
         "Approve none",
-        "Approve all",
+        "Approve all (2)",
         "Approve selected",
       ]);
     });
@@ -124,7 +124,7 @@ describe("the review dialog", () => {
 
     it("approves everything shown on Approve all and closes with the toast", async () => {
       const { container, closes, approvals } = await open(snapshot(["a", "b"]));
-      await act(async () => button(container, "Approve all").click());
+      await act(async () => button(container, "Approve all (2)").click());
       expect(approvals.map((picks) => picks.map((pick) => pick.name))).toEqual([["a", "b"]]);
       expect(closes).toEqual(["Approved 2 tools from Notes server"]);
     });
@@ -178,7 +178,7 @@ describe("the review dialog", () => {
     it("reports a close once when the browser closes it while an approval runs", async () => {
       const { container, closes } = await open(snapshot(["a", "b"]));
       await act(async () => {
-        const pending = button(container, "Approve all");
+        const pending = button(container, "Approve all (2)");
         pending.click();
         container.querySelector("dialog")?.dispatchEvent(new Event("close"));
         await Promise.resolve();
@@ -211,7 +211,7 @@ describe("the review dialog", () => {
         if (!serverUp) throw new Error("The server is down.");
         return snapshot(["a"]);
       });
-      expect(container.textContent).toContain("Couldn't list the tools:");
+      expect(container.textContent).toContain("Couldn't read the tools:");
       expect(container.querySelector("footer")).toBeNull();
       serverUp = true;
       await act(async () => button(container, "Try again").click());
@@ -225,13 +225,13 @@ describe("the review dialog", () => {
         if (retrying) await new Promise<void>((resolve) => (release = resolve));
         throw new Error("The server is down.");
       });
-      expect(container.textContent).toContain("Couldn't list the tools:");
+      expect(container.textContent).toContain("Couldn't read the tools:");
       retrying = true;
       await act(async () => button(container, "Try again").click());
-      expect(container.textContent).not.toContain("Couldn't list the tools:");
+      expect(container.textContent).not.toContain("Couldn't read the tools:");
       expect(container.querySelector('[role="status"]')).not.toBeNull();
       await act(async () => release?.());
-      expect(container.textContent).toContain("Couldn't list the tools:");
+      expect(container.textContent).toContain("Couldn't read the tools:");
     });
 
     it("shows a refused listing with no rows and no buttons", async () => {
