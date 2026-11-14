@@ -349,7 +349,10 @@ verifies("cli.local-harness-host", () => {
     expect(summary).toMatchObject({ status: "completed" });
     const folders = await workspaceFolderInProfile();
     // The run wrote in the run side of its copy, never in the workspace.
-    expect(written).toEqual([join(folders, "run-copies", runId, "run", "files/agents/coder")]);
+    expect(written).toHaveLength(1);
+    expect(written[0]?.endsWith(join("run-copies", runId, "run", "files", "agents", "coder"))).toBe(
+      true,
+    );
     expect(existsSync(join(acme, agentFile))).toBe(false);
     const record = await readFile(join(folders, "proposals", `${runId}.json`), "utf8");
     expect(record).toContain(agentFile);

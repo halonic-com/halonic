@@ -79,16 +79,19 @@ verifies("fs-node.folder-trash", () => {
     expect(await trash.restore(crypto.randomUUID())).toEqual({ status: "missing" });
   });
 
-  it.runIf(unix)("refuses an entry that is a link", async () => {
-    const { folder, trash } = await setup();
-    const moved = await trash.moveToTrash(path);
-    if (moved.status !== "done") throw new Error("The file wasn't moved.");
-    const outside = join(await tempFolder(), "entry.json");
-    await writeFile(outside, JSON.stringify({ path, content: "outside" }));
-    const entry = join(folder, `${moved.trashId}.json`);
-    await rm(entry);
-    await symlink(outside, entry);
+  it.runIf(unix)(
+    "[platform:win32] needs POSIX links, modes and signals: refuses an entry that is a link",
+    async () => {
+      const { folder, trash } = await setup();
+      const moved = await trash.moveToTrash(path);
+      if (moved.status !== "done") throw new Error("The file wasn't moved.");
+      const outside = join(await tempFolder(), "entry.json");
+      await writeFile(outside, JSON.stringify({ path, content: "outside" }));
+      const entry = join(folder, `${moved.trashId}.json`);
+      await rm(entry);
+      await symlink(outside, entry);
 
-    await expect(trash.restore(moved.trashId)).rejects.toThrow();
-  });
+      await expect(trash.restore(moved.trashId)).rejects.toThrow();
+    },
+  );
 });

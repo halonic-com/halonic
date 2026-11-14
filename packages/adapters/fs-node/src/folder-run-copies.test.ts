@@ -55,18 +55,21 @@ verifies("fs-node.folder-run-copies", () => {
     expect(await copies.store("run_1", "run").list()).toEqual([]);
   });
 
-  it.runIf(unix)("doesn't read a file a link in the run side points to", async () => {
-    const { copies } = await copiesIn();
-    await copies.create("run_1");
-    const outside = join(await tempFolder(), "secret.txt");
-    await writeFile(outside, "outside");
-    await symlink(outside, join(copies.folderOf("run_1"), "link.txt"));
+  it.runIf(unix)(
+    "[platform:win32] needs POSIX links, modes and signals: doesn't read a file a link in the run side points to",
+    async () => {
+      const { copies } = await copiesIn();
+      await copies.create("run_1");
+      const outside = join(await tempFolder(), "secret.txt");
+      await writeFile(outside, "outside");
+      await symlink(outside, join(copies.folderOf("run_1"), "link.txt"));
 
-    await expect(copies.store("run_1", "run").read("link.txt")).rejects.toThrow(
-      "doesn't follow links",
-    );
-    expect(await copies.store("run_1", "run").list()).toEqual([]);
-  });
+      await expect(copies.store("run_1", "run").read("link.txt")).rejects.toThrow(
+        "doesn't follow links",
+      );
+      expect(await copies.store("run_1", "run").list()).toEqual([]);
+    },
+  );
 
   it("lists the copies sorted, and removes one, even twice", async () => {
     const { copies } = await copiesIn();
