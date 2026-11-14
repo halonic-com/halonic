@@ -26,6 +26,7 @@ import {
   DisplaySettings,
   type DisplayStorage,
   settingsFeature,
+  TauriUpdater,
   watchAppearance,
 } from "@halonicjs/studio-feature-settings";
 import {
@@ -33,6 +34,7 @@ import {
   AssistantWorkspaceService,
   DisplaySettingsService,
   HostSettingsService,
+  UpdaterService,
 } from "@halonicjs/studio-feature-settings/api";
 import {
   folderName,
@@ -312,6 +314,9 @@ export async function openFolder(
   provideShellHostSettings(services, window);
   services.provide(HostSettingsService, await hostSettingsOf(services, window));
   provideAgentSandbox(services, window);
+  if (ipc !== undefined) {
+    services.provide(UpdaterService, updaterOf(ipc));
+  }
   const assistant = provideAssistant(services, files, location, name, scope);
   if (ipc !== undefined && files !== undefined) {
     provideWorkspaceRuns(services, { ipc, files, window }, location);
@@ -337,6 +342,20 @@ export async function openFolder(
  * 1.1). Set it to `true` when the board says (a); nothing else changes.
  */
 export const agentSandboxOffered = false;
+
+/**
+ * The page's one updater: the shell keeps each watch channel until the page reloads, so every
+ * workspace the window opens shares this one instead of opening its own.
+ */
+const updaters = new WeakMap<object, TauriUpdater>();
+
+function updaterOf(ipc: TauriIpc & TauriCallbacks): TauriUpdater {
+  const known = updaters.get(ipc);
+  if (known !== undefined) return known;
+  const updater = new TauriUpdater(ipc);
+  updaters.set(ipc, updater);
+  return updater;
+}
 
 /**
  * Gives the section the agent host's sandbox through the shell, when the build offers it and the

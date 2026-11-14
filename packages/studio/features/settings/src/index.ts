@@ -39,3 +39,4 @@ export {
   formatPref,
   formatTags,
 } from "./formats/format-pref.ts";
+export { TauriUpdater } from "./updater/tauri-updater.ts";

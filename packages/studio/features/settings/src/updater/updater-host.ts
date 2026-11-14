@@ -14,7 +14,10 @@ export interface UpdaterHost {
    * twice a second. Returns the function that stops it.
    */
   subscribe(listener: (status: UpdateStatus) => void): () => void;
-  /** "Check now": answers when the check ends. */
+  /**
+   * "Check now": answers when the check ends. When the automatic switch is on and the check
+   * finds an update, the shell also starts its download, so the status can answer `downloading`.
+   */
   check(): Promise<UpdateStatus>;
   /** "Download Halonic 0.1.1" and "Try again". */
   download(): Promise<UpdateStatus>;

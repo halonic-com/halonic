@@ -17,3 +17,6 @@ Where Halonic runs as the desktop app, Settings shall read the updater through o
 - Given a status whose state is `cant-check` with the reason `offline`,
   when About Halonic words it,
   then it has a reason to translate and no error text.
+- Given the desktop app, two listeners following the updater and a third that has stopped,
+  when the shell reports a change,
+  then the two hear it, the third does not, and the shell was asked to watch once.
