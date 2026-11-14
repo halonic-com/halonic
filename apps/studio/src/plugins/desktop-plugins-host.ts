@@ -11,6 +11,7 @@ import { PluginService, TrustService } from "@halonicjs/app";
 import { systemClock } from "@halonicjs/std";
 import type { PluginsHost } from "@halonicjs/studio-feature-plugins/api";
 import { halonicVersion } from "../studio/open-trusts.ts";
+import { desktopPluginActions } from "./plugin-actions.ts";
 import { PluginFeed } from "./plugin-feed.ts";
 
 /** What the desktop's plugins host is made of. */
@@ -21,10 +22,13 @@ export interface DesktopPluginsParts {
   readonly secrets: PluginsHost["secrets"];
   /** Calls a trusted plugin's tools through the agent host; it fails closed where plugins can't run fenced. */
   readonly caller: PluginsHost["caller"];
+  /** Told when a change was saved but reading the plugins folder again failed. */
+  readonly onReloadFailed: (error: unknown) => void;
 }
 
 /** The desktop's plugins host, and the feed it keeps current. */
 export interface DesktopPluginsHost {
+  /** What the plugins feature reads and calls. */
   readonly host: PluginsHost;
   /** Reads the plugins folder again, so a window that comes to the front shows what changed. */
   readonly reload: () => Promise<void>;
@@ -38,13 +42,14 @@ export interface DesktopPluginsHost {
  * calls go through `caller`.
  *
  * @example
- * const { host, reload } = desktopPluginsHost({ ipc, caller });
+ * const { host, reload } = desktopPluginsHost({ ipc, secrets, caller, onReloadFailed });
  * await reload();
  */
 export function desktopPluginsHost({
   ipc,
   secrets,
   caller,
+  onReloadFailed,
 }: DesktopPluginsParts): DesktopPluginsHost {
   const service = new PluginService({
     plugins: new TauriPluginFolderReader(ipc),
@@ -60,48 +65,15 @@ export function desktopPluginsHost({
     clock: systemClock,
   });
   const feed = new PluginFeed(service);
-  const reload = () => feed.reload();
-  const changing = async <T>(change: () => Promise<T>): Promise<T> => {
-    const result = await change();
-    await reload();
-    return result;
-  };
+  const actions = desktopPluginActions({
+    service,
+    feed,
+    secrets,
+    reveal: async (plugin) => (await ipc.invoke(pluginFolderCommands.reveal, { plugin })) === true,
+    onReloadFailed,
+  });
   return {
-    reload,
-    host: {
-      feed,
-      caller,
-      settings: service,
-      secrets,
-      actions: {
-        trust: (plugin) =>
-          changing(async () => {
-            const entry = (await service.load()).find(
-              (each) => each.status !== "broken" && each.folder === plugin,
-            );
-            if (entry === undefined || entry.status === "broken") {
-              throw new Error("the plugin can't be read");
-            }
-            const trusted = await service.trust(plugin, entry.fingerprint, "prompt");
-            if (!trusted.ok) throw new Error("the plugin changed since you reviewed it");
-          }),
-        revoke: (plugin) => changing(() => service.revoke(plugin)),
-        remove: (plugin) =>
-          changing(async () => {
-            const removed = await service.remove(plugin, (name) => secrets.remove(name));
-            return removed.ok ? ({ kind: "removed" } as const) : removed.error;
-          }),
-        usedBy: async () => {
-          // Connectors live in each workspace's files; the app doesn't scan them all yet, and the
-          // page says so rather than claiming nothing uses the plugin.
-          throw new Error("Halonic can't look through every workspace yet");
-        },
-        reload,
-        openFolder: async (plugin) => {
-          const shown = await ipc.invoke(pluginFolderCommands.reveal, { plugin });
-          if (shown === false) throw new Error("the plugin's folder isn't there");
-        },
-      },
-    },
+    reload: actions.reload,
+    host: { feed, caller, settings: service, secrets, actions },
   };
 }

@@ -20,6 +20,7 @@ function hostOver(shell: TauriShell) {
     ipc: shell,
     secrets: { get: async () => null, set: async () => {}, remove: async () => {} },
     caller: { call: async () => "" },
+    onReloadFailed: () => {},
   });
 }
 

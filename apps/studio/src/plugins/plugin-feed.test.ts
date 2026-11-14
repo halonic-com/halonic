@@ -1,60 +1,8 @@
-import {
-  MemoryFolderReader,
-  MemoryPluginFolder,
-  MemoryRecordStore,
-  MemoryTrustStore,
-} from "@halonicjs/adapter-memory";
-import { PluginService, TrustService } from "@halonicjs/app";
-import type { Digest } from "@halonicjs/ports";
+import type { PluginService } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
+import { acme } from "./acme-plugins.testing.ts";
 import { PluginFeed } from "./plugin-feed.ts";
-
-const digest: Digest = {
-  async sha256(data) {
-    return new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(data)));
-  },
-};
-
-const manifest = (id: string): string =>
-  `id: ${id}
-version: 1.0.0
-sdk: 1
-name: ${id === "rain" ? "Rain" : "Weather"}
-backend:
-  hosts: [api.acme.example]
-  tools:
-    - { name: forecast, description: The forecast., risk: read, untrusted: true }
-ui:
-  commands:
-    - { id: forecast, title: Show the forecast, tool: forecast }
-  panel: { title: Weather }`;
-
-/** The plugins `rain` and `weather`, and `broken` whose manifest isn't one. */
-function acme() {
-  const reader = new MemoryFolderReader("/profile/plugins");
-  for (const id of ["rain", "weather"]) {
-    reader.putFile(`${id}/plugin.yaml`, manifest(id));
-    reader.putFile(`${id}/backend/index.js`, "export default {};\n");
-  }
-  reader.putFile("broken/plugin.yaml", "id: broken\n");
-  const clock = { now: () => new Date("2026-11-14T09:00:00.000Z") };
-  const trust = new TrustService({
-    store: new MemoryTrustStore(),
-    digest,
-    clock,
-    appVersion: "0.1.0",
-  });
-  const service = new PluginService({
-    plugins: reader,
-    writer: new MemoryPluginFolder(),
-    digest,
-    trust,
-    records: new MemoryRecordStore(),
-    clock,
-  });
-  return { service, reader };
-}
 
 async function trustWeather(service: PluginService): Promise<void> {
   const entry = (await service.load()).find((each) => each.folder === "weather");
@@ -113,5 +61,49 @@ verifies("studio.desktop-plugins-host", () => {
     feed.subscribe(listener)();
     await feed.reload();
     expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("keeps the fingerprint each plugin had when it was read, and none for one that can't load", async () => {
+    const { service } = acme();
+    const feed = new PluginFeed(service);
+    expect(feed.fingerprintOf("weather")).toBeUndefined();
+    await feed.reload();
+    expect(feed.fingerprintOf("weather")).toMatch(/^hpf1:[0-9a-f]{64}$/);
+    expect(feed.fingerprintOf("weather")).not.toBe(feed.fingerprintOf("rain"));
+    expect(feed.fingerprintOf("broken")).toBeUndefined();
+  });
+
+  it("answers a reload made during a read with a read that started after the call", async () => {
+    const { service } = acme();
+    const feed = new PluginFeed(service);
+    await feed.reload();
+    const real = service.load.bind(service);
+    const load = vi.spyOn(service, "load");
+    const release: (() => void)[] = [];
+    load.mockImplementation(async () => {
+      const entries = await real();
+      await new Promise<void>((resolve) => release.push(resolve));
+      return entries;
+    });
+    const first = feed.reload();
+    await vi.waitFor(() => expect(release).toHaveLength(1));
+    const weather = (await real()).find((each) => each.folder === "weather");
+    if (weather === undefined || weather.status === "broken")
+      throw new Error("weather should load");
+    await service.trust("weather", weather.fingerprint, "prompt");
+    let settled = false;
+    const second = feed.reload().then(() => {
+      settled = true;
+    });
+    const third = feed.reload();
+    release[0]?.();
+    await first;
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    await vi.waitFor(() => expect(release).toHaveLength(2));
+    release[1]?.();
+    await Promise.all([second, third]);
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(feed.current().find((each) => each.plugin === "weather")?.status).toBe("on");
   });
 });

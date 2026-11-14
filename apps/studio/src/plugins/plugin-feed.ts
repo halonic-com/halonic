@@ -22,7 +22,9 @@ export class PluginFeed implements InstalledPluginFeed {
   readonly #source: PluginFeedSource;
   readonly #listeners = new Set<() => void>();
   #plugins: readonly InstalledPlugin[] = [];
+  #fingerprints = new Map<string, string>();
   #reading: Promise<void> | undefined;
+  #readAgain: Promise<void> | undefined;
 
   constructor(source: PluginFeedSource) {
     this.#source = source;
@@ -38,15 +40,39 @@ export class PluginFeed implements InstalledPluginFeed {
   };
 
   /**
-   * Reads the plugins folder again. Calls made while a read runs share it.
+   * The fingerprint of the plugin as the last read found it, which is what the page drew its trust
+   * check from. `undefined` for a plugin that can't load or that the feed hasn't read.
+   */
+  fingerprintOf(plugin: string): string | undefined {
+    return this.#fingerprints.get(plugin);
+  }
+
+  /**
+   * Reads the plugins folder again. A call made while a read runs gets one more read after it,
+   * shared with the other calls made meanwhile: the running read may have started before the
+   * caller's change, so it can't stand for it.
    *
    * @throws when the plugins folder can't be listed; the feed keeps the plugins it had
    */
   reload(): Promise<void> {
-    this.#reading ??= this.#read().finally(() => {
-      this.#reading = undefined;
+    if (this.#reading === undefined) return this.#start();
+    this.#readAgain ??= this.#reading
+      .catch(() => {
+        // That read's caller gets its error; this call only needs a read that starts now.
+      })
+      .then(() => {
+        this.#readAgain = undefined;
+        return this.#start();
+      });
+    return this.#readAgain;
+  }
+
+  #start(): Promise<void> {
+    const reading = this.#read().finally(() => {
+      if (this.#reading === reading) this.#reading = undefined;
     });
-    return this.#reading;
+    this.#reading = reading;
+    return reading;
   }
 
   async #read(): Promise<void> {
@@ -57,6 +83,11 @@ export class PluginFeed implements InstalledPluginFeed {
           entry,
           entry.status === "broken" ? null : await this.#source.install(entry.folder),
         ),
+      ),
+    );
+    this.#fingerprints = new Map(
+      entries.flatMap((entry) =>
+        entry.status === "broken" ? [] : [[entry.folder, entry.fingerprint] as const],
       ),
     );
     if (sameJson(next, this.#plugins)) return;
