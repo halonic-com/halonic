@@ -1,4 +1,9 @@
-import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
+import {
+  engineWordsOf,
+  ItemGone,
+  type ItemViewProps,
+  PageBackLinkSlot,
+} from "@halonicjs/studio-shell";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { ConnectorStatusHostService } from "../connector-status-host.ts";
 import { ConnectorStatusModel } from "../connector-status-model.ts";
@@ -31,6 +36,7 @@ export function ConnectorPage({ item, context }: ItemViewProps) {
       </h1>
       <ConnectorStatusSection
         model={model}
+        words={engineWordsOf(context)}
         announceState={(key, text) => context.announcer.announceState(key, text)}
       />
     </div>

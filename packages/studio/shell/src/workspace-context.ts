@@ -1,5 +1,6 @@
 import type { Announcer } from "./announcer/announcer.ts";
 import type { BadgeRegistry } from "./badges/badge-registry.ts";
+import type { EngineWords } from "./engine/engine-words.ts";
 import type { SidebarPlace } from "./points/frame.ts";
 import type { ItemRef } from "./points/item-kinds.ts";
 import type { ServiceLookup } from "./service-catalog.ts";
@@ -14,6 +15,12 @@ export interface WorkspaceContext {
   readonly services: ServiceLookup;
   /** Reads text to screen readers; it belongs to the window, not the workspace. */
   readonly announcer: Announcer;
+  /**
+   * The texts that say the engine isn't answering, worded for this window's host ("The engine …",
+   * "Halonic on the server …", "Halonic on your computer …"). Read it with `engineWordsOf`, which
+   * falls back to the desktop app's words for a context built without a window.
+   */
+  readonly engineWords?: EngineWords;
   /**
    * Opens one of the sidebar's places as the sidebar does: in the active tab on the desktop, asking
    * for focus on its page's `h1`, and as its list on a phone. The window gives it to the views it
