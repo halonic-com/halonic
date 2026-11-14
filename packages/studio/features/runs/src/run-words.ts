@@ -125,7 +125,7 @@ export const lineSeparator = " · ";
 export const emptyListWords = {
   noRunsTitle: "No runs yet",
   noRunsBody:
-    "A run is one time a workflow or agent does its job. Start one from a workflow's Run button, or let a routine start it.",
+    "A run is one time a workflow or agent does its job. To start one today, type halonic run in a terminal.",
   goToWorkflows: "Go to Workflows",
   onlyTestRuns: "Only test runs so far.",
   showTestRuns: "Show test runs",
