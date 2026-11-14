@@ -129,7 +129,7 @@ export function windowsReleaseOf(osRelease: string, osVersion: string): WindowsR
  * `loaded: false`, which `check()` reports as `other`.
  *
  * @param platform - the operating system, as Node names it
- * @param importSdk - imports `@microsoft/mxc-sdk/v1`; until the adapter declares the SDK (HAL-7606), the default says it isn't installed
+ * @param importSdk - imports `@microsoft/mxc-sdk/v1`; the real one is {@link importDownloadedSdk}, from the download. The default says the SDK isn't there
  */
 export function mxcSdkLoader(
   platform: NodeJS.Platform,
@@ -166,5 +166,5 @@ function mxcSdkOf(module: unknown): MxcSdk {
 }
 
 async function sdkNotInstalled(): Promise<unknown> {
-  throw new Error("this build of Halonic doesn't include it yet");
+  throw new Error("MXC's SDK isn't set up in this build of Halonic");
 }

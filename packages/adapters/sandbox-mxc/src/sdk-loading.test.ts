@@ -104,12 +104,12 @@ verifies("sandbox-mxc.sdk-loading", () => {
       await expect(mxc.open(profile)).rejects.toThrow("MXC can't start here");
     });
 
-    it("says other until this build declares the SDK", async () => {
+    it("says other when this build sets up no SDK", async () => {
       expect(await sandboxOn(windows11()).check()).toMatchObject({
         ok: false,
         reason: "other",
         missing: [
-          "MXC's SDK can't be loaded or asked: this build of Halonic doesn't include it yet",
+          "MXC's SDK can't be loaded or asked: MXC's SDK isn't set up in this build of Halonic",
         ],
       });
     });

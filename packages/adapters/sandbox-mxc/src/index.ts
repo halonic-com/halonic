@@ -20,3 +20,10 @@ export type {
   MxcSpawnOptions,
 } from "./mxc-process.ts";
 export { MxcSandbox } from "./mxc-sandbox.ts";
+export {
+  downloadMxcSdk,
+  type Fetch,
+  importDownloadedSdk,
+  isSdkDownloaded,
+  sdkFolderOf,
+} from "./sdk-download.ts";

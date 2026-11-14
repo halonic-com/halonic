@@ -12,6 +12,17 @@
       "reason": "Runs a program inside the operating system's own fence (bubblewrap on Linux, Seatbelt on macOS, a sandbox user on Windows) with a loopback proxy that filters network access. Approved in plan v1.17 (section 7.2) and by Liam on HAL-1726. Pinned to one exact version; only the library API is used, never the srt command. Brings zod, commander, node-forge and @pondwader/socks5-server, which our own code never imports.",
       "useInstead": "the Sandbox port"
     },
+    "@microsoft/mxc-sdk": {
+      "category": "outside-world",
+      "allowedIn": [
+        "@halonicjs/adapter-sandbox-mxc"
+      ],
+      "layers": [
+        "adapters"
+      ],
+      "reason": "Starts a program in Windows 11's process container (MXC). Not a dependency in any package.json: the board said yes, on demand (HAL-7606), so the adapter downloads one pinned version (packages/adapters/sandbox-mxc/src/sdk-packages.ts) on first use on Windows, checks it against an integrity pinned in the repository, and keeps it in Halonic's data folder. Brings koffi (with its compiled Windows part) and semver, which are downloaded with it, and node-pty, which is not (the adapter never takes the SDK's terminal path). Telemetry is never turned on. Listed here so the exception is written down in one place.",
+      "useInstead": "the Sandbox port"
+    },
     "@biomejs/biome": {
       "category": "dev-tooling",
       "allowedIn": [
