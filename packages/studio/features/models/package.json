@@ -13,9 +13,13 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@halonicjs/studio-shell": "workspace:*"
+    "@halonicjs/format": "workspace:*",
+    "@halonicjs/std": "workspace:*",
+    "@halonicjs/studio-shell": "workspace:*",
+    "@halonicjs/yaml": "workspace:*"
   },
   "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",
