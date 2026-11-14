@@ -30,6 +30,7 @@ import {
 } from "@halonicjs/studio-feature-settings";
 import {
   AgentSandboxService,
+  AssistantWorkspaceService,
   DisplaySettingsService,
   HostSettingsService,
 } from "@halonicjs/studio-feature-settings/api";
@@ -69,10 +70,12 @@ import {
 } from "@halonicjs/studio-shell";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
+import { provideAssistant } from "./assistant-workspace.ts";
 import { newWorkspaceHostOf } from "./new-workspace-host.ts";
+import { openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
 import { trustedSourcesOf } from "./trusted-sources.ts";
 import { hostSettingsOf } from "./window-host-settings.ts";
-import { WorkspaceTrust } from "./workspace-trust.ts";
+import type { WorkspaceTrust } from "./workspace-trust.ts";
 import { WorkspaceTrustView } from "./workspace-trust-control.ts";
 
 /**
@@ -175,6 +178,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     RunsSourceService,
     DisplaySettingsService,
     HostSettingsService,
+    AssistantWorkspaceService,
     WorkspacePageService,
     TrustedSourcesService,
   ],
@@ -308,6 +312,7 @@ export async function openFolder(
   provideShellHostSettings(services, window);
   services.provide(HostSettingsService, await hostSettingsOf(services, window));
   provideAgentSandbox(services, window);
+  const assistant = provideAssistant(services, files, location, name, scope);
   if (ipc !== undefined && files !== undefined) {
     provideWorkspaceRuns(services, { ipc, files, window }, location);
   }
@@ -320,41 +325,10 @@ export async function openFolder(
     trust: trustView,
     dispose: () => {
       if (trust !== undefined) open.delete(trust);
+      assistant?.dispose();
       return scope === undefined ? services.dispose() : scope.close();
     },
   };
-}
-
-/** The trust of every folder open in a window, so removing a trusted source reaches all of them. */
-const openTrusts = new WeakMap<Shell, Set<WorkspaceTrust>>();
-
-function openTrustsOf(shell: Shell): Set<WorkspaceTrust> {
-  let open = openTrusts.get(shell);
-  if (open === undefined) {
-    open = new Set();
-    openTrusts.set(shell, open);
-  }
-  return open;
-}
-
-/** The version written into the trust records the Studio saves, the one the CLI writes. */
-const halonicVersion = "0.1.0";
-
-/** The trust of the workspace in `location`, read through the shell as the CLI reads it. */
-function workspaceTrustOf(ipc: TauriIpc & TauriCallbacks, location: string): WorkspaceTrust {
-  const commands = new TauriCommandPaths(ipc);
-  return new WorkspaceTrust({
-    definitions: new TauriDefinitionStore(shellFiles(ipc), location),
-    folder: new TauriFolderReader(ipc, location),
-    findCommand: async (command) => (await commands.find([command])).get(command),
-    digest: webCryptoDigest,
-    trust: new TrustService({
-      store: new TauriTrustStore(ipc),
-      digest: webCryptoDigest,
-      clock: systemClock,
-      appVersion: halonicVersion,
-    }),
-  });
 }
 
 /**
@@ -387,14 +361,6 @@ function savingOf(
     saving: workspace.saving,
     name,
   });
-}
-
-/** The shell's file commands and channels, as the desktop stores take them. */
-function shellFiles(ipc: TauriIpc & TauriCallbacks): TauriFileShell {
-  return {
-    invoke: (command, args) => ipc.invoke(command, args),
-    openChannel: (onMessage) => new TauriChannel(ipc, onMessage),
-  };
 }
 
 /** The workspace's scope over its folder and its review records, which live in the profile. */

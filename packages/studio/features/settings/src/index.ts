@@ -1,6 +1,7 @@
 export {
   type AgentSandboxHost,
   AgentSandboxService,
+  type AssistantNavigation,
   type AssistantWorkspace,
   type AssistantWorkspaceFacts,
   AssistantWorkspaceService,
