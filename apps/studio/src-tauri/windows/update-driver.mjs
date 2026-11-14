@@ -70,12 +70,25 @@ function describe({ text, exception }) {
 /** Calls `command` in the page; `closed` when the page went away first. */
 async function invoke(command) {
   const address = await studioPage();
-  const expression = `window.__TAURI_INTERNALS__.invoke(${JSON.stringify(command)})`;
+  // The page is listed before Tauri has put its bridge into it (HAL-8916:
+  // "reading 'invoke'" of undefined), so the call waits in the page for it.
+  const expression = `(async () => {
+    const until = Date.now() + 30000;
+    while (!window.__TAURI_INTERNALS__?.invoke && Date.now() < until) {
+      await new Promise((done) => setTimeout(done, 250));
+    }
+    return window.__TAURI_INTERNALS__.invoke(${JSON.stringify(command)});
+  })()`;
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(address);
     let answered = false;
     socket.onopen = () => {
-      const params = { expression, awaitPromise: true, returnByValue: true };
+      const params = {
+        expression,
+        awaitPromise: true,
+        returnByValue: true,
+        generatePreview: true,
+      };
       socket.send(JSON.stringify({ id: 1, method: "Runtime.evaluate", params }));
     };
     socket.onmessage = (event) => {
