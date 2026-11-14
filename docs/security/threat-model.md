@@ -47,7 +47,7 @@ app calls yet (for example `readToolListing` has no caller outside its tests).
 | --- | --- | --- |
 | `halonic` on your machine | you, and programs running as you | Part of 0.1, run from source |
 | Studio on your machine | you, and programs running as you | Being built (phase 1, plan HAL-9). Not shipped |
-| `halonic serve` on loopback | programs and web pages on your machine | Planned (phase 4, plan HAL-9) |
+| `halonic serve` on loopback | programs and web pages on your machine | On `main`, run from source (phase 4, plan HAL-9) |
 | `serve` on a LAN, tunnel or VPS | everyone on that network, or the internet | Planned (phase 4). Treated as public |
 | Cloud deployments (Cloudflare, containers) | the whole internet | Planned (phase 4). See [section 6](#6-cloud-deployments-b7) |
 
@@ -668,8 +668,9 @@ The DNS leak is what keeps native srt experimental.
 
 ## 5. `serve` (B6)
 
-`halonic serve` is not built yet (phase 4, plan HAL-9). This section is the
-design the code will be held to. Only what is marked **On `main`** works today.
+`halonic serve` is built (phase 4, plan HAL-9) and run from source. This
+section is the design the code is held to. Only what is marked **On `main`**
+works today.
 
 - **A `serve` on a non-loopback address is public.** Every rule below applies.
 - Threats: DNS rebinding and a wrong `Host`, no sign-in, password guessing in
@@ -684,13 +685,14 @@ design the code will be held to. Only what is marked **On `main`** works today.
   an app or a script that reaches the server can't start a workspace's programs
   or trust the workspace itself (`server.trust-gate`; see
   [workspace trust](trust.md#where-trust-is-checked)).
-- Planned mitigations (all **Planned**, phase 4): a host allow-list; required
-  sign-in on public shapes, with the server refusing to run without a password
-  hash; scrypt password hashing and a shared, atomic login limiter; session
-  tokens stored only as hashes in `__Host-` cookies; an exact `Origin` check;
-  strict security headers; a body limit enforced while streaming; errors that
-  carry a code and a short message only; HMAC-signed, replay-protected
-  webhooks.
+- **On `main`** (`host/server`, `adapters/password-scrypt`,
+  `targets/node/runtime`): a host allow-list; required sign-in on public
+  shapes, with the server refusing to run without a password hash; scrypt
+  password hashing and a shared, atomic login limiter; session tokens stored
+  only as hashes in `__Host-` cookies; an exact `Origin` check; strict security
+  headers; a body limit enforced while streaming; errors that carry a code and
+  a short message only; HMAC-signed, replay-protected webhooks; the daily
+  request ceiling. The outside-a-run connector gate is **Planned**.
 
 #### Agents in a harness on the serve host
 
@@ -703,10 +705,10 @@ trust fingerprint belong to the host, and nothing in a request reaches them.
 
 | Threat | Mitigation | Mark |
 | --- | --- | --- |
-| A caller moves an agent out of its sandbox, onto "this computer", into another folder or to other sites, or swaps its harness, by naming that in the start | `POST /api/runs` and `POST /api/agent-runs` answer 400 to a body that names `harness`, `placement`, `sandbox`, `profile`, `workingFolder` or `allowedSites`, before the trust gate is asked, and start nothing. The executor gets only the fields the route validated. Where and how an agent runs comes from its file and from the choices a person made at the computer, never from a request | **In review** (`server.harness-on-host`) |
+| A caller moves an agent out of its sandbox, onto "this computer", into another folder or to other sites, or swaps its harness, by naming that in the start | `POST /api/runs` and `POST /api/agent-runs` answer 400 to a body that names `harness`, `placement`, `sandbox`, `profile`, `workingFolder` or `allowedSites`, before the trust gate is asked, and start nothing. The executor gets only the fields the route validated. Where and how an agent runs comes from its file and from the choices a person made at the computer, never from a request | **On `main`** (`server.harness-on-host`) |
 | A caller starts a harness agent in a workspace that changed after it was trusted | The trust gate is asked again on every start, as for any run; the harness is part of the trust fingerprint (4.6), so a changed harness asks for trust again | **On `main`** (`server.trust-gate`, `workspace.trust-agents`) |
-| A served run of a harness agent starts a program the sandbox check would have refused | Each served run is checked for the sandbox before it starts, as for `routines watch`; a computer that can't start the sandbox runs no such agent, and the choice "this computer" is never a fallback | **In review** (`cli.commands.serve.harness`) |
-| A caller picks the version an agent works in | The start routes never pass a version. A served start reads the live version, as a routine's run does, and the agent works in a copy of it in Halonic's profile, so it can't change the workspace files | **In review** (`cli.commands.serve.harness`) |
+| A served run of a harness agent starts a program the sandbox check would have refused | Each served run is checked for the sandbox before it starts, as for `routines watch`; a computer that can't start the sandbox runs no such agent, and the choice "this computer" is never a fallback | **On `main`** (`cli.commands.serve.harness`) |
+| A caller picks the version an agent works in | The start routes never pass a version. A served start reads the live version, as a routine's run does, and the agent works in a copy of it in Halonic's profile, so it can't change the workspace files | **On `main`** (`cli.commands.serve.harness`) |
 | The agent's work leaves the host through the API | The agent's changes stay in a proposal folder in the profile until a person accepts them at the computer. No route accepts one | **On `main`** (`harness-host`); Accept itself **Planned** |
 | A harness agent makes `serve` a way to run commands for anyone who signs in | A signed-in caller can start only what the trusted workspace defines, never a command of their own. Known limit: anyone with the password can start the trusted workspace's agents and spend its model budget; the daily request ceiling, where one is set, caps that | **On `main`** (`server.daily-requests`) |
 
@@ -717,7 +719,7 @@ Pieces already on `main` that `serve` will build on:
 | `PasswordHasher` port and the hash format: scrypt, `ln=14, r=8, p=5`, 16-byte salt, checked ranges so a hash fits a 128 MB Worker (`ports.password-hash-format`) | **On `main`** |
 | Constant-time comparison in `core/std` | **On `main`** |
 | `Coordination` port with a Node adapter: leases, compare-and-set, counters that never pass their limit, fixed-window attempt counts safe against parallel calls | **On `main`** |
-| The scrypt implementation, the sign-in flow, the login limiter and the server | **Planned** (phase 4) |
+| The scrypt implementation, the sign-in flow, the login limiter and the server | **On `main`** |
 
 **Known limits.** Sign-in is a single factor on the public internet until
 passkeys land. On loopback, "no password" may stay.
