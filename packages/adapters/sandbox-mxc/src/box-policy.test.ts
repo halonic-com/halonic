@@ -168,7 +168,9 @@ verifies("sandbox-mxc.box-request", () => {
       );
       expect(environment["SystemRoot"]).toBe("D:\\W"); // leak-guard: allow absolute-path made-up Windows path for a test
       expect(environment["localappdata"]).toBe("D:\\L"); // leak-guard: allow absolute-path made-up Windows path for a test
-      expect(Object.keys(environment).filter((n) => /^(systemroot|localappdata)$/i.test(n))).toHaveLength(2);
+      expect(
+        Object.keys(environment).filter((n) => /^(systemroot|localappdata)$/i.test(n)),
+      ).toHaveLength(2);
     });
 
     it("keeps the host's variables out", async () => {

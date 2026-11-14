@@ -42,7 +42,10 @@ export async function realMxc(): Promise<RealMxc> {
   const download = await sdk.download();
   if (!download.done) throw new Error(`MXC's SDK didn't download: ${download.problem}`);
   return {
-    sandbox: new MxcSandbox(systemMachine(mxcSdkLoader(process.platform, sdk.importSdk)), new BoxFolders(dataFolder, process.pid)),
+    sandbox: new MxcSandbox(
+      systemMachine(mxcSdkLoader(process.platform, sdk.importSdk)),
+      new BoxFolders(dataFolder, process.pid),
+    ),
     dataFolder,
     base,
     // The SDK's native module stays loaded in this process, and Windows won't
@@ -111,7 +114,10 @@ export function profileOver(
     readOnlyPaths: [folders.readOnly, dirname(process.execPath)],
     deniedPaths: [folders.secret],
     env: {},
-    network: { bridge: { kind: "loopback", host: "127.0.0.1", port: bridgePort }, allowedSites: [] },
+    network: {
+      bridge: { kind: "loopback", host: "127.0.0.1", port: bridgePort },
+      allowedSites: [],
+    },
     timeLimitMs: 120_000,
     ...overrides,
   };
