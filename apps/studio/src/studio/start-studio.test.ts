@@ -370,36 +370,56 @@ verifies("studio.open-folder", () => {
   });
 });
 
+/**
+ * The test below makes three waits in a row (Welcome, the window, then the lazy-loaded Settings
+ * dialog). Alone it takes well under a second, but on a busy CI runner the first run of each step
+ * also compiles code, and three waits with their own ceilings could add up to more than the 5 s
+ * test timeout (HAL-9216). Each wait gets its own ceiling, and the test timeout covers all three
+ * plus a margin, so a slow runner passes and a window that never draws still fails on the
+ * assertion and not on "Test timed out".
+ */
+const settingsWait = 8_000;
+const settingsTestTimeout = 3 * settingsWait + 4_000;
+
 verifies("studio.settings", () => {
-  it("opens Settings on Ctrl , with Appearance and a host section under On this computer", async () => {
-    started = startStudio(
-      {
-        element,
-        window: desktopWebview("/work/acme").page,
-        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        storage: memoryStorage(),
-      },
-      desktopFeatures,
-    );
-    await vi.waitFor(() => expect(element.querySelector("button")).not.toBeNull());
-    element.querySelector("button")?.click();
-    await drawn(element);
+  it(
+    "opens Settings on Ctrl , with Appearance and a host section under On this computer",
+    async () => {
+      started = startStudio(
+        {
+          element,
+          window: desktopWebview("/work/acme").page,
+          userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+          storage: memoryStorage(),
+        },
+        desktopFeatures,
+      );
+      await vi.waitFor(() => expect(element.querySelector("button")).not.toBeNull(), {
+        timeout: settingsWait,
+      });
+      element.querySelector("button")?.click();
+      await drawn(element);
 
-    window.dispatchEvent(
-      new KeyboardEvent("keydown", { key: ",", code: "Comma", ctrlKey: true, bubbles: true }),
-    );
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { key: ",", code: "Comma", ctrlKey: true, bubbles: true }),
+      );
 
-    await vi.waitFor(() => {
-      expect(document.querySelector("dialog[open] section h3")?.textContent).toBe("Appearance");
-    });
-    const nav = document.querySelector("dialog[open] nav");
-    expect([...(nav?.querySelectorAll("h3") ?? [])].map((h) => h.textContent)).toEqual([
-      "acme, Workspace settings",
-      "On this computer",
-    ]);
-    expect(nav?.textContent).toContain("Agent sandbox");
-    expect(nav?.querySelector('[aria-current="page"]')?.textContent).toBe("Appearance");
-  });
+      await vi.waitFor(
+        () => {
+          expect(document.querySelector("dialog[open] section h3")?.textContent).toBe("Appearance");
+        },
+        { timeout: settingsWait },
+      );
+      const nav = document.querySelector("dialog[open] nav");
+      expect([...(nav?.querySelectorAll("h3") ?? [])].map((h) => h.textContent)).toEqual([
+        "acme, Workspace settings",
+        "On this computer",
+      ]);
+      expect(nav?.textContent).toContain("Agent sandbox");
+      expect(nav?.querySelector('[aria-current="page"]')?.textContent).toBe("Appearance");
+    },
+    settingsTestTimeout,
+  );
 
   it("registers Settings and its command in the desktop app", () => {
     const shell = createShell({ ...desktopFeatures, host: "desktop-app", platform: "windows" });
