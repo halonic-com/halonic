@@ -28,6 +28,15 @@ fn remove_plugin(root: &Path, plugin: &str) -> Result<(), FileError> {
             reason: "a plugin's folder is one name",
         });
     }
+    // Windows drops trailing dots and spaces when it opens a path, so `...`
+    // would open the plugins folder itself. Refuse them here rather than rely
+    // on the verbatim path that `canonicalize` happens to return.
+    if plugin.ends_with(['.', ' ']) {
+        return Err(FileError::UnsafePath {
+            path: plugin.to_owned(),
+            reason: "a plugin's name does not end in a dot or a space",
+        });
+    }
     // The reader refuses a plugins folder that is a link or a file.
     if plugins_reader(root)?.is_none() {
         return Ok(());

@@ -78,6 +78,9 @@ fn plugin_folder_remove_test_refuses_a_name_that_is_not_one_folder() {
         "acme-weather/src",
         "a\\b",
         ".git",
+        "...",
+        "acme-weather.",
+        "acme-weather ",
     ] {
         let refusal = remove_plugin(&scratch.plugins(), name).expect_err(name);
         assert!(
