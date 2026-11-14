@@ -7,7 +7,7 @@ type Provider = string | null;
 
 /**
  * Checks that the features fit together and returns them so that every
- * feature comes after the features whose services it needs. Otherwise the
+ * feature comes after the features whose services it needs or wants. Otherwise the
  * order given is kept, so the result is the same on every run.
  *
  * @throws ShellError for a duplicate feature id, a service provided twice, a
@@ -39,11 +39,11 @@ export function orderFeatures(
     if (path.includes(feature.id)) {
       const cycle = [...path.slice(path.indexOf(feature.id)), feature.id].join(" → ");
       throw new ShellError(
-        `Features need each other's services in a cycle: ${cycle}. Move the shared part into one feature, or into a host service.`,
+        `Features need or want each other's services in a cycle: ${cycle}. Move the shared part into one feature, or into a host service.`,
       );
     }
     path.push(feature.id);
-    for (const key of feature.needs) {
+    for (const key of [...feature.needs, ...feature.wants]) {
       const provider = providers.get(key.name);
       const providerFeature =
         provider === null || provider === undefined ? undefined : byId.get(provider);

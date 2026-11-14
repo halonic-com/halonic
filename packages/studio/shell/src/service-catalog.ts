@@ -7,9 +7,17 @@ export interface ServiceLookup {
   /**
    * The service for a key.
    *
-   * @throws ShellError when the feature lists the key in neither `needs` nor `provides`
+   * @throws ShellError when the feature lists the key in none of `needs`, `wants` and
+   *   `provides`, or lists it in `wants` and nobody provided it
    */
   get<Service>(key: ServiceKey<Service>): Service;
+  /**
+   * The service for a key, or `undefined` when the feature lists it in `wants` and nobody
+   * provided it. A service in `needs` or `provides` is always there.
+   *
+   * @throws ShellError when the feature lists the key in none of `needs`, `wants` and `provides`
+   */
+  find<Service>(key: ServiceKey<Service>): Service | undefined;
 }
 
 /**
@@ -141,26 +149,38 @@ export class ServiceCatalog {
 
 /**
  * A lookup into one workspace's services, limited to what the feature lists
- * in `needs` and `provides`. `beforeGet` runs before each allowed lookup;
- * `instantiate` uses it to build the feature's own services on demand.
+ * in `needs`, `wants` and `provides`. `beforeGet` runs before each allowed
+ * lookup; `instantiate` uses it to build the feature's own services on demand.
  */
 export function lookupFor(
   feature: Feature,
   target: ServiceTarget,
   beforeGet?: (key: ServiceKey<unknown>) => void,
 ): ServiceLookup {
+  const checkListed = (key: ServiceKey<unknown>): void => {
+    const listed = [feature.needs, feature.wants, feature.provides].some((keys) =>
+      keys.some((listedKey) => listedKey.name === key.name),
+    );
+    if (!listed) {
+      throw new ShellError(
+        `The feature "${feature.id}" asked for the service "${key.name}" but doesn't list it in needs or wants. Add it there.`,
+      );
+    }
+    beforeGet?.(key);
+  };
   return {
     get: <Service>(key: ServiceKey<Service>): Service => {
-      const listed =
-        feature.needs.some((need) => need.name === key.name) ||
-        feature.provides.some((own) => own.name === key.name);
-      if (!listed) {
+      checkListed(key);
+      if (!target.has(key)) {
         throw new ShellError(
-          `The feature "${feature.id}" asked for the service "${key.name}" but doesn't list it in needs. Add it there.`,
+          `The feature "${feature.id}" asked for the wanted service "${key.name}", but nothing provides it here. Use find, which returns undefined.`,
         );
       }
-      beforeGet?.(key);
       return target.get(key);
+    },
+    find: <Service>(key: ServiceKey<Service>): Service | undefined => {
+      checkListed(key);
+      return target.has(key) ? target.get(key) : undefined;
     },
   };
 }

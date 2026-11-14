@@ -1,5 +1,5 @@
 import { Button, Callout, ExternalLink, Switch, ViewOnlyLine } from "@halonicjs/studio-kit";
-import { type SettingsSectionProps, ShellError } from "@halonicjs/studio-shell";
+import type { SettingsSectionProps } from "@halonicjs/studio-shell";
 import { type UpdaterHost, UpdaterService } from "../api.ts";
 import { type AboutAction, type AboutProgress, aboutView } from "./about-state.ts";
 import * as text from "./about-text.ts";
@@ -144,11 +144,5 @@ function ViewOnlyAbout() {
 
 /** The app's updater, or none when the app gives none (served Studio). */
 function hostOf(context: SettingsSectionProps["context"]): UpdaterHost | undefined {
-  try {
-    return context.services.get(UpdaterService);
-  } catch (error) {
-    // Only "the feature doesn't list it" means no host; anything else is a bug to surface.
-    if (error instanceof ShellError) return undefined;
-    throw error;
-  }
+  return context.services.find(UpdaterService);
 }

@@ -1,5 +1,11 @@
 import { defineFeature, type SettingsSectionContribution } from "@halonicjs/studio-shell";
-import { DisplaySettingsService, HostSettingsService } from "./api.ts";
+import {
+  AgentSandboxService,
+  AssistantWorkspaceService,
+  DisplaySettingsService,
+  HostSettingsService,
+  UpdaterService,
+} from "./api.ts";
 import { agentCharactersPref, themePref } from "./appearance/appearance-prefs.ts";
 import { onOrOff, themeNames } from "./appearance/appearance-text.ts";
 
@@ -88,12 +94,15 @@ export const sectionsByName: readonly string[] = [
  * window's `openSettings`, and a command per section in `sectionsByName` that a feature added
  * (`settings.section-commands`), named as its row, which opens Settings on it. It reads the
  * window's display settings from the app (`DisplaySettingsService`) and the computer's host
- * settings (`HostSettingsService`).
+ * settings (`HostSettingsService`). It reads the updater, the agent sandbox and the Assistant's
+ * workspace only if the app gives them.
  */
 export const settingsFeature = defineFeature({
   id: "settings",
   title: "Settings",
   needs: [DisplaySettingsService, HostSettingsService],
+  // Only the desktop app gives these; served Studio and the demo show the sections without them.
+  wants: [UpdaterService, AgentSandboxService, AssistantWorkspaceService],
   register(studio) {
     for (const section of settingsSections) {
       studio.settings.add(section);

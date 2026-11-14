@@ -11,7 +11,7 @@ const workspaceKey = serviceKey<{ root: string }>("workspace");
 
 function stub(
   id: string,
-  options: { needs?: Feature["needs"]; provides?: Feature["provides"] },
+  options: { needs?: Feature["needs"]; wants?: Feature["wants"]; provides?: Feature["provides"] },
   log: string[],
 ): Feature {
   return defineFeature({
@@ -94,6 +94,40 @@ verifies("shell.feature-registry", () => {
     expect(() =>
       defineFeature({ id: "x", title: "X", needs: [agentsKey, agentsKey], register: () => {} }),
     ).toThrow('lists the service "agents" twice in needs');
+  });
+
+  it("registers a feature after the feature that provides a service it wants", () => {
+    const log: string[] = [];
+    const reader = stub("reader", { wants: [agentsKey] }, log);
+    const agents = stub("agents", { provides: [agentsKey] }, log);
+    createShell({ features: [reader, agents] });
+    expect(log).toEqual(["agents", "reader"]);
+  });
+
+  it("accepts a wanted service nobody provides", () => {
+    const log: string[] = [];
+    createShell({ features: [stub("reader", { wants: [agentsKey] }, log)] });
+    expect(log).toEqual(["reader"]);
+  });
+
+  it("refuses features that want each other's services in a cycle", () => {
+    const a = stub("a", { wants: [routinesKey], provides: [agentsKey] }, []);
+    const b = stub("b", { needs: [agentsKey], provides: [routinesKey] }, []);
+    expect(() => createShell({ features: [a, b] })).toThrow("in a cycle: a → b → a");
+  });
+
+  it("refuses a service listed in more than one of needs, wants and provides", () => {
+    const define = (lists: Partial<Pick<Feature, "needs" | "wants" | "provides">>) => () =>
+      defineFeature({ id: "x", title: "X", ...lists, register: () => {} });
+    expect(define({ wants: [agentsKey, agentsKey] })).toThrow(
+      'lists the service "agents" twice in wants',
+    );
+    expect(define({ needs: [agentsKey], wants: [agentsKey] })).toThrow(
+      'lists the service "agents" in both needs and wants',
+    );
+    expect(define({ wants: [agentsKey], provides: [agentsKey] })).toThrow(
+      'lists the service "agents" in both wants and provides',
+    );
   });
 
   it("names the feature whose register failed", () => {

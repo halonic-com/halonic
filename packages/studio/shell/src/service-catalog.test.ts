@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { defineFeature, type Studio } from "./index.ts";
 import { serviceKey } from "./service-key.ts";
 import { createShell } from "./shell.ts";
@@ -109,7 +109,7 @@ verifies("shell.feature-services", () => {
     const target = workspace();
     shell.services.instantiate(target);
     expect(() => target.get(routinesKey).agentCount()).toThrow(
-      'The feature "sneaky" asked for the service "workspace" but doesn\'t list it in needs.',
+      'The feature "sneaky" asked for the service "workspace" but doesn\'t list it in needs or wants.',
     );
   });
 
@@ -175,5 +175,80 @@ verifies("shell.feature-services", () => {
     expect(() => shell.services.instantiate(new MapTarget())).toThrow(
       'The host service "workspace" is missing from this workspace.',
     );
+  });
+
+  describe("a wanted service", () => {
+    const updaterKey = serviceKey<{ version: string }>("updater");
+    const reader = defineFeature({
+      id: "reader",
+      title: "Reader",
+      wants: [updaterKey],
+      register: () => {},
+    });
+    const updaterFeature = defineFeature({
+      id: "updater-feature",
+      title: "Updater",
+      provides: [updaterKey],
+      register(studio) {
+        studio.services.provide(updaterKey, () => ({ version: "1.2.3" }));
+      },
+    });
+
+    it("is found when the app provides it, and found after the feature that provides it", () => {
+      const fromApp = createShell({ features: [reader], hostServices: [updaterKey] });
+      const target = new MapTarget();
+      target.provide(updaterKey, { version: "0.1.0" });
+      fromApp.services.instantiate(target);
+      const context = fromApp.services.contextFor("reader", target);
+      expect(context.services.find(updaterKey)?.version).toBe("0.1.0");
+      expect(context.services.get(updaterKey).version).toBe("0.1.0");
+
+      const fromFeature = createShell({ features: [reader, updaterFeature] });
+      const built = new MapTarget();
+      fromFeature.services.instantiate(built);
+      expect(fromFeature.services.contextFor("reader", built).services.find(updaterKey)).toEqual({
+        version: "1.2.3",
+      });
+    });
+
+    it("is undefined from find, and an error from get, when nobody provides it", () => {
+      const shell = createShell({ features: [reader] });
+      const target = new MapTarget();
+      shell.services.instantiate(target);
+      const { services } = shell.services.contextFor("reader", target);
+      expect(services.find(updaterKey)).toBeUndefined();
+      expect(() => services.get(updaterKey)).toThrow(
+        'asked for the wanted service "updater", but nothing provides it here',
+      );
+    });
+
+    it("lets a factory read it, built before the factory runs", () => {
+      const sumKey = serviceKey<{ line: string }>("sum");
+      const sumFeature = defineFeature({
+        id: "sum",
+        title: "Sum",
+        wants: [updaterKey],
+        provides: [sumKey],
+        register(studio) {
+          studio.services.provide(sumKey, (services) => ({
+            line: services.find(updaterKey)?.version ?? "none",
+          }));
+        },
+      });
+      const shell = createShell({ features: [sumFeature, updaterFeature] });
+      const target = new MapTarget();
+      shell.services.instantiate(target);
+      expect(target.get(sumKey).line).toBe("1.2.3");
+    });
+
+    it("keeps get and find strict for a key the feature doesn't list", () => {
+      const shell = createShell({ features: [reader], hostServices: [workspaceKey] });
+      const target = new MapTarget();
+      target.provide(workspaceKey, { root: "acme" });
+      shell.services.instantiate(target);
+      const { services } = shell.services.contextFor("reader", target);
+      expect(() => services.find(workspaceKey)).toThrow("doesn't list it in needs or wants");
+      expect(() => services.get(workspaceKey)).toThrow("doesn't list it in needs or wants");
+    });
   });
 });
