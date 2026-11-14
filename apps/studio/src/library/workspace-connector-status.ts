@@ -83,9 +83,10 @@ export class WorkspaceConnectorStatus implements ConnectorStatusHost {
     };
     const stopRefusals = this.#options.refusals.subscribe(tell);
     const stopFocus = this.#options.onFocus?.(tell) ?? (() => {});
+    // A watch that fails or never opens costs only the live update: the files are still read
+    // again on focus.
     const watch: Promise<DefinitionWatch | undefined> = this.#options.definitions
       .watch({ changed: tell, failed: () => {} })
-      // Without a watch the files are still read again on focus.
       .catch(() => undefined);
     this.#stopWatching = () => {
       stopRefusals();
