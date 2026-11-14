@@ -1,12 +1,20 @@
 import { shortRunId } from "@halonicjs/app";
 import { type RunEvent, type RunVersion, summarize } from "@halonicjs/events";
-import { Callout, type CalloutAction, EmptyState, List, StatusChip } from "@halonicjs/studio-kit";
+import {
+  Callout,
+  type CalloutAction,
+  EmptyState,
+  List,
+  StatusChip,
+  usePresentation,
+} from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
 import { type ReactNode, useCallback, useState, useSyncExternalStore } from "react";
 import type { SourcedRun } from "../api.ts";
 import { loadFailureReason } from "../load-failure.ts";
 import { emptyListWords, runPageWords } from "../run-words.ts";
 import { type RunsList, RunsListService } from "../runs-list.ts";
+import { RunsOnComputer } from "../ui/runs-on-computer.tsx";
 import { Details } from "./details.tsx";
 import { detailRows } from "./details-model.ts";
 import { EveryStep, useRunLog } from "./every-step.tsx";
@@ -73,7 +81,13 @@ export interface RunViewProps {
  *
  * Not here yet: the header's ⋮, Run again (T7) and the failed banners by cause (HAL-1845).
  */
-export function RunView({
+export function RunView(props: RunViewProps) {
+  // The phone layout comes after 0.1.0; until then the phone says so (HAL-9390).
+  if (usePresentation() === "phone") return <RunsOnComputer />;
+  return <DesktopRun {...props} />;
+}
+
+function DesktopRun({
   list,
   runId,
   goToRuns,

@@ -6,6 +6,8 @@
 
 When a run is opened from the Runs list or from another run, the Studio shall show the run page in the active tab, one run per tab, with the run's kind and workflow, the `h1` "Run" and its short id, its status chip, and when it started, then how long it took, or "updates live" while the run is live. The run page shall show one banner only when the run needs attention: amber with Review in Inbox when it waits for the user's approval or at a wait step, neutral when it waits for a time or a child run, with Open run for a child run, R24's general banner when it failed, the budget banner when it stopped at its budget, and a plain note, not a banner, when it was cancelled. While the run is loading the page shall show its `h1` and skeleton bars; when the run can't load, "Couldn't load run" with the reason and Try again; when the run isn't in the workspace, "This run isn't in this workspace any more." with Go to Runs; and when a later load fails, the engine's line under the header, keeping what the page showed.
 
+On a phone, the run page shall show only the sentence "Runs open on your computer for now."; the phone layout comes after 0.1.0 (HAL-9390).
+
 ## Examples
 
 - Given a run that started today at 10:40 and is still running,
