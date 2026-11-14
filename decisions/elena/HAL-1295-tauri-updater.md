@@ -2,6 +2,7 @@
 
 - Approval: HAL-9010 (Liam, CTO; the change adds a scenario and changes no existing behaviour)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:spSTtUEcAq4gCFaS9YWFtdSw9TkcVhNQRGtHvb21ENNw4O9lAcdh41AFGF/qNDFsOWnuC2mgGCsk16zB/X3zCg==
 - Task: HAL-1295
 
 ## What changes
