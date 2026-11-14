@@ -21,12 +21,16 @@ export interface ProvisionOptions {
   readonly plan?: boolean;
 }
 
-/** The resources a deploy of `worker` needs, in the order they are made. */
-export function resourcesFor(worker: string): readonly ResourceRef[] {
-  // Names end up in SQL for the marker table, so only plain Worker names pass.
+/** The name of the Worker's database. Names end up in SQL for the marker table, so only plain Worker names pass. */
+export function databaseNameFor(worker: string): string {
   if (!/^[a-z0-9][a-z0-9-]{0,52}$/.test(worker))
     throw new RangeError(`not a Worker name: ${worker}`);
-  const database = `${worker}-data`;
+  return `${worker}-data`;
+}
+
+/** The resources a deploy of `worker` needs, in the order they are made. */
+export function resourcesFor(worker: string): readonly ResourceRef[] {
+  const database = databaseNameFor(worker);
   return [
     { kind: "database", name: database },
     { kind: "bucket", name: `${worker}-blobs`, markedIn: database },
