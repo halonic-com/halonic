@@ -74,6 +74,13 @@ Server.prototype.emit = function (this: Server, event: string | symbol, ...args:
         `#${id} +${(performance.now() - t0).toFixed(1)}ms ${what} read=${socket.bytesRead} written=${socket.bytesWritten}`,
       );
     note("accepted");
+    socket.on("data", (c: Buffer) => note(`data ${c.length}b first="${c.subarray(0, 60).toString("latin1").replace(/\r?\n.*/s, "")}"`));
+    const write = socket.write.bind(socket) as (...a: unknown[]) => boolean;
+    socket.write = ((chunk: unknown, ...rest: unknown[]) => {
+      const b = typeof chunk === "string" ? Buffer.from(chunk) : (chunk as Buffer);
+      note(`write ${b.length}b first="${b.subarray(0, 80).toString("latin1").replace(/\r?\n.*/s, "")}"`);
+      return write(chunk, ...rest);
+    }) as typeof socket.write;
     for (const what of ["end", "close", "error", "timeout"]) {
       socket.on(what, (e?: unknown) => note(`${what}${e instanceof Error ? ` ${e.message}` : ""}`));
     }
