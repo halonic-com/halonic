@@ -8,6 +8,7 @@ import {
   editAliasPrice,
   editAliasTarget,
   type FieldProblem,
+  parseFallbacks,
 } from "./alias-edits.ts";
 import { saveModelsEdit } from "./alias-save.ts";
 import {
@@ -29,6 +30,9 @@ export interface AliasFieldsProps {
 const EURO = { symbol: "€", name: "in euros" };
 
 const priceText = (amount: number | undefined) => (amount === undefined ? "" : String(amount));
+
+const fallbacksChanged = (alias: ModelAlias, field: string) =>
+  parseFallbacks(field).join("\n") !== (alias.fallback ?? []).join("\n");
 
 function hasCachePrices(alias: ModelAlias): boolean {
   const price = alias.price;
@@ -58,12 +62,17 @@ export function AliasFields({ files, models, name }: AliasFieldsProps) {
   if (alias === undefined) return null;
 
   const save = async (edit: (text: string) => Result<string, FieldProblem>) => {
-    const found = await saveModelsEdit(files, aliasUpdatedLine(name), edit);
+    const { problem: found, wrote } = await saveModelsEdit(files, aliasUpdatedLine(name), edit);
     setProblem(found);
-    setStatus(found === undefined ? aliasUpdatedLine(name) : "");
+    if (found !== undefined) setStatus("");
+    else if (wrote) setStatus(aliasUpdatedLine(name));
   };
   const saveTarget = (provider: string, modelName: string) =>
     save((text) => editAliasTarget(text, name, { provider, model: modelName }, alias.model));
+  const saveFallbacks = () =>
+    fallbacksChanged(alias, fallbacks)
+      ? save((text) => editAliasFallbacks(text, name, fallbacks))
+      : undefined;
   const savePrices = () => save((text) => editAliasPrice(text, name, { input, output }));
   const problemFor = (field: FieldProblem["field"]) =>
     problem?.field === field ? problem.message : null;
@@ -97,7 +106,7 @@ export function AliasFields({ files, models, name }: AliasFieldsProps) {
           <Input
             value={fallbacks}
             onChange={(event) => setFallbacks(event.target.value)}
-            onBlur={() => void save((text) => editAliasFallbacks(text, name, fallbacks))}
+            onBlur={() => void saveFallbacks()}
           />
         </Field>
       </FormRows>

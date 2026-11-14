@@ -66,6 +66,14 @@ verifies("models.aliases.edit-price", () => {
     expect(text).toContain("output: 15");
   });
 
+  it("writes nothing while one price is empty, but still refuses one that isn't an amount", () => {
+    expect(textOf(editAliasPrice(file, "default", { input: "3", output: "" }))).toBe(file);
+    expect(editAliasPrice(file, "default", { input: "x", output: "" })).toMatchObject({
+      ok: false,
+      error: { field: "input" },
+    });
+  });
+
   it("removes the price when both fields are empty", () => {
     const priced = textOf(editAliasPrice(file, "smart", { input: "3", output: "15" }));
     expect(textOf(editAliasPrice(priced, "smart", { input: "", output: " " }))).toBe(file);
@@ -85,10 +93,6 @@ verifies("models.aliases.edit-price", () => {
     expect(editAliasPrice(file, "smart", { input: "1.000,50", output: "2" })).toMatchObject({
       ok: false,
       error: { field: "input", message: "Enter an amount, like you'd write it on a receipt." },
-    });
-    expect(editAliasPrice(file, "smart", { input: "1", output: "" })).toMatchObject({
-      ok: false,
-      error: { field: "output" },
     });
   });
 

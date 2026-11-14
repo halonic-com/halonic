@@ -120,6 +120,18 @@ verifies("models.aliases.edit-target", () => {
 });
 
 verifies("models.aliases.edit-fallbacks", () => {
+  it("writes nothing when the field is left without a change", async () => {
+    const { files, changes } = memoryFiles(workspaceModels);
+    const tab = await showTab(files);
+
+    await act(async () => {
+      field(tab, "Fallbacks").dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    });
+
+    expect(changes).toEqual([]);
+    expect(tab.textContent).not.toContain("Updated model alias");
+  });
+
   it("hints at the other aliases and saves the list that was typed", async () => {
     const { files, changes } = memoryFiles(workspaceModels);
     const tab = await showTab(files);
@@ -136,6 +148,25 @@ verifies("models.aliases.edit-fallbacks", () => {
 });
 
 verifies("models.aliases.edit-price", () => {
+  it("waits for the other price instead of calling it wrong, then saves both", async () => {
+    const { files, changes } = memoryFiles(workspaceModels);
+    const tab = await showTab(files, { kind: "model-alias", hub: "local", id: "fast" });
+
+    await typeInto(field(tab, "Input"), "3.00");
+    await act(async () => {
+      field(tab, "Output").dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    });
+
+    expect(changes).toEqual([]);
+    expect(tab.textContent).not.toContain("Enter an amount");
+    expect(tab.textContent).not.toContain("Updated model alias");
+
+    await typeInto(field(tab, "Output"), "9");
+
+    expect(changes).toHaveLength(1);
+    expect(changes[0]?.text).toContain("output: 9");
+  });
+
   it("saves prices read as an amount and keeps the cache prices", async () => {
     const { files, changes } = memoryFiles(workspaceModels);
     const tab = await showTab(files);
