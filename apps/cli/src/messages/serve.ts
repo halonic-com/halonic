@@ -17,6 +17,8 @@ export const serveMessages = defineMessages("serve", {
   action: (place: string) => phrase`serve ${place}`,
   /** The end of line 1 of a refusal: nothing was served. */
   nothingServed: () => phrase`Nothing was served.`,
+  /** The end of line 1 when one run is refused while the server keeps serving. */
+  runNotStarted: () => phrase`That run didn't start. The server is still running.`,
   /** `--port` is not a port number. */
   portInvalid: () => phrase`--port needs a whole number from 0 to 65535.`,
   /** The first line once it is listening, with how to stop. */

@@ -187,6 +187,10 @@ export interface LocalEngine {
   readonly executor: LocalExecutor;
   /** The workspace's run store, the one `halonic runs` reads. */
   readonly runs: RunStore;
+  /** The engine's own time. */
+  readonly clock: Clock;
+  /** The engine's coordination, as {@link RoutineEngine} has it. */
+  readonly coordination: Coordination;
   /** Where the programs of a run start: a copy at the run's commit for a live run. */
   readonly programFolders: ProgramFolders;
   /**
@@ -380,22 +384,20 @@ function engineOn(
     },
   });
   const opened = executor;
-  routines = input.routines?.({
-    executor: opened,
-    runs,
+  const coordination = new NodeCoordination({
+    store: new FileRecordStore(folders.recordsFolder()),
+    collection: routineStateCollection,
     clock,
-    coordination: new NodeCoordination({
-      store: new FileRecordStore(folders.recordsFolder()),
-      collection: routineStateCollection,
-      clock,
-      newToken: randomLeaseToken,
-    }),
+    newToken: randomLeaseToken,
   });
+  routines = input.routines?.({ executor: opened, runs, clock, coordination });
   const ticks = routines;
   let closing: Promise<void> | undefined;
   return {
     executor: opened,
     runs,
+    clock,
+    coordination,
     programFolders,
     close: () => {
       closing ??= (async () => {

@@ -207,6 +207,8 @@ export async function openWorkspaceEngine(
   return {
     executor: engine.executor,
     runs: engine.runs,
+    clock: engine.clock,
+    coordination: engine.coordination,
     programFolders: engine.programFolders,
     // Once Ctrl C, SIGTERM or a closed terminal stopped the command, a close that hangs is
     // given up after a while, so the lock is freed and the process ends (HAL-6677).
