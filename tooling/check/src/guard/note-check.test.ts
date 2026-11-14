@@ -157,6 +157,32 @@ verifies("check.guard-notes-own-paths", () => {
     ]);
   });
 
+  test("fails a note added under decisions/ with another name than the branch's, but not one already on the base", async () => {
+    const stray = "decisions/julian/HAL-1337-other-name.md";
+    const old = "decisions/julian/HAL-1-old.md";
+    const run = async (added: readonly string[]) =>
+      (
+        await checkNotes({
+          pull,
+          branch,
+          changed: [...added, old],
+          mergeBase: base,
+          git: fakeGit({
+            [base]: { ...baseFiles, [old]: "old\n" },
+            [head]: {
+              ...baseFiles,
+              [old]: "edited\n",
+              ...Object.fromEntries(added.map((path) => [path, "unsigned\n"])),
+            },
+          }),
+        })
+      ).problems.map((problem) => `${problem.file}: ${problem.message}`);
+    expect(await run([stray])).toEqual([
+      `${stray}: ${stray} isn't this branch's note; rename it to ${noteFile}. Only that file is checked and signed.`,
+    ]);
+    expect(await run([])).toEqual([]);
+  });
+
   test("passes it with a user-visible note that lists .github/ and the CTO's signature", async () => {
     expect(await errorsOf(note("user-visible", ".github/"))).toEqual([]);
   });
