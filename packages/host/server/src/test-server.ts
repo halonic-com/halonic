@@ -18,6 +18,7 @@ import type {
   Server,
   ServerConfig,
   ServerPorts,
+  StudioPage,
   TrustGate,
   WebhookRoutines,
 } from "./api.ts";
@@ -121,6 +122,7 @@ export function testServer(options: {
   google?: GoogleSetupPorts;
   connectors?: ConnectorCallPorts;
   requestLog?: RequestLog;
+  studioPage?: StudioPage;
 }): Server {
   const clock = options.clock ?? new TestClock();
   const ports: ServerPorts = {
@@ -138,6 +140,7 @@ export function testServer(options: {
     errorLog: options.errorLog ?? { record: () => {} },
     ...(options.google === undefined ? {} : { google: options.google }),
     ...(options.connectors === undefined ? {} : { connectors: options.connectors }),
+    ...(options.studioPage === undefined ? {} : { studioPage: options.studioPage }),
     ...(options.requestLog === undefined ? {} : { requestLog: options.requestLog }),
     clock,
     ids: { next: (prefix) => `${prefix}_1` },
