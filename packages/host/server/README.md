@@ -12,6 +12,7 @@ The server asks the host's trust gate before it starts any run, on every request
 
 - `POST /api/runs` starts a workflow and `POST /api/agent-runs` starts one agent. Both need a sign-in when a password is set.
 - `GET /api/runs/<runId>` answers a run's summary, `POST /api/runs/<runId>/events` delivers an event (`{ event, payload?, callId? }`) and `POST /api/runs/<runId>/cancel` cancels. They need a sign-in when a password is set, and the two POSTs need `Content-Type: application/json`. Delivering an event needs a trusted workspace; cancelling does not.
+- `GET /api/runs/<runId>/events?after=<seq>` streams the run's events as server-sent events: a `run` message per event with its `seq` as the id, then `end` when the run is over. A stream that closes without `end` broke, and the client asks again with the last `seq`. It needs a sign-in like the others and no trust.
 - When the workspace isn't trusted (new, changed since it was trusted, unreadable or refused), both answer **403** with the code `workspace_not_trusted` and start nothing.
 - When the trust check itself fails, both answer **500** with the code `internal_error` and start nothing. A failed check counts as no trust.
 - A run on the test model isn't exempt. The CLI skips the trust check for a workspace that can only reach the test model; the server doesn't.
