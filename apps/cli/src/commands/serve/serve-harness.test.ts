@@ -29,7 +29,7 @@ import { fakeSignals } from "../../test/fake-signals.ts";
 import { engineStart } from "../../test/run-setup.ts";
 import { waitUntil } from "../../test/wait-until.test-helper.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
-import { webCryptoDigest } from "../../workspace-runs.ts";
+import { openWorkspaceRuns, webCryptoDigest } from "../../workspace-runs.ts";
 import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import { serveCommandWith } from "./command.ts";
 
@@ -42,6 +42,8 @@ const slowTest = { timeout: 60_000 };
 
 let acmeRuns: AcmeRuns;
 let runner: GitRunner;
+/** The commit of the first version, which is live. */
+let liveCommit: string;
 let running: { signals: ReturnType<typeof fakeSignals>; serving: Promise<number> } | undefined;
 
 /** The profiles the fake sandbox was opened with: one per harness program started. */
@@ -89,7 +91,7 @@ beforeEach(async () => {
       .map((path) => path.replaceAll("\\", "/"))
       .filter((path) => !path.startsWith(".git/")),
   );
-  await vcs.commit("First version");
+  liveCommit = await vcs.commit("First version");
 });
 
 afterEach(async () => {
@@ -223,6 +225,10 @@ verifies("cli.commands.serve.harness", () => {
         };
         return summary.status === "completed";
       }, slowTest);
+      // The start named no version: it read the live one and the run records it.
+      const runs = await openWorkspaceRuns(acmeRuns.acme, acmeRuns.profile);
+      const runStarted = (await runs.events(id)).find((event) => event.type === "run.started");
+      expect(runStarted).toMatchObject({ version: { reads: "live-version", commit: liveCommit } });
       expect(fenced).toHaveLength(1);
       // Windows may give a temp folder as its 8.3 short name, so compare real paths.
       const workingFolder = realpathSync.native(fenced[0]?.workingFolder ?? "");
