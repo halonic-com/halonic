@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="712" height="552" viewBox="0 0 712 552" role="img" aria-label="A terminal: halonic init --example acme makes the Acme workspace, halonic test says 5 tests passed, halonic run stops at 'Approve this reply?' and waits, halonic runs send approves it and the run finishes, having sent nothing.">
+<title>A terminal: halonic init --example acme makes the Acme workspace, halonic test says 5 tests passed, halonic run stops at 'Approve this reply?' and waits, halonic runs send approves it and the run finishes, having sent nothing.</title>
+<style>svg{font-family:ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace}text{fill:#e6edf7;font-size:14px;white-space:pre}.d{fill:#8196b6}.f{opacity:.75}.b{font-weight:600}.r{fill:#fd7692}.g{fill:#14b8a2}.w{fill:#d380fe}.p{fill:#a9b8ff}.k{fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}.t{fill:#a3b3cb;font-size:12px}.l{fill:#e6edf7}</style>
+<clipPath id="screen"><rect x="0" y="54" width="712" height="480"/></clipPath>
+<rect x=".5" y=".5" width="711" height="551" rx="12" fill="#08111f" stroke="#3a4a86"/>
+<path d="M1 36.5H711" stroke="#1c2b4a"/>
+<text class="t" x="16" y="22">Terminal · Halonic 0.1.0</text>
+<text x="458.4" y="22" textLength="57.6" class="t l">1 Create</text>
+<text x="530.4" y="22" textLength="43.2" class="t l">2 Test</text>
+<text x="588" y="22" textLength="36" class="t l">3 Run</text>
+<text x="638.4" y="22" textLength="57.6" class="t l">4 Answer</text>
+<g clip-path="url(#screen)"><g style="transform:translate(0px,-440px)">
+<g><text y="509"><tspan x="20" textLength="50.4" class="d">~/acme</tspan><tspan x="78.8" textLength="8.4" class="p">$</tspan><tspan x="95.6" textLength="529.2">halonic run support-reply --input examples/refund-question.json</tspan></text></g>
+<g><text y="529"><tspan x="20" textLength="243.6">Running Support reply in Acme</tspan><tspan x="272" textLength="8.4" class="d">·</tspan><tspan x="288.8" textLength="84">run 3c9e42</tspan></text></g>
+<g><text y="569"><tspan x="20" textLength="8.4" class="g"> </tspan><tspan x="36.8" textLength="235.2">Read the email        Writer</tspan><tspan x="280.4" textLength="8.4" class="d">·</tspan><tspan x="297.2" textLength="109.2">default   1 s</tspan></text><path class="k" stroke="#14b8a2" d="M21.2 564L23.4 566.6L27.2 560.4"/></g>
+<g><text y="589"><tspan x="20" textLength="8.4" class="g"> </tspan><tspan x="36.8" textLength="235.2">Classify it           Sorter</tspan><tspan x="280.4" textLength="8.4" class="d">·</tspan><tspan x="297.2" textLength="109.2">default   1 s</tspan></text><path class="k" stroke="#14b8a2" d="M21.2 584L23.4 586.6L27.2 580.4"/></g>
+<g><text y="609"><tspan x="20" textLength="8.4" class="g"> </tspan><tspan x="36.8" textLength="235.2">Draft a reply         Writer</tspan><tspan x="280.4" textLength="8.4" class="d">·</tspan><tspan x="297.2" textLength="109.2">default   1 s</tspan></text><path class="k" stroke="#14b8a2" d="M21.2 604L23.4 606.6L27.2 600.4"/></g>
+<g><text y="629"><tspan x="20" textLength="8.4" class="w">!</tspan><tspan x="36.8" textLength="411.6">Approve this reply?   waiting for you since 03:48</tspan></text></g>
+<g><text y="669"><tspan x="20" textLength="8.4" class="w">!</tspan><tspan x="36.8" textLength="302.4">Waiting for you: Approve this reply?</tspan></text></g>
+<g><text y="689"><tspan x="36.8" textLength="378">Answer with: halonic runs send 3c9e42 approve</tspan><tspan x="423.2" textLength="92.4" class="d">(or reject)</tspan></text></g>
+<g><text y="729"><tspan x="20" textLength="50.4" class="d">~/acme</tspan><tspan x="78.8" textLength="8.4" class="p">$</tspan><tspan x="95.6" textLength="268.8">halonic runs send 3c9e42 approve</tspan></text></g>
+<g><text y="749"><tspan x="20" textLength="8.4" class="g"> </tspan><tspan x="36.8" textLength="420">Sent approve to run 3c9e42. Support reply goes on.</tspan></text><path class="k" stroke="#14b8a2" d="M21.2 744L23.4 746.6L27.2 740.4"/></g>
+<g><text y="789"><tspan x="20" textLength="8.4" class="g"> </tspan><tspan x="36.8" textLength="235.2">Read the email        Writer</tspan><tspan x="280.4" textLength="8.4" class="d">·</tspan><tspan x="297.2" textLength="109.2">default   1 s</tspan></text><path class="k" stroke="#14b8a2" d="M21.2 784L23.4 786.6L27.2 780.4"/></g>
+<g><text y="809"><tspan x="20" textLength="8.4" class="g"> </tspan><tspan x="36.8" textLength="235.2">Classify it           Sorter</tspan><tspan x="280.4" textLength="8.4" class="d">·</tspan><tspan x="297.2" textLength="109.2">default   1 s</tspan></text><path class="k" stroke="#14b8a2" d="M21.2 804L23.4 806.6L27.2 800.4"/></g>
+<g><text y="829"><tspan x="20" textLength="8.4" class="g"> </tspan><tspan x="36.8" textLength="235.2">Draft a reply         Writer</tspan><tspan x="280.4" textLength="8.4" class="d">·</tspan><tspan x="297.2" textLength="109.2">default   1 s</tspan></text><path class="k" stroke="#14b8a2" d="M21.2 824L23.4 826.6L27.2 820.4"/></g>
+<g><text y="849"><tspan x="20" textLength="8.4" class="w">!</tspan><tspan x="36.8" textLength="361.2">Approve this reply?   you approved at 03:49</tspan></text></g>
+<g><text y="889"><tspan x="20" textLength="8.4" class="g"> </tspan><tspan x="36.8" textLength="252">Support reply finished in 1 s.</tspan></text><path class="k" stroke="#14b8a2" d="M21.2 884L23.4 886.6L27.2 880.4"/></g>
+<g><text y="909"><tspan x="36.8" textLength="100.8">Sent nothing</tspan><tspan x="146" textLength="8.4" class="d">·</tspan><tspan x="162.8" textLength="117.6">asked you once</tspan></text></g>
+<g><text y="929"><tspan x="36.8" textLength="277.2">Run log: halonic runs show 3c9e42</tspan></text></g>
+<g><text y="969"><tspan x="20" textLength="50.4" class="d">~/acme</tspan><tspan x="78.8" textLength="8.4" class="p">$</tspan></text></g>
+<g style="transform:translate(95.6px,954px)">
+<rect y="1" width="8.4" height="18" fill="#e6edf7" fill-opacity=".7"/></g>
+</g></g>
+</svg>
