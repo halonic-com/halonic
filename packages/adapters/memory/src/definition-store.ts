@@ -5,6 +5,8 @@ import {
   type DefinitionWatch,
   type DefinitionWatchListener,
   isPrivateWorkspacePath,
+  type RemoveOptions,
+  type RemoveResult,
   type WorkspaceFileChange,
   type WriteOptions,
   type WriteResult,
@@ -73,10 +75,18 @@ export class MemoryDefinitionStore implements DefinitionStore {
     });
   }
 
-  async remove(path: string): Promise<void> {
+  async remove(path: string, options: RemoveOptions = {}): Promise<RemoveResult> {
     checkPublicWorkspacePath(path);
-    await this.#writes.run(path, async () => {
+    return await this.#writes.run(path, async () => {
+      const current = this.#files.get(path) ?? null;
+      if (
+        options.expected !== undefined &&
+        !(await matchesExpected(current, options.expected, webCryptoDigest))
+      ) {
+        return { status: "changed-on-disk", current };
+      }
       this.#files.delete(path);
+      return { status: "removed" };
     });
   }
 

@@ -5,6 +5,8 @@ import {
   type DefinitionWatch,
   type DefinitionWatchListener,
   type ExpectedContent,
+  type RemoveOptions,
+  type RemoveResult,
   type WriteOptions,
   type WriteResult,
 } from "@halonicjs/ports";
@@ -124,17 +126,25 @@ export class BrowserFolderDefinitionStore implements DefinitionStore {
     );
   }
 
-  async remove(path: string): Promise<void> {
+  async remove(path: string, options: RemoveOptions = {}): Promise<RemoveResult> {
     checkPublicWorkspacePath(path);
-    await this.#writes.run(path, () =>
-      this.#withAccess(async () => {
+    return await this.#writes.run(path, () =>
+      this.#withAccess(async (): Promise<RemoveResult> => {
+        const { expected } = options;
+        if (expected !== undefined) {
+          const current = await this.#readFile(path);
+          if (!(await matchesExpected(current, expected, webCryptoDigest))) {
+            return { status: "changed-on-disk", current };
+          }
+        }
         if ((await fileAt(this.#root, path)) === null) {
-          return;
+          return { status: "removed" };
         }
         await runOwnChange(this.#watches, path, null, webCryptoDigest, async () => {
           await this.#delete(path);
           return true;
         });
+        return { status: "removed" };
       }),
     );
   }

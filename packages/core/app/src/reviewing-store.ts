@@ -7,6 +7,8 @@ import type {
   DefinitionStore,
   DefinitionWatch,
   DefinitionWatchListener,
+  RemoveOptions,
+  RemoveResult,
   WriteOptions,
   WriteResult,
 } from "@halonicjs/ports";
@@ -55,8 +57,8 @@ export class ReviewingDefinitionStore implements DefinitionStore {
     return this.writer.write(path, content, options);
   }
 
-  remove(path: string): Promise<void> {
-    return this.writer.remove(path);
+  remove(path: string, options?: RemoveOptions): Promise<RemoveResult> {
+    return this.writer.remove(path, options);
   }
 
   /**

@@ -58,6 +58,31 @@ verifies("fs-node.folder-trash", () => {
     });
   });
 
+  it("leaves an edit made between the check and the remove, and drops the entry", async () => {
+    const { store, folder, trash: _ } = await setup();
+    // The person saves while the trash is writing its entry, just before its remove.
+    const racing = new FolderTrash({
+      folder,
+      digest,
+      store: new Proxy(store, {
+        get(target, name) {
+          if (name !== "remove") return Reflect.get(target, name).bind(target);
+          return async (...args: Parameters<typeof store.remove>) => {
+            await target.write(path, "id: edited\n");
+            return await target.remove(...args);
+          };
+        },
+      }),
+    });
+
+    expect(await racing.moveToTrash(path)).toEqual({
+      status: "changed-on-disk",
+      current: "id: edited\n",
+    });
+    expect(await store.read(path)).toBe("id: edited\n");
+    expect(await readdir(folder)).toEqual([]);
+  });
+
   it("doesn't overwrite a file made at the path since", async () => {
     const { store, folder, trash } = await setup();
     const moved = await trash.moveToTrash(path);

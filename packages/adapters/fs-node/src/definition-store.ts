@@ -9,6 +9,8 @@ import {
   type DefinitionWatchListener,
   type Digest,
   isPrivateWorkspacePath,
+  type RemoveOptions,
+  type RemoveResult,
   UnreadableWorkspaceFolderError,
   type WriteOptions,
   type WriteResult,
@@ -152,17 +154,25 @@ export class FolderDefinitionStore implements DefinitionStore {
     }
   }
 
-  async remove(path: string): Promise<void> {
+  async remove(path: string, options: RemoveOptions = {}): Promise<RemoveResult> {
     checkPublicWorkspacePath(path);
-    await this.#writes.run(path, async () => {
+    return await this.#writes.run(path, async () => {
+      const { expected } = options;
+      if (expected !== undefined) {
+        const current = await this.read(path);
+        if (!(await matchesExpected(current, expected, webCryptoDigest))) {
+          return { status: "changed-on-disk", current };
+        }
+      }
       if (!(await entryAt(this.#root, path))?.isFile()) {
-        return;
+        return { status: "removed" };
       }
       // `force`: a file another program removed in the meantime is not an error.
       await runOwnChange(this.#watches, path, null, webCryptoDigest, async () => {
         await rm(join(this.#root, path), { force: true });
         return true;
       });
+      return { status: "removed" };
     });
   }
 
