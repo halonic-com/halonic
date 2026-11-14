@@ -1,4 +1,4 @@
-import type { HostSetting, HostSettings } from "@halonicjs/app";
+import type { HostSettings } from "@halonicjs/app";
 import { Field, Select, Switch, ViewOnlyLine } from "@halonicjs/studio-kit";
 import type { SettingsPlace, SettingsSectionProps } from "@halonicjs/studio-shell";
 import { useState } from "react";
@@ -58,15 +58,13 @@ export function AssistantView({ settings, announce, place }: AssistantViewProps)
 /** The label-over-value rows of the section served to another device. */
 function AssistantViewOnly({ settings }: { readonly settings: HostSettings }) {
   const provider = useHostSetting(settings, assistantPrefs.provider).value;
-  const shown = <Value extends string | number | boolean>(setting: HostSetting<Value>) =>
-    useHostSetting(settings, setting).value;
-  const model = shown(assistantPrefs.model);
-  const baseUrl = shown(assistantPrefs.baseUrl);
-  const secretName = shown(assistantPrefs.secretName);
-  const local = shown(assistantPrefs.local);
-  const turnLimit = shown(assistantPrefs.turnLimit);
-  const connectorTools = shown(assistantPrefs.connectorTools);
-  const instructions = shown(assistantPrefs.instructions);
+  const model = useHostSetting(settings, assistantPrefs.model).value;
+  const baseUrl = useHostSetting(settings, assistantPrefs.baseUrl).value;
+  const secretName = useHostSetting(settings, assistantPrefs.secretName).value;
+  const local = useHostSetting(settings, assistantPrefs.local).value;
+  const turnLimit = useHostSetting(settings, assistantPrefs.turnLimit).value;
+  const connectorTools = useHostSetting(settings, assistantPrefs.connectorTools).value;
+  const instructions = useHostSetting(settings, assistantPrefs.instructions).value;
   const orNone = (value: string) => (value === "" ? text.NOTHING : value);
   const rows: Array<[string, string]> = [[text.PROVIDER, providerDefaults[provider].label]];
   if (provider !== "not-set-up") {
@@ -115,7 +113,6 @@ function AssistantEditor({ settings, announce, place }: AssistantViewProps) {
     const to = assistantProviders.find((name) => name === picked);
     if (to === undefined) return;
     const from = provider.value;
-    setFocusBaseUrl(to === "openai-compatible");
     const fields = pickProvider(
       { baseUrl: baseUrl.value, secretName: secretName.value, local: local.value },
       from,
@@ -137,6 +134,7 @@ function AssistantEditor({ settings, announce, place }: AssistantViewProps) {
       (await write(secretName, fields.secretName)) &&
       (await write(local, fields.local)) &&
       (await provider.save(to));
+    setFocusBaseUrl(saved && to === "openai-compatible");
     if (!saved) {
       for (const undo of written.reverse()) await undo();
       provider.markFailed();

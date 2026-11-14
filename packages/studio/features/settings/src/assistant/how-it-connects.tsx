@@ -1,5 +1,5 @@
 import { Disclosure, Field, Switch } from "@halonicjs/studio-kit";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { checkBaseUrl, checkSecretName } from "./assistant-checks.ts";
 import type { AssistantProvider } from "./assistant-providers.ts";
 import * as text from "./assistant-text.ts";
@@ -36,17 +36,20 @@ export function HowItConnects(props: HowItConnectsProps) {
   const { provider, baseUrl, focusBaseUrl } = props;
   const body = useRef<HTMLDivElement>(null);
   const needsYou = provider === "openai-compatible" && baseUrl === "";
+  // Fixed after the first render: the row never closes by itself, so a field's save can't
+  // snap it shut or remount it under the person. It opens through the effect below instead.
+  const [openAtFirst] = useState(needsYou || focusBaseUrl);
+  useEffect(() => {
+    if (!(needsYou || focusBaseUrl)) return;
+    const details = body.current?.querySelector("details");
+    if (details) details.open = true;
+  }, [needsYou, focusBaseUrl]);
   useEffect(() => {
     if (focusBaseUrl) body.current?.querySelector("input")?.focus();
   }, [focusBaseUrl]);
   return (
     <div ref={body}>
-      {/* A new key opens the row again when it starts to need the person. */}
-      <Disclosure
-        key={needsYou || focusBaseUrl ? "open" : "closed"}
-        summary={text.HOW_IT_CONNECTS}
-        defaultOpen={needsYou || focusBaseUrl}
-      >
+      <Disclosure summary={text.HOW_IT_CONNECTS} defaultOpen={openAtFirst}>
         <div className="flex flex-col gap-4">
           <SavedTextField
             label={text.BASE_URL}

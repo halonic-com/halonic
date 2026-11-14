@@ -65,6 +65,26 @@ verifies("settings.ai-agent-connection", () => {
     expect(settings.get(assistantPrefs.secretName)).toBe("my-key");
   });
 
+  it("keeps the row open and the focus in place while a Base URL is saved", async () => {
+    const { view, store, settings } = await setup();
+    await change(control(view, "select"), "anthropic");
+    await act(async () => store.changeElsewhere("assistant.provider", "openai-compatible"));
+    expect(row(view)?.open).toBe(true);
+    await typeAndLeave(labelled(view, "Base URL"), "http://localhost:8000/v1");
+    expect(settings.get(assistantPrefs.baseUrl)).toBe("http://localhost:8000/v1");
+    expect(row(view)?.open).toBe(true);
+    const secret = labelled(view, "Secret name");
+    await act(async () => secret.focus());
+    expect(document.activeElement).toBe(secret);
+  });
+
+  it("does not move the focus into Base URL when the provider pick fails", async () => {
+    const { view, store } = await setup();
+    store.failSaves = true;
+    await change(control(view, "select"), "openai-compatible");
+    expect(document.activeElement).not.toBe(labelled(view, "Base URL"));
+  });
+
   it("puts Local back and says so when its save fails", async () => {
     const { view, store, announce } = await setup();
     await change(control(view, "select"), "anthropic");

@@ -32,7 +32,6 @@ export function notSaved(what: string): string {
 }
 
 export const HOW_IT_CONNECTS = "How it connects";
-export const HOW_IT_CONNECTS_DETAIL = "Base URL, secret name, local";
 export const BASE_URL = "Base URL";
 export const SECRET_NAME = "Secret name";
 export const LOCAL = "Local";
