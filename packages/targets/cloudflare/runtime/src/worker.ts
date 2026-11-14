@@ -1,3 +1,5 @@
+import { answerAdmin } from "./admin.ts";
+import { adminRoutes } from "./admin-routes.ts";
 import type { RuntimeEnv } from "./env.ts";
 import { answerRequest, healthPath } from "./routes.ts";
 import { createRuntime } from "./runtime.ts";
@@ -20,7 +22,8 @@ export const worker = {
     if (env === undefined || new URL(request.url).pathname === healthPath) {
       return answerRequest(request);
     }
-    return serveRequest(request, env);
+    const admin = await answerAdmin(request, env, adminRoutes);
+    return admin ?? serveRequest(request, env);
   },
 
   /** @throws ConfigurationError when the deployment lacks a binding or a secret, AggregateError when the tick or the watchdog failed */
