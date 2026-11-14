@@ -3,6 +3,7 @@
 - Task: HAL-9474
 - Approval: Liam asked for this change on HAL-9474 (follow-up to his review of #2696); the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:P5A9CT7kTePHC4kFO0dnHdOdx8sJBWvs90Ox4sHtcDWfKUIu2ZU5uNj+DsPlZIKXrUKjWgMuJLmL7HJQf1oaDQ==
 
 ## What changes
 
