@@ -1,8 +1,12 @@
+import { TauriDefinitionStore, type TauriFileShell } from "@halonicjs/adapter-fs-tauri";
+import type { ServiceRegistry, WorkspaceScope } from "@halonicjs/app";
 import { type DefinitionSource, isSecretName, type Secrets, secretKey } from "@halonicjs/ports";
 import type {
   AssistantWorkspace,
   AssistantWorkspaceFacts,
 } from "@halonicjs/studio-feature-settings";
+import { AssistantWorkspaceService } from "@halonicjs/studio-feature-settings/api";
+import { secretsKey } from "@halonicjs/studio-services";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 
 /** What {@link OpenFolderAssistant} reads and listens to. */
@@ -130,4 +134,28 @@ class Facts implements AssistantWorkspaceFacts {
       [...this.secretKeys].every((key) => other.secretKeys.has(key))
     );
   }
+}
+
+/**
+ * Gives the folder to Settings › Assistant (`settings.ai-agent-key-line`): its facts from its
+ * files, read again when they change, and whether the keychain holds a key. Without the shell's
+ * files there is nothing to read, so it gives nothing.
+ */
+export function provideAssistant(
+  services: ServiceRegistry,
+  files: TauriFileShell | undefined,
+  location: string,
+  name: string,
+  scope: WorkspaceScope | undefined,
+): OpenFolderAssistant | undefined {
+  if (files === undefined) return undefined;
+  const assistant = new OpenFolderAssistant({
+    definitions: new TauriDefinitionStore(files, location),
+    name,
+    secrets: services.has(secretsKey) ? services.get(secretsKey) : undefined,
+    onChange: (listener) => scope?.events.on("files.changed", listener) ?? (() => {}),
+    onError: (error) => console.error(error),
+  });
+  services.provide(AssistantWorkspaceService, assistant);
+  return assistant;
 }
