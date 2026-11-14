@@ -13,6 +13,7 @@ import { checkInvisibleCharacters } from "./invisible-characters.ts";
 import { checkLayers } from "./layers.ts";
 import { checkLockfile } from "./lockfile.ts";
 import { checkMarkdownTables } from "./markdown-tables.ts";
+import { checkMigrationsAdditive } from "./migrations-additive.ts";
 import { checkNames } from "./names.ts";
 import { checkNativeDisabled } from "./native-disabled.ts";
 import { checkPackages } from "./packages.ts";
@@ -30,6 +31,7 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   dependencies: checkDependencies,
   advisories: (context) => checkAdvisories(context),
   "deny-toml": (context) => checkDeny(context),
+  "migrations-additive": checkMigrationsAdditive,
   names: checkNames,
   features: checkFeatures,
   "file-size": checkFileSize,

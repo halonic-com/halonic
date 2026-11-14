@@ -97,6 +97,59 @@ You should see `5 tests passed`. Acme is an invented company's support
 workspace. It runs on a built-in test model: no key, no account, nothing sent
 anywhere.
 
+### Run it
+
+```sh
+halonic run support-reply --input examples/refund-question.json
+```
+
+This runs the Support reply workflow on a made-up email from a customer asking
+about a damaged order. You see each step finish: read the email, classify it,
+draft a reply. Then it stops at **Approve this reply?** and waits for you:
+
+```text
+! Waiting for you: Approve this reply?
+  Answer with: halonic runs send 4f873c approve (or reject)
+```
+
+Your run id is different from `4f873c`. Copy the command from your own output.
+
+### Answer it
+
+```sh
+halonic runs send <run-id> approve
+```
+
+Use `reject` instead to finish the run without a reply. Either way the run
+finishes. You'll see `Sent nothing`, because Acme is an example and doesn't
+send anything. To read what happened, run `halonic runs show <run-id>`.
+
+### See what runs on its own
+
+```sh
+halonic routines
+```
+
+```text
+Weekly report   Mondays at 09:00   Next 16 Nov 09:00   Never ran
+```
+
+Acme has one routine, the weekly report, set for Monday at 9:00. This command
+lists your routines and when each runs next. It starts nothing. Your "Next"
+date will differ. To run routines at their set times, keep
+`halonic routines watch` open in a terminal, and stop it with Ctrl C.
+
+Next, read how to
+[add your first agent](https://docs.halonic.dev/examples/agent-with-a-tool), or
+open the `acme` folder and change a file. Run `halonic validate` after each
+change to check your files.
+
+`halonic init` on its own makes an empty workspace: a folder with no agents
+yet. Add your first agent with the
+[agent-with-a-tool example](https://docs.halonic.dev/examples/agent-with-a-tool),
+and check your files with `halonic validate` as you go. Want to see a working
+one first? Run `halonic init --example acme` and follow the steps above.
+
 ## Something failed?
 
 Run `halonic doctor` and fix what it lists. Then run the command that failed

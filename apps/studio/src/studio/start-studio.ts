@@ -1,8 +1,6 @@
 import {
-  TauriCommandPaths,
   TauriDefinitionStore,
   type TauriFileShell,
-  TauriFolderReader,
   TauriPickedFolders,
   TauriRunStore,
   TauriTrustStore,
@@ -12,15 +10,16 @@ import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
 import {
   openWorkspace,
   ServiceRegistry,
-  TrustService,
   type WorkspaceScope,
   workspaceFilesKey,
 } from "@halonicjs/app";
-import { systemClock } from "@halonicjs/std";
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import { libraryFeature } from "@halonicjs/studio-feature-library";
-import { ConnectorStatusHostService, RefusalsFeed } from "@halonicjs/studio-feature-library/api";
+import {
+  ConnectorStatusHostService,
+  ListedToolsHostService,
+} from "@halonicjs/studio-feature-library/api";
 import { runsFeature } from "@halonicjs/studio-feature-runs";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import {
@@ -36,6 +35,7 @@ import {
   AssistantWorkspaceService,
   DisplaySettingsService,
   HostSettingsService,
+  RestartRunsService,
   UpdaterService,
 } from "@halonicjs/studio-feature-settings/api";
 import {
@@ -57,7 +57,6 @@ import {
   provideShellHostSettings,
   provideShellSecrets,
   type TauriCallbacks,
-  TauriChannel,
   type TauriIpc,
   tauriAgentHostTransport,
   tauriChannelIpc,
@@ -72,12 +71,13 @@ import {
   type StudioHost,
   StudioWorkspace,
 } from "@halonicjs/studio-shell";
-import { WorkspaceConnectorStatus } from "../library/workspace-connector-status.ts";
+import { provideLibraryServices } from "../library/provide-library-services.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
 import { newWorkspaceHostOf } from "./new-workspace-host.ts";
 import { openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
+import { restartRunsOfWindow } from "./restart-runs.ts";
 import { trustedSourcesOf } from "./trusted-sources.ts";
 import { hostSettingsOf } from "./window-host-settings.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
@@ -180,6 +180,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
   features: [inboxFeature, libraryFeature, runsFeature, settingsFeature, workspaceFeature],
   hostServices: [
     ConnectorStatusHostService,
+    ListedToolsHostService,
     InboxRunsService,
     RunsSourceService,
     DisplaySettingsService,
@@ -320,11 +321,19 @@ export async function openFolder(
   provideAgentSandbox(services, window);
   if (ipc !== undefined) {
     services.provide(UpdaterService, updaterOf(ipc));
+    services.provide(RestartRunsService, restartRunsOfWindow);
   }
   const assistant = provideAssistant(services, files, location, name, scope);
-  if (ipc !== undefined && files !== undefined) {
+  if (ipc !== undefined && files !== undefined && trust !== undefined) {
     provideWorkspaceRuns(services, { ipc, files, window }, location);
-    provideConnectorStatus(services, { files, window }, location);
+    provideLibraryServices(services, {
+      ipc,
+      files,
+      transport: tauriAgentHostTransport(window),
+      trust,
+      location,
+      onFocus: (listener) => focusOf(window, listener),
+    });
   }
   shell.services.instantiate(services);
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name });
@@ -421,25 +430,6 @@ function provideWorkspaceRuns(
   });
   services.provide(RunsSourceService, runs);
   services.provide(InboxRunsService, runs);
-}
-
-/**
- * Gives the Library the workspace's connectors and what the engine refused from them
- * (`studio.workspace-connector-status`).
- */
-function provideConnectorStatus(
-  services: ServiceRegistry,
-  { files, window }: { files: TauriFileShell; window: object },
-  location: string,
-): void {
-  services.provide(
-    ConnectorStatusHostService,
-    new WorkspaceConnectorStatus({
-      definitions: new TauriDefinitionStore(files, location),
-      refusals: new RefusalsFeed(),
-      onFocus: (listener) => focusOf(window, listener),
-    }),
-  );
 }
 
 /** Calls `listener` whenever the page's window comes to the front; returns a function that stops it. */

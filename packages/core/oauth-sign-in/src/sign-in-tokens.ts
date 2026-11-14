@@ -9,7 +9,11 @@ import type { ApprovedSignIn } from "./approved-sign-in.ts";
 import { type RefreshGrant, type RefreshResult, refreshAccessToken } from "./refresh-grant.ts";
 import type { SignInGrant, SignInGrants } from "./sign-in-grants.ts";
 
-/** An access token is refreshed when it has less than this long to live. */
+/**
+ * An access token is refreshed when it has less than this long to live, or
+ * less than half its life for a token that lives under twice this long;
+ * see {@link refreshMarginMs}.
+ */
 export const accessTokenMinimumLifeMs = 60_000;
 
 /**
@@ -65,6 +69,11 @@ export interface SignInTokensSettings {
   requestSignal(): AbortSignal;
 }
 
+/** How much life a token of this length must still have to be placed: never more than half, so a short-lived token is used rather than refreshed on every access. */
+function refreshMarginMs(lifetimeMs: number): number {
+  return Math.min(accessTokenMinimumLifeMs, lifetimeMs / 2);
+}
+
 /** One access token this process was given. */
 interface IssuedToken {
   readonly value: string;
@@ -73,6 +82,8 @@ interface IssuedToken {
   readonly expiresAtMs?: number;
   /** When the token stops being placed: its expiry, or {@link unknownLifetimeMs} after it was issued. */
   readonly usableUntilMs: number;
+  /** From this moment on the token is no longer placed and the next `access` refreshes. */
+  readonly refreshAtMs: number;
 }
 
 /** What is kept in memory for one sign-in. */
@@ -128,7 +139,7 @@ export function createSignInTokens(settings: SignInTokensSettings): ManagedSignI
     if (current === undefined || state.rejectedCurrent) {
       return false;
     }
-    return current.usableUntilMs - nowMs() >= accessTokenMinimumLifeMs;
+    return nowMs() < current.refreshAtMs;
   }
 
   /** Loads what a refresh needs, refreshes, and keeps the result. Runs once at a time per sign-in. */
@@ -194,10 +205,13 @@ export function createSignInTokens(settings: SignInTokensSettings): ManagedSignI
           state.refreshToken = result.refreshToken;
         }
         const issuedAtMs = nowMs();
+        const lifetimeMs =
+          result.expiresIn === undefined ? unknownLifetimeMs : result.expiresIn * 1000;
         const token: IssuedToken = {
           value: result.accessToken,
           issuedAtMs,
-          usableUntilMs: issuedAtMs + (result.expiresIn ?? unknownLifetimeMs / 1000) * 1000,
+          usableUntilMs: issuedAtMs + lifetimeMs,
+          refreshAtMs: issuedAtMs + lifetimeMs - refreshMarginMs(lifetimeMs),
           ...(result.expiresIn === undefined
             ? {}
             : { expiresAtMs: issuedAtMs + result.expiresIn * 1000 }),

@@ -7,6 +7,7 @@ import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { SandboxCheckFacts, SandboxOutcome } from "./agent-sandbox/sandbox-state.ts";
 import type { AssistantProvider } from "./assistant/assistant-providers.ts";
 import type { DisplaySettings } from "./display-settings.ts";
+import type { RestartRunsHost } from "./updater/restart-runs.ts";
 import type { UpdaterHost } from "./updater/updater-host.ts";
 
 /**
@@ -120,3 +121,12 @@ export type {
 
 /** The updater the desktop app runs. Without it, About Halonic shows only the view-only line. */
 export const UpdaterService: ServiceKey<UpdaterHost> = serviceKey<UpdaterHost>("settings.updater");
+
+export type { RestartRuns, RestartRunsHost } from "./updater/restart-runs.ts";
+
+/**
+ * Which runs a restart would end, so the restart dialog can name them. The app provides it where
+ * Halonic runs as the desktop app; Restart to update asks it before it stops anything.
+ */
+export const RestartRunsService: ServiceKey<RestartRunsHost> =
+  serviceKey<RestartRunsHost>("settings.restart-runs");

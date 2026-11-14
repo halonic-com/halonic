@@ -10,7 +10,9 @@ import type {
 } from "@halonicjs/ports";
 import type {
   ErrorLog,
+  GoogleSetupPorts,
   RequestCountStore,
+  RequestLog,
   Server,
   ServerConfig,
   ServerPorts,
@@ -113,6 +115,8 @@ export function testServer(options: {
   runStore?: Pick<RunStore, "list" | "get">;
   trust?: TrustGate;
   webhooks?: WebhookRoutines;
+  google?: GoogleSetupPorts;
+  requestLog?: RequestLog;
 }): Server {
   const clock = options.clock ?? new TestClock();
   const ports: ServerPorts = {
@@ -127,6 +131,8 @@ export function testServer(options: {
     webhooks: options.webhooks ?? { find: async () => null },
     requestCounts: options.requestCounts ?? unusedPort("requestCounts"),
     errorLog: options.errorLog ?? { record: () => {} },
+    ...(options.google === undefined ? {} : { google: options.google }),
+    ...(options.requestLog === undefined ? {} : { requestLog: options.requestLog }),
     clock,
     ids: { next: (prefix) => `${prefix}_1` },
   };

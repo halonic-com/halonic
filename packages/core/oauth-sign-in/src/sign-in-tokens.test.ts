@@ -88,6 +88,19 @@ verifies("oauth-sign-in.sign-in-tokens", () => {
     expect(http.received).toHaveLength(2);
   });
 
+  it("uses a token that lives under 60 seconds for half its life instead of refreshing on every access", async () => {
+    const { tokens, http, saveGrant, passSeconds } = setup(numberedAnswers({ expires_in: 40 }));
+    await saveGrant();
+    await tokens.access("work-account");
+
+    passSeconds(19);
+    expect(await tokens.access("work-account")).toBe(tokenAt(1));
+    expect(http.received).toHaveLength(1);
+    passSeconds(1);
+    expect(await tokens.access("work-account")).toBe(tokenAt(2));
+    expect(http.received).toHaveLength(2);
+  });
+
   it("places a token without expires_in until it has 60 seconds of a five-minute life left, and keeps it in the filter until the process ends", async () => {
     let count = 0;
     const { tokens, saveGrant, passSeconds } = setup(() =>

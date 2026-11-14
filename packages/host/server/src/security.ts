@@ -47,6 +47,23 @@ export function checkHost(
   return options.allowedHosts.includes(hostHeader) ? null : serverErrors.hostNotAllowed;
 }
 
+/** Whether the request was sent to a loopback name, so it never left the computer the server runs on. */
+export function isLoopbackRequest(request: Request): boolean {
+  const parsed = hostHeaderPattern.exec(request.headers.get("host")?.toLowerCase() ?? "");
+  return loopbackNames.has(parsed?.groups?.["name"] ?? "");
+}
+
+/**
+ * Whether the client reached the server over HTTPS: what the host vouches for
+ * in `context.secure`, or else the scheme of the request URL.
+ */
+export function isSecureConnection(
+  request: Request,
+  context: { readonly secure?: boolean },
+): boolean {
+  return context.secure ?? new URL(request.url).protocol === "https:";
+}
+
 /**
  * Checks the `Origin` header. A browser sends one on every request a web page
  * makes to another address and on every same-origin write, so a request whose
