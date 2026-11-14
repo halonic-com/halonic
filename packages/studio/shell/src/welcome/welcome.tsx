@@ -119,7 +119,7 @@ export function Welcome({ onOpenFolder, recent }: WelcomeProps) {
 
   return (
     <div className="grid h-full place-items-center overflow-auto p-6">
-      <div className="flex max-w-md flex-col items-center gap-4 text-center">
+      <div className="flex w-full min-w-0 max-w-dialog-sm flex-col items-center gap-4 text-center">
         <div className="flex flex-col gap-2">
           <h1 className="text-title">Halonic Studio</h1>
           <p className="text-body text-fg-muted">
@@ -137,7 +137,7 @@ export function Welcome({ onOpenFolder, recent }: WelcomeProps) {
         >
           Open folder
         </Button>
-        <p role="alert" className="text-body text-danger empty:hidden">
+        <p role="alert" className="text-body text-danger break-words empty:hidden">
           {problem === undefined ? null : `Can't open ${problem.folder}: ${problem.reason}`}
         </p>
         {offersRemove ? (

@@ -65,6 +65,16 @@ verifies("shell.welcome-open", () => {
     expect(openButton(root).getAttribute("aria-busy")).not.toBe("true");
   });
 
+  it("caps the column at a width the theme defines, so a long path can't widen it", () => {
+    const root = render(<Welcome onOpenFolder={async () => undefined} />);
+
+    const column = root.querySelector("h1")?.parentElement?.parentElement;
+    expect(column?.className).toContain("max-w-dialog-sm");
+    expect(column?.className).toContain("min-w-0");
+    expect(column?.className).not.toContain("max-w-md");
+    expect(root.querySelector('[role="alert"]')?.className).toContain("break-words");
+  });
+
   it("stays as it was when the picker is cancelled", async () => {
     const root = render(<Welcome onOpenFolder={async () => undefined} />);
 

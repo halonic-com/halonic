@@ -124,7 +124,7 @@ export function PluginPage({
           onCancel={() => setRemoving(false)}
         />
       ) : null}
-      <div className="flex max-w-3xl flex-col gap-6 p-4">
+      <div className="flex max-w-reading flex-col gap-6 p-4">
         {manifest === undefined || manifest.description === "" ? null : (
           <p className="text-body text-fg-muted wrap-anywhere">{quoted(manifest.description)}</p>
         )}
