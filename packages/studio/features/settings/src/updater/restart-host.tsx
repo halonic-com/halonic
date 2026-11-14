@@ -2,7 +2,7 @@ import { Dialog, type ToastStore, useOpenExternal, useToastStore } from "@haloni
 import type { DialogHostProps } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState } from "react";
 import { RestartRunsService, UpdaterService } from "../api.ts";
-import { UPDATER_DIDNT_ANSWER } from "./about-text.ts";
+import { TRY_AGAIN, UPDATER_DIDNT_ANSWER } from "./about-text.ts";
 import { releasePage } from "./links.ts";
 import { type RestartFlow, RestartFlowService } from "./restart-flow.ts";
 import type { RestartRuns } from "./restart-runs.ts";
@@ -55,7 +55,11 @@ function RestartHostView({ host, flow, runs, announce }: RestartHostViewProps) {
       await host.restart();
     } catch {
       setBusy(false);
-      toasts?.show({ tone: "danger", title: UPDATER_DIDNT_ANSWER });
+      toasts?.show({
+        tone: "danger",
+        title: UPDATER_DIDNT_ANSWER,
+        action: { label: TRY_AGAIN, onClick: () => void restart() },
+      });
     }
   };
 
@@ -69,7 +73,11 @@ function RestartHostView({ host, flow, runs, announce }: RestartHostViewProps) {
           if (counted.running === 0) await restart();
           else setAsking({ runs: counted, version });
         } catch {
-          toasts?.show({ tone: "danger", title: UPDATER_DIDNT_ANSWER });
+          toasts?.show({
+            tone: "danger",
+            title: UPDATER_DIDNT_ANSWER,
+            action: { label: TRY_AGAIN, onClick: () => void restart() },
+          });
         }
       }),
     [flow, runs],

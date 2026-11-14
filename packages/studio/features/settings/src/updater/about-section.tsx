@@ -1,4 +1,11 @@
-import { Button, Callout, ExternalLink, Switch, ViewOnlyLine } from "@halonicjs/studio-kit";
+import {
+  Button,
+  Callout,
+  ExternalLink,
+  SkeletonBar,
+  Switch,
+  ViewOnlyLine,
+} from "@halonicjs/studio-kit";
 import type { SettingsSectionProps } from "@halonicjs/studio-shell";
 import { type UpdaterHost, UpdaterService } from "../api.ts";
 import { type AboutAction, type AboutProgress, aboutView } from "./about-state.ts";
@@ -35,7 +42,19 @@ export interface AboutHostViewProps {
 export function AboutHostView({ host, announce, onRestart }: AboutHostViewProps) {
   const updater = useUpdater(host, announce);
   const { status } = updater;
-  if (status === null) return <AboutLinks heading={null} />;
+  if (status === null)
+    return (
+      <div className="mt-2 flex max-w-120 flex-col gap-5">
+        {updater.unanswered ? (
+          <NoAnswer onRetry={updater.retry} />
+        ) : (
+          <div role="status" aria-label={text.LOADING_STATUS} className="w-1/2">
+            <SkeletonBar kind="meta" />
+          </div>
+        )}
+        <AboutLinks heading={null} />
+      </div>
+    );
   const view = aboutView(status, new Date());
   const checking = status.checking;
   const version = "version" in status.state ? status.state.version : "";
@@ -50,7 +69,10 @@ export function AboutHostView({ host, announce, onRestart }: AboutHostViewProps)
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1">
           <h3 className="text-body font-medium">{text.versionHeading(status.current)}</h3>
-          {view.callout ? null : <p className="text-small text-fg-muted">{view.line}</p>}
+          {updater.unanswered ? <NoAnswer onRetry={updater.retry} /> : null}
+          {updater.unanswered || view.callout ? null : (
+            <p className="text-small text-fg-muted">{view.line}</p>
+          )}
         </div>
         <Button
           variant="ghost"
@@ -69,9 +91,6 @@ export function AboutHostView({ host, announce, onRestart }: AboutHostViewProps)
         </Callout>
       ) : null}
       {view.progress ? <DownloadBar progress={view.progress} /> : null}
-      {updater.unanswered ? (
-        <p className="text-small text-fg-muted">{text.UPDATER_DIDNT_ANSWER}</p>
-      ) : null}
       {view.actions.length === 0 && view.notesUrl === null ? null : (
         <div className="flex flex-wrap items-center gap-3">
           {view.actions
@@ -95,6 +114,18 @@ export function AboutHostView({ host, announce, onRestart }: AboutHostViewProps)
         </Switch>
       ) : null}
       <AboutLinks heading={status.current} />
+    </div>
+  );
+}
+
+/** The updater didn't answer: the line and a Try again that repeats what failed. */
+function NoAnswer({ onRetry }: { readonly onRetry: () => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <p className="text-small text-fg-muted">{text.UPDATER_DIDNT_ANSWER}</p>
+      <Button variant="ghost" size="sm" onClick={onRetry}>
+        {text.TRY_AGAIN}
+      </Button>
     </div>
   );
 }
