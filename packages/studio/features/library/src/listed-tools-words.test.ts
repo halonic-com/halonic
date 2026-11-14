@@ -51,3 +51,15 @@ verifies("library.listed-tools-review", () => {
     );
   });
 });
+
+verifies("library.listed-tools-review", () => {
+  it("counts the tools Approve all covers, with the search or without", () => {
+    expect(listedToolsWords.approveAll(3)).toBe("Approve all (3)");
+    expect(listedToolsWords.approveAllShown(3)).toBe("Approve all 3 shown");
+  });
+
+  it("words the badge for one tool and for several", () => {
+    expect(listedToolsWords.waitingBadge(1)).toBe("1 tool is waiting for your approval");
+    expect(listedToolsWords.waitingBadge(2)).toBe("2 tools are waiting for your approval");
+  });
+});

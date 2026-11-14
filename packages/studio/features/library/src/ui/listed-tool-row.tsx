@@ -14,7 +14,7 @@ export interface ListedToolRowViewProps {
   readonly tick: { readonly ticked: boolean; readonly onToggle: () => void } | null;
   /** Shows the state chip. The first screen leaves it out, since every row would say "Not approved". */
   readonly showState: boolean;
-  /** A button of the row's own, at the right of the name: "Approve this version". */
+  /** A button of the row's own, at the right of the name: "Turn it on anyway". */
   readonly action?: ReactNode;
 }
 
@@ -111,6 +111,9 @@ export function ListedToolRowView({
               {listedToolsWords.leftOut(reason)}
             </p>
           ))}
+          {showState && row.state === "changed" ? (
+            <p className="text-small text-fg-muted">{listedToolsWords.offUntilApproved}</p>
+          ) : null}
           <p className="text-small text-fg-muted">{listedToolsWords.askedBeforeEachUse}</p>
         </div>
       </div>

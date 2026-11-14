@@ -10,7 +10,7 @@ export interface ListedToolsReviewBodyProps {
   readonly model: ListedToolsReviewModel;
   /** Called with the toast once an approval is removed. The dialog shows it when it closes, since toasts don't show over a dialog. */
   readonly onRemoved: (toast: string) => void;
-  /** Called with what a tool's own **Approve this version** did: close with the toast, or stay. */
+  /** Called with what a tool's own **Turn it on anyway** did: close with the toast, or stay. */
   readonly onOutcome: (outcome: ReviewOutcome) => void;
 }
 
@@ -65,7 +65,7 @@ export function ListedToolsReviewBody({ model, onRemoved, onOutcome }: ListedToo
               key={`${index}:${row.name}`}
               className="px-4 text-small text-fg-muted [overflow-wrap:anywhere]"
             >
-              {listedToolsWords.keepsChangingLine(snapshot.sourceName, row.name)}
+              {listedToolsWords.keepsChangingLine(row.name)}
             </p>
           ))}
           <PlainList>
@@ -83,7 +83,7 @@ export function ListedToolsReviewBody({ model, onRemoved, onOutcome }: ListedToo
                     busy={state.busy}
                     onClick={() => void model.approveThisVersion(row.name).then(onOutcome)}
                   >
-                    {listedToolsWords.approveThisVersion}
+                    {listedToolsWords.turnOnAnyway}
                     <span className="sr-only"> of {row.name}</span>
                   </Button>
                 }
@@ -119,7 +119,7 @@ export function ListedToolsReviewBody({ model, onRemoved, onOutcome }: ListedToo
                   <span className="font-mono text-body text-fg [overflow-wrap:anywhere]">
                     {name}
                   </span>
-                  <span className="block">{listedToolsWords.askedBeforeEachUse}</span>
+                  <span className="block">{listedToolsWords.approvedAsks}</span>
                 </span>
                 <Button
                   variant="ghost"

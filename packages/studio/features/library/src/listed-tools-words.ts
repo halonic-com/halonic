@@ -12,9 +12,9 @@ function staysOff(count: number): string {
 export const listedToolsWords = {
   title: (source: string) => `Review the tools from ${source}`,
   topLine:
-    "A server you connected wrote these descriptions. Halonic hasn't checked them. Approve only the tools you expect this server to have.",
+    "A server you connected wrote these descriptions. Halonic can't vouch for them. Approve only the tools you expect this server to have.",
   approveSelected: "Approve selected",
-  approveAll: "Approve all",
+  approveAll: (count: number) => `Approve all (${count})`,
   /** With a search on, the button says how many tools it covers. */
   approveAllShown: (count: number) => `Approve all ${count} shown`,
   approveNone: "Approve none",
@@ -43,16 +43,22 @@ export const listedToolsWords = {
   showAll: "Show all",
   showLess: "Show less",
   argumentsLabel: "Arguments:",
-  refusedHeading: "Refused",
-  refusedLine:
-    "Halonic left these out because they break its rules for tools a server lists. You can't approve them.",
+  refusedHeading: "Halonic won't use these",
+  refusedLine: "These tools break Halonic's rules for tools. You can't approve them.",
   keepsChangingHeading: "Keeps changing",
-  keepsChangingLine: (source: string, tool: string) =>
-    `${source} keeps changing ${tool}, so it stays off and isn't asked about.`,
-  approveThisVersion: "Approve this version",
+  keepsChangingLine: (tool: string) => `This server keeps changing ${tool}. It stays off.`,
+  turnOnAnyway: "Turn it on anyway",
   approvedHeading: (count: number) => `Approved (${count})`,
   removeApproval: "Remove approval",
   askedBeforeEachUse: "Asks you before each use.",
+  /** The line under a tool the person approved. Never "safe" or "trusted": approving doesn't vouch for the tool. */
+  approvedAsks: "Approved. It still asks before each use.",
+  offUntilApproved: "Off until you approve the new version.",
+  /** The badge on the connector's card. */
+  waitingBadge: (count: number) =>
+    count === 1
+      ? "1 tool is waiting for your approval"
+      : `${count} tools are waiting for your approval`,
   leftOut: (reason: string) => `Halonic left out part of its arguments: ${reason}.`,
   serverChangedOnly: (source: string) =>
     `Its text hasn't changed, but ${source} connects differently than when you approved it: another address, version or settings.`,
@@ -80,7 +86,7 @@ export const listedToolsWords = {
       ? `Couldn't read an approval for ${source}, so none of its listed tools are on.`
       : `Couldn't read your approval for ${tool}, so none of the tools ${source} lists are on. Remove it, then approve it again.`,
   unreadableUnavailable: "Halonic can't tell which tool it belongs to yet.",
-  loadFailed: (reason: string) => `Couldn't list the tools: ${reason}.`,
+  loadFailed: (reason: string) => `Couldn't read the tools: ${reason}.`,
   tryAgain: "Try again",
   connecting: "Connecting…",
   /** A refused tool's reason is cut to this many characters on screen; the full text is its tooltip. */

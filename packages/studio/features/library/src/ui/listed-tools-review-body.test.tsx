@@ -97,6 +97,12 @@ describe("the review body", () => {
       expect(refused?.textContent).toBe(`look up: ${"x".repeat(64)}…`);
     });
 
+    it("names the refused group in plain words and says an approved tool still asks", async () => {
+      const { container } = await open(base);
+      expect(container.textContent).toContain("Halonic won't use these");
+      expect(container.textContent).toContain("Approved. It still asks before each use.");
+    });
+
     it("shows the state chip once something was approved before", async () => {
       const { container } = await open({
         ...base,
@@ -168,6 +174,10 @@ describe("the review body", () => {
       });
       expect(container.textContent).toContain("Keeps changing");
       expect(container.textContent).toContain("sync_tags");
+      expect(container.textContent).toContain(
+        "This server keeps changing sync_tags. It stays off.",
+      );
+      expect(container.textContent).toContain("Off until you approve the new version.");
       const names = [...container.querySelectorAll("li .font-mono")].map((n) => n.textContent);
       expect(names.indexOf("beta")).toBeLessThan(names.indexOf("alpha"));
     });
@@ -196,9 +206,9 @@ describe("the review body", () => {
     it("approves a tool that keeps changing only by its own button, at the version shown", async () => {
       const { container, outcomes } = await open(base);
       const button = [...container.querySelectorAll("button")].find((candidate) =>
-        candidate.textContent?.startsWith("Approve this version"),
+        candidate.textContent?.startsWith("Turn it on anyway"),
       );
-      expect(button?.textContent).toBe("Approve this version of sync_tags");
+      expect(button?.textContent).toBe("Turn it on anyway of sync_tags");
       await act(async () => button?.click());
       expect(approvals).toEqual([[{ name: "sync_tags", fingerprint: "htl1:sync_tags-1" }]]);
       // Another tool still waits, so the review stays open.
