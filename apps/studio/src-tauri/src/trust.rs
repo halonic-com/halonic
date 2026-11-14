@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 
 use halonic_git_guard::plain_path;
 use halonic_profile::join_path;
-use halonic_trust_grant::{PickedFolders, TrustRefusal, TrustState};
+use halonic_trust_grant::{FolderProbe, PickedFolders, TrustRefusal, TrustState};
 use halonic_trust_store::FileTrustStore;
 use halonic_workspace_files::Fence;
 use serde_json::Value;
@@ -142,6 +142,59 @@ pub async fn create_workspace_folder<R: Runtime>(
             |created| profile_fence(&profile, created) == Fence::Whole,
             &parent,
             &name,
+        )
+    })
+    .await
+}
+
+/// What is at `name` in `parent`, reading names only, never a file's
+/// contents: `"new"` (nothing there), `"empty"`, `"files"` or `"workspace"`
+/// (it holds a `workspace.yaml`). Refused as `create_workspace_folder`
+/// refuses, and `exists` for a link or a file at the path.
+#[tauri::command]
+pub async fn probe_workspace_folder<R: Runtime>(
+    app: AppHandle<R>,
+    parent: String,
+    name: String,
+) -> Result<FolderProbe, TrustRefusal> {
+    on_worker(app, move |app| {
+        let profile = cli_profile(app).map_err(TrustRefusal::io)?;
+        let documents = app.path().document_dir().ok();
+        app.state::<TrustState>().probe_workspace(
+            documents.as_deref(),
+            |target| profile_fence(&profile, target) == Fence::Whole,
+            &parent,
+            &name,
+        )
+    })
+    .await
+}
+
+/// Opens the folder `name` in `parent`, which exists, as a picked folder,
+/// after the shell asks the person the trust question about it (as
+/// `trust_grant` does). Answers its location, or `null` when they say no.
+/// Checked as `probe_workspace_folder` is, before and after the question.
+/// No trust record is written: the page asks for trust as for any picked
+/// folder.
+#[tauri::command]
+pub async fn open_workspace_folder<R: Runtime>(
+    app: AppHandle<R>,
+    parent: String,
+    name: String,
+) -> Result<Option<String>, TrustRefusal> {
+    on_worker(app, move |app| {
+        let profile = cli_profile(app).map_err(TrustRefusal::io)?;
+        let list = picked_folders(app)?;
+        let folders = app.state::<GitState>().folders();
+        let documents = app.path().document_dir().ok();
+        app.state::<TrustState>().open_workspace(
+            &folders,
+            &list,
+            documents.as_deref(),
+            |target| profile_fence(&profile, target) == Fence::Whole,
+            &parent,
+            &name,
+            |question| ask_to_trust(app, question),
         )
     })
     .await
