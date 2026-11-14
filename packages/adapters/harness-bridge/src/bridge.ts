@@ -64,6 +64,10 @@ export async function openBridge(
     endedConnections: new WeakSet(),
   };
   const server = createServer((request, response) => {
+    // Keep the socket open after the reply so the client closes first. Otherwise Node closes it right after the
+    // reply and srt's proxy turns a late write (EPIPE) into a 502 though the reply was complete (HAL-8158).
+    // `close()` still ends every connection through `closeAllConnections`.
+    (response as unknown as { shouldKeepAlive: boolean }).shouldKeepAlive = true;
     const handler = serve(context, request, response);
     handlers.add(handler);
     void handler.finally(() => handlers.delete(handler));
