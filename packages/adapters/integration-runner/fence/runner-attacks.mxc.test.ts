@@ -244,36 +244,33 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
       "v1.0",
       "powershell.exe",
     );
+    // The two calls are built in memory with reflection, not compiled with
+    // `Add-Type`: that starts the C# compiler, which the box may stop. Each
+    // step writes a marker to stderr, so a stuck run shows where it stopped.
     const readCredential = `
-      Add-Type -Namespace Halonic -Name Vault -MemberDefinition @'
-        // CREDENTIALW, declared so the marshaller lays it out for this machine.
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-        public struct Credential {
-          public int Flags;
-          public int Type;
-          public string TargetName;
-          public string Comment;
-          public System.Runtime.InteropServices.ComTypes.FILETIME LastWritten;
-          public int CredentialBlobSize;
-          public System.IntPtr CredentialBlob;
-          public int Persist;
-          public int AttributeCount;
-          public System.IntPtr Attributes;
-          public string TargetAlias;
-          public string UserName;
-        }
-        [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        public static extern bool CredRead(string target, int type, int flags, out System.IntPtr credential);
-        [DllImport("advapi32.dll")]
-        public static extern void CredFree(System.IntPtr buffer);
-'@
-      $pointer = [System.IntPtr]::Zero
-      if (-not [Halonic.Vault]::CredRead('${credentialTarget.replaceAll("'", "''")}', 1, 0, [ref]$pointer)) {
-        [Console]::Out.Write("CredRead failed: " + [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()); exit 1
-      }
-      $credential = [System.Runtime.InteropServices.Marshal]::PtrToStructure($pointer, [Type][Halonic.Vault+Credential])
-      [Console]::Out.Write([System.Runtime.InteropServices.Marshal]::PtrToStringUni($credential.CredentialBlob, $credential.CredentialBlobSize / 2))
-      [Halonic.Vault]::CredFree($pointer)
+      function Step($name) { [Console]::Error.WriteLine("step: " + $name) }
+      Step "start"
+      $assembly = [System.AppDomain]::CurrentDomain.DefineDynamicAssembly((New-Object System.Reflection.AssemblyName "HalonicVault"), [System.Reflection.Emit.AssemblyBuilderAccess]::Run)
+      $type = $assembly.DefineDynamicModule("HalonicVault").DefineType("Vault", "Public,Class")
+      $flags = [System.Reflection.MethodAttributes]"Public,Static,PinvokeImpl"
+      $read = $type.DefinePInvokeMethod("CredRead", "advapi32.dll", $flags, [System.Reflection.CallingConventions]::Standard, [bool], [type[]]@([string], [int], [int], [System.IntPtr].MakeByRefType()), [System.Runtime.InteropServices.CallingConvention]::Winapi, [System.Runtime.InteropServices.CharSet]::Unicode)
+      $read.SetImplementationFlags($read.GetMethodImplementationFlags() -bor [System.Reflection.MethodImplAttributes]::PreserveSig)
+      $free = $type.DefinePInvokeMethod("CredFree", "advapi32.dll", $flags, [System.Reflection.CallingConventions]::Standard, [void], [type[]]@([System.IntPtr]), [System.Runtime.InteropServices.CallingConvention]::Winapi, [System.Runtime.InteropServices.CharSet]::Unicode)
+      $free.SetImplementationFlags($free.GetMethodImplementationFlags() -bor [System.Reflection.MethodImplAttributes]::PreserveSig)
+      $vault = $type.CreateType()
+      Step "built"
+      $arguments = [object[]]@('${credentialTarget.replaceAll("'", "''")}', 1, 0, [System.IntPtr]::Zero)
+      $found = $vault.GetMethod("CredRead").Invoke($null, $arguments)
+      Step ("CredRead returned " + $found)
+      if (-not $found) { exit 1 }
+      $pointer = $arguments[3]
+      # CREDENTIALW: CredentialBlobSize follows Flags, Type, two strings and
+      # LastWritten (16 bytes + 2 pointers); CredentialBlob follows it, padded
+      # to a pointer. That is 32 and 40 on 64-bit Windows.
+      $size = [System.Runtime.InteropServices.Marshal]::ReadInt32($pointer, 16 + 2 * [System.IntPtr]::Size)
+      $blob = [System.Runtime.InteropServices.Marshal]::ReadIntPtr($pointer, 16 + 3 * [System.IntPtr]::Size)
+      [Console]::Out.Write([System.Runtime.InteropServices.Marshal]::PtrToStringUni($blob, $size / 2))
+      [void]$vault.GetMethod("CredFree").Invoke($null, @($pointer))
     `;
     const { attempts } = await attack(
       `
@@ -287,7 +284,7 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
           timeout: 20000,
         });
         if (run.error) throw Object.assign(new Error(run.error.message + " " + run.stdout + " " + run.stderr), { code: run.error.code });
-        if (run.status !== 0) throw Object.assign(new Error(run.stdout || run.stderr), { code: "EXIT_" + run.status });
+        if (run.status !== 0) throw Object.assign(new Error(run.stdout + " " + run.stderr), { code: "EXIT_" + run.status });
         // Report whether the secret came out, never the secret itself.
         return run.stdout === ${JSON.stringify(canary)} ? "read" : "other output";
       });
