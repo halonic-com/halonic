@@ -15,7 +15,7 @@ const githubApi = "https://api.github.com";
 export interface GitHubReadLimits {
   /** How long GitHub may take to answer one call, in milliseconds. */
   timeoutMs: number;
-  /** The most text one result holds; a longer one is cut and says so. */
+  /** The most text one result holds, and the most of GitHub's answer the bridge reads; a longer one is cut and says so. */
   maxResultBytes: number;
 }
 
@@ -34,15 +34,25 @@ export interface GitHubReadToolsOptions {
   limits?: GitHubReadLimits;
 }
 
+/** What a tool read: the text, and whether GitHub's answer was longer than the bridge reads. */
+interface ToolOutput {
+  text: string;
+  cut: boolean;
+}
+
 interface ToolSpec {
   definition: ToolDefinition;
-  run(context: CallContext, number: number): Promise<string>;
+  run(context: CallContext, number: number): Promise<ToolOutput>;
 }
 
 interface CallContext {
-  get(path: string, accept?: string): Promise<Response>;
+  /** The text of GitHub's answer, up to the limit. */
+  text(path: string, accept?: string): Promise<ToolOutput>;
+  /** GitHub's answer as JSON. @throws GitHubReadError when it is longer than the limit, since a cut answer can't be read as JSON */
   json(path: string): Promise<unknown>;
 }
+
+const whole = (text: string): ToolOutput => ({ text, cut: false });
 
 const numberParameter = {
   type: "object",
@@ -105,8 +115,8 @@ export class GitHubReadTools implements BridgeTools {
       return failed("The number must be a whole number of 1 or more.");
     }
     try {
-      const text = await spec.run(await this.#context(options.signal), number);
-      return { result: this.#cut(text), outcome: "ok" };
+      const output = await spec.run(await this.#context(options.signal), number);
+      return { result: this.#finish(output), outcome: "ok" };
     } catch (error) {
       if (error instanceof GitHubReadError) return failed(error.message);
       // Not our own error: its text could quote the request, so the program doesn't read it.
@@ -124,7 +134,7 @@ export class GitHubReadTools implements BridgeTools {
           description: `Reads one pull request of ${repository}: title, description, state, branches and head commit.`,
           parameters: numberParameter,
         },
-        run: async (context, number) => pullRequestSummary(await context.json(pull(number))),
+        run: async (context, number) => whole(pullRequestSummary(await context.json(pull(number)))),
       },
       {
         definition: {
@@ -132,8 +142,7 @@ export class GitHubReadTools implements BridgeTools {
           description: `Reads the whole diff of one pull request of ${repository}.`,
           parameters: numberParameter,
         },
-        run: async (context, number) =>
-          (await context.get(pull(number), "application/vnd.github.diff")).text(),
+        run: async (context, number) => context.text(pull(number), "application/vnd.github.diff"),
       },
       {
         definition: {
@@ -142,7 +151,7 @@ export class GitHubReadTools implements BridgeTools {
           parameters: numberParameter,
         },
         run: async (context, number) =>
-          fileList(await context.json(`${pull(number)}/files?per_page=100`)),
+          whole(fileList(await context.json(`${pull(number)}/files?per_page=${listPageSize}`))),
       },
       {
         definition: {
@@ -153,9 +162,9 @@ export class GitHubReadTools implements BridgeTools {
         run: async (context, number) => {
           const sha = headSha(await context.json(pull(number)));
           const runs = await context.json(
-            `/repos/${repository}/commits/${sha}/check-runs?per_page=100`,
+            `/repos/${repository}/commits/${sha}/check-runs?per_page=${listPageSize}`,
           );
-          return checkList(sha, runs);
+          return whole(checkList(sha, runs));
         },
       },
     ];
@@ -163,7 +172,7 @@ export class GitHubReadTools implements BridgeTools {
 
   async #context(signal: AbortSignal): Promise<CallContext> {
     const token = await this.#token();
-    const get = async (path: string, accept = "application/vnd.github+json") => {
+    const get = async (path: string, accept: string): Promise<Response> => {
       const reply = await this.#fetch(`${githubApi}${path}`, {
         method: "GET",
         redirect: "manual",
@@ -178,13 +187,28 @@ export class GitHubReadTools implements BridgeTools {
       if (!reply.ok) throw new GitHubReadError(describeFailure(reply.status));
       return reply;
     };
-    return { get, json: async (path) => (await get(path)).json() };
+    const text = async (path: string, accept = "application/vnd.github+json") =>
+      readCapped(await get(path, accept), this.#limits.maxResultBytes);
+    const json = async (path: string) => {
+      const { text: body, cut } = await text(path);
+      if (cut) {
+        throw new GitHubReadError(
+          `GitHub's answer is longer than the ${this.#limits.maxResultBytes} bytes the bridge reads.`,
+        );
+      }
+      try {
+        return JSON.parse(body);
+      } catch {
+        throw new GitHubReadError("GitHub's answer wasn't what the bridge expects.");
+      }
+    };
+    return { text, json };
   }
 
   /** The token, which must go in a header as it is: visible ASCII only. */
   async #token(): Promise<string> {
     const { secret, secrets } = this.#options;
-    const token = await secrets.get(secret);
+    const token = await lookUp(secrets, secret);
     if (token === null) {
       throw new GitHubReadError(`The secret "${secret}" that holds the GitHub token isn't set.`);
     }
@@ -194,11 +218,56 @@ export class GitHubReadTools implements BridgeTools {
     return token;
   }
 
-  #cut(text: string): string {
+  /** The result: the text cut to the limit, with a note when GitHub's answer or the text was cut. */
+  #finish({ text, cut }: ToolOutput): string {
+    const { maxResultBytes } = this.#limits;
     const bytes = new TextEncoder().encode(text);
-    if (bytes.length <= this.#limits.maxResultBytes) return text;
-    const kept = new TextDecoder().decode(bytes.subarray(0, this.#limits.maxResultBytes));
-    return `${kept}\n[Cut: the result was ${bytes.length} bytes, and this shows the first ${this.#limits.maxResultBytes}.]`;
+    if (!cut && bytes.length <= maxResultBytes) return text;
+    const kept = new TextDecoder().decode(bytes.subarray(0, maxResultBytes));
+    return `${kept}\n[Cut: the result was longer than ${maxResultBytes} bytes, and this shows the first ${maxResultBytes}.]`;
+  }
+}
+
+/** How many items one list call asks GitHub for; a list that fills it says it may be cut. */
+const listPageSize = 100;
+
+/**
+ * The text of a reply, read only up to `maxBytes`: it stops at the first byte
+ * over, without reading the rest into memory.
+ */
+async function readCapped(reply: Response, maxBytes: number): Promise<ToolOutput> {
+  if (reply.body === null) return whole("");
+  const reader = reply.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  while (size <= maxBytes) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    size += value.length;
+  }
+  const cut = size > maxBytes;
+  if (cut) await reader.cancel();
+  const all = new Uint8Array(size);
+  let at = 0;
+  for (const chunk of chunks) {
+    all.set(chunk, at);
+    at += chunk.length;
+  }
+  return { text: new TextDecoder().decode(all.subarray(0, maxBytes)), cut };
+}
+
+/**
+ * The secret's value, or `null` when it isn't set. When the store fails, the
+ * error names the secret and gives the store's own message, which by the
+ * `Secrets` port never holds a value.
+ */
+async function lookUp(secrets: Secrets, name: string): Promise<string | null> {
+  try {
+    return await secrets.get(name);
+  } catch (error) {
+    const cause = error instanceof Error ? error.message : "it failed for an unknown reason";
+    throw new GitHubReadError(`The secret "${name}" could not be read: ${cause}`);
   }
 }
 
@@ -298,12 +367,14 @@ function fileList(value: unknown): string {
   const files = asList(value).map((file) =>
     pick(file, ["filename", "status", "additions", "deletions", "previous_filename"]),
   );
-  return JSON.stringify(files, null, 2);
+  return JSON.stringify({ files, truncated: files.length >= listPageSize }, null, 2);
 }
 
 function checkList(sha: string, value: unknown): string {
-  const runs = asList(asObject(value)["check_runs"]).map((run) =>
+  const list = asObject(value);
+  const runs = asList(list["check_runs"]).map((run) =>
     pick(run, ["name", "status", "conclusion", "html_url", "started_at", "completed_at"]),
   );
-  return JSON.stringify({ sha, checks: runs }, null, 2);
+  const total = typeof list["total_count"] === "number" ? list["total_count"] : runs.length;
+  return JSON.stringify({ sha, checks: runs, truncated: total > runs.length }, null, 2);
 }

@@ -102,9 +102,23 @@ verifies("harness-bridge.github-read", () => {
         "/repos/halonic-com/halonic/pulls/12/files?per_page=100": json(files),
       });
       const answer = await tools.call("github_list_pull_request_files", { number: 12 }, { signal });
-      expect(JSON.parse(answer.result)).toEqual([
-        { filename: "a.ts", status: "added", additions: 3, deletions: 0 },
-      ]);
+      expect(JSON.parse(answer.result)).toEqual({
+        files: [{ filename: "a.ts", status: "added", additions: 3, deletions: 0 }],
+        truncated: false,
+      });
+    });
+
+    it("says a file list may be cut when it fills the page of 100", async () => {
+      const files = Array.from({ length: 100 }, (_, index) => ({
+        filename: `f${index}.ts`,
+        status: "added",
+      }));
+      const { tools } = toolsWith(
+        { "/repos/halonic-com/halonic/pulls/12/files?per_page=100": json(files) },
+        { maxResultBytes: 100_000 },
+      );
+      const answer = await tools.call("github_list_pull_request_files", { number: 12 }, { signal });
+      expect(JSON.parse(answer.result)).toMatchObject({ truncated: true });
     });
 
     it("lists the checks of the head commit", async () => {
@@ -119,7 +133,21 @@ verifies("harness-bridge.github-read", () => {
       expect(JSON.parse(answer.result)).toMatchObject({
         sha,
         checks: [{ name: "ci-ok", status: "completed", conclusion: "success" }],
+        truncated: false,
       });
+    });
+
+    it("says a check list is cut when GitHub holds more checks than it sent", async () => {
+      const sha = "b".repeat(40);
+      const { tools } = toolsWith({
+        "/repos/halonic-com/halonic/pulls/12": json(pull),
+        [`/repos/halonic-com/halonic/commits/${sha}/check-runs?per_page=100`]: json({
+          total_count: 130,
+          check_runs: [{ name: "ci-ok", status: "completed", conclusion: "success" }],
+        }),
+      });
+      const answer = await tools.call("github_get_pull_request_checks", { number: 12 }, { signal });
+      expect(JSON.parse(answer.result)).toMatchObject({ truncated: true });
     });
 
     it("cuts a result over the limit and says so", async () => {
@@ -130,6 +158,34 @@ verifies("harness-bridge.github-read", () => {
       const answer = await tools.call("github_get_pull_request_diff", { number: 12 }, { signal });
       expect(answer.outcome).toBe("ok");
       expect(answer.result.startsWith("xxxxxxxxxx\n[Cut:")).toBe(true);
+    });
+
+    it("reads no more of a long answer than the limit", async () => {
+      let pulled = 0;
+      const chunk = new TextEncoder().encode("x".repeat(1000));
+      const body = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          pulled += 1;
+          controller.enqueue(chunk);
+        },
+      });
+      const { tools } = toolsWith(
+        { "/repos/halonic-com/halonic/pulls/12": new Response(body) },
+        { maxResultBytes: 2500 },
+      );
+      const answer = await tools.call("github_get_pull_request_diff", { number: 12 }, { signal });
+      expect(answer.result).toContain("[Cut:");
+      expect(pulled).toBeLessThan(10);
+    });
+
+    it("answers an error for a JSON answer longer than the limit", async () => {
+      const { tools } = toolsWith(
+        { "/repos/halonic-com/halonic/pulls/12": json({ title: "x".repeat(100) }) },
+        { maxResultBytes: 10 },
+      );
+      const answer = await tools.call("github_get_pull_request", { number: 12 }, { signal });
+      expect(answer.outcome).toBe("error");
+      expect(answer.result).toContain("longer than");
     });
 
     it("answers a bad number without calling GitHub", async () => {
@@ -174,6 +230,24 @@ verifies("harness-bridge.github-read", () => {
         expect(answer.result).not.toContain("line");
         expect(sent).toEqual([]);
       }
+    });
+
+    it("gives the secret store's own message when it fails to read the secret", async () => {
+      const tools = new GitHubReadTools({
+        repository: "halonic-com/halonic",
+        secret: "GITHUB_READ_TOKEN",
+        secrets: {
+          get: async () => {
+            throw new Error("The keychain is locked.");
+          },
+        },
+        fetch: async () => new Response("{}"),
+      });
+      const answer = await tools.call("github_get_pull_request", { number: 1 }, { signal });
+      expect(answer).toEqual({
+        outcome: "error",
+        result: 'The secret "GITHUB_READ_TOKEN" could not be read: The keychain is locked.',
+      });
     });
 
     it("hides a network failure's own text, which could quote the request", async () => {
