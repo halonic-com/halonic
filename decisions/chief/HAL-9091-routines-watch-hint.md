@@ -3,6 +3,7 @@
 - Task: HAL-9091
 - Approval: Liam approves this change on HAL-9091 (https://paperclip.halonic.com/HAL/issues/HAL-9091#comment-30d490d7-12dc-4481-844a-833e5d79a39a): "I approve the change as described in the task: the dim line under `halonic routines` and the `routines watch` step in `init --example`." A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yNk6bapIPA7QTQo0rSSdQbUrcfpb3T2GjhMAit9OV46LdJ+dKnuQd2acFmnTeiT2kHyfeQRQQ+0qugfFIvXAAA==
 
 ## What changes
 
