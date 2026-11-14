@@ -106,3 +106,33 @@ export function overviewSections(
     }))
     .filter((section) => !searching || section.items.length > 0);
 }
+
+/** One hub filter chip: its {@link OverviewView.filter} id and the words it shows. */
+export interface OverviewChip {
+  readonly value: string;
+  readonly label: string;
+}
+
+/**
+ * The hub filter chips: "All", one per hub, and the shared one when something is shared. The
+ * shared chip is named by the page's words, so it takes the label as an argument.
+ */
+export function overviewChips(
+  hubs: readonly OverviewHub[],
+  shared: OverviewShared | undefined,
+  words: { readonly all: string; readonly shared: (workspaceName: string) => string },
+): readonly OverviewChip[] {
+  const chips: OverviewChip[] = [
+    { value: allFilter, label: words.all },
+    ...hubs.map((hub) => ({ value: hubFilter(hub.id), label: hub.name })),
+  ];
+  if (shared !== undefined && shared.items.length > 0) {
+    chips.push({ value: sharedFilter, label: words.shared(shared.workspaceName) });
+  }
+  return chips;
+}
+
+/** The filter to use: the chosen one while its chip still exists, "All" when it has gone. */
+export function currentFilter(filter: string, chips: readonly OverviewChip[]): string {
+  return chips.some((chip) => chip.value === filter) ? filter : allFilter;
+}

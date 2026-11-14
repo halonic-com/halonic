@@ -1,10 +1,25 @@
-import { EmptyState, Input, List, type ListRow, SearchIcon } from "@halonicjs/studio-kit";
+import {
+  Button,
+  ContextMenu,
+  type ContextMenuTarget,
+  EmptyState,
+  FilterChips,
+  Input,
+  List,
+  type ListRow,
+  type MenuEntry,
+  PlusIcon,
+  SearchIcon,
+} from "@halonicjs/studio-kit";
 import { type KeyboardEvent, type ReactNode, useState } from "react";
 import {
   allFilter,
+  currentFilter,
   type OverviewHub,
+  type OverviewItem,
   type OverviewSection,
   type OverviewShared,
+  overviewChips,
   overviewSections,
 } from "./overview-model.ts";
 
@@ -18,6 +33,14 @@ export interface OverviewWords {
   readonly searchLabel: string;
   /** What screen readers hear while the items load: "Loading skills". */
   readonly loadingLabel: string;
+  /** The name of the hub filter chips: "Hub". */
+  readonly chipsLabel: string;
+  /** The chip that shows every hub: "All". */
+  readonly allChip: string;
+  /** The chip that shows only the shared items: "Shared in Acme". */
+  readonly sharedChip: (workspaceName: string) => string;
+  /** The ⋮ button's name, which names its row: "More actions for Sorter". */
+  readonly moreLabel: (itemName: string) => string;
   /** The heading of the shared section: "Shared in Acme". */
   readonly sharedSection: (workspaceName: string) => string;
   /** A hub with no items, in its own section: "No skills in acme yet". */
@@ -49,15 +72,38 @@ export interface OverviewPageProps {
   /** The items are on their way. */
   readonly loading?: boolean;
   readonly failure?: OverviewFailure;
+  /** The page's one create button, after the search field: "New skill". Without it, none shows. */
+  readonly newButton?: { readonly label: string; readonly onClick: () => void };
+  /**
+   * The items of an item's ⋮ menu, in the feature's words. Without it, or with none for an item,
+   * the row has no ⋮ button.
+   */
+  readonly itemMenu?: (item: OverviewItem) => readonly MenuEntry[];
   /** A tab list the feature draws above the search field, as the Library's four tabs. */
   readonly tabs?: ReactNode;
 }
 
-function rowsOf(section: OverviewSection): readonly ListRow[] {
+/** Opens an item's ⋮ menu below the button that was pressed. */
+type OpenMenu = (item: OverviewItem, element: HTMLElement) => void;
+
+function rowsOf(
+  section: OverviewSection,
+  words: OverviewWords,
+  menuOf: ((item: OverviewItem) => readonly MenuEntry[]) | undefined,
+  openMenu: OpenMenu,
+): readonly ListRow[] {
   return section.items.map((item) => ({
     id: item.id,
     title: item.name,
     ...(item.detail === undefined ? {} : { meta: item.detail }),
+    ...(menuOf === undefined || menuOf(item).length === 0
+      ? {}
+      : {
+          more: {
+            label: words.moreLabel(item.name),
+            onClick: (event) => openMenu(item, event.currentTarget),
+          },
+        }),
   }));
 }
 
@@ -77,10 +123,16 @@ export function OverviewPage({
   onOpenInNewTab,
   loading = false,
   failure,
+  newButton,
+  itemMenu,
   tabs,
 }: OverviewPageProps) {
   const [query, setQuery] = useState("");
-  const sections = overviewSections(hubs, shared, { filter: allFilter, query });
+  const [chosen, setChosen] = useState(allFilter);
+  const [menu, setMenu] = useState<{ item: OverviewItem; target: ContextMenuTarget }>();
+  const chips = overviewChips(hubs, shared, { all: words.allChip, shared: words.sharedChip });
+  const filter = currentFilter(chosen, chips);
+  const sections = overviewSections(hubs, shared, { filter, query });
   const headingOf = (section: OverviewSection) =>
     section.shared ? words.sharedSection(section.name) : section.name;
 
@@ -97,16 +149,33 @@ export function OverviewPage({
     <div>
       {tabs}
       {failure === undefined && (
-        <div className="px-4 py-2">
-          <Input
-            type="search"
-            aria-label={words.searchLabel}
-            leadingIcon={<SearchIcon />}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={clearOnEscape}
-          />
-        </div>
+        <>
+          <div className="flex items-center gap-2 px-4 py-2">
+            <div className="min-w-0 flex-1">
+              <Input
+                type="search"
+                aria-label={words.searchLabel}
+                leadingIcon={<SearchIcon />}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={clearOnEscape}
+              />
+            </div>
+            {newButton && (
+              <Button variant="primary" icon={<PlusIcon />} onClick={newButton.onClick}>
+                {newButton.label}
+              </Button>
+            )}
+          </div>
+          {chips.length > 2 && (
+            <FilterChips
+              label={words.chipsLabel}
+              options={chips}
+              value={filter}
+              onChange={setChosen}
+            />
+          )}
+        </>
       )}
       <OverviewBody
         sections={sections}
@@ -118,7 +187,17 @@ export function OverviewPage({
         failure={failure}
         onOpen={onOpen}
         onOpenInNewTab={onOpenInNewTab}
+        itemMenu={itemMenu}
+        openMenu={(item, element) => setMenu({ item, target: { element } })}
       />
+      {menu !== undefined && itemMenu !== undefined && (
+        <ContextMenu
+          label={words.moreLabel(menu.item.name)}
+          entries={itemMenu(menu.item)}
+          target={menu.target}
+          onClose={() => setMenu(undefined)}
+        />
+      )}
     </div>
   );
 }
@@ -133,6 +212,8 @@ interface OverviewBodyProps {
   readonly failure: OverviewFailure | undefined;
   readonly onOpen: (id: string) => void;
   readonly onOpenInNewTab: (id: string) => void;
+  readonly itemMenu: OverviewPageProps["itemMenu"];
+  readonly openMenu: OpenMenu;
 }
 
 /** Everything under the search field (the failed state has no field): the failure, the loading rows, the states or the sections. */
@@ -146,6 +227,8 @@ function OverviewBody({
   failure,
   onOpen,
   onOpenInNewTab,
+  itemMenu,
+  openMenu,
 }: OverviewBodyProps) {
   if (failure !== undefined) {
     return (
@@ -172,7 +255,7 @@ function OverviewBody({
         <List
           key={section.id}
           heading={{ name: headingOf(section) }}
-          rows={rowsOf(section)}
+          rows={rowsOf(section, words, itemMenu, openMenu)}
           empty={{ plain: true, title: words.emptySection(headingOf(section)) }}
           onOpen={onOpen}
           onOpenInNewTab={onOpenInNewTab}
