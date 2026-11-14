@@ -29,6 +29,12 @@ export const AUTOMATIC_OFF_NOTE = "Automatic updates are off.";
 export const UPDATER_DIDNT_ANSWER = "Halonic's updater didn't answer.";
 export const LOADING_STATUS = "Loading update status";
 
+export const managedBy = (tool: string) => `Updates are managed by ${tool}.`;
+export const RUN_IN_TERMINAL = "To update, run this in a terminal:";
+export const copyCommandLabel = "Copy the update command";
+export const isOut = (version: string, current: string) =>
+  `Halonic ${version} is out. You have ${current}.`;
+
 export const versionHeading = (version: string) => `Halonic ${version}`;
 export const upToDate = (when: string) => `Up to date. Checked ${when}.`;
 export const automaticOff = (when: string | null) =>

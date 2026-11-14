@@ -77,10 +77,15 @@ export function aboutView(status: UpdateStatus, now: Date): AboutView {
     case "cant-check":
       return view(text.cantCheck(text.checkReasons[state.reason], when));
     case "available":
-      return view(text.available(state.version, status.current), {
-        actions: buttons("download"),
-        notesUrl: state.notesUrl,
-      });
+      return view(
+        status.managed === null
+          ? text.available(state.version, status.current)
+          : text.isOut(state.version, status.current),
+        {
+          actions: buttons("download"),
+          notesUrl: state.notesUrl,
+        },
+      );
     case "downloading":
       return view(text.downloading(state.version, progressOf(state).valueText), {
         progress: progressOf(state),
