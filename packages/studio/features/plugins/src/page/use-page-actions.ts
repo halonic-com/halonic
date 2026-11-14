@@ -1,3 +1,4 @@
+import type { Plugin } from "@halonicjs/format";
 import { useToastStore } from "@halonicjs/studio-kit";
 import { messageOf } from "../message-of.ts";
 import {
@@ -5,8 +6,8 @@ import {
   ADDED_OFF_TOAST_BODY,
   actionFailedLine,
   addedOffToast,
-  ON_TOAST_BODY,
   onToast,
+  onToastBody,
   removedToast,
 } from "./plugin-actions.ts";
 
@@ -27,8 +28,13 @@ export function usePageActions() {
         toasts?.show({ tone: "danger", title });
       }
     },
-    toastOn: (name: string) => {
-      toasts?.show({ tone: "success", title: onToast(name), text: ON_TOAST_BODY });
+    toastOn: (name: string, manifest: Plugin | undefined) => {
+      const text = onToastBody(manifest);
+      toasts?.show({
+        tone: "success",
+        title: onToast(name),
+        ...(text === undefined ? {} : { text }),
+      });
     },
     toastAddedOff: (name: string) => {
       toasts?.show({ tone: "info", title: addedOffToast(name), text: ADDED_OFF_TOAST_BODY });

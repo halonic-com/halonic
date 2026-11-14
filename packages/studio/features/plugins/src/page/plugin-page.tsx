@@ -110,7 +110,7 @@ export function PluginPage({
           manifest={manifest}
           trust={actions.trust}
           onClose={() => setReviewing(false)}
-          onTrusted={() => toastOn(plugin.name)}
+          onTrusted={() => toastOn(plugin.name, manifest)}
         />
       ) : null}
       {removing ? (

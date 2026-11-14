@@ -87,6 +87,30 @@ verifies("plugins.plugin-review", () => {
     ]);
   });
 
+  it("names only what the plugin adds in the toast", async () => {
+    const base = weather("not-trusted");
+    const ui = base.manifest?.ui;
+    if (base.manifest === undefined || ui === undefined) throw new Error("No manifest");
+    const without = (change: { commands?: never[]; cards?: never[] }): InstalledPlugin => ({
+      ...base,
+      manifest: { ...base.manifest, ui: { ...ui, ...change } } as NonNullable<typeof base.manifest>,
+    });
+    const bodies: (string | undefined)[] = [];
+    for (const plugin of [
+      without({ cards: [] }),
+      without({ commands: [] }),
+      without({ commands: [], cards: [] }),
+    ]) {
+      toasts = createToastStore();
+      await show(plugin, async () => {});
+      await press("Review");
+      await press("Trust");
+      bodies.push(toasts.list()[0]?.text);
+      unmountAll();
+    }
+    expect(bodies).toEqual(["Its command is in Ctrl K.", "Its card is on Home.", undefined]);
+  });
+
   it("trusts nothing on Not now", async () => {
     const asked: string[] = [];
     await show(weather("not-trusted"), async (plugin) => {
