@@ -378,3 +378,16 @@ fn run_lock_lets_one_writer_at_a_time_in() {
     assert_eq!(rounds.load(Ordering::SeqCst), 40);
     assert!(folder.names().is_empty());
 }
+
+#[cfg(unix)]
+#[test]
+fn run_lock_is_private_while_held() {
+    let folder = TemporaryFolder::new();
+    let file = folder.lock(None);
+    let mode = with_run_lock(&file, &FakeComputer::here(), || {
+        std::os::unix::fs::PermissionsExt::mode(&fs::metadata(&file).expect("the lock is there"))
+            & 0o777
+    })
+    .expect("the lock is taken");
+    assert_eq!(mode, 0o600);
+}

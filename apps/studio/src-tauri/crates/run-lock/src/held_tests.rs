@@ -49,7 +49,11 @@ fn held_lock_hold_takes_over_the_lock_of_a_process_that_has_ended() {
 #[test]
 fn held_lock_hold_takes_over_a_lock_older_than_the_stale_limit() {
     let folder = TemporaryFolder::new();
-    let file = folder.lock(Some(&record(std::process::id(), "another-computer", 60_000)));
+    let file = folder.lock(Some(&record(
+        std::process::id(),
+        "another-computer",
+        60_000,
+    )));
     assert!(hold_lock(&file, &FakeComputer::here()).is_ok());
 }
 
@@ -111,4 +115,24 @@ fn held_lock_renew_gives_up_a_lock_older_than_the_stale_limit() {
         Renewal::Lost("wasn't renewed within the stale limit, so it was given up")
     );
     assert!(folder.names().is_empty());
+}
+
+/// The mode bits of `file`: the lock is private (`fs.run-store-private-files`).
+#[cfg(unix)]
+fn mode_of(file: &std::path::Path) -> u32 {
+    std::os::unix::fs::PermissionsExt::mode(&fs::metadata(file).expect("the file is there")) & 0o777
+}
+
+#[cfg(unix)]
+#[test]
+fn held_lock_is_private_when_taken_and_when_renewed() {
+    let folder = TemporaryFolder::new();
+    let file = folder.lock(None);
+    let computer = FakeComputer::here();
+    let mut held = hold_lock(&file, &computer).expect("taken");
+    assert_eq!(mode_of(&file), 0o600);
+    thread::sleep(Duration::from_millis(5));
+    held.renew(&computer).expect("renewed");
+    assert_eq!(mode_of(&file), 0o600);
+    held.release().expect("released");
 }

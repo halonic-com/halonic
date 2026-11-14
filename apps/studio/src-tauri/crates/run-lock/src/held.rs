@@ -9,10 +9,10 @@
 
 use crate::record::{LockRecord, STALE_AFTER_MS, is_stale, record_text};
 use crate::{
-    RETRY_DELAY, StaleRemoval, ThisComputer, busy, create_exclusive, now_ms, read_lock,
-    read_taken_lock, release_lock, remove_stale,
+    RETRY_DELAY, StaleRemoval, ThisComputer, busy, create_exclusive, create_private, now_ms,
+    read_lock, read_taken_lock, release_lock, remove_stale,
 };
-use std::fs::{self, OpenOptions};
+use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::thread;
@@ -124,6 +124,8 @@ fn own_record_text(host: Option<&str>) -> String {
 /// Puts `text` in `file` by writing a file next to it and renaming it over.
 fn replace_whole(file: &Path, text: &str) -> io::Result<()> {
     let mut name = file.as_os_str().to_owned();
+    // Only this process renews this lock, so the time is name enough (Node
+    // adds a UUID).
     name.push(format!(".{}.renew", now_ms()));
     let next = PathBuf::from(name);
     let written = write_private(&next, text);
@@ -136,11 +138,7 @@ fn replace_whole(file: &Path, text: &str) -> io::Result<()> {
 
 /// Creates `file`, readable by this user only, as the lock is when taken.
 fn write_private(file: &Path, text: &str) -> io::Result<()> {
-    let mut options = OpenOptions::new();
-    options.write(true).create_new(true);
-    #[cfg(unix)]
-    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
-    options.open(file)?.write_all(text.as_bytes())
+    create_private(file)?.write_all(text.as_bytes())
 }
 
 #[cfg(test)]
