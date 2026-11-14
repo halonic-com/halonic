@@ -2496,6 +2496,9 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std
+      '@halonicjs/studio-kit':
+        specifier: workspace:*
+        version: link:../../kit
       '@halonicjs/studio-shell':
         specifier: workspace:*
         version: link:../../shell

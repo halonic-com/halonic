@@ -59,7 +59,8 @@ export function editAliasFallbacks(
 }
 
 /**
- * Saves the two price fields as the alias's `price`. Both empty removes it.
+ * Saves the two price fields as the alias's `price`. Both empty removes it. With one still empty,
+ * nothing is written (the other is being filled in) unless the one that is filled isn't an amount.
  * The cache prices the file may already have stay as they are.
  */
 export function editAliasPrice(
@@ -70,14 +71,17 @@ export function editAliasPrice(
   if (fields.input.trim() === "" && fields.output.trim() === "") {
     return applyEdits(text, [{ kind: "delete", path: ["aliases", alias, "price"] }]);
   }
+  const inputEmpty = fields.input.trim() === "";
+  const outputEmpty = fields.output.trim() === "";
   const input = parseAmount(fields.input);
-  if (input === undefined) {
+  if (input === undefined && !inputEmpty) {
     return err({ field: "input", message: amountMessage });
   }
   const output = parseAmount(fields.output);
-  if (output === undefined) {
+  if (output === undefined && !outputEmpty) {
     return err({ field: "output", message: amountMessage });
   }
+  if (input === undefined || output === undefined) return ok(text);
   return applyEdits(text, [
     { kind: "set", path: ["aliases", alias, "price", "input"], value: input },
     { kind: "set", path: ["aliases", alias, "price", "output"], value: output },

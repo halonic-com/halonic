@@ -118,13 +118,15 @@ verifies("models.aliases.list", () => {
   });
 });
 
-it("titles an alias tab with the alias and says what pointing it does", () => {
+it("titles an alias tab with the alias and says what pointing it does", async () => {
   element = document.createElement("div");
   document.body.append(element);
   root = createRoot(element);
   const item = { kind: "model-alias", hub: "local", id: "smart" };
-  act(() =>
-    root?.render(<AliasTab item={item} context={{} as WorkspaceContext} Sections={() => null} />),
+  const files = filesWith(twoAliases);
+  const context = { services: { get: () => files } } as unknown as WorkspaceContext;
+  await act(async () =>
+    root?.render(<AliasTab item={item} context={context} Sections={() => null} />),
   );
 
   expect(element.querySelector("h1")?.textContent).toBe("Alias: smart");
