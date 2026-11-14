@@ -26,9 +26,8 @@ import { type RealMxc, realMxc } from "./mxc-sandbox.ts";
 // and with it off, so the box alone stands between the script and the
 // computer. That is what an integration has once it gets past the module hook
 // and Node's layer. `mxcFencesRunner` stays off until every case here has
-// passed, A6 and A23 included. A36 past Node's layer (HAL-9362) and A6 through
-// Windows' DNS client (HAL-9605) are recorded gaps: each expects what gets
-// through, so a gap that closes fails too.
+// passed, A6 and A23 included. A36 past Node's layer (HAL-9362) is a recorded
+// gap: it expects what gets through, so a gap that closes fails too.
 
 let mxc: RealMxc;
 let base: string;
@@ -146,19 +145,21 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     expect(resolverQueries).toBe(queriesBefore);
   });
 
-  it("A6: a name lookup through Windows' DNS client gets through (known gap)", async () => {
+  it("A6: a name lookup through Windows' DNS client sends no query from the box", async () => {
     // A lookup by name (`dns.lookup`, so also `fetch` and `net.connect`) goes
     // to the Windows DNS client service on this computer, outside the box.
-    // The box doesn't fence it, so integration data can leave in lookups.
-    // Proof that the query left the box: an NRPT rule sends every name under
-    // a made-up namespace to a DNS server of this test on 127.0.0.1:53, which
-    // counts what it receives. The box refuses a direct send to that server
-    // (the case above), so a query arriving there came from the DNS client,
-    // outside the box. A hosts-file name would prove nothing: if the box
-    // fenced the client, Windows would read the hosts file inside the box.
-    // Needs admin rights and a free port 53, which a CI runner has. If the box
-    // ever fences the client, no query arrives and this test fails: then move
-    // A6 to the refusals above and drop the recorded gap in attack-cases.md.
+    // Proof of what reaches it: an NRPT rule sends every name under a made-up
+    // namespace to a DNS server of this test on 127.0.0.1:53, which counts
+    // what it receives. The box refuses a direct send to that server (the
+    // case above), so a query arriving there would have come from the DNS
+    // client, outside the box. A hosts-file name would prove nothing: if the
+    // box fenced the client, Windows would read the hosts file inside the box.
+    // Needs admin rights and a free port 53, which a CI runner has.
+    // On windows-11-arm no query arrives: the lookup from the box fails or
+    // times out. Whether the box fences the client or the client refuses the
+    // box for another reason (a missing capability) is not known from here, so
+    // the probe prints the error and the time it took. A profile that grants
+    // that capability needs this test re-checked.
     // Both Node layers see the same, as Node's permission model does not
     // cover name lookups.
     const suffix = Math.random().toString(36).slice(2);
@@ -194,17 +195,33 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
         received.some((query) => query.includes(controlLabel)),
         "the control lookup outside the box reached the server (setup)",
       ).toBe(true);
-      await attack(
+      // The control must come first: a server that heard nothing from the box
+      // counts as "fenced" only when it can hear at all.
+      const { attempts } = await attack(
         `
         const dns = await import("node:dns/promises");
-        await attempt("lookup", async () => (await dns.lookup(${JSON.stringify(`${label}.${namespace}`)})).address);
+        let milliseconds = 0;
+        await attempt("lookup", async () => {
+          const started = Date.now();
+          try {
+            return (await dns.lookup(${JSON.stringify(`${label}.${namespace}`)})).address;
+          } finally {
+            milliseconds = Date.now() - started;
+          }
+        });
+        await attempt("milliseconds", async () => String(milliseconds));
       `,
         nodeLayer,
       );
+      const inBox = attempts["lookup"];
+      console.log(
+        `A6 in-box lookup, Node's layer ${nodeLayer}: ${inBox?.outcome} (${inBox?.detail}) after ${attempts["milliseconds"]?.detail} ms`,
+      );
+      expect(inBox?.outcome, "the lookup from the box did not resolve").not.toBe("allowed");
       expect(
         received.some((query) => query.includes(label)),
-        "the query reached the server",
-      ).toBe(true);
+        "no query from the box reached the server",
+      ).toBe(false);
     } finally {
       try {
         nrpt(
