@@ -48,6 +48,26 @@ verifies("executor-remote.sse", () => {
       expect(messages.map((message) => message.event)).toEqual(["run", "end"]);
     });
 
+    it("reads a CRLF that is split between chunks as one line end, whatever the split", async () => {
+      const bytes = new TextEncoder().encode(
+        "event: run\r\ndata: 1\r\n\r\nevent: end\r\ndata: 2\r\n\r\n",
+      );
+      const expected = [
+        { event: "run", id: null, data: "1" },
+        { event: "end", id: null, data: "2" },
+      ];
+      expect(await messagesOf([...bytes].map((byte) => Uint8Array.of(byte)))).toEqual(expected);
+      for (let cut = 1; cut < bytes.length; cut++) {
+        expect(await messagesOf([bytes.slice(0, cut), bytes.slice(cut)])).toEqual(expected);
+      }
+    });
+
+    it("ends a message on a CR that closes the body", async () => {
+      expect(await messagesOf(["data: x\r", "\r"])).toEqual([
+        { event: "message", id: null, data: "x" },
+      ]);
+    });
+
     it("drops a message that was cut off before its blank line", async () => {
       expect(await messagesOf(['event: run\ndata: {"se'])).toEqual([]);
     });

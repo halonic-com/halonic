@@ -48,23 +48,36 @@ export async function* readSseMessages(
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let pending = "";
+  // A CR that ended the last chunk waits here: an LF at the start of the next chunk joins it into one line end.
+  let heldCr = false;
+  const drain = function* (): Generator<SseMessage> {
+    let end = pending.indexOf("\n\n");
+    while (end !== -1) {
+      const message = parseBlock(pending.slice(0, end));
+      pending = pending.slice(end + 2);
+      if (message !== null) {
+        yield message;
+      }
+      end = pending.indexOf("\n\n");
+    }
+  };
   try {
     for (;;) {
       const { done, value } = await reader.read();
       if (done) {
+        // The body ended, so no LF can follow a held CR: it is a line end of its own.
+        if (heldCr) {
+          pending += "\n";
+          yield* drain();
+        }
         return;
       }
+      let text: string = (heldCr ? "\r" : "") + decoder.decode(value, { stream: true });
+      heldCr = text.endsWith("\r");
+      if (heldCr) text = text.slice(0, -1);
       // A lone CR also ends a line in the format; one newline form keeps the split simple.
-      pending = (pending + decoder.decode(value, { stream: true })).replace(/\r\n?/g, "\n");
-      let end = pending.indexOf("\n\n");
-      while (end !== -1) {
-        const message = parseBlock(pending.slice(0, end));
-        pending = pending.slice(end + 2);
-        if (message !== null) {
-          yield message;
-        }
-        end = pending.indexOf("\n\n");
-      }
+      pending += text.replace(/\r\n?/g, "\n");
+      yield* drain();
     }
   } finally {
     // Stops the download when the reader of the messages stops early. Cancelling fails only

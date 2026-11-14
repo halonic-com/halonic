@@ -24,6 +24,9 @@ function sessionCookieOf(response: Response): string | null {
   return null;
 }
 
+/** How long a sign-in may take before it is given up as a failed try. */
+const defaultLoginTimeoutMs = 30_000;
+
 /**
  * Talks to one host: keeps the session cookie by hand, because `fetch` has no
  * cookie jar outside a browser, and signs in again when the host answers 401.
@@ -33,13 +36,20 @@ export class HostClient {
   readonly #baseUrl: string;
   readonly #password: string | undefined;
   readonly #fetch: Fetcher;
+  readonly #loginTimeoutMs: number;
   #cookie: string | null = null;
   #signingIn: Promise<void> | null = null;
 
-  constructor(baseUrl: string, password: string | undefined, fetcher: Fetcher) {
+  constructor(
+    baseUrl: string,
+    password: string | undefined,
+    fetcher: Fetcher,
+    loginTimeoutMs = defaultLoginTimeoutMs,
+  ) {
     this.#baseUrl = baseUrl.replace(/\/+$/, "");
     this.#password = password;
     this.#fetch = fetcher;
+    this.#loginTimeoutMs = loginTimeoutMs;
   }
 
   /**
@@ -74,10 +84,12 @@ export class HostClient {
     return this.#signingIn;
   }
 
+  /** Signs in. A host that stops answering ends in a `TimeoutError` rejection, which counts as a try that can be repeated. */
   async #login(): Promise<void> {
     const response = await this.#once("/api/login", {
       method: "POST",
       body: { password: this.#password },
+      signal: AbortSignal.timeout(this.#loginTimeoutMs),
     });
     if (!response.ok) {
       throw await readHostError(response);
