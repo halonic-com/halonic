@@ -3,6 +3,7 @@
 - Task: HAL-195
 - Approval: Liam approves this note in review on the review task of this pull request
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5+5nLKrZ4ZEowXm3SFnqjOiYteMY4bREVJc42kSAElT6yI+HaiJmrOOiEkfmNmZjbtAN9uB/f49lXqKI3tSXBg==
 
 ## What changes
 
