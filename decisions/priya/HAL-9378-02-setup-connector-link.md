@@ -2,6 +2,7 @@
 
 - Approval: HAL-9378 (Liam, CTO), decision comment of 14 Nov: option 1, with the link scoped to the workspace
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ibWFb4zMtg7gSbJYJnuxjFiuOm5oRhw1NmNzL8tXVCmiPNupWYFwz3/ZiaNTC1JnRchxgRyzcrAqEZnCeQFvAA==
 - Task: HAL-9378
 
 A Google setup record now holds `connector: { workspace, id }`, and `setups.start` requires it. The
