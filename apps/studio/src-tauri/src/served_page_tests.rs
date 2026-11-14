@@ -462,6 +462,8 @@ fn served_page_test_sees_trust_granted_to_the_local_main_window_only() {
             "allow-documents-folder",
             "allow-pick-parent-folder",
             "allow-create-workspace-folder",
+            "allow-probe-workspace-folder",
+            "allow-open-workspace-folder",
             "allow-trust-get",
             "allow-trust-list",
             "allow-trust-folders-found",
