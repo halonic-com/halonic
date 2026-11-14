@@ -8,8 +8,8 @@ small workspace packages stay private and keep their own names.
 
 - **Layer:** tooling
 - **Owner:** mateo
-- **Public API:** `@halonicjs/tooling-publish` (`stageLayer`, `rewriteSpecifiers`)
-- **Requirements:** `publish.staged-package`, `publish.matching-versions`, `publish.packed-import`
+- **Public API:** `@halonicjs/tooling-publish` (`stageLayer`, `rewriteSpecifiers`, `buildWorkerBundle`)
+- **Requirements:** `publish.staged-package`, `publish.matching-versions`, `publish.packed-import`, `publish.worker-bundle`
 
 ## Example
 
@@ -83,3 +83,13 @@ Chief, and merge or run only once the user has approved.
 `src/pack.test.ts` packs both layer packages, installs the tarballs into a folder outside the workspace,
 imports and type-checks them there, and bundles a small integration against the kit with esbuild so
 `check:bundle` can check it. It needs no network: `zod` and `vitest` are linked from the workspace.
+
+## The Worker bundle
+
+`buildWorkerBundle(entryPoint)` builds the Halonic Worker (the `src/index.ts` of
+`@halonicjs/target-cloudflare-runtime`, which the caller resolves, because tooling doesn't depend on a target) and everything it
+imports into one ES module script for workerd, and returns it with its hash: the lowercase hex SHA-256 of the
+script's bytes. This is what `halonic deploy` uploads, and the hash is what `deploy status` shows. The build is
+reproducible: it reads no environment variable, adds no timestamp or source map, and keeps esbuild's path
+comments relative to the package that holds the entry file, so the same sources give the same hash from any folder. The script
+is not minified, so a reviewer can read what is uploaded. The rule is the requirement `publish.worker-bundle`.

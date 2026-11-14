@@ -193,7 +193,7 @@
         "tooling",
         "testing"
       ],
-      "reason": "Bundles a sample integration against the packed integration kit, so check:bundle can prove the kit brings nothing into a cloud bundle (HAL-1216). Its metafile is what check:bundle reads. In the integration runner it builds the runner into the one file Node may read inside the fence (design HAL-958, HAL-983); that file imports only Node's own modules, and esbuild never ships. No dependencies beyond its own platform binaries. Build and tests only. In target-cloudflare-testing it bundles a port contract suite into the test Worker that runs it inside workerd, with vitest swapped for our own small shim (HAL-197 part 1)."
+      "reason": "Bundles a sample integration against the packed integration kit, so check:bundle can prove the kit brings nothing into a cloud bundle (HAL-1216). Its metafile is what check:bundle reads. In the integration runner it builds the runner into the one file Node may read inside the fence (design HAL-958, HAL-983); that file imports only Node's own modules, and esbuild never ships. No dependencies beyond its own platform binaries. Build and tests only. In target-cloudflare-testing it bundles a port contract suite into the test Worker that runs it inside workerd, with vitest swapped for our own small shim (HAL-197 part 1). In tooling-publish it also builds the Halonic Worker into the one reproducible script that `halonic deploy` uploads and hashes (HAL-8957)."
     },
     "fast-check": {
       "category": "dev-tooling",
