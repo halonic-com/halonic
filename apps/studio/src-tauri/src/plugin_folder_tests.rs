@@ -3,6 +3,8 @@
 
 use std::path::{Path, PathBuf};
 
+use serde_json::{Value, json};
+
 use super::{entries, folder_to_reveal, location, read};
 
 /// A folder of its own for one test, removed when the test ends.
@@ -174,4 +176,24 @@ fn plugin_folder_test_refuses_a_plugins_folder_that_is_a_file() {
 
     let refusal = entries(&scratch.plugins(), None, None, true).expect_err("a file");
     assert_eq!(refusal.kind(), "special_path");
+}
+
+#[test]
+fn plugin_folder_test_sees_the_commands_granted_to_the_local_main_window_only() {
+    // A remote page must never reach the plugin folder: the served Studio
+    // could then read every installed plugin's files.
+    let text = include_str!("../capabilities/desktop-plugin-folder.json");
+    let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
+    assert_eq!(capability["local"], true);
+    assert_eq!(capability["windows"], json!(["main"]));
+    assert!(capability.get("remote").is_none(), "{capability}");
+    assert_eq!(
+        capability["permissions"],
+        json!([
+            "allow-plugin-folder-entries",
+            "allow-plugin-folder-read",
+            "allow-plugin-folder-location",
+            "allow-plugin-folder-reveal"
+        ])
+    );
 }
