@@ -6,7 +6,7 @@ const defaultKeyPrefix = "blobs/";
 
 /**
  * The three calls the store makes on an R2 bucket. A Worker's `R2Bucket` binding fits it, and so
- * does a stand-in in a Node test, which has no Cloudflare types.
+ * does a wrapper around one, which a test uses to count the calls.
  */
 export interface BlobBucket {
   head(key: string): Promise<unknown>;
