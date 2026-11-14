@@ -242,9 +242,13 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     language: studioLanguage,
     ...newWorkspaceOf(page.window, platform),
   });
-  const stopListening = onWindowCloseRequested(page.window, () =>
-    withinLimit(stopped(), closeLimitMs),
-  );
+  const stopListening = onWindowCloseRequested(page.window, async () => {
+    // A save that fails keeps the window open on "Close Acme?" (HAL-9370); a hung one doesn't.
+    const saved = await withinLimit(switcher.saveAllForWindowClose(), closeLimitMs, true);
+    if (!saved) return false;
+    await withinLimit(stopped(), closeLimitMs, undefined);
+    return true;
+  });
   const stopped = once(async () => {
     await stopListening();
     window.unmount();
@@ -269,14 +273,14 @@ function once(task: () => Promise<void>): () => Promise<void> {
   };
 }
 
-/** Settles when `task` does or after `ms`, whichever comes first. */
-async function withinLimit(task: Promise<void>, ms: number): Promise<void> {
+/** Settles with `task`'s result or, after `ms`, with `fallback`, whichever comes first. */
+async function withinLimit<T>(task: Promise<T>, ms: number, fallback: T): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const limit = new Promise<void>((resolve) => {
-    timer = setTimeout(resolve, ms);
+  const limit = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(fallback), ms);
   });
   try {
-    await Promise.race([task, limit]);
+    return await Promise.race([task, limit]);
   } finally {
     clearTimeout(timer);
   }

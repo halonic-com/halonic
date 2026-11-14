@@ -31,13 +31,13 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 verifies("services.tauri-ipc", () => {
   describe("onWindowCloseRequested", () => {
     it("registers nothing on a page outside the shell", async () => {
-      const stop = onWindowCloseRequested({}, async () => {});
+      const stop = onWindowCloseRequested({}, async () => undefined);
       await expect(stop()).resolves.toBeUndefined();
     });
 
     it("listens for the window's close request", () => {
       const { page, calls } = webview();
-      onWindowCloseRequested(page, async () => {});
+      onWindowCloseRequested(page, async () => undefined);
       expect(calls).toEqual([
         [
           "plugin:event|listen",
@@ -53,13 +53,24 @@ verifies("services.tauri-ipc", () => {
     it("destroys the window only after the handler has finished", async () => {
       const { page, calls, press } = webview();
       let finish = () => {};
-      onWindowCloseRequested(page, () => new Promise<void>((resolve) => (finish = resolve)));
+      onWindowCloseRequested(
+        page,
+        () => new Promise<undefined>((resolve) => (finish = () => resolve(undefined))),
+      );
       press();
       await settle();
       expect(calls.map(([command]) => command)).not.toContain("plugin:window|destroy");
       finish();
       await settle();
       expect(calls.at(-1)).toEqual(["plugin:window|destroy", { label: "main" }]);
+    });
+
+    it("keeps the window open when the handler resolves false", async () => {
+      const { page, calls, press } = webview();
+      onWindowCloseRequested(page, async () => false);
+      press();
+      await settle();
+      expect(calls.map(([command]) => command)).not.toContain("plugin:window|destroy");
     });
 
     it("still destroys the window when the handler fails", async () => {
@@ -76,7 +87,7 @@ verifies("services.tauri-ipc", () => {
 
     it("stops listening, so a later close is Tauri's own", async () => {
       const { page, calls, registered } = webview();
-      const stop = onWindowCloseRequested(page, async () => {});
+      const stop = onWindowCloseRequested(page, async () => undefined);
       await stop();
       expect(registered()).toBe(0);
       expect(calls.at(-1)).toEqual([
@@ -88,7 +99,7 @@ verifies("services.tauri-ipc", () => {
     it("reports a window that will not close", async () => {
       const { page, press } = webview(["plugin:window|destroy"]);
       const error = vi.spyOn(console, "error").mockImplementation(() => {});
-      onWindowCloseRequested(page, async () => {});
+      onWindowCloseRequested(page, async () => undefined);
       press();
       await settle();
       expect(error).toHaveBeenCalledTimes(1);
@@ -98,7 +109,7 @@ verifies("services.tauri-ipc", () => {
     it("gives the callback back when listening is refused, and stops quietly", async () => {
       const { page, calls, registered } = webview(["plugin:event|listen"]);
       const error = vi.spyOn(console, "error").mockImplementation(() => {});
-      const stop = onWindowCloseRequested(page, async () => {});
+      const stop = onWindowCloseRequested(page, async () => undefined);
       await stop();
       expect(registered()).toBe(0);
       expect(error).toHaveBeenCalledTimes(1);
@@ -108,7 +119,7 @@ verifies("services.tauri-ipc", () => {
 
     it("stops quietly when the unlisten call is refused", async () => {
       const { page } = webview(["plugin:event|unlisten"]);
-      const stop = onWindowCloseRequested(page, async () => {});
+      const stop = onWindowCloseRequested(page, async () => undefined);
       await expect(stop()).resolves.toBeUndefined();
     });
   });
