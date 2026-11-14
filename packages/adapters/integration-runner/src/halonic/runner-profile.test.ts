@@ -446,6 +446,12 @@ verifies("integration-runner.mxc-profile", () => {
     expect(profile.env).toEqual({ TMPDIR: mxcMachine.tempFolder });
   });
 
+  it("gives the box no settings folder and no access to the OS key store", () => {
+    const profile = runnerProfile(files, mxcMachine, noListing);
+    expect(profile.settingsFolder).toBeNull();
+    expect(profile.keyStore).toBe("denied");
+  });
+
   it("refuses an integration folder that is the home folder", () => {
     expect(() =>
       runnerProfile({ ...files, integrationFolder: "/fake-home" }, mxcMachine, noListing),

@@ -1,6 +1,6 @@
 # integration-runner.mxc-profile
 
-- Status: planned
+- Status: draft
 - Since: 0.2.0
 - Source: HAL-3403 (design HAL-958, section 4.3; ADR 2026-11-10-mxc-sandbox-backend)
 
