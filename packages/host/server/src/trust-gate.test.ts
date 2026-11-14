@@ -189,8 +189,8 @@ describe("trust gate", () => {
         expect(response.status).toBe(404);
         const text = await response.text();
         expect(JSON.parse(text)).toEqual({
-          code: "run_target_not_found",
-          message: "There is no such hub, workflow or agent to run.",
+          code: `${kind}_not_found`,
+          message: `There is no such ${kind} to run.`,
         });
         expect(text).not.toContain(secret);
       },
