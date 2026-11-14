@@ -264,26 +264,27 @@ Its text is attacker text. The rules are the requirement
 
 The Google setup flow stores your own Google client secret and signs you in.
 Decisions from the security reviews. What is on `main` is the library
-(`packages/host/google-sign-in`, and the setup code in `core/google-setup`):
-nothing outside it calls the library yet, because the callback route and the
-setup flow are Planned (HAL-699). The rows that only a route can keep are
-listed as Planned, with a draft requirement
-(`packages/host/google-sign-in/requirements/callback-route.md`) to write the
-route against:
+(`packages/host/google-sign-in`, and the setup code in `core/google-setup`)
+and the host's two routes, the sign-in start and the callback
+(`packages/host/server`). The reasons are in
+[the sign-in record](../adr/2026-11-14-google-sign-in-and-the-setup-record.md).
+The setup flow in Studio is Planned (HAL-699):
 
 | Threat | Mitigation | Mark |
 | --- | --- | --- |
 | A leaked client secret or token is committed | The leak guard has `google-client-secret` and OAuth token and code rules | **On `main`** |
-| Sign-in code intercepted | PKCE (S256); the verifier is 32 random bytes, stays in memory and goes only to Google's token endpoint, in the code exchange (`packages/host/google-sign-in`) | Library **on `main`**; route **Planned** (HAL-699) |
-| Forged or replayed callback | A random `state` (32 bytes), compared in constant time; a missing one never matches | Library **on `main`**; route **Planned** (HAL-699) |
-| A callback with the wrong `state` cancels or consumes a sign-in | A missing or wrong `state` is checked first and changes nothing; the pending sign-in is taken once, synchronously | Library **on `main`**; route **Planned** (HAL-699) |
-| Crafted redirect or auth URL | Only `127.0.0.1` redirects; every value is URL-encoded; no `error_description` is read | Library **on `main`**; route **Planned** (HAL-699) |
+| Sign-in code intercepted | PKCE (S256); the verifier is 32 random bytes, stays in memory and goes only to Google's token endpoint, in the code exchange (`packages/host/google-sign-in`) | **On `main`** |
+| Forged or replayed callback | A random `state` (32 bytes), compared in constant time; a missing one never matches | **On `main`** |
+| A callback with the wrong `state` cancels or consumes a sign-in | A missing or wrong `state` is checked first and changes nothing; the pending sign-in is taken once, synchronously | **On `main`** |
+| Crafted redirect or auth URL | Only `127.0.0.1` redirects; every value is URL-encoded; no `error_description` is read | **On `main`** |
 | The client secret is read by an integration or hub | It goes only through the `TokenStore`; only the host's sign-in and refresh code reads it; integrations get only `scopedTokens` | Library **on `main`** (HAL-698); the setup flow that calls it is **Planned** |
 | Two setup refs map to one stored name | A ref is checked against the store's name folding before use, so none fold to another's name | Library **on `main`** (HAL-698); the setup flow that calls it is **Planned** |
 | A secret ends up in an error message | Errors have fixed texts; a rejected input is never repeated | Library **on `main`** (HAL-698); the setup flow that calls it is **Planned** |
-| Another program or web page reaches the sign-in callback | The callback server is one-shot, binds only to `127.0.0.1`, closes after the first valid callback or a time limit, and refuses a request whose `Host` isn't the one it was started with | **Planned** (HAL-699, the route) |
-| The callback page reflects something an attacker chose | The page the callback answers with escapes everything it takes from the query, or shows none of it | **Planned** (HAL-699, the route) |
-| The callback URL, with its code and `state`, ends up in a log | The route is kept out of request logging, or only its path is logged, never its query | **Planned** (HAL-699, the route) |
+| Another computer or web page reaches the sign-in callback | The callback needs no session, so it answers only a loopback name (404 on any other) after the `Host` and `Origin` checks; a request with no matching `state` changes nothing (`packages/host/server`) | **On `main`** |
+| The callback page reflects something an attacker chose | The page is fixed text for each outcome, with no script; nothing from the query, Google's answer or the record goes into it, and it is sent with `no-store`, a `default-src 'none'` content policy, `no-referrer` and no framing | **On `main`** |
+| The callback URL, with its code and `state`, ends up in a log | The request log records method, path and status, never a query string | **On `main`** |
+| A dead sign-in link is used to flood or spoof the open setup item | A `state` that matches no sign-in has no account: it gets the page and publishes no event | **On `main`** |
+| Studio or a hub reads or changes a Google secret or setup | Setup records are in `google/setups`; secrets only in `google/tokens`, never returned. Studio reads the records through the read-only `google_setup_read` command, which takes no argument and is granted to the app's own window only | **On `main`** |
 
 **Known limit.** The token store's old-copies limit (4.4) applies to the
 client secret and to refresh tokens.
