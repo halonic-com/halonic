@@ -88,7 +88,7 @@ members = ["crates/*"]
 [workspace.package]
 # The app version. Set from apps/studio/package.json by `pnpm version:sync`;
 # never edit it by hand. Every crate inherits it.
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.99"
 license = "Apache-2.0"
