@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-706 (build plan D5, security review A7 in HAL-705); HAL-709 added the refused refresh; HAL-1176 the six check kinds (D5 rev. 5)
+- Source: HAL-706 (build plan D5, security review A7 in HAL-705); HAL-709 added the refused refresh; HAL-1176 the six check kinds (D5 rev. 5); HAL-9378 added the connector link
 
-The setup records shall let a record hold only its listed values: route, account type, start time, project ID, step ticks, the "In production" tick, client ID, the client secret's ref and save time, the sign-in start and last sign-in times, the check result per service with only its kind's checked fields, and the reason and time of the last refused token refresh. The setup records shall refuse, without writing anything, an edit that would make an invalid record, such as a client ID that isn't one. They shall report a stored record with any other key or an invalid value as damaged, leave it out of the list, and never repeat a stored or edited value in an error message.
+The setup records shall let a record hold only its listed values: route, account type, start time, the connector link (workspace key and connector id), project ID, step ticks, the "In production" tick, client ID, the client secret's ref and save time, the sign-in start and last sign-in times, the check result per service with only its kind's checked fields, and the reason and time of the last refused token refresh. The setup records shall refuse, without writing anything, an edit that would make an invalid record, such as a client ID that isn't one. They shall report a stored record with any other key or an invalid value as damaged, leave it out of the list, and never repeat a stored or edited value in an error message.
 
 ## Examples
 

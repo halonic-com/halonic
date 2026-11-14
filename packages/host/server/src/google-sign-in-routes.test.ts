@@ -6,6 +6,8 @@ import { fakeClientId, fakeGoogle, fakeSecret, ledgerSubject } from "./google-fa
 import { FakeCoordination, FakePasswordHasher, TestClock, testServer } from "./test-server.ts";
 
 const route = { app: "own", runsOn: "this-computer" } as const;
+// An invented workspace key: 32 hex characters, as the profile makes them.
+const connector = { workspace: "0123456789abcdef0123456789abcdef", id: "gmail" };
 const lanHost = "lan.example:8080";
 
 // Invented values. None is real.
@@ -34,7 +36,7 @@ type Setup = ReturnType<typeof setup>;
 
 /** A setup with a client ID and a saved secret, ready to sign in. */
 async function readySetup({ google }: Setup): Promise<string> {
-  const { accountRef } = await google.setups.start({ route, accountType: "personal" });
+  const { accountRef } = await google.setups.start({ route, connector, accountType: "personal" });
   await google.setups.update(accountRef, { kind: "client-id", clientId: fakeClientId });
   const clientRef = await google.clientSecrets.saveClientSecret(fakeSecret);
   await google.setups.update(accountRef, { kind: "client-secret-saved", clientRef });
@@ -101,7 +103,11 @@ describe("google sign-in start", () => {
 
     it("refuses a setup with no secret and a start that didn't come over a loopback name", async () => {
       const state = setup({ password: true });
-      const { accountRef } = await state.google.setups.start({ route, accountType: "personal" });
+      const { accountRef } = await state.google.setups.start({
+        route,
+        connector,
+        accountType: "personal",
+      });
       const loginResponse = await state.server.handle(
         new Request(`http://${lanHost}/api/login`, {
           method: "POST",

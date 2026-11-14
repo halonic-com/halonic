@@ -26,6 +26,7 @@ export function record(done: readonly string[], extra: Partial<SetupRecord> = {}
     route: { app: "own", runsOn: "this-computer" },
     accountType: "personal",
     startedAt: at,
+    connector: { workspace: "0123456789abcdef0123456789abcdef", id: "gmail" },
     projectId: null,
     stepsDone: Object.fromEntries(done.map((id) => [id, at])),
     inProductionTickedAt: null,

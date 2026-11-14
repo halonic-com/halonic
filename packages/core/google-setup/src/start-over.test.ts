@@ -17,6 +17,9 @@ const fakeRefreshToken = "fake-refresh-token";
 
 const route: SetupRoute = { app: "own", runsOn: "this-computer" };
 
+/** An invented connector for the setups these tests start. */
+const connector = { workspace: "0123456789abcdef0123456789abcdef", id: "gmail" };
+
 let records: MemoryRecords;
 let tokens: MemoryTokens;
 
@@ -33,7 +36,7 @@ type Stores = ReturnType<typeof newStores>;
 
 /** A personal account signed in with its own app, as step 7 leaves it. */
 async function signedInSetup({ setups, secrets }: Stores): Promise<string> {
-  const { accountRef } = await setups.start({ route, accountType: "personal" });
+  const { accountRef } = await setups.start({ route, accountType: "personal", connector });
   const clientRef = await secrets.saveClientSecret(fakeSecret);
   await setups.update(accountRef, { kind: "in-production", ticked: true });
   await setups.update(accountRef, { kind: "client-id", clientId: fakeClientId });
@@ -68,7 +71,11 @@ verifies("google-setup.start-over", () => {
   it("keeps a shared secret for the other account and leaves its record alone", async () => {
     const stores = newStores();
     const first = await signedInSetup(stores);
-    const { accountRef: second } = await stores.setups.start({ route, accountType: "personal" });
+    const { accountRef: second } = await stores.setups.start({
+      route,
+      accountType: "personal",
+      connector,
+    });
     await stores.setups.shareClient(second, first);
     const firstBefore = await stores.setups.read(first);
 
@@ -80,7 +87,11 @@ verifies("google-setup.start-over", () => {
 
   it("says when no secret was saved yet, also for an account ref with no record", async () => {
     const stores = newStores();
-    const { accountRef } = await stores.setups.start({ route, accountType: "workspace" });
+    const { accountRef } = await stores.setups.start({
+      route,
+      accountType: "workspace",
+      connector,
+    });
     expect(await startOver(stores, accountRef)).toBe("none-saved");
     expect(await startOver(stores, "gaccount_9")).toBe("none-saved");
   });
@@ -106,7 +117,11 @@ verifies("google-setup.shared-client", () => {
   it("copies the other app's client and marks steps 1 to 6 done, but not the sign-in", async () => {
     const stores = newStores();
     const first = await signedInSetup(stores);
-    const { accountRef: second } = await stores.setups.start({ route, accountType: "personal" });
+    const { accountRef: second } = await stores.setups.start({
+      route,
+      accountType: "personal",
+      connector,
+    });
 
     const shared = await stores.setups.shareClient(second, first);
     expect(shared).toMatchObject({
@@ -123,7 +138,11 @@ verifies("google-setup.shared-client", () => {
   it("lists every account that uses a client", async () => {
     const stores = newStores();
     const first = await signedInSetup(stores);
-    const { accountRef: second } = await stores.setups.start({ route, accountType: "personal" });
+    const { accountRef: second } = await stores.setups.start({
+      route,
+      accountType: "personal",
+      connector,
+    });
     await stores.setups.shareClient(second, first);
     await signedInSetup(stores);
 
@@ -137,10 +156,12 @@ verifies("google-setup.shared-client", () => {
     const { accountRef: notSignedIn } = await stores.setups.start({
       route,
       accountType: "personal",
+      connector,
     });
     const { accountRef: workspace } = await stores.setups.start({
       route,
       accountType: "workspace",
+      connector,
     });
     const written = records.log.length;
 
@@ -159,7 +180,7 @@ verifies("google-setup.shared-client", () => {
     const stores = newStores();
     const working = await signedInSetup(stores);
     const startPersonal = async () =>
-      (await stores.setups.start({ route, accountType: "personal" })).accountRef;
+      (await stores.setups.start({ route, accountType: "personal", connector })).accountRef;
 
     const withClientId = await startPersonal();
     await stores.setups.update(withClientId, { kind: "client-id", clientId: fakeClientId });

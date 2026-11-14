@@ -13,6 +13,9 @@ import {
 import { FakeCoordination, FakePasswordHasher, TestClock, testServer } from "./test-server.ts";
 
 const route = { app: "own", runsOn: "this-computer" } as const;
+
+/** An invented connector for the setups these tests start. */
+const connector = { workspace: "0123456789abcdef0123456789abcdef", id: "gmail" };
 const fakeRefreshToken = "fake-refresh-token-0000000001";
 
 function setup(options: { password?: boolean } = {}) {
@@ -40,7 +43,7 @@ async function signedInSetup(
   { google }: Setup,
   secret = fakeSecret,
 ): Promise<{ accountRef: string; clientRef: string }> {
-  const { accountRef } = await google.setups.start({ route, accountType: "personal" });
+  const { accountRef } = await google.setups.start({ route, accountType: "personal", connector });
   await google.setups.update(accountRef, { kind: "client-id", clientId: fakeClientId });
   const clientRef = await google.clientSecrets.saveClientSecret(secret);
   await google.setups.update(accountRef, { kind: "client-secret-saved", clientRef });
@@ -51,7 +54,7 @@ async function signedInSetup(
 
 /** A second account on the same client, as if it used the first one's app. */
 async function accountOnSameClient({ google }: Setup, clientRef: string): Promise<string> {
-  const { accountRef } = await google.setups.start({ route, accountType: "personal" });
+  const { accountRef } = await google.setups.start({ route, accountType: "personal", connector });
   await google.setups.update(accountRef, { kind: "client-id", clientId: fakeClientId });
   await google.setups.update(accountRef, { kind: "client-secret-saved", clientRef });
   return accountRef;
@@ -103,6 +106,7 @@ describe("google staged client secret", () => {
       const { accountRef: bare } = await state.google.setups.start({
         route,
         accountType: "personal",
+        connector,
       });
       expect((await stage(state.server, bare, otherFakeSecret)).status).toBe(409);
       expect(await (await stage(state.server, bare, otherFakeSecret)).json()).toMatchObject({
@@ -352,7 +356,11 @@ describe("google check again and disconnect", () => {
 
     it("refuses a check of a setup without a client ID and secret", async () => {
       const state = setup();
-      const { accountRef } = await state.google.setups.start({ route, accountType: "personal" });
+      const { accountRef } = await state.google.setups.start({
+        route,
+        accountType: "personal",
+        connector,
+      });
 
       const response = await send(state.server, "POST", `${accountRef}/check`);
 

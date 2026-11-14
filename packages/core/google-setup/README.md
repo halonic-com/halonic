@@ -76,6 +76,7 @@ export async function runExample(): Promise<string[]> {
   const { accountRef } = await setups.start({
     route: { app: "own", runsOn: "this-computer" },
     accountType: "personal",
+    connector: { workspace: "0123456789abcdef0123456789abcdef", id: "gmail" },
   });
 
   // What Google's token answer granted: everything except the files scope.
@@ -198,7 +199,7 @@ collection `_google_setups`, under a random account ref (`gaccount_…`), never 
 
 ```ts
 const setups = setupRecords({ records, clock, ids });
-const { accountRef } = await setups.start({ route, accountType: "personal" });
+const { accountRef } = await setups.start({ route, accountType: "personal", connector });
 await setups.update(accountRef, { kind: "step-done", step: "project" });
 await setups.update(accountRef, { kind: "client-secret-saved", clientRef }); // the ref only
 ```
@@ -207,6 +208,7 @@ await setups.update(accountRef, { kind: "client-secret-saved", clientRef }); // 
 | --- | --- |
 | `route`, `accountType` | the two answers the item asks first |
 | `startedAt` | for "You started this on 8 Nov" |
+| `connector` | the workspace key and connector id this setup belongs to; `forConnector(workspace, id)` finds it |
 | `projectId` | step 1's project ID, if valid |
 | `stepsDone` | when each step was marked done, by step id |
 | `inProductionTickedAt` | the "In production" tick (personal, step 3) |

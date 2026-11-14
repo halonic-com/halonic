@@ -55,6 +55,7 @@ export async function runExample(): Promise<string[]> {
   const { accountRef } = await setups.start({
     route: { app: "own", runsOn: "this-computer" },
     accountType: "personal",
+    connector: { workspace: "0123456789abcdef0123456789abcdef", id: "gmail" },
   });
 
   // What Google's token answer granted: everything except the files scope.

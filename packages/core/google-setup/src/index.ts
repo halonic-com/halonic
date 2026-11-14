@@ -26,6 +26,7 @@ export {
   type StepRow,
   ticksToKeep,
 } from "./compare-setups.ts";
+export type { ConnectorLink } from "./connector-link.ts";
 export {
   type ApiDisabled,
   type ConnectorProblem,
