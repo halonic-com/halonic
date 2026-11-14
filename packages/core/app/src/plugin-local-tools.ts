@@ -19,7 +19,7 @@ import type {
   SandboxUnavailableReason,
 } from "@halonicjs/ports";
 import type { PluginToolSet } from "./plugin-contributions.ts";
-import { mxcFencesRunner } from "./runner-fence.ts";
+import { mxcFencesLocalTools } from "./runner-fence.ts";
 
 /** The tools of one local tool of a trusted plugin. */
 export type LocalToolSet = PluginToolSet & { readonly part: `local:${string}` };
@@ -76,7 +76,7 @@ export interface LocalToolMxc {
   readonly sandbox: Pick<Sandbox, "check" | "open">;
   /** Whether the sandbox choice has MXC in use right now. Read before every session opens. */
   inUse(): boolean;
-  /** Whether MXC counts as a fence for local tools; {@link mxcFencesRunner} when left out. */
+  /** Whether MXC counts as a fence for local tools; {@link mxcFencesLocalTools} when left out. */
   readonly fences?: boolean;
 }
 
@@ -84,7 +84,7 @@ export interface LocalToolMxc {
 export interface PluginLocalToolsOptions {
   /** The sandbox local tools run in, or `null` on a host that has none. */
   readonly sandbox: Pick<Sandbox, "check" | "open"> | null;
-  /** MXC, for Windows 11; left out where the host has none. It stays off while {@link mxcFencesRunner} is `false`. */
+  /** MXC, for Windows 11; left out where the host has none. It stays off while {@link mxcFencesLocalTools} is `false`. */
   readonly mxc?: LocalToolMxc;
   /** The factory that starts a program only in the session it is given (`connector-stdio-sandbox`). */
   readonly factory: ConnectorFactory;
@@ -311,7 +311,7 @@ class SessionConnector implements ConnectorClient {
    */
   #sandboxFor(profile: SandboxProfile): Pick<Sandbox, "check" | "open"> {
     const mxc = this.#options.mxc;
-    if (mxc === undefined || !(mxc.fences ?? mxcFencesRunner) || !mxc.inUse()) return this.#sandbox;
+    if (mxc === undefined || !(mxc.fences ?? mxcFencesLocalTools) || !mxc.inUse()) return this.#sandbox;
     const { bridge, allowedSites } = profile.network;
     if (bridge !== null || allowedSites.length > 0) {
       throw new LocalToolUnavailableError(this.id, { kind: "network-needs-srt" });

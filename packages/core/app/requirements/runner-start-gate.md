@@ -6,7 +6,7 @@
 
 The app shall start plugin and integration code only through one gate, which at every start asks the fenced sandbox's check again and decides with `UnfencedRuns`, never from what a dialog showed. When the decision is `fenced`, the gate shall start the code in the fenced sandbox and stop it again, reporting `stopped`, if the session's fence proof isn't `fenced`; it never falls back to the launcher then. When the decision is `allowed`, it shall start the code in the launcher's sandbox, refuse a launcher whose fence proof isn't `off`, and register the run so Take back stops it. A run that started while Take back ran shall be stopped. When the decision is `needs-yes` or `stopped`, nothing shall start.
 
-On Windows 11, when the sandbox choice has MXC in use and `mxcFencesRunner` is on, the gate shall use `sandbox-mxc` as the fenced sandbox, ask its check, and tell the start which backend it is, so the start builds that backend's profile. `mxcFencesRunner` stays off until the attack cases A1 to A40 have passed on MXC on `windows-11-arm`, A6 and A23 included, and Julian's review is on HAL-3307 (HAL-3403). While it is off, Windows is `not-fenced` for `windows` as before.
+On Windows 11, when the sandbox choice has MXC in use and `mxcFencesRunner` is on, the gate shall use `sandbox-mxc` as the fenced sandbox, ask its check, and tell the start which backend it is, so the start builds that backend's profile. `mxcFencesRunner` is on since the attack cases A1 to A40 passed on MXC on `windows-11-arm`, A6 and A23 included, and Julian's review is on HAL-3307 (HAL-3403, HAL-9335). While it is off, Windows is `not-fenced` for `windows` as before.
 
 ## Examples
 

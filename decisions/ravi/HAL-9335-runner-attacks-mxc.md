@@ -18,7 +18,7 @@
 
 ## Why
 
-`mxcFencesRunner` stays off until A1 to A40 have passed on MXC on `windows-11-arm`, A6 and A23
+`mxcFencesRunner` stayed off until A1 to A40 had passed on MXC on `windows-11-arm`, A6 and A23
 included (HAL-3403, `app.runner-start-gate`). Cases A1 to A3, A5, A7 to A11, A18 to A22, A24 to A34,
 A37, A38 and A40 don't touch the OS fence and already run in every `pnpm test`.
 
@@ -29,7 +29,7 @@ the child process `cmdkey` needs. With the layer off, a program in the MXC box c
 user's Credential Manager entry, as on native Windows. The test expects both results, so a gap that
 closes fails too. For the gate, a recorded gap counts as met for the runner only; A6 and A23 still
 have to pass for real. Local tools have no Node layer, so `mxcFencesLocalTools` (own constant, stays
-`false`) is split from `mxcFencesRunner` in the flip PR.
+`false`) is split from `mxcFencesRunner` in the flip PR (HAL-9335).
 
 ## Covers
 

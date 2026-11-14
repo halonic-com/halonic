@@ -1,7 +1,7 @@
 import { type SandboxCheck, sandboxUnavailableReasons } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { runnerFence, runnerUnfencedReasons } from "./runner-fence.ts";
+import { mxcFencesLocalTools, mxcFencesRunner, runnerFence, runnerUnfencedReasons } from "./runner-fence.ts";
 
 const passes: SandboxCheck = { ok: true, reason: null, missing: [] };
 
@@ -60,5 +60,10 @@ verifies("app.runner-fence", () => {
 
   it("has a reason for every reason the sandbox check gives", () => {
     expect(runnerUnfencedReasons).toEqual(expect.arrayContaining([...sandboxUnavailableReasons]));
+  });
+
+  it("counts MXC as a fence for the runner but not for local tools, which have no Node layer", () => {
+    expect(mxcFencesRunner).toBe(true);
+    expect(mxcFencesLocalTools).toBe(false);
   });
 });
