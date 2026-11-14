@@ -126,6 +126,15 @@ verifies("runtime.admin-key", () => {
       expect(response.status).toBe(status);
     });
 
+    it("lets a plain-http request fall through, so the key never travels in the clear", async () => {
+      const env = await envWithKey();
+      const plain = new Request(`http://${host}/admin/ping`, {
+        headers: { host, authorization: `Bearer ${key}` },
+      });
+      expect(await answerAdmin(plain, env, recording)).toBeUndefined();
+      expect((await worker.fetch(plain, env)).status).toBe(404);
+    });
+
     it("falls through when the deployment's host names aren't configured", async () => {
       const env = await envWithKey({ HALONIC_ALLOWED_HOSTS: undefined });
       expect(await answerAdmin(call("/admin/ping"), env, recording)).toBeUndefined();

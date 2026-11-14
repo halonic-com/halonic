@@ -60,10 +60,12 @@ async function carriesAdminKey(request: Request, storedHash: string): Promise<bo
 
 /**
  * Whether the request may reach the admin routes at all: it is for a host name
- * the deployment answers to and no page sent it. A request that isn't falls
+ * the deployment answers to, it came over HTTPS (the key must not travel in the
+ * clear) and no page sent it. A request that isn't falls
  * through to `host/server`, which refuses it as it refuses any other.
  */
 function mayReachAdmin(request: Request, env: RuntimeEnv): boolean {
+  if (new URL(request.url).protocol !== "https:") return false;
   if (request.headers.has("origin")) return false;
   try {
     const hosts = serverConfigOf(env).allowedHosts.map((name) => name.toLowerCase());
