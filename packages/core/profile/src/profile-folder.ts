@@ -38,6 +38,9 @@ const settingsFolderName = "settings";
 /** The name of the folder in the profile that holds the approvals of listed tools. */
 const toolApprovalFolderName = "tool-approvals";
 
+/** The name of the folder in the profile that holds each connector's settings. */
+const connectionSettingsFolderName = "connections";
+
 /** The name of the folder in the profile that holds the secrets file, and the file's own name. */
 const secretsFolderName = "secrets";
 const secretsFileName = "secrets.json";
@@ -170,6 +173,22 @@ export function runnerTempFolder(profile: ProfileFolder): string {
  */
 export function toolApprovalFolder(profile: ProfileFolder): string {
   return joinPath(profile.platform, profile.root, toolApprovalFolderName);
+}
+
+/**
+ * The folder for each connector's settings, such as "allow sending",
+ * `connections` in the profile folder. It is the person's own, never a
+ * workspace's, so an agent that edits the workspace can't switch sending on.
+ *
+ * @param profile - the profile folder, from {@link profileFolder}
+ * @returns the settings folder, joined the profile's way; nothing is created
+ *
+ * @example
+ * connectionSettingsFolder({ platform: "linux", root: "/srv/acme/.local/share/halonic" });
+ * // "/srv/acme/.local/share/halonic/connections"
+ */
+export function connectionSettingsFolder(profile: ProfileFolder): string {
+  return joinPath(profile.platform, profile.root, connectionSettingsFolderName);
 }
 
 /**
