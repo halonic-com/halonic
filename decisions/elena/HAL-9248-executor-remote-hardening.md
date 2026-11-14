@@ -2,6 +2,7 @@
 
 - Approval: https://github.com/halonic-com/halonic/pull/2656#issuecomment-6880117504 (Liam's review on HAL-9265; the three fixes were asked for by Julian and Liam in the review of #2639, HAL-9248)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:cfR4yD3TUgeCVO6akYTnasRbBPL0BraqY5AK4j0Ap7FkXBxxrvLRssasJRGcqzbwTrX9eRjw39fFiWwvH0ShBA==
 
 ## What changes
 
