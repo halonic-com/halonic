@@ -272,7 +272,7 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
       [Console]::Out.Write([System.Runtime.InteropServices.Marshal]::PtrToStringUni($blob, $size / 2))
       [void]$vault.GetMethod("CredFree").Invoke($null, @($pointer))
     `;
-    const { attempts } = await attack(
+    const { attempts, stderr } = await attack(
       `
       const { spawnSync } = await import("node:child_process");
       await attempt("secret", () => {
@@ -283,8 +283,11 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
           stdio: ["ignore", "pipe", "pipe"],
           timeout: 20000,
         });
-        if (run.error) throw Object.assign(new Error(run.error.message + " " + run.stdout + " " + run.stderr), { code: run.error.code });
-        if (run.status !== 0) throw Object.assign(new Error(run.stdout + " " + run.stderr), { code: "EXIT_" + run.status });
+        // An attempt keeps only the error's code, so what the probe printed goes
+        // to this script's stderr, where the test reads it on a failure.
+        process.stderr.write("probe stdout: " + run.stdout.length + " bytes; probe stderr: " + run.stderr + "\\n");
+        if (run.error) throw run.error;
+        if (run.status !== 0) throw Object.assign(new Error("exit " + run.status), { code: "EXIT_" + run.status });
         // Report whether the secret came out, never the secret itself.
         return run.stdout === ${JSON.stringify(canary)} ? "read" : "other output";
       });
@@ -294,7 +297,7 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     if (nodeLayer === "on") {
       expect(attempts["secret"]?.outcome).toBe("refused");
     } else {
-      expect(attempts["secret"]).toEqual({ outcome: "allowed", detail: "read" });
+      expect(attempts["secret"], stderr).toEqual({ outcome: "allowed", detail: "read" });
     }
   });
 
