@@ -3,7 +3,6 @@
 - Task: HAL-9336, found on halonic#2664
 - Approval: Liam, in review of HAL-9336 (his signature is added there)
 - Kind: internal
-- Signature: pending, Liam signs it from a clean worktree of `origin/main`
 
 ## What changes
 
