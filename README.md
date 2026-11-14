@@ -27,10 +27,9 @@ sample yet; a new workspace starts empty. To try Halonic with a sample, run
 
 ## Status: what is not in 0.1.0 yet
 
-0.1.0 is a first release; expect rough edges. What we know about is in the
-pinned [Known issues in 0.1.0](https://github.com/halonic-com/halonic/issues?q=is%3Aissue+label%3Aknown-issues)
-issue.
-<!-- CHECK (HAL-6394): swap in the issue number once it is posted. -->
+0.1.0 is a first release; expect rough edges. The list below is what we
+know about today.
+<!-- CHECK (HAL-6394): once the "Known issues in 0.1.0" issue is posted, link it here by its number. The old label-search link found nothing. -->
 
 - Not on npm yet. `npm install -g halonic` installs an empty placeholder, not
   this release.
