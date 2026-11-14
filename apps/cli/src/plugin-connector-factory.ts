@@ -6,28 +6,19 @@
 // the load (`openPluginBackend`).
 
 import type {
+  OpenPluginBackend,
+  OpenPluginBackendRequest,
+} from "@halonicjs/adapter-integration-runner";
+import type {
   ConnectorClient,
   ConnectorConfig,
   ConnectorFactory,
   ConnectorFactoryContext,
 } from "@halonicjs/ports";
+
+export type { OpenPluginBackend, OpenPluginBackendRequest };
+
 import { LazyRunnerClient } from "./integration-connector-factory.ts";
-
-/** What opening a plugin's backend is asked for. */
-export interface OpenPluginBackendRequest {
-  /** The connector's id in the workspace, as a hub names it. */
-  readonly id: string;
-  /** The plugin's id, which is its folder's name in the profile's plugins folder. */
-  readonly plugin: string;
-  readonly context: ConnectorFactoryContext;
-}
-
-/**
- * Opens a plugin's backend in the runner and returns its client.
- *
- * @throws when nothing started, such as a plugin that isn't trusted or changed since, or a fence that failed
- */
-export type OpenPluginBackend = (request: OpenPluginBackendRequest) => Promise<ConnectorClient>;
 
 /**
  * Serves `plugin` connectors. The runner starts at the first call that needs

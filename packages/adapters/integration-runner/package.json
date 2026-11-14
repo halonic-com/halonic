@@ -16,7 +16,9 @@
     "test:fence:mxc": "vitest run --config vitest.fence-mxc.config.ts"
   },
   "dependencies": {
+    "@halonicjs/adapter-http-kit": "workspace:*",
     "@halonicjs/adapter-integration-kit": "workspace:*",
+    "@halonicjs/app": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*",
