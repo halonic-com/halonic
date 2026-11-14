@@ -63,8 +63,45 @@ function post(server: Server, path: string, body: unknown, method = "POST"): Pro
   );
 }
 
+async function signInCookie(server: Server): Promise<string> {
+  // With no password there is nothing to sign in to, and the form carries no cookie.
+  const response = await post(server, "/api/login", { password: "secret" });
+  return (response.headers.get("set-cookie") ?? "").split(";")[0] ?? "";
+}
+
 const workflowStart = { hubId: "hub", workflowId: "triage", input: { subject: "hi" } };
 const agentStart = { hubId: "hub", agentId: "coder", prompt: "Fix it." };
+
+const formTypes = [
+  "application/x-www-form-urlencoded",
+  "multipart/form-data; boundary=x",
+  "text/plain",
+  "",
+];
+const starts = [
+  ["/api/runs", workflowStart],
+  ["/api/agent-runs", agentStart],
+] as const;
+
+/** What a page on another site can send: JSON-shaped text in a form type, no `Origin`. */
+function formPost(
+  server: Server,
+  path: string,
+  start: unknown,
+  type: string,
+  cookie?: string,
+): Promise<Response> {
+  const headers: Record<string, string> = { host: "localhost" };
+  if (type !== "") headers["content-type"] = type;
+  if (cookie) headers["cookie"] = cookie;
+  return server.handle(
+    new Request(`http://localhost${path}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(start),
+    }),
+  );
+}
 
 describe("trust gate", () => {
   verifies("server.trust-gate", () => {
@@ -198,6 +235,25 @@ describe("trust gate", () => {
       );
       expect(gate.checks).toBe(0);
       expect(started).toEqual([]);
+    });
+
+    it("refuses a cross-site form POST with no Origin before it asks the gate, with and without a password", async () => {
+      for (const passwordHash of [null, "hash:secret"]) {
+        const gate = new ScriptedGate([trusted]);
+        const { server, started } = setup(gate, passwordHash);
+        const cookie = await signInCookie(server);
+        for (const type of formTypes) {
+          for (const [path, start] of starts) {
+            const response = await formPost(server, path, start, type, cookie);
+            expect(response.status).toBe(415);
+            expect(((await response.json()) as { code: string }).code).toBe(
+              "unsupported_media_type",
+            );
+          }
+        }
+        expect(gate.checks).toBe(0);
+        expect(started).toEqual([]);
+      }
     });
 
     it("shows the decision read-only and has no route that grants trust", async () => {
