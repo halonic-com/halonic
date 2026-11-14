@@ -8,7 +8,7 @@ export const GIVE_IT_A_NAME = "Give it a name.";
 export const LOCAL_ONLY_NOTE =
   "Starts local only, with a model on this computer (Ollama). You can add cloud models later.";
 export const NOT_EMPTY_NOTE =
-  "This folder isn't empty. Halonic adds only missing files and changes nothing that's there.";
+  "This folder isn't empty. Halonic adds only missing files, and adds .env lines to a .gitignore that lacks them. Nothing else changes.";
 export const ALREADY_WORKSPACE_NOTE = "This folder is already a workspace.";
 export const CREATE = "Create";
 export const CREATE_HERE = "Create here";
