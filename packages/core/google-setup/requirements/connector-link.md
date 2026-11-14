@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-9378 (design check A4); Liam's decision of 14 Nov: the record points at its connector
 
-Every setup record shall hold the connector it belongs to as the workspace's key and the connector's id in it, and `start` shall require both. A workspace key shall be 32 lower-case hex characters and a connector id lower-case letters, digits, `-` and `_`, starting with a letter or digit, at most 64 characters; for any other link `start` shall throw `SetupRecordError` `refused` and write nothing. The records shall look a setup up by connector, matching both the workspace and the id, and give `null` when there is none. A record that has no valid link shall read as damaged. The link is neither a secret nor personal, and no edit changes it.
+The setup record shall hold the connector it belongs to as the workspace's key and the connector's id in it, and `start` shall require both. A workspace key shall be 32 lower-case hex characters and a connector id lower-case letters, digits, `-` and `_`, starting with a letter or digit, at most 64 characters; for any other link `start` shall throw `SetupRecordError` `refused` and write nothing. The records shall look a setup up by connector, matching both the workspace and the id, and give `null` when there is none. A record that has no valid link shall read as damaged. The link is neither a secret nor personal, and no edit changes it.
 
 ## Examples
 
