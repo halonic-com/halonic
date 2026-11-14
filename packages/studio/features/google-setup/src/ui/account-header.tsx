@@ -1,5 +1,5 @@
 import type { AccountType } from "@halonicjs/google-setup";
-import { Button, Callout, StatusChip } from "@halonicjs/studio-kit";
+import { Button, Callout, type CalloutHandle, StatusChip } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import { accountTypeNames, listNames } from "./account-labels.ts";
 import { AccountTypeQuestion } from "./account-type-question.tsx";
@@ -31,6 +31,7 @@ export function AccountHeader(props: AccountHeaderProps) {
   const [changing, setChanging] = useState(false);
   const [failed, setFailed] = useState<string | undefined>(undefined);
   const retry = useRef<() => void>(() => {});
+  const callout = useRef<CalloutHandle>(null);
   const typeLine = useId();
   const changeButton = useRef<HTMLButtonElement>(null);
   // Set when the question closes after **Change**, so focus goes back to it once it is drawn.
@@ -42,6 +43,11 @@ export function AccountHeader(props: AccountHeaderProps) {
       changeButton.current?.focus();
     }
   }, [changing]);
+
+  // A failure that appears because of what you did takes focus, so a screen reader reads it.
+  useEffect(() => {
+    if (failed !== undefined) callout.current?.focus();
+  }, [failed]);
 
   function closeQuestion() {
     returnFocus.current = true;
@@ -108,7 +114,12 @@ export function AccountHeader(props: AccountHeaderProps) {
         </div>
       )}
       {failed === undefined ? null : (
-        <Callout tone="danger" action={{ label: "Try again", onClick: () => retry.current() }}>
+        <Callout
+          tone="danger"
+          announce="focus"
+          ref={callout}
+          action={{ label: "Try again", onClick: () => retry.current() }}
+        >
           {failed}
         </Callout>
       )}

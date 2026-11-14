@@ -1,4 +1,4 @@
-import { Button, Callout, Dialog } from "@halonicjs/studio-kit";
+import { Button, Dialog } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import { listNames } from "./account-labels.ts";
 import { failureLine } from "./failure-line.ts";
@@ -88,17 +88,13 @@ export function StartOver(props: StartOverProps) {
           title={title}
           confirm={{ label: "Start over", variant: "danger", busyLabel: "Starting over…" }}
           busy={busy}
+          error={failed ?? ""}
           onConfirm={() => void confirm()}
           onCancel={() => setAsking(false)}
           returnFocus={() => link.current}
         >
           <div className="flex flex-col gap-3">
             <p>{body}</p>
-            {failed === undefined ? null : (
-              <Callout tone="danger" action={{ label: "Try again", onClick: () => void confirm() }}>
-                {failed}
-              </Callout>
-            )}
           </div>
         </Dialog>
       ) : null}

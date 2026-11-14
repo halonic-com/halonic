@@ -1,5 +1,5 @@
 import { isProjectId, type SetupEdit, type SetupStep, type StepId } from "@halonicjs/google-setup";
-import { Button, Callout } from "@halonicjs/studio-kit";
+import { Button, Callout, type CalloutHandle } from "@halonicjs/studio-kit";
 import { type ReactNode, type Ref, useEffect, useId, useRef, useState } from "react";
 import type { GoogleSetupAccount } from "../api.ts";
 import { connectorProblem } from "../connector-problem.ts";
@@ -235,6 +235,11 @@ interface OpenStepProps {
 function OpenStep(props: OpenStepProps) {
   const { step, account, answering, busy, failed, onRetry, onDone, close } = props;
   const reason = useId();
+  const callout = useRef<CalloutHandle>(null);
+  // A failure that appears because of what you did takes focus, so a screen reader reads it.
+  useEffect(() => {
+    if (failed !== undefined) callout.current?.focus();
+  }, [failed]);
   const tickMissing = needsTick(step, account);
   const unavailableText = answering
     ? "Tick 'In production' to go on."
@@ -275,7 +280,12 @@ function OpenStep(props: OpenStepProps) {
         </p>
       )}
       {failed === undefined ? null : (
-        <Callout tone="danger" action={{ label: "Try again", onClick: onRetry }}>
+        <Callout
+          tone="danger"
+          announce="focus"
+          ref={callout}
+          action={{ label: "Try again", onClick: onRetry }}
+        >
           {failed}
         </Callout>
       )}

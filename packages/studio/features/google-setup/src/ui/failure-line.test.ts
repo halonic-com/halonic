@@ -14,6 +14,12 @@ describe("failureLine", () => {
     );
   });
 
+  it("keeps a name's capital", () => {
+    expect(failureLine("save your progress", new Error("Google isn't answering"))).toBe(
+      "Couldn't save your progress: Google isn't answering.",
+    );
+  });
+
   it("says only what failed when there is no reason", () => {
     expect(failureLine("save the account type", "nope")).toBe("Couldn't save the account type.");
   });

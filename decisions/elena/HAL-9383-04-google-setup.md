@@ -12,6 +12,12 @@
 
 A line must not point at a field that isn't there (Sofia, HAL-9383 B30). The Google setup can't be done on a phone, so the phone line says where the field is.
 
+A failed save in the Google setup now says why: "Couldn't save your progress: *reason*." and "Couldn't save the account type: *reason*." with **Try again**; Start over says "Couldn't start over: *reason*." Microcopy 1.1. The phone pointer reads "Library › Connectors". The requirements say so.
+
 ## Covers
 
 - inbox.secret-hold
+- google-setup.checklist
+- google-setup.account-header
+- google-setup.connector-problem
+- google-setup.resume-and-start-over

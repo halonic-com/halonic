@@ -220,6 +220,7 @@ verifies("google-setup.checklist", () => {
     };
     await press(button(container, "Done, next"));
     expect(container.textContent).toContain("Couldn't save your progress: the disk is full.");
+    expect(document.activeElement?.textContent).toContain("Couldn't save your progress");
     fails = false;
     await press(button(container, "Try again"));
     expect(container.textContent).not.toContain("Couldn't save your progress");
@@ -379,11 +380,13 @@ verifies("google-setup.resume-and-start-over", () => {
     expect(dialog(container)?.textContent).toContain(
       "Couldn't start over: the engine isn't answering.",
     );
+    // Start over is the retry, so the dialog has no second Try again.
     expect(
       [...(dialog(container)?.querySelectorAll("button") ?? [])].some(
         (candidate) => candidate.textContent === "Try again",
       ),
-    ).toBe(true);
+    ).toBe(false);
+    expect(dialog(container)?.querySelector("[role=alert], [aria-live]")).not.toBeNull();
   });
 
   it("makes Start over unavailable, with its reason, while the engine isn't answering", async () => {
