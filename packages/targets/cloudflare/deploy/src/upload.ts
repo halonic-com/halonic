@@ -5,7 +5,7 @@ import type {
   DurableObjectMigration,
   WorkerUpload,
 } from "./api.ts";
-import { DeployError, type LiveReason, SmokeTestFailedError } from "./errors.ts";
+import { DeployError, type LiveReason, redact, SmokeTestFailedError } from "./errors.ts";
 
 /** The variable that opens the Worker's `/self-test` route; the same name the runtime reads. */
 const selfTestTokenVariable = "HALONIC_SELFTEST_TOKEN";
@@ -77,6 +77,16 @@ export async function uploadAndSwitch(
   }
   report({ step: "bundle-checked", hash: actual });
 
+  if (
+    selfTestTokenVariable in options.secrets ||
+    options.bindings.some((b) => b.name === selfTestTokenVariable)
+  ) {
+    throw new DeployError(
+      "reserved-binding-name",
+      `${selfTestTokenVariable} is reserved for the deploy's self-test; use another name.`,
+    );
+  }
+
   const token = (options.randomToken ?? newToken)();
   const upload: WorkerUpload = {
     script: options.bundle.script,
@@ -100,14 +110,52 @@ export async function uploadAndSwitch(
   const result = await selfTest(url, worker, goesLive ? undefined : versionId, token, options);
   report({ step: "smoke-test", passed: result.ok });
   if (!result.ok) {
-    if (!goesLive) await restore(api, accountId, worker, serving, report);
-    throw new SmokeTestFailedError(result.failed, liveReason);
+    throw await failedSelfTest(
+      api,
+      options,
+      upload,
+      token,
+      serving,
+      result.failed,
+      liveReason,
+      report,
+    );
   }
   if (!goesLive) {
     await api.deployVersions(accountId, worker, [{ id: versionId, percentage: 100 }]);
     report({ step: "switched", versionId });
   }
   return { versionId };
+}
+
+/** Puts the old version back if there is one to protect, and builds the error to throw. */
+async function failedSelfTest(
+  api: CloudflareApi,
+  options: UploadAndSwitchOptions,
+  upload: WorkerUpload,
+  token: string,
+  serving: readonly DeployedVersion[],
+  failed: readonly string[],
+  liveReason: LiveReason | undefined,
+  report: (event: UploadProgress) => void,
+): Promise<SmokeTestFailedError> {
+  let restoreFailed = false;
+  if (liveReason === undefined) {
+    try {
+      await restore(api, options.accountId, options.worker, serving, report);
+    } catch {
+      // The new version has 0% of traffic, so the old one still serves: report the self-test failure.
+      restoreFailed = true;
+    }
+  }
+  const names = safeNames(failed, [token, ...Object.values(upload.secrets)]);
+  return new SmokeTestFailedError(names, liveReason, restoreFailed);
+}
+
+/** Redacts and bounds check names, which a Worker reports about itself. */
+function safeNames(names: readonly string[], secrets: readonly string[]): string[] {
+  const shown = names.slice(0, 10).map((n) => redact(n, secrets).slice(0, 60));
+  return names.length > 10 ? [...shown, `${names.length - 10} more`] : shown;
 }
 
 /** Why this deploy can't be tried before it is live, if it can't. */

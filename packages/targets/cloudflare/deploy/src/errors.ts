@@ -10,6 +10,7 @@ export type DeployErrorCode =
   | "deploy-locked"
   | "deploy-lock-lost"
   | "bundle-hash-mismatch"
+  | "reserved-binding-name"
   | "traffic-split-in-progress"
   | "smoke-test-failed";
 
@@ -66,7 +67,14 @@ export const redactedMarker = "[redacted]";
 export function redact(text: string, secrets: readonly string[]): string {
   let safe = text;
   for (const secret of secrets) {
-    if (secret.length > 0) safe = safe.split(secret).join(redactedMarker);
+    if (secret.length === 0) continue;
+    // Also the forms an echo can take: JSON-escaped (without its quotes) and URL-encoded.
+    const forms = new Set([
+      secret,
+      JSON.stringify(secret).slice(1, -1),
+      encodeURIComponent(secret),
+    ]);
+    for (const form of forms) safe = safe.split(form).join(redactedMarker);
   }
   return safe;
 }
@@ -95,8 +103,12 @@ export class SmokeTestFailedError extends DeployError {
   readonly liveBefore: boolean;
   readonly liveReason: LiveReason | undefined;
 
-  constructor(failedChecks: readonly string[], liveReason?: LiveReason) {
-    const tail = failureTail(liveReason);
+  readonly restoreFailed: boolean;
+
+  constructor(failedChecks: readonly string[], liveReason?: LiveReason, restoreFailed = false) {
+    const tail = restoreFailed
+      ? "Putting the previous version back also failed: check the deployment in the Cloudflare dashboard."
+      : failureTail(liveReason);
     super(
       "smoke-test-failed",
       `The new version failed its self-test (${failedChecks.join(", ") || "no answer"}). ${tail}`,
@@ -105,5 +117,6 @@ export class SmokeTestFailedError extends DeployError {
     this.failedChecks = failedChecks;
     this.liveBefore = liveReason === undefined;
     this.liveReason = liveReason;
+    this.restoreFailed = restoreFailed;
   }
 }

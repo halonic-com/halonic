@@ -185,4 +185,45 @@ verifies("deploy.upload", () => {
     const error = await uploadAndSwitch(emptied, options).catch((e: unknown) => e);
     expect((error as DeployError).code).toBe("cloudflare-request-failed");
   });
+
+  it("still reports the failed self-test when putting the old version back fails", async () => {
+    const { api, options } = setup({ accounts: [], deployment: live }, failing);
+    let deploys = 0;
+    const flaky = {
+      ...api,
+      deployVersions: async (...args: Parameters<typeof api.deployVersions>) => {
+        deploys += 1;
+        if (deploys === 2) throw new Error("Cloudflare is down");
+        return api.deployVersions(...args);
+      },
+    };
+    const error = await uploadAndSwitch(flaky, options).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(SmokeTestFailedError);
+    expect((error as SmokeTestFailedError).failedChecks).toEqual(["sign-in"]);
+    expect((error as SmokeTestFailedError).restoreFailed).toBe(true);
+    expect((error as Error).message).toContain("also failed");
+  });
+
+  it("redacts and bounds the check names a Worker reports", async () => {
+    const checks = Array.from({ length: 12 }, (_, n) => ({
+      name: `check-${n}-${secret}`,
+      ok: false,
+    }));
+    const { api, options } = setup({ accounts: [], deployment: live }, { ok: false, checks });
+    const error = await uploadAndSwitch(api, options).catch((e: unknown) => e);
+    const named = (error as SmokeTestFailedError).failedChecks;
+    expect(named).toHaveLength(11);
+    expect(named.at(-1)).toBe("2 more");
+    expect((error as Error).message).not.toContain(secret);
+  });
+
+  it("refuses a binding or secret named like the self-test token", async () => {
+    const { api, options } = setup({ accounts: [], deployment: live }, passing);
+    const error = await uploadAndSwitch(api, {
+      ...options,
+      secrets: { HALONIC_SELFTEST_TOKEN: "x" },
+    }).catch((e: unknown) => e);
+    expect((error as DeployError).code).toBe("reserved-binding-name");
+    expect(api.calls).toEqual([]);
+  });
 });

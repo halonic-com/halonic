@@ -210,7 +210,10 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
     return body;
   }
 
-  /** Secrets going up in one upload are hidden from its errors too, in case Cloudflare echoes them. */
+  /**
+   * Secrets going up in one upload are hidden from its errors too, in case Cloudflare echoes them.
+   * One upload at a time per client: the deploy lock guarantees it.
+   */
   let hidden: readonly string[] = [];
   function failed(message: string): DeployError {
     return new DeployError(
