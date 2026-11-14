@@ -290,6 +290,26 @@ verifies("plugins.plugin-settings", () => {
       expect(view.textContent).toContain("Couldn't save Alerts. The disk is full.");
     });
 
+    it("offers Try again after a failed save, and saves again when pressed", async () => {
+      const { view, keychain } = await show({ locked: true });
+      const key = fieldNamed(view, "API key");
+      await typeAndLeave(key, "abc");
+      const tryAgain = [...view.querySelectorAll("button")].find(
+        (candidate) => candidate.textContent === "Try again",
+      );
+      expect(tryAgain).toBeDefined();
+      act(() => tryAgain?.click());
+      await settle();
+      expect(lineUnder(key)).toBe("Couldn't save the secret. The keychain is locked.");
+      expect(keychain.size).toBe(0);
+    });
+
+    it("has no Try again for a value that doesn't fit", async () => {
+      const { view } = await show({ problems: [{ setting: "city", message: "fill this in" }] });
+      await typeAndLeave(fieldNamed(view, "City"), "");
+      expect(view.textContent).not.toContain("Try again");
+    });
+
     it("keeps the settings readable but saves nothing while the plugin is off", async () => {
       const { view, saved, keychain } = await show({}, { reason: "status" });
       const city = fieldNamed(view, "City");
@@ -303,7 +323,7 @@ verifies("plugins.plugin-settings", () => {
 
     it("says it couldn't load the settings, with the reason and Try again", async () => {
       const { view } = await show({ unreadable: true });
-      expect(view.querySelector("h2")?.textContent).toBe("Couldn't load the settings");
+      expect(view.querySelector("h2")?.textContent).toBe("Couldn't load Weather's settings");
       expect(view.textContent).toContain("The profile can't be read.");
       expect(view.querySelector("button")?.textContent).toBe("Try again");
       expect(view.querySelector("input")).toBeNull();

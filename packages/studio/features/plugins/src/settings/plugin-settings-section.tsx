@@ -1,5 +1,13 @@
 import type { Plugin, PluginSettingField, PluginSettingValue } from "@halonicjs/format";
-import { EmptyState, Field, Input, Select, StatusChip, Switch } from "@halonicjs/studio-kit";
+import {
+  Button,
+  EmptyState,
+  Field,
+  Input,
+  Select,
+  StatusChip,
+  Switch,
+} from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import {
   type PluginSecretWriter,
@@ -12,11 +20,11 @@ import {
   SECRET_NOT_SET,
   SECRET_SET,
   SETTINGS_HEADING,
-  SETTINGS_NOT_LOADED,
   secretNotSavedLine,
   secretStoredLine,
   settingNotSavedLine,
   settingProblemLine,
+  settingsNotLoadedTitle,
   TRY_AGAIN,
 } from "./settings-text.ts";
 
@@ -79,6 +87,9 @@ export function PluginSettingsSection({
   const [errors, setErrors] = useState<Readonly<Record<string, string>>>({});
   const [loadError, setLoadError] = useState<string | undefined>(undefined);
   const [attempt, setAttempt] = useState(0);
+  // The settings whose last save failed, not refused: **Try again** saves them again.
+  const [failedSaves, setFailedSaves] = useState<ReadonlySet<string>>(new Set());
+  const retries = useRef<Record<string, () => void>>({});
   // The values the host holds now: a refused or failed save doesn't change them.
   const saved = useRef<Values>({});
   // Saves run one at a time: the host replaces the whole record, so each
@@ -112,7 +123,7 @@ export function PluginSettingsSection({
         tone="error"
         align="start"
         headingLevel={2}
-        title={SETTINGS_NOT_LOADED}
+        title={settingsNotLoadedTitle(plugin.name)}
         description={loadError}
         action={{ label: TRY_AGAIN, onClick: () => setAttempt((count) => count + 1) }}
       />
@@ -149,6 +160,7 @@ export function PluginSettingsSection({
       const outcome = await savePluginSettings(host, secrets, plugin, next);
       if (outcome.kind === "refused") {
         setErrors(problemLines(outcome.problems));
+        setFailedSaves(new Set());
         onSaveState?.("failed");
         return false;
       }
@@ -159,20 +171,29 @@ export function PluginSettingsSection({
       if (failure !== undefined) {
         const line = secretNotSavedLine(reasonOf(failure.error), secretSet[setting] === true);
         setErrors((now) => ({ ...now, [setting]: line }));
+        setFailedSaves((now) => new Set(now).add(setting));
         onSaveState?.("failed");
         return false;
       }
       // Only this field's error goes: another field's unsaved text keeps its own.
       setErrors((now) => without(now, setting));
+      setFailedSaves((now) => withoutSetting(now, setting));
       onSaveState?.("saved");
       return true;
     } catch (error) {
       const label = plugin.ui?.settings[setting]?.label ?? setting;
       const line = settingNotSavedLine(label, reasonOf(error));
       setErrors((now) => ({ ...now, [setting]: line }));
+      setFailedSaves((now) => new Set(now).add(setting));
       onSaveState?.("failed");
       return false;
     }
+  }
+
+  /** Runs a row's save, and keeps it so **Try again** can run it once more. */
+  function attemptSave<Value>(setting: string, run: () => Promise<Value>): Promise<Value> {
+    retries.current[setting] = () => void run();
+    return run();
   }
 
   return (
@@ -181,37 +202,52 @@ export function PluginSettingsSection({
         {SETTINGS_HEADING}
       </h2>
       {fields.map(([setting, field]) => {
+        const retry = failedSaves.has(setting) ? retries.current[setting] : undefined;
         const row = { plugin, field, error: errors[setting] ?? null, off };
+        const tryAgain =
+          retry === undefined ? null : (
+            <Button variant="ghost" size="sm" onClick={retry}>
+              {TRY_AGAIN}
+            </Button>
+          );
         if (field.type === "secret") {
           return (
-            <SecretRow
-              key={setting}
-              {...row}
-              field={field}
-              isSet={secretSet[setting] === true}
-              onSave={async (secret) => {
-                const ok = await save(setting, undefined, secret);
-                if (ok) setSecretSet((now) => ({ ...now, [setting]: true }));
-                return ok;
-              }}
-            />
+            <div key={setting} className="flex flex-col gap-1">
+              <SecretRow
+                {...row}
+                field={field}
+                isSet={secretSet[setting] === true}
+                onSave={(secret) =>
+                  attemptSave(setting, async () => {
+                    const ok = await save(setting, undefined, secret);
+                    if (ok) setSecretSet((now) => ({ ...now, [setting]: true }));
+                    return ok;
+                  })
+                }
+              />
+              {tryAgain}
+            </div>
           );
         }
         return (
-          <SettingRow
-            key={setting}
-            {...row}
-            field={field}
-            value={values[setting]}
-            onSave={async (value) => {
-              if (off !== undefined) return;
-              setValues((now) => withValue(now ?? {}, setting, value));
-              // A pick or a switch goes back when it couldn't be saved; typed text stays.
-              if (!(await save(setting, value)) && typeof value !== "string") {
-                setValues((now) => withValue(now ?? {}, setting, saved.current[setting]));
+          <div key={setting} className="flex flex-col gap-1">
+            <SettingRow
+              {...row}
+              field={field}
+              value={values[setting]}
+              onSave={(value) =>
+                attemptSave(setting, async () => {
+                  if (off !== undefined) return;
+                  setValues((now) => withValue(now ?? {}, setting, value));
+                  // A pick or a switch goes back when it couldn't be saved; typed text stays.
+                  if (!(await save(setting, value)) && typeof value !== "string") {
+                    setValues((now) => withValue(now ?? {}, setting, saved.current[setting]));
+                  }
+                })
               }
-            }}
-          />
+            />
+            {tryAgain}
+          </div>
         );
       })}
     </section>
@@ -388,6 +424,13 @@ function withValue(values: Values, setting: string, value: PluginSettingValue | 
   } else {
     next[setting] = value;
   }
+  return next;
+}
+
+function withoutSetting(settings: ReadonlySet<string>, setting: string): ReadonlySet<string> {
+  if (!settings.has(setting)) return settings;
+  const next = new Set(settings);
+  next.delete(setting);
   return next;
 }
 

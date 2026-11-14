@@ -177,6 +177,14 @@ verifies("plugins.plugin-add", () => {
     expect(seen.opened).toEqual(["weather"]);
   });
 
+  it("moves focus to the Callout that says why it can't add", async () => {
+    const seen = fresh();
+    show(reply(seen, { kind: "taken", plugin: "weather" }), seen);
+    await type(inputLabelled("Folder"), "/plugins/halonic-weather");
+    await press("Add plugin");
+    expect(document.activeElement?.textContent).toContain("already installed");
+  });
+
   it("says offline and no plugin.yaml in the same words as the microcopy", async () => {
     const seen = fresh();
     show(reply(seen, { kind: "offline", host: "github.com" }), seen);

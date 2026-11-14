@@ -1,4 +1,12 @@
-import { Button, Callout, Dialog, Field, Input, RadioGroup } from "@halonicjs/studio-kit";
+import {
+  Button,
+  Callout,
+  type CalloutHandle,
+  Dialog,
+  Field,
+  Input,
+  RadioGroup,
+} from "@halonicjs/studio-kit";
 import { useEffect, useRef, useState } from "react";
 import { messageOf } from "../message-of.ts";
 import type { PluginLoadProblem } from "../page/plugin-pages.ts";
@@ -184,10 +192,15 @@ function FailureCallout({
   readonly failure: Exclude<Failure, { kind: "line" }>;
   readonly onOpen: (plugin: string) => void;
 }) {
+  const callout = useRef<CalloutHandle>(null);
+  // A new failure takes focus, so a screen reader reads why nothing was installed.
+  useEffect(() => callout.current?.focus(), [failure]);
   if (failure.kind === "taken") {
     return (
       <Callout
         tone="danger"
+        announce="focus"
+        ref={callout}
         action={{
           label: openLine(failure.plugin),
           onClick: () => {
@@ -200,7 +213,7 @@ function FailureCallout({
     );
   }
   return (
-    <Callout tone="danger">
+    <Callout tone="danger" announce="focus" ref={callout}>
       {failure.text}
       <ProblemList problems={failure.problems} />
     </Callout>
