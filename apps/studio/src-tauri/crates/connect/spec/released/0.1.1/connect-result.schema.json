@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://halonic.com/spec/connect/connect-result/v1.schema.json",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "connected"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "url"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "notAnAddress"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "notHomeNetwork"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "notAnswering"
+        },
+        "address": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "address"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "notHalonic"
+        },
+        "address": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "address"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "appTooOld"
+        },
+        "computerVersion": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "computerVersion"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "computerTooOld"
+        },
+        "computerVersion": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "computerVersion"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}
