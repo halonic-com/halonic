@@ -51,7 +51,7 @@ export const initMessages = defineMessages("init", {
    * The last `Next:` line of a plain `init`, dimmed: the guide to a first
    * agent. It named Studio until 0.1.0, which has no Studio (HAL-6007).
    */
-  nextFirstAgent: () => [dim(`Add your first agent: ${docsBase}/examples/agent-with-a-tool`)],
+  nextFirstAgent: () => [dim(`Add your first agent: ${docsBase}/examples/approval-step`)],
 
   /** The help line for `--example <name>`. */
   exampleOption: () => phrase`Make a copy of this example instead of an empty workspace.`,

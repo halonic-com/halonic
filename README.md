@@ -140,13 +140,14 @@ date will differ. To run routines at their set times, keep
 `halonic routines watch` open in a terminal, and stop it with Ctrl C.
 
 Next, read how to
-[add your first agent](https://docs.halonic.dev/examples/agent-with-a-tool), or
+[add your first agent](https://docs.halonic.dev/examples/approval-step), or
 open the `acme` folder and change a file. Run `halonic validate` after each
 change to check your files.
 
 `halonic init` on its own makes an empty workspace: a folder with no agents
 yet. Add your first agent with the
-[agent-with-a-tool example](https://docs.halonic.dev/examples/agent-with-a-tool),
+[approval-step example](https://docs.halonic.dev/examples/approval-step),
+then [give it a tool](https://docs.halonic.dev/examples/agent-with-a-tool),
 and check your files with `halonic validate` as you go. Want to see a working
 one first? Run `halonic init --example acme` and follow the steps above.
 
