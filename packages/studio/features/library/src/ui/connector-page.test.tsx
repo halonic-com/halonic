@@ -18,7 +18,10 @@ function props(id: string, openPlace = vi.fn()): ItemViewProps {
   return {
     item: { kind: "connector", hub: "local", id },
     context: {
-      services: { get: (key: unknown) => (key === ConnectorStatusHostService ? host : undefined) },
+      services: {
+        get: (key: unknown) => (key === ConnectorStatusHostService ? host : undefined),
+        find: () => undefined,
+      },
       announcer: { announceState: vi.fn() },
       openPlace,
     },
