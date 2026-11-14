@@ -298,10 +298,30 @@ export class WorkspaceSwitcher {
   }
 
   /**
+   * Saves what is waiting in every open workspace before the window closes. When a save fails,
+   * that workspace is shown with {@link closeRequest} asking what to do, and this resolves `false`
+   * so the window stays open: closing it now would lose those changes.
+   */
+  async saveAllForWindowClose(): Promise<boolean> {
+    for (const slot of this.open.all) {
+      if (slot.value.saving !== undefined && !(await slot.value.saving.saveNow())) {
+        this.open.show(slot.location);
+        this.#remember();
+        this.#setCloseRequest({
+          location: slot.location,
+          name: slot.value.name,
+          reason: slot.value.saving.problem?.reason ?? "failed",
+        });
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
    * Saves what is waiting in every open workspace, then stops their services, when the window
-   * goes (save model 1.6). The window can't ask anything, so a save that fails is not retried
-   * here, and those changes are lost. The failed-save toast closes with the window, so the user
-   * won't see it.
+   * goes (save model 1.6). {@link saveAllForWindowClose} asks first; a save that still fails here,
+   * or that the window stopped waiting for, is not retried, and those changes are lost.
    */
   async dispose(): Promise<void> {
     for (const slot of this.open.all) {

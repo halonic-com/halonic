@@ -45,3 +45,39 @@ describe("when the window goes", () => {
     expect([acme.disposed(), beta.disposed()]).toEqual([true, true]);
   });
 });
+
+describe("when the window asks to close", () => {
+  async function switcherWith(acme: boolean, beta: boolean) {
+    const order: string[] = [];
+    const opened = {
+      "/work/acme": openedWithSaving("Acme", acme, order),
+      "/work/beta": openedWithSaving("Beta", beta, order),
+    };
+    const switcher = new WorkspaceSwitcher({
+      pickFolder: async () => undefined,
+      openFolder: async (location) => opened[location as keyof typeof opened].workspace,
+      recent: new RecentWorkspaces({ getItem: () => null, setItem: () => {} }),
+      toasts: createToastStore(),
+    });
+    await switcher.openLocation("/work/acme");
+    await switcher.openLocation("/work/beta");
+    return { switcher, opened };
+  }
+
+  it("says it can close, and asks nothing, when every save works", async () => {
+    const { switcher } = await switcherWith(true, true);
+    expect(await switcher.saveAllForWindowClose()).toBe(true);
+    expect(switcher.closeRequest).toBeUndefined();
+  });
+
+  it('keeps everything open and asks "Close Acme?" when a save fails', async () => {
+    const { switcher, opened } = await switcherWith(false, true);
+    expect(await switcher.saveAllForWindowClose()).toBe(false);
+    expect(switcher.closeRequest).toMatchObject({ location: "/work/acme", name: "Acme" });
+    expect(switcher.open.shown?.location).toBe("/work/acme");
+    expect([opened["/work/acme"].disposed(), opened["/work/beta"].disposed()]).toEqual([
+      false,
+      false,
+    ]);
+  });
+});
