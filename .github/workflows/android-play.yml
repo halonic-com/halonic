@@ -405,32 +405,61 @@ jobs:
           mkdir -p apk
           play -L -o "apk/$APK" \
             "$PLAY_API/generatedApks/$VERSION_CODE/downloads/$download_id:download?alt=media"
-      # The APK must carry Play's app signing certificate, copied from the
-      # Play Console into PLAY_APP_SIGNING_CERT_SHA256. apksigner prints the
-      # digest in lowercase without colons, so the variable is compared in
-      # that form. Any mismatch fails the release.
+      # The APK must carry Play's app signing certificates, copied from the
+      # Play Console into repo variables. apksigner prints each digest in
+      # lowercase without colons, so the variables are compared in that form.
+      # Any mismatch fails the release.
+      # - PLAY_APP_SIGNING_CERT_SHA256 is the V3.0 signer, the one devices
+      #   before Android 37 verify.
+      # - PLAY_APP_SIGNING_V32_CLASSICAL_CERT_SHA256 and
+      #   PLAY_APP_SIGNING_V32_PQC_CERT_SHA256 are the V3.2 hybrid signer's two
+      #   certificates, the ones Android 37 and later verify (HAL-8801).
+      #   They are required only when the APK has a V3.2 hybrid signer.
       - name: Check the APK's signature
         env:
           APK: apk/${{ steps.names.outputs.apk }}
           EXPECTED: ${{ vars.PLAY_APP_SIGNING_CERT_SHA256 }}
+          EXPECTED_V32_CLASSICAL: ${{ vars.PLAY_APP_SIGNING_V32_CLASSICAL_CERT_SHA256 }}
+          EXPECTED_V32_PQC: ${{ vars.PLAY_APP_SIGNING_V32_PQC_CERT_SHA256 }}
         run: |
           build_tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
           "$build_tools/apksigner" verify --print-certs "$APK" | tee "$RUNNER_TEMP/certs.txt"
-          expected=$(tr -d ':' <<< "$EXPECTED" | tr '[:upper:]' '[:lower:]')
+          normalize() { tr -d ':' <<< "$1" | tr '[:upper:]' '[:lower:]'; }
+          # The digests of the signer lines that start with the given
+          # pattern, one per distinct value.
+          digests() {
+            sed -nE "s/^($1):? certificate SHA-256 digest: //p" "$RUNNER_TEMP/certs.txt" | sort -u
+          }
+          # Fails unless the APK has exactly the one expected digest for this
+          # signer, and exactly one when the signer is present at all.
+          check_signer() {
+            local label=$1 pattern=$2 expected found
+            expected=$(normalize "$3")
+            found=$(digests "$pattern")
+            if [ "$found" != "$expected" ]; then
+              echo "::error::The APK is not signed only with Play's $label key. Expected ${expected:-nothing}, got: ${found:-nothing}"
+              exit 1
+            fi
+            echo "::notice title=Play signature::$label signer is Play's app signing key $expected"
+          }
+          v30='Signer #[0-9]+|V3\.0 Signer'
+          sdk_range='\(minSdkVersion=[0-9]+, maxSdkVersion=[0-9]+\)'
+          v32_classical="V3\\.2 Hybrid Classical Signer: $sdk_range"
+          v32_pqc="V3\\.2 Hybrid PQC Signer: $sdk_range"
           # Older apksigner prints "Signer #1 certificate SHA-256 digest: ...",
           # newer ones print "V3.0 Signer: certificate SHA-256 digest: ...".
-          # The V3.2 hybrid and source stamp signers are other lines and are
-          # not read; the main signature is the one that must match.
-          signers=$(sed -nE 's/^(Signer #[0-9]+|V3\.0 Signer):? certificate SHA-256 digest: //p' "$RUNNER_TEMP/certs.txt" | sort -u)
-          if [ -z "$signers" ]; then
+          if [ -z "$(digests "$v30")" ]; then
             echo "::error::No signer digest found in apksigner's output; the output format may have changed."
             exit 1
           fi
-          if [ "$signers" != "$expected" ]; then
-            echo "::error::The APK is not signed only with Play's app signing key. Expected $expected, got: $signers"
-            exit 1
+          check_signer "V3.0" "$v30" "$EXPECTED"
+          # Android 37 and later verify the V3.2 hybrid signer instead. If Play
+          # adds one, its digests must be pinned too, so a release never ships
+          # a signer nothing checks.
+          if [ -n "$(digests "$v32_classical")$(digests "$v32_pqc")" ]; then
+            check_signer "V3.2 hybrid classical" "$v32_classical" "$EXPECTED_V32_CLASSICAL"
+            check_signer "V3.2 hybrid PQC" "$v32_pqc" "$EXPECTED_V32_PQC"
           fi
-          echo "::notice title=Play signature::Signed with Play's app signing key $expected"
       # The release manifest keeps the settings HAL-1140 decided: plain
       # http:// to the user's own computer (and no network security config),
       # and no backup of app data.
