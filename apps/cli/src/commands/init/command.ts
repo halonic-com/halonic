@@ -220,10 +220,19 @@ function exampleLines(
   const run = {
     command: initMessages.nextRun(example.workflow.id, example.workflow.input).phrase,
   };
+  const watch = {
+    command: initMessages.nextWatch().phrase,
+    why: initMessages.nextWatchWhy().phrase,
+  };
   return [
     phrase`${markPart("done")} ${created.phrase}`,
     phrase`  ${initMessages.exampleContents(contents).phrase}`,
-    ...nextSteps([...changeFolder(folder, cwd), test, run]),
+    ...nextSteps([
+      ...changeFolder(folder, cwd),
+      test,
+      run,
+      ...(contents.routines > 0 ? [watch] : []),
+    ]),
   ];
 }
 

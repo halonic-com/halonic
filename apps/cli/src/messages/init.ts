@@ -43,6 +43,8 @@ export const initMessages = defineMessages("init", {
   nextTest: () => phrase`halonic test`,
   nextTestWhy: () => [dim("run its tests (no key, nothing sent)")],
   /** "halonic run support-reply --input examples/refund-question.json", the example's own workflow and input. */
+  nextWatch: () => phrase`halonic routines watch`,
+  nextWatchWhy: () => [dim("routines start on time only while this runs")],
   nextRun: (workflow: string, input: string) => phrase`halonic run ${workflow} --input ${input}`,
   /**
    * The last `Next:` line of a plain `init`, dimmed: the guide to a first

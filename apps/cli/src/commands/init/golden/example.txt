@@ -8,6 +8,7 @@ stdout:
     cd acme
     halonic test                        \e[2mrun its tests (no key, nothing sent)\e[22m
     halonic run support-reply --input examples/refund-question.json
+    halonic routines watch              \e[2mroutines start on time only while this runs\e[22m
 stderr:
 
 ## NO_COLOR: halonic init --example acme
@@ -20,6 +21,7 @@ stdout:
     cd acme
     halonic test                        run its tests (no key, nothing sent)
     halonic run support-reply --input examples/refund-question.json
+    halonic routines watch              routines start on time only while this runs
 stderr:
 
 ## --json: halonic init --example acme

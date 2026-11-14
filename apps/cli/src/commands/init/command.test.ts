@@ -177,6 +177,7 @@ verifies("cli.commands.init.copy-example", () => {
         "  cd acme",
         "  halonic test                        run its tests (no key, nothing sent)",
         "  halonic run support-reply --input examples/refund-question.json",
+        "  halonic routines watch              routines start on time only while this runs",
       ]);
       expect(io.stderr).toEqual([]);
       const filesIn = (root: string) => new FolderDefinitionStore(root).list();

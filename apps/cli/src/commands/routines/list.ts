@@ -46,7 +46,10 @@ export async function listRoutines(
   const withHub = spansHubs(routines);
   return {
     exitCode: exitCode.ok,
-    lines: columns(routines.map((each) => routineRow(each, clock, withHub))),
+    lines: [
+      ...columns(routines.map((each) => routineRow(each, clock, withHub))),
+      routinesMessages.watchHint().phrase,
+    ],
     json,
   };
 }
