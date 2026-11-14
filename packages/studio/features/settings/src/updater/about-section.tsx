@@ -3,15 +3,23 @@ import type { SettingsSectionProps } from "@halonicjs/studio-shell";
 import { type UpdaterHost, UpdaterService } from "../api.ts";
 import { type AboutAction, type AboutProgress, aboutView } from "./about-state.ts";
 import * as text from "./about-text.ts";
+import { repository } from "./links.ts";
+import { RestartFlowService } from "./restart-flow.ts";
+import * as restartText from "./restart-text.ts";
 import { useUpdater } from "./use-updater.ts";
-
-const repository = "https://github.com/halonic-com/halonic";
 
 /** Settings › About Halonic as the settings container shows it. Without an updater it only says so. */
 export function AboutSection({ context }: SettingsSectionProps) {
   const host = hostOf(context);
   if (host === undefined) return <ViewOnlyAbout />;
-  return <AboutHostView host={host} announce={(line) => context.announcer.announce(line)} />;
+  const flow = context.services.find(RestartFlowService);
+  return (
+    <AboutHostView
+      host={host}
+      announce={(line) => context.announcer.announce(line)}
+      onRestart={flow === undefined ? undefined : () => flow.request()}
+    />
+  );
 }
 
 /** The props of {@link AboutHostView}. */
@@ -19,10 +27,12 @@ export interface AboutHostViewProps {
   readonly host: UpdaterHost;
   /** Says a result of Check now: the settings container's live region. */
   readonly announce: (line: string) => void;
+  /** Opens the restart flow; without it, a ready update offers no Restart to update button. */
+  readonly onRestart?: (() => void) | undefined;
 }
 
 /** The section over an updater: the status line, its buttons, the automatic switch and the links. */
-export function AboutHostView({ host, announce }: AboutHostViewProps) {
+export function AboutHostView({ host, announce, onRestart }: AboutHostViewProps) {
   const updater = useUpdater(host, announce);
   const { status } = updater;
   if (status === null) return <AboutLinks heading={null} />;
@@ -30,6 +40,7 @@ export function AboutHostView({ host, announce }: AboutHostViewProps) {
   const checking = status.checking;
   const version = "version" in status.state ? status.state.version : "";
   const buttons: Record<AboutAction, { label: string; run: () => void }> = {
+    restart: { label: restartText.RESTART_TO_UPDATE, run: () => onRestart?.() },
     download: { label: text.downloadButton(version), run: updater.download },
     cancel: { label: text.CANCEL_DOWNLOAD, run: updater.cancel },
     "try-again": { label: text.TRY_AGAIN, run: updater.download },
@@ -63,11 +74,13 @@ export function AboutHostView({ host, announce }: AboutHostViewProps) {
       ) : null}
       {view.actions.length === 0 && view.notesUrl === null ? null : (
         <div className="flex flex-wrap items-center gap-3">
-          {view.actions.map((action) => (
-            <Button key={action} variant="secondary" size="sm" onClick={buttons[action].run}>
-              {buttons[action].label}
-            </Button>
-          ))}
+          {view.actions
+            .filter((action) => action !== "restart" || onRestart !== undefined)
+            .map((action) => (
+              <Button key={action} variant="secondary" size="sm" onClick={buttons[action].run}>
+                {buttons[action].label}
+              </Button>
+            ))}
           {view.notesUrl === null ? null : (
             <ExternalLink href={view.notesUrl}>{text.RELEASE_NOTES}</ExternalLink>
           )}
