@@ -2,7 +2,6 @@ import {
   TauriDefinitionStore,
   type TauriFileShell,
   TauriPickedFolders,
-  TauriRunStore,
   TauriTrustStore,
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
@@ -71,12 +70,11 @@ import {
   type StudioHost,
   StudioWorkspace,
 } from "@halonicjs/studio-shell";
-import { provideLibraryServices } from "../library/provide-library-services.ts";
-import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
 import { newWorkspaceHostOf } from "./new-workspace-host.ts";
 import { openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
+import { provideFolderServices } from "./provide-folder-services.ts";
 import { restartRunsOfWindow } from "./restart-runs.ts";
 import { trustedSourcesOf } from "./trusted-sources.ts";
 import { hostSettingsOf } from "./window-host-settings.ts";
@@ -325,15 +323,7 @@ export async function openFolder(
   }
   const assistant = provideAssistant(services, files, location, name, scope);
   if (ipc !== undefined && files !== undefined && trust !== undefined) {
-    provideWorkspaceRuns(services, { ipc, files, window }, location);
-    provideLibraryServices(services, {
-      ipc,
-      files,
-      transport: tauriAgentHostTransport(window),
-      trust,
-      location,
-      onFocus: (listener) => focusOf(window, listener),
-    });
+    provideFolderServices(services, { ipc, files, window, trust, location });
   }
   shell.services.instantiate(services);
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name });
@@ -412,31 +402,6 @@ function openFolderScope(
   // A saved change may add something to run, so trust is checked again on what is saved.
   scope.events.on("files.saved", () => void trust.refresh());
   return scope;
-}
-
-/**
- * Gives the workspace in `location` its runs, read through the shell, as both the Runs
- * feature's and the Inbox's source.
- */
-function provideWorkspaceRuns(
-  services: ServiceRegistry,
-  { ipc, files, window }: { ipc: TauriIpc; files: TauriFileShell; window: object },
-  location: string,
-): void {
-  const runs = new WorkspaceRuns({
-    runs: new TauriRunStore(ipc, location),
-    definitions: new TauriDefinitionStore(files, location),
-    onFocus: (listener) => focusOf(window, listener),
-  });
-  services.provide(RunsSourceService, runs);
-  services.provide(InboxRunsService, runs);
-}
-
-/** Calls `listener` whenever the page's window comes to the front; returns a function that stops it. */
-function focusOf(window: object, listener: () => void): () => void {
-  if (!(window instanceof EventTarget)) return () => {};
-  window.addEventListener("focus", listener);
-  return () => window.removeEventListener("focus", listener);
 }
 
 /**

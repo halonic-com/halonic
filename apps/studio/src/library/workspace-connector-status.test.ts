@@ -119,4 +119,33 @@ verifies("studio.workspace-connector-status", () => {
     expect(heard).toHaveBeenCalledTimes(1);
     stop();
   });
+
+  it("reports why the files can't be watched, and when the watch fails later", async () => {
+    const files = acmeFiles();
+    const openFailure = new Error("no watch");
+    const laterFailure = new Error("watch lost");
+    let listener: DefinitionWatchListener | undefined;
+    const watch = vi.spyOn(files, "watch");
+    watch.mockRejectedValueOnce(openFailure);
+    watch.mockImplementationOnce(async (given) => {
+      listener = given;
+      return { close: async () => {} };
+    });
+    const reported = vi.fn();
+    const status = new WorkspaceConnectorStatus({
+      definitions: files,
+      refusals: new RefusalsFeed(),
+      onWatchError: reported,
+    });
+
+    const stopFirst = status.subscribe(() => {});
+    await vi.waitFor(() => expect(reported).toHaveBeenCalledWith(openFailure));
+    stopFirst();
+    const stopSecond = status.subscribe(() => {});
+    await vi.waitFor(() => expect(listener).toBeDefined());
+    listener?.failed(laterFailure);
+
+    expect(reported).toHaveBeenCalledWith(laterFailure);
+    stopSecond();
+  });
 });
