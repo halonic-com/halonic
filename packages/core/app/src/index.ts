@@ -392,19 +392,18 @@ export {
   type StartInSandbox,
 } from "./runner-start-gate.ts";
 export {
-  type MxcDefault,
-  type MxcSetting,
-  type MxcState,
-  type MxcStatus,
-  mxcDefault,
-  mxcStates,
+  defaultBackendOrder,
+  type LimitCode,
+  limitCodes,
   type SandboxBackend,
   type SandboxBackendId,
+  type SandboxBackendState,
+  type SandboxBackendStatus,
   type SandboxChoice,
   type SandboxChoiceOptions,
   SandboxChoiceService,
-  type SandboxSettings,
   sandboxBackendIds,
+  sandboxBackendStates,
 } from "./sandbox-choice.ts";
 export {
   type CanaryFindings,

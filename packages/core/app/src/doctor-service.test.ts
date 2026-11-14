@@ -7,7 +7,7 @@ import type { NodeProblem } from "./doctor-lines.ts";
 import { type DoctorProvider, DoctorService, type DoctorWorkspace } from "./doctor-service.ts";
 import type { DoctorHarness } from "./doctor-sign-ins.ts";
 import type { ProviderModels, Resources } from "./resource-report.ts";
-import type { SandboxChoice } from "./sandbox-choice.ts";
+import type { SandboxBackendStatus, SandboxChoice } from "./sandbox-choice.ts";
 import type { TrustCheck } from "./trust-service.ts";
 
 const ready: SandboxCheck = { ok: true, reason: null, missing: [] };
@@ -307,16 +307,19 @@ verifies("app.doctor-service", () => {
   });
 
   it("adds the MXC line where MXC is offered, and counts a failed trust check in the summary", async () => {
+    const mxc: SandboxBackendStatus = {
+      id: "mxc",
+      offered: true,
+      state: "check-failed",
+      reason: "too-strict",
+      missing: ["the read-only file couldn't be read"],
+      limits: [],
+      residuals: [],
+    };
     const failed: SandboxChoice = {
       active: null,
-      mxc: {
-        offered: true,
-        setting: "on",
-        effective: "on",
-        state: "mxc-check-failed",
-        reason: "too-strict",
-        missing: ["the read-only file couldn't be read"],
-      },
+      setting: { backend: "mxc", chosenAt: "2026-11-14T09:00:00.000Z" },
+      backends: [mxc],
     };
     const report = await doctor({ choice: failed }).service.check(null);
     expect(report.mxc).toMatchObject({ check: "mxc", status: "failed", reason: "too-strict" });
@@ -324,7 +327,8 @@ verifies("app.doctor-service", () => {
 
     const notOffered: SandboxChoice = {
       active: "srt",
-      mxc: { offered: false, setting: null, effective: "off", state: "not-offered" },
+      setting: null,
+      backends: [{ ...mxc, offered: false, state: "not-available", reason: null, missing: [] }],
     };
     expect((await doctor({ choice: notOffered }).service.check(null)).mxc).toBeUndefined();
     expect((await doctor({ choice: null }).service.check(null)).mxc).toBeUndefined();

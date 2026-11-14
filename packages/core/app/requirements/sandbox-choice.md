@@ -2,25 +2,33 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-3306; docs/adr/2026-11-10-mxc-sandbox-backend.md ("Choosing a sandbox on Windows", "The trust check"); board decision HAL-2546; the plan on HAL-3292
+- Source: HAL-5392; HAL-3779 design (2.2-2.4, 6); HAL-3306; docs/adr/2026-11-10-mxc-sandbox-backend.md ("Choosing a sandbox on Windows", "The trust check"); board decision HAL-2546; the plan on HAL-3292
 
-The sandbox choice shall pick, on Windows, the person's explicit choice (an MXC setting of `on`) first, then srt when its check passes, then MXC when the MXC setting isn't set and the MXC default is on, and otherwise no sandbox; elsewhere srt when its check passes. An MXC setting that isn't set shall follow one MXC default, which is opt-in. Before MXC runs, the choice shall run MXC's trust check, at startup, after every change to the sandbox settings and when a session's fence proof is `not-fenced`. When the check fails, MXC shall be off until Halonic starts again, nothing shall run in another backend in its place, and the person's setting shall stay as they left it. The choice shall report the active backend and MXC's offer, setting, setting in effect and state as codes from closed lists, with the failed check's reason and the sentences behind it for logs.
+The sandbox choice shall read the person's saved sandbox setting and report which backend runs. A setting that names a backend shall run only that backend, once its own check and, where it has a canary, its trust check pass. A setting of `none` shall run no sandbox and no check. With no setting, the first backend of the platform's default list that passes shall run: `srt-wsl` only on Windows, `srt` elsewhere, and never `none`, native srt on Windows or MXC. When the chosen backend can't run or fails its trust check, nothing shall run in another backend in its place, and the saved setting shall stay as the person left it. A failed trust check shall keep that backend off until Halonic starts again. The choice shall choose again after every change to the setting and when a session's fence proof is `not-fenced`, and shall run one trust check at a time. It shall report, for every backend the host hands over, whether this computer offers it, its state, the reason and the sentences behind it for logs, its limits and the residuals seen at this start, as codes from closed lists. A setting the store gives back that isn't valid shall make the choice throw.
 
 ## Examples
 
-- Given a computer that doesn't offer MXC, or isn't Windows,
-  then MXC is `not-offered`, no trust check runs and srt runs when its check passes.
-- Given Windows 11, MXC not set and the default opt-in,
-  then MXC is `off`, and with srt not working on Windows nothing runs.
-- Given Windows 11, MXC not set, the default on and srt working on Windows,
-  then srt runs and MXC is `not-used`.
-- Given Windows 11, MXC set to `on` and srt working on Windows,
-  then MXC is checked and runs, because the person chose it.
-- Given MXC set to `on` and a trust check that fails with `too-strict`,
-  then nothing runs, MXC is `mxc-check-failed` with `too-strict`, and the setting is still `on`.
+- Given Linux or macOS and no setting,
+  then `srt` runs when its check passes.
+- Given Windows and no setting, with native srt and MXC working,
+  then nothing runs unless `srt-wsl` passes, and no trust check runs for srt or MXC.
+- Given a setting of `srt` on Windows,
+  then only native srt is checked and runs.
+- Given a setting of `none`,
+  then `active` is `none` and no trust check runs.
+- Given a chosen backend whose check says `setup-needed`,
+  then nothing runs, its state is `setup-needed` with that reason, and no other backend runs.
+- Given a computer that doesn't offer the chosen backend,
+  then nothing runs, the backend is shown as not offered and no check runs.
+- Given a setting that names a backend the host didn't hand over,
+  then nothing runs.
+- Given MXC chosen and a trust check that fails with `too-strict`,
+  then nothing runs, MXC is `check-failed` with `too-strict`, srt stays `available` and the setting is unchanged.
 - Given a trust check that failed in this start,
-  then a settings change or a `not-fenced` session runs no new check and MXC stays off; a new start checks again.
-- Given MXC in use and a session whose fence proof is `not-fenced`,
-  then the trust check runs again, and MXC is off for this start if it fails.
-- Given the MXC default constant,
-  then it is `"opt-in"`.
+  then a settings change or a `not-fenced` session runs no new check and the backend stays off; a new start checks again.
+- Given a backend in use and a session whose fence proof is `not-fenced`,
+  then the trust check runs again, and the backend is off for this start if it fails.
+- Given MXC in use,
+  then its limits are listed and `name-lookups-leave` is a residual when the trust check saw it.
+- Given a store that gives back `{ backend: "docker" }`,
+  then the choice throws and `current()` stays as it was.

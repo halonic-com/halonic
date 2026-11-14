@@ -1,14 +1,20 @@
-import type { SandboxCheck, SandboxProfile, SandboxSession } from "@halonicjs/ports";
+import type {
+  SandboxBackendId,
+  SandboxCheck,
+  SandboxProfile,
+  SandboxSession,
+  SandboxSetting,
+} from "@halonicjs/ports";
 import { FakeSandboxSession, idleProgram } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it, vi } from "vitest";
 import {
-  type MxcDefault,
-  type MxcState,
-  mxcDefault,
-  mxcStates,
+  defaultBackendOrder,
+  type LimitCode,
   type SandboxBackend,
+  type SandboxBackendState,
   SandboxChoiceService,
+  sandboxBackendStates,
 } from "./sandbox-choice.ts";
 import type { CanaryFindings } from "./sandbox-trust-check.ts";
 
@@ -24,7 +30,8 @@ const profile: SandboxProfile = {
 };
 
 const ok: SandboxCheck = { ok: true, reason: null, missing: [] };
-const windows: SandboxCheck = { ok: false, reason: "windows", missing: [] };
+const needsSetup: SandboxCheck = { ok: false, reason: "setup-needed", missing: ["not set up"] };
+const inContainer: SandboxCheck = { ok: false, reason: "container", missing: ["in a container"] };
 
 const clean: CanaryFindings = {
   started: true,
@@ -40,161 +47,238 @@ const tooStrict: CanaryFindings = {
   missing: ["the read-only file couldn't be read"],
 };
 
-interface Machine {
-  platform?: string;
-  srt?: SandboxCheck;
-  mxcOffered?: boolean;
-  /** What each canary run finds, in turn; the last one repeats. */
+const chosenAt = "2026-11-14T09:00:00.000Z";
+const choose = (backend: SandboxBackendId): SandboxSetting => ({ backend, chosenAt });
+
+interface FakeBackend {
+  check?: SandboxCheck;
+  offered?: boolean;
+  limits?: LimitCode[];
+  /** What each canary run finds, in turn; the last one repeats. Without it the backend has no canary. */
   canary?: CanaryFindings[];
-  default?: MxcDefault;
   /** Each canary probe waits for this before it reports. */
   probeGate?: () => Promise<void>;
 }
 
-/** A choice over fake backends, how many trust checks MXC ran, and the most that ran at once. */
-function machine(setup: Machine = {}) {
-  const findings = setup.canary ?? [clean];
-  let checks = 0;
-  let running = 0;
-  let mostAtOnce = 0;
-  const srt: SandboxBackend = {
-    id: "srt",
-    offered: async () => true,
-    sandbox: {
-      check: async () => setup.srt ?? windows,
-      open: () => Promise.reject(new Error("srt opens no canary")),
-    },
-  };
-  const mxc: SandboxBackend = {
-    id: "mxc",
-    offered: async () => setup.mxcOffered ?? true,
-    sandbox: {
-      check: async () => ok,
-      open: async (given): Promise<SandboxSession> =>
-        new FakeSandboxSession({ profile: given, program: idleProgram }),
-    },
-    canary: {
-      profile: async () => profile,
-      probe: async () => {
-        checks += 1;
-        running += 1;
-        mostAtOnce = Math.max(mostAtOnce, running);
-        try {
-          await setup.probeGate?.();
-          return findings[Math.min(checks, findings.length) - 1] ?? clean;
-        } finally {
-          running -= 1;
-        }
-      },
-    },
-  };
-  const choice = new SandboxChoiceService({
-    platform: setup.platform ?? "win32",
-    backends: [srt, mxc],
-    ...(setup.default === undefined ? {} : { mxcDefault: setup.default }),
-  });
-  return { choice, trustChecks: () => checks, mostAtOnce: () => mostAtOnce };
+interface Machine {
+  platform?: string;
+  setting?: SandboxSetting | null;
+  backends?: Partial<Record<SandboxBackendId, FakeBackend>>;
 }
 
+/** A choice over fake backends, how many trust checks each ran, and the most that ran at once. */
+function machine(setup: Machine = {}) {
+  let setting = setup.setting ?? null;
+  const checks: Partial<Record<SandboxBackendId, number>> = {};
+  let running = 0;
+  let mostAtOnce = 0;
+  const given = setup.backends ?? { srt: { check: ok }, mxc: { check: ok, canary: [clean] } };
+  const backends = (Object.keys(given) as SandboxBackendId[]).map((id): SandboxBackend => {
+    const fake = given[id] ?? {};
+    const findings = fake.canary ?? [clean];
+    return {
+      id,
+      offered: async () => fake.offered ?? true,
+      limits: fake.limits ?? [],
+      sandbox: {
+        check: async () => fake.check ?? ok,
+        open: async (opened): Promise<SandboxSession> =>
+          new FakeSandboxSession({ profile: opened, program: idleProgram }),
+      },
+      ...(fake.canary === undefined
+        ? {}
+        : {
+            canary: {
+              profile: async () => profile,
+              probe: async () => {
+                checks[id] = (checks[id] ?? 0) + 1;
+                running += 1;
+                mostAtOnce = Math.max(mostAtOnce, running);
+                try {
+                  await fake.probeGate?.();
+                  return findings[Math.min(checks[id] ?? 1, findings.length) - 1] ?? clean;
+                } finally {
+                  running -= 1;
+                }
+              },
+            },
+          }),
+    };
+  });
+  const choice = new SandboxChoiceService({
+    platform: setup.platform ?? "linux",
+    backends,
+    settings: { get: async () => setting },
+  });
+  return {
+    choice,
+    trustChecks: (id: SandboxBackendId) => checks[id] ?? 0,
+    mostAtOnce: () => mostAtOnce,
+    saves: (next: SandboxSetting | null) => {
+      setting = next;
+    },
+  };
+}
+
+const statusOf = (choice: { backends: { id: SandboxBackendId }[] } | null, id: SandboxBackendId) =>
+  choice?.backends.find((backend) => backend.id === id);
+
 verifies("app.sandbox-choice", () => {
-  it("leaves MXC out where it isn't offered, and runs srt when its check passes", async () => {
-    const linux = machine({ platform: "linux", srt: ok, default: "on" });
-    expect(await linux.choice.start({ mxc: "on" })).toEqual({
-      active: "srt",
-      mxc: { offered: false, setting: "on", effective: "on", state: "not-offered" },
-    });
-    expect(linux.trustChecks()).toBe(0);
+  it("runs the first default backend of the platform when nothing is chosen", async () => {
+    expect(defaultBackendOrder("linux")).toEqual(["srt"]);
+    expect(defaultBackendOrder("darwin")).toEqual(["srt"]);
+    expect(defaultBackendOrder("win32")).toEqual(["srt-wsl"]);
 
-    const windows10 = machine({ mxcOffered: false });
-    expect(await windows10.choice.start({ mxc: "on" })).toMatchObject({
-      active: null,
-      mxc: { state: "not-offered" },
+    const linux = machine({ backends: { srt: { check: ok }, "srt-wsl": { check: ok } } });
+    const choice = await linux.choice.start();
+    expect(choice).toMatchObject({ active: "srt", setting: null });
+    expect(choice.backends.map(({ id, state }) => [id, state])).toEqual([
+      ["srt", "in-use"],
+      ["srt-wsl", "available"],
+    ]);
+  });
+
+  it("uses only srt-wsl on Windows by default, never native srt or MXC", async () => {
+    const backends: Machine["backends"] = {
+      srt: { check: ok },
+      mxc: { check: ok, canary: [clean] },
+    };
+    const withoutWsl = machine({ platform: "win32", backends });
+    expect(await withoutWsl.choice.start()).toMatchObject({ active: null });
+    expect(withoutWsl.trustChecks("mxc")).toBe(0);
+
+    const withWsl = machine({
+      platform: "win32",
+      backends: { ...backends, "srt-wsl": { check: ok } },
+    });
+    expect(await withWsl.choice.start()).toMatchObject({ active: "srt-wsl" });
+  });
+
+  it("runs the backend the person chose, and only that one", async () => {
+    const { choice } = machine({
+      platform: "win32",
+      setting: choose("srt"),
+      backends: { srt: { check: ok }, "srt-wsl": { check: ok } },
+    });
+    expect(await choice.start()).toMatchObject({
+      active: "srt",
+      setting: choose("srt"),
+      backends: [{ state: "in-use" }, { state: "available" }],
     });
   });
 
-  it("keeps MXC off when it isn't set and the default is opt-in", async () => {
-    const { choice, trustChecks } = machine();
-    expect(await choice.start({ mxc: null })).toEqual({
-      active: null,
-      mxc: { offered: true, setting: null, effective: "off", state: "off" },
-    });
-    expect(trustChecks()).toBe(0);
-    expect(await choice.start({ mxc: "off" })).toMatchObject({ mxc: { state: "off" } });
+  it("runs no sandbox when the person chose none, and checks no backend", async () => {
+    const none: SandboxSetting = { backend: "none", chosenAt, appVersion: "0.1.0" };
+    const { choice, trustChecks } = machine({ setting: none });
+    expect(await choice.start()).toMatchObject({ active: "none", setting: none });
+    expect(trustChecks("mxc")).toBe(0);
   });
 
-  it("runs srt before a default-on MXC, but an MXC set to on comes first", async () => {
-    const byDefault = machine({ srt: ok, default: "on" });
-    expect(await byDefault.choice.start({ mxc: null })).toMatchObject({
-      active: "srt",
-      mxc: { effective: "on", state: "not-used" },
+  it("reports why a backend can't run: setup to do, or not available", async () => {
+    const { choice } = machine({
+      setting: choose("srt"),
+      backends: { srt: { check: needsSetup }, mxc: { check: inContainer, canary: [clean] } },
     });
-    expect(byDefault.trustChecks()).toBe(0);
+    const result = await choice.start();
+    expect(result.active).toBeNull();
+    expect(result.backends).toMatchObject([
+      { id: "srt", state: "setup-needed", reason: "setup-needed", missing: ["not set up"] },
+      { id: "mxc", state: "not-available", reason: "container", missing: ["in a container"] },
+    ]);
+  });
 
-    const chosen = machine({ srt: ok });
-    expect(await chosen.choice.start({ mxc: "on" })).toEqual({
-      active: "mxc",
-      mxc: {
-        offered: true,
-        setting: "on",
-        effective: "on",
-        state: "in-use",
-        nameLookupsLeave: true,
+  it("shows a backend this computer doesn't offer as not offered, with no check", async () => {
+    const { choice, trustChecks } = machine({
+      setting: choose("mxc"),
+      backends: { srt: { check: ok }, mxc: { offered: false, canary: [clean] } },
+    });
+    const result = await choice.start();
+    expect(result.active).toBeNull();
+    expect(statusOf(result, "mxc")).toMatchObject({ offered: false, state: "not-available" });
+    expect(trustChecks("mxc")).toBe(0);
+  });
+
+  it("runs nothing when the setting names a backend the host didn't hand over", async () => {
+    const { choice } = machine({ setting: choose("docker-sbx") });
+    expect(await choice.start()).toMatchObject({ active: null, setting: choose("docker-sbx") });
+  });
+
+  it("gives every backend its limits, and the residuals its trust check saw while it is in use", async () => {
+    const { choice } = machine({
+      setting: choose("mxc"),
+      backends: {
+        srt: { check: ok, limits: ["project-folder-writable"] },
+        mxc: {
+          check: ok,
+          canary: [clean],
+          limits: ["name-lookups-leave", "project-folder-writable"],
+        },
       },
     });
+    const result = await choice.start();
+    expect(statusOf(result, "srt")).toMatchObject({
+      limits: ["project-folder-writable"],
+      residuals: [],
+    });
+    expect(statusOf(result, "mxc")).toMatchObject({
+      state: "in-use",
+      limits: ["name-lookups-leave", "project-folder-writable"],
+      residuals: ["name-lookups-leave"],
+    });
   });
 
-  it("runs a default-on MXC after a trust check when srt doesn't work on Windows", async () => {
-    const { choice, trustChecks } = machine({ default: "on" });
-    expect(await choice.start({ mxc: null })).toMatchObject({
-      active: "mxc",
-      mxc: { state: "in-use" },
+  it("runs nothing when the check fails, without falling through or changing the setting", async () => {
+    const { choice } = machine({
+      setting: choose("mxc"),
+      backends: { srt: { check: ok }, mxc: { check: ok, canary: [tooStrict] } },
     });
-    expect(trustChecks()).toBe(1);
+    const result = await choice.start();
+    expect(result.active).toBeNull();
+    expect(result.setting).toEqual(choose("mxc"));
+    expect(statusOf(result, "mxc")).toMatchObject({
+      state: "check-failed",
+      reason: "too-strict",
+      missing: ["the read-only file couldn't be read"],
+      residuals: [],
+    });
+    expect(statusOf(result, "srt")).toMatchObject({ state: "available" });
   });
 
-  it("runs nothing when the check fails, without falling through to srt or changing the setting", async () => {
-    const { choice } = machine({ srt: ok, canary: [tooStrict] });
-    expect(await choice.start({ mxc: "on" })).toEqual({
-      active: null,
-      mxc: {
-        offered: true,
-        setting: "on",
-        effective: "on",
-        state: "mxc-check-failed",
-        reason: "too-strict",
-        missing: ["the read-only file couldn't be read"],
-      },
-    });
-    expect(choice.current()?.mxc.setting).toBe("on");
-  });
-
-  it("keeps MXC off for the rest of this start once its check failed, and checks again on a new start", async () => {
-    const first = machine({ canary: [tooStrict, clean] });
-    await first.choice.start({ mxc: "on" });
-    expect(await first.choice.settingsChanged({ mxc: "on" })).toMatchObject({
-      mxc: { state: "mxc-check-failed", reason: "too-strict" },
-    });
+  it("keeps a failed backend off for the rest of this start, and checks again on a new start", async () => {
+    const backends = { mxc: { check: ok, canary: [tooStrict, clean] } };
+    const first = machine({ setting: choose("mxc"), backends });
+    await first.choice.start();
+    expect(await first.choice.settingsChanged()).toMatchObject({ active: null });
     expect(await first.choice.sessionNotFenced()).toMatchObject({ active: null });
-    expect(first.trustChecks()).toBe(1);
-    expect(await first.choice.settingsChanged({ mxc: "off" })).toMatchObject({
-      mxc: { state: "off" },
-    });
+    expect(first.trustChecks("mxc")).toBe(1);
 
-    const nextStart = machine({ canary: [clean] });
-    expect(await nextStart.choice.start({ mxc: "on" })).toMatchObject({ active: "mxc" });
+    first.saves(null);
+    expect(await first.choice.settingsChanged()).toMatchObject({ active: null });
+
+    const nextStart = machine({
+      setting: choose("mxc"),
+      backends: { mxc: { check: ok, canary: [clean] } },
+    });
+    expect(await nextStart.choice.start()).toMatchObject({ active: "mxc" });
   });
 
-  it("checks again after a settings change and when a session isn't fenced", async () => {
+  it("follows the saved setting after every change, and checks again when a session isn't fenced", async () => {
     const leak: CanaryFindings = { ...clean, leaks: ["port-reachable"] };
-    const { choice, trustChecks } = machine({ canary: [clean, clean, leak] });
+    const { choice, trustChecks, saves } = machine({
+      setting: choose("mxc"),
+      backends: { srt: { check: ok }, mxc: { check: ok, canary: [clean, clean, leak] } },
+    });
     expect(choice.current()).toBeNull();
-    await choice.start({ mxc: "on" });
-    await choice.settingsChanged({ mxc: "on" });
+    await choice.start();
+    saves(choose("srt"));
+    expect(await choice.settingsChanged()).toMatchObject({ active: "srt" });
+    saves(choose("mxc"));
+    expect(await choice.settingsChanged()).toMatchObject({ active: "mxc" });
     expect(await choice.sessionNotFenced()).toMatchObject({
       active: null,
-      mxc: { state: "mxc-check-failed", reason: "port-reachable" },
+      backends: [{ id: "srt" }, { state: "check-failed", reason: "port-reachable" }],
     });
-    expect(trustChecks()).toBe(3);
+    expect(trustChecks("mxc")).toBe(3);
   });
 
   it("runs one trust check at a time", async () => {
@@ -204,32 +288,50 @@ verifies("app.sandbox-choice", () => {
     });
     let probes = 0;
     const { choice, trustChecks, mostAtOnce } = machine({
-      probeGate: () => (++probes === 1 ? firstProbe : Promise.resolve()),
+      setting: choose("mxc"),
+      backends: {
+        mxc: {
+          check: ok,
+          canary: [clean],
+          probeGate: () => (++probes === 1 ? firstProbe : Promise.resolve()),
+        },
+      },
     });
 
-    const started = choice.start({ mxc: "on" });
-    const changed = choice.settingsChanged({ mxc: "on" });
-    await vi.waitFor(() => expect(trustChecks()).toBe(1));
+    const started = choice.start();
+    const changed = choice.settingsChanged();
+    await vi.waitFor(() => expect(trustChecks("mxc")).toBe(1));
     // The first probe is still pending, so the second check waits its turn.
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(trustChecks()).toBe(1);
+    expect(trustChecks("mxc")).toBe(1);
 
     release();
     await Promise.all([started, changed]);
-    expect(trustChecks()).toBe(2);
+    expect(trustChecks("mxc")).toBe(2);
     expect(mostAtOnce()).toBe(1);
   });
 
   it("keeps a failed check for this start when two triggers arrive together", async () => {
-    const { choice, trustChecks } = machine({ canary: [tooStrict] });
-    await Promise.all([choice.start({ mxc: "on" }), choice.settingsChanged({ mxc: "on" })]);
-    expect(trustChecks()).toBe(1);
+    const { choice, trustChecks } = machine({
+      setting: choose("mxc"),
+      backends: { mxc: { check: ok, canary: [tooStrict] } },
+    });
+    await Promise.all([choice.start(), choice.settingsChanged()]);
+    expect(trustChecks("mxc")).toBe(1);
   });
 
-  it("needs every backend, and MXC with a canary", () => {
+  it("refuses a setting the store gives back that isn't valid, and never picks a sandbox for it", async () => {
+    const damaged = { backend: "docker", chosenAt } as unknown as SandboxSetting;
+    const { choice } = machine({ setting: damaged });
+    await expect(choice.start()).rejects.toThrow(/isn't valid/);
+    expect(choice.current()).toBeNull();
+  });
+
+  it("needs backends with different ids, and MXC with a canary", () => {
     const srt: SandboxBackend = {
       id: "srt",
       offered: async () => true,
+      limits: [],
       sandbox: {
         check: async () => ok,
         open: async () => {
@@ -237,16 +339,21 @@ verifies("app.sandbox-choice", () => {
         },
       },
     };
-    expect(() => new SandboxChoiceService({ platform: "win32", backends: [srt] })).toThrow(/mxc/);
-    const mxc: SandboxBackend = { ...srt, id: "mxc" };
-    expect(() => new SandboxChoiceService({ platform: "win32", backends: [srt, mxc] })).toThrow(
-      /canary/,
-    );
+    const options = { platform: "linux", settings: { get: async () => null } };
+    expect(() => new SandboxChoiceService({ ...options, backends: [srt, srt] })).toThrow(/same id/);
+    expect(
+      () => new SandboxChoiceService({ ...options, backends: [srt, { ...srt, id: "mxc" }] }),
+    ).toThrow(/canary/);
   });
 
-  it("keeps MXC opt-in by default, and its states to the closed list", () => {
-    expect(mxcDefault).toBe("opt-in");
-    expect(mxcStates).toEqual(["not-offered", "off", "in-use", "not-used", "mxc-check-failed"]);
-    expectTypeOf<"on-by-default">().not.toMatchTypeOf<MxcState>();
+  it("keeps the states to the closed list", () => {
+    expect(sandboxBackendStates).toEqual([
+      "in-use",
+      "available",
+      "setup-needed",
+      "check-failed",
+      "not-available",
+    ]);
+    expectTypeOf<"off">().not.toMatchTypeOf<SandboxBackendState>();
   });
 });
