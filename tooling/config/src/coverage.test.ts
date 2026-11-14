@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { coverageSettings, readCoverageFloor } from "./coverage.ts";
+import { coverageSettings, readCoverageFloor, runsInWorkers } from "./coverage.ts";
 
 const folders: string[] = [];
 
@@ -17,6 +17,18 @@ afterEach(() => {
   for (const folder of folders.splice(0)) {
     rmSync(folder, { recursive: true, force: true });
   }
+});
+
+describe("runsInWorkers", () => {
+  it("is true for a package that declares the workers runtime", () => {
+    expect(runsInWorkers(packageWith({ halonic: { runtime: "workers" } }))).toBe(true);
+  });
+
+  it("is false for another runtime, no runtime or no package.json", () => {
+    expect(runsInWorkers(packageWith({ halonic: { runtime: "node" } }))).toBe(false);
+    expect(runsInWorkers(packageWith({ halonic: { layer: "core" } }))).toBe(false);
+    expect(runsInWorkers(join(tmpdir(), "halonic-coverage-missing"))).toBe(false);
+  });
 });
 
 describe("readCoverageFloor", () => {

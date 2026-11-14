@@ -61,12 +61,23 @@ interface Manifest {
   name?: string;
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
-  halonic?: { coverage?: Record<string, unknown> };
+  halonic?: { coverage?: Record<string, unknown>; runtime?: unknown };
 }
 
 function readManifest(directory: string): Manifest {
   const path = join(directory, "package.json");
   return existsSync(path) ? (JSON.parse(readFileSync(path, "utf8")) as Manifest) : {};
+}
+
+/**
+ * Whether the package runs in a Cloudflare Worker (`"runtime": "workers"`),
+ * so part of its code runs in workerd, where Node's coverage can't see it.
+ *
+ * @param directory - the package folder, where Vitest runs
+ * @returns `true` for a package that declares the `workers` runtime
+ */
+export function runsInWorkers(directory: string): boolean {
+  return readManifest(directory).halonic?.runtime === "workers";
 }
 
 /**
