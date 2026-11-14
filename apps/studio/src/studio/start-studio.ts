@@ -10,7 +10,6 @@ import {
 } from "@halonicjs/adapter-fs-tauri";
 import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
 import {
-  HostSettings,
   openWorkspace,
   ServiceRegistry,
   TrustService,
@@ -72,6 +71,7 @@ import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { newWorkspaceHostOf } from "./new-workspace-host.ts";
 import { trustedSourcesOf } from "./trusted-sources.ts";
+import { hostSettingsOf } from "./window-host-settings.ts";
 import { WorkspaceTrust } from "./workspace-trust.ts";
 import { WorkspaceTrustView } from "./workspace-trust-control.ts";
 
@@ -323,34 +323,6 @@ export async function openFolder(
       return scope === undefined ? services.dispose() : scope.close();
     },
   };
-}
-
-/** The host settings of every window: one object, shared by the folders open in it. */
-const windowHostSettings = new WeakMap<object, Promise<HostSettings>>();
-
-/**
- * The window's host settings over the profile's store, the same object for every folder open in
- * the window (`settings.ai-agent-prefs`). When they can't be read, the folder still opens: Settings
- * › Assistant says so and loads this same object again on Try again.
- */
-function hostSettingsOf(services: ServiceRegistry, window: object): Promise<HostSettings> {
-  const known = windowHostSettings.get(window);
-  if (known !== undefined) return known;
-  const settings = new HostSettings(
-    services.has(hostSettingsStoreKey)
-      ? services.get(hostSettingsStoreKey)
-      : new MemoryHostSettingsStore(),
-    { onRefreshError: (error) => console.error(error) },
-  );
-  const opened = settings.load().then(
-    () => settings,
-    (error: unknown) => {
-      console.error(error);
-      return settings;
-    },
-  );
-  windowHostSettings.set(window, opened);
-  return opened;
 }
 
 /** The trust of every folder open in a window, so removing a trusted source reaches all of them. */
