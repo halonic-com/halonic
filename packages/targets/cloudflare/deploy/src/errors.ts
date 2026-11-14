@@ -3,7 +3,8 @@ export type DeployErrorCode =
   | "cloudflare-request-failed"
   | "token-inactive"
   | "no-account"
-  | "ambiguous-account";
+  | "ambiguous-account"
+  | "unmarked-resources";
 
 /** A deploy failure with a stable code. The message never holds a token or a secret. */
 export class DeployError extends Error {
@@ -13,6 +14,20 @@ export class DeployError extends Error {
     super(message);
     this.name = "DeployError";
     this.code = code;
+  }
+}
+
+/** A deploy that found resources Halonic didn't make and wasn't allowed to adopt. */
+export class UnmarkedResourcesError extends DeployError {
+  readonly resources: readonly { readonly kind: string; readonly name: string }[];
+
+  constructor(resources: readonly { readonly kind: string; readonly name: string }[]) {
+    super(
+      "unmarked-resources",
+      `Found resources Halonic didn't create: ${resources.map((r) => `${r.kind} ${r.name}`).join(", ")}. Deploy again with adopt to use them.`,
+    );
+    this.name = "UnmarkedResourcesError";
+    this.resources = resources;
   }
 }
 

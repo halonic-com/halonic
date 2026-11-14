@@ -1,4 +1,10 @@
-import type { CloudflareAccount, CloudflareApi, TokenStatus } from "./api.ts";
+import type {
+  CloudflareAccount,
+  CloudflareApi,
+  FoundResource,
+  ResourceRef,
+  TokenStatus,
+} from "./api.ts";
 import { DeployError, redact } from "./errors.ts";
 
 /** What the client needs to talk to Cloudflare. */
@@ -18,6 +24,8 @@ interface Envelope {
   readonly result_info?: { readonly page?: number; readonly total_pages?: number };
 }
 
+/** The Worker tag that marks a Worker as made by Halonic. */
+export const markerTag = "halonic";
 const defaultBaseUrl = "https://api.cloudflare.com/client/v4";
 const requestTimeoutMs = 30_000;
 const accountsPerPage = 50;
@@ -30,11 +38,68 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
   const baseUrl = options.baseUrl ?? defaultBaseUrl;
 
   async function get(path: string): Promise<Envelope> {
-    const where = `GET ${path}`;
-    let response: Response;
+    return (await request("GET", path)) as Envelope;
+  }
+
+  /** Runs one SQL statement on a D1 database. */
+  async function query(accountId: string, databaseId: string, sql: string): Promise<Envelope> {
+    const path = `/accounts/${encodeURIComponent(accountId)}/d1/database/${encodeURIComponent(databaseId)}/query`;
+    return (await request("POST", path, { sql })) as Envelope;
+  }
+
+  /** The database id for a name, or `undefined` when there is none. */
+  async function databaseId(accountId: string, name: string): Promise<string | undefined> {
+    const path = `/accounts/${encodeURIComponent(accountId)}/d1/database?name=${encodeURIComponent(name)}`;
+    const result = (await get(path)).result;
+    const match = Array.isArray(result)
+      ? (result as { uuid?: unknown; name?: unknown }[]).find((d) => d.name === name)
+      : undefined;
+    return typeof match?.uuid === "string" ? match.uuid : undefined;
+  }
+
+  /** Whether the `_halonic_marker` table lists `kind:name`. A missing table means "no". */
+  async function isMarked(accountId: string, databaseName: string, ref: ResourceRef) {
+    const id = await databaseId(accountId, databaseName);
+    if (!id) return false;
     try {
-      response = await doFetch(`${baseUrl}${path}`, {
-        headers: { authorization: `Bearer ${options.token}` },
+      const body = await query(
+        accountId,
+        id,
+        `SELECT 1 AS found FROM _halonic_marker WHERE resource = '${ref.kind}:${ref.name}'`,
+      );
+      const rows = (body.result as { results?: unknown[] }[] | undefined)?.[0]?.results;
+      return Array.isArray(rows) && rows.length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  async function mark(accountId: string, databaseName: string, ref: ResourceRef) {
+    const id = await databaseId(accountId, databaseName);
+    if (!id) throw failed(`database ${databaseName} not found`);
+    await query(
+      accountId,
+      id,
+      "CREATE TABLE IF NOT EXISTS _halonic_marker (resource TEXT PRIMARY KEY)",
+    );
+    await query(
+      accountId,
+      id,
+      `INSERT OR IGNORE INTO _halonic_marker (resource) VALUES ('${ref.kind}:${ref.name}')`,
+    );
+  }
+
+  /** Sends one request. A network failure or timeout becomes a {@link DeployError}. */
+  async function send(method: string, path: string, json?: unknown): Promise<Response> {
+    const where = `${method} ${path}`;
+    try {
+      return await doFetch(`${baseUrl}${path}`, {
+        method,
+        headers: {
+          authorization: `Bearer ${options.token}`,
+          ...(json === undefined ? {} : { "content-type": "application/json" }),
+        },
+        ...(json === undefined ? {} : { body: JSON.stringify(json) }),
         signal: AbortSignal.timeout(requestTimeoutMs),
       });
     } catch (cause) {
@@ -44,9 +109,20 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
       const reason = cause instanceof Error ? cause.message : "unknown error";
       throw failed(`${where} failed: ${reason}`);
     }
+  }
+
+  /** `undefined` for a 404 when `allowMissing` is set; otherwise the envelope. */
+  async function request(
+    method: "GET" | "POST",
+    path: string,
+    json?: unknown,
+    allowMissing = false,
+  ): Promise<Envelope | undefined> {
+    const response = await send(method, path, json);
+    if (allowMissing && response.status === 404) return undefined;
     const body = await readEnvelope(response);
     if (!response.ok || body.success !== true) {
-      throw failed(`${where} was refused (HTTP ${response.status})${describe(body)}`);
+      throw failed(`${method} ${path} was refused (HTTP ${response.status})${describe(body)}`);
     }
     return body;
   }
@@ -79,7 +155,53 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
         (await get(`/accounts/${encodeURIComponent(accountId)}/tokens/verify`)).result,
       );
     },
+    async findResource(accountId, ref) {
+      const account = encodeURIComponent(accountId);
+      const name = encodeURIComponent(ref.name);
+      if (ref.kind === "worker") {
+        const body = await request(
+          "GET",
+          `/accounts/${account}/workers/scripts/${name}/script-settings`,
+          undefined,
+          true,
+        );
+        if (!body) return undefined;
+        const tags = (body.result as { tags?: unknown } | undefined)?.tags;
+        return { marked: Array.isArray(tags) && tags.includes(markerTag) } satisfies FoundResource;
+      }
+      if (ref.kind === "database") {
+        if (!(await databaseId(accountId, ref.name))) return undefined;
+        return { marked: await isMarked(accountId, ref.name, ref) };
+      }
+      const bucket = await request(
+        "GET",
+        `/accounts/${account}/r2/buckets/${name}`,
+        undefined,
+        true,
+      );
+      if (!bucket) return undefined;
+      return { marked: ref.markedIn ? await isMarked(accountId, ref.markedIn, ref) : false };
+    },
+    async createResource(accountId, ref) {
+      const account = encodeURIComponent(accountId);
+      if (ref.kind === "database") {
+        await request("POST", `/accounts/${account}/d1/database`, { name: ref.name });
+        await mark(accountId, ref.name, ref);
+      } else if (ref.kind === "bucket") {
+        await request("POST", `/accounts/${account}/r2/buckets`, { name: ref.name });
+        await mark(accountId, requireMarkedIn(ref), ref);
+      }
+    },
+    async adoptResource(accountId, ref) {
+      if (ref.kind === "database") await mark(accountId, ref.name, ref);
+      else if (ref.kind === "bucket") await mark(accountId, requireMarkedIn(ref), ref);
+    },
   };
+
+  function requireMarkedIn(ref: ResourceRef): string {
+    if (!ref.markedIn) throw failed(`bucket ${ref.name} has no database to hold its marker`);
+    return ref.markedIn;
+  }
 }
 
 async function readEnvelope(response: Response): Promise<Envelope> {
