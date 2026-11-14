@@ -136,6 +136,15 @@ verifies("runs.home", () => {
     expect(root.textContent).toContain(
       "No runs yet. When an agent or workflow runs, you'll see it here.",
     );
+    expect(root.textContent).toContain(
+      "Studio shows what your agents are doing and lets you read each run. To start one, use the command line: halonic run.",
+    );
+    expect(root.querySelector("code")?.textContent).toBe("halonic run");
+  });
+
+  it("leaves the command line note out once there are runs", async () => {
+    const { root } = await show(fakeSource([done]).source);
+    expect(root.textContent).not.toContain("use the command line");
   });
 
   it("shows its skeleton until the first list loads, then its error with Try again", async () => {

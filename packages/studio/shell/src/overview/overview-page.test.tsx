@@ -25,7 +25,7 @@ const words: OverviewWords = {
   moreLabel: (name) => `More actions for ${name}`,
   sharedSection: (workspace) => `Shared in ${workspace}`,
   emptySection: (name) => `No skills in ${name} yet`,
-  noMatch: (query) => `No results for “${query}”`,
+  noMatch: (query) => `No skills match "${query}".`,
   nothingYet: { title: "No skills yet" },
 };
 
@@ -115,11 +115,18 @@ verifies("shell.overview.search", () => {
 });
 
 verifies("shell.overview.states", () => {
-  it("says the search found nothing, naming the text", () => {
+  it("says the search found nothing, naming the text, and clears it from Clear search", () => {
     const page = show();
     type(search(page), " zzz ");
-    expect(page.textContent).toContain("No results for “zzz”");
-    expect(headings(page).filter((text) => text !== "No results for “zzz”")).toEqual([]);
+    expect(page.textContent).toContain('No skills match "zzz".');
+    expect(headings(page).filter((text) => text !== 'No skills match "zzz".')).toEqual([]);
+    const clear = [...page.querySelectorAll("button")].find(
+      (button) => button.textContent === "Clear search",
+    );
+    act(() => clear?.click());
+    expect(search(page).value).toBe("");
+    expect(document.activeElement).toBe(search(page));
+    expect(headings(page)).toContain("beta");
   });
 
   it("shows the feature's nothing-yet words without hubs", () => {
@@ -131,7 +138,7 @@ verifies("shell.overview.states", () => {
   it("shows nothing-yet, not a no-match line, when there is no hub and the shared list is empty", () => {
     const page = show({ hubs: [], shared: { workspaceName: "Acme", items: [] } });
     expect(page.textContent).toContain("No skills yet");
-    expect(page.textContent).not.toContain("No results");
+    expect(page.textContent).not.toContain("No skills match");
   });
 
   it("shows the failure with Try again", () => {

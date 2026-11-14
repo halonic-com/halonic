@@ -41,7 +41,8 @@ export interface RecentRunsViewProps {
  * and needs-you ones first, each with its chip and the line the Runs list shows under What ran;
  * a failed run's line is its Failed sentence. The heading's "*N* running" chip is the Runs
  * place's signal, which the shell draws. On a phone, **See all runs** follows the rows. With no
- * runs: "No runs yet. When an agent or workflow runs, you'll see it here."
+ * runs: "No runs yet. When an agent or workflow runs, you'll see it here." and, so Home doesn't end on
+ * nothing, how to start one from the command line.
  *
  * The section shows its skeleton until the first list loads, and its error with **Try again** if
  * that load fails; a later failed load keeps the rows as they were.
@@ -74,6 +75,13 @@ export function RecentRunsView({
         {...(open === undefined ? {} : { onOpen: open })}
         empty={{ title: homeWords.empty, plain: true }}
       />
+      {shown.length === 0 ? (
+        <p className="m-0 text-fg-muted">
+          {homeWords.startNote[0]}
+          <code className="font-mono">{homeWords.startNote[1]}</code>
+          {homeWords.startNote[2]}
+        </p>
+      ) : null}
       {phone && openRuns !== undefined && shown.length > 0 ? (
         <Button variant="ghost" size="touch" onClick={openRuns}>
           {homeWords.seeAll}
