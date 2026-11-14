@@ -39,7 +39,6 @@ loop of one model turn, which the local chat turn runs.
 | `knowledgeTools` | the read-only tools `knowledge_search` and `knowledge_read` over an agent's sources, with the text fenced as `knowledgeHitForModel` gives it; offered to a run's agents and subagents and to a chat turn's agent | `engine.knowledge-tools` |
 | `layeredParams` | the params of a model call: its alias's, then its agent's, then a chat turn's request's, each over the one before, key by key | `engine.model-params` |
 | `assembleEngine` | puts the executor, the run timers, the routines and the order things close in together from the stores, scheduler and lock the host passes in (CLI: Node's, Studio: Tauri's); uses none of its own | `engine.engine-assembly` |
-| `localEngine` | builds the local executor and the workspace's routine scheduler on one scheduler, and closes them in order | `engine.local-engine-routines` |
 | `LocalExecutor` | the `RunExecutor` that runs the engine in this process: chat turns, and with `runs` set, workflow runs | `engine.local-chat-turn`, `engine.local-chat-harness`, `engine.local-runs` |
 | `maxStepAttempts` | how many times `step` tries after a lost race (10) | `engine.step-appends-once` |
 | `memoryTools` | (internal) `memory_list`, `_save` and `_forget`; offered in a chat turn of an agent when `memory` is set | `engine.agent-memory-tools` |

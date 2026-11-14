@@ -78,10 +78,16 @@ verifies("engine.engine-assembly", () => {
       closers: [closer("connectors"), closer("copies")],
     });
 
+    const closeExecutor = engine.executor.close.bind(engine.executor);
+    engine.executor.close = async () => {
+      steps.push("executor");
+      await closeExecutor();
+    };
+
     await engine.close();
     await engine.close();
 
-    expect(steps).toEqual(["routines", "scheduler", "connectors", "copies", "release"]);
+    expect(steps).toEqual(["routines", "executor", "scheduler", "connectors", "copies", "release"]);
   });
 
   it("runs every closer and releases the lock when one fails, then throws the first failure", async () => {
@@ -101,6 +107,23 @@ verifies("engine.engine-assembly", () => {
     await expect(engine.close()).rejects.toThrow("first");
 
     expect(ran).toEqual(["second"]);
+    expect(steps).toEqual(["scheduler", "release"]);
+  });
+
+  it("throws the executor's failure, not a later closer's, and still runs the rest", async () => {
+    const { engine, steps } = setUp({
+      closers: [
+        async () => {
+          throw new Error("closer");
+        },
+      ],
+    });
+    engine.executor.close = async () => {
+      throw new Error("executor");
+    };
+
+    await expect(engine.close()).rejects.toThrow("executor");
+
     expect(steps).toEqual(["scheduler", "release"]);
   });
 

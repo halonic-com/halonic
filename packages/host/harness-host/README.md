@@ -58,7 +58,10 @@ const host = harnessHostOf({
   clock,
   proposals: { vcs, copies: null, records, store, trash: refusingTrash, onEndFailed },
 });
-const engine = localEngine({ ...options, harnesses: host.harnesses, proposalFolders: host.proposalFolders });
+const engine = assembleEngine({
+  ...options,
+  executor: { ...options.executor, harnesses: host.harnesses, proposalFolders: host.proposalFolders },
+});
 await host.start(openRuns);
 ```
 

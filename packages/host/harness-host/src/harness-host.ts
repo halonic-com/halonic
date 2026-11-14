@@ -70,7 +70,7 @@ export interface HarnessHostInput {
   };
 }
 
-/** What the engine gets: pass `harnesses` and `proposalFolders` to `localEngine`. */
+/** What the engine gets: pass `harnesses` and `proposalFolders` to the executor of `assembleEngine`. */
 export interface HarnessHost {
   readonly harnesses: HarnessRunsOptions;
   readonly proposalFolders: RunProposalFolders;
@@ -89,7 +89,10 @@ export interface HarnessHost {
  *
  * @example
  * const host = harnessHostOf({ sandboxes, harnesses, bridgeServer, services, ... });
- * const engine = localEngine({ ...options, harnesses: host.harnesses, proposalFolders: host.proposalFolders });
+ * const engine = assembleEngine({
+ *   ...options,
+ *   executor: { ...options.executor, harnesses: host.harnesses, proposalFolders: host.proposalFolders },
+ * });
  * await host.start(openRuns);
  */
 export function harnessHostOf(input: HarnessHostInput): HarnessHost {

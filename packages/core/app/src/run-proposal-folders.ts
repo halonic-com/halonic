@@ -31,7 +31,7 @@ export interface ProposalFoldersOptions {
  * @example
  * const folders = new ProposalFolders({ proposals });
  * await folders.start(openRuns); // before the engine starts any run
- * localEngine({ ...options, proposalFolders: folders });
+ * assembleEngine({ ...options, executor: { ...options.executor, proposalFolders: folders } });
  */
 export class ProposalFolders {
   readonly #options: ProposalFoldersOptions;

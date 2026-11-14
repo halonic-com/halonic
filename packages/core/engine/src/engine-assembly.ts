@@ -56,9 +56,8 @@ export interface EngineAssemblyOptions {
   /** Hears each timer the executor handled. */
   onTimerDone?(timer: ScheduledTimer): void;
   /**
-   * What the host closes after the scheduler, in this order: connectors,
-   * program copies, the harness host. Each one runs even when an earlier one
-   * failed, and the first failure is thrown once all have run.
+   * The host's own parts to close after the scheduler, in the order given.
+   * Each one runs even when an earlier step failed.
    */
   readonly closers?: readonly (() => Promise<void>)[];
   /** Releases the host's lock on the workspace; last, so no other engine opens while a timer is delivered. */
@@ -127,21 +126,16 @@ export function assembleEngine(options: EngineAssemblyOptions): AssembledEngine 
     clock,
     coordination,
     close: () => {
-      closing ??= (async () => {
-        try {
-          // First, so no routine run starts on an executor that is closing.
-          await ticks?.dispose();
-          try {
-            // Before the scheduler: its close waits for the deliveries in progress.
-            await opened.close();
-            await scheduler.close();
-          } finally {
-            await closeAll(options.closers ?? []);
-          }
-        } finally {
-          await options.release();
-        }
-      })();
+      closing ??= closeInOrder([
+        // First, so no routine run starts on an executor that is closing.
+        async () => ticks?.dispose(),
+        // Before the scheduler: its close waits for the deliveries in progress.
+        () => opened.close(),
+        () => scheduler.close(),
+        ...(options.closers ?? []),
+        // Last, so no other engine opens while a timer is delivered.
+        () => options.release(),
+      ]);
       return closing;
     },
     // Safe while the close still runs: a lock's release is safe to call twice.
@@ -149,12 +143,12 @@ export function assembleEngine(options: EngineAssemblyOptions): AssembledEngine 
   };
 }
 
-/** Runs every closer, even after one failed, and throws the first failure at the end. */
-async function closeAll(closers: readonly (() => Promise<void>)[]): Promise<void> {
+/** Runs every step, even after one failed, and throws the first failure at the end. */
+async function closeInOrder(steps: readonly (() => Promise<void>)[]): Promise<void> {
   const failures: unknown[] = [];
-  for (const close of closers) {
+  for (const step of steps) {
     try {
-      await close();
+      await step();
     } catch (error) {
       failures.push(error);
     }

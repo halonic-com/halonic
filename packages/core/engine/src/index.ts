@@ -104,12 +104,6 @@ export {
   type KnowledgeFirstInput,
   withKnowledgeFirst,
 } from "./knowledge/knowledge-first.ts";
-export {
-  type LocalEngine,
-  type LocalEngineOptions,
-  type LocalEngineScheduler,
-  localEngine,
-} from "./local-engine.ts";
 export { defaultMaxRounds, LocalExecutor } from "./local-executor.ts";
 export type { LocalExecutorOptions } from "./local-executor-options.ts";
 export type { AbortOnStop } from "./run/abort-on-stop.ts";
