@@ -242,7 +242,7 @@ async function runSignIn(run: SignInRun): Promise<GoogleSignInResult> {
     context.signal,
     AbortSignal.timeout(run.setup.waitMs ?? signInWaitMs),
   ]);
-  const query = await run.listener.firstCallback(waiting);
+  const query = await run.listener.firstCallback(waiting, new URL(url).searchParams.get("state") ?? "");
   waitingLine.end();
   if (query === undefined) {
     await host.setups.update(accountRef, { kind: "sign-in-dropped" });

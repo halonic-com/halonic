@@ -15,11 +15,11 @@ export interface CallbackListener {
   /** The port the server listens on. */
   readonly port: number;
   /**
-   * The query of the first callback, or `undefined` when `signal` ends first.
-   * A callback without `state` and without `error` is not a sign-in answer
-   * (a stray request or a probe) and is ignored.
+   * The query of the first callback whose `state` is `state`, or `undefined`
+   * when `signal` ends first. Any other request (a stray one, a probe, one
+   * with another `state`) is not the sign-in's answer and is ignored.
    */
-  firstCallback(signal: AbortSignal): Promise<URLSearchParams | undefined>;
+  firstCallback(signal: AbortSignal, state: string): Promise<URLSearchParams | undefined>;
   /** Stops listening. Safe to call twice. */
   close(): Promise<void>;
 }
@@ -34,40 +34,51 @@ const donePage =
  * @throws Error when no port can be opened
  */
 export async function listenForCallback(): Promise<CallbackListener> {
-  const waiting: Array<(query: URLSearchParams) => void> = [];
-  let arrived: URLSearchParams | undefined;
+  const waiting: Array<{ state: string; resolve: (query: URLSearchParams) => void }> = [];
+  const arrived: URLSearchParams[] = [];
   const server = createServer((request, response) => {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");
     if (request.method !== "GET" || url.pathname !== callbackPath) {
       response.writeHead(404).end();
       return;
     }
-    const isAnswer = url.searchParams.has("state") || url.searchParams.has("error");
-    if (isAnswer && arrived === undefined) {
-      arrived = url.searchParams;
-      for (const resolve of waiting.splice(0)) {
-        resolve(url.searchParams);
+    const state = url.searchParams.get("state");
+    if (state === null) {
+      response.writeHead(400, { "content-type": "text/html; charset=utf-8" }).end();
+      return;
+    }
+    arrived.push(url.searchParams);
+    for (const waiter of waiting.splice(0)) {
+      if (waiter.state === state) {
+        waiter.resolve(url.searchParams);
+      } else {
+        waiting.push(waiter);
       }
     }
     response
-      .writeHead(isAnswer ? 200 : 400, { "content-type": "text/html; charset=utf-8" })
-      .end(isAnswer ? donePage : "");
+      .writeHead(200, {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+        "referrer-policy": "no-referrer",
+      })
+      .end(donePage);
   });
   await listening(server);
   const { port } = server.address() as AddressInfo;
   return {
     port,
-    firstCallback: (signal) =>
+    firstCallback: (signal, state) =>
       new Promise((resolve) => {
-        if (arrived !== undefined) {
-          resolve(arrived);
+        const match = arrived.find((query) => query.get("state") === state);
+        if (match !== undefined) {
+          resolve(match);
           return;
         }
         if (signal.aborted) {
           resolve(undefined);
           return;
         }
-        waiting.push(resolve);
+        waiting.push({ state, resolve });
         signal.addEventListener("abort", () => resolve(undefined), { once: true });
       }),
     close: () =>

@@ -317,13 +317,23 @@ verifies("cli.loopback-callback", () => {
       const base = `http://127.0.0.1:${listener.port}`;
       expect((await fetch(`${base}/other`)).status).toBe(404);
       expect((await fetch(`${base}${callbackPath}`)).status).toBe(400);
-      const waiting = listener.firstCallback(AbortSignal.timeout(5000));
+      const waiting = listener.firstCallback(AbortSignal.timeout(5000), "s1");
+      const bogus = await fetch(`${base}${callbackPath}?state=other&code=x`);
+      expect(bogus.status).toBe(200);
+      let settled = false;
+      void waiting.then(() => {
+        settled = true;
+      });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(settled).toBe(false);
 
       const answered = await fetch(`${base}${callbackPath}?state=s1&code=c1`);
 
       expect(answered.status).toBe(200);
+      expect(answered.headers.get("cache-control")).toBe("no-store");
+      expect(answered.headers.get("referrer-policy")).toBe("no-referrer");
       expect((await waiting)?.get("state")).toBe("s1");
-      expect((await listener.firstCallback(AbortSignal.timeout(5000)))?.get("state")).toBe("s1");
+      expect((await listener.firstCallback(AbortSignal.timeout(5000), "s1"))?.get("state")).toBe("s1");
     } finally {
       await listener.close();
     }
@@ -332,7 +342,7 @@ verifies("cli.loopback-callback", () => {
   it("stops waiting when the signal ends", async () => {
     const listener = await listenForCallback();
     try {
-      expect(await listener.firstCallback(AbortSignal.timeout(20))).toBeUndefined();
+      expect(await listener.firstCallback(AbortSignal.timeout(20), "s1")).toBeUndefined();
     } finally {
       await listener.close();
     }
