@@ -87,6 +87,7 @@ The smaller exports:
   has the `Sha256` shape, such as the `Digest` port.
 - `IdGenerator` is the type `randomIds` and `fixedIds` return, and `Listener` is the type of a
   function `Emitter.on` takes. `SecretShape` names the kinds `findSecretShape` answers with.
+- `parseAmount` reads a receipt-style amount (`3.00`, `15,00`) and gives `undefined` for grouping, signs and other text.
 - `bytesToHex` writes bytes as lowercase hex.
 - `formatVersion` writes a `Version` from `readVersion` back as text.
 - `errorKinds` lists the eight kinds and `isErrorKind` tells whether a value is one of them.
