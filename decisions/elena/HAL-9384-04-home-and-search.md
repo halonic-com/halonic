@@ -2,6 +2,7 @@
 
 - Approval: Sofia's design check on HAL-9316 (section B5, B6); HAL-9384 asks for these wording changes on approved microcopy revision 96
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:CNzvpNrngjIjICRaolR5Q2jBf6+EJD+Qre4LYaCKpvCq+1nyG7TXiIMDEz6ZJP7fF/IRpjuITwvmZ4T7KZ2+Dw==
 - Task: HAL-9384
 
 ## What changes
