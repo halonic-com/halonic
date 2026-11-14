@@ -2441,10 +2441,22 @@ importers:
 
   packages/studio/features/models:
     dependencies:
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../../core/format
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../../../core/std
       '@halonicjs/studio-shell':
         specifier: workspace:*
         version: link:../../shell
+      '@halonicjs/yaml':
+        specifier: workspace:*
+        version: link:../../../core/yaml
     devDependencies:
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../../testing/spec
       '@halonicjs/tooling-config':
         specifier: workspace:*
         version: link:../../../../tooling/config

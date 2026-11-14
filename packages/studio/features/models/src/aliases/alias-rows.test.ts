@@ -1,0 +1,35 @@
+import type { Models, Provider } from "@halonicjs/format";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
+import { aliasRows, providerChoiceLabel } from "./alias-rows.ts";
+
+const target = { params: {}, fallback: [] };
+
+verifies("models.aliases.list", () => {
+  it("lists aliases by name with provider / model", () => {
+    const models = {
+      version: 1,
+      aliases: {
+        smart: { ...target, provider: "anthropic", model: "claude-sonnet-5-5" },
+        default: { ...target, provider: "ollama", model: "llama3.2" },
+      },
+    } as unknown as Models;
+    expect(aliasRows(models).map((row) => row.label)).toEqual([
+      "default · ollama / llama3.2",
+      "smart · anthropic / claude-sonnet-5-5",
+    ]);
+  });
+
+  it("gives no rows for no aliases", () => {
+    expect(aliasRows({ version: 1, aliases: {} } as unknown as Models)).toEqual([]);
+  });
+});
+
+verifies("models.aliases.edit-target", () => {
+  it("marks local providers in the provider list", () => {
+    const ollama = { id: "ollama", name: "Ollama", local: true } as Provider;
+    const openai = { id: "openai", name: "OpenAI", local: false } as Provider;
+    expect(providerChoiceLabel(ollama)).toBe("Ollama (local)");
+    expect(providerChoiceLabel(openai)).toBe("OpenAI");
+  });
+});
