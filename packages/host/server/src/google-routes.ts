@@ -3,26 +3,28 @@ import {
   SetupRecordError,
   savedConnectorState,
   setupSteps,
+  startOver,
 } from "@halonicjs/google-setup";
-import type { GoogleSetupPorts, RequestContext } from "./api.ts";
-import { errorResponse, type ServerError, serverErrors } from "./errors.ts";
-import { isLoopbackRequest, isSecureConnection } from "./security.ts";
+import type { GoogleCheckOutcome, GoogleSetupPorts, RequestContext } from "./api.ts";
+import { errorResponse, serverErrors } from "./errors.ts";
+import { checkSecretRequest, refuseOtherSite } from "./secret-request.ts";
 
 /** Every Google setup route starts with this path. */
 export const googlePathPrefix = "/api/google/";
 
 const setupsPrefix = `${googlePathPrefix}setups/`;
-const secretSuffix = "/secret";
-
-/** More than any real client secret; it keeps what a request can make the store keep bounded. */
-const maxSecretLength = 512;
 
 /**
- * Whether a path is one that takes a client secret. The request log leaves
- * these out, so no log line says when or how often a secret was sent.
+ * Whether a path is under a setup's `secret`: the routes that take a client
+ * secret and the one that checks a staged one. The request log leaves these
+ * out, so no log line says when or how often a secret was sent or checked.
  */
 export function isSecretPath(pathname: string): boolean {
-  return pathname.startsWith(setupsPrefix) && pathname.endsWith(secretSuffix);
+  if (!pathname.startsWith(setupsPrefix)) {
+    return false;
+  }
+  const [, secretSegment] = pathname.slice(setupsPrefix.length).split("/");
+  return secretSegment === "secret";
 }
 
 export interface GoogleRoutes {
@@ -37,72 +39,8 @@ export interface GoogleRoutes {
 /** The ports the Google routes work with. */
 type GoogleRoutePorts = { readonly google: GoogleSetupPorts };
 
-/** What a request to save a secret says, once it is checked. */
-interface SecretRequest {
-  readonly clientSecret: string;
-  readonly confirmedPlainHttp: boolean;
-}
-
-/**
- * Reads the secret request. A bad body is never described: a parse error can
- * quote the text it choked on, and that text can be the secret. So the cause
- * is dropped and the caller gets `null`.
- */
-function readSecretRequest(body: Uint8Array): SecretRequest | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(new TextDecoder().decode(body));
-  } catch {
-    return null;
-  }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    return null;
-  }
-  const { clientSecret, confirmedPlainHttp } = parsed as Record<string, unknown>;
-  if (typeof clientSecret !== "string" || clientSecret.trim() === "") {
-    return null;
-  }
-  if (clientSecret.length > maxSecretLength) {
-    return null;
-  }
-  if (confirmedPlainHttp !== undefined && typeof confirmedPlainHttp !== "boolean") {
-    return null;
-  }
-  return { clientSecret, confirmedPlainHttp: confirmedPlainHttp === true };
-}
-
-/**
- * The checks only the secret routes make, on top of the sign-in and the
- * server's own origin check (design 3.3, and the API key's rules in the
- * models flow). They look at the headers alone, so they run before the body
- * is parsed: the request is the page's own and it says it is JSON.
- */
-function refuseSecretHeaders(request: Request): ServerError | null {
-  // A browser says where a request comes from; a request with no such header is the Android app or a script.
-  const site = request.headers.get("sec-fetch-site");
-  if (site !== null && site !== "same-origin") {
-    return serverErrors.secretFromOtherSite;
-  }
-  const contentType = request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
-  return contentType === "application/json" ? null : serverErrors.secretNeedsJson;
-}
-
-/**
- * The secret travels over HTTPS or stays on this computer, or the person
- * confirmed plain http. This needs `confirmedPlainHttp`, so it runs after the
- * body is parsed.
- */
-function refuseSecretConnection(
-  request: Request,
-  context: RequestContext,
-  confirmedPlainHttp: boolean,
-): ServerError | null {
-  const safeToSend = isSecureConnection(request, context) || isLoopbackRequest(request);
-  return safeToSend || confirmedPlainHttp ? null : serverErrors.secretNeedsSecureConnection;
-}
-
 export function createGoogleRoutes({ google }: GoogleRoutePorts): GoogleRoutes {
-  const { setups, clientSecrets, source } = google;
+  const { setups, clientSecrets, source, tokens, actions } = google;
 
   /** The record, or `null` when there is none or the ref isn't one. A damaged record is an error for the caller. */
   async function readSetup(accountRef: string): Promise<SetupRecord | null> {
@@ -162,40 +100,226 @@ export function createGoogleRoutes({ google }: GoogleRoutePorts): GoogleRoutes {
     context: RequestContext,
     accountRef: string,
   ): Promise<Response> {
-    const headerRefusal = refuseSecretHeaders(request);
-    if (headerRefusal !== null) {
-      return errorResponse(headerRefusal);
-    }
-    const secretRequest = readSecretRequest(body);
-    if (secretRequest === null) {
-      return errorResponse(serverErrors.secretNotAccepted);
-    }
-    const connectionRefusal = refuseSecretConnection(
-      request,
-      context,
-      secretRequest.confirmedPlainHttp,
-    );
-    if (connectionRefusal !== null) {
-      return errorResponse(connectionRefusal);
+    const secret = checkSecretRequest(request, body, context);
+    if (!secret.ok) {
+      return errorResponse(secret.error);
     }
     const record = await readSetup(accountRef);
     if (record === null) {
       return errorResponse(serverErrors.googleSetupNotFound);
     }
     if (record.clientSecret === null) {
-      const clientRef = await clientSecrets.saveClientSecret(secretRequest.clientSecret);
+      const clientRef = await clientSecrets.saveClientSecret(secret.clientSecret);
       await setups.update(accountRef, { kind: "client-secret-saved", clientRef });
       return Response.json({ saved: true });
     }
     const { clientRef } = record.clientSecret;
-    const sharedOrSignedIn =
-      record.lastSignInAt !== null || (await setups.usingClient(clientRef)).length > 1;
-    if (sharedOrSignedIn) {
+    if (await secretNeedsStaging(record, clientRef)) {
       return errorResponse(serverErrors.secretNeedsStaging);
     }
-    await clientSecrets.replaceClientSecret(clientRef, secretRequest.clientSecret);
+    await clientSecrets.replaceClientSecret(clientRef, secret.clientSecret);
     await setups.update(accountRef, { kind: "client-secret-saved", clientRef });
     return Response.json({ saved: true });
+  }
+
+  /** Whether a new secret must be checked with Google first: someone signed in with this client, or another account shares it. */
+  async function secretNeedsStaging(record: SetupRecord, clientRef: string): Promise<boolean> {
+    return record.lastSignInAt !== null || (await setups.usingClient(clientRef)).length > 1;
+  }
+
+  /**
+   * `PUT /api/google/setups/<ref>/secret/staged`: keeps a new secret apart
+   * from the one in use until Google has accepted it (design 4.3). The secret
+   * in use doesn't change. The answer is the same fixed text as for a save.
+   */
+  async function stageSecret(
+    request: Request,
+    body: Uint8Array,
+    context: RequestContext,
+    accountRef: string,
+  ): Promise<Response> {
+    const secret = checkSecretRequest(request, body, context);
+    if (!secret.ok) {
+      return errorResponse(secret.error);
+    }
+    const record = await readSetup(accountRef);
+    if (record === null) {
+      return errorResponse(serverErrors.googleSetupNotFound);
+    }
+    if (record.clientSecret === null) {
+      return errorResponse(serverErrors.secretNotSaved);
+    }
+    const { clientRef } = record.clientSecret;
+    if (!(await secretNeedsStaging(record, clientRef))) {
+      return errorResponse(serverErrors.secretNeedsNoStaging);
+    }
+    await clientSecrets.stageClientSecret(clientRef, secret.clientSecret);
+    return Response.json({ staged: true });
+  }
+
+  /**
+   * The account whose refresh token tests a staged secret: this one, or else
+   * any account that signed in with the same client, since the refresh token
+   * belongs to the client and a shared client has one secret.
+   */
+  async function accountToTestWith(record: SetupRecord, clientRef: string): Promise<string> {
+    if (record.lastSignInAt !== null) {
+      return record.accountRef;
+    }
+    const signedIn = (await setups.usingClient(clientRef)).find(
+      (other) => other.lastSignInAt !== null,
+    );
+    return signedIn?.accountRef ?? record.accountRef;
+  }
+
+  /**
+   * `POST /api/google/setups/<ref>/secret/staged/check`: tests the staged
+   * secret with one refresh, then promotes it when Google accepts it and
+   * discards it when Google refuses it (design 4.3). Other outcomes leave
+   * both secrets as they are. The answer says which one happened, never more.
+   */
+  async function checkStagedSecret(request: Request, accountRef: string): Promise<Response> {
+    const refusal = refuseOtherSite(request);
+    if (refusal !== null) {
+      return errorResponse(refusal);
+    }
+    const record = await readSetup(accountRef);
+    if (record === null) {
+      return errorResponse(serverErrors.googleSetupNotFound);
+    }
+    if (record.clientSecret === null || record.clientId === null) {
+      return errorResponse(serverErrors.googleSetupIncomplete);
+    }
+    const { clientRef } = record.clientSecret;
+    const testAccountRef = await accountToTestWith(record, clientRef);
+    const result = await actions.checkStagedSecret({
+      accountRef: testAccountRef,
+      clientId: record.clientId,
+      clientRef,
+    });
+    switch (result.kind) {
+      case "accepted": {
+        await clientSecrets.promote(clientRef);
+        const cleared = await setups.clientSecretAccepted(clientRef);
+        return Response.json({
+          result: "accepted",
+          accountsFixed: cleared.map((fixed) => fixed.accountRef),
+        });
+      }
+      case "refused":
+        await clientSecrets.discard(clientRef);
+        await markClientGoneIfRefusedBefore(testAccountRef, clientRef);
+        return Response.json({ result: "refused" });
+      case "signInRefused":
+        await setups.refreshRefused(testAccountRef, result);
+        return Response.json({ result: result.kind });
+      default:
+        return Response.json({ result: result.kind });
+    }
+  }
+
+  /**
+   * A staged secret Google refused means the client is gone only when the old
+   * secret was refused too. Otherwise the old secret still works, and nothing
+   * is marked: marking would turn a typo into "Needs new secret".
+   */
+  async function markClientGoneIfRefusedBefore(
+    accountRef: string,
+    clientRef: string,
+  ): Promise<void> {
+    const sharing = await setups.usingClient(clientRef);
+    if (sharing.some((other) => other.refreshRefused?.reason === "client")) {
+      await setups.refreshRefused(accountRef, { kind: "clientRefused" });
+    }
+  }
+
+  /** `DELETE /api/google/setups/<ref>/secret/staged`: drops the staged secret. The secret in use stays. */
+  async function discardStagedSecret(request: Request, accountRef: string): Promise<Response> {
+    const refusal = refuseOtherSite(request);
+    if (refusal !== null) {
+      return errorResponse(refusal);
+    }
+    const record = await readSetup(accountRef);
+    if (record === null) {
+      return errorResponse(serverErrors.googleSetupNotFound);
+    }
+    if (record.clientSecret !== null) {
+      await clientSecrets.discard(record.clientSecret.clientRef);
+    }
+    return Response.json({ discarded: true });
+  }
+
+  /**
+   * `POST /api/google/setups/<ref>/check`: Check again (design 3.5, item 7).
+   * Refreshes the access token, checks each ticked service and saves what it
+   * found on the record. A refused refresh is saved too, so no run asks
+   * Google again.
+   */
+  async function checkAgain(request: Request, accountRef: string): Promise<Response> {
+    const refusal = refuseOtherSite(request);
+    if (refusal !== null) {
+      return errorResponse(refusal);
+    }
+    const record = await readSetup(accountRef);
+    const subject = record === null ? null : await source.describe(accountRef);
+    if (record === null || subject === null) {
+      return errorResponse(serverErrors.googleSetupNotFound);
+    }
+    if (record.clientSecret === null || record.clientId === null) {
+      return errorResponse(serverErrors.googleSetupIncomplete);
+    }
+    const result = await actions.checkAgain({
+      accountRef,
+      clientId: record.clientId,
+      clientRef: record.clientSecret.clientRef,
+      services: subject.services,
+      ...(record.projectId === null ? {} : { projectId: record.projectId }),
+      refreshRefused: record.refreshRefused,
+    });
+    return saveCheckAgainResult(accountRef, result);
+  }
+
+  /** Keeps what a check found on the record, and answers with it. A refused refresh is kept too, so no run asks Google again. */
+  async function saveCheckAgainResult(
+    accountRef: string,
+    result: GoogleCheckOutcome,
+  ): Promise<Response> {
+    switch (result.kind) {
+      case "checked":
+        for (const { service, result: outcome } of result.services) {
+          await setups.update(accountRef, { kind: "service-checked", service, result: outcome });
+        }
+        return Response.json({ result: "checked", services: result.services });
+      case "signInRefused":
+      case "clientRefused":
+        await setups.refreshRefused(accountRef, result);
+        return Response.json({ result: result.kind });
+      default:
+        return Response.json(result);
+    }
+  }
+
+  /**
+   * `POST /api/google/setups/<ref>/disconnect`: asks Google to end the
+   * sign-in, then removes the refresh token, the record and the client secret
+   * (not while another account uses the client). It removes the token whether
+   * or not Google answers, and says whether Google confirmed.
+   */
+  async function disconnect(request: Request, accountRef: string): Promise<Response> {
+    const refusal = refuseOtherSite(request);
+    if (refusal !== null) {
+      return errorResponse(refusal);
+    }
+    if ((await readSetup(accountRef)) === null) {
+      return errorResponse(serverErrors.googleSetupNotFound);
+    }
+    const revoked = await actions.revoke(accountRef);
+    const secret = await startOver({ setups, secrets: clientSecrets, tokens }, accountRef);
+    return Response.json({
+      disconnected: true,
+      googleConfirmed: revoked.kind === "disconnected" && revoked.googleConfirmed,
+      clientSecret: secret,
+    });
   }
 
   return {
@@ -204,17 +328,26 @@ export function createGoogleRoutes({ google }: GoogleRoutePorts): GoogleRoutes {
       if (!pathname.startsWith(setupsPrefix)) {
         return errorResponse(serverErrors.notFound);
       }
-      const rest = pathname.slice(setupsPrefix.length);
-      if (request.method === "GET" && !rest.includes("/")) {
-        return show(rest);
+      const [accountRef = "", ...action] = pathname.slice(setupsPrefix.length).split("/");
+      const endpoint = `${request.method} /${action.join("/")}`;
+      switch (endpoint) {
+        case "GET /":
+          return show(accountRef);
+        case "PUT /secret":
+          return saveSecret(request, body, context, accountRef);
+        case "PUT /secret/staged":
+          return stageSecret(request, body, context, accountRef);
+        case "POST /secret/staged/check":
+          return checkStagedSecret(request, accountRef);
+        case "DELETE /secret/staged":
+          return discardStagedSecret(request, accountRef);
+        case "POST /check":
+          return checkAgain(request, accountRef);
+        case "POST /disconnect":
+          return disconnect(request, accountRef);
+        default:
+          return errorResponse(serverErrors.notFound);
       }
-      if (request.method === "PUT" && rest.endsWith(secretSuffix)) {
-        const accountRef = rest.slice(0, -secretSuffix.length);
-        return accountRef.includes("/")
-          ? errorResponse(serverErrors.notFound)
-          : saveSecret(request, body, context, accountRef);
-      }
-      return errorResponse(serverErrors.notFound);
     },
   };
 }

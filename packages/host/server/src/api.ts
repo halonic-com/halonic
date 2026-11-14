@@ -1,4 +1,10 @@
-import type { ClientSecretStore, SetupRecords, SetupService } from "@halonicjs/google-setup";
+import type {
+  ClientSecretStore,
+  ServiceResult,
+  SetupRecords,
+  SetupService,
+  SetupValues,
+} from "@halonicjs/google-setup";
 import type {
   Clock,
   Coordination,
@@ -7,6 +13,7 @@ import type {
   RunExecutor,
   RunStore,
   Secrets,
+  TokenStore,
 } from "@halonicjs/ports";
 import type { PlacedRoutine } from "@halonicjs/routines";
 
@@ -167,6 +174,71 @@ export interface GoogleSetupSource {
   describe(accountRef: string): Promise<GoogleSetupSubject | null>;
 }
 
+/** How a test of a staged client secret ended. No kind holds a secret. */
+export type StagedSecretOutcome =
+  | { readonly kind: "accepted" }
+  | { readonly kind: "refused" }
+  | { readonly kind: "signInRefused" }
+  | {
+      readonly kind:
+        | "nothingStaged"
+        | "notSignedIn"
+        | "unreachable"
+        | "googleError"
+        | "unexpectedAnswer";
+    };
+
+/** How Check again ended. No kind holds a secret or a token. */
+export type GoogleCheckOutcome =
+  | {
+      readonly kind: "checked";
+      readonly services: readonly ServiceResult[];
+    }
+  | { readonly kind: "signInRefused" }
+  | { readonly kind: "clientRefused" }
+  | {
+      readonly kind:
+        | "refreshBlocked"
+        | "notSignedIn"
+        | "noClientSecret"
+        | "unreachable"
+        | "googleError"
+        | "unexpectedAnswer";
+    };
+
+/** What Check again starts from: the account's record and its ticked services. Nothing here is a secret. */
+export interface GoogleCheckRequest {
+  readonly accountRef: string;
+  readonly clientId: string;
+  readonly clientRef: string;
+  readonly services: readonly SetupService[];
+  readonly projectId?: string;
+  readonly refreshRefused: SetupValues["refreshRefused"];
+}
+
+/**
+ * The calls to Google that the routes make. A host package may not use an
+ * adapter, so the target passes in the sign-in package's functions, with the
+ * HTTP client, the token store, the clock and the secret reader already bound.
+ */
+export interface GoogleAccountActions {
+  /** Tests the client's staged secret with one refresh of the account's saved token. */
+  checkStagedSecret(input: {
+    readonly accountRef: string;
+    readonly clientId: string;
+    readonly clientRef: string;
+  }): Promise<StagedSecretOutcome>;
+  /** Refreshes the token and checks each ticked service. */
+  checkAgain(input: GoogleCheckRequest): Promise<GoogleCheckOutcome>;
+  /** Asks Google to revoke the account's refresh token and removes it from the token store, whether Google answers or not. */
+  revoke(
+    accountRef: string,
+  ): Promise<
+    | { readonly kind: "nothingToRevoke" }
+    | { readonly kind: "disconnected"; readonly googleConfirmed: boolean }
+  >;
+}
+
 /**
  * What the Google setup routes need. A host that has no Google setup leaves
  * the whole group out, and the routes then answer 404.
@@ -176,6 +248,10 @@ export interface GoogleSetupPorts {
   readonly setups: SetupRecords;
   /** Where client secrets are kept. The routes write to it and never read a secret back. */
   readonly clientSecrets: ClientSecretStore;
+  /** Where the refresh tokens are kept. Disconnect removes the account's token from it. */
+  readonly tokens: TokenStore;
+  /** What talks to Google, wired by the target from the sign-in package. */
+  readonly actions: GoogleAccountActions;
   readonly source: GoogleSetupSource;
 }
 
