@@ -127,3 +127,11 @@ The `installer-windows` CI job builds it, walks the pages and the messages
 temporary folder, and uninstalls it through its pages, removing the sandbox.
 The runner is an administrator, so CI never sees Windows' prompt: the refused
 removal needs a desktop Windows machine. Signing is not built yet.
+
+## Listed tools in the desktop app
+
+`WorkspaceListedTools` (`src/library/`) reviews and approves a connector's listed tools the way
+`halonic tools review` and `approve` do. It checks the folder's trust as it is now, starts nothing
+if it isn't trusted, reads the server again through the agent host (`src/connect/`) and keeps
+approvals in the profile's `tool-approvals`, which the CLI reads too. It starts no `http`
+connector yet (`studio.workspace-listed-tools`).

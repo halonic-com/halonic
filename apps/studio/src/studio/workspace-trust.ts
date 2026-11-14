@@ -7,7 +7,7 @@ import {
   trustSubjectOf,
 } from "@halonicjs/app";
 import type { DefinitionSource, Digest, FolderReader } from "@halonicjs/ports";
-import { filesOf, loadWorkspace } from "@halonicjs/workspace";
+import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 
 /** What {@link WorkspaceTrust} reads a folder's trust from, all through the desktop shell. */
 export interface WorkspaceTrustSources {
@@ -112,6 +112,15 @@ export class WorkspaceTrust {
     return { ok: true };
   }
 
+  /**
+   * Checks the trust of a workspace the caller already loaded, so a caller that starts something
+   * checks the very content it starts from, never a second read of the files. Changes nothing
+   * here: the page's last check, its listeners and its subject stay as they are.
+   */
+  async checkLoaded(workspace: LoadedWorkspace): Promise<TrustCheck> {
+    return (await this.#checkSubject(workspace)).check;
+  }
+
   /** Whether the last check found the workspace trusted. */
   isTrusted(): boolean {
     return this.#settled && this.#check?.status === "trusted";
@@ -127,7 +136,9 @@ export class WorkspaceTrust {
     this.#settled = false;
     this.#changed();
     try {
-      const { name, check, subject } = await this.#read();
+      const workspace = await loadWorkspace(this.#sources.definitions);
+      const { check, subject } = await this.#checkSubject(workspace);
+      const name = filesOf(workspace, "workspace")[0]?.value.name;
       if (mine !== this.#latest) return;
       this.#name = name;
       this.#check = check;
@@ -147,9 +158,10 @@ export class WorkspaceTrust {
     for (const listener of this.#listeners) listener();
   }
 
-  async #read(): Promise<{ name: string | undefined; check: TrustCheck; subject: TrustSubject }> {
-    const { definitions, folder, digest, trust } = this.#sources;
-    const workspace = await loadWorkspace(definitions);
+  async #checkSubject(
+    workspace: LoadedWorkspace,
+  ): Promise<{ check: TrustCheck; subject: TrustSubject }> {
+    const { folder, digest, trust } = this.#sources;
     const connectors = filesOf(workspace, "connector").map((file) => file.value);
     const location = await folder.locationOf();
     if (location === null) throw new Error("The workspace folder has no location.");
@@ -162,10 +174,6 @@ export class WorkspaceTrust {
         async (command) => (await this.#sources.findCommand(command)) ?? null,
       ),
     });
-    return {
-      name: filesOf(workspace, "workspace")[0]?.value.name,
-      check: await trust.check(subject),
-      subject,
-    };
+    return { check: await trust.check(subject), subject };
   }
 }
