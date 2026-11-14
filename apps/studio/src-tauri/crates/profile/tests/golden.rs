@@ -115,11 +115,41 @@ fn trust_folder_reads_the_platform_this_build_runs_on() {
     assert_eq!(Platform::current(), expected);
 }
 
-/// The cases for a source's folder in `tool-approvals`, shared with the
-/// store in `fs-node`. `<drive>` is written for a Windows drive, as above.
-const SOURCE_FOLDERS: &str = include_str!(
-    "../../../../../../packages/adapters/fs-node/src/golden/tool-approval-source-folders.json"
-);
+/// A source's folder in `tool-approvals` for each location and source, as
+/// `FileToolApprovalStore` in `fs-node` names it; its test
+/// (`tool-approval-source-folders.test.ts`) holds the same cases.
+const SOURCE_FOLDERS: [(&str, &str, &str); 6] = [
+    (
+        "/workspaces/acme",
+        "notes",
+        "598bee61ee995ab2430bab8a986cf4088f0f2bfd7ceb0801f9d4e1606bd1853b",
+    ),
+    (
+        "/workspaces/acme",
+        "docs",
+        "d2e0367df032e0b4b1b3627c040398c5e499c4922b89fac925de869f7b466daa",
+    ),
+    (
+        "/workspaces/acme corp/\"quoted\"",
+        "back\\slash",
+        "0e24a9db7069b33259e8c8e3c563c99b9fec6c444c58708c66239073c2f153d1",
+    ),
+    (
+        "/workspaces/ünï/日本語/😀",
+        "tab\tnew\nline",
+        "43f61f52c3cad41428f4ce30f92ef888084ca8ca413d40de1a417e851d60d368",
+    ),
+    (
+        "/workspaces/acme",
+        "ctrl\u{1}\u{1f}\u{7f}\u{2028} end",
+        "e1a7c2af4be3f819adab2663ce45202d8366c06e5deeca57954b6f0b5abd2028",
+    ),
+    (
+        "<drive>\\workspaces\\acme",
+        "notes",
+        "1beb4f517c161304795c68b7f2d49c5929b328a33136722d04d07020ce4b35b5",
+    ),
+];
 
 #[test]
 fn tool_approval_source_folder_matches_every_golden_case() {
@@ -127,12 +157,7 @@ fn tool_approval_source_folder_matches_every_golden_case() {
         platform: Platform::Linux,
         root: "/srv/acme/.local/share/halonic".to_owned(),
     };
-    let cases: Vec<Value> = serde_json::from_str(SOURCE_FOLDERS).unwrap();
-    assert!(!cases.is_empty());
-    for case in cases {
-        let location = case["location"].as_str().unwrap();
-        let source = case["source"].as_str().unwrap();
-        let folder = case["folder"].as_str().unwrap();
+    for (location, source, folder) in SOURCE_FOLDERS {
         assert_eq!(
             profile.tool_approval_source_folder(location, source),
             format!("/srv/acme/.local/share/halonic/tool-approvals/{folder}"),
