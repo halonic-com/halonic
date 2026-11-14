@@ -48,6 +48,42 @@ verifies("runs.run-page", () => {
     });
   });
 
+  describe("the catch-up line", () => {
+    const caughtUp = (
+      at: Date,
+      started: Date,
+      catchUp: { skipped: number; countIsMinimum?: true },
+    ) =>
+      page({
+        startedAt: started.toISOString(),
+        trigger: { type: "schedule", routineId: "@workspace/daily", at: at.toISOString(), catchUp },
+      }).header.catchUpLine;
+
+    it("gives clock times for today and says what the run was planned for", () => {
+      expect(
+        caughtUp(new Date(2026, 10, 9, 7, 30), new Date(2026, 10, 9, 8, 12), { skipped: 0 }),
+      ).toBe(
+        "Started at 08:12 to catch up. It was planned for 07:30 while Halonic was closed or asleep.",
+      );
+    });
+
+    it("gives the date with the time for another day, and counts skipped times", () => {
+      const planned = new Date(2026, 10, 6, 7, 30);
+      const started = new Date(2026, 10, 7, 8, 12);
+      expect(caughtUp(planned, started, { skipped: 61 })).toBe(
+        "Started on 7 Nov at 08:12 to catch up. It was planned for 6 Nov at 07:30 while Halonic was closed or asleep. 61 earlier times were skipped.",
+      );
+      expect(caughtUp(planned, started, { skipped: 1 })).toContain(" 1 earlier time was skipped.");
+      expect(caughtUp(planned, started, { skipped: 10_000, countIsMinimum: true })).toContain(
+        " More than 10,000 earlier times were skipped.",
+      );
+    });
+
+    it("is absent for a run that started on time", () => {
+      expect(page({}).header.catchUpLine).toBeUndefined();
+    });
+  });
+
   describe("the banner", () => {
     it("shows none while the run runs or after it finished", () => {
       expect(page({}).banner).toBeUndefined();

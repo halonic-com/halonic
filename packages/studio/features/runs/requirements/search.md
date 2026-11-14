@@ -10,7 +10,7 @@ The Ctrl K palette shall find runs by their short id, with or without "run" or "
 
 - Given a run whose id ends in 01JD8Q,
   when someone types "run 01jd8q" in Ctrl K,
-  then the run is found as "Run 01JD8Q · Support reply".
+  then the run is found as "Run 01jd8q · Support reply".
 - Given the same run,
   when someone types "#01jd",
   then it is found too.

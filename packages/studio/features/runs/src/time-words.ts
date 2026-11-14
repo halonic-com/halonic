@@ -81,6 +81,11 @@ export function dayWords(day: Date, now: Date): string {
   return day.getFullYear() === now.getFullYear() ? date : `${date} ${day.getFullYear()}`;
 }
 
+/** The day and month, "12 Nov". */
+export function dayAndMonth(moment: Date): string {
+  return `${moment.getDate()} ${shortMonths[moment.getMonth()]}`;
+}
+
 /** The time of day, "09:05". */
 export function clockTime(moment: Date): string {
   const hours = String(moment.getHours()).padStart(2, "0");

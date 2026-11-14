@@ -168,6 +168,23 @@ export const runPageWords = {
   startedYesterday: (time: string) => `yesterday ${time}`,
   took: (took: string) => `took ${took}`,
   updatesLive: "updates live",
+  /** mc 15.2 Catch-up: the clock time for today, the date and the time for another day. */
+  catchUpStarted: (when: { day?: string; time: string }) =>
+    when.day === undefined
+      ? `Started at ${when.time} to catch up.`
+      : `Started on ${when.day} at ${when.time} to catch up.`,
+  catchUpPlanned: (when: { day?: string; time: string }) =>
+    when.day === undefined
+      ? `It was planned for ${when.time} while Halonic was closed or asleep.`
+      : `It was planned for ${when.day} at ${when.time} while Halonic was closed or asleep.`,
+  catchUpSkipped: (count: number, isMinimum: boolean) => {
+    if (isMinimum) {
+      return `More than ${count.toLocaleString("en-US")} earlier times were skipped.`;
+    }
+    return count === 1
+      ? "1 earlier time was skipped."
+      : `${count.toLocaleString("en-US")} earlier times were skipped.`;
+  },
   loading: (shortId: string) => `Loading run ${shortId}`,
   loadFailed: (shortId: string) => `Couldn't load run ${shortId}`,
   notHere: "This run isn't in this workspace any more.",
