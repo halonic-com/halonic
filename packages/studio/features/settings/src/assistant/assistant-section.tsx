@@ -38,14 +38,41 @@ const providerOptions = assistantProviders.map((provider) => ({
 
 /** Settings → Assistant as the settings container shows it. */
 export function AssistantSection({ context, closeSettings, place }: SettingsSectionProps) {
+  const settings = context.services.get(HostSettingsService);
+  const loaded = useLoaded(settings);
+  if (!loaded.ready) return <NotLoaded onTryAgain={loaded.tryAgain} />;
   return (
     <AssistantView
-      settings={context.services.get(HostSettingsService)}
+      settings={settings}
       announce={(line) => context.announcer.announce(line)}
       place={place}
       workspace={workspaceOf(context)}
       closeSettings={closeSettings}
     />
+  );
+}
+
+/** Whether the host settings are loaded, and a way to load them again when they aren't. */
+function useLoaded(settings: HostSettings) {
+  const [, redraw] = useState(0);
+  return {
+    ready: settings.loaded,
+    tryAgain: () =>
+      settings.load().then(
+        () => redraw((count) => count + 1),
+        (error: unknown) => console.error(error),
+      ),
+  };
+}
+
+/** What the section says when the host settings couldn't be read (`settings.ai-agent-section`). */
+function NotLoaded({ onTryAgain }: { readonly onTryAgain: () => void }) {
+  return (
+    <div className="mt-5 flex max-w-90 flex-col gap-4">
+      <Callout tone="warning" action={{ label: text.TRY_AGAIN, onClick: onTryAgain }}>
+        {text.NOT_LOADED}
+      </Callout>
+    </div>
   );
 }
 

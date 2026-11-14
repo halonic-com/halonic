@@ -1,7 +1,7 @@
 import { createShell, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { DisplaySettingsService } from "./api.ts";
+import { DisplaySettingsService, HostSettingsService } from "./api.ts";
 import { DisplaySettings } from "./display-settings.ts";
 import { sectionsByName, settingsFeature, settingsSections } from "./feature.ts";
 
@@ -9,7 +9,7 @@ describe("settingsFeature", () => {
   it("sums Appearance up in one line for the phone's list", () => {
     const shell = createShell({
       features: [settingsFeature],
-      hostServices: [DisplaySettingsService],
+      hostServices: [DisplaySettingsService, HostSettingsService],
     });
     const appearance = shell.contributions.settings.list().find(({ id }) => id === "appearance");
     const context = (theme: unknown, characters: unknown) =>
@@ -36,12 +36,27 @@ describe("settingsFeature", () => {
   it("adds Appearance to the settings saved on this computer", async () => {
     const shell = createShell({
       features: [settingsFeature],
-      hostServices: [DisplaySettingsService],
+      hostServices: [DisplaySettingsService, HostSettingsService],
     });
     const appearance = shell.contributions.settings.list().find(({ id }) => id === "appearance");
     expect(appearance).toMatchObject({ id: "appearance", title: "Appearance", scope: "display" });
     const module = await appearance?.load();
     expect(module).toHaveProperty(appearance?.view ?? "");
+  });
+
+  it("adds Assistant to the settings saved on this computer, before Agent sandbox", async () => {
+    const shell = createShell({
+      features: [settingsFeature],
+      hostServices: [DisplaySettingsService, HostSettingsService],
+    });
+    const host = shell.contributions.settings.list().filter(({ scope }) => scope === "host");
+    const assistant = host.find(({ id }) => id === "assistant");
+    expect(assistant).toMatchObject({ title: "Assistant", scope: "host" });
+    expect(host.map(({ id }) => id).sort((a, b) => order(a) - order(b))[0]).toBe("assistant");
+
+    function order(id: string): number {
+      return host.find((section) => section.id === id)?.order ?? 0;
+    }
   });
 });
 
@@ -49,7 +64,7 @@ verifies("settings.feature", () => {
   it("adds every section in its list to Settings", () => {
     const shell = createShell({
       features: [settingsFeature],
-      hostServices: [DisplaySettingsService],
+      hostServices: [DisplaySettingsService, HostSettingsService],
     });
 
     const ids = shell.contributions.settings.list().map((section) => section.id);
@@ -59,7 +74,7 @@ verifies("settings.feature", () => {
   it("opens Settings from the command Settings", async () => {
     const shell = createShell({
       features: [settingsFeature],
-      hostServices: [DisplaySettingsService],
+      hostServices: [DisplaySettingsService, HostSettingsService],
     });
     const opened: (string | undefined)[] = [];
     const context = {
@@ -77,7 +92,7 @@ verifies("settings.feature", () => {
 verifies("settings.section-commands", () => {
   const shell = createShell({
     features: [settingsFeature],
-    hostServices: [DisplaySettingsService],
+    hostServices: [DisplaySettingsService, HostSettingsService],
   });
 
   function contextWith(ids: readonly string[], opened: (string | undefined)[] = []) {

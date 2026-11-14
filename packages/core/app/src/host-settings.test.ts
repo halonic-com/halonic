@@ -45,6 +45,23 @@ verifies("app.host-settings", () => {
   });
 
   describe("reading", () => {
+    it("says whether it is loaded, and loads again after a read failed", async () => {
+      const store = new TestHostSettingsStore();
+      const read = store.read.bind(store);
+      let readable = false;
+      store.read = async () => {
+        if (!readable) throw new Error("locked");
+        return read();
+      };
+      const settings = new HostSettings(store);
+      expect(settings.loaded).toBe(false);
+      await expect(settings.load()).rejects.toThrow("locked");
+      expect(settings.loaded).toBe(false);
+      readable = true;
+      await settings.load();
+      expect(settings.loaded).toBe(true);
+    });
+
     it("gives the fallback when none is saved or the saved value doesn't fit", async () => {
       const { elsewhere } = await loaded();
       for (const saved of [0, 65, 2.5, "16"]) await elsewhere.set("assistant.turn-limit", saved);

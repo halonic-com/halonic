@@ -26,6 +26,10 @@ export const INSTRUCTIONS = "Instructions";
 export const INSTRUCTIONS_PLACEHOLDER = "Add instructions";
 export const NOT_SET_UP_LINE = "Not set up. Assistant chats use each workspace's model aliases.";
 
+/** The Callout when the computer's host settings can't be read, with its button. */
+export const NOT_LOADED = "Couldn't load the Assistant settings from this computer.";
+export const TRY_AGAIN = "Try again";
+
 /** The line under a control whose save failed. */
 export function notSaved(what: string): string {
   return `Couldn't save ${what} on this computer.`;

@@ -107,6 +107,11 @@ export class HostSettings {
     });
   }
 
+  /** Whether {@link HostSettings.load} has succeeded, so {@link HostSettings.get} may be called. */
+  get loaded(): boolean {
+    return this.#loaded;
+  }
+
   /**
    * The setting's value, or its fallback when none is saved or the saved one doesn't fit.
    *

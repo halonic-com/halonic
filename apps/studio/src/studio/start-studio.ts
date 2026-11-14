@@ -31,6 +31,7 @@ import {
 import {
   AgentSandboxService,
   DisplaySettingsService,
+  HostSettingsService,
 } from "@halonicjs/studio-feature-settings/api";
 import {
   folderName,
@@ -70,6 +71,7 @@ import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { newWorkspaceHostOf } from "./new-workspace-host.ts";
 import { trustedSourcesOf } from "./trusted-sources.ts";
+import { hostSettingsOf } from "./window-host-settings.ts";
 import { WorkspaceTrust } from "./workspace-trust.ts";
 import { WorkspaceTrustView } from "./workspace-trust-control.ts";
 
@@ -172,6 +174,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     InboxRunsService,
     RunsSourceService,
     DisplaySettingsService,
+    HostSettingsService,
     WorkspacePageService,
     TrustedSourcesService,
   ],
@@ -264,7 +267,8 @@ function newWorkspaceOf(window: object, platform: KeyboardPlatform) {
  * folder open in it. In the shell, it is checked for trust before it opens, as the CLI checks it
  * (`studio.workspace-trust`): its name is the one in `workspace.yaml`, else the folder's, and the
  * assistant may write more than Halonic items only once a person has trusted what the folder
- * holds. Outside the shell there are no files to open, so the scope has only the services above.
+ * holds. Its host settings are the window's, loaded once (`settings.ai-agent-prefs`). Outside the
+ * shell there are no files to open, so the scope has only the services above.
  */
 export async function openFolder(
   shell: Shell,
@@ -302,6 +306,7 @@ export async function openFolder(
   );
   provideShellSecrets(services, window);
   provideShellHostSettings(services, window);
+  services.provide(HostSettingsService, await hostSettingsOf(services, window));
   provideAgentSandbox(services, window);
   if (ipc !== undefined && files !== undefined) {
     provideWorkspaceRuns(services, { ipc, files, window }, location);
