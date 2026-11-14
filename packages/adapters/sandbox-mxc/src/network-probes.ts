@@ -91,7 +91,7 @@ export function judgeNetwork(report: LeakReport, asked: NetworkAsked): NetworkJu
     for (const attempt of attempts) {
       if (attempt.state === "connected") continue;
       const silenceIsFence = attempt.state === "timeout" && controlConnected;
-      if (attempt.state !== "refused" && !silenceIsFence) unproven.push(describe(kind, attempt));
+      if (attempt.state !== "refused" && !silenceIsFence) unproven.push(describe(kind, attempt, report.network));
     }
     return attempts.some((attempt) => attempt.state === "connected");
   };
@@ -105,10 +105,21 @@ export function judgeNetwork(report: LeakReport, asked: NetworkAsked): NetworkJu
 }
 
 /** The sentence for an attempt that proves nothing. */
-function describe(kind: string, { host, port, state, code }: NetworkAttempt): string {
+function describe(
+  kind: string,
+  { host, port, state, code }: NetworkAttempt,
+  control: NetworkAttempt | null,
+): string {
   const how =
     state === "timeout"
-      ? "timed out, and the box could not show that its network works: its network control, a connection to its bridge or to itself, failed"
+      ? `timed out, and the box could not show that its network works: its network control, a connection to its bridge or to itself, ${controlOutcome(control)}`
       : `failed with ${code ?? "an unknown error"}, which is not a refusal`;
   return `the ${kind} attempt to ${host}:${port} ${how}`;
+}
+
+/** How the network control ended, for the sentence of an unproven attempt. */
+function controlOutcome(control: NetworkAttempt | null): string {
+  if (control === null) return "was not run";
+  if (control.state === "timeout") return "timed out";
+  return `failed (${control.code ?? control.state})`;
 }

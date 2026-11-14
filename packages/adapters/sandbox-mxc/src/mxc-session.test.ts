@@ -165,7 +165,9 @@ verifies("sandbox-mxc.session", () => {
       const session = await open(sandbox, { network: { bridge: null, allowedSites: [] } });
       expect(session.fence).toMatchObject({
         state: "not-fenced",
-        reason: expect.stringMatching(/did not prove the block.*could not show that its network works/),
+        reason: expect.stringMatching(
+          /did not prove the block.*could not show that its network works/,
+        ),
       });
     });
 
