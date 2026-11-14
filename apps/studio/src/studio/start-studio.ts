@@ -53,6 +53,7 @@ import {
 } from "@halonicjs/studio-feature-workspace/api";
 import {
   hostSettingsStoreKey,
+  onWindowCloseRequested,
   provideShellHostSettings,
   provideShellSecrets,
   type TauriCallbacks,
@@ -231,14 +232,44 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     language: studioLanguage,
     ...newWorkspaceOf(page.window, platform),
   });
-  return {
-    host: "desktop-app",
-    stop: async () => {
-      window.unmount();
-      stopAppearance();
-      await switcher.dispose();
-    },
+  const stopListening = onWindowCloseRequested(page.window, () =>
+    withinLimit(stopped(), closeLimitMs),
+  );
+  const stopped = once(async () => {
+    await stopListening();
+    window.unmount();
+    stopAppearance();
+    await switcher.dispose();
+  });
+  return { host: "desktop-app", stop: stopped };
+}
+
+/**
+ * How long a closing window waits for the open workspaces to save before it goes anyway, so a
+ * hung save can't keep it open for ever. A save that misses it loses its changes (HAL-8048).
+ */
+export const closeLimitMs = 5000;
+
+/** Runs `task` on the first call and gives every later call the same run. */
+function once(task: () => Promise<void>): () => Promise<void> {
+  let run: Promise<void> | undefined;
+  return () => {
+    run ??= task();
+    return run;
   };
+}
+
+/** Settles when `task` does or after `ms`, whichever comes first. */
+async function withinLimit(task: Promise<void>, ms: number): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const limit = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, ms);
+  });
+  try {
+    await Promise.race([task, limit]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
