@@ -2,6 +2,8 @@ import { Button, DashedRingIcon, Dialog, type ToastStore } from "@halonicjs/stud
 import { useId, useRef, useState, useSyncExternalStore } from "react";
 import {
   changedSince,
+  LOADING_LINE,
+  loadFailed,
   NOT_TRUSTED_LINE,
   REMOVE_TRUST,
   REMOVE_TRUST_BODY,
@@ -12,6 +14,7 @@ import {
   removeFailed,
   removeTrustTitle,
   TRUST_HEADING,
+  TRY_AGAIN,
   trustedOn,
   UNREADABLE_LINE,
 } from "./trust-section-text.ts";
@@ -72,11 +75,13 @@ export function WorkspaceTrustSection({ trust, name, toasts }: WorkspaceTrustSec
       <h2 id={headingId} tabIndex={-1} className="text-heading">
         {TRUST_HEADING}
       </h2>
-      {status === "unknown" ? null : (
+      {status === "unknown" ? (
+        <p className="m-0 text-fg-muted">{LOADING_LINE}</p>
+      ) : (
         <div className="flex items-start gap-2">
           <StatusMark status={status} />
           <div className="flex min-w-0 flex-1 flex-col gap-2">
-            <p className="m-0">{statusLine(status, trustedAt)}</p>
+            <p className="m-0">{statusLine(status, trustedAt, trust.failure)}</p>
             <div>
               {status === "trusted" ? (
                 <Button
@@ -89,6 +94,11 @@ export function WorkspaceTrustSection({ trust, name, toasts }: WorkspaceTrustSec
                   }}
                 >
                   {REMOVE_TRUST}
+                </Button>
+              ) : null}
+              {status === "failed" ? (
+                <Button ref={action} size="sm" onClick={() => void trust.retry()}>
+                  {TRY_AGAIN}
                 </Button>
               ) : null}
               {status === "not-trusted" || status === "changed" ? (
@@ -132,6 +142,7 @@ function StatusMark({ status }: { readonly status: WorkspaceTrustControl["status
 function statusLine(
   status: WorkspaceTrustControl["status"],
   trustedAt: string | undefined,
+  failure: string | undefined,
 ): string {
   switch (status) {
     case "trusted":
@@ -142,7 +153,9 @@ function statusLine(
       return UNREADABLE_LINE;
     case "not-trusted":
       return NOT_TRUSTED_LINE;
+    case "failed":
+      return loadFailed(failure ?? "unknown error");
     case "unknown":
-      return "";
+      return LOADING_LINE;
   }
 }

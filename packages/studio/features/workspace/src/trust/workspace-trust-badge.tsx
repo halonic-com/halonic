@@ -1,6 +1,7 @@
 import type { ToastStore } from "@halonicjs/studio-kit";
 import { type BadgeRegistry, trustBadgePriority } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useSyncExternalStore } from "react";
+import { CHANGED_BADGE, loadFailed, TRY_AGAIN } from "./trust-section-text.ts";
 import { useTrustCheck } from "./use-trust-check.tsx";
 import type { WorkspaceTrustControl } from "./workspace-trust-control.ts";
 
@@ -24,7 +25,7 @@ export interface WorkspaceTrustBadgeProps {
 }
 
 /**
- * The header badge "Not trusted yet · Review" and the trust check it opens (`studio.workspace-trust-ui`,
+ * The header badge "Not trusted yet · Review", "Changed since you trusted it · Review changes", or "Couldn't load workspace settings · Try again" and the trust check it opens (`studio.workspace-trust-ui`,
  * states-flow-map T2 to T6 and K4). Nothing shows while the workspace is trusted or before the
  * first answer. The whole badge is one button; pressing it opens the check, which is the
  * first-time check or "What changed". **Not now** is focused and closes it with nothing saved.
@@ -48,19 +49,29 @@ export function WorkspaceTrustBadge({ trust, name, toasts, badges }: WorkspaceTr
     if (badge === "none") {
       return undefined;
     }
+    if (badge === "failed") {
+      return badges.add({
+        id: "workspace-trust",
+        label: loadFailed(trust.failure ?? "unknown error"),
+        tone: "neutral",
+        priority: trustBadgePriority,
+        action: TRY_AGAIN,
+        onSelect: () => void trust.retry(),
+      });
+    }
     return badges.add({
       id: "workspace-trust",
-      label: "Not trusted yet",
+      label: badge === "changed" ? CHANGED_BADGE : "Not trusted yet",
+      action: badge === "changed" ? "Review changes" : "Review",
       tone: "neutral",
       priority: trustBadgePriority,
-      action: "Review",
       tooltip: badge === "list-unreadable" ? unreadableTooltip : notTrustedTooltip,
       onSelect: (button) => {
         opener.current = button;
         open.current();
       },
     });
-  }, [badge, badges]);
+  }, [badge, badges, trust]);
 
   return check.dialog;
 }

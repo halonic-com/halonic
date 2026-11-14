@@ -8,6 +8,9 @@ export const REMOVE_TRUST = "Remove trust";
 export const REMOVING = "Removing…";
 export const REMOVE_TRUST_BODY =
   "Halonic will ask again before running anything from this workspace.";
+export const CHANGED_BADGE = "Changed since you trusted it";
+export const LOADING_LINE = "Loading workspace settings";
+export const TRY_AGAIN = "Try again";
 export const UNREADABLE_LINE = "Halonic couldn't read its list of trusted workspaces.";
 
 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -30,6 +33,9 @@ export function removeTrustTitle(name: string): string {
 }
 export function removedToast(name: string): string {
   return `Removed trust from ${name}`;
+}
+export function loadFailed(reason: string): string {
+  return `Couldn't load workspace settings · ${reason}`;
 }
 export function removeFailed(name: string, reason: string): string {
   return `Couldn't remove trust from ${name}: ${reason}.`;

@@ -115,7 +115,7 @@ verifies("studio.workspace-trust-review", () => {
     const review = moved.review();
     const since = shownDate(fixedClock().now().toISOString());
 
-    expect(moved.badge).toBe("not-trusted");
+    expect(moved.badge).toBe("changed");
     expect(review?.changed).toBe(true);
     expect(review?.title).toBe(`Acme changed since you trusted it on ${since}`);
     expect(review?.summary).toEqual([`1 changed program since you trusted this on ${since}.`]);

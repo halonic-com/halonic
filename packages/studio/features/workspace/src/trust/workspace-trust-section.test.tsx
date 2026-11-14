@@ -56,6 +56,7 @@ function control(status: Status, remove?: () => Promise<TrustGrantResult>) {
     for (const listener of listeners) listener();
   };
   let removed = 0;
+  let retried = 0;
   const value: WorkspaceTrustControl = {
     get badge() {
       return current === "trusted" ? "none" : "not-trusted";
@@ -66,6 +67,10 @@ function control(status: Status, remove?: () => Promise<TrustGrantResult>) {
     // 3 Nov 2026 at noon UTC is the same calendar day in every time zone.
     trustedAt:
       status === "trusted" || status === "changed" ? "2026-11-03T12:00:00.000Z" : undefined,
+    failure: current === "failed" ? "the folder isn't there any more" : undefined,
+    retry: async () => {
+      retried += 1;
+    },
     review: () => (current === "trusted" ? undefined : review),
     grant: async () => ({ ok: true }),
     remove: async () => {
@@ -82,7 +87,7 @@ function control(status: Status, remove?: () => Promise<TrustGrantResult>) {
       return () => listeners.delete(listener);
     },
   };
-  return { value, removed: () => removed };
+  return { value, removed: () => removed, retried: () => retried };
 }
 
 function show(trust: WorkspaceTrustControl, toasts: ToastStore = createToastStore()) {
@@ -107,11 +112,22 @@ function dialogButton(label: string): HTMLButtonElement | undefined {
 }
 
 verifies("workspace.trust-section", () => {
-  it("shows nothing about trust before the first check", () => {
+  it("says it is loading before the first check", () => {
     show(control("unknown").value);
     expect(element.querySelector("h2")?.textContent).toBe("Trust");
+    expect(element.textContent).toContain("Loading workspace settings");
     expect(button("Review")).toBeUndefined();
     expect(button("Remove trust")).toBeUndefined();
+  });
+
+  it("says why the check failed and runs it again from Try again", () => {
+    const trust = control("failed");
+    show(trust.value);
+    expect(element.textContent).toContain(
+      "Couldn't load workspace settings · the folder isn't there any more",
+    );
+    act(() => button("Try again")?.click());
+    expect(trust.retried()).toBe(1);
   });
 
   it("says when a trusted workspace was trusted and offers Remove trust", () => {

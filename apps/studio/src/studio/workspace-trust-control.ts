@@ -27,15 +27,17 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
     this.#folder = folder;
   }
 
-  get badge(): "none" | "not-trusted" | "list-unreadable" {
+  get badge(): WorkspaceTrustControl["badge"] {
     const check = this.#trust.check;
-    if (check === undefined || check.status === "trusted") return "none";
+    if (check === undefined) return this.#trust.failure === undefined ? "none" : "failed";
+    if (check.status === "trusted") return "none";
+    if (check.status === "changed") return "changed";
     return check.status === "unreadable" ? "list-unreadable" : "not-trusted";
   }
 
   get status(): WorkspaceTrustControl["status"] {
     const status = this.#trust.check?.status;
-    if (status === undefined) return "unknown";
+    if (status === undefined) return this.#trust.failure === undefined ? "unknown" : "failed";
     if (status === "trusted" || status === "changed") return status;
     return status === "unreadable" ? "list-unreadable" : "not-trusted";
   }
@@ -43,6 +45,14 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
   get trustedAt(): string | undefined {
     const check = this.#trust.check;
     return check?.status === "trusted" || check?.status === "changed" ? check.trustedAt : undefined;
+  }
+
+  get failure(): string | undefined {
+    return this.#trust.failure;
+  }
+
+  retry(): Promise<void> {
+    return this.#trust.refresh();
   }
 
   review(): TrustReview | undefined {

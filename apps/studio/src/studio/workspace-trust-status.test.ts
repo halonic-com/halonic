@@ -85,6 +85,26 @@ verifies("studio.workspace-trust-status", () => {
 
     expect(moved.status).toBe("changed");
     expect(moved.trustedAt).toBe(fixedClock().now().toISOString());
+    expect(moved.badge).toBe("changed");
+  });
+
+  it("is failed, with the reason, when the check couldn't run, and recovers on retry", async () => {
+    const gone = join(folder, "gone");
+    const trust = new WorkspaceTrust({
+      ...sourcesOf(),
+      folder: new FileSystemFolderReader(gone, "gone"),
+    });
+    const view = new WorkspaceTrustView(trust, "/work/acme");
+
+    await trust.refresh();
+
+    expect(view.status).toBe("failed");
+    expect(view.badge).toBe("failed");
+    expect(view.failure).not.toBe("");
+    expect(view.failure).toBeDefined();
+    await mkdir(gone);
+    await view.retry();
+    expect(view.status).not.toBe("failed");
   });
 
   it("forgets the record when trust is removed, and checks again", async () => {

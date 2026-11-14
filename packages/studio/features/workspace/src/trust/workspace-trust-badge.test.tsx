@@ -82,6 +82,8 @@ function control(initial: TrustReview | undefined, grant?: () => Promise<TrustGr
     },
     status: current === undefined ? "trusted" : "not-trusted",
     trustedAt: undefined,
+    failure: undefined,
+    retry: async () => {},
     review: () => current,
     remove: async () => ({ ok: true }),
     grant: async (fingerprint) => {
@@ -209,6 +211,36 @@ verifies("workspace.trust-badge", () => {
       "Couldn't save trust: the disk is full. Nothing was started.",
     );
     expect(shell.toasts.list().map((toast) => toast.title)).not.toContain("Acme can run now");
+  });
+
+  it("words a workspace that changed after it was trusted as Changed, with Review changes", async () => {
+    const base = control(review).value;
+    await show({ ...base, badge: "changed", status: "changed" });
+    const changed = element.querySelector<HTMLButtonElement>(
+      'button[aria-label="Changed since you trusted it. Review changes"]',
+    );
+    expect(changed).not.toBeNull();
+    expect(element.textContent).not.toContain("Not trusted yet");
+  });
+
+  it("shows a failed check with its reason and runs it again from Try again", async () => {
+    let retried = 0;
+    const base = control(undefined).value;
+    await show({
+      ...base,
+      badge: "failed",
+      status: "failed",
+      failure: "the folder isn't there any more",
+      retry: async () => {
+        retried += 1;
+      },
+    });
+    const failed = element.querySelector<HTMLButtonElement>(
+      "button[aria-label^=\"Couldn't load workspace settings · the folder isn't there any more\"]",
+    );
+    expect(failed).not.toBeNull();
+    act(() => failed?.click());
+    expect(retried).toBe(1);
   });
 
   it("keeps Trust unavailable until an unpinned program is confirmed", async () => {
