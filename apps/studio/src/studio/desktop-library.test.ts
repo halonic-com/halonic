@@ -84,6 +84,8 @@ verifies("studio.workspace-listed-tools", () => {
       folder_location: "/work/acme",
       folder_entries: [],
       host_settings_read: {},
+      // The shell answers the program search, so the review reaches the trust check.
+      command_paths: {},
     };
     const invoke = async (command: string, args?: Record<string, unknown>) => {
       if (command.startsWith("agent_host")) started.push(command);
@@ -104,7 +106,7 @@ verifies("studio.workspace-listed-tools", () => {
 
     const tools = opened.workspace.services.get(ListedToolsHostService);
 
-    await expect(tools.review("notes")).rejects.toThrow();
+    await expect(tools.review("notes")).rejects.toThrow(/isn't trusted/);
     expect(started).toEqual([]);
     await opened.dispose();
   });
