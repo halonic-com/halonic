@@ -6,7 +6,7 @@
 
 ## What changes
 
-`plugins.plugin-actions` gains the connector sentence of microcopy T13 and the sentence for when Halonic can't tell which connectors use the plugin, with one new example. Nothing was removed or weakened.
+`plugins.plugin-actions` gains the connector sentence of microcopy T13 and the sentence for when Halonic can't tell which connectors use the plugin, with one new example. While Halonic checks which connectors use the plugin, the dialog shows the line "Checking which connectors use it…" and **Remove plugin** stays unavailable, so Remove waits for the check. Nothing was removed or weakened.
 
 ## Why
 
