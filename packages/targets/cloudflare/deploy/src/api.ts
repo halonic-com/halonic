@@ -175,7 +175,6 @@ export interface CloudflareApi {
   openWorkersDev(accountId: string, worker: string): Promise<string>;
   /** Turns the workers.dev address off again, with preview addresses off. */
   closeWorkersDev(accountId: string, worker: string): Promise<void>;
-
   /** Every deployment of the Worker, newest first; empty when it has none or doesn't exist. */
   deploymentHistory(
     accountId: string,

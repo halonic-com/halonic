@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-6705; build plan 3b (HAL-198); multi-cloud ADR 5.6
 
-`rollback` shall switch all traffic back to the version that served before the current one, skipping a version that only ever had 0% of traffic. It shall hold the deploy lock while it chooses and switches, and choose after taking the lock. It shall ask `/health` after the switch and report the answer without undoing the switch. It shall stop with `nothing-to-roll-back` when no earlier version served traffic and with `not-deployed` when the Worker or its database is missing. `plan` shall name the versions and change nothing. Database migrations are not undone.
+The `rollback` command shall switch all traffic back to the version that served before the current one, skipping a version that only ever had 0% of traffic. It shall hold the deploy lock while it chooses and switches, and choose after taking the lock. It shall ask `/health` after the switch and report the answer without undoing the switch. It shall stop with `nothing-to-roll-back` when no earlier version served traffic and with `not-deployed` when the Worker or its database is missing. `plan` shall name the versions and change nothing. Database migrations are not undone.
 
 Rationale: when a version is bad but passed its self-test, one command must put the last good one back, and must not race a deploy.
 
