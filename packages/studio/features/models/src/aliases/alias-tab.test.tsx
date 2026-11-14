@@ -4,7 +4,7 @@ import type { ItemRef, WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import type { ModelsFiles, ProviderFile } from "../api.ts";
 import { AliasTab } from "./alias-tab.tsx";
 
@@ -90,10 +90,43 @@ verifies("models.aliases.list", () => {
     );
   });
 
+  it("heads the tab MODEL ALIAS above the title", async () => {
+    const tab = await showTab(memoryFiles(workspaceModels).files);
+
+    expect(tab.querySelector("h1")?.previousElementSibling?.textContent).toBe("Model alias");
+  });
+
+  it("says Loading smart while it reads, and Still loading after 10 seconds", async () => {
+    vi.useFakeTimers();
+    try {
+      const { files } = memoryFiles(workspaceModels);
+      files.readModels = () => new Promise(() => undefined);
+      const tab = await showTab(files);
+      expect(tab.textContent).toContain("Loading smart");
+
+      await act(async () => vi.advanceTimersByTime(10_000));
+
+      expect(tab.textContent).toContain("Still loading · Try again");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("says the alias couldn't be loaded, with Try again", async () => {
+    const { files } = memoryFiles(workspaceModels);
+    files.readModels = async () => Promise.reject(new Error("gone"));
+    const tab = await showTab(files);
+
+    expect(tab.textContent).toContain("Couldn't load this model alias");
+    expect(tab.textContent).toContain("Try again");
+  });
+
   it("says so when the alias is no longer in models.yaml", async () => {
     const tab = await showTab(memoryFiles(workspaceModels).files, { ...smart, id: "gone" });
 
-    expect(tab.textContent).toContain("This alias is no longer in models.yaml.");
+    expect(tab.textContent).toContain("This model alias isn't in this workspace any more.");
+    expect(tab.textContent).toContain("Go to Models");
+    expect(tab.textContent).not.toContain("models.yaml");
   });
 });
 
@@ -163,6 +196,18 @@ verifies("models.aliases.edit-fallbacks", () => {
 
     expect(changes[0]?.text).toMatch(
       /fallback:\s*\n?\s*- default\s*\n\s*- fast|fallback: \[default, fast\]/,
+    );
+  });
+
+  it("names a fallback that is not an alias and writes nothing", async () => {
+    const { files, changes } = memoryFiles(workspaceModels);
+    const tab = await showTab(files);
+
+    await typeInto(field(tab, "Fallbacks"), "smartest");
+
+    expect(changes).toEqual([]);
+    expect(tab.textContent).toContain(
+      "There's no model alias called smartest. Pick one from the list.",
     );
   });
 });

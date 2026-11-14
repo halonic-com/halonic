@@ -47,6 +47,35 @@ export const PRICE_HEADING = "Price per million tokens";
 export const PRICE_HINT = "Used for the estimated spend and the budget.";
 export const CACHE_PRICES_NOTE =
   "Emptying both prices also removes this alias's cache prices. Undo (Ctrl Z) brings them back.";
-export const ALIAS_GONE_LINE = "This alias is no longer in models.yaml.";
+export const ALIAS_GONE_LINE = "This model alias isn't in this workspace any more.";
 export const ZERO_PRICE_WARNING =
   "A price of 0 means these calls look free in your estimated spend.";
+export const GO_TO_MODELS = "Go to Models";
+export const STILL_LOADING_LINE = "Still loading";
+export const ALIAS_UNREADABLE_TITLE = "Couldn't load this model alias";
+/** The workspace page, where the Models section is. */
+export const MODELS_PAGE_ITEM = { kind: "workspace", hub: "local", id: "settings" } as const;
+
+/** The line while an alias tab reads `models.yaml`. */
+export function aliasLoadingLine(name: string): string {
+  return `Loading ${name}`;
+}
+
+export const NEW_ALIAS = "New alias";
+export const NEW_ALIAS_TITLE = "New model alias";
+export const CREATE = "Create";
+export const CREATING = "Creating…";
+export const NAME_FIELD = "Name";
+export const NAME_HINT = "Agents ask for this name, like fast.";
+export const PROVIDER_FIELD = "Provider";
+export const MODEL_FIELD = "Model";
+
+/** The callout when the new alias couldn't be written. */
+export function createFailedLine(reason: string): string {
+  return `Couldn't create the model alias: ${reason.replace(/\.$/, "")}. Nothing was changed.`;
+}
+
+/** The status line after an alias was added; also the name of its undo step. */
+export function aliasAddedLine(name: string): string {
+  return `Added model alias ${name}`;
+}

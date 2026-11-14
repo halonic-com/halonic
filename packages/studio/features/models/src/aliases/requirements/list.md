@@ -11,5 +11,6 @@ The Models section of the workspace page shall list the aliases in `models.yaml`
 - Given `models.yaml` with aliases `smart` (anthropic, claude-sonnet-5-5) and `default` (ollama, llama3.2),
   when the user opens "Workspace settings…",
   then Models lists "default · ollama / llama3.2" and then "smart · anthropic / claude-sonnet-5-5".
-- Given `models.yaml` has no aliases, then the section says "No model aliases yet. An alias is a short name like `fast` that agents use instead of a provider." and offers **New alias**.
-- Given the user clicks "smart", then a tab "Alias: smart" opens, saying `Agents ask for "smart". Point it at any provider and model; nothing else changes.`
+- Given `models.yaml` has no aliases, then the section says "No model aliases yet. An alias is a short name like `fast` that agents use instead of a provider." and offers **New alias** ([models.aliases.create](create.md)). **New alias** is also in the section header.
+- Given the user clicks "smart", then a tab "Alias: smart" opens, headed MODEL ALIAS, saying `Agents ask for "smart". Point it at any provider and model; nothing else changes.`
+- Given the alias is no longer in the workspace, then its tab says "This model alias isn't in this workspace any more." and offers **Go to Models**.

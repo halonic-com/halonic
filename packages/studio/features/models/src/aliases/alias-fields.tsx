@@ -108,7 +108,7 @@ export function AliasFields({ files, models, providers, name }: AliasFieldsProps
             onBlur={() => model !== alias.model && void saveTarget(alias.provider, model)}
           />
         </Field>
-        <Field label="Fallbacks" hint={fallbacksHint(otherAliases)}>
+        <Field label="Fallbacks" hint={fallbacksHint(otherAliases)} error={problemFor("fallbacks")}>
           <Input
             value={fallbacks}
             onChange={(event) => setFallbacks(event.target.value)}
