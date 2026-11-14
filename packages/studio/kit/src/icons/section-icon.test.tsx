@@ -17,6 +17,18 @@ verifies("kit.section-icon", () => {
     expect(svg.getAttribute("viewBox")).toBe("0 0 24 24");
   });
 
+  it("fills one half of the appearance icon and no other icon", () => {
+    for (const name of sectionIconNames) {
+      const svg = render(<SectionIcon name={name} />).container.querySelector(
+        "svg",
+      ) as SVGSVGElement;
+      expect(svg.getAttribute("fill")).toBe("none");
+      expect(svg.querySelectorAll('path[fill="currentColor"]').length).toBe(
+        name === "appearance" ? 1 : 0,
+      );
+    }
+  });
+
   it("draws a path of its own for every section", () => {
     const paths = sectionIconNames.map((name) =>
       render(<SectionIcon name={name} />)
