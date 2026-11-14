@@ -21,6 +21,7 @@ import { SrtSandbox, sandboxRuntimeFolder } from "@halonicjs/adapter-sandbox-srt
 import { RunnerStartGate, UnfencedRuns } from "@halonicjs/app";
 import {
   type ProfileEnvironment,
+  pluginsFolder,
   profileFolder,
   runnerTempFolder,
   unfencedRunsFolder,
@@ -28,6 +29,8 @@ import {
 import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { LocalIntegrationMachine } from "./open-local-integration.ts";
+import type { PluginBackendMachine } from "./open-plugin-backend.ts";
+import { openPluginService } from "./plugin-host.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
@@ -113,5 +116,31 @@ export function computerIntegrationMachine(
         made.splice(0).map((folder) => rm(folder, { recursive: true, force: true })),
       );
     },
+  };
+}
+
+/**
+ * The machine for plugin backends on this computer: the integrations' gate,
+ * runner and temp folders, so a plugin's backend starts exactly as a local
+ * integration does, plus the profile's plugins folder, the plugin trust and
+ * the plugin's saved settings.
+ *
+ * @throws RangeError when `HALONIC_HOME` or the home folder isn't absolute
+ */
+export function computerPluginMachine(
+  integrations: LocalIntegrationMachine,
+  input: Pick<ComputerIntegrationInput, "trust" | "environment">,
+): PluginBackendMachine {
+  const environment = input.environment ?? nodeProfileEnvironment();
+  const service = openPluginService({ profile: environment, clock: input.trust.clock });
+  return {
+    gate: integrations.gate,
+    runtime: integrations.runtime,
+    transport: integrations.transport,
+    runnerMachine: integrations.runnerMachine,
+    plugins: new FileSystemFolderReader(pluginsFolder(profileFolder(environment))),
+    digest: webCryptoDigest,
+    trust: cliTrustService(input.trust.trustStore, input.trust.clock),
+    settings: async (plugin) => await service.settings(plugin),
   };
 }

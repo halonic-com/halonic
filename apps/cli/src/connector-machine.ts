@@ -29,6 +29,7 @@ import {
   IntegrationConnectorFactory,
   type OpenIntegration,
 } from "./integration-connector-factory.ts";
+import { type OpenPluginBackend, PluginConnectorFactory } from "./plugin-connector-factory.ts";
 import { nodeSandboxWorks } from "./sandbox-works.ts";
 import { halonicVersion } from "./version.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
@@ -96,6 +97,7 @@ export function cliConnectorFactories(
   env: Readonly<Record<string, string | undefined>>,
   fence?: ConnectorFence,
   openIntegration?: OpenIntegration,
+  openPlugin?: OpenPluginBackend,
 ): ConnectorFactories {
   const clientInfo = { name: "halonic", version: halonicVersion };
   const runners = createRunnerSearch(env);
@@ -109,8 +111,9 @@ export function cliConnectorFactories(
   return new ConnectorFactories([
     fence === undefined ? unfenced : sessionFactory(fence, unfenced, env, runners, clientInfo),
     new McpHttpConnectorFactory({ clientInfo }),
-    // Only with a way to open one in the runner: no in-process start for a local integration.
+    // Only with a way to open one in the runner: no in-process start for a local integration or a plugin's backend.
     ...(openIntegration === undefined ? [] : [new IntegrationConnectorFactory(openIntegration)]),
+    ...(openPlugin === undefined ? [] : [new PluginConnectorFactory(openPlugin)]),
   ]);
 }
 

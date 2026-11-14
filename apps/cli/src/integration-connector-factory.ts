@@ -50,14 +50,17 @@ export class IntegrationConnectorFactory implements ConnectorFactory {
     if (transport.kind !== "integration") {
       throw new Error(`Connector "${config.id}" isn't a local integration.`);
     }
-    return new LazyIntegrationClient(config.id, () =>
+    return new LazyRunnerClient(config.id, () =>
       this.#open({ id: config.id, folder: transport.folder, context }),
     );
   }
 }
 
-/** A client that opens the integration once it is used, and says which connector failed when it can't. */
-class LazyIntegrationClient implements ConnectorClient {
+/**
+ * A client that opens a runner-backed connector (a local integration or a
+ * plugin's backend) once it is used, and says which connector failed when it can't.
+ */
+export class LazyRunnerClient implements ConnectorClient {
   readonly id: string;
   readonly #open: () => Promise<ConnectorClient>;
   #opened: Promise<ConnectorClient> | undefined;
