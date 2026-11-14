@@ -132,7 +132,14 @@ async function invoke(command, { waiting = false } = {}) {
  */
 async function waitFor(kind) {
   const deadline = Date.now() + Number(seconds) * 1000;
-  await invoke("update_check", { waiting: true });
+  // `closed` means no check ran. Polling then could read the last run's state
+  // as this run's result, so ask again until the check has really started.
+  while ((await invoke("update_check", { waiting: true })) === "closed") {
+    if (Date.now() >= deadline) {
+      throw new Error(`update_check didn't run within ${seconds} s`);
+    }
+    await sleep(2000);
+  }
   let last = "";
   while (Date.now() < deadline) {
     const status = await invoke("update_status", { waiting: true });
