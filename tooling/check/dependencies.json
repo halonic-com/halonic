@@ -45,6 +45,17 @@
       ],
       "reason": "TypeScript types for the Workers runtime and its bindings (D1, R2, Durable Objects, scheduled events), so the Cloudflare adapters and the Worker typecheck against what workerd really offers (plan section 7). Types only, no code, no dependencies."
     },
+    "@microsoft/mxc-sdk": {
+      "category": "outside-world",
+      "allowedIn": [
+        "@halonicjs/adapter-sandbox-mxc"
+      ],
+      "layers": [
+        "adapters"
+      ],
+      "reason": "Starts programs in MXC, Windows 11's process container (ADR 2026-11-10, HAL-3292). Approved by the user on HAL-7606 as a one-time download, not as a package dependency: it is not in any package.json. The adapter fetches the pinned @microsoft/mxc-sdk@1.0.1, koffi@3.3.8 (with its Windows build for this processor) and semver@7.8.6 from registry.npmjs.org, checks each tarball's sha512 against the pin in sdk-pins.ts before unpacking, and loads it only on Windows. node-pty, which the SDK also lists, is left out because the adapter never starts a terminal. Telemetry stays off: the adapter never passes telemetry options and never calls requestTelemetryConsent.",
+      "useInstead": "the Sandbox port"
+    },
     "@noble/hashes": {
       "category": "outside-world",
       "allowedIn": [

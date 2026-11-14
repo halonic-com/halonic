@@ -40,6 +40,7 @@ jobs:
       tauri: ${{ steps.diff.outputs.tauri }}
       sandbox-fence: ${{ steps.diff.outputs.sandbox-fence }}
       sandbox: ${{ steps.diff.outputs.sandbox }}
+      sandbox-mxc: ${{ steps.diff.outputs.sandbox-mxc }}
       windows: ${{ steps.diff.outputs.windows }}
       sandbox-mxc: ${{ steps.diff.outputs.sandbox-mxc }}
       android: ${{ steps.diff.outputs.android }}
@@ -63,6 +64,7 @@ jobs:
           areas=(
             "tauri=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|tooling/check/licence-texts/crates/)"
             "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-srt|harness-bridge|system-node|integration-runner|integration-kit|connector-stdio-sandbox)/|apps/cli/(fence/|src/(local-harness-host|open-local-integration|local-integration-machine|integration-connector-factory|workspace-engine))|packages/core/ports/|pnpm-lock\.yaml$)"
+            "sandbox-mxc=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-mxc|harness-bridge)/|packages/core/(ports|format)/|pnpm-lock\.yaml$)"
             "sandbox=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-[^/]+|system-node|git)/|packages/core/ports/)"
             "windows=^(\.github/workflows/ci\.yml$|\.github/actions/|pnpm-lock\.yaml$|apps/(cli|agent-host)/|packages/adapters/(fs-node|harness-kit|harness-claude-code|harness-codex|mcp|memory|system-node|http-kit|integration-kit)/|packages/core/(workspace|app|events|format|ports|profile|routines|schema-kit|std|workflow|yaml)/|packages/testing/(contracts|spec|parity|integration)/|tooling/(config|publish)/)"
             "sandbox-mxc=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/sandbox-mxc/|packages/core/app/(src|requirements)/sandbox-|packages/core/ports/|pnpm-lock\.yaml$)"
@@ -1684,6 +1686,37 @@ jobs:
         shell: bash
         run: pnpm test:remove:windows
 
+  sandbox-mxc-windows:
+    # The MXC fence on a real Windows 11 (HAL-3305, HAL-7607): the tests under
+    # packages/adapters/sandbox-mxc/fence run the real MXC through
+    # @microsoft/mxc-sdk and try to get out. The SDK is not in package.json:
+    # the tests fetch it through the adapter's own one-time, hash-checked
+    # download (HAL-7606), so this job is also the end-to-end proof of that
+    # installer and of the import on Windows, on the processor Windows 11
+    # runs on here (arm64). The SDK is fetched on every run, because the
+    # runner starts clean and the pins are small. A failed download fails the
+    # job; it never skips the fence.
+    name: Sandbox fence on Windows 11 (MXC)
+    needs: changes
+    if: needs.changes.outputs.sandbox-mxc == 'true'
+    runs-on: windows-11-arm
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Not the shared setup action, for the reason in sandbox-windows above.
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - name: Install the dependencies
+        run: pnpm install --frozen-lockfile --filter "@halonicjs/adapter-sandbox-mxc..."
+        shell: bash
+      - name: MXC fence tests
+        working-directory: packages/adapters/sandbox-mxc
+        shell: bash
+        run: pnpm test:fence
+
   agent-host:
     # The agent host as one executable, built with Node's single-executable
     # support (HAL-2865). Proves on all three systems that the build works
@@ -2379,6 +2412,7 @@ jobs:
         sandbox-mxc-fence,
         sandbox-os,
         sandbox-windows,
+        sandbox-mxc-windows,
         agent-host,
         installer-windows,
         update-windows,

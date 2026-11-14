@@ -250,7 +250,7 @@ names it, and it needs words in the design before Studio shows it.
     `127.0.0.1` (such as `127.0.0.1.nip.io`), `CONNECT 127.0.0.1:<bridge port>`,
     `CONNECT` to any other address, another host, a mismatched `Host`, and a
     missing or wrong run token.
-  - `@microsoft/mxc-sdk` is pinned to an exact version. Any bump of it runs
+  - `@microsoft/mxc-sdk` is pinned to an exact version (see the amendment below). Any bump of it runs
     the `windows-11-arm` fence job, because the proxy-mode loopback limit is
     observed, not documented.
   - The trust-check probes reuse HAL-3365's method (`spikes/mxc/probe5.mjs`):
@@ -261,3 +261,23 @@ names it, and it needs words in the design before Studio shows it.
   weaker option. A packaged or AppContainer bridge with `allowedProxyPeer` and
   host loopback denied is stronger. It wouldn't fix name lookups, because it
   needs the same permission.
+
+## Amendment (2026-11-14): the SDK is downloaded on demand
+
+The board approved `@microsoft/mxc-sdk` on HAL-7606 as a one-time download,
+not as a dependency in `package.json`. It brings koffi's native code, and the
+SDK has no `os` field, so a package dependency would install it on Linux and
+macOS too. The decision above stands; only the way the SDK arrives changes:
+
+- The adapter fetches the pinned `@microsoft/mxc-sdk@1.0.1`, `koffi` and
+  `semver`, plus koffi's Windows build for the processor, from
+  `registry.npmjs.org` when the person picks MXC. It checks each tarball's
+  SHA-512 against the pin in the repo before unpacking, and loads the SDK only
+  from that verified folder in the user's Halonic data folder.
+- A missing or unverified SDK keeps `check()` at `other`. `core/app` shows
+  "needs download" as setup code `download` and reason `download-needed`.
+  The port stays at version 3.
+- `tooling/check/dependencies.json` records the exception, the pins and that
+  telemetry stays off.
+- The `windows-11-arm` fence job fetches the SDK through this installer, so
+  it also proves the download and the import end to end.
