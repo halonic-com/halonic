@@ -175,6 +175,7 @@ means (the Studio makes no trust record when anything was skipped). The errors, 
 so open it instead). A failed write removes the files this call wrote and throws the write's error.
 An existing `.gitignore` that doesn't keep `.env` files out of git gets the missing `.env` and `.env.*` lines
 at its end (listed in `amended`); nothing else in it changes, and a failed write puts it back as it was.
+A `!.env` line already there doesn't count as keeping `.env` out: the lines are added after it, so they win.
 
 `gitIgnorePath` and `gitIgnoreLines` are that file's name and its lines, and `settingsPath` is where a
 workspace's own settings live (`workspace.yaml`).
