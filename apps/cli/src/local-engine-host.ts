@@ -2,8 +2,10 @@
 // (HAL-3814). Its runs, blobs and timers live in the person's profile folder,
 // in the workspace's own folders, so `halonic runs` and the Studio read the
 // same runs. It is a plain function of its inputs (Liam, HAL-3895) and never
-// reads the CLI's printer, argv or `process`, so it can move into a package
-// the Studio shares once the Studio starts runs.
+// reads the CLI's printer, argv or `process`. What doesn't depend on Node (the
+// executor on a scheduler of run timers, the routines, the close order) is
+// `assembleEngine` of `@halonicjs/engine` (HAL-8792), which the desktop Studio
+// shares; this file passes it the Node stores, scheduler and lock.
 //
 // In 0.1 it has no Halonic tools. It has the harness host
 // (`openLocalHarnessHost`, HAL-7747): the engine can run an agent in a
@@ -34,13 +36,17 @@ import {
 } from "@halonicjs/adapter-fs-node";
 import type { GitRunnerOptions } from "@halonicjs/adapter-git";
 import {
-  type NodeScheduler,
   nodeSchedulerFactory,
   type SchedulerErrorSource,
   type SetTimer,
   systemSetTimer,
 } from "@halonicjs/adapter-scheduler-node";
-import { LocalExecutor } from "@halonicjs/engine";
+import {
+  assembleEngine,
+  type LocalExecutor,
+  type RoutineEngine,
+  type RoutineTicks,
+} from "@halonicjs/engine";
 import type { Agent } from "@halonicjs/format";
 import type {
   ChatTurnRequest,
@@ -101,6 +107,8 @@ export type EngineErrorSource =
   | "program-copies"
   | "run-connectors"
   | "harness-host";
+
+export type { RoutineEngine, RoutineTicks };
 
 /** What {@link openLocalEngine} builds the engine from. */
 export interface LocalEngineInput {
@@ -164,22 +172,6 @@ export interface LocalEngineInput {
    * `halonic run`.
    */
   readonly routines?: (engine: RoutineEngine) => RoutineTicks;
-}
-
-/** What the routine scheduler is built on: the engine's own parts. */
-export interface RoutineEngine {
-  readonly executor: LocalExecutor;
-  readonly runs: RunStore;
-  readonly clock: Clock;
-  /** Kept in the workspace's folder in the profile, so the last tick and queues survive a restart. */
-  readonly coordination: Coordination;
-}
-
-/** The routine scheduler as the engine drives it, such as `RoutineScheduler` of `@halonicjs/app`. */
-export interface RoutineTicks {
-  onTick(at: string): Promise<void>;
-  /** Stops it starting runs, once a tick in progress has settled; called first when the engine closes. */
-  dispose(): Promise<void>;
 }
 
 /** The engine of one workspace, open until {@link LocalEngine.close}. */
@@ -307,38 +299,8 @@ function engineOn(
   const clock = input.clock ?? systemClock;
   const runs = new FolderRunStore(folders.runsFolder());
 
-  // The scheduler's listener needs the executor and the routines, and they
-  // need the scheduler, so the listener looks them up when it is called.
-  let executor: LocalExecutor | undefined;
-  let routines: RoutineTicks | undefined;
   const { versions } = input;
   const latest = () => versions?.latest() ?? input.workspace;
-  const scheduler: NodeScheduler = nodeSchedulerFactory({
-    store: new FileRecordStore(folders.recordsFolder()),
-    collection: runTimerCollection,
-    clock,
-    setTimer: input.setTimer ?? systemSetTimer,
-    reportError: input.reportError,
-    ...(input.onWokeUp === undefined ? {} : { onWokeUp: input.onWokeUp }),
-  })({
-    onTimer: async (timer) => {
-      if (executor === undefined) {
-        // The scheduler retries the timer once the executor is there.
-        throw new Error("The engine is still starting; the timer is tried again.");
-      }
-      if (input.holdsTimer?.(timer) === true) {
-        // Rejected, not resolved: the scheduler would remove a timer that resolved.
-        throw new Error("The watch gave up on this run; its timer waits for the next engine.");
-      }
-      await executor.onTimer(timer);
-      input.onTimerDone?.(timer);
-    },
-    // Without routines, as for `halonic run`, a tick does nothing. A tick
-    // before they are built is missed; the next one catches up.
-    onTick: async (at) => {
-      await routines?.onTick(at);
-    },
-  });
   const connectors =
     input.runConnectors === undefined
       ? undefined
@@ -350,91 +312,72 @@ function engineOn(
           programFolders,
           reportError: (error) => input.reportError(error, "run-connectors"),
         });
-  executor = new LocalExecutor({
-    resolveModel: latestModelResolver(input, latest),
-    halonicTools: [],
-    connectors: input.connectors ?? [],
-    secrets: input.secrets,
-    clock,
-    // A chat turn reads the workspace's files as a run does: its agent's file,
-    // and its connector files' `allow` and `approve` lists (HAL-5645).
-    chatAgentOf: async (request) => chatAgentOf(latest(), request),
-    chatConnectorToolsOf: async (request) =>
-      connectorToolsOf(definitionsOf(latest(), request.hubId)),
-    // Without a workspace.yaml that parsed, the format default: not local only.
-    localOnly: filesOf(input.workspace, "workspace")[0]?.value.privacy.localOnly === true,
-    abortOnStop,
-    runs: {
-      harnesses: harnessHost.harnesses,
-      proposalFolders: harnessHost.proposalFolders,
-      store: runs,
-      blobs: new FolderBlobStore(folders.blobsFolder()),
-      scheduler,
-      ids: input.ids ?? randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), clock),
-      definitionsOf: async (hubId, workflowId, version, runId) =>
-        versions === undefined
-          ? runDefinitionsOf(
-              input.workspace,
-              hubId,
-              workflowId,
-              await approvedIntegrations(input.runConnectors?.trust ?? null, input.workspaceRoot),
-            )
-          : await versions.definitionsOf(hubId, workflowId, version, runId),
-      ...connectors?.runs,
+  const assembled = assembleEngine({
+    createScheduler: nodeSchedulerFactory({
+      store: new FileRecordStore(folders.recordsFolder()),
+      collection: runTimerCollection,
+      clock,
+      setTimer: input.setTimer ?? systemSetTimer,
+      reportError: input.reportError,
+      ...(input.onWokeUp === undefined ? {} : { onWokeUp: input.onWokeUp }),
+    }),
+    executor: {
+      resolveModel: latestModelResolver(input, latest),
+      halonicTools: [],
+      connectors: input.connectors ?? [],
+      secrets: input.secrets,
+      clock,
+      // A chat turn reads the workspace's files as a run does: its agent's file,
+      // and its connector files' `allow` and `approve` lists (HAL-5645).
+      chatAgentOf: async (request) => chatAgentOf(latest(), request),
+      chatConnectorToolsOf: async (request) =>
+        connectorToolsOf(definitionsOf(latest(), request.hubId)),
+      // Without a workspace.yaml that parsed, the format default: not local only.
+      localOnly: filesOf(input.workspace, "workspace")[0]?.value.privacy.localOnly === true,
+      abortOnStop,
+      runs: {
+        harnesses: harnessHost.harnesses,
+        proposalFolders: harnessHost.proposalFolders,
+        store: runs,
+        blobs: new FolderBlobStore(folders.blobsFolder()),
+        ids:
+          input.ids ?? randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), clock),
+        definitionsOf: async (hubId, workflowId, version, runId) =>
+          versions === undefined
+            ? runDefinitionsOf(
+                input.workspace,
+                hubId,
+                workflowId,
+                await approvedIntegrations(input.runConnectors?.trust ?? null, input.workspaceRoot),
+              )
+            : await versions.definitionsOf(hubId, workflowId, version, runId),
+        ...connectors?.runs,
+      },
     },
+    // Kept in the workspace's folder in the profile, so the last tick and queues survive a restart.
+    coordination: new NodeCoordination({
+      store: new FileRecordStore(folders.recordsFolder()),
+      collection: routineStateCollection,
+      clock,
+      newToken: randomLeaseToken,
+    }),
+    // Without routines, as for `halonic run`, a tick does nothing.
+    ...(input.routines === undefined ? {} : { routines: input.routines }),
+    ...(input.holdsTimer === undefined ? {} : { holdsTimer: input.holdsTimer }),
+    ...(input.onTimerDone === undefined ? {} : { onTimerDone: input.onTimerDone }),
+    // After the scheduler, so no step still has a program running in a copy.
+    // Each runs even when an earlier one failed: git and the copies are released all the same.
+    closers: [
+      async () => connectors?.runs.runConnectors.closeAll(),
+      // The runners are stopped: their temp folders go.
+      async () => input.runConnectors?.dispose?.(),
+      () => harnessHost.close(),
+      () => programFolders.close(),
+    ],
+    // Last, so no other engine starts while this one still delivers a timer.
+    release: () => lock.release(),
   });
-  const opened = executor;
-  const coordination = new NodeCoordination({
-    store: new FileRecordStore(folders.recordsFolder()),
-    collection: routineStateCollection,
-    clock,
-    newToken: randomLeaseToken,
-  });
-  routines = input.routines?.({ executor: opened, runs, clock, coordination });
-  const ticks = routines;
-  let closing: Promise<void> | undefined;
-  return {
-    executor: opened,
-    runs,
-    clock,
-    coordination,
-    programFolders,
-    close: () => {
-      closing ??= (async () => {
-        try {
-          // First, so no routine run starts on an executor that is closing.
-          await ticks?.dispose();
-          // Before the scheduler: its close waits for the deliveries in progress.
-          try {
-            await opened.close();
-            await scheduler.close();
-          } finally {
-            // After the scheduler, so no step still has a program running in a copy.
-            try {
-              await connectors?.runs.runConnectors.closeAll();
-            } finally {
-              // The runners are stopped: their temp folders go. Even when a connector failed to close: git and the copies are released all the same.
-              try {
-                await input.runConnectors?.dispose?.();
-              } finally {
-                try {
-                  await harnessHost.close();
-                } finally {
-                  await programFolders.close();
-                }
-              }
-            }
-          }
-        } finally {
-          // Last, so no other engine starts while this one still delivers a timer.
-          await lock.release();
-        }
-      })();
-      return closing;
-    },
-    // Safe while the close still runs: the lock's release is safe to call twice.
-    abandon: () => lock.release(),
-  };
+  return { ...assembled, programFolders };
 }
 
 /**

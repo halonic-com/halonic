@@ -8,6 +8,13 @@ export {
 export type { TurnEvent, TurnLog } from "./agent/turn-log.ts";
 export { callerSource, type HalonicTool, halonicSource } from "./agent/turn-tools.ts";
 export { monthsSpend } from "./budget/spend.ts";
+export {
+  type AssembledEngine,
+  assembleEngine,
+  type EngineAssemblyOptions,
+  type RoutineEngine,
+  type RoutineTicks,
+} from "./engine-assembly.ts";
 export type {
   HarnessAgent,
   HarnessBridgeHost,
@@ -97,12 +104,6 @@ export {
   type KnowledgeFirstInput,
   withKnowledgeFirst,
 } from "./knowledge/knowledge-first.ts";
-export {
-  type LocalEngine,
-  type LocalEngineOptions,
-  type LocalEngineScheduler,
-  localEngine,
-} from "./local-engine.ts";
 export { defaultMaxRounds, LocalExecutor } from "./local-executor.ts";
 export type { LocalExecutorOptions } from "./local-executor-options.ts";
 export type { AbortOnStop } from "./run/abort-on-stop.ts";

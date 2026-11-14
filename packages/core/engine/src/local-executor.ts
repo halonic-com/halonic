@@ -208,8 +208,8 @@ export class LocalExecutor implements RunExecutor {
    * have stopped; a session that opens after that is closed as it opens.
    * Harness runs that were going end as `interrupted` when an engine next
    * starts on the same store, and chat turns in a harness reject. Timers
-   * delivered after this change nothing. `localEngine`'s `close` calls it
-   * before it closes the scheduler.
+   * delivered after this change nothing. `assembleEngine`'s `close` calls
+   * it before it closes the scheduler.
    */
   async close(): Promise<void> {
     await Promise.all([this.runs?.close(), this.chatHarnesses?.close()]);

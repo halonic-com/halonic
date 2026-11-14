@@ -72,7 +72,7 @@ export interface HarnessProfilesOptions {
  *
  * @example
  * const profiles = new HarnessProfiles({ workspace, halonicData, home, host, env, timeLimitMs });
- * localEngine({ ...options, harnesses: { ...harnesses, profiles } });
+ * assembleEngine({ ...options, executor: { ...options.executor, harnesses: { ...harnesses, profiles } } });
  */
 export class HarnessProfiles implements HarnessProfileBuilder {
   readonly #options: HarnessProfilesOptions;
