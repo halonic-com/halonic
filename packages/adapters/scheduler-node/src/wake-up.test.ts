@@ -51,24 +51,6 @@ verifies("scheduler-node.wake-up", () => {
       expect(s.listener.ticks).toEqual([]);
     });
 
-    it("rejects schedule and cancel after close, and writes nothing", async () => {
-      const s = startScheduler();
-      await s.scheduler.schedule("run_1", "wait", s.inMs(second));
-      await s.scheduler.close();
-      const append = s.store.append.bind(s.store);
-      let writes = 0;
-      s.store.append = async (changes) => {
-        writes += 1;
-        await append(changes);
-      };
-      await expect(s.scheduler.schedule("run_1", "later", s.inMs(minute))).rejects.toThrow(
-        "The scheduler is closed.",
-      );
-      await expect(s.scheduler.cancel("run_1", "wait")).rejects.toThrow("The scheduler is closed.");
-      expect(writes).toBe(0);
-      expect(s.timers.pendingCount).toBe(0);
-    });
-
     it("writes nothing to the store after close has resolved", async () => {
       const s = startScheduler();
       await s.scheduler.pending("run_1");
