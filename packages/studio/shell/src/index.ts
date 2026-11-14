@@ -66,7 +66,12 @@ export {
   engineRestartDelayMs,
   engineRestartWindowMs,
 } from "./engine/engine-start.ts";
-export { type EngineWords, engineWords, type StudioHost } from "./engine/engine-words.ts";
+export {
+  type EngineWords,
+  engineWords,
+  engineWordsOf,
+  type StudioHost,
+} from "./engine/engine-words.ts";
 export { copyDetailsWords, detailsOf } from "./errors/copy-details-words.ts";
 export {
   type ErrorAction,

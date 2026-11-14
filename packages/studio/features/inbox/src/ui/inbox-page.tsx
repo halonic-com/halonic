@@ -1,5 +1,11 @@
 import { Button, EmptyState, List, usePresentation } from "@halonicjs/studio-kit";
-import { errorMessageFor, type PlaceViewProps } from "@halonicjs/studio-shell";
+import {
+  type EngineWords,
+  engineWords,
+  engineWordsOf,
+  errorMessageFor,
+  type PlaceViewProps,
+} from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import { InboxService } from "../api.ts";
@@ -12,14 +18,19 @@ import { SetupPane } from "./setup-pane.tsx";
 import { WaitCard } from "./wait-card.tsx";
 
 const loadFailed = "Couldn't load the Inbox";
-/** Said when a load fails with no reason of its own (microcopy 10.1). */
-const notAnswering = "The engine isn't answering. It may still be starting.";
-/** Over the list when a later load fails: the items are the last ones that loaded (mc 10.1). */
-const showingLast = "The engine isn't answering. Showing what it said last.";
+
+/**
+ * The Inbox's empty state (microcopy 10.1). The desktop shows it in the right pane; a phone has
+ * no pane beside the list, so the list shows it in full instead of the quiet line.
+ */
+const nothingWaiting = {
+  title: "Nothing is waiting for you",
+  description: "Approvals and questions from your runs show up here.",
+};
 
 /** The Inbox place's page: the open workspace's Inbox, from `InboxService`. */
 export function InboxPage({ context }: PlaceViewProps) {
-  return <InboxView inbox={context.services.get(InboxService)} />;
+  return <InboxView inbox={context.services.get(InboxService)} words={engineWordsOf(context)} />;
 }
 
 /** Props for {@link InboxView}. */
@@ -27,6 +38,11 @@ export interface InboxViewProps {
   readonly inbox: Inbox;
   /** The clock for the waiting times; tests pass a fixed one. */
   readonly now?: () => Date;
+  /**
+   * The engine words for this window's host: said when a load fails with no reason of its own,
+   * and over the list when a later load fails (microcopy 10.1). The desktop app's by default.
+   */
+  readonly words?: EngineWords;
 }
 
 /**
@@ -46,7 +62,11 @@ export interface InboxViewProps {
  * Not here yet: notices, the request form, the narrow layout (HAL-1305), and
  * **Open run**, which comes with the run page.
  */
-export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
+export function InboxView({
+  inbox,
+  now = () => new Date(),
+  words = engineWords["desktop-app"],
+}: InboxViewProps) {
   const subscribe = useCallback((listener: () => void) => inbox.subscribe(listener), [inbox]);
   const state = useSyncExternalStore(subscribe, () => inbox.state);
   // The open item, kept here rather than looked up in the list: once you answer it, it leaves
@@ -96,7 +116,7 @@ export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
           <h1 className="text-title">Inbox</h1>
         </header>
         {state.loaded && state.error !== undefined ? (
-          <p className="px-4 pb-2 text-small text-fg-muted">{showingLast}</p>
+          <p className="px-4 pb-2 text-small text-fg-muted">{words.showingLast}</p>
         ) : null}
         <div ref={list} className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
           {failedFirst ? (
@@ -104,7 +124,7 @@ export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
               tone="error"
               align="start"
               title={loadFailed}
-              description={failureReason(state.error)}
+              description={failureReason(state.error, words)}
               action={{ label: "Try again", onClick: retry }}
             />
           ) : (
@@ -116,7 +136,11 @@ export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
               rows={state.items.map((item) => rowFor(item, now()))}
               onOpen={(key) => setOpen(state.items.find((item) => item.key === key) ?? null)}
               {...(open === null ? {} : { current: open.key })}
-              empty={{ title: "Nothing is waiting for you.", plain: true }}
+              empty={
+                phone
+                  ? { title: nothingWaiting.title, description: nothingWaiting.description }
+                  : { title: "Nothing is waiting for you.", plain: true }
+              }
               loading={!state.loaded}
               loadingLabel="Loading the Inbox"
               onRetry={retry}
@@ -146,6 +170,7 @@ export function InboxView({ inbox, now = () => new Date() }: InboxViewProps) {
               next={nextItem(state.items, open, openAt.current, setOpen)}
               now={now}
               answering={state.error === undefined}
+              words={words}
               close={close}
             />
           )}
@@ -189,6 +214,7 @@ function OpenCard({
   next,
   now,
   answering,
+  words,
   close,
 }: {
   readonly item: InboxItem;
@@ -196,6 +222,7 @@ function OpenCard({
   readonly next: NextItem | null;
   readonly now: () => Date;
   readonly answering: boolean;
+  readonly words: EngineWords;
   readonly close: () => void;
 }) {
   if (item.kind === "setup") {
@@ -204,6 +231,7 @@ function OpenCard({
         item={item}
         source={inbox.setupSource(item.provider)}
         answering={answering}
+        words={words}
         close={close}
       />
     );
@@ -236,10 +264,7 @@ function NothingOpen({ loaded, waiting }: { readonly loaded: boolean; readonly w
   }
   return (
     <div className="m-auto p-6">
-      <EmptyState
-        title="Nothing is waiting for you"
-        description="Approvals and questions from your runs show up here."
-      />
+      <EmptyState {...nothingWaiting} />
     </div>
   );
 }
@@ -248,8 +273,8 @@ function NothingOpen({ loaded, waiting }: { readonly loaded: boolean; readonly w
  * Why the Inbox couldn't load: a kinded error's own reason, else that the engine isn't answering,
  * as mc 10.1 says it, since a load that fails without a kind never reached the engine.
  */
-function failureReason(error: unknown): string {
+function failureReason(error: unknown, words: EngineWords): string {
   const message = errorMessageFor(error, { title: loadFailed });
   const reason = message.body.trim();
-  return message.kind === "internal" || reason === "" ? notAnswering : reason;
+  return message.kind === "internal" || reason === "" ? words.notAnswering : reason;
 }

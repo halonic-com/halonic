@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { PresentationProvider } from "@halonicjs/studio-kit";
-import { createShell } from "@halonicjs/studio-shell";
+import { createShell, engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -276,6 +276,26 @@ verifies("inbox.page", () => {
       await settled();
       expect(root.querySelector("section h2")?.textContent).toBe("Approve this reply?");
       expect(button(root, "Back to Inbox")).toBeDefined();
+    });
+
+    it("shows the full empty state, with its description, when nothing waits", async () => {
+      const { root } = await openPhone(fakeRuns([]).runs);
+      expect(root.textContent).toContain("Nothing is waiting for you");
+      expect(root.textContent).toContain("Approvals and questions from your runs show up here.");
+    });
+
+    it("words a failed load for the phone host, not the desktop app", async () => {
+      const fake = fakeRuns([notes]);
+      fake.fail(new Error("fetch failed"));
+      const inbox = new Inbox(fake.runs);
+      const root = render(
+        <PresentationProvider presentation="phone">
+          <InboxView inbox={inbox} words={engineWords.phone} />
+        </PresentationProvider>,
+      );
+      await settled();
+      expect(root.textContent).toContain("Halonic on your computer isn't answering.");
+      expect(root.textContent).not.toContain("The engine isn't answering.");
     });
 
     it("has no Back link on the desktop", async () => {

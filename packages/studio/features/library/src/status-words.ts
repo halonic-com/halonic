@@ -1,7 +1,5 @@
 import { clockTime } from "@halonicjs/studio-feature-inbox/api";
 
-const notAnswering = "The engine isn't answering.";
-
 /** The words of the status section (decided with Sofia's review, HAL-7814). */
 export const statusWords = {
   refusalsHeading: "Recent refusals",
@@ -13,8 +11,6 @@ export const statusWords = {
   time: (at: Date, now: Date = new Date()) => clockTime(at, now),
   loading: "Loading refusals",
   loadFailed: "Couldn't load refusals",
-  notAnswering,
-  engineLost: `${notAnswering} Showing what it said last.`,
   tryAgain: "Try again",
   /** What a screen reader hears when a connector's state changes while the page is open. */
   stateChanged: (name: string, label: string) => `${name}: ${label}.`,
