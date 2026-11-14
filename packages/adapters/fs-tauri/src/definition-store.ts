@@ -11,13 +11,7 @@ import {
   type WriteOptions,
   type WriteResult,
 } from "@halonicjs/ports";
-import {
-  bytesToHex,
-  type ErrorKind,
-  KeyedQueue,
-  KindedError,
-  matchesExpected,
-} from "@halonicjs/std";
+import { bytesToHex, type ErrorKind, KeyedQueue, KindedError } from "@halonicjs/std";
 import {
   type FileRefusalKind,
   fileCommands,
@@ -125,19 +119,18 @@ export class TauriDefinitionStore implements DefinitionStore {
   async remove(path: string, options: RemoveOptions = {}): Promise<RemoveResult> {
     checkPublicWorkspacePath(path);
     return await this.#writes.run(path, async () => {
-      const { expected } = options;
-      if (expected !== undefined) {
-        // The shell's remove has no `expected` yet, so this checks just before it asks.
-        const current = await this.read(path);
-        if (!(await matchesExpected(current, expected, webCryptoDigest))) {
-          return { status: "changed-on-disk", current };
-        }
-      }
+      let result: RemoveResult = { status: "removed" };
+      // A remove the shell refused as changed on disk left the file alone: the watches still report that change.
       await runOwnChange(this.#watches, path, null, webCryptoDigest, async () => {
-        await this.#call(fileCommands.remove, { path });
-        return true;
+        // The shell compares `expected` with the file under its lock, so nothing can come between.
+        const answer = await this.#call(fileCommands.remove, {
+          path,
+          ...(options.expected === undefined ? {} : { expected: options.expected }),
+        });
+        result = checkedRemove(answer);
+        return result.status === "removed";
       });
-      return { status: "removed" };
+      return result;
     });
   }
 
@@ -252,6 +245,17 @@ function noAnswer(): KindedError {
 function checkedWrite(answer: unknown): WriteResult {
   const { status, current } = (answer ?? {}) as Record<string, unknown>;
   if (status === "written") {
+    return { status };
+  }
+  if (status === "changed-on-disk" && (current === null || typeof current === "string")) {
+    return { status, current };
+  }
+  throw noAnswer();
+}
+
+function checkedRemove(answer: unknown): RemoveResult {
+  const { status, current } = (answer ?? {}) as Record<string, unknown>;
+  if (status === "removed") {
     return { status };
   }
   if (status === "changed-on-disk" && (current === null || typeof current === "string")) {
