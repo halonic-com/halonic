@@ -1,4 +1,10 @@
-import type { CloudflareAccount, CloudflareApi, TokenStatus } from "./api.ts";
+import type {
+  CloudflareAccount,
+  CloudflareApi,
+  FoundResource,
+  ResourceRef,
+  TokenStatus,
+} from "./api.ts";
 
 /** What a fake Cloudflare knows. */
 export interface FakeCloudflareState {
@@ -6,6 +12,10 @@ export interface FakeCloudflareState {
   /** Answers per endpoint; a missing entry means "active". */
   userToken?: TokenStatus | Error;
   accountToken?: TokenStatus | Error;
+  /** Existing resources by `kind name`. */
+  resources?: Record<string, FoundResource>;
+  /** Makes every call that changes something throw, to prove a mode writes nothing. */
+  failOnWrite?: boolean;
 }
 
 /** A {@link CloudflareApi} in memory that records each call, for tests of everything above the client. */
@@ -14,6 +24,13 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
   const answer = (value: TokenStatus | Error | undefined): TokenStatus => {
     if (value instanceof Error) throw value;
     return value ?? { active: true };
+  };
+  const resources = { ...state.resources };
+  const key = (ref: ResourceRef) => `${ref.kind} ${ref.name}`;
+  const write = (call: string, ref: ResourceRef, marked: boolean) => {
+    if (state.failOnWrite) throw new Error(`unexpected write: ${call} ${key(ref)}`);
+    calls.push(`${call} ${key(ref)}`);
+    resources[key(ref)] = { marked };
   };
   return {
     calls,
@@ -28,6 +45,16 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
     async verifyAccountToken(accountId) {
       calls.push(`verifyAccountToken ${accountId}`);
       return answer(state.accountToken);
+    },
+    async findResource(_accountId, ref) {
+      calls.push(`findResource ${key(ref)}`);
+      return resources[key(ref)];
+    },
+    async createResource(_accountId, ref) {
+      write("createResource", ref, true);
+    },
+    async adoptResource(_accountId, ref) {
+      write("adoptResource", ref, true);
     },
   };
 }

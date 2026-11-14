@@ -1,4 +1,10 @@
-import type { CloudflareAccount, CloudflareApi, TokenStatus } from "./api.ts";
+import type {
+  CloudflareAccount,
+  CloudflareApi,
+  FoundResource,
+  ResourceRef,
+  TokenStatus,
+} from "./api.ts";
 import { DeployError, redact } from "./errors.ts";
 
 /** What the client needs to talk to Cloudflare. */
@@ -18,6 +24,8 @@ interface Envelope {
   readonly result_info?: { readonly page?: number; readonly total_pages?: number };
 }
 
+/** The Worker tag that marks a Worker as made by Halonic. */
+export const markerTag = "halonic";
 const defaultBaseUrl = "https://api.cloudflare.com/client/v4";
 const requestTimeoutMs = 30_000;
 const accountsPerPage = 50;
@@ -30,11 +38,110 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
   const baseUrl = options.baseUrl ?? defaultBaseUrl;
 
   async function get(path: string): Promise<Envelope> {
-    const where = `GET ${path}`;
-    let response: Response;
+    return (await request("GET", path)) as Envelope;
+  }
+
+  /** Runs one SQL statement on a D1 database. Values go in `params`, never into the SQL text. */
+  async function query(
+    accountId: string,
+    databaseId: string,
+    sql: string,
+    params: readonly string[] = [],
+  ): Promise<Envelope> {
+    const path = `/accounts/${encodeURIComponent(accountId)}/d1/database/${encodeURIComponent(databaseId)}/query`;
+    return (await request("POST", path, { sql, params })) as Envelope;
+  }
+
+  /** The database id for a name, or `undefined` when there is none. */
+  async function databaseId(accountId: string, name: string): Promise<string | undefined> {
+    const path = `/accounts/${encodeURIComponent(accountId)}/d1/database?name=${encodeURIComponent(name)}`;
+    const result = (await get(path)).result;
+    const match = Array.isArray(result)
+      ? (result as { uuid?: unknown; name?: unknown }[]).find((d) => d.name === name)
+      : undefined;
+    return typeof match?.uuid === "string" ? match.uuid : undefined;
+  }
+
+  /** Whether the `_halonic_marker` table lists `kind:name`. A missing table means "no". */
+  async function isMarked(accountId: string, id: string, ref: ResourceRef) {
     try {
-      response = await doFetch(`${baseUrl}${path}`, {
-        headers: { authorization: `Bearer ${options.token}` },
+      const body = await query(
+        accountId,
+        id,
+        "SELECT 1 AS found FROM _halonic_marker WHERE resource = ?",
+        [`${ref.kind}:${ref.name}`],
+      );
+      const rows = (body.result as { results?: unknown[] }[] | undefined)?.[0]?.results;
+      return Array.isArray(rows) && rows.length > 0;
+    } catch (error) {
+      // Only D1's "no such table" answer means "not marked". A timeout, a 5xx or a token
+      // without D1 access must surface, or the user is told to adopt for the wrong reason.
+      if (error instanceof DeployError && /no such table/i.test(error.message)) return false;
+      throw error;
+    }
+  }
+
+  /** Writes the marker row for `ref` into the database named `databaseName`. */
+  async function mark(accountId: string, databaseName: string, ref: ResourceRef) {
+    const id = await databaseId(accountId, databaseName);
+    if (!id) throw failed(`database ${databaseName} not found`);
+    await markIn(accountId, id, ref);
+  }
+
+  async function markIn(accountId: string, id: string, ref: ResourceRef) {
+    await query(
+      accountId,
+      id,
+      "CREATE TABLE IF NOT EXISTS _halonic_marker (resource TEXT PRIMARY KEY)",
+    );
+    await query(accountId, id, "INSERT OR IGNORE INTO _halonic_marker (resource) VALUES (?)", [
+      `${ref.kind}:${ref.name}`,
+    ]);
+  }
+
+  async function findWorker(accountId: string, workerName: string) {
+    const body = await request(
+      "GET",
+      `/accounts/${encodeURIComponent(accountId)}/workers/scripts/${encodeURIComponent(workerName)}/script-settings`,
+      undefined,
+      true,
+    );
+    if (!body) return undefined;
+    const tags = (body.result as { tags?: unknown } | undefined)?.tags;
+    return { marked: Array.isArray(tags) && tags.includes(markerTag) } satisfies FoundResource;
+  }
+
+  async function findDatabase(accountId: string, ref: ResourceRef) {
+    const id = await databaseId(accountId, ref.name);
+    if (!id) return undefined;
+    return { marked: await isMarked(accountId, id, ref) } satisfies FoundResource;
+  }
+
+  async function findBucket(accountId: string, ref: ResourceRef) {
+    const bucket = await request(
+      "GET",
+      `/accounts/${encodeURIComponent(accountId)}/r2/buckets/${encodeURIComponent(ref.name)}`,
+      undefined,
+      true,
+    );
+    if (!bucket) return undefined;
+    const holder = ref.markedIn ? await databaseId(accountId, ref.markedIn) : undefined;
+    return {
+      marked: holder ? await isMarked(accountId, holder, ref) : false,
+    } satisfies FoundResource;
+  }
+
+  /** Sends one request. A network failure or timeout becomes a {@link DeployError}. */
+  async function send(method: string, path: string, json?: unknown): Promise<Response> {
+    const where = `${method} ${path}`;
+    try {
+      return await doFetch(`${baseUrl}${path}`, {
+        method,
+        headers: {
+          authorization: `Bearer ${options.token}`,
+          ...(json === undefined ? {} : { "content-type": "application/json" }),
+        },
+        ...(json === undefined ? {} : { body: JSON.stringify(json) }),
         signal: AbortSignal.timeout(requestTimeoutMs),
       });
     } catch (cause) {
@@ -44,9 +151,20 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
       const reason = cause instanceof Error ? cause.message : "unknown error";
       throw failed(`${where} failed: ${reason}`);
     }
+  }
+
+  /** `undefined` for a 404 when `allowMissing` is set; otherwise the envelope. */
+  async function request(
+    method: "GET" | "POST",
+    path: string,
+    json?: unknown,
+    allowMissing = false,
+  ): Promise<Envelope | undefined> {
+    const response = await send(method, path, json);
+    if (allowMissing && response.status === 404) return undefined;
     const body = await readEnvelope(response);
     if (!response.ok || body.success !== true) {
-      throw failed(`${where} was refused (HTTP ${response.status})${describe(body)}`);
+      throw failed(`${method} ${path} was refused (HTTP ${response.status})${describe(body)}`);
     }
     return body;
   }
@@ -79,7 +197,39 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
         (await get(`/accounts/${encodeURIComponent(accountId)}/tokens/verify`)).result,
       );
     },
+    async findResource(accountId, ref) {
+      if (ref.kind === "worker") return findWorker(accountId, ref.name);
+      if (ref.kind === "database") return findDatabase(accountId, ref);
+      return findBucket(accountId, ref);
+    },
+    async createResource(accountId, ref) {
+      const account = encodeURIComponent(accountId);
+      if (ref.kind === "database") {
+        const created = await request("POST", `/accounts/${account}/d1/database`, {
+          name: ref.name,
+        });
+        const id = (created?.result as { uuid?: unknown } | undefined)?.uuid;
+        if (typeof id !== "string") throw failed(`database ${ref.name} was created without an id`);
+        // The database can't be marked first. If this write fails, the next deploy finds an
+        // unmarked database and the way out is `adopt`.
+        await markIn(accountId, id, ref);
+      } else if (ref.kind === "bucket") {
+        // Mark first: a marker for a bucket that doesn't exist is harmless (the next run
+        // creates it), while a bucket without its marker would be refused as not ours.
+        await mark(accountId, requireMarkedIn(ref), ref);
+        await request("POST", `/accounts/${account}/r2/buckets`, { name: ref.name });
+      }
+    },
+    async adoptResource(accountId, ref) {
+      if (ref.kind === "database") await mark(accountId, ref.name, ref);
+      else if (ref.kind === "bucket") await mark(accountId, requireMarkedIn(ref), ref);
+    },
   };
+
+  function requireMarkedIn(ref: ResourceRef): string {
+    if (!ref.markedIn) throw failed(`bucket ${ref.name} has no database to hold its marker`);
+    return ref.markedIn;
+  }
 }
 
 async function readEnvelope(response: Response): Promise<Envelope> {
