@@ -18,6 +18,15 @@ export type { CloudflareClientOptions } from "./client.ts";
 export { createCloudflareClient } from "./client.ts";
 export type { ResolveCredentialsOptions, ResolvedCredentials } from "./credentials.ts";
 export { resolveCredentials } from "./credentials.ts";
+export type {
+  DeployDone,
+  DeployOptions,
+  DeployPayload,
+  DeployPlan,
+  DeployProgress,
+  DeploySource,
+} from "./deploy.ts";
+export { deploy } from "./deploy.ts";
 export type { DeployErrorCode } from "./errors.ts";
 export {
   DeployError,
