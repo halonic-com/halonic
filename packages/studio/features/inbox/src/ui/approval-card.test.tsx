@@ -6,76 +6,21 @@ import type { ApprovalItem } from "../inbox-items.ts";
 import { inboxItems } from "../inbox-items.ts";
 import { pendingApproval, waitingRun } from "../test-runs.test-helper.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
-import { render, unmountAll } from "../test-support/render.tsx";
-import { ApprovalCard, type ApprovalCardProps } from "./approval-card.tsx";
+import { unmountAll } from "../test-support/render.tsx";
+import {
+  askedAt,
+  button,
+  createNoteItem,
+  manual,
+  openCard,
+  press,
+} from "./approval-card.test-helper.tsx";
 
 beforeEach(fakeModal);
 afterEach(() => {
   unmountAll();
   restoreModal();
 });
-
-// Local times, so the test reads the same in every time zone. Sun 8 Nov 2026.
-const askedAt = new Date(2026, 10, 8, 10, 42);
-
-function createNoteItem(args: unknown = { title: "Refund for Sam", body: "" }): ApprovalItem {
-  const approval = {
-    ...pendingApproval("call-1", "notes-mcp__create_note", askedAt.toISOString()),
-    args,
-  };
-  const [item] = inboxItems([waitingRun("r47", { approvals: [approval] })]);
-  if (item?.kind !== "approval") throw new Error("expected an approval item");
-  return item;
-}
-
-/** A clock the test moves, and a card on it. */
-function openCard(overrides: Partial<ApprovalCardProps> = {}) {
-  const clock = { now: new Date(2026, 10, 8, 10, 43) };
-  const sent: string[] = [];
-  const props: ApprovalCardProps = {
-    item: createNoteItem(),
-    agentName: "Sorter",
-    subagentName: null,
-    decisions: {
-      approve: async () => {
-        sent.push("approve");
-        return waitingRun("r47");
-      },
-      reject: async () => {
-        sent.push("reject");
-        return waitingRun("r47");
-      },
-      askForChanges: async (_item, note) => {
-        sent.push(`note: ${note}`);
-        return waitingRun("r47");
-      },
-    },
-    onOpenRun: () => {},
-    next: null,
-    back: null,
-    now: () => clock.now,
-    ...overrides,
-  };
-  const root = render(<ApprovalCard {...props} />);
-  const later = (seconds: number) => {
-    clock.now = new Date(clock.now.getTime() + seconds * 1000);
-  };
-  return { root, sent, clock, later };
-}
-
-function button(root: HTMLElement, name: string): HTMLButtonElement {
-  const found = [...root.querySelectorAll("button")].find((b) => b.textContent?.startsWith(name));
-  if (found === undefined) throw new Error(`no button "${name}"`);
-  return found;
-}
-
-/** A real pointer press: a press, then the click. */
-async function press(target: HTMLElement) {
-  await act(async () => {
-    target.dispatchEvent(new Event("pointerdown", { bubbles: true }));
-    target.click();
-  });
-}
 
 verifies("inbox.approval-card", () => {
   describe("waiting", () => {
@@ -325,126 +270,34 @@ verifies("inbox.approval-card", () => {
       expect(root.textContent).toContain("Rejected by you at");
     });
 
+    it("shows the command to copy, with no Try again, when only the command line can answer", async () => {
+      const { root, later } = openCard({
+        decisions: {
+          approve: async () => {
+            throw manual();
+          },
+          reject: async () => waitingRun("r47"),
+          askForChanges: async () => waitingRun("r47"),
+        },
+      });
+      later(2);
+      await press(button(root, "Approve"));
+      const slot = root.querySelector("[role='alert']");
+      expect(slot?.textContent).toContain("Studio can't answer runs yet.");
+      expect(slot?.querySelector("code, [class*='font-mono']")?.textContent).toBe(
+        "halonic runs send 7k2m9p approve",
+      );
+      expect(root.querySelector("button[aria-label='Copy command']")).not.toBeNull();
+      expect(root.textContent).not.toContain("Try again");
+      expect(root.textContent).not.toContain("Couldn't record your decision.");
+      expect(button(root, "Approve")).toBeDefined();
+    });
+
     it("opens the run", async () => {
       const onOpenRun = vi.fn();
       const { root } = openCard({ onOpenRun });
       await press(button(root, "Open run"));
       expect(onOpenRun).toHaveBeenCalledWith("r47");
-    });
-  });
-
-  describe("asking for changes", () => {
-    function noteField(): HTMLTextAreaElement {
-      const field = document.querySelector<HTMLTextAreaElement>("dialog textarea");
-      if (field === null) throw new Error("no note field");
-      return field;
-    }
-
-    async function type(text: string) {
-      await act(async () => {
-        const field = noteField();
-        const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
-        setter?.call(field, text);
-        field.dispatchEvent(new Event("input", { bubbles: true }));
-      });
-    }
-
-    function dialogButton(name: string): HTMLButtonElement {
-      const dialog = document.querySelector("dialog");
-      if (dialog === null) throw new Error("no dialog");
-      return button(dialog as HTMLElement, name);
-    }
-
-    it("opens a dialog with the note focused, and sends it as the decision", async () => {
-      const { root, sent, later } = openCard();
-      later(61);
-      await press(button(root, "Ask for changes"));
-      expect(document.querySelector("dialog h2")?.textContent).toBe("Ask for changes");
-      expect(document.activeElement).toBe(noteField());
-      await type("Use the shorter title");
-      await press(dialogButton("Send note"));
-      expect(sent).toEqual(["note: Use the shorter title"]);
-      expect(document.querySelector("dialog")).toBeNull();
-      const callout = root.querySelector("[role='group']");
-      expect(callout?.textContent).toContain(
-        "Note sent to the agent at 10:44: Use the shorter title",
-      );
-      expect(document.activeElement).toBe(callout);
-    });
-
-    it("shows the sent note as text: a link and a script stay as written", async () => {
-      const { root, later } = openCard();
-      later(61);
-      const note = "See [the docs](https://example.com) <script>alert(1)</script>";
-      await press(button(root, "Ask for changes"));
-      await type(note);
-      await press(dialogButton("Send note"));
-      const callout = root.querySelector("[role='group']");
-      expect(callout?.textContent).toContain(`Note sent to the agent at 10:44: ${note}`);
-      expect(callout?.querySelector("a, script")).toBeNull();
-    });
-
-    it("folds a long sent note behind Show more", async () => {
-      const { root, later } = openCard();
-      later(61);
-      await press(button(root, "Ask for changes"));
-      await type(Array.from({ length: 44 }, (_, index) => `line ${index + 1}`).join("\n"));
-      await press(dialogButton("Send note"));
-      const callout = root.querySelector<HTMLElement>("[role='group']");
-      if (callout === null) throw new Error("no decided Callout");
-      expect(callout.textContent).not.toContain("line 7");
-      await act(async () => button(callout, "Show 38 more lines").click());
-      expect(callout.textContent).toContain("line 44");
-    });
-
-    it("says what's missing for an empty note, and sends nothing", async () => {
-      const { root, sent, later } = openCard();
-      later(2);
-      await press(button(root, "Ask for changes"));
-      await press(dialogButton("Send note"));
-      expect(sent).toEqual([]);
-      expect(document.querySelector("dialog")?.textContent).toContain("Say what should change.");
-      expect(document.activeElement).toBe(noteField());
-      expect(noteField().getAttribute("aria-invalid")).toBe("true");
-    });
-
-    it("keeps the dialog and the note when the note can't be sent", async () => {
-      const { root, later } = openCard({
-        decisions: {
-          approve: async () => waitingRun("r47"),
-          reject: async () => waitingRun("r47"),
-          askForChanges: async () => {
-            throw new Error("engine gone");
-          },
-        },
-      });
-      later(2);
-      await press(button(root, "Ask for changes"));
-      await type("Use the shorter title");
-      await press(dialogButton("Send note"));
-      // The dialog's alert slot fills a frame after the request ends, so the failure is read.
-      await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
-      expect(document.querySelector("dialog")?.textContent).toContain(
-        "Couldn't record your decision.",
-      );
-      expect(noteField().value).toBe("Use the shorter title");
-    });
-
-    it("keeps the note after Cancel, for the next time it opens", async () => {
-      const { root, later } = openCard();
-      later(2);
-      await press(button(root, "Ask for changes"));
-      await type("Use the shorter title");
-      await press(dialogButton("Cancel"));
-      expect(document.querySelector("dialog")).toBeNull();
-      await press(button(root, "Ask for changes"));
-      expect(noteField().value).toBe("Use the shorter title");
-    });
-
-    it("doesn't open in the first second", async () => {
-      const { root } = openCard();
-      await press(button(root, "Ask for changes"));
-      expect(document.querySelector("dialog")).toBeNull();
     });
   });
 });

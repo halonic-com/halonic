@@ -71,7 +71,7 @@ export function statusCounts(
 
 /** What the list says in place of rows, and the one thing to do next, if any. */
 export type EmptyList =
-  /** No runs at all (R1): the Empty state with Go to Workflows, and no filters above it. */
+  /** No runs at all (R1): the Empty state, and no filters above it. */
   | { readonly kind: "no-runs" }
   /** A status chip with none (R4 to R6): the line alone, since All is next to it (D13). */
   | { readonly kind: "status"; readonly line: string }

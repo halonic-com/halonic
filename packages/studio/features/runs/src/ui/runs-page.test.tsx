@@ -33,17 +33,12 @@ async function settled(): Promise<void> {
   });
 }
 
-async function openPage(
-  source: RunsSource,
-  goToWorkflows?: () => void,
-  openRun?: (run: RunSummary) => void,
-) {
+async function openPage(source: RunsSource, openRun?: (run: RunSummary) => void) {
   const list = new RunsList(source);
   const root = render(
     <RunsView
       list={list}
       now={() => mondayMorning}
-      {...(goToWorkflows === undefined ? {} : { goToWorkflows })}
       {...(openRun === undefined ? {} : { openRun })}
     />,
   );
@@ -175,14 +170,15 @@ verifies("runs.list", () => {
   });
 
   describe("in place of rows", () => {
-    it("says there are no runs yet, with no filters, and goes to Workflows", async () => {
-      const goToWorkflows = vi.fn();
-      const { root } = await openPage(fakeSource([]).source, goToWorkflows);
+    it("says there are no runs yet, with no filters and no Workflows button", async () => {
+      const { root } = await openPage(fakeSource([]).source);
       expect(root.textContent).toContain("No runs yet");
-      expect(root.textContent).toContain("To start one today, type halonic run in a terminal");
+      expect(root.textContent).toContain(
+        "Runs started from the command line show up here. To start one, type halonic run in a terminal.",
+      );
+      expect(root.querySelector("code")?.textContent).toBe("halonic run");
       expect(root.querySelector("[role=radiogroup]")).toBeNull();
-      await click(control(root, "Go to Workflows"));
-      expect(goToWorkflows).toHaveBeenCalled();
+      expect(root.textContent).not.toContain("Go to Workflows");
     });
 
     it("says only test runs are there, and Show test runs shows them", async () => {
@@ -236,7 +232,7 @@ verifies("runs.list", () => {
 
   it("opens a row's run with a click", async () => {
     const openRun = vi.fn();
-    const { root } = await openPage(fakeSource([running]).source, undefined, openRun);
+    const { root } = await openPage(fakeSource([running]).source, openRun);
 
     await click(root.querySelector<HTMLElement>('[role="grid"] [role="gridcell"]') ?? root);
 

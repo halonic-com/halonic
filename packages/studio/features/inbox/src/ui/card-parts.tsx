@@ -1,4 +1,5 @@
-import { Button, Callout, type CalloutHandle } from "@halonicjs/studio-kit";
+import { errorKindOf } from "@halonicjs/std";
+import { Button, Callout, type CalloutHandle, CommandBox } from "@halonicjs/studio-kit";
 import { type RefObject, useEffect, useState } from "react";
 import { PlainValue } from "./plain-value.tsx";
 
@@ -130,16 +131,40 @@ export function DecidedBar({ text, note, next, back, callout }: DecidedBarProps)
   );
 }
 
+/**
+ * An answer Studio can't send itself: the executor's sentence and the command line that sends it,
+ * which no retry can replace.
+ */
+export interface ManualAnswer {
+  readonly message: string;
+  readonly command: string;
+}
+
+/** The manual answer a failure holds: an `unavailable` error whose `fix` is the command to run. */
+export function manualAnswerOf(error: unknown): ManualAnswer | null {
+  if (errorKindOf(error) !== "unavailable") return null;
+  const { message, fix } = error as { message: string; fix?: unknown };
+  return typeof fix === "string" && fix !== "" ? { message, command: fix } : null;
+}
+
 interface FailedLineProps {
   /** Shows "Couldn't record your decision." with **Try again** when set. */
   readonly onRetry: (() => void) | null;
+  /** Shows the executor's sentence and the command to copy, with no **Try again**, when set. */
+  readonly manual?: ManualAnswer | null;
 }
 
 /** The bar's always-mounted alert slot, above its buttons (a11y 8.3). */
-export function FailedLine({ onRetry }: FailedLineProps) {
+export function FailedLine({ onRetry, manual = null }: FailedLineProps) {
   return (
     <div role="alert" className="text-small text-fg">
-      {onRetry === null ? null : (
+      {manual === null ? null : (
+        <span className="flex flex-col gap-2">
+          {manual.message}
+          <CommandBox command={manual.command} />
+        </span>
+      )}
+      {manual !== null || onRetry === null ? null : (
         <span className="flex flex-wrap items-center gap-2">
           {failedText}
           <Button variant="ghost" size="sm" onClick={onRetry}>

@@ -29,11 +29,10 @@ import { type RunsList, RunsListService, type RunsListState } from "../runs-list
 
 /** The Runs place's page: the open workspace's runs, from `RunsListService`. */
 export function RunsPage({ context }: PlaceViewProps) {
-  const { openPlace, openItem } = context;
+  const { openItem } = context;
   return (
     <RunsView
       list={context.services.get(RunsListService)}
-      {...(openPlace === undefined ? {} : { goToWorkflows: () => openPlace("workflows") })}
       {...(openItem === undefined
         ? {}
         : {
@@ -46,8 +45,6 @@ export function RunsPage({ context }: PlaceViewProps) {
 /** Props for {@link RunsView}. */
 export interface RunsViewProps {
   readonly list: RunsList;
-  /** Opens Workflows, for the empty state's button; without it the button isn't there. */
-  readonly goToWorkflows?: () => void;
   /** Opens a run's page in the active tab, for a row's click and Enter. */
   readonly openRun?: (run: RunSummary) => void;
   /** The clock for the day headings and due times; tests pass a fixed one. */
@@ -65,7 +62,7 @@ export interface RunsViewProps {
  * Not here yet: the spend line (T4), opening a run in a new tab, the text
  * and hub filters, and the row's ⋮.
  */
-export function RunsView({ list, goToWorkflows, openRun, now = () => new Date() }: RunsViewProps) {
+export function RunsView({ list, openRun, now = () => new Date() }: RunsViewProps) {
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
   const state = useSyncExternalStore(subscribe, () => list.state);
   const [filters, setFilters] = useState<RunsFilters>(startFilters);
@@ -96,7 +93,6 @@ export function RunsView({ list, goToWorkflows, openRun, now = () => new Date() 
         onFilters={setFilters}
         retry={retry}
         showTestRuns={showTestRuns}
-        goToWorkflows={goToWorkflows}
         openRow={openRow}
         now={now()}
       />
@@ -112,7 +108,6 @@ function PageBody({
   onFilters,
   retry,
   showTestRuns,
-  goToWorkflows,
   openRow,
   now,
 }: {
@@ -122,7 +117,6 @@ function PageBody({
   readonly onFilters: (filters: RunsFilters) => void;
   readonly retry: () => void;
   readonly showTestRuns: () => void;
-  readonly goToWorkflows: (() => void) | undefined;
   readonly openRow: ((id: string) => void) | undefined;
   readonly now: Date;
 }) {
@@ -139,7 +133,7 @@ function PageBody({
   }
   const empty = state.loaded ? emptyList(rows, filters) : undefined;
   if (empty?.kind === "no-runs") {
-    return <NoRuns goToWorkflows={goToWorkflows} />;
+    return <NoRuns />;
   }
   return (
     <>
@@ -158,14 +152,17 @@ function PageBody({
 }
 
 /** No runs at all (R1), with no filters above it: there's nothing to filter. */
-function NoRuns({ goToWorkflows }: { readonly goToWorkflows: (() => void) | undefined }) {
+function NoRuns() {
   return (
     <EmptyState
       title={emptyListWords.noRunsTitle}
-      description={emptyListWords.noRunsBody}
-      {...(goToWorkflows === undefined
-        ? {}
-        : { action: { label: emptyListWords.goToWorkflows, onClick: goToWorkflows } })}
+      description={
+        <>
+          {emptyListWords.noRunsBody}
+          <code className="font-mono text-code">{emptyListWords.noRunsCommand}</code>
+          {emptyListWords.noRunsBodyEnd}
+        </>
+      }
     />
   );
 }

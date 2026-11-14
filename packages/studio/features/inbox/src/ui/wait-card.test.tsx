@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -210,6 +211,25 @@ verifies("inbox.wait-card", () => {
       await press(button(root, "Try again"));
       expect(sent).toEqual(["reject", "reject"]);
       expect(root.textContent).toContain("Rejected by you at");
+    });
+
+    it("shows the command to copy, with no Try again, when only the command line can answer", async () => {
+      const { root, later } = openCard({
+        decisions: {
+          answer: async () => {
+            throw new KindedError("unavailable", "Studio can't answer runs yet.", {
+              fix: "halonic runs send 7k2m9p reject",
+            });
+          },
+        },
+      });
+      later(2);
+      await press(button(root, "Reject"));
+      const text = root.querySelector("[role='alert']")?.textContent ?? "";
+      expect(text).toContain("Studio can't answer runs yet.");
+      expect(text).toContain("halonic runs send 7k2m9p reject");
+      expect(root.querySelector("button[aria-label='Copy command']")).not.toBeNull();
+      expect(root.textContent).not.toContain("Try again");
     });
 
     it("offers the way back to the run you came from once answered", async () => {

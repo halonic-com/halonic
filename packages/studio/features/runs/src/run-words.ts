@@ -126,9 +126,10 @@ export const lineSeparator = " · ";
 /** What the Runs list says in place of rows (mc 15.1; states R1 to R6, R10 and R17). */
 export const emptyListWords = {
   noRunsTitle: "No runs yet",
-  noRunsBody:
-    "A run is one time a workflow or agent does its job. To start one today, type halonic run in a terminal.",
-  goToWorkflows: "Go to Workflows",
+  /** The body is the three parts around the command, which shows in code style (HAL-9369). */
+  noRunsBody: "Runs started from the command line show up here. To start one, type ",
+  noRunsCommand: "halonic run",
+  noRunsBodyEnd: " in a terminal.",
   onlyTestRuns: "Only test runs so far.",
   showTestRuns: "Show test runs",
   /** A status chip with no runs; no button, since All is next to it (D13). */
