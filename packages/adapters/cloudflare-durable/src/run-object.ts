@@ -75,6 +75,10 @@ export class RunObject extends DurableObject implements RunObjectApi {
     return this.#state.events(afterSeq);
   }
 
+  watch(afterSeq?: number): Promise<ReadableStream<Uint8Array>> {
+    return this.#state.watch(afterSeq);
+  }
+
   snapshot(): Promise<RunSnapshot | null> {
     return this.#state.snapshot();
   }

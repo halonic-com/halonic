@@ -28,6 +28,11 @@ export interface RunObjectApi {
     options?: AppendOptions,
   ): Promise<AppendResult>;
   events(afterSeq?: number): Promise<RunEvent[]>;
+  /**
+   * The events after `afterSeq` as newline-delimited JSON, one event a line, then each new event as
+   * it is stored. The stream closes after the event that ends the run, and errors when it breaks.
+   */
+  watch(afterSeq?: number): Promise<ReadableStream<Uint8Array>>;
   snapshot(): Promise<RunSnapshot | null>;
   /** The run's summary, worked out from its log, or `null` for a log that is empty. */
   summary(): Promise<RunSummary | null>;

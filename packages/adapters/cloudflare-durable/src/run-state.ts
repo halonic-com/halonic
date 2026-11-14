@@ -11,15 +11,9 @@ import { RunLog } from "./run-log.ts";
 import type { RunHealth, RunObjectApi } from "./run-object-api.ts";
 import { RunOutbox } from "./run-outbox.ts";
 import type { RunSql } from "./run-sql.ts";
+import { isEndingEvent, RunWatchers } from "./run-watchers.ts";
 import { TimerDelivery } from "./timer-delivery.ts";
 import { TimerTable } from "./timer-table.ts";
-
-/** The events that end a run (see `summarize`): nothing follows them. */
-const endingEventTypes: ReadonlySet<string> = new Set([
-  "run.completed",
-  "run.failed",
-  "run.cant-try",
-]);
 
 /** Where the object's one alarm is kept: a Durable Object's storage, or a fake in tests. */
 export interface AlarmSlot {
@@ -68,6 +62,7 @@ export class RunState implements RunObjectApi {
   readonly #delivery: TimerDelivery;
   readonly #outbox: RunOutbox;
   readonly #alarm: AlarmSlot;
+  readonly #watchers = new RunWatchers();
   readonly #options: RunStateOptions;
   /** Wakes the send loop of a running alarm, so an append made during a timer's call is sent. */
   #wakeSendLoop: () => void = () => {};
@@ -94,6 +89,8 @@ export class RunState implements RunObjectApi {
   ): Promise<AppendResult> {
     const result = this.#log.append(runId, expectedSeq, events, options);
     if (result.ok) {
+      // Nothing may be awaited between the append and this: it keeps watching gap-free.
+      this.#watchers.publish(events);
       this.#wakeSendLoop();
       await this.#setAlarm();
     }
@@ -102,6 +99,15 @@ export class RunState implements RunObjectApi {
 
   async events(afterSeq?: number): Promise<RunEvent[]> {
     return this.#log.events(afterSeq);
+  }
+
+  /**
+   * @throws RangeError when too many watch this run
+   * @throws Error when the log is empty: there is no such run
+   */
+  async watch(afterSeq = 0): Promise<ReadableStream<Uint8Array>> {
+    if (this.#log.lastSeq() === 0) throw new Error("This run has no events.");
+    return this.#watchers.open(afterSeq, this.#log.events(afterSeq));
   }
 
   async snapshot(): Promise<RunSnapshot | null> {
@@ -117,7 +123,7 @@ export class RunState implements RunObjectApi {
     const lastEvent = this.#log.lastEvent();
     return {
       lastEventAt: lastEvent?.at ?? null,
-      ended: lastEvent !== null && endingEventTypes.has(lastEvent.type),
+      ended: lastEvent !== null && isEndingEvent(lastEvent),
       overdueMs: earliestDueMs === null ? 0 : Math.max(0, this.#nowMs() - earliestDueMs),
     };
   }
