@@ -116,6 +116,20 @@ verifies("models.aliases.create", () => {
     });
   });
 
+  it("refuses an empty or invalid provider", () => {
+    expect(addAlias(file, "cheap", { provider: " ", model: "m" })).toEqual({
+      ok: false,
+      error: { field: "provider", message: "Pick a provider." },
+    });
+    expect(addAlias(file, "cheap", { provider: "Open AI", model: "m" })).toEqual({
+      ok: false,
+      error: {
+        field: "provider",
+        message: "A provider's name uses lowercase letters, digits, - and _.",
+      },
+    });
+  });
+
   it("refuses a file that does not read as models.yaml", () => {
     const result = addAlias("aliases: [not, a, map", "cheap", { provider: "a", model: "b" });
 

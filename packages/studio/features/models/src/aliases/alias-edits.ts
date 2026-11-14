@@ -5,7 +5,7 @@ import { ZERO_PRICE_WARNING } from "./alias-text.ts";
 
 /** What is wrong with a field, in the words the field shows under itself. */
 export interface FieldProblem {
-  readonly field: "name" | "model" | "fallbacks" | "input" | "output" | "yaml";
+  readonly field: "name" | "provider" | "model" | "fallbacks" | "input" | "output" | "yaml";
   readonly message: string;
 }
 
@@ -85,7 +85,7 @@ export function editAliasFallbacks(
 
 /**
  * Adds an alias that points at a provider and model. A name that is empty, taken or has a `/` (a
- * name with one reads as provider/model, so the alias could never be used), or an empty model,
+ * name with one reads as provider/model, so the alias could never be used), an empty or invalid provider, or an empty model,
  * writes nothing and comes back as the message for its field.
  *
  * @param text - the text of `models.yaml`
@@ -110,13 +110,24 @@ export function addAlias(
   if (known.includes(alias)) {
     return err({ field: "name", message: `There's already a model alias called ${alias}.` });
   }
+  const provider = target.provider.trim();
+  if (provider === "") return err({ field: "provider", message: "Pick a provider." });
+  if (!/^[a-z0-9_-]+$/.test(provider)) {
+    return err({
+      field: "provider",
+      message: "A provider's name uses lowercase letters, digits, - and _.",
+    });
+  }
   if (model === "") {
     return err({ field: "model", message: "Give the model's name, like claude-sonnet-5-5." });
   }
-  return applyEdits(text, [
-    { kind: "set", path: ["aliases", alias, "provider"], value: target.provider },
+  const added = applyEdits(text, [
+    { kind: "set", path: ["aliases", alias, "provider"], value: provider },
     { kind: "set", path: ["aliases", alias, "model"], value: model },
   ]);
+  // A last check that what is saved is a file the Studio can read back.
+  if (added.ok && aliasNames(added.value) === undefined) return err(unreadable);
+  return added;
 }
 
 /**

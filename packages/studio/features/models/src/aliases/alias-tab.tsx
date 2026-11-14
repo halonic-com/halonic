@@ -69,15 +69,23 @@ const STILL_LOADING_AFTER_MS = 10_000;
 
 function LoadingLine({ name, retry }: { readonly name: string; readonly retry: () => void }) {
   const [slow, setSlow] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     const timer = setTimeout(() => setSlow(true), STILL_LOADING_AFTER_MS);
     return () => clearTimeout(timer);
-  }, []);
+  }, [attempt]);
   return (
     <p role="status">
       {slow ? `${STILL_LOADING_LINE} · ` : aliasLoadingLine(name)}
       {slow ? (
-        <button type="button" onClick={retry}>
+        <button
+          type="button"
+          onClick={() => {
+            setSlow(false);
+            setAttempt((n) => n + 1);
+            retry();
+          }}
+        >
           {TRY_AGAIN}
         </button>
       ) : null}

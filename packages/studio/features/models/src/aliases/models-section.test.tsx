@@ -242,6 +242,22 @@ verifies("models.aliases.create", () => {
     );
   });
 
+  it("asks for a provider when there are no provider files, and writes nothing", async () => {
+    const { changes } = await openDialog(null);
+
+    await typeInto(dialogInput("Name") as HTMLInputElement, "fast");
+    await typeInto(dialogInput("Model") as HTMLInputElement, "llama3.2");
+    await create();
+
+    expect(document.querySelector("dialog")?.textContent).toContain("Pick a provider.");
+    expect(changes).toHaveLength(0);
+
+    await typeInto(dialogInput("Provider") as HTMLInputElement, "ollama");
+    await create();
+
+    expect(changes).toHaveLength(1);
+  });
+
   it("adds the alias as one undo step and opens its tab", async () => {
     const opened: ItemRef[] = [];
     const { changes } = await openDialog(twoAliases, opened);

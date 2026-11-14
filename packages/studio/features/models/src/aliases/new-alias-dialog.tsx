@@ -50,6 +50,7 @@ export function NewAliasDialog({
   const [failure, setFailure] = useState<string>();
   const [busy, setBusy] = useState(false);
   const nameField = useRef<HTMLInputElement>(null);
+  const providerField = useRef<HTMLInputElement>(null);
   const modelField = useRef<HTMLInputElement>(null);
 
   async function create() {
@@ -60,9 +61,10 @@ export function NewAliasDialog({
       const added = addAlias(text, name, { provider, model });
       if (!added.ok) {
         setProblem(added.error);
-        if (added.error.field === "name") nameField.current?.focus();
-        else if (added.error.field === "model") modelField.current?.focus();
-        else setFailure(createFailedLine(added.error.message));
+        const fields = { name: nameField, provider: providerField, model: modelField };
+        const field = fields[added.error.field as keyof typeof fields];
+        if (field === undefined) setFailure(createFailedLine(added.error.message));
+        else field.current?.focus();
         setBusy(false);
         return;
       }
@@ -102,9 +104,17 @@ export function NewAliasDialog({
             }}
           />
         </Field>
-        <Field label={PROVIDER_FIELD}>
+        <Field label={PROVIDER_FIELD} error={problemFor("provider")}>
           {providers.length === 0 ? (
-            <Input value={provider} onChange={(event) => setProvider(event.target.value)} />
+            <Input
+              ref={providerField}
+              disabled={busy}
+              value={provider}
+              onChange={(event) => {
+                setProblem(undefined);
+                setProvider(event.target.value);
+              }}
+            />
           ) : (
             <Select
               options={providers.map((id) => ({ value: id, label: id }))}
