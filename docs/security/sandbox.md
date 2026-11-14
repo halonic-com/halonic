@@ -51,6 +51,9 @@ what you can do in one step ([the reason codes](../adr/2026-11-09-sandbox-check-
   use all the CPU and memory it can get until the run is cancelled or times out.
 - **Inside the working folder, anything goes.** The program can change any file
   there without asking. Keep work you can't lose in git.
+- **An agent's settings folder is writable and kept between runs.** The program
+  can change anything in it, and what it leaves there, such as its own sign-in,
+  is still there at the agent's next run.
 - **Allowed sites see what the agent can read.** The fence checks a site's
   name, not what is sent to it.
 - **Only blocked sites reached through the proxy have a name.** The run page
