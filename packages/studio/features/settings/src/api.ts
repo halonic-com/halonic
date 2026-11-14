@@ -7,6 +7,7 @@ import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { SandboxCheckFacts, SandboxOutcome } from "./agent-sandbox/sandbox-state.ts";
 import type { AssistantProvider } from "./assistant/assistant-providers.ts";
 import type { DisplaySettings } from "./display-settings.ts";
+import type { UpdaterHost } from "./updater/updater-host.ts";
 
 /**
  * The settings kept where Halonic runs, for every workspace on that computer: the Assistant's and
@@ -106,3 +107,16 @@ export interface AssistantNavigation {
 /** The open workspace, when the window has one to tell the Assistant about. */
 export const AssistantWorkspaceService: ServiceKey<AssistantWorkspace> =
   serviceKey<AssistantWorkspace>("settings.assistant-workspace");
+
+export type { UpdaterHost } from "./updater/updater-host.ts";
+export type {
+  CheckFailure,
+  DownloadFailure,
+  JustUpdated,
+  ManagedUpdates,
+  UpdateState,
+  UpdateStatus,
+} from "./updater/updater-status.ts";
+
+/** The updater the desktop app runs. Without it, About Halonic shows only the view-only line. */
+export const UpdaterService: ServiceKey<UpdaterHost> = serviceKey<UpdaterHost>("settings.updater");
