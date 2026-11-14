@@ -68,9 +68,12 @@ async function put(files: Record<string, string>): Promise<void> {
 }
 
 /** A sandbox the gate only checks; the runner's start is faked. */
-function sandbox(check: SandboxCheck): Sandbox {
+function sandbox(check: SandboxCheck, afterTrust?: () => Promise<void>): Sandbox {
   return {
-    check: async () => check,
+    check: async () => {
+      await afterTrust?.();
+      return check;
+    },
     capabilities: () => ({ files: "shared", strength: "os" }),
     open: async () => {
       throw new Error("the fake start never opens a session");
@@ -78,46 +81,69 @@ function sandbox(check: SandboxCheck): Sandbox {
   };
 }
 
+const runnerMachine = {
+  homeFolder: "home-folder",
+  socketFolders: [],
+  systemFiles: [],
+  sandboxFolders: [],
+  tempFolder: "temp-folder",
+  timeLimitMs: 1000,
+};
+
 /** Everything the opener uses, with a runner that answers and counts its starts and stops. */
 async function setup(
-  options: { check?: SandboxCheck; runnerBuilt?: boolean; trusted?: boolean } = {},
+  options: {
+    check?: SandboxCheck;
+    runnerBuilt?: boolean;
+    trusted?: boolean;
+    secrets?: Record<string, string>;
+    /** Runs once the trust check has passed, while the gate checks the sandbox. */
+    afterTrust?: () => Promise<void>;
+    /** Runs at the first start, before the trust check's second read. */
+    beforeStart?: () => Promise<void>;
+  } = {},
 ) {
-  const { check = passes, runnerBuilt = true, trusted = true } = options;
+  const { check = passes, runnerBuilt = true, trusted = true, secrets = {} } = options;
   const plugins = new FileSystemFolderReader(root, root);
   const trust = cliTrustService(new MemoryTrustStore(), clock);
-  if (trusted) {
+  /** Trusts the plugin as its folder is now. */
+  const trustNow = async () => {
     const read = await readPluginFolder(plugins, webCryptoDigest, "weather");
     if (!read.ok) throw new Error("the fixture plugin must read");
     const shown = await trust.checkPlugin(read.value);
     await trust.grantPlugin(read.value, shown.fingerprint, "cli");
-  }
-  const seen = { starts: 0, stops: 0, entries: [] as string[], settings: [] as unknown[] };
+  };
+  if (trusted) await trustNow();
+  const seen = {
+    starts: 0,
+    stops: 0,
+    entries: [] as string[],
+    settings: [] as unknown[],
+    secretTexts: [] as (readonly string[])[],
+  };
   const open = openPluginBackend({
     plugins,
     digest: webCryptoDigest,
     trust,
     gate: new RunnerStartGate({
       platform: "linux",
-      fenced: sandbox(check),
+      fenced: sandbox(check, options.afterTrust),
       launcher: sandbox(check),
       runs: new UnfencedRuns({ store: new MemoryUnfencedRunConsentStore(), clock }),
     }),
     runtime: { node: "/node/bin/node", nodeFolder: "/node", runnerFile: "/runner/runner.mjs" },
     transport: { fetch: async () => new Response("{}") } as never,
-    runnerMachine: async () => ({
-      homeFolder: "home-folder",
-      socketFolders: [],
-      systemFiles: [],
-      sandboxFolders: [],
-      tempFolder: "temp-folder",
-      timeLimitMs: 1000,
-    }),
     settings: async () => ({ units: "metric" }),
+    runnerMachine: async () => {
+      await options.beforeStart?.();
+      return runnerMachine;
+    },
     runnerExists: () => runnerBuilt,
     startRunner: async (start) => {
       seen.starts += 1;
       seen.entries.push(`${start.entry.file}#${start.entry.exportName}`);
       seen.settings.push(start.settings);
+      seen.secretTexts.push(start.secrets().texts);
       const runner: StartedRunner = {
         fence: { state: "fenced" },
         declaration: { name: "weather", version: "1.2.0", tools: [getForecast] },
@@ -131,7 +157,7 @@ async function setup(
     },
   });
   const context = {
-    secrets: new MemorySecrets({}),
+    secrets: new MemorySecrets(secrets),
     tokens: new MemoryTokenStore(),
     workspaceRoot: root,
     trust: null,
@@ -142,7 +168,7 @@ async function setup(
       { id: "weather", transport: { kind: "plugin", id: "weather" }, secretEnv: {} },
       context,
     );
-  return { seen, client };
+  return { seen, client, trustNow };
 }
 
 verifies("cli.open-plugin-backend", () => {
@@ -182,6 +208,55 @@ verifies("cli.open-plugin-backend", () => {
       await put({ "weather/backend/index.js": "export default { edited: true };\n" });
       await expect(client().callTool("get-forecast", {})).rejects.toThrow(/didn't start/);
       expect(seen.starts).toBe(1);
+    });
+
+    it("refuses a start when only the manifest changed after the loader read it and was trusted again, and says to start the run again", async () => {
+      let trustNow: () => Promise<void> = async () => {};
+      const opened = await setup({
+        beforeStart: async () => {
+          await put({
+            "weather/plugin.yaml": manifest.replace("api.weather.example", "api.other.example"),
+          });
+          await trustNow();
+        },
+      });
+      trustNow = opened.trustNow;
+      await expect(opened.client().callTool("get-forecast", {})).rejects.toThrow(
+        /Start the run again/,
+      );
+      expect(opened.seen.starts).toBe(0);
+    });
+
+    it("refuses a start when a file changes after the trust check and before the runner starts", async () => {
+      const { seen, client } = await setup({
+        afterTrust: async () => {
+          await put({ "weather/backend/index.js": "export default { swapped: true };\n" });
+        },
+      });
+      await expect(client().callTool("get-forecast", {})).rejects.toThrow(
+        /didn't start: .*changed since you trusted it/,
+      );
+      expect(seen.starts).toBe(0);
+    });
+
+    it("gives the runner the plugin's secrets, read from where the plugin's secrets are stored", async () => {
+      const secretValue = "weather-key-value-1234";
+      await put({
+        "weather/plugin.yaml": manifest.replace(
+          "  tools:",
+          `  secrets:
+    weather-key:
+      purpose: The forecast API key
+      hosts: [api.weather.example]
+      as: bearer
+  tools:`,
+        ),
+      });
+      const { seen, client } = await setup({
+        secrets: { "plugin__weather__weather-key": secretValue },
+      });
+      await client().callTool("get-forecast", {});
+      expect(seen.secretTexts[0]).toContain(secretValue);
     });
 
     it("refuses when the sandbox isn't there and running without it isn't allowed (Windows)", async () => {

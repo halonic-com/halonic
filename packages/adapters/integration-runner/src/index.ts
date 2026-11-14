@@ -1,6 +1,7 @@
 // The public API of @halonicjs/adapter-integration-runner. Internal code imports by relative path.
 
 export { type IntegrationDeclaration, maxFrameBytes } from "./frames.ts";
+export { checkedFilesProblems } from "./halonic/checked-files.ts";
 export {
   type ConnectRunnerOptions,
   connectRunner,

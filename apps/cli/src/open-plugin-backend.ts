@@ -10,6 +10,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import {
+  checkedFilesProblems,
   integrationConnectorClient,
   type LocalRunnerBridge,
   loadPluginBackend,
@@ -108,6 +109,7 @@ class PluginBackendOpening {
       this.#request.plugin,
       (sandbox, trusted): Promise<StartedRunner> => {
         this.#requireReadPlugin(trusted, readPlugin);
+        this.#requireTrustedFiles(trusted);
         return begin({
           sandbox,
           files: { ...runtime, integrationFolder: trusted.location },
@@ -139,6 +141,21 @@ class PluginBackendOpening {
    */
   #requireReadPlugin(trusted: TrustedPluginBackend, readPlugin: Plugin): void {
     if (JSON.stringify(trusted.plugin) !== JSON.stringify(readPlugin)) {
+      throw new Error(
+        `The plugin ${this.#request.plugin} changed after this run began, so its backend doesn't restart. Start the run again.`,
+      );
+    }
+  }
+
+  /**
+   * The folder must still hold the files the trust check hashed, checked
+   * right before the runner starts, so the time between the check and the
+   * runner's load is as short as it can be here. The runner still loads the
+   * folder in place, so a change inside that last moment isn't closed by this.
+   */
+  #requireTrustedFiles(trusted: TrustedPluginBackend): void {
+    const problems = checkedFilesProblems(trusted.location, trusted.files);
+    if (problems.length > 0) {
       throw new PluginBackendNotTrustedError(this.#request.plugin, "changed");
     }
   }

@@ -22,7 +22,7 @@ import {
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { ConnectorFactories } from "@halonicjs/app";
 import type { ConnectorFactory, HttpClient, Sandbox, TokenStore } from "@halonicjs/ports";
-import { profileFolder, trustFolder } from "@halonicjs/profile";
+import { type ProfileEnvironment, profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { nodeCommandSearch } from "./command-paths.ts";
 import {
@@ -52,13 +52,15 @@ export interface ConnectorMachine extends WorkspaceTrustMachine {
  *
  * @throws RangeError when `HALONIC_HOME` or the home folder isn't absolute
  */
-export function nodeConnectorMachine(): ConnectorMachine {
+export function nodeConnectorMachine(
+  environment: ProfileEnvironment = nodeProfileEnvironment(),
+): ConnectorMachine {
   return {
     factories: cliConnectorFactories(nodeProgramStarter, process.env),
     http: connectorHttpClient(),
     // The CLI connects no built-in Google connector yet, the only kind that reads sign-ins.
     tokens: new MemoryTokenStore(),
-    trustStore: new FileTrustStore(trustFolder(profileFolder(nodeProfileEnvironment()))),
+    trustStore: new FileTrustStore(trustFolder(profileFolder(environment))),
     clock: systemClock,
     commandSearch: nodeCommandSearch(),
     sandboxWorks: nodeSandboxWorks,

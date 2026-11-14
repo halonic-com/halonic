@@ -260,7 +260,7 @@ function computerRunConnectors(
   environment: ProfileEnvironment = nodeProfileEnvironment(),
 ): LocalRunConnectorsInput {
   const profile = profileFolder(environment);
-  const machine = nodeConnectorMachine();
+  const machine = nodeConnectorMachine(environment);
   const integrations = computerIntegrationMachine({ ...target, trust: machine, environment });
   const plugins = computerPluginMachine(integrations, { trust: machine, environment });
   return {
