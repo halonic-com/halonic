@@ -17,7 +17,7 @@ The job fails when a Halonic program sends anything to a host that isn't GitHub 
 
 ## What is only checked in the code
 
-Nothing clicks through onboarding, so the capture shows the app on its first screen. What the app sends after each onboarding step, after sign-in or with a configured model provider, and what an update does once found, are read in the code, not captured. A connection shorter than the sampling is never matched to a process.
+Nothing clicks through onboarding, so the capture shows the app on its first screen. What the app sends after each onboarding step, after sign-in or with a configured model provider, and what an update does once found, are read in the code, not captured. 
 
 ## Why
 
@@ -30,3 +30,15 @@ The release candidate should show, with a packet capture on a real Windows insta
 ## Covers
 
 - .github/
+
+## Addendum (HAL-8700): ETW names the process of every connection
+
+Task HAL-8700, decided on HAL-8720 (Liam): a host list can't prove that only Halonic's update check leaves the machine, because it must let through the CDN and Microsoft hosts Halonic could also reach; three runs gave three different host sets. Only the process settles it.
+
+`capture.ps1` now starts two ETW sessions with `logman` before pktmon (Microsoft-Windows-Kernel-Network and Microsoft-Windows-Kernel-Process) and turns them into `net.xml` and `proc.xml` with `tracerpt` after it; all three tools ship with Windows. `report.mjs` matches each packet to an ETW flow first (same protocol and endpoints, either direction, ports as logged or byte-swapped), which names the process even for a connection under 0.2 s; the `netstat` samples are only the fallback. The process tree comes from ETW process starts plus the samples. A program counts as Halonic when its image is the installer or lies in the install folder (ETW logs NT paths, so the drive is ignored) or when its parent does.
+
+Self-test: after the idle time the script copies `curl.exe` into the install folder as `halonic-selftest.exe` and fetches http://example.org/ once (under 100 ms). The report must find that connection and name it Halonic, and counts how many of its packets only ETW could attribute; if it isn't found the job fails. The self-test's own packets are excluded from the "not the update check" failure rule.
+
+Fail rules: a Halonic connection to a host that isn't GitHub fails, as before. Packets no source can attribute fail the job above 2 % of IP packets; that number is a first guess to be set from a real run and recorded here with the reason.
+
+Tested: `report.mjs` on a hand-built pcapng with ETW XML: the self-test connection was attributed through ETW alone, a Halonic connection to an unknown address failed. The Windows job itself needs a run on a Windows runner.
