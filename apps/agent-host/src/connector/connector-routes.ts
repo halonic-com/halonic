@@ -131,34 +131,8 @@ function openHandler(deps: ConnectorRouteDeps): HostRoute["handle"] {
       return;
     }
     try {
-      const context = await contextOf(deps, body);
-      if (context === undefined) {
-        sendError(
-          response,
-          403,
-          "workspace_not_named",
-          "The workspace folder isn't one the agent host was given.",
-        );
-        return;
-      }
-      if (context === "folder_outside") {
-        sendError(
-          response,
-          403,
-          "working_folder_outside_workspace",
-          "An agent working folder isn't inside the workspace folder.",
-        );
-        return;
-      }
-      if ((await checkTrustGrant(deps.trustStore, context.workspaceRoot, body)) !== undefined) {
-        sendError(
-          response,
-          403,
-          "workspace_not_trusted",
-          "This computer's trust record doesn't cover this connector in this workspace. Trust the workspace first.",
-        );
-        return;
-      }
+      const context = await allowedContextOf(deps, body, response);
+      if (context === undefined) return;
       const client = deps.factory.create(configOf(body), context);
       const id = connectors.add(client);
       if (id === undefined) {
@@ -174,6 +148,48 @@ function openHandler(deps: ConnectorRouteDeps): HostRoute["handle"] {
       release();
     }
   };
+}
+
+/**
+ * The start's context once the host allows it: the workspace is one it was
+ * given, every working folder is inside it, and the trust grant covers it.
+ *
+ * @returns undefined after answering 403 when it doesn't
+ */
+async function allowedContextOf(
+  deps: ConnectorRouteDeps,
+  body: OpenConnectorBody,
+  response: Parameters<typeof sendError>[0],
+): Promise<(ConnectorFactoryContext & { workspaceRoot: string }) | undefined> {
+  const context = await contextOf(deps, body);
+  if (context === undefined) {
+    sendError(
+      response,
+      403,
+      "workspace_not_named",
+      "The workspace folder isn't one the agent host was given.",
+    );
+    return undefined;
+  }
+  if (context === "folder_outside") {
+    sendError(
+      response,
+      403,
+      "working_folder_outside_workspace",
+      "An agent working folder isn't inside the workspace folder.",
+    );
+    return undefined;
+  }
+  if ((await checkTrustGrant(deps.trustStore, context.workspaceRoot, body)) !== undefined) {
+    sendError(
+      response,
+      403,
+      "workspace_not_trusted",
+      "This computer's trust record doesn't cover this connector in this workspace. Trust the workspace first.",
+    );
+    return undefined;
+  }
+  return context;
 }
 
 /**
