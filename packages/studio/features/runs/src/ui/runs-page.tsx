@@ -8,6 +8,7 @@ import {
   type ListColumnsRow,
   StatusChip,
   Tooltip,
+  usePresentation,
 } from "@halonicjs/studio-kit";
 import type { PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useState, useSyncExternalStore } from "react";
@@ -26,6 +27,7 @@ import {
 import { loadFailureReason } from "../load-failure.ts";
 import { emptyListWords, pageWords } from "../run-words.ts";
 import { type RunsList, RunsListService, type RunsListState } from "../runs-list.ts";
+import { RunsOnComputer } from "./runs-on-computer.tsx";
 
 /** The Runs place's page: the open workspace's runs, from `RunsListService`. */
 export function RunsPage({ context }: PlaceViewProps) {
@@ -62,7 +64,13 @@ export interface RunsViewProps {
  * Not here yet: the spend line (T4), opening a run in a new tab, the text
  * and hub filters, and the row's ⋮.
  */
-export function RunsView({ list, openRun, now = () => new Date() }: RunsViewProps) {
+export function RunsView(props: RunsViewProps) {
+  // The phone layout comes after 0.1.0; until then the phone says so (HAL-9390).
+  if (usePresentation() === "phone") return <RunsOnComputer />;
+  return <DesktopRuns {...props} />;
+}
+
+function DesktopRuns({ list, openRun, now = () => new Date() }: RunsViewProps) {
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
   const state = useSyncExternalStore(subscribe, () => list.state);
   const [filters, setFilters] = useState<RunsFilters>(startFilters);
