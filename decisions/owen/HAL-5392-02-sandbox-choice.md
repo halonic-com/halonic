@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-5392, built on the HAL-3779 design (sections 2.2-2.4 and 6) that Liam wrote; he approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Cb4xLgFcKRX3UXwcKdR548H75py/bBrDH4teh3SICbvM7LCJs7+9qKRuq++W4VE3+4QxGj6zVkfom8tOHb7LAA==
 
 ## What changes
 
