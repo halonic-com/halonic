@@ -45,6 +45,7 @@
     "@halonicjs/events": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/google-setup": "workspace:*",
+    "@halonicjs/host-google-sign-in": "workspace:*",
     "@halonicjs/host-harness-host": "workspace:*",
     "@halonicjs/host-server": "workspace:*",
     "@halonicjs/ports": "workspace:*",
