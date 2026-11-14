@@ -2,6 +2,7 @@
 
 - Approval: Liam decided this on HAL-8973 (from the HAL-8970 review of PR #2578); the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:w7tbVkZlGICSEzPnb2pAyepBF7K2MXrwO/uW4FxONvKT7xFF5/J/cB0YdcZiqHEGnh8IG1zjQz3BVecyIeadBw==
 - Task: HAL-8973
 
 ## What changes
