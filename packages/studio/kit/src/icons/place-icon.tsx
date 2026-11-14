@@ -21,6 +21,13 @@ interface PlaceDrawing {
   readonly cuts?: readonly Cut[];
 }
 
+/**
+ * What a mask shows and hides. A luminance mask reads white as "keep" and black as "knock out",
+ * whatever the theme, so the two are tokens that don't change with it.
+ */
+const maskShow = "var(--color-mask-show)";
+const maskHide = "var(--color-mask-hide)";
+
 /** The place icons (visual review kit T2-F51, HAL-3164), named like the shell's places. */
 const drawings = {
   home: {
@@ -117,13 +124,13 @@ function FilledDrawing({ drawing }: { readonly drawing: PlaceDrawing }) {
     <>
       {cuts.length > 0 && (
         <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
-          <rect width="24" height="24" fill="white" stroke="none" />
+          <rect width="24" height="24" fill={maskShow} stroke="none" />
           {cuts.map((cut) => (
             <path
               key={cut.path}
               d={cut.path}
-              fill={cut.filled === true ? "black" : "none"}
-              stroke="black"
+              fill={cut.filled === true ? maskHide : "none"}
+              stroke={maskHide}
               strokeWidth={cut.strokeWidth ?? strokeWidth}
             />
           ))}

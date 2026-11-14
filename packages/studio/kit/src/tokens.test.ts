@@ -5,8 +5,9 @@ import { describe, expect, it } from "vitest";
  * Colours and motion come only from the theme. A part that draws a raw `#3b8bff`, `rgb()` or a
  * hard-coded `200ms` skips dark, more-contrast, forced-colours and reduced motion, and no other
  * test would notice. Parts name a token instead (`bg-surface`, `duration-(--duration-fast)`); a
- * missing value becomes a new token in `theme*.css`. `halo-presets.ts` is the one exception: its
- * hex values are colours a user picks, so they are data.
+ * missing value becomes a new token in `theme*.css`. It covers the kit and the shell. Two files are
+ * exceptions: `halo-presets.ts`, whose hex values are colours a user picks, so they are data, and
+ * the shell's `title-bar-brand.tsx`, whose ring gradient is a decided brand asset.
  */
 
 /** A hex colour: `#fff`, `#3b8bff`, `#3b8bff80`. Not an id such as `url(#clip)`. */
@@ -72,7 +73,8 @@ function isCovered(file: string): boolean {
     !/\.(?:test|spec)\.tsx?$/.test(file) &&
     !file.startsWith("test/") &&
     !/^theme.*\.css$/.test(file) &&
-    name !== "halo-presets.ts"
+    name !== "halo-presets.ts" &&
+    name !== "title-bar-brand.tsx"
   );
 }
 
@@ -135,8 +137,11 @@ describe("studio-kit tokens", () => {
     ]);
   });
 
-  it("draws every colour and duration in the kit from the theme", () => {
-    const sourceFolder = new URL("./", import.meta.url);
+  it.each([
+    ["the kit", "./"],
+    ["the shell", "../../shell/src/"],
+  ])("draws every colour and duration in %s from the theme", (_name, folder) => {
+    const sourceFolder = new URL(folder, import.meta.url);
     const files = readdirSync(sourceFolder, { recursive: true, encoding: "utf8" }).filter(
       isCovered,
     );
