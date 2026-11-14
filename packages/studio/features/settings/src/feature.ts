@@ -1,4 +1,6 @@
 import { defineFeature, type SettingsSectionContribution } from "@halonicjs/studio-shell";
+import { sandboxCommands } from "./agent-sandbox/sandbox-commands.ts";
+import { createSandboxFlow, SandboxFlowService } from "./agent-sandbox/sandbox-flow.ts";
 import {
   AgentSandboxService,
   AssistantWorkspaceService,
@@ -107,10 +109,11 @@ export const settingsFeature = defineFeature({
   title: "Settings",
   needs: [DisplaySettingsService, HostSettingsService],
   // Only the desktop app gives these; served Studio and the demo show the sections without them.
-  provides: [RestartFlowService],
+  provides: [RestartFlowService, SandboxFlowService],
   wants: [UpdaterService, RestartRunsService, AgentSandboxService, AssistantWorkspaceService],
   register(studio) {
     studio.services.provide(RestartFlowService, createRestartFlow);
+    studio.services.provide(SandboxFlowService, createSandboxFlow);
     studio.statusBar.add({
       id: "settings.restart-item",
       order: 1000,
@@ -123,6 +126,12 @@ export const settingsFeature = defineFeature({
       view: "RestartHost",
       load: () => import("./updater/restart-host.tsx"),
     });
+    studio.dialogs.add({
+      id: "settings.sandbox-host",
+      order: 20,
+      view: "SandboxHost",
+      load: () => import("./agent-sandbox/sandbox-host.tsx"),
+    });
     for (const section of settingsSections) {
       studio.settings.add(section);
     }
@@ -130,6 +139,10 @@ export const settingsFeature = defineFeature({
       id: "settings.open",
       title: "Settings",
       run: (context) => context.openSettings?.(),
+    });
+    studio.commands.addSource({
+      id: "settings.sandbox",
+      commands: (context) => sandboxCommands(context),
     });
     studio.commands.addSource({
       id: "settings.update",
