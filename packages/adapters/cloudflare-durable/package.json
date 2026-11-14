@@ -4,7 +4,8 @@
   "type": "module",
   "description": "The Coordination port in a Cloudflare Durable Object: leases, values, counters and login-limit windows.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./testing": "./src/test/test-objects.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

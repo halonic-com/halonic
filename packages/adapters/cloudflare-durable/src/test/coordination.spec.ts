@@ -7,31 +7,16 @@
  */
 
 import { env } from "cloudflare:workers";
-import { type ControlledClock, coordinationContract } from "@halonicjs/testing-contracts";
-import { CoordinationObject } from "../coordination-object.ts";
+import { coordinationContract } from "@halonicjs/testing-contracts";
 import { DurableCoordination } from "../durable-coordination.ts";
 import { ManualClock } from "../fakes.test-helper.ts";
+import { clocksByObjectName, TestCoordinationObject } from "./test-coordination-object.ts";
+
+export { TestCoordinationObject };
 
 /** What the runner binds for this suite (see `coordination.test.ts`). */
 interface TestEnv {
   COORDINATION: DurableObjectNamespace<TestCoordinationObject>;
-}
-
-/** A clock that only moves when the suite moves it. */
-const clocksByObjectName = new Map<string, ControlledClock>();
-
-/** `CoordinationObject` reading the time from the suite's clock for its own name. */
-export class TestCoordinationObject extends CoordinationObject {
-  protected override clock = {
-    now: (): Date => {
-      const name = this.ctx.id.name;
-      const clock = name === undefined ? undefined : clocksByObjectName.get(name);
-      if (clock === undefined) {
-        throw new Error("This test object was not made through the suite's make().");
-      }
-      return clock.now();
-    },
-  };
 }
 
 coordinationContract("durable object", async () => {

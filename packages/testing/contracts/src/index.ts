@@ -171,6 +171,7 @@ export {
   startScheduler,
   type TimerBehaviour,
 } from "./scheduler-harness.ts";
+export { scopedRecordStore } from "./scoped-record-store.ts";
 export {
   invalidSecretNames,
   longestSecretName,
