@@ -1,7 +1,7 @@
 import { readFile, stat, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { dirname, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import type { SandboxSession } from "@halonicjs/ports";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -93,7 +93,11 @@ describe("a run's program trying to get out of its sandbox session", () => {
       settingsFolder: null,
       readOnlyPaths: fence.readOnlyPaths,
       deniedPaths: [inBase("secret.txt")],
-      env: { HOME: fence.tempFolder, PATH: dirname(process.execPath), ...fence.env },
+      env: {
+        HOME: fence.tempFolder,
+        PATH: [dirname(process.execPath), "/usr/bin", "/bin"].join(delimiter),
+        ...fence.env,
+      },
       network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
       timeLimitMs: 120_000,
     });
