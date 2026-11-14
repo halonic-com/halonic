@@ -35,6 +35,7 @@ export class RoutinesObject extends DurableObject {
       },
       clock: () => this.clock,
       listener: () => this.tickListener(),
+      onBackupFailure: (error) => this.reportBackupFailure(error),
     });
   }
 
@@ -43,6 +44,15 @@ export class RoutinesObject extends DurableObject {
     throw new Error(
       "This RoutinesObject has no tick listener: subclass it and override tickListener().",
     );
+  }
+
+  /**
+   * Where a failed backup tick goes. The default writes the error's name and message to the
+   * Worker's log, never its stack or its cause, which may name things of a routine's run.
+   */
+  protected reportBackupFailure(error: unknown): void {
+    const what = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    console.error(`The routines backup tick failed. ${what}`);
   }
 
   /** The cron's tick for the ISO time `at`. */

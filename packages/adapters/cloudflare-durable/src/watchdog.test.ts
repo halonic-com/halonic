@@ -3,18 +3,19 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { ManualClock } from "./fakes.test-helper.ts";
 import type { RunHealth } from "./run-object-api.ts";
-import { Watchdog, watchdogTimerId, whyStuck } from "./watchdog.ts";
+import { defaultMaxRunsPerSweep, Watchdog, watchdogTimerId, whyStuck } from "./watchdog.ts";
 
 const minute = 60 * 1000;
 const hour = 60 * minute;
 
 /** The run objects as the watchdog sees them: each run has the health the test gives it. */
-function newWatchdog() {
+function newWatchdog(maxRunsPerSweep?: number) {
   const clock = new ManualClock();
   const runs = new Map<string, { status: RunStatus; health: RunHealth | Error }>();
   const scheduled: { key: string; timerId: string; at: string }[] = [];
   const watchdog = new Watchdog({
     clock,
+    ...(maxRunsPerSweep === undefined ? {} : { maxRunsPerSweep }),
     runs: {
       list: async () =>
         [...runs].map(([id, { status }]) => ({ id, status }) as unknown as RunSummary),
@@ -45,15 +46,23 @@ verifies("cloudflare-durable.watchdog", () => {
   describe("Watchdog", () => {
     it("wakes nothing for a run that waits days for an approval", async () => {
       const t = newWatchdog();
-      t.add("approval", "waiting", { lastEventAt: t.agoIso(3 * 24 * hour), overdueMs: 0 });
+      t.add("approval", "waiting", {
+        lastEventAt: t.agoIso(3 * 24 * hour),
+        overdueMs: 0,
+        ended: false,
+      });
       const report = await t.watchdog.sweep();
-      expect(report).toEqual({ woken: [], failed: [] });
+      expect(report).toEqual({ woken: [], failed: [], deferred: 0 });
       expect(t.scheduled).toEqual([]);
     });
 
     it("wakes a waiting run whose timer was due 5 minutes ago, with the watchdog timer set for now", async () => {
       const t = newWatchdog();
-      t.add("late", "waiting", { lastEventAt: t.agoIso(hour), overdueMs: 5 * minute });
+      t.add("late", "waiting", {
+        lastEventAt: t.agoIso(hour),
+        overdueMs: 5 * minute,
+        ended: false,
+      });
       const report = await t.watchdog.sweep();
       expect(report.woken).toEqual([{ runId: "late", reason: "overdue-timer" }]);
       expect(t.scheduled).toEqual([
@@ -63,22 +72,22 @@ verifies("cloudflare-durable.watchdog", () => {
 
     it("wakes a running run with no event for 15 minutes, and not one with a recent event", async () => {
       const t = newWatchdog();
-      t.add("stuck", "running", { lastEventAt: t.agoIso(15 * minute), overdueMs: 0 });
-      t.add("busy", "running", { lastEventAt: t.agoIso(minute), overdueMs: 0 });
+      t.add("stuck", "running", { lastEventAt: t.agoIso(15 * minute), overdueMs: 0, ended: false });
+      t.add("busy", "running", { lastEventAt: t.agoIso(minute), overdueMs: 0, ended: false });
       const report = await t.watchdog.sweep();
       expect(report.woken).toEqual([{ runId: "stuck", reason: "no-progress" }]);
     });
 
     it("wakes nothing for a timer that is only a moment overdue", async () => {
       const t = newWatchdog();
-      t.add("moment", "waiting", { lastEventAt: t.agoIso(hour), overdueMs: 30_000 });
+      t.add("moment", "waiting", { lastEventAt: t.agoIso(hour), overdueMs: 30_000, ended: false });
       expect((await t.watchdog.sweep()).woken).toEqual([]);
     });
 
     it("reports a run whose check fails and still checks the others", async () => {
       const t = newWatchdog();
       t.add("broken", "running", new Error("the object does not answer"));
-      t.add("late", "waiting", { lastEventAt: null, overdueMs: 10 * minute });
+      t.add("late", "waiting", { lastEventAt: null, overdueMs: 10 * minute, ended: false });
       const report = await t.watchdog.sweep();
       expect(report.woken).toEqual([{ runId: "late", reason: "overdue-timer" }]);
       expect(report.failed.map(({ runId, error }) => [runId, error.message])).toEqual([
@@ -87,9 +96,9 @@ verifies("cloudflare-durable.watchdog", () => {
     });
 
     it("checks every run when there are more than it asks at once", async () => {
-      const t = newWatchdog();
+      const t = newWatchdog(25);
       for (let run = 0; run < 25; run++) {
-        t.add(`run_${run}`, "waiting", { lastEventAt: null, overdueMs: 10 * minute });
+        t.add(`run_${run}`, "waiting", { lastEventAt: null, overdueMs: 10 * minute, ended: false });
       }
       expect((await t.watchdog.sweep()).woken).toHaveLength(25);
     });
@@ -100,19 +109,84 @@ verifies("cloudflare-durable.watchdog", () => {
 
     it("counts a running run with an empty log as not stuck, since it has not begun", () => {
       expect(
-        whyStuck("running", { lastEventAt: null, overdueMs: 0 }, Date.now(), limits),
+        whyStuck("running", { lastEventAt: null, overdueMs: 0, ended: false }, Date.now(), limits),
       ).toBeNull();
     });
 
     it("wakes at exactly the limits", () => {
       const now = Date.parse("2026-11-13T10:00:00Z");
       const quiet = new Date(now - 10 * minute).toISOString();
-      expect(whyStuck("running", { lastEventAt: quiet, overdueMs: 0 }, now, limits)).toBe(
-        "no-progress",
-      );
-      expect(whyStuck("waiting", { lastEventAt: quiet, overdueMs: 2 * minute }, now, limits)).toBe(
-        "overdue-timer",
-      );
+      expect(
+        whyStuck("running", { lastEventAt: quiet, overdueMs: 0, ended: false }, now, limits),
+      ).toBe("no-progress");
+      expect(
+        whyStuck(
+          "waiting",
+          { lastEventAt: quiet, overdueMs: 2 * minute, ended: false },
+          now,
+          limits,
+        ),
+      ).toBe("overdue-timer");
+    });
+  });
+});
+
+verifies("cloudflare-durable.watchdog-limits", () => {
+  describe("a lagging run list", () => {
+    it("does not wake a run the list still shows as running but whose own log has ended", async () => {
+      const t = newWatchdog();
+      t.add("over", "running", { lastEventAt: t.agoIso(hour), overdueMs: 0, ended: true });
+      t.add("quiet", "running", { lastEventAt: t.agoIso(hour), overdueMs: 0, ended: false });
+      const report = await t.watchdog.sweep();
+      expect(report.woken).toEqual([{ runId: "quiet", reason: "no-progress" }]);
+    });
+  });
+
+  describe("a limit on the calls of one sweep", () => {
+    function manyStuckRuns(count: number, maxRunsPerSweep: number) {
+      const t = newWatchdog(maxRunsPerSweep);
+      for (let run = 0; run < count; run++) {
+        t.add(`run_${String(run).padStart(2, "0")}`, "waiting", {
+          lastEventAt: null,
+          overdueMs: 10 * minute,
+          ended: false,
+        });
+      }
+      return t;
+    }
+
+    it("checks at most the limit in one sweep and says how many it left for later", async () => {
+      const t = manyStuckRuns(25, 10);
+      const report = await t.watchdog.sweep();
+      expect(report.woken).toHaveLength(10);
+      expect(report.deferred).toBe(15);
+    });
+
+    it("takes the runs in turn, so every run is checked within a few minutes", async () => {
+      const t = manyStuckRuns(25, 10);
+      const checked = new Set<string>();
+      for (let sweep = 0; sweep < 3; sweep++) {
+        const report = await t.watchdog.sweep();
+        for (const { runId } of report.woken) checked.add(runId);
+        t.clock.advance(minute);
+      }
+      expect(checked.size).toBe(25);
+    });
+
+    it("stays within the calls of one invocation when every run in the group is stuck", async () => {
+      const callLimit = 50;
+      const callsBeforeTheRuns = 2; // the run list and the routines tick
+      const t = manyStuckRuns(100, defaultMaxRunsPerSweep);
+      const report = await t.watchdog.sweep();
+      const checks = report.woken.length + report.failed.length;
+      const wakes = t.scheduled.length;
+      expect(wakes).toBe(defaultMaxRunsPerSweep);
+      expect(callsBeforeTheRuns + checks + wakes).toBeLessThanOrEqual(callLimit);
+    });
+
+    it("checks everything at once when the runs fit the limit", async () => {
+      const t = manyStuckRuns(5, 10);
+      expect(await t.watchdog.sweep()).toMatchObject({ deferred: 0 });
     });
   });
 });

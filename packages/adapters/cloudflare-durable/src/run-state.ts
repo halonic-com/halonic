@@ -14,6 +14,13 @@ import type { RunSql } from "./run-sql.ts";
 import { TimerDelivery } from "./timer-delivery.ts";
 import { TimerTable } from "./timer-table.ts";
 
+/** The events that end a run (see `summarize`): nothing follows them. */
+const endingEventTypes: ReadonlySet<string> = new Set([
+  "run.completed",
+  "run.failed",
+  "run.cant-try",
+]);
+
 /** Where the object's one alarm is kept: a Durable Object's storage, or a fake in tests. */
 export interface AlarmSlot {
   /** Sets the alarm to a time in ms since 1970, replacing the one set; a past time fires at once. */
@@ -107,8 +114,10 @@ export class RunState implements RunObjectApi {
 
   async health(): Promise<RunHealth> {
     const earliestDueMs = this.#timers.earliestDueMs();
+    const lastEvent = this.#log.lastEvent();
     return {
-      lastEventAt: this.#log.lastEventAt(),
+      lastEventAt: lastEvent?.at ?? null,
+      ended: lastEvent !== null && endingEventTypes.has(lastEvent.type),
       overdueMs: earliestDueMs === null ? 0 : Math.max(0, this.#nowMs() - earliestDueMs),
     };
   }

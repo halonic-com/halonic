@@ -7,6 +7,11 @@ import type { AppendOptions, AppendResult, RunSnapshot, ScheduledTimer } from "@
 export interface RunHealth {
   /** ISO time of the run's last event, `null` while its log is empty. */
   lastEventAt: string | null;
+  /**
+   * Whether the run's own log says it has ended. The run list may still show it as running
+   * for a while, so the watchdog trusts this over the list.
+   */
+  ended: boolean;
   /** How long the earliest timer has been due and undelivered, in ms; 0 when no timer is due. */
   overdueMs: number;
 }
