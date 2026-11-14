@@ -101,6 +101,13 @@ verifies("cli.commands.serve.serve", () => {
     });
     const trustCard = (await (await fetch(`${address}/api/trust`)).json()) as { state: string };
     expect(trustCard.state).not.toBe("trusted");
+    const started = await fetch(`${address}/api/runs`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ hubId: "hub", workflowId: "triage", input: {} }),
+    });
+    expect(started.status).toBe(403);
+    expect(await started.json()).toMatchObject({ code: "workspace_not_trusted" });
   });
 
   it("refuses a workspace that isn't trusted here and listens on nothing", async () => {
@@ -125,7 +132,7 @@ verifies("cli.commands.serve.serve", () => {
     await trustAcme();
     const { io, serving } = startServe("--network", "--port", "0");
 
-    expect(await serving).not.toBe(0);
+    expect(await serving).toBe(2);
     running = undefined;
     expect(io.stderr.join("\n")).toContain("halonic secret set serve-password");
   });

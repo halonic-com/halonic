@@ -15,5 +15,6 @@ Rationale: the server asks the trust gate again before every request that starts
 - Given a workspace that was never trusted here, when `halonic serve` is run,
   then it exits 3 with "Nothing was served." and listens on nothing.
 - Given `--port 70000`, then it exits 2 and says `--port` needs a whole number from 0 to 65535.
-- Given `--network` and no sign-in password, then it refuses and names `halonic secret set serve-password`.
-- Given a served workspace edited after trust, then `GET /api/trust` no longer answers `trusted`.
+- Given `--network` and no sign-in password, then it exits 2, refuses and names `halonic secret set serve-password`.
+- Given a served workspace edited after trust, then `GET /api/trust` no longer answers `trusted`, and `POST /api/runs` is refused with 403 `workspace_not_trusted`.
+- Given a run whose agent needs the sandbox when it can't start, while the server is serving, then that run is refused with "That run didn't start. The server is still running." and the server keeps serving.

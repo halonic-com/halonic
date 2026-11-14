@@ -14,7 +14,7 @@ import { realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { makePrivateFolder } from "@halonicjs/adapter-fs-node";
 import { createScryptHasher } from "@halonicjs/adapter-password-scrypt";
-import { createServer, type ServerPorts } from "@halonicjs/host-server";
+import { createServer, passwordSecretName, type ServerPorts } from "@halonicjs/host-server";
 import type { PasswordHasher, TrustGrant } from "@halonicjs/ports";
 import { profileFolder, workspaceFolders } from "@halonicjs/profile";
 import { routineKey } from "@halonicjs/routines";
@@ -57,9 +57,6 @@ export const defaultPort = 4747;
 
 /** The most bytes a request body may have: a run's input, never a file. */
 const maxBodyBytes = 1024 * 1024;
-
-/** The name the sign-in password hash is kept under in the secrets file. */
-const passwordSecretName = "serve-password";
 
 /**
  * Serves the workspace until Ctrl C or SIGTERM, then returns that it
@@ -126,7 +123,7 @@ async function serveVersions(
         dir,
         workspace: loaded,
         runs: [run],
-        ending: serveMessages.nothingServed(),
+        ending: serveMessages.runNotStarted(),
       });
       for (const agent of agents) {
         if (warned.has(agent.name)) continue;
@@ -136,11 +133,6 @@ async function serveVersions(
     },
   } satisfies VersionChecks);
 
-  // The engine hands over its parts as it opens, so by the time `open` returns this has settled.
-  let gotParts: (parts: RoutineEngine) => void = () => {};
-  const partsOfEngine = new Promise<RoutineEngine>((resolve) => {
-    gotParts = resolve;
-  });
   const engine = await openWorkspaceEngine(context, setup, {
     dir,
     workspace,
@@ -149,16 +141,11 @@ async function serveVersions(
     // Each served run is checked as it starts, in `versions`; none is known before.
     runs: [],
     ending: serveMessages.nothingServed(),
-    // The server runs no routine on a clock: it takes the engine's own parts, which are the ones
-    // a webhook starts runs with. The webhook routines are read live from `versions`.
-    routines: (engineParts) => {
-      gotParts(engineParts);
-      return { onTick: async () => {}, dispose: async () => {} };
-    },
   });
   try {
-    const parts = await partsOfEngine;
-    const server = await listenOnComputer(context, setup, dir, versions, parts, listen);
+    // The server takes the engine's own parts, the ones a webhook starts runs with. The webhook
+    // routines are read live from `versions`; none runs on a clock.
+    const server = await listenOnComputer(context, setup, dir, versions, engine, listen);
     try {
       const name = printable(workspaceNameOf(workspace, dir));
       context.printAhead(serveMessages.serving(name, `http://localhost:${server.port}`).phrase);
@@ -191,6 +178,12 @@ async function listenOnComputer(
     await realpath(dir.root),
     webCryptoDigest,
   );
+  // A failure the caller isn't told about: the cause goes to `--debug`.
+  const logRequestFailure = (error: unknown): void =>
+    context.debug(
+      serveMessages.requestFailed(printable(error instanceof Error ? error.message : String(error)))
+        .phrase,
+    );
   const countFolder = join(folders.folder, "serve-requests");
   await makePrivateFolder(countFolder);
   const ports: ServerPorts = {
@@ -205,14 +198,7 @@ async function listenOnComputer(
         (await versions.routines.list()).find((placed) => routineKey(placed) === key) ?? null,
     },
     requestCounts: openDiskRequestCountStore(countFolder, parts.clock),
-    errorLog: {
-      record: (error) =>
-        context.debug(
-          serveMessages.requestFailed(
-            printable(error instanceof Error ? error.message : String(error)),
-          ).phrase,
-        ),
-    },
+    errorLog: { record: logRequestFailure },
     clock: parts.clock,
     ids: randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), parts.clock),
   };
@@ -232,12 +218,7 @@ async function listenOnComputer(
     network: listen.network,
     passwordIsSet: await passwordIsSet(context),
     report: (line) => context.printAhead(serveMessages.address(printable(line)).phrase),
-    logError: (error) =>
-      context.debug(
-        serveMessages.requestFailed(
-          printable(error instanceof Error ? error.message : String(error)),
-        ).phrase,
-      ),
+    logError: logRequestFailure,
   });
   return await listening.catch((error: unknown) => {
     // The runtime's own sentences say what to do, so they reach the person as they are.
