@@ -44,3 +44,13 @@ export const VIEW_ONLY_LINE =
 export const NOTHING = "Not set";
 export const ON = "On";
 export const OFF = "Off";
+
+export const TUNING = "Tuning";
+export const TEMPERATURE = "Temperature";
+export const TOP_P = "Top-p";
+export const MAX_TOKENS = "Max tokens";
+export const STOP = "Stop";
+export const REASONING_EFFORT = "Reasoning effort";
+export const TUNING_HINT = "Empty means the provider's default.";
+export const STOP_HINT = "One stop sequence per line. Empty means the provider's default.";
+export const PROVIDER_DEFAULT = "Provider default";

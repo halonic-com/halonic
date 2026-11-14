@@ -1,5 +1,5 @@
 import { isSecretName } from "@halonicjs/ports";
-import { turnLimitRange } from "./assistant-prefs.ts";
+import { tuningRanges, turnLimitRange } from "./assistant-prefs.ts";
 import { type AssistantProvider, providerDefaults } from "./assistant-providers.ts";
 
 /** What a field check says: the value to save, or the Field error to show (nothing is saved then). */
@@ -74,4 +74,39 @@ export function checkTurnLimit(text: string): FieldCheck<number | undefined> {
     ok: false,
     error: `Enter a whole number from ${turnLimitRange.min} to ${turnLimitRange.max}.`,
   };
+}
+
+/**
+ * Checks a tuning number that may be a decimal (temperature, top-p). Empty means the provider's
+ * default and gives `null`; outside the range, or not a number, is an error.
+ */
+export function checkTuningNumber(range: {
+  readonly min: number;
+  readonly max: number;
+}): (text: string) => FieldCheck<number | null> {
+  return (text) => {
+    const typed = text.trim();
+    if (typed === "") return { ok: true, value: null };
+    const number = /^\d+(\.\d+)?$/.test(typed) ? Number(typed) : Number.NaN;
+    if (number >= range.min && number <= range.max) return { ok: true, value: number };
+    return { ok: false, error: `Enter a number from ${range.min} to ${range.max}.` };
+  };
+}
+
+export const checkTemperature = checkTuningNumber(tuningRanges.temperature);
+export const checkTopP = checkTuningNumber(tuningRanges.topP);
+
+/** Checks the Max tokens box: empty (the provider's default) or a whole number above 0. */
+export function checkMaxTokens(text: string): FieldCheck<number | null> {
+  const typed = text.trim();
+  if (typed === "") return { ok: true, value: null };
+  const number = /^\d{1,9}$/.test(typed) ? Number(typed) : Number.NaN;
+  if (number >= 1) return { ok: true, value: number };
+  return { ok: false, error: "Enter a whole number above 0." };
+}
+
+/** Checks the Stop box: one stop sequence per line, blank lines dropped. */
+export function checkStop(text: string): FieldCheck<readonly string[]> {
+  const lines = text.split(/\r?\n/).filter((line) => line.trim() !== "");
+  return { ok: true, value: lines };
 }
