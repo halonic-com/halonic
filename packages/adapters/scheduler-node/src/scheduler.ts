@@ -155,12 +155,18 @@ export class NodeScheduler implements Scheduler {
     this.#armWakeUp();
   }
 
-  /** Stops waking up and delivering, and resolves when the deliveries in progress have settled. */
+  /**
+   * Stops waking up and delivering, and resolves when the deliveries in
+   * progress and the changes still queued for the store have settled, so
+   * nothing writes to the store once it has resolved.
+   */
   async close(): Promise<void> {
     this.#closed = true;
     this.#cancelWakeUp?.();
     this.#cancelWakeUp = undefined;
     await Promise.all([...this.#deliveries.values(), this.#tickInProgress]);
+    // After the deliveries: each records its result as one more change.
+    await this.#lastChange;
   }
 
   #startDelivery(slot: string, stored: StoredTimer): void {

@@ -38,7 +38,8 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(folder, { recursive: true, force: true });
+  // Backstop: the engine is closed by now, but a slow runner may still be finishing a file.
+  await rm(folder, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
 /** A profile folder of its own, so each golden mode starts with no runs. */

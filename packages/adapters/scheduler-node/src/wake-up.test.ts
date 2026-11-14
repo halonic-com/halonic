@@ -53,6 +53,30 @@ verifies("scheduler-node.wake-up", () => {
       expect(s.listener.ticks).toEqual([]);
     });
 
+    it("writes nothing to the store after close has resolved", async () => {
+      const s = startScheduler();
+      await s.scheduler.pending("run_1");
+      let releaseWrite = () => {};
+      const writeHeld = new Promise<void>((resolve) => {
+        releaseWrite = resolve;
+      });
+      const append = s.store.append.bind(s.store);
+      let writeEnded = false;
+      s.store.append = async (changes) => {
+        await writeHeld;
+        await append(changes);
+        writeEnded = true;
+      };
+      // Not awaited: the change is still queued when the scheduler closes.
+      const scheduled = s.scheduler.schedule("run_1", "wait", s.inMs(second));
+      const closed = s.scheduler.close();
+      await s.wait(0);
+      releaseWrite();
+      await closed;
+      expect(writeEnded).toBe(true);
+      await scheduled;
+    });
+
     it("reports a store that fails while a delivery is recorded, and delivers the timer again a retry later", async () => {
       const s = startScheduler();
       const at = s.inMs(0);
