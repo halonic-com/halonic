@@ -12,6 +12,8 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@halonicjs/adapter-executor-remote": "workspace:*",
+    "@halonicjs/events": "workspace:*",
     "@halonicjs/testing-contracts": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
