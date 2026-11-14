@@ -354,5 +354,25 @@ fn trust_grants_open_refuses_a_folder_that_changed_while_the_question_showed() {
         assert_eq!(link, Err("folder_changed"));
         assert!(!shell.is_open(&scratch.location("projects")));
     }
+
+    // Deleted and made again under the same name. The new folder is made
+    // before the old one goes, so the two can't share an inode.
+    #[cfg(unix)]
+    {
+        fs::remove_file(scratch.path("documents/Mine")).ok();
+        let _ = fs::remove_dir(scratch.path("documents/Mine"));
+        fs::create_dir(scratch.path("documents/Mine")).unwrap();
+        let again = shell.open(&scratch, &documents, "Mine", |_| {
+            fs::create_dir(scratch.path("documents/Mine-new")).unwrap();
+            fs::remove_dir(scratch.path("documents/Mine")).unwrap();
+            fs::rename(
+                scratch.path("documents/Mine-new"),
+                scratch.path("documents/Mine"),
+            )
+            .unwrap();
+            true
+        });
+        assert_eq!(again, Err("folder_changed"));
+    }
     assert!(scratch.list().locations().is_empty());
 }

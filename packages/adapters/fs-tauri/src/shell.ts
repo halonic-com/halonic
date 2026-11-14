@@ -81,7 +81,7 @@ export const trustRefusalKinds = [
   "io",
   /** `reopen_folder`: the location isn't a folder the person picked, or they forgot it since. */
   "not_picked",
-  /** `reopen_folder`: nothing is at the picked folder's path any more. */
+  /** `reopen_folder`, `open_workspace_folder`: nothing is at the folder's path any more. */
   "folder_missing",
   /**
    * `reopen_folder`, `open_workspace_folder`: the folder's path now leads to another folder, through a link swapped

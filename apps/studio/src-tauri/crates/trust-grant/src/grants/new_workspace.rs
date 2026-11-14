@@ -8,8 +8,8 @@ use std::sync::PoisonError;
 use halonic_git_guard::OpenedFolders;
 use serde::Serialize;
 
-use super::{TrustState, canonical_folder, remember_picked};
-use crate::picked::PickedFolders;
+use super::{TrustState, canonical_folder, remember_picked, same_folder};
+use crate::picked::{PickedFolders, folder_identity};
 use crate::question::question_text;
 use crate::refusal::TrustRefusal;
 use crate::workspace_name::check_workspace_name;
@@ -198,6 +198,7 @@ impl TrustState {
         ask: impl FnOnce(&str) -> bool,
     ) -> Result<Option<String>, TrustRefusal> {
         let (asked, location) = self.real_folder(documents, &fenced, parent, name)?;
+        let before = folder_identity(&asked);
         let yes = {
             let _asking = self.start_asking()?;
             ask(&question_text(&location))
@@ -215,7 +216,8 @@ impl TrustState {
                 ),
                 _ => refusal,
             })?;
-        if again != asked {
+        // The same path can lead to a new folder, deleted and made again.
+        if again != asked || !same_folder(before, folder_identity(&again)) {
             return Err(TrustRefusal::new(
                 "folder_changed",
                 format!("{location:?} now leads to another folder"),
