@@ -17,7 +17,7 @@ export interface TargetCapabilityHarness {
 /** Makes the target's ports as it wires them, with what it was configured with. */
 export type MakeTargetCapabilityHarness = () => Promise<TargetCapabilityHarness>;
 
-/** A capability a target refuses, and the methods or ports that would give it. */
+/** A capability a target refuses, and the ports that would give it. */
 interface Refusal {
   /** The capability as multi-cloud ADR 5.5 names it. */
   readonly capability: string;
@@ -28,7 +28,9 @@ interface Refusal {
 /**
  * The ports behind the capabilities a cloud target declares as `false`
  * (multi-cloud ADR 5.5): `startPrograms` needs a sandbox and `git` needs
- * version control. The names are the ones the ports have in `@halonicjs/ports`.
+ * version control. The names are the field names hosts wire the ports under,
+ * not the port names in `@halonicjs/ports`, and this is a deny-list on names:
+ * a port wired under another name isn't caught.
  */
 export const refusedPortNames: readonly Refusal[] = [
   { capability: "startPrograms", ports: ["sandbox", "harness", "connectors"] },

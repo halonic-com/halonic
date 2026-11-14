@@ -17,6 +17,6 @@ verifies("contracts.target-ports", () => {
       | "scheduler"
       | "passwords"
     >();
-    expectTypeOf<Partial<TargetPorts>>().not.toEqualTypeOf<TargetPorts>();
+    expectTypeOf<TargetPorts>().toEqualTypeOf<Required<TargetPorts>>();
   });
 });
