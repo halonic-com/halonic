@@ -190,4 +190,46 @@ verifies("deploy.orchestrate", () => {
     expect(error.code).toBe("deploy-aborted");
     expect(api.calls.some((c) => c.startsWith("takeDeployLock"))).toBe(false);
   });
+
+  it("stops before traffic changes when the lock is lost by then", async () => {
+    const clock = { t: 0 };
+    const { api, options } = setup({
+      accounts: [],
+      resources: owned,
+      deployment: live,
+      now: () => clock.t,
+    });
+    const error = (await deploy(api, {
+      ...options,
+      upload: {
+        ...options.upload,
+        fetch: (async () => {
+          clock.t += 11 * 60_000;
+          await api.takeDeployLock("a1", "w-data", { id: "other", label: "ana", leaseMs: 60_000 });
+          return new Response(passing);
+        }) as unknown as typeof fetch,
+      },
+    }).catch((e: unknown) => e)) as DeployError;
+    expect(error.code).toBe("deploy-lock-lost");
+    expect(api.calls.some((c) => c.includes("v1:100"))).toBe(false);
+  });
+
+  it("reports a live deploy with a warning when the lock is lost after the switch", async () => {
+    let takenOver = false;
+    const { api, options } = setup({ accounts: [], resources: owned, deployment: live });
+    const renewDeployLock = api.renewDeployLock.bind(api);
+    const done = await deploy(
+      { ...api, renewDeployLock: async (...args) => (takenOver ? undefined : renewDeployLock(...args)) },
+      {
+        ...options,
+        onProgress: (event) => {
+          if (event.step === "switched") takenOver = true;
+        },
+      },
+    );
+    expect(done).toMatchObject({ mode: "deployed", versionId: "v1" });
+    const warning = (done as { warnings?: string[] }).warnings?.[0];
+    expect(warning).toMatch(/^The deploy is live, but its lock was lost after traffic switched/);
+    expect(warning).not.toMatch(/stopped/);
+  });
 });

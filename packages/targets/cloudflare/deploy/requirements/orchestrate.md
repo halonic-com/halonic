@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-6704, HAL-6804; build plan 3a (HAL-198); multi-cloud ADR 5.6
+- Source: HAL-6704, HAL-6804, HAL-9255; build plan 3a (HAL-198); multi-cloud ADR 5.6
 
-The deploy shall run ADR 5.6 steps 1–9 in order: validate, test (production only), take the snapshot from git at a commit, ask for missing secrets, provision, migrate, upload, smoke test, switch traffic. Nothing is created before the secrets are in hand, and migrate, upload and switch run only while the deploy holds the lock, which is freed when the deploy ends, however it ends. A production deploy shall refuse uncommitted changes with `uncommitted-changes` unless `allowDirty` is set; a development deploy shall report how many changed files aren't in it. `plan` shall run validate (not the tests), the snapshot, provision and migrate in read-only mode, take no lock, ask for no secrets and change nothing. Before a deploy that goes live without a trial (Durable Object migrations) on a Worker that already has traffic, the deploy shall report `live-migration-ahead`. An abort between steps stops the deploy with `deploy-aborted`.
+The deploy shall run ADR 5.6 steps 1–9 in order: validate, test (production only), take the snapshot from git at a commit, ask for missing secrets, provision, migrate, upload, smoke test, switch traffic. Nothing is created before the secrets are in hand, and migrate, upload and switch run only while the deploy holds the lock, which is freed when the deploy ends, however it ends. A production deploy shall refuse uncommitted changes with `uncommitted-changes` unless `allowDirty` is set; a development deploy shall report how many changed files aren't in it. `plan` shall run validate (not the tests), the snapshot, provision and migrate in read-only mode, take no lock, ask for no secrets and change nothing. Before a deploy that goes live without a trial (Durable Object migrations) on a Worker that already has traffic, the deploy shall report `live-migration-ahead`. The lock is checked right before traffic changes; if it is lost by then, the deploy stops with `deploy-lock-lost`. If it is lost after that, the deploy is live, so the result carries a warning and is not an error. An abort between steps stops the deploy with `deploy-aborted`.
 
 Rationale: one ordered path means nothing goes live without its secrets, and no two deploys change one Worker at once.
 
@@ -25,3 +25,5 @@ Rationale: one ordered path means nothing goes live without its secrets, and no 
 - Given a Worker with workers.dev off, then it is off again after the self-test, whether the test passes or fails.
 - Given a first deploy where workers.dev reads off, then it stays on.
 - Given a close that fails, then the deploy says workers.dev is still on.
+- Given a lock lost before the switch, then it stops with `deploy-lock-lost` and traffic is unchanged.
+- Given a lock lost after the switch, then the result is `deployed` with a warning, not an error.
