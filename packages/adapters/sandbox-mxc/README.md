@@ -12,21 +12,23 @@ is on HAL-3292.
 
 ## Status
 
-This is the second of three pull requests (HAL-3305). The first said where MXC is offered
-and whether it can start, and holds the grant-path and box-folder rules. This one adds
-sessions: `open()` builds the box request, proves the fence and starts programs through MXC's
-`spawn`. The next adds the fence tests and the `windows-11-arm` CI job. The adapter doesn't
-depend on MXC's SDK (`@microsoft/mxc-sdk`) yet: until it does, `systemMachine()` reports the
-SDK as missing, so `check()` says `other` on Windows 11 and no session opens.
+The adapter is on `main`: where MXC is offered, the grant rules, sessions, the fence proof,
+the trust check's canary, the read-only copies, the network probes and the SDK download. Nothing
+in Studio or the CLI turns it on yet: the Settings switch waits for the approved design
+(HAL-3290), and MXC stays opt-in until the check on a real PC has passed (HAL-2546). No release
+ships MXC before then.
 
 ## Loading MXC's SDK
 
-The SDK is optional and Windows only. `mxcSdkLoader` loads it the first time `offered()` or
-`check()` needs it, never at module top level, and `systemMachine()` keeps the answer for the
-rest of the process. On every other system, and whenever the SDK can't be imported, MXC
-doesn't start: `check()` says `other` on Windows 11. The adapter reads only the SDK's platform
-support, backends and `spawn`. Every `spawn` call passes `telemetry: { enabled: false }`, and
-the adapter never asks for telemetry consent.
+The SDK (`@microsoft/mxc-sdk`) is not a dependency. It is downloaded once, on Windows only,
+when the host calls `download()`, which it does only when the person picks MXC. The download
+comes from `registry.npmjs.org` over https, each package pinned to an exact version and hash
+(`sdk-pins.ts`), and is checked before a byte is unpacked. `mxcSdkLoader` loads the SDK from that
+folder the first time `offered()` or `check()` needs it, never at module top level, and
+`systemMachine()` keeps the answer for the rest of the process. Without the download, or on
+any other system, MXC doesn't start: `check()` says `other` on Windows 11, and a download is
+needed. The adapter reads only the SDK's platform support, backends and `spawn`. Every `spawn`
+call passes `telemetry: { enabled: false }`, and the adapter never asks for telemetry consent.
 
 ## Where MXC is offered
 
@@ -100,12 +102,32 @@ their address and port. Messages without a path or address, such as cmd.exe's "A
 denied.", are not reported, so a program that doesn't print its errors reports nothing.
 
 **Not covered yet.** `reopenedPaths` makes `open` throw: MXC's denied paths win over every
-grant, so a path inside one can't be reopened. The probes don't yet cover the default
-gateway or other private addresses, nor the bridge itself (`CONNECT`, or a request for another
-host or port): they need the bridge, which isn't in this package. The canary reports
-`nameLookupsLeave: true`, which is a known limit of MXC. No release ships MXC before the gateway
-and bridge probes exist (HAL-7840 follow-up). The refusal of files under a
-skill's `scripts/` folder, which `sandbox-srt` applies, isn't ported.
+grant, so a path inside one can't be reopened. The refusal of files under a skill's `scripts/`
+folder, which `sandbox-srt` applies, isn't ported. The probes cover the router and other
+private addresses, but not the bridge itself (`CONNECT`, or a request for another host or port
+through it): the bridge is the box's only network control, and nothing probes it yet.
+
+## Known limits
+
+These are the limits in [the ADR](../../../docs/adr/2026-11-10-mxc-sandbox-backend.md). The
+first is a leak the box can't stop; the trust check reports it rather than catching it.
+
+- **Name lookups leave the box.** They go through Windows' DNS client service, which runs
+  outside the box. A program can't open a connection, but it can encode data in the names it
+  looks up, slowly. The canary reports `nameLookupsLeave: true`. Showing it in `halonic doctor`
+  is Planned with the host wiring (HAL-3309); doctor doesn't know about MXC today.
+- **pnpm and other tools that look up the drive root don't work.** They walk up to `C:\`, which
+  the box can't read (`EPERM lstat 'C:'`). Halonic doesn't run them outside the box instead,
+  because that would run package scripts without the fence, and it doesn't make the drive root
+  readable, because that would show every file name on the drive. Node scripts and git work.
+  The limit stays until srt's Windows mode or a later sandbox gives Windows a stronger option.
+- **`cmd /c dir` is refused, even on the box's own folder.** Tools that list folders through
+  Node (`readdirSync`) work, and so does reading and writing files. A script or `.cmd` shim that
+  shells out to `dir` fails. This is a limit, not a leak.
+- **The permission that lets the box reach the bridge works both ways.** In CI the box couldn't
+  reach the internet and the host couldn't connect in, but CI has no local network. The probes
+  cover the router and another local address, and the real-PC check (HAL-2546) tests both
+  directions. Until it has passed, MXC ships in no release.
 
 ## Example
 
