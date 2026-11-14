@@ -1,4 +1,4 @@
-import type { ChatTurnRequest } from "@halonicjs/ports";
+import { AgentRunsNotAvailable, type ChatTurnRequest } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { chatApprovalReason } from "./agent/check-chat-tool-call.ts";
@@ -272,7 +272,7 @@ verifies("engine.local-chat-turn", () => {
 
     it("rejects starts, sends and cancels", async () => {
       await expect(executor.start(start)).rejects.toThrow("runs chat turns only");
-      await expect(executor.startAgent()).rejects.toThrow("can't start agent runs yet");
+      await expect(executor.startAgent()).rejects.toThrow(AgentRunsNotAvailable);
       await expect(executor.send("run_1", "approve")).rejects.toThrow("runs chat turns only");
       await expect(executor.cancel("run_1")).rejects.toThrow("runs chat turns only");
       await expect(

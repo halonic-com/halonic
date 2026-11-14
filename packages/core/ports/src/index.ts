@@ -5,6 +5,7 @@ export {
   agentPlacementStoreVersion,
   isAgentPlacementFor,
 } from "./agent-placement-store.ts";
+export { AgentRunsNotAvailable, isAgentRunsNotAvailable } from "./agent-runs-not-available.ts";
 export {
   type BlobRef,
   type BlobStore,
