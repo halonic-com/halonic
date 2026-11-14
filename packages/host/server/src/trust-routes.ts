@@ -31,6 +31,24 @@ function parseObject(body: Uint8Array): Record<string, unknown> | null {
   }
 }
 
+/**
+ * What decides where and how an agent in a harness runs. The host decides all of it, from the
+ * agent's file and the person's own choices on the computer (`server.harness-on-host`), so a start
+ * that names one is refused, never ignored: a client that thinks it set them would be wrong.
+ */
+const hostOnlyFields = [
+  "harness",
+  "placement",
+  "sandbox",
+  "profile",
+  "workingFolder",
+  "allowedSites",
+] as const;
+
+function namesHostOnlyField(request: Record<string, unknown> | null): boolean {
+  return hostOnlyFields.some((field) => request !== null && field in request);
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -86,6 +104,7 @@ export function createTrustRoutes({ trust, runs }: TrustRoutePorts): TrustRoutes
 
     async startWorkflow(body) {
       const request = parseObject(body);
+      if (namesHostOnlyField(request)) return errorResponse(serverErrors.badRequest);
       const { hubId, workflowId } = request ?? {};
       const input = request?.["input"] ?? {};
       const runId = request?.["runId"];
@@ -110,6 +129,7 @@ export function createTrustRoutes({ trust, runs }: TrustRoutePorts): TrustRoutes
 
     async startAgent(body) {
       const request = parseObject(body);
+      if (namesHostOnlyField(request)) return errorResponse(serverErrors.badRequest);
       const { hubId, agentId, prompt } = request ?? {};
       const runId = request?.["runId"];
       if (
