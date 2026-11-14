@@ -1,4 +1,4 @@
-# cli.commands.serve
+# cli.commands.serve.serve
 
 - Status: active
 - Since: 0.1.0

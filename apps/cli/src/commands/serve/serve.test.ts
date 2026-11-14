@@ -68,7 +68,7 @@ function addressOf(line: string | undefined): string {
   return found[1];
 }
 
-verifies("cli.commands.serve", () => {
+verifies("cli.commands.serve.serve", () => {
   it("serves a trusted workspace on this computer until Ctrl C", async () => {
     await trustAcme();
     const { io, signals, serving } = startServe("--port", "0");
