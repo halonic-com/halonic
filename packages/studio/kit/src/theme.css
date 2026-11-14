@@ -117,6 +117,9 @@
   --color-danger-hover: light-dark(#af073b, #fe93a6);
   --color-danger-soft: light-dark(rgb(199 13 69 / 0.1), rgb(253 118 146 / 0.18));
   --color-on-danger: light-dark(#ffffff, #0d0d1f);
+  /* An SVG luminance mask keeps white and knocks out black in every theme, so these two never change. */
+  --color-mask-show: light-dark(#ffffff, #ffffff);
+  --color-mask-hide: light-dark(#000000, #000000);
 
   /* ---------------------------------------------------------------- Colour: chart series */
   /* Blue, rose, teal and periwinkle, in that order, for up to four series on a card. Blue and
