@@ -2,6 +2,7 @@
 
 - Approval: Liam approves this note in review on HAL-9171
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:XZXDEk6NHRuo73U7C1kq0mOiahVGoPLcrnxN5XaLi7ent1wOtZjTzvyIUMl0svOggqQfevuChca5XSfIG4//Cg==
 - Task: HAL-3403
 
 ## What changes
