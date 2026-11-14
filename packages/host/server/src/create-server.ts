@@ -2,6 +2,7 @@ import type { CreateServer, RequestContext, ServerConfig } from "./api.ts";
 import { chatTurnPath, createChatTurnRoutes } from "./chat-turn-routes.ts";
 import { checkDailyRequests } from "./daily-requests.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
+import { streamRunEvents } from "./event-stream.ts";
 import { createGoogleRoutes, googlePathPrefix, isSecretPath } from "./google-routes.ts";
 import { createRunRoutes, isJsonRequest, parseRunId, runPathPrefix } from "./run-routes.ts";
 import { checkHost, checkOrigin, readBody, withSecurityHeaders } from "./security.ts";
@@ -52,7 +53,7 @@ export const createServer: CreateServer = ({ config, ports }) => {
       return errorResponse(serverErrors.notFound);
     }
     const endpoint = `${request.method} ${action ?? ""}`;
-    if (!["GET ", "POST events", "POST cancel"].includes(endpoint)) {
+    if (!["GET ", "GET events", "POST events", "POST cancel"].includes(endpoint)) {
       return errorResponse(serverErrors.notFound);
     }
     if (!(await signIn.isSignedIn(request, context))) {
@@ -61,6 +62,8 @@ export const createServer: CreateServer = ({ config, ports }) => {
     switch (endpoint) {
       case "GET ":
         return runRoutes.summary(runId);
+      case "GET events":
+        return streamRunEvents(ports, request, runId);
       case "POST events":
         return runRoutes.send(request, runId, body);
       default:

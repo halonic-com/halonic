@@ -121,7 +121,6 @@ describe("run routes", () => {
     it("answers 404 for ids and actions it doesn't have", async () => {
       const { server } = setup();
       for (const [method, path] of [
-        ["GET", "/api/runs/run_1/events"],
         ["POST", "/api/runs/run_1/other"],
         ["POST", "/api/runs/run_1"],
         ["GET", "/api/runs/run_1/cancel"],
