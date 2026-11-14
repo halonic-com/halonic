@@ -1,10 +1,10 @@
 import { defaultCurrency } from "@halonicjs/app";
-import { type Models, parseFile } from "@halonicjs/format";
+import { type Models, type Provider, parseFile } from "@halonicjs/format";
 import type { ModelsFiles } from "../api.ts";
 
 /**
  * What the alias views know of the workspace: still reading, unreadable, or its aliases with the
- * budget currency and the ids of the providers that run on this machine.
+ * budget currency, the providers that read, and the ids of those that run on this machine.
  */
 export type ModelsState =
   | { readonly status: "loading" }
@@ -13,12 +13,16 @@ export type ModelsState =
       readonly status: "ready";
       readonly models: Models;
       readonly currency: string;
+      readonly providers: readonly Provider[];
       readonly localProviders: ReadonlySet<string>;
     };
 
-/** The workspace's aliases; no `models.yaml` is no aliases, a file that doesn't parse is unreadable. */
+/** The workspace's aliases and providers; no `models.yaml` is no aliases, a file that doesn't parse is unreadable. */
 export async function readModels(files: ModelsFiles): Promise<ModelsState> {
-  const text = await files.readModels().catch(() => undefined);
+  const [providers, text] = await Promise.all([
+    readProviders(files),
+    files.readModels().catch(() => undefined),
+  ]);
   if (text === undefined) return { status: "unreadable" };
   const models = text === null ? ({ version: 1, aliases: {} } as Models) : parseModels(text);
   if (models === undefined) return { status: "unreadable" };
@@ -26,7 +30,8 @@ export async function readModels(files: ModelsFiles): Promise<ModelsState> {
     status: "ready",
     models,
     currency: await readCurrency(files),
-    localProviders: await readLocalProviders(files),
+    providers,
+    localProviders: new Set(providers.filter((provider) => provider.local).map(({ id }) => id)),
   };
 }
 
@@ -42,13 +47,12 @@ async function readCurrency(files: ModelsFiles): Promise<string> {
   return (parsed?.ok ? parsed.value.value.budget?.currency : undefined) ?? defaultCurrency;
 }
 
-/** The ids of the providers whose file says it runs on this machine or the user's network. */
-async function readLocalProviders(files: ModelsFiles): Promise<ReadonlySet<string>> {
-  const provided = await files.readProviders().catch(() => []);
-  const local = new Set<string>();
-  for (const { text } of provided) {
-    const parsed = parseFile("provider", text);
-    if (parsed.ok && parsed.value.value.local) local.add(parsed.value.value.id);
-  }
-  return local;
+/** The providers whose files read; a file that doesn't read, or none at all, is left out of the list. */
+async function readProviders(files: ModelsFiles): Promise<Provider[]> {
+  const found = await files.readProviders().catch(() => []);
+  return found.flatMap(({ path, text }) => {
+    const id = path.replace(/^.*\//, "").replace(/\.ya?ml$/, "");
+    const parsed = parseFile("provider", text, { id });
+    return parsed.ok ? [parsed.value.value] : [];
+  });
 }

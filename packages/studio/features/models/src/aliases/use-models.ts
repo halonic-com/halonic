@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { ModelsFiles } from "../api.ts";
 import { type ModelsState, readModels } from "./read-models.ts";
 
-/** The workspace's aliases, read again each time `models.yaml` changes; only the newest read is shown. `retry` reads again after a failure. */
+/** The workspace's aliases and providers, read again each time `models.yaml` or a provider file changes; only the newest read is shown. `retry` reads again after a failure. */
 export function useModels(files: ModelsFiles): [ModelsState, () => void] {
   const [state, setState] = useState<ModelsState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);

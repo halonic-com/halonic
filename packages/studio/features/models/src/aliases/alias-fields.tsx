@@ -1,5 +1,5 @@
-import type { ModelAlias, Models } from "@halonicjs/format";
-import type { Result } from "@halonicjs/std";
+import type { ModelAlias, Models, Provider } from "@halonicjs/format";
+import { parseAmount, type Result } from "@halonicjs/std";
 import { Field, FormRows, Input, Select } from "@halonicjs/studio-kit";
 import { useState } from "react";
 import type { ModelsFiles } from "../api.ts";
@@ -9,7 +9,9 @@ import {
   editAliasTarget,
   type FieldProblem,
   parseFallbacks,
+  zeroPriceWarning,
 } from "./alias-edits.ts";
+import { providerChoices } from "./alias-rows.ts";
 import { saveModelsEdit } from "./alias-save.ts";
 import {
   aliasUpdatedLine,
@@ -24,6 +26,7 @@ import { useDraft } from "./use-draft.ts";
 export interface AliasFieldsProps {
   readonly files: ModelsFiles;
   readonly models: Models;
+  readonly providers: readonly Provider[];
   readonly name: string;
 }
 
@@ -49,9 +52,9 @@ function hasCachePrices(alias: ModelAlias): boolean {
  * field is left (the provider when it is picked), and the status line says so.
  *
  * @example
- * <AliasFields files={files} models={models} name="smart" />
+ * <AliasFields files={files} models={models} providers={providers} name="smart" />
  */
-export function AliasFields({ files, models, name }: AliasFieldsProps) {
+export function AliasFields({ files, models, providers, name }: AliasFieldsProps) {
   const alias = models.aliases[name];
   const [problem, setProblem] = useState<FieldProblem>();
   const [status, setStatus] = useState("");
@@ -80,9 +83,12 @@ export function AliasFields({ files, models, name }: AliasFieldsProps) {
   const otherAliases = Object.keys(models.aliases)
     .filter((other) => other !== name)
     .sort((first, second) => first.localeCompare(second));
-  const providers = [
-    ...new Set([alias.provider, ...Object.values(models.aliases).map((other) => other.provider)]),
-  ];
+  const choices = providerChoices(providers, alias.provider);
+  const isLocal = providers.some((provider) => provider.id === alias.provider && provider.local);
+  const zeroWarning = zeroPriceWarning(
+    { input: parseAmount(input), output: parseAmount(output) },
+    isLocal,
+  );
   const emptiesCachePrices = input.trim() === "" && output.trim() === "" && hasCachePrices(alias);
 
   return (
@@ -90,7 +96,7 @@ export function AliasFields({ files, models, name }: AliasFieldsProps) {
       <FormRows>
         <Field label="Provider">
           <Select
-            options={providers.map((provider) => ({ value: provider, label: provider }))}
+            options={choices}
             value={alias.provider}
             onChange={(provider) => void saveTarget(provider, alias.model)}
           />
@@ -131,6 +137,7 @@ export function AliasFields({ files, models, name }: AliasFieldsProps) {
             />
           </Field>
         </div>
+        {zeroWarning === undefined ? null : <p>{zeroWarning}</p>}
         {emptiesCachePrices ? <p>{CACHE_PRICES_NOTE}</p> : null}
       </fieldset>
       {problemFor("yaml") === null ? null : <p role="alert">{problemFor("yaml")}</p>}
