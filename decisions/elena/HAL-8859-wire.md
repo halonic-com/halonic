@@ -2,6 +2,7 @@
 
 - Approval: Liam in the review of #2646 (HAL-9231); the dialog's **Create here** and **Open it** are part of the approved screen, so describing the shell step they waited for is a team decision under HAL-2282
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM://PhhGaQ92vEtA2VoCYNMWq+c88ItD4zC/P+IEpAv3Zp7I4E1bWsYeFUY4pKZGokUckbxfHTn1iKRoCcEdMCCQ==
 - Task: HAL-8859
 
 ## What changes
