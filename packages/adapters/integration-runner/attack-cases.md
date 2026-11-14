@@ -17,7 +17,7 @@ One difference from the design: A30 on plain `http` is refused as `scheme-not-al
 | A3 | a redirect to an undeclared host | `adapters/integration-kit/src/limited-http.test.ts` |
 | A4 | going around the kit | fence: `adapters/integration-runner/fence/runner-attacks.test.ts`, `runner-attacks.windows.test.ts` |
 | A5 | a host check before any lookup | `adapters/http-node/src/address-check.test.ts` |
-| A6 | DNS from inside the fence | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts` |
+| A6 | DNS from inside the fence | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts`; on MXC a lookup sent straight to a public DNS server is refused, but name lookups from inside the box leave through Windows' DNS client and are not fenced (a recorded gap, see below) |
 | A7 | a public host whose answer is a private address | `adapters/http-node/src/address-check.test.ts`, `adapters/http-kit/src/address-class.test.ts` |
 | A8 | DNS rebinding | `adapters/http-node/src/address-check.test.ts` |
 | A9 | a home-network host whose answer is public or link-local | `adapters/http-node/src/address-check.test.ts`, `adapters/http-kit/src/address-class.test.ts` |
@@ -52,3 +52,14 @@ One difference from the design: A30 on plain `http` is refused as `scheme-not-al
 | A38 | replaying a fence proof | `adapters/integration-runner/src/halonic/attacks.test.ts`, `strict-protocol.test.ts` |
 | A39 | ending Halonic's host on native Windows | fence: `runner-attacks.windows.test.ts`; a recorded gap |
 | A40 | a secret placed another way than the sheet says | `adapters/integration-kit/src/secret-placement.test.ts`, `testing/integration/src/fixtures/attacks.ts` |
+
+## Recorded gap on MXC (A6)
+
+Name lookups from inside the box leave through Windows' DNS client and are not fenced.
+On `sandbox-mxc` a lookup sent straight to a public DNS server is refused (the A6 canary), but a
+lookup that goes through Windows' DNS client leaves the box by design. Integration data the
+runner handles can therefore still leave through lookups, a few KB a second. This is bounded:
+the runner holds no key in its environment (A17, A25) and its MXC profile has
+`settingsFolder: null` and `keyStore: "denied"`, which `runner-profile.test.ts` checks. If a
+later change gives the runner a secret or the settings folder, `sandbox-mxc` is not fenced for
+the runner again. Decided by the CTO on HAL-9155. MXC stays opt-in.
