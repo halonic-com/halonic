@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { verifies } from "@halonicjs/testing-spec";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
+import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type ConnectorStatusHost, ConnectorStatusHostService } from "../connector-status-host.ts";
