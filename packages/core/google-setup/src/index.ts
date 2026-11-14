@@ -68,6 +68,7 @@ export type {
   SetupRecord,
   SetupValues,
 } from "./setup-record.ts";
+export { setupCollection } from "./setup-record.ts";
 export { SetupRecordError, type SetupRecordErrorReason } from "./setup-record-error.ts";
 export {
   type NewSetup,

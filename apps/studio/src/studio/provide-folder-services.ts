@@ -8,6 +8,7 @@ import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import { ModelsFilesService } from "@halonicjs/studio-feature-models/api";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import { type TauriIpc, tauriAgentHostTransport } from "@halonicjs/studio-services";
+import { provideGoogleSetup } from "../google/provide-google-setup.ts";
 import { provideLibraryServices } from "../library/provide-library-services.ts";
 import { WorkspaceModelsFiles } from "../models/workspace-models-files.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
@@ -42,6 +43,12 @@ export function provideFolderServices(
     files,
     transport: tauriAgentHostTransport(window),
     trust,
+    location,
+    onFocus: (listener) => focusOf(window, listener),
+  });
+  provideGoogleSetup(services, {
+    ipc,
+    files,
     location,
     onFocus: (listener) => focusOf(window, listener),
   });
