@@ -1,4 +1,5 @@
 import type { SettingsFolderWriter } from "@halonicjs/adapter-harness-kit";
+import type { SandboxExit, SandboxSession } from "@halonicjs/ports";
 
 /**
  * The part of the contract suite's `FakeProgramIo` these programs use. The
@@ -74,5 +75,33 @@ export function claudeFailing(message: string): FakeClaude {
     await io.readLine();
     io.writeError(`${message}\n`);
     return 1;
+  };
+}
+
+/**
+ * `session`, except that each program it starts is reported to have ended
+ * with `reason`, as the sandbox reports a program that ran out of time.
+ */
+export function withExitReason(
+  session: SandboxSession,
+  reason: SandboxExit["reason"],
+): SandboxSession {
+  return {
+    profile: session.profile,
+    get fence() {
+      return session.fence;
+    },
+    onBlocked: (listener) => session.onBlocked(listener),
+    close: () => session.close(),
+    start: async (command) => {
+      const process = await session.start(command);
+      return {
+        stdin: process.stdin,
+        stdout: process.stdout,
+        stderr: process.stderr,
+        exited: process.exited.then((exit) => ({ ...exit, reason })),
+        kill: () => process.kill(),
+      };
+    },
   };
 }
