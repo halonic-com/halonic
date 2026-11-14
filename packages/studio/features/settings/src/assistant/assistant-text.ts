@@ -45,6 +45,8 @@ export const LOCAL_SENTENCE =
 /** The line of Settings → Assistant when it is served to another device (`settings.ai-agent-view-only`). */
 export const VIEW_ONLY_LINE =
   "View only here. Change the assistant on the computer running Halonic.";
+/** The same line on the phone's Settings page. */
+export const VIEW_ONLY_PHONE_LINE = "View only on a phone. Change the assistant on your computer.";
 export const NOTHING = "Not set";
 export const ON = "On";
 export const OFF = "Off";

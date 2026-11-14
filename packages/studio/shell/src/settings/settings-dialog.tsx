@@ -50,6 +50,9 @@ export const displaySavedLines: Readonly<Record<SettingsPlace, string>> = {
   served: "Saved in this browser. The computer running Halonic keeps its own.",
 };
 
+/** The same line on the phone's Settings page, where the values are saved on the phone itself. */
+export const phoneSavedLine = "Saved on this phone. Your computer keeps its own.";
+
 /** Props for {@link SettingsDialog}. */
 export interface SettingsDialogProps {
   /** `shell.contributions.settings.list()`. */
@@ -230,7 +233,9 @@ export function SectionView({
         </h3>
       )}
       {section.scope === "display" ? (
-        <p className="mt-1 text-small text-fg-muted">{displaySavedLines[place]}</p>
+        <p className="mt-1 text-small text-fg-muted">
+          {place === "served" && surface === "phone" ? phoneSavedLine : displaySavedLines[place]}
+        </p>
       ) : null}
       {/* A view that fails to load or draw shows nothing; the list and the other sections keep working. */}
       <ViewErrorBoundary>

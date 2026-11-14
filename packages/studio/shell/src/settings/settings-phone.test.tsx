@@ -106,7 +106,10 @@ const sectionsFeature = defineFeature({
   },
 });
 
-async function renderPhone(name: string | null = "Acme") {
+async function renderPhone(
+  name: string | null = "Acme",
+  host: "desktop-app" | "served" = "served",
+) {
   const shell = createShell({ features: [sectionsFeature], timers: new FakeTimers() });
   const services = new MapTarget();
   shell.services.instantiate(services);
@@ -116,13 +119,7 @@ async function renderPhone(name: string | null = "Acme") {
     name: name ?? undefined,
   });
   const container = render(
-    <StudioWindow
-      shell={shell}
-      workspace={workspace}
-      host="served"
-      platform="linux"
-      language="en"
-    />,
+    <StudioWindow shell={shell} workspace={workspace} host={host} platform="linux" language="en" />,
   );
   await settle();
   const title = () => container.querySelector("header p")?.textContent;
@@ -299,5 +296,27 @@ verifies("shell.settings-list-page", () => {
     back();
 
     expect((container.querySelector("main") as HTMLElement).scrollTop).toBe(120);
+  });
+});
+
+verifies("shell.settings-saved-line", () => {
+  it("says the values are saved on the phone, under a display section's name", async () => {
+    const { container, tapRow, tapMore } = await renderPhone();
+    tapMore();
+    await tapRow("Settings");
+    await tapRow("Formats");
+    expect(container.querySelector("section h1 + p")?.textContent).toBe(
+      "Saved on this phone. Your computer keeps its own.",
+    );
+  });
+
+  it("keeps saying this computer in a desktop window as narrow as a phone", async () => {
+    const { container, tapRow, tapMore } = await renderPhone("Acme", "desktop-app");
+    tapMore();
+    await tapRow("Settings");
+    await tapRow("Formats");
+    expect(container.querySelector("section h1 + p")?.textContent).toBe(
+      "Saved on this computer, for every workspace.",
+    );
   });
 });
