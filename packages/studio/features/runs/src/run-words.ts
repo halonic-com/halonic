@@ -225,6 +225,9 @@ export const everyStepWords = {
     waiting: "waiting",
     running: "running",
   },
+  /** A screen reader's name for the row under a step that was refused sites (mc 23.2, 19.3). */
+  blockedIn: (sites: number, step: string) =>
+    `Blocked ${sites} ${sites === 1 ? "site" : "sites"}, in the step ${step}`,
   took: (took: string) => `Took ${took}`,
   failed: (took: string) => `Failed after ${took}`,
   /** mc 15.2 revision 70, "Cancelled, the step's timeline line". */

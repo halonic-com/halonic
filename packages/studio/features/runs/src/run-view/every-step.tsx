@@ -1,11 +1,13 @@
 import type { RunEvent } from "@halonicjs/events";
-import { Button, List, type ListColumn } from "@halonicjs/studio-kit";
+import { Button, List, type ListColumn, WarningIcon } from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { RunsSource } from "../api.ts";
 import { everyStepWords, runLogWords } from "../run-words.ts";
+import { fillText } from "./blocked-sites-text.tsx";
 import type { StepEntry, StepMark } from "./every-step-model.ts";
 import { RunLog } from "./run-log.tsx";
 import { runLogLines } from "./run-log-model.ts";
+import { stepBlockedSites } from "./step-events-model.ts";
 
 const timelineColumns: readonly ListColumn[] = [{ kind: "main" }, { kind: "time", key: "time" }];
 
@@ -50,7 +52,7 @@ export function EveryStep({
         {showLog ? (
           <RunLog lines={lines} />
         ) : (
-          <Timeline entries={entries} openEntry={openEntry} onOpenEntry={onOpenEntry} />
+          <Timeline entries={entries} log={log} openEntry={openEntry} onOpenEntry={onOpenEntry} />
         )}
       </div>
       <Button variant="ghost" size="sm" onClick={() => setShowLog(!showLog)}>
@@ -63,10 +65,12 @@ export function EveryStep({
 /** The timeline itself, nothing for a run that hasn't reached a step. */
 function Timeline({
   entries,
+  log,
   openEntry,
   onOpenEntry,
 }: {
   readonly entries: readonly StepEntry[];
+  readonly log: readonly RunEvent[];
   readonly openEntry: string | undefined;
   readonly onOpenEntry: (id: string) => void;
 }) {
@@ -88,6 +92,7 @@ function Timeline({
           cells: { time: { value: entry.time } },
           label: entry.label,
         },
+        ...blockedRow(entry, log),
         ...entry.groups.map((group) => ({
           id: group.id,
           title: group.name,
@@ -100,6 +105,39 @@ function Timeline({
       ])}
     />
   );
+}
+
+/**
+ * The line under a step that was refused sites: "Blocked 2 sites", a child row with the warning
+ * icon (never danger: a blocked site isn't always why a step failed) that opens the step's entry,
+ * where Blocked sites come first (mc 23.2). The kit's rows have no room for a button of their own.
+ */
+function blockedRow(entry: StepEntry, log: readonly RunEvent[]) {
+  const sites = stepBlockedSites(log, entry.id).reduce(
+    (count, { sites: step }) => count + step.sites.length + step.moreSites,
+    0,
+  );
+  if (sites === 0) return [];
+  const title = fillText(
+    sites === 1
+      ? "sandbox.blocked-sites.step-summary.one"
+      : "sandbox.blocked-sites.step-summary.many",
+    { count: sites },
+  );
+  return [
+    {
+      id: `${entry.id}:blocked`,
+      title,
+      icon: (
+        <span className="flex size-4 text-warning">
+          <WarningIcon />
+        </span>
+      ),
+      cells: {},
+      label: everyStepWords.blockedIn(sites, entry.name),
+      child: true as const,
+    },
+  ];
 }
 
 /** The ring or fill and the colour of each mark (component specs 23.5). */

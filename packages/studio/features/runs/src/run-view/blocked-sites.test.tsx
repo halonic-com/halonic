@@ -278,7 +278,7 @@ verifies("runs.run-view.blocked-sites", () => {
     expect(lines.at(-1)).toBe("and 3 more sites");
   });
 
-  it("gives the failed banner the several-sites sentence with the most-tried site as example", () => {
+  it("gives the failed banner its sentence: the several-sites one with the most-tried site as example, or the one-site one", () => {
     const container = render(
       <BlockedSitesBannerText step={install} agent="Reporter" noConnectionProven />,
     );
@@ -295,6 +295,8 @@ verifies("runs.run-view.blocked-sites", () => {
         noConnectionProven
       />,
     );
-    expect(one.textContent).toBe("");
+    expect(one.textContent).toBe(
+      "The sandbox stopped Reporter from reaching a.example, which isn't in its allowed sites. No connection was made.",
+    );
   });
 });

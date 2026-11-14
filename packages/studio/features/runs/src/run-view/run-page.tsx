@@ -7,10 +7,11 @@ import type { SourcedRun } from "../api.ts";
 import { loadFailureReason } from "../load-failure.ts";
 import { emptyListWords, runPageWords } from "../run-words.ts";
 import { type RunsList, RunsListService } from "../runs-list.ts";
+import { BlockedFailureBanner, blockedFailure } from "./blocked-banner.tsx";
 import { Details } from "./details.tsx";
 import { detailRows } from "./details-model.ts";
 import { EveryStep, useRunLog } from "./every-step.tsx";
-import { everyStep } from "./every-step-model.ts";
+import { everyStep, type StepEntry } from "./every-step-model.ts";
 import { Receipt } from "./receipt.tsx";
 import {
   approvalLines,
@@ -100,10 +101,14 @@ export function RunView({
     return (
       <div className="flex min-h-full w-full items-start">
         <RunLayout run={run} context={context} showingLast={state.error !== undefined}>
-          <Banner
-            banner={runBanner(run, context)}
+          <PageBanner
+            run={run}
+            context={context}
+            log={log}
+            entries={entries}
             reviewInInbox={reviewInInbox}
             openRun={openRun}
+            onSeeStep={setOpenEntry}
           />
           <div className="grid items-start gap-6 wide:grid-cols-[minmax(0,1fr)_16rem]">
             <div className="flex min-w-0 flex-col gap-4">
@@ -211,6 +216,33 @@ function RunLayout({
       ) : null}
       {children}
     </div>
+  );
+}
+
+/** The page's one banner: the sandbox's failed banner for a run it stopped, else the usual one. */
+function PageBanner({
+  run,
+  context,
+  log,
+  entries,
+  reviewInInbox,
+  openRun,
+  onSeeStep,
+}: {
+  readonly run: SourcedRun;
+  readonly context: RunPageContext;
+  readonly log: readonly RunEvent[] | undefined;
+  readonly entries: readonly StepEntry[];
+  readonly reviewInInbox: (() => void) | undefined;
+  readonly openRun: ((runId: string) => void) | undefined;
+  readonly onSeeStep: (entryId: string) => void;
+}) {
+  const blocked = log === undefined ? undefined : blockedFailure(run.summary, log, entries);
+  if (blocked !== undefined) {
+    return <BlockedFailureBanner failure={blocked} onSeeStep={onSeeStep} />;
+  }
+  return (
+    <Banner banner={runBanner(run, context)} reviewInInbox={reviewInInbox} openRun={openRun} />
   );
 }
 
