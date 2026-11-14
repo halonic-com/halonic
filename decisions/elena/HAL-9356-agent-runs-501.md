@@ -2,6 +2,7 @@
 
 - Approval: Liam approved it in the final review of #2683 (HAL-9446); Ravi's review on HAL-9360 is the second opinion
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:k/8N/1wjHTZxDloF0OkhkQfGvGZrUmowQIT9vmbKNoyOWLyyzt0UrdOf60ICVDKihZT23263J0jWloVIrcqvBg==
 - Task: HAL-9356
 
 ## What changes
