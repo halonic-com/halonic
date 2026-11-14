@@ -61,7 +61,7 @@ export class HostClient {
     const sent = new Headers(headers);
     if (this.#cookie !== null) sent.set("Cookie", this.#cookie);
     if (body !== undefined) sent.set("Content-Type", "application/json");
-    const init: RequestInit = { method, headers: sent };
+    const init: RequestInit = { method, headers: sent, redirect: "error" };
     if (body !== undefined) init.body = JSON.stringify(body);
     if (signal !== undefined) init.signal = signal;
     return this.#fetch(new Request(`${this.#baseUrl}${path}`, init));
