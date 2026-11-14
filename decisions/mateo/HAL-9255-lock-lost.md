@@ -2,6 +2,7 @@
 
 - Approval: Liam asked for this in his review of PR #2652 (HAL-9253) and filed it as HAL-9255; the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:zn85Qh2yrkrI0hKznmdDILjBmx51BNEmae9dCiPV9ejzPC7DG8FHBMZXCsbYk3hp5RimHmKKNel+cPSfDJniDw==
 - Task: HAL-9255
 
 ## What changes
