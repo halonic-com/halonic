@@ -312,6 +312,7 @@ verifies("app.doctor-service", () => {
       offered: true,
       state: "check-failed",
       reason: "too-strict",
+      setup: null,
       missing: ["the read-only file couldn't be read"],
       limits: [],
       residuals: [],
