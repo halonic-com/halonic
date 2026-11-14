@@ -17,6 +17,9 @@ When the capture runs a recording, the capture shall run each command for real i
 - Given a command that exits with an error,
   when the capture reads the log,
   then it stops with an error that names the failure, and writes no cast.
+- Given a session that ends with a non-zero exit code and no failure marker, such as a driver whose bash is killed,
+  when the capture reads the result of `script`,
+  then it stops with an error that names the exit code, and writes no cast.
 - Given a `halonic` whose `--version` prints "Halonic 0.1.0",
   when the capture runs,
   then it writes `first-run.version` holding "Halonic 0.1.0" next to `first-run.cast`, and the cast's title says "Terminal · Halonic 0.1.0".

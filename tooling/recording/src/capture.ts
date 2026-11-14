@@ -40,6 +40,8 @@ export function captureSession(options: CaptureOptions): Cast {
       "script",
       [
         "--quiet",
+        // Without this, script exits 0 whatever happened inside it.
+        "--return",
         "--echo",
         "never",
         "--log-out",
