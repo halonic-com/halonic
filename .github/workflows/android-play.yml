@@ -417,7 +417,15 @@ jobs:
           build_tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
           "$build_tools/apksigner" verify --print-certs "$APK" | tee "$RUNNER_TEMP/certs.txt"
           expected=$(tr -d ':' <<< "$EXPECTED" | tr '[:upper:]' '[:lower:]')
-          signers=$(sed -n 's/^Signer #[0-9]* certificate SHA-256 digest: //p' "$RUNNER_TEMP/certs.txt")
+          # Older apksigner prints "Signer #1 certificate SHA-256 digest: ...",
+          # newer ones print "V3.0 Signer: certificate SHA-256 digest: ...".
+          # The V3.2 hybrid and source stamp signers are other lines and are
+          # not read; the main signature is the one that must match.
+          signers=$(sed -nE 's/^(Signer #[0-9]+|V3\.0 Signer):? certificate SHA-256 digest: //p' "$RUNNER_TEMP/certs.txt" | sort -u)
+          if [ -z "$signers" ]; then
+            echo "::error::No signer digest found in apksigner's output; the output format may have changed."
+            exit 1
+          fi
           if [ "$signers" != "$expected" ]; then
             echo "::error::The APK is not signed only with Play's app signing key. Expected $expected, got: $signers"
             exit 1
