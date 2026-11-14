@@ -72,6 +72,21 @@ export const serverErrors = {
     code: "model_call_failed",
     message: "The model didn't answer. See the host's error log for the cause.",
   },
+  connectorToolNotFound: {
+    status: 404,
+    code: "connector_tool_not_found",
+    message: "There is no such connector tool.",
+  },
+  connectorCallRefused: {
+    status: 403,
+    code: "connector_call_refused",
+    message: "A call from outside a run can't use this tool.",
+  },
+  connectorCallFailed: {
+    status: 502,
+    code: "connector_call_failed",
+    message: "The connector's tool failed. See the host's error log for the cause.",
+  },
   requestAborted: {
     status: 499,
     code: "request_aborted",

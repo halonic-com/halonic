@@ -29,6 +29,7 @@ verifies("server.api", () => {
       | "coordination"
       | "requestCounts"
       | "errorLog"
+      | "connectors"
       | "google"
       | "requestLog"
       | "clock"

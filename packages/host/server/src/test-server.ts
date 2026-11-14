@@ -9,6 +9,7 @@ import type {
   WindowCount,
 } from "@halonicjs/ports";
 import type {
+  ConnectorCallPorts,
   ErrorLog,
   GoogleSetupPorts,
   RequestCountStore,
@@ -116,6 +117,7 @@ export function testServer(options: {
   trust?: TrustGate;
   webhooks?: WebhookRoutines;
   google?: GoogleSetupPorts;
+  connectors?: ConnectorCallPorts;
   requestLog?: RequestLog;
 }): Server {
   const clock = options.clock ?? new TestClock();
@@ -132,6 +134,7 @@ export function testServer(options: {
     requestCounts: options.requestCounts ?? unusedPort("requestCounts"),
     errorLog: options.errorLog ?? { record: () => {} },
     ...(options.google === undefined ? {} : { google: options.google }),
+    ...(options.connectors === undefined ? {} : { connectors: options.connectors }),
     ...(options.requestLog === undefined ? {} : { requestLog: options.requestLog }),
     clock,
     ids: { next: (prefix) => `${prefix}_1` },
