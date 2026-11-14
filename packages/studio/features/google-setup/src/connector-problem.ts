@@ -21,7 +21,7 @@ function signInText(email: string, inProduction: boolean): string {
   const causes = inProduction
     ? "when access is removed in your Google account or when the password changes"
     : "when access is removed in your Google account, when the password changes, or when an app in Testing reaches 7 days";
-  return `Google no longer accepts Halonic's sign-in for ${email}. This happens ${causes}. Nothing was sent.`;
+  return `Google no longer accepts the sign-in for ${email}. This happens ${causes}. Nothing was sent.`;
 }
 
 function describe(
