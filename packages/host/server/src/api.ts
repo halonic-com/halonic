@@ -346,6 +346,21 @@ export interface ModelSettingsGate {
   allows(hubId: string, settings: ChatAgentSettings): Promise<boolean>;
 }
 
+/**
+ * The files of the built Studio page, which `GET /` serves. Read-only. The
+ * host hands over bytes only: the server decides which paths are served and
+ * what type each file has.
+ */
+export interface StudioPage {
+  /**
+   * One file of the build.
+   *
+   * @param path The file's path inside the build, with `/` between plain names, such as `assets/studio-1a2b3c.js`.
+   * @returns the file's bytes, or `null` when the build has none there
+   */
+  read(path: string): Promise<Uint8Array | null>;
+}
+
 /** What the server needs from its host. Every port is replaceable, so a test runs the handler with fakes. */
 export interface ServerPorts {
   /** Runs workflows; the server only forwards start, send, cancel and subscribe calls to it. */
@@ -373,6 +388,8 @@ export interface ServerPorts {
   readonly errorLog: ErrorLog;
   /** The connector-call route's ports. Without them `/api/connector-calls` answers 404. */
   readonly connectors?: ConnectorCallPorts;
+  /** The built Studio page for `GET /`. Without it the server answers only the API, and `/` answers 404. */
+  readonly studioPage?: StudioPage;
   /** The Google setup routes' ports. Without them `/api/google/…` answers 404. */
   readonly google?: GoogleSetupPorts;
   /** Where finished requests are logged by path. Without it nothing is logged. */

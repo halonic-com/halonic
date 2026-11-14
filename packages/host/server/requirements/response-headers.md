@@ -6,7 +6,7 @@
 
 The server shall put on every response it sends, including every refusal, `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Cross-Origin-Resource-Policy: same-origin` and `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`. A response to a request made over `https` shall also carry `Strict-Transport-Security`.
 
-Rationale: the headers stop a browser from sniffing, framing, caching or leaking a reply. A later route that serves a page may loosen the content security policy for that route only, with its own requirement.
+Rationale: the headers stop a browser from sniffing, framing, caching or leaking a reply. The route that serves the Studio page loosens the content security policy for its own files only, with its own requirement (`server.studio-page`).
 
 ## Examples
 

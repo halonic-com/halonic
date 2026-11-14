@@ -22,6 +22,7 @@ export type {
   ServerOptions,
   ServerPorts,
   StagedSecretOutcome,
+  StudioPage,
   TrustDecision,
   TrustGate,
   TrustState,

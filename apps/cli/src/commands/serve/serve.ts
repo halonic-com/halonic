@@ -10,8 +10,9 @@
 // edit after this check stops the runs until a person trusts it again with
 // `halonic trust`. Later versions are checked as `routines watch` checks them.
 
-import { realpath } from "node:fs/promises";
+import { access, realpath } from "node:fs/promises";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { makePrivateFolder } from "@halonicjs/adapter-fs-node";
 import { createScryptHasher } from "@halonicjs/adapter-password-scrypt";
 import { createServer, passwordSecretName, type ServerPorts } from "@halonicjs/host-server";
@@ -25,6 +26,7 @@ import {
   NetworkNeedsPasswordError,
   NoNetworkAddressError,
   openDiskRequestCountStore,
+  openStudioPageFolder,
 } from "@halonicjs/target-node-runtime";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import {
@@ -52,7 +54,17 @@ import { workspaceModelSettings } from "./model-settings-gate.ts";
 export interface ServeSetup extends RunSetup {
   /** Hashes and checks the sign-in password; scrypt by default. */
   readonly hasher?: PasswordHasher;
+  /** Where the built Studio page is; `apps/studio/dist/studio` next to this command by default. */
+  readonly studioFolder?: string;
 }
+
+/**
+ * The Studio page as `pnpm --filter @halonicjs/app-studio build` leaves it.
+ * `serve` reads it where it is and keeps no copy, so there is no build step
+ * in this package: the page is built where it lives, and `serve` serves what
+ * is there.
+ */
+const builtStudioFolder = fileURLToPath(new URL("../../../../studio/dist/studio", import.meta.url));
 
 /** The port when `--port` isn't given. */
 export const defaultPort = 4747;
@@ -152,6 +164,9 @@ async function serveVersions(
       const name = printable(workspaceNameOf(workspace, dir));
       context.printAhead(serveMessages.serving(name, `http://localhost:${server.port}`).phrase);
       if (!(await passwordIsSet(context))) context.printAhead(serveMessages.noPassword().phrase);
+      if (!(await isBuilt(studioFolderOf(setup)))) {
+        context.printAhead(serveMessages.studioNotBuilt().phrase);
+      }
       await stopped(engine.signal);
     } finally {
       await server.close();
@@ -161,6 +176,18 @@ async function serveVersions(
   }
   if (engine.stuck.aborted) throw engine.stuck.reason;
   return { stopped: true, json: {} };
+}
+
+function studioFolderOf(setup: ServeSetup): string {
+  return setup.studioFolder ?? builtStudioFolder;
+}
+
+/** Whether the Studio page's entry is there to serve. */
+async function isBuilt(studioFolder: string): Promise<boolean> {
+  return access(join(studioFolder, "studio.html")).then(
+    () => true,
+    () => false,
+  );
 }
 
 async function passwordIsSet(context: CommandContext): Promise<boolean> {
@@ -200,6 +227,7 @@ async function listenOnComputer(
       find: async (key) =>
         (await versions.routines.list()).find((placed) => routineKey(placed) === key) ?? null,
     },
+    studioPage: openStudioPageFolder(studioFolderOf(setup)),
     requestCounts: openDiskRequestCountStore(countFolder, parts.clock),
     errorLog: { record: logRequestFailure },
     clock: parts.clock,

@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { runCli } from "../../run-cli.ts";
@@ -14,6 +15,7 @@ import { waitUntil } from "../../test/wait-until.test-helper.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import { serveCommandWith } from "./command.ts";
+import type { ServeSetup } from "./serve.ts";
 
 /** The first start opens the engine and the listener from cold imports. */
 const slowStart = { timeout: 10_000 };
@@ -52,9 +54,13 @@ async function trustAcme(): Promise<void> {
 }
 
 function startServe(...args: string[]) {
+  return startServeWith(acmeRunsSetup(acmeRuns), ...args);
+}
+
+function startServeWith(setup: ServeSetup, ...args: string[]) {
   const io = captureIo(acmeRuns.acme);
   const signals = fakeSignals();
-  const serving = runCli(["serve", ...args], io, [serveCommandWith(acmeRunsSetup(acmeRuns))], {
+  const serving = runCli(["serve", ...args], io, [serveCommandWith(setup)], {
     stop: { signals, exitNow: () => undefined },
   });
   running = { signals, serving };
@@ -84,6 +90,33 @@ verifies("cli.commands.serve.serve", () => {
     expect(await serving).toBe(130);
     running = undefined;
     await expect(fetch(`${address}/api/hello`)).rejects.toThrow();
+  });
+
+  it("serves the built Studio page at / with the page's own content security policy", async () => {
+    await trustAcme();
+    const studioFolder = join(acmeRuns.folder, "studio-build");
+    await writeFiles(studioFolder, { "studio.html": "<title>Halonic</title>" });
+    const { io } = startServeWith({ ...acmeRunsSetup(acmeRuns), studioFolder }, "--port", "0");
+    await waitUntil(() => io.stdout.length >= 1, slowStart);
+    const address = addressOf(io.stdout[0]);
+
+    const page = await fetch(`${address}/`);
+    expect(page.status).toBe(200);
+    expect(await page.text()).toBe("<title>Halonic</title>");
+    expect(page.headers.get("content-security-policy")).toContain("script-src 'self'");
+    expect((await fetch(`${address}/api/hello`)).status).toBe(200);
+    expect(io.stdout.join("\n")).not.toContain("isn't built");
+  });
+
+  it("starts without a built Studio page, says so, and answers 404 at /", async () => {
+    await trustAcme();
+    const studioFolder = join(acmeRuns.folder, "no-studio-build");
+    const { io } = startServeWith({ ...acmeRunsSetup(acmeRuns), studioFolder }, "--port", "0");
+    await waitUntil(() => io.stdout.length >= 3, slowStart);
+    const address = addressOf(io.stdout[0]);
+
+    expect(io.stdout[2]).toContain("The Studio page isn't built");
+    expect((await fetch(`${address}/`)).status).toBe(404);
   });
 
   it("asks the trust gate again for every request, so an edit after the start shows as changed", async () => {
