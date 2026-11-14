@@ -114,9 +114,29 @@ verifies("agent-host.connector-routes", () => {
       await opened({ workingFolders: [link, join(setup.folders.agent, "not-yet")] });
       expect(setup.made[0]?.context.workspaceRoot).toBe(setup.folders.workspace);
       expect(setup.made[0]?.context.workingFolders).toEqual([
+        join(setup.folders.workspace, "files", "agents"),
         setup.folders.agent,
         join(setup.folders.agent, "not-yet"),
       ]);
+    });
+
+    it("adds the default agents folder itself when the request names no working folder", async () => {
+      setup = await startRoutes();
+      await opened({ workingFolders: [] });
+      expect(setup.made[0]?.context.workingFolders).toEqual([
+        join(setup.folders.workspace, "files", "agents"),
+      ]);
+    });
+
+    it("refuses a working folder outside the workspace, 403", async () => {
+      setup = await startRoutes();
+      const response = await post(
+        setup.url,
+        "/v1/connectors/open",
+        openBody(setup.folders, { workingFolders: [setup.folders.other] }),
+      );
+      expect(response.status).toBe(403);
+      expect(setup.made).toEqual([]);
     });
 
     it("closes every open connector when the host stops", async () => {

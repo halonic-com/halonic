@@ -1,4 +1,6 @@
 import { realpath } from "node:fs/promises";
+import { isAbsolute, join, relative, sep } from "node:path";
+import { defaultWorkingFolder } from "@halonicjs/format";
 import type {
   ConnectorCallOptions,
   ConnectorFactory,
@@ -138,25 +140,8 @@ function openHandler(deps: ConnectorRouteDeps): HostRoute["handle"] {
       return;
     }
     try {
-      const context = await contextOf(deps, body);
-      if (context === undefined) {
-        sendError(
-          response,
-          403,
-          "workspace_not_named",
-          "The workspace folder isn't one the agent host was given.",
-        );
-        return;
-      }
-      if ((await checkTrustGrant(deps.trustStore, context.workspaceRoot, body)) !== undefined) {
-        sendError(
-          response,
-          403,
-          "workspace_not_trusted",
-          "This computer's trust record doesn't cover this connector in this workspace. Trust the workspace first.",
-        );
-        return;
-      }
+      const context = await allowedContextOf(deps, body, response);
+      if (context === undefined) return;
       const client = deps.factory.create(configOf(body), context);
       const id = connectors.add(client, Object.values(body.secrets));
       if (id === undefined) {
@@ -175,31 +160,94 @@ function openHandler(deps: ConnectorRouteDeps): HostRoute["handle"] {
 }
 
 /**
+ * The start's context once the host allows it: the workspace is one it was
+ * given, every working folder is inside it, and the trust grant covers it.
+ *
+ * @returns undefined after answering 403 when it doesn't
+ */
+async function allowedContextOf(
+  deps: ConnectorRouteDeps,
+  body: OpenConnectorBody,
+  response: Parameters<typeof sendError>[0],
+): Promise<(ConnectorFactoryContext & { workspaceRoot: string }) | undefined> {
+  const context = await contextOf(deps, body);
+  if (context === undefined) {
+    sendError(
+      response,
+      403,
+      "workspace_not_named",
+      "The workspace folder isn't one the agent host was given.",
+    );
+    return undefined;
+  }
+  if (context === "folder_outside") {
+    sendError(
+      response,
+      403,
+      "working_folder_outside_workspace",
+      "An agent working folder isn't inside the workspace folder.",
+    );
+    return undefined;
+  }
+  if ((await checkTrustGrant(deps.trustStore, context.workspaceRoot, body)) !== undefined) {
+    sendError(
+      response,
+      403,
+      "workspace_not_trusted",
+      "This computer's trust record doesn't cover this connector in this workspace. Trust the workspace first.",
+    );
+    return undefined;
+  }
+  return context;
+}
+
+/**
  * What the start is given: the workspace and the agents' folders as real
  * paths (Studio's page can't resolve them), the connector's own secrets and
  * the trust grant, which the host checks against its own record before it
  * starts anything. Nothing else of the host's reaches it.
  *
- * @returns undefined when the workspace isn't one of the launcher's folders
+ * The host owns part of the list: it always adds the folder of the default
+ * agent working folders, and refuses a folder outside the workspace.
+ *
+ * @returns undefined when the workspace isn't one of the launcher's folders,
+ *   `"folder_outside"` when a working folder isn't inside it
  */
 async function contextOf(
   deps: ConnectorRouteDeps,
   body: OpenConnectorBody,
-): Promise<(ConnectorFactoryContext & { workspaceRoot: string }) | undefined> {
+): Promise<(ConnectorFactoryContext & { workspaceRoot: string }) | "folder_outside" | undefined> {
   const workspaceRoot = await realpath(body.workspaceRoot).catch(() => undefined);
   if (workspaceRoot === undefined) return undefined;
   const named = await Promise.all(
     deps.workspaceRoots.map((root) => realpath(root).catch(() => root)),
   );
   if (!named.includes(workspaceRoot)) return undefined;
+  const given = await Promise.all(body.workingFolders.map(realPathOrGiven));
+  if (!given.every((folder) => isInside(workspaceRoot, folder))) return "folder_outside";
   return {
     secrets: memorySecrets(body.secrets),
     tokens: deps.tokens,
     http: deps.http,
     workspaceRoot,
-    workingFolders: await Promise.all(body.workingFolders.map(realPathOrGiven)),
+    workingFolders: [...new Set([defaultAgentsFolder(workspaceRoot), ...given])],
     trust: body.trust,
   };
+}
+
+/**
+ * The folder every default agent working folder is in. The host adds it
+ * itself, so an empty or short list from the page never leaves an agent's
+ * default folder unchecked.
+ */
+function defaultAgentsFolder(workspaceRoot: string): string {
+  return join(workspaceRoot, defaultWorkingFolder("").replace(/\/$/, ""));
+}
+
+/** Whether `folder` is `root` or below it. */
+function isInside(root: string, folder: string): boolean {
+  const path = relative(root, folder);
+  return path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path);
 }
 
 /** A folder that doesn't exist yet stays as given: the start's check follows it as far as it exists. */
