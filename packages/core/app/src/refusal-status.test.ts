@@ -51,7 +51,9 @@ verifies("ports.untrusted-tool-listings", () => {
 describe("refusalStatusLine", () => {
   it("says when only part of a tool was dropped", () => {
     const lines = statusLines([tool("lookup", { parameters: { type: "object", pattern: "^a" } })]);
-    expect(lines).toEqual(['notes: changed "lookup": dropped the keyword at /pattern']);
+    expect(lines).toEqual([
+      'notes: "lookup": Halonic left out part of its arguments: dropped the keyword at /pattern',
+    ]);
   });
 
   it("shows a refusal of the whole listing, which has no name", () => {
@@ -74,7 +76,9 @@ describe("refusalStatusLine", () => {
     const lines = statusLines([
       tool("lookup", { parameters: { type: "object", [keyword]: true } }),
     ]);
-    expect(lines).toEqual([`notes: changed "lookup": dropped the keyword at /x-${"a".repeat(62)}`]);
+    expect(lines).toEqual([
+      `notes: "lookup": Halonic left out part of its arguments: dropped the keyword at /x-${"a".repeat(62)}`,
+    ]);
   });
 
   it("escapes the source's id, which comes from a workspace that may be untrusted", () => {

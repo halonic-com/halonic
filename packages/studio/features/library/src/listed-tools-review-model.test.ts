@@ -19,6 +19,7 @@ function row(name: string, overrides: Partial<ListedToolRow> = {}): ListedToolRo
     differences: [],
     serverChanged: false,
     leftOutArguments: [],
+    asksBeforeUse: true,
     ...overrides,
   };
 }
@@ -26,6 +27,7 @@ function row(name: string, overrides: Partial<ListedToolRow> = {}): ListedToolRo
 function snapshot(overrides: Partial<ListedToolsSnapshot> = {}): ListedToolsSnapshot {
   return {
     sourceName: "Notes server",
+    workspaceName: "Acme",
     toReview: [row("search"), row("lookup")],
     keepsChanging: [],
     refused: [],
@@ -109,6 +111,23 @@ verifies("library.listed-tools-review", () => {
     expect(outcome).toEqual({
       kind: "close",
       toast: "Approved 1 tool from Notes server. 1 stays off.",
+    });
+  });
+
+  it("counts the tools that keep changing among those that stay off", async () => {
+    const host = new FakeHost(snapshot({ keepsChanging: [row("sync_tags")] }));
+    const model = await opened(host);
+    model.toggle("search");
+    expect(await model.approveSelected()).toEqual({
+      kind: "close",
+      toast: "Approved 1 tool from Notes server. 2 stay off.",
+    });
+    const onlyKeeps = await opened(
+      new FakeHost(snapshot({ toReview: [], keepsChanging: [row("sync_tags")] })),
+    );
+    expect(onlyKeeps.approveNone()).toEqual({
+      kind: "close",
+      toast: "Nothing approved. 1 tool from Notes server stays off.",
     });
   });
 

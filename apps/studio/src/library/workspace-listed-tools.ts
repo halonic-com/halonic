@@ -7,7 +7,7 @@ import {
   reviewListedTools,
   revokeNamedTool,
 } from "@halonicjs/app/listed-tools";
-import type { Connector } from "@halonicjs/format";
+import { type Connector, needsApproval } from "@halonicjs/format";
 import type {
   Clock,
   DefinitionSource,
@@ -84,7 +84,11 @@ export class WorkspaceListedTools implements ListedToolsHost {
     if ("google" in source.connector.transport) {
       return nothingToReview(sourceName);
     }
-    return listedToolsSnapshot(sourceName, reviewListedTools(await this.#check(source)));
+    return listedToolsSnapshot(sourceName, reviewListedTools(await this.#check(source)), {
+      workspaceName:
+        filesOf(source.workspace, "workspace")[0]?.value.name ?? folderNameOf(source.location),
+      asksBeforeUse: (toolName) => needsApproval(source.connector.tools, toolName),
+    });
   }
 
   async approve(
@@ -211,10 +215,21 @@ export class WorkspaceListedTools implements ListedToolsHost {
   }
 }
 
+/** The folder's own name, as the CLI names an unnamed workspace: the last part of its path. */
+function folderNameOf(location: string): string {
+  return (
+    location
+      .split(/[\\/]/)
+      .filter((part) => part !== "")
+      .at(-1) ?? location
+  );
+}
+
 /** A connector whose tools are built in lists none, so there is nothing to approve. */
 function nothingToReview(sourceName: string): ListedToolsSnapshot {
   return {
     sourceName,
+    workspaceName: sourceName,
     toReview: [],
     keepsChanging: [],
     refused: [],

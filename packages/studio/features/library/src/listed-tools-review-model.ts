@@ -206,7 +206,8 @@ export class ListedToolsReviewModel {
   /** Closes the screen as "none": the toast says what stays off. The tools are still waiting, so the badge stays. */
   approveNone(): ReviewOutcome {
     const { snapshot } = this.state;
-    const waiting = snapshot === undefined ? 0 : snapshot.toReview.length;
+    const waiting =
+      snapshot === undefined ? 0 : snapshot.toReview.length + snapshot.keepsChanging.length;
     return {
       kind: "close",
       toast:
@@ -221,7 +222,10 @@ export class ListedToolsReviewModel {
     try {
       await this.host.removeApproval(this.connectorId, toolName);
     } catch (error) {
-      this.set({ busy: false, approveError: listedToolsWords.couldntApprove(reasonOf(error)) });
+      this.set({
+        busy: false,
+        approveError: listedToolsWords.couldntRemove(toolName, reasonOf(error)),
+      });
       return undefined;
     }
     this.set({ busy: false });
@@ -257,9 +261,10 @@ export class ListedToolsReviewModel {
       return stay;
     }
     const sourceName = this.state.snapshot?.sourceName ?? "";
-    const stayingOff = this.state.snapshot?.toReview.length ?? 0;
-    const stillWaiting = stayingOff + (this.state.snapshot?.keepsChanging.length ?? 0);
-    if (staysOpenWhileWaiting && stillWaiting > 0) return stay;
+    const stayingOff =
+      (this.state.snapshot?.toReview.length ?? 0) +
+      (this.state.snapshot?.keepsChanging.length ?? 0);
+    if (staysOpenWhileWaiting && stayingOff > 0) return stay;
     return {
       kind: "close",
       toast: listedToolsWords.approved(result.approved.length, sourceName, stayingOff),

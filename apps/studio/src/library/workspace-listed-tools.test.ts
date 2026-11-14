@@ -86,6 +86,20 @@ verifies("studio.workspace-listed-tools", () => {
       expect(started[0]?.workspaceRoot).toBe("memory:folder");
     });
 
+    it("names an unnamed workspace by its folder, as the CLI does", async () => {
+      const { host } = hostOf({
+        files: new MemoryDefinitionStore({
+          "workspace.yaml": "id: acme\n",
+          "library/connectors/notes.connector.yaml": notesFile,
+        }),
+      });
+
+      const snapshot = await host.review("notes");
+
+      // The test folder's location is "memory:folder", with no separator to cut at.
+      expect(snapshot.workspaceName).toBe("memory:folder");
+    });
+
     it("starts nothing in a workspace that isn't trusted as it is now", async () => {
       const { host, started } = hostOf({ trusted: false });
 

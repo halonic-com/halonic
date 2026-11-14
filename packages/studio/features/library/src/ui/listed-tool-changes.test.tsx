@@ -27,11 +27,30 @@ describe("ListedToolChanges", () => {
           sourceName="Notes server"
         />,
       );
-      expect(view.textContent).toContain("description");
+      expect(view.textContent).toContain("Description");
       expect(view.textContent).toContain("Approved version");
       expect(view.textContent).toContain("New version");
       expect(view.querySelector(".line-through")?.textContent).toBe("notes.");
       expect(view.querySelector(".underline")?.textContent).toBe("notes fast.");
+    });
+
+    it("labels a change in plain words, never by its path", () => {
+      const view = render(
+        <ListedToolChanges
+          differences={[
+            difference({ path: "name" }),
+            difference({ path: "parameters/properties/id/description" }),
+            difference({ path: "parameters/required" }),
+          ]}
+          serverChanged={false}
+          sourceName="Notes server"
+        />,
+      );
+      const text = view.textContent ?? "";
+      expect(text).toContain("Name");
+      expect(text).toContain("Argument id: description");
+      expect(text).toContain("Required arguments");
+      expect(text).not.toContain("parameters/");
     });
 
     it("says why a change can't be seen, once", () => {

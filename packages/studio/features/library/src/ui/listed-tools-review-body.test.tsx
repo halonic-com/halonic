@@ -30,6 +30,7 @@ function row(name: string, overrides: Partial<ListedToolRow> = {}): ListedToolRo
     differences: [],
     serverChanged: false,
     leftOutArguments: [],
+    asksBeforeUse: true,
     ...overrides,
   };
 }
@@ -55,6 +56,7 @@ function hostFor(
 
 const base: ListedToolsSnapshot = {
   sourceName: "Notes server",
+  workspaceName: "Acme",
   toReview: [row("search_notes", { description: "<b>Finds</b> notes." })],
   keepsChanging: [row("sync_tags")],
   refused: [{ name: "look up", reason: "x".repeat(80) }],
@@ -177,9 +179,19 @@ describe("the review body", () => {
       expect(container.textContent).toContain(
         "This server keeps changing sync_tags. It stays off.",
       );
-      expect(container.textContent).toContain("Off until you approve the new version.");
+      expect(container.textContent).not.toContain("Off until you approve");
       const names = [...container.querySelectorAll("li .font-mono")].map((n) => n.textContent);
       expect(names.indexOf("beta")).toBeLessThan(names.indexOf("alpha"));
+    });
+
+    it("says a tool the workspace lowered the risk of doesn't ask before each use", async () => {
+      const { container } = await open({
+        ...base,
+        toReview: [row("read_note", { asksBeforeUse: false })],
+      });
+      expect(container.textContent).toContain(
+        "Doesn't ask before each use: Acme lowered its risk.",
+      );
     });
 
     it("cuts a refused reason between characters, not inside an emoji", async () => {

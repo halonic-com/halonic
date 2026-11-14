@@ -30,12 +30,14 @@ function row(name: string): ListedToolRow {
     differences: [],
     serverChanged: false,
     leftOutArguments: [],
+    asksBeforeUse: true,
   };
 }
 
 function snapshot(toReview: readonly string[], approved: readonly string[] = []) {
   return {
     sourceName: "Notes server",
+    workspaceName: "Acme",
     toReview: toReview.map(row),
     keepsChanging: [],
     refused: [],
@@ -211,7 +213,7 @@ describe("the review dialog", () => {
         if (!serverUp) throw new Error("The server is down.");
         return snapshot(["a"]);
       });
-      expect(container.textContent).toContain("Couldn't read the tools:");
+      expect(container.textContent).toContain("Couldn't list the tools:");
       expect(container.querySelector("footer")).toBeNull();
       serverUp = true;
       await act(async () => button(container, "Try again").click());
@@ -225,13 +227,13 @@ describe("the review dialog", () => {
         if (retrying) await new Promise<void>((resolve) => (release = resolve));
         throw new Error("The server is down.");
       });
-      expect(container.textContent).toContain("Couldn't read the tools:");
+      expect(container.textContent).toContain("Couldn't list the tools:");
       retrying = true;
       await act(async () => button(container, "Try again").click());
-      expect(container.textContent).not.toContain("Couldn't read the tools:");
+      expect(container.textContent).not.toContain("Couldn't list the tools:");
       expect(container.querySelector('[role="status"]')).not.toBeNull();
       await act(async () => release?.());
-      expect(container.textContent).toContain("Couldn't read the tools:");
+      expect(container.textContent).toContain("Couldn't list the tools:");
     });
 
     it("shows a refused listing with no rows and no buttons", async () => {
@@ -266,6 +268,63 @@ describe("the review dialog", () => {
       expect(container.textContent).toContain("Couldn't read your approval for lookup");
       await act(async () => button(container, "Remove approval").click());
       expect(removals).toEqual(["lookup"]);
+    });
+
+    it("says why removing an approval failed, in words that name the tool", async () => {
+      const tools = { ...snapshot([]), unreadable: { toolName: "lookup" } };
+      const model = new ListedToolsReviewModel(
+        {
+          review: async () => tools,
+          approve: async () => ({ approved: [], changed: [] }),
+          removeApproval: async () => {
+            throw new Error("The disk is full.");
+          },
+          subscribe: () => () => {},
+        },
+        "notes",
+      );
+      const container = render(
+        <ListedToolsReviewDialog model={model} sourceName="Notes server" onClose={() => {}} />,
+      );
+      await act(() => model.refresh());
+      await act(async () => button(container, "Remove approval").click());
+      expect(container.textContent).toContain("Couldn't remove your approval for lookup:");
+      expect(container.textContent).not.toContain("Couldn't approve the tools");
+    });
+
+    it("offers only Close when just tools that keep changing are left", async () => {
+      const { container, closes } = await open({
+        ...snapshot([]),
+        keepsChanging: [row("sync_tags")],
+      });
+      expect(container.querySelector("footer")).toBeNull();
+      expect(container.textContent).not.toContain("Approve all");
+      expect(container.textContent).not.toContain("Approve selected");
+      await act(async () => button(container, "Close").click());
+      expect(closes).toEqual(["Nothing approved. 1 tool from Notes server stays off."]);
+    });
+
+    it("shows a failure and a changed-again note on the Close-only screen", async () => {
+      const tools = { ...snapshot([], ["send"]), keepsChanging: [row("sync_tags")] };
+      const model = new ListedToolsReviewModel(
+        {
+          review: async () => tools,
+          approve: async () => ({ approved: [], changed: ["sync_tags"] }),
+          removeApproval: async () => {
+            throw new Error("The disk is full.");
+          },
+          subscribe: () => () => {},
+        },
+        "notes",
+      );
+      const container = render(
+        <ListedToolsReviewDialog model={model} sourceName="Notes server" onClose={() => {}} />,
+      );
+      await act(() => model.refresh());
+      await act(async () => button(container, "Turn it on anyway: sync_tags").click());
+      expect(container.textContent).toContain("sync_tags");
+      await act(async () => button(container, "Remove approval for send").click());
+      expect(container.textContent).toContain("Couldn't remove your approval for send:");
     });
 
     it("says nothing is waiting, with the Approved group and no buttons", async () => {

@@ -71,6 +71,8 @@ export interface ListedToolsFallbackBodyProps {
   readonly onTryAgain: () => Promise<void>;
   /** Removes the unreadable approval of `toolName`. */
   readonly onRemoveApproval: (toolName: string) => Promise<void>;
+  /** Why removing an approval failed, shown under the screen's text. */
+  readonly error?: string | undefined;
 }
 
 /** The unreadable approval: removing it is the way out, once the service says which tool it is. */
@@ -122,6 +124,7 @@ export function ListedToolsFallbackBody({
   sourceName,
   onTryAgain,
   onRemoveApproval,
+  error,
 }: ListedToolsFallbackBodyProps) {
   switch (fallback.kind) {
     case "loading":
@@ -140,14 +143,22 @@ export function ListedToolsFallbackBody({
       );
     case "unreadable":
       return (
-        <UnreadableApproval
-          sourceName={sourceName}
-          toolName={fallback.toolName}
-          onRemoveApproval={onRemoveApproval}
-        />
+        <>
+          <UnreadableApproval
+            sourceName={sourceName}
+            toolName={fallback.toolName}
+            onRemoveApproval={onRemoveApproval}
+          />
+          {error === undefined ? null : <Callout tone="danger">{error}</Callout>}
+        </>
       );
     case "nothing-waiting":
-      return <p className="text-body text-fg">{listedToolsWords.nothingWaiting}</p>;
+      return (
+        <>
+          <p className="text-body text-fg">{listedToolsWords.nothingWaiting}</p>
+          {error === undefined ? null : <Callout tone="danger">{error}</Callout>}
+        </>
+      );
     default:
       return fallback satisfies never;
   }
