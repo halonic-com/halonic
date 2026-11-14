@@ -2,7 +2,7 @@ import { Dialog, type ToastStore, useOpenExternal, useToastStore } from "@haloni
 import type { DialogHostProps } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState } from "react";
 import { RestartRunsService, UpdaterService } from "../api.ts";
-import { UPDATER_DIDNT_ANSWER } from "./about-text.ts";
+import { TRY_AGAIN, UPDATER_DIDNT_ANSWER } from "./about-text.ts";
 import { releasePage } from "./links.ts";
 import { type RestartFlow, RestartFlowService } from "./restart-flow.ts";
 import type { RestartRuns } from "./restart-runs.ts";
@@ -55,25 +55,32 @@ function RestartHostView({ host, flow, runs, announce }: RestartHostViewProps) {
       await host.restart();
     } catch {
       setBusy(false);
-      toasts?.show({ tone: "danger", title: UPDATER_DIDNT_ANSWER });
+      toasts?.show({
+        tone: "danger",
+        title: UPDATER_DIDNT_ANSWER,
+        action: { label: TRY_AGAIN, onClick: () => void restart() },
+      });
     }
   };
 
-  useEffect(
-    () =>
-      flow.onRequest(async () => {
-        const version = readyVersion(statusNow.current);
-        if (version === null) return;
-        try {
-          const counted = (await runs?.count()) ?? { running: 0, waitingForYou: 0 };
-          if (counted.running === 0) await restart();
-          else setAsking({ runs: counted, version });
-        } catch {
-          toasts?.show({ tone: "danger", title: UPDATER_DIDNT_ANSWER });
-        }
-      }),
-    [flow, runs],
-  );
+  /** Counts the runs, then restarts or asks; Try again repeats all of it, so the question isn't skipped. */
+  const request = async () => {
+    const version = readyVersion(statusNow.current);
+    if (version === null) return;
+    try {
+      const counted = (await runs?.count()) ?? { running: 0, waitingForYou: 0 };
+      if (counted.running === 0) await restart();
+      else setAsking({ runs: counted, version });
+    } catch {
+      toasts?.show({
+        tone: "danger",
+        title: UPDATER_DIDNT_ANSWER,
+        action: { label: TRY_AGAIN, onClick: () => void request() },
+      });
+    }
+  };
+
+  useEffect(() => flow.onRequest(request), [flow, runs]);
 
   useEffect(() => {
     if (status === null) return;

@@ -27,6 +27,8 @@ export type SandboxCheckFacts =
   | { readonly state: "unavailable"; readonly reason: string }
   /** The setup is done, but Windows must restart before the sandbox can run. */
   | { readonly state: "restart-needed" }
+  /** The first check hasn't answered yet: no result to show, and no failure either. */
+  | { readonly state: "checking" }
   /** The check itself didn't happen or couldn't be read. */
   | { readonly state: "unknown"; readonly reason: string };
 
@@ -56,6 +58,8 @@ export interface SandboxFacts {
   readonly check: SandboxCheckFacts;
   readonly running: SandboxRunning | null;
   readonly outcome: SandboxOutcome | null;
+  /** A **Check again** is out: the last result stays and the button is busy. */
+  readonly rechecking?: boolean;
 }
 
 export type ChipTone = "attention" | "neutral" | "success";
@@ -82,6 +86,8 @@ export interface SandboxView {
     readonly busy: boolean;
   } | null;
   readonly secondary: readonly SandboxAction[];
+  /** **Check again** is busy: a check is out. */
+  readonly checkBusy: boolean;
 }
 
 const none = {
@@ -91,6 +97,7 @@ const none = {
   hint: null,
   primary: null,
   secondary: [],
+  checkBusy: false,
 } as const;
 
 /**
@@ -109,7 +116,10 @@ export function sandboxView(facts: SandboxFacts, now: Date = new Date()): Sandbo
 
   if (running) return busyView(running, check);
 
-  return checkedView(check, facts.place === "served", callout, now);
+  return {
+    ...checkedView(check, facts.place === "served", callout, now),
+    checkBusy: facts.rechecking === true,
+  };
 }
 
 function checkedView(
@@ -155,6 +165,8 @@ function checkedView(
         callout,
         secondary: ["check-again"],
       };
+    case "checking":
+      return { ...none, lead: text.CHECKING };
     case "unknown":
       return {
         ...none,

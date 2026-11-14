@@ -254,3 +254,30 @@ verifies("settings.agent-sandbox-section", () => {
     expect(checkedAtLabel(new Date(2026, 10, 3, 9, 12).toISOString(), now)).toBe("3 Nov at 09:12");
   });
 });
+
+it("shows a checking line, not an error, while the first check is out", async () => {
+  let answer: (facts: SandboxCheckFacts) => void = () => {};
+  const { host } = fakeHost(needsSetup);
+  host.check.mockImplementationOnce(() => new Promise((resolve) => (answer = resolve)));
+  const { view } = await show(host);
+  expect(view.textContent).toContain("Checking the sandbox…");
+  expect(view.textContent).not.toContain("Couldn't check");
+  await act(async () => answer(ready));
+  expect(view.textContent).toContain("Checked");
+});
+
+it("keeps the last result, busies Check again and announces the new one", async () => {
+  const { host } = fakeHost(ready);
+  const { view, announce } = await show(host);
+  let answer: (facts: SandboxCheckFacts) => void = () => {};
+  host.check.mockImplementationOnce(() => new Promise((resolve) => (answer = resolve)));
+  await click(button(view, "Check again"));
+  await act(async () => {});
+  expect(view.textContent).toContain("Checked");
+  expect(button(view, "Check again").getAttribute("aria-busy")).toBe("true");
+  await act(async () => answer(ready));
+  expect(announce).toHaveBeenCalledWith(
+    expect.stringMatching(/^Sandbox checked: ready\. Checked /),
+  );
+  expect(button(view, "Check again").getAttribute("aria-busy")).not.toBe("true");
+});

@@ -182,7 +182,28 @@ verifies("settings.about-section", () => {
     host.check.mockRejectedValueOnce(new Error("ipc closed"));
     const { view } = await show(host);
     await click(button(view, "Check now"));
-    expect(view.textContent).toContain("Halonic's updater didn't answer. Try again.");
+    expect(view.textContent).toContain("Halonic's updater didn't answer.");
     expect(view.textContent).not.toContain("ipc closed");
+  });
+
+  it("offers a Try again that repeats the press that got no answer", async () => {
+    const { host } = fakeHost(statusOf({ kind: "up-to-date" }));
+    host.check.mockRejectedValueOnce(new Error("ipc closed"));
+    const { view } = await show(host);
+    await click(button(view, "Check now"));
+    await click(button(view, "Try again"));
+    expect(host.check).toHaveBeenCalledTimes(2);
+    expect(view.textContent).not.toContain("didn't answer");
+  });
+
+  it("shows a loading line, not a status, until the first read answers, and a Try again if it fails", async () => {
+    const { host } = fakeHost(statusOf({ kind: "up-to-date" }));
+    host.status.mockRejectedValueOnce(new Error("ipc closed"));
+    host.subscribe.mockImplementation(() => () => true);
+    const { view } = await show(host);
+    expect(view.textContent).toContain("Halonic's updater didn't answer.");
+    await click(button(view, "Try again"));
+    expect(host.status).toHaveBeenCalledTimes(2);
+    expect(view.textContent).toContain("Halonic 0.1.0");
   });
 });

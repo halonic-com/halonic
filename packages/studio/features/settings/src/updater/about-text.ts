@@ -26,7 +26,8 @@ export const REPORT_A_PROBLEM = "Report a problem";
 export const NOT_CHECKED = "Not checked for updates yet.";
 export const AUTOMATIC_OFF_NOTE = "Automatic updates are off.";
 /** The updater itself didn't answer a button; the shell's own reasons come in the status. */
-export const UPDATER_DIDNT_ANSWER = "Halonic's updater didn't answer. Try again.";
+export const UPDATER_DIDNT_ANSWER = "Halonic's updater didn't answer.";
+export const LOADING_STATUS = "Loading update status";
 
 export const versionHeading = (version: string) => `Halonic ${version}`;
 export const upToDate = (when: string) => `Up to date. Checked ${when}.`;

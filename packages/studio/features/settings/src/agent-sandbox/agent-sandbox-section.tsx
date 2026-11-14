@@ -125,7 +125,12 @@ export function AgentSandboxView({
           </Button>
         ) : null}
         {view.secondary.map((action) => (
-          <Button key={action} variant="ghost" onClick={buttons[action].onClick}>
+          <Button
+            key={action}
+            variant="ghost"
+            busy={action === "check-again" && view.checkBusy}
+            onClick={buttons[action].onClick}
+          >
             {buttons[action].label}
           </Button>
         ))}

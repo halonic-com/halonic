@@ -66,14 +66,18 @@ function fakeUpdater(first: UpdateStatus) {
 }
 
 /** The feature's context for one page: the updater, the flow and the runs a restart would stop. */
-function setup(first: UpdateStatus, runs: RestartRuns = { running: 0, waitingForYou: 0 }) {
+function setup(
+  first: UpdateStatus,
+  runs: RestartRuns = { running: 0, waitingForYou: 0 },
+  count: () => Promise<RestartRuns> = async () => runs,
+) {
   const updater = fakeUpdater(first);
   const flow = createRestartFlow();
   const announce = vi.fn();
   const services = new Map<string, unknown>([
     [UpdaterService.name, updater.host],
     [RestartFlowService.name, flow],
-    [RestartRunsService.name, { count: async () => runs }],
+    [RestartRunsService.name, { count }],
   ]);
   const context = {
     services: { find: (key: { name: string }) => services.get(key.name) },
@@ -89,8 +93,8 @@ function setup(first: UpdateStatus, runs: RestartRuns = { running: 0, waitingFor
   return { ...updater, flow, announce, context, toasts, openExternal, frame };
 }
 
-async function mount(first: UpdateStatus, runs?: RestartRuns) {
-  const page = setup(first, runs);
+async function mount(first: UpdateStatus, runs?: RestartRuns, count?: () => Promise<RestartRuns>) {
+  const page = setup(first, runs, count);
   const view = render(
     page.frame(
       <>
@@ -147,6 +151,25 @@ verifies("settings.restart-flow", () => {
     );
     await click(confirm as HTMLElement);
     expect(host.restart).toHaveBeenCalledOnce();
+  });
+
+  it("repeats the whole request on Try again, so a failed count still asks about running runs", async () => {
+    const count = vi
+      .fn<() => Promise<RestartRuns>>()
+      .mockRejectedValueOnce(new Error("down"))
+      .mockResolvedValue({ running: 2, waitingForYou: 0 });
+    const { view, host, toasts } = await mount(statusOf(ready), undefined, count);
+    await click(view.querySelector("button") as HTMLElement);
+    expect(titles(toasts)).toEqual(["Halonic's updater didn't answer."]);
+    expect(host.restart).not.toHaveBeenCalled();
+    const again = toasts.list()[0]?.action;
+    expect(again?.label).toBe("Try again");
+    await act(async () => again?.onClick());
+    expect(count).toHaveBeenCalledTimes(2);
+    expect(host.restart).not.toHaveBeenCalled();
+    expect(document.querySelector("dialog[open]")?.textContent).toContain(
+      "2 runs are still running",
+    );
   });
 
   it("words one run and several waiting runs", () => {

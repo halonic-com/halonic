@@ -9,6 +9,8 @@ export interface UpdaterControls {
   readonly status: UpdateStatus | null;
   /** True when the shell didn't answer a press or the first read, so the section can say so. */
   readonly unanswered: boolean;
+  /** Repeats what got no answer: the press that failed, or the first read of the status. */
+  readonly retry: () => void;
   readonly checkNow: () => void;
   readonly download: () => void;
   readonly cancel: () => void;
@@ -24,6 +26,7 @@ export function useUpdater(host: UpdaterHost, announce: (line: string) => void):
   const [status, setStatus] = useState<UpdateStatus | null>(null);
   const [unanswered, setUnanswered] = useState(false);
   const alive = useRef(true);
+  const failed = useRef<{ act: () => Promise<UpdateStatus>; announceResult: boolean } | null>(null);
   // The container passes a new `announce` on every render; the effects must not restart for it.
   const announceRef = useRef(announce);
   announceRef.current = announce;
@@ -35,6 +38,15 @@ export function useUpdater(host: UpdaterHost, announce: (line: string) => void):
       setUnanswered(false);
       setStatus(next);
     });
+    // The subscription can't say that the shell didn't answer, so the first read is asked for too.
+    host.status().then(
+      (first) => alive.current && setStatus((now) => now ?? first),
+      () => {
+        if (!alive.current) return;
+        failed.current = { act: () => host.status(), announceResult: false };
+        setUnanswered(true);
+      },
+    );
     return () => {
       alive.current = false;
       stop();
@@ -45,19 +57,26 @@ export function useUpdater(host: UpdaterHost, announce: (line: string) => void):
     try {
       const next = await act();
       if (!alive.current) return;
+      failed.current = null;
       setUnanswered(false);
       setStatus(next);
       const line = announceResult ? checkAnnouncement(next, new Date()) : null;
       if (line !== null) announceRef.current(line);
     } catch {
       // The words say it; the shell keeps the detail in its own log.
-      if (alive.current) setUnanswered(true);
+      if (!alive.current) return;
+      failed.current = { act, announceResult };
+      setUnanswered(true);
     }
   }, []);
 
   return {
     status,
     unanswered,
+    retry: () => {
+      const again = failed.current;
+      if (again !== null) void press(again.act, again.announceResult);
+    },
     checkNow: () => void press(() => host.check(), true),
     download: () => void press(() => host.download()),
     cancel: () => void press(() => host.cancel()),
