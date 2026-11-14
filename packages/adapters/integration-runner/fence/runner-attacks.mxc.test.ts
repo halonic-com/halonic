@@ -442,7 +442,7 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     }
   });
 
-  it("A15: starts no worker, add-on, WASI or inspector with Node's layer on", async () => {
+  it("A15: starts no add-on or inspector, and with Node's layer on no worker or WASI either", async () => {
     const folders = await attackFolders(base, `a15-${nodeLayer}`);
     // A real DLL, from the Windows folder the box can read. It is not a Node
     // add-on, so with Node's layer off Windows loads it and Node then says it
@@ -481,7 +481,8 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
       for (const name of ["worker", "wasi", "add-on", "inspector"]) {
         expect(attempts[name], name).toMatchObject({ outcome: "refused" });
       }
-      expect(attempts["add-on"]?.detail).toContain("ERR_ACCESS_DENIED");
+      // Node's layer does not pass --allow-addons, so it refuses before the DLL is opened.
+      expect(attempts["add-on"]?.detail).toContain("ERR_DLOPEN_DISABLED");
     } else {
       // The box has no Node rule against these, and a worker is only a thread.
       expect(attempts["worker"]?.outcome).toBe("allowed");
@@ -491,7 +492,7 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
       expect(attempts["add-on"]?.outcome).toBe("refused");
       expect(attempts["add-on"]?.detail).toContain("did not self-register");
       // MXC refuses the box a listener on its own loopback (see attack-cases.md).
-      expect(attempts["inspector"]?.outcome).toBe("refused");
+      expect(attempts["inspector"]).toMatchObject({ outcome: "refused", detail: "NO_INSPECTOR" });
     }
   });
 
