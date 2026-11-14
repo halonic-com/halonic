@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { FakePluginFolderShell } from "./fake-plugin-folder-shell.test-helper.ts";
 import { TauriPluginFolderReader } from "./plugin-folder-reader.ts";
 import { TauriPluginFolderWriter } from "./plugin-folder-writer.ts";
+import type { TauriShell } from "./shell.ts";
 
 const acmeFiles = { "acme-weather/plugin.yaml": "id: acme-weather\n" };
 
@@ -57,6 +58,42 @@ verifies("fs-tauri.plugin-folder", () => {
     });
   });
 
+  describe("refusals", () => {
+    /** A shell that refuses every call with `kind`, as the Rust commands do. */
+    function refusing(kind: string): TauriShell {
+      return {
+        invoke: () => Promise.reject({ kind, message: `refused with ${kind}` }),
+      };
+    }
+
+    it("maps an unreadable folder and an io failure to unavailable", async () => {
+      for (const kind of ["folder_unreadable", "io"]) {
+        const error = await rejection(new TauriPluginFolderReader(refusing(kind)).entries());
+        expect(errorKindOf(error)).toBe("unavailable");
+      }
+    });
+
+    it("maps a special file the shell refuses to remove to a RangeError", async () => {
+      const error = await rejection(
+        new TauriPluginFolderWriter(refusing("special_path")).remove("acme-weather"),
+      );
+      expect(error).toBeInstanceOf(RangeError);
+    });
+  });
+
+  describe("the fake shell", () => {
+    it("refuses what the Rust commands refuse, so the adapter's mapping is tested against it", async () => {
+      const shell = new FakePluginFolderShell({ tree: { files: acmeFiles }, granted: true });
+      expect(
+        await rejection(shell.invoke("plugin_folder_remove", { plugin: "../x" })),
+      ).toMatchObject({ kind: "unsafe_path" });
+      expect(await rejection(shell.invoke("plugin_folder_read", { path: "../x" }))).toMatchObject({
+        kind: "unsafe_path",
+      });
+      expect(await rejection(shell.invoke("plugin_folder_nope"))).toContain("not found");
+    });
+  });
+
   describe("TauriPluginFolderWriter", () => {
     it("removes a plugin by its name, and a missing one without error", async () => {
       const shell = new FakePluginFolderShell({ tree: { files: acmeFiles } });
@@ -77,6 +114,12 @@ verifies("fs-tauri.plugin-folder", () => {
         expect(await rejection(writer.remove(id))).toBeInstanceOf(RangeError);
       }
       expect(shell.calls).toEqual([]);
+    });
+
+    it("rejects, and does not throw, for an unsafe id to place", async () => {
+      const writer = new TauriPluginFolderWriter(new FakePluginFolderShell({ tree: {} }));
+      const placing = writer.place("..", new Map(), { replace: false });
+      expect(await rejection(placing)).toBeInstanceOf(RangeError);
     });
 
     it("refuses to place a plugin: adding one is a CLI action", async () => {

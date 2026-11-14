@@ -29,7 +29,7 @@ export class FakePluginFolderShell implements TauriShell {
   constructor(options: { tree: FolderTree; granted?: boolean }) {
     this.#folder = new FakeFolderShell({ opened: pluginsFolder, tree: options.tree });
     this.#installed = new Set(
-      Object.keys(options.tree.files ?? {}).map((path) => path.split("/")[0] ?? ""),
+      Object.keys(options.tree.files ?? {}).map((path) => path.replace(/\/.*$/u, "")),
     );
     this.#granted = options.granted ?? true;
   }

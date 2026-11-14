@@ -5,8 +5,8 @@ import {
   type PluginPlacement,
 } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
+import { folderFailure } from "./command-folder-reader.ts";
 import { pluginFolderCommands } from "./plugin-folder-commands.ts";
-import { callPluginFolder } from "./plugin-folder-reader.ts";
 import type { TauriShell } from "./shell.ts";
 
 /**
@@ -27,22 +27,24 @@ export class TauriPluginFolderWriter implements PluginFolderWriter {
     this.#shell = shell;
   }
 
-  place(
+  async place(
     id: string,
     _files: ReadonlyMap<string, Uint8Array>,
     _options: PlacePluginOptions,
   ): Promise<PluginPlacement> {
     checkPluginId(id);
-    return Promise.reject(
-      new KindedError(
-        "denied",
-        "Adding a plugin is a CLI action: run `halonic plugin add` in a terminal.",
-      ),
+    throw new KindedError(
+      "denied",
+      "Adding a plugin is a CLI action: run `halonic plugin add` in a terminal.",
     );
   }
 
   async remove(id: string): Promise<void> {
     checkPluginId(id);
-    await callPluginFolder(this.#shell, pluginFolderCommands.remove, { plugin: id });
+    try {
+      await this.#shell.invoke(pluginFolderCommands.remove, { plugin: id });
+    } catch (reason) {
+      throw folderFailure(reason);
+    }
   }
 }

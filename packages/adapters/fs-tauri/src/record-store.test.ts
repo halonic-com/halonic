@@ -18,6 +18,11 @@ recordStoreContract(
   async () => new TauriRecordStore(new FakeRecordShell({ opened: [acme] }), acme),
 );
 
+recordStoreContract(
+  "tauri plugins scope",
+  async () => new TauriRecordStore(new FakeRecordShell({ opened: [] }), { scope: "plugins" }),
+);
+
 function added(collection: string, id: string, second = 0): RecordChange {
   return {
     at: new Date(Date.UTC(2026, 0, 1, 0, 0, second)).toISOString(),
@@ -243,6 +248,18 @@ verifies("fs-tauri.plugin-records-scope", () => {
           Object.keys(call.args ?? {}).filter((key) => key !== "appends" && key !== "collection"),
         ),
       ).toEqual([["scope"], ["workspace"]]);
+    });
+
+    it("is refused by the fake shell for a call naming both, neither or another scope", async () => {
+      const shell = new FakeRecordShell({ opened: [acme] });
+      const calls = [
+        { workspace: acme, scope: "plugins", collection: "settings" },
+        { collection: "settings" },
+        { scope: "other", collection: "settings" },
+      ];
+      for (const args of calls) {
+        expect(await rejection(shell.invoke("record_read", args))).toMatchObject({ kind: "io" });
+      }
     });
 
     it("keeps the scope's records apart from every workspace's", async () => {

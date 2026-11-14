@@ -16,7 +16,10 @@ export const pluginFolderCommands = {
   read: "plugin_folder_read",
   /** `{ path }` → the entry's real location (`null` for the plugins folder), or `null` when there is none. */
   location: "plugin_folder_location",
-  /** `{ plugin }` → whether there was a folder to show in the file manager (`plugin: null` shows the plugins folder). */
+  /**
+   * `{ plugin }` → whether there was a folder to show in the file manager (`plugin: null` shows
+   * the plugins folder). No adapter here wraps it: the Studio host calls it directly.
+   */
   reveal: "plugin_folder_reveal",
   /** `{ plugin }` → nothing. Deletes the plugin's folder; succeeds when there is none. */
   remove: "plugin_folder_remove",
