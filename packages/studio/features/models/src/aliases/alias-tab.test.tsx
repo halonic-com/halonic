@@ -4,8 +4,8 @@ import type { ItemRef, WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, expect, it } from "vitest";
-import type { ModelsFiles } from "../api.ts";
+import { afterEach, expect, it, vi } from "vitest";
+import type { ModelsFiles, ProviderFile } from "../api.ts";
 import { AliasTab } from "./alias-tab.tsx";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -31,13 +31,13 @@ aliases:
 `;
 
 /** A `models.yaml` in memory that tells the tab about each change, as the app's files do. */
-function memoryFiles(initial: string) {
+function memoryFiles(initial: string, providers: ProviderFile[] = []) {
   let text = initial;
   const listeners = new Set<() => void>();
   const changes: { label: string; text: string }[] = [];
   const files: ModelsFiles = {
     readModels: async () => text,
-    readProviders: async () => [],
+    readProviders: async () => providers,
     readWorkspace: async () => null,
     changeModels: (label, next) => {
       text = next;
@@ -90,14 +90,65 @@ verifies("models.aliases.list", () => {
     );
   });
 
+  it("heads the tab MODEL ALIAS above the title", async () => {
+    const tab = await showTab(memoryFiles(workspaceModels).files);
+
+    expect(tab.querySelector("h1")?.previousElementSibling?.textContent).toBe("Model alias");
+  });
+
+  it("says Loading smart while it reads, and Still loading after 10 seconds", async () => {
+    vi.useFakeTimers();
+    try {
+      const { files } = memoryFiles(workspaceModels);
+      files.readModels = () => new Promise(() => undefined);
+      const tab = await showTab(files);
+      expect(tab.textContent).toContain("Loading smart");
+
+      await act(async () => vi.advanceTimersByTime(10_000));
+
+      expect(tab.textContent).toContain("Still loading · Try again");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("says the alias couldn't be loaded, with Try again", async () => {
+    const { files } = memoryFiles(workspaceModels);
+    files.readModels = async () => Promise.reject(new Error("gone"));
+    const tab = await showTab(files);
+
+    expect(tab.textContent).toContain("Couldn't load this model alias");
+    expect(tab.textContent).toContain("Try again");
+  });
+
   it("says so when the alias is no longer in models.yaml", async () => {
     const tab = await showTab(memoryFiles(workspaceModels).files, { ...smart, id: "gone" });
 
-    expect(tab.textContent).toContain("This alias is no longer in models.yaml.");
+    expect(tab.textContent).toContain("This model alias isn't in this workspace any more.");
+    expect(tab.textContent).toContain("Go to Models");
+    expect(tab.textContent).not.toContain("models.yaml");
   });
 });
 
+const providerFiles: ProviderFile[] = [
+  { path: "providers/anthropic.yaml", text: "type: anthropic\nsecret: key\n" },
+  { path: "providers/ollama.yaml", text: "type: ollama\nlocal: true\nname: Ollama\n" },
+  { path: "providers/broken.yaml", text: "type: [" },
+];
+
+function providerOptions(tab: HTMLElement): string[] {
+  const select = tab.querySelector("select");
+  return [...(select?.querySelectorAll("option") ?? [])].map((option) => option.textContent ?? "");
+}
+
 verifies("models.aliases.edit-target", () => {
+  it("offers every provider file, marks local ones and keeps a provider without a file", async () => {
+    const { files } = memoryFiles(workspaceModels.replace("anthropic", "gone"), providerFiles);
+    const tab = await showTab(files);
+
+    expect(providerOptions(tab)).toEqual(["anthropic", "gone", "Ollama (local)"]);
+  });
+
   it("saves a new model name and says so", async () => {
     const { files, changes } = memoryFiles(workspaceModels);
     const tab = await showTab(files);
@@ -147,9 +198,32 @@ verifies("models.aliases.edit-fallbacks", () => {
       /fallback:\s*\n?\s*- default\s*\n\s*- fast|fallback: \[default, fast\]/,
     );
   });
+
+  it("names a fallback that is not an alias and writes nothing", async () => {
+    const { files, changes } = memoryFiles(workspaceModels);
+    const tab = await showTab(files);
+
+    await typeInto(field(tab, "Fallbacks"), "smartest");
+
+    expect(changes).toEqual([]);
+    expect(tab.textContent).toContain(
+      "There's no model alias called smartest. Pick one from the list.",
+    );
+  });
 });
 
 verifies("models.aliases.edit-price", () => {
+  it("warns that a price of 0 looks free on a cloud provider, not on a local one", async () => {
+    const { files } = memoryFiles(workspaceModels, providerFiles);
+    const cloud = await showTab(files);
+    await typeInto(field(cloud, "Input"), "0");
+    expect(cloud.textContent).toContain("A price of 0 means these calls look free");
+
+    const local = await showTab(files, { kind: "model-alias", hub: "local", id: "default" });
+    await typeInto(field(local, "Input"), "0");
+    expect(local.textContent).not.toContain("A price of 0 means");
+  });
+
   it("waits for the other price instead of calling it wrong, then saves both", async () => {
     const { files, changes } = memoryFiles(workspaceModels);
     const tab = await showTab(files, { kind: "model-alias", hub: "local", id: "fast" });

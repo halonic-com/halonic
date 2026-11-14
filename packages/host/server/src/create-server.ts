@@ -20,6 +20,7 @@ import {
   withSecurityHeaders,
 } from "./security.ts";
 import { createSignIn, passwordSecretName } from "./sign-in.ts";
+import { createStudioPageRoutes } from "./studio-page-routes.ts";
 import { createTrustRoutes } from "./trust-routes.ts";
 import { createWebhookRoutes, webhookPathPrefix } from "./webhooks.ts";
 import { createWorkspaceRoutes } from "./workspace-routes.ts";
@@ -87,6 +88,8 @@ export const createServer: CreateServer = ({ config, ports }) => {
   }
   const workspaceRoutes =
     ports.workspace === undefined ? null : createWorkspaceRoutes(ports.workspace);
+  const studioPageRoutes =
+    ports.studioPage === undefined ? null : createStudioPageRoutes(ports.studioPage);
   const googleRoutes =
     ports.google === undefined ? null : createGoogleRoutes({ google: ports.google });
 
@@ -140,7 +143,11 @@ export const createServer: CreateServer = ({ config, ports }) => {
     if (pathname.startsWith(googlePathPrefix) && googleRoutes !== null) {
       return googleRoute(googleRoutes, request, context, body);
     }
-    return apiRoute(request, context, body, `${request.method} ${pathname}`);
+    // After every API route, so a page file never shadows one.
+    return (
+      (await studioPageRoutes?.serve(request)) ??
+      apiRoute(request, context, body, `${request.method} ${pathname}`)
+    );
   }
 
   async function startRoute(

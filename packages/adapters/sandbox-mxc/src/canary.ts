@@ -139,7 +139,8 @@ export class MxcCanary implements TrustCanary {
           workFolderScriptLoaded: work,
           networkBlockProven: leaks.networkProven,
         },
-        // A known limit of MXC: lookups go through the Windows DNS client service outside the box.
+        // A cautious assumption, not a finding: lookups go through the Windows DNS client service
+        // outside the box, and the A6 test (HAL-9605) saw no query leave from it on windows-11-arm.
         nameLookupsLeave: true,
         missing,
       };

@@ -11,7 +11,7 @@ import {
   type SetupRecords,
   setupRecords,
 } from "@halonicjs/google-setup";
-import type { IdGenerator, Secrets } from "@halonicjs/ports";
+import type { IdGenerator, Secrets, TokenStore } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { type Clock, randomIds, systemClock } from "@halonicjs/std";
 import { chainedSecrets } from "./secret-host.ts";
@@ -35,6 +35,8 @@ export interface GoogleHost {
   readonly setups: SetupRecords;
   /** The client secrets, sealed. */
   readonly clientSecrets: ClientSecretStore;
+  /** The sealed token store: client secrets and refresh tokens. Only the sign-in reads from it. */
+  readonly tokens: TokenStore;
   /** Whether `token-key` is set, so a secret can be sealed. Never reads the value out. */
   tokenKeyIsSet(): Promise<boolean>;
 }
@@ -64,6 +66,7 @@ export function openGoogleHost(setup: GoogleSetup): GoogleHost {
       ids,
     }),
     clientSecrets: clientSecretStore(tokens, ids),
+    tokens,
     tokenKeyIsSet: async () => (await secrets.get(tokenKeySecret)) !== null,
   };
 }

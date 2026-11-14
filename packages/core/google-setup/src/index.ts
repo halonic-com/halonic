@@ -13,6 +13,7 @@ export {
   readGoogleCheckAnswer,
 } from "./check-answer.ts";
 export type { ApiOff, ServiceCheckOutcome, ServiceResult } from "./check-result.ts";
+export { isClientId } from "./client-id.ts";
 export { ClientSecretError, type ClientSecretErrorReason } from "./client-secret-error.ts";
 export {
   type ClientSecretRemoval,
@@ -67,6 +68,7 @@ export type {
   SetupRecord,
   SetupValues,
 } from "./setup-record.ts";
+export { setupCollection } from "./setup-record.ts";
 export { SetupRecordError, type SetupRecordErrorReason } from "./setup-record-error.ts";
 export {
   type NewSetup,

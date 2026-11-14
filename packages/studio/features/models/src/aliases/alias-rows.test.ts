@@ -72,5 +72,7 @@ verifies("models.aliases.edit-target", () => {
     const openai = { id: "openai", name: "OpenAI", local: false } as Provider;
     expect(providerChoiceLabel(ollama)).toBe("Ollama (local)");
     expect(providerChoiceLabel(openai)).toBe("OpenAI");
+    const test = { id: "test", name: "Test model", type: "mock", local: true } as Provider;
+    expect(providerChoiceLabel(test)).toBe("Test model (built-in)");
   });
 });

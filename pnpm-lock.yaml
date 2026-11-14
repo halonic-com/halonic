@@ -431,6 +431,9 @@ importers:
       '@halonicjs/google-setup':
         specifier: workspace:*
         version: link:../../packages/core/google-setup
+      '@halonicjs/host-google-sign-in':
+        specifier: workspace:*
+        version: link:../../packages/host/google-sign-in
       '@halonicjs/host-harness-host':
         specifier: workspace:*
         version: link:../../packages/host/harness-host
@@ -498,6 +501,9 @@ importers:
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../../packages/core/events
+      '@halonicjs/google-setup':
+        specifier: workspace:*
+        version: link:../../packages/core/google-setup
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../packages/core/ports
@@ -1183,9 +1189,15 @@ importers:
 
   packages/adapters/integration-runner:
     dependencies:
+      '@halonicjs/adapter-http-kit':
+        specifier: workspace:*
+        version: link:../http-kit
       '@halonicjs/adapter-integration-kit':
         specifier: workspace:*
         version: link:../integration-kit
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../core/app
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../core/format
@@ -2909,9 +2921,15 @@ importers:
       '@halonicjs/adapter-token-store':
         specifier: workspace:*
         version: link:../../../adapters/token-store
+      '@halonicjs/host-server':
+        specifier: workspace:*
+        version: link:../../../host/server
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../../core/ports
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../../../core/std
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'

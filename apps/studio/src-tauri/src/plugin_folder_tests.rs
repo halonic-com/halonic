@@ -56,7 +56,7 @@ fn kinds(root: &Path) -> Vec<(String, &'static str)> {
 }
 
 #[test]
-fn plugin_folder_test_lists_and_reads_the_installed_plugins() {
+fn plugin_folder_commands_lists_and_reads_the_installed_plugins() {
     let scratch = Scratch::new("reads");
     scratch.write("acme-weather/plugin.yaml", "id: acme-weather\n");
 
@@ -73,7 +73,7 @@ fn plugin_folder_test_lists_and_reads_the_installed_plugins() {
 }
 
 #[test]
-fn plugin_folder_test_answers_as_an_empty_folder_and_makes_none() {
+fn plugin_folder_commands_answers_as_an_empty_folder_and_makes_none() {
     let scratch = Scratch::new("missing");
     let root = scratch.plugins();
 
@@ -85,7 +85,7 @@ fn plugin_folder_test_answers_as_an_empty_folder_and_makes_none() {
 }
 
 #[test]
-fn plugin_folder_test_refuses_an_unsafe_path() {
+fn plugin_folder_commands_refuses_an_unsafe_path() {
     let scratch = Scratch::new("unsafe");
     scratch.write("acme-weather/plugin.yaml", "id: acme-weather\n");
 
@@ -101,7 +101,7 @@ fn plugin_folder_test_refuses_an_unsafe_path() {
 }
 
 #[test]
-fn plugin_folder_test_reveals_the_plugins_folder_and_an_installed_plugin_only() {
+fn plugin_folder_commands_reveals_the_plugins_folder_and_an_installed_plugin_only() {
     let scratch = Scratch::new("reveal");
     scratch.write("acme-weather/plugin.yaml", "id: acme-weather\n");
     scratch.write("stray.txt", "not a plugin\n");
@@ -120,7 +120,7 @@ fn plugin_folder_test_reveals_the_plugins_folder_and_an_installed_plugin_only() 
 
 #[cfg(unix)]
 #[test]
-fn plugin_folder_test_never_follows_a_link() {
+fn plugin_folder_commands_never_follows_a_link() {
     use std::os::unix::fs::symlink;
 
     let scratch = Scratch::new("links");
@@ -150,7 +150,7 @@ fn plugin_folder_test_never_follows_a_link() {
 
 #[cfg(unix)]
 #[test]
-fn plugin_folder_test_refuses_a_plugins_folder_that_is_a_link() {
+fn plugin_folder_commands_refuses_a_plugins_folder_that_is_a_link() {
     use std::os::unix::fs::symlink;
 
     let scratch = Scratch::new("root-link");
@@ -170,7 +170,7 @@ fn plugin_folder_test_refuses_a_plugins_folder_that_is_a_link() {
 }
 
 #[test]
-fn plugin_folder_test_refuses_a_plugins_folder_that_is_a_file() {
+fn plugin_folder_commands_refuses_a_plugins_folder_that_is_a_file() {
     let scratch = Scratch::new("root-file");
     std::fs::write(scratch.plugins(), "not a folder").expect("the file");
 
@@ -179,7 +179,7 @@ fn plugin_folder_test_refuses_a_plugins_folder_that_is_a_file() {
 }
 
 #[test]
-fn plugin_folder_test_sees_the_commands_granted_to_the_local_main_window_only() {
+fn plugin_folder_commands_sees_the_commands_granted_to_the_local_main_window_only() {
     // A remote page must never reach the plugin folder: the served Studio
     // could then read every installed plugin's files.
     let text = include_str!("../capabilities/desktop-plugin-folder.json");

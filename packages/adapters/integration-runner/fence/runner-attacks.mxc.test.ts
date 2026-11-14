@@ -1,5 +1,6 @@
 import { execFileSync, spawn } from "node:child_process";
 import { createSocket, type Socket as UdpSocket } from "node:dgram";
+import { lookup } from "node:dns/promises";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:net";
@@ -8,7 +9,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   type AttackFolders,
   attackFolders,
-  fenceTestBase,
   type NodeLayer,
   openAttack,
   runAttack,
@@ -25,8 +25,8 @@ import { type RealMxc, realMxc } from "./mxc-sandbox.ts";
 // and with it off, so the box alone stands between the script and the
 // computer. That is what an integration has once it gets past the module hook
 // and Node's layer. `mxcFencesRunner` stays off until every case here has
-// passed, A6 and A23 included. A36 past Node's layer is a recorded gap (HAL-9362):
-// it expects what gets through, so a gap that closes fails too.
+// passed, A6 and A23 included. A36 past Node's layer (HAL-9362) is a recorded
+// gap: it expects what gets through, so a gap that closes fails too.
 
 let mxc: RealMxc;
 let base: string;
@@ -46,10 +46,12 @@ const canary = `canary-${Math.random().toString(36).slice(2)}`;
 const credentialTarget = `halonic-fence-attack-${Math.random().toString(36).slice(2)}`;
 /** The Windows folder, where `cmd.exe` and `cmdkey.exe` are. Windows always sets it. */
 const windowsFolder = process.env["SystemRoot"] ?? "";
+const powershell = join(windowsFolder, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
 
 beforeAll(async () => {
   mxc = await realMxc();
-  base = await fenceTestBase("ra-");
+  // Under the user's profile, as the integration folders are in production, not in `%TEMP%`.
+  base = mxc.base;
   // A home folder of its own, so the test never touches the real one.
   homeFolder = join(base, "home");
   homeKey = join(homeFolder, ".ssh", "id_ed25519");
@@ -141,6 +143,104 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     // Refused before it leaves: the test's server, which counts every query, sees none.
     expect(attempts["query"]?.outcome).toBe("refused");
     expect(resolverQueries).toBe(queriesBefore);
+  });
+
+  it("A6: a name lookup through Windows' DNS client sends no query from the box", async () => {
+    // A lookup by name (`dns.lookup`, so also `fetch` and `net.connect`) goes
+    // to the Windows DNS client service on this computer, outside the box.
+    // Proof of what reaches it: an NRPT rule sends every name under a made-up
+    // namespace to a DNS server of this test on 127.0.0.1:53, which counts
+    // what it receives. The box refuses a direct send to that server (the
+    // case above), so a query arriving there would have come from the DNS
+    // client, outside the box. A hosts-file name would prove nothing: if the
+    // box fenced the client, Windows would read the hosts file inside the box.
+    // Needs admin rights and a free port 53, which a CI runner has.
+    // On windows-11-arm no query arrives: the lookup from the box fails within
+    // milliseconds (`ERR_ACCESS_DENIED` with Node's layer on, `ENOTFOUND` with
+    // it off). The test cannot tell whether the box fences
+    // the client or the client refuses a box without a network capability, so
+    // a profile that grants that capability needs this test re-checked.
+    // With Node's layer on, Node refuses the lookup before the box is
+    // involved, so only the layer-off run tests the box.
+    const suffix = Math.random().toString(36).slice(2);
+    const namespace = `halonic-gap-${suffix}.test`;
+    const label = `leak-${canary}`;
+    const received: string[] = [];
+    const server = createSocket("udp4");
+    server.on("message", (query, remote) => {
+      received.push(query.toString("latin1"));
+      // Answer "no such name", so the lookup ends at once.
+      const answer = Buffer.from(query);
+      answer[2] = 0x81;
+      answer[3] = 0x83;
+      server.send(answer, remote.port, remote.address);
+    });
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.bind(53, "127.0.0.1", resolve);
+    });
+    const nrpt = (command: string) =>
+      execFileSync(powershell, ["-NoProfile", "-NonInteractive", "-Command", command]);
+    const flush = () =>
+      execFileSync(join(windowsFolder, "System32", "ipconfig.exe"), ["/flushdns"]);
+    try {
+      nrpt(`Add-DnsClientNrptRule -Namespace '.${namespace}' -NameServers '127.0.0.1'`);
+      flush();
+      // Control: the same lookup outside the box must reach the server.
+      // Without it, a silent server would not say whether the box or the
+      // setup is the reason.
+      const controlLabel = `control-${suffix}`;
+      await lookup(`${controlLabel}.${namespace}`).catch(() => undefined);
+      expect(
+        received.some((query) => query.includes(controlLabel)),
+        "the control lookup outside the box reached the server (setup)",
+      ).toBe(true);
+      // The control must come first: a server that heard nothing from the box
+      // counts as "fenced" only when it can hear at all.
+      const { attempts } = await attack(
+        `
+        const dns = await import("node:dns/promises");
+        let milliseconds = 0;
+        await attempt("lookup", async () => {
+          const started = Date.now();
+          try {
+            return (await dns.lookup(${JSON.stringify(`${label}.${namespace}`)})).address;
+          } finally {
+            milliseconds = Date.now() - started;
+          }
+        });
+        await attempt("milliseconds", async () => String(milliseconds));
+      `,
+        nodeLayer,
+      );
+      const inBox = attempts["lookup"];
+      console.log(
+        `A6 in-box lookup, Node's layer ${nodeLayer}: ${inBox?.outcome} (${inBox?.detail}) after ${attempts["milliseconds"]?.detail} ms`,
+      );
+      // Why it fails, so a change in the reason shows up too. With Node's layer
+      // on, Node itself refuses the lookup. With it off, the lookup comes back
+      // "not found" within a few milliseconds: no timeout, and no query out.
+      expect(inBox?.outcome, "the lookup from the box failed at once").toBe("refused");
+      expect(inBox?.detail, "the lookup's error").toBe(
+        nodeLayer === "on" ? "ERR_ACCESS_DENIED" : "ENOTFOUND",
+      );
+      expect(Number(attempts["milliseconds"]?.detail), "the lookup did not wait").toBeLessThan(
+        5000,
+      );
+      expect(
+        received.some((query) => query.includes(label)),
+        "no query from the box reached the server",
+      ).toBe(false);
+    } finally {
+      try {
+        nrpt(
+          `Get-DnsClientNrptRule | Where-Object { $_.Namespace -contains '.${namespace}' } | Remove-DnsClientNrptRule -Force`,
+        );
+      } finally {
+        flush();
+        server.close();
+      }
+    }
   });
 
   it("A12: reads nothing in the home folder or outside the integration's folder", async () => {

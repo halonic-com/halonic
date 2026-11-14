@@ -373,6 +373,7 @@ export {
   SIDEBAR_MIN_WIDTH,
 } from "./sidebar/sidebar-width.ts";
 export {
+  letterMark,
   type SwitcherWorkspace,
   WorkspaceSwitcher,
   type WorkspaceSwitcherProps,

@@ -162,8 +162,22 @@ verifies("settings.about-section", () => {
     );
     const { view } = await show(host);
     expect(view.querySelector('input[type="checkbox"]')).toBeNull();
-    expect(view.querySelectorAll("button")).toHaveLength(1);
+    expect(view.querySelectorAll("button")).toHaveLength(2);
     expect(button(view, "Check now")).toBeDefined();
+  });
+
+  it("shows the Scoop command with a Copy button and the is-out wording", async () => {
+    const { host } = fakeHost(
+      statusOf(
+        { kind: "available", version: "0.1.1", notesUrl },
+        { managed: { by: "scoop", command: "scoop update halonic" } },
+      ),
+    );
+    const { view } = await show(host);
+    expect(view.textContent).toContain("Halonic 0.1.1 is out. You have 0.1.0.");
+    expect(view.textContent).toContain("Updates are managed by Scoop.");
+    expect(view.textContent).toContain("scoop update halonic");
+    expect(view.querySelector('button[aria-label="Copy the update command"]')).not.toBeNull();
   });
 
   it("offers Restart to update for a ready update only where the restart flow is there", async () => {

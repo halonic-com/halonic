@@ -163,9 +163,9 @@ export interface BlockedSitesBannerTextProps {
 }
 
 /**
- * The failed banner's sentence for a run stopped by several blocked sites (reason `blocked`,
- * microcopy 23.2), with one example domain. One site keeps 15.3's sentence, so this returns null
- * for it. The banner's action is `sandbox.blocked-sites.banner-action`, "See the step".
+ * The failed banner's sentence for a run stopped by blocked sites (reason `blocked`, microcopy
+ * 15.3 and 23.2): the several-sites sentence with one example domain, or 15.3's sentence for one
+ * site. Null for a step with no blocked site. The banner's action is `sandbox.blocked-sites.banner-action`, "See the step".
  */
 export function BlockedSitesBannerText({
   step,
@@ -174,7 +174,18 @@ export function BlockedSitesBannerText({
 }: BlockedSitesBannerTextProps) {
   const count = step.sites.length + step.moreSites;
   const example = step.sites[0];
-  if (count < 2 || example === undefined) return null;
+  if (example === undefined) return null;
+  if (count < 2) {
+    return (
+      <>
+        {fill("sandbox.blocked-sites.banner-one", {
+          agent,
+          site: <SiteNameText host={example.host} />,
+        })}
+        {noConnectionProven ? ` ${fillText("sandbox.blocked-sites.no-connection")}` : null}
+      </>
+    );
+  }
   return (
     <>
       {fill("sandbox.blocked-sites.banner-many", {

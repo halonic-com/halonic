@@ -13,6 +13,7 @@
 //! Plain Rust with no Tauri types; the shell's run store wraps it.
 
 mod busy;
+mod held;
 mod iso_time;
 mod record;
 
@@ -22,6 +23,7 @@ use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+pub use held::{EngineLock, HoldError, RENEW_EVERY, Renewal, hold_lock};
 pub use record::{
     FoundLock, LockRecord, STALE_AFTER_MS, TAKEOVER_STALE_AFTER_MS, is_stale, parse_record,
     record_text,
@@ -114,12 +116,25 @@ fn take_lock<'a>(file: &'a Path, computer: &impl ThisComputer) -> io::Result<Hel
 }
 
 /// Creates `file` holding `text`, or gives `false` when it is already there.
+/// The file is readable by this user only (see [`create_private`]).
 fn create_exclusive(file: &Path, text: &str) -> io::Result<bool> {
-    match OpenOptions::new().write(true).create_new(true).open(file) {
+    match create_private(file) {
         Ok(mut created) => created.write_all(text.as_bytes()).map(|()| true),
         Err(error) if error.kind() == ErrorKind::AlreadyExists => Ok(false),
         Err(error) => Err(error),
     }
+}
+
+/// Creates `file`, failing when it is there, with mode `600` on Unix as
+/// `fs-node` writes the lock (`fs.run-store-private-files`): the mode is set
+/// by the create itself, so the file is never readable by others, not even
+/// before its text is written. Windows gives the file its folder's access.
+fn create_private(file: &Path) -> io::Result<fs::File> {
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+    options.open(file)
 }
 
 /// The lock (or takeover file) another writer holds, read after an

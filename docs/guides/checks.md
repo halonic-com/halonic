@@ -336,6 +336,11 @@ the tool never writes it anywhere. It refuses a note that already has two
 signatures or one from the same key, a malformed note or one already on `main`,
 and a key that `approvers.json` pins neither for the note's kind nor as a guardian.
 
+A pull request that adds a file under `decisions/` with any other name than
+`decisions/<branch-name>.md` fails the note check ("isn't this branch's note;
+rename it"), because only the branch's own note is checked and signed. Notes
+already on the base branch stay as they are.
+
 **The note check runs in its own workflow**, `.github/workflows/guard-notes.yml`,
 on `pull_request_target` and in the merge queue. On `pull_request_target`
 GitHub runs that file from the base branch, so a pull request can't edit or
@@ -618,7 +623,8 @@ package here is a `packages` error. Adding an entry is a public interface
 change, so it needs Liam's review.
 
 `published` in `policy.json` lists every package that reaches npm. The CLI
-`halonic` is published as it is. A package with `halonic.publish` in its
+`halonic` is bundled to JavaScript by `stage-cli` in tooling/publish, because Node
+doesn't run TypeScript inside `node_modules`. A package with `halonic.publish` in its
 `package.json` stays `private` in the workspace and becomes one subpath of
 its layer's npm package, such as `@halonicjs/adapters/integration-kit`;
 [tooling/publish](../../tooling/publish/README.md) stages that package.

@@ -63,6 +63,19 @@ fn plugin_folder_remove_test_succeeds_when_there_is_nothing_to_remove() {
 }
 
 #[test]
+fn plugin_folder_remove_test_matches_the_name_exactly_on_any_file_system() {
+    let scratch = Scratch::new("case");
+    scratch.write("Weather/plugin.yaml", "id: Weather\n");
+
+    // A disk that ignores case would find `Weather` for `weather`.
+    assert_eq!(remove_plugin(&scratch.plugins(), "weather"), Ok(()));
+    assert!(scratch.plugins().join("Weather/plugin.yaml").exists());
+
+    remove_plugin(&scratch.plugins(), "Weather").expect("the removal");
+    assert!(!scratch.plugins().join("Weather").exists());
+}
+
+#[test]
 fn plugin_folder_remove_test_refuses_a_name_that_is_not_one_folder() {
     let scratch = Scratch::new("unsafe");
     scratch.write("acme-weather/src/index.js", "export {};\n");

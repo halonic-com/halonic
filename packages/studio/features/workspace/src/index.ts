@@ -9,6 +9,13 @@ export {
 } from "./new-workspace/new-workspace-dialog.tsx";
 export { createdLine, NEW_WORKSPACE_MENU_ROW } from "./new-workspace/new-workspace-text.ts";
 export {
+  type MountedServedWindow,
+  mountServedWindow,
+  ServedWindow,
+  type ServedWindowProps,
+} from "./served/served-window.tsx";
+export type { LoadServedWorkspace, ServedWorkspace } from "./served/served-workspace.ts";
+export {
   type MountedWorkspaceWindow,
   mountWorkspaceWindow,
 } from "./switcher/mount-workspace-window.tsx";

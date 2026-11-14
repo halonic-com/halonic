@@ -2,6 +2,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
+import { DamagedRunLog } from "../api.ts";
 import { RunsList } from "../runs-list.ts";
 import { fakeSource } from "../source.test-helper.ts";
 import { approvalAt, mondayMorning, summaryWith } from "../summary.test-helper.ts";
@@ -136,5 +137,39 @@ verifies("runs.run-page", () => {
     expect(root.querySelector("h1")?.textContent).toBe("Run 7k2m9p");
     await act(async () => vi.advanceTimersByTime(300));
     expect(root.querySelector('[role="status"]')?.textContent).toBe("Loading run 7k2m9p");
+  });
+
+  it("shows a skeleton named Loading the run while the log is read, then the receipt", async () => {
+    vi.useFakeTimers();
+    const slow = fakeSource([running]).source;
+    const list = new RunsList({ ...slow, log: () => new Promise(() => {}) });
+    const root = render(<RunView list={list} runId={running.id} now={() => mondayMorning} />);
+    await act(async () => vi.advanceTimersByTime(1));
+    await act(async () => vi.advanceTimersByTime(300));
+    expect(root.querySelector('[role="status"]')?.textContent).toBe("Loading the run");
+  });
+
+  it("says why the log couldn't be read and reads it again on Try again", async () => {
+    const fake = fakeSource([running]);
+    fake.failLog(new Error("no answer"));
+    const { root } = await openRun(fake.source, running.id);
+    expect(root.textContent).toContain("Couldn't read this run's log");
+    expect(root.textContent).toContain("The engine isn't answering. It may still be starting.");
+
+    fake.answer();
+    await act(async () => button(root, "Try again").click());
+    await settled();
+    expect(root.textContent).not.toContain("Couldn't read this run's log");
+    expect(root.textContent).toContain("Receipt");
+  });
+
+  it("names the damaged line in a red banner and shows what comes before it", async () => {
+    const fake = fakeSource([running]);
+    fake.failLog(new DamagedRunLog(212, []));
+    const { root } = await openRun(fake.source, running.id);
+    expect(root.querySelector('section[aria-label="Damaged run log"]')?.textContent).toContain(
+      "Part of this run's log can't be read. Line 212 is damaged. Everything before it is shown, so the receipt may be incomplete.",
+    );
+    expect(root.textContent).toContain("Receipt");
   });
 });

@@ -18,6 +18,11 @@ recordStoreContract(
   async () => new TauriRecordStore(new FakeRecordShell({ opened: [acme] }), acme),
 );
 
+recordStoreContract(
+  "tauri plugins scope",
+  async () => new TauriRecordStore(new FakeRecordShell({ opened: [] }), { scope: "plugins" }),
+);
+
 function added(collection: string, id: string, second = 0): RecordChange {
   return {
     at: new Date(Date.UTC(2026, 0, 1, 0, 0, second)).toISOString(),
@@ -228,6 +233,41 @@ verifies("fs-tauri.collections-persist", () => {
       expect(await refused("record_list", {})).toBe("Command record_list not found");
       const missing = { workspace: acme, collection: "orders", version: "v", lines: "" };
       expect(await shell.invoke("record_replace", missing)).toEqual({ status: "changed" });
+    });
+  });
+});
+
+verifies("fs-tauri.plugin-records-scope", () => {
+  describe("TauriRecordStore for the plugins scope", () => {
+    it("names the scope and no workspace, and a workspace store names no scope", async () => {
+      const shell = new FakeRecordShell({ opened: [acme] });
+      await new TauriRecordStore(shell, { scope: "plugins" }).append([added("settings", "a")]);
+      await new TauriRecordStore(shell, acme).changes("settings");
+      expect(
+        shell.calls.map((call) =>
+          Object.keys(call.args ?? {}).filter((key) => key !== "appends" && key !== "collection"),
+        ),
+      ).toEqual([["scope"], ["workspace"]]);
+    });
+
+    it("is refused by the fake shell for a call naming both, neither or another scope", async () => {
+      const shell = new FakeRecordShell({ opened: [acme] });
+      const calls = [
+        { workspace: acme, scope: "plugins", collection: "settings" },
+        { collection: "settings" },
+        { scope: "other", collection: "settings" },
+      ];
+      for (const args of calls) {
+        expect(await rejection(shell.invoke("record_read", args))).toMatchObject({ kind: "io" });
+      }
+    });
+
+    it("keeps the scope's records apart from every workspace's", async () => {
+      const shell = new FakeRecordShell({ opened: [acme] });
+      const plugins = new TauriRecordStore(shell, { scope: "plugins" });
+      await plugins.append([added("settings", "a")]);
+      expect(await plugins.changes("settings")).toHaveLength(1);
+      expect(await new TauriRecordStore(shell, acme).changes("settings")).toEqual([]);
     });
   });
 });

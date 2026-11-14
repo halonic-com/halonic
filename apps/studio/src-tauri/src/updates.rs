@@ -282,6 +282,7 @@ fn background<R: Runtime>(app: &AppHandle<R>, ready: Instant) {
             let inner = lock(app);
             check_due(
                 inner.record.automatic,
+                inner.managed.is_some(),
                 ready.elapsed(),
                 inner.checked_this_run,
                 inner.record.last_attempt,

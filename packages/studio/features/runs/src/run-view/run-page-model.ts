@@ -7,7 +7,7 @@ import type { PendingApproval, RunSummary } from "@halonicjs/events";
 import type { RunWorkflow, SourcedRun } from "../api.ts";
 import { currentStepName, type RunChip, runRow } from "../list/run-row.ts";
 import { lineSeparator, runPageWords } from "../run-words.ts";
-import { clockTime, dayWords, dueWords, tookWords } from "../time-words.ts";
+import { clockTime, dayAndMonth, dayWords, dueWords, tookWords } from "../time-words.ts";
 
 /** The top of the run page. */
 export interface RunHeader {
@@ -18,6 +18,8 @@ export interface RunHeader {
   readonly chip: RunChip;
   /** "today 10:40 · took 2 min 10 s", or "today 10:40 · updates live" while the run is live. */
   readonly line: string;
+  /** The catch-up sentence, for a run that started late (mc 15.2 Catch-up); under `line`. */
+  readonly catchUpLine?: string;
 }
 
 /** What the run page shows where a banner goes; `undefined` when the run needs no attention. */
@@ -69,12 +71,42 @@ export function runHeader(run: SourcedRun, context: RunPageContext): RunHeader {
     summary.endedAt === null
       ? runPageWords.updatesLive
       : runPageWords.took(tookWords(Date.parse(summary.endedAt) - Date.parse(summary.startedAt)));
+  const catchUp = catchUpLine(summary, context.now);
   return {
     title: runPageWords.title(row.shortId),
     kindLabel: runPageWords.kindLabel(row.workflow),
     chip: row.chip,
     line: [started, end].join(lineSeparator),
+    ...(catchUp === undefined ? {} : { catchUpLine: catchUp }),
   };
+}
+
+/**
+ * "Started at 08:12 to catch up. It was planned for 07:30 while Halonic was closed or asleep."
+ * for a routine run with `trigger.catchUp`; each time is a clock time today, or the date and the
+ * clock time on another day. The skipped count comes last, when there is one.
+ */
+function catchUpLine(summary: RunSummary, now: Date): string | undefined {
+  const { trigger } = summary;
+  if (trigger?.catchUp === undefined) {
+    return undefined;
+  }
+  const { skipped, countIsMinimum } = trigger.catchUp;
+  return [
+    runPageWords.catchUpStarted(whenWords(new Date(summary.startedAt), now)),
+    runPageWords.catchUpPlanned(whenWords(new Date(trigger.at), now)),
+    skipped > 0 ? runPageWords.catchUpSkipped(skipped, countIsMinimum === true) : undefined,
+  ]
+    .filter((sentence) => sentence !== undefined)
+    .join(" ");
+}
+
+/** The clock time for today; the day ("12 Nov") with it for another day. */
+function whenWords(moment: Date, now: Date): { day?: string; time: string } {
+  const time = clockTime(moment);
+  return moment.toDateString() === now.toDateString()
+    ? { time }
+    : { day: dayAndMonth(moment), time };
 }
 
 /**

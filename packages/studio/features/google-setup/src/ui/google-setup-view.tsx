@@ -156,6 +156,8 @@ export function GoogleSetupView({ item, answering, close, accounts }: GoogleSetu
           steps={steps}
           answering={answering}
           onEdit={edit}
+          secretEntry={accounts.secretEntry}
+          onSaveSecret={(secret) => accounts.saveClientSecret(account.record.accountRef, secret)}
           close={close}
         />
       )}

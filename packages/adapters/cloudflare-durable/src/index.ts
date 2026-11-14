@@ -18,6 +18,12 @@ export {
   type DurableCoordinationOptions,
   defaultCoordinationObjectName,
 } from "./durable-coordination.ts";
+export { DurableRunEvents, type DurableRunEventsOptions } from "./durable-run-events.ts";
+export {
+  DurableRunStore,
+  type DurableRunStoreOptions,
+  type RunListReader,
+} from "./durable-run-store.ts";
 export {
   DurableScheduler,
   type DurableSchedulerOptions,

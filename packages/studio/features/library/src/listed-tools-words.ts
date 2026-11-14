@@ -64,7 +64,9 @@ export const listedToolsWords = {
   doesntAsk: (workspace: string) => `Doesn't ask before each use: ${workspace} lowered its risk.`,
   /** The line under a tool the person approved. Never "safe" or "trusted": approving doesn't vouch for the tool. */
   approvedAsks: "Approved. It still asks before each use.",
-  /** The badge on the connector's card. A placeholder: the badge itself lands in its own pull request. */
+  /** The button next to the waiting line on the connector's page; it opens the review. */
+  reviewTools: "Review tools",
+  /** The line on the connector's page, above **Review tools**. */
   waitingBadge: (count: number) =>
     count === 1
       ? "1 tool is waiting for your approval"

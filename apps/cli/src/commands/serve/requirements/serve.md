@@ -8,6 +8,8 @@ The `halonic serve` command shall serve the workspace through the secure server 
 
 It shall also tell the server which workspace it shows, for `GET /api/workspace` (`server.workspace`): the name read again at every request, the folder as the server shortens it against the home folder of this computer's profile, and `sample` false, because no workspace is marked as the sample until Welcome has one (HAL-9089).
 
+It shall also serve the built Studio page at `/`, through the server's page route (`server.studio-page`), read from `apps/studio/dist/studio` where `pnpm --filter @halonicjs/app-studio build` leaves it. The command keeps no copy and has no build step of its own. When the page isn't built it shall still serve the API, answer 404 at `/`, and print the line "The Studio page isn't built, so the address shows no page yet. Build it with: pnpm --filter @halonicjs/app-studio build" under the "Serving" line.
+
 Rationale: the server asks the trust gate again before every request that starts a run, so a workspace edited behind a running server stops starting runs until a person trusts it again with `halonic trust`. `--network` without a password would leave the workspace open to the home network, so the runtime refuses it.
 
 ## Examples
@@ -15,6 +17,8 @@ Rationale: the server asks the trust gate again before every request that starts
 - Given a trusted workspace Acme, when `halonic serve --port 4747` is run,
   then it prints "Serving Acme at http://localhost:4747. Stop with Ctrl C." and `GET /api/hello` answers.
 - Given a served workspace Acme in a folder outside the home folder, when a client asks `GET /api/workspace`, then it gets `{ "name": "Acme", "sample": false, "folder": "acme" }`.
+- Given a built Studio page and a trusted workspace, when a browser asks `GET /`, then it gets the page's entry with the page's content security policy, and `GET /api/hello` still answers.
+- Given no built Studio page, when `halonic serve` starts, then it serves the API, `GET /` answers 404, and the third line says the page isn't built.
 - Given a workspace that was never trusted here, when `halonic serve` is run,
   then it exits 3 with "Nothing was served." and listens on nothing.
 - Given `--port 70000`, then it exits 2 and says `--port` needs a whole number from 0 to 65535.

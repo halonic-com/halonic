@@ -1,5 +1,6 @@
 import { defineFeature } from "@halonicjs/studio-shell";
 import { ConnectorStatusHostService } from "./connector-status-host.ts";
+import { ListedToolsHostService } from "./listed-tools-host.ts";
 
 /**
  * The Library feature. It adds the `connector` item kind, one tab per connector, whose page shows
@@ -10,6 +11,8 @@ export const libraryFeature = defineFeature({
   id: "library",
   title: "Library",
   needs: [ConnectorStatusHostService],
+  // Without an agent host nothing can start a connector, so the review is not provided (HAL-8868).
+  wants: [ListedToolsHostService],
   register(studio) {
     studio.itemKinds.add({
       kind: "connector",

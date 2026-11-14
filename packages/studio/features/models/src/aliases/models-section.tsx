@@ -1,8 +1,8 @@
-import { EmptyState } from "@halonicjs/studio-kit";
+import { Button, EmptyState } from "@halonicjs/studio-kit";
 import type { ItemPageSectionViewProps } from "@halonicjs/studio-shell";
-import { useId } from "react";
+import { useId, useRef, useState } from "react";
 import { ModelsFilesService } from "../api.ts";
-import { type AliasRow, aliasRows } from "./alias-rows.ts";
+import { type AliasRow, aliasRows, providerChoiceLabel } from "./alias-rows.ts";
 import {
   ADD_A_PRICE,
   ALIAS_KIND,
@@ -11,6 +11,7 @@ import {
   MODELS_LOADING_LINE,
   MODELS_UNREADABLE_REASON,
   MODELS_UNREADABLE_TITLE,
+  NEW_ALIAS,
   NO_ALIASES_AFTER_EXAMPLE,
   NO_ALIASES_BEFORE_EXAMPLE,
   NO_ALIASES_EXAMPLE,
@@ -19,6 +20,7 @@ import {
   RUNS_LOCALLY_LINE,
   TRY_AGAIN,
 } from "./alias-text.ts";
+import { NewAliasDialog } from "./new-alias-dialog.tsx";
 import type { ModelsState } from "./read-models.ts";
 import { useModels } from "./use-models.ts";
 
@@ -32,29 +34,55 @@ import { useModels } from "./use-models.ts";
 export function ModelsSection({ context }: ItemPageSectionViewProps) {
   const files = context.services.get(ModelsFilesService);
   const [state, retry] = useModels(files);
+  const [creating, setCreating] = useState(false);
+  const newButton = useRef<HTMLButtonElement>(null);
   const headingId = useId();
+  const open = (name: string) => context.openItem?.({ kind: ALIAS_KIND, hub: "local", id: name });
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
-      <h2 id={headingId} className="text-heading">
-        {MODELS_HEADING}
-      </h2>
-      <AliasList
-        state={state}
-        retry={retry}
-        open={(name) => context.openItem?.({ kind: ALIAS_KIND, hub: "local", id: name })}
-      />
+      <div className="flex items-center justify-between gap-2">
+        <h2 id={headingId} className="text-heading">
+          {MODELS_HEADING}
+        </h2>
+        <Button ref={newButton} variant="secondary" onClick={() => setCreating(true)}>
+          {NEW_ALIAS}
+        </Button>
+      </div>
+      <AliasList state={state} retry={retry} open={open} create={() => setCreating(true)} />
+      {creating ? (
+        <NewAliasDialog
+          files={files}
+          providers={providersOf(state)}
+          labels={providerLabels(state)}
+          returnFocus={() => newButton.current}
+          onCancel={() => setCreating(false)}
+          onCreated={(name) => {
+            setCreating(false);
+            open(name);
+          }}
+        />
+      ) : null}
     </section>
   );
+}
+
+/** The providers to pick from: those the aliases use, then the others that have a file. */
+function providersOf(state: ModelsState): string[] {
+  if (state.status !== "ready") return [];
+  const used = Object.values(state.models.aliases).map((alias) => alias.provider);
+  return [...new Set([...used, ...state.providers.map(({ id }) => id)])];
 }
 
 function AliasList({
   state,
   retry,
   open,
+  create,
 }: {
   readonly state: ModelsState;
   readonly retry: () => void;
   readonly open: (name: string) => void;
+  readonly create: () => void;
 }) {
   if (state.status === "loading") return <p role="status">{MODELS_LOADING_LINE}</p>;
   if (state.status === "unreadable") {
@@ -76,6 +104,7 @@ function AliasList({
         plain
         headingLevel={3}
         title={NO_ALIASES_TITLE}
+        action={{ label: NEW_ALIAS, onClick: create }}
         description={
           <>
             {NO_ALIASES_BEFORE_EXAMPLE}
@@ -116,5 +145,14 @@ function RowPrice({
         {ADD_A_PRICE}
       </button>
     </>
+  );
+}
+
+/** What the provider list calls each provider that has a file, by id; the saved value stays the id. */
+function providerLabels(state: ModelsState): ReadonlyMap<string, string> {
+  return new Map(
+    state.status === "ready"
+      ? state.providers.map((provider) => [provider.id, providerChoiceLabel(provider)])
+      : [],
   );
 }

@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1740; plugin screens design section 8.2 and decision D3 (HAL-1739, HAL-1801); microcopy 24 T15 (HAL-751); UX acceptance checklist 8 (HAL-1952); T16-F22, F23 and F35
 
-The Studio shall add Home's Cards section with every card of every installed plugin, and shall leave the section out while no plugin has a card. Each card shall show the card's title, the footer "From the *name* plugin", and, while its plugin is on, its tool's answer as plain text, sanitised Markdown or a table. While the answer loads, the title and the footer shall already show. When the person presses ↻, named "Refresh *title*", the Studio shall call the card's tool again. If the call fails, then the card shall say "Couldn't get *title*: *reason*." with Try again, and only that line shall be announced. While the plugin isn't trusted, the card shall stay in its place and say "*name* isn't trusted yet, so this card is empty." with Review, and while it can't load, "*name* couldn't load, so this card is empty." with Details.
+The Studio shall add Home's Cards section with every card of every installed plugin, and shall leave the section out while no plugin has a card. Each card shall show the card's title, the footer "From the *name* plugin", and, while its plugin is on, its tool's answer as plain text, sanitised Markdown or a table. While the answer loads, the title and the footer shall already show. When the person presses ↻, named "Refresh *title*", the Studio shall call the card's tool again. If the call fails, then the card shall say "Couldn't get *title*: *reason*." with Try again, and only that line shall be announced. While the plugin isn't trusted, the card shall stay in its place and say "*name* isn't trusted yet, so this card is empty." with Review, and while it can't load, "*name* couldn't load, so this card is empty." with Details. Each card shall have a ⋮ menu, named "More actions for *title*", with **Open plugin**, which opens the plugin's page, and, on Home, **Hide on Home**.
 
 ## Examples
 
@@ -26,3 +26,6 @@ The Studio shall add Home's Cards section with every card of every installed plu
 - Given no installed plugin has a card,
   when Home shows,
   then there's no Cards section.
+- Given a card on Home,
+  when the person opens its ⋮ menu,
+  then it has **Open plugin** and **Hide on Home**; on a plugin's panel it has only **Open plugin**.

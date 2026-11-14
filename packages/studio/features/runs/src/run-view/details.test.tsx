@@ -38,4 +38,17 @@ verifies("runs.run-view.details", () => {
     );
     expect(root.textContent).not.toContain("Ran on");
   });
+
+  it("lets the keyboard reach a value's tooltip", () => {
+    const root = render(
+      <Details
+        rows={[{ label: "Started by", value: "Morning brief", tooltip: "Weekdays at 08:00" }]}
+        version={undefined}
+        logRead={false}
+        runId="run_a"
+        now={mondayMorning}
+      />,
+    );
+    expect(root.querySelector("dd span[tabindex]")?.textContent).toBe("Morning brief");
+  });
 });
