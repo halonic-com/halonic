@@ -4,6 +4,7 @@ import { type ReactNode, type Ref, useEffect, useId, useRef, useState } from "re
 import type { GoogleSetupAccount } from "../api.ts";
 import { connectorProblem } from "../connector-problem.ts";
 import { stepTitle } from "../step-names.ts";
+import { useNotAnswering } from "./not-answering.tsx";
 import { ProblemBanner } from "./problem-banner.tsx";
 import { StepBody } from "./step-body.tsx";
 import { StepMark, type StepState, stepStateWords } from "./step-mark.tsx";
@@ -224,11 +225,10 @@ interface OpenStepProps {
 /** What an open step shows under its title: why, **Not now** and **Done, next**. */
 function OpenStep(props: OpenStepProps) {
   const { step, account, answering, busy, failed, onDone, close } = props;
+  const notAnswering = useNotAnswering();
   const reason = useId();
   const tickMissing = needsTick(step, account);
-  const unavailableText = answering
-    ? "Tick 'In production' to go on."
-    : "The engine isn't answering.";
+  const unavailableText = answering ? "Tick 'In production' to go on." : notAnswering;
   return (
     <div className="flex flex-col gap-3 pl-9 pt-2">
       <p className="text-body">{stepWhy(step)}</p>

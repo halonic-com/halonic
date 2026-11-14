@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { SetupViewProps } from "@halonicjs/studio-feature-inbox/api";
 import { PresentationProvider } from "@halonicjs/studio-kit";
-import { loadView } from "@halonicjs/studio-shell";
+import { type EngineWords, engineWords, loadView } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, type ComponentType } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -34,11 +34,21 @@ async function settled(): Promise<void> {
   });
 }
 
-async function open(accounts: readonly GoogleSetupAccount[], answering = true) {
+async function open(
+  accounts: readonly GoogleSetupAccount[],
+  answering = true,
+  words?: EngineWords,
+) {
   const fake = fakeAccounts(accounts);
   const close = vi.fn();
   const container = render(
-    <GoogleSetupView item={item} answering={answering} close={close} accounts={fake.source} />,
+    <GoogleSetupView
+      item={item}
+      answering={answering}
+      {...(words === undefined ? {} : { words })}
+      close={close}
+      accounts={fake.source}
+    />,
   );
   await settled();
   return { fake, close, container };
@@ -359,6 +369,12 @@ verifies("google-setup.resume-and-start-over", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
     });
     expect(dialog(container)?.textContent).toContain("Couldn't start over. Try again.");
+  });
+
+  it("words the reasons for the phone host when the Inbox says so", async () => {
+    const { container } = await open([account(threeDone)], false, engineWords.phone);
+    expect(container.textContent).toContain("Halonic on your computer isn't answering.");
+    expect(container.textContent).not.toContain("The engine isn't answering.");
   });
 
   it("makes Start over unavailable, with its reason, while the engine isn't answering", async () => {
