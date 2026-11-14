@@ -8,7 +8,7 @@ import { findLanAddress, type NetworkInterfaces } from "./lan-address.ts";
 export class NetworkNeedsPasswordError extends Error {
   constructor() {
     super(
-      "Serving on your home network needs a password, so nobody else on it can open your workspace. Set one with `halonic secret`, then start again.",
+      "Serving on your home network needs a password, so nobody else on it can open your workspace. Set one with `halonic secret set serve-password`, then start again.",
     );
     this.name = "NetworkNeedsPasswordError";
   }
