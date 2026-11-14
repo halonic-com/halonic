@@ -8,11 +8,9 @@ showed 0% against their 80% floor and each carried a stand-in Node test. `toolin
 Vitest preset now gives such a package a coverage provider that adds what workerd counted: the
 workerd harness starts V8 coverage inside the Worker, takes it back to the source files and leaves
 it for the provider, which adds it to the Node run's report. Nothing about a package's floor
-changes, and no package without `"runtime": "workers"` is affected. `tooling/config/vitest.config.ts`
-leaves the provider file out of its own coverage, since a nested Vitest run proves it and this run
-can't see inside that. No test or requirement is removed or weakened.
+changes, and no package without `"runtime": "workers"` is affected. No test or requirement is
+removed or weakened.
 
 ## Covers
 
 - tooling/config/src/vitest-preset.ts
-- tooling/config/vitest.config.ts

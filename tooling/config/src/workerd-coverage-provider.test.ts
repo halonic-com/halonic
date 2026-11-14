@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
-import { startVitest } from "vitest/node";
+import { createVitest, startVitest } from "vitest/node";
 import workerdCoverageModule, { workerdCoverageDirVariable } from "./workerd-coverage-provider.ts";
 
 const providerPath = join(import.meta.dirname, "workerd-coverage-provider.ts");
@@ -107,11 +107,65 @@ async function reportedForShape(): Promise<{ hitLines: number[]; missedLines: nu
   }
 }
 
+/**
+ * Runs the provider's own code in this process, where this package's coverage sees it (a Vitest
+ * run started by a test loads the provider through its own module runner, which it doesn't).
+ */
+async function reportedByProviderInThisProcess(): Promise<number[]> {
+  const root = mkdtempSync(join(tmpdir(), "halonic-workerd-coverage-"));
+  const previous = process.env[workerdCoverageDirVariable];
+  try {
+    mkdirSync(join(root, "src"));
+    const shape = join(root, "src", "shape.ts");
+    writeFileSync(shape, source);
+    writeFileSync(join(root, "package.json"), JSON.stringify({ type: "module" }));
+    const vitest = await createVitest("test", {
+      root,
+      watch: false,
+      reporters: [],
+      coverage: {
+        enabled: true,
+        provider: "custom",
+        customProviderModule: providerPath,
+        include: ["src/**/*.ts"],
+        reportsDirectory: join(root, "coverage"),
+      },
+    });
+    const provider = (await workerdCoverageModule.getProvider()) as unknown as {
+      initialize(ctx: unknown): void;
+      generateCoverage(context: { allTestsRun: boolean }): Promise<{
+        fileCoverageFor(file: string): { toJSON(): FileCoverage };
+      }>;
+    };
+    provider.initialize(vitest);
+    const directory = process.env[workerdCoverageDirVariable] ?? "";
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(join(directory, "coverage-test.json"), workerdCoverage(shape));
+    const map = await provider.generateCoverage({ allTestsRun: true });
+    await vitest.close();
+    const report = map.fileCoverageFor(shape).toJSON();
+    return Object.entries(report.s)
+      .filter(([, count]) => count === 0)
+      .map(([id]) => report.statementMap[id]?.start.line ?? 0);
+  } finally {
+    if (previous === undefined) {
+      delete process.env[workerdCoverageDirVariable];
+    } else {
+      process.env[workerdCoverageDirVariable] = previous;
+    }
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
 describe("the workerd coverage provider", () => {
   it("adds what workerd counted to the report of a file no Node test loaded", async () => {
     const { hitLines, missedLines } = await reportedForShape();
     expect(hitLines).toContain(3);
     expect(missedLines).toEqual([5]);
+  }, 60_000);
+
+  it("gives the same report when its own code runs in this process", async () => {
+    expect(await reportedByProviderInThisProcess()).toEqual([5]);
   }, 60_000);
 
   it("is a Vitest coverage module that starts and takes coverage like the V8 one", () => {
