@@ -102,9 +102,12 @@ export function TrustedSourcesView({ host, readOnly, announce }: TrustedSourcesV
   const renderContent = () => {
     if (loaded.state === "loading") {
       return (
-        <div className="flex flex-col gap-3" aria-hidden="true">
-          <SkeletonBar kind="title" width="1/2" />
-          <SkeletonBar kind="meta" width="2/3" />
+        <div role="status" className="flex flex-col gap-3">
+          <span className="sr-only">{text.LOADING}</span>
+          <div aria-hidden="true" className="flex flex-col gap-3">
+            <SkeletonBar kind="title" width="1/2" />
+            <SkeletonBar kind="meta" width="2/3" />
+          </div>
         </div>
       );
     }
@@ -149,7 +152,13 @@ export function TrustedSourcesView({ host, readOnly, announce }: TrustedSourcesV
         {readOnly ? text.LEAD_SERVED : text.LEAD}
       </p>
       {content}
-      {readOnly ? null : <p className="text-small text-fg-muted">{text.CLI_NOTE}</p>}
+      {readOnly ? null : (
+        <p className="text-small text-fg-muted">
+          {text.CLI_NOTE[0]}
+          <code className="font-mono">{text.CLI_NOTE[1]}</code>
+          {text.CLI_NOTE[2]}
+        </p>
+      )}
       {removing === undefined ? null : (
         <Dialog
           title={text.removeTitle(removing.name)}

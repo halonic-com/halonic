@@ -73,11 +73,12 @@ verifies("workspace.trusted-sources", () => {
     await show(hostOf([inbox, pdf]));
     const rows = [...element.querySelectorAll("li")].map((row) => row.textContent);
     expect(rows[0]).toContain("pdf-tools");
-    expect(rows[0]).toContain("Trusted 5 Nov");
+    expect(rows[0]).toContain("Trusted on 5 Nov 2026");
     expect(rows[1]).toContain("inbox-helper");
     expect(element.textContent).toContain(
-      "Trust given with the `halonic` command is kept separately.",
+      "Trust given with the halonic command is kept separately.",
     );
+    expect(element.querySelector("p code")?.textContent).toBe("halonic");
   });
 
   it("keeps a row whose folder is gone, saying so", async () => {
@@ -137,6 +138,7 @@ verifies("workspace.trusted-sources", () => {
       root?.render(createElement(TrustedSourcesView, { host, readOnly: false, announce: vi.fn() }));
     });
     expect(element.querySelector('[aria-hidden="true"]')).not.toBeNull();
+    expect(element.querySelector('[role="status"]')?.textContent).toBe("Loading trusted sources");
     expect(element.querySelector("li")).toBeNull();
   });
 

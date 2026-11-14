@@ -36,7 +36,7 @@ export interface TrustReview {
   readonly changed: boolean;
   /** The line for a list of trusted workspaces that couldn't be read, else absent. */
   readonly unreadable?: string | undefined;
-  /** The summary sentences, tools first. Empty when there is nothing to count. */
+  /** The summary sentences, tools first. Empty only for a change that touches nothing to count. */
   readonly summary: readonly string[];
   readonly sections: readonly TrustSectionView[];
   /** The closed "Unchanged (9 items)" row of "What changed", else absent. */

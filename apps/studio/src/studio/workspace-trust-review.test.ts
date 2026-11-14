@@ -88,6 +88,17 @@ verifies("studio.workspace-trust-review", () => {
     expect(view.review()).toBe(review);
   });
 
+  it("says there is nothing to trust for a workspace that starts nothing", async () => {
+    await rm(join(folder, "library"), { recursive: true });
+
+    const review = (await viewOf()).review();
+
+    expect(review?.summary).toEqual([
+      "Nothing in this workspace starts a program or reaches an address.",
+    ]);
+    expect(review?.sections).toEqual([]);
+  });
+
   it("trusts exactly the fingerprint shown, then has nothing to review", async () => {
     const view = await viewOf();
     const shown = view.review()?.fingerprint ?? "";
