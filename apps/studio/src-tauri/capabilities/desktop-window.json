@@ -1,0 +1,18 @@
+{
+  "identifier": "desktop-window",
+  "description": "On desktop, the app's own page may hear that its window's close button was pressed and then close the window itself, so it can save waiting changes first (HAL-8967). Nothing else of the event and window plugins is granted: no other event, no other window command. It is local only, so the Studio the computer serves gets none of it.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:window:allow-destroy"
+  ]
+}
