@@ -46,7 +46,8 @@
       "./protocol"
     ],
     "@halonicjs/app": [
-      "./listed-tools"
+      "./listed-tools",
+      "./routines"
     ],
     "@halonicjs/format": [
       "./integration",

@@ -3,7 +3,7 @@
 // runs, asks the service, and turns its answer into rows. Listing starts
 // nothing and writes nothing, so it needs no trust, as `halonic runs`.
 
-import { type ListedRoutine, RoutineList } from "@halonicjs/app";
+import { type ListedRoutine, RoutineList } from "@halonicjs/app/routines";
 import { loadWorkspace } from "@halonicjs/workspace";
 import type { CommandContext, CommandInput, CommandResult } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";

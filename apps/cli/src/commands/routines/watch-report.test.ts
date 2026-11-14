@@ -1,4 +1,4 @@
-import type { RoutineTickResult } from "@halonicjs/app";
+import type { RoutineTickResult } from "@halonicjs/app/routines";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { plainText } from "../../messages/phrase.ts";

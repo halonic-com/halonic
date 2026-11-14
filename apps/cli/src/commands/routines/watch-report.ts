@@ -3,7 +3,8 @@
 // before that line, and a scheduled tick that fires while it is slow would
 // otherwise print its runs above the line that says the watch has begun.
 
-import { type RoutineTickResult, shortRunId } from "@halonicjs/app";
+import { shortRunId } from "@halonicjs/app";
+import type { RoutineTickResult } from "@halonicjs/app/routines";
 import { type PlacedRoutine, routineKey } from "@halonicjs/routines";
 import type { CommandContext } from "../../command.ts";
 import { routinesMessages } from "../../messages/routines.ts";
