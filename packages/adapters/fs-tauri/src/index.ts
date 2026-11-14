@@ -41,6 +41,9 @@ export {
   type TauriHostSettingsStoreOptions,
 } from "./host-settings-store.ts";
 export { pickedFolderCommands, TauriPickedFolders } from "./picked-folders.ts";
+export { pluginFolderCommands } from "./plugin-folder-commands.ts";
+export { TauriPluginFolderReader } from "./plugin-folder-reader.ts";
+export { TauriPluginFolderWriter } from "./plugin-folder-writer.ts";
 export {
   isRecordRefusal,
   type RecordRefusal,
@@ -48,7 +51,7 @@ export {
   recordCommands,
   recordRefusalKinds,
 } from "./record-commands.ts";
-export { TauriRecordStore } from "./record-store.ts";
+export { type TauriRecordScope, TauriRecordStore } from "./record-store.ts";
 export {
   isRunRefusal,
   type RunRefusal,

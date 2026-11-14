@@ -14,10 +14,16 @@ The `TrustStore`, `RunStore`, `BlobStore`, `RecordStore`, `DefinitionStore`, `Fo
 - `TauriBlobStore`: every call goes to the shell's `blob_put` or `blob_get` command. The shell
   keeps the blobs in the profile's blob folder for the workspace, laid out as `FolderBlobStore` in
   `fs-node` lays it out, so a blob one of them stored is there for the other.
+- `TauriPluginFolderReader` and `TauriPluginFolderWriter`: the `FolderReader` and `PluginFolderWriter`
+  ports over the shell's `plugin_folder_*` commands, which work in the profile's plugins folder and
+  never follow a link. No call names a folder. The writer can `remove` a plugin; `place` always
+  refuses, because adding a plugin is a CLI action (`halonic plugin add`).
 - `TauriRecordStore`: every call goes to the shell's `record_append`, `record_read` or
   `record_replace` command. The shell keeps the collections in the profile's record folder for the
   workspace, laid out as `FileRecordStore` in `fs-node` lays it out, under the same write lock, so a
   collection changed on desktop is there for `halonic serve`.
+  `new TauriRecordStore(shell, { scope: "plugins" })` keeps the plugins' settings and install records
+  in the CLI's plugin records folder instead, through the same `record_*` commands.
 - `TauriGoogleSetupRecords`: a read-only `RecordStore` over the shell's `google_setup_read` command,
   which takes no argument and reads the setup records the CLI keeps in the profile's `google/setups`
   folder, never the sealed secrets beside them. Pass it to `setupRecords` in
