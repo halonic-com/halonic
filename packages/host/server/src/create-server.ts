@@ -1,5 +1,6 @@
 import type { CreateServer, RequestContext, ServerConfig } from "./api.ts";
 import { chatTurnPath, createChatTurnRoutes } from "./chat-turn-routes.ts";
+import { connectorCallPath, createConnectorRoutes } from "./connector-routes.ts";
 import { checkDailyRequests } from "./daily-requests.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { streamRunEvents } from "./event-stream.ts";
@@ -38,6 +39,7 @@ export const createServer: CreateServer = ({ config, ports }) => {
   const trustRoutes = createTrustRoutes(ports);
   const webhookRoutes = createWebhookRoutes(ports);
   const runRoutes = createRunRoutes(ports);
+  const connectorRoutes = createConnectorRoutes(ports);
   const chatTurnRoutes = createChatTurnRoutes(ports);
 
   /** `/api/runs/<runId>` and `/api/runs/<runId>/<action>`: the routes of one run, behind the sign-in. */
@@ -96,6 +98,9 @@ export const createServer: CreateServer = ({ config, ports }) => {
     }
     if (request.method === "POST" && pathname === chatTurnPath) {
       return whenSignedIn(request, context, () => chatTurnRoutes.chatTurn(request, body));
+    }
+    if (request.method === "POST" && pathname === connectorCallPath) {
+      return whenSignedIn(request, context, () => connectorRoutes.call(request, body));
     }
     if (pathname.startsWith(runPathPrefix)) {
       return runRoute(request, context, body, pathname.slice(runPathPrefix.length));

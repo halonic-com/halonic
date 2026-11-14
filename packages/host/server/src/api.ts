@@ -1,3 +1,4 @@
+import type { OutsideRunCall, SendingSettings } from "@halonicjs/app";
 import type {
   ClientSecretStore,
   ServiceResult,
@@ -257,6 +258,24 @@ export interface GoogleSetupPorts {
   readonly source: GoogleSetupSource;
 }
 
+/**
+ * What the connector-call route needs. A host that offers no connector calls
+ * leaves the whole group out, and the route then answers 404. The route runs
+ * the outside-a-run gate between `find` and `call`, so a host can't skip it.
+ */
+export interface ConnectorCallPorts {
+  /**
+   * The tool as the host offers it from the workspace's connector, with the
+   * connector's `tools` lists, or `null` when there is no such connector or
+   * tool. `tool` is the name the model sees.
+   */
+  find(connector: string, tool: string): Promise<Omit<OutsideRunCall, "args"> | null>;
+  /** Runs a call the gate let through and gives the tool's result as text. It may throw. */
+  call(target: Omit<OutsideRunCall, "args">, args: unknown, signal: AbortSignal): Promise<string>;
+  /** The read side of the connector settings, so the route can't switch sending on. */
+  readonly settings: SendingSettings;
+}
+
 /** What the server needs from its host. Every port is replaceable, so a test runs the handler with fakes. */
 export interface ServerPorts {
   /** Runs workflows; the server only forwards start, send, cancel and subscribe calls to it. */
@@ -280,6 +299,8 @@ export interface ServerPorts {
   readonly requestCounts: RequestCountStore;
   /** Where the cause of an unexpected failure goes. The reply to the caller never carries it. */
   readonly errorLog: ErrorLog;
+  /** The connector-call route's ports. Without them `/api/connector-calls` answers 404. */
+  readonly connectors?: ConnectorCallPorts;
   /** The Google setup routes' ports. Without them `/api/google/…` answers 404. */
   readonly google?: GoogleSetupPorts;
   /** Where finished requests are logged by path. Without it nothing is logged. */

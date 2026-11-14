@@ -2309,6 +2309,9 @@ importers:
 
   packages/host/server:
     dependencies:
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../core/app
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../core/format
