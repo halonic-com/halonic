@@ -5,7 +5,6 @@ import {
   TauriTrustStore,
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
-import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
 import {
   openWorkspace,
   ServiceRegistry,
@@ -56,7 +55,6 @@ import {
   WorkspacePageService,
 } from "@halonicjs/studio-feature-workspace/api";
 import {
-  hostSettingsStoreKey,
   onWindowCloseRequested,
   provideShellHostSettings,
   provideShellSecrets,
@@ -69,7 +67,6 @@ import {
 import {
   createShell,
   type KeyboardPlatform,
-  mountStudioWindow,
   type Shell,
   type ShellOptions,
   type StudioHost,
@@ -81,6 +78,10 @@ import { newWorkspaceHostOf } from "./new-workspace-host.ts";
 import { openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
 import { provideFolderServices } from "./provide-folder-services.ts";
 import { restartRunsOfWindow } from "./restart-runs.ts";
+import { startServedStudio } from "./served-studio.ts";
+
+export { servedServices } from "./served-studio.ts";
+
 import { trustedSourcesOf } from "./trusted-sources.ts";
 import { hostSettingsOf } from "./window-host-settings.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
@@ -102,6 +103,8 @@ export interface StudioPage {
   readonly userAgent: string;
   /** Where the desktop app keeps Recent on this device: the page's `localStorage`. */
   readonly storage?: RecentStorage | undefined;
+  /** Asks the page's own address, for the served Studio's `GET /api/workspace`: the page's `fetch`. */
+  readonly fetch?: ((path: string) => Promise<Response>) | undefined;
 }
 
 /** A started Studio. */
@@ -134,8 +137,9 @@ export function keyboardPlatform(userAgent: string): KeyboardPlatform {
 /**
  * Starts the Studio in a page (`studio.entry`). The desktop app starts on the Welcome screen and
  * opens the folders the user picks, each with its own services, behind the workspace switcher
- * (`studio.open-folder`). The served Studio opens the one workspace it serves. The window is the
- * shell's or the workspace feature's; the app only starts it, as AGENTS.md asks of screens.
+ * (`studio.open-folder`). The served Studio shows the one workspace the computer serves
+ * (`studio.served-workspace`). The window is the shell's or the workspace feature's; the app only
+ * starts it, as AGENTS.md asks of screens.
  *
  * The desktop app registers the Inbox, Google setup and Runs, over the runs in each open folder, Settings
  * (`studio.settings`) and the workspace page (`workspace.page`). The served Studio registers no feature yet: nothing serves it runs until
@@ -154,25 +158,7 @@ export function startStudio(page: StudioPage, desktop = desktopFeatures): Starte
     const shell = createShell({ ...desktop, host, platform });
     return startDesktopApp(page, { shell, ipc, platform });
   }
-  const shell = createShell({ features: [], host, platform });
-  const services = servedServices();
-  shell.services.instantiate(services);
-  const workspace = new StudioWorkspace({ toasts: shell.toasts, services });
-  const window = mountStudioWindow(page.element, {
-    shell,
-    workspace,
-    host,
-    platform,
-    language: studioLanguage,
-  });
-  return {
-    host,
-    stop: async () => {
-      window.unmount();
-      workspace.dispose();
-      await services.dispose();
-    },
-  };
+  return startServedStudio(page, { host, platform, language: studioLanguage });
 }
 
 /**
@@ -203,17 +189,6 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     TrustedSourcesService,
   ],
 };
-
-/**
- * The served Studio's services. Without the shell it can't reach the profile, so its host
- * settings are kept in memory, as in the browser demo, until `halonic serve` gives it the
- * server's (HAL-6159 design, section 5). They last until the page is closed.
- */
-export function servedServices(): ServiceRegistry {
-  const services = new ServiceRegistry();
-  services.provide(hostSettingsStoreKey, new MemoryHostSettingsStore());
-  return services;
-}
 
 /** What the desktop app's window is made of. */
 interface DesktopParts {
