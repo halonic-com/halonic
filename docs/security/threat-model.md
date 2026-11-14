@@ -48,7 +48,8 @@ app calls yet (for example `readToolListing` has no caller outside its tests).
 | `halonic` on your machine | you, and programs running as you | Part of 0.1, run from source |
 | Studio on your machine | you, and programs running as you | Being built (phase 1, plan HAL-9). Not shipped |
 | `halonic serve` on loopback | programs and web pages on your machine | On `main`, run from source (phase 4, plan HAL-9) |
-| `serve` on a LAN, tunnel or VPS | everyone on that network, or the internet | Planned (phase 4). Treated as public |
+| `halonic serve --network` on a LAN | everyone on that network | On `main`, run from source (`cli.commands.serve`, which needs a password). Treated as public |
+| `serve` through a tunnel or on a VPS | the internet | Planned (phase 4). Treated as public |
 | Cloud deployments (Cloudflare, containers) | the whole internet | Planned (phase 4). See [section 6](#6-cloud-deployments-b7) |
 
 One deployment has **one owner**. Several users on one deployment are out of
@@ -62,7 +63,7 @@ What we protect, most valuable first:
 | --- | --- | --- |
 | Deploy credentials for a cloud account | OS keychain on the owner's machine | Planned. Total control of a cloud deployment |
 | Model provider keys, Google client secret and refresh tokens | configured secrets; the token store | spend on your accounts; your mail and Drive |
-| Sign-in password hash and session tokens | Planned with `serve` | full control through the API |
+| Sign-in password hash and session tokens | the hash in the profile's secrets as `serve-password`; the session hashes in `Coordination` | full control through the API |
 | Run logs, inbox items, records, files a run made | the data folder | privacy breach |
 | Workspace definitions (agents, workflows, connectors) | the workspace folder, usually a git repository | changing them changes what runs with your keys |
 | Your money: model spend, cloud bill | not stored | direct cost |
@@ -689,10 +690,13 @@ works today.
   `targets/node/runtime`): a host allow-list; required sign-in on public
   shapes, with the server refusing to run without a password hash; scrypt
   password hashing and a shared, atomic login limiter; session tokens stored
-  only as hashes in `__Host-` cookies; an exact `Origin` check; strict security
+  only as hashes, in a `__Host-` cookie over HTTPS (over plain HTTP, the
+  only way `serve --network` is reached, the cookie is `halonic-session`
+  without `Secure`; see the known limits below); an exact `Origin` check; strict security
   headers; a body limit enforced while streaming; errors that carry a code and
   a short message only; HMAC-signed, replay-protected webhooks; the daily
-  request ceiling. The outside-a-run connector gate is **Planned**.
+  request ceiling. The outside-a-run connector gate (see the
+  [port list ADR](../adr/2026-11-07-port-list-and-versions.md)) is **Planned**.
 
 #### Agents in a harness on the serve host
 
@@ -712,7 +716,7 @@ trust fingerprint belong to the host, and nothing in a request reaches them.
 | The agent's work leaves the host through the API | The agent's changes stay in a proposal folder in the profile until a person accepts them at the computer. No route accepts one | **On `main`** (`harness-host`); Accept itself **Planned** |
 | A harness agent makes `serve` a way to run commands for anyone who signs in | A signed-in caller can start only what the trusted workspace defines, never a command of their own. Known limit: anyone with the password can start the trusted workspace's agents and spend its model budget; the daily request ceiling, where one is set, caps that | **On `main`** (`server.daily-requests`) |
 
-Pieces already on `main` that `serve` will build on:
+Pieces already on `main` that `serve` is built on:
 
 | Piece | Mark |
 | --- | --- |
@@ -722,7 +726,9 @@ Pieces already on `main` that `serve` will build on:
 | The scrypt implementation, the sign-in flow, the login limiter and the server | **On `main`** |
 
 **Known limits.** Sign-in is a single factor on the public internet until
-passkeys land. On loopback, "no password" may stay.
+passkeys land. On loopback, "no password" may stay. On `--network` over plain
+HTTP, anyone on that network who can see the traffic can read the session cookie
+and the password.
 
 ## 6. Cloud deployments (B7)
 
