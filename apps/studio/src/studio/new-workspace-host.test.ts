@@ -81,6 +81,26 @@ verifies("studio.new-workspace", () => {
     expect(trust).not.toHaveBeenCalled();
   });
 
+  it("sends the shell the parent that was picked, a drive or filesystem root included", async () => {
+    const cases: Array<["/" | "\\", string]> = [
+      ["/", "/"],
+      ["/", "/work"],
+      ["\\", "D:\\"], // leak-guard: allow absolute-path a Windows drive root is the case under test
+      ["\\", "D:\\Work"], // leak-guard: allow absolute-path a Windows drive root is the case under test
+    ];
+    for (const [separator, parent] of cases) {
+      const { shell, calls } = shellOf({ create_workspace_folder: "made" });
+      const host = newWorkspaceHostOf({
+        shell,
+        storeOf: () => new MemoryDefinitionStore(),
+        trust: async () => undefined,
+        separator,
+      });
+      await host.create(host.folderOf(parent, "Acme"), "Acme");
+      expect(calls[0]).toEqual(["create_workspace_folder", { parent, name: "Acme" }]);
+    }
+  });
+
   it("words the shell's refusals", () => {
     expect(reasonOf({ kind: "parent_not_chosen" })).toBe("that isn't a folder you chose");
     expect(reasonOf({ kind: "name_invalid", reason: "empty" })).toBe("the name is empty");

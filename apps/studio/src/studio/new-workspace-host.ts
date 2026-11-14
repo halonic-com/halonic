@@ -59,7 +59,7 @@ export function newWorkspaceHostOf(parts: NewWorkspaceHostParts): NewWorkspaceHo
       parent.endsWith(separator) ? `${parent}${name}` : `${parent}${separator}${name}`,
     probe: async () => "new",
     create: async (folder, name) => {
-      const parent = folder.slice(0, folder.length - name.length - 1);
+      const parent = parentOf(folder, name);
       const made = await madeFolder(shell, parent, name);
       const created = await createWorkspace(storeOf(made), { name, ifNotEmpty: "refuse" });
       if (!created.ok) {
@@ -72,6 +72,20 @@ export function newWorkspaceHostOf(parts: NewWorkspaceHostParts): NewWorkspaceHo
       return await trustOf(parts, made, created.value.skipped.length === 0);
     },
   };
+}
+
+/** Whether `path` is a filesystem root: `/`, `\\`, or a drive root such as `D:\\` or `D:/`. */
+function isRoot(path: string): boolean {
+  return /^([\\/]|[A-Za-z]:[\\/])$/.test(path);
+}
+
+/**
+ * The parent {@link NewWorkspaceHost.folderOf} joined `name` to: cut only the name, then drop the
+ * separator before it unless what is left is a root (`/`, `D:\\`), which keeps its own.
+ */
+function parentOf(folder: string, name: string): string {
+  const head = folder.endsWith(name) ? folder.slice(0, folder.length - name.length) : folder;
+  return head.length > 1 && !isRoot(head) ? head.slice(0, -1) : head;
 }
 
 /** Makes the folder through the shell; a refusal becomes the reason the dialog shows. */
