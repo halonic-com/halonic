@@ -1,4 +1,4 @@
-import { routineRunId } from "@halonicjs/app";
+import { routineRunId } from "@halonicjs/app/routines";
 import { type Agent, parseFile } from "@halonicjs/format";
 import type { Coordination, ScheduledTimer, Scheduler, SchedulerListener } from "@halonicjs/ports";
 import { fixedIds } from "@halonicjs/std";

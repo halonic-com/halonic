@@ -47,7 +47,7 @@ const LISTING_FIELD = {
  * from the root and from every hub that has no item of its own with that id.
  *
  * @example
- * const usage = whoUses(workspace, { kind: "knowledge", id: "kb" });
+ * const usage = whoUses(workspace, { kind: "knowledge", id: "kb", hub: null });
  * usage.agents.map((agent) => agent.name); // ["Billing", "Support"]
  */
 export function whoUses(workspace: LoadedWorkspace, item: LibraryItemRef): ItemUsage {
