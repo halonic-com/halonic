@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-7728 (Liam, from the team check on HAL-9140)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:htlD1tdqeQzYnSdl1dcF3GkQ33tyHvxXg3pXZber1mLe0Q31A/Lc2gN7Glv8G9EaMrwGQonDDn2RLS1Z51FSDw==
 
 Node's coverage can't see code running in `workerd`, so the adapters with `"runtime": "workers"`
 showed 0% against their 80% floor and each carried a stand-in Node test. `tooling/config`'s
