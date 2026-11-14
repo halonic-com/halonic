@@ -181,9 +181,8 @@ export async function openWorkspaceEngine(
     ...(target.versions === undefined ? {} : { versions: target.versions }),
     workspaceRoot: target.dir.root,
     runConnectors: (
-      setup.runConnectors ??
-      ((trust) => computerRunConnectors(trust, target, setup.profile))
-    )(target.trust),
+      setup.runConnectors ?? ((trust) => computerRunConnectors(trust, target, setup.profile))
+    )(target.trust, target),
     secrets: context.secrets,
     http: setup.http,
     // The scheduler retries a failed step; one that keeps failing stops the command with its

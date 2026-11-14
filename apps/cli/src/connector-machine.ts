@@ -25,11 +25,11 @@ import type { ConnectorFactory, HttpClient, Sandbox, TokenStore } from "@halonic
 import { profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { nodeCommandSearch } from "./command-paths.ts";
-import { nodeSandboxWorks } from "./sandbox-works.ts";
 import {
   IntegrationConnectorFactory,
   type OpenIntegration,
 } from "./integration-connector-factory.ts";
+import { nodeSandboxWorks } from "./sandbox-works.ts";
 import { halonicVersion } from "./version.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 import type { WorkspaceTrustMachine } from "./workspace-trust.ts";

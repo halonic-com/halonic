@@ -85,7 +85,7 @@ verifies("cli.open-local-integration", () => {
   describe("cliConnectorFactories", () => {
     it("serves the integration transport only when it is given a way to open one", () => {
       expect(cliConnectorFactories(nodeProgramStarter, {}).serves("integration")).toBe(false);
-      const opened = cliConnectorFactories(nodeProgramStarter, {}, async () => {
+      const opened = cliConnectorFactories(nodeProgramStarter, {}, undefined, async () => {
         throw new Error("not opened");
       });
       expect(opened.serves("integration")).toBe(true);
