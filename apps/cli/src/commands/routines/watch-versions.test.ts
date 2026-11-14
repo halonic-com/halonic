@@ -136,4 +136,32 @@ verifies("cli.local-engine", () => {
     expect(providersOf(older.workspace)).toEqual(["mock", "ollama"]);
     expect(providersOf(ended.workspace)).toEqual(["mock", "ollama"]);
   });
+  it("reads an agent's file from the version the run read, not from the folder as it is now", async () => {
+    const watched = await watchAcme();
+    const path = join(acme, "hubs", "support", "agents", "writer.agent.yaml");
+    const before = await readFile(path, "utf8");
+    await watched.definitionsOf("support", "support-reply", savedRun.version, savedRun.runId);
+    await writeFile(path, `${before}# edited after the run started\n`);
+
+    const read = await watched.agentFileOf(savedRun.runId, "support", "writer");
+
+    expect(new TextDecoder().decode(read)).toBe(before);
+  });
+
+  it("reads an agent's file from the version read last for a chat turn, which has no run", async () => {
+    const watched = await watchAcme();
+    const path = join(acme, "hubs", "support", "agents", "writer.agent.yaml");
+
+    const read = await watched.agentFileOf("chat_1", "support", "writer");
+
+    expect(new TextDecoder().decode(read)).toBe(await readFile(path, "utf8"));
+  });
+
+  it("fails for an agent the version doesn't have", async () => {
+    const watched = await watchAcme();
+
+    await expect(watched.agentFileOf(savedRun.runId, "support", "nobody")).rejects.toThrow(
+      'Hub "support" has no agent "nobody".',
+    );
+  });
 });

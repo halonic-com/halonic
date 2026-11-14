@@ -247,6 +247,7 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
     },
     onRenewError: (error) => input.reportError(error, "engine-lock"),
   });
+  const { versions } = input;
   let programFolders: ProgramFolders | undefined;
   let harnessHost: LocalHarnessHost | undefined;
   try {
@@ -263,8 +264,10 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
       profile,
       environment,
       workspace: () => input.versions?.latest() ?? input.workspace,
+      ...(versions === undefined
+        ? {}
+        : { agentFileOf: (runId, hubId, agentId) => versions.agentFileOf(runId, hubId, agentId) }),
       store: new FolderDefinitionStore(location),
-      secrets: input.secrets,
       digest: webCryptoDigest,
       clock: input.clock ?? systemClock,
       openRuns: () => openRunsOf(new FolderRunStore(folders.runsFolder())),

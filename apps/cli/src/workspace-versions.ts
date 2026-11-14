@@ -39,6 +39,14 @@ export interface WorkspaceVersions {
     readonly runId: string;
     readonly version: RunVersion;
   }): Promise<TrustedVersion>;
+  /**
+   * The agent's file as the run's version read it, as the bytes the load
+   * parsed, not the folder as it is now. A run this engine didn't start, and
+   * a chat turn, get the version read last.
+   *
+   * @throws when that version has no such agent
+   */
+  agentFileOf(runId: string, hubId: string, agentId: string): Promise<Uint8Array>;
   /** Forgets what is kept for a run that has ended. */
   forget(runId: string): void;
 }

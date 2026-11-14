@@ -1,8 +1,9 @@
 // The engine's placement policy on `AgentPlacement` (requirement
 // `harness-host.placement`). The engine asks with the agent's run, hub and
-// id; `AgentPlacement` wants the agent's file as it is on disk, because its
-// choice holds for those exact bytes. This reads the file and passes on only
-// what the engine may know: where the harness runs, and since when.
+// id; `AgentPlacement` wants the agent's file as the run's version has it,
+// because its choice holds for those exact bytes. This reads the file and
+// passes on only what the engine may know: where the harness runs, and since
+// when.
 
 import type { PlacementReader } from "@halonicjs/app";
 import type { HarnessAgent, PlacementAnswer, PlacementPolicy } from "@halonicjs/engine";
@@ -10,12 +11,14 @@ import type { HarnessAgent, PlacementAnswer, PlacementPolicy } from "@halonicjs/
 /** The agents' files in the workspace, as the host reads them. */
 export interface AgentFiles {
   /**
-   * The agent's file exactly as it is on disk now, the bytes `halonic run`'s
-   * sandbox check hashes too, so both see the same choice.
+   * The agent's file exactly as the version the run uses has it: the bytes
+   * `halonic run`'s sandbox check hashes too, so both see the same choice.
+   * For a workspace that is read as it is on disk, that is the file on disk now.
    *
+   * @param runId - the run the agent works in, which says which version it uses
    * @throws when the hub has no agent with this id
    */
-  bytesOf(hubId: string, agentId: string): Promise<Uint8Array>;
+  bytesOf(runId: string, hubId: string, agentId: string): Promise<Uint8Array>;
 }
 
 /**
@@ -43,7 +46,7 @@ export class FilePlacementPolicy implements PlacementPolicy {
 
   /** @throws what {@link AgentFiles.bytesOf} throws: the harness doesn't start */
   async where(agent: HarnessAgent): Promise<PlacementAnswer> {
-    const file = await this.#files.bytesOf(agent.hubId, agent.agentId);
+    const file = await this.#files.bytesOf(agent.runId, agent.hubId, agent.agentId);
     const answer = await this.#reader.where({
       location: this.#location,
       agent: agent.agentId,

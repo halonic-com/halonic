@@ -13,7 +13,6 @@ import type { TrustGrant } from "@halonicjs/ports";
 import {
   filesOf,
   type LoadedWorkspace,
-  loadWorkspace,
   runDefinitionsOf,
   VersionSource,
 } from "@halonicjs/workspace";
@@ -23,6 +22,7 @@ import type { TrustedVersion } from "../../local-run-connectors.ts";
 import { plainText } from "../../messages/phrase.ts";
 import { routinesMessages } from "../../messages/routines.ts";
 import { runMessages } from "../../messages/run.ts";
+import { loadReadVersion, type ReadVersion } from "../../read-version.ts";
 import {
   HistoryUnavailableError,
   type OpenedHistory,
@@ -84,35 +84,37 @@ export class WatchedVersions implements WorkspaceVersions {
   readonly #history: OpenedHistory | null;
   /** Whether the version the watch started from is local only: the engine keeps that. */
   readonly #localOnly: boolean;
-  #latest: LoadedWorkspace;
+  #latest: ReadVersion;
   /** The last version loaded at a commit, so the routines due at one time load it once. */
-  #atCommit: { readonly commit: string; readonly workspace: LoadedWorkspace } | undefined;
+  #atCommit: { readonly commit: string; readonly version: ReadVersion } | undefined;
   /**
-   * The workspace each running run's definitions were read from, so its
+   * The load each running run's definitions were read from, so its
    * connectors start from that same load, however long after its start
-   * they open. Forgotten when the run ends.
+   * they open, and its agents' files are read from it. Forgotten when the
+   * run ends.
    */
-  readonly #workspaceOfRun = new Map<string, LoadedWorkspace>();
+  readonly #versionOfRun = new Map<string, ReadVersion>();
   #checks: VersionChecks = noChecks;
 
   private constructor(
     dir: OpenWorkspaceDir,
     history: OpenedHistory | null,
-    first: LoadedWorkspace,
+    first: ReadVersion,
     firstCommit: string | undefined,
   ) {
     this.#dir = dir;
     this.#history = history;
     this.#latest = first;
-    this.#localOnly = isLocalOnly(first);
+    this.#localOnly = isLocalOnly(first.workspace);
     // The first version is loaded once: the routines and the first run read it from here.
-    const loaded =
-      firstCommit === undefined ? undefined : { commit: firstCommit, workspace: first };
-    this.#atCommit = loaded;
+    this.#atCommit =
+      firstCommit === undefined ? undefined : { commit: firstCommit, version: first };
     this.routines = new LiveRoutines({
       vcs: history?.vcs ?? null,
       saved: dir.store,
-      ...(loaded === undefined ? {} : { loaded }),
+      ...(this.#atCommit === undefined
+        ? {}
+        : { loaded: { commit: this.#atCommit.commit, workspace: first.workspace } }),
     });
   }
 
@@ -135,7 +137,7 @@ export class WatchedVersions implements WorkspaceVersions {
     }
     try {
       if (history === null) {
-        return new WatchedVersions(dir, null, await loadWorkspace(dir.store), undefined);
+        return new WatchedVersions(dir, null, await loadReadVersion(dir.store), undefined);
       }
       const { vcs } = history;
       const live = await liveVersionOf(vcs);
@@ -147,7 +149,7 @@ export class WatchedVersions implements WorkspaceVersions {
       if (picked.reads === "nothing-live") {
         throw new OwnLineError("conflict", runMessages.nothingLive(), runMessages.nothingLiveFix());
       }
-      const first = await loadWorkspace(picked.source);
+      const first = await loadReadVersion(picked.source);
       return new WatchedVersions(
         dir,
         history,
@@ -162,7 +164,7 @@ export class WatchedVersions implements WorkspaceVersions {
 
   /** The version read last: the first one, until a run starts from a newer one. */
   latest(): LoadedWorkspace {
-    return this.#latest;
+    return this.#latest.workspace;
   }
 
   /** Sets the checks each later run's version passes first; until then, none, and no grant. */
@@ -185,7 +187,8 @@ export class WatchedVersions implements WorkspaceVersions {
     version: RunVersion | undefined,
     runId: string,
   ): Promise<RunDefinitions> {
-    const workspace = await this.#workspaceAllowedAt(version);
+    const read = await this.#versionAllowedAt(version);
+    const { workspace } = read;
     const grant = await this.#checks.trust(workspace);
     await this.#checks.sandbox(workspace, { hubId, workflowId });
     const definitions = runDefinitionsOf(
@@ -194,8 +197,8 @@ export class WatchedVersions implements WorkspaceVersions {
       workflowId,
       await approvedIntegrations(grant, this.#dir.root, this.#dir.shown),
     );
-    this.#latest = workspace;
-    this.#workspaceOfRun.set(runId, workspace);
+    this.#latest = read;
+    this.#versionOfRun.set(runId, read);
     return definitions;
   }
 
@@ -213,14 +216,33 @@ export class WatchedVersions implements WorkspaceVersions {
     readonly runId: string;
     readonly version: RunVersion;
   }): Promise<TrustedVersion> {
-    const workspace =
-      this.#workspaceOfRun.get(run.runId) ?? (await this.#workspaceAllowedAt(run.version));
+    const { workspace } =
+      this.#versionOfRun.get(run.runId) ?? (await this.#versionAllowedAt(run.version));
     return { workspace, trust: await this.#checks.trust(workspace) };
+  }
+
+  /**
+   * The agent's file as the run's version read it: the text the load
+   * parsed, as bytes. For a chat turn, which has no run here, the version
+   * read last.
+   *
+   * @throws when that version has no such agent
+   */
+  async agentFileOf(runId: string, hubId: string, agentId: string): Promise<Uint8Array> {
+    const read = this.#versionOfRun.get(runId) ?? this.#latest;
+    const file = filesOf(read.workspace, "agent").find(
+      (each) => each.hub === hubId && each.value.id === agentId,
+    );
+    const text = file === undefined ? null : read.textOf(file.path);
+    if (text === null) {
+      throw new Error(`Hub "${hubId}" has no agent "${agentId}".`);
+    }
+    return new TextEncoder().encode(text);
   }
 
   /** Forgets the load kept for a run that has ended. */
   forget(runId: string): void {
-    this.#workspaceOfRun.delete(runId);
+    this.#versionOfRun.delete(runId);
   }
 
   /** Closes the history. */
@@ -228,22 +250,22 @@ export class WatchedVersions implements WorkspaceVersions {
     await this.#history?.close();
   }
 
-  /** The workspace a run of `version` reads, if it keeps local only. */
-  async #workspaceAllowedAt(version: RunVersion | undefined): Promise<LoadedWorkspace> {
-    const workspace = await this.#workspaceAt(version);
-    if (isLocalOnly(workspace) !== this.#localOnly) {
+  /** The load a run of `version` reads, if it keeps local only. */
+  async #versionAllowedAt(version: RunVersion | undefined): Promise<ReadVersion> {
+    const read = await this.#versionAt(version);
+    if (isLocalOnly(read.workspace) !== this.#localOnly) {
       throw new Error(plainText(routinesMessages.localOnlyChanged(this.#dir.name).phrase));
     }
-    return workspace;
+    return read;
   }
 
-  /** The workspace a run of `version` reads; the one read last for a start that names none. */
-  async #workspaceAt(version: RunVersion | undefined): Promise<LoadedWorkspace> {
+  /** The load a run of `version` reads; the one read last for a start that names none. */
+  async #versionAt(version: RunVersion | undefined): Promise<ReadVersion> {
     if (version === undefined) {
       return this.#latest;
     }
     if (version.reads === "saved-files") {
-      return await loadWorkspace(this.#dir.store);
+      return await loadReadVersion(this.#dir.store);
     }
     const vcs = this.#history?.vcs;
     if (vcs === undefined) {
@@ -251,9 +273,9 @@ export class WatchedVersions implements WorkspaceVersions {
     }
     if (this.#atCommit?.commit !== version.commit) {
       const source = new VersionSource(vcs, version.commit, this.#dir.store.location);
-      this.#atCommit = { commit: version.commit, workspace: await loadWorkspace(source) };
+      this.#atCommit = { commit: version.commit, version: await loadReadVersion(source) };
     }
-    return this.#atCommit.workspace;
+    return this.#atCommit.version;
   }
 }
 

@@ -13,9 +13,9 @@ function filesOf(texts: Record<string, string>): AgentFiles & { read: string[] }
   const read: string[] = [];
   return {
     read,
-    bytesOf: async (hubId, agentId) => {
+    bytesOf: async (runId, hubId, agentId) => {
       const key = `${hubId}/${agentId}`;
-      read.push(key);
+      read.push(`${runId}:${key}`);
       const text = texts[key];
       if (text === undefined) throw new Error(`No agent ${key}.`);
       return encodeUtf8(text);
@@ -61,12 +61,12 @@ verifies("harness-host.placement", () => {
     expect(await policy.where(coder)).toEqual({ runsOn: "sandbox" });
   });
 
-  it("reads the file of the agent the engine asks about, in its hub", async () => {
+  it("reads the file of the agent the engine asks about, in its hub, for its run", async () => {
     const { files, policy } = setup({ "support/coder": "kind: agent\n" });
 
     await policy.where(coder);
 
-    expect(files.read).toEqual(["support/coder"]);
+    expect(files.read).toEqual(["01JD8Q:support/coder"]);
   });
 
   it("fails when the agent's file can't be read, so the harness doesn't start", async () => {

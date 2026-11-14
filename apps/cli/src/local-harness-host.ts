@@ -58,6 +58,14 @@ import { halonicVersion } from "./version.ts";
  */
 export const harnessCallLimitMs = 30 * 60_000;
 
+/**
+ * What the bridge reads provider keys from: nothing, because
+ * {@link bridgeServices} offers only the program's own sign-in, so no key is
+ * used. Hand it the CLI's remembered secrets when a provider key is really
+ * used (HAL-6477), not before.
+ */
+const noSecrets: Secrets = { get: async () => null };
+
 /** The folder in the profile where each run's bridge serves its Unix socket, as the agent host's. */
 const bridgeSocketsFolder = "bridges";
 
@@ -73,7 +81,7 @@ export interface LocalHarnessParts {
   readonly launcher?: HarnessRunsOptions["sandboxes"]["this-computer"];
   /** The harnesses, by their `id`. */
   readonly harnesses?: HarnessRunsOptions["harnesses"];
-  /** Opens each run's bridge; Node's, reading provider keys from `secrets`, by default. */
+  /** Opens each run's bridge; Node's, with no secrets to read provider keys from, by default. */
   readonly bridgeServer?: HarnessBridgeServer;
   /** The system the CLI runs on; `process.platform` by default. */
   readonly platform?: NodeJS.Platform;
@@ -91,10 +99,14 @@ export interface LocalHarnessInput {
   readonly environment: ProfileEnvironment;
   /** The files the engine runs, read when a run starts, for where an agent runs and its folders. */
   workspace(): LoadedWorkspace;
+  /**
+   * An agent's file as the version the run uses read it, for the placement
+   * check. Left out, the file is read from the workspace folder as it is now,
+   * which is the version a run of the saved files uses.
+   */
+  agentFileOf?(runId: string, hubId: string, agentId: string): Promise<Uint8Array>;
   /** The workspace's files, which Accept writes (not wired yet) and a proposal's base is read from. */
   readonly store: DefinitionStore;
-  /** The CLI's remembered secrets: the bridge reads provider keys from them, nothing else does. */
-  readonly secrets: Secrets;
   readonly digest: Digest;
   readonly clock: Clock;
   /** Which git makes the worktrees; the one on the `PATH` by default. */
@@ -272,15 +284,19 @@ async function nodeBridgeServer(input: LocalHarnessInput): Promise<HarnessBridge
   const socketFolder = join(input.profile.root, bridgeSocketsFolder);
   if (sockets) await makePrivateFolder(socketFolder);
   return new NodeHarnessBridgeServer({
-    secrets: input.secrets,
+    secrets: noSecrets,
     ...(sockets ? { socketFolder } : {}),
   });
 }
 
-/** The agents' files as they are on disk now, found by hub and id in the loaded workspace. */
+/**
+ * The agents' files as the version the run uses read them, else as they are
+ * on disk now, found by hub and id in the loaded workspace.
+ */
 function agentFilesOf(input: LocalHarnessInput): AgentFiles {
   return {
-    bytesOf: async (hubId, agentId) => {
+    bytesOf: async (runId, hubId, agentId) => {
+      if (input.agentFileOf !== undefined) return await input.agentFileOf(runId, hubId, agentId);
       const file = filesOf(input.workspace(), "agent").find(
         (each) => each.hub === hubId && each.value.id === agentId,
       );
