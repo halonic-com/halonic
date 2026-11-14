@@ -1,5 +1,6 @@
 import type { RunSummary } from "@halonicjs/events";
 import {
+  AgentRunsNotSupported,
   type ChatTurnRequest,
   type ChatTurnResponse,
   type EngineConnection,
@@ -170,6 +171,9 @@ export function createRemoteExecutor(options: RemoteExecutorOptions): RunExecuto
           }),
         );
       } catch (error) {
+        if (error instanceof RemoteHostError && error.code === "agent_runs_not_supported") {
+          throw new AgentRunsNotSupported(error.message);
+        }
         throw asRunTargetNotFound(error, { hub: hubId, workflow: "", agent: agentId });
       }
     },

@@ -1,4 +1,9 @@
-import { type Coordination, type RunExecutor, RunTargetNotFound } from "@halonicjs/ports";
+import {
+  AgentRunsNotSupported,
+  type Coordination,
+  type RunExecutor,
+  RunTargetNotFound,
+} from "@halonicjs/ports";
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import type { Server, TrustDecision, TrustGate } from "./api.ts";
@@ -195,6 +200,23 @@ describe("trust gate", () => {
         expect(text).not.toContain(secret);
       },
     );
+
+    it("answers 501 when the executor can't start agent runs, without its message", async () => {
+      const secret = "internal-detail";
+      const { server } = setup(
+        new ScriptedGate([trusted]),
+        null,
+        new AgentRunsNotSupported(secret),
+      );
+      const response = await post(server, "/api/agent-runs", agentStart);
+      expect(response.status).toBe(501);
+      const text = await response.text();
+      expect(JSON.parse(text)).toEqual({
+        code: "agent_runs_not_supported",
+        message: "This server can't start an agent run yet.",
+      });
+      expect(text).not.toContain(secret);
+    });
 
     it("keeps any other failure of a start a 500", async () => {
       const { server } = setup(new ScriptedGate([trusted]), null, new RangeError("odd"));

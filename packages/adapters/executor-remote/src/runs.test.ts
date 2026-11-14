@@ -1,4 +1,4 @@
-import { isRunTargetNotFound } from "@halonicjs/ports";
+import { isAgentRunsNotSupported, isRunTargetNotFound } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { RemoteHostError } from "./errors.ts";
@@ -72,6 +72,16 @@ verifies("executor-remote.runs", () => {
         .catch((thrown: unknown) => thrown);
 
       expect(error).toMatchObject({ kind: "agent", id: "scribe" });
+    });
+
+    it("rejects an agent start with AgentRunsNotSupported when the host can't run agents", async () => {
+      const host = fakeHost(() => errorBody(501, "agent_runs_not_supported"));
+
+      const error = await executorFor(host)
+        .startAgent({ hubId: "acme", agentId: "scribe", prompt: "hi" })
+        .catch((thrown: unknown) => thrown);
+
+      expect(isAgentRunsNotSupported(error)).toBe(true);
     });
 
     it("leaves any other start refusal as the host's error", async () => {

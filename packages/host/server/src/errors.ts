@@ -92,6 +92,11 @@ export const serverErrors = {
     code: "request_aborted",
     message: "The caller closed the request.",
   },
+  agentRunsNotSupported: {
+    status: 501,
+    code: "agent_runs_not_supported",
+    message: "This server can't start an agent run yet.",
+  },
   cancelNotSupported: {
     status: 501,
     code: "cancel_not_supported",

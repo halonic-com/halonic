@@ -9,6 +9,7 @@ const readme = readFileSync(fileURLToPath(new URL("../README.md", import.meta.ur
 
 /** Source files that hold shared types, a helper for a port or the package's lists, not a port. */
 const notPorts = new Set([
+  "agent-runs-not-supported.ts",
   "cant-try-error.ts",
   "chat.ts",
   "harness-sign-in-command.ts",

@@ -1,4 +1,4 @@
-import { isRunTargetNotFound, type RunTargetKind } from "@halonicjs/ports";
+import { isAgentRunsNotSupported, isRunTargetNotFound, type RunTargetKind } from "@halonicjs/ports";
 import type { ServerPorts, TrustGate } from "./api.ts";
 import { errorResponse, type ServerError, serverErrors } from "./errors.ts";
 
@@ -92,6 +92,8 @@ export function createTrustRoutes({ trust, runs }: TrustRoutePorts): TrustRoutes
     } catch (error) {
       // A wrong name is the caller's mistake; the body doesn't say which hub, workflow or agent, or what exists.
       if (isRunTargetNotFound(error)) return errorResponse(notFoundErrors[error.kind]);
+      // An executor without agent runs says so; that is not a server failure.
+      if (isAgentRunsNotSupported(error)) return errorResponse(serverErrors.agentRunsNotSupported);
       throw error;
     }
   }

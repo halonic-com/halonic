@@ -14,6 +14,7 @@ import type {
   SendOptions,
   StartRunRequest,
 } from "@halonicjs/ports";
+import { AgentRunsNotSupported } from "@halonicjs/ports";
 import type { StopSignal } from "@halonicjs/std";
 import { chatToolCheckOf } from "./agent/check-chat-tool-call.ts";
 import { agentParamsOf } from "./agent/model-params.ts";
@@ -142,7 +143,9 @@ export class LocalExecutor implements RunExecutor {
 
   startAgent(): Promise<RunSummary> {
     return Promise.reject(
-      new Error("The local executor can't start agent runs yet; they come with the agent loop."),
+      new AgentRunsNotSupported(
+        "The local executor can't start agent runs yet; they come with the agent loop.",
+      ),
     );
   }
 
