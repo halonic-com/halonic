@@ -1,5 +1,5 @@
 import { mkdtempSync } from "node:fs";
-import { cp, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,6 +21,7 @@ import {
   openGitHistory,
 } from "../../run-workspace.ts";
 import { captureIo } from "../../test/capture-io.ts";
+import { removeTestFolder } from "../../test/remove-folder.ts";
 import { testRunSetup } from "../../test/run-setup.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns } from "../../workspace-runs.ts";
 import { runCommandWith } from "./command.ts";
@@ -52,7 +53,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await runner.close();
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 /** The workspace's history through git itself, as the CLI opens it. */

@@ -1,4 +1,4 @@
-import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,6 +16,7 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 import { cliConnectorFactories } from "../../connector-machine.ts";
 import { openLocalEngine } from "../../local-engine-host.ts";
 import { loadRunWorkspace, openGitHistory } from "../../run-workspace.ts";
+import { removeTestFolder } from "../../test/remove-folder.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 
 /** The Acme example, which the notes connector is added to. */
@@ -40,7 +41,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await runner.close();
-  await rm(folder, { recursive: true, force: true });
+  await removeTestFolder(folder);
 });
 
 /**
