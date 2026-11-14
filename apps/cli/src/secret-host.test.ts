@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
@@ -13,7 +13,8 @@ const profile = () => ({
 });
 
 beforeEach(async () => {
-  folder = await mkdtemp(join(tmpdir(), "halonic-secret-chain-"));
+  // realpath: Windows hands out 8.3 short temp paths (RUNNER~1), which HALONIC_HOME rejects.
+  folder = await realpath(await mkdtemp(join(tmpdir(), "halonic-secret-chain-")));
 });
 
 afterEach(() => rm(folder, { recursive: true, force: true }));
