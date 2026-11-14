@@ -1,7 +1,7 @@
 import { execFileSync, spawn } from "node:child_process";
 import { createSocket, type Socket as UdpSocket } from "node:dgram";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:net";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -25,8 +25,9 @@ import { type RealMxc, realMxc } from "./mxc-sandbox.ts";
 // and with it off, so the box alone stands between the script and the
 // computer. That is what an integration has once it gets past the module hook
 // and Node's layer. `mxcFencesRunner` stays off until every case here has
-// passed, A6 and A23 included. A36 past Node's layer is a recorded gap (HAL-9362):
-// it expects what gets through, so a gap that closes fails too.
+// passed, A6 and A23 included. A36 past Node's layer (HAL-9362) and A6 through
+// Windows' DNS client (HAL-9605) are recorded gaps: each expects what gets
+// through, so a gap that closes fails too.
 
 let mxc: RealMxc;
 let base: string;
@@ -46,6 +47,8 @@ const canary = `canary-${Math.random().toString(36).slice(2)}`;
 const credentialTarget = `halonic-fence-attack-${Math.random().toString(36).slice(2)}`;
 /** The Windows folder, where `cmd.exe` and `cmdkey.exe` are. Windows always sets it. */
 const windowsFolder = process.env["SystemRoot"] ?? "";
+/** The file Windows' DNS client reads names from before it asks any server. */
+const hostsFile = join(windowsFolder, "System32", "drivers", "etc", "hosts");
 
 beforeAll(async () => {
   mxc = await realMxc();
@@ -141,6 +144,36 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     // Refused before it leaves: the test's server, which counts every query, sees none.
     expect(attempts["query"]?.outcome).toBe("refused");
     expect(resolverQueries).toBe(queriesBefore);
+  });
+
+  it("A6: a name lookup through Windows' DNS client gets through (known gap)", async () => {
+    // A lookup by name (`dns.lookup`, so also `fetch` and `net.connect`) goes
+    // to the Windows DNS client service on this computer, outside the box.
+    // The box doesn't fence it, so integration data can leave in lookups.
+    // Proof that the lookup got out of the box: a name that only the host's
+    // DNS client knows, from the hosts file, comes back with its address.
+    // Needs the right to write the hosts file, which a CI runner has. If the
+    // box ever fences the client, the lookup fails and this test fails too:
+    // then move A6 to the refusals above and drop the recorded gap in
+    // attack-cases.md. Both Node layers see the same, as Node's permission
+    // model does not cover name lookups.
+    const name = `halonic-gap-${Math.random().toString(36).slice(2)}.test`;
+    const hostsBefore = await readFile(hostsFile, "utf8");
+    try {
+      await appendFile(hostsFile, `\r\n127.0.0.1 ${name}\r\n`);
+      execFileSync(join(windowsFolder, "System32", "ipconfig.exe"), ["/flushdns"]);
+      const { attempts } = await attack(
+        `
+        const dns = await import("node:dns/promises");
+        await attempt("lookup", async () => (await dns.lookup(${JSON.stringify(name)})).address);
+      `,
+        nodeLayer,
+      );
+      expect(attempts["lookup"]).toEqual({ outcome: "allowed", detail: "127.0.0.1" });
+    } finally {
+      await writeFile(hostsFile, hostsBefore);
+      execFileSync(join(windowsFolder, "System32", "ipconfig.exe"), ["/flushdns"]);
+    }
   });
 
   it("A12: reads nothing in the home folder or outside the integration's folder", async () => {
