@@ -19,7 +19,7 @@ function fakeRuntime(options: { tickError?: Error; report?: WatchdogReport; swee
       async sweep() {
         calls.push("sweep");
         if (options.sweepError) throw options.sweepError;
-        return options.report ?? { woken: [], failed: [] };
+        return options.report ?? { woken: [], failed: [], deferred: 0 };
       },
     } as unknown as Watchdog,
   };
@@ -53,7 +53,11 @@ verifies("runtime.scheduled", () => {
 
     it("still ticks when the watchdog can't check a run, and names the run", async () => {
       const { runtime, calls } = fakeRuntime({
-        report: { woken: [], failed: [{ runId: "r1", error: new Error("boom") }] },
+        report: {
+          woken: [],
+          failed: [{ runId: "r1", error: new Error("boom") }],
+          deferred: 0,
+        },
       });
       const error = await failureOf(runScheduled(runtime, at));
       expect(calls).toEqual([`tick ${at}`, "sweep"]);

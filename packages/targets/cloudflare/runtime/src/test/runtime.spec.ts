@@ -40,7 +40,7 @@ describe("the wiring in workerd", () => {
 
   it("sweeps an empty run list without waking anything", async () => {
     const { watchdog } = await createRuntime(configured);
-    expect(await watchdog.sweep()).toEqual({ woken: [], failed: [] });
+    expect(await watchdog.sweep()).toEqual({ woken: [], failed: [], deferred: 0 });
   });
 
   it("refuses to wire when the token key is missing", async () => {
