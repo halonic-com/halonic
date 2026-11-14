@@ -66,6 +66,18 @@ export function removedToast(name: string): string {
   return `${name} removed`;
 }
 
+/** The toast after **Trust and turn on** (T11): the name, then where its command and card are. */
+export function onToast(name: string): string {
+  return `${name} is on`;
+}
+export const ON_TOAST_BODY = "Its command is in Ctrl K and its card is on Home.";
+
+/** The toast after **Not now** on a plugin that was just added (T11). */
+export function addedOffToast(name: string): string {
+  return `${name} is added but off`;
+}
+export const ADDED_OFF_TOAST_BODY = "Nothing from it runs until you trust it.";
+
 const list = new Intl.ListFormat("en-GB", { type: "conjunction" });
 
 /**

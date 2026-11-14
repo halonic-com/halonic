@@ -45,6 +45,7 @@ export {
   pluginPageItem,
   pluginPageKind,
 } from "./page/plugin-pages.ts";
+export { usePageActions } from "./page/use-page-actions.ts";
 export { PluginPanel, type PluginPanelProps } from "./panel/plugin-panel.tsx";
 export {
   PLUGIN_PANEL_KIND,

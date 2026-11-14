@@ -29,3 +29,10 @@ export function notTrustedLine(name: string): string {
 export function cantLoadLine(name: string): string {
   return `${name} couldn't load, so this card is empty.`;
 }
+
+/** The card's ⋮ menu: its button name "More actions for Today's weather", and its two items (T15). */
+export function cardMenuLabel(title: string): string {
+  return `More actions for ${title}`;
+}
+export const OPEN_PLUGIN = "Open plugin";
+export const HIDE_ON_HOME = "Hide on Home";
