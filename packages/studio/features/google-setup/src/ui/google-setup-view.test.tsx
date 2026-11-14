@@ -399,6 +399,17 @@ verifies("google-setup.phone-view", () => {
     expect(steps(container)[2]?.getAttribute("aria-current")).toBe("step");
   });
 
+  it("says the account type is not chosen yet while the app is still asking", async () => {
+    const container = await openOnPhone([
+      account(twoDone, { services: [ledger], askAccountType: true }),
+    ]);
+    const text = container.textContent ?? "";
+    expect(text).toContain("Not chosen yet");
+    expect(text).not.toContain("Personal Google account");
+    expect(text).toContain("Choose the account type on a computer first.");
+    expect(steps(container)).toHaveLength(7);
+  });
+
   it("has no button and no field", async () => {
     const container = await openOnPhone([account(twoDone, { services: [ledger] })]);
     expect(container.querySelectorAll("button, input, a")).toHaveLength(0);
