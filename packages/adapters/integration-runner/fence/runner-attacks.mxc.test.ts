@@ -279,8 +279,14 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
       `
       const { spawnSync } = await import("node:child_process");
       await attempt("secret", () => {
-        const run = spawnSync(${JSON.stringify(powershell)}, ["-NoProfile", "-NonInteractive", "-Command", ${JSON.stringify(readCredential)}], { encoding: "utf8" });
-        if (run.error) throw run.error;
+        const run = spawnSync(${JSON.stringify(powershell)}, ["-NoProfile", "-NonInteractive", "-Command", ${JSON.stringify(readCredential)}], {
+          encoding: "utf8",
+          // No input to wait for, and an end well inside the attack's own, so a
+          // stuck PowerShell is reported here with what it printed.
+          stdio: ["ignore", "pipe", "pipe"],
+          timeout: 20000,
+        });
+        if (run.error) throw Object.assign(new Error(run.error.message + " " + run.stdout + " " + run.stderr), { code: run.error.code });
         if (run.status !== 0) throw Object.assign(new Error(run.stdout || run.stderr), { code: "EXIT_" + run.status });
         // Report whether the secret came out, never the secret itself.
         return run.stdout === ${JSON.stringify(canary)} ? "read" : "other output";
