@@ -72,7 +72,16 @@ const itemFailed = (error: string) =>
       (_, workflow: string, item: string) => `item ${item}, workflow ${workflow}: `,
     );
 
-const withoutOutput = (call: ComparedCall): ComparedCall => ({ ...call, stdout: "", stderr: "" });
+/**
+ * The output as only whether the call printed anything, on either stream: the
+ * words and the stream are left out, silence is not. The new CLI may print a
+ * heading on stdout before an error the old one gave on stderr.
+ */
+const outputAsPrinted = (call: ComparedCall): ComparedCall => ({
+  ...call,
+  stdout: call.stdout === "" && call.stderr === "" ? "" : "(printed)",
+  stderr: "",
+});
 
 /** The new exit codes the old CLI gave as 1: 2 for a wrong command line or input, 4 to 9 for the error kinds. */
 const foldedCodes = new Set([2, 4, 5, 6, 7, 8, 9]);
@@ -81,9 +90,9 @@ const foldedCodes = new Set([2, 4, 5, 6, 7, 8, 9]);
 export const cliRules: readonly CliRule[] = [
   {
     id: "output-words",
-    does: "takes stdout and stderr out, on both sides",
-    old: withoutOutput,
-    new: withoutOutput,
+    does: "turns stdout and stderr into whether the call printed anything on either, on both sides: the words and the stream are left out, silence is not",
+    old: outputAsPrinted,
+    new: outputAsPrinted,
   },
   {
     id: "exit-codes-by-kind",

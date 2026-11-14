@@ -96,6 +96,17 @@ verifies("parity.compare-cli-calls", () => {
       expect(report.unexplained.map((result) => result.ruled.new.exitCode)).toEqual([0]);
     });
 
+    it("gives a call `different` when the new CLI prints nothing where the old one printed", () => {
+      const report = judge(oldCall(), newCall(0, ""));
+      expect(report.unexplained.map((result) => result.call)).toEqual(["run"]);
+    });
+
+    it("allows the new CLI to print on another stream than the old one did", () => {
+      const fresh = { ...newCall(0, ""), stderr: "Something went wrong" };
+      const report = judge(oldCall(), fresh);
+      expect(report.unexplained).toEqual([]);
+    });
+
     it("gives a call a known gap names `gap`, and makes the gap stale once the call matches", () => {
       const named = judge(oldCall(1), newCall(0), runRules, [gap(["run"])]);
       expect(named.results.map((result) => [result.verdict, result.gaps])).toEqual([
