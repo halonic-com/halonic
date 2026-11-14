@@ -17,6 +17,7 @@
     "@halonicjs/adapter-memory": "workspace:*",
     "@halonicjs/app": "workspace:*",
     "@halonicjs/events": "workspace:*",
+    "@halonicjs/google-setup": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*",
     "@halonicjs/std": "workspace:*",

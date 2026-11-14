@@ -12,6 +12,8 @@ import {
   type WorkspaceScope,
   workspaceFilesKey,
 } from "@halonicjs/app";
+import { googleSetupFeature } from "@halonicjs/studio-feature-google-setup";
+import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import { libraryFeature } from "@halonicjs/studio-feature-library";
@@ -135,7 +137,7 @@ export function keyboardPlatform(userAgent: string): KeyboardPlatform {
  * (`studio.open-folder`). The served Studio opens the one workspace it serves. The window is the
  * shell's or the workspace feature's; the app only starts it, as AGENTS.md asks of screens.
  *
- * The desktop app registers the Inbox and Runs, over the runs in each open folder, Settings
+ * The desktop app registers the Inbox, Google setup and Runs, over the runs in each open folder, Settings
  * (`studio.settings`) and the workspace page (`workspace.page`). The served Studio registers no feature yet: nothing serves it runs until
  * `halonic serve` is built, so it shows Home and the Search box.
  *
@@ -179,6 +181,7 @@ export function startStudio(page: StudioPage, desktop = desktopFeatures): Starte
  */
 export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = {
   features: [
+    googleSetupFeature,
     inboxFeature,
     libraryFeature,
     modelsFeature,
@@ -188,6 +191,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
   ],
   hostServices: [
     ConnectorStatusHostService,
+    GoogleSetupAccountsService,
     ListedToolsHostService,
     InboxRunsService,
     RunsSourceService,
