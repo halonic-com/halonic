@@ -347,10 +347,12 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     // The two calls are built in memory with reflection, not compiled with
     // `Add-Type`: that starts the C# compiler, which the box may stop. Each
     // step writes a marker to stderr, so a stuck run shows where it stopped.
+    // No cmdlet is used either: the first one (`New-Object`) hung before it
+    // returned, probably loading its module inside the box.
     const readCredential = `
       function Step($name) { [Console]::Error.WriteLine("step: " + $name) }
       Step "start"
-      $name = New-Object System.Reflection.AssemblyName "HalonicVault"
+      $name = [System.Reflection.AssemblyName]::new("HalonicVault")
       Step "assembly name"
       $assembly = [System.AppDomain]::CurrentDomain.DefineDynamicAssembly($name, [System.Reflection.Emit.AssemblyBuilderAccess]::Run)
       Step "assembly"
