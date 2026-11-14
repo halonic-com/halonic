@@ -2,7 +2,6 @@
 
 - Approval: Liam signs this note in review on the review task of HAL-9335
 - Kind: internal
-- Signature: UNSIGNED
 - Task: HAL-9335
 
 ## What changes
