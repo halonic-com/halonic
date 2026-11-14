@@ -1144,6 +1144,9 @@ importers:
       '@halonicjs/adapter-sandbox-srt':
         specifier: workspace:*
         version: link:../sandbox-srt
+      '@halonicjs/testing-sign-in':
+        specifier: workspace:*
+        version: link:../../testing/sign-in
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../testing/spec
