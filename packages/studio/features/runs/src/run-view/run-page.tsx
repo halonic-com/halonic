@@ -84,7 +84,8 @@ export function RunView({
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
   const state = useSyncExternalStore(subscribe, () => list.state);
   const run = state.runs.find((candidate) => candidate.summary.id === runId);
-  const log = useRunLog(list.source, runId, run?.summary.lastSeq ?? 0, state);
+  const logRead = useRunLog(list.source, runId, run?.summary.lastSeq ?? 0, state);
+  const log = logRead.events;
   const [openEntry, setOpenEntry] = useState<string>();
   const title = runPageWords.title(shortRunId(runId));
   const retry = () => void list.refresh();
@@ -105,9 +106,12 @@ export function RunView({
             reviewInInbox={reviewInInbox}
             openRun={openRun}
           />
+          <DamagedLogBanner line={logRead.damagedLine} />
           <div className="grid items-start gap-6 wide:grid-cols-[minmax(0,1fr)_16rem]">
             <div className="flex min-w-0 flex-col gap-4">
-              {log === undefined ? null : (
+              {log === undefined ? (
+                <LogUnread failure={logRead.failure} retry={logRead.retry} />
+              ) : (
                 <>
                   <Receipt
                     summary={summaryLine(run, log, context)}
@@ -177,6 +181,39 @@ export function RunView({
         />
       )}
     </div>
+  );
+}
+
+/** The red banner for a log with a damaged line; nothing for a log that reads whole. */
+function DamagedLogBanner({ line }: { readonly line: number | undefined }) {
+  if (line === undefined) return null;
+  return (
+    <section aria-label={runPageWords.damagedLogName}>
+      <Callout tone="danger">{runPageWords.damagedLog(line)}</Callout>
+    </section>
+  );
+}
+
+/** What stands where the receipt and Every step go while the log isn't read: a skeleton, or why not. */
+function LogUnread({ failure, retry }: { readonly failure: unknown; readonly retry: () => void }) {
+  if (failure === undefined) {
+    return (
+      <List
+        label={runPageWords.loadingLog}
+        rows={[]}
+        loading
+        loadingLabel={runPageWords.loadingLog}
+      />
+    );
+  }
+  return (
+    <EmptyState
+      tone="error"
+      align="start"
+      title={runPageWords.logFailed}
+      description={loadFailureReason(failure)}
+      action={{ label: "Try again", onClick: retry }}
+    />
   );
 }
 
