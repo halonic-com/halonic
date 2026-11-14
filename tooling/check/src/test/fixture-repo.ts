@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { loadContext } from "../lib/context.ts";
@@ -142,9 +142,10 @@ function writeTreeRewriteLists(
     return;
   }
   write(patches, real(patches));
-  // The real pnpm-workspace.yaml applies the real patches, so their files come along.
+  // The real pnpm-workspace.yaml applies the real patches, so their files come along. An entry
+  // can land before its patch (docs/guides/dependencies.md), so a missing file is skipped.
   for (const { file } of readAllowedPatches(real(patches)).entries) {
-    write(file, real(file));
+    if (existsSync(join(realRoot, file))) write(file, real(file));
   }
 }
 
