@@ -70,8 +70,12 @@ async function openRun(openOther?: (runId: string) => void) {
 }
 
 /** The focusable cell of the timeline's `index`th entry. */
+/** The `index`th step's cell; the "Blocked 2 sites" rows under a step aren't steps. */
 function entry(root: HTMLElement, index: number): HTMLElement {
-  const row = root.querySelectorAll('[role="grid"] tbody tr')[index];
+  const steps = [...root.querySelectorAll('[role="grid"] tbody tr')].filter(
+    (row) => !/^Blocked \d+ sites?/.test(row.textContent ?? ""),
+  );
+  const row = steps[index];
   const cell = row?.querySelector<HTMLElement>('[role="gridcell"]');
   if (cell == null) throw new Error(`No entry ${index}.`);
   return cell;
@@ -157,6 +161,57 @@ verifies("runs.run-view.blocked-sites", () => {
     act(() => entry(root, 1).click());
 
     expect(root.querySelector("aside")?.textContent).not.toContain("Blocked sites");
+  });
+});
+
+verifies("runs.run-view.blocked-sites", () => {
+  it("draws a Blocked line under the refused step, and its row opens that step's entry", async () => {
+    const root = await openRun();
+    const rows = [...root.querySelectorAll('[role="grid"] tbody tr')];
+    const blocked = rows.find((row) => /^Blocked 2 sites/.test(row.textContent ?? ""));
+    expect(blocked).toBeDefined();
+    expect(blocked?.querySelector("svg")).not.toBeNull();
+    const before = rows.indexOf(blocked as Element) - 1;
+    expect(rows[before]?.textContent).toContain("Install");
+
+    act(() => blocked?.querySelector<HTMLElement>('[role="gridcell"]')?.click());
+    expect(root.querySelector("aside")?.textContent).toContain("registry.npmjs.org");
+  });
+});
+
+verifies("runs.run-view.blocked-sites", () => {
+  it("names the refused sites in the failed banner and opens the failed step with See the step", async () => {
+    const failedLog = logOf(runId, [
+      [0, entered("install")],
+      [0, refused("registry.npmjs.org", 12)],
+      [0, refused("objects.githubusercontent.com", 1)],
+      [1, { type: "run.failed", error: "fetch failed" } as RunEventBody],
+    ]);
+    const failed = summaryWith({
+      id: runId,
+      status: "failed",
+      endedAt: new Date(mondayMorning.getTime() + 60_000).toISOString(),
+      error: "fetch failed",
+      lastSeq: failedLog.length,
+      state: null,
+      statesVisited: ["install"],
+    });
+    const list = new RunsList(fakeSource([failed], { [runId]: failedLog }).source);
+    const root = render(<RunView list={list} runId={runId} now={() => mondayMorning} />);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const banner = root.querySelector('section[aria-label="Run failed"]');
+    expect(banner?.textContent).toContain(
+      "The sandbox stopped Writer from reaching 2 sites that aren't in its allowed sites, such as registry.npmjs.org.",
+    );
+    expect(banner?.textContent).not.toContain("can't tell the cause yet");
+    const see = [...(banner?.querySelectorAll("button") ?? [])].find(
+      (button) => button.textContent === "See the step",
+    );
+    act(() => see?.click());
+    expect(root.querySelector("aside")?.textContent).toContain("registry.npmjs.org");
   });
 });
 

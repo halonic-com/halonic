@@ -6,10 +6,11 @@
 
 The run view shall name each site a step's sandbox refused once, with its tries, from the step's `blockedSites`:
 
-- under the step's meta line, a button in warning tone, never danger: "Blocked 3 sites", "Blocked 1 site" for one;
+- under the step's meta line, a row in warning tone, never danger: "Blocked 3 sites", "Blocked 1 site" for one;
 - in the step's open entry, a Blocked sites panel: one row per site, most tries first, then A to Z, with "1 try", "12 tries" or, over 999, "999+ tries" at the right; at most 5 rows, then "and 7 more sites", which isn't a link; a hint that says why, how to allow a site and that the agent can then send that site anything it can read; and one action, "Open *Writer*'s allowed sites", which opens the agent's allowed sites and never adds a site itself. On a phone the action is the line "Fix this on your computer: *Writer* › Harness › Allowed sites", with no link;
 - in the run log view, "Blocked: registry.npmjs.org (12 tries)" once per site per step, at most 20, then "and 3 more sites";
-- in the failed banner of a run stopped by several blocked sites, the several-sites sentence with the site with the most tries as its example. One site keeps the 15.3 sentence.
+- under the step's meta line, the "Blocked 3 sites" line is a child row in the timeline with the warning icon, which opens the step's entry;
+- in the failed banner of a run stopped by blocked sites (a failure with no specific reason, in a step the sandbox refused sites in), the several-sites sentence with the site with the most tries as its example, or for one site "The sandbox stopped Reporter from reaching api.example.net, which isn't in its allowed sites.", and **See the step**, which opens the failed step's entry.
 
 A site's name shall be plain text, never a link, with the part before its registrable domain in `fg-muted` and the domain in `fg` weight 500, capped and escaped by `siteName`.
 
