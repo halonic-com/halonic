@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-9385 (B13); microcopy 13.1 and 15.3
 
-Where the app has a sandbox host that can set the sandbox up, Ctrl K shall list **Set up the agent sandbox**. Choosing it is the press: Windows asks for administrator rights, and nothing starts before. When the setup and its check pass, a success toast shall say "The agent sandbox is set up". When it doesn't, an error toast shall say "The agent sandbox isn't set up: *cause*", with the cause as a phrase (Windows didn't give Halonic administrator rights, the time limit, the host's reason, or that Windows must restart), and **Open Settings**, which opens Settings on Agent sandbox. A build without the sandbox, and served Studio, shall list no command.
+Where the app has a sandbox host that can set the sandbox up, Ctrl K shall list **Set up the agent sandbox**. Choosing it is the press: Windows asks for administrator rights, and nothing starts before. While the setup runs, an info toast shall say "Setting up the agent sandbox…", and choosing the command again shall start nothing more; the toast closes when the result toast shows. When the setup and its check pass, a success toast shall say "The agent sandbox is set up". When it doesn't, an error toast shall say "The agent sandbox isn't set up: *cause*", with the cause as a phrase (Windows didn't give Halonic administrator rights, the time limit, the host's reason, or that Windows must restart), and **Open Settings**, which opens Settings on Agent sandbox. A build without the sandbox, and served Studio, shall list no command.
 
 ## Examples
 
@@ -17,3 +17,6 @@ Where the app has a sandbox host that can set the sandbox up, Ctrl K shall list 
 - Given the setup and its check pass,
   when the command ends,
   then a success toast reads "The agent sandbox is set up".
+- Given a setup is running,
+  when the person chooses the command again,
+  then no second setup starts and one "Setting up the agent sandbox…" toast shows.

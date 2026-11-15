@@ -76,4 +76,17 @@ verifies("settings.sandbox-commands", () => {
     await act(async () => void sandboxCommands(context)[0]?.run(context));
     expect(toasts.list()[0]?.title).toContain("Windows needs to restart");
   });
+
+  it("says it started and ignores a second press while it runs", async () => {
+    const { host, context, toasts } = setup();
+    let finish: (value: null) => void = () => {};
+    host.setUp = vi.fn(() => new Promise<null>((resolve) => (finish = resolve)));
+    const run = sandboxCommands(context)[0]?.run;
+    await act(async () => void run?.(context));
+    await act(async () => void run?.(context));
+    expect(host.setUp).toHaveBeenCalledTimes(1);
+    expect(toasts.list().map((toast) => toast.title)).toEqual(["Setting up the agent sandbox…"]);
+    await act(async () => finish(null));
+    expect(toasts.list().map((toast) => toast.title)).toEqual(["The agent sandbox is set up"]);
+  });
 });

@@ -24,8 +24,10 @@ export function SandboxHost({ context }: DialogHostProps) {
     return flow.onRequest(async () => {
       if (running.current) return;
       running.current = true;
+      const starting = toasts.show({ tone: "info", title: text.TOAST_SETTING_UP });
       const result = await setUpForToast(host);
       running.current = false;
+      toasts.close(starting);
       const open = openRef.current;
       if (result.cause === null) {
         toasts.show({ tone: "success", title: text.TOAST_SET_UP });

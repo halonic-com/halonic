@@ -69,6 +69,7 @@ export const TOAST_SET_UP = "The agent sandbox is set up";
 export const toastNotSetUp = (cause: string) => `The agent sandbox isn't set up: ${cause}`;
 export const toastNotRemoved = (cause: string) => `The agent sandbox wasn't removed: ${cause}`;
 
+export const TOAST_SETTING_UP = "Setting up the agent sandbox…";
 export const SET_UP_COMMAND = "Set up the agent sandbox";
 export const OPEN_SETTINGS = "Open Settings";
 export const DENIED_CAUSE = "Windows didn't give Halonic administrator rights.";
