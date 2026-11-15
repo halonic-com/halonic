@@ -3,6 +3,7 @@
 - Task: HAL-6703 (step 2a of the HAL-198 build plan, ADR 5.9), part 1: R2 and D1
 - Approval: the task asks for this change; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:bHK76pvhmmNUHeUrI1E9bTsMtKxyqzb7nD2hLE33LcU5iyuww2szSYmw9w7WMJTM5q681aBQ1QfFWX/5Pvi5AQ==
 
 ## What changes
 
