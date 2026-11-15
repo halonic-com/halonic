@@ -243,7 +243,7 @@ verifies("plugins.plugin-trust-check", () => {
     );
     expect(text).toContain("radar.example.com (the program)");
     expect(text).toContain(
-      "Halonic draws these itself. Text from the plugin never becomes page code; at most it shows basic formatting and web links, each with its address.",
+      "Halonic draws these itself. A plugin's text can show bold, lists and links (with their addresses), and nothing else.",
     );
   });
 
