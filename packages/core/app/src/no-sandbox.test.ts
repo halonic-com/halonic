@@ -64,6 +64,16 @@ verifies("app.no-sandbox", () => {
     expect(settings.saved).toBeNull();
   });
 
+  it("keeps a saved backend when taking the choice back", async () => {
+    const settings = new FakeSettings({
+      backend: "srt",
+      chosenAt: "2026-11-01T09:00:00.000Z",
+    });
+    await noSandbox(settings).takeBack();
+    expect(settings.saved?.backend).toBe("srt");
+    expect(settings.writes).toBe(0);
+  });
+
   describe("a CLI --no-sandbox", () => {
     it("is refused with no saved setting, and saves nothing", async () => {
       const settings = new FakeSettings();

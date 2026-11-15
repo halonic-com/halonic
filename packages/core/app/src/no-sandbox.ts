@@ -49,9 +49,13 @@ export class NoSandboxService {
     return setting;
   }
 
-  /** Deletes the choice, so the person is asked again. Without a choice it does nothing. */
+  /**
+   * Deletes the choice `none`, so the person is asked again. Without that
+   * choice it does nothing: a saved backend such as `srt` is kept.
+   */
   async takeBack(): Promise<void> {
-    await this.#options.settings.remove();
+    const setting = await this.#options.settings.get();
+    if (setting?.backend === "none") await this.#options.settings.remove();
   }
 
   /**
