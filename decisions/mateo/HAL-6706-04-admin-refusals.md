@@ -2,6 +2,7 @@
 
 - Approval: Liam approved the requirement change in review (HAL-10172)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:UQW7Bn1bDMaH0L1wnEneTCQkzipJj9MfQ/KEwUEprQNtcqMJ9qouFfTFYQnWHAIdTG+5D9vMDXIxiaTHKGcRBg==
 
 ## What changes
 
