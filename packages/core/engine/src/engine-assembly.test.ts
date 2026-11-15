@@ -198,8 +198,10 @@ verifies("engine.harness-stops-with-engine", () => {
     const order: string[] = [];
     const runs = new KernelRuns();
     class NotingEngineScheduler extends NotingScheduler {
-      constructor(readonly listener: SchedulerListener) {
+      readonly listener: SchedulerListener;
+      constructor(listener: SchedulerListener) {
         super();
+        this.listener = listener;
       }
       async close(): Promise<void> {
         // What the harness had left open when the scheduler began to close.
