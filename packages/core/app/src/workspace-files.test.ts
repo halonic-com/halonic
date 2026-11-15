@@ -5,6 +5,7 @@ import { openWorkspace, workspaceFilesKey } from "./open-workspace.ts";
 import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
 import { ModelHistory, modelPaths, randomStep, seededRandom } from "./testing/model-history.ts";
 import { TestTrash } from "./testing/test-trash.ts";
+import { CannotCombineError } from "./workspace-compare.ts";
 import { ChangedOnDiskError } from "./workspace-files.ts";
 
 const workflowPath = "hubs/p/workflows/f.workflow.yaml";
@@ -404,5 +405,82 @@ verifies("app.workspace-delete-to-trash", () => {
     expect(files.undo()).toBe(true);
     await files.save();
     expect(await store.read(workflowPath)).toBe(workflow);
+  });
+});
+
+verifies("app.workspace-compare", () => {
+  const base = "a: 1\nb: 2\nc: 3\n";
+
+  /** A file Halonic read, changed outside Halonic and edited by the person. */
+  async function changedBothWays(mine: string, outside: string) {
+    const { store, files } = open({ "a.yaml": base });
+    await files.read("a.yaml");
+    store.files.set("a.yaml", outside);
+    files.change("Edited", { "a.yaml": mine });
+    return { store, files };
+  }
+
+  it("offers both changes together when they are on different lines", async () => {
+    const { files } = await changedBothWays("a: 1\nb: 2\nc: mine\n", "a: outside\nb: 2\nc: 3\n");
+    expect(await files.compare("a.yaml")).toEqual({
+      path: "a.yaml",
+      base,
+      mine: "a: 1\nb: 2\nc: mine\n",
+      theirs: "a: outside\nb: 2\nc: 3\n",
+      combined: "a: outside\nb: 2\nc: mine\n",
+    });
+  });
+
+  it("offers no combined text when both sides changed the same line", async () => {
+    const { files } = await changedBothWays("a: 1\nb: mine\nc: 3\n", "a: 1\nb: outside\nc: 3\n");
+    expect((await files.compare("a.yaml")).combined).toBeNull();
+    await expect(files.settle("a.yaml", "combine-both")).rejects.toBeInstanceOf(CannotCombineError);
+    expect(files.pending).toEqual({ "a.yaml": "a: 1\nb: mine\nc: 3\n" });
+  });
+
+  it("offers no combined text for a file deleted outside Halonic", async () => {
+    const { store, files } = await changedBothWays("a: mine\n", base);
+    store.files.delete("a.yaml");
+    expect(await files.compare("a.yaml")).toMatchObject({ theirs: null, combined: null });
+  });
+
+  it("combines both as one undo step", async () => {
+    const { store, files } = await changedBothWays(
+      "a: 1\nb: 2\nc: mine\n",
+      "a: outside\nb: 2\nc: 3\n",
+    );
+    await files.settle("a.yaml", "combine-both");
+    expect(files.pending).toEqual({ "a.yaml": "a: outside\nb: 2\nc: mine\n" });
+    expect(await files.save()).toBe(1);
+    expect(store.files.get("a.yaml")).toBe("a: outside\nb: 2\nc: mine\n");
+    expect(files.undo()).toBe(true);
+    expect(await files.read("a.yaml")).toBe("a: 1\nb: 2\nc: mine\n");
+  });
+
+  it("keeps mine: the next save overwrites the outside text", async () => {
+    const { store, files } = await changedBothWays("a: mine\n", "a: outside\n");
+    await files.settle("a.yaml", "keep-mine");
+    expect(await files.save()).toBe(1);
+    expect(store.files.get("a.yaml")).toBe("a: mine\n");
+  });
+
+  it("uses the other one: drops my changes, and undo brings them back", async () => {
+    const { store, files } = await changedBothWays("a: mine\n", "a: outside\n");
+    await files.settle("a.yaml", "use-other");
+    expect(files.pending).toEqual({});
+    expect(await files.read("a.yaml")).toBe("a: outside\n");
+    expect(await files.save()).toBe(0);
+    expect(files.undo()).toBe(true);
+    expect(await files.read("a.yaml")).toBe("a: mine\n");
+    expect(await files.save()).toBe(1);
+    expect(store.files.get("a.yaml")).toBe("a: mine\n");
+  });
+
+  it("uses the other one when the file was deleted outside Halonic", async () => {
+    const { store, files } = await changedBothWays("a: mine\n", base);
+    store.files.delete("a.yaml");
+    await files.settle("a.yaml", "use-other");
+    expect(await files.read("a.yaml")).toBeNull();
+    expect(files.pending).toEqual({});
   });
 });

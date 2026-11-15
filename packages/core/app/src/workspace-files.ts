@@ -3,6 +3,12 @@ import { contentDigest, type Sha256 } from "@halonicjs/std";
 import type { EventBus } from "./event-bus.ts";
 import type { Trash } from "./review-types.ts";
 import { UndoHistory } from "./undo-history.ts";
+import {
+  CannotCombineError,
+  type CompareChoice,
+  type CompareView,
+  compareTexts,
+} from "./workspace-compare.ts";
 import type { AppEvents } from "./workspace-scope.ts";
 
 /**
@@ -253,6 +259,50 @@ export class WorkspaceFiles {
     this.apply(left, `Saved ${saving.length} file${saving.length === 1 ? "" : "s"}`);
     this.events.emit("files.saved", { paths: saving.map(([path]) => path) });
     return saving.length;
+  }
+
+  /**
+   * Both texts of a file that changed outside Halonic, for Compare (save model
+   * 6.3). Reads the file again, so it shows the text in the store now.
+   */
+  async compare(path: string): Promise<CompareView> {
+    const theirs = await this.store.read(path);
+    const base = this.known.has(path) ? (this.known.get(path) ?? null) : theirs;
+    const mine = Object.hasOwn(this.changes, path) ? (this.changes[path] ?? null) : theirs;
+    return compareTexts(path, base, mine, theirs);
+  }
+
+  /**
+   * Settles a file that changed outside Halonic with the choice made in
+   * Compare. Afterwards the file counts as read in its new text, so saving
+   * works again.
+   *
+   * - `keep-mine`: the unsaved changes stay and the next save overwrites the
+   *   outside text. That is no change to the text, so it is no undo step.
+   * - `use-other`: the unsaved changes to the file are dropped.
+   * - `combine-both`: the file gets the two texts put together. Throws
+   *   {@link CannotCombineError} when `compare` gave no `combined`.
+   *
+   * The last two are one undo step. Undoing one brings the person's text
+   * back, and Halonic then expects the outside text: the next save overwrites
+   * it, as the person's undo asked.
+   *
+   * @returns the Compare view the choice was made on
+   */
+  async settle(path: string, choice: CompareChoice): Promise<CompareView> {
+    const view = await this.compare(path);
+    if (choice === "combine-both" && view.combined === null) {
+      throw new CannotCombineError(path);
+    }
+    this.known.set(path, view.theirs);
+    if (choice === "keep-mine") return view;
+    const text = choice === "use-other" ? view.theirs : view.combined;
+    const { [path]: _settled, ...others } = this.changes;
+    this.history.record(this.changes);
+    // A file that now reads what the store holds has nothing left to save.
+    const settled = text === view.theirs ? others : { ...others, [path]: text };
+    this.apply(settled, choice === "use-other" ? `Used the other ${path}` : `Combined ${path}`);
+    return view;
   }
 
   /** Drops every unsaved change and the undo history, such as when the files are read again from disk. */
