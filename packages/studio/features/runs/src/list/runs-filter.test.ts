@@ -48,8 +48,38 @@ describe("filterRuns", () => {
   });
 
   it("counts live runs and runs that need you over what Test runs lets through", () => {
-    expect(statusCounts(all, false)).toEqual({ live: 4, needsYou: 2 });
-    expect(statusCounts([finishedTest], false)).toEqual({ live: 0, needsYou: 0 });
+    expect(statusCounts(all, startFilters)).toEqual({ live: 4, needsYou: 2 });
+    expect(statusCounts([finishedTest], startFilters)).toEqual({ live: 0, needsYou: 0 });
+  });
+});
+
+describe("the workflow filter", () => {
+  const other = runRow(
+    { summary: summaryWith({ id: "other", workflowId: "order-intake" }), madeToolCalls: false },
+    { workflow: undefined, routine: undefined, currency: "EUR", now: mondayMorning },
+  );
+  const reply = { hubId: "acme", id: "support-reply" };
+
+  it("shows only that workflow's runs, and counts only them", () => {
+    const rows = [other, running, done];
+    expect(ids(filterRuns(rows, { ...startFilters, workflow: reply }))).toEqual([
+      "running",
+      "done",
+    ]);
+    expect(statusCounts(rows, { ...startFilters, workflow: reply })).toEqual({
+      live: 1,
+      needsYou: 0,
+    });
+  });
+
+  it("names a workflow without runs, and none while the workflow has runs", () => {
+    const filters = { ...startFilters, workflow: { hubId: "acme", id: "gone" } };
+    expect(emptyList([running], filters)).toEqual({
+      kind: "workflow",
+      line: "No runs of this workflow yet.",
+    });
+    expect(emptyList([running], { ...startFilters, workflow: reply })).toBeUndefined();
+    expect(emptyList([], filters)).toEqual({ kind: "no-runs" });
   });
 });
 

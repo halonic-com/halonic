@@ -1,6 +1,7 @@
 import { runStanding } from "@halonicjs/app";
 import { type PlaceSignal, type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { RunsSource, SourcedRun } from "./api.ts";
+import type { WorkflowRef } from "./list/runs-filter.ts";
 import { pageWords } from "./run-words.ts";
 
 /** What the Runs list holds now. */
@@ -34,6 +35,7 @@ export class RunsList {
   readonly #listeners = new Set<() => void>();
   readonly #stopWatching: () => void;
   #loads = 0;
+  #requested: WorkflowRef | undefined;
   #disposed = false;
 
   constructor(source: RunsSource) {
@@ -44,6 +46,29 @@ export class RunsList {
 
   get state(): RunsListState {
     return this.#state;
+  }
+
+  /**
+   * The workflow the Runs page should open filtered to, asked for by {@link showWorkflow} and
+   * kept until the page has taken it ({@link clearRequest}); `undefined` for a plain open.
+   */
+  get requestedWorkflow(): WorkflowRef | undefined {
+    return this.#requested;
+  }
+
+  /**
+   * Asks for the Runs page to show only this workflow's runs, as a workflow's **See all** does.
+   * Call it, then open the Runs place. A page already open takes the request at once; otherwise
+   * the next one to open does.
+   */
+  showWorkflow(workflow: WorkflowRef): void {
+    this.#requested = workflow;
+    for (const listener of [...this.#listeners]) listener();
+  }
+
+  /** Forgets the request once the page has read it, so a later plain open shows every workflow. */
+  clearRequest(): void {
+    this.#requested = undefined;
   }
 
   /**

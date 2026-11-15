@@ -146,6 +146,9 @@ export const emptyListWords = {
     "Runs started from the command line show up here. This workspace has no workflow yet: add one in Workflows.",
   onlyTestRuns: "Only test runs so far.",
   showTestRuns: "Show test runs",
+  /** The Workflow chip's workflow has no run yet; the button clears the chip. */
+  workflow: "No runs of this workflow yet.",
+  showEveryWorkflow: "Show every workflow",
   /** A status chip with no runs; no button, since All is next to it (D13). */
   status: {
     live: "Nothing is running.",
@@ -171,6 +174,8 @@ export const pageWords = {
   status: "Status",
   statusChips: { all: "All", live: "Live", "needs-you": "Needs you", failed: "Failed" },
   testRuns: "Test runs",
+  /** The Workflow chip, pressed while the list is of one workflow; pressing it clears it. */
+  workflow: (name: string) => `Workflow: ${name}`,
   testTag: "Test",
   running: (count: number) => `${count} running`,
 };

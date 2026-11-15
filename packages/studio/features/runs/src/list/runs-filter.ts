@@ -10,15 +10,23 @@ import type { RunRow } from "./run-row.ts";
 /** The status chips, one choice: All · Live · Needs you · Failed. */
 export type StatusFilter = "all" | "live" | "needs-you" | "failed";
 
+/** One workflow, as its hub and id name it. */
+export interface WorkflowRef {
+  readonly hubId: string;
+  readonly id: string;
+}
+
 /** The filters the list is under. */
 export interface RunsFilters {
   readonly status: StatusFilter;
   /** The Test runs chip: off hides finished test runs only. */
   readonly testRuns: boolean;
+  /** The Workflow chip: only this workflow's runs; `undefined` for every workflow. */
+  readonly workflow: WorkflowRef | undefined;
 }
 
-/** The filters a fresh list starts with: all runs, test runs off. */
-export const startFilters: RunsFilters = { status: "all", testRuns: false };
+/** The filters a fresh list starts with: all runs, test runs off, every workflow. */
+export const startFilters: RunsFilters = { status: "all", testRuns: false, workflow: undefined };
 
 const live: ReadonlySet<RunStanding> = new Set(["running", "needs-you", "waiting"]);
 /** Failed takes every Stopped run too, as `halonic runs --status failed` does (mc 15.1). */
@@ -47,22 +55,32 @@ function matchesTestRuns(row: RunRow, testRuns: boolean): boolean {
   return testRuns || !row.test || isLive(row);
 }
 
+/** Whether a row is a run of the workflow, or no workflow is asked for. */
+function matchesWorkflow(row: RunRow, workflow: WorkflowRef | undefined): boolean {
+  return workflow === undefined || (row.hubId === workflow.hubId && row.workflowId === workflow.id);
+}
+
 /** The rows the filters let through, in the order given. */
 export function filterRuns(rows: readonly RunRow[], filters: RunsFilters): RunRow[] {
   return rows.filter(
-    (row) => matchesStatus(row, filters.status) && matchesTestRuns(row, filters.testRuns),
+    (row) =>
+      matchesWorkflow(row, filters.workflow) &&
+      matchesStatus(row, filters.status) &&
+      matchesTestRuns(row, filters.testRuns),
   );
 }
 
 /**
- * The counts on the Live and Needs you chips, over the runs the Test runs chip
- * lets through, so a count never names a run the chip would hide.
+ * The counts on the Live and Needs you chips, over the runs the Test runs and
+ * Workflow chips let through, so a count never names a run they would hide.
  */
 export function statusCounts(
   rows: readonly RunRow[],
-  testRuns: boolean,
+  filters: Pick<RunsFilters, "testRuns" | "workflow">,
 ): { live: number; needsYou: number } {
-  const shown = rows.filter((row) => matchesTestRuns(row, testRuns));
+  const shown = rows.filter(
+    (row) => matchesTestRuns(row, filters.testRuns) && matchesWorkflow(row, filters.workflow),
+  );
   return {
     live: shown.filter(isLive).length,
     needsYou: shown.filter((row) => row.standing === "needs-you").length,
@@ -73,6 +91,8 @@ export function statusCounts(
 export type EmptyList =
   /** No runs at all (R1): the Empty state, and no filters above it. */
   | { readonly kind: "no-runs" }
+  /** The Workflow chip's workflow has no run (R3): the line with Show every workflow. */
+  | { readonly kind: "workflow"; readonly line: string }
   /** A status chip with none (R4 to R6): the line alone, since All is next to it (D13). */
   | { readonly kind: "status"; readonly line: string }
   /** Only finished test runs, with Test runs off (R2): the line with Show test runs. */
@@ -80,7 +100,8 @@ export type EmptyList =
 
 /**
  * Why the filtered list is empty, or `undefined` when it has rows. "No runs
- * match these filters" (R3) comes with the text and hub filters.
+ * match these filters" (R3) comes with the text and hub filters; the Workflow
+ * chip has its own line.
  */
 export function emptyList(rows: readonly RunRow[], filters: RunsFilters): EmptyList | undefined {
   if (filterRuns(rows, filters).length > 0) {
@@ -88,6 +109,9 @@ export function emptyList(rows: readonly RunRow[], filters: RunsFilters): EmptyL
   }
   if (rows.length === 0) {
     return { kind: "no-runs" };
+  }
+  if (!rows.some((row) => matchesWorkflow(row, filters.workflow))) {
+    return { kind: "workflow", line: emptyListWords.workflow };
   }
   if (filters.status !== "all") {
     return { kind: "status", line: emptyListWords.status[filters.status] };

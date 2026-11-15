@@ -144,6 +144,49 @@ verifies("runs.list", () => {
       expect(shown(root)).toHaveLength(3);
     });
 
+    it("opens for the workflow asked for, once, and the chip shows every workflow again", async () => {
+      const intake = summaryWith({ id: "run_g_1n2t3k", workflowId: "order-intake" });
+      const { source } = fakeSource([running, intake]);
+      const list = new RunsList(source);
+      list.showWorkflow({ hubId: "acme", id: "support-reply" });
+      const root = render(<RunsView list={list} now={() => mondayMorning} />);
+      await settled();
+      expect(shown(root)).toHaveLength(2);
+      expect(shown(root)[1]).toContain("7k2m9p");
+      expect(control(root, "Workflow: Support reply").getAttribute("aria-pressed")).toBe("true");
+      expect(list.requestedWorkflow).toBeUndefined();
+      await click(control(root, "Workflow: Support reply"));
+      expect(shown(root)).toHaveLength(3);
+    });
+
+    it("takes the request while the page is already open, and only once", async () => {
+      const intake = summaryWith({ id: "run_g_1n2t3k", workflowId: "order-intake" });
+      const { source } = fakeSource([running, intake]);
+      const list = new RunsList(source);
+      const root = render(<RunsView list={list} now={() => mondayMorning} />);
+      await settled();
+      expect(shown(root)).toHaveLength(3);
+      await act(async () => list.showWorkflow({ hubId: "acme", id: "support-reply" }));
+      expect(shown(root)).toHaveLength(2);
+      expect(control(root, "Workflow: Support reply").getAttribute("aria-pressed")).toBe("true");
+      expect(list.requestedWorkflow).toBeUndefined();
+      unmountAll();
+      const fresh = render(<RunsView list={list} now={() => mondayMorning} />);
+      await settled();
+      expect(shown(fresh)).toHaveLength(3);
+    });
+
+    it("says a workflow has no runs, with a button for every workflow", async () => {
+      const { source } = fakeSource([running]);
+      const list = new RunsList(source);
+      list.showWorkflow({ hubId: "acme", id: "gone" });
+      const root = render(<RunsView list={list} now={() => mondayMorning} />);
+      await settled();
+      expect(root.textContent).toContain("No runs of this workflow yet.");
+      await click(control(root, "Show every workflow"));
+      expect(shown(root)).toHaveLength(2);
+    });
+
     it("shows finished test runs once Test runs is on", async () => {
       const { root } = await openPage(fakeSource([done, finishedTest]).source);
       expect(shown(root)).toEqual([
