@@ -1,0 +1,70 @@
+# An early, unsigned Windows build of the Studio for the board to try
+# (HAL-5379). Not a release: no tag, no GitHub Release, nothing published.
+# Run it by hand on main:
+#
+#   gh workflow run studio-preview.yml --ref main
+#
+# It builds the installer as CI's installer-windows job does (HAL-1202),
+# installs it silently, checks that Halonic starts and keeps running, and
+# keeps the setup .exe as a 7-day artifact.
+#
+# The repo is public, so any signed-in GitHub user can download an artifact
+# of this run. Sharing that file counts as publishing (HAL-5379 plan, step 2):
+# run it only once the board has approved how the file reaches them.
+
+name: Studio preview (Windows, unsigned)
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: studio-preview
+  cancel-in-progress: false
+
+jobs:
+  installer:
+    name: Build and start the unsigned Windows installer
+    runs-on: windows-2025
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+        with:
+          cache: false
+      - name: Install the pinned Rust toolchain
+        working-directory: apps/studio/src-tauri
+        run: rustup toolchain install
+      - name: Build the installer
+        working-directory: apps/studio/src-tauri
+        run: pwsh windows/build-installer.ps1
+      - name: Install it silently and check that Halonic starts
+        run: |
+          $setup = Resolve-Path "dist/Halonic-*-windows-x64-setup.exe"
+          $p = Start-Process $setup -ArgumentList '/S' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "The installer exited with $($p.ExitCode)" }
+          $exe = Join-Path $env:LOCALAPPDATA 'Programs\Halonic\Halonic.exe'
+          if (-not (Test-Path $exe)) { throw "Halonic isn't in the default folder" }
+          $app = Start-Process $exe -PassThru
+          Start-Sleep -Seconds 20
+          if ($app.HasExited) { throw "Halonic closed by itself with exit code $($app.ExitCode)" }
+          Stop-Process -Id $app.Id -Force
+          $mb = [math]::Round((Get-Item $setup).Length / 1MB)
+          "### Studio preview`n`n$(Split-Path -Leaf $setup), $mb MB, unsigned. Installed and still running after 20 s." >> $env:GITHUB_STEP_SUMMARY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: halonic-studio-preview-windows
+          path: dist/Halonic-*-windows-x64-setup.exe
+          if-no-files-found: error
+          retention-days: 7
