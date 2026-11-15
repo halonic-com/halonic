@@ -2,7 +2,6 @@
 
 - Approval: the section is in the board-approved plugin screens design, section 7 (HAL-1739); Liam signs this note with the pull request
 - Kind: user-visible
-- Signature: unsigned
 - Task: HAL-9965 (slice of HAL-9383, B27)
 
 ## What changes
