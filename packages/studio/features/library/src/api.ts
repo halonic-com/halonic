@@ -30,6 +30,12 @@ export {
   type ListedToolsSnapshot,
 } from "./listed-tools-host.ts";
 export { listedToolsSnapshot } from "./listed-tools-snapshot.ts";
+export {
+  type NewSkillDraft,
+  type NewSkillHost,
+  NewSkillHostService,
+  type NewSkillHub,
+} from "./new-skill-host.ts";
 export { RefusalsFeed } from "./refusals-feed.ts";
 export {
   type SkillFile,

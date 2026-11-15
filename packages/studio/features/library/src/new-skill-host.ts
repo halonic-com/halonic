@@ -17,6 +17,8 @@ export interface NewSkillHub {
 
 /** Makes skills in the open workspace. The app provides it for each open workspace. */
 export interface NewSkillHost {
+  /** Reads the workspace, so `hubs` and `folder` are current. The place waits for it before it opens the dialog. */
+  prepare(): Promise<void>;
   /** The hubs of the workspace, for the dialog's Hub field. */
   hubs(): readonly NewSkillHub[];
   /**

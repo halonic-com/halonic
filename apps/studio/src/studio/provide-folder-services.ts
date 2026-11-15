@@ -10,6 +10,7 @@ import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import {
   LibraryItemsHostService,
   LibraryTabMemoryService,
+  NewSkillHostService,
   SkillHostService,
 } from "@halonicjs/studio-feature-library/api";
 import {
@@ -26,6 +27,7 @@ import { provideGoogleSetup } from "../google/provide-google-setup.ts";
 import { provideLibraryServices } from "../library/provide-library-services.ts";
 import { WorkspaceLibraryItems } from "../library/workspace-library-items.ts";
 import { WorkspaceLibraryTab } from "../library/workspace-library-tab.ts";
+import { WorkspaceNewSkill } from "../library/workspace-new-skill.ts";
 import { WorkspaceSkills } from "../library/workspace-skills.ts";
 import { WorkspaceModelKeys } from "../models/workspace-model-keys.ts";
 import { WorkspaceModelsFiles } from "../models/workspace-models-files.ts";
@@ -90,6 +92,13 @@ export function provideFolderServices(
   services.provide(
     SkillHostService,
     new WorkspaceSkills({
+      files: services.get(workspaceFilesKey),
+      onChange: (listener) => scope.events.on("files.changed", listener),
+    }),
+  );
+  services.provide(
+    NewSkillHostService,
+    new WorkspaceNewSkill({
       files: services.get(workspaceFilesKey),
       onChange: (listener) => scope.events.on("files.changed", listener),
     }),
