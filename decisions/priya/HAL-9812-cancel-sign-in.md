@@ -4,6 +4,7 @@
 - Task: HAL-9812, from HAL-714 (step 7's Cancel)
 - Approval: HAL-9827, Liam's task; Liam reviews and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kYjyHQUm0RkDSD91cMKVxXVH8+DnWo8jYQnYIOV0LPGIsolCHPZNeosvkYqI/NCU0usV5Y+tNJ3V5KrzB2RuCA==
 
 ## What changes
 
