@@ -3,8 +3,8 @@ import type { RunEvent } from "@halonicjs/events";
 import { createServer, MemoryRequestCountStore } from "@halonicjs/host-server";
 import type { RunEventListener } from "@halonicjs/ports";
 import { runExecutorContract } from "@halonicjs/testing-contracts";
-import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
+import { afterEach, describe, expect, it } from "vitest";
 import { FakeEngine } from "./fake-engine.test-helper.ts";
 import { type Listening, listenOnNode } from "./listen.ts";
 
@@ -108,7 +108,11 @@ verifies("executor-remote.runs", () => {
       controller.abort(new Error("stopped"));
 
       await expect(turn).rejects.toThrow("stopped");
-      await vi.waitFor(() => expect(engine.lastTurnSignal?.aborted).toBe(true));
+      await waitUntil(
+        "engine.lastTurnSignal?.aborted to be true",
+        () => engine.lastTurnSignal?.aborted === true,
+      );
+      expect(engine.lastTurnSignal?.aborted).toBe(true);
     });
 
     it("cancels a run and ends its stream", async () => {
