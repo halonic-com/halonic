@@ -64,15 +64,34 @@ function refuseSecrets(path: string, text: string): void {
   if (shape !== undefined) throw new ExportSecretError(path, shape);
 }
 
-const strictDecoder = new TextDecoder("utf-8", { fatal: true });
+/** How many bytes of a blob are decoded and scanned at a time, so a large blob never becomes one big string. */
+const SCAN_CHUNK_BYTES = 1024 * 1024;
 
-/** The bytes as text, or `undefined` when they aren't valid UTF-8, so a binary blob is left unscanned. */
-function textOf(bytes: Uint8Array): string | undefined {
+/** The tail of a chunk that is scanned again with the next one, so a key across the boundary is still found. Longer than any key shape. */
+const SCAN_OVERLAP_CHARS = 256;
+
+/**
+ * The first kind of secret a blob holds, scanning it in chunks, or `undefined` when it holds none.
+ * A blob that isn't valid UTF-8 is binary and is left unscanned, so it also gives `undefined`.
+ */
+function secretShapeInBlob(bytes: Uint8Array): SecretShape | undefined {
+  const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+  let found: SecretShape | undefined;
+  let carry = "";
   try {
-    return strictDecoder.decode(bytes);
+    for (let start = 0; start < bytes.byteLength; start += SCAN_CHUNK_BYTES) {
+      const last = start + SCAN_CHUNK_BYTES >= bytes.byteLength;
+      const slice = bytes.subarray(start, start + SCAN_CHUNK_BYTES);
+      const text = carry + decoder.decode(slice, { stream: !last });
+      // Keep decoding after a hit: a blob that turns out to be binary is not scanned at all.
+      found ??= findSecretShape(text);
+      carry = text.slice(-SCAN_OVERLAP_CHARS);
+    }
+    decoder.decode();
   } catch {
     return undefined;
   }
+  return found;
 }
 
 /** Byte order of the paths, which for these ASCII paths is the order the manifest lists them in. */
@@ -115,8 +134,8 @@ async function listFiles(source: ExportSource): Promise<ExportFile[]> {
       path,
       async read() {
         const bytes = await source.blobs.get(hash);
-        const text = bytes === null ? undefined : textOf(bytes);
-        if (text !== undefined) refuseSecrets(path, text);
+        const shape = bytes === null ? undefined : secretShapeInBlob(bytes);
+        if (shape !== undefined) throw new ExportSecretError(path, shape);
         return bytes;
       },
     });

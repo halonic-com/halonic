@@ -167,5 +167,24 @@ verifies("runtime.export-data", () => {
       const binary = new Uint8Array([0xff, 0xfe, ...new TextEncoder().encode(keyShapedValue)]);
       expect((await get("/admin/export", sourceWith("hello", binary))).status).toBe(200);
     });
+
+    it("finds a key that straddles the boundary between two scanned chunks of a large blob", async () => {
+      const chunkBytes = 1024 * 1024;
+      const key = new TextEncoder().encode(keyShapedValue);
+      const blobBytes = new Uint8Array(chunkBytes * 2).fill(" ".charCodeAt(0));
+      blobBytes.set(key, chunkBytes - 8);
+      const stopped = await get("/admin/export", sourceWith("hello", blobBytes));
+      expect(stopped.status).toBe(409);
+      expect(await stopped.text()).not.toContain(keyShapedValue);
+    });
+
+    it("leaves a large blob unscanned when it turns out to be binary after a key", async () => {
+      const chunkBytes = 1024 * 1024;
+      const key = new TextEncoder().encode(keyShapedValue);
+      const blobBytes = new Uint8Array(chunkBytes * 2).fill(" ".charCodeAt(0));
+      blobBytes.set(key, 100);
+      blobBytes[chunkBytes + 5] = 0xff;
+      expect((await get("/admin/export", sourceWith("hello", blobBytes))).status).toBe(200);
+    });
   });
 });
