@@ -1,4 +1,5 @@
-import type { DefinitionStore } from "@halonicjs/ports";
+import type { DefinitionStore, ExpectedContent } from "@halonicjs/ports";
+import { contentDigest, type Sha256 } from "@halonicjs/std";
 import type { EventBus } from "./event-bus.ts";
 import { UndoHistory } from "./undo-history.ts";
 import type { AppEvents } from "./workspace-scope.ts";
@@ -35,6 +36,24 @@ function rebase(snapshot: PendingChanges, saved: readonly SavedFile[]): PendingC
   return rebased;
 }
 
+/**
+ * Thrown by a save when a file no longer holds what Halonic last read: it
+ * changed outside Halonic. Nothing was written to that file; the changes stay
+ * unsaved, so Compare can show both texts (save model 1.7).
+ */
+export class ChangedOnDiskError extends Error {
+  readonly path: string;
+  /** The file's text now, or `null` when it is gone. */
+  readonly current: string | null;
+
+  constructor(path: string, current: string | null) {
+    super(`"${path}" changed outside Halonic, so it was not saved.`);
+    this.name = "ChangedOnDiskError";
+    this.path = path;
+    this.current = current;
+  }
+}
+
 /** Options for {@link WorkspaceFiles.change}. */
 export interface ChangeOptions {
   /**
@@ -63,10 +82,15 @@ export class WorkspaceFiles {
   private discards = 0;
   private readonly store: DefinitionStore;
   private readonly events: EventBus<AppEvents>;
+  private readonly digest: Sha256;
+  /** The store text Halonic last read or wrote by path, `null` for no file: what a save expects to find. */
+  private readonly known = new Map<string, string | null>();
 
-  constructor(store: DefinitionStore, events: EventBus<AppEvents>) {
+  /** @param digest - hashes text for the write-if-unchanged check; core has no hash of its own */
+  constructor(store: DefinitionStore, events: EventBus<AppEvents>, digest: Sha256) {
     this.store = store;
     this.events = events;
+    this.digest = digest;
   }
 
   /** The unsaved changes. */
@@ -92,7 +116,10 @@ export class WorkspaceFiles {
     if (Object.hasOwn(this.changes, path)) {
       return this.changes[path] ?? null;
     }
-    return this.store.read(path);
+    const text = await this.store.read(path);
+    // No unsaved edit here, so this read is what the next edits are made against.
+    this.known.set(path, text);
+    return text;
   }
 
   /**
@@ -162,6 +189,11 @@ export class WorkspaceFiles {
    * save has already written newer text. The end of the save then sets the
    * right state.
    *
+   * Every write passes what Halonic last read of the file as `expected`, so
+   * a file that changed outside Halonic is never overwritten: the save stops
+   * with a {@link ChangedOnDiskError} and every change not yet written stays
+   * unsaved.
+   *
    * @returns how many files were written or deleted
    */
   async save(): Promise<number> {
@@ -190,11 +222,16 @@ export class WorkspaceFiles {
     try {
       for (const [path, text] of saving) {
         const before = await this.store.read(path);
-        if (text === null) {
-          await this.store.remove(path);
-        } else {
-          await this.store.write(path, text);
+        const expected = await this.expectedFor(path, before);
+        const result =
+          text === null
+            ? await this.store.remove(path, { expected })
+            : await this.store.write(path, text, { expected });
+        if (result.status === "changed-on-disk") {
+          // `known` stays: another save must not overwrite the outside text. Only a fresh read moves it.
+          throw new ChangedOnDiskError(path, result.current);
         }
+        this.known.set(path, text);
         written.push({ path, before, after: text });
       }
     } finally {
@@ -216,7 +253,14 @@ export class WorkspaceFiles {
   discard(): void {
     this.discards++;
     this.history.clear();
+    this.known.clear();
     this.apply({}, "Unsaved changes discarded");
+  }
+
+  /** What the file should still hold: the text last read, or the text just read for a file never read. */
+  private async expectedFor(path: string, current: string | null): Promise<ExpectedContent> {
+    const text = this.known.has(path) ? (this.known.get(path) ?? null) : current;
+    return text === null ? "absent" : await contentDigest(text, this.digest);
   }
 
   private apply(changes: PendingChanges, label: string): void {
