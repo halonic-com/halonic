@@ -193,7 +193,10 @@ function copyBundledDependencies(root: string, target: string): Map<string, stri
     cpSync(packageDirectory, join(target, name), { recursive: true, dereference: true });
     const optional = Object.keys(manifest.optionalDependencies ?? {});
     const missing = optional.filter((dependency) => !findManifest(dependency, packageDirectory));
-    if (missing.length > 0) dropOptionalDependencies(join(target, name, "package.json"), missing);
+    if (missing.length > 0) {
+      dropOptionalDependencies(join(target, name, "package.json"), missing);
+      process.stderr.write(`${name}: left out optional dependency ${missing.join(", ")}.\n`);
+    }
     const needed = [...Object.keys(manifest.dependencies ?? {}), ...optional];
     for (const dependency of needed.filter((dependency) => !missing.includes(dependency))) {
       visit(dependency, packageDirectory);
@@ -211,7 +214,8 @@ function dropOptionalDependencies(manifestPath: string, names: string[]): void {
   const kept = Object.entries(manifest.optionalDependencies ?? {}).filter(
     ([name]) => !names.includes(name),
   );
-  manifest.optionalDependencies = Object.fromEntries(kept);
+  if (kept.length > 0) manifest.optionalDependencies = Object.fromEntries(kept);
+  else delete manifest.optionalDependencies;
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 }
 

@@ -451,4 +451,8 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
       ).toThrow(/holds the denied .* which a reopened path is in/);
     });
   });
+
+  it("never selects the MXC backend, whose SDK we don't ship (HAL-9557)", () => {
+    expect(buildSrtConfig(profile())).not.toHaveProperty("windows");
+  });
 });
