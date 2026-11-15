@@ -2,7 +2,8 @@
 
 - Requirements: `server.google-sign-in`
 - Task: HAL-9812, from HAL-714 (step 7's Cancel)
-- Approval: the maintainer owns `host/server`; Liam reviews it as CTO
+- Approval: HAL-9827, Liam's task; Liam reviews and signs this note
+- Kind: internal
 
 ## Covers
 
