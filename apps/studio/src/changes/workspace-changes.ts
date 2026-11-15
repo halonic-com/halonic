@@ -47,7 +47,7 @@ export class WorkspaceChanges implements ChangesSource {
     if (inside.code !== 0 || inside.stdout.trim() !== "true") return { kind: "not-a-repository" };
     const status = await this.#run(statusArgs);
     if (status === "no-git") return { kind: "no-git" };
-    if (status.code !== 0) throw new KindedError("unavailable", status.stderr.trim());
+    if (status.code !== 0) throw new KindedError("unavailable", firstLine(status.stderr));
     return { kind: "ready", changes: parseStatus(status.stdout).filter(isVersioned) };
   }
 
@@ -56,7 +56,7 @@ export class WorkspaceChanges implements ChangesSource {
     await this.#ignoreStudioFolder();
     const init = await this.#run(["init", "--quiet"]);
     if (init === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
-    if (init.code !== 0) throw new KindedError("unavailable", init.stderr.trim());
+    if (init.code !== 0) throw new KindedError("unavailable", firstLine(init.stderr));
   }
 
   subscribe(listener: () => void): () => void {
@@ -94,6 +94,16 @@ export class WorkspaceChanges implements ChangesSource {
       );
     }
   }
+}
+
+/** The first non-empty line of what git said: its own message is never shown as raw output. */
+function firstLine(text: string): string {
+  return (
+    text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find((line) => line !== "") ?? ""
+  );
 }
 
 /** Whether the shell refused because it found no git program (`GitRefusal.kind`). */

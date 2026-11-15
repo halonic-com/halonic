@@ -72,6 +72,22 @@ verifies("source-control.changes-page", () => {
       await expect(changes.read()).rejects.toThrow("fatal: index file corrupt");
     });
 
+    it("shows only the first line of a multi-line git message", async () => {
+      const stderr = "\nfatal: index file corrupt\nhint: run git fsck\nhint: then retry\n";
+      const status = history(async (args) =>
+        args[0] === "rev-parse" ? answer("true\n") : answer("", 1, stderr),
+      );
+      await expect(status.changes.read()).rejects.toMatchObject({
+        kind: "unavailable",
+        message: "fatal: index file corrupt",
+      });
+      const init = history(async () => answer("", 1, stderr));
+      await expect(init.changes.turnOnHistory()).rejects.toMatchObject({
+        kind: "unavailable",
+        message: "fatal: index file corrupt",
+      });
+    });
+
     it("lets any other refusal from the shell through", async () => {
       const refusal = { kind: "folder_not_opened", message: "not opened" };
       const { changes } = history(async () => {
