@@ -73,7 +73,9 @@ export function Configuration({ name, load, retry, tests, onOpenStep }: Configur
                 tabIndex={page === one ? 0 : -1}
                 onClick={() => setPage(one)}
                 className={`focus-ring flex h-control-md items-center justify-between rounded-sm px-3 text-start text-body ${
-                  page === one ? "bg-accent-soft font-medium text-fg" : "text-fg-muted hover:text-fg"
+                  page === one
+                    ? "bg-accent-soft font-medium text-fg"
+                    : "text-fg-muted hover:text-fg"
                 }`}
               >
                 {words.pageNames[one]}
