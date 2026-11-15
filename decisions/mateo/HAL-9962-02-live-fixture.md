@@ -2,7 +2,7 @@
 
 - Approval: the task asks for this change (HAL-9962, for HAL-9955); Liam approves this note in review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vDAQPX6FoeaUnHvNVhLqgh1BD5WJlbkarac0TOGc53eHWgY9dXfQjujXlvmvcAJMeHdJm6xzsIy1JhN8BpndAA==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:iX8IM7DZ51F78xnnyOBoRR4+9FiJW+gktn+ytQysIa49JdVWJ1wALN4UU4jcC3iyUrogxIwpp9mPGro4AKLaAA==
 
 ## What changes
 
