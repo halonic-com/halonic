@@ -10,11 +10,21 @@ export interface CollectionRef {
 // The shapes below are what the engine's `collectionGrid`, `editCell` and `newRow` return. They are
 // written out here because a Studio feature uses no engine code: the app's host calls the engine.
 
+/** What a column holds, and so which editor its cells open. */
+export type CollectionColumnType =
+  | "text"
+  | "number"
+  | "money"
+  | "date"
+  | "month"
+  | "choice"
+  | "boolean"
+  | "ref";
+
 /** One column of the grid, in the order of the collection file. */
 export interface CollectionColumn {
   readonly name: string;
-  /** `text`, `number`, `money`, `date`, `month`, `choice`, `boolean` or `ref`. */
-  readonly type: string;
+  readonly type: CollectionColumnType;
   readonly required: boolean;
   /** A computed column: its cells open no editor. */
   readonly computed: boolean;

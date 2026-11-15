@@ -2,6 +2,7 @@ import type { ItemUsage } from "@halonicjs/app";
 import type {
   CollectionGridData,
   CollectionHost,
+  CollectionNewRow,
   CollectionRef,
   CollectionSource,
 } from "./collection-host.ts";
@@ -16,6 +17,8 @@ export interface CellError {
 /** What the collection page shows. */
 export interface CollectionState {
   readonly loaded: boolean;
+  /** The first read failed and nothing has loaded yet; the next refresh clears it. */
+  readonly failed: boolean;
   /** The workspace has no such collection (any more). */
   readonly gone: boolean;
   readonly name: string;
@@ -44,6 +47,7 @@ export type AddOutcome = "added" | "needs-more" | "refused" | "failed";
 export class CollectionModel {
   state: CollectionState = {
     loaded: false,
+    failed: false,
     gone: false,
     name: "",
     volatile: false,
@@ -56,6 +60,7 @@ export class CollectionModel {
   private readonly listeners = new Set<() => void>();
   private stopHost: (() => void) | undefined;
   private latest = 0;
+  private adding: Promise<AddOutcome> | undefined;
 
   private readonly host: CollectionHost;
   private readonly collection: CollectionRef;
@@ -92,31 +97,32 @@ export class CollectionModel {
       if (ticket !== this.latest) return;
       if (source === undefined) {
         this.source = undefined;
-        this.set({ ...this.state, loaded: true, gone: true });
+        this.set({ ...this.state, loaded: true, failed: false, gone: true });
         return;
       }
       this.source = source;
-      const view = this.viewOf(source, this.state.view);
+      const { view, grid } = this.viewOf(source, this.state.view);
       this.set({
         ...this.state,
         loaded: true,
+        failed: false,
         gone: false,
         name: source.name,
         volatile: source.volatile,
         view,
-        grid: source.grid(view),
+        grid,
         usage,
       });
     } catch {
       // The page keeps what it shows; the host says why a read failed.
+      if (ticket === this.latest && !this.state.loaded) this.set({ ...this.state, failed: true });
     }
   }
 
   /** Shows the records of a view, or all of them for `null`. A view the collection doesn't have shows all. */
   chooseView(view: string | null): void {
     if (this.source === undefined) return;
-    const chosen = this.viewOf(this.source, view);
-    this.set({ ...this.state, view: chosen, grid: this.source.grid(chosen) });
+    this.set({ ...this.state, ...this.viewOf(this.source, view) });
   }
 
   /** The next edit of a cell: its old error and the removed-row line go away. */
@@ -133,8 +139,8 @@ export class CollectionModel {
    * to whether the cell now holds the typed value (or already did).
    */
   async saveCell(row: string, field: string, text: string): Promise<boolean> {
-    const record = this.state.grid?.rows.find((candidate) => candidate.id === row);
     if (this.source === undefined) return false;
+    const record = this.state.grid?.rows.find((candidate) => candidate.id === row);
     if (record === undefined) {
       this.set({ ...this.state, rowRemoved: true });
       return false;
@@ -171,10 +177,20 @@ export class CollectionModel {
    * Adds the new row as a record when every required field is filled and every value is accepted,
    * and empties the row. Resolves to `needs-more` while a required field is empty and `refused`
    * when a value isn't accepted (the new row's message says which), and `failed` when the write failed.
+   * A call while an add is still pending returns that add's outcome and adds nothing more. Text
+   * typed into the new row during the add stays.
    */
-  async addNew(): Promise<AddOutcome> {
+  addNew(): Promise<AddOutcome> {
+    this.adding ??= this.add().finally(() => {
+      this.adding = undefined;
+    });
+    return this.adding;
+  }
+
+  private async add(): Promise<AddOutcome> {
     if (this.source === undefined) return "failed";
-    const row = this.source.newRow(this.state.typed);
+    const sent = this.state.typed;
+    const row = this.source.newRow(sent);
     if (row.stillNeeded.length > 0) return "needs-more";
     if (row.record === undefined) return "refused";
     try {
@@ -182,13 +198,16 @@ export class CollectionModel {
     } catch {
       return "failed";
     }
-    this.set({ ...this.state, typed: {} });
+    const kept = Object.fromEntries(
+      Object.entries(this.state.typed).filter(([field, text]) => sent[field] !== text),
+    );
+    this.set({ ...this.state, typed: kept });
     await this.refresh();
     return "added";
   }
 
   /** The new row for what is typed so far: its draft, what is still needed and its message. */
-  newRow() {
+  newRow(): CollectionNewRow | undefined {
     return this.source?.newRow(this.state.typed);
   }
 
@@ -203,9 +222,14 @@ export class CollectionModel {
     return true;
   }
 
-  private viewOf(source: CollectionSource, view: string | null): string | null {
-    if (view === null) return null;
-    return source.grid(null).views.some((chip) => chip.view === view) ? view : null;
+  /** The grid of a view; a view the collection doesn't have shows all. */
+  private viewOf(
+    source: CollectionSource,
+    view: string | null,
+  ): { view: string | null; grid: CollectionGridData } {
+    const grid = source.grid(view);
+    if (view === null || grid.views.some((chip) => chip.view === view)) return { view, grid };
+    return { view: null, grid: source.grid(null) };
   }
 
   private set(state: CollectionState): void {

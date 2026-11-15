@@ -181,6 +181,69 @@ verifies("library.collection-page", () => {
       expect(model.state.typed).toEqual({});
     });
 
+    it("adds once when addNew is called twice before the add finishes", async () => {
+      let finish = () => {};
+      const { model, host } = await opened([swim], {
+        add: vi.fn(
+          () =>
+            new Promise<void>((resolve) => {
+              finish = resolve;
+            }),
+        ),
+      });
+      model.typeNew("what", "School trip");
+      model.typeNew("amount", "20");
+      const first = model.addNew();
+      const second = model.addNew();
+      finish();
+      expect(await first).toBe("added");
+      expect(await second).toBe("added");
+      expect(host.add).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps text typed into the new row while the add is pending", async () => {
+      let finish = () => {};
+      const { model } = await opened([swim], {
+        add: () =>
+          new Promise<void>((resolve) => {
+            finish = resolve;
+          }),
+      });
+      model.typeNew("what", "School trip");
+      model.typeNew("amount", "20");
+      const adding = model.addNew();
+      model.typeNew("what", "Museum");
+      finish();
+      await adding;
+      expect(model.state.typed).toEqual({ what: "Museum" });
+    });
+
+    it("refuses a value the field doesn't accept and adds nothing", async () => {
+      const host = hostOf([swim]);
+      const source = sourceOf([swim]);
+      host.read = async () => ({
+        ...source,
+        newRow: (typed) => ({ draft: typed, stillNeeded: [], message: "bad amount" }),
+      });
+      const model = new CollectionModel(host, ref);
+      await model.refresh();
+      expect(await model.addNew()).toBe("refused");
+      expect(host.add).not.toHaveBeenCalled();
+    });
+
+    it("says the first read failed while nothing has loaded", async () => {
+      const model = new CollectionModel(
+        hostOf([swim], {
+          read: async () => {
+            throw new Error("unreadable");
+          },
+        }),
+        ref,
+      );
+      await model.refresh();
+      expect(model.state).toMatchObject({ loaded: false, failed: true });
+    });
+
     it("keeps the new row when the write fails", async () => {
       const { model } = await opened([swim], {
         add: async () => {
