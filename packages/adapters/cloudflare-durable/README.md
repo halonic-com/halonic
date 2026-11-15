@@ -140,6 +140,14 @@ storage. `state-contract.test.ts` and `durable-coordination.test.ts` run it in
 Node against an in-memory storage fake, which also gives this package its
 coverage numbers (code inside workerd can't be measured from Node).
 
+The workerd specs run on a real Cloudflare account too, where every Durable Object has an
+isolate of its own. So the test objects (`TestRunObject`, `TestRoutinesObject`,
+`TestCoordinationObject`, exported from `./testing`) keep nothing in the suite's isolate: the
+suite's `SuiteCase` gives each object its clock over RPC (`setCase`), which the object keeps in its
+own storage, and an RPC stub of the suite's listener and run list, which the object holds in memory.
+A spec hands the code under test `suiteCase.namespace(binding)` in place of the binding, and
+`suiteCase.fireAlarms(binding)` fires the alarms due by the case's clock.
+
 ## Example
 
 ```ts

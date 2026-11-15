@@ -11,7 +11,8 @@ import type { RunEvent } from "@halonicjs/events";
 import { completed, entered, started } from "@halonicjs/testing-contracts";
 import { describe, expect, it } from "vitest";
 import { DurableRunEvents } from "../durable-run-events.ts";
-import { cases, SuiteClock, type TestRunObject } from "./test-run-object.ts";
+import { SuiteCase } from "./suite-case.ts";
+import type { TestRunObject } from "./test-run-object.ts";
 
 export { TestRunObject } from "./test-run-object.ts";
 
@@ -20,18 +21,12 @@ interface TestEnv {
   RUNS: DurableObjectNamespace<TestRunObject>;
 }
 
-/** A run object of a case of its own, so the suite's clock and listener are found by its name. */
+/** A run object of a case of its own, with the time the suite gives it. */
 function newRunObject() {
   const caseId = crypto.randomUUID();
-  const noListener = { onTimer: async () => {}, onTick: async () => {} };
-  cases.set(caseId, {
-    clock: new SuiteClock(),
-    listener: noListener,
-    runList: { publish: async () => {} },
-    objectNames: new Set(),
-  });
   const { RUNS } = env as TestEnv;
-  return { runId: `${caseId}-run`, object: RUNS.get(RUNS.idFromName(`${caseId}-run`)) };
+  const runs = new SuiteCase().namespace(RUNS);
+  return { runId: `${caseId}-run`, object: runs.get(runs.idFromName(`${caseId}-run`)) };
 }
 
 async function readEvents(stream: ReadableStream<Uint8Array>): Promise<RunEvent[]> {

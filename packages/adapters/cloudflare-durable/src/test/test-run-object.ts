@@ -1,95 +1,48 @@
 /**
- * What the workerd specs of the run object share: a clock the suite moves, the registry that lets
- * a `RunObject` find the suite case its name belongs to, and the object itself, with the alarm
- * fired as Cloudflare would. The suite and the objects run in one workerd isolate, so a map in
- * this module reaches both.
+ * The run and routines objects of the workerd specs: the real classes, with a clock the suite
+ * sets and a listener and run list that answer to the suite (see `object-case.ts`), and the alarm
+ * fired as Cloudflare would. They keep nothing in the suite's isolate, so the same specs run in a
+ * local workerd and on Cloudflare, where every object has an isolate of its own.
  */
 
 import type { SchedulerListener } from "@halonicjs/ports";
-import type { Clock } from "@halonicjs/std";
 import { RoutinesObject } from "../routines-object.ts";
 import { RunObject } from "../run-object.ts";
 import type { RunListSink } from "../run-state.ts";
+import { type CaseHooksStub, type CaseObject, ObjectCaseControl } from "./object-case.ts";
 
-/** A clock that only moves when the suite moves it, and tells the loops that wait on it. */
-export class SuiteClock implements Clock {
-  #now = Date.now() + 10 * 365 * 24 * 60 * 60 * 1000;
-  readonly #wakers = new Set<() => void>();
+/** `RoutinesObject` reading the time the suite set and ticking the suite's listener. */
+export class TestRoutinesObject extends RoutinesObject implements CaseObject {
+  readonly #case = new ObjectCaseControl(this.ctx.storage);
 
-  now(): Date {
-    return new Date(this.#now);
-  }
-
-  advance(ms: number): void {
-    this.#now += ms;
-    for (const wake of this.#wakers) wake();
-  }
-
-  /** Resolves when the clock next moves, or when `signal` aborts. */
-  nextMove(signal: AbortSignal): Promise<void> {
-    return new Promise((resolve) => {
-      const wake = () => {
-        this.#wakers.delete(wake);
-        resolve();
-      };
-      this.#wakers.add(wake);
-      signal.addEventListener("abort", wake);
-    });
-  }
-}
-
-/** One store or scheduler under test: what its objects read, and the objects it has touched. */
-export interface Case {
-  clock: SuiteClock;
-  listener: SchedulerListener;
-  runList: RunListSink;
-  objectNames: Set<string>;
-}
-
-/** Object names start with the case's id, so each case has objects of its own. */
-const caseIdLength = 36; // the length of a UUID
-export const cases = new Map<string, Case>();
-
-/** The case an object's name belongs to; the name starts with the case's id. */
-function caseOfName(name: string | undefined): Case {
-  const found = cases.get((name ?? "").slice(0, caseIdLength));
-  if (found === undefined) throw new Error("This test object was not made through make().");
-  return found;
-}
-
-/** `RoutinesObject` reading the time and the listener of the case its name is. */
-export class TestRoutinesObject extends RoutinesObject {
-  protected override clock = { now: (): Date => caseOfName(this.ctx.id.name).clock.now() };
+  protected override clock = this.#case.clock;
   protected override tickListener(): SchedulerListener {
-    return caseOfName(this.ctx.id.name).listener;
+    return this.#case.hooks;
+  }
+
+  async setCase(clockMs: number, hooks: CaseHooksStub): Promise<void> {
+    this.#case.setCase(clockMs, hooks);
   }
 }
 
-/** `RunObject` reading the time and the listener of the case its name belongs to. */
-export class TestRunObject extends RunObject {
+/** `RunObject` reading the time the suite set, and answering to the suite's listener and run list. */
+export class TestRunObject extends RunObject implements CaseObject {
+  readonly #case = new ObjectCaseControl(this.ctx.storage);
   #alarmRunning: Promise<void> = Promise.resolve();
 
-  constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
-    super(ctx, env);
-    this.#case();
-  }
-
-  #case(): Case {
-    const name = this.ctx.id.name ?? "";
-    const found = caseOfName(name);
-    found.objectNames.add(name);
-    return found;
-  }
-
-  protected override clock = { now: (): Date => this.#case().clock.now() };
+  protected override clock = this.#case.clock;
   protected override nap = (_ms: number, signal: AbortSignal): Promise<void> =>
-    this.#case().clock.nextMove(signal);
+    this.#case.nextMove(signal);
   protected override timerListener(): SchedulerListener {
-    return this.#case().listener;
+    return this.#case.hooks;
   }
 
   protected override runList(): RunListSink {
-    return this.#case().runList;
+    return this.#case.hooks;
+  }
+
+  async setCase(clockMs: number, hooks: CaseHooksStub): Promise<void> {
+    this.#case.setCase(clockMs, hooks);
   }
 
   /** Runs the alarm handler after any alarm still running, as Cloudflare never runs two at once. */
@@ -100,10 +53,10 @@ export class TestRunObject extends RunObject {
     await run;
   }
 
-  /** Fires the alarm when the one this object set is due by the suite's clock. */
+  /** Fires the alarm when the one this object set is due by the clock the suite set. */
   async fireAlarm(): Promise<void> {
     const alarmAt = await this.ctx.storage.getAlarm();
-    if (alarmAt !== null && alarmAt <= this.#case().clock.now().getTime()) {
+    if (alarmAt !== null && alarmAt <= this.#case.clock.now().getTime()) {
       await this.alarm();
     }
   }

@@ -1,25 +1,19 @@
 /**
- * A `CoordinationObject` whose clock the suite moves, for the workerd specs that run the
- * `Coordination` contract. The suite and the object run in one workerd isolate, so a map in this
- * module reaches both.
+ * A `CoordinationObject` whose clock the suite sets over RPC, for the workerd specs that run the
+ * `Coordination` contract (see `object-case.ts`). The clock lives in the object's own storage,
+ * so the spec runs in a local workerd and on Cloudflare alike.
  */
 
-import type { Clock } from "@halonicjs/std";
 import { CoordinationObject } from "../coordination-object.ts";
+import { type CaseHooksStub, type CaseObject, ObjectCaseControl } from "./object-case.ts";
 
-/** The clock of each object, by the object's name. */
-export const clocksByObjectName = new Map<string, Clock>();
+/** `CoordinationObject` reading the time the suite set. */
+export class TestCoordinationObject extends CoordinationObject implements CaseObject {
+  readonly #case = new ObjectCaseControl(this.ctx.storage);
 
-/** `CoordinationObject` reading the time from the suite's clock for its own name. */
-export class TestCoordinationObject extends CoordinationObject {
-  protected override clock = {
-    now: (): Date => {
-      const name = this.ctx.id.name;
-      const clock = name === undefined ? undefined : clocksByObjectName.get(name);
-      if (clock === undefined) {
-        throw new Error("This test object was not made through the suite's make().");
-      }
-      return clock.now();
-    },
-  };
+  protected override clock = this.#case.clock;
+
+  async setCase(clockMs: number, hooks: CaseHooksStub): Promise<void> {
+    this.#case.setCase(clockMs, hooks);
+  }
 }
