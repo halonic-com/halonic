@@ -12,7 +12,11 @@ The app package shall have `InstructionTrustService`, which checks a run's instr
   when its pin is checked,
   then the answer is to ask, naming each file as added.
 - Given a pin a person trusted,
-  when the same pin is checked, the answer is `trusted`; when `AGENTS.md` has another digest, the answer is to ask, naming it as changed.
+  when the same pin is checked,
+  then the answer is `trusted`.
+- Given a pin a person trusted,
+  when `AGENTS.md` has another digest and the pin is checked,
+  then the answer is to ask, naming it as changed.
 - Given a store that can't read the record,
   when the pin is checked,
   then the answer is to ask, with the store's reason.
