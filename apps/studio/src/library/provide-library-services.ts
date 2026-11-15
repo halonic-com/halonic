@@ -9,6 +9,7 @@ import {
 } from "@halonicjs/adapter-fs-tauri";
 import type { ServiceRegistry } from "@halonicjs/app";
 import { systemClock } from "@halonicjs/std";
+import type { GoogleSetupAccounts } from "@halonicjs/studio-feature-google-setup/api";
 import {
   ConnectorStatusHostService,
   ListedToolsHostService,
@@ -27,6 +28,8 @@ export interface LibraryServiceParts {
   readonly transport: AgentHostTransport | undefined;
   readonly trust: WorkspaceTrust;
   readonly location: string;
+  /** The workspace's Google accounts, which the status of a Google connector is read from. */
+  readonly google: Pick<GoogleSetupAccounts, "list">;
   /** Calls the listener whenever the window comes to the front; returns a function that stops it. */
   readonly onFocus: (listener: () => void) => () => void;
 }
@@ -46,6 +49,7 @@ export function provideLibraryServices(
     new WorkspaceConnectorStatus({
       definitions: new TauriDefinitionStore(parts.files, parts.location),
       refusals: new RefusalsFeed(),
+      google: parts.google,
       onFocus: parts.onFocus,
       onWatchError: (error) => console.error(error),
     }),

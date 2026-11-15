@@ -1,11 +1,16 @@
 import type { DefinitionStore, DefinitionWatch } from "@halonicjs/ports";
+import {
+  connectorFacts,
+  type GoogleSetupAccount,
+  type GoogleSetupAccounts,
+} from "@halonicjs/studio-feature-google-setup/api";
 import type {
   ConnectorStatus,
   ConnectorStatusHost,
   RecordedRefusal,
   RefusalsFeed,
 } from "@halonicjs/studio-feature-library/api";
-import { connectionStateOf } from "@halonicjs/studio-feature-library/api";
+import { type ConnectionState, connectionStateOf } from "@halonicjs/studio-feature-library/api";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 
 /** What {@link WorkspaceConnectorStatus} reads. */
@@ -14,6 +19,8 @@ export interface WorkspaceConnectorStatusOptions {
   readonly definitions: DefinitionStore;
   /** What the engine refused since Halonic started. */
   readonly refusals: RefusalsFeed;
+  /** The workspace's Google accounts, where a Google connector's sign-in is kept. */
+  readonly google: Pick<GoogleSetupAccounts, "list">;
   /**
    * Calls its listener when the window comes to the front, so the connectors are read again
    * then too; returns a function that stops it.
@@ -29,14 +36,14 @@ export interface WorkspaceConnectorStatusOptions {
  *
  * A connector's state comes from its file: it is set up, so it counts as connected. What the
  * app can't see yet, such as an expired sign-in, is not in the file and shows only as a refusal
- * when a call fails. A Google connector's sign-in is in the account's setup record, which the
- * desktop app doesn't read yet, so Google connectors are left out rather than shown connected
- * on a guess.
+ * when a call fails. A Google connector's sign-in is in its account's setup record, so its state
+ * comes from the record, the same one the Google setup block shows. A Google connector whose
+ * account has no setup record yet is listed as not connected.
  *
  * @example
  * services.provide(
  *   ConnectorStatusHostService,
- *   new WorkspaceConnectorStatus({ definitions, refusals: new RefusalsFeed() }),
+ *   new WorkspaceConnectorStatus({ definitions, refusals: new RefusalsFeed(), google }),
  * );
  */
 export class WorkspaceConnectorStatus implements ConnectorStatusHost {
@@ -50,18 +57,36 @@ export class WorkspaceConnectorStatus implements ConnectorStatusHost {
 
   async list(): Promise<readonly ConnectorStatus[]> {
     const workspace = await loadWorkspace(this.#options.definitions);
-    return filesOf(workspace, "connector")
-      .filter(({ value }) => !("google" in value.transport))
-      .map(({ value }) => ({
-        id: value.id,
-        name: value.name ?? value.id,
-        state: connectionStateOf({
-          configured: true,
-          signedIn: true,
-          secretValid: true,
-          apiOn: true,
-        }),
-      }));
+    const connectors = filesOf(workspace, "connector").map(({ value }) => value);
+    const accounts = connectors.some(({ transport }) => "google" in transport)
+      ? await this.#options.google.list()
+      : [];
+    return connectors.map((connector) => ({
+      id: connector.id,
+      name: connector.name ?? connector.id,
+      state: this.#stateOf(connector, accounts),
+    }));
+  }
+
+  /** A Google connector's state is its account's record's; any other connector is set up by its file. */
+  #stateOf(
+    connector: { readonly id: string; readonly transport: object },
+    accounts: readonly GoogleSetupAccount[],
+  ): ConnectionState {
+    if (!("google" in connector.transport)) {
+      return connectionStateOf({
+        configured: true,
+        signedIn: true,
+        secretValid: true,
+        apiOn: true,
+      });
+    }
+    const account = accounts.find(({ record }) => record.connector.id === connector.id);
+    return connectionStateOf(
+      account === undefined
+        ? { configured: false, signedIn: false, secretValid: false, apiOn: false }
+        : connectorFacts(account),
+    );
   }
 
   async refusals(connectorId: string): Promise<readonly RecordedRefusal[]> {
