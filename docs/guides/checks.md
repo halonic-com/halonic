@@ -897,6 +897,14 @@ and every 6 hours it deletes the `hlt-` test resources older than 2 hours. The
 token is in the protected `cloudflare-live` environment. Until the repository
 variable `LIVE_CLOUD_ENABLED` is `true`, every job skips with a notice.
 
+The adapter suite runs the contract suites of the Cloudflare storage and
+Durable Object adapters (R2, D1, Durable Objects and alarms) inside a test
+Worker. The transfer and webhook suites check the deployed fixture Worker. There
+is no contract suite for a Workers secret store: Halonic has no secrets adapter
+for Workers yet (the runtime reads its secrets straight from `env`), so there is
+nothing to run. When one lands, add its contract spec to the test Worker in
+`packages/testing/cloudflare-live/live/adapters.live.test.ts`.
+
 `.github/workflows/cargo-lock.yml` runs only by hand. It regenerates the
 Tauri shell's `Cargo.lock` for a branch, for anyone without a Rust
 toolchain: run `gh workflow run cargo-lock.yml --ref <branch>`, download
