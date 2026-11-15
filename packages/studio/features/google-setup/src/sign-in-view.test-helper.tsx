@@ -1,7 +1,6 @@
 import type { ExternalAddress } from "@halonicjs/studio-kit";
 import { OpenExternalProvider } from "@halonicjs/studio-kit";
 import { act } from "react";
-import { vi } from "vitest";
 import { account, fakeAccounts, record } from "./accounts.test-helper.ts";
 import type { GoogleSetupAccount } from "./api.ts";
 import { render } from "./test-support/render.tsx";
@@ -25,9 +24,23 @@ export const ready = {
   inProductionTickedAt: "2026-11-12T02:10:00.000Z",
 };
 
+type AdvanceTimers = (ms: number) => Promise<unknown>;
+
+let advanceTimers: AdvanceTimers | undefined;
+
+/**
+ * Tells `settle` how to move the fake clock. A helper file may not import
+ * vitest, so each test file passes `vi.advanceTimersByTimeAsync` in.
+ */
+export function driveClock(advance: AdvanceTimers): void {
+  advanceTimers = advance;
+}
+
 export async function settle(): Promise<void> {
+  const advance = advanceTimers;
+  if (advance === undefined) throw new Error("Call driveClock before settle");
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(0);
+    await advance(0);
   });
 }
 

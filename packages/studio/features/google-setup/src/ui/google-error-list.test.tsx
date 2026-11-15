@@ -6,6 +6,7 @@ import type { GoogleSetupAccount } from "../api.ts";
 import {
   address,
   button,
+  driveClock,
   open,
   press,
   ready,
@@ -14,7 +15,10 @@ import {
 } from "../sign-in-view.test-helper.tsx";
 import { unmountAll } from "../test-support/render.tsx";
 
-beforeEach(() => vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] }));
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  driveClock((ms) => vi.advanceTimersByTimeAsync(ms));
+});
 afterEach(() => {
   unmountAll();
   vi.useRealTimers();
