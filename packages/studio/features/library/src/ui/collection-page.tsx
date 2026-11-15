@@ -1,7 +1,7 @@
 import { FilterChips, FormRows, useGridNavigation } from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
-import { useCallback, useMemo, useSyncExternalStore } from "react";
-import { cellText, chipText, headerText } from "../collection-format.ts";
+import { Fragment, useCallback, useMemo, useSyncExternalStore } from "react";
+import { cellText, chipText, headerMarks } from "../collection-format.ts";
 import {
   type CollectionColumn,
   CollectionHostService,
@@ -127,7 +127,14 @@ function RecordsGrid({ label, fields, rows }: RecordsGridProps) {
           <tr className="border-b border-border bg-surface-subtle text-left text-small font-medium">
             {fields.map((field) => (
               <th key={field.name} scope="col" className="min-w-32 px-3 py-2 font-medium">
-                {headerText(field)}
+                {field.name}
+                {headerMarks(field).map(({ mark, hint }) => (
+                  <Fragment key={hint}>
+                    {" "}
+                    <span aria-hidden="true">{mark}</span>
+                    <span className="sr-only">{hint}</span>
+                  </Fragment>
+                ))}
               </th>
             ))}
           </tr>

@@ -10,6 +10,8 @@ export const collectionWords = {
   computedMark: "ƒ",
   requiredHint: "required",
   computedHint: "computed",
+  yes: "yes",
+  no: "no",
   volatileLine: "Records are kept only while this Studio is open.",
   usedBy: "Used by",
   notUsed: "No agent uses this collection yet.",

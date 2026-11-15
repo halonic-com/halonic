@@ -4,6 +4,7 @@ import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { cellText } from "../collection-format.ts";
 import {
   type CollectionColumn,
   type CollectionHost,
@@ -106,7 +107,17 @@ verifies("library.collection-page", () => {
     it("shows a column per field with * for required and ƒ for computed", async () => {
       const { root } = await opened(sourceOf([swim]));
       const headers = [...root.querySelectorAll("th")].map((header) => header.textContent);
-      expect(headers).toEqual(["what *", "amount *", "share ƒ"]);
+      expect(headers).toEqual(["what *required", "amount *required", "share ƒcomputed"]);
+      // The marks are hidden from a screen reader, which hears the words instead.
+      const spoken = [...root.querySelectorAll("th")].map((header) =>
+        [...header.childNodes]
+          .filter((node) => !(node instanceof Element && node.getAttribute("aria-hidden")))
+          .map((node) => node.textContent)
+          .join("")
+          .replace(/\s+/g, " ")
+          .trim(),
+      );
+      expect(spoken).toEqual(["what required", "amount required", "share computed"]);
       expect(root.querySelector('[role="grid"]')?.getAttribute("aria-label")).toBe(
         "Claims records",
       );
@@ -121,6 +132,20 @@ verifies("library.collection-page", () => {
         ["Swim lesson", "60,00", "45,00"],
         ["Trip", "20,00", ""],
       ]);
+    });
+
+    it("shows plain numbers in nl-NL like money, and booleans as words", () => {
+      const column = (type: CollectionColumn["type"]): CollectionColumn => ({
+        name: "x",
+        type,
+        required: false,
+        computed: false,
+        choices: [],
+      });
+      expect(cellText(column("number"), 1.5)).toBe("1,5");
+      expect(cellText(column("money"), 1.5)).toBe("1,50");
+      expect(cellText(column("boolean"), true)).toBe("yes");
+      expect(cellText(column("boolean"), false)).toBe("no");
     });
 
     it("shows only the chosen view's records", async () => {
