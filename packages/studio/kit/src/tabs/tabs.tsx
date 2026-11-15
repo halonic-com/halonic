@@ -74,6 +74,8 @@ export interface TabPanelProps<Id extends string = string> {
   readonly selected: Id;
   /** The selected tab's view. */
   readonly children: ReactNode;
+  /** Classes for the panel, such as the ones that make it fill the space under a header. */
+  readonly className?: string | undefined;
 }
 
 /** The props of `Tabs`. */
@@ -254,11 +256,18 @@ export function TabList<Id extends string>({
 }
 
 /** The one `tabpanel` that holds the selected view, labelled by the selected tab. */
-export function TabPanel<Id extends string>({ ids, tabs, selected, children }: TabPanelProps<Id>) {
+export function TabPanel<Id extends string>({
+  ids,
+  tabs,
+  selected,
+  children,
+  className,
+}: TabPanelProps<Id>) {
   return (
     <div
       role="tabpanel"
       id={panelElementId(ids)}
+      className={className}
       aria-labelledby={
         tabs.some((tab) => tab.id === selected) ? tabElementId(ids, selected) : undefined
       }

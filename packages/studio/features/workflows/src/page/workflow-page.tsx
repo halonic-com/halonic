@@ -124,7 +124,12 @@ export function WorkflowScreen({ host, hubId, id, openRun }: WorkflowScreenProps
           <CommandBox command={startCommand} />
         </div>
       )}
-      <TabPanel ids={ids} tabs={views} selected={view}>
+      <TabPanel
+        ids={ids}
+        tabs={views}
+        selected={view}
+        className={view === "flow" ? "flex min-h-0 flex-1 flex-col" : undefined}
+      >
         {view === "configuration" ? (
           <Configuration
             name={name}
@@ -137,44 +142,72 @@ export function WorkflowScreen({ host, hubId, id, openRun }: WorkflowScreenProps
             }}
           />
         ) : (
-          <>
-            {load.kind === "ready" && load.value.id === id && load.value.hubId === hubId && (
-              <WorkflowCanvas
-                key={`${hubId}/${id}/${openStep}`}
-                workflow={load.value}
-                selectedStep={openStep}
-                saved={kept?.of === workflowKey ? kept.view : undefined}
-                onView={keep}
-              />
-            )}
-            {load.kind === "failed" && (
-              <EmptyState
-                tone="error"
-                title={pageWords.loadFailedTitle}
-                description={load.reason}
-                action={{ label: pageWords.tryAgain, onClick: retry }}
-              />
-            )}
-            {load.kind === "loading" && load.skeleton && (
-              <div role="status" className="flex flex-1 flex-col gap-4 p-6">
-                <span className="sr-only">{pageWords.loading(name)}</span>
-                <div className="flex gap-6">
-                  <SkeletonBar kind="value" />
-                  <SkeletonBar kind="value" />
-                </div>
-                {load.slow && (
-                  <p className="flex items-center gap-3 text-small text-fg-muted">
-                    {pageWords.stillLoading}
-                    <Button variant="secondary" size="sm" onClick={retry}>
-                      {pageWords.tryAgain}
-                    </Button>
-                  </p>
-                )}
-              </div>
-            )}
-          </>
+          <FlowView
+            load={load}
+            retry={retry}
+            hubId={hubId}
+            id={id}
+            name={name}
+            openStep={openStep}
+            kept={kept}
+            onView={keep}
+          />
         )}
       </TabPanel>
     </div>
+  );
+}
+
+interface FlowViewProps {
+  readonly load: ReturnType<typeof useWorkflow>["load"];
+  readonly retry: () => void;
+  readonly hubId: string;
+  readonly id: string;
+  readonly name: string;
+  readonly openStep: string | undefined;
+  readonly kept: { readonly of: string; readonly view: View } | undefined;
+  readonly onView: (next: View) => void;
+}
+
+/** The Flow tab's content: the canvas, a skeleton when the file is slow, or why it couldn't be read. */
+function FlowView({ load, retry, hubId, id, name, openStep, kept, onView }: FlowViewProps) {
+  const workflowKey = `${hubId}/${id}`;
+  return (
+    <>
+      {load.kind === "ready" && load.value.id === id && load.value.hubId === hubId && (
+        <WorkflowCanvas
+          key={`${workflowKey}/${openStep}`}
+          workflow={load.value}
+          selectedStep={openStep}
+          saved={kept?.of === workflowKey ? kept.view : undefined}
+          onView={onView}
+        />
+      )}
+      {load.kind === "failed" && (
+        <EmptyState
+          tone="error"
+          title={pageWords.loadFailedTitle}
+          description={load.reason}
+          action={{ label: pageWords.tryAgain, onClick: retry }}
+        />
+      )}
+      {load.kind === "loading" && load.skeleton && (
+        <div role="status" className="flex flex-1 flex-col gap-4 p-6">
+          <span className="sr-only">{pageWords.loading(name)}</span>
+          <div className="flex gap-6">
+            <SkeletonBar kind="value" />
+            <SkeletonBar kind="value" />
+          </div>
+          {load.slow && (
+            <p className="flex items-center gap-3 text-small text-fg-muted">
+              {pageWords.stillLoading}
+              <Button variant="secondary" size="sm" onClick={retry}>
+                {pageWords.tryAgain}
+              </Button>
+            </p>
+          )}
+        </div>
+      )}
+    </>
   );
 }

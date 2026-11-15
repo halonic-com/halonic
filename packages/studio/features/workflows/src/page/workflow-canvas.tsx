@@ -66,7 +66,7 @@ export function WorkflowCanvas({
       ref={viewport}
       role="application"
       aria-label={pageWords.canvas}
-      className="relative min-h-0 flex-1 touch-none overflow-hidden bg-canvas-grid"
+      className="relative min-h-80 flex-1 touch-none overflow-hidden bg-canvas-grid"
       onPointerDown={(event) => {
         // A press on a card or a button is theirs: capturing it here would steal their click.
         if ((event.target as Element).closest("button") !== null) return;

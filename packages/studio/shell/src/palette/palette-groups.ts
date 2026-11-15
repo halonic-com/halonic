@@ -137,7 +137,11 @@ export function paletteGroups(sources: PaletteSources): PaletteContent {
       target: { kind: "item", item: result.item },
     };
   });
-  const placeRows = [...sources.openTabs, ...sources.recent].map(placeRow);
+  // A place named like a command ("Workspace settings") shows once, as the Action.
+  const actionTitles = new Set(sources.actions.map((action) => action.title.toLowerCase()));
+  const placeRows = [...sources.openTabs, ...sources.recent]
+    .filter((location) => !actionTitles.has(location.title.toLowerCase()))
+    .map(placeRow);
   const recency = new Map(sources.recent.map((location, index) => [location.key, index]));
   const items = ranked(sources.words, withoutRepeats([...foundRows, ...placeRows]), recency);
   const actions = ranked(
