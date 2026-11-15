@@ -152,6 +152,41 @@ verifies("models.providers.list-and-show", () => {
     expect(saved[0]?.text).toContain("baseUrl: http://localhost:11434/v1");
   });
 
+  it("refuses a pasted key as the secret name without writing it or showing it", async () => {
+    const key = `sk-ant-api03-${"Q7x2Lm9K".repeat(4)}`;
+    const saved: string[] = [];
+    const files = {
+      ...filesWith({ anthropic }),
+      readProvider: async () => anthropic,
+      changeProvider: (_path: string, _label: string, text: string) => saved.push(text),
+    };
+    const view = await page("anthropic", files);
+    const secret = view.querySelectorAll("input")[3] as HTMLInputElement;
+
+    await typeAndLeave(secret, key);
+
+    expect(saved).toEqual([]);
+    expect(view.textContent).toContain("looks like an API key");
+    expect(view.textContent).not.toContain(key);
+  });
+
+  it("keeps a refused field's problem showing when another field saves", async () => {
+    const saved: string[] = [];
+    const files = {
+      ...filesWith({ ollama }),
+      readProvider: async () => ollama,
+      changeProvider: (_path: string, _label: string, text: string) => saved.push(text),
+    };
+    const view = await page("ollama", files);
+    const inputs = view.querySelectorAll("input");
+
+    await typeAndLeave(inputs[2] as HTMLInputElement, "localhost:11434");
+    await typeAndLeave(inputs[0] as HTMLInputElement, "My Ollama");
+
+    expect(saved).toHaveLength(1);
+    expect(view.textContent).toContain("Enter a full address");
+  });
+
   it("says a cloud provider is blocked when the workspace is local only", async () => {
     const blocked = await page("anthropic", filesWith({ anthropic }, localOnly));
     expect(blocked.querySelector("[role=alert]")?.textContent).toBe(

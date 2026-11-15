@@ -32,14 +32,14 @@ export function ProviderFields({ files, provider, path }: ProviderFieldsProps) {
 
   const save = async (field: ProviderField, value: string | boolean) => {
     const text = await files.readProvider(path);
-    const edited = text === null ? undefined : editProvider(text, field, value);
+    const edited = text === null ? undefined : editProvider(text, field, value, provider.id);
     if (edited === undefined) return;
     if (!edited.ok) {
       setProblem(edited.error);
       setStatus("");
       return;
     }
-    setProblem(undefined);
+    setProblem((shown) => (shown?.field === field || shown?.field === "yaml" ? undefined : shown));
     if (edited.value === text) return;
     files.changeProvider(path, providerUpdatedLine(provider.name ?? provider.id), edited.value);
     setStatus(providerUpdatedLine(provider.name ?? provider.id));

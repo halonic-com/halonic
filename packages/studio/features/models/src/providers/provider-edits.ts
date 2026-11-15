@@ -1,3 +1,4 @@
+import { parseFile } from "@halonicjs/format";
 import { err, ok, type Result } from "@halonicjs/std";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
 
@@ -43,23 +44,42 @@ function editFor(field: ProviderField, value: string | boolean): Result<YamlEdit
  * back as the message for its field.
  *
  * @param text - the text of the provider's file
+ * @param id - the provider's id, the file's name without `.yaml`
  *
  * @example
- * editProvider(text, "baseUrl", "http://localhost:11434/v1"); // ok: the file with `baseUrl` set
- * editProvider(text, "baseUrl", "localhost:11434"); // err: Enter a full address, …
+ * editProvider(text, "baseUrl", "http://localhost:11434/v1", "ollama"); // ok: the file with `baseUrl` set
+ * editProvider(text, "baseUrl", "localhost:11434", "ollama"); // err: Enter a full address, …
  */
 export function editProvider(
   text: string,
   field: ProviderField,
   value: string | boolean,
+  id: string,
 ): Result<string, ProviderProblem> {
   const edit = editFor(field, value);
   if (!edit.ok) return edit;
   const edited = editYaml(text, [edit.value]);
-  return edited.ok
-    ? ok(edited.value.text)
-    : err({
-        field: "yaml",
-        message: "The provider's file could not be changed. Fix the file first.",
-      });
+  if (!edited.ok) return err(unreadable);
+  return checkedFile(edited.value.text, field, id);
+}
+
+const unreadable: ProviderProblem = {
+  field: "yaml",
+  message: "The provider's file could not be changed. Fix the file first.",
+};
+
+/**
+ * The edited text, when it still reads as a provider file. The file's own rules speak for the
+ * field that was changed (a pasted key in the secret name never comes back in the message); a
+ * problem somewhere else was there before the edit, so the file is what needs fixing.
+ */
+function checkedFile(
+  text: string,
+  field: ProviderField,
+  id: string,
+): Result<string, ProviderProblem> {
+  const parsed = parseFile("provider", text, { id });
+  if (parsed.ok) return ok(text);
+  const own = parsed.error.find((p) => p.severity === "error" && p.path[0] === field);
+  return err(own === undefined ? unreadable : { field, message: own.message });
 }
