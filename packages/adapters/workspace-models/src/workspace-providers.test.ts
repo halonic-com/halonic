@@ -6,7 +6,7 @@ import {
   type ProviderFile,
   WorkspaceModelError,
   workspaceProvider,
-} from "./workspace-providers.ts";
+} from "./index.ts";
 
 /** A request the HTTP client saw. */
 interface SentRequest {

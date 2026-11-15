@@ -2,12 +2,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
+import { workspaceModelResolver } from "@halonicjs/adapter-workspace-models";
 import { createServer } from "@halonicjs/host-server";
 import type { ChatAgentSettings, HttpClient, Secrets } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { workspaceModelResolver } from "../../workspace-model-resolver.ts";
 import { workspaceModelSettings } from "./model-settings-gate.ts";
 
 let root: string;

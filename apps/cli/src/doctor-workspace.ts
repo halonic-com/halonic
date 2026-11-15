@@ -2,6 +2,7 @@
 // the trust check covers, its model aliases and the providers they use. The
 // doctor service asks the machine about them; this only reads the files.
 
+import { defaultLocalAddress } from "@halonicjs/adapter-workspace-models";
 import {
   type AliasProvider,
   type DoctorProvider,
@@ -18,16 +19,6 @@ import {
   reachesOnlyTheTestModel,
 } from "@halonicjs/workspace";
 import { fileProblemsOf } from "./workspace-problems.ts";
-
-/**
- * Where a model server on this computer answers when its provider file
- * gives no `baseUrl`, by provider type. The addresses are the servers' own
- * defaults, as the example providers write them.
- */
-const defaultAddresses: Readonly<Record<string, string>> = {
-  ollama: "localhost:11434",
-  lmstudio: "localhost:1234",
-};
 
 /** What {@link doctorWorkspace} reads. */
 export interface DoctorWorkspaceInput {
@@ -123,20 +114,7 @@ export function providerAddress(provider: Provider): string | undefined {
   if (provider.baseUrl !== undefined) {
     return new URL(provider.baseUrl).host;
   }
-  return defaultAddresses[provider.type];
-}
-
-/**
- * The API address of a model server on this computer whose provider file
- * gives no `baseUrl`, from the same table as {@link providerAddress}, or
- * `undefined` when its type has no default address.
- *
- * @example
- * defaultLocalBaseUrl("ollama"); // "http://localhost:11434/v1"
- */
-export function defaultLocalBaseUrl(type: string): string | undefined {
-  const address = defaultAddresses[type];
-  return address === undefined ? undefined : `http://${address}/v1`;
+  return defaultLocalAddress(provider.type);
 }
 
 /** The root's aliases, then each hub's that adds an alias or points one elsewhere. */
