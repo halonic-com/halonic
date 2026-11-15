@@ -36,8 +36,9 @@ const callbackFailedPage = `<!doctype html><html lang="en"><head><meta charset="
  * the CLI's host (`@halonicjs/host-server`) for the path it builds itself, so
  * the request names no path. The handler answers in the host's error shape
  * (404 `google_setup_not_found`, for one). Any other failure answers 502
- * `google_failed` with a fixed message: the error's own text can hold paths,
- * so it goes only to the host's log.
+ * `google_failed` with a fixed message, except on the sign-in callback, which
+ * answers a fixed HTML page because a browser shows it: the error's own text
+ * can hold paths, so it goes only to the host's log.
  *
  * - `POST /v1/google/disconnect` with `{ accountRef }`: asks Google to end the
  *   sign-in, then removes the refresh token, the record and the client secret
