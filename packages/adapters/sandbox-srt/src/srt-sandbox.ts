@@ -272,13 +272,20 @@ export class SrtSandbox implements Sandbox {
   async #firstUnavailable(): Promise<Unavailable | null> {
     const machine = this.#machine;
     if (machine.platform === "win32") {
-      return (await machine.hasWindowsSandbox())
-        ? null
-        : {
-            reason: "setup-needed",
-            missing:
-              "srt's Windows install is missing; run `srt windows-install` once as an administrator",
-          };
+      const state = await machine.windowsSandboxState();
+      if (state === "ok") return null;
+      if (state === "setup-conflict") {
+        return {
+          reason: "setup-conflict",
+          missing:
+            "srt's Windows install was set up with loopback open, which Halonic doesn't change; remove that setup first",
+        };
+      }
+      return {
+        reason: "setup-needed",
+        missing:
+          "srt's Windows install is missing; run `srt windows-install` once as an administrator",
+      };
     }
     if (machine.platform === "darwin") {
       if (!(await machine.hasSeatbelt())) {

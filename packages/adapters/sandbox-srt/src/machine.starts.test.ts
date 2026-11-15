@@ -29,7 +29,7 @@ verifies("sandbox-srt.check", () => {
       await systemMachine.bubblewrapUserNamespaceError();
       await systemMachine.appArmorRestrictsUserNamespaces();
       await systemMachine.hasSeatbelt();
-      await systemMachine.hasWindowsSandbox(); // starts srt-win only on Windows
+      await systemMachine.windowsSandboxState(); // starts srt-win only on Windows
       expect(started).toEqual([
         { file: "bwrap", args: ["--version"] },
         { file: "socat", args: ["-V"] },

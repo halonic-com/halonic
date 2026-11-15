@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-193 (plan phase 3, v1.17), HAL-1706, HAL-5389 (`Sandbox` port v6), HAL-6518, HAL-6639 (ripgrep on macOS), HAL-7062
+- Source: HAL-5398 (Windows `setup-conflict`), HAL-193 (plan phase 3, v1.17), HAL-1706, HAL-5389 (`Sandbox` port v6), HAL-6518, HAL-6639 (ripgrep on macOS), HAL-7062
 
-The sandbox-srt adapter shall say whether it can start on this machine, and when it can't, give the first listed reason (Windows without srt's one-time setup, inside a container, WSL 1, user namespaces restricted, bubblewrap missing, `socat` or ripgrep missing, other; on macOS, Seatbelt missing and then ripgrep missing) and one sentence saying what is missing, and never open a session in that case. It shall blame user namespaces only when bubblewrap is installed, fails to create one, and AppArmor's `apparmor_restrict_unprivileged_userns` setting is on; when bubblewrap fails otherwise, the reason shall be `other` with bubblewrap's own first line. On Linux it shall say it can start only once srt has started its smallest real sandbox (network namespace and bridge included) and run `true` in it, within 10 seconds; a pass shall be kept for the rest of the process, a failure shall be asked again at the next check, and checks made while one is running shall share it; if that fails, the reason shall be `other` with srt's own line.
+The sandbox-srt adapter shall say whether it can start on this machine, and when it can't, give the first listed reason (Windows without srt's one-time setup or with a setup whose loopback mode isn't closed, inside a container, WSL 1, user namespaces restricted, bubblewrap missing, `socat` or ripgrep missing, other; on macOS, Seatbelt missing and then ripgrep missing) and one sentence saying what is missing, and never open a session in that case. It shall blame user namespaces only when bubblewrap is installed, fails to create one, and AppArmor's `apparmor_restrict_unprivileged_userns` setting is on; when bubblewrap fails otherwise, the reason shall be `other` with bubblewrap's own first line. On Linux it shall say it can start only once srt has started its smallest real sandbox (network namespace and bridge included) and run `true` in it, within 10 seconds; a pass shall be kept for the rest of the process, a failure shall be asked again at the next check, and checks made while one is running shall share it; if that fails, the reason shall be `other` with srt's own line.
 
 ## Examples
 
@@ -38,6 +38,9 @@ The sandbox-srt adapter shall say whether it can start on this machine, and when
 - Given Windows without srt's one-time setup,
   when it is checked,
   then the reason is `setup-needed`, not `windows`, because srt has a Windows mode.
+- Given Windows where another program installed srt with loopback open,
+  when it is checked,
+  then the reason is `setup-conflict`, not `setup-needed`, because running the setup again would not be what changes it, and Halonic doesn't change the machine-wide mode itself.
 - Given Windows without srt's one-time setup,
   when a session is opened,
   then opening fails and nothing runs.

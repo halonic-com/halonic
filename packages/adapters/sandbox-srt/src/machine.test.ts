@@ -26,7 +26,7 @@ verifies("sandbox-srt.check", () => {
         await systemMachine.hasRipgrep(),
         await systemMachine.appArmorRestrictsUserNamespaces(),
         await systemMachine.hasSeatbelt(),
-        await systemMachine.hasWindowsSandbox(),
+        await systemMachine.windowsSandboxState(),
       ];
       expect(answers.map((answer) => typeof answer)).toEqual([
         "boolean",
@@ -35,7 +35,7 @@ verifies("sandbox-srt.check", () => {
         "boolean",
         "boolean",
         "boolean",
-        "boolean",
+        "string",
       ]);
       const helpers = await systemMachine.missingLinuxHelpers();
       expect(helpers.filter((helper) => helper !== "socat" && helper !== "ripgrep")).toEqual([]);

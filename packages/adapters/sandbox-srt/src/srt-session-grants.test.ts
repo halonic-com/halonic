@@ -7,7 +7,11 @@ import { KeptGrants, type SrtWinResult } from "./kept-grants.ts";
 import { SrtSandbox } from "./srt-sandbox.ts";
 import { fakeRunner, linux, makeProfile } from "./srt-session.test-helper.ts";
 
-const windows = { ...linux, platform: "win32" as const, hasWindowsSandbox: async () => true };
+const windows = {
+  ...linux,
+  platform: "win32" as const,
+  windowsSandboxState: async () => "ok" as const,
+};
 
 /** Grants on a fake `srt-win` that records what it was asked and answers from `answer`. */
 function fakeGrants(
