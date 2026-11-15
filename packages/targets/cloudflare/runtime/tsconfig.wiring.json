@@ -9,7 +9,8 @@
     "src/self-test.test.ts",
     "src/serve.test.ts",
     "src/admin.test.ts",
-    "src/export-data.test.ts"
+    "src/export-data.test.ts",
+    "src/import-data.test.ts"
   ],
   "exclude": []
 }

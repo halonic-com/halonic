@@ -61,8 +61,16 @@ tokens' and every blob; no secret store is in it. A run log or record log that h
 secret stops the export: the manifest and that file answer 409 `{"code":"secret_found","path":"...","shape":"..."}`,
 naming the file and the kind, never the text (requirement `runtime.export-data`).
 
-The two import routes still answer 501 `{"code":"not_implemented"}` after the key check: they come in the
-next part of HAL-9486, with the paths and shapes above unchanged.
+**Importing.** Send each file with `PUT /admin/import/files/<path>` (up to 50 MiB; it is staged in the blobs
+bucket under `import-staging/`), then the manifest with `POST /admin/import`. Nothing is written until every
+listed file is staged with exactly the manifest's size and SHA-256, every file has been read as a log or blob
+of its name, and the deployment holds no different data under the same run id or collection. The sign-in
+tokens' collection is never imported. An answer other than 200 means nothing was applied: 409 with
+`files_missing`, `files_differ`, `files_refused` or `conflict` and the paths; 400 `bad_path` or `bad_manifest`;
+413 `too_large`. A file the deployment already holds exactly is skipped, so a job that stopped can send the
+same import again. After a success the staged files are removed; after a refusal they stay, so the CLI can
+stage the missing or changed ones and post again. Files of a job that never finishes stay under
+`import-staging/` until removed (requirement `runtime.import-data`).
 
 ## Durable Object classes
 
