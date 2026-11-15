@@ -225,6 +225,7 @@ function answer(io: HostIo, result: { ok: boolean }): number {
 async function serve(io: HostIo, host: HostServices): Promise<void> {
   const token = randomLaunchToken();
   const server = await startHostServer(token, host.routes);
+  host.listeningOn(Number(new URL(server.url).port));
   const handshake: Handshake = { url: server.url, token };
   io.write(`${JSON.stringify(handshake)}\n`);
   await inputClosed(io.input);
@@ -262,6 +263,7 @@ async function serveOverFrames(
   const token = randomLaunchToken();
   const handshake: FramedHandshake = { token };
   output.write(`${JSON.stringify(handshake)}\n`);
+  host.listeningOn(relayPort);
   const server = serveHostOverFrames(token, host.routes, { input: io.input, output }, relayPort);
   const ended = await server.ended;
   await host.stop();
@@ -275,6 +277,8 @@ async function serveOverFrames(
 interface HostServices {
   routes: HostRoute[];
   stop(): Promise<void>;
+  /** Tells the host which port its own server listens on, so no provider's address may be that port. */
+  listeningOn(port: number): void;
 }
 
 /**
@@ -293,6 +297,7 @@ function hostServices(
   profile: ProfileFolder | undefined,
 ): HostServices {
   const sessions = new SessionTable();
+  const listeningPorts = new Set<number>();
   const bridges = new BridgeTable();
   const runs = new RunTable();
   const harnesses = hostHarnesses(version);
@@ -323,6 +328,7 @@ function hostServices(
         workspaceRoots: connectors.workspaceRoots,
         profile,
         env: process.env,
+        ownPorts: () => [...listeningPorts, ...bridges.ports()],
         log: logToError,
       }),
     ),
@@ -342,7 +348,7 @@ function hostServices(
     await sessions.closeAll();
     await bridges.closeAll();
   };
-  return { routes, stop };
+  return { routes, stop, listeningOn: (port) => listeningPorts.add(port) };
 }
 
 function logToError(text: string): void {

@@ -1,4 +1,3 @@
-import { realpath } from "node:fs/promises";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import {
   type ChatResponse,
@@ -10,6 +9,8 @@ import {
 import { filesOf, isOnThisMachine, loadWorkspace } from "@halonicjs/workspace";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
+import { namedWorkspace } from "../server/named-workspace.ts";
+import { OpenLimit } from "../server/open-limit.ts";
 import {
   chatRequestOf,
   type ModelChatBody,
@@ -32,9 +33,17 @@ export interface ModelRouteDeps {
    * second check, on the address the name really resolves to.
    */
   http: HttpClient;
+  /** How many chats run at once; another gets 429. Default {@link defaultMaxChats}. */
+  maxChats?: number;
   /** Where the host writes what it keeps from a failure; the answer never carries it. */
   log?: (text: string) => void;
 }
+
+/** How many chats the route runs at once: the Studio window asks for one at a time, and a model on this computer is slow. */
+export const defaultMaxChats = 2;
+
+const tooManyChatsMessage =
+  "The agent host is already running the most chats it allows. Try again in a moment.";
 
 const modelFailedMessage =
   "The model couldn't finish this request. The agent host's log has the detail.";
@@ -53,13 +62,18 @@ const modelFailedMessage =
  * (403 `provider_not_on_this_machine`), so the route can't send workspace text
  * to a remote service. The request is capped (see `model-schemas.ts`). Other
  * answers: 403 `workspace_not_named` for a folder the launcher didn't name,
- * 404 `unknown_provider`, 400 `provider_type_unsupported`, 413 `request_too_large`.
+ * 404 `unknown_provider`, 400 `provider_type_unsupported`, 413 `request_too_large`,
+ * 429 `too_many_chats` while `maxChats` chats are already running.
+ *
+ * The model call stops when the window drops its connection, so a chat nobody
+ * waits for doesn't keep the model busy.
  *
  * A call the provider fails answers 502 `model_failed`. A provider's own
  * error (`ModelCallError`) says why and never holds a key, so its text goes
  * through; any other error's text can hold paths, so only the host's log has it.
  */
 export function modelRoutes(deps: ModelRouteDeps): HostRoute[] {
+  const limit = new OpenLimit(deps.maxChats ?? defaultMaxChats, () => 0);
   return [
     {
       method: "POST",
@@ -76,11 +90,25 @@ export function modelRoutes(deps: ModelRouteDeps): HostRoute[] {
           );
           return;
         }
+        const release = limit.reserve();
+        if (release === undefined) {
+          sendError(response, 429, "too_many_chats", tooManyChatsMessage);
+          return;
+        }
+        const dropped = new AbortController();
+        const onDropped = () => {
+          if (!response.writableFinished) dropped.abort();
+        };
+        response.on("close", onDropped);
         try {
-          const answer = await chat(deps, body, response);
+          const answer = await chat(deps, body, response, dropped.signal);
           if (answer !== undefined) sendJson(response, 200, answer);
         } catch (error) {
-          failed(deps, response, error);
+          // Nobody is left to answer when the window dropped the connection.
+          if (!dropped.signal.aborted) failed(deps, response, error);
+        } finally {
+          response.off("close", onDropped);
+          release();
         }
       },
     },
@@ -92,8 +120,9 @@ async function chat(
   deps: ModelRouteDeps,
   body: ModelChatBody,
   response: Parameters<typeof sendError>[0],
+  signal: AbortSignal,
 ): Promise<ChatResponse | undefined> {
-  const root = await namedWorkspace(deps, body.workspaceRoot);
+  const root = await namedWorkspace(deps.workspaceRoots, body.workspaceRoot);
   if (root === undefined) {
     sendError(
       response,
@@ -140,17 +169,7 @@ async function chat(
     },
     { secrets: deps.secrets, http: deps.http },
   );
-  return await model.chat(chatRequestOf(body.request));
-}
-
-/** The real path of the folder when it is one the launcher named; `undefined` otherwise. */
-async function namedWorkspace(deps: ModelRouteDeps, folder: string): Promise<string | undefined> {
-  const real = await realpath(folder).catch(() => undefined);
-  if (real === undefined) return undefined;
-  const named = await Promise.all(
-    deps.workspaceRoots.map((root) => realpath(root).catch(() => root)),
-  );
-  return named.includes(real) ? real : undefined;
+  return await model.chat({ ...chatRequestOf(body.request), signal });
 }
 
 /** Answers 502 `model_failed`, and keeps the detail of an error that isn't a provider's own in the host's log. */

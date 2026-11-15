@@ -19,6 +19,10 @@ export interface FakeModelServer {
   authorizations: (string | undefined)[];
   /** The status and body it answers next, instead of a good answer. */
   failWith: { status: number; body: string } | undefined;
+  /** While set, it answers only after this settles, so a test can keep chats running. */
+  holding: Promise<void> | undefined;
+  /** How many of its answers the caller left before they were sent. */
+  dropped: number;
   close(): Promise<void>;
 }
 
@@ -28,14 +32,20 @@ async function fakeModelServer(): Promise<FakeModelServer> {
     asked: [],
     authorizations: [],
     failWith: undefined,
+    holding: undefined,
+    dropped: 0,
     close: async () => undefined,
   };
   const server: Server = createServer((request, response) => {
     const chunks: Buffer[] = [];
     request.on("data", (chunk: Buffer) => chunks.push(chunk));
-    request.on("end", () => {
+    response.on("close", () => {
+      if (!response.writableFinished) fake.dropped += 1;
+    });
+    request.on("end", async () => {
       fake.asked.push(JSON.parse(Buffer.concat(chunks).toString("utf8")));
       fake.authorizations.push(request.headers.authorization);
+      await fake.holding;
       if (fake.failWith !== undefined) {
         response.writeHead(fake.failWith.status, { "content-type": "application/json" });
         response.end(fake.failWith.body);
@@ -79,22 +89,29 @@ export interface Setup {
 }
 
 /** Starts the real model route (the host's own wiring) over real folders and a fake model server. */
-export async function startRoutes(env: Record<string, string> = {}): Promise<Setup> {
+export async function startRoutes(
+  env: Record<string, string> = {},
+  maxChats?: number,
+): Promise<Setup> {
   const base = await realpath(await mkdtemp(join(tmpdir(), "agent-host-model-")));
   const folders = { base, workspace: join(base, "workspace"), other: join(base, "other") };
   await mkdir(folders.workspace);
   await mkdir(folders.other);
   const model = await fakeModelServer();
   const logged: string[] = [];
-  const routes = modelRoutes(
-    hostModelRoutes({
+  const ownPorts = new Set<number>();
+  const routes = modelRoutes({
+    ...hostModelRoutes({
       workspaceRoots: [folders.workspace],
       profile: undefined,
       env,
+      ownPorts: () => ownPorts,
       log: (text) => logged.push(text),
     }),
-  );
+    ...(maxChats === undefined ? {} : { maxChats }),
+  });
   const server: HostServer = await startHostServer(token, routes);
+  ownPorts.add(Number(new URL(server.url).port));
   return {
     url: server.url,
     model,
@@ -119,11 +136,12 @@ export async function startRoutes(env: Record<string, string> = {}): Promise<Set
   };
 }
 
-export function post(url: string, body: unknown): Promise<Response> {
+export function post(url: string, body: unknown, signal?: AbortSignal): Promise<Response> {
   return fetch(`${url}/v1/models/chat`, {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify(body),
+    ...(signal === undefined ? {} : { signal }),
   });
 }
 
