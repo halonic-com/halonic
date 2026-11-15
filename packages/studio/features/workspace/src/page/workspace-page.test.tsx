@@ -36,7 +36,7 @@ const trust = {
 function ModelsStub() {
   return (
     <section data-workspace-section="models">
-      <h2>Models</h2>
+      <h2 tabIndex={-1}>Models</h2>
     </section>
   );
 }
@@ -132,5 +132,38 @@ verifies("workspace.workspace-page", () => {
     expect(document.activeElement).toBe(
       page.querySelector("section[data-workspace-section=trust] h2"),
     );
+  });
+
+  it("leaves the target to the visible page when another page is hidden", () => {
+    const hidden = document.createElement("div");
+    hidden.hidden = true;
+    hidden.inert = true;
+    document.body.append(hidden);
+    const context = {
+      services: { get: () => ({ name: "Acme", trust }) },
+    } as unknown as WorkspaceContext;
+    const props = {
+      item: { kind: "workspace", hub: "local", id: "settings" },
+      context,
+      Sections: ModelsStub,
+    } as const;
+    const hiddenRoot = createRoot(hidden);
+    requestWorkspaceTarget("models");
+    act(() =>
+      hiddenRoot.render(
+        <ToastStoreProvider store={createToastStore()}>
+          <WorkspacePage {...props} />
+        </ToastStoreProvider>,
+      ),
+    );
+    expect(document.activeElement).toBe(document.body);
+
+    const page = show({ name: "Acme", trust }, ModelsStub);
+
+    expect(document.activeElement).toBe(
+      page.querySelector("section[data-workspace-section=models] h2"),
+    );
+    act(() => hiddenRoot.unmount());
+    hidden.remove();
   });
 });

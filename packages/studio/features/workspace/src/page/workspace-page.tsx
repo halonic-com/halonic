@@ -11,15 +11,17 @@ import {
 } from "./workspace-page-target.ts";
 import { WORKSPACE_PAGE_TITLE } from "./workspace-page-text.ts";
 
+const REVEAL_WAIT_MS = 5000;
+
 /**
  * Scrolls to the section and focuses its heading. A section other features add loads late, so
- * until it is drawn the page waits for it, and gives up when the page goes.
+ * until it is drawn the page waits for it, and gives up when the page goes, after a few seconds,
+ * or at the person's first key press or click, so focus never jumps later.
  */
 function reveal(page: HTMLElement, target: WorkspacePageTarget): () => void {
   const find = () =>
     page.querySelector<HTMLElement>(`[${WORKSPACE_SECTION_ATTRIBUTE}="${target}"] h2`);
   const go = (heading: HTMLElement) => {
-    heading.tabIndex = -1;
     heading.scrollIntoView?.({ block: "start" });
     heading.focus({ preventScroll: true });
   };
@@ -28,14 +30,23 @@ function reveal(page: HTMLElement, target: WorkspacePageTarget): () => void {
     go(now);
     return () => undefined;
   }
+  const stop = () => {
+    watch.disconnect();
+    window.clearTimeout(timer);
+    document.removeEventListener("keydown", stop, true);
+    document.removeEventListener("pointerdown", stop, true);
+  };
   const watch = new MutationObserver(() => {
     const heading = find();
     if (heading === null) return;
-    watch.disconnect();
+    stop();
     go(heading);
   });
+  const timer = window.setTimeout(stop, REVEAL_WAIT_MS);
+  document.addEventListener("keydown", stop, true);
+  document.addEventListener("pointerdown", stop, true);
   watch.observe(page, { childList: true, subtree: true });
-  return () => watch.disconnect();
+  return stop;
 }
 
 /**
@@ -53,8 +64,11 @@ export function WorkspacePage({ context, Sections }: ItemViewProps) {
   useEffect(() => {
     let stop: () => void = () => undefined;
     const follow = () => {
+      // A page kept in a background tab or hidden beside a chat can't take focus. Leave the
+      // target for the page that is shown, or the one about to open.
+      if (element.current === null || element.current.closest("[hidden], [inert]") !== null) return;
       const target = takeWorkspaceTarget();
-      if (target === undefined || element.current === null) return;
+      if (target === undefined) return;
       stop();
       stop = reveal(element.current, target);
     };
