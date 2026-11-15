@@ -1,4 +1,4 @@
-import type { ChangesRead, ChangesSource } from "./api.ts";
+import type { ChangesRead, ChangesSource, FileTexts } from "./api.ts";
 
 /**
  * A source whose answer and failures a test sets, and which a test can wake as the window coming
@@ -9,11 +9,25 @@ export function fakeSource(initial: ChangesRead) {
   let readFailure: unknown;
   let turnOnFailure: unknown;
   let turnedOn = 0;
+  const texts = new Map<string, FileTexts>();
+  const replaced: { path: string; text: string; expected: string }[] = [];
   const listeners = new Set<() => void>();
   const source: ChangesSource = {
     read: async () => {
       if (readFailure !== undefined) throw readFailure;
       return answer;
+    },
+    readTexts: async (change) => {
+      const found = texts.get(change.path);
+      if (found === undefined) throw new Error(`no texts for ${change.path}`);
+      return found;
+    },
+    replaceFile: async (path, text, expected) => {
+      replaced.push({ path, text, expected });
+      const current = texts.get(path);
+      if (current?.after !== expected) return "changed-on-disk";
+      texts.set(path, { ...current, after: text });
+      return "replaced";
     },
     turnOnHistory: async () => {
       turnedOn += 1;
@@ -31,6 +45,12 @@ export function fakeSource(initial: ChangesRead) {
     answer: (next: ChangesRead) => {
       answer = next;
     },
+    /** What a changed file's last version and current texts are. */
+    setTexts: (path: string, value: FileTexts) => {
+      texts.set(path, value);
+    },
+    /** Every `replaceFile` call, in order. */
+    replaced,
     /** Makes reads fail with `error`; `undefined` makes them work again. */
     failReads: (error: unknown) => {
       readFailure = error;

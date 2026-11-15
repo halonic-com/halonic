@@ -2,6 +2,7 @@ import {
   TauriDefinitionStore,
   type TauriFileShell,
   TauriRunStore,
+  webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
 import { type ServiceRegistry, type WorkspaceScope, workspaceFilesKey } from "@halonicjs/app";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
@@ -50,6 +51,7 @@ export function provideFolderServices(
       git: async (args) =>
         (await ipc.invoke("git", { root: location, args: [...args] })) as GitAnswer,
       files: new TauriDefinitionStore(files, location),
+      digest: webCryptoDigest,
       onFocus: (listener) => focusOf(window, listener),
       onFilesChanged: (listener) => scope.events.on("files.changed", listener),
     }),

@@ -2,6 +2,10 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { type GitAnswer, WorkspaceChanges } from "./workspace-changes.ts";
 
+const sha256 = {
+  sha256: async (data: Uint8Array) =>
+    new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(data))),
+};
 const hash = "0".repeat(40);
 const answer = (stdout: string, code = 0, stderr = ""): GitAnswer => ({ code, stdout, stderr });
 
@@ -11,7 +15,7 @@ function fakeFiles(initial: Record<string, string> = {}) {
   return {
     files,
     read: async (path: string) => files.get(path) ?? null,
-    write: vi.fn(async (path: string, content: string) => {
+    write: vi.fn(async (path: string, content: string, _options?: { expected?: string }) => {
       files.set(path, content);
       return { status: "written" as const };
     }),
@@ -30,6 +34,7 @@ function history(git: (args: readonly string[]) => Promise<GitAnswer>, files = f
   const changes = new WorkspaceChanges({
     git,
     files,
+    digest: sha256,
     onFocus: (listener) => watching(focus, listener),
     onFilesChanged: (listener) => watching(changed, listener),
   });
@@ -153,6 +158,81 @@ verifies("source-control.changes-page", () => {
       expect(listener).toHaveBeenCalledTimes(2);
       stop();
       expect(focus.size + changed.size).toBe(0);
+    });
+    describe("reading a changed file", () => {
+      const diffText = "--- a/a.yaml\n+++ b/a.yaml\n@@ -1 +1 @@\n-old\n+new\n";
+      const modified = { path: "a.yaml", status: "modified", staged: false } as const;
+
+      it("rebuilds the last version from the diff and reads the file as it is", async () => {
+        const calls: (readonly string[])[] = [];
+        const { changes } = history(
+          async (args) => {
+            calls.push(args);
+            return answer(diffText);
+          },
+          fakeFiles({ "a.yaml": "new\n" }),
+        );
+        expect(await changes.readTexts(modified)).toEqual({ before: "old\n", after: "new\n" });
+        expect(calls[0]).toEqual([
+          "diff",
+          "HEAD",
+          "--no-color",
+          "--unified=999999",
+          "--",
+          "a.yaml",
+        ]);
+      });
+
+      it("has no last version for an untracked file and no current text for a deleted one", async () => {
+        const git = vi.fn(async () => answer("--- a/a.yaml\n+++ /dev/null\n@@ -1 +0,0 @@\n-old\n"));
+        const { changes } = history(git, fakeFiles());
+        expect(await changes.readTexts({ ...modified, status: "untracked" })).toEqual({
+          before: null,
+          after: null,
+        });
+        expect(await changes.readTexts({ ...modified, status: "deleted" })).toEqual({
+          before: "old\n",
+          after: null,
+        });
+        expect(git).toHaveBeenCalledTimes(1);
+      });
+
+      it("has no last version in a repository without a version yet", async () => {
+        const { changes } = history(
+          async (args) =>
+            args[0] === "diff" ? answer("", 128, "fatal: bad revision 'HEAD'") : answer("", 1),
+          fakeFiles({ "a.yaml": "new\n" }),
+        );
+        expect(await changes.readTexts(modified)).toEqual({ before: null, after: "new\n" });
+      });
+
+      it("throws git's reason when the diff fails in a repository with versions", async () => {
+        const { changes } = history(
+          async (args) => (args[0] === "diff" ? answer("", 1, "fatal: oops") : answer("abc\n")),
+          fakeFiles({ "a.yaml": "new\n" }),
+        );
+        await expect(changes.readTexts(modified)).rejects.toThrow("fatal: oops");
+      });
+    });
+
+    describe("replacing a file", () => {
+      it("writes only while the file still holds what the page read", async () => {
+        const files = fakeFiles({ "a.yaml": "new\n" });
+        const { changes } = history(async () => answer(""), files);
+        await expect(changes.replaceFile("a.yaml", "old\n", "new\n")).resolves.toBe("replaced");
+        expect(files.write).toHaveBeenCalledWith("a.yaml", "old\n", {
+          expected: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
+        });
+      });
+
+      it("says changed-on-disk when the store refuses", async () => {
+        const files = fakeFiles();
+        files.write.mockResolvedValueOnce({ status: "changed-on-disk", current: "x" } as never);
+        const { changes } = history(async () => answer(""), files);
+        await expect(changes.replaceFile("a.yaml", "old\n", "new\n")).resolves.toBe(
+          "changed-on-disk",
+        );
+      });
     });
   });
 });
