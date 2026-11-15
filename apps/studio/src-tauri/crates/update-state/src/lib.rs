@@ -13,14 +13,14 @@ mod version;
 
 use std::time::Duration;
 
-pub use managed::{Managed, ManagedBy, bucket_version, detect as detect_managed};
+pub use managed::{bucket_version, detect as detect_managed, Managed, ManagedBy};
 pub use record::{
-    BadSignature, CheckResult, FORMAT, InstallRecord, MAX_BAD_SIGNATURES, RecordRead, StartOutcome,
-    UpdaterRecord, read_record, record_text,
+    read_record, record_text, BadSignature, CheckResult, InstallRecord, RecordRead, StartOutcome,
+    UpdaterRecord, FORMAT, MAX_BAD_SIGNATURES,
 };
-pub use settings::{Migrated, backup_path, migrate_settings_file};
+pub use settings::{backup_path, migrate_settings_file, Migrated};
 pub use status::{
-    CheckFailure, DownloadFailure, JustUpdated, Unit, UpdateState, UpdateStatus, notes_url,
+    notes_url, CheckFailure, DownloadFailure, JustUpdated, Unit, UpdateState, UpdateStatus,
 };
 pub use version::Version;
 
@@ -68,7 +68,7 @@ pub fn check_due(
 
 #[cfg(test)]
 mod tests {
-    use super::{CHECK_EVERY, FIRST_CHECK_AFTER, check_due};
+    use super::{check_due, CHECK_EVERY, FIRST_CHECK_AFTER};
     use std::time::Duration;
 
     const DAY: u64 = 24 * 60 * 60 * 1000;
@@ -85,13 +85,7 @@ mod tests {
             NOW
         ));
         assert!(check_due(true, ready, false, Some(NOW - 1), NOW));
-        assert!(!check_due(
-            true,
-            ready,
-            true,
-            Some(NOW - DAY + 1),
-            NOW
-        ));
+        assert!(!check_due(true, ready, true, Some(NOW - DAY + 1), NOW));
         assert!(check_due(true, ready, true, Some(NOW - DAY), NOW));
         assert!(check_due(true, ready, true, None, NOW));
         assert_eq!(CHECK_EVERY.as_millis(), u128::from(DAY));
@@ -124,12 +118,6 @@ mod tests {
 
     #[test]
     fn update_state_checks_when_the_clock_went_back() {
-        assert!(check_due(
-            true,
-            FIRST_CHECK_AFTER,
-            true,
-            Some(NOW + 1),
-            NOW
-        ));
+        assert!(check_due(true, FIRST_CHECK_AFTER, true, Some(NOW + 1), NOW));
     }
 }
