@@ -183,16 +183,6 @@ async fn run(first: CheckedRequest) -> Result<FetchAnswer, FetchRefusal> {
     }
 }
 
-/// The only headers that cross to another origin on a redirect. Keys travel
-/// in many header names, so everything else is left behind.
-const CROSS_ORIGIN_HEADERS: [&str; 5] = [
-    "accept",
-    "accept-language",
-    "content-language",
-    "content-type",
-    "user-agent",
-];
-
 /// The headers that go on to another origin. Every other header may hold a
 /// key (`api-key`, `x-goog-api-key`, or one an endpoint names itself), so it
 /// stays behind.

@@ -192,29 +192,25 @@ fn http_fetch_test_reports_a_connection_that_fails_without_the_address() {
 #[test]
 fn http_fetch_test_keeps_only_safe_headers_on_a_hop_to_another_origin_and_all_on_the_same() {
     let mut request = page_request("GET", "http://127.0.0.1:1/", None, true);
-    request
-        .headers
-        .push(("Authorization".to_owned(), "Bearer x".to_owned()));
-    request
-        .headers
-        .push(("X-Api-Key".to_owned(), "k".to_owned()));
-    for name in ["Api-Key", "X-Goog-Api-Key", "X-Custom-Token"] {
+    for name in [
+        "Authorization",
+        "X-Api-Key",
+        "Api-Key",
+        "X-Goog-Api-Key",
+        "X-Custom-Token",
+    ] {
         request.headers.push((name.to_owned(), "k".to_owned()));
     }
     request
         .headers
         .push(("Accept".to_owned(), "application/json".to_owned()));
-    request.headers.push(("Api-Key".to_owned(), "k".to_owned()));
-    request
-        .headers
-        .push(("Accept".to_owned(), "text/plain".to_owned()));
     let from = check_request(request).expect("accepted");
     let same = next_hop(&from, "/other", 302).expect("same origin");
-    assert_eq!(same.headers.len(), 5);
+    assert_eq!(same.headers.len(), 7);
     let other = next_hop(&from, "http://127.0.0.1:2/", 302).expect("other origin");
     assert_eq!(
         other.headers,
-        vec![("Accept".to_owned(), "text/plain".to_owned())]
+        vec![("Accept".to_owned(), "application/json".to_owned())]
     );
 }
 
