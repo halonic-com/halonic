@@ -77,7 +77,7 @@ export function isPayPerUse(provider: CostProvider): boolean {
 }
 
 function holdsCredential(provider: CostProvider): boolean {
-  const headers = provider.options.headers;
+  const headers = provider.options["headers"];
   const hasAuthHeader =
     typeof headers === "object" &&
     headers !== null &&
