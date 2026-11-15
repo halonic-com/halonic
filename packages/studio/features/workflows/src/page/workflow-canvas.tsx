@@ -97,6 +97,7 @@ export function WorkflowCanvas({
               box={box}
               first={step.id === workflow.initial}
               selected={selected === step.id}
+              focusOnMount={selectedStep === step.id}
               onSelect={() => setSelected(step.id)}
             />
           );

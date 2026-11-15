@@ -19,7 +19,7 @@ export const configurationWords = {
   inboxLater: "Shows in the Inbox once the Inbox is available.",
   formTitle: "Form title",
   fields: "Fields",
-  fieldLine: (field: string) => `${field} · Text · Required`,
+  fileLater: "Editing the description comes with Files; until then, change it in the file.",
   noProblems: "No problems.",
   openStep: (stepId: string) => `Open ${stepId}`,
   loading: (name: string) => `Loading ${name}'s settings`,

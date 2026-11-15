@@ -40,8 +40,8 @@ export interface ProblemRow {
   readonly text: string;
   /** The step it is about, which the row links to; absent for a problem of the whole workflow. */
   readonly stepId?: string | undefined;
-  /** The row read aloud: "Error: Review has no way out". */
-  readonly spoken: string;
+  /** "Error" or "Warning", read before the row so colour and glyph are never the only sign. */
+  readonly kind: "Error" | "Warning";
 }
 
 /** The short line for a problem, without its glyph; the core's own message when no line is written for it. */
@@ -57,14 +57,12 @@ export function problemRows(problems: readonly WorkflowProblem[]): readonly Prob
   const warnings = problems.filter((problem) => problem.severity === "warning");
   return [...errors, ...warnings].map((problem) => {
     const text = problemLine(problem);
-    const aboutAStep = problem.stepId !== undefined && stepLines[problem.code] !== undefined;
-    const kind = problem.severity === "error" ? "Error" : "Warning";
     return {
       severity: problem.severity,
       glyph: problemGlyph[problem.severity],
       text,
       stepId: problem.stepId,
-      spoken: aboutAStep ? `${kind}: ${problem.stepId} ${text}` : `${kind}: ${text}`,
+      kind: problem.severity === "error" ? "Error" : "Warning",
     };
   });
 }

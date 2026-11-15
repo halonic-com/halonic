@@ -40,8 +40,8 @@ verifies("workflows.configuration.problem-lines", () => {
       problem("dead-end", "error", "review"),
       problem("no-final", "warning"),
     ]);
-    expect(step?.spoken).toBe("Error: review has no way out");
-    expect(whole?.spoken).toBe("Warning: This workflow has no end step.");
+    expect([step?.kind, step?.stepId]).toEqual(["Error", "review"]);
+    expect([whole?.kind, whole?.stepId]).toEqual(["Warning", undefined]);
   });
 
   it("counts errors and warnings", () => {

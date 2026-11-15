@@ -72,11 +72,24 @@ verifies("workflows.configuration.pages", () => {
     expect(rows[0]).toContain("has no way out");
     expect(rows[1]).toContain("can't be reached");
 
-    await act(async () => buttonNamed(page, "review")?.click());
+    await act(async () =>
+      page.querySelector<HTMLButtonElement>("[aria-label='Open review']")?.click(),
+    );
     expect(tab(page, "Flow")?.getAttribute("aria-selected")).toBe("true");
     expect(page.querySelector("[aria-pressed=true], [aria-current=true]")?.textContent).toContain(
       "review",
     );
+    expect(document.activeElement?.textContent).toContain("review");
+  });
+
+  it("shows only what the file says about the request form's field", async () => {
+    const page = await open([
+      { ...configuration, request: { label: "Ask for a reply", field: "message" } },
+    ]);
+    await act(async () => tab(page, "Request form")?.click());
+
+    expect(page.textContent).toContain("message");
+    expect(page.textContent).not.toContain("Required");
   });
 
   it("says No problems. when there are none", async () => {

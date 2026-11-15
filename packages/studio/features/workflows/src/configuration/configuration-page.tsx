@@ -124,6 +124,7 @@ function ConfigurationBody({
           {configuration.description ?? (
             <span className="text-fg-muted">{words.noDescription}</span>
           )}
+          <p className="text-small text-fg-muted">{words.fileLater}</p>
         </Row>
         <Row label={words.firstStep}>{configuration.initial}</Row>
         <Row label={words.file}>
@@ -143,7 +144,7 @@ function ConfigurationBody({
         {request && (
           <>
             <Row label={words.formTitle}>{request.label}</Row>
-            <Row label={words.fields}>{words.fieldLine(request.field)}</Row>
+            <Row label={words.fields}>{request.field}</Row>
           </>
         )}
       </dl>
@@ -158,18 +159,18 @@ function ConfigurationBody({
           <span aria-hidden="true" className={row.severity === "error" ? "text-danger-text" : ""}>
             {row.glyph}
           </span>
-          <span className="sr-only">{row.spoken}</span>
-          <span aria-hidden="true">{row.text}</span>
+          <span className="sr-only">{row.kind}:</span>
           {row.stepId !== undefined && (
             <button
               type="button"
-              className="focus-ring ms-auto text-small text-accent-text underline"
+              aria-label={words.openStep(row.stepId)}
+              className="focus-ring text-small text-accent-text underline"
               onClick={() => onOpenStep(row.stepId as string)}
             >
               {row.stepId}
-              <span className="sr-only"> {words.openStep(row.stepId)}</span>
             </button>
           )}
+          <span>{row.text}</span>
         </li>
       ))}
     </ul>
