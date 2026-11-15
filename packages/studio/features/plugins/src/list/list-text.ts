@@ -39,6 +39,16 @@ export const LOAD_FAILED_TITLE = "Couldn't load your plugins";
 export const TRY_AGAIN = "Try again";
 export const LOADING_LABEL = "Loading plugins";
 
+/** The command a view-only list ends with (design section 10). */
+export const ADD_COMMAND = "halonic plugin add <folder or git address>";
+
+/** The view-only line: on a phone, or in a browser on the computer that runs Halonic (T17). */
+export function viewOnlyLine(phone: boolean): string {
+  return phone
+    ? "View only on a phone. Add, trust and remove plugins on your computer:"
+    : "View only here. Add, trust and remove plugins on the computer that runs Halonic:";
+}
+
 /** The ⋮ menu's items. */
 export const OPEN = "Open";
 export const OPEN_IN_NEW_TAB = "Open in new tab";

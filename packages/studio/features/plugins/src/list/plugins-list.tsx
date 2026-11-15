@@ -1,5 +1,6 @@
 import {
   Button,
+  CommandBox,
   ContextMenu,
   type ContextMenuTarget,
   DashedRingIcon,
@@ -8,6 +9,8 @@ import {
   type ListRow,
   type MenuEntry,
   StatusChip,
+  usePresentation,
+  ViewOnlyLine,
 } from "@halonicjs/studio-kit";
 import { type ReactNode, useState } from "react";
 import { trustedDay } from "../page/page-text.ts";
@@ -21,6 +24,7 @@ import type { InstalledPlugin } from "../page/plugin-pages.ts";
 import { RemovePluginDialog } from "../page/remove-plugin-dialog.tsx";
 import { usePageActions } from "../page/use-page-actions.ts";
 import {
+  ADD_COMMAND,
   ADD_PLUGIN,
   BUILT_IN_CHIP,
   BUILT_IN_HEADING,
@@ -40,6 +44,7 @@ import {
   PLUGINS_SENTENCE,
   rowMeta,
   TRY_AGAIN,
+  viewOnlyLine,
 } from "./list-text.ts";
 
 /** A plugin that comes with Halonic, such as Gmail and Google Drive. It has no page of its own. */
@@ -70,6 +75,11 @@ export interface PluginsListProps {
   readonly onAdd: () => void;
   /** **Try again** after the list couldn't load. */
   readonly onRetry: () => void;
+  /**
+   * Where Studio is shown: `app` (the default) or `served`, a browser on `halonic serve`.
+   * Plugins are view only on a phone and when served (design section 10).
+   */
+  readonly place?: "app" | "served";
   readonly now?: () => Date;
 }
 
@@ -98,8 +108,11 @@ export function PluginsList({
   onOpenBuiltIn,
   onAdd,
   onRetry,
+  place = "app",
   now = () => new Date(),
 }: PluginsListProps) {
+  const phone = usePresentation() === "phone";
+  const viewOnly = phone || place === "served";
   const [menu, setMenu] = useState<
     { readonly id: string; readonly target: ContextMenuTarget } | undefined
   >(undefined);
@@ -109,7 +122,12 @@ export function PluginsList({
   const builtInMenu = builtIn.find((plugin) => `${BUILT_IN_PREFIX}${plugin.id}` === menu?.id);
 
   let entries: MenuEntry[] = [];
-  if (installed !== undefined) {
+  if (installed !== undefined && viewOnly) {
+    entries = [
+      { id: "open", label: OPEN, onSelect: () => onOpen(installed.plugin) },
+      { id: "tab", label: OPEN_IN_NEW_TAB, onSelect: () => onOpenInNewTab(installed.plugin) },
+    ];
+  } else if (installed !== undefined) {
     entries = installedEntries(installed, {
       open: () => onOpen(installed.plugin),
       openInNewTab: () => onOpenInNewTab(installed.plugin),
@@ -143,9 +161,11 @@ export function PluginsList({
     <div className="flex flex-col gap-4 p-4">
       <header className="flex items-start gap-4">
         <p className="min-w-0 flex-1 text-body text-fg-muted">{PLUGINS_SENTENCE}</p>
-        <Button variant="primary" size="sm" onClick={onAdd}>
-          {ADD_PLUGIN}
-        </Button>
+        {viewOnly ? null : (
+          <Button variant="primary" size="sm" onClick={onAdd}>
+            {ADD_PLUGIN}
+          </Button>
+        )}
       </header>
       {load.kind === "failed" ? (
         <EmptyState
@@ -166,13 +186,19 @@ export function PluginsList({
           empty={{
             title: EMPTY_TITLE,
             description: EMPTY_LINE,
-            action: { label: ADD_PLUGIN, onClick: onAdd },
+            ...(viewOnly ? {} : { action: { label: ADD_PLUGIN, onClick: onAdd } }),
           }}
         />
       )}
       {builtInRows.length === 0 || load.kind === "loading" ? null : (
         <List heading={{ name: BUILT_IN_HEADING }} rows={builtInRows} onOpen={openRow} />
       )}
+      {viewOnly ? (
+        <div className="flex flex-col gap-2">
+          <ViewOnlyLine>{viewOnlyLine(phone)}</ViewOnlyLine>
+          <CommandBox command={ADD_COMMAND} />
+        </div>
+      ) : null}
       <ContextMenu
         label={installed?.name ?? builtInMenu?.name ?? PLUGINS}
         entries={entries}
