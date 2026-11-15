@@ -15,6 +15,8 @@ export interface TestsPageProps {
   readonly name: string;
   /** Opens a test run's card; absent where the app has no run card to open. */
   readonly openRun?: ((runId: string) => void) | undefined;
+  /** The name of the case that starts picked, once the cases have loaded: the one just made from a run. */
+  readonly pickName?: string | undefined;
 }
 
 /**
@@ -22,7 +24,7 @@ export interface TestsPageProps {
  * with a failed case's sentence and **Open run**, and a case's card docked at the right. With no
  * tests there is no header and no button, only the Empty state.
  */
-export function TestsPage({ host, workflow, name, openRun }: TestsPageProps) {
+export function TestsPage({ host, workflow, name, openRun, pickName }: TestsPageProps) {
   const { load, retry } = useHostRead(host, workflow, (one, ref) => one.tests(ref));
   const toasts = useToastStore();
   const [ran, setRan] = useState<WorkflowTests | undefined>();
@@ -31,6 +33,16 @@ export function TestsPage({ host, workflow, name, openRun }: TestsPageProps) {
   const rowButtons = useRef(new Map<number, HTMLButtonElement>());
   // A newer read from the host replaces what a run handed back.
   useEffect(() => setRan(undefined), [load]);
+  // The case made from a run starts picked, once, as soon as the cases have it.
+  const pickedByName = useRef(false);
+  const loaded = load.kind === "ready" ? load.value : undefined;
+  useEffect(() => {
+    if (pickName === undefined || pickedByName.current || loaded === undefined) return;
+    const at = loaded.cases.findIndex((one) => one.name === pickName);
+    if (at < 0) return;
+    pickedByName.current = true;
+    setPicked(at);
+  }, [pickName, loaded]);
 
   if (load.kind === "failed") {
     return (

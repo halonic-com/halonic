@@ -2,6 +2,7 @@ import type { RunRow, SourcedRun } from "@halonicjs/studio-feature-runs/api";
 import { Button, CloseIcon, StatusChip } from "@halonicjs/studio-kit";
 import { type KeyboardEvent, useEffect, useRef } from "react";
 import { runsWords as words } from "./runs-words.ts";
+import { SaveAsTest, type SaveAsTestProps } from "./save-as-test.tsx";
 
 /** Props for {@link RunCard}. */
 export interface RunCardProps {
@@ -10,14 +11,16 @@ export interface RunCardProps {
   readonly onClose: () => void;
   /** Opens the run's page, where its log is; absent where the app has no run page. */
   readonly onOpenLog?: (() => void) | undefined;
+  /** What **Save as test** needs; absent where the host can't write test cases. */
+  readonly saveAsTest?: SaveAsTestProps | undefined;
 }
 
 /**
  * The simple run card (UX 10.14, W-D3), docked at the right over the Runs view until T8's receipt
  * replaces it: the status, what the run is doing or waits for, who started it, the steps so far,
- * and **Open the run log**.
+ * **Open the run log** and **Save as test**.
  */
-export function RunCard({ row, run, onClose, onOpenLog }: RunCardProps) {
+export function RunCard({ row, run, onClose, onOpenLog, saveAsTest }: RunCardProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), []);
   const onKeyDown = (event: KeyboardEvent) => {
@@ -58,11 +61,14 @@ export function RunCard({ row, run, onClose, onOpenLog }: RunCardProps) {
           <dd>{run.summary.statesVisited.join(" → ")}</dd>
         </div>
       </dl>
-      {onOpenLog && (
-        <div>
-          <Button variant="secondary" size="sm" onClick={onOpenLog}>
-            {words.openLog}
-          </Button>
+      {(onOpenLog || saveAsTest) && (
+        <div className="flex gap-2">
+          {onOpenLog && (
+            <Button variant="secondary" size="sm" onClick={onOpenLog}>
+              {words.openLog}
+            </Button>
+          )}
+          {saveAsTest && <SaveAsTest {...saveAsTest} />}
         </div>
       )}
     </aside>

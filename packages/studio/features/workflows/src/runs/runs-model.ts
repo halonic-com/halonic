@@ -30,11 +30,16 @@ export interface RunSections {
 
 const going: ReadonlySet<RunRow["standing"]> = new Set(["running", "needs-you", "waiting"]);
 
+/** Whether the run has ended: a run still going has no result to save as a test. */
+export function isFinished(row: RunRow): boolean {
+  return !going.has(row.standing);
+}
+
 /** Splits rows, newest first as given, into Now and the 20 newest Earlier. */
 export function runSections(rows: readonly RunRow[]): RunSections {
   return {
     now: rows.filter((row) => going.has(row.standing)),
-    earlier: rows.filter((row) => !going.has(row.standing)).slice(0, EARLIER_LIMIT),
+    earlier: rows.filter(isFinished).slice(0, EARLIER_LIMIT),
     needYou: rows.filter((row) => row.standing === "needs-you").length,
   };
 }
