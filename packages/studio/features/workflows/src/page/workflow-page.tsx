@@ -1,6 +1,7 @@
 import { type RunsSource, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import {
   Button,
+  CloseIcon,
   CommandBox,
   EmptyState,
   SkeletonBar,
@@ -10,18 +11,22 @@ import {
   usePresentation,
   useTabIds,
 } from "@halonicjs/studio-kit";
-import type { ItemViewProps } from "@halonicjs/studio-shell";
-import { useCallback, useState } from "react";
-import { type WorkflowsHost, WorkflowsHostService } from "../api.ts";
+import { engineWordsOf, type ItemViewProps } from "@halonicjs/studio-shell";
+import { useCallback, useMemo, useState } from "react";
+import { type WorkflowRef, type WorkflowsHost, WorkflowsHostService } from "../api.ts";
 import type { View } from "../canvas/geometry.ts";
 import { Configuration } from "../configuration/configuration-page.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
 import { countProblems } from "../configuration/problem-lines.ts";
 import { Avatar } from "../list/workflow-rows.tsx";
-import { runCount } from "../runs/runs-model.ts";
+import { RunCard } from "../runs/run-card.tsx";
+import { realRunsOf, runCount, runRowsOf } from "../runs/runs-model.ts";
 import { RunsView } from "../runs/runs-view.tsx";
 import { runsWords } from "../runs/runs-words.ts";
-import { useRuns } from "../runs/use-runs.ts";
+import { type RunsLoad, useRuns } from "../runs/use-runs.ts";
+import { type ShownRun, shownRun } from "../start/run-strip.ts";
+import { StartRunCard } from "../start/start-card.tsx";
+import { startWords } from "../start/start-words.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
 import { pageWords } from "./page-words.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
@@ -38,6 +43,7 @@ export function WorkflowPage({ item, context }: ItemViewProps) {
       runs={context.services.get(RunsSourceService)}
       hubId={item.hub}
       id={item.id}
+      notAnswering={engineWordsOf(context).notAnswering}
       {...(openItem && {
         openRun: (runId: string) => openItem({ kind: "run", hub: item.hub, id: runId }),
       })}
@@ -53,6 +59,8 @@ export interface WorkflowScreenProps {
   readonly runs: RunsSource;
   readonly hubId: string;
   readonly id: string;
+  /** Why a start failed when the engine can't be reached, in the words for where Studio runs; the desktop app's when absent. */
+  readonly notAnswering?: string;
   /** Opens a test run's card from the Tests page; absent where there is no run card. */
   readonly openRun?: (runId: string) => void;
   /** Opens the Runs list; absent where the app can't open it. */
@@ -69,6 +77,7 @@ export function WorkflowScreen({
   runs,
   hubId,
   id,
+  notAnswering = engineWordsOf({}).notAnswering,
   openRun,
   seeAllRuns,
 }: WorkflowScreenProps) {
@@ -84,6 +93,9 @@ export function WorkflowScreen({
   const workflowKey = `${hubId}/${id}`;
   const keep = useCallback((next: View) => setKept({ of: workflowKey, view: next }), [workflowKey]);
   const [openStep, setOpenStep] = useState<string | undefined>();
+  // The card docked at the right: the start form, then the run it started (C18, C25).
+  const [dock, setDock] = useState<Dock>();
+  const [shownId, setShownId] = useState<string | undefined>();
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
   const errors =
@@ -95,6 +107,9 @@ export function WorkflowScreen({
   const startCommand = inSeveralHubs ? `halonic run ${hubId}/${id}` : `halonic run ${id}`;
   const needYou = runCount(runsRead.load, { hubId, id }, runs);
   const views = workflowTabs(errors, needYou);
+  const shown = useShownRun(runsRead.load, { hubId, id }, runs, shownId);
+  const strip = shown?.line;
+  const { startRun } = host;
   return (
     <div className="flex size-full min-h-0 flex-col">
       <header
@@ -123,6 +138,13 @@ export function WorkflowScreen({
           }}
           ids={ids}
         />
+        {startRun && (
+          <div className="ms-auto">
+            <Button variant="primary" size="sm" onClick={() => setDock("start")}>
+              {startWords.run}
+            </Button>
+          </div>
+        )}
       </header>
       {settings.load.kind === "ready" && errors === 0 && (
         <div
@@ -133,47 +155,67 @@ export function WorkflowScreen({
           <CommandBox command={startCommand} />
         </div>
       )}
-      <TabPanel
-        ids={ids}
-        tabs={views}
-        selected={view}
-        className={view === "flow" ? "flex min-h-0 flex-1 flex-col" : undefined}
-      >
-        {view === "configuration" && (
-          <Configuration
-            name={name}
-            load={settings.load}
-            retry={settings.retry}
-            tests={<TestsPage host={host} workflow={{ hubId, id }} name={name} openRun={openRun} />}
-            onOpenStep={(stepId) => {
-              setOpenStep(stepId);
-              setView("flow");
-            }}
-          />
-        )}
-        {view === "runs" && (
-          <RunsView
-            source={runs}
-            load={runsRead.load}
-            retry={runsRead.retry}
-            workflow={{ hubId, id }}
-            openRun={openRun}
-            seeAll={seeAllRuns}
-          />
-        )}
-        {view === "flow" && (
-          <FlowView
-            load={load}
-            retry={retry}
-            hubId={hubId}
-            id={id}
-            name={name}
-            openStep={openStep}
-            kept={kept}
-            onView={keep}
-          />
-        )}
-      </TabPanel>
+      <div className="flex min-h-0 flex-1">
+        <TabPanel
+          ids={ids}
+          tabs={views}
+          selected={view}
+          className={
+            view === "flow"
+              ? "flex min-h-0 min-w-0 flex-1 flex-col"
+              : "min-w-0 flex-1 overflow-auto"
+          }
+        >
+          {view === "configuration" && (
+            <Configuration
+              name={name}
+              load={settings.load}
+              retry={settings.retry}
+              tests={
+                <TestsPage host={host} workflow={{ hubId, id }} name={name} openRun={openRun} />
+              }
+              onOpenStep={(stepId) => {
+                setOpenStep(stepId);
+                setView("flow");
+              }}
+            />
+          )}
+          {view === "runs" && (
+            <RunsView
+              source={runs}
+              load={runsRead.load}
+              retry={runsRead.retry}
+              workflow={{ hubId, id }}
+              openRun={openRun}
+              seeAll={seeAllRuns}
+            />
+          )}
+          {view === "flow" && (
+            <FlowView
+              load={load}
+              retry={retry}
+              hubId={hubId}
+              id={id}
+              name={name}
+              openStep={openStep}
+              strip={strip}
+              onClearStrip={() => setShownId(undefined)}
+              kept={kept}
+              onView={keep}
+            />
+          )}
+        </TabPanel>
+        <RunDock
+          dock={dock}
+          host={host}
+          workflow={{ hubId, id }}
+          notAnswering={notAnswering}
+          shown={shown}
+          onDock={setDock}
+          onStarted={setShownId}
+          openRun={openRun}
+        />
+      </div>
     </div>
   );
 }
@@ -185,20 +227,47 @@ interface FlowViewProps {
   readonly id: string;
   readonly name: string;
   readonly openStep: string | undefined;
+  /** The shown run's strip and the step it failed in (D8); absent when no run is shown. */
+  readonly strip: ShownRun | undefined;
+  readonly onClearStrip: () => void;
   readonly kept: { readonly of: string; readonly view: View } | undefined;
   readonly onView: (next: View) => void;
 }
 
 /** The Flow tab's content: the canvas, a skeleton when the file is slow, or why it couldn't be read. */
-function FlowView({ load, retry, hubId, id, name, openStep, kept, onView }: FlowViewProps) {
+function FlowView({
+  load,
+  retry,
+  hubId,
+  id,
+  name,
+  openStep,
+  strip,
+  onClearStrip,
+  kept,
+  onView,
+}: FlowViewProps) {
   const workflowKey = `${hubId}/${id}`;
   return (
     <>
+      {strip && (
+        <p className="flex items-center justify-between gap-3 border-b border-border px-6 py-2 text-small">
+          {strip.line}
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<CloseIcon />}
+            label={startWords.clearStrip}
+            onClick={onClearStrip}
+          />
+        </p>
+      )}
       {load.kind === "ready" && load.value.id === id && load.value.hubId === hubId && (
         <WorkflowCanvas
           key={`${workflowKey}/${openStep}`}
           workflow={load.value}
           selectedStep={openStep}
+          failedStep={strip?.failedStep}
           saved={kept?.of === workflowKey ? kept.view : undefined}
           onView={onView}
         />
@@ -255,4 +324,78 @@ function workflowTabs(errors: number, needYou: number): readonly Tab<WorkflowVie
       }),
     },
   ];
+}
+
+/** The run the page started, as its row and strip say it, once the runs have it; absent before. */
+function useShownRun(
+  load: RunsLoad,
+  workflow: WorkflowRef,
+  source: RunsSource,
+  runId: string | undefined,
+) {
+  const runs = load.kind === "ready" ? load.runs : undefined;
+  return useMemo(() => {
+    if (runs === undefined || runId === undefined) return undefined;
+    const run = realRunsOf(runs, workflow).find((one) => one.summary.id === runId);
+    const row = runRowsOf(runs, workflow, source, new Date()).find((one) => one.id === runId);
+    if (run === undefined || row === undefined) return undefined;
+    const { summary } = run;
+    return {
+      run,
+      row,
+      line: shownRun(row, run, source.workflow(summary.hubId, summary.workflowId)),
+    };
+  }, [runs, runId, workflow.hubId, workflow.id, source]);
+}
+
+type Dock = "start" | { readonly runId: string } | undefined;
+
+interface RunDockProps {
+  readonly dock: Dock;
+  readonly host: WorkflowsHost;
+  readonly workflow: WorkflowRef;
+  readonly notAnswering: string;
+  readonly shown: ReturnType<typeof useShownRun>;
+  readonly onDock: (next: Dock) => void;
+  readonly onStarted: (runId: string) => void;
+  readonly openRun: ((runId: string) => void) | undefined;
+}
+
+/** The card docked at the right: the start form, then the simple card of the run it started. */
+function RunDock({
+  dock,
+  host,
+  workflow,
+  notAnswering,
+  shown,
+  onDock,
+  onStarted,
+  openRun,
+}: RunDockProps) {
+  const { startRun } = host;
+  if (dock === "start" && startRun) {
+    return (
+      <StartRunCard
+        start={(input) => startRun.call(host, workflow, input)}
+        notAnswering={notAnswering}
+        onStarted={(runId) => {
+          onStarted(runId);
+          onDock({ runId });
+        }}
+        onClose={() => onDock(undefined)}
+      />
+    );
+  }
+  if (typeof dock === "object" && shown) {
+    return (
+      <RunCard
+        key={shown.row.id}
+        row={shown.row}
+        run={shown.run}
+        onClose={() => onDock(undefined)}
+        onOpenLog={openRun && (() => openRun(shown.row.id))}
+      />
+    );
+  }
+  return null;
 }

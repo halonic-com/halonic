@@ -1,6 +1,8 @@
+import { StatusChip } from "@halonicjs/studio-kit";
 import { useEffect, useRef } from "react";
 import type { WorkflowStep } from "../api.ts";
 import type { Box } from "../canvas/geometry.ts";
+import { startWords } from "../start/start-words.ts";
 import { pageWords } from "./page-words.ts";
 
 /** Props for {@link StepCard}. */
@@ -10,6 +12,8 @@ export interface StepCardProps {
   /** The first step carries the "Start" chip. */
   readonly first: boolean;
   readonly selected: boolean;
+  /** The step the shown run failed in: ringed in danger with its **Failed** chip (D8). */
+  readonly failed?: boolean;
   /** Take focus on mount, for the card a problem's link opened. */
   readonly focusOnMount?: boolean;
   readonly onSelect: () => void;
@@ -20,12 +24,20 @@ export interface StepCardProps {
  * or "No agent" for a task step that has none (a step without an agent passes the data on). A
  * click selects it; the docked card that edits it lands with Configuration.
  */
-export function StepCard({ step, box, first, selected, focusOnMount, onSelect }: StepCardProps) {
+export function StepCard({
+  step,
+  box,
+  first,
+  selected,
+  failed,
+  focusOnMount,
+  onSelect,
+}: StepCardProps) {
   const button = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (focusOnMount) button.current?.focus();
   }, [focusOnMount]);
-  const ring = selected ? "border-accent ring-2 ring-accent" : "border-border";
+  const ring = ringOf(failed === true, selected);
   return (
     <button
       ref={button}
@@ -42,9 +54,16 @@ export function StepCard({ step, box, first, selected, focusOnMount, onSelect }:
         {step.id}
         {first && <span className="text-caption text-accent-text">{pageWords.startChip}</span>}
       </span>
+      {failed && <StatusChip tone="danger">{startWords.failedChip}</StatusChip>}
       {step.type === "task" && (
         <span className="text-small text-fg-muted">{step.agent ?? pageWords.noAgent}</span>
       )}
     </button>
   );
+}
+
+/** A failed step shows the danger ring over the selection's: the run's outcome is the news (D8). */
+function ringOf(failed: boolean, selected: boolean): string {
+  if (failed) return "border-danger ring-2 ring-danger";
+  return selected ? "border-accent ring-2 ring-accent" : "border-border";
 }

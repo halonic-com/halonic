@@ -178,6 +178,13 @@ export interface WorkflowsHost {
     onResult: (index: number, passed: boolean) => void,
   ): Promise<WorkflowTests>;
   /**
+   * Starts a run of the workflow through the engine with `input` as the run's input, on the latest
+   * version, and returns the new run's id. (Test runs use what is saved instead.) Absent while the
+   * app has no engine to start it, so the page shows no **Run**. Rejects with
+   * {@link EngineNotAnswering} when the engine can't be reached, or with the reason it didn't start.
+   */
+  startRun?(ref: WorkflowRef, input: Record<string, unknown>): Promise<{ readonly runId: string }>;
+  /**
    * The name of a workflow the host has read or made, for a tab or a page title, or `undefined`
    * before it has read it. Sync, because a tab is named the moment it opens.
    */
@@ -192,6 +199,18 @@ export interface WorkflowsHost {
    * id is taken), and returns where it is. Rejects with the reason it couldn't be written.
    */
   create(newWorkflow: NewWorkflow): Promise<WorkflowRef>;
+}
+
+/**
+ * What {@link WorkflowsHost.startRun} rejects with when the engine can't be reached. The page says
+ * the words for where Studio runs ("the engine isn't answering. It may still be starting.") and
+ * ignores this error's message, so the host needn't know them.
+ */
+export class EngineNotAnswering extends Error {
+  constructor() {
+    super("The engine isn't answering.");
+    this.name = "EngineNotAnswering";
+  }
 }
 
 /** The open workspace's workflows, provided by the app (`workflows.host`). */
