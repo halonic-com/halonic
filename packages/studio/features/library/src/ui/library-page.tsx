@@ -1,6 +1,6 @@
 import type { LibraryItemKind } from "@halonicjs/app";
-import { TabList, TabPanel, usePresentation, useTabIds } from "@halonicjs/studio-kit";
-import { OverviewPage } from "@halonicjs/studio-shell";
+import { Button, TabList, TabPanel, usePresentation, useTabIds } from "@halonicjs/studio-kit";
+import { errorMessageFor, OverviewPage } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { LibraryItemsHost, LibraryListing } from "../library-items-host.ts";
 import { entryOfRow, type LibraryEntryPlace, libraryOverview } from "../library-overview.ts";
@@ -9,8 +9,10 @@ import {
   libraryKinds,
   newLabel,
   overviewWords,
+  showingLastList,
   tabLabel,
   tabSentence,
+  tryingAgain,
 } from "../library-words.ts";
 
 /** The props of {@link LibraryPage}. */
@@ -30,8 +32,29 @@ export interface LibraryPageProps {
 
 type Load =
   | { readonly state: "loading" }
-  | { readonly state: "failed"; readonly kind: LibraryItemKind; readonly reason?: string }
-  | { readonly state: "loaded"; readonly kind: LibraryItemKind; readonly listing: LibraryListing };
+  | {
+      readonly state: "failed";
+      readonly host: LibraryItemsHost;
+      readonly kind: LibraryItemKind;
+      readonly reason?: string;
+    }
+  | {
+      readonly state: "loaded";
+      readonly host: LibraryItemsHost;
+      readonly kind: LibraryItemKind;
+      readonly listing: LibraryListing;
+      /** A later read failed: the list stays, and the page says so above it. */
+      readonly stale?: { readonly reason?: string };
+      /** Try again is reading while the list stays. */
+      readonly refreshing?: boolean;
+    };
+
+/** Why a read failed, for the user: a system message never reaches them. */
+function failureReason(error: unknown, kind: LibraryItemKind): string | undefined {
+  const message = errorMessageFor(error, { title: couldntLoad(kind) });
+  const reason = message.body.trim();
+  return message.kind === "internal" || reason === "" ? undefined : reason;
+}
 
 /** The tab's items from the host, read again when the host says something changed or after Try again. */
 function useListing(
@@ -48,17 +71,26 @@ function useListing(
       const mine = ++latest;
       const wanted = () => current && mine === latest;
       host.list(kind).then(
-        (listing) => wanted() && setLoad({ state: "loaded", kind, listing }),
-        (error: unknown) =>
-          wanted() &&
-          setLoad({
-            state: "failed",
-            kind,
-            ...(error instanceof Error && error.message !== "" ? { reason: error.message } : {}),
-          }),
+        (listing) => wanted() && setLoad({ state: "loaded", host, kind, listing }),
+        (error: unknown) => {
+          if (!wanted()) return;
+          const reason = failureReason(error, kind);
+          const why = reason === undefined ? {} : { reason };
+          // A list that was read stays on screen when a later read fails.
+          setLoad((was) =>
+            was.state === "loaded" && was.host === host && was.kind === kind
+              ? { ...was, stale: why, refreshing: false }
+              : { state: "failed", host, kind, ...why },
+          );
+        },
       );
     };
-    setLoad({ state: "loading" });
+    // The same tab's list stays while it is read again; another tab's, or another workspace's, is not this one's.
+    setLoad((was) =>
+      was.state === "loaded" && was.host === host && was.kind === kind
+        ? { ...was, refreshing: true }
+        : { state: "loading" },
+    );
     read();
     const stop = host.subscribe(read);
     return () => {
@@ -67,9 +99,11 @@ function useListing(
     };
   }, [host, kind, attempt]);
 
-  // A result of the tab just left isn't this tab's: until its own read lands, it is loading.
+  // A result of the tab or workspace just left isn't this one's: until its own read lands, it is loading.
   const load: Load =
-    stored.state !== "loading" && stored.kind !== kind ? { state: "loading" } : stored;
+    stored.state !== "loading" && (stored.host !== host || stored.kind !== kind)
+      ? { state: "loading" }
+      : stored;
   return { load, retry: useCallback(() => setAttempt((count) => count + 1), []) };
 }
 
@@ -105,10 +139,28 @@ export function LibraryPage({
         <TabList label="Library" tabs={tabs} selected={kind} onSelect={onKindChange} ids={ids} />
       </div>
       <TabPanel ids={ids} tabs={tabs} selected={kind}>
+        {load.state === "loaded" && load.stale !== undefined && (
+          <p className="flex flex-wrap items-center gap-2 px-4 py-2 text-small text-fg-muted">
+            {showingLastList(kind, load.stale.reason)}
+            <Button
+              variant="ghost"
+              busy={load.refreshing === true}
+              busyLabel={tryingAgain}
+              onClick={retry}
+            >
+              Try again
+            </Button>
+          </p>
+        )}
         <OverviewPage
           key={kind}
           {...overview}
-          words={overviewWords(kind, onOpenDocsFolder)}
+          words={overviewWords(
+            kind,
+            onOpenDocsFolder,
+            onNew !== undefined && label !== undefined ? () => onNew(kind) : undefined,
+          )}
+          quietWhenEmpty
           loading={load.state === "loading"}
           {...(load.state === "failed"
             ? {

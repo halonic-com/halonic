@@ -110,13 +110,51 @@ verifies("library.library-page", () => {
   });
 
   it("says what failed, and asks the host again on Try again", async () => {
-    const host = hostWith({ connector: new Error("The workspace folder is gone.") });
+    const host = hostWith({
+      connector: Object.assign(new Error("The workspace folder is gone."), {
+        kind: "invalid_input",
+      }),
+    });
     const page = await show(host, { kind: "connector" });
     expect(page.textContent).toContain("Couldn't load connectors");
     expect(page.textContent).toContain("The workspace folder is gone.");
     act(() => button(page, "Try again")?.click());
     await settled();
     expect(host.list).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the list when a later read fails, with a line above it and no raw reason", async () => {
+    let notify: () => void = () => undefined;
+    const host = hostWith({ skill: skills });
+    host.subscribe = (read) => {
+      notify = read;
+      return () => {};
+    };
+    const page = await show(host);
+    host.list.mockRejectedValueOnce(new Error("ECONNRESET at socket.js:41"));
+    act(() => notify());
+    await settled();
+    expect(page.textContent).toContain("Acme refunds");
+    expect(page.textContent).toContain("Couldn't load skills.");
+    expect(page.textContent).toContain("Showing the list from before.");
+    expect(page.textContent).not.toContain("ECONNRESET");
+    act(() => button(page, "Try again")?.click());
+    await settled();
+    expect(page.textContent).not.toContain("Couldn't load skills.");
+    expect(page.textContent).toContain("Acme refunds");
+  });
+
+  it("holds the only New button in the empty state, with no search field", async () => {
+    const onNew = vi.fn();
+    const page = await show(hostWith({}), { onNew });
+    expect(page.textContent).toContain("No skills yet");
+    expect(page.querySelector('input[type="search"]')).toBeNull();
+    const news = [...page.querySelectorAll("button")].filter(
+      (each) => each.textContent === "New skill",
+    );
+    expect(news).toHaveLength(1);
+    act(() => news[0]?.click());
+    expect(onNew).toHaveBeenCalledWith("skill");
   });
 
   it("opens a row with its tab's kind", async () => {
@@ -163,5 +201,32 @@ verifies("library.library-page", () => {
     const knowledge = [...page.querySelectorAll<HTMLElement>('[role="tab"]')][1];
     act(() => knowledge?.click());
     expect(page.textContent).not.toContain("Acme refunds");
+  });
+  it("shows loading, not the old workspace's rows, when the host changes and the new read fails", async () => {
+    const first = hostWith({ skill: skills });
+    const second = hostWith({ skill: new Error("The workspace folder is gone.") });
+    let swap: () => void = () => undefined;
+    function Swapping() {
+      const [host, setHost] = useState<LibraryItemsHost>(first);
+      swap = () => setHost(second);
+      return (
+        <LibraryPage
+          host={host}
+          kind="skill"
+          onKindChange={() => undefined}
+          onOpen={() => undefined}
+          onOpenInNewTab={() => undefined}
+        />
+      );
+    }
+    const page = render(<Swapping />);
+    await settled();
+    expect(page.textContent).toContain("Acme refunds");
+    act(() => swap());
+    expect(page.textContent).not.toContain("Acme refunds");
+    await settled();
+    expect(page.textContent).not.toContain("Acme refunds");
+    expect(page.textContent).not.toContain("Showing the list from before.");
+    expect(page.textContent).toContain("Couldn't load skills");
   });
 });
