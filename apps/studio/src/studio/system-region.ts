@@ -1,4 +1,4 @@
-import type { TauriIpc } from "@halonicjs/studio-shell";
+import type { TauriIpc } from "@halonicjs/studio-services";
 
 /** The region and language the computer is set to, as a BCP 47 tag, or `undefined` when it names none or can't be read. */
 export async function systemRegion(ipc: TauriIpc): Promise<string | undefined> {
