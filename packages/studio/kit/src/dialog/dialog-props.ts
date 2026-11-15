@@ -59,6 +59,8 @@ interface DialogCommonProps {
   readonly closeLabel?: string;
   /** A failed request's message, read through the alert slot at the end of the body. */
   readonly error?: string;
+  /** With `error`: the label of a ghost action in the failure's Callout that sends the form again. */
+  readonly retryLabel?: string;
   /** Where focus goes on close when the opener has gone, such as a deleted row's next row (23 A2). */
   readonly returnFocus?: () => HTMLElement | null;
   readonly children: ReactNode;

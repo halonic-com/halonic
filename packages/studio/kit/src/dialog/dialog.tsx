@@ -5,6 +5,7 @@ import { DialogFooter, DialogHeader } from "./dialog-parts.tsx";
 import type { DialogCancelReason, DialogProps, DialogSize } from "./dialog-props.ts";
 import { FormSheet } from "./form-sheet.tsx";
 import { ModalRegions } from "./modal-regions.tsx";
+import { retryAction } from "./retry-action.ts";
 import { useCancelEvents } from "./use-cancel-events.ts";
 import { useModal } from "./use-modal.ts";
 
@@ -126,7 +127,12 @@ function DialogBox(props: DialogProps) {
         />
         <div ref={body} id={ids.body} className={`${bodyScroll} ${bodyClasses(flush, form)}`}>
           {props.children}
-          <AlertSlot error={props.error} attempt={attempt} waiting={busy} />
+          <AlertSlot
+            error={props.error}
+            attempt={attempt}
+            waiting={busy}
+            retry={retryAction(props.retryLabel, confirm)}
+          />
         </div>
         {props.footnote === undefined ? null : (
           <p id={ids.footnote} className={footnoteClasses}>

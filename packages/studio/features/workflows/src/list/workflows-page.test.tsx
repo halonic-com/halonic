@@ -66,6 +66,17 @@ verifies("workflows.list.rows-and-states", () => {
     );
   });
 
+  it("offers no New workflow while the workflows load, or when the workspace has no hub", async () => {
+    const loading = { ...memoryHost(hubs, []).host, list: () => new Promise<never>(() => {}) };
+    expect(
+      buttonNamed(await show(<WorkflowsView host={loading} />), "New workflow"),
+    ).toBeUndefined();
+    unmount();
+
+    const page = await show(<WorkflowsView host={memoryHost([], []).host} />);
+    expect(buttonNamed(page, "New workflow")).toBeUndefined();
+  });
+
   it("shows only the empty state, with its one button, when there are no workflows", async () => {
     const page = await show(<WorkflowsView host={memoryHost(hubs, []).host} />);
 

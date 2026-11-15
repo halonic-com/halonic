@@ -1,4 +1,4 @@
-import { Dialog, Field, InfoIcon, Input, Select } from "@halonicjs/studio-kit";
+import { Dialog, Field, InfoIcon, Input, Select, usePresentation } from "@halonicjs/studio-kit";
 import { useRef, useState } from "react";
 import type { NewWorkflow, WorkflowHub, WorkflowRef } from "../api.ts";
 import { newWorkflowWords as words } from "./new-workflow-words.ts";
@@ -35,14 +35,19 @@ export function NewWorkflowDialog({
   returnFocus,
 }: NewWorkflowDialogProps) {
   const [name, setName] = useState("");
-  const [hubId, setHubId] = useState(hubs[0]?.id ?? "");
+  const [chosenHub, setHubId] = useState(hubs[0]?.id ?? "");
+  // The hubs can arrive or change while the dialog is open; a hub that's gone falls back to the first.
+  const hubId = hubs.some((hub) => hub.id === chosenHub) ? chosenHub : (hubs[0]?.id ?? "");
+  const phone = usePresentation() === "phone";
   const [problem, setProblem] = useState<string>();
   const [failure, setFailure] = useState<string>();
   const [busy, setBusy] = useState(false);
   const nameField = useRef<HTMLInputElement>(null);
 
   const file = workflowFilePath(hubId, name, takenIds(hubId));
-  const fileLine = file.kind === "file" ? words.file(file.path) : words.folder(file.path);
+  const fileText = file.kind === "file" ? words.file(file.path) : words.folder(file.path);
+  // The phone sheet has no room for the file line (microcopy 8.2).
+  const fileLine = phone ? undefined : fileText;
 
   async function submit() {
     setFailure(undefined);
@@ -67,6 +72,7 @@ export function NewWorkflowDialog({
       size="md"
       form
       confirm={{ label: words.create, busyLabel: words.creating }}
+      retryLabel={words.tryAgain}
       busy={busy}
       {...(failure === undefined ? {} : { error: failure })}
       onConfirm={() => void submit()}
@@ -75,11 +81,15 @@ export function NewWorkflowDialog({
     >
       <div className="flex flex-col gap-3">
         <div className={hubs.length > 1 ? "grid grid-cols-[1fr_160px] gap-3" : "grid gap-3"}>
-          <Field label={words.nameField} error={problem ?? null} hint={fileLine}>
+          <Field
+            label={words.nameField}
+            error={problem ?? null}
+            {...(fileLine === undefined ? {} : { hint: fileLine })}
+          >
             <Input
               ref={nameField}
               autoFocus
-              disabled={busy}
+              readOnly={busy}
               value={name}
               onChange={(event) => {
                 setProblem(undefined);

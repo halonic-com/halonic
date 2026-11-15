@@ -4,6 +4,7 @@ import { InFormSheetContext } from "../sheet/in-form-sheet.ts";
 import { SheetFrame } from "../sheet/sheet-frame.tsx";
 import { AlertSlot } from "./alert-slot.tsx";
 import type { ConfirmingDialogProps } from "./dialog-props.ts";
+import { retryAction } from "./retry-action.ts";
 
 /**
  * A `form` Dialog on a phone (component specs 8 and 15.3): a full-screen sheet with Close at the
@@ -25,8 +26,8 @@ export function FormSheet(props: ConfirmingDialogProps) {
     }
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function submit(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
     if (busy || props.confirm.unavailable !== undefined) {
       return;
     }
@@ -67,7 +68,12 @@ export function FormSheet(props: ConfirmingDialogProps) {
         {/* The fields have no bottom padding: the slot's own 12px ends the body, and an error's
             16px above its Callout is then the only gap between it and the last field. */}
         <div className="px-4 pb-3">
-          <AlertSlot error={props.error} attempt={attempt} waiting={busy} />
+          <AlertSlot
+            error={props.error}
+            attempt={attempt}
+            waiting={busy}
+            retry={retryAction(props.retryLabel, () => submit())}
+          />
         </div>
       </InFormSheetContext>
     </SheetFrame>

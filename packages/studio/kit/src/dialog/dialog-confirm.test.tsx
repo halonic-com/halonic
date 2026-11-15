@@ -127,6 +127,15 @@ verifies("kit.dialog", () => {
       expect(slot().textContent).toBe(error);
     });
 
+    it("adds a Try again action to the Callout with retryLabel, which confirms again", async () => {
+      const onConfirm = vi.fn();
+      const { container } = render(
+        deleteDialog({ error: "Couldn't delete Sorter.", retryLabel: "Try again", onConfirm }),
+      );
+      await click(buttonNamed(container, "Try again"));
+      expect(onConfirm).toHaveBeenCalledOnce();
+    });
+
     it("keeps focus on the confirming button", () => {
       const { container, rerender } = render(deleteDialog());
       const confirm = buttonNamed(container, "Delete agent");
