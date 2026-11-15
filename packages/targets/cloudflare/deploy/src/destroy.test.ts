@@ -146,4 +146,21 @@ verifies("deploy.destroy", () => {
     );
     expect(deletes(api.calls)).toEqual(["deleteResource worker hlt-1-1-worker"]);
   });
+
+  it("empties a live-test bucket before it deletes it, and never empties another", async () => {
+    const api = fakeCloudflareApi({
+      accounts: [],
+      objects: { "hlt-1-1-w-defs": ["defs.json"], "halonic-dev-blobs": ["a"] },
+    });
+    const sweeper = cloudflareSweeper(api, "a1");
+    await sweeper.destroy({ kind: "bucket", name: "hlt-1-1-w-defs" });
+    expect(api.calls).toEqual([
+      "emptyBucket hlt-1-1-w-defs",
+      "deleteResource bucket hlt-1-1-w-defs",
+    ]);
+    await expect(sweeper.destroy({ kind: "bucket", name: "halonic-dev-blobs" })).rejects.toThrow(
+      RangeError,
+    );
+    expect(api.calls).toHaveLength(2);
+  });
 });

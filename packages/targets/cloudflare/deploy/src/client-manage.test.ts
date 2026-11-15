@@ -148,6 +148,38 @@ verifies("deploy.destroy", () => {
     expect(seen).toContain("DELETE /accounts/a1/d1/database/d1");
   });
 
+  it("empties a bucket page by page, deleting each key, until none are left", async () => {
+    const seen: string[] = [];
+    const objects = "/accounts/a1/r2/buckets/hlt-b/objects";
+    let listed = 0;
+    const pages = [[{ key: "defs/a b.json" }, { key: "c" }], [{ key: "d" }]];
+    const fetched = (async (input, init) => {
+      const key = `${init?.method ?? "GET"} ${String(input).replace("https://cf.test", "")}`;
+      seen.push(key);
+      let result: unknown = {};
+      if (key === `GET ${objects}?per_page=1000`) {
+        listed += 1;
+        result = pages[listed - 1] ?? [];
+      }
+      return new Response(JSON.stringify({ success: true, result }), { status: 200 });
+    }) as typeof fetch;
+    const api = createCloudflareClient({ token, fetch: fetched, baseUrl: "https://cf.test" });
+    await api.emptyBucket("a1", "hlt-b");
+    expect(seen).toEqual([
+      `GET ${objects}?per_page=1000`,
+      `DELETE ${objects}/defs%2Fa%20b.json`,
+      `DELETE ${objects}/c`,
+      `GET ${objects}?per_page=1000`,
+      `DELETE ${objects}/d`,
+      `GET ${objects}?per_page=1000`,
+    ]);
+  });
+
+  it("treats emptying a bucket that is gone as done", async () => {
+    const api = client({}, []);
+    await expect(api.emptyBucket("a1", "hlt-gone")).resolves.toBeUndefined();
+  });
+
   it("says a full bucket is not empty", async () => {
     const api = client(
       {

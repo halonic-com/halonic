@@ -44,6 +44,8 @@ export interface FakeCloudflareState {
   listed?: readonly ListedResource[];
   /** Deleting this bucket fails because it holds files. */
   fullBucket?: string;
+  /** Object keys held by buckets, by bucket name. `emptyBucket` clears them; deleting a bucket that holds any fails. */
+  objects?: Record<string, readonly string[]>;
   /** The workers.dev address `openWorkersDev` returns. */
   workersDev?: string;
   /** Whether workers.dev is on before the deploy. Defaults to on. */
@@ -71,6 +73,7 @@ export function fakeCloudflareApi(
     calls.push(`${call} ${key(ref)}`);
     resources[key(ref)] = { marked };
   };
+  const held: Record<string, readonly string[]> = { ...state.objects };
   const applied = [...(state.applied ?? [])];
   let lock = state.lock;
   const lockWrite = (call: string) => {
@@ -110,9 +113,17 @@ export function fakeCloudflareApi(
       calls.push(`listResources ${kind} ${prefix}`);
       return (state.listed ?? []).filter((r) => r.kind === kind && r.name.startsWith(prefix));
     },
+    async emptyBucket(_accountId, name) {
+      if (state.failOnWrite) throw new Error(`unexpected write: emptyBucket ${name}`);
+      calls.push(`emptyBucket ${name}`);
+      held[name] = [];
+    },
     async deleteResource(_accountId, ref) {
       if (state.failOnWrite) throw new Error(`unexpected write: deleteResource ${key(ref)}`);
-      if (ref.kind === "bucket" && state.fullBucket === ref.name) {
+      if (
+        ref.kind === "bucket" &&
+        (state.fullBucket === ref.name || (held[ref.name]?.length ?? 0) > 0)
+      ) {
         throw new DeployError("bucket-not-empty", `Bucket ${ref.name} still holds files.`);
       }
       calls.push(`deleteResource ${key(ref)}`);
