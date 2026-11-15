@@ -12,6 +12,7 @@ import {
 import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { useState } from "react";
 import { type WorkflowsHost, WorkflowsHostService } from "../api.ts";
+import type { View } from "../canvas/geometry.ts";
 import { Configuration } from "../configuration/configuration-page.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
 import { countProblems } from "../configuration/problem-lines.ts";
@@ -56,6 +57,8 @@ export function WorkflowScreen({ host, hubId, id, openRun }: WorkflowScreenProps
   const settings = useHostRead(host, { hubId, id }, (one, ref) => one.configuration(ref));
   const everyWorkflow = useHostRead(host, { hubId, id }, (one) => one.list());
   const [view, setView] = useState<"flow" | "configuration">("flow");
+  // The canvas unmounts on Configuration, so the page keeps its zoom and pan (D9).
+  const [canvasView, setCanvasView] = useState<View | undefined>();
   const [openStep, setOpenStep] = useState<string | undefined>();
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
@@ -137,6 +140,8 @@ export function WorkflowScreen({ host, hubId, id, openRun }: WorkflowScreenProps
                 key={`${hubId}/${id}/${openStep}`}
                 workflow={load.value}
                 selectedStep={openStep}
+                saved={canvasView}
+                onView={setCanvasView}
               />
             )}
             {load.kind === "failed" && (

@@ -116,6 +116,19 @@ verifies("workflows.page.frame-and-states", () => {
     expect(surface(page)?.style.transform).toBe(zoomed);
   });
 
+  it("keeps the zoom and pan across a visit to Configuration", async () => {
+    const { host } = memoryHost([], [], [reply]);
+    const page = await show(<WorkflowScreen host={host} hubId="acme" id="reply" />);
+    await act(async () => buttonNamed(page, "Zoom in")?.click());
+    await act(async () => buttonNamed(page, "Zoom in")?.click());
+    const zoomed = surface(page)?.style.transform;
+
+    await act(async () => buttonNamed(page, "Configuration")?.click());
+    expect(surface(page)).toBeNull();
+    await act(async () => buttonNamed(page, "Flow")?.click());
+    expect(surface(page)?.style.transform).toBe(zoomed);
+  });
+
   it("keeps the canvas when a refresh fails", async () => {
     let failing = false;
     const listeners = new Set<() => void>();
