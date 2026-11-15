@@ -1,8 +1,10 @@
 import { RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { defineFeature } from "@halonicjs/studio-shell";
 import { ALIAS_KIND, ALIAS_KIND_LABEL, aliasTitle } from "./aliases/alias-text.ts";
+import { readModels } from "./aliases/read-models.ts";
 import { ModelKeysService, ModelsFilesService, NoLimitMemoryService } from "./api.ts";
 import { PROVIDER_KIND, PROVIDER_KIND_LABEL, providerTabLabel } from "./providers/provider-text.ts";
+import { modelsSummary } from "./settings/settings-text.ts";
 
 /**
  * The Models feature: providers, aliases, API keys, budget, the "Prices and
@@ -11,7 +13,8 @@ import { PROVIDER_KIND, PROVIDER_KIND_LABEL, providerTabLabel } from "./provider
  * section of the workspace page with the alias list (`models.aliases.list`)
  * and the alias tab, the Budget block above it (`models.budget.budget-settings`), and the
  * **Providers** section with the provider page (`models.providers.list-and-show`), and the month
- * spend in the status bar (`models.spend.month-line`).
+ * spend in the status bar (`models.spend.month-line`), and the **Models** section of Settings
+ * (`models.settings.settings-summary`).
  */
 export const modelsFeature = defineFeature({
   id: "models",
@@ -19,6 +22,18 @@ export const modelsFeature = defineFeature({
   needs: [ModelsFilesService],
   wants: [ModelKeysService, NoLimitMemoryService, RunsListService],
   register(studio) {
+    studio.settings.add({
+      id: "models",
+      icon: "models",
+      title: "Models",
+      scope: "workspace",
+      order: 10,
+      async summary(context) {
+        return modelsSummary(await readModels(context.services.get(ModelsFilesService)));
+      },
+      view: "ModelsSettingsSection",
+      load: () => import("./settings/models-settings-section.tsx"),
+    });
     studio.statusBar.add({
       id: "models.spend",
       order: 100,
