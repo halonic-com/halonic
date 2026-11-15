@@ -57,11 +57,13 @@ export class RunsList {
   }
 
   /**
-   * Asks for the next opening of the Runs page to show only this workflow's runs, as a workflow's
-   * **See all** does. Call it, then open the Runs place.
+   * Asks for the Runs page to show only this workflow's runs, as a workflow's **See all** does.
+   * Call it, then open the Runs place. A page already open takes the request at once; otherwise
+   * the next one to open does.
    */
   showWorkflow(workflow: WorkflowRef): void {
     this.#requested = workflow;
+    for (const listener of [...this.#listeners]) listener();
   }
 
   /** Forgets the request once the page has read it, so a later plain open shows every workflow. */

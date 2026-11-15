@@ -78,8 +78,18 @@ function DesktopRuns({ list, openRun, now = () => new Date() }: RunsViewProps) {
     ...startFilters,
     workflow: list.requestedWorkflow,
   }));
-  // The request is for this opening only; a later plain open shows every workflow.
-  useEffect(() => list.clearRequest(), [list]);
+  // A request is taken once, by the page open when it comes or the next to open, so a later plain
+  // open shows every workflow.
+  useEffect(() => {
+    const take = () => {
+      const workflow = list.requestedWorkflow;
+      if (workflow === undefined) return;
+      list.clearRequest();
+      setFilters((current) => ({ ...current, workflow }));
+    };
+    take();
+    return list.subscribe(take);
+  }, [list]);
   const retry = () => void list.refresh();
   const rows = listRows(list, now());
   const showTestRuns = () => setFilters({ ...filters, testRuns: true });

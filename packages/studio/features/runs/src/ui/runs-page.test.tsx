@@ -148,15 +148,32 @@ verifies("runs.list", () => {
       const intake = summaryWith({ id: "run_g_1n2t3k", workflowId: "order-intake" });
       const { source } = fakeSource([running, intake]);
       const list = new RunsList(source);
-      list.showWorkflow({ hubId: "acme", id: "order-intake" });
+      list.showWorkflow({ hubId: "acme", id: "support-reply" });
       const root = render(<RunsView list={list} now={() => mondayMorning} />);
       await settled();
       expect(shown(root)).toHaveLength(2);
-      expect(shown(root)[1]).toContain("1n2t3k");
+      expect(shown(root)[1]).toContain("7k2m9p");
       expect(control(root, "Workflow: Support reply").getAttribute("aria-pressed")).toBe("true");
       expect(list.requestedWorkflow).toBeUndefined();
       await click(control(root, "Workflow: Support reply"));
       expect(shown(root)).toHaveLength(3);
+    });
+
+    it("takes the request while the page is already open, and only once", async () => {
+      const intake = summaryWith({ id: "run_g_1n2t3k", workflowId: "order-intake" });
+      const { source } = fakeSource([running, intake]);
+      const list = new RunsList(source);
+      const root = render(<RunsView list={list} now={() => mondayMorning} />);
+      await settled();
+      expect(shown(root)).toHaveLength(3);
+      await act(async () => list.showWorkflow({ hubId: "acme", id: "support-reply" }));
+      expect(shown(root)).toHaveLength(2);
+      expect(control(root, "Workflow: Support reply").getAttribute("aria-pressed")).toBe("true");
+      expect(list.requestedWorkflow).toBeUndefined();
+      unmountAll();
+      const fresh = render(<RunsView list={list} now={() => mondayMorning} />);
+      await settled();
+      expect(shown(fresh)).toHaveLength(3);
     });
 
     it("says a workflow has no runs, with a button for every workflow", async () => {
