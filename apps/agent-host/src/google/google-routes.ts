@@ -24,6 +24,9 @@ const googleCallbackPath = "/api/google/callback";
 const googleFailedMessage =
   "The agent host couldn't finish this Google request. Its log has the detail.";
 
+/** What the browser shows when finishing the sign-in failed: fixed text, never the error's. */
+const callbackFailedPage = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Halonic</title></head><body><p>The agent host couldn't finish the sign-in. Go back to Halonic and try again.</p></body></html>`;
+
 /**
  * Studio's changes to a Google setup in the desktop app, over loopback. The
  * page never holds a token or a client secret: the host, which sealed them,
@@ -107,7 +110,12 @@ export function googleRoutes(deps: GoogleRouteDeps): HostRoute[] {
         response.end(await answer.text());
       } catch (error) {
         logFailure(error);
-        sendError(response, 502, "google_failed", googleFailedMessage);
+        // A browser tab, not a script, asked: a page says it where JSON would show raw text.
+        response.writeHead(502, {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store",
+        });
+        response.end(callbackFailedPage);
       }
     },
   };

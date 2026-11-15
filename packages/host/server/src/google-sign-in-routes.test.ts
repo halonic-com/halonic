@@ -16,9 +16,16 @@ const lanHost = "lan.example:8080";
 const fakeCode = "fake-auth-code-0000000001";
 const fakeState = "fake-state-0000000001";
 
-function setup(options: { password?: boolean } = {}) {
+function setup(
+  options: { password?: boolean; callbackPageLink?: { href: string; label: string } } = {},
+) {
   const clock = new TestClock();
-  const google = fakeGoogle(clock);
+  const google = {
+    ...fakeGoogle(clock),
+    ...(options.callbackPageLink === undefined
+      ? {}
+      : { callbackPageLink: options.callbackPageLink }),
+  };
   const requestLog: RequestLogEntry[] = [];
   const errors: unknown[] = [];
   const server: Server = testServer({
@@ -486,6 +493,22 @@ describe("google sign-in as another account", () => {
       const page = await (await callback(state.server, codeQuery)).text();
 
       expect(everythingSaid([page], state.requestLog, state.errors)).not.toContain(otherAddress);
+    });
+  });
+});
+
+describe("google sign-in callback page link", () => {
+  verifies("server.google-callback-page-link", () => {
+    it("has no link when the host names none", async () => {
+      const state = setup();
+      const page = await (await callback(state.server, codeQuery)).text();
+      expect(page).not.toContain("<a ");
+    });
+
+    it("ends with the host's link, escaped", async () => {
+      const state = setup({ callbackPageLink: { href: "/home?a=1&b=2", label: "Back <home>" } });
+      const page = await (await callback(state.server, codeQuery)).text();
+      expect(page).toContain('<a href="/home?a=1&amp;b=2">Back &lt;home&gt;</a>');
     });
   });
 });
