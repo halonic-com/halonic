@@ -2,6 +2,7 @@
 
 - Approval: Liam asked for both changes in his re-review of PR #2694 (https://github.com/halonic-com/halonic/pull/2694#issuecomment-6884325678) and filed them as HAL-9602; the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Dn4MurOBKCCWkN5IcozjiflnwefPUUvjwYiUY6TP2hGESVudPRr6T6kD7VjIomE3EPWXtBNeXI0NgK60IScqAQ==
 - Task: HAL-9602
 
 ## What changes
