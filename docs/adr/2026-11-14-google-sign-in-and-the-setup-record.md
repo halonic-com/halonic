@@ -29,8 +29,11 @@ answers the address to open.
 **Both routes are for this computer only.** The start route refuses a request
 that isn't addressed to a loopback name (409 `sign_in_needs_this_computer`),
 because Google sends a Desktop-app client back to a loopback address only. The
-callback answers 404 on any other name, so a served instance doesn't expose it.
-The `Host` and `Origin` checks still run first.
+callback answers 404 on any other name, so a browser on another computer can't
+use it through a served instance. The `Host` and `Origin` checks still run
+first. The check reads the name in the `Host` header, not where the request
+came from: a request made by hand on another computer can still name
+`localhost`, and the `state` is what stops it.
 
 **The callback answers a fixed page.** The page is plain HTML with no script
 and one fixed sentence per outcome. Nothing from the query, from Google's
@@ -77,8 +80,9 @@ Disconnect finds it.
 
 - A forged, replayed or stray callback changes nothing: a wrong `state` is
   checked first and the pending sign-in is taken once.
-- The callback can't be reached from another computer, and a web page can't
-  read or frame its answer.
+- A browser on another computer can't reach the callback, and a web page can't
+  read or frame its answer. A request made by hand that names `localhost` still
+  needs the sign-in's `state`.
 - Studio can show every setup and its connector without ever holding a secret.
   The cost is that Studio can't change a setup: changes go through the host.
 - Contributors who add a Google route decide whether it needs the session. The
