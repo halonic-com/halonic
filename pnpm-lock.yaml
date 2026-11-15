@@ -3197,6 +3197,9 @@ importers:
       '@halonicjs/target-cloudflare-runtime':
         specifier: workspace:*
         version: link:../../targets/cloudflare/runtime
+      '@halonicjs/target-cloudflare-testing':
+        specifier: workspace:*
+        version: link:../../targets/cloudflare/testing
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../spec

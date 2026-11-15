@@ -8,6 +8,7 @@ import {
 } from "@halonicjs/target-cloudflare-deploy";
 import type { CloudflareRest } from "./cloudflare-rest.ts";
 import type { targetVariables } from "./live-target.ts";
+import { teardownFor } from "./teardown.ts";
 
 /** The routine the fixture deploys: `acme/orders`, signed with the secret `live-hook`. */
 export const fixtureAddress = "acme/orders";
@@ -76,40 +77,16 @@ export async function deployWebhookFixture(options: FixtureOptions): Promise<Dep
   const database = resourcesFor(worker)[0]?.name ?? "";
   const blobs = `${worker}-blobs`;
   const definitions = `${worker}-defs`;
-  const written: string[] = [];
-
-  let destroyed = false;
-  async function destroy(): Promise<void> {
-    if (destroyed) return;
-    const failures: string[] = [];
-    const attempt = async (what: string, step: () => Promise<void>) => {
-      try {
-        await step();
-      } catch (error) {
-        failures.push(`${what}: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    };
-    await attempt("worker", () => api.deleteResource(accountId, { kind: "worker", name: worker }));
-    for (const key of written) {
-      await attempt(`object ${key}`, () => rest.deleteObject(accountId, definitions, key));
-    }
-    // The Worker may have written to the blobs bucket, and Cloudflare deletes only empty buckets.
-    await attempt(`objects in ${blobs}`, () => rest.emptyBucket(accountId, blobs));
-    for (const name of [definitions, blobs]) {
-      await attempt(`bucket ${name}`, () =>
-        api.deleteResource(accountId, { kind: "bucket", name }),
-      );
-    }
-    await attempt("database", () =>
-      api.deleteResource(accountId, { kind: "database", name: database }),
-    );
-    if (failures.length === 0) destroyed = true;
-    else {
-      throw new Error(
-        `The fixture left something behind (the sweeper deletes it): ${failures.join("; ")}`,
-      );
-    }
-  }
+  const written: (readonly [string, string])[] = [];
+  const destroy = teardownFor({
+    api,
+    rest,
+    accountId,
+    worker,
+    database,
+    buckets: [definitions, blobs],
+    written,
+  });
 
   try {
     const subdomain = await rest.workersSubdomain(accountId);
@@ -121,7 +98,7 @@ export async function deployWebhookFixture(options: FixtureOptions): Promise<Dep
     await writeDefinitionSnapshot(
       {
         async put(key, value) {
-          written.push(key);
+          written.push([definitions, key]);
           await rest.putObject(
             accountId,
             definitions,

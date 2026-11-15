@@ -6,7 +6,10 @@
  */
 export { buildTestWorker } from "./node/build-test-worker.ts";
 export { missingShimApis } from "./node/matcher-check.ts";
+export { RemoteRunner } from "./node/remote-runner.ts";
 export {
+  type CaseRunner,
+  mirrorCases,
   type RunSuitesOptions,
   runSuitesInWorkerd,
   WorkerdCaseError,
