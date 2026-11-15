@@ -5,7 +5,7 @@ import { act } from "react";
 import { afterEach, expect, it } from "vitest";
 import type { WorkflowConfiguration, WorkflowView } from "../api.ts";
 import { WorkflowScreen } from "../page/workflow-page.tsx";
-import { buttonNamed, memoryHost, show, unmount } from "../test-support.tsx";
+import { buttonNamed, memoryHost, memoryRuns, show, unmount } from "../test-support.tsx";
 
 afterEach(unmount);
 
@@ -48,7 +48,9 @@ const configuration: WorkflowConfiguration = {
 
 const open = async (config: readonly WorkflowConfiguration[]) => {
   const { host } = memoryHost([], [], [view], config);
-  const page = await show(<WorkflowScreen host={host} hubId="acme" id="reply" />);
+  const page = await show(
+    <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+  );
   await act(async () => buttonNamed(page, "Configuration")?.click());
   return page;
 };

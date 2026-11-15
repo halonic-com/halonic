@@ -5,7 +5,15 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { WorkflowView } from "../api.ts";
-import { buttonNamed, listing, memoryHost, show, unmount } from "../test-support.tsx";
+import {
+  buttonNamed,
+  listing,
+  memoryHost,
+  memoryRuns,
+  runSummary,
+  show,
+  unmount,
+} from "../test-support.tsx";
 import { WorkflowScreen } from "./workflow-page.tsx";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
@@ -37,7 +45,9 @@ const surface = (page: HTMLElement) =>
 verifies("workflows.page.frame-and-states", () => {
   it("shows the name and the cards at once, with no skeleton and no ⤢ or ✕", async () => {
     const { host } = memoryHost([], [], [reply]);
-    const page = await show(<WorkflowScreen host={host} hubId="acme" id="reply" />);
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
 
     expect(page.querySelector("h1")?.textContent).toBe("Support reply");
     expect(page.textContent).toContain("WORKFLOW");
@@ -49,7 +59,7 @@ verifies("workflows.page.frame-and-states", () => {
     const { host } = memoryHost([], [], [reply]);
     const page = await show(
       <PresentationProvider presentation="phone">
-        <WorkflowScreen host={host} hubId="acme" id="reply" />
+        <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />
       </PresentationProvider>,
     );
     expect(page.textContent).toContain("WORKFLOW");
@@ -60,7 +70,9 @@ verifies("workflows.page.frame-and-states", () => {
   it("shows a skeleton only after 300 ms, and Still loading after 10 s", async () => {
     const { host } = memoryHost([], [], [reply]);
     const slow = { ...host, read: () => new Promise<WorkflowView>(() => {}) };
-    const page = await show(<WorkflowScreen host={slow} hubId="acme" id="reply" />);
+    const page = await show(
+      <WorkflowScreen host={slow} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
     expect(page.querySelector("[role=status]")).toBeNull();
 
     await act(async () => vi.advanceTimersByTime(300));
@@ -83,7 +95,9 @@ verifies("workflows.page.frame-and-states", () => {
         return host.read(ref);
       },
     };
-    const page = await show(<WorkflowScreen host={failing} hubId="acme" id="reply" />);
+    const page = await show(
+      <WorkflowScreen host={failing} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
     expect(page.textContent).toContain("Couldn't load this workflow");
     expect(page.textContent).toContain("The engine isn't answering. It may still be starting.");
 
@@ -106,7 +120,9 @@ verifies("workflows.page.frame-and-states", () => {
         return () => listeners.delete(listener);
       },
     };
-    const page = await show(<WorkflowScreen host={changing} hubId="acme" id="reply" />);
+    const page = await show(
+      <WorkflowScreen host={changing} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
     await act(async () => buttonNamed(page, "Zoom in")?.click());
     const zoomed = surface(page)?.style.transform;
 
@@ -118,7 +134,9 @@ verifies("workflows.page.frame-and-states", () => {
 
   it("keeps the zoom and pan across a visit to Configuration", async () => {
     const { host } = memoryHost([], [], [reply]);
-    const page = await show(<WorkflowScreen host={host} hubId="acme" id="reply" />);
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
     await act(async () => buttonNamed(page, "Zoom in")?.click());
     await act(async () => buttonNamed(page, "Zoom in")?.click());
     const zoomed = surface(page)?.style.transform;
@@ -139,7 +157,7 @@ verifies("workflows.page.frame-and-states", () => {
           <button type="button" onClick={() => setId("other")}>
             Switch
           </button>
-          <WorkflowScreen host={host} hubId="acme" id={id} />
+          <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id={id} />
         </>
       );
     };
@@ -172,7 +190,9 @@ verifies("workflows.page.frame-and-states", () => {
         return () => listeners.delete(listener);
       },
     };
-    const page = await show(<WorkflowScreen host={flaky} hubId="acme" id="reply" />);
+    const page = await show(
+      <WorkflowScreen host={flaky} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
     await act(async () => buttonNamed(page, "Zoom in")?.click());
     const zoomed = surface(page)?.style.transform;
 
@@ -186,7 +206,9 @@ verifies("workflows.page.frame-and-states", () => {
 verifies("workflows.page.step-cards", () => {
   it("draws a card per step with its kind, id, agent and the Start mark, and an arrow per way on", async () => {
     const { host } = memoryHost([], [], [reply]);
-    const page = await show(<WorkflowScreen host={host} hubId="acme" id="reply" />);
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
     const cards = [...page.querySelectorAll("button[aria-pressed]")].map((card) =>
       card.textContent?.replace(/\s+/g, " "),
     );
@@ -198,7 +220,9 @@ verifies("workflows.page.step-cards", () => {
 
   it("selects the pressed card and moves the selection to the next", async () => {
     const { host } = memoryHost([], [], [reply]);
-    const page = await show(<WorkflowScreen host={host} hubId="acme" id="reply" />);
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
     const card = (index: number) =>
       page.querySelectorAll<HTMLButtonElement>("button[aria-pressed]")[index];
 
@@ -211,7 +235,9 @@ verifies("workflows.page.step-cards", () => {
 
   it("fits all steps again on Fit to screen", async () => {
     const { host } = memoryHost([], [], [reply]);
-    const page = await show(<WorkflowScreen host={host} hubId="acme" id="reply" />);
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
     const fitted = surface(page)?.style.transform;
 
     await act(async () => buttonNamed(page, "Zoom in")?.click());
@@ -237,7 +263,9 @@ const startCommand = (page: HTMLElement) =>
 verifies("workflows.page.start-command", () => {
   it("shows how to start the workflow, with Copy command, on both tabs", async () => {
     const { host } = memoryHost([], [], [reply], [settings]);
-    const page = await show(<WorkflowScreen host={host} hubId="acme" id="reply" />);
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
     for (const tabName of ["Flow", "Configuration"]) {
       await act(async () =>
         [...page.querySelectorAll<HTMLElement>("[role=tab]")]
@@ -256,7 +284,9 @@ verifies("workflows.page.start-command", () => {
       problems: [{ severity: "error", code: "dead-end", message: "No way on." }],
     } as const;
     const { host } = memoryHost([], [], [reply], [broken]);
-    const page = await show(<WorkflowScreen host={host} hubId="acme" id="reply" />);
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
     expect(page.textContent).not.toContain("Start it from a terminal");
     expect(startCommand(page)).toBeUndefined();
   });
@@ -268,7 +298,30 @@ verifies("workflows.page.start-command", () => {
       [reply],
       [settings],
     );
-    const page = await show(<WorkflowScreen host={host} hubId="acme" id="reply" />);
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
     expect(startCommand(page)).toBe("halonic run acme/reply");
+  });
+});
+
+verifies("workflows.runs.runs-view", () => {
+  it("counts the runs that need you on the Runs tab and opens the Runs view from it", async () => {
+    const { host } = memoryHost([], [], [reply]);
+    const waiting = runSummary({
+      id: "run_a_01wait1",
+      status: "waiting",
+      state: "approve",
+      accepts: ["approve"],
+    });
+    const { source } = memoryRuns([waiting]);
+    const page = await show(<WorkflowScreen host={host} runs={source} hubId="acme" id="reply" />);
+
+    const tab = [...page.querySelectorAll<HTMLElement>("[role=tab]")].find((one) =>
+      one.textContent?.startsWith("Runs"),
+    );
+    expect(tab?.textContent).toContain("1");
+    await act(async () => tab?.click());
+    expect(page.querySelector("section[aria-label=Now]")).not.toBeNull();
   });
 });

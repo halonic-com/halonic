@@ -1,0 +1,21 @@
+/** The Runs view's and the simple run card's words (microcopy 9.7; states C6, R10, R15, R21). */
+export const runsWords = {
+  tab: "Runs",
+  now: "Now",
+  earlier: "Earlier",
+  seeAll: "See all",
+  emptyBefore: "No runs yet. Press ",
+  emptyRun: "Run",
+  emptyAfter: " to start one.",
+  loading: "Loading runs",
+  stillLoading: "Still loading",
+  loadFailedTitle: "Couldn't load runs",
+  tryAgain: "Try again",
+  needYou: (count: number) => `${count} ${count === 1 ? "run needs" : "runs need"} you`,
+  card: (shortId: string) => `Run ${shortId}`,
+  cardKind: "RUN",
+  closeCard: "Close run",
+  startedBy: "Started by",
+  stepsSoFar: "Steps so far",
+  openLog: "Open the run log",
+} as const;

@@ -13,6 +13,7 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@halonicjs/events": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",
@@ -32,6 +33,7 @@
   },
   "dependencies": {
     "@halonicjs/std": "workspace:*",
+    "@halonicjs/studio-feature-runs": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/studio-shell": "workspace:*",
     "react": "catalog:"
