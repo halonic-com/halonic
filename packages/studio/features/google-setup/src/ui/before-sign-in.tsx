@@ -1,4 +1,4 @@
-import type { AccountType, SignInStep } from "@halonicjs/google-setup";
+import type { SignInStep } from "@halonicjs/google-setup";
 import { Callout, CopyButton } from "@halonicjs/studio-kit";
 import { adminNote } from "../admin-note.ts";
 import { listNames } from "./account-labels.ts";
@@ -6,7 +6,6 @@ import { listNames } from "./account-labels.ts";
 /** What the text above the sign-in button needs to know that the step doesn't carry. */
 export interface BeforeSignInProps {
   readonly step: SignInStep;
-  readonly accountType: AccountType | null;
   /** The app name chosen in step 3, which is what Google's "Go to …" link says. */
   readonly appName: string | undefined;
   readonly projectId: string | null;
@@ -58,7 +57,7 @@ function AdminNote({ step, projectId, clientId, serviceName }: BeforeSignInProps
         Your admin may have to allow this app. If Google says it is blocked, send them this note:
       </p>
       <div className="flex flex-wrap items-start gap-2">
-        <p className="min-w-0 flex-1 text-small text-fg-muted">{note}</p>
+        <p className="min-w-0 flex-1 text-small text-fg">{note}</p>
         <CopyButton text={note} label="Copy a note for your admin" />
       </div>
     </div>

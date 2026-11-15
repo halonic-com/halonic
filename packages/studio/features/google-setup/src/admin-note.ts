@@ -4,7 +4,7 @@ import type { ScopeRow } from "@halonicjs/google-setup";
 export interface AdminNoteInput {
   readonly projectId: string | null;
   readonly clientId: string | null;
-  /** Every scope the sign-in asks for, each with the reasons the sheets give. */
+  /** Every scope the sign-in asks for. Only the services behind them go into the note. */
   readonly scopes: readonly ScopeRow[];
   /** A service's name from its id. Studio never knows the services itself. */
   readonly serviceName: (id: string) => string;
@@ -25,20 +25,16 @@ export function adminNote(input: AdminNoteInput): string {
   return [
     "I'd like to use Halonic with my Google account.",
     `It uses an app I registered${project}${client}.`,
-    `It asks for: ${permissionsIn(scopes, serviceName)}.`,
-    "If our settings block it, please allow it in the Admin console under Security → Access and data control → API controls → Manage app access, using that client ID. On that same page you can also mark the app as Trusted, which is usually the simplest fix.",
+    `It asks for access to ${servicesIn(scopes, serviceName)}.`,
+    `If our settings block it, please allow it in the Admin console under Security → Access and data control → API controls → Manage app access, using ${clientId === null ? "the app's client ID" : "that client ID"}. On that same page you can also mark the app as Trusted, which is usually the simplest fix.`,
   ].join(" ");
 }
 
-/** "Gmail: Reads your mail; Drive: Reads your files": each service once, with its reasons in the sheets' words. */
-function permissionsIn(scopes: readonly ScopeRow[], serviceName: (id: string) => string): string {
-  const reasons = new Map<string, string[]>();
-  for (const row of scopes) {
-    for (const need of row.neededBy) {
-      reasons.set(need.service, [...(reasons.get(need.service) ?? []), need.reason]);
-    }
-  }
-  return [...reasons]
-    .map(([service, list]) => `${serviceName(service)} (${list.join("; ")})`)
-    .join(", ");
+/**
+ * "Gmail and Drive": each service once. The sheets' reasons are written to the person using
+ * Halonic ("Reads your mail"), so they would read wrongly in a note to their admin.
+ */
+function servicesIn(scopes: readonly ScopeRow[], serviceName: (id: string) => string): string {
+  const ids = new Set(scopes.flatMap((row) => row.neededBy.map((need) => need.service)));
+  return new Intl.ListFormat("en", { type: "conjunction" }).format([...ids].map(serviceName));
 }

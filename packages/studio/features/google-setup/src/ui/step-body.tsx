@@ -73,7 +73,6 @@ export function StepBody(props: StepBodyProps) {
       return (
         <BeforeSignIn
           step={step}
-          accountType={props.accountType}
           appName={props.appName}
           projectId={props.savedProjectId}
           clientId={props.credentials.clientId}

@@ -18,7 +18,7 @@ const scopes = [
 ];
 const names: Record<string, string> = { ledger: "Ledger", atlas: "Atlas" };
 
-it("holds the project, the client ID, each service once with its reasons, and the Admin console path", () => {
+it("holds the project, the client ID, each service once without the sheets' reasons, and the Admin console path", () => {
   const note = adminNote({
     projectId: "halonic-x1",
     clientId: "123-abc.apps.googleusercontent.com",
@@ -27,7 +27,8 @@ it("holds the project, the client ID, each service once with its reasons, and th
   });
   expect(note).toContain("project halonic-x1");
   expect(note).toContain("client ID 123-abc.apps.googleusercontent.com");
-  expect(note).toContain("Ledger (Reads your ledger), Atlas (Reads your maps; Pins places)");
+  expect(note).toContain("It asks for access to Ledger and Atlas.");
+  expect(note).not.toContain("Reads your");
   expect(note).toContain("Security → Access and data control → API controls → Manage app access");
   expect(note).toContain("Trusted");
 });
@@ -37,4 +38,9 @@ it("leaves out the project and the client ID when the setup has none yet", () =>
   expect(note).not.toContain("project");
   expect(note).not.toContain("client ID 1");
   expect(note).toContain("I registered.");
+});
+
+it("names the app's client ID in the closing line when it has none to quote", () => {
+  const note = adminNote({ projectId: null, clientId: null, scopes, serviceName: String });
+  expect(note).toContain("using the app's client ID");
 });
