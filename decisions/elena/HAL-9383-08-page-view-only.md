@@ -2,6 +2,7 @@
 
 - Approval: board-approved plugin screens design, section 10, and microcopy 24 T17 (HAL-1739, HAL-1801); Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:l81581yRSltqMO3qWk/kwC5KrYhWj9P4SFs4ycbFZ4XRcwdp52BAA1bgEu4uC7E+BcsI2gAA7nO9D/X+hEbfCA==
 - Task: HAL-9383 (B27, last slice)
 
 ## What changes
