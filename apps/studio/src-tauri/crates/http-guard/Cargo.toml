@@ -1,0 +1,19 @@
+[package]
+name = "halonic-http-guard"
+description = "Decides which outbound HTTP requests the Studio page may have the shell make for it, and to which addresses."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+# Reads the address as the Web does, so the page and the shell agree on its host and port.
+url = "2"
+
+[dev-dependencies]
+serde_json = "1"
+
+[lints]
+workspace = true

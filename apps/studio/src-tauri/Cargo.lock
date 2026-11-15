@@ -1531,6 +1531,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-http-guard"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
 name = "halonic-keychain"
 version = "0.1.0"
 dependencies = [
