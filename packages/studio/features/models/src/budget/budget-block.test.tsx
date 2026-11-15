@@ -160,6 +160,39 @@ verifies("models.budget-settings", () => {
       expect(toasts.list()[0]?.title).toBe("Removed the budget");
     });
 
+    it("puts focus back on Set budget after Cancel", async () => {
+      const { section } = await show(setup(header, { anthropic: cloud }).files);
+      await act(async () => button(section, "Set budget").click());
+      await act(async () => button(section, "Cancel").click());
+
+      expect(document.activeElement?.textContent).toBe("Set budget");
+    });
+
+    it("removes the last budget, keeps the block and puts focus on Set budget", async () => {
+      const { files, changes } = setup(`${header}budget:\n  monthly: 50\n`, { ollama: local });
+      const { section } = await show(files);
+      await act(async () => button(section, "Change").click());
+      await type(section.querySelectorAll("input")[1] as HTMLInputElement, "");
+      await act(async () => button(section, "Remove budget").click());
+
+      expect(changes[0]?.text).toBe(header);
+      expect(blockOf(section).textContent).toContain("No budget set");
+      expect(document.activeElement?.textContent).toBe("Set budget");
+    });
+
+    it("names a yaml problem once and clears a field's error when it is edited", async () => {
+      const { files } = setup(header, { anthropic: cloud });
+      const { section } = await show(files);
+      await act(async () => button(section, "Set budget").click());
+      const [perRun] = section.querySelectorAll("input");
+      await type(perRun as HTMLInputElement, "0");
+      await act(async () => button(section, "Save").click());
+      expect(section.textContent).toContain("Enter an amount above 0");
+
+      await type(perRun as HTMLInputElement, "1");
+      expect(section.textContent).not.toContain("Enter an amount above 0");
+    });
+
     it("does not offer Undo once the file changed meanwhile", async () => {
       const { files, changes } = setup(header, { anthropic: cloud });
       const { section, toasts } = await show(files);

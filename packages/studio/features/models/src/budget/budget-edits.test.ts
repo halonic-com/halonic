@@ -35,6 +35,15 @@ verifies("models.budget-settings", () => {
       expect(edited.ok && edited.value).toContain("currency: USD");
     });
 
+    it("removes the whole budget block when both are empty and it has no currency", () => {
+      const edited = editBudget("version: 1\nid: acme\nname: Acme\nbudget:\n  perRun: 5\n", {
+        perRun: "",
+        monthly: "",
+      });
+
+      expect(edited).toEqual({ ok: true, value: "version: 1\nid: acme\nname: Acme\n" });
+    });
+
     it("writes nothing for an amount that isn't above 0", () => {
       for (const typed of ["0", "abc", "1.000,50", "-3"]) {
         expect(editBudget(withBudget, { perRun: typed, monthly: "" }), typed).toEqual({

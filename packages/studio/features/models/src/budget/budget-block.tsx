@@ -23,7 +23,8 @@ export interface BudgetBlockProps {
  * The Budget block at the top of the Models section (`models.budget-settings`): the budget that is
  * set, or a quiet line naming the providers that may bill per use and have none, and **Change** to
  * edit the two amounts in place. It shows only when a provider may bill per use or a budget is set.
- * When the editor closes, focus returns to **Change**, or to the heading when there is none.
+ * When the editor closes, focus returns to the button that opened it. After a budget is removed
+ * the block stays for the visit with **Set budget**, so focus has somewhere to go.
  *
  * @example
  * <BudgetBlock files={files} state={state} />
@@ -32,21 +33,23 @@ export function BudgetBlock({ files, state }: BudgetBlockProps) {
   const headingId = useId();
   const [editing, setEditing] = useState(false);
   const changeButton = useRef<HTMLButtonElement>(null);
+  const setButton = useRef<HTMLButtonElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  const [lingering, setLingering] = useState(false);
   const budget = state.status === "loading" ? undefined : state.budget;
   /** Focus is owed after the editor closes; after a write it waits for the new budget to show. */
   const owed = useRef<"no" | "now" | "saved">("no");
   const budgetAtClose = useRef(budget);
   useEffect(() => {
     if (editing || owed.current === "no") return;
-    (changeButton.current ?? heading.current)?.focus();
+    (changeButton.current ?? setButton.current ?? heading.current)?.focus();
     const waiting = owed.current === "saved" && budgetAtClose.current === budget;
     owed.current = waiting ? "saved" : "no";
   }, [editing, budget]);
 
   if (state.status === "loading") return null;
   const names = state.providers.filter(isPayPerUse).map((provider) => provider.name ?? provider.id);
-  if (names.length === 0 && !hasBudget(budget)) return null;
+  if (names.length === 0 && !hasBudget(budget) && !lingering) return null;
   const currency = budget?.currency ?? defaultCurrency;
 
   return (
@@ -68,6 +71,7 @@ export function BudgetBlock({ files, state }: BudgetBlockProps) {
           initial={budget ?? {}}
           onClose={(wrote) => {
             owed.current = wrote ? "saved" : "now";
+            if (wrote) setLingering(true);
             budgetAtClose.current = budget;
             setEditing(false);
           }}
@@ -79,7 +83,7 @@ export function BudgetBlock({ files, state }: BudgetBlockProps) {
           ) : (
             <>
               {noBudgetLine(names)} ·
-              <Button variant="secondary" onClick={() => setEditing(true)}>
+              <Button ref={setButton} variant="secondary" onClick={() => setEditing(true)}>
                 {SET_BUDGET}
               </Button>
             </>

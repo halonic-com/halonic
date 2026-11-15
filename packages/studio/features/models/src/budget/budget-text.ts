@@ -25,6 +25,7 @@ export function budgetSetTitle(summary: string): string {
 export function noBudgetLine(names: readonly string[]): string {
   const shown = names.slice(0, NAMED_PROVIDERS).join(", ");
   const more = names.length - NAMED_PROVIDERS;
+  if (names.length === 0) return "No budget set";
   return `No budget set for ${shown}${more > 0 ? ` +${more} more` : ""}`;
 }
 

@@ -81,7 +81,11 @@ export function BudgetEditor({ files, currency, initial, onClose }: BudgetEditor
   };
 
   const problemFor = (field: keyof BudgetFields) =>
-    problem?.field === field || problem?.field === "yaml" ? problem.message : null;
+    problem?.field === field ? problem.message : null;
+  const change = (field: keyof BudgetFields, value: string) => {
+    setFields({ ...fields, [field]: value });
+    if (problem?.field === field) setProblem(undefined);
+  };
   const higher = (parseAmount(fields.perRun) ?? 0) > (parseAmount(fields.monthly) ?? Infinity);
   const note = higher ? PER_RUN_ABOVE_MONTHLY : undefined;
 
@@ -98,16 +102,17 @@ export function BudgetEditor({ files, currency, initial, onClose }: BudgetEditor
           <Input
             ref={perRunInput}
             value={fields.perRun}
-            onChange={(event) => setFields({ ...fields, perRun: event.target.value })}
+            onChange={(event) => change("perRun", event.target.value)}
           />
         </Field>
-        <Field label="Per month" prefix={affix} error={problemFor("monthly")} hint={note}>
+        <Field label="Per month" prefix={affix} error={problemFor("monthly")}>
           <Input
             value={fields.monthly}
-            onChange={(event) => setFields({ ...fields, monthly: event.target.value })}
+            onChange={(event) => change("monthly", event.target.value)}
           />
         </Field>
       </FormRows>
+      {problem?.field === "yaml" ? <p role="alert">{problem.message}</p> : null}
       <div className="flex gap-2">
         <Button type="submit">{emptied ? REMOVE_BUDGET : SAVE_BUDGET}</Button>
         <Button variant="secondary" onClick={() => onClose(false)}>
