@@ -59,13 +59,14 @@ not in PowerShell or Command Prompt.
 Check your Node.js first with `node --version`: it must say v26.12 or later.
 With an older Node.js, `halonic` stops and says which version it needs. Many
 Linux package managers install an older version, so this is worth checking.
+Install Node.js with [nvm](https://github.com/nvm-sh/nvm) or
+[fnm](https://github.com/Schniz/fnm) (`nvm install 26` or `fnm install 26`),
+not with `apt install nodejs`, which gives you an older version.
 
 ```sh
 git clone https://github.com/halonic-com/halonic.git
 cd halonic
 pnpm install
-# only if pnpm asks (see below)
-pnpm setup
 pnpm add -g ./apps/cli
 halonic --version
 ```
@@ -73,11 +74,24 @@ halonic --version
 `pnpm install` downloads about 150 MB, so it can take a while on a slow
 connection.
 
+If pnpm comes with Corepack, the first `pnpm` command may stop and ask
+"Corepack is about to download pnpm ... Proceed?". Answer `y`: this repository
+pins the pnpm version it needs. To skip the question, set
+`COREPACK_ENABLE_DOWNLOAD_PROMPT=0` first.
+
 `pnpm add -g ./apps/cli` doesn't copy the CLI: it links your clone, so
-`halonic` always runs the code in that folder. If pnpm says its global bin
-folder isn't on your PATH, run `pnpm setup`, open a new terminal, go back to
-the folder (`cd halonic`) and run `pnpm add -g ./apps/cli` again. A new
-terminal starts in your home folder, and there the command links nothing.
+`halonic` always runs the code in that folder.
+
+If pnpm says its global bin folder isn't on your PATH, set it up, open a new
+terminal, go back to the folder and link the CLI again. A new terminal starts
+in your home folder, and there the command links nothing.
+
+```sh
+pnpm setup
+# open a new terminal, then:
+cd halonic
+pnpm add -g ./apps/cli
+```
 
 To update, pull the latest code in your clone and install again. The link
 follows the folder, so there is nothing to add again:
