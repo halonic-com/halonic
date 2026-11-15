@@ -38,8 +38,8 @@ export type SetupSubject =
 /**
  * Finds who a Google sign-in must confirm: the address of the workspace's
  * connector with this id, and the services of the integrations that ask for
- * Google scopes. One rule for every host, so the page never says whose
- * address Google must confirm.
+ * Google scopes. One rule for every host, so the CLI and the agent host
+ * always agree on whose address Google must confirm.
  *
  * @example
  * googleSetupSubject(connectors, integrations, "gmail");
