@@ -43,6 +43,7 @@ export {
   type WorkspaceHarnessHostOptions,
 } from "./profile-host.ts";
 export { type ReadLinesOptions, readLines } from "./read-lines.ts";
+export { RunInstructions, type RunInstructionsOptions } from "./run-instructions.ts";
 export {
   diskSettingsFolder,
   type SettingsFolderWriter,

@@ -42,6 +42,8 @@ export interface HarnessHostInput {
   /** The person's home folder, for `~` in sandbox events; `null` when unknown. */
   readonly home: string | null;
   readonly startTimeoutsMs?: HarnessRunsOptions["startTimeoutsMs"];
+  /** Where the run's instruction files come from; without it, the run log has no `harness.instructions`. */
+  readonly instructions?: HarnessRunsOptions["instructions"];
   /** Where each agent runs, as a person chose. */
   readonly placement: {
     /** The choices in the person's profile. */
@@ -112,6 +114,7 @@ export function harnessHostOf(input: HarnessHostInput): HarnessHost {
     bridges: new LocalBridgeHost({ server: input.bridgeServer, services: input.services }),
     profiles: input.profiles,
     home: input.home,
+    ...(input.instructions === undefined ? {} : { instructions: input.instructions }),
     ...(input.startTimeoutsMs === undefined ? {} : { startTimeoutsMs: input.startTimeoutsMs }),
   };
 
