@@ -41,7 +41,15 @@ describe("packageFiles", () => {
       ".": "./src/index.ts",
       "./api": "./src/api.ts",
     });
-    expect(files["src/feature.ts"]).toContain("export const inboxFeature");
+    expect(files["tsconfig.test.json"]).toContain('"jsx": "react-jsx"');
+    expect(files["src/feature.ts"]).toContain("export const inboxFeature = defineFeature({");
+    expect(files["src/feature.ts"]).toContain(
+      'import { defineFeature } from "@halonicjs/studio-shell";',
+    );
+    expect(files["src/feature.ts"]).toContain("  register() {");
+    expect(JSON.parse(files["package.json"] ?? "{}").dependencies).toEqual({
+      "@halonicjs/studio-shell": "workspace:*",
+    });
   });
 
   it("writes the coverage floor of the package's layer", () => {

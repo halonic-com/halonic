@@ -65,6 +65,12 @@ export function packageFiles(spec: PackageSpec): Record<string, string> {
     }),
     "tsconfig.test.json": json({
       extends: "@halonicjs/tooling-config/tsconfig/node.json",
+      ...(spec.isFeature
+        ? {
+            "//": "Tests run in Node. They read the shell, which brings the kit's DOM types and JSX.",
+            compilerOptions: { lib: ["es2024", "dom", "dom.iterable"], jsx: "react-jsx" },
+          }
+        : {}),
       include: ["src", "vitest.config.ts"],
     }),
     "vitest.config.ts": [
@@ -99,6 +105,7 @@ function packageJson(spec: PackageSpec): string {
       lint: "biome check .",
       test: "vitest run",
     },
+    ...(spec.isFeature ? { dependencies: { "@halonicjs/studio-shell": "workspace:*" } } : {}),
     devDependencies: {
       "@halonicjs/tooling-config": "workspace:*",
       "@types/node": "catalog:",
@@ -139,14 +146,19 @@ function featureSources(spec: PackageSpec): Record<string, string> {
   const exportName = featureExportName(spec.folder);
   return {
     "src/feature.ts": [
+      'import { defineFeature } from "@halonicjs/studio-shell";',
+      "",
       "/**",
-      ` * The ${titleOf(spec.folder)} feature as the Studio shell sees it. Becomes`,
-      " * defineFeature() from @halonicjs/studio-shell once the shell exists.",
+      ` * The ${titleOf(spec.folder)} feature. The Studio shell loads it by this declaration:`,
+      " * add what it needs, provides and registers here as the feature grows.",
       " */",
-      `export const ${exportName} = {`,
+      `export const ${exportName} = defineFeature({`,
       `  id: "${spec.folder}",`,
       `  title: "${titleOf(spec.folder)}",`,
-      "} as const;",
+      "  register() {",
+      "    // Add this feature's pages, commands and services here.",
+      "  },",
+      "});",
       "",
     ].join("\n"),
     "src/index.ts": [`export { ${exportName} } from "./feature.ts";`, ""].join("\n"),
