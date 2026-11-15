@@ -138,6 +138,19 @@ verifies("agent-host.google-sign-in-routes", () => {
       expect(response.status).toBe(404);
     });
 
+    it("answers 404 when the connector isn't a Google one", async () => {
+      await writeFile(
+        join(acme, "library", "connectors", "files.connector.yaml"),
+        "name: Files\ntransport:\n  http:\n    url: http://localhost:8700/mcp\n",
+      );
+      const { url, google } = await started();
+      const accountRef = await readyAccount(google, "files");
+
+      const response = await post(url, "/v1/google/sign-in", { accountRef });
+
+      expect(response.status).toBe(404);
+    });
+
     it("cancels a started sign-in, so a callback with its state finishes nothing", async () => {
       const { url, google } = await started();
       const accountRef = await readyAccount(google, "mailbox");

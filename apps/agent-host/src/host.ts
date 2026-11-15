@@ -142,12 +142,13 @@ export async function run(
   if (lock !== null && socketFolder !== undefined) {
     await sweepLeftOverBridges(socketFolder, (text) => io.writeError(text));
   }
+  const places = connectorPlaces(given.roots, profileFolder);
   const host = hostServices(
     version,
     sandbox,
     socketFolder,
-    connectorPlaces(given.roots, profileFolder),
-    profileGoogleSetup(profileFolder, connectorPlaces(given.roots, profileFolder).workspaceRoots),
+    places,
+    profileGoogleSetup(profileFolder, places.workspaceRoots),
     optionalProfileOf(profileFolder),
   );
   try {
