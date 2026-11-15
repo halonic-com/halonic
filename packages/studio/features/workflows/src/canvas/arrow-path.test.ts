@@ -20,10 +20,26 @@ verifies("workflows.canvas.arrows", () => {
     expect(shape.label.x).toBeGreaterThan(CARD_SIZE.width);
   });
 
+  it("runs side to side between cards in the same row, in both directions", () => {
+    const right = arrowShape(card(0, 0), card(300, 0));
+    expect(right.path.startsWith("M 200 36 ")).toBe(true);
+    expect(right.head).toEqual({ x: 300, y: 36 });
+    expect(right.headAngle).toBe(0);
+    expect(right.label).toEqual({ x: 250, y: 36 });
+    const left = arrowShape(card(300, 0), card(0, 0));
+    expect(left.path.startsWith("M 300 36 ")).toBe(true);
+    expect(left.head).toEqual({ x: 200, y: 36 });
+    expect(left.headAngle).toBe(180);
+  });
+
   it("gives an arrow from a step to itself a visible curve", () => {
     const shape = arrowShape(card(0, 0), card(0, 0));
     expect(shape.head.y).toBeGreaterThan(CARD_SIZE.height * 0.35);
     expect(shape.label.x).toBeGreaterThan(CARD_SIZE.width);
+  });
+
+  it("puts the label of a loop on the curve", () => {
+    expect(arrowShape(card(0, 0), card(0, 0)).label.x).toBe(236);
   });
 
   it("puts the label halfway along an arrow to the card below", () => {

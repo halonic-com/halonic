@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { boundsOf, CARD_SIZE, fitView, MIN_ZOOM, panBy, zoomAround } from "./geometry.ts";
+import { boundsOf, CARD_SIZE, fitView, MAX_ZOOM, MIN_ZOOM, panBy, zoomAround } from "./geometry.ts";
 
 const card = (x: number, y: number) => ({ x, y, ...CARD_SIZE });
 const screen = (view: ReturnType<typeof fitView>, x: number, y: number) => ({
@@ -47,6 +47,12 @@ verifies("workflows.canvas.fit-and-zoom", () => {
     let view = { zoom: 1, pan: { x: 0, y: 0 } };
     for (let i = 0; i < 20; i++) view = zoomAround(view, 0.5, { x: 0, y: 0 });
     expect(view.zoom).toBe(MIN_ZOOM);
+  });
+
+  it("stops zooming in at 200 %", () => {
+    let view = { zoom: 1, pan: { x: 0, y: 0 } };
+    for (let i = 0; i < 20; i++) view = zoomAround(view, 2, { x: 0, y: 0 });
+    expect(view.zoom).toBe(MAX_ZOOM);
   });
 
   it("pans by the pixels dragged", () => {

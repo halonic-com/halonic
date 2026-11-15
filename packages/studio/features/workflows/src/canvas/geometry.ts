@@ -19,8 +19,9 @@ export interface View {
 /** The size of a step card; every card has the same one. */
 export const CARD_SIZE = { width: 200, height: 72 } as const;
 
-/** The zoom a person can reach, and the most a fit may zoom in (never past 100 %). */
+/** The least a person can zoom out to (25 %). */
 export const MIN_ZOOM = 0.25;
+/** The most a person can zoom in to (200 %); a fit never zooms in past 100 %. */
 export const MAX_ZOOM = 2;
 
 /** The smallest box around all of `boxes`; `undefined` when there are none. */
@@ -35,7 +36,7 @@ export function boundsOf(boxes: readonly Box[]): Box | undefined {
 
 /**
  * The view that shows all of `content` in a viewport of `viewport` size, centred, with `padding`
- * around it. It never zooms in past 100 %, so one card isn't blown up (`workflows.canvas.fit`).
+ * around it. It never zooms in past 100 %, so one card isn't blown up (`workflows.canvas.fit-and-zoom`).
  */
 export function fitView(
   content: Box | undefined,
