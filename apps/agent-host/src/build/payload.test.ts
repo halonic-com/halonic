@@ -118,6 +118,18 @@ describe("collectPayload", () => {
     },
   );
 
+  it("adds a file a package's build wrote at its place, and refuses one that isn't built", () => {
+    typicalRepo();
+    const built = "packages/core/ports/dist/runner.mjs";
+    const host = join(repo, "apps/agent-host");
+    expect(() => collectPayload(host, repo, [built])).toThrow(
+      `${built} isn't built. Run its package's build first.`,
+    );
+    write(built, "runner");
+    const payload = collectPayload(host, repo, [built]);
+    expect(payload.files.map((file) => file.path)).toContain(built);
+  });
+
   it("points each file at its real place on disk", () => {
     typicalRepo();
     const payload = collectPayload(join(repo, "apps/agent-host"), repo);

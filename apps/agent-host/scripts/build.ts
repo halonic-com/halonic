@@ -15,11 +15,14 @@ const { version } = JSON.parse(readFileSync(join(packageDirectory, "package.json
   version: string;
 };
 mkdirSync(dist, { recursive: true });
-const payload = collectPayload(packageDirectory, join(packageDirectory, "..", ".."));
+// The integration runner is one built file, which no import reaches: `pnpm build:sea` builds it first.
+const runnerFile = "packages/adapters/integration-runner/dist/runner.mjs";
+const payload = collectPayload(packageDirectory, join(packageDirectory, "..", ".."), [runnerFile]);
 const manifest = payloadManifest(payload, {
   entry: "apps/agent-host/src/host.ts",
-  // sandbox-srt starts srt's command line with `process.execPath`, which is this executable.
-  programs: ["node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js"],
+  // sandbox-srt starts srt's command line with `process.execPath`, which is this executable,
+  // and the plugin backend starts the integration runner the same way.
+  programs: ["node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js", runnerFile],
 });
 const bundle = join(dist, "main.mjs");
 const output = join(dist, executableName(process.platform));

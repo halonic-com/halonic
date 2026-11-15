@@ -13,7 +13,7 @@ pnpm --filter @halonicjs/app-agent-host build:sea
 pnpm --filter @halonicjs/app-agent-host smoke:sea
 ```
 
-`build:sea` turns `src/main.ts` into plain JavaScript and makes `dist/halonic-agent-host` (`.exe` on Windows) with Node's own single-executable support (`node --build-sea`), so no extra library is needed. The Node that runs the build is the base of the executable, so build with the Node the repo pins. `smoke:sea` runs the executable in each of its uses below with a fresh profile folder, checks what it prints and reports its size. CI does both on Linux, macOS and Windows.
+`build:sea` turns `src/main.ts` into plain JavaScript and makes `dist/halonic-agent-host` (`.exe` on Windows) with Node's own single-executable support (`node --build-sea`), so no extra library is needed. It first builds the integration runner (`dist/runner.mjs`, one file no import reaches) and embeds it as a second payload program, so the host can start a plugin's backend with the executable standing in for Node. The Node that runs the build is the base of the executable, so build with the Node the repo pins. `smoke:sea` runs the executable in each of its uses below with a fresh profile folder, checks what it prints and reports its size. CI does both on Linux, macOS and Windows.
 
 ## The payload
 

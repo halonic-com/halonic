@@ -39,11 +39,22 @@ const buildFolder = "src/build";
  *
  * @param hostFolder - the agent host's package folder
  * @param repoRoot - the repo's root; a package found in it, outside any `node_modules`, is a workspace package
- * @throws when a dependency isn't installed, or two different copies of one outside package are needed
+ * @param builtFiles - files a package's build wrote outside its `src`, relative to the repo's root, such as the integration runner's `dist/runner.mjs`
+ * @throws when a dependency isn't installed, a built file isn't there, or two different copies of one outside package are needed
  */
-export function collectPayload(hostFolder: string, repoRoot: string): Payload {
-  const collector = new PayloadCollector(realpathSync(repoRoot));
+export function collectPayload(
+  hostFolder: string,
+  repoRoot: string,
+  builtFiles: readonly string[] = [],
+): Payload {
+  const root = realpathSync(repoRoot);
+  const collector = new PayloadCollector(root);
   collector.add(realpathSync(hostFolder), [buildFolder]);
+  for (const path of builtFiles) {
+    const source = join(root, path);
+    if (!existsSync(source)) throw new Error(`${path} isn't built. Run its package's build first.`);
+    collector.addBuiltFile(path, source);
+  }
   return collector.payload();
 }
 
@@ -119,6 +130,11 @@ class PayloadCollector {
       const found = findInstalled(name, folder);
       if (found !== undefined) this.add(found);
     }
+  }
+
+  /** A file a package's build wrote, at the same place as in the repo. */
+  addBuiltFile(path: string, source: string): void {
+    this.#addFile(path, source);
   }
 
   payload(): Payload {
