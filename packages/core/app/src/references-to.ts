@@ -33,7 +33,13 @@ export function referencesTo(workspace: LoadedWorkspace, item: LibraryItemRef): 
     ...inMailTriggers(workspace, item),
     ...inRefFields(workspace, item),
   ];
-  return places.sort((a, b) => a.file.localeCompare(b.file, "en"));
+  // Sorting is stable, and paths compare by code unit, as `loadWorkspace` lists them.
+  return places.sort((a, b) => {
+    if (a.file === b.file) {
+      return 0;
+    }
+    return a.file < b.file ? -1 : 1;
+  });
 }
 
 /** The entries of agents' lists, and of the hubs' `uses` for a shared item. */
@@ -79,20 +85,18 @@ function inMailTriggers(workspace: LoadedWorkspace, item: LibraryItemRef): Refer
     }));
 }
 
-/** The `collection` of each `ref` field of another collection that points at the item. */
+/** The `collection` of each `ref` field that points at the item, in its own collection too. */
 function inRefFields(workspace: LoadedWorkspace, item: LibraryItemRef): Reference[] {
   if (item.kind !== "collection") {
     return [];
   }
-  return filesOf(workspace, "collection")
-    .filter((file) => file.value.id !== item.id)
-    .flatMap((file) =>
-      Object.entries(file.value.fields)
-        .filter(([, each]) => each.type === "ref" && each.collection === item.id)
-        .map(([name]) => ({
-          file: file.path,
-          path: ["fields", name, "collection"],
-          owner: file.value.name,
-        })),
-    );
+  return filesOf(workspace, "collection").flatMap((file) =>
+    Object.entries(file.value.fields)
+      .filter(([, each]) => each.type === "ref" && each.collection === item.id)
+      .map(([name]) => ({
+        file: file.path,
+        path: ["fields", name, "collection"],
+        owner: file.value.name,
+      })),
+  );
 }

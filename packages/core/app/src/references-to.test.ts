@@ -33,7 +33,7 @@ async function acme() {
       "hubs/support/workflows/routines/inbox.routine.yaml":
         "id: inbox\nname: Inbox\ntrigger:\n  mail:\n    connector: gmail\nrun:\n  agent: support\n  prompt: Reply\n",
       "library/collections/customers.collection.yaml":
-        "id: customers\nname: Customers\nfields:\n  name:\n    type: text\n",
+        "id: customers\nname: Customers\nfields:\n  name:\n    type: text\n  referrer:\n    type: ref\n    collection: customers\n",
       "library/collections/orders.collection.yaml":
         "id: orders\nname: Orders\nfields:\n  customer:\n    type: ref\n    collection: customers\n",
     }),
@@ -67,10 +67,15 @@ verifies("app.references-to", () => {
     });
   });
 
-  it("gives the collection of a ref field, never the collection itself", async () => {
+  it("gives the collection of a ref field, also one that points at its own collection", async () => {
     const workspace = await acme();
 
     expect(referencesTo(workspace, { kind: "collection", id: "customers", hub: null })).toEqual([
+      {
+        file: "library/collections/customers.collection.yaml",
+        path: ["fields", "referrer", "collection"],
+        owner: "Customers",
+      },
       {
         file: "library/collections/orders.collection.yaml",
         path: ["fields", "customer", "collection"],
