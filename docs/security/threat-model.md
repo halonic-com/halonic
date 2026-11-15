@@ -411,8 +411,8 @@ start, in this order, because its fix comes first.
   sandbox isn't set up or fails its check, Studio is to offer to run that
   agent on this computer only after a warning you confirm. That is the "this
   computer" choice below, never a fallback Halonic makes by itself. The
-  Windows mode needs a security review before it becomes the default
-  (HAL-196).
+  Windows mode was reviewed on 15 Nov (HAL-196) and is **opt-in and
+  experimental only**. Making it the default needs a new review.
 - **Windows 11 with MXC** (opt-in): Microsoft's process container, a second
   sandbox on Windows 11 Home, Pro and Enterprise (the adapter is `sandbox-mxc`,
   **On `main`**). It lets a program read and write only its working, temp and
@@ -568,9 +568,11 @@ routes, isn't built yet, so no app uses the host today.
 Windows gets three choices ([ADR](../adr/2026-11-11-pluggable-sandbox-layer.md)):
 srt inside Halonic's own WSL distro (`srt-wsl`, the default), srt's native
 Windows mode (experimental), and "continue without a sandbox", where the
-agent asks before every command. None of them is built yet. The rows below
-are the security review's conditions (HAL-5407): what each backend must do
-before a release may offer it.
+agent asks before every command. Native srt was reviewed on 15 Nov (HAL-196):
+it is opt-in and experimental only, and making it the default needs a new
+review. The rows below are the security review's conditions (HAL-5407): what
+each backend must do before a release may offer it. Each row's mark says
+whether it is built.
 
 **Release rule.** A backend can be offered in a release only when every row
 marked **[gate]** is **On `main`** or has a case in that backend's attack
