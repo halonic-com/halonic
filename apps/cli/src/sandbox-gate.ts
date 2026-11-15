@@ -6,11 +6,11 @@
 // can't start, nothing starts, nothing is written to the run log, and the
 // command ends with exit 9. There is no flag that skips this (Julian, HAL-1673).
 
+import { startsAProgram, workflowAgentsOf } from "@halonicjs/adapter-workspace-models";
 import type { PlacementReader, RunDetail } from "@halonicjs/app";
-import type { Workflow } from "@halonicjs/format";
 import type { Sandbox } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
-import { filesOf, type LoadedFileOf, type LoadedWorkspace } from "@halonicjs/workspace";
+import type { LoadedFileOf, LoadedWorkspace } from "@halonicjs/workspace";
 import { dayInWords, localDay } from "./messages/dates.ts";
 import type { Message } from "./messages/define.ts";
 import { markPart, type Phrase, phrase, plainText } from "./messages/phrase.ts";
@@ -109,27 +109,9 @@ export function programAgentsOf(
   workspace: LoadedWorkspace,
   run: SandboxGateRun,
 ): LoadedFileOf<"agent">[] {
-  const { hubId, workflowId } = run;
-  const workflows = firstById(filesOf(workspace, "workflow"), hubId);
-  const agents = firstById(filesOf(workspace, "agent"), hubId);
-  const found = new Map<string, LoadedFileOf<"agent">>();
-  const seen = new Set<string>();
-  const visit = (id: string): void => {
-    const workflow = workflows.get(id)?.value;
-    if (workflow === undefined || seen.has(id)) return;
-    seen.add(id);
-    for (const name of namedIn(workflow)) {
-      if (name.kind === "workflow") {
-        visit(name.id);
-        continue;
-      }
-      const agent = agents.get(name.id);
-      if (agent !== undefined && startsAProgram(run.harness ?? agent.value.harness))
-        found.set(name.id, agent);
-    }
-  };
-  visit(workflowId);
-  return [...found.values()];
+  return workflowAgentsOf(workspace, run).filter((agent) =>
+    startsAProgram(run.harness ?? agent.value.harness),
+  );
 }
 
 /**
@@ -182,40 +164,4 @@ export function unsandboxedLine(agent: UnsandboxedAgent): Message {
 /** "! Writer runs on this computer without the sandbox, as chosen on 9 Nov.": the line before the run starts. */
 export function unsandboxedWarning(agent: UnsandboxedAgent): Phrase {
   return phrase`${markPart("needsYou")} ${unsandboxedLine(agent).phrase}`;
-}
-
-/**
- * The hub's files of one kind by id. A duplicate id is an error the loader
- * reports; the first by path wins, as in `definitionsOf`.
- */
-function firstById<File extends LoadedFileOf<"workflow" | "agent">>(
-  files: readonly File[],
-  hubId: string,
-): Map<string, File> {
-  const byId = new Map<string, File>();
-  for (const file of files) {
-    if (file.hub === hubId && !byId.has(file.value.id)) byId.set(file.value.id, file);
-  }
-  return byId;
-}
-
-/** Whether the harness an agent runs in starts a program on this computer: any but `halonic`. */
-export function startsAProgram(harness: string | undefined): boolean {
-  return harness !== undefined && harness !== "halonic";
-}
-
-/** An agent or a workflow a workflow's states name. */
-type Named = { readonly kind: "agent" | "workflow"; readonly id: string };
-
-/** Every agent and workflow the states of a workflow name, in the order they appear. */
-function namedIn(workflow: Workflow): Named[] {
-  const names: Named[] = [];
-  for (const state of Object.values(workflow.states)) {
-    if (state.agent !== undefined) names.push({ kind: "agent", id: state.agent });
-    if (state.workflow !== undefined) names.push({ kind: "workflow", id: state.workflow });
-    for (const branch of Object.values(state.branches ?? {})) {
-      names.push({ kind: "agent", id: branch.agent });
-    }
-  }
-  return names;
 }

@@ -1,3 +1,4 @@
+import { startsAProgram } from "@halonicjs/adapter-workspace-models";
 // The trust check before `halonic run` starts anything (cli-output 3.4,
 // "Untrusted workspace"). A run runs the workspace's models, programs and
 // connectors, so the workspace must be trusted on this computer first,
@@ -12,7 +13,6 @@ import type { TrustGrant } from "@halonicjs/ports";
 import { type LoadedWorkspace, reachesOnlyTheTestModel } from "@halonicjs/workspace";
 import type { Message } from "../../messages/define.ts";
 import { runMessages } from "../../messages/run.ts";
-import { startsAProgram } from "../../sandbox-gate.ts";
 import type { OpenWorkspaceDir } from "../../workspace-dir.ts";
 import { refuseFileProblems } from "../../workspace-problems.ts";
 import {

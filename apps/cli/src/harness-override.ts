@@ -1,3 +1,4 @@
+import { startsAProgram } from "@halonicjs/adapter-workspace-models";
 // A run that names a harness for all its agents (`halonic run --harness`,
 // HAL-189 6b) moves agents from Halonic's own loop into a program. Such an
 // agent's file may still name allowed sites or a working folder, but the
@@ -11,7 +12,7 @@ import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { Message } from "./messages/define.ts";
 import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
-import { programAgentsOf, type SandboxGateRun, startsAProgram } from "./sandbox-gate.ts";
+import { programAgentsOf, type SandboxGateRun } from "./sandbox-gate.ts";
 
 /**
  * Refuses a run whose harness would move an agent from Halonic's own loop
