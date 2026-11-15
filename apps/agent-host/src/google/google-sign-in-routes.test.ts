@@ -187,3 +187,25 @@ verifies("agent-host.google-sign-in-routes", () => {
     });
   });
 });
+
+verifies("agent-host.google-sign-in-callback", () => {
+  describe("the redirect address of a started sign-in", () => {
+    it("opens without the launch token and answers a page that is not an error", async () => {
+      const { url, google } = await started();
+      const accountRef = await readyAccount(google, "mailbox");
+      const pending = (await (await post(url, "/v1/google/sign-in", { accountRef })).json()) as {
+        authUrl: string;
+      };
+      const params = new URL(pending.authUrl).searchParams;
+      const redirect = new URL(params.get("redirect_uri") ?? "");
+      redirect.searchParams.set("state", params.get("state") ?? "");
+      // Google sends this when the person declines, so the test needs no call to Google.
+      redirect.searchParams.set("error", "access_denied");
+
+      const response = await fetch(redirect);
+
+      expect(response.status).toBe(200);
+      expect(await response.text()).toContain("You cancelled the sign-in");
+    });
+  });
+});

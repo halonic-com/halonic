@@ -16,7 +16,8 @@ export interface HostRoute {
    * launch token: the route is served without it. The `Host` and `Origin`
    * checks still apply, and the route's own handler must prove the request
    * (a sign-in's callback does, by the `state` only the started sign-in knows).
-   * Only a GET can be token-free, since a redirect is always a GET.
+   * Only a GET route is served without the token, since a redirect is always
+   * a GET: the server ignores the setting on a POST route.
    */
   tokenFree?: true;
 }
@@ -84,7 +85,8 @@ const refusalMessage: Record<Refusal, string> = {
  *    for is `tokenFree`.
  *
  * Without all three the answer is an error, whatever the path, so a caller
- * can't even learn which paths exist. A caller that is slow to send its
+ * can't even learn which paths exist, except that a `tokenFree` GET route
+ * answers a request that passes the first two checks. A caller that is slow to send its
  * request, or holds too many connections, is cut off by `limits`.
  */
 export async function startHostServer(
@@ -150,7 +152,7 @@ function createHostServer(
   };
   return createServer(options, (request, response) => {
     const found = findRoute(routes, request);
-    const refusal = refusalOf(request, port(), found?.tokenFree === true ? undefined : token);
+    const refusal = refusalOf(request, port(), isTokenFree(found) ? undefined : token);
     const route = refusal === undefined ? found : undefined;
     if (route === undefined) {
       sendRefusal(request, response, refusal ?? "not_found");
@@ -181,6 +183,11 @@ function refusalOf(
     return "unauthenticated";
   }
   return undefined;
+}
+
+/** Whether `route` is served without the launch token: only a GET route can be. */
+function isTokenFree(route: HostRoute | undefined): boolean {
+  return route?.tokenFree === true && route.method === "GET";
 }
 
 function findRoute(routes: readonly HostRoute[], request: IncomingMessage): HostRoute | undefined {
