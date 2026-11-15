@@ -92,6 +92,10 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
     throw new Error(notYet);
   }
 
+  async replaceClientSecret(): Promise<never> {
+    throw new Error(notYet);
+  }
+
   async startOver(): Promise<void> {
     throw new Error(notYet);
   }
