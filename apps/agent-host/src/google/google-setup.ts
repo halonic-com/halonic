@@ -5,11 +5,12 @@ import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import { FileSecretStore } from "@halonicjs/adapter-secrets-file";
 import { createTokenStore } from "@halonicjs/adapter-token-store";
 import { clientSecretStore, setupRecords } from "@halonicjs/google-setup";
-import { revokeGoogleSignIn } from "@halonicjs/host-google-sign-in";
-import type { GoogleAccountActions, GoogleSetupPorts } from "@halonicjs/host-server";
+import type { GoogleSetupPorts } from "@halonicjs/host-server";
 import type { HttpClient, Secrets } from "@halonicjs/ports";
 import { type ProfileFolder, secretsFile } from "@halonicjs/profile";
 import { randomIds, systemClock } from "@halonicjs/std";
+import { googleAccountActions } from "./google-actions.ts";
+import { workspaceConnectorSource } from "./workspace-connector-source.ts";
 
 /** What the host builds its Google setup from. */
 export interface GoogleSetupOptions {
@@ -17,6 +18,8 @@ export interface GoogleSetupOptions {
   profile: ProfileFolder;
   /** The host's own environment, where `HALONIC_SECRET_TOKEN_KEY` may be set. */
   env: Readonly<Record<string, string | undefined>>;
+  /** The folders the launcher named as workspaces: a setup's connector is read from the one its record names. */
+  workspaceRoots?: readonly string[];
   /** Talks to Google; a client that reaches Google's own hosts only, by default. */
   http?: HttpClient;
 }
@@ -49,8 +52,8 @@ function tokenKeySecrets(options: GoogleSetupOptions): Secrets {
  * same one the CLI's `halonic google` commands use. Nothing is created until
  * something is saved.
  *
- * Only disconnecting is wired so far: the other actions refuse, so a route
- * that reaches one fails instead of pretending to sign in.
+ * Each setup's subject is read from the connector its record is linked to,
+ * in the served workspace the record names.
  */
 export function openGoogleSetup(options: GoogleSetupOptions): GoogleSetupPorts {
   const clock = systemClock;
@@ -62,32 +65,30 @@ export function openGoogleSetup(options: GoogleSetupOptions): GoogleSetupPorts {
     clock,
   });
   const http = options.http ?? createNodeHttpClient({ hostClass: googleHostClass });
+  const setups = setupRecords({
+    records: new FileRecordStore(join(googleFolder, "setups")),
+    clock,
+    ids,
+  });
+  const clientSecrets = clientSecretStore(tokens, ids);
   return {
-    setups: setupRecords({
-      records: new FileRecordStore(join(googleFolder, "setups")),
-      clock,
-      ids,
-    }),
-    clientSecrets: clientSecretStore(tokens, ids),
+    setups,
+    clientSecrets,
     tokens,
-    actions: disconnectOnly((accountRef) => revokeGoogleSignIn(accountRef, { http, tokens })),
-    // No connector settings are read here yet, so no setup has a subject to show.
-    source: { describe: async () => null },
+    actions: googleAccountActions({ http, tokens, clientSecrets, clock }),
+    source: workspaceConnectorSource({
+      setups,
+      profile: options.profile,
+      workspaceRoots: options.workspaceRoots ?? [],
+      digest: webCryptoDigest,
+    }),
     signInEvents: { publish: () => undefined },
   };
 }
 
-/** The actions of a host that can disconnect and nothing else yet. */
-function disconnectOnly(revoke: GoogleAccountActions["revoke"]): GoogleAccountActions {
-  const notYet = async (): Promise<never> => {
-    throw new Error("The agent host doesn't do this Google action yet.");
-  };
-  return {
-    checkStagedSecret: notYet,
-    startSignIn: notYet,
-    dropSignIn: notYet,
-    finishSignIn: notYet,
-    checkAgain: notYet,
-    revoke,
-  };
-}
+const webCryptoDigest = {
+  async sha256(data: Uint8Array): Promise<Uint8Array> {
+    // A copy on its own ArrayBuffer: Web Crypto refuses views of a SharedArrayBuffer.
+    return new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(data)));
+  },
+};

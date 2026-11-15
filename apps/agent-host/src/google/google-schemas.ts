@@ -10,5 +10,5 @@ const accountRef = s
   .max(128)
   .regex(/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/u);
 
-/** What Studio gives to disconnect an account: its ref, never a path or a token. */
-export const disconnectBody = s.object({ accountRef }).strict();
+/** What Studio gives to change an account's setup: its ref, never a path or a token. */
+export const accountRefBody = s.object({ accountRef }).strict();
