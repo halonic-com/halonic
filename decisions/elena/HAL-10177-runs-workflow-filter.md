@@ -3,7 +3,6 @@
 - Task: HAL-10177
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-10209 (Liam's review of #2905; a team decision with no board card, HAL-2282 rule: it builds on the approved Runs list)
 - Kind: user-visible
-- Signature: pending
 
 ## What changes
 
