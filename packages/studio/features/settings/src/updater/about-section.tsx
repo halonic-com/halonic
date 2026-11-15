@@ -1,7 +1,7 @@
 import {
   Button,
   Callout,
-  CopyButton,
+  CommandBox,
   ExternalLink,
   SkeletonBar,
   Switch,
@@ -107,16 +107,35 @@ export function AboutHostView({ host, announce, onRestart }: AboutHostViewProps)
         </div>
       )}
       {status.managed === null ? null : <ManagedBlock command={status.managed.command} />}
-      {status.managed === null ? (
-        <Switch checked={status.automatic} onChange={updater.setAutomatic}>
-          <span className="flex flex-col">
-            <span>{text.AUTOMATIC}</span>
-            <span className="text-small text-fg-muted">{text.AUTOMATIC_SENTENCE}</span>
-          </span>
-        </Switch>
-      ) : null}
+      <CheckSwitch
+        on={status.automatic}
+        managed={status.managed !== null}
+        onChange={updater.setAutomatic}
+      />
       <AboutLinks heading={status.current} />
     </div>
+  );
+}
+
+/** The one switch: Halonic updates itself, or, under Scoop, only says when a new version is out. */
+function CheckSwitch({
+  on,
+  managed,
+  onChange,
+}: {
+  readonly on: boolean;
+  readonly managed: boolean;
+  readonly onChange: (on: boolean) => void;
+}) {
+  return (
+    <Switch checked={on} onChange={onChange}>
+      <span className="flex flex-col">
+        <span>{managed ? text.NOTIFY : text.AUTOMATIC}</span>
+        <span className="text-small text-fg-muted">
+          {managed ? text.NOTIFY_SENTENCE : text.AUTOMATIC_SENTENCE}
+        </span>
+      </span>
+    </Switch>
   );
 }
 
@@ -132,17 +151,13 @@ function NoAnswer({ onRetry }: { readonly onRetry: () => void }) {
   );
 }
 
-/** Scoop keeps Halonic up to date: the command to run, with Copy, in place of the switch. */
+/** Scoop keeps Halonic up to date: the command to run, with Copy, in every state. */
 function ManagedBlock({ command }: { readonly command: string }) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-small text-fg-muted">
-        {text.managedBy("Scoop")} {text.RUN_IN_TERMINAL}
-      </p>
-      <div className="flex flex-wrap items-center gap-3">
-        <code className="rounded-sm bg-surface-muted px-2 py-1 text-small">{command}</code>
-        <CopyButton text={command} label={text.copyCommandLabel} />
-      </div>
+      <h4 className="text-body font-medium">{text.MANAGED_HEADING}</h4>
+      <p className="text-small text-fg-muted">{text.MANAGED_SENTENCE}</p>
+      <CommandBox command={command} />
     </div>
   );
 }

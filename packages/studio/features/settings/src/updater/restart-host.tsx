@@ -40,6 +40,9 @@ interface RestartHostViewProps {
 /** The toasts already shown for each page's updater, so a window that remounts doesn't repeat them. */
 const toastsShown = new WeakMap<UpdaterHost, Set<string>>();
 
+/** The versions already announced as out under Scoop, so a window that remounts doesn't say it again. */
+const toldManaged = new WeakMap<UpdaterHost, Set<string>>();
+
 function RestartHostView({ host, flow, runs, announce }: RestartHostViewProps) {
   const toasts = useToastStore();
   const openExternal = useOpenExternal();
@@ -97,6 +100,7 @@ function RestartHostView({ host, flow, runs, announce }: RestartHostViewProps) {
       }
     }
     before.current = state.kind;
+    announceManagedOnce(host, status, announce);
     if (toasts !== null) showStartToasts(host, status, toasts, openExternal);
     // Each status is handled once; the callbacks it reads are the page's own.
   }, [status]);
@@ -122,6 +126,20 @@ function RestartHostView({ host, flow, runs, announce }: RestartHostViewProps) {
       {text.runsBody(asking.runs)}
     </Dialog>
   );
+}
+
+/** Under Scoop, says once per version that it is out; the status bar item itself stays quiet. */
+function announceManagedOnce(
+  host: UpdaterHost,
+  { managed, state }: UpdateStatus,
+  announce: RestartHostViewProps["announce"],
+): void {
+  if (managed === null || state.kind !== "available") return;
+  const told = toldManaged.get(host) ?? new Set<string>();
+  toldManaged.set(host, told);
+  if (told.has(state.version)) return;
+  told.add(state.version);
+  announce(text.announceManaged(state.version, managed.command), "polite");
 }
 
 function readyVersion(status: UpdateStatus | null): string | null {
