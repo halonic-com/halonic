@@ -35,4 +35,19 @@ verifies("workflows.canvas.point-of-light", () => {
     const curve = lightCurve({ x: 10, y: 20 }, { x: 310, y: 20 });
     expect(lightPoint(curve, 1)).toEqual({ x: 310, y: 20 });
   });
+
+  it("ends exactly on the target with no snap, on short and long hops", () => {
+    for (const distance of [10, 360, 1000, 1900]) {
+      const duration = lightHopDuration(distance);
+      expect(lightProgress(duration, duration)).toBe(1);
+      const frame = 1000 / 60;
+      const lastStep = Math.abs(1 - lightProgress(duration - frame, duration));
+      const stepBefore = Math.abs(
+        lightProgress(duration - frame, duration) - lightProgress(duration - 2 * frame, duration),
+      );
+      // The last frame moves no more than the one before it: the light eases in, it does not jump.
+      expect(lastStep).toBeLessThanOrEqual(stepBefore);
+      expect(lastStep * distance).toBeLessThan(2);
+    }
+  });
 });

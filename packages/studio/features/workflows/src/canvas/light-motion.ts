@@ -36,21 +36,40 @@ export function lightHopDuration(distance: number): number {
   return Math.min(LIGHT_HOP_MAX_MS, Math.max(LIGHT_HOP_MIN_MS, 500 + 2.5 * distance));
 }
 
-/**
- * How far along the curve the light is `elapsed` milliseconds into a hop of `duration`: a damped
- * spring from rest that settles by the end. It runs past 1 (about 4 %) and comes back; at
- * `duration` it is exactly 1.
- */
-export function lightProgress(elapsed: number, duration: number): number {
-  if (elapsed <= 0) return 0;
-  if (elapsed >= duration) return 1;
+/** Where the spring's own correction starts and how much of the run it takes (Noah, HAL-10400). */
+export const LIGHT_SETTLE_START = 0.6;
+
+/** The damped spring from rest, over a normalised run `u` of 0 to 1 (`duration` sets its speed). */
+function spring(u: number, duration: number): number {
   const omega = 7.36 / (duration / 1000);
   const damped = omega * Math.sqrt(1 - LIGHT_DAMPING * LIGHT_DAMPING);
-  const tau = elapsed / 1000;
+  const tau = (u * duration) / 1000;
   const decay = Math.exp(-LIGHT_DAMPING * omega * tau);
   return (
     1 -
     decay * (Math.cos(damped * tau) + ((LIGHT_DAMPING * omega) / damped) * Math.sin(damped * tau))
+  );
+}
+
+function smootherstep(x: number): number {
+  const c = Math.min(1, Math.max(0, x));
+  return c * c * c * (c * (c * 6 - 15) + 10);
+}
+
+/**
+ * How far along the curve the light is `elapsed` milliseconds into a hop of `duration`: a damped
+ * spring from rest. It runs past 1 (about 4 %) and comes back. The spring's own error at the end
+ * is taken out smoothly over the last 40 % of the run, so at `duration` it is exactly 1, with no
+ * snap on a hop of any length.
+ */
+export function lightProgress(elapsed: number, duration: number): number {
+  if (elapsed <= 0) return 0;
+  if (elapsed >= duration) return 1;
+  const u = elapsed / duration;
+  const residual = spring(1, duration) - 1;
+  return (
+    spring(u, duration) -
+    residual * smootherstep((u - LIGHT_SETTLE_START) / (1 - LIGHT_SETTLE_START))
   );
 }
 
