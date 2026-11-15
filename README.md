@@ -180,8 +180,10 @@ halonic trust
 halonic run support-reply --input examples/refund-question.json
 ```
 
-`halonic doctor` tells you if a model still needs a key. `halonic trust` asks
-you to confirm that this computer may run Acme. Without a terminal, use
+`halonic doctor` tells you if a model still needs a key. Once Acme reaches a
+real model, `halonic trust` asks you to confirm that this computer may run it
+(while Acme uses only the test model it says no trust is needed). Without a
+terminal, use
 `halonic trust --yes --fingerprint <fingerprint>`. If the provider refuses,
 [the provider says no](https://docs.halonic.dev/guides/provider-says-no) shows
 what each message means. There is no spending limit yet: set one at your
