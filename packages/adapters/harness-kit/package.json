@@ -21,6 +21,8 @@
   },
   "devDependencies": {
     "@halonicjs/adapter-git": "workspace:*",
+    "@halonicjs/adapter-memory": "workspace:*",
+    "@halonicjs/testing-contracts": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",

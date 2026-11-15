@@ -1,7 +1,7 @@
 # @halonicjs/adapter-fs-node
 
 The `DefinitionStore`, `RunStore`, `RecordStore`, `TrustStore`,
-`AgentPlacementStore`, `SandboxSettingStore`, `ConnectionSettingsStore`, `UnfencedRunConsentStore`, `HostSettingsStore`,
+`AgentPlacementStore`, `InstructionTrustStore`, `SandboxSettingStore`, `ConnectionSettingsStore`, `UnfencedRunConsentStore`, `HostSettingsStore`,
 `BlobStore`, `FolderReader` and `PluginFolderWriter` ports on the local file system with Node: workspace files are
 plain files under a root folder, each run and each collection of records is a
 JSONL log, each trust record, each agent's "this computer" choice, each
@@ -226,6 +226,20 @@ It passes the shared `AgentPlacementStore` contract suite.
   agent's key, `get` throws naming the agent and its workspace, and
   `remove` deletes the file without reading it. `AgentPlacement` in
   `core/app` then runs the agent in a sandbox.
+
+## Trusted instructions in the profile
+
+`new FileInstructionTrustStore(root)` keeps the pin of each agent's `AGENTS.md`
+and skills that a person trusted, as one JSON file in `root`, a folder in the
+user's profile such as `<profile>/instruction-trust`, never inside a workspace,
+so an agent that edits its own instructions can't also trust them. It passes
+the shared `InstructionTrustStore` contract suite.
+
+- **File names, writes and modes** are the same as for the placement choices.
+- **Damage:** when a record can't be read, holds another agent's key, any
+  field a record doesn't have, or is a link, `get` throws naming the agent and
+  its workspace, never `null`, and `remove` deletes the file without reading
+  it. The caller then asks the person and never trusts.
 
 ## The sandbox choice in the profile
 
