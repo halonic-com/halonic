@@ -43,6 +43,8 @@ export interface GitObjects {
   listFiles(commit: string): readonly string[];
   /** A file's text at `commit`, or undefined when it's missing. */
   readFile(commit: string, path: string): string | undefined;
+  /** Several files' text at `commit` in one batch; a missing file is left out. */
+  readFiles(commit: string, paths: readonly string[]): ReadonlyMap<string, string>;
 }
 
 /** One `- Signature:` line of a note. */
@@ -179,14 +181,12 @@ export function coveredPaths(
  */
 function testFilesVerifying(ids: readonly string[], git: GitObjects, head: string): string[] {
   const quoted = ids.flatMap((id) => [`"${id}"`, `'${id}'`, `\`${id}\``]);
-  const files: string[] = [];
-  for (const file of git.listFiles(head).filter((f) => isSourceFile(f) && isTestFile(f))) {
-    const text = git.readFile(head, file);
-    if (text !== undefined && quoted.some((id) => text.includes(id))) {
-      files.push(file);
-    }
-  }
-  return files;
+  const candidates = git.listFiles(head).filter((f) => isSourceFile(f) && isTestFile(f));
+  const texts = git.readFiles(head, candidates);
+  return candidates.filter((file) => {
+    const text = texts.get(file);
+    return text !== undefined && quoted.some((id) => text.includes(id));
+  });
 }
 
 /** The object ID at `head` of each covered path, `missing` when it's gone. */

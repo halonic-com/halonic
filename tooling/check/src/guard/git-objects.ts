@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import type { GitObjects } from "./signatures.ts";
 
 const commitPattern = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
@@ -8,6 +8,14 @@ const commitPattern = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
  * tree listing is read in full instead of failing (HAL-1337 follow-up).
  */
 const maxOutputBytes = 256 * 1024 * 1024;
+
+const optional = (read: () => string): string | undefined => {
+  try {
+    return read();
+  } catch {
+    return undefined;
+  }
+};
 
 const gitIn =
   (root: string) =>
@@ -24,20 +32,13 @@ const gitIn =
  * only: no checkout, no hooks, no filters, so nothing of the pull request
  * runs. Takes full commit IDs only, so no argument reads as an option.
  */
-export function gitObjects(root: string): GitObjects {
+export function gitObjects(root: string, progress: (line: string) => void = () => {}): GitObjects {
   const git = gitIn(root);
   const at = (commit: string, path: string): string => {
     if (!commitPattern.test(commit)) {
       throw new Error(`Not a full commit ID: ${commit}`);
     }
     return `${commit}:${path}`;
-  };
-  const optional = (read: () => string): string | undefined => {
-    try {
-      return read();
-    } catch {
-      return undefined;
-    }
   };
   return {
     hasCommit: (commit) =>
@@ -48,7 +49,64 @@ export function gitObjects(root: string): GitObjects {
     listFiles: (commit) =>
       git("ls-tree", "-r", "--name-only", "-z", at(commit, "")).split("\0").filter(Boolean),
     readFile: (commit, path) => optional(() => git("cat-file", "blob", at(commit, path))),
+    readFiles: (commit, paths) => {
+      progress(`reading ${paths.length} files at ${commit.slice(0, 12)}`);
+      return readBatch(
+        root,
+        paths.map((path) => [path, at(commit, path)] as const),
+      );
+    },
   };
+}
+
+const hasLineBreak = (spec: string): boolean => /[\r\n]/.test(spec);
+
+/**
+ * Reads blobs through one `git cat-file --batch` process instead of one per
+ * file. A path with a line break can't be a batch line, so it is read alone.
+ */
+function readBatch(
+  root: string,
+  entries: readonly (readonly [path: string, spec: string])[],
+): ReadonlyMap<string, string> {
+  const batched = entries.filter(([, spec]) => !hasLineBreak(spec));
+  const texts = batched.length > 0 ? batchTexts(root, batched) : new Map<string, string>();
+  for (const [path, spec] of entries.filter(([, each]) => hasLineBreak(each))) {
+    const text = optional(() => gitIn(root)("cat-file", "blob", spec));
+    if (text !== undefined) texts.set(path, text);
+  }
+  return texts;
+}
+
+/** Runs the batch and reads its `<id> blob <size>` or `<spec> missing` answers in order. */
+function batchTexts(
+  root: string,
+  batched: readonly (readonly [path: string, spec: string])[],
+): Map<string, string> {
+  const run = spawnSync("git", ["cat-file", "--batch"], {
+    cwd: root,
+    input: batched.map(([, spec]) => `${spec}\n`).join(""),
+    maxBuffer: maxOutputBytes,
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  if (run.status !== 0) {
+    throw new Error(`git cat-file --batch failed: ${String(run.stderr)}`);
+  }
+  const texts = new Map<string, string>();
+  let at = 0;
+  for (const [path, spec] of batched) {
+    const end = run.stdout.indexOf(0x0a, at);
+    const header = run.stdout.toString("utf8", at, end).split(" ");
+    at = end + 1;
+    if (header[1] === "blob") {
+      const size = Number(header[2]);
+      texts.set(path, run.stdout.toString("utf8", at, at + size));
+      at += size + 1;
+    } else if (header[header.length - 1] !== "missing") {
+      throw new Error(`Unexpected git cat-file output for ${spec}: ${header.join(" ")}`);
+    }
+  }
+  return texts;
 }
 
 /** The commit `head` branched from on `base`'s history. */
