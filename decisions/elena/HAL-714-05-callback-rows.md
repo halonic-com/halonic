@@ -3,6 +3,7 @@
 - Task: HAL-714
 - Approval: Liam approved the code in review task HAL-10402, and Sofia approved the wording and behaviour in UX review task HAL-10403 (re-check at `a40e42ec4`)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:p0KtC1s+6aZgk+3os9sSDOmH/F7A3JT0ERGakHf3uIzFASSPZfoetxIr7FEgnAEWYAlrSJVrc0UceyRJeg7EDg==
 
 ## What changes
 
