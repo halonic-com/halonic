@@ -20,6 +20,7 @@ export {
   KnowledgeHostService,
   type KnowledgeRef,
   type KnowledgeSource,
+  type SummarizeOutcome,
 } from "./knowledge-host.ts";
 export {
   type LibraryEntry,
