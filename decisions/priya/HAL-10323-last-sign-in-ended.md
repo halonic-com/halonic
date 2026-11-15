@@ -2,6 +2,7 @@
 
 - Approval: team call under the HAL-2282 rule, for the rows in the board-approved Google setup design (HAL-621, section 3.5, step 7); Liam to confirm on the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:d+ss1petpSfzQ330mYPy8jioE7u04KA/S8WWSs3UGbSQqKrOxty2pTij1OZo7/2tVtHTVOQethOw6rLdKVjtBQ==
 - Task: HAL-10323
 
 ## What changes
