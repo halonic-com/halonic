@@ -24,30 +24,36 @@ export interface LibraryPageProps {
   readonly onOpenInNewTab: (kind: LibraryItemKind, id: string) => void;
   /** The New button of a tab that has one. Without it, no tab shows the button. */
   readonly onNew?: (kind: LibraryItemKind) => void;
+  /** The Knowledge empty state's button. Without it, the empty state has no button. */
+  readonly onOpenDocsFolder?: () => void;
 }
 
 type Load =
   | { readonly state: "loading" }
-  | { readonly state: "failed"; readonly reason?: string }
-  | { readonly state: "loaded"; readonly listing: LibraryListing };
+  | { readonly state: "failed"; readonly kind: LibraryItemKind; readonly reason?: string }
+  | { readonly state: "loaded"; readonly kind: LibraryItemKind; readonly listing: LibraryListing };
 
 /** The tab's items from the host, read again when the host says something changed or after Try again. */
 function useListing(
   host: LibraryItemsHost,
   kind: LibraryItemKind,
 ): { load: Load; retry: () => void } {
-  const [load, setLoad] = useState<Load>({ state: "loading" });
+  const [stored, setLoad] = useState<Load>({ state: "loading" });
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let current = true;
+    let latest = 0;
     const read = () => {
+      const mine = ++latest;
+      const wanted = () => current && mine === latest;
       host.list(kind).then(
-        (listing) => current && setLoad({ state: "loaded", listing }),
+        (listing) => wanted() && setLoad({ state: "loaded", kind, listing }),
         (error: unknown) =>
-          current &&
+          wanted() &&
           setLoad({
             state: "failed",
+            kind,
             ...(error instanceof Error && error.message !== "" ? { reason: error.message } : {}),
           }),
       );
@@ -61,6 +67,9 @@ function useListing(
     };
   }, [host, kind, attempt]);
 
+  // A result of the tab just left isn't this tab's: until its own read lands, it is loading.
+  const load: Load =
+    stored.state !== "loading" && stored.kind !== kind ? { state: "loading" } : stored;
   return { load, retry: useCallback(() => setAttempt((count) => count + 1), []) };
 }
 
@@ -76,6 +85,7 @@ export function LibraryPage({
   onOpen,
   onOpenInNewTab,
   onNew,
+  onOpenDocsFolder,
 }: LibraryPageProps) {
   const ids = useTabIds();
   const tabs = useMemo(() => libraryKinds.map((each) => ({ id: each, label: tabLabel(each) })), []);
@@ -96,7 +106,7 @@ export function LibraryPage({
         <OverviewPage
           key={kind}
           {...overview}
-          words={overviewWords(kind)}
+          words={overviewWords(kind, onOpenDocsFolder)}
           loading={load.state === "loading"}
           {...(load.state === "failed"
             ? {

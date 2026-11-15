@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1303 (T10, P4a); flow-library 3.1
 
-The overview page shall show an item's `usedBy` text on the right of its row, in the feature's words, and shall show nothing there for an item without one. The search shall not read it.
+The overview page shall show an item's `usedBy` text on the right of its row, after the item's chips when it has both, in the feature's words, and shall show nothing there for an item without one. The search shall not read it.
 
 ## Examples
 
@@ -17,3 +17,6 @@ The overview page shall show an item's `usedBy` text on the right of its row, in
 - Given the `usedBy` text "Used by Support",
   when the user searches "support",
   then the page shows no match for that row.
+- Given an item with the chip "1 running" and the `usedBy` text "Used by 1 agent",
+  when the page shows,
+  then its row ends with "1 running" and then "Used by 1 agent".

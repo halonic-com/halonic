@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1303 (T10, P4a); flow-library 3.1; microcopy 11.1
 
-The Library page shall show four tabs in the order Skills, Knowledge, Collections, Connectors, with one sentence under the title that follows the selected tab. Under them it shall show the shell's overview page with the selected tab's items from the host, in the words of microcopy 11.1 for each state, and a New button only on the tabs that have one (not Knowledge). It shall say "Couldn't load" with the tab's name, and read the items again on Try again or when the host says something changed.
+The Library page shall show four tabs in the order Skills, Knowledge, Collections, Connectors, with one sentence under the title that follows the selected tab. Under them it shall show the shell's overview page with the selected tab's items from the host, in the words of microcopy 11.1 for each state, and a New button only on the tabs that have one (not Knowledge). An empty Knowledge tab offers Open the docs folder when the app gives it. A tab whose items haven't arrived shows loading, never the previous tab's rows. It shall say "Couldn't load" with the tab's name, and read the items again on Try again or when the host says something changed.
 
 ## Examples
 
@@ -20,3 +20,9 @@ The Library page shall show four tabs in the order Skills, Knowledge, Collection
 - Given the host fails with "The workspace folder is gone.",
   when the Connectors tab shows,
   then it says "Couldn't load connectors" and that reason, and Try again asks the host again.
+- Given the Knowledge tab is empty and the app can open the docs folder,
+  when the page shows,
+  then the empty state has the button "Open the docs folder".
+- Given the user switches from Skills to a tab whose items are still on their way,
+  when the tab changes,
+  then no skill row shows.

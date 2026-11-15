@@ -89,8 +89,12 @@ export function couldntLoad(kind: LibraryItemKind): string {
 }
 
 /** The words the shell's overview page needs for one tab. */
-export function overviewWords(kind: LibraryItemKind): OverviewWords {
+export function overviewWords(kind: LibraryItemKind, onOpenDocsFolder?: () => void): OverviewWords {
   const { plural, matches, nothingYet } = kindWords[kind];
+  const docsAction =
+    kind === "knowledge" && onOpenDocsFolder !== undefined
+      ? { action: { label: "Open the docs folder", onClick: onOpenDocsFolder } }
+      : {};
   return {
     searchLabel: `Search for ${plural}`,
     loadingLabel: `Loading ${plural}`,
@@ -101,6 +105,6 @@ export function overviewWords(kind: LibraryItemKind): OverviewWords {
     sharedSection: (workspaceName) => `Shared in ${workspaceName}`,
     emptySection: (sectionName) => `No ${plural} in ${sectionName} yet.`,
     noMatch: (query) => `No ${plural} ${matches} “${query}”.`,
-    nothingYet,
+    nothingYet: { ...nothingYet, ...docsAction },
   };
 }

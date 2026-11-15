@@ -6,7 +6,7 @@ function counted(count: number, noun: string): string {
 
 /**
  * The right side of a Library row. One agent is named, as "Used by Support"; anything else is
- * counted, as "Used by 2 agents" or "Used by 1 agent and 1 collection". Hubs that take a shared
+ * counted, as "Used by 2 agents" or "Used by 1 agent and 1 collection", and three parts as "Used by 1 agent, 1 routine and 1 collection". Hubs that take a shared
  * item aren't counted: only the delete line names them (flow-library 3.1).
  *
  * @example
@@ -24,5 +24,7 @@ export function usedByText(usage: ItemUsage): string {
     usage.routines.length > 0 ? counted(usage.routines.length, "routine") : undefined,
     usage.collections.length > 0 ? counted(usage.collections.length, "collection") : undefined,
   ].filter((part) => part !== undefined);
-  return parts.length === 0 ? "Not used yet" : `Used by ${parts.join(" and ")}`;
+  const last = parts.at(-1);
+  if (last === undefined) return "Not used yet";
+  return `Used by ${parts.length === 1 ? last : `${parts.slice(0, -1).join(", ")} and ${last}`}`;
 }

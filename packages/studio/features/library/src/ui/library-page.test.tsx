@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
+import type { LibraryItemKind } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { LibraryItemsHost, LibraryListing } from "../library-items-host.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -126,5 +127,41 @@ verifies("library.library-page", () => {
     );
     act(() => cell?.click());
     expect(onOpen).toHaveBeenCalledWith("skill", "refunds");
+  });
+
+  it("offers Open the docs folder in the empty Knowledge tab, and only there", async () => {
+    const onOpenDocsFolder = vi.fn();
+    const knowledge = await show(hostWith({}), { kind: "knowledge", onOpenDocsFolder });
+    act(() => button(knowledge, "Open the docs folder")?.click());
+    expect(onOpenDocsFolder).toHaveBeenCalledOnce();
+    const collections = await show(hostWith({}), { kind: "collection", onOpenDocsFolder });
+    expect(button(collections, "Open the docs folder")).toBeUndefined();
+    const without = await show(hostWith({}), { kind: "knowledge" });
+    expect(button(without, "Open the docs folder")).toBeUndefined();
+  });
+
+  it("shows loading, not the previous tab's rows, while a new tab's items are on their way", async () => {
+    const host = hostWith({ skill: skills });
+    host.list.mockImplementation((kind: string) =>
+      kind === "skill" ? Promise.resolve(skills) : new Promise(() => undefined),
+    );
+    function Switching() {
+      const [kind, setKind] = useState<LibraryItemKind>("skill");
+      return (
+        <LibraryPage
+          host={host}
+          kind={kind}
+          onKindChange={setKind}
+          onOpen={() => undefined}
+          onOpenInNewTab={() => undefined}
+        />
+      );
+    }
+    const page = render(<Switching />);
+    await settled();
+    expect(page.textContent).toContain("Acme refunds");
+    const knowledge = [...page.querySelectorAll<HTMLElement>('[role="tab"]')][1];
+    act(() => knowledge?.click());
+    expect(page.textContent).not.toContain("Acme refunds");
   });
 });

@@ -25,6 +25,14 @@ verifies("library.library-used-by", () => {
     );
   });
 
+  it("joins three parts with commas and a final and", () => {
+    expect(
+      usedByText(
+        usage({ agents: named("Support"), routines: named("Inbox"), collections: named("Claims") }),
+      ),
+    ).toBe("Used by 1 agent, 1 routine and 1 collection");
+  });
+
   it("counts the routines of a connector", () => {
     expect(usedByText(usage({ routines: named("Inbox") }))).toBe("Used by 1 routine");
   });
