@@ -51,6 +51,11 @@ export {
 } from "./listed-tools-host.ts";
 export { listedToolsSnapshot } from "./listed-tools-snapshot.ts";
 export {
+  type NewCollectionDraft,
+  type NewCollectionHost,
+  NewCollectionHostService,
+} from "./new-collection-host.ts";
+export {
   type NewSkillDraft,
   type NewSkillHost,
   NewSkillHostService,
