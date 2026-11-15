@@ -81,7 +81,8 @@ async function answering(work: () => Promise<Response>): Promise<Response> {
     if (error instanceof ImportRefusal) {
       return refusal(409, {
         code: error.code,
-        message: "The import was stopped and nothing was applied.",
+        message:
+          "The import was stopped. Files written before the stop stay, and sending the import again is safe.",
         paths: error.paths,
       });
     }
@@ -123,7 +124,12 @@ const importFilesPath = "/admin/import/files";
 /** A manifest lists a file per run, collection and blob, a few hundred bytes each. */
 const maxManifestBytes = 16 * 1024 * 1024;
 
-/** The body of a request, or `undefined` when it is longer than `limit` bytes. */
+/**
+ * The body of a request, or `undefined` when it is longer than `limit` bytes.
+ * A declared length over the limit is refused before the body is read; a body
+ * without one (chunked) is read whole and then measured, which the limits here
+ * (50 MiB a file, 16 MiB a manifest) keep within a Worker's memory.
+ */
 async function boundedBody(request: Request, limit: number): Promise<Uint8Array | undefined> {
   const declared = Number(request.headers.get("content-length") ?? 0);
   if (declared > limit) return undefined;

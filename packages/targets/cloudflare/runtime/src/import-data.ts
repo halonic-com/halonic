@@ -212,7 +212,8 @@ async function planAll(
  * deployment holds already, exactly, is skipped, so an import that stopped in the
  * middle can be sent again. The staged files are removed after a full success.
  *
- * @throws ImportRefusal naming the paths at fault; nothing was applied
+ * @throws ImportRefusal naming the paths at fault; a stop in the write pass leaves the
+ *   earlier writes, and a resend skips them
  */
 export async function importStaged(
   target: ImportTarget,
