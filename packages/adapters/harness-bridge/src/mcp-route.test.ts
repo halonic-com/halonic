@@ -147,6 +147,38 @@ verifies("harness-bridge.mcp", () => {
     const response = await fetch(`${bridge.url}/mcp`, { method: "POST", body: "{}" });
     expect(response.status).toBe(401);
   });
+
+  it("refuses an MCP call that carries another run's token, and runs nothing", async () => {
+    const mine = await openWithTools();
+    const other = await openWithTools();
+    const response = await post(mine.bridge, callReadIssue, {
+      [harnessBridgeTokenHeader]: other.bridge.token,
+    });
+    expect(response.status).toBe(401);
+    expect(response.text).not.toContain(other.bridge.token);
+    expect(mine.ran).toEqual([]);
+    expect(mine.recorded).toEqual([]);
+  });
+
+  it("refuses an MCP call once the run has ended, with its own token", async () => {
+    const run = new AbortController();
+    const { bridge, ran } = await openWithTools({ signal: run.signal });
+    expect((await post(bridge, callReadIssue)).status).toBe(200);
+    run.abort();
+    await bridge.close();
+    await expect(post(bridge, callReadIssue)).rejects.toThrow();
+    expect(ran).toEqual(["read_issue"]);
+  });
+
+  it("refuses a call on a connection that outlives the run's close", async () => {
+    // A raw keep-alive connection can't be reused after close, so ask through the route's own
+    // check: the token must stop working at the first moment of closing.
+    const { bridge, ran } = await openWithTools();
+    const closing = bridge.close();
+    await expect(post(bridge, callReadIssue)).rejects.toThrow();
+    await closing;
+    expect(ran).toEqual([]);
+  });
 });
 
 verifies("harness-bridge.approvals", () => {
