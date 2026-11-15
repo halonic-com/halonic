@@ -81,9 +81,3 @@ export const searchWords = {
   detail: (hubName: string) => `Workflow · ${hubName}`,
   newCommand: "New workflow",
 } as const;
-
-/** The reason a failed read gives, as one sentence ending in a full stop. */
-export function failureReason(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  return message.endsWith(".") ? message : `${message}.`;
-}
