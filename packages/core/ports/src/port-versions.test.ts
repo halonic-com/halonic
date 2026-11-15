@@ -19,6 +19,7 @@ const notPorts = new Set([
   "provider-default-base-url.ts",
   "run-failure-error.ts",
   "run-target-not-found.ts",
+  "vcs-status.ts",
 ]);
 
 const portFiles = readdirSync(sourceFolder)

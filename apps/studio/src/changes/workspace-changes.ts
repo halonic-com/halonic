@@ -1,5 +1,5 @@
 import type { DefinitionStore } from "@halonicjs/ports";
-import { unversionedFolders, type VcsChange } from "@halonicjs/ports";
+import { parseStatus, unversionedFolders, type VcsChange } from "@halonicjs/ports";
 import { contentDigest, KindedError, type Sha256 } from "@halonicjs/std";
 import type {
   ChangesRead,
@@ -9,7 +9,7 @@ import type {
   VersionInput,
 } from "@halonicjs/studio-feature-source-control/api";
 import { lastVersionDiffArgs, lastVersionFromDiff } from "./last-version.ts";
-import { parseStatus, statusArgs } from "./parse-status.ts";
+import { statusArgs } from "./status-args.ts";
 
 /** What git said, as the shell's `git` command gives it back. */
 export interface GitAnswer {
@@ -61,7 +61,7 @@ export class WorkspaceChanges implements ChangesSource {
     const status = await this.#run(statusArgs);
     if (status === "no-git") return { kind: "no-git" };
     if (status.code !== 0) throw new KindedError("unavailable", readableProblem(status));
-    return { kind: "ready", changes: parseStatus(status.stdout).filter(isVersioned) };
+    return { kind: "ready", changes: parseStatus(status.stdout).changes.filter(isVersioned) };
   }
 
   async readTexts(change: VcsChange): Promise<FileTexts> {
