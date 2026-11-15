@@ -5,7 +5,13 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it } from "vitest";
-import { readAsNode, roundTrip, type WorkerTarget, workerChecks } from "./transfer-checks.ts";
+import {
+  eventually,
+  readAsNode,
+  roundTrip,
+  type WorkerTarget,
+  workerChecks,
+} from "./transfer-checks.ts";
 
 const example = fileURLToPath(
   new URL("../../../core/format/src/runtime-export/fixtures/example", import.meta.url),
@@ -116,6 +122,33 @@ verifies("cloudflare-live.transfer", () => {
     });
     it("fails when /admin answers anything else", async () => {
       await expect(workerChecks.adminClosed(fakeWorker().target, key)).rejects.toThrow(/401/);
+    });
+  });
+
+  describe("waiting for the key to take effect", () => {
+    it("retries while /admin is still the closed 404, then passes on the 401", async () => {
+      const open = fakeWorker().target;
+      let calls = 0;
+      const slow: WorkerTarget = {
+        baseUrl: base,
+        fetch: async (input, init) =>
+          ++calls <= 2 ? neutral() : (open.fetch?.(input, init) ?? neutral()),
+      };
+      const waits: number[] = [];
+      await eventually(() => workerChecks.adminKeyActive(slow), {
+        sleep: async (ms) => void waits.push(ms),
+      });
+      expect(waits).toEqual([5_000, 5_000]);
+    });
+    it("gives up with the last error after the given tries", async () => {
+      let waited = 0;
+      await expect(
+        eventually(() => workerChecks.adminKeyActive(fakeWorker({ closed: true }).target), {
+          attempts: 3,
+          sleep: async () => void waited++,
+        }),
+      ).rejects.toThrow(/answered 404 not_found, expected 401/);
+      expect(waited).toBe(2);
     });
   });
 

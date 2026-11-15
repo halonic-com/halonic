@@ -74,6 +74,11 @@ export const workerChecks = {
     }
   },
 
+  /** The admin key has taken effect: a call without a key is refused as a 401, not the closed 404. */
+  async adminKeyActive(target: WorkerTarget): Promise<void> {
+    expectStatus("/admin/export without a key", await call(target, "/admin/export"), 401);
+  },
+
   /**
    * While the key is set: no key, a wrong key, a key in the URL and the right key sent with an
    * `Origin` header are all refused. The right key alone is not tried here: the round trip does.
@@ -100,6 +105,40 @@ export const workerChecks = {
     }
   },
 };
+
+export interface EventuallyOptions {
+  /** How many times to try the check. Defaults to 12. */
+  readonly attempts?: number;
+  /** Milliseconds between tries. Defaults to 5000. */
+  readonly delayMs?: number;
+  /** Tests inject this; defaults to a timer. */
+  readonly sleep?: (ms: number) => Promise<void>;
+}
+
+/**
+ * Runs `check` until it passes. Setting or removing a Workers secret makes a new Worker version,
+ * which takes a few seconds to answer everywhere.
+ *
+ * @throws the last error of `check` when every try failed
+ */
+export async function eventually(
+  check: () => Promise<void>,
+  options: EventuallyOptions = {},
+): Promise<void> {
+  const {
+    attempts = 12,
+    delayMs = 5_000,
+    sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
+  } = options;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await check();
+    } catch (error) {
+      if (attempt >= attempts) throw error;
+      await sleep(delayMs);
+    }
+  }
+}
 
 export interface RoundTripOptions extends Pick<WorkerTransferOptions, "baseUrl" | "key" | "fetch"> {
   /** A complete export folder to put into the Worker. */
