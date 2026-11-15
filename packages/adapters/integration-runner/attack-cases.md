@@ -23,10 +23,10 @@ One difference from the design: A30 on plain `http` is refused as `scheme-not-al
 | A9 | a home-network host whose answer is public or link-local | `adapters/http-node/src/address-check.test.ts`, `adapters/http-kit/src/address-class.test.ts` |
 | A10 | Halonic's own ports on this computer | `adapters/http-node/src/own-ports.test.ts` |
 | A11 | IP literals in odd spellings | `adapters/http-kit/src/ip-address.test.ts` |
-| A12 | reading files, also through a link | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts`; `adapters/integration-runner/src/halonic/local-integration.test.ts`; `core/app/src/integration-folder.test.ts` |
+| A12 | reading files, also through a link | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts`, `runner-attacks.mxc.test.ts` (a junction and a file link out of the box); `adapters/integration-runner/src/halonic/local-integration.test.ts`; `core/app/src/integration-folder.test.ts` |
 | A13 | writing files, replacing its own code | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts` |
-| A14 | starting a process | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts` |
-| A15 | a worker, add-on, WASI or the inspector | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts` |
+| A14 | starting a process | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts`, `runner-process-attacks.mxc.test.ts`; on MXC with Node's layer off a shell starts, and the box refuses it the home folder |
+| A15 | a worker, add-on, WASI or the inspector | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts`, `runner-process-attacks.mxc.test.ts`; on MXC with Node's layer off a worker and creating a WASI object are allowed, because neither reaches past the box (a WASI module sees only the folders it is given), and a real DLL is loaded and then refused as no add-on |
 | A16 | signalling Halonic or another process | fence: `runner-attacks.test.ts`; native Windows is a recorded gap |
 | A17 | reading a key from the environment | fence: `runner-attacks.test.ts`; native Windows is a recorded gap |
 | A18 | an undeclared secret, or one on another host | `adapters/integration-runner/src/halonic/kit-attacks.test.ts` |
@@ -55,8 +55,9 @@ One difference from the design: A30 on plain `http` is refused as `scheme-not-al
 
 ## The limit of the MXC network proof
 
-The runner's MXC profile has no bridge, so the box has no network control of its own: MXC refuses
-a process in the box a listener on its own loopback. The fence proof therefore counts a timed-out
+The runner's MXC profile has no bridge, so the box has no network control of its own, and MXC does
+not stop a process in the box opening a listener on its own loopback (the inspector did, HAL-9606;
+a process outside the box could not connect to it, so the listener is local to the box). With Node's layer on, the script cannot open a listener at all (`node:net` needs `--allow-net`), so that case runs with the layer off. The fence proof therefore counts a timed-out
 probe as blocked only where a control box (the same policy with a dead-end bridge, run on the same
 computer right before) reached its bridge and timed out on that same target. The network
 control runs in a twin box, not in the runner's box (HAL-9342).
