@@ -197,6 +197,19 @@ verifies("models.spend.month-line", () => {
         expect(lineOf(item)).toBe("Est. this run €0.45 of €5.00 · €0.45 of €50.00 this month");
       });
 
+      it("names a sub-run's calls without a price, never €0.00", async () => {
+        const item = await show(
+          filesOf(header, cloud),
+          runsOf([
+            month({ cost: 0 }),
+            ["2026-11-05T08:01:00.000Z", 0, { id: "r2", parentRunId: "r1", unpricedCalls: 2 }],
+          ]),
+          undefined,
+          view("r1"),
+        );
+        expect(lineOf(item)).toBe("Est. this run 2 calls without a price · €0.00 this month");
+      });
+
       it("says the month only when the tab shows no run or one the list lacks", async () => {
         const files = filesOf(header, cloud);
         const runs = runsOf([month({})]);

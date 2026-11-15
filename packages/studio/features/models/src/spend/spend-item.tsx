@@ -1,4 +1,4 @@
-import { defaultCurrency, spendByMonth, treeCost } from "@halonicjs/app";
+import { defaultCurrency, spendByMonth, treeCost, treeUnpriced } from "@halonicjs/app";
 import { type RunsList, RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { Button, Tooltip } from "@halonicjs/studio-kit";
 import type { ItemRef, StatusBarItemProps, WorkspaceContext } from "@halonicjs/studio-shell";
@@ -81,7 +81,7 @@ function useRunsSpend(
     spent: spendByMonth(summaries, at, 1)[0]?.spent,
     run: found && {
       cost: treeCost(summaries, found.summary.id),
-      unpricedCalls: found.summary.unpricedCalls,
+      unpricedCalls: treeUnpriced(summaries, found.summary.id),
     },
   };
 }
