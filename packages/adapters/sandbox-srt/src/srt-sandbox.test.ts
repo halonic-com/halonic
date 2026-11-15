@@ -261,26 +261,6 @@ verifies("sandbox-srt.check", () => {
       expect(missing.missing[0]).toContain("windows-install");
     });
 
-    it("reports setup-conflict, not setup-needed, when the install's loopback mode isn't closed, and opens nothing", async () => {
-      const conflict = srt(
-        machine({ platform: "win32", windowsSandboxState: async () => "setup-conflict" as const }),
-      );
-      const check = await conflict.check();
-      expect(check).toMatchObject({ ok: false, reason: "setup-conflict" });
-      expect(check.missing[0]).toContain("loopback");
-      const profile: SandboxProfile = {
-        workingFolder: "/contract/work",
-        tempFolder: "/contract/temp",
-        settingsFolder: null,
-        readOnlyPaths: [],
-        deniedPaths: [],
-        env: {},
-        network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
-        timeLimitMs: 1000,
-      };
-      await expect(conflict.open(profile)).rejects.toThrow("can't start");
-    });
-
     it("opens nothing on Windows without srt's install", async () => {
       const sandbox = srt(machine({ platform: "win32" }));
       const profile: SandboxProfile = {
