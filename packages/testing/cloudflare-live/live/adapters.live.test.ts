@@ -23,8 +23,8 @@ const durable = (file: string) =>
   fileURLToPath(new URL(`../../../adapters/cloudflare-durable/src/test/${file}`, import.meta.url));
 
 // Run by `pnpm test:live`, never by `pnpm test`: the adapters' own contract suites (R2 blobs and
-// definitions, D1 records and tokens, Durable Object coordination, runs and scheduler), run inside a test Worker deployed to the CI Cloudflare
-// account, over real R2 and D1 (HAL-6703).
+// definitions, D1 records and tokens, Durable Object coordination, runs and scheduler), run inside
+// a test Worker deployed to the CI Cloudflare account, over real R2 and D1 (HAL-6703).
 const token = required("CLOUDFLARE_LIVE_API_TOKEN");
 const prefix = `${required("HALONIC_LIVE_PREFIX")}-adapters`;
 const script = await buildTestWorker([
