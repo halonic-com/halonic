@@ -8,6 +8,7 @@ import {
   openWorkspaceCommand,
   workspaceFeature,
 } from "./feature.ts";
+import { takeWorkspaceTarget } from "./page/workspace-page-target.ts";
 
 describe("workspaceFeature", () => {
   it("is registered under its folder name", () => {
@@ -38,6 +39,17 @@ verifies("workspace.workspace-page", () => {
       expect(opened).toEqual([{ kind: "workspace", hub: "local", id: "settings" }]);
     },
   );
+
+  it.each([
+    [openWorkspaceCommand, undefined],
+    [openTrustCommand, "trust"],
+    [openModelsCommand, "models"],
+  ])("%s asks the page to focus %s", async (id, section) => {
+    takeWorkspaceTarget();
+    const context = { openItem: () => undefined } as unknown as WorkspaceContext;
+    await shell.contributions.commands.get(id)?.run(context);
+    expect(takeWorkspaceTarget()).toBe(section);
+  });
 });
 
 verifies("workspace.trusted-sources", () => {

@@ -3,12 +3,13 @@
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it } from "vitest";
 import type { WorkspacePage as Facts } from "../api.ts";
 import type { WorkspaceTrustControl } from "../trust/workspace-trust-control.ts";
 import { WorkspacePage } from "./workspace-page.tsx";
+import { requestWorkspaceTarget } from "./workspace-page-target.ts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -32,7 +33,20 @@ const trust = {
   subscribe: () => () => undefined,
 } satisfies WorkspaceTrustControl;
 
-function show(facts: Facts): HTMLElement {
+function ModelsStub() {
+  return (
+    <section data-workspace-section="models">
+      <h2 tabIndex={-1}>Models</h2>
+    </section>
+  );
+}
+
+const later = () => new Promise((done) => setTimeout(done, 5));
+
+function show(
+  facts: Facts,
+  Sections: () => React.ReactNode = () => <p className="added-section">Models</p>,
+): HTMLElement {
   element = document.createElement("div");
   document.body.append(element);
   const context = { services: { get: () => facts } } as unknown as WorkspaceContext;
@@ -43,7 +57,7 @@ function show(facts: Facts): HTMLElement {
         <WorkspacePage
           item={{ kind: "workspace", hub: "local", id: "settings" }}
           context={context}
-          Sections={() => <p className="added-section">Models</p>}
+          Sections={Sections}
         />
       </ToastStoreProvider>,
     ),
@@ -73,5 +87,125 @@ verifies("workspace.workspace-page", () => {
 
     expect(page.querySelector("h1")?.textContent).toBe("Workspace settings");
     expect(page.textContent).not.toContain("Trust");
+  });
+
+  it("focuses the Models heading when asked to open at Models", () => {
+    requestWorkspaceTarget("models");
+    const page = show({ name: "Acme", trust }, ModelsStub);
+
+    expect(document.activeElement).toBe(
+      page.querySelector("section[data-workspace-section=models] h2"),
+    );
+  });
+
+  it("waits for a section that loads late, then focuses its heading", async () => {
+    requestWorkspaceTarget("models");
+    let reveal: () => void = () => undefined;
+    function Late() {
+      const [ready, setReady] = useState(false);
+      reveal = () => setReady(true);
+      return ready ? <ModelsStub /> : null;
+    }
+    const page = show({ name: "Acme", trust }, Late);
+    expect(document.activeElement).not.toBe(page.querySelector("h2"));
+
+    await act(async () => {
+      reveal();
+    });
+
+    expect(document.activeElement?.textContent).toBe("Models");
+  });
+
+  it("moves focus again when the page is already open", async () => {
+    const page = show({ name: "Acme", trust }, ModelsStub);
+    expect(document.activeElement).toBe(document.body);
+
+    await act(async () => {
+      requestWorkspaceTarget("models");
+      await later();
+    });
+
+    expect(document.activeElement).toBe(
+      page.querySelector("section[data-workspace-section=models] h2"),
+    );
+  });
+
+  it("moves focus to the Trust heading when asked to open at Trust", () => {
+    requestWorkspaceTarget("trust");
+    const page = show({ name: "Acme", trust }, ModelsStub);
+
+    expect(document.activeElement).toBe(
+      page.querySelector("section[data-workspace-section=trust] h2"),
+    );
+  });
+
+  it("leaves the target to the visible page when another page is hidden", () => {
+    const hidden = document.createElement("div");
+    hidden.hidden = true;
+    hidden.inert = true;
+    document.body.append(hidden);
+    const context = {
+      services: { get: () => ({ name: "Acme", trust }) },
+    } as unknown as WorkspaceContext;
+    const props = {
+      item: { kind: "workspace", hub: "local", id: "settings" },
+      context,
+      Sections: ModelsStub,
+    } as const;
+    const hiddenRoot = createRoot(hidden);
+    requestWorkspaceTarget("models");
+    act(() =>
+      hiddenRoot.render(
+        <ToastStoreProvider store={createToastStore()}>
+          <WorkspacePage {...props} />
+        </ToastStoreProvider>,
+      ),
+    );
+    expect(document.activeElement).toBe(document.body);
+
+    const page = show({ name: "Acme", trust }, ModelsStub);
+
+    expect(document.activeElement).toBe(
+      page.querySelector("section[data-workspace-section=models] h2"),
+    );
+    act(() => hiddenRoot.unmount());
+    hidden.remove();
+  });
+
+  it("takes the target when a hidden page is shown after the request", async () => {
+    const page = show({ name: "Acme", trust }, ModelsStub);
+    const tab = page.parentElement as HTMLElement;
+    tab.hidden = true;
+
+    await act(async () => {
+      requestWorkspaceTarget("models");
+      await later();
+    });
+    expect(document.activeElement).toBe(document.body);
+
+    await act(async () => {
+      tab.hidden = false;
+      await later();
+    });
+
+    expect(document.activeElement).toBe(
+      page.querySelector("section[data-workspace-section=models] h2"),
+    );
+  });
+
+  it("keeps the section focus when the page heading takes focus right after the request", async () => {
+    const page = show({ name: "Acme", trust }, ModelsStub);
+    const heading = page.querySelector<HTMLElement>("h1");
+    heading?.setAttribute("tabindex", "-1");
+
+    await act(async () => {
+      requestWorkspaceTarget("models");
+      heading?.focus();
+      await later();
+    });
+
+    expect(document.activeElement).toBe(
+      page.querySelector("section[data-workspace-section=models] h2"),
+    );
   });
 });

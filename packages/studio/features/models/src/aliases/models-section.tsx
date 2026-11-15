@@ -40,9 +40,13 @@ export function ModelsSection({ context }: ItemPageSectionViewProps) {
   const headingId = useId();
   const open = (name: string) => context.openItem?.({ kind: ALIAS_KIND, hub: "local", id: name });
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-2">
+    <section
+      aria-labelledby={headingId}
+      data-workspace-section="models"
+      className="flex flex-col gap-2"
+    >
       <div className="flex items-center justify-between gap-2">
-        <h2 id={headingId} className="text-heading">
+        <h2 id={headingId} tabIndex={-1} className="text-heading">
           {MODELS_HEADING}
         </h2>
         <Button ref={newButton} variant="secondary" onClick={() => setCreating(true)}>
