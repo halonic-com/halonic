@@ -1,7 +1,7 @@
-import { defaultCurrency, spendByMonth } from "@halonicjs/app";
+import { defaultCurrency, spendByMonth, treeCost } from "@halonicjs/app";
 import { type RunsList, RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { Button, Tooltip } from "@halonicjs/studio-kit";
-import type { StatusBarItemProps, WorkspaceContext } from "@halonicjs/studio-shell";
+import type { ItemRef, StatusBarItemProps, WorkspaceContext } from "@halonicjs/studio-shell";
 import { isPayPerUse } from "@halonicjs/workspace";
 import { useCallback, useSyncExternalStore } from "react";
 import { useModels } from "../aliases/use-models.ts";
@@ -20,7 +20,7 @@ export function SpendItem({ context }: StatusBarItemProps) {
   const files = context.services.get(ModelsFilesService);
   const list = context.services.find(RunsListService);
   const [state] = useModels(files);
-  const { spent, run } = useRunsSpend(list, useActiveRunId(context));
+  const { spent, run } = useRunsSpend(list, useActiveRun(context));
   if (spent === undefined || state.status === "loading") return null;
   if (state.localOnly || !state.providers.some(isPayPerUse)) return null;
   const currency = state.budget?.currency ?? defaultCurrency;
@@ -46,15 +46,15 @@ export function SpendItem({ context }: StatusBarItemProps) {
   );
 }
 
-/** The id of the run the focused tab shows; `undefined` when it shows no run, or the window has no tabs. */
-function useActiveRunId(context: WorkspaceContext): string | undefined {
+/** The run the focused tab shows; `undefined` when it shows no run, or the window has no tabs. */
+function useActiveRun(context: WorkspaceContext): ItemRef | undefined {
   const source = context.activeItem;
   const subscribe = useCallback(
     (listener: () => void) => source?.subscribe(listener) ?? (() => undefined),
     [source],
   );
   const item = useSyncExternalStore(subscribe, () => source?.get() ?? null);
-  return item?.kind === "run" ? item.id : undefined;
+  return item?.kind === "run" ? item : undefined;
 }
 
 /**
@@ -64,7 +64,7 @@ function useActiveRunId(context: WorkspaceContext): string | undefined {
  */
 function useRunsSpend(
   list: RunsList | undefined,
-  runId: string | undefined,
+  inView: ItemRef | undefined,
 ): { spent: number | undefined; run: RunSpend | undefined } {
   const subscribe = useCallback(
     (listener: () => void) => list?.subscribe(listener) ?? (() => undefined),
@@ -74,13 +74,14 @@ function useRunsSpend(
   if (state === undefined || !state.loaded) return { spent: undefined, run: undefined };
   const at = new Date().toISOString();
   const summaries = state.runs.map(({ summary }) => summary);
-  const found = runId === undefined ? undefined : summaries.find((summary) => summary.id === runId);
+  const found =
+    inView &&
+    state.runs.find(({ summary }) => summary.id === inView.id && summary.hubId === inView.hub);
   return {
     spent: spendByMonth(summaries, at, 1)[0]?.spent,
     run: found && {
-      cost: found.cost,
-      unpricedCalls: found.unpricedCalls,
-      test: found.kind === "test",
+      cost: treeCost(summaries, found.summary.id),
+      unpricedCalls: found.summary.unpricedCalls,
     },
   };
 }

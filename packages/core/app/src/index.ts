@@ -161,7 +161,14 @@ export {
 } from "./live-version.ts";
 export { integrationsFolder, readLocalIntegrations } from "./local-integrations.ts";
 export { defaultCurrency, moneyAmount } from "./money-amount.ts";
-export { lastMonths, type MonthSpend, monthOf, monthStartOf, spendByMonth } from "./month-spend.ts";
+export {
+  lastMonths,
+  type MonthSpend,
+  monthOf,
+  monthStartOf,
+  spendByMonth,
+  treeCost,
+} from "./month-spend.ts";
 export {
   type NewAgentsRun,
   newAgentPlacement,

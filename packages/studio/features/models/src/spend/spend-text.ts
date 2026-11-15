@@ -10,11 +10,10 @@ export interface MonthLine {
   readonly usedUp: boolean;
 }
 
-/** What the status bar says of the run in view: its cost, and the calls that have no price. */
+/** What the status bar says of the run in view: its cost with its sub-runs, and the calls that have no price. */
 export interface RunSpend {
   readonly cost: number;
   readonly unpricedCalls: number;
-  readonly test: boolean;
 }
 
 /** The month's part of the line, "€3.20 of €50.00 this month", with " · used up" once the budget is reached. */
@@ -34,15 +33,13 @@ function unpricedText(calls: number): string {
 
 /**
  * The run's part of the line: "this run €0.15 of €5.00", "this run €0.10 + 2 calls without a
- * price", "this run €0.04 (test run, not counted)". A run whose calls all lack a price names no
- * amount, so it never reads "€0.00".
+ * price". A run whose calls all lack a price names no amount, so it never reads "€0.00".
  */
 function runPart(run: RunSpend, perRun: number | undefined, currency: string): string {
   if (run.cost === 0 && run.unpricedCalls > 0) {
     return `this run ${unpricedText(run.unpricedCalls)}`;
   }
   const amount = moneyAmount(run.cost, currency);
-  if (run.test) return `this run ${amount} (test run, not counted)`;
   const spent = perRun === undefined ? amount : `${amount} of ${moneyAmount(perRun, currency)}`;
   return run.unpricedCalls > 0
     ? `this run ${spent} + ${unpricedText(run.unpricedCalls)}`

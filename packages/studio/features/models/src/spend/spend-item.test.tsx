@@ -61,7 +61,7 @@ function runsOf(
   const state = {
     loaded: !unread,
     runs: runs.map(([startedAt, cost, more]) => ({
-      summary: { startedAt, cost, unpricedCalls: 0, kind: "run", ...more },
+      summary: { startedAt, cost, unpricedCalls: 0, hubId: "acme", parentRunId: null, ...more },
       madeToolCalls: false,
     })),
   };
@@ -177,26 +177,35 @@ verifies("models.spend.month-line", () => {
 
       it("names no amount for a run whose calls all lack a price", () => {
         const only = monthLine(1, undefined, "EUR", {
-          spend: { cost: 0, unpricedCalls: 1, test: false },
+          spend: { cost: 0, unpricedCalls: 1 },
           perRun: 5,
         });
         expect(only.text).toBe("Est. this run 1 call without a price · €1.00 this month");
       });
 
-      it("says a test run isn't counted", () => {
-        const test = monthLine(3.2, 50, "EUR", {
-          spend: { cost: 0.04, unpricedCalls: 0, test: true },
-          perRun: 5,
-        });
-        expect(test.text).toBe(
-          "Est. this run €0.04 (test run, not counted) · €3.20 of €50.00 this month",
+      it("counts the run's sub-runs in its cost", async () => {
+        const item = await show(
+          filesOf(budget, cloud),
+          runsOf([
+            month({}),
+            ["2026-11-05T08:01:00.000Z", 0.2, { id: "r2", parentRunId: "r1" }],
+            ["2026-11-05T08:02:00.000Z", 0.1, { id: "r3", parentRunId: "r2" }],
+          ]),
+          undefined,
+          view("r1"),
         );
+        expect(lineOf(item)).toBe("Est. this run €0.45 of €5.00 · €0.45 of €50.00 this month");
       });
 
       it("says the month only when the tab shows no run or one the list lacks", async () => {
         const files = filesOf(header, cloud);
         const runs = runsOf([month({})]);
-        for (const inView of [null, view("other"), { kind: "workflow", hub: "acme", id: "r1" }]) {
+        for (const inView of [
+          null,
+          view("other"),
+          { kind: "run", hub: "other-hub", id: "r1" },
+          { kind: "workflow", hub: "acme", id: "r1" },
+        ]) {
           const item = await show(files, runs, undefined, inView);
           expect(lineOf(item)).toBe("Est. €0.15 this month");
           act(() => root?.unmount());
