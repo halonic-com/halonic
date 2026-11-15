@@ -143,6 +143,14 @@ export {
   knowledgeHitForModel,
   maxKnowledgeRefLength,
 } from "./knowledge-for-model.ts";
+export {
+  editKnowledgeText,
+  type KnowledgeChange,
+  type KnowledgeLookupMode,
+  type KnowledgeParts,
+  type KnowledgeTextError,
+  readKnowledgeText,
+} from "./knowledge-text.ts";
 export { LiveRoutines, type LiveRoutinesOptions } from "./live-routines.ts";
 export { actsAtOnce, type LiveState, type LiveStateInput, liveState } from "./live-state.ts";
 export {
