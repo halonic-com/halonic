@@ -4,6 +4,9 @@ import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
 import type { PathResolver, ResolvedPath } from "@halonicjs/app";
 
+/** Longest name a file system takes; Windows reports a longer one as "not there", not as an error. */
+const MAX_NAME_LENGTH = 255;
+
 const nativeRealPath = promisify(realpathCallback.native);
 
 /**
@@ -14,8 +17,12 @@ const nativeRealPath = promisify(realpathCallback.native);
  * - any error but "not there" (a loop, a path too long, no permission);
  * - a `..` or `.` in the part that isn't there, which the system would read
  *   after following links, so adding it back would mean something else;
+ * - a missing name longer than 255 characters, which no system can create;
  * - a name that is there only as a link to nothing, because a write would
  *   create what it points at.
+ *
+ * Where a `..` comes after a link, Win32 removes it from the text first and
+ * POSIX follows the link first, so the two can give different real paths.
  *
  * It uses the system's own path resolution (`realpath.native`), which on
  * Windows expands 8.3 short names and fixes letter case. A file with more
@@ -37,6 +44,7 @@ export const resolveRealPath: PathResolver = async (path) => {
     const name = basename(existing);
     const parent = dirname(existing);
     if (name === "." || name === ".." || parent === existing) return null;
+    if (name.length > MAX_NAME_LENGTH) return null;
     missing.push(name);
     existing = parent;
   }
