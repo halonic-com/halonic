@@ -25,8 +25,12 @@ async function call(
   target: WorkerTarget,
   path: string,
   headers: Record<string, string> = {},
+  method = "GET",
 ): Promise<{ status: number; code: string | undefined; text: string }> {
-  const response = await (target.fetch ?? fetch)(new URL(path, target.baseUrl), { headers });
+  const url = new URL(path, target.baseUrl);
+  // A key must not travel in the clear, and a redirect must not carry it somewhere else.
+  if (url.protocol !== "https:") throw new Error(`The Worker address ${url.origin} is not HTTPS.`);
+  const response = await (target.fetch ?? fetch)(url, { method, headers, redirect: "error" });
   const text = await response.text();
   let code: string | undefined;
   try {
@@ -37,6 +41,14 @@ async function call(
   }
   return { status: response.status, code, text };
 }
+
+/** The four admin routes, with a path that no import or export would find anything at. */
+const adminRoutes = [
+  ["GET", "/admin/export"],
+  ["GET", `/admin/export/files/blobs/${"0".repeat(64)}`],
+  ["PUT", `/admin/import/files/blobs/${"0".repeat(64)}`],
+  ["POST", "/admin/import"],
+] as const;
 
 function expectStatus(
   what: string,
@@ -57,19 +69,21 @@ export const workerChecks = {
   },
 
   /**
-   * With no admin key set (a normal deployment), `/admin/...` is the same neutral 404 as any unknown
-   * path, even for a caller that sends a key.
+   * With no admin key set (a normal deployment), each of the four admin routes is the same neutral
+   * 404 as an unknown path with that method, even for a caller that sends a key.
    */
   async adminClosed(target: WorkerTarget, someKey: string): Promise<void> {
-    const unknown = await call(target, "/no-such-path");
-    for (const [what, headers] of [
-      ["/admin/export without a key", {}],
-      ["/admin/export with a key", { authorization: `Bearer ${someKey}` }],
-    ] as const) {
-      const answer = await call(target, "/admin/export", headers);
-      expectStatus(what, answer, unknown.status);
-      if (answer.text !== unknown.text) {
-        throw new Error(`${what} answered differently from an unknown path.`);
+    for (const [method, route] of adminRoutes) {
+      const unknown = await call(target, "/no-such-path", {}, method);
+      for (const [what, headers] of [
+        ["without a key", {}],
+        ["with a key", { authorization: `Bearer ${someKey}` }],
+      ] as const) {
+        const answer = await call(target, route, headers, method);
+        expectStatus(`${method} ${route} ${what}`, answer, unknown.status);
+        if (answer.text !== unknown.text) {
+          throw new Error(`${method} ${route} ${what} answered differently from an unknown path.`);
+        }
       }
     }
   },
@@ -80,28 +94,39 @@ export const workerChecks = {
   },
 
   /**
-   * While the key is set: no key, a wrong key, a key in the URL and the right key sent with an
-   * `Origin` header are all refused. The right key alone is not tried here: the round trip does.
+   * While the key is set, on all four admin routes: no key, a wrong key, an empty Bearer, a
+   * non-Bearer scheme, the stored hash of the key, and the key in the URL are all 401, and the right
+   * key together with an `Origin` header is refused (401 or 403). The right key alone is not tried
+   * here: the round trip does. The key-in-URL request puts the key in a URL on purpose, to prove it
+   * is refused; it is a one-job key, so a log that keeps the URL keeps nothing of use.
    */
   async adminRefusesBadKeys(target: WorkerTarget, key: string): Promise<void> {
     const wrong = `${key.startsWith("A") ? "B" : "A"}${key.slice(1)}`;
-    expectStatus("/admin/export without a key", await call(target, "/admin/export"), 401);
-    expectStatus(
-      "/admin/export with a wrong key",
-      await call(target, "/admin/export", { authorization: `Bearer ${wrong}` }),
-      401,
-    );
-    expectStatus(
-      "/admin/export with the key in the URL",
-      await call(target, `/admin/export?key=${encodeURIComponent(key)}`),
-      401,
-    );
-    const withOrigin = await call(target, "/admin/export", {
-      authorization: `Bearer ${key}`,
-      origin: "https://attacker.example",
-    });
-    if (withOrigin.status === 200) {
-      throw new Error("/admin/export answered 200 to a request that sent an Origin header.");
+    const hash = createHash("sha256").update(key).digest("hex");
+    const refused: readonly (readonly [string, Record<string, string>, string])[] = [
+      ["without a key", {}, ""],
+      ["with a wrong key", { authorization: `Bearer ${wrong}` }, ""],
+      ["with an empty Bearer", { authorization: "Bearer " }, ""],
+      ["with a Basic scheme", { authorization: `Basic ${key}` }, ""],
+      ["with the stored hash as the key", { authorization: `Bearer ${hash}` }, ""],
+      ["with the key in the URL", {}, `key=${encodeURIComponent(key)}`],
+    ];
+    for (const [method, route] of adminRoutes) {
+      for (const [what, headers, query] of refused) {
+        const path = query === "" ? route : `${route}?${query}`;
+        expectStatus(`${method} ${route} ${what}`, await call(target, path, headers, method), 401);
+      }
+      const withOrigin = await call(
+        target,
+        route,
+        { authorization: `Bearer ${key}`, origin: "https://attacker.example" },
+        method,
+      );
+      if (withOrigin.status !== 401 && withOrigin.status !== 403) {
+        throw new Error(
+          `${method} ${route} with an Origin header was answered ${withOrigin.status}, expected 401 or 403.`,
+        );
+      }
     }
   },
 };
