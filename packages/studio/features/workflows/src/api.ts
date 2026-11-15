@@ -66,6 +66,39 @@ export interface WorkflowView extends WorkflowRef {
   readonly layout: Readonly<Record<string, { readonly x: number; readonly y: number }>>;
 }
 
+/** One problem the checks found in a workflow. */
+export interface WorkflowProblem {
+  readonly severity: "error" | "warning";
+  /** The check that found it, such as `dead-end`; the page writes the short line from it. */
+  readonly code: string;
+  /** The core's own message, which the page shows in full where the short line has no room. */
+  readonly message: string;
+  /** The step it is about; absent when it is about the whole workflow. */
+  readonly stepId?: string | undefined;
+}
+
+/** What the workflow offers in the Inbox as a request: the title of its form and the input it fills. */
+export interface WorkflowRequest {
+  readonly label: string;
+  readonly field: string;
+}
+
+/** One workflow as its Configuration page shows it. */
+export interface WorkflowConfiguration extends WorkflowRef {
+  readonly name: string;
+  readonly description?: string | undefined;
+  /** The id of the first step. */
+  readonly initial: string;
+  /** The ids of the steps, in the file's order, for the first step's choice. */
+  readonly stepIds: readonly string[];
+  /** The file's path from the workspace folder. */
+  readonly file: string;
+  /** Present when the workflow is offered in the Inbox as a request. */
+  readonly request?: WorkflowRequest | undefined;
+  /** Errors first is the page's job; the host gives them as the checks found them. */
+  readonly problems: readonly WorkflowProblem[];
+}
+
 /** A hub a new workflow can go in. */
 export interface WorkflowHub {
   readonly id: string;
@@ -90,6 +123,8 @@ export interface WorkflowsHost {
   list(): Promise<readonly WorkflowListing[]>;
   /** One workflow as its page draws it. Rejects with the reason it couldn't be read, or when it isn't there. */
   read(ref: WorkflowRef): Promise<WorkflowView>;
+  /** One workflow as its Configuration page shows it. Rejects like {@link WorkflowsHost.read}. */
+  configuration(ref: WorkflowRef): Promise<WorkflowConfiguration>;
   /**
    * The name of a workflow the host has read or made, for a tab or a page title, or `undefined`
    * before it has read it. Sync, because a tab is named the moment it opens.

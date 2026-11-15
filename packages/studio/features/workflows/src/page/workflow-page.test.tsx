@@ -80,14 +80,17 @@ verifies("workflows.page.frame-and-states", () => {
 
   it("keeps the zoom when the workflow changes under it", async () => {
     let current = reply;
-    let tell = () => {};
+    const listeners = new Set<() => void>();
+    const tell = () => {
+      for (const listener of listeners) listener();
+    };
     const { host } = memoryHost([], [], [reply]);
     const changing = {
       ...host,
       read: async () => current,
       subscribe: (listener: () => void) => {
-        tell = listener;
-        return () => {};
+        listeners.add(listener);
+        return () => listeners.delete(listener);
       },
     };
     const page = await show(<WorkflowScreen host={changing} hubId="acme" id="reply" />);
@@ -102,7 +105,10 @@ verifies("workflows.page.frame-and-states", () => {
 
   it("keeps the canvas when a refresh fails", async () => {
     let failing = false;
-    let tell = () => {};
+    const listeners = new Set<() => void>();
+    const tell = () => {
+      for (const listener of listeners) listener();
+    };
     const { host } = memoryHost([], [], [reply]);
     const flaky = {
       ...host,
@@ -111,8 +117,8 @@ verifies("workflows.page.frame-and-states", () => {
         return reply;
       },
       subscribe: (listener: () => void) => {
-        tell = listener;
-        return () => {};
+        listeners.add(listener);
+        return () => listeners.delete(listener);
       },
     };
     const page = await show(<WorkflowScreen host={flaky} hubId="acme" id="reply" />);

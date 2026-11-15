@@ -3,6 +3,7 @@ import type { DefinitionSource } from "@halonicjs/ports";
 import { slugify, uniqueName } from "@halonicjs/std";
 import type {
   NewWorkflow,
+  WorkflowConfiguration,
   WorkflowHub,
   WorkflowListing,
   WorkflowRef,
@@ -141,6 +142,34 @@ export class WorkspaceWorkflows implements WorkflowsHost {
         state.on.map((arrow) => ({ from, to: arrow.to, label: arrow.label })),
       ),
       layout: value.layout,
+    };
+  }
+
+  /** One workflow's settings and the problems the checks found in its file, with unsaved changes applied. */
+  async configuration({ hubId, id }: WorkflowRef): Promise<WorkflowConfiguration> {
+    const workspace = await this.#load();
+    const file = filesOf(workspace, "workflow").find(
+      (one) => one.hub === hubId && one.value.id === id,
+    );
+    if (file === undefined) throw new Error(`The hub "${hubId}" has no workflow "${id}".`);
+    const { value } = file;
+    return {
+      hubId,
+      id,
+      name: value.name,
+      description: value.description,
+      initial: value.initial,
+      stepIds: Object.keys(value.states),
+      file: file.path,
+      request: value.start,
+      problems: workspace.issues
+        .filter((issue) => issue.file === file.path)
+        .map((issue) => ({
+          severity: issue.severity,
+          code: issue.code,
+          message: issue.message,
+          stepId: issue.path[0] === "states" ? String(issue.path[1]) : undefined,
+        })),
     };
   }
 

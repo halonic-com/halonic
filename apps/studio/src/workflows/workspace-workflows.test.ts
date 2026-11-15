@@ -216,4 +216,30 @@ verifies("studio.workspace-workflow-read", () => {
       'The hub "acme" has no workflow "gone".',
     );
   });
+
+  it("gives a workflow's settings and the problems of its file, each with its step", async () => {
+    const { host, store } = setup();
+    store["hubs/acme/workflows/reply.workflow.yaml"] =
+      "id: reply\nname: Reply\ndescription: Answers\ninitial: first\nstates:\n  first:\n    on:\n      - to: nowhere\n";
+
+    const settings = await host.configuration({ hubId: "acme", id: "reply" });
+
+    expect(settings).toMatchObject({
+      name: "Reply",
+      description: "Answers",
+      initial: "first",
+      stepIds: ["first"],
+      file: "hubs/acme/workflows/reply.workflow.yaml",
+    });
+    expect(settings.problems.map(({ code, stepId }) => ({ code, stepId }))).toContainEqual({
+      code: "unknown-target",
+      stepId: "first",
+    });
+  });
+
+  it("rejects the settings of a workflow the hub doesn't have", async () => {
+    await expect(setup().host.configuration({ hubId: "acme", id: "gone" })).rejects.toThrow(
+      'The hub "acme" has no workflow "gone".',
+    );
+  });
 });

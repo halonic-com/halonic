@@ -1,9 +1,13 @@
-import { Button, EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
+import { Button, EmptyState, SkeletonBar, Tabs } from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
+import { useState } from "react";
 import { type WorkflowsHost, WorkflowsHostService } from "../api.ts";
+import { Configuration } from "../configuration/configuration-page.tsx";
+import { configurationWords } from "../configuration/configuration-words.ts";
+import { countProblems } from "../configuration/problem-lines.ts";
 import { Avatar } from "../list/workflow-rows.tsx";
 import { pageWords } from "./page-words.ts";
-import { useWorkflow } from "./use-workflow.ts";
+import { useHostRead, useWorkflow } from "./use-workflow.ts";
 import { WorkflowCanvas } from "./workflow-canvas.tsx";
 
 /** The workflow's page in its tab: `item` names the workflow, the host gives its steps. */
@@ -31,7 +35,12 @@ export interface WorkflowScreenProps {
  */
 export function WorkflowScreen({ host, hubId, id }: WorkflowScreenProps) {
   const { load, retry } = useWorkflow(host, { hubId, id });
-  const name = load.kind === "ready" ? load.workflow.name : id;
+  const name = load.kind === "ready" ? load.value.name : id;
+  const settings = useHostRead(host, { hubId, id }, (one, ref) => one.configuration(ref));
+  const [view, setView] = useState<"flow" | "configuration">("flow");
+  const [openStep, setOpenStep] = useState<string | undefined>();
+  const errors =
+    settings.load.kind === "ready" ? countProblems(settings.load.value.problems).errors : 0;
   return (
     <div className="flex size-full min-h-0 flex-col">
       <header className="flex items-center gap-3 border-b border-border px-6 py-3">
@@ -41,32 +50,72 @@ export function WorkflowScreen({ host, hubId, id }: WorkflowScreenProps) {
           <h1 className="text-title">{name}</h1>
         </div>
       </header>
-      {load.kind === "ready" && <WorkflowCanvas key={`${hubId}/${id}`} workflow={load.workflow} />}
-      {load.kind === "failed" && (
-        <EmptyState
-          tone="error"
-          title={pageWords.loadFailedTitle}
-          description={load.reason}
-          action={{ label: pageWords.tryAgain, onClick: retry }}
-        />
-      )}
-      {load.kind === "loading" && load.skeleton && (
-        <div role="status" className="flex flex-1 flex-col gap-4 p-6">
-          <span className="sr-only">{pageWords.loading(name)}</span>
-          <div className="flex gap-6">
-            <SkeletonBar kind="value" />
-            <SkeletonBar kind="value" />
-          </div>
-          {load.slow && (
-            <p className="flex items-center gap-3 text-small text-fg-muted">
-              {pageWords.stillLoading}
-              <Button variant="secondary" size="sm" onClick={retry}>
-                {pageWords.tryAgain}
-              </Button>
-            </p>
-          )}
-        </div>
-      )}
+      <Tabs
+        label={configurationWords.tabs}
+        tabs={[
+          { id: "flow", label: configurationWords.flowTab },
+          {
+            id: "configuration",
+            label: configurationWords.tab,
+            ...(errors > 0 && {
+              count: {
+                value: errors,
+                tone: "danger" as const,
+                name: configurationWords.errors(errors),
+              },
+            }),
+          },
+        ]}
+        selected={view}
+        onSelect={setView}
+      >
+        {view === "configuration" ? (
+          <Configuration
+            name={name}
+            load={settings.load}
+            retry={settings.retry}
+            onOpenStep={(stepId) => {
+              setOpenStep(stepId);
+              setView("flow");
+            }}
+          />
+        ) : (
+          <>
+            {load.kind === "ready" && (
+              <WorkflowCanvas
+                key={`${hubId}/${id}/${openStep}`}
+                workflow={load.value}
+                selectedStep={openStep}
+              />
+            )}
+            {load.kind === "failed" && (
+              <EmptyState
+                tone="error"
+                title={pageWords.loadFailedTitle}
+                description={load.reason}
+                action={{ label: pageWords.tryAgain, onClick: retry }}
+              />
+            )}
+            {load.kind === "loading" && load.skeleton && (
+              <div role="status" className="flex flex-1 flex-col gap-4 p-6">
+                <span className="sr-only">{pageWords.loading(name)}</span>
+                <div className="flex gap-6">
+                  <SkeletonBar kind="value" />
+                  <SkeletonBar kind="value" />
+                </div>
+                {load.slow && (
+                  <p className="flex items-center gap-3 text-small text-fg-muted">
+                    {pageWords.stillLoading}
+                    <Button variant="secondary" size="sm" onClick={retry}>
+                      {pageWords.tryAgain}
+                    </Button>
+                  </p>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </Tabs>
     </div>
   );
 }
