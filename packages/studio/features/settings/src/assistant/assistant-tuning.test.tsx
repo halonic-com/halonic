@@ -36,6 +36,7 @@ verifies("settings.ai-agent-tuning", () => {
     expect(tuningRow(view)).toBeUndefined();
     await change(control(view, "select"), "anthropic");
     expect(tuningRow(view)?.open).toBe(false);
+    expect(tuningRow(view)?.textContent).toContain("How the assistant works through a task.");
   });
 
   it("saves a temperature, refuses one out of range, and empties back to the default", async () => {

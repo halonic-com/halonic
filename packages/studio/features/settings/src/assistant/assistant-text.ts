@@ -38,7 +38,8 @@ export function notSaved(what: string): string {
 }
 
 export const HOW_IT_CONNECTS = "How it connects";
-export const HOW_IT_CONNECTS_DETAIL = "Base URL, secret name, local";
+export const HOW_IT_CONNECTS_DETAIL =
+  "Which provider the assistant talks to, and the secret it signs in with.";
 export const BASE_URL = "Base URL";
 export const SECRET_NAME = "Secret name";
 export const LOCAL = "Local";
@@ -55,7 +56,7 @@ export const ON = "On";
 export const OFF = "Off";
 
 export const TUNING = "Tuning";
-export const TUNING_DETAIL = "Temperature, top-p, max tokens, stop, reasoning effort";
+export const TUNING_DETAIL = "How the assistant works through a task.";
 export const TEMPERATURE = "Temperature";
 export const TOP_P = "Top-p";
 export const MAX_TOKENS = "Max tokens";
