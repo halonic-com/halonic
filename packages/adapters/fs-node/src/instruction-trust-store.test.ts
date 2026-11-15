@@ -73,9 +73,9 @@ verifies("fs-node.instruction-trust-store-files", () => {
 
     it("makes the folder and the files private to the user", async () => {
       const root = join(await tempFolder(), "instruction-trust");
-      await new FileInstructionTrustStore(root).save(
-        instructionTrustRecord(coder.location, coder.agent),
-      );
+      const store = new FileInstructionTrustStore(root);
+      await store.save(instructionTrustRecord(coder.location, coder.agent));
+      expect(await store.get(coder)).toEqual(instructionTrustRecord(coder.location, coder.agent));
       // Windows has no POSIX modes; there the profile folder's access rules apply.
       if (process.platform === "win32") return;
       expect((await stat(root)).mode & 0o777).toBe(0o700);
@@ -225,6 +225,9 @@ verifies("fs-node.instruction-trust-store-files", () => {
       }
 
       await store.save(instructionTrustRecord(coder.location, coder.agent, "c"));
+      expect(await store.get(coder)).toEqual(
+        instructionTrustRecord(coder.location, coder.agent, "c"),
+      );
       if (process.platform === "win32") return;
       expect((await stat(fileFor(root, coder))).mode & 0o777).toBe(0o600);
       expect((await stat(root)).mode & 0o777).toBe(0o700);
