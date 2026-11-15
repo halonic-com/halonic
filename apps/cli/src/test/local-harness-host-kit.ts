@@ -1,14 +1,13 @@
 import { existsSync } from "node:fs";
-import { cp, mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FileInstructionTrustStore, FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
+import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
 import { testGit } from "@halonicjs/adapter-git/testing";
-import { pinInstructions } from "@halonicjs/adapter-harness-kit";
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
-import { ConnectorFactories, InstructionTrustService, WorkflowRuns } from "@halonicjs/app";
+import { ConnectorFactories, WorkflowRuns } from "@halonicjs/app";
 import type { RunVersion } from "@halonicjs/events";
 import type {
   ConnectorFactory,
@@ -19,12 +18,12 @@ import type {
   TrustGrant,
 } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
-import { systemClock } from "@halonicjs/std";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { type LocalEngine, openLocalEngine } from "../local-engine-host.ts";
-import { instructionTrustFolder, type LocalHarnessParts } from "../local-harness-host.ts";
+import type { LocalHarnessParts } from "../local-harness-host.ts";
 import { nodeProfileEnvironment } from "../workspace-runs.ts";
 import { removeTestFolder } from "./remove-folder.ts";
+import { trustInstructions } from "./trust-instructions.ts";
 
 const acmeExample = fileURLToPath(new URL("../../../../examples/acme", import.meta.url));
 export const gitTimeout = 30_000;
@@ -103,13 +102,8 @@ async function addLab(): Promise<void> {
 }
 
 /** Records, as a person's yes, that the coder's instructions are `text`. */
-export async function trustCoderInstructions(text: string): Promise<void> {
-  const service = new InstructionTrustService({
-    store: new FileInstructionTrustStore(instructionTrustFolder(profileFolder(profile))),
-    clock: systemClock,
-  });
-  const pin = await pinInstructions([{ name: "AGENTS.md", text }]);
-  await service.trust({ location: await realpath(acme), agent: "coder" }, pin);
+export function trustCoderInstructions(text: string): Promise<void> {
+  return trustInstructions({ profile, workspace: acme, agent: "coder", text });
 }
 
 /** Puts the workspace in git with one commit, and gives that version. */

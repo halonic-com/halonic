@@ -12,6 +12,7 @@ import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type LocalEngine, openLocalEngine } from "../src/local-engine-host.ts";
 import { removeTestFolder } from "../src/test/remove-folder.ts";
+import { trustInstructions } from "../src/test/trust-instructions.ts";
 import { nodeProfileEnvironment } from "../src/workspace-runs.ts";
 
 // A harness run in the real srt sandbox (HAL-7811), before HAL-6477 turns
@@ -43,6 +44,8 @@ beforeEach(async () => {
   profile = { ...nodeProfileEnvironment(), variables: { HALONIC_HOME: join(folder, "profile") } };
   reported = [];
   await addLab();
+  // A person trusted the coder's instructions, so the host lets its run start.
+  await trustInstructions({ profile, workspace: acme, agent: "coder", text: "Write the change." });
 });
 
 afterEach(async () => {

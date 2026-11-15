@@ -27,6 +27,7 @@ import {
 import { captureIo } from "../../test/capture-io.ts";
 import { fakeSignals } from "../../test/fake-signals.ts";
 import { engineStart } from "../../test/run-setup.ts";
+import { trustInstructions } from "../../test/trust-instructions.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns, webCryptoDigest } from "../../workspace-runs.ts";
 import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
@@ -48,8 +49,12 @@ let running: { signals: ReturnType<typeof fakeSignals>; serving: Promise<number>
 /** The profiles the fake sandbox was opened with: one per harness program started. */
 let fenced: SandboxProfile[];
 
+/** How many times the fake program was started. */
+let programStarts: number;
+
 beforeEach(async () => {
   fenced = [];
+  programStarts = 0;
   acmeRuns = await makeAcmeRuns("serve-harness");
   await writeFiles(acmeRuns.acme, {
     // Harness agents send their work to a cloud model, which a local-only workspace refuses.
@@ -130,6 +135,7 @@ const claudeCode: Harness = {
   environment: () => ({}),
   start: (task) => ({
     async *[Symbol.asyncIterator]() {
+      programStarts += 1;
       yield { type: "agent.finished", agent: task.agentId, output: "done" };
     },
     send: async () => {
@@ -159,6 +165,16 @@ async function trustAcme(): Promise<void> {
   const check = await service.check(subject);
   if (!("fingerprint" in check)) throw new Error("Acme has no fingerprint.");
   await service.grant(subject, check.fingerprint, "cli");
+}
+
+/** Trusts the coder's instructions as a person would, so its run may start. */
+function trustCoder(): Promise<void> {
+  return trustInstructions({
+    profile: acmeRuns.profile,
+    workspace: acmeRuns.acme,
+    agent: "coder",
+    text: "Write the change.",
+  });
 }
 
 async function serveAcme(sandbox: SandboxCheck = sandboxStarts): Promise<string> {
@@ -212,6 +228,7 @@ verifies("cli.commands.serve.harness", () => {
     slowTest,
     async () => {
       await trustAcme();
+      await trustCoder();
       const address = await serveAcme();
 
       const started = await startChange(address);
@@ -240,8 +257,35 @@ verifies("cli.commands.serve.harness", () => {
     },
   );
 
+  it(
+    "refuses a run whose instructions nobody trusted, and starts no program",
+    slowTest,
+    async () => {
+      await trustAcme();
+      const address = await serveAcme();
+
+      const started = await startChange(address);
+      const { id } = (await started.json()) as { id: string };
+      await waitUntil(
+        "the run to fail",
+        async () => {
+          const summary = (await (await fetch(`${address}/api/runs/${id}`)).json()) as {
+            status: string;
+          };
+          return summary.status === "failed";
+        },
+        slowTest,
+      );
+      const runs = await openWorkspaceRuns(acmeRuns.acme, acmeRuns.profile);
+      const failed = (await runs.events(id)).find((event) => event.type === "run.failed");
+      expect(JSON.stringify(failed)).toContain("AGENTS.md");
+      expect(programStarts).toBe(0);
+    },
+  );
+
   it("refuses a start that moves the agent, and starts no program", slowTest, async () => {
     await trustAcme();
+    await trustCoder();
     const address = await serveAcme();
 
     for (const extra of [{ harness: "codex" }, { placement: "this-computer" }]) {
@@ -255,6 +299,7 @@ verifies("cli.commands.serve.harness", () => {
     slowTest,
     async () => {
       await trustAcme();
+      await trustCoder();
       const address = await serveAcme({
         ok: false,
         reason: "bubblewrap-missing",

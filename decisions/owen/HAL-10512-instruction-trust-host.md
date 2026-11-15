@@ -26,3 +26,4 @@ New cases for each: a check that hangs, a check that throws, the check passed on
 - engine.harness-start-limits
 - harness-host.builder
 - cli.local-harness-host
+- cli.commands.serve.harness
