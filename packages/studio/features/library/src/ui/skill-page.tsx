@@ -1,7 +1,16 @@
 import type { SkillChange } from "@halonicjs/app";
 import { Button, EmptyState, Field, FormRows, Input, TextArea } from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
-import { Fragment, useCallback, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { takeSkillInstructionsFocus } from "../skill-focus-request.ts";
 import { SkillHostService, type SkillRef } from "../skill-host.ts";
 import { type SkillField, SkillModel } from "../skill-model.ts";
 import { skillWords } from "../skill-words.ts";
@@ -60,6 +69,14 @@ function LoadedSkillPage({
     () => model.state,
   );
   const [drafts, setDrafts] = useState<Drafts>({});
+  const instructions = useRef<HTMLTextAreaElement>(null);
+  const ready = loaded && !gone && !unreadable && parts !== undefined;
+  // A skill just made in New skill opens with the cursor in Instructions, ready to write.
+  useEffect(() => {
+    if (ready && takeSkillInstructionsFocus(refOf(item.hub, item.id))) {
+      instructions.current?.focus();
+    }
+  }, [ready, item.hub, item.id]);
 
   if (gone) {
     return <Gone context={context} />;
@@ -126,6 +143,7 @@ function LoadedSkillPage({
         </Field>
         <Field label={skillWords.instructions} wide>
           <TextArea
+            ref={instructions}
             value={shown("instructions")}
             maxRows={24}
             onChange={(event) => change("instructions", event.target.value)}

@@ -6,6 +6,7 @@ import type { LibraryEntryPlace } from "../library-overview.ts";
 import { LibraryTabMemoryService } from "../library-tab-memory.ts";
 import { takeLibraryTabRequests } from "../library-tab-request.ts";
 import { NewSkillHostService } from "../new-skill-host.ts";
+import { requestSkillInstructionsFocus } from "../skill-focus-request.ts";
 import type { SkillRef } from "../skill-host.ts";
 import { LibraryPage } from "./library-page.tsx";
 import { NewSkillDialog } from "./new-skill-dialog.tsx";
@@ -67,6 +68,7 @@ export function LibraryPlace({ context }: PlaceViewProps) {
           host={newSkillHost}
           onCreated={(skill) => {
             setMakingSkill(false);
+            requestSkillInstructionsFocus(skill);
             openSkill(skill);
           }}
           onCancel={() => setMakingSkill(false)}

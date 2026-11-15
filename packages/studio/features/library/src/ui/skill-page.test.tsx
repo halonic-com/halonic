@@ -4,6 +4,7 @@ import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { requestSkillInstructionsFocus } from "../skill-focus-request.ts";
 import { type SkillHost, SkillHostService, type SkillSource } from "../skill-host.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { SkillPage } from "./skill-page.tsx";
@@ -110,6 +111,18 @@ verifies("library.skill-page", () => {
       expect(root.textContent).toContain(
         "No agent uses this skill yet. Add it under an agent's Tools.",
       );
+    });
+
+    it("puts the cursor in Instructions for a skill just made, and not for a later visit", async () => {
+      requestSkillInstructionsFocus({ hub: null, id: "refunds" });
+      const { props } = setup();
+      const root = render(<SkillPage {...props} />);
+      await settled();
+      expect(document.activeElement).toBe(field(root, "Instructions"));
+      unmountAll();
+      const again = render(<SkillPage {...setup().props} />);
+      await settled();
+      expect(document.activeElement).not.toBe(field(again, "Instructions"));
     });
 
     it("saves a field when it is left", async () => {
