@@ -30,7 +30,13 @@ const script = await buildTestWorker([
   storage("r2-definition-source.workerd.test.ts"),
   storage("record-store.workerd.test.ts"),
 ]);
+// Register the runner's token with GitHub Actions before it goes anywhere, so no log line can show it.
+const runnerToken = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) =>
+  b.toString(16).padStart(2, "0"),
+).join("");
+if (process.env["GITHUB_ACTIONS"] === "true") console.log(`::add-mask::${runnerToken}`);
 const runner = await deployAdapterRunner({
+  randomSecret: () => runnerToken,
   api: createCloudflareClient({ token }),
   rest: createCloudflareRest({ token }),
   accountId: required("CLOUDFLARE_LIVE_ACCOUNT_ID"),
@@ -39,8 +45,6 @@ const runner = await deployAdapterRunner({
   compatibilityDate,
 });
 afterAll(() => runner.destroy());
-// GitHub Actions hides a registered value from the log.
-if (process.env["GITHUB_ACTIONS"] === "true") console.log(`::add-mask::${runner.token}`);
 
 try {
   const remote = new RemoteRunner(runner.url, runner.token);
