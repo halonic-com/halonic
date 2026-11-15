@@ -1,4 +1,5 @@
 import {
+  isInWorkspaceContent,
   type KeyboardPlatform,
   type Shell,
   StudioWindow,
@@ -88,8 +89,9 @@ export function WorkspaceWindow({
       }
       const history = historyKey(event, platform);
       const saving = switcher.open.shown?.value.saving;
-      // In a text field Ctrl Z is the field's own undo.
-      if (history !== undefined && saving !== undefined && !isEditing(event.target)) {
+      // A field of workspace content has no undo of its own; any other field keeps its own.
+      const ownUndo = isEditing(event.target) && !isInWorkspaceContent(event.target);
+      if (history !== undefined && saving !== undefined && !ownUndo) {
         event.preventDefault();
         if (history === "undo") saving.undo();
         else saving.redo();

@@ -8,6 +8,7 @@ import {
   type Feature,
   type Shell,
   StudioWorkspace,
+  workspaceContentAttribute,
 } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -378,5 +379,30 @@ verifies("workspace.saves-itself", () => {
     });
     field.remove();
     expect(saving.undo.mock.calls.length).toBe(1);
+  });
+
+  it("undoes the workspace's history in a field of workspace content, which has no undo of its own", async () => {
+    const saving = failingSaving();
+    const { switcher } = start([], [], saving as unknown as WorkspaceSaving);
+    await act(() => switcher.openLocation("/work/acme"));
+    const form = document.createElement("div");
+    form.setAttribute(workspaceContentAttribute, "");
+    const field = document.createElement("textarea");
+    form.append(field);
+    document.body.append(form);
+
+    const undo = new KeyboardEvent("keydown", {
+      key: "z",
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    await act(async () => {
+      field.dispatchEvent(undo);
+    });
+    form.remove();
+
+    expect(saving.undo.mock.calls.length).toBe(1);
+    expect(undo.defaultPrevented).toBe(true);
   });
 });

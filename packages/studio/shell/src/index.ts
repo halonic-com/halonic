@@ -333,6 +333,11 @@ export {
   SaveState,
   type SavingItem,
 } from "./save/save-state.ts";
+export {
+  isInWorkspaceContent,
+  workspaceContentAttribute,
+  workspaceContentProps,
+} from "./save/workspace-content.ts";
 export { SearchPage, type SearchPageProps } from "./search/search-page.tsx";
 export {
   type NameResult,
