@@ -2,6 +2,7 @@
 
 - Approval: the words are the board-approved microcopy T5, T6, T10 and T12 (HAL-1801) and the design's section 6 (HAL-1739); Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:NfrPTrD4byxXlBYIN0nTXejaXNcEplTRm0RM6z3Mdp5UKz3Qt274yD9m4p+DgXUvp2WdpLn5kyrSvDUkQ7UEAg==
 - Task: HAL-9383
 
 ## What changes
