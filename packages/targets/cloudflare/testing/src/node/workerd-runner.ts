@@ -61,9 +61,11 @@ const workerOrigin = "http://test-worker.invalid";
  */
 export class WorkerdRunner {
   readonly #miniflare: Miniflare;
+  readonly #token: string;
 
-  private constructor(miniflare: Miniflare) {
+  private constructor(miniflare: Miniflare, token: string) {
     this.#miniflare = miniflare;
+    this.#token = token;
   }
 
   /**
@@ -74,10 +76,13 @@ export class WorkerdRunner {
    * @returns the running Worker
    */
   static async start(script: string, bindings: WorkerdBindings = {}): Promise<WorkerdRunner> {
+    // The Worker refuses a request without its token, here and when it is deployed.
+    const token = crypto.randomUUID();
     const miniflare = new Miniflare({
       modules: true,
       script,
       compatibilityDate,
+      bindings: { HALONIC_TEST_RUNNER_TOKEN: token },
       durableObjects: sqliteBacked(bindings.durableObjects ?? {}),
       ...inMemoryStorage,
       r2Buckets: [...(bindings.r2Buckets ?? [])],
@@ -89,7 +94,7 @@ export class WorkerdRunner {
       await miniflare.dispose();
       throw error;
     }
-    return new WorkerdRunner(miniflare);
+    return new WorkerdRunner(miniflare, token);
   }
 
   /** Lists the cases the Worker's suites registered. */
@@ -114,7 +119,10 @@ export class WorkerdRunner {
   }
 
   async #fetchJson(pathname: string, init: { method: string; body?: string }): Promise<unknown> {
-    const response = await this.#miniflare.dispatchFetch(`${workerOrigin}${pathname}`, init);
+    const response = await this.#miniflare.dispatchFetch(`${workerOrigin}${pathname}`, {
+      ...init,
+      headers: { authorization: `Bearer ${this.#token}` },
+    });
     if (!response.ok) {
       throw new Error(
         `The test Worker answered ${init.method} ${pathname} with ${response.status}: ${await response.text()}`,

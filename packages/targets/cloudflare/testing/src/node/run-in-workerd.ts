@@ -56,17 +56,26 @@ export async function runSuitesInWorkerd(
         "The test Worker registered no cases. Does each suite file call a contract suite?",
       );
     }
-    wrap(() => mirror(tree.children, runner));
+    wrap(() => mirrorCases(tree.children, runner));
   } catch (error) {
     await runner.stop();
     throw error;
   }
 }
 
-function mirror(nodes: readonly CaseTree[], runner: WorkerdRunner): void {
+/** Anything that can run one case by its ID: the local {@link WorkerdRunner} or a {@link RemoteRunner}. */
+export interface CaseRunner {
+  run(id: string): Promise<CaseResult>;
+}
+
+/**
+ * Registers every listed case as a Vitest test that runs through `runner`, under the same
+ * `describe` blocks and requirement tags. Call it while the test file is collecting.
+ */
+export function mirrorCases(nodes: readonly CaseTree[], runner: CaseRunner): void {
   for (const node of nodes) {
     if (node.kind === "suite") {
-      describe(node.name, { meta: node.meta }, () => mirror(node.children, runner));
+      describe(node.name, { meta: node.meta }, () => mirrorCases(node.children, runner));
       continue;
     }
     it(node.name, async (context) => {

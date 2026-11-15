@@ -18,6 +18,7 @@
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/target-cloudflare-deploy": "workspace:*",
     "@halonicjs/target-cloudflare-runtime": "workspace:*",
+    "@halonicjs/target-cloudflare-testing": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@halonicjs/tooling-publish": "workspace:*",

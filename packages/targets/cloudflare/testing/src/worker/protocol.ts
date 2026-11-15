@@ -42,4 +42,6 @@ export const workerPaths = {
   cases: "/cases",
   /** `POST` with `{ "id": … }`: runs one case and answers a {@link CaseResult}. */
   run: "/run",
+  /** `POST` with the deploy's self-test token: answers `{ ok: true }` once the Worker started. */
+  selfTest: "/self-test",
 } as const;
