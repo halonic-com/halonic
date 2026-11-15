@@ -258,6 +258,11 @@ export class Inbox {
     this.#setAside.set(key, note);
   }
 
+  /** The note set aside for an item, left in place: for a render that reads it before {@link takeAside}. */
+  peekAside(key: string): string | undefined {
+    return this.#setAside.get(key);
+  }
+
   /** The note set aside for an item, once: it is removed as it is taken. */
   takeAside(key: string): string | undefined {
     const note = this.#setAside.get(key);

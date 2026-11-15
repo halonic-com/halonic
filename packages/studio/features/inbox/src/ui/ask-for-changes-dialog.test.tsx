@@ -124,7 +124,7 @@ verifies("inbox.secret-hold", () => {
       expect(sent).toEqual([]);
     });
 
-    it("offers no Go to the secret field for another key, or where nothing can take it", async () => {
+    it("offers Go to the secret field for a Google client secret but not for another key", async () => {
       openDialog(() => {});
       await type(providerKey);
       await click("Send note");

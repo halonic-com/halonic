@@ -318,6 +318,24 @@ verifies("google-setup.secret-field", () => {
     expect(secret.value).toBe("");
   });
 
+  it("puts the cursor in the empty new-secret field of an account Google refused", async () => {
+    const { container } = await open(account(record(signedIn, refused)), {}, "secret");
+    const { secret } = inputs(container);
+    expect(document.activeElement).toBe(secret);
+    expect(secret.value).toBe("");
+  });
+
+  it("goes on to step 7 once the secret is saved when step 6 was already the current one", async () => {
+    const { container } = await open(
+      account(record(upToClient.concat("client"), { clientId })),
+      {},
+      "secret",
+    );
+    await type(inputs(container).secret, fakeSecret);
+    await press(button(container, "Save secret"));
+    expect(container.textContent).toContain("Step 7 of 7");
+  });
+
   it("opens at the current step as before when nothing was asked for", async () => {
     await open(account(record(upToClient)));
     expect(document.activeElement?.tagName).toBe("H3");

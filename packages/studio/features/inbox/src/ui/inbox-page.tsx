@@ -7,7 +7,7 @@ import {
   type PlaceViewProps,
   type SidebarPlace,
 } from "@halonicjs/studio-shell";
-import { useCallback, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import { InboxService } from "../api.ts";
 import type { Inbox, SetupFocus } from "../inbox.ts";
@@ -223,13 +223,24 @@ function OpenCard({
   readonly words: EngineWords;
   readonly close: () => void;
 }) {
-  // A note set aside for a secret comes back with the card, once.
-  const [aside] = useState(() => inbox.takeAside(item.key));
+  // A note set aside for a secret comes back with the card, once. It is read while rendering and
+  // removed in an effect, so a render React throws away doesn't lose it.
+  const [aside] = useState(() => inbox.peekAside(item.key));
+  useEffect(() => {
+    inbox.takeAside(item.key);
+  }, [inbox, item.key]);
+  const target = secretTarget("google", items);
+  // With no account to set up and no place to open, the button would do nothing, so it isn't offered.
+  const somewhereToGo = target.kind === "setup" || openPlace !== undefined;
   const goToSecret = (note: string) => {
-    const target = secretTarget("google", items);
     inbox.setAside(item.key, note);
-    if (target.kind === "setup") inbox.openSetup(target.provider, target.account, "secret");
-    else openPlace?.("library");
+    if (target.kind === "setup") {
+      inbox.openSetup(target.provider, target.account, "secret");
+      return;
+    }
+    // The Library stands in until there is a Connectors view with **New connector**.
+    // Follow-up: send it to that view's New connector once the Connectors view exists.
+    openPlace?.("library");
   };
   if (item.kind === "setup") {
     return (
@@ -254,7 +265,7 @@ function OpenCard({
         back={null}
         now={now}
         initialNote={aside}
-        onGoToSecret={goToSecret}
+        {...(somewhereToGo ? { onGoToSecret: goToSecret } : {})}
       />
     );
   }

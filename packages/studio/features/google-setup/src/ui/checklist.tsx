@@ -67,7 +67,10 @@ export function Checklist(props: ChecklistProps) {
   // A step opened with Edit, until **Done, next** goes on to the current one. An account Google
   // refused opens at the first step it needs again.
   const [editing, setEditing] = useState<StepId | null>(() => {
-    if (props.focus === "secret" && steps.some((step) => step.id === "credentials")) {
+    // Opened for the secret while another step is current: step 6 opens in its place. When step 6
+    // is the current one nothing is pinned, so saving the secret goes on to step 7 as usual.
+    const credentialsOpen = steps.some((step) => step.id === "credentials");
+    if (props.focus === "secret" && credentialsOpen && current?.id !== "credentials") {
       return "credentials";
     }
     return steps.find((step) => problem?.reopenAt.includes(step.id))?.id ?? null;
@@ -92,11 +95,12 @@ export function Checklist(props: ChecklistProps) {
 
   // Focus goes to the title of the step that opens, also when the item first opens. An error
   // belongs to the step it was shown in, so it goes when another step opens.
-  // The secret field takes it instead when the item was opened for it and the field has an input.
+  // The secret field takes it instead when the item was opened for it and the field has an input:
+  // for a first secret, and for a refused one, whose field opens empty beside the old secret.
   const secretTakesFocus =
     props.focus === "secret" &&
     props.secretEntry.kind === "field" &&
-    account.record.clientSecret === null;
+    (account.record.clientSecret === null || problem?.actionStep === "credentials");
   useEffect(() => {
     setFailed(undefined);
     setProjectIdError(null);
