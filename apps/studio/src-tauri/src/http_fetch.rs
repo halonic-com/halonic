@@ -183,9 +183,30 @@ async fn run(first: CheckedRequest) -> Result<FetchAnswer, FetchRefusal> {
     }
 }
 
+/// The only headers that cross to another origin on a redirect. Keys travel
+/// in many header names, so everything else is left behind.
+const CROSS_ORIGIN_HEADERS: [&str; 5] = [
+    "accept",
+    "accept-language",
+    "content-language",
+    "content-type",
+    "user-agent",
+];
+
+/// The headers that go on to another origin. Every other header may hold a
+/// key (`api-key`, `x-goog-api-key`, or one an endpoint names itself), so it
+/// stays behind.
+const CROSS_ORIGIN_HEADERS: [&str; 5] = [
+    "accept",
+    "accept-language",
+    "content-language",
+    "content-type",
+    "user-agent",
+];
+
 /// The request a redirect leads to. As the Web's `fetch` does: a 303, or a
 /// 301 or 302 after a POST, becomes a GET without a body; and a hop to
-/// another origin leaves the credentials behind.
+/// another origin keeps only a short list of safe headers.
 fn next_hop(
     from: &CheckedRequest,
     location: &str,
@@ -205,15 +226,8 @@ fn next_hop(
         });
     }
     if next.url.origin() != from.url.origin() {
-        next.headers.retain(|(name, _)| {
-            ![
-                "authorization",
-                "cookie",
-                "proxy-authorization",
-                "x-api-key",
-            ]
-            .contains(&name.to_ascii_lowercase().as_str())
-        });
+        next.headers
+            .retain(|(name, _)| CROSS_ORIGIN_HEADERS.contains(&name.to_ascii_lowercase().as_str()));
     }
     Ok(next)
 }
