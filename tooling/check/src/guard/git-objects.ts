@@ -50,7 +50,9 @@ export function gitObjects(root: string, progress: (line: string) => void = () =
       git("ls-tree", "-r", "--name-only", "-z", at(commit, "")).split("\0").filter(Boolean),
     readFile: (commit, path) => optional(() => git("cat-file", "blob", at(commit, path))),
     readFiles: (commit, paths) => {
-      progress(`reading ${paths.length} ${paths.length === 1 ? "file" : "files"} at ${commit.slice(0, 12)}`);
+      progress(
+        `reading ${paths.length} ${paths.length === 1 ? "file" : "files"} at ${commit.slice(0, 12)}`,
+      );
       return readBatch(
         root,
         paths.map((path) => [path, at(commit, path)] as const),
