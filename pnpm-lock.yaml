@@ -1598,6 +1598,9 @@ importers:
       '@halonicjs/adapter-system-node':
         specifier: workspace:*
         version: link:../system-node
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../core/app
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../core/format

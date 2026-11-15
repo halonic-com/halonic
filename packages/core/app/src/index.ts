@@ -11,6 +11,16 @@ export {
   type PlacementSubject,
   type SandboxReason,
 } from "./agent-placement.ts";
+export {
+  type AskPolicyOptions,
+  type AskReason,
+  type AskToolCall,
+  type AskVerdict,
+  askPolicy,
+  type PathResolver,
+  type RefuseReason,
+  type ResolvedPath,
+} from "./ask-policy.ts";
 export { joinLinesThatNeedEachOther } from "./changes/change-needs.ts";
 export { describeAgentChange } from "./changes/describe-agent.ts";
 export { describeFileChange, type FileChange } from "./changes/describe-file.ts";
@@ -294,6 +304,12 @@ export {
   ProgramCopyUnavailableError,
   type ProgramCopyVcs,
 } from "./program-copies.ts";
+export {
+  askProtectedPaths,
+  isProtectedPath,
+  type PathSegments,
+  writeFencedPaths,
+} from "./protected-paths.ts";
 export { type Reference, referencesTo } from "./references-to.ts";
 export { refusalStatusLine } from "./refusal-status.ts";
 export {
