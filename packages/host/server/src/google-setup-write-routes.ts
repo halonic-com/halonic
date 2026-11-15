@@ -125,7 +125,9 @@ export function createGoogleSetupWriteRoutes({
   /**
    * `POST /api/google/setups` with `{ accountType, connector: { workspace, id } }`:
    * starts a record for that connector and answers 201 with its `accountRef`.
-   * The connector link is how a record finds its Inbox item, so a link that
+   * A connector that already has a record keeps it: the answer is 200 with
+   * that record's `accountRef` and nothing is written, so two quick starts
+   * make one record. The connector link is how a record finds its Inbox item, so a link that
    * breaks the name rules is a 400 and nothing is written.
    */
   async function start(request: Request, body: Uint8Array): Promise<Response> {
@@ -139,6 +141,10 @@ export function createGoogleSetupWriteRoutes({
       return errorResponse(serverErrors.badRequest);
     }
     try {
+      const existing = await setups.forConnector(connector.workspace, connector.id);
+      if (existing !== null) {
+        return Response.json({ accountRef: existing.accountRef });
+      }
       const record = await setups.start({
         route: { app: "own", runsOn: "this-computer" },
         accountType: fields["accountType"],
@@ -194,22 +200,31 @@ export function createGoogleSetupWriteRoutes({
   /**
    * `POST /api/google/setups/<ref>/start-over`: removes the record, the
    * refresh token and the client secret (not while another account uses the
-   * client), without asking Google. Answers `{ clientSecret }` with what
-   * happened to the secret. `disconnect` is the route that also revokes.
+   * client), without asking Google, and starts a fresh record for the same
+   * connector and account type in the same step, so there is no moment
+   * with no record. Answers `{ clientSecret, accountRef }` with what happened
+   * to the secret and the fresh record's ref. `disconnect` is the route that
+   * also revokes.
    */
   async function startOverRoute(request: Request, accountRef: string): Promise<Response> {
     const refusal = refuseOtherSite(request);
     if (refusal !== null) {
       return errorResponse(refusal);
     }
-    if ((await readSetup(setups, accountRef)) === null) {
+    const old = await readSetup(setups, accountRef);
+    if (old === null) {
       return errorResponse(serverErrors.googleSetupNotFound);
     }
     const secret = await startOver(
       { setups, secrets: google.clientSecrets, tokens: google.tokens },
       accountRef,
     );
-    return Response.json({ clientSecret: secret });
+    const fresh = await setups.start({
+      route: old.route,
+      accountType: old.accountType,
+      connector: old.connector,
+    });
+    return Response.json({ clientSecret: secret, accountRef: fresh.accountRef });
   }
 
   return { start, edit, startOver: startOverRoute };

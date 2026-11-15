@@ -18,7 +18,7 @@ const disconnectedSchema = s
 
 const startedSchema = s.object({ accountRef: s.string() }).strict();
 const updatedSchema = s.object({ updated: s.literal(true) }).strict();
-const startedOverSchema = s.object({ clientSecret: s.string() }).strict();
+const startedOverSchema = s.object({ clientSecret: s.string(), accountRef: s.string() }).strict();
 const signInSchema = s.object({ authUrl: s.string() }).strict();
 
 /** Which kind of Google account a setup is for. */
@@ -106,15 +106,18 @@ export class AgentHostGoogleSetup {
 
   /**
    * Removes the record, the refresh token and the client secret (not while another account
-   * uses the client), without asking Google.
+   * uses the client), without asking Google, and starts a fresh record for the same connector
+   * in the same step.
    *
-   * @returns what became of the client secret, in the host's own word
+   * @returns what became of the client secret, in the host's own word, and the fresh record's ref
    * @throws {@link AgentHostError} when the host can't be reached or refuses (`google_setup_not_found`, `google_failed`)
    */
-  async startOver(accountRef: string): Promise<string> {
+  async startOver(
+    accountRef: string,
+  ): Promise<{ readonly clientSecret: string; readonly accountRef: string }> {
     const route = "POST /v1/google/start-over";
     const answer = await this.#transport.request(route, { accountRef });
-    return readAnswer(route, answer, startedOverSchema).clientSecret;
+    return readAnswer(route, answer, startedOverSchema);
   }
 
   /**

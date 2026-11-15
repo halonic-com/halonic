@@ -58,7 +58,8 @@ const callbackFailedPage = `<!doctype html><html lang="en"><head><meta charset="
  *   edit a person makes (`change` is the handler's own edit body) and answers
  *   `{ updated: true }`.
  * - `POST /v1/google/start-over` with `{ accountRef }`: removes the record,
- *   the refresh token and the client secret without asking Google.
+ *   the refresh token and the client secret without asking Google, starts a
+ *   fresh record for the same connector, and answers `{ clientSecret, accountRef }`.
  * - `GET /api/google/callback`: where Google sends the browser back. The
  *   browser has no launch token, so this one route is `tokenFree`; the
  *   sign-in's own `state` is the proof, and the page it answers with is fixed

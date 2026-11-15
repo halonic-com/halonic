@@ -115,11 +115,17 @@ verifies("agent-host-client.google", () => {
       });
     });
 
-    it("answers what became of the client secret", async () => {
+    it("answers what became of the client secret and the fresh record's ref", async () => {
       const startOverRoute = "POST /v1/google/start-over";
-      const host = new FakeHost().answer(startOverRoute, ok({ clientSecret: "removed" }));
+      const host = new FakeHost().answer(
+        startOverRoute,
+        ok({ clientSecret: "removed", accountRef: "gaccount_two" }),
+      );
 
-      expect(await new AgentHostGoogleSetup(host).startOver("gaccount_one")).toBe("removed");
+      expect(await new AgentHostGoogleSetup(host).startOver("gaccount_one")).toEqual({
+        clientSecret: "removed",
+        accountRef: "gaccount_two",
+      });
       expect(host.calls).toEqual([{ route: startOverRoute, body: { accountRef: "gaccount_one" } }]);
     });
   });
