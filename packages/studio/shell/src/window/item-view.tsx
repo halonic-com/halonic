@@ -16,6 +16,8 @@ export interface ItemViewProps {
   readonly item: ItemRef;
   readonly context: WorkspaceContext;
   readonly Sections: ComponentType;
+  /** The part of the page the item was opened on (`openItem`'s `step`), if it was asked for one. */
+  readonly step?: string;
 }
 
 /**
@@ -38,6 +40,7 @@ export function ItemView({
   context,
   sections,
   contextFor,
+  step,
 }: {
   readonly kind: ItemKindContribution;
   readonly item: ItemRef;
@@ -46,12 +49,19 @@ export function ItemView({
   readonly sections: readonly Registered<ItemPageSectionContribution>[];
   /** The context of the feature that added a section. */
   readonly contextFor: (featureId: string) => WorkspaceContext;
+  /** The part of the page to open on, from the tab's place. */
+  readonly step?: string | undefined;
 }) {
   const View = lazyView<ItemViewProps>(kind.open);
   const Sections = useSectionsComponent(item, sections, contextFor);
   return (
     <Suspense fallback={null}>
-      <View item={item} context={context} Sections={Sections} />
+      <View
+        item={item}
+        context={context}
+        Sections={Sections}
+        {...(step === undefined ? {} : { step })}
+      />
     </Suspense>
   );
 }

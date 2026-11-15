@@ -56,7 +56,8 @@ export function WorkflowPage({ item, context }: ItemViewProps) {
       id={item.id}
       notAnswering={engineWordsOf(context).notAnswering}
       {...(openItem && {
-        openRun: (runId: string) => openItem({ kind: "run", hub: item.hub, id: runId }),
+        openRun: (runId: string, step?: string) =>
+          openItem({ kind: "run", hub: item.hub, id: runId }, step === undefined ? {} : { step }),
       })}
       {...(openPlace && {
         reviewInInbox: () => openPlace("inbox"),
@@ -406,7 +407,7 @@ interface RunDockProps {
   readonly shown: ReturnType<typeof useShownRun>;
   readonly onDock: (next: Dock) => void;
   readonly onStarted: (runId: string) => void;
-  readonly openRun: ((runId: string) => void) | undefined;
+  readonly openRun: ((runId: string, step?: string) => void) | undefined;
   readonly saveAsTest: (row: RunRow) => SaveAsTestProps | undefined;
   /** The step picked on the canvas; while a run is shown its card replaces the run's. */
   readonly pickedStep: string | undefined;
@@ -435,7 +436,7 @@ function RunDock({
         stepId={pickedStep}
         inRun={stepInRun(pickedStep, shown.row, shown.run)}
         onClose={onClosePickedStep}
-        onSeeInAndOut={openRun && (() => openRun(shown.row.id))}
+        onSeeInAndOut={openRun && (() => openRun(shown.row.id, pickedStep))}
       />
     );
   }

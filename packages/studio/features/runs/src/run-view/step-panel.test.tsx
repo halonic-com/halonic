@@ -51,7 +51,7 @@ function refused(host: string, count: number): RunEventBody {
   };
 }
 
-async function openRun(openOther?: (runId: string) => void) {
+async function openRun(openOther?: (runId: string) => void, step?: string) {
   const list = new RunsList(
     fakeSource([summaryWith({ id: runId, lastSeq: log.length })], { [runId]: log }).source,
   );
@@ -60,6 +60,7 @@ async function openRun(openOther?: (runId: string) => void) {
       list={list}
       runId={runId}
       now={() => mondayMorning}
+      {...(step === undefined ? {} : { step })}
       {...(openOther === undefined ? {} : { openRun: openOther })}
     />,
   );
@@ -101,6 +102,21 @@ verifies("runs.run-view.step-events", () => {
     expect(tool?.querySelector("summary")?.textContent).toContain("send_email");
     expect(tool?.open).toBe(false);
     expect(entry(root, 1).closest("tr")?.getAttribute("aria-current")).toBe("true");
+  });
+
+  it("opens the entry of the step it was asked to open on, and not again once closed", async () => {
+    const root = await openRun(undefined, "draft");
+
+    expect(root.querySelector("aside h2")?.textContent).toBe("Draft");
+    act(() => (root.querySelector('[aria-label="Close Draft"]') as HTMLElement).click());
+    expect(root.querySelector("aside")).toBeNull();
+  });
+
+  it("opens at the top for a step the run didn't reach", async () => {
+    const root = await openRun(undefined, "archive");
+
+    expect(root.querySelector("aside")).toBeNull();
+    expect(root.querySelector("h1")?.textContent).toBe("Run 7k2m9p");
   });
 
   it("says so for a step without calls", async () => {

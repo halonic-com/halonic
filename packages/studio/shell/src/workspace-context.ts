@@ -2,7 +2,7 @@ import type { Announcer } from "./announcer/announcer.ts";
 import type { BadgeRegistry } from "./badges/badge-registry.ts";
 import type { EngineWords } from "./engine/engine-words.ts";
 import type { SidebarPlace } from "./points/frame.ts";
-import type { ItemRef } from "./points/item-kinds.ts";
+import type { ItemRef, OpenItemOptions } from "./points/item-kinds.ts";
 import type { ServiceLookup } from "./service-catalog.ts";
 
 /**
@@ -37,9 +37,10 @@ export interface WorkspaceContext {
    * Opens an item as Ctrl K opens a found one: in the active tab on the desktop, or the tab that
    * shows it already, asking for focus on its page's `h1`, and as a page on a phone. The tab is
    * named as the item's kind names it (`tab.describe`), else by the item's id. The window gives
-   * it to the views and commands it draws; a context built without a window has none.
+   * it to the views and commands it draws; a context built without a window has none. `step`
+   * opens the page on that part of it, as the kind's page reads it.
    */
-  readonly openItem?: (item: ItemRef) => void;
+  readonly openItem?: (item: ItemRef, options?: OpenItemOptions) => void;
   /**
    * Opens an item in a new tab next to the active one, as a Ctrl-click, a middle click or Ctrl
    * Enter on a row does, and says so to a screen reader; an item another tab shows already stays
