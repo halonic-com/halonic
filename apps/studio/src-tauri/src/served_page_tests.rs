@@ -218,16 +218,9 @@ fn served_page_test_sees_the_connect_page_allowed_to_run_git_on_desktop() {
 #[cfg(desktop)]
 #[test]
 fn served_page_test_sees_the_connect_page_allowed_to_fetch_on_desktop() {
-    // The call gets through to the command, which refuses the method before
-    // any network call; aborting a call that isn't running is fine.
     let window = app_window();
-    let answer = invoke(
-        &window,
-        CONNECT_PAGE,
-        "http_fetch",
-        json!({"request": {"method": "TRACE", "url": "https://example.com/"}, "call": 1}),
-    );
-    let refusal = answer.expect_err("a method the guard refuses");
+    let request = json!({"request": {"method": "TRACE", "url": "https://example.com/"}, "call": 1});
+    let refusal = invoke(&window, CONNECT_PAGE, "http_fetch", request).expect_err("method refused");
     assert_eq!(refusal["kind"], "method_refused", "{refusal}");
     let aborted = invoke(
         &window,
