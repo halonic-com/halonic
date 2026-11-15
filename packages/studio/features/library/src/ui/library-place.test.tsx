@@ -48,7 +48,10 @@ function contextOf(
     [LibraryItemsHostService, host],
     [LibraryTabMemoryService, memory],
   ]);
-  const services = { get: (key: unknown) => provided.get(key) };
+  const services = {
+    get: (key: unknown) => provided.get(key),
+    find: (key: unknown) => provided.get(key),
+  };
   return {
     context: { services, ...extra } as unknown as WorkspaceContext,
     memory,
