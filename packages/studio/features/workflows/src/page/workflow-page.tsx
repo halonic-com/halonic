@@ -40,6 +40,7 @@ import { TestsPage } from "../tests/tests-page.tsx";
 import { pageWords } from "./page-words.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
 import { WorkflowCanvas } from "./workflow-canvas.tsx";
+import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
 
 type WorkflowView = "flow" | "configuration" | "runs";
 
@@ -66,23 +67,6 @@ export function WorkflowPage({ item, context }: ItemViewProps) {
       })}
     />
   );
-}
-
-/** Props for {@link WorkflowScreen}. */
-export interface WorkflowScreenProps {
-  readonly host: WorkflowsHost;
-  /** The workspace's runs, which the Runs view shows the real ones of. */
-  readonly runs: RunsSource;
-  readonly hubId: string;
-  readonly id: string;
-  /** Why a start failed when the engine can't be reached, in the words for where Studio runs; the desktop app's when absent. */
-  readonly notAnswering?: string;
-  /** Opens a test run's card from the Tests page; absent where there is no run card. */
-  readonly openRun?: (runId: string) => void;
-  /** Opens the Runs list; absent where the app can't open it. */
-  readonly seeAllRuns?: () => void;
-  /** Opens the Inbox, for a run card's Review in Inbox; absent where the app can't open it. */
-  readonly reviewInInbox?: () => void;
 }
 
 /**
