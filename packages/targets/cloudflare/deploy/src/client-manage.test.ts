@@ -163,3 +163,24 @@ verifies("deploy.destroy", () => {
     });
   });
 });
+
+verifies("deploy.admin-key", () => {
+  it("sets and removes a Workers secret through the secrets route", async () => {
+    const seen: string[] = [];
+    const api = client(
+      {
+        [`PUT ${worker}/secrets`]: { result: { name: "S" } },
+        [`DELETE ${worker}/secrets/S`]: { result: {} },
+      },
+      seen,
+    );
+    await api.setWorkerSecret("a1", "w", "S", "value");
+    await api.deleteWorkerSecret("a1", "w", "S");
+    expect(seen).toEqual([`PUT ${worker}/secrets`, `DELETE ${worker}/secrets/S`]);
+  });
+
+  it("treats a secret that is already gone as removed", async () => {
+    const api = client({ [`DELETE ${worker}/secrets/S`]: { status: 404 } }, []);
+    await expect(api.deleteWorkerSecret("a1", "w", "S")).resolves.toBeUndefined();
+  });
+});

@@ -19,14 +19,15 @@ export type DeployErrorCode =
   | "nothing-to-roll-back"
   | "destroy-refused"
   | "destroy-changed"
-  | "bucket-not-empty";
+  | "bucket-not-empty"
+  | "admin-key-left";
 
 /** A deploy failure with a stable code. The message never holds a token or a secret. */
 export class DeployError extends Error {
   readonly code: DeployErrorCode;
 
-  constructor(code: DeployErrorCode, message: string) {
-    super(message);
+  constructor(code: DeployErrorCode, message: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = "DeployError";
     this.code = code;
   }

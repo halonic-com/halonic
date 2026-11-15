@@ -50,14 +50,21 @@ export interface FakeCloudflareState {
   workersDevOn?: boolean;
   /** Closing workers.dev throws. */
   closeFails?: boolean;
+  /** Setting a Workers secret throws. */
+  secretSetFails?: boolean;
+  /** Removing a Workers secret throws. */
+  secretDeleteFails?: boolean;
   /** A migration the Worker's own runner applies just before our batch lands, so our batch fails. */
   racedBy?: string;
 }
 
 /** A {@link CloudflareApi} in memory that records each call, for tests of everything above the client. */
-export function fakeCloudflareApi(
-  state: FakeCloudflareState,
-): CloudflareApi & { calls: string[]; messages: (string | undefined)[] } {
+export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
+  calls: string[];
+  messages: (string | undefined)[];
+  /** The names of the Workers secrets set through `setWorkerSecret` and not removed. */
+  workerSecretNames(): string[];
+} {
   const calls: string[] = [];
   const messages: (string | undefined)[] = [];
   const answer = (value: TokenStatus | Error | undefined): TokenStatus => {
@@ -83,6 +90,7 @@ export function fakeCloudflareApi(
   ];
   const deploy = (next: readonly DeployedVersion[]) => history.unshift(next);
   let versions = 0;
+  const secrets = new Set<string>();
   let workersDevOn = state.workersDevOn ?? true;
   return {
     calls,
@@ -136,6 +144,17 @@ export function fakeCloudflareApi(
       lockWrite(`deployVersions ${next.map((v) => `${v.id}:${v.percentage}`).join(",")}`);
       deploy(next);
     },
+    async setWorkerSecret(_accountId, worker, name) {
+      lockWrite(`setWorkerSecret ${worker} ${name}`);
+      if (state.secretSetFails) throw new Error("Cloudflare is down");
+      secrets.add(name);
+    },
+    async deleteWorkerSecret(_accountId, worker, name) {
+      lockWrite(`deleteWorkerSecret ${worker} ${name}`);
+      if (state.secretDeleteFails) throw new Error("Cloudflare is down");
+      secrets.delete(name);
+    },
+    workerSecretNames: () => [...secrets].sort(),
     async workersDevEnabled() {
       calls.push("workersDevEnabled");
       return workersDevOn;

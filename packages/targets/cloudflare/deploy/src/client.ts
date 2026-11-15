@@ -386,6 +386,21 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
         deploymentBody(versions),
       );
     },
+    async setWorkerSecret(accountId, worker, name, value) {
+      await request("PUT", `${workerPath(accountId, worker)}/secrets`, {
+        name,
+        text: value,
+        type: "secret_text",
+      });
+    },
+    async deleteWorkerSecret(accountId, worker, name) {
+      await request(
+        "DELETE",
+        `${workerPath(accountId, worker)}/secrets/${encodeURIComponent(name)}`,
+        undefined,
+        true,
+      );
+    },
     async workersDevEnabled(accountId, worker) {
       const body = await get(`${workerPath(accountId, worker)}/subdomain`);
       return (body.result as { enabled?: unknown } | undefined)?.enabled === true;

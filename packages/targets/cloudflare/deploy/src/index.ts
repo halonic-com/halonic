@@ -1,3 +1,5 @@
+export type { AdminKeyJobOptions } from "./admin-key.ts";
+export { adminKeySecretName, withAdminKey } from "./admin-key.ts";
 export type {
   CloudflareAccount,
   CloudflareApi,
