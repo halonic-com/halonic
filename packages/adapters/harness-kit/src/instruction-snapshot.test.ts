@@ -8,7 +8,6 @@ import {
   describeInstructionPin,
   type InstructionDisk,
   instructionDiskOnThisComputer,
-  instructionTrust,
   pinInstructions,
   snapshotInstructions,
 } from "./instruction-snapshot.ts";
@@ -72,55 +71,6 @@ verifies("harness-kit.instruction-snapshot", () => {
       ".hidden",
     ])("refuses the name %j", async (name) => {
       await expect(pinInstructions([{ name, text: "x" }])).rejects.toThrow(/Instruction file/u);
-    });
-  });
-
-  describe("instructionTrust", () => {
-    it("treats a file named like an object method as added, not changed", async () => {
-      const pin = await pinInstructions([{ name: "constructor", text: "x" }]);
-      const answer = instructionTrust(await pinInstructions([agents]), pin);
-      expect(answer).toMatchObject({
-        kind: "ask",
-        changes: { added: ["constructor"], changed: [] },
-      });
-    });
-
-    it("lists a dropped file named like an object method as removed", async () => {
-      const trusted = await pinInstructions([{ name: "constructor", text: "x" }]);
-      const answer = instructionTrust(trusted, await pinInstructions([agents]));
-      expect(answer).toMatchObject({
-        kind: "ask",
-        changes: { removed: ["constructor"] },
-      });
-    });
-
-    it("trusts the same set", async () => {
-      const pin = await pinInstructions([agents, skill]);
-      expect(instructionTrust(pin, pin)).toEqual({ kind: "trusted" });
-    });
-
-    it("asks when nothing is trusted yet, naming every file as added", async () => {
-      const pin = await pinInstructions([agents]);
-      expect(instructionTrust(null, pin)).toEqual({
-        kind: "ask",
-        changes: { added: ["AGENTS.md"], removed: [], changed: [] },
-      });
-    });
-
-    it("asks again, naming what was added, removed and changed", async () => {
-      const trusted = await pinInstructions([agents, skill]);
-      const current = await pinInstructions([
-        { ...agents, text: "Be loud.\n" },
-        { name: "skills/new/SKILL.md", text: "New.\n" },
-      ]);
-      expect(instructionTrust(trusted, current)).toEqual({
-        kind: "ask",
-        changes: {
-          added: ["skills/new/SKILL.md"],
-          removed: ["skills/review/SKILL.md"],
-          changed: ["AGENTS.md"],
-        },
-      });
     });
   });
 

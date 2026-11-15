@@ -31,6 +31,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `HostSettingsStore` | `host-settings-store.ts` | 1 | the settings kept where Halonic runs (assistant, sandbox default) in the user's profile, by key; `HostSettings` decides | `host-settings-store` |
 | `HttpClient` | `http-client.ts` | 1 | outbound HTTP, replaces `FetchLike` | `http-client` (with first adapter) |
 | `IdGenerator` | `id-generator.ts` | 1 | unique ids | `id-generator` |
+| `InstructionTrustStore` | `instruction-trust-store.ts` | 1 | the pin of each agent's `AGENTS.md` and skills a person trusted, in the user's profile; `instructionTrust` compares | `instruction-trust-store` |
 | `Integration` | `integration.ts` | 2 | an integration's declaration and the `IntegrationHost` it is given: limited HTTP, scoped tokens, sign-in placements and `SignInTokens` | `integration` (own package) |
 | `KnowledgeProvider` | `knowledge-provider.ts` | 1 | knowledge sources agents search and read, and their factory | `knowledge-provider` |
 | `LlmCache` | `llm-cache.ts` | 1 | model answers reused by simulation re-runs | `llm-cache` (with first adapter) |
@@ -102,6 +103,7 @@ next to the ports:
 | `foldRecords`, `compactedChanges` | fold record changes into the current records, and into one `seed` each when compacting | `record-fold` |
 | `checkCommitId` | refuses any `Vcs` version that is not a full commit id, with a `RangeError` | `vcs-commit-ref` |
 | `isAgentPlacementFor` | whether a stored agent placement is valid for its key | `agent-placement-store` |
+| `isInstructionTrustFor` | whether a stored trusted-instructions record is valid for its key | `instruction-trust-store` |
 | `isUnreadableToolApprovalError`, `maxWaitingVersions` | recognise an unreadable tool approval without `instanceof`, and how many waiting versions of a tool are kept | `listed-tool-approval` |
 | `priceOf` | what a model call costs from a `ModelPrice` and the tokens used | `model-price` |
 | `addHarnessEnvironment`, `harnessBridgeTokenHeader` | add a harness's environment without replacing a variable that is set; the header that carries the run's bridge token | `harness-environment` |

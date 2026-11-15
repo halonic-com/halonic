@@ -126,6 +126,15 @@ export {
 export { type HttpClient, httpClientVersion } from "./http-client.ts";
 export { type IdGenerator, idGeneratorVersion } from "./id-generator.ts";
 export {
+  type InstructionChanges,
+  type InstructionPin,
+  type InstructionTrustKey,
+  type InstructionTrustRecord,
+  type InstructionTrustStore,
+  instructionTrustStoreVersion,
+  isInstructionTrustFor,
+} from "./instruction-trust-store.ts";
+export {
   type AuthPlacement,
   type Integration,
   type IntegrationConnection,

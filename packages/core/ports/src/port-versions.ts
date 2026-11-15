@@ -12,6 +12,7 @@ import { harnessBridgeServerVersion } from "./harness-bridge-server.ts";
 import { hostSettingsStoreVersion } from "./host-settings-store.ts";
 import { httpClientVersion } from "./http-client.ts";
 import { idGeneratorVersion } from "./id-generator.ts";
+import { instructionTrustStoreVersion } from "./instruction-trust-store.ts";
 import { integrationVersion } from "./integration.ts";
 import { knowledgeProviderVersion } from "./knowledge-provider.ts";
 import { llmCacheVersion } from "./llm-cache.ts";
@@ -56,6 +57,7 @@ export const portVersions = {
   HostSettingsStore: hostSettingsStoreVersion,
   HttpClient: httpClientVersion,
   IdGenerator: idGeneratorVersion,
+  InstructionTrustStore: instructionTrustStoreVersion,
   Integration: integrationVersion,
   KnowledgeProvider: knowledgeProviderVersion,
   LlmCache: llmCacheVersion,

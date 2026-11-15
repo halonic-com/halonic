@@ -17,14 +17,10 @@ export {
 export {
   copyInstructions,
   describeInstructionPin,
-  type InstructionChanges,
   type InstructionDisk,
   type InstructionFile,
-  type InstructionPin,
   type InstructionSnapshot,
-  type InstructionTrust,
   instructionDiskOnThisComputer,
-  instructionTrust,
   pinInstructions,
   snapshotInstructions,
 } from "./instruction-snapshot.ts";
