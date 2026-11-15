@@ -77,6 +77,12 @@ export interface RunsSource {
    * when it's no longer in the workspace.
    */
   readonly routine: (key: string) => RunRoutine | undefined;
+  /**
+   * The workflows the workspace has, each as the name `halonic run` takes (`support-reply`, or
+   * `support/reply` when two hubs have a `reply`), in the Workflows list's order. Empty when the
+   * workspace has none. Rejects when the files can't be read.
+   */
+  readonly runnableWorkflows: () => Promise<readonly string[]>;
   /** The workspace's currency (`budget.currency`, EUR when it names none). */
   readonly currency: () => string;
   /** The workspace's monthly budget (`budget.monthly`); `undefined` when it sets none. */

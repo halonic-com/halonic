@@ -60,6 +60,7 @@ describe("RunsList", () => {
       log: async () => [],
       workflow: () => undefined,
       routine: () => undefined,
+      runnableWorkflows: async () => [],
       currency: () => "EUR",
       monthlyBudget: () => undefined,
       subscribe: () => () => {},

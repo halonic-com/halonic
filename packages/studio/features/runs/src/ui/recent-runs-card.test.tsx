@@ -136,9 +136,31 @@ verifies("runs.home", () => {
     expect(root.textContent).toContain(
       "No runs yet. When an agent or workflow runs, you'll see it here.",
     );
+  });
+
+  it("names the first workflow to run in the command line note", async () => {
+    const { root } = await show(fakeSource([]).source);
     expect(root.textContent).toContain(
-      "Studio shows what your agents are doing and lets you read each run. To start one, use the command line: halonic run.",
+      "Studio shows what your agents are doing and lets you read each run. To start one, use the command line: halonic run support-reply.",
     );
+    expect(root.querySelector("code")?.textContent).toBe("halonic run support-reply");
+  });
+
+  it("says a workspace with no workflow has none, and sends it to Workflows", async () => {
+    const fake = fakeSource([]);
+    fake.workflows([]);
+    const { root } = await show(fake.source);
+    expect(root.textContent).toContain(
+      "This workspace has no workflows yet. Add one in Workflows, then start it from the command line.",
+    );
+    expect(root.querySelector("code")).toBeNull();
+  });
+
+  it("keeps the note without a name when the workflows can't be read", async () => {
+    const fake = fakeSource([]);
+    fake.workflows(new Error("unreadable"));
+    const { root } = await show(fake.source);
+    expect(root.textContent).toContain("To start one, use the command line: halonic run.");
     expect(root.querySelector("code")?.textContent).toBe("halonic run");
   });
 
