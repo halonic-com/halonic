@@ -191,6 +191,7 @@ export function OverviewPage({
                 ref={searchField}
                 type="search"
                 aria-label={words.searchLabel}
+                placeholder={words.searchLabel}
                 leadingIcon={<SearchIcon />}
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
