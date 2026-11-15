@@ -3,10 +3,9 @@ import {
   type HostSettingValue,
   hostSettingsMaxBytes,
 } from "@halonicjs/ports";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import golden from "./golden/host-settings-limits.json" with { type: "json" };
-import { waitUntil } from "./wait-until.ts";
 
 /** One empty store under test, and ways to look at and change what it holds behind its back. */
 export interface HostSettingsStoreHarness {
@@ -173,12 +172,12 @@ function changeCases(make: MakeHostSettingsStore): void {
     const stop = store.watch(listener);
     try {
       await store.set("assistant.turn-limit", 20);
-      await waitUntil(() => listener.mock.calls.length > 0);
+      await waitUntil("the listener to be called", () => listener.mock.calls.length > 0);
       expect(listener).toHaveBeenCalled();
 
       listener.mockClear();
       await changeElsewhere("assistant.turn-limit", 32);
-      await waitUntil(() => listener.mock.calls.length > 0);
+      await waitUntil("the listener to be called", () => listener.mock.calls.length > 0);
       expect(listener).toHaveBeenCalled();
       expect(await store.read()).toEqual({ "assistant.turn-limit": 32 });
     } finally {
@@ -196,7 +195,7 @@ function changeCases(make: MakeHostSettingsStore): void {
       await changeElsewhere("assistant.turn-limit", 32);
       await store.set("assistant.connector-tools", false);
       // The other watcher has heard of both changes, so the stopped one had its chance too.
-      await waitUntil(() => watching.mock.calls.length > 0);
+      await waitUntil("the watcher to be called", () => watching.mock.calls.length > 0);
       expect(stopped).not.toHaveBeenCalled();
     } finally {
       stop();

@@ -4,7 +4,7 @@ Links tests to requirement IDs with verifies(), records which requirements ran a
 
 - **Layer:** testing
 - **Owner:** julian
-- **Public API:** `verifies`, `requirementIdPattern`, `typeTest`; `expectSpecFile` from `@halonicjs/testing-spec/node` (it needs Node)
+- **Public API:** `verifies`, `requirementIdPattern`, `typeTest`, `waitUntil`; `expectSpecFile` from `@halonicjs/testing-spec/node` (it needs Node)
 
 `verifies(id, body)` is `describe` with the requirement ID as its title. It
 also tags every test inside with the ID, and Vitest writes that tag into its
@@ -18,6 +18,11 @@ tag also holds how many `expect` calls each test made, counting both the global
 with `expectTypeOf`. It records one assertion, so it passes when tests must
 assert. If the body calls `expect` at run time, the test fails and says to use
 `it` instead.
+
+`waitUntil(waitingFor, ready, { timeout })` waits until `ready()` is true, trying every 10 ms,
+and makes no `expect` call. Use it instead of `vi.waitFor(() => expect(...))`, whose retries
+change a test's `expect` count from run to run, and then `expect` once. The timeout is 4 000 ms
+unless you set one; on a timeout the error says how long it waited and for `waitingFor`.
 
 The requirement itself lives in a file next to the code, for example
 `packages/core/workflow/requirements/timer-fires-after-delay.md` for the ID
@@ -66,4 +71,5 @@ Add the package as a `devDependency` (`"@halonicjs/testing-spec": "workspace:*"`
 - [`spec.verifies-counts-assertions`](requirements/verifies-counts-assertions.md)
 - [`spec.verifies-rejects-bad-ids`](requirements/verifies-rejects-bad-ids.md)
 - [`spec.type-test-marks-type-only`](requirements/type-test-marks-type-only.md)
+- [`spec.wait-until-checks-once`](requirements/wait-until-checks-once.md)
 - [`spec.expect-spec-file`](requirements/expect-spec-file.md)
