@@ -3,6 +3,7 @@
 - Task: HAL-1292
 - Approval: Liam approves the Models summary and the removal of the placeholder on HAL-10289 (https://paperclip.halonic.com/HAL/issues/HAL-10289): "PR 7 Settings Models summary: yes. ... Register it under the same id `models`, and remove the T11 placeholder in the same PR." A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6HF+KeXUZBKQ2q4NSoiRoSNUENVx1lCOIutMt20Gda3a6BxRvobrjW7zojaNgM3eoX9RX2OyBfSJ5hR4+NKGDw==
 
 ## What changes
 
