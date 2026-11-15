@@ -190,6 +190,21 @@ export type RunEventBody =
    */
   | { type: "harness.started"; state: string; agent: string; harness: string; timeoutMs: number }
   /**
+   * The instructions a step's harness runs with, pinned by content hash
+   * (requirement `events.harness-instructions`). Written right before
+   * `harness.started`, so a review can tell which instructions a run had.
+   * `files` lists `AGENTS.md` and each skill file, with paths relative to the
+   * run's folder, never absolute ones; `sha256` is the hash of the whole set.
+   * It never holds file contents. Logs written before this event have none.
+   */
+  | {
+      type: "harness.instructions";
+      state: string;
+      agent: string;
+      files: { path: string; sha256: string }[];
+      sha256: string;
+    }
+  /**
    * A step's sandbox opened (requirement `events.sandbox-opened`). `sandbox`
    * is a display copy of its profile, never its environment variables.
    */
