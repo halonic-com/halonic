@@ -178,10 +178,13 @@ export interface WorkflowsHost {
     onResult: (index: number, passed: boolean) => void,
   ): Promise<WorkflowTests>;
   /**
-   * Starts a run of the workflow through the engine with `input` as the run's input, on the latest
-   * version, and returns the new run's id. (Test runs use what is saved instead.) Absent while the
-   * app has no engine to start it, so the page shows no **Run**. Rejects with
-   * {@link EngineNotAnswering} when the engine can't be reached, or with the reason it didn't start.
+   * Starts a run of the workflow through the engine with `input` as the run's input, and returns
+   * the new run's id. The engine runs the saved files, but the page shows unsaved changes (and a
+   * workflow just made may not be written yet), so the host saves the workspace's unsaved changes
+   * first: the run is the version the page shows (HAL-10348). Absent while the app has no engine
+   * to start it, so the page shows no **Run**. Rejects with {@link EngineNotAnswering} when the
+   * engine can't be reached, or with the reason it didn't start, which includes a save that failed
+   * (nothing starts then, so a run never uses an older version than the page shows).
    */
   startRun?(ref: WorkflowRef, input: Record<string, unknown>): Promise<{ readonly runId: string }>;
   /**
