@@ -39,6 +39,8 @@
     "@halonicjs/adapter-http-node": "workspace:*",
     "@halonicjs/adapter-integration-runner": "workspace:*",
     "@halonicjs/adapter-mcp": "workspace:*",
+    "@halonicjs/adapter-model-mock": "workspace:*",
+    "@halonicjs/adapter-model-openai": "workspace:*",
     "@halonicjs/adapter-memory": "workspace:*",
     "@halonicjs/adapter-sandbox-host": "workspace:*",
     "@halonicjs/adapter-sandbox-srt": "workspace:*",

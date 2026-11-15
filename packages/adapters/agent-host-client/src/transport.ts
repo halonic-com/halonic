@@ -25,6 +25,7 @@ export const agentHostRequestRoutes = [
   "POST /v1/connectors/tools",
   "POST /v1/connectors/call",
   "POST /v1/connectors/close",
+  "POST /v1/models/chat",
   "POST /v1/google/disconnect",
 ] as const;
 
