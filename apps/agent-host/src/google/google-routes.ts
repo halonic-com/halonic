@@ -1,9 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createGoogleRoutes, type GoogleSetupPorts } from "@halonicjs/host-server";
+import type { Schema } from "@halonicjs/schema-kit";
 import { type Clock, systemClock } from "@halonicjs/std";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
-import { accountRefBody } from "./google-schemas.ts";
+import { accountRefBody, editSetupBody, startSetupBody } from "./google-schemas.ts";
 
 /** What the Google routes reach. */
 export interface GoogleRouteDeps {
@@ -20,6 +21,8 @@ export interface GoogleRouteDeps {
  * follows a started sign-in's redirect address is what keeps the two equal.
  */
 const googleCallbackPath = "/api/google/callback";
+
+const setupsPath = "/api/google/setups";
 
 const googleFailedMessage =
   "The agent host couldn't finish this Google request. Its log has the detail.";
@@ -45,6 +48,13 @@ const googleFailedMessage =
  *   redirect comes back to this host's own port.
  * - `POST /v1/google/sign-in/cancel` with `{ accountRef }`: drops the pending
  *   sign-in and answers 204, whether or not one was pending.
+ * - `POST /v1/google/setups` with `{ accountType, connector: { workspace, id } }`:
+ *   starts a record for that connector and answers 201 `{ accountRef }`.
+ * - `POST /v1/google/setups/edit` with `{ accountRef, change }`: applies one
+ *   edit a person makes (`change` is the handler's own edit body) and answers
+ *   `{ updated: true }`.
+ * - `POST /v1/google/start-over` with `{ accountRef }`: removes the record,
+ *   the refresh token and the client secret without asking Google.
  * - `GET /api/google/callback`: where Google sends the browser back. The
  *   browser has no launch token, so this one route is `tokenFree`; the
  *   sign-in's own `state` is the proof, and the page it answers with is fixed
@@ -60,23 +70,31 @@ export function googleRoutes(deps: GoogleRouteDeps): HostRoute[] {
     deps.log?.(`A Google request failed (${name}): ${detail}\n`);
   }
 
-  /** A route that sends `method` to the setup's `suffix` path and relays the handler's answer. */
-  function setupRoute(path: string, method: "POST" | "DELETE", suffix: string): HostRoute {
+  /**
+   * A route that checks its body with `schema`, sends what `forward` names to
+   * the handler and relays the handler's answer.
+   */
+  function forwardRoute<Body>(
+    path: string,
+    schema: Schema<Body>,
+    forward: (body: Body) => { method: string; path: string; payload?: unknown },
+  ): HostRoute {
     return {
       method: "POST",
       path,
       handle: async (request, response) => {
-        const body = await readCheckedBody(request, response, accountRefBody);
+        const body = await readCheckedBody(request, response, schema);
         if (body === undefined) return;
+        const { method, path: setupPath, payload } = forward(body);
+        const host = `127.0.0.1:${portOf(request)}`;
         try {
           const answer = await handler.handle(
             // A built request has no `Host` header, and the handler tells a loopback request by it.
             // This server listens on loopback only, so the name is true.
-            new Request(
-              `http://127.0.0.1:${portOf(request)}/api/google/setups/${body.accountRef}/${suffix}`,
-              { method, headers: { host: `127.0.0.1:${portOf(request)}` } },
-            ),
-            new Uint8Array(),
+            new Request(`http://${host}${setupPath}`, { method, headers: { host } }),
+            payload === undefined
+              ? new Uint8Array()
+              : new TextEncoder().encode(JSON.stringify(payload)),
             {},
           );
           await relay(response, answer);
@@ -86,6 +104,14 @@ export function googleRoutes(deps: GoogleRouteDeps): HostRoute[] {
         }
       },
     };
+  }
+
+  /** A route that sends `method` to the setup's `suffix` path and relays the handler's answer. */
+  function setupRoute(path: string, method: "POST" | "DELETE", suffix: string): HostRoute {
+    return forwardRoute(path, accountRefBody, ({ accountRef }) => ({
+      method,
+      path: `${setupsPath}/${accountRef}/${suffix}`,
+    }));
   }
 
   /** Google's redirect, as the handler's own callback answers it, page and all. */
@@ -117,6 +143,17 @@ export function googleRoutes(deps: GoogleRouteDeps): HostRoute[] {
     setupRoute("/v1/google/disconnect", "POST", "disconnect"),
     setupRoute("/v1/google/sign-in", "POST", "sign-in"),
     setupRoute("/v1/google/sign-in/cancel", "DELETE", "sign-in"),
+    setupRoute("/v1/google/start-over", "POST", "start-over"),
+    forwardRoute("/v1/google/setups", startSetupBody, (body) => ({
+      method: "POST",
+      path: setupsPath,
+      payload: body,
+    })),
+    forwardRoute("/v1/google/setups/edit", editSetupBody, ({ accountRef, change }) => ({
+      method: "PATCH",
+      path: `${setupsPath}/${accountRef}`,
+      payload: change,
+    })),
   ];
 }
 
