@@ -61,6 +61,9 @@ function fakes(failUpload = false) {
       calls.push(`delete object ${bucket} ${key}`);
       objects.delete(`${bucket}/${key}`);
     },
+    async emptyBucket(_, bucket) {
+      calls.push(`empty ${bucket}`);
+    },
   };
   return { api, rest, calls, objects, upload };
 }
@@ -129,10 +132,39 @@ verifies("cloudflare-live.fixture", () => {
     expect(f.objects.size).toBe(0);
   });
 
+  it("empties the blobs bucket before it deletes it", async () => {
+    const f = fakes();
+    const fixture = await deployWebhookFixture(options({ api: f.api, rest: f.rest }));
+    await fixture.destroy();
+    expect(f.calls.indexOf("empty hlt-7-1-w-blobs")).toBeLessThan(
+      f.calls.indexOf("delete bucket hlt-7-1-w-blobs"),
+    );
+  });
+
+  it("tells the cleanup failure as well as the upload's, and a failed destroy can be retried", async () => {
+    const f = fakes(true);
+    let broken = true;
+    const rest = {
+      ...f.rest,
+      async emptyBucket() {
+        if (broken) throw new Error("listing refused");
+      },
+    };
+    const error = await deployWebhookFixture(options({ api: f.api, rest })).catch(
+      (e: unknown) => e,
+    );
+    expect(String(error)).toContain("upload refused");
+    expect(String(error)).toContain("listing refused");
+    broken = false;
+  });
+
   it("refuses a prefix that isn't hlt- before it creates anything", async () => {
     const f = fakes();
     await expect(
       deployWebhookFixture(options({ api: f.api, rest: f.rest, prefix: "prod" })),
+    ).rejects.toThrow('start with "hlt-"');
+    await expect(
+      deployWebhookFixture(options({ api: f.api, rest: f.rest, prefix: "hlt-" })),
     ).rejects.toThrow('start with "hlt-"');
     expect(f.calls).toEqual([]);
   });
@@ -183,5 +215,6 @@ describe("the Cloudflare REST calls", () => {
     const error = await rest.workersSubdomain("a1").catch((e: unknown) => e);
     expect(String(error)).toContain("no access");
     expect(String(error)).not.toContain(token);
+    expect(String(error)).not.toContain("a1");
   });
 });

@@ -24,8 +24,9 @@ export default async function setup(): Promise<() => Promise<void>> {
   if (targetVariables.every((name) => (process.env[name] ?? "") !== "")) return async () => {};
 
   const token = required("CLOUDFLARE_LIVE_API_TOKEN");
-  const entry = fileURLToPath(import.meta.resolve("@halonicjs/target-cloudflare-runtime"));
-  const wrangler = readFileSync(new URL("../wrangler.toml", `file://${entry}`), "utf8");
+  const runtime = import.meta.resolve("@halonicjs/target-cloudflare-runtime");
+  const entry = fileURLToPath(runtime);
+  const wrangler = readFileSync(new URL("../wrangler.toml", runtime), "utf8");
   const compatibilityDate = /^compatibility_date\s*=\s*"([^"]+)"/m.exec(wrangler)?.[1];
   if (compatibilityDate === undefined) throw new Error("wrangler.toml has no compatibility_date.");
 
@@ -37,6 +38,10 @@ export default async function setup(): Promise<() => Promise<void>> {
     bundle: await buildWorkerBundle(entry),
     compatibilityDate,
   });
+  // GitHub Actions hides a registered value from the log.
+  if (process.env["GITHUB_ACTIONS"] === "true") {
+    console.log(`::add-mask::${fixture.env.HALONIC_LIVE_WEBHOOK_SECRET}`);
+  }
   Object.assign(process.env, fixture.env);
   return () => fixture.destroy();
 }

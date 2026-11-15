@@ -63,7 +63,7 @@ function newSecret(): string {
  */
 export async function deployWebhookFixture(options: FixtureOptions): Promise<DeployedFixture> {
   const { api, rest, accountId, prefix } = options;
-  if (!prefix.startsWith("hlt-")) {
+  if (!/^hlt-[a-z0-9][a-z0-9-]*$/.test(prefix)) {
     throw new RangeError(`A live fixture's names start with "hlt-", not "${prefix}".`);
   }
   const random = options.randomSecret ?? newSecret;
@@ -76,7 +76,6 @@ export async function deployWebhookFixture(options: FixtureOptions): Promise<Dep
   let destroyed = false;
   async function destroy(): Promise<void> {
     if (destroyed) return;
-    destroyed = true;
     const failures: string[] = [];
     const attempt = async (what: string, step: () => Promise<void>) => {
       try {
@@ -89,6 +88,8 @@ export async function deployWebhookFixture(options: FixtureOptions): Promise<Dep
     for (const key of written) {
       await attempt(`object ${key}`, () => rest.deleteObject(accountId, definitions, key));
     }
+    // The Worker may have written to the blobs bucket, and Cloudflare deletes only empty buckets.
+    await attempt(`objects in ${blobs}`, () => rest.emptyBucket(accountId, blobs));
     for (const name of [definitions, blobs]) {
       await attempt(`bucket ${name}`, () =>
         api.deleteResource(accountId, { kind: "bucket", name }),
@@ -97,7 +98,8 @@ export async function deployWebhookFixture(options: FixtureOptions): Promise<Dep
     await attempt("database", () =>
       api.deleteResource(accountId, { kind: "database", name: database }),
     );
-    if (failures.length > 0) {
+    if (failures.length === 0) destroyed = true;
+    else {
       throw new Error(
         `The fixture left something behind (the sweeper deletes it): ${failures.join("; ")}`,
       );
@@ -165,7 +167,12 @@ export async function deployWebhookFixture(options: FixtureOptions): Promise<Dep
       destroy,
     };
   } catch (error) {
-    await destroy().catch(() => {});
+    await destroy().catch((cleanup: unknown) => {
+      const reason = cleanup instanceof Error ? cleanup.message : String(cleanup);
+      throw new Error(`${error instanceof Error ? error.message : String(error)} (${reason})`, {
+        cause: error,
+      });
+    });
     throw error;
   }
 }

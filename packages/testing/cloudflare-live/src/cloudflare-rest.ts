@@ -8,6 +8,8 @@ export interface CloudflareRest {
   putObject(accountId: string, bucket: string, key: string, value: string): Promise<void>;
   /** Deletes one R2 object; nothing happens when it is already gone. */
   deleteObject(accountId: string, bucket: string, key: string): Promise<void>;
+  /** Deletes every object in the bucket, so the bucket itself can be deleted. */
+  emptyBucket(accountId: string, bucket: string): Promise<void>;
 }
 
 export interface CloudflareRestOptions {
@@ -50,9 +52,12 @@ export function createCloudflareRest(options: CloudflareRestOptions): Cloudflare
     if (response.status === 404 && init.allow404 === true) return undefined;
     const envelope = (await response.json().catch(() => ({}))) as Envelope;
     if (!response.ok || envelope.success === false) {
-      const reason =
-        envelope.errors?.map((e) => e.message).join("; ") ?? `status ${response.status}`;
-      throw new Error(`Cloudflare refused ${method} ${path}: ${reason}`);
+      const text = envelope.errors?.map((e) => e.message).join("; ") ?? "";
+      const reason = text === "" ? `status ${response.status}` : text;
+      // The account id is not a secret, but it stays out of CI logs.
+      throw new Error(
+        `Cloudflare refused ${method} ${path.replace(/^\/accounts\/[^/?]+/, "/accounts/<account>")}: ${reason}`,
+      );
     }
     return envelope;
   }
@@ -88,6 +93,22 @@ export function createCloudflareRest(options: CloudflareRestOptions): Cloudflare
     },
     async deleteObject(accountId, bucket, key) {
       await call("DELETE", objectPath(accountId, bucket, key), { allow404: true });
+    },
+    async emptyBucket(accountId, bucket) {
+      // A listing page is at most 1000 keys; each pass deletes what it lists, so stop when it is empty.
+      for (let pass = 0; pass < 100; pass++) {
+        const envelope = await call("GET", `/accounts/${accountId}/r2/buckets/${bucket}/objects`, {
+          allow404: true,
+        });
+        const keys = ((envelope?.result as { key?: string }[] | undefined) ?? []).flatMap((o) =>
+          o.key === undefined ? [] : [o.key],
+        );
+        if (keys.length === 0) return;
+        for (const key of keys) {
+          await call("DELETE", objectPath(accountId, bucket, key), { allow404: true });
+        }
+      }
+      throw new Error(`The bucket ${bucket} still has objects after 100 passes.`);
     },
   };
 }
