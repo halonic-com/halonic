@@ -1,7 +1,7 @@
 import { isModelCallError, isVendorErrorText, type ModelCallErrorReason } from "@halonicjs/ports";
 import { chatRequest, llmProviderContract, textAnswer } from "@halonicjs/testing-contracts";
-import { verifies } from "@halonicjs/testing-spec";
-import { expect, it, vi } from "vitest";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import {
   OpenAiCompatibleProvider,
   type OpenAiCompatibleProviderOptions,
@@ -300,7 +300,8 @@ verifies("model-openai.call-error-details", () => {
     const controller = new AbortController();
     const reason = new Error("stopped by the run");
     const pending = provider.chat({ ...chatRequest(), signal: controller.signal });
-    await vi.waitFor(() => expect(vendor.calls().started).toBe(1));
+    await waitUntil("vendor.calls().started to be 1", () => vendor.calls().started === 1);
+    expect(vendor.calls().started).toBe(1);
     controller.abort(reason);
     await expect(pending).rejects.toBe(reason);
     expect(vendor.calls().open).toBe(0);

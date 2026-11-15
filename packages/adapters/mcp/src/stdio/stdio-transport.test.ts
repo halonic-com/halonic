@@ -1,4 +1,4 @@
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { McpSession } from "../protocol/session.ts";
 import { type FakeHandler, FakeProgram, type StopBehaviour } from "./fake-program.spec.ts";
@@ -30,7 +30,8 @@ verifies("mcp.stdio-transport", () => {
       const { program, transport } = connected();
       const first = collect(transport.send(request(1)));
       const second = collect(transport.send(request(2)));
-      await vi.waitFor(() => expect(program.received).toHaveLength(2));
+      await waitUntil("program.received to have length 2", () => program.received.length === 2);
+      expect(program.received).toHaveLength(2);
       program.send({ jsonrpc: "2.0", id: 2, result: { n: 2 } });
       program.send({ jsonrpc: "2.0", id: 1, result: { n: 1 } });
       expect(await first).toEqual([{ jsonrpc: "2.0", id: 1, result: { n: 1 } }]);
@@ -41,7 +42,8 @@ verifies("mcp.stdio-transport", () => {
     it("gives the server's own messages to the oldest waiting request", async () => {
       const { program, transport } = connected();
       const first = collect(transport.send(request(1)));
-      await vi.waitFor(() => expect(program.received).toHaveLength(1));
+      await waitUntil("program.received to have length 1", () => program.received.length === 1);
+      expect(program.received).toHaveLength(1);
       program.send({ jsonrpc: "2.0", id: "ping-1", method: "ping" });
       program.send({ jsonrpc: "2.0", id: 1, result: {} });
       expect(await first).toEqual([
@@ -55,7 +57,8 @@ verifies("mcp.stdio-transport", () => {
       const { program, transport } = connected();
       const first = collect(transport.send(request(1)));
       const second = collect(transport.send(request(2)));
-      await vi.waitFor(() => expect(program.received).toHaveLength(2));
+      await waitUntil("program.received to have length 2", () => program.received.length === 2);
+      expect(program.received).toHaveLength(2);
       const changed = { jsonrpc: "2.0", method: "notifications/tools/list_changed" };
       program.sendRaw(
         `${JSON.stringify({ jsonrpc: "2.0", id: 1, result: {} })}\n${JSON.stringify(changed)}\n`,
@@ -72,7 +75,8 @@ verifies("mcp.stdio-transport", () => {
       program.send({ jsonrpc: "2.0", method: "notifications/message", params: {} });
       program.send({ jsonrpc: "2.0", id: 7, method: "ping" });
       program.send({ jsonrpc: "2.0", id: 8, method: "sampling/createMessage" });
-      await vi.waitFor(() => expect(program.received).toHaveLength(2));
+      await waitUntil("program.received to have length 2", () => program.received.length === 2);
+      expect(program.received).toHaveLength(2);
       expect(program.received).toEqual([
         { jsonrpc: "2.0", id: 7, result: {} },
         { jsonrpc: "2.0", id: 8, error: { code: -32601, message: "Method not found" } },
@@ -83,7 +87,8 @@ verifies("mcp.stdio-transport", () => {
     it("reads a message split across chunks, and keeps only the start of a long error line", async () => {
       const { program, transport } = connected();
       const answer = collect(transport.send(request(1)));
-      await vi.waitFor(() => expect(program.received).toHaveLength(1));
+      await waitUntil("program.received to have length 1", () => program.received.length === 1);
+      expect(program.received).toHaveLength(1);
       program.stderr.push(new TextEncoder().encode("x".repeat(10_000)));
       program.sendRaw('{"jsonrpc":"2.0",');
       program.sendRaw('"id":1,"result":{"t":"é"}}\r\n');
@@ -98,7 +103,8 @@ verifies("mcp.stdio-transport", () => {
       program.writeError(`${lines.join("\r\n")}\n\n`);
       expect(transport.ended).toBe(false);
       program.exit(1);
-      await vi.waitFor(() => expect(transport.ended).toBe(true));
+      await waitUntil("transport.ended to be true", () => transport.ended === true);
+      expect(transport.ended).toBe(true);
       expect(transport.errorOutput()).toEqual(lines.slice(-10));
       await transport.close();
     });
@@ -173,7 +179,8 @@ verifies("mcp.stdio-transport", () => {
     it("rejects a waiting call when the transport closes, instead of leaving it hanging", async () => {
       const { program, transport } = connected();
       const call = collect(transport.send(request(1, "tools/call")));
-      await vi.waitFor(() => expect(program.received).toHaveLength(1));
+      await waitUntil("program.received to have length 1", () => program.received.length === 1);
+      expect(program.received).toHaveLength(1);
       await transport.close();
       await expect(call).rejects.toThrow("The connection to the program was closed.");
       await transport.close();
@@ -182,7 +189,8 @@ verifies("mcp.stdio-transport", () => {
     it("fails a waiting request when the program ends on its own", async () => {
       const { program, transport } = connected();
       const call = collect(transport.send(request(1, "tools/call")));
-      await vi.waitFor(() => expect(program.received).toHaveLength(1));
+      await waitUntil("program.received to have length 1", () => program.received.length === 1);
+      expect(program.received).toHaveLength(1);
       program.exit(1);
       await expect(call).rejects.toThrow("The program stopped.");
       await transport.close();

@@ -1,7 +1,7 @@
 import type { ScheduledTimer } from "@halonicjs/ports";
 import { completed, entered, started } from "@halonicjs/testing-contracts";
-import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it, vi } from "vitest";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
+import { describe, expect, it } from "vitest";
 import { ManualClock } from "./fakes.test-helper.ts";
 import { NodeRunSql } from "./node/node-sql.spec.ts";
 import { sqlOfStorage } from "./run-sql.ts";
@@ -191,7 +191,11 @@ verifies("cloudflare-durable.run-list-outbox", () => {
       const alarm = state.alarm();
       await started;
       await state.append("r1", 0, events);
-      await vi.waitFor(() => expect(published).toEqual([["r1", 2]]));
+      await waitUntil(
+        `published to equal [["r1", 2]]`,
+        () => JSON.stringify(published) === JSON.stringify([["r1", 2]]),
+      );
+      expect(published).toEqual([["r1", 2]]);
       endCall();
       await alarm;
     });

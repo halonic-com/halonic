@@ -1,7 +1,7 @@
 import { MemorySecrets, MemoryTokenStore } from "@halonicjs/adapter-memory";
 import type { ConnectorConfig, ConnectorFactoryContext, ConnectorPin } from "@halonicjs/ports";
 import { contractGrant, RecordedRegistryClient } from "@halonicjs/testing-contracts";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { contractServer, FakeFolders, FakeStarter } from "../stdio/fake-program.spec.ts";
 import { McpStdioConnectorFactory } from "../stdio/stdio-connector.ts";
@@ -103,7 +103,8 @@ verifies("mcp.pinned-launcher", () => {
       const { starter, folders, factory, context } = setUp(slow);
       const client = factory.create(pinned(), context);
       const listing = client.listTools();
-      await vi.waitFor(() => expect(gate.open).toBeDefined());
+      await waitUntil("gate.open to be defined", () => gate.open !== undefined);
+      expect(gate.open).toBeDefined();
       await client.close();
       gate.open?.();
       await expect(listing).rejects.toThrow(
