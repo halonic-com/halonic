@@ -3,7 +3,6 @@
 - Task: HAL-3106 slice 3d (HAL-10512)
 - Approval: HAL-10213 (Liam's decision on the instruction trust check); the signature is Liam's, on HAL-10512
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KWKr0CvU3IA41mAAYjL0lq+0gwLod+oiBZWBHiBsn09Av909n3Gb44wHrZWsoY++fcW1er1TjG7qtuCJiocGDA==
 
 ## What changes
 
