@@ -79,6 +79,8 @@ export function WorkflowsView({ host, open }: WorkflowsViewProps) {
     if (listing !== undefined) open?.(listing);
   };
   const startCreating = () => setCreating(true);
+  // A workflow needs a hub to live in, and the hubs are known only once the first read is done.
+  const canCreate = load.kind === "ready" && host.hubs().length > 0;
 
   return (
     <div className="flex w-full flex-col gap-4 px-6 py-5">
@@ -111,12 +113,16 @@ export function WorkflowsView({ host, open }: WorkflowsViewProps) {
             nothingYet: {
               title: listWords.nothingYetTitle,
               description: listWords.sentence,
-              action: { label: listWords.newWorkflow, onClick: startCreating },
+              ...(canCreate
+                ? { action: { label: listWords.newWorkflow, onClick: startCreating } }
+                : {}),
             },
           }}
           loading={load.kind === "loading"}
           quietWhenEmpty
-          newButton={{ label: listWords.newWorkflow, onClick: startCreating }}
+          {...(canCreate
+            ? { newButton: { label: listWords.newWorkflow, onClick: startCreating } }
+            : {})}
           onOpen={openRow}
           onOpenInNewTab={openRow}
         />

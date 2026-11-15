@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import type { WorkflowHub } from "../api.ts";
 import { buttonNamed, openDialogsInJsdom, show, typeInto, unmount } from "../test-support.tsx";
 import { NewWorkflowDialog, type NewWorkflowDialogProps } from "./new-workflow-dialog.tsx";
 import { workflowFilePath } from "./workflow-file.ts";
@@ -101,6 +102,53 @@ verifies("workflows.new.create", () => {
 
     await act(async () => buttonNamed(document.body, "Create")?.click());
     expect(onCreated).toHaveBeenCalledOnce();
+  });
+
+  it("offers Try again in the failure, which sends the form again", async () => {
+    const { node, create, onCreated } = dialog();
+    create.mockRejectedValueOnce(new Error("the disk is full"));
+    await show(node);
+    await typeInto(nameField(), "Invoice intake");
+    await act(async () => buttonNamed(document.body, "Create")?.click());
+    await act(async () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+
+    await act(async () => buttonNamed(document.body, "Try again")?.click());
+
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(onCreated).toHaveBeenCalledOnce();
+  });
+
+  it("keeps focus in the name while it creates, by making it read-only", async () => {
+    let finish: () => void = () => undefined;
+    const { node } = dialog({
+      create: () => new Promise((resolve) => (finish = () => resolve({ hubId: "acme", id: "x" }))),
+    });
+    await show(node);
+    await typeInto(nameField(), "Invoice intake");
+    nameField().focus();
+
+    await act(async () => buttonNamed(document.body, "Create")?.click());
+
+    expect(nameField().readOnly).toBe(true);
+    expect(nameField().disabled).toBe(false);
+    await act(async () => finish());
+  });
+
+  it("takes the first hub when the hubs arrive after it opened", async () => {
+    const { create, node } = dialog({ hubs: [] });
+    let setHubs: (hubs: readonly WorkflowHub[]) => void = () => undefined;
+    function Late() {
+      const [hubs, set] = useState<readonly WorkflowHub[]>([]);
+      setHubs = set;
+      return <NewWorkflowDialog {...(node.props as NewWorkflowDialogProps)} hubs={hubs} />;
+    }
+    await show(<Late />);
+    await typeInto(nameField(), "Invoice intake");
+
+    await act(async () => setHubs([beta]));
+    await act(async () => buttonNamed(document.body, "Create")?.click());
+
+    expect(create).toHaveBeenCalledWith({ name: "Invoice intake", hubId: "beta" });
   });
 });
 

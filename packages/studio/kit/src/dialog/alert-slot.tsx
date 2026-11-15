@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Callout } from "../callout/callout.tsx";
+import { Callout, type CalloutAction } from "../callout/callout.tsx";
 
 export interface AlertSlotProps {
   /** The failure of what you just did: "Couldn't delete Sorter. The file is open elsewhere." */
@@ -8,6 +8,8 @@ export interface AlertSlotProps {
   readonly attempt: number;
   /** While the attempt's request runs, the slot stays empty. */
   readonly waiting: boolean;
+  /** The failure's one action: "Try again". */
+  readonly retry?: CalloutAction | undefined;
 }
 
 /**
@@ -19,7 +21,7 @@ export interface AlertSlotProps {
  * Every failure is read once: on each attempt the slot empties, and fills again a frame after the
  * request ends. It then scrolls into view, since it's the last thing in a scrolling body.
  */
-export function AlertSlot({ error, attempt, waiting }: AlertSlotProps) {
+export function AlertSlot({ error, attempt, waiting, retry }: AlertSlotProps) {
   const slot = useRef<HTMLDivElement>(null);
   const [shownAttempt, setShownAttempt] = useState(attempt);
   const emptied = shownAttempt !== attempt;
@@ -44,7 +46,7 @@ export function AlertSlot({ error, attempt, waiting }: AlertSlotProps) {
     <div ref={slot} role="alert">
       {message === undefined ? null : (
         <div className="pt-4">
-          <Callout key={shownAttempt} tone="danger">
+          <Callout key={shownAttempt} tone="danger" {...(retry ? { action: retry } : {})}>
             {message}
           </Callout>
         </div>

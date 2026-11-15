@@ -3,6 +3,7 @@ export const newWorkflowWords = {
   title: "New workflow",
   create: "Create",
   creating: "Creating…",
+  tryAgain: "Try again",
   nameField: "Name",
   hubField: "Hub",
   nameMissing: "Give it a name.",
