@@ -3,6 +3,7 @@
 - Task: HAL-10128
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-10128 (gap G1a of Sofia's first-run walk on HAL-10118; a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:OxrGRZH9cs6lnblhaTWM2TrEXTU2R8bpQzvDPPK60zYAHOJymYJHKq9fpC8bTuUFPcRFtwTSoR7QDKucGMOgAg==
 
 ## What changes
 
