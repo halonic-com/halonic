@@ -38,7 +38,10 @@ const workerErrorLog: ServerPorts["errorLog"] = {
  *
  * @param runs - what starts a run; the Worker starts none yet, so only a test sets it
  */
-export function serverPortsOf(runtime: Runtime, runs: RunExecutor = workerRuns(runtime.runEvents)): ServerPorts {
+export function serverPortsOf(
+  runtime: Runtime,
+  runs: RunExecutor = workerRuns(runtime.runEvents),
+): ServerPorts {
   return {
     runs,
     runStore: runtime.runStore,
