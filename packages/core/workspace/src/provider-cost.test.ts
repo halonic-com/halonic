@@ -1,6 +1,11 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { isNoCostOnThisMachine, isOnThisMachine, isPayPerUse } from "./provider-cost.ts";
+import {
+  isNoCostOnThisMachine,
+  isOnThisMachine,
+  isPayPerUse,
+  providerHost,
+} from "./provider-cost.ts";
 
 function provider(
   baseUrl: string | undefined,
@@ -135,6 +140,22 @@ verifies("workspace.provider-cost", () => {
       expect(
         isPayPerUse(provider("http://nas", { secret: "", options: { headers: { Accept: "x" } } })),
       ).toBe(false);
+    });
+  });
+});
+
+verifies("workspace.provider-host", () => {
+  describe("provider host", () => {
+    it("is the host of the address, in lower case, or the type's default", () => {
+      expect(providerHost(provider(undefined, { type: "openai" }))).toBe("api.openai.com");
+      expect(providerHost(provider("https://API.OpenAI.com:443/v1"))).toBe("api.openai.com");
+      expect(providerHost(provider("http://192.168.1.20:1234/v1"))).toBe("192.168.1.20");
+      expect(providerHost(provider("http://[fd00::1]"))).toBe("fd00:0:0:0:0:0:0:1");
+    });
+
+    it("is none when the address can't be read", () => {
+      expect(providerHost(provider(undefined))).toBeUndefined();
+      expect(providerHost(provider("not a url"))).toBeUndefined();
     });
   });
 });

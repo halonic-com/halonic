@@ -84,6 +84,27 @@ export function isPayPerUse(provider: CostProvider): boolean {
   );
 }
 
+/**
+ * The provider's address host as text, such as `api.openai.com`: the key a remembered "No limit"
+ * is kept under. `undefined` when the address can't be read.
+ *
+ * @example
+ * providerHost({ type: "openai", options: {} }); // "api.openai.com"
+ */
+export function providerHost(provider: CostProvider): string | undefined {
+  const host = addressHost(provider);
+  switch (host?.kind) {
+    case undefined:
+      return undefined;
+    case "domain":
+      return host.name;
+    case "ipv4":
+      return host.octets.join(".");
+    case "ipv6":
+      return host.groups.map((group) => group.toString(16)).join(":");
+  }
+}
+
 /** The host the adapter really calls: `baseUrl`, or else its type's default. */
 function addressHost(provider: CostProvider): UrlHost | undefined {
   const address = provider.baseUrl ?? defaultBaseUrl(provider.type);
