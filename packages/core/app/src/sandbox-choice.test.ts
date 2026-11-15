@@ -54,7 +54,7 @@ interface FakeBackend {
   check?: SandboxCheck;
   offered?: boolean;
   limits?: LimitCode[];
-  /** What each canary run finds, in turn; the last one repeats. Without it the backend has no canary. */
+  /** What each canary run finds, in turn; the last one repeats. Without it every run finds nothing. */
   canary?: CanaryFindings[];
   /** Each canary probe waits for this before it reports. */
   probeGate?: () => Promise<void>;
@@ -110,24 +110,20 @@ function machine(setup: Machine = {}) {
               },
             },
           }),
-      ...(fake.canary === undefined
-        ? {}
-        : {
-            canary: {
-              profile: async () => profile,
-              probe: async () => {
-                checks[id] = (checks[id] ?? 0) + 1;
-                running += 1;
-                mostAtOnce = Math.max(mostAtOnce, running);
-                try {
-                  await fake.probeGate?.();
-                  return findings[Math.min(checks[id] ?? 1, findings.length) - 1] ?? clean;
-                } finally {
-                  running -= 1;
-                }
-              },
-            },
-          }),
+      canary: {
+        profile: async () => profile,
+        probe: async () => {
+          checks[id] = (checks[id] ?? 0) + 1;
+          running += 1;
+          mostAtOnce = Math.max(mostAtOnce, running);
+          try {
+            await fake.probeGate?.();
+            return findings[Math.min(checks[id] ?? 1, findings.length) - 1] ?? clean;
+          } finally {
+            running -= 1;
+          }
+        },
+      },
     };
   });
   const choice = new SandboxChoiceService({
@@ -271,6 +267,21 @@ verifies("app.sandbox-choice", () => {
     expect(statusOf(result, "srt")).toMatchObject({ state: "available" });
   });
 
+  it("trust-checks srt too: a leak keeps it off and nothing else runs", async () => {
+    const hiddenFileRead: CanaryFindings = { ...clean, leaks: ["file-readable"] };
+    const { choice } = machine({
+      platform: "linux",
+      backends: { srt: { check: ok, canary: [hiddenFileRead] }, mxc: { check: ok } },
+    });
+    const result = await choice.start();
+    expect(result.active).toBeNull();
+    expect(statusOf(result, "srt")).toMatchObject({
+      state: "check-failed",
+      reason: "file-readable",
+    });
+    expect(statusOf(result, "mxc")).toMatchObject({ state: "available" });
+  });
+
   it("keeps a failed backend off for the rest of this start, and checks again on a new start", async () => {
     const backends = { mxc: { check: ok, canary: [tooStrict, clean] } };
     const first = machine({ setting: choose("mxc"), backends });
@@ -355,8 +366,8 @@ verifies("app.sandbox-choice", () => {
     expect(choice.current()).toBeNull();
   });
 
-  it("needs backends with different ids, and MXC with a canary", () => {
-    const srt: SandboxBackend = {
+  it("needs backends with different ids, and every backend with a canary", () => {
+    const srt = {
       id: "srt",
       offered: async () => true,
       limits: [],
@@ -366,12 +377,18 @@ verifies("app.sandbox-choice", () => {
           throw new Error("unused");
         },
       },
+    } satisfies Omit<SandboxBackend, "canary">;
+    const withCanary: SandboxBackend = {
+      ...srt,
+      canary: { profile: async () => profile, probe: async () => clean },
     };
     const options = { platform: "linux", settings: { get: async () => null } };
-    expect(() => new SandboxChoiceService({ ...options, backends: [srt, srt] })).toThrow(/same id/);
     expect(
-      () => new SandboxChoiceService({ ...options, backends: [srt, { ...srt, id: "mxc" }] }),
-    ).toThrow(/canary/);
+      () => new SandboxChoiceService({ ...options, backends: [withCanary, withCanary] }),
+    ).toThrow(/same id/);
+    expect(
+      () => new SandboxChoiceService({ ...options, backends: [srt as unknown as SandboxBackend] }),
+    ).toThrow(/srt sandbox backend has no trust canary/);
   });
 
   it("keeps the states to the closed list", () => {

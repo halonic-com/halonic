@@ -63,8 +63,8 @@ export interface SandboxBackend {
   sandbox: Pick<Sandbox, "check" | "open">;
   /** What this backend does not protect: facts about the backend, fixed. */
   limits: readonly LimitCode[];
-  /** The trust check's canary, for a backend used only after it passes one. MXC needs one. */
-  canary?: TrustCanary;
+  /** The trust check's canary. Every backend has one: none runs steps before it passes. */
+  canary: TrustCanary;
   /** The backend's one-time download, for a backend that needs one before it can run. MXC's SDK is one. */
   setup?: BackendSetup;
 }
@@ -173,7 +173,7 @@ export interface SandboxChoiceOptions {
 /**
  * Chooses the sandbox backend from the person's saved setting (requirement
  * `app.sandbox-choice`). A setting that names a backend runs only that one,
- * after its check and, with a canary, its trust check. `none` runs no
+ * after its check and its trust check. `none` runs no
  * sandbox. With no setting, the first of {@link defaultBackendOrder} that
  * passes runs. A failure never falls through to another backend: nothing
  * runs in a fence the person didn't pick. One instance lives for one start
@@ -197,7 +197,7 @@ export class SandboxChoiceService {
   readonly #downloadProblems = new Map<SandboxBackendId, string>();
   #queue: Promise<unknown> = Promise.resolve();
 
-  /** @throws when two backends have one id, or MXC has no canary */
+  /** @throws when two backends have one id, or a backend has no canary */
   constructor(options: SandboxChoiceOptions) {
     this.#platform = options.platform;
     this.#backends = options.backends;
@@ -206,8 +206,10 @@ export class SandboxChoiceService {
     if (ids.size !== options.backends.length) {
       throw new Error("Two sandbox backends have the same id.");
     }
-    if (options.backends.some((backend) => backend.id === "mxc" && backend.canary === undefined)) {
-      throw new Error("The mxc sandbox backend has no trust canary.");
+    for (const backend of options.backends) {
+      if (backend.canary === undefined) {
+        throw new Error(`The ${backend.id} sandbox backend has no trust canary.`);
+      }
     }
   }
 
@@ -339,10 +341,7 @@ export class SandboxChoiceService {
    */
   async #trust(backend: SandboxBackend, status: SandboxBackendStatus): Promise<boolean> {
     const result =
-      this.#failures.get(backend.id) ??
-      (backend.canary === undefined
-        ? ({ passed: true, nameLookupsLeave: false } as const)
-        : await runTrustCheck(backend.sandbox, backend.canary));
+      this.#failures.get(backend.id) ?? (await runTrustCheck(backend.sandbox, backend.canary));
     if (result.passed) {
       status.state = "in-use";
       if (result.nameLookupsLeave) status.residuals = ["name-lookups-leave"];
