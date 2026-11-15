@@ -156,7 +156,7 @@ describe("the API in workerd", () => {
     }
 
     async function deliver(
-      setup: { scope: string; runs: RunExecutor },
+      setup: { scope: string; runs?: RunExecutor },
       options: { address?: string; delivery?: string; signedWith?: string } = {},
     ): Promise<Response> {
       const body = '{"id":"o-7"}';
@@ -179,7 +179,7 @@ describe("the API in workerd", () => {
           ...(await deployment()),
           HALONIC_SECRET_ACME_HOOK: hookSecret,
         } as unknown as RuntimeEnv,
-        { scope: setup.scope, runs: setup.runs },
+        { scope: setup.scope, ...(setup.runs === undefined ? {} : { runs: setup.runs }) },
       );
     }
 
@@ -191,6 +191,15 @@ describe("the API in workerd", () => {
       expect(setup.started).toMatchObject([
         { hubId: "acme", workflowId: "handle-order", input: { order: "o-7" } },
       ]);
+    });
+
+    it("answers 501 with the Worker's own runs, and keeps the delivery id for a retry", async () => {
+      const setup = await withRoutine();
+      const withoutRuns = await deliver({ scope: setup.scope });
+      expect(withoutRuns.status).toBe(501);
+      const retried = await deliver(setup);
+      expect(retried.status).toBe(202);
+      expect(setup.started).toHaveLength(1);
     });
 
     it("refuses a bad signature and starts nothing", async () => {
