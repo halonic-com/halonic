@@ -2,7 +2,12 @@ import { isProjectId, type SetupEdit, type SetupStep, type StepId } from "@halon
 import type { SetupFocus } from "@halonicjs/studio-feature-inbox/api";
 import { Button, Callout, type CalloutHandle, type SecretText } from "@halonicjs/studio-kit";
 import { type ReactNode, type Ref, useEffect, useId, useRef, useState } from "react";
-import type { GoogleSetupAccount, SecretEntry, SecretReplaceAnswer } from "../api.ts";
+import type {
+  CheckAgainAnswer,
+  GoogleSetupAccount,
+  SecretEntry,
+  SecretReplaceAnswer,
+} from "../api.ts";
 import { connectorProblem } from "../connector-problem.ts";
 import { stepTitle } from "../step-names.ts";
 import { credentialSaves } from "./credential-saves.ts";
@@ -32,6 +37,12 @@ export interface ChecklistProps {
   readonly onStartSignIn: () => Promise<string>;
   /** **Cancel** while waiting for Google. */
   readonly onCancelSignIn: () => Promise<void>;
+  /** **Check again**: checks each ticked service. It rejects when the engine can't. */
+  readonly onCheckAgain: () => Promise<CheckAgainAnswer>;
+  /** The address Google signed in when it wasn't the connector's, or `null` when the host forgot it. */
+  readonly onReadWrongAccount: () => Promise<string | null>;
+  /** Changes the connector's address to the one the wrong account signed in as. */
+  readonly onChangeAddress: (address: string) => Promise<void>;
   /** **Not now**: closes the item. */
   readonly close: () => void;
   /**
@@ -228,12 +239,22 @@ export function Checklist(props: ChecklistProps) {
                     cancel: props.onCancelSignIn,
                     signInStartedAt: account.record.signInStartedAt,
                     lastSignInAt: account.record.lastSignInAt,
+                    wrongAccountAt: account.record.wrongAccountAt,
                     onOpenClientStep: () => setEditing("credentials"),
                   }}
                   results={{
                     email: account.email,
                     ticked: account.services.length,
                     lines: currentResultLines(account.services, account.record),
+                    onCheckAgain: props.onCheckAgain,
+                    answering,
+                  }}
+                  wrongAccount={{
+                    at: account.record.wrongAccountAt,
+                    email: account.email,
+                    read: props.onReadWrongAccount,
+                    changeAddress: props.onChangeAddress,
+                    answering,
                   }}
                   answering={answering}
                   busy={busy}
@@ -310,6 +331,7 @@ interface OpenStepProps {
   readonly appName: string | undefined;
   readonly signIn: StepBodyProps["signIn"];
   readonly results: StepBodyProps["results"];
+  readonly wrongAccount: StepBodyProps["wrongAccount"];
   readonly answering: boolean;
   readonly busy: boolean;
   /** The reason the last save failed, as a sentence. */
@@ -350,6 +372,7 @@ function OpenStep(props: OpenStepProps) {
         savedProjectId={account.record.projectId}
         signIn={props.signIn}
         results={props.results}
+        wrongAccount={props.wrongAccount}
       />
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" onClick={close}>

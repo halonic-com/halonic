@@ -26,6 +26,7 @@ import { CredentialsBody, type CredentialsBodyProps } from "./credentials-body.t
 import { useNotAnswering } from "./not-answering.tsx";
 import { SignInPanel, type SignInPanelProps } from "./sign-in-panel.tsx";
 import { SignInResults, type SignInResultsProps } from "./sign-in-results.tsx";
+import { WrongAccount, type WrongAccountProps } from "./wrong-account.tsx";
 
 /** Props for {@link StepBody}. */
 export interface StepBodyProps {
@@ -47,6 +48,8 @@ export interface StepBodyProps {
   readonly signIn: Omit<SignInPanelProps, "answering">;
   /** The last check per service, shown above the button once a sign-in has come back. */
   readonly results: SignInResultsProps;
+  /** The note for a sign-in that came back for another account. */
+  readonly wrongAccount: WrongAccountProps;
   /** A service's name from its id, for "Needed by …". Studio never knows the services itself. */
   readonly serviceName: (id: string) => string;
   readonly onProjectId: (text: string) => void;
@@ -85,6 +88,7 @@ export function StepBody(props: StepBodyProps) {
             clientId={props.credentials.clientId}
             serviceName={props.serviceName}
           />
+          <WrongAccount {...props.wrongAccount} />
           <SignInResults {...props.results} />
           <SignInPanel {...props.signIn} answering={props.answering} />
         </div>

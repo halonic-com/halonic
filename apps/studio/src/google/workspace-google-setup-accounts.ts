@@ -142,6 +142,18 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
     throw new Error(notYet);
   }
 
+  async checkAgain(): Promise<never> {
+    throw new Error(notYet);
+  }
+
+  async wrongAccount(): Promise<never> {
+    throw new Error(notYet);
+  }
+
+  async changeAddress(): Promise<never> {
+    throw new Error(notYet);
+  }
+
   subscribe(listener: () => void): () => void {
     this.#listeners.add(listener);
     this.#startWatching();

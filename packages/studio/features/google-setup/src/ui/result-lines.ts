@@ -68,15 +68,23 @@ export function resultText(line: ServiceResultLine): ResultText {
       return {
         passed: false,
         text: isBusyStatus(result.status)
-          ? `${label}: Google couldn't check it just now (error ${result.status}). Wait a moment, then sign in again.`
+          ? `${label}: Google couldn't check it just now (error ${result.status}). Wait a moment, then check again.`
           : `${label}: Google refused the check (error ${result.status}). Sign in again.`,
       };
     case "unreachable":
       return {
         passed: false,
-        text: `${label}: Studio couldn't reach Google to check it. Check your connection, then sign in again.`,
+        text: `${label}: Studio couldn't reach Google to check it. Check your connection, then check again.`,
       };
   }
+}
+
+/**
+ * Whether checking again can change a line: an API switched on, or Google answering after being
+ * busy. A scope the user left empty only changes with a new sign-in.
+ */
+export function canCheckAgain(line: ServiceResultLine): boolean {
+  return !resultText(line).passed && line.result.kind !== "scopeNotGranted";
 }
 
 /**

@@ -283,3 +283,151 @@ verifies("google-setup.sign-in-results", () => {
     expect(container.textContent).not.toContain("works");
   });
 });
+
+const apiOff: ServiceCheckOutcome = {
+  kind: "apiOff",
+  api: "ledger.googleapis.com",
+  apiName: "Ledger API",
+  project: "halonic-x1",
+  enableUrl: "https://console.example.com/enable",
+};
+
+verifies("google-setup.check-again", () => {
+  it("checks again for the account, busy meanwhile, and shows the new result", async () => {
+    let finish: (answer: { kind: "checked" }) => void = () => {};
+    const { fake, container } = await open(signedInRecord(apiOff), {
+      checkAgain: () => new Promise((resolve) => (finish = resolve)),
+    });
+    const check = button(container, "Check again");
+    check.focus();
+    await press(check);
+    expect(fake.checks).toEqual(["gaccount_1"]);
+    expect(button(container, "Check again").getAttribute("aria-busy")).toBe("true");
+    expect(document.activeElement).toBe(button(container, "Check again"));
+    await act(async () => {
+      fake.change([signedInRecord({ kind: "works" })]);
+      finish({ kind: "checked" });
+    });
+    await settle();
+    expect(container.textContent).toContain("Google is set up for x@example.com. Ledger works.");
+    expect(container.textContent).not.toContain("Check again");
+    expect(document.activeElement?.textContent).toContain("Google is set up");
+  });
+
+  it("offers no Check again when only a box was left empty", async () => {
+    const { container } = await open(
+      signedInRecord({ kind: "scopeNotGranted", missingScopes: ["https://example.com/ledger"] }),
+    );
+    expect(() => button(container, "Check again")).toThrow();
+  });
+
+  it("says Google couldn't be reached, in words, and keeps the button", async () => {
+    const { container } = await open(signedInRecord(apiOff), {
+      checkAgain: async () => ({ kind: "no-network" }),
+    });
+    await press(button(container, "Check again"));
+    expect(container.textContent).toContain("Studio couldn't reach Google to check.");
+    expect(button(container, "Check again")).toBeDefined();
+  });
+
+  it("sends a refused client or sign-in to the step that fixes it", async () => {
+    const { container } = await open(signedInRecord(apiOff), {
+      checkAgain: async () => ({ kind: "client-refused" }),
+    });
+    await press(button(container, "Check again"));
+    expect(container.textContent).toContain("Check them in step 6");
+  });
+
+  it("says why the check couldn't run when the engine fails", async () => {
+    const { container } = await open(signedInRecord(apiOff), {
+      checkAgain: async () => {
+        throw new Error("The engine isn't answering");
+      },
+    });
+    await press(button(container, "Check again"));
+    expect(container.textContent).toContain("Couldn't check again: the engine isn't answering.");
+  });
+
+  it("holds Check again with its reason while the engine isn't answering", async () => {
+    const { fake, container } = await open(signedInRecord(apiOff), {}, false);
+    const check = button(container, "Check again");
+    expect(check.getAttribute("aria-disabled")).toBe("true");
+    await press(check);
+    expect(fake.checks).toEqual([]);
+  });
+});
+
+const wrongAt = "2026-11-12T02:30:00.000Z";
+const wrongRecord = () => account(record(upToSignIn, { ...ready, wrongAccountAt: wrongAt }));
+
+verifies("google-setup.wrong-account", () => {
+  it("names both addresses and offers Sign in again", async () => {
+    const { container } = await open(wrongRecord(), {
+      wrongAccount: async () => "other@example.com",
+    });
+    expect(container.textContent).toContain(
+      "You signed in as other@example.com, but this connector is for x@example.com. Sign in again and choose x@example.com.",
+    );
+    expect(button(container, "Sign in again")).toBeDefined();
+    expect(() => button(container, "Sign in with Google")).toThrow();
+  });
+
+  it("says the account didn't match, without the address, once the host forgot it", async () => {
+    const { container } = await open(wrongRecord(), { wrongAccount: async () => null });
+    expect(container.textContent).toContain(
+      "The sign-in didn't match this connector, so nothing was saved. Sign in again and choose x@example.com.",
+    );
+    expect(container.textContent).not.toContain("instead");
+  });
+
+  it("changes the connector to the other address from the link", async () => {
+    const { fake, container } = await open(wrongRecord(), {
+      wrongAccount: async () => "other@example.com",
+    });
+    await press(button(container, "Use other@example.com for this connector instead"));
+    expect(fake.addressChanges).toEqual([
+      { accountRef: "gaccount_1", address: "other@example.com" },
+    ]);
+  });
+
+  it("says why the address couldn't be changed", async () => {
+    const { container } = await open(wrongRecord(), {
+      wrongAccount: async () => "other@example.com",
+      changeAddress: async () => {
+        throw new Error("The engine isn't answering");
+      },
+    });
+    await press(button(container, "Use other@example.com for this connector instead"));
+    expect(container.textContent).toContain(
+      "Couldn't change the connector's address: the engine isn't answering.",
+    );
+  });
+
+  it("shows no note when the last sign-in matched", async () => {
+    const { container } = await open(signedOut(), {
+      wrongAccount: async () => "other@example.com",
+    });
+    expect(container.textContent).not.toContain("You signed in as");
+  });
+
+  it("shows the note, not 'didn't finish', when a waiting sign-in came back for another account", async () => {
+    const { fake, container } = await open(signedOut(), {
+      startSignIn: async () => address,
+      wrongAccount: async () => "other@example.com",
+    });
+    await press(button(container, "Sign in with Google"));
+    await act(async () => {
+      fake.change([
+        account(record(upToSignIn, { ...ready, signInStartedAt: "2026-11-12T03:00:00.000Z" })),
+      ]);
+    });
+    await settle();
+    await act(async () => {
+      fake.change([account(record(upToSignIn, { ...ready, wrongAccountAt: wrongAt }))]);
+    });
+    await settle();
+    expect(container.textContent).toContain("You signed in as other@example.com");
+    expect(container.textContent).not.toContain("didn't finish");
+    expect(container.textContent).not.toContain("Waiting for Google");
+  });
+});
