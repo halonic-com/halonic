@@ -124,7 +124,10 @@ verifies("google-setup.sign-in", () => {
     expect(container.textContent).toContain(
       "Couldn't cancel the sign-in: the engine isn't answering.",
     );
-    expect(button(container, "Try again")).toBeDefined();
+    expect(container.textContent).toContain("Waiting for Google");
+    expect(button(container, "Open again")).toBeDefined();
+    expect(button(container, "Cancel")).toBeDefined();
+    expect(() => button(container, "Sign in with Google")).toThrow();
   });
 
   it("says the sign-in didn't come back after 10 minutes, and offers step 6 and the button", async () => {

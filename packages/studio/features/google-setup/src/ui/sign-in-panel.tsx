@@ -49,6 +49,8 @@ export function SignInPanel(props: SignInPanelProps) {
   const [signIn, setSignIn] = useState<SignIn>({ kind: "idle" });
   // Once this window has started or cancelled a sign-in, an older "started" in the record is stale.
   const [acknowledged, setAcknowledged] = useState(false);
+  // Cancel failing leaves the host holding the sign-in, so the panel keeps waiting and says why.
+  const [cancelProblem, setCancelProblem] = useState<string | null>(null);
   const button = useRef<HTMLButtonElement>(null);
   const focusButton = useRef(false);
   // The record's "started" has been seen since waiting began: only then does its going away mean dropped.
@@ -58,6 +60,7 @@ export function SignInPanel(props: SignInPanelProps) {
   function begin() {
     if (signIn.kind === "starting") return;
     setAcknowledged(true);
+    setCancelProblem(null);
     setSignIn({ kind: "starting" });
     lastSignInWhenStarted.current = lastSignInAt;
     seenStarted.current = signInStartedAt !== null;
@@ -77,17 +80,11 @@ export function SignInPanel(props: SignInPanelProps) {
   }
 
   async function cancelWaiting() {
+    setCancelProblem(null);
     try {
       await cancel();
     } catch (error) {
-      setSignIn((now) => ({
-        kind: "failed",
-        line: failureLine("cancel the sign-in", error),
-        retry: () => {
-          setSignIn(now);
-          void cancelWaiting();
-        },
-      }));
+      setCancelProblem(failureLine("cancel the sign-in", error));
       return;
     }
     focusButton.current = true;
@@ -124,6 +121,7 @@ export function SignInPanel(props: SignInPanelProps) {
   if (signIn.kind === "waiting") {
     return (
       <Waiting
+        problem={cancelProblem}
         onOpenAgain={() => void openExternal(signIn.address)}
         onCancel={() => void cancelWaiting()}
       />
@@ -181,23 +179,37 @@ function lastSignIn(at: string | null): string {
   return at ?? "";
 }
 
-function Waiting(props: { readonly onOpenAgain: () => void; readonly onCancel: () => void }) {
+function Waiting(props: {
+  readonly problem: string | null;
+  readonly onOpenAgain: () => void;
+  readonly onCancel: () => void;
+}) {
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <span className="size-4 text-fg-muted">
-        <Spinner />
-      </span>
-      {/* A status is read once when it appears, and not again while it waits. */}
-      <p role="status" className="text-body">
-        Waiting for Google… Finish in your browser.
-      </p>
-      <Button variant="secondary" onClick={props.onOpenAgain}>
-        Open again<span aria-hidden="true"> ↗</span>
-        <span className="sr-only"> (opens in your browser)</span>
-      </Button>
-      <Button variant="ghost" onClick={props.onCancel}>
-        Cancel
-      </Button>
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="size-4 text-fg-muted">
+          <Spinner />
+        </span>
+        {/* A status is read once when it appears, and not again while it waits. */}
+        <p role="status" className="text-body">
+          Waiting for Google… Finish in your browser.
+        </p>
+        <Button variant="secondary" onClick={props.onOpenAgain}>
+          Open again<span aria-hidden="true"> ↗</span>
+          <span className="sr-only"> (opens in your browser)</span>
+        </Button>
+        <Button variant="ghost" onClick={props.onCancel}>
+          Cancel
+        </Button>
+      </div>
+      {props.problem === null ? null : (
+        <>
+          <Callout tone="danger">{props.problem}</Callout>
+          <p role="alert" className="sr-only">
+            {props.problem}
+          </p>
+        </>
+      )}
     </div>
   );
 }
