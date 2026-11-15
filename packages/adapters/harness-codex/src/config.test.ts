@@ -70,6 +70,21 @@ verifies("harness-codex.config", () => {
       expect(codexConfigText().indexOf("web_search")).toBeLessThan(codexConfigText().indexOf("["));
     });
 
+    // Codex reads a folder's `.codex/config.toml` only for a folder marked
+    // trusted, which is a `projects` table with `trust_level` in this file or
+    // a `-c` setting. That config could set `model_instructions_file` or
+    // `developer_instructions`, so the working folder must stay untrusted.
+    it("marks no folder as trusted, so Codex reads no `.codex/config.toml` from the working folder", () => {
+      expect(codexConfigText()).not.toMatch(/^\s*\[\s*"?projects\b/m);
+      expect(codexConfigText()).not.toContain("trust_level");
+      const commandLine = [
+        ...codexConfigArgs(bridge),
+        ...codexOwnSandboxArgs,
+        ...codexPinnedInstructionsArgs,
+      ].join(" ");
+      expect(commandLine).not.toMatch(/projects|trust_level/);
+    });
+
     it("holds no address and no token, so it is the same for every run", () => {
       expect(codexConfigText()).toBe(codexConfigText());
       expect(codexConfigText()).not.toContain("127.0.0.1");

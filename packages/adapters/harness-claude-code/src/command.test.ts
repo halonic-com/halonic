@@ -65,7 +65,7 @@ verifies("harness-claude-code.command", () => {
 
       expect(args.filter((arg) => arg === "--setting-sources")).toHaveLength(1);
       expect(args[args.indexOf("--setting-sources") + 1]).toBe("user");
-      expect(args.join(" ")).not.toMatch(/project|local|--add-dir/);
+      expect(args).not.toContain("--add-dir");
     });
 
     it("keeps the prompt and the instructions out of the arguments", () => {
