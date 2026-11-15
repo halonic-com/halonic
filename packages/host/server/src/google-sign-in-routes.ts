@@ -1,4 +1,9 @@
-import { refreshTokenName, type SetupRecord, SetupRecordError } from "@halonicjs/google-setup";
+import {
+  refreshTokenName,
+  type SetupRecord,
+  SetupRecordError,
+  type SignInEnding,
+} from "@halonicjs/google-setup";
 import type { GoogleSetupPorts, GoogleSignInOutcome } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { isLoopbackRequest } from "./security.ts";
@@ -11,6 +16,13 @@ import type { WrongAccountNotes } from "./wrong-account-notes.ts";
  * the proof. The request log records this path without its query string.
  */
 export const googleCallbackPath = "/api/google/callback";
+
+/** The outcomes the record names for Studio's step 7, and the word it keeps for each. Any other way a sign-in ends only drops it. */
+const recordedEndings: Readonly<Partial<Record<GoogleSignInOutcome["kind"], SignInEnding>>> = {
+  cancelled: "cancelled",
+  wrongClientSecret: "secretRefused",
+  adminBlocked: "adminBlocked",
+};
 
 /** What the callback page tells the person for each way a sign-in can end. Fixed text: nothing of the request or of Google's answer goes in. */
 const pageTexts: Readonly<Record<GoogleSignInOutcome["kind"], string>> = {
@@ -117,7 +129,11 @@ export function createGoogleSignInRoutes({
       return;
     }
     if (outcome.kind !== "signedIn") {
-      await setups.update(outcome.accountRef, { kind: "sign-in-dropped" });
+      const ending = recordedEndings[outcome.kind];
+      await setups.update(
+        outcome.accountRef,
+        ending === undefined ? { kind: "sign-in-dropped" } : { kind: "sign-in-ended", ending },
+      );
       return;
     }
     await setups.update(outcome.accountRef, { kind: "signed-in" });
