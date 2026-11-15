@@ -242,7 +242,10 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
         server.close();
       }
     }
-  });
+    // Its own limit: the PowerShell NRPT calls and DNS flushes around the box
+    // take 50 to 70 seconds on a CI runner and once took 107 (HAL-10246), past
+    // the 90 seconds every other test gets. The box's own lookup takes milliseconds.
+  }, 240_000);
 
   it("A12: reads nothing in the home folder or outside the integration's folder", async () => {
     const outside = join(import.meta.dirname, "..", "package.json");
