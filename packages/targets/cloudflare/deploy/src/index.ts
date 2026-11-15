@@ -58,3 +58,5 @@ export type { UploadAndSwitchOptions, UploadProgress } from "./upload.ts";
 export { uploadAndSwitch } from "./upload.ts";
 export type { VersionNote } from "./version-note.ts";
 export { parseVersionNote, versionNote } from "./version-note.ts";
+export type { ImportedCounts, WorkerTransferOptions } from "./worker-transfer.ts";
+export { exportFromWorker, importToWorker } from "./worker-transfer.ts";
