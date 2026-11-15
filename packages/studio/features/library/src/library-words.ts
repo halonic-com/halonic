@@ -88,13 +88,32 @@ export function couldntLoad(kind: LibraryItemKind): string {
   return `Couldn't load ${kindWords[kind].plural}`;
 }
 
-/** The words the shell's overview page needs for one tab. */
-export function overviewWords(kind: LibraryItemKind, onOpenDocsFolder?: () => void): OverviewWords {
-  const { plural, matches, nothingYet } = kindWords[kind];
-  const docsAction =
-    kind === "knowledge" && onOpenDocsFolder !== undefined
-      ? { action: { label: "Open the docs folder", onClick: onOpenDocsFolder } }
-      : {};
+/** The line above a list kept after a failed read: what failed, with the reason when there is one. */
+export function showingLastList(kind: LibraryItemKind, reason?: string): string {
+  const lead = `${couldntLoad(kind)}.`;
+  return [lead, reason, "Showing the list from before."].filter(Boolean).join(" ");
+}
+
+/** The Try again button's label while it reads. */
+export const tryingAgain = "Trying again";
+
+/**
+ * The words the shell's overview page needs for one tab. The empty state holds the tab's one
+ * button: Open the docs folder on Knowledge, the New button on a tab that has one.
+ */
+export function overviewWords(
+  kind: LibraryItemKind,
+  onOpenDocsFolder?: () => void,
+  onNew?: () => void,
+): OverviewWords {
+  const { plural, matches, nothingYet, newLabel: label } = kindWords[kind];
+  let emptyAction: NonNullable<OverviewWords["nothingYet"]["action"]> | undefined;
+  if (kind === "knowledge" && onOpenDocsFolder !== undefined) {
+    emptyAction = { label: "Open the docs folder", onClick: onOpenDocsFolder };
+  } else if (label !== undefined && onNew !== undefined) {
+    emptyAction = { label, onClick: onNew };
+  }
+  const docsAction = emptyAction === undefined ? {} : { action: emptyAction };
   return {
     searchLabel: `Search for ${plural}`,
     loadingLabel: `Loading ${plural}`,

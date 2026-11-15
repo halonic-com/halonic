@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1303 (T10, P4a); flow-library 3.1; microcopy 11.1
+- Source: HAL-1303 (T10, P4a); HAL-9897; flow-library 3.1; microcopy 11.1
 
-The Library page shall show four tabs in the order Skills, Knowledge, Collections, Connectors, with one sentence under the title that follows the selected tab. Under them it shall show the shell's overview page with the selected tab's items from the host, in the words of microcopy 11.1 for each state, and a New button only on the tabs that have one (not Knowledge). An empty Knowledge tab offers Open the docs folder when the app gives it. A tab whose items haven't arrived shows loading, never the previous tab's rows. It shall say "Couldn't load" with the tab's name, and read the items again on Try again or when the host says something changed.
+The Library page shall show four tabs in the order Skills, Knowledge, Collections, Connectors, with one sentence under the title that follows the selected tab. Under them it shall show the shell's overview page with the selected tab's items from the host, in the words of microcopy 11.1 for each state, and a New button only on the tabs that have one (not Knowledge). An empty Knowledge tab offers Open the docs folder when the app gives it. A tab whose items haven't arrived shows loading, never the previous tab's rows. It shall say "Couldn't load" with the tab's name, and read the items again on Try again or when the host says something changed. A kinded error's own reason shows; any other error shows no reason, so a system message never reaches the user. A later read that fails keeps the list it has and adds a line with Try again above it. While nothing is listed, the tab has no search field and its one button is in the empty state (Open the docs folder on Knowledge, New skill or New collection elsewhere).
 
 ## Examples
 
@@ -19,10 +19,16 @@ The Library page shall show four tabs in the order Skills, Knowledge, Collection
   then it says "No collections yet".
 - Given the host fails with "The workspace folder is gone.",
   when the Connectors tab shows,
-  then it says "Couldn't load connectors" and that reason, and Try again asks the host again.
+  then it says "Couldn't load connectors" and that reason (it is a kinded error), and Try again asks the host again.
 - Given the Knowledge tab is empty and the app can open the docs folder,
   when the page shows,
   then the empty state has the button "Open the docs folder".
 - Given the user switches from Skills to a tab whose items are still on their way,
   when the tab changes,
   then no skill row shows.
+- Given the Skills tab shows rows,
+  when a later read fails with a system error,
+  then the rows stay, a line says "Couldn't load skills." with Try again, and the error's text isn't shown.
+- Given the host has no skills,
+  when the Skills tab shows,
+  then there is no search field and "New skill" appears once, in the empty state.
