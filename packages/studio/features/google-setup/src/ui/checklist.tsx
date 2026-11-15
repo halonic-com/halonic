@@ -202,6 +202,11 @@ export function Checklist(props: ChecklistProps) {
                   account={account}
                   projectId={typedProjectId ?? account.record.projectId ?? ""}
                   projectIdError={projectIdError}
+                  canPublish={steps.some(
+                    (candidate) =>
+                      candidate.id === "consent" &&
+                      candidate.requiredTicks.includes("in-production"),
+                  )}
                   onProjectId={(text) => {
                     setTypedProjectId(text);
                     setProjectIdError(null);
@@ -213,6 +218,7 @@ export function Checklist(props: ChecklistProps) {
                     });
                   }}
                   onEditProject={() => setEditing("project")}
+                  onOpenStep={setEditing}
                   credentials={{
                     clientId: account.record.clientId,
                     secretSavedAt: account.record.clientSecret?.savedAt ?? null,
@@ -324,9 +330,12 @@ interface OpenStepProps {
   readonly account: GoogleSetupAccount;
   readonly projectId: string;
   readonly projectIdError: string | null;
+  /** Whether step 3 asks for the "In production" tick. */
+  readonly canPublish: boolean;
   readonly onProjectId: (text: string) => void;
   readonly onInProduction: (ticked: boolean) => void;
   readonly onEditProject: () => void;
+  readonly onOpenStep: (step: StepId) => void;
   readonly credentials: StepBodyProps["credentials"];
   readonly appName: string | undefined;
   readonly signIn: StepBodyProps["signIn"];
@@ -359,6 +368,7 @@ function OpenStep(props: OpenStepProps) {
       <StepBody
         step={step}
         accountType={account.record.accountType}
+        canPublish={props.canPublish}
         inProduction={account.record.inProductionTickedAt !== null}
         projectId={props.projectId}
         projectIdError={props.projectIdError}
@@ -367,6 +377,7 @@ function OpenStep(props: OpenStepProps) {
         onProjectId={props.onProjectId}
         onInProduction={props.onInProduction}
         onEditProject={props.onEditProject}
+        onOpenStep={props.onOpenStep}
         credentials={props.credentials}
         appName={props.appName}
         savedProjectId={account.record.projectId}
