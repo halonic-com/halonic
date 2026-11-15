@@ -129,3 +129,17 @@ verifies("google-setup.setup-source", () => {
     expect(setupEntry(account(record([])), clockTime, now)?.account).not.toContain("@");
   });
 });
+
+verifies("google-setup.setup-source", () => {
+  it("says the account still needs a secret until one is saved, or when Google refused it", () => {
+    const upToClient = ["project", "apis", "consent", "scopes"];
+    const saved = { clientSecret: { clientRef: "gclient_1", savedAt: "2026-11-12T02:10:00.000Z" } };
+    expect(setupEntry(account(record(upToClient)), clockTime, now)?.needsSecret).toBe(true);
+    expect(setupEntry(account(record(upToClient, saved)), clockTime, now)?.needsSecret).toBe(false);
+    const refused = record(allSteps, {
+      ...saved,
+      refreshRefused: { reason: "client", at: "2026-11-12T02:10:00.000Z" },
+    });
+    expect(setupEntry(account(refused), clockTime, now)?.needsSecret).toBe(true);
+  });
+});

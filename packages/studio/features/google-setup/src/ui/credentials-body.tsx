@@ -1,7 +1,7 @@
 import type { SetupStep } from "@halonicjs/google-setup";
 import type { SecretText } from "@halonicjs/studio-kit";
 import { Callout, CopyButton } from "@halonicjs/studio-kit";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { SecretEntry, SecretReplaceAnswer } from "../api.ts";
 import { ClientIdField } from "./client-id-field.tsx";
 import { ConsoleLink } from "./console-link.tsx";
@@ -25,6 +25,8 @@ export interface CredentialsBodyProps {
   readonly beforeFirstSignIn: boolean;
   /** Google refused the saved secret: the field opens ready for the new one. */
   readonly needsNewSecret: boolean;
+  /** Put the cursor in the secret field as the step opens, for a secret pasted somewhere else. */
+  readonly focusSecret?: boolean;
   /** Told whether the secret field holds unsaved text. */
   readonly onSecretTyped: (hasText: boolean) => void;
 }
@@ -59,6 +61,10 @@ function SecretUnavailable({ entry, accountRef }: { entry: SecretEntry; accountR
 export function CredentialsBody(props: CredentialsBodyProps) {
   const { step, entry } = props;
   const secret = useRef<SecretFieldHandle>(null);
+  const wantsFocus = props.focusSecret === true && step.id === "credentials";
+  useEffect(() => {
+    if (wantsFocus) secret.current?.focus();
+  }, [wantsFocus]);
   return (
     <div className="flex flex-col gap-3">
       <ClientIdField

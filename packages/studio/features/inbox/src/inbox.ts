@@ -39,7 +39,12 @@ export interface SetupEntry {
   readonly progress: string;
   /** ISO time the setup last changed. */
   readonly changedAt: string;
+  /** The account still needs a secret from you: a first one, or a new one for a refused one. */
+  readonly needsSecret?: boolean;
 }
+
+/** What to put the cursor on when a setup item opens: the field for the secret. */
+export type SetupFocus = "secret";
 
 /**
  * The accounts one provider has to set up or fix, such as the Google accounts whose setup isn't
@@ -76,6 +81,11 @@ export interface SetupViewProps {
   readonly words?: EngineWords;
   /** **Not now**: closes the item and puts focus back on its row. */
   readonly close: () => void;
+  /**
+   * What the item was opened to reach, such as the secret field. The view opens the step that has
+   * it and puts focus there instead of on the step's title; without it, the current step opens.
+   */
+  readonly focus?: SetupFocus | undefined;
 }
 
 /** What the Inbox holds now. */
@@ -124,6 +134,9 @@ export class Inbox {
   #loads = 0;
   #disposed = false;
   #toOpen: string | undefined;
+  #toFocus: SetupFocus | undefined;
+  /** Notes set aside by item key while their writer goes elsewhere. They are in memory only. */
+  readonly #setAside = new Map<string, string>();
 
   constructor(runs: InboxRuns) {
     this.#runs = runs;
@@ -215,8 +228,9 @@ export class Inbox {
    * Asks the Inbox page to open the item with this key, as Home's Needs you does before it opens
    * the Inbox. The page takes the request when it shows, or at once if it's showing.
    */
-  requestOpen(key: string): void {
+  requestOpen(key: string, focus?: SetupFocus): void {
     this.#toOpen = key;
+    this.#toFocus = focus;
     for (const listener of [...this.#listeners]) listener();
   }
 
@@ -228,9 +242,27 @@ export class Inbox {
    * @example
    * inbox.openSetup("google", accountRef);
    * openPlace("inbox");
+   *
+   * @param focus What to reach in the item, such as `"secret"` for its secret field.
    */
-  openSetup(provider: string, account: string): void {
-    this.requestOpen(setupKey(provider, account));
+  openSetup(provider: string, account: string, focus?: SetupFocus): void {
+    this.requestOpen(setupKey(provider, account), focus);
+  }
+
+  /**
+   * Keeps a note for an item while its writer is somewhere else, such as a note held for a secret
+   * while the secret goes to its field. It stays in memory, is never saved, and leaves with
+   * {@link takeAside}.
+   */
+  setAside(key: string, note: string): void {
+    this.#setAside.set(key, note);
+  }
+
+  /** The note set aside for an item, once: it is removed as it is taken. */
+  takeAside(key: string): string | undefined {
+    const note = this.#setAside.get(key);
+    this.#setAside.delete(key);
+    return note;
   }
 
   /** The setup source of a provider, for its name and its item's view. */
@@ -244,6 +276,13 @@ export class Inbox {
     const key = this.#toOpen;
     this.#toOpen = undefined;
     return key === undefined ? undefined : this.#state.items.find((item) => item.key === key);
+  }
+
+  /** What the request just taken asked to reach in its item, once. Call it right after {@link takeOpenRequest}. */
+  takeOpenFocus(): SetupFocus | undefined {
+    const focus = this.#toFocus;
+    this.#toFocus = undefined;
+    return focus;
   }
 
   /** Calls `listener` after every change of {@link state}. Returns a function that stops the calls. */
@@ -262,6 +301,7 @@ export class Inbox {
     for (const stop of this.#setupSources.values()) stop();
     this.#setupSources.clear();
     this.#setupItems.clear();
+    this.#setAside.clear();
     this.#listeners.clear();
   }
 
@@ -311,5 +351,6 @@ function setupItem(provider: string, entry: SetupEntry): SetupItem {
     title: entry.title,
     progress: entry.progress,
     changedAt: entry.changedAt,
+    needsSecret: entry.needsSecret === true,
   };
 }

@@ -13,6 +13,7 @@ export type {
   InboxSetupSource,
   InboxState,
   SetupEntry,
+  SetupFocus,
   SetupViewProps,
 } from "./inbox.ts";
 export { inboxSignal } from "./inbox-count.ts";

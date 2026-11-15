@@ -1,4 +1,5 @@
 import { isProjectId, type SetupEdit, type SetupStep, type StepId } from "@halonicjs/google-setup";
+import type { SetupFocus } from "@halonicjs/studio-feature-inbox/api";
 import { Button, Callout, type CalloutHandle, type SecretText } from "@halonicjs/studio-kit";
 import { type ReactNode, type Ref, useEffect, useId, useRef, useState } from "react";
 import type { GoogleSetupAccount, SecretEntry, SecretReplaceAnswer } from "../api.ts";
@@ -28,6 +29,11 @@ export interface ChecklistProps {
   readonly onReplaceSecret: (secret: SecretText) => Promise<SecretReplaceAnswer>;
   /** **Not now**: closes the item. */
   readonly close: () => void;
+  /**
+   * What the item opened to reach. `"secret"` opens the step with the client secret and puts the
+   * cursor in its field, which is left empty (UX checklist U13).
+   */
+  readonly focus?: SetupFocus | undefined;
 }
 
 /** The first step not marked done, or the last when every step is. None when there are no steps. */
@@ -60,9 +66,12 @@ export function Checklist(props: ChecklistProps) {
   const problem = connectorProblem(account);
   // A step opened with Edit, until **Done, next** goes on to the current one. An account Google
   // refused opens at the first step it needs again.
-  const [editing, setEditing] = useState<StepId | null>(
-    () => steps.find((step) => problem?.reopenAt.includes(step.id))?.id ?? null,
-  );
+  const [editing, setEditing] = useState<StepId | null>(() => {
+    if (props.focus === "secret" && steps.some((step) => step.id === "credentials")) {
+      return "credentials";
+    }
+    return steps.find((step) => problem?.reopenAt.includes(step.id))?.id ?? null;
+  });
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | undefined>(undefined);
   // A save went through but its step tick didn't. Unlike `failed` it isn't tied to the open step:
@@ -83,11 +92,17 @@ export function Checklist(props: ChecklistProps) {
 
   // Focus goes to the title of the step that opens, also when the item first opens. An error
   // belongs to the step it was shown in, so it goes when another step opens.
+  // The secret field takes it instead when the item was opened for it and the field has an input.
+  const secretTakesFocus =
+    props.focus === "secret" &&
+    props.secretEntry.kind === "field" &&
+    account.record.clientSecret === null;
   useEffect(() => {
     setFailed(undefined);
     setProjectIdError(null);
+    if (secretTakesFocus && openId === "credentials") return;
     if (openId !== undefined) titles.current.get(openId)?.focus({ preventScroll: true });
-  }, [openId]);
+  }, [openId, secretTakesFocus]);
 
   // The hold ends once the typed secret is saved or cleared.
   useEffect(() => {
@@ -191,6 +206,7 @@ export function Checklist(props: ChecklistProps) {
                     onReplaceSecret: props.onReplaceSecret,
                     beforeFirstSignIn: account.record.lastSignInAt === null,
                     needsNewSecret: problem?.actionStep === "credentials",
+                    focusSecret: secretTakesFocus,
                     onSecretTyped: setSecretTyped,
                   }}
                   answering={answering}

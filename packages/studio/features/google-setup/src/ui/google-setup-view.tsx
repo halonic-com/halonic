@@ -94,7 +94,7 @@ export function GoogleSetupView(props: GoogleSetupViewProps) {
   );
 }
 
-function GoogleSetupBody({ item, answering, close, accounts }: GoogleSetupViewProps) {
+function GoogleSetupBody({ item, answering, close, accounts, focus }: GoogleSetupViewProps) {
   const notAnswering = useNotAnswering();
   const { account, problem, retry, refresh } = useAccount(accounts, item.account);
   const phone = usePresentation() === "phone";
@@ -168,6 +168,7 @@ function GoogleSetupBody({ item, answering, close, accounts }: GoogleSetupViewPr
           steps={steps}
           answering={answering}
           onEdit={edit}
+          focus={focus}
           secretEntry={accounts.secretEntry}
           onSaveSecret={(secret) => accounts.saveClientSecret(account.record.accountRef, secret)}
           onReplaceSecret={(secret) =>

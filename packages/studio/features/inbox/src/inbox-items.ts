@@ -74,6 +74,8 @@ export interface SetupItem {
   readonly progress: string;
   /** ISO time the setup last changed; the most recent comes first. */
   readonly changedAt: string;
+  /** Whether the account still needs a secret from you, so a secret pasted elsewhere goes here first. */
+  readonly needsSecret?: boolean;
 }
 
 export type InboxItem = SetupItem | RunItem;

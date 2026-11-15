@@ -38,6 +38,10 @@ export interface ApprovalCardProps {
   readonly back: BackLink | null;
   /** The clock, so a test can set it. */
   readonly now?: () => Date;
+  /** A note set aside earlier, such as one held for a secret: the card opens with it kept. */
+  readonly initialNote?: string | undefined;
+  /** **Go to the secret field** in the note dialog: given the note to keep; without it the button isn't offered. */
+  readonly onGoToSecret?: ((note: string) => void) | undefined;
 }
 
 type Decision = "approve" | "reject";
@@ -106,7 +110,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   const decided = useRef<CalloutHandle>(null);
   const [state, setState] = useState<CardState>({ kind: "open", failed: null, manual: null });
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(props.initialNote ?? "");
   const [form, setForm] = useState<NoteForm>({
     open: false,
     busy: false,
@@ -186,6 +190,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
           error={noteError(form)}
           command={form.manual?.command}
           onSend={sendNote}
+          {...(props.onGoToSecret === undefined ? {} : { onGoToSecret: props.onGoToSecret })}
           onCancel={() => setForm({ open: false, busy: false, failed: false, manual: null })}
         />
       ) : null}

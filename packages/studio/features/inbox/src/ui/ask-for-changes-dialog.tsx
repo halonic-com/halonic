@@ -1,4 +1,12 @@
-import { Button, CommandBox, Dialog, Field, TextArea } from "@halonicjs/studio-kit";
+import type { SecretShape } from "@halonicjs/std";
+import {
+  Button,
+  CommandBox,
+  Dialog,
+  Field,
+  TextArea,
+  usePresentation,
+} from "@halonicjs/studio-kit";
 import { useRef, useState } from "react";
 import { secretHold } from "../plain/secret-hold.ts";
 
@@ -15,6 +23,12 @@ export interface AskForChangesDialogProps {
   readonly error: string | undefined;
   /** The command line that sends a `reject` without the note, shown to copy under the field. */
   readonly command?: string | undefined;
+  /**
+   * **Go to the secret field**, offered when the note looks like a Google client secret and on a
+   * computer: the card is given the note to keep while the secret goes to its field. Without it
+   * the line still says where the secret belongs.
+   */
+  readonly onGoToSecret?: (note: string) => void;
   /** Sends the note; only called with text in it. */
   readonly onSend: (note: string) => void;
   /** Cancel, the ✕ and Escape. Focus goes back to **Ask for changes**. */
@@ -29,12 +43,18 @@ export interface AskForChangesDialogProps {
  *
  * A note that looks like a secret is held, because the run log keeps it: the field shows why and
  * keeps its text and focus, and **Send anyway** sends it as typed. The line never repeats the text.
+ * For a Google client secret, **Go to the secret field** takes you to the setup's field with the
+ * note kept in memory, so the secret can be cut from it (UX checklist U13, U14).
  */
 export function AskForChangesDialog(props: AskForChangesDialogProps) {
   const { note, busy } = props;
   const field = useRef<HTMLTextAreaElement>(null);
   const [empty, setEmpty] = useState(false);
-  const [held, setHeld] = useState<string | null>(null);
+  const [held, setHeld] = useState<{ readonly line: string; readonly shape: SecretShape } | null>(
+    null,
+  );
+  // A phone can't reach the Google setup's field from here: the line sends it to its computer.
+  const phone = usePresentation() === "phone";
 
   function send() {
     if (note.trim() === "") {
@@ -42,9 +62,9 @@ export function AskForChangesDialog(props: AskForChangesDialogProps) {
       field.current?.focus();
       return;
     }
-    const hold = secretHold(note);
+    const hold = secretHold(note, { phone });
     if (hold !== undefined) {
-      setHeld(hold.line);
+      setHeld(hold);
       field.current?.focus();
       return;
     }
@@ -61,7 +81,7 @@ export function AskForChangesDialog(props: AskForChangesDialogProps) {
       onConfirm={send}
       onCancel={props.onCancel}
     >
-      <Field label="Note" error={empty ? emptyNoteError : held}>
+      <Field label="Note" error={empty ? emptyNoteError : (held?.line ?? null)}>
         <TextArea
           ref={field}
           value={note}
@@ -79,7 +99,12 @@ export function AskForChangesDialog(props: AskForChangesDialogProps) {
         </div>
       )}
       {held === null ? null : (
-        <div className="mt-3">
+        <div className="mt-3 flex flex-wrap gap-2">
+          {held.shape === "google-client-secret" && !phone && props.onGoToSecret !== undefined ? (
+            <Button variant="primary" onClick={() => props.onGoToSecret?.(note)}>
+              Go to the secret field
+            </Button>
+          ) : null}
           <Button variant="secondary" onClick={() => props.onSend(note)}>
             Send anyway
           </Button>

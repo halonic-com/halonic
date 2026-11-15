@@ -31,10 +31,20 @@ async function settled(): Promise<void> {
   });
 }
 
-async function open(setup: GoogleSetupAccount, options: Parameters<typeof fakeAccounts>[1] = {}) {
+async function open(
+  setup: GoogleSetupAccount,
+  options: Parameters<typeof fakeAccounts>[1] = {},
+  focus?: "secret",
+) {
   const fake = fakeAccounts([setup], options);
   const container = render(
-    <GoogleSetupView item={item} answering close={vi.fn()} accounts={fake.source} />,
+    <GoogleSetupView
+      item={item}
+      answering
+      close={vi.fn()}
+      accounts={fake.source}
+      {...(focus === undefined ? {} : { focus })}
+    />,
   );
   await settled();
   return { fake, container };
@@ -296,5 +306,27 @@ verifies("google-setup.secret-replace", () => {
     expect(JSON.stringify(edits(fake))).not.toContain(newSecret);
     expect(container.textContent).toContain("Google accepted the new secret.");
     expect(container.innerHTML).not.toContain(newSecret);
+  });
+});
+
+verifies("google-setup.secret-field", () => {
+  it("opens step 6 with the cursor in the empty secret field when asked for the secret", async () => {
+    const { container } = await open(account(record(upToClient)), {}, "secret");
+    const { secret } = inputs(container);
+    expect(container.textContent).toContain("Step 6 of 7");
+    expect(document.activeElement).toBe(secret);
+    expect(secret.value).toBe("");
+  });
+
+  it("opens at the current step as before when nothing was asked for", async () => {
+    await open(account(record(upToClient)));
+    expect(document.activeElement?.tagName).toBe("H3");
+  });
+
+  it("falls back to the step's title when the secret is saved and its field is hidden", async () => {
+    const saved = record(upToClient, { clientSecret: { clientRef: "gclient_1", savedAt: at } });
+    const { container } = await open(account(saved), {}, "secret");
+    expect(inputs(container).secret).toBeUndefined();
+    expect(document.activeElement?.tagName).toBe("H3");
   });
 });

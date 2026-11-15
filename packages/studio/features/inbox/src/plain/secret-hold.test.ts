@@ -7,12 +7,17 @@ const googleSecret = `GOCSPX-${"aB3".repeat(8)}`;
 const providerKey = `sk-proj-${"Xy7".repeat(8)}`;
 
 verifies("inbox.secret-hold", () => {
-  // Until the Google setup's step 6 has a body (HAL-713), the line points at no field.
-  it("names a Google client secret without pointing at a field that isn't there yet", () => {
+  it("names a Google client secret and points to the secret field of the Google setup", () => {
     const hold = secretHold(`here it is: ${googleSecret}`);
     expect(hold?.shape).toBe("google-client-secret");
     expect(hold?.line).toBe(
-      "This looks like a Google client secret. Messages are kept in the run log.",
+      "This looks like a Google client secret. Messages are kept in the run log. Put it in the secret field of the Google setup instead.",
+    );
+  });
+
+  it("sends a phone to its computer for the Google setup", () => {
+    expect(secretHold(googleSecret, { phone: true })?.line).toBe(
+      "This looks like a Google client secret. Messages are kept in the run log. Put it in the secret field of the Google setup on your computer instead.",
     );
   });
 
