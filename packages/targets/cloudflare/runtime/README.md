@@ -65,7 +65,7 @@ naming the file and the kind, never the text (requirement `runtime.export-data`)
 bucket under `import-staging/`), then the manifest with `POST /admin/import`. Nothing is written until every
 listed file is staged with exactly the manifest's size and SHA-256, every file has been read as a log or blob
 of its name, and the deployment holds no different data under the same run id or collection. The sign-in
-tokens' collection is never imported. An answer other than 200 means nothing was applied: 409 with
+tokens' collection is never imported. An answer other than 200 means the import stopped (files written before the stop stay, and sending it again is safe): 409 with
 `files_missing`, `files_differ`, `files_refused` or `conflict` and the paths; 400 `bad_path` or `bad_manifest`;
 413 `too_large`. A file the deployment already holds exactly is skipped, so a job that stopped can send the
 same import again. After a success the staged files are removed; after a refusal they stay, so the CLI can
