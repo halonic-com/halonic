@@ -23,6 +23,10 @@ function fakeFiles(initial: Record<string, string> = {}) {
       files.set(path, content);
       return { status: "written" as const };
     }),
+    remove: vi.fn(async (path: string, _options?: { expected?: string }) => {
+      files.delete(path);
+      return { status: "removed" as const };
+    }),
   };
 }
 
@@ -252,6 +256,34 @@ verifies("source-control.changes-page", () => {
         expect(files.write).toHaveBeenCalledWith("a.yaml", "old\n", {
           expected: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
         });
+      });
+
+      it("writes a file that is gone only while it is still absent", async () => {
+        const files = fakeFiles();
+        const { changes } = history(async () => answer(""), files);
+        await changes.replaceFile("a.yaml", "old\n", null);
+        expect(files.write).toHaveBeenCalledWith("a.yaml", "old\n", { expected: "absent" });
+      });
+
+      it("removes a file only while it still holds what the page read", async () => {
+        const files = fakeFiles({ "a.yaml": "new\n" });
+        const { changes } = history(async () => answer(""), files);
+        await expect(changes.removeFile("a.yaml", "new\n")).resolves.toBe("replaced");
+        expect(files.remove).toHaveBeenCalledWith("a.yaml", {
+          expected: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
+        });
+        files.remove.mockResolvedValueOnce({ status: "changed-on-disk", current: "x" } as never);
+        await expect(changes.removeFile("a.yaml", "new\n")).resolves.toBe("changed-on-disk");
+      });
+
+      it("keeps a copy under .studio/discarded, named by the time", async () => {
+        const files = fakeFiles();
+        const { changes } = history(async () => answer(""), files);
+        await changes.keepCopy([{ path: "hubs/a.yaml", text: "mine\n" }]);
+        expect([...files.files.keys()]).toHaveLength(1);
+        expect([...files.files.keys()][0]).toMatch(
+          /^\.studio\/discarded\/\d{4}-\d{2}-\d{2}T[\d-]+\.\d+Z\/hubs\/a\.yaml$/,
+        );
       });
 
       it("says changed-on-disk when the store refuses", async () => {

@@ -29,6 +29,12 @@ export interface FileTexts {
 /** What {@link ChangesSource.replaceFile} did. */
 export type ReplaceResult = "replaced" | "changed-on-disk";
 
+/** One file's text as a discard found it, for {@link ChangesSource.keepCopy}. */
+export interface KeptFile {
+  readonly path: string;
+  readonly text: string;
+}
+
 /** What {@link ChangesSource.createVersion} records. */
 export interface VersionInput {
   /** The message of the version: its name, then its notes. */
@@ -44,10 +50,24 @@ export interface ChangesSource {
   /** Reads one changed file's text in the last version and now. Throws when it can't be read as text. */
   readonly readTexts: (change: VcsChange) => Promise<FileTexts>;
   /**
-   * Replaces a file's text, only while it still holds `expected`; otherwise nothing is written and
-   * the answer is `"changed-on-disk"`.
+   * Replaces a file's text, only while it still holds `expected` (`null` for a file that isn't
+   * there); otherwise nothing is written and the answer is `"changed-on-disk"`.
    */
-  readonly replaceFile: (path: string, text: string, expected: string) => Promise<ReplaceResult>;
+  readonly replaceFile: (
+    path: string,
+    text: string,
+    expected: string | null,
+  ) => Promise<ReplaceResult>;
+  /**
+   * Deletes a file, only while it still holds `expected`; otherwise nothing is removed and the
+   * answer is `"changed-on-disk"`.
+   */
+  readonly removeFile: (path: string, expected: string) => Promise<ReplaceResult>;
+  /**
+   * Keeps a copy of what a discard is about to throw away, where Halonic's own data lives
+   * (`.studio/`), so it stays out of the history. Throws when the copy can't be kept.
+   */
+  readonly keepCopy: (files: readonly KeptFile[]) => Promise<void>;
   /** Records a version of exactly `paths`; other files stay as changes. Throws when git refuses. */
   readonly createVersion: (input: VersionInput) => Promise<void>;
   /**
@@ -62,3 +82,20 @@ export interface ChangesSource {
 /** The open workspace's history. The app provides it for each open workspace. */
 export const ChangesSourceService: ServiceKey<ChangesSource> =
   serviceKey<ChangesSource>("source-control.source");
+
+/**
+ * Whether the developer view is on (Settings → Developer → Show files and branches). The
+ * Changes page shows per-file Discard and "Discard this part" only while it is. Where no one
+ * provides it, the view is off.
+ */
+export interface DeveloperView {
+  /** Whether the developer view is on now. */
+  readonly enabled: () => boolean;
+  /** Calls `listener` when it is turned on or off; returns a function that stops the calls. */
+  readonly subscribe: (listener: () => void) => () => void;
+}
+
+/** The window's developer view, when the app provides one. */
+export const DeveloperViewService: ServiceKey<DeveloperView> = serviceKey<DeveloperView>(
+  "source-control.developer-view",
+);

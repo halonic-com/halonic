@@ -53,21 +53,21 @@ verifies("source-control.change-list", () => {
       const rows = [...(section?.querySelectorAll("li") ?? [])].map((row) => row.textContent);
       expect(rows[0]).toContain("Instructions");
       expect(rows[1]).toContain("Model");
-      expect(section?.querySelectorAll("button")).toHaveLength(2);
+      expect(buttons(section as HTMLElement, "Undo this change")).toHaveLength(2);
     });
 
     it("shows a file no kind places as one line without Undo this change", async () => {
       const { root } = await openPage();
       const section = root.querySelector('section[aria-label="README.md"]');
       expect(section?.textContent).toContain("Changed");
-      expect(section?.querySelector("button")).toBeNull();
+      expect(buttons(section as HTMLElement, "Undo this change")).toHaveLength(0);
     });
 
     it("shows a file that can't be read as text as one line, New for an untracked one", async () => {
       const { root } = await openPage();
       const section = root.querySelector('section[aria-label="notes/new.txt"]');
       expect(section?.textContent).toContain("New");
-      expect(section?.querySelector("button")).toBeNull();
+      expect(buttons(section as HTMLElement, "Undo this change")).toHaveLength(0);
     });
 
     it("undoes one change at once, keeps the other, and offers Undo in a toast", async () => {

@@ -1,9 +1,10 @@
 import { type ChangeLine, describeFileChange, type FileChange, revertParts } from "@halonicjs/app";
 import type { VcsChange } from "@halonicjs/ports";
+import { applyLineChanges, diffLines, type LineChange } from "@halonicjs/std";
 import type { PlaceSignal, ServiceKey } from "@halonicjs/studio-shell";
 import { serviceKey } from "@halonicjs/studio-shell";
-import type { ChangesRead, ChangesSource, FileTexts } from "./api.ts";
-import { pageWords, undoWords, versionWords } from "./changes-words.ts";
+import type { ChangesRead, ChangesSource, FileTexts, KeptFile } from "./api.ts";
+import { discardWords, pageWords, undoWords, versionWords } from "./changes-words.ts";
 import { loadFailureReason } from "./load-failure.ts";
 import { versionMessage } from "./version-name.ts";
 
@@ -23,6 +24,9 @@ export type UndoOutcome =
   /** The change is undone; `undo` puts it back, as the toast's Undo does, and says why when it can't. */
   | { readonly kind: "undone"; readonly undo: () => Promise<string | undefined> }
   | { readonly kind: "failed"; readonly reason: string };
+
+/** What {@link ChangesList.discardFile} did; the toast's Undo is `undo`, as for an undone change. */
+export type DiscardOutcome = UndoOutcome;
 
 /** What the Changes list holds now. */
 export interface ChangesListState {
@@ -132,6 +136,78 @@ export class ChangesList {
   }
 
   /**
+   * The parts of a file's change as lines, for the developer view's "Discard this part". Empty
+   * for a file that is new, deleted or can't be read as text: only the whole file goes back.
+   */
+  hunks(file: ChangedFile): readonly LineChange[] {
+    const { texts } = file;
+    if (texts?.before == null || texts.after === null) return [];
+    return diffLines(texts.before, texts.after);
+  }
+
+  /**
+   * Puts a whole file back as the last version has it: a changed or deleted file gets its text
+   * back, a new file is deleted. A copy of what is thrown away is kept first, and the outcome's
+   * `undo` brings it all back.
+   */
+  async discardFile(file: ChangedFile): Promise<DiscardOutcome> {
+    const status = this.#discardStatus(file);
+    if (typeof status !== "string") return { kind: "failed", reason: status.reason };
+    const { texts } = file;
+    if (texts === undefined) return { kind: "failed", reason: discardWords.cantDiscard };
+    const { path } = file;
+    const { before, after } = texts;
+    if (status === "untracked" && after !== null) {
+      return this.#discard(
+        [{ path, text: after }],
+        () => this.#remove(path, after),
+        () => this.#replace(path, after, null),
+      );
+    }
+    if (status === "modified" && before !== null && after !== null) {
+      return this.#discard(
+        [{ path, text: after }],
+        () => this.#replace(path, before, after),
+        () => this.#replace(path, after, before),
+      );
+    }
+    if (status === "deleted" && before !== null && after === null) {
+      return this.#discard(
+        [],
+        () => this.#replace(path, before, null),
+        () => this.#remove(path, before),
+      );
+    }
+    return { kind: "failed", reason: discardWords.cantDiscard };
+  }
+
+  /** Puts back one part of a file's change, from {@link hunks}, and keeps the rest of the file. */
+  async discardPart(file: ChangedFile, part: LineChange): Promise<DiscardOutcome> {
+    const status = this.#discardStatus(file);
+    if (typeof status !== "string") return { kind: "failed", reason: status.reason };
+    const { texts } = file;
+    if (status !== "modified" || texts?.before == null || texts.after === null) {
+      return { kind: "failed", reason: discardWords.cantDiscard };
+    }
+    const { before, after } = texts;
+    const kept = diffLines(before, after).filter(
+      (change) => change.beforeStart !== part.beforeStart || change.afterStart !== part.afterStart,
+    );
+    let text: string;
+    try {
+      text = applyLineChanges(before, kept);
+    } catch {
+      return { kind: "failed", reason: discardWords.cantDiscard };
+    }
+    const { path } = file;
+    return this.#discard(
+      [{ path, text: after }],
+      () => this.#replace(path, text, after),
+      () => this.#replace(path, after, text),
+    );
+  }
+
+  /**
    * Opens Create version for `paths`, or for every changed file without them. Other screens use
    * it to open the dialog with one item in it.
    */
@@ -188,7 +264,7 @@ export class ChangesList {
   }
 
   /** Writes a file's new text, then reads again; the reason it didn't work, or `undefined`. */
-  async #replace(path: string, text: string, expected: string): Promise<string | undefined> {
+  async #replace(path: string, text: string, expected: string | null): Promise<string | undefined> {
     try {
       const result = await this.source.replaceFile(path, text, expected);
       await this.refresh();
@@ -196,6 +272,52 @@ export class ChangesList {
     } catch (error) {
       return loadFailureReason(error);
     }
+  }
+
+  /** Deletes a file, then reads again; the reason it didn't work, or `undefined`. */
+  async #remove(path: string, expected: string): Promise<string | undefined> {
+    try {
+      const result = await this.source.removeFile(path, expected);
+      await this.refresh();
+      return result === "replaced" ? undefined : undoWords.changedMeanwhile;
+    } catch (error) {
+      return loadFailureReason(error);
+    }
+  }
+
+  /**
+   * Keeps a copy of `thrown`, then runs the discard. Nothing is discarded when the copy can't be
+   * kept. `undo` is what the toast's Undo runs.
+   */
+  async #discard(
+    thrown: readonly KeptFile[],
+    run: () => Promise<string | undefined>,
+    undo: () => Promise<string | undefined>,
+  ): Promise<DiscardOutcome> {
+    if (thrown.length > 0) {
+      try {
+        await this.source.keepCopy(thrown);
+      } catch {
+        return { kind: "failed", reason: discardWords.noCopy };
+      }
+    }
+    const reason = await run();
+    return reason === undefined ? { kind: "undone", undo } : { kind: "failed", reason };
+  }
+
+  /**
+   * How git has the file's change: its status, or why it can't be discarded here. Git's index is
+   * not Halonic's: a file added to a version by another program is left to that program.
+   */
+  #discardStatus(file: ChangedFile): VcsChange["status"] | { readonly reason: string } {
+    const { read } = this.#state;
+    const entries = read?.kind === "ready" ? read.changes.filter((c) => c.path === file.path) : [];
+    const [first] = entries;
+    if (first === undefined || file.texts === undefined) {
+      return { reason: discardWords.cantDiscard };
+    }
+    if (entries.some((entry) => entry.staged)) return { reason: discardWords.addedOutside };
+    return first.status;
   }
 
   /** What changed in each file, one entry for each path. A file that can't be read is just "Changed". */

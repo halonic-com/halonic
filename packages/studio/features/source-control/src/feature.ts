@@ -1,5 +1,5 @@
 import { defineFeature } from "@halonicjs/studio-shell";
-import { ChangesSourceService } from "./api.ts";
+import { ChangesSourceService, DeveloperViewService } from "./api.ts";
 import { ChangesList, ChangesListService } from "./changes-list.ts";
 
 /**
@@ -11,6 +11,7 @@ export const sourceControlFeature = defineFeature({
   id: "source-control",
   title: "Changes",
   needs: [ChangesSourceService],
+  wants: [DeveloperViewService],
   provides: [ChangesListService],
   register(studio) {
     studio.services.provide(
