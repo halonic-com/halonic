@@ -17,6 +17,7 @@ export { describeFileChange, type FileChange } from "./changes/describe-file.ts"
 export { describeItemChange } from "./changes/describe-item.ts";
 export { describeRoutineChange } from "./changes/describe-routine.ts";
 export { describeWorkflowChange } from "./changes/describe-workflow.ts";
+export { type PartValue, partValueIn } from "./changes/part-value.ts";
 export {
   type ChangeLine,
   type ItemPath,

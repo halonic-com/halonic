@@ -2,7 +2,7 @@ import type { ChangeLine } from "@halonicjs/app";
 import { Button, useToastStore } from "@halonicjs/studio-kit";
 import { useId, useState } from "react";
 import type { ChangedFile, ChangesList } from "../changes-list.ts";
-import { listWords, undoWords } from "../changes-words.ts";
+import { listWords, undoWords, versionWords } from "../changes-words.ts";
 
 /** Props for {@link ChangeList}. */
 export interface ChangeListProps {
@@ -11,19 +11,30 @@ export interface ChangeListProps {
 }
 
 /**
- * What changed, file by file (checklist part 2, 2.3). In each file the Important changes come
+ * What changed, file by file (checklist part 2, 2.2), under "Since your last version" with its
+ * count and Create version. In each file the Important changes come
  * first, each as before → after, then the others; every change that can be undone on its own has
  * Undo this change.
  */
 export function ChangeList({ list, files }: ChangeListProps) {
   return (
-    <ul className="flex flex-col gap-4">
-      {files.map((file) => (
-        <li key={file.path}>
-          <FileChanges list={list} file={file} />
-        </li>
-      ))}
-    </ul>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-3">
+        <h2 className="text-heading">{versionWords.sinceLastVersion}</h2>
+        <span className="text-small text-fg-muted">{files.length}</span>
+        <span className="flex-1" />
+        <Button variant="primary" size="sm" onClick={() => list.startVersion()}>
+          {versionWords.createVersion}
+        </Button>
+      </div>
+      <ul className="flex flex-col gap-4">
+        {files.map((file) => (
+          <li key={file.path}>
+            <FileChanges list={list} file={file} />
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

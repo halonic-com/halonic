@@ -29,6 +29,14 @@ export interface FileTexts {
 /** What {@link ChangesSource.replaceFile} did. */
 export type ReplaceResult = "replaced" | "changed-on-disk";
 
+/** What {@link ChangesSource.createVersion} records. */
+export interface VersionInput {
+  /** The message of the version: its name, then its notes. */
+  readonly message: string;
+  /** The files that go into it, from the workspace folder; a renamed file lists both its paths. */
+  readonly paths: readonly string[];
+}
+
 /** The history of one open workspace, as the app provides it. */
 export interface ChangesSource {
   /** Reads what changed since the last version. Throws when git answers with an error. */
@@ -40,6 +48,8 @@ export interface ChangesSource {
    * the answer is `"changed-on-disk"`.
    */
   readonly replaceFile: (path: string, text: string, expected: string) => Promise<ReplaceResult>;
+  /** Records a version of exactly `paths`; other files stay as changes. Throws when git refuses. */
+  readonly createVersion: (input: VersionInput) => Promise<void>;
   /**
    * Turns the folder into a repository and keeps `.studio/` out of it (`.gitignore`),
    * so Halonic can save versions of it.

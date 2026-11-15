@@ -3,8 +3,9 @@ import type { VcsChange } from "@halonicjs/ports";
 import type { PlaceSignal, ServiceKey } from "@halonicjs/studio-shell";
 import { serviceKey } from "@halonicjs/studio-shell";
 import type { ChangesRead, ChangesSource, FileTexts } from "./api.ts";
-import { pageWords, undoWords } from "./changes-words.ts";
+import { pageWords, undoWords, versionWords } from "./changes-words.ts";
 import { loadFailureReason } from "./load-failure.ts";
+import { versionMessage } from "./version-name.ts";
 
 /** How many changed files' texts are read at the same time. */
 const readsAtOnce = 4;
@@ -35,6 +36,11 @@ export interface ChangesListState {
   readonly turnOnError: unknown;
   /** Whether Turn on history is working. */
   readonly turningOn: boolean;
+  /**
+   * Set while Create version is open: the paths it opened with, or `undefined` inside for every
+   * changed file. `undefined` when it is closed.
+   */
+  readonly version: { readonly paths: readonly string[] | undefined } | undefined;
 }
 
 /**
@@ -54,6 +60,7 @@ export class ChangesList {
     error: undefined,
     turnOnError: undefined,
     turningOn: false,
+    version: undefined,
   };
   readonly #listeners = new Set<() => void>();
   readonly #stopWatching: () => void;
@@ -122,6 +129,56 @@ export class ChangesList {
       };
     }
     return { kind: "failed", reason: outcome };
+  }
+
+  /**
+   * Opens Create version for `paths`, or for every changed file without them. Other screens use
+   * it to open the dialog with one item in it.
+   */
+  startVersion(paths?: readonly string[]): void {
+    this.#set({ ...this.#state, version: { paths } });
+  }
+
+  /** Closes Create version without creating anything. */
+  cancelVersion(): void {
+    if (this.#state.version !== undefined) this.#set({ ...this.#state, version: undefined });
+  }
+
+  /** The changed files Create version is open for; none while it is closed. */
+  get versionFiles(): readonly ChangedFile[] {
+    const { version, files } = this.#state;
+    if (version?.paths === undefined) return version === undefined ? [] : files;
+    const wanted = new Set(version.paths);
+    return files.filter((file) => wanted.has(file.path));
+  }
+
+  /**
+   * Records the open Create version as one version, then closes it and reads again. Only its
+   * files go in; anything else stays a change. Gives the reason it didn't work, or `undefined`.
+   */
+  async createVersion(name: string, notes: string): Promise<string | undefined> {
+    const { read } = this.#state;
+    const files = this.versionFiles;
+    if (read?.kind !== "ready" || files.length === 0) return versionWords.nothingToCreate;
+    const chosen = new Set(files.map((file) => file.path));
+    // A renamed file is two paths to git: the old one goes away, the new one comes in.
+    const paths = [
+      ...new Set(
+        read.changes.flatMap((change) =>
+          chosen.has(change.path)
+            ? [change.path, ...(change.from === undefined ? [] : [change.from])]
+            : [],
+        ),
+      ),
+    ];
+    try {
+      await this.source.createVersion({ message: versionMessage(name, notes), paths });
+    } catch (error) {
+      return loadFailureReason(error);
+    }
+    if (!this.#disposed) this.#set({ ...this.#state, version: undefined });
+    await this.refresh();
+    return undefined;
   }
 
   /** Writes a file's new text, then reads again; the reason it didn't work, or `undefined`. */

@@ -6,6 +6,7 @@ import type {
   ChangesSource,
   FileTexts,
   ReplaceResult,
+  VersionInput,
 } from "@halonicjs/studio-feature-source-control/api";
 import { lastVersionDiffArgs, lastVersionFromDiff } from "./last-version.ts";
 import { parseStatus, statusArgs } from "./parse-status.ts";
@@ -69,6 +70,30 @@ export class WorkspaceChanges implements ChangesSource {
       expected: await contentDigest(expected, this.#options.digest),
     });
     return result.status === "written" ? "replaced" : "changed-on-disk";
+  }
+
+  async createVersion({ message, paths }: VersionInput): Promise<void> {
+    // `commit -- <paths>` takes tracked, renamed and deleted files by itself; only the new files
+    // need adding, and `git add` refuses a path that is neither in the index nor on disk.
+    const others = await this.#run([
+      "ls-files",
+      "-z",
+      "--others",
+      "--exclude-standard",
+      "--",
+      ...paths,
+    ]);
+    if (others === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
+    if (others.code !== 0) throw new KindedError("unavailable", gitReason(others));
+    const untracked = others.stdout.split("\0").filter((path) => path !== "");
+    if (untracked.length > 0) {
+      const add = await this.#run(["add", "--", ...untracked]);
+      if (add === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
+      if (add.code !== 0) throw new KindedError("unavailable", gitReason(add));
+    }
+    const commit = await this.#run(["commit", "-m", message, "--", ...paths]);
+    if (commit === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
+    if (commit.code !== 0) throw new KindedError("unavailable", gitReason(commit));
   }
 
   async turnOnHistory(): Promise<void> {
@@ -140,6 +165,24 @@ function firstLine(text: string): string {
       .map((line) => line.trim())
       .find((line) => line !== "") ?? ""
   );
+}
+
+/** Why a version couldn't be created, as one plain sentence: git's own output is never shown. */
+function gitReason(answer: GitAnswer): string {
+  const said = `${answer.stderr}\n${answer.stdout}`;
+  if (/tell me who you are|empty ident name|author identity unknown/i.test(said)) {
+    return "Git doesn't know who versions should be from. Set your name and email in git, then try again.";
+  }
+  if (/nothing (added )?to commit|no changes added/i.test(said)) {
+    return "There is nothing to record: these changes are already in a version.";
+  }
+  if (/index\.lock|another git process/i.test(said)) {
+    return "Another program is using this workspace's history right now. Wait a moment, then try again.";
+  }
+  if (/hook|permission denied|operation not permitted|read-only/i.test(said)) {
+    return "Git refused to record the version. A check on this workspace or a permission stopped it.";
+  }
+  return "Git didn't accept the version.";
 }
 
 /** Whether the shell refused because it found no git program (`GitRefusal.kind`). */
