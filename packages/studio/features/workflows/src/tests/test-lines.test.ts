@@ -14,9 +14,7 @@ const fresh: WorkflowTestCase = { name: "invoice", input: "{}" };
 verifies("workflows.tests.page", () => {
   it("counts passes and says when they last ran", () => {
     const ranAt = new Date(2026, 10, 9, 10, 42).toISOString();
-    expect(testSummary({ cases: [passed, passed, failed], ranAt }, undefined, "en-GB")).toBe(
-      "2 of 3 pass · 10:42",
-    );
+    expect(testSummary({ cases: [passed, passed, failed], ranAt })).toBe("2 of 3 pass · 10:42");
   });
 
   it("says a test that never ran is not run yet", () => {
@@ -55,7 +53,7 @@ verifies("workflows.tests.page", () => {
   it("says when a run stops early or goes on too long, and nothing for equal paths", () => {
     expect(pathSplit(["a", "b"], ["a"])?.sentence).toBe('It stopped at step 2, before "b".');
     expect(pathSplit(["a"], ["a", "b"])?.sentence).toBe(
-      'It went on at step 2: "b" after the expected end.',
+      'It kept going after the expected end, at step 2: "b".',
     );
     expect(pathSplit(["a", "b"], ["a", "b"])).toBeUndefined();
   });

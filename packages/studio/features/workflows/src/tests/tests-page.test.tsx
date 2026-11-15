@@ -90,6 +90,7 @@ verifies("workflows.tests.page", () => {
     await act(async () => report(1, true));
     expect(page.textContent).toContain("1 of 3 done");
     expect(page.textContent).not.toContain("10:4");
+    expect(page.querySelector("[role=status]")).toBeNull();
 
     await act(async () => finish(afterRun));
     expect(page.textContent).toContain("2 of 3 pass");
@@ -133,6 +134,9 @@ verifies("workflows.tests.page", () => {
     expect(card?.textContent).toContain(
       'It went another way at step 3: "reply" instead of "archive".',
     );
+    expect(card?.textContent).toContain("TEST");
+    expect(card?.textContent).not.toContain("Name");
+    expect(card?.querySelector("[role=alert]")).toBeNull();
     expect(card?.textContent).toContain('{ "subject": "Hi" }');
     expect(card?.textContent).toContain("archive");
     expect(card?.textContent).toContain("Expected");

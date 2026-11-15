@@ -106,7 +106,7 @@ export function TestsPage({ host, workflow, name, openRun }: TestsPageProps) {
     <div className="-m-6 flex min-h-0 flex-1">
       <div className="min-w-0 flex-1 overflow-auto p-6">
         <div className="mb-4 flex items-center justify-between gap-4">
-          <p role="status" className="text-small text-fg-muted">
+          <p className="text-small text-fg-muted">
             {testSummary(tests, running ? { done: done.size } : undefined)}
           </p>
           {runTests && (

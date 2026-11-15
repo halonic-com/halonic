@@ -24,7 +24,7 @@ export const testsWords = {
   failed: "Failed",
   notRun: "Not run yet",
   waiting: "Waiting",
-  name: "Name",
+  kind: "TEST",
   input: "Input",
   endsIn: "Ends in",
   expected: "Expected",

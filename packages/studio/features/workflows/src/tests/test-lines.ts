@@ -45,26 +45,23 @@ export function testRows(
   });
 }
 
-/** `HH:MM` of an ISO time in the person's time zone. */
-export function clockTime(iso: string, locale?: string): string {
-  return new Date(iso).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+/** 24-hour `HH:MM` of an ISO time in the person's time zone, whatever the locale. */
+export function clockTime(iso: string): string {
+  const at = new Date(iso);
+  return `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
 }
 
 /**
  * The line over the list: "3 tests, not run yet", "2 of 3 pass · 10:42", and while the tests run
  * "1 of 3 done", with no time and not the last result (flow-workflows 6.1).
  */
-export function testSummary(
-  tests: WorkflowTests,
-  running?: { readonly done: number },
-  locale?: string,
-): string {
+export function testSummary(tests: WorkflowTests, running?: { readonly done: number }): string {
   const count = tests.cases.length;
   if (running !== undefined) return words.progress(running.done, count);
   const ran = tests.cases.filter((one) => one.result !== undefined);
   if (ran.length === 0) return words.notRunYet(count);
   const passed = ran.filter((one) => one.result?.passed).length;
-  const time = tests.ranAt === undefined ? "" : ` · ${clockTime(tests.ranAt, locale)}`;
+  const time = tests.ranAt === undefined ? "" : ` · ${clockTime(tests.ranAt)}`;
   return words.passCount(passed, count, time);
 }
 
@@ -93,7 +90,7 @@ export function pathSplit(
       return { at, sentence: `It stopped at step ${step}, before "${wanted}".` };
     }
     if (wanted === undefined) {
-      return { at, sentence: `It went on at step ${step}: "${went}" after the expected end.` };
+      return { at, sentence: `It kept going after the expected end, at step ${step}: "${went}".` };
     }
     return {
       at,

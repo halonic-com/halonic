@@ -1,4 +1,4 @@
-import { Button, CloseIcon } from "@halonicjs/studio-kit";
+import { Button, Callout, CloseIcon } from "@halonicjs/studio-kit";
 import { type KeyboardEvent, useEffect, useRef } from "react";
 import type { WorkflowTestCase } from "../api.ts";
 import { type PathSplit, pathSplit } from "./test-lines.ts";
@@ -35,9 +35,12 @@ export function CaseCard({ test, onClose, onOpenRun }: CaseCardProps) {
       className="flex w-120 shrink-0 flex-col gap-4 overflow-auto border-s border-border bg-surface-raised p-6 shadow-2"
     >
       <div className="flex items-center justify-between">
-        <h2 ref={heading} tabIndex={-1} className="text-title">
-          {test.name}
-        </h2>
+        <div>
+          <p className="text-caption text-fg-muted">{words.kind}</p>
+          <h2 ref={heading} tabIndex={-1} className="text-title">
+            {test.name}
+          </h2>
+        </div>
         <Button
           variant="ghost"
           size="sm"
@@ -47,10 +50,6 @@ export function CaseCard({ test, onClose, onOpenRun }: CaseCardProps) {
         />
       </div>
       <dl className="flex flex-col gap-3">
-        <div>
-          <dt className="text-small text-fg-muted">{words.name}</dt>
-          <dd>{test.name}</dd>
-        </div>
         <div>
           <dt className="text-small text-fg-muted">{words.input}</dt>
           <dd>
@@ -68,17 +67,12 @@ export function CaseCard({ test, onClose, onOpenRun }: CaseCardProps) {
       </dl>
       {result?.passed === false && (
         <section className="flex flex-col gap-3">
-          <div
-            role="alert"
-            className="flex items-center justify-between gap-3 rounded-sm bg-danger-soft p-3 text-danger-text"
+          <Callout
+            tone="danger"
+            {...(onOpenRun && { action: { label: words.openRun, onClick: onOpenRun } })}
           >
-            <p>{split?.sentence ?? result.failure}</p>
-            {onOpenRun && (
-              <Button variant="secondary" size="sm" onClick={onOpenRun}>
-                {words.openRun}
-              </Button>
-            )}
-          </div>
+            {split?.sentence ?? result.failure}
+          </Callout>
           {split && result.expectedPath && result.actualPath && (
             <div className="grid grid-cols-2 gap-4">
               <PathColumn title={words.expected} path={result.expectedPath} split={split} />
@@ -125,8 +119,8 @@ function PathColumn({
 function stepTone(at: number, first: number, actual: boolean): string {
   if (at === first) {
     return actual
-      ? "border-s-2 bg-danger-soft text-danger-text"
-      : "border-s-2 bg-surface-muted text-fg";
+      ? "border-s-2 border-current bg-danger-soft text-danger-text"
+      : "border-s-2 border-current bg-surface-muted text-fg";
   }
   return actual && at > first ? "text-fg-muted" : "";
 }
