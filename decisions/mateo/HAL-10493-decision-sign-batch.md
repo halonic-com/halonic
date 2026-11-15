@@ -3,7 +3,6 @@
 - Task: HAL-10493
 - Approval: Liam approved the code of PR #2993 on HAL-10493; it changes the guard's own paths, so Liam and Julian sign as the two guardians
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FbPCfy/oVVmgc1ioOqekjhgPblcDpylB+a40UvBtOaI7NfJmyCSvhQv5ap2YZGBg+dPCsADQycbq4JkL0ucPBA==
 
 ## What changes
 
@@ -22,8 +21,8 @@ cut it off (seen while signing the note on halonic#2985, HAL-10460).
 ## Tests
 
 No test was weakened or skipped. Tests were added for the batch read (missing files, paths with
-line breaks), for the progress line, and one that signs with the old per-file read and the new
-batch read and checks the signed bytes are identical.
+line breaks, submodule paths that look like a blob answer), for the progress line, and one that
+signs with the old per-file read and the new batch read and checks the signed bytes are identical.
 
 ## Covers
 

@@ -80,7 +80,17 @@ function readBatch(
   return texts;
 }
 
-/** Runs the batch and reads its `<id> blob <size>` or `<spec> missing` answers in order. */
+/**
+ * An object answer: `<id> <type> <size>`. A `<spec> missing` answer can't
+ * match, because its first word holds the `:` of the spec and it ends in a
+ * word, not a size, however many spaces the path has.
+ */
+const objectHeader = /^(?:[0-9a-f]{40}|[0-9a-f]{64}) ([a-z]+) (\d+)$/;
+
+/** A spec git can't read as one object, like one read per file skips it. */
+const unreadable = / (?:missing|ambiguous)$/;
+
+/** Runs the batch and reads its `<id> <type> <size>` or `<spec> missing` answers in order. */
 function batchTexts(
   root: string,
   batched: readonly (readonly [path: string, spec: string])[],
@@ -97,18 +107,40 @@ function batchTexts(
   const texts = new Map<string, string>();
   let at = 0;
   for (const [path, spec] of batched) {
-    const end = run.stdout.indexOf(0x0a, at);
-    const header = run.stdout.toString("utf8", at, end).split(" ");
-    at = end + 1;
-    if (header[1] === "blob") {
-      const size = Number(header[2]);
-      texts.set(path, run.stdout.toString("utf8", at, at + size));
-      at += size + 1;
-    } else if (header[header.length - 1] !== "missing") {
-      throw new Error(`Unexpected git cat-file output for ${spec}: ${header.join(" ")}`);
-    }
+    const answer = readAnswer(run.stdout, at, spec);
+    if (answer.text !== undefined) texts.set(path, answer.text);
+    at = answer.next;
+  }
+  if (at !== run.stdout.length) {
+    throw new Error("git cat-file --batch gave more answers than asked");
   }
   return texts;
+}
+
+/** Reads the answer at `at`: the text if it is a blob, and where the next answer starts. */
+function readAnswer(
+  stdout: Buffer,
+  at: number,
+  spec: string,
+): { text: string | undefined; next: number } {
+  const end = stdout.indexOf(0x0a, at);
+  if (end === -1) throw new Error(`git cat-file --batch output ends before ${spec}`);
+  const header = stdout.toString("utf8", at, end);
+  const object = objectHeader.exec(header);
+  if (object === null) {
+    if (!unreadable.test(header)) {
+      throw new Error(`Unexpected git cat-file output for ${spec}: ${header}`);
+    }
+    return { text: undefined, next: end + 1 };
+  }
+  const start = end + 1;
+  const size = Number(object[2]);
+  if (!Number.isSafeInteger(size) || stdout[start + size] !== 0x0a) {
+    throw new Error(`git cat-file --batch output ends inside ${spec}`);
+  }
+  // Only a blob is a file's text; a submodule's commit is skipped, as one read per file does.
+  const text = object[1] === "blob" ? stdout.toString("utf8", start, start + size) : undefined;
+  return { text, next: start + size + 1 };
 }
 
 /** The commit `head` branched from on `base`'s history. */

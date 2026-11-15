@@ -97,6 +97,25 @@ verifies("check.guard-signed-notes", () => {
     expect(coveredPaths(["x.y"], batched, commit, commit)).toContain("src/a.test.ts");
   });
 
+  test("a submodule path that looks like a blob answer doesn't shift the files after it", () => {
+    const { root, git, commit } = repo();
+    writeFileSync(join(root, "src/z.test.ts"), 'verifies("x.y", () => {});\n');
+    git("add", ".");
+    // One submodule points at a missing commit (a `missing` answer), one at a commit git has.
+    git("update-index", "--add", "--cacheinfo", `160000,${"1".repeat(40)},foo blob 12 x.test.ts`);
+    git("update-index", "--add", "--cacheinfo", `160000,${commit},bar blob 3 y.test.ts`);
+    git("commit", "--quiet", "--no-verify", "-m", "submodules");
+    const head = git("rev-parse", "HEAD");
+    const objects = gitObjects(root);
+    const paths = objects.listFiles(head);
+    expect(paths).toContain("foo blob 12 x.test.ts");
+    const batch = objects.readFiles(head, paths);
+    expect(batch.has("foo blob 12 x.test.ts")).toBe(false);
+    expect(batch.has("bar blob 3 y.test.ts")).toBe(false);
+    expect(batch.get("src/z.test.ts")).toBe('verifies("x.y", () => {});\n');
+    expect(batch.get("src/a.ts")).toBe("export const a = 1;\n");
+  });
+
   test("says how many files it reads", () => {
     const { root, commit } = repo();
     const lines: string[] = [];
