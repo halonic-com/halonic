@@ -95,7 +95,7 @@ export function showingLastList(kind: LibraryItemKind, reason?: string): string 
 }
 
 /** The Try again button's label while it reads. */
-export const tryingAgain = "Trying again";
+export const tryingAgain = "Trying again…";
 
 /**
  * The words the shell's overview page needs for one tab. The empty state holds the tab's one

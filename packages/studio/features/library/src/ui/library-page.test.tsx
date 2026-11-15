@@ -202,4 +202,31 @@ verifies("library.library-page", () => {
     act(() => knowledge?.click());
     expect(page.textContent).not.toContain("Acme refunds");
   });
+  it("shows loading, not the old workspace's rows, when the host changes and the new read fails", async () => {
+    const first = hostWith({ skill: skills });
+    const second = hostWith({ skill: new Error("The workspace folder is gone.") });
+    let swap: () => void = () => undefined;
+    function Swapping() {
+      const [host, setHost] = useState<LibraryItemsHost>(first);
+      swap = () => setHost(second);
+      return (
+        <LibraryPage
+          host={host}
+          kind="skill"
+          onKindChange={() => undefined}
+          onOpen={() => undefined}
+          onOpenInNewTab={() => undefined}
+        />
+      );
+    }
+    const page = render(<Swapping />);
+    await settled();
+    expect(page.textContent).toContain("Acme refunds");
+    act(() => swap());
+    expect(page.textContent).not.toContain("Acme refunds");
+    await settled();
+    expect(page.textContent).not.toContain("Acme refunds");
+    expect(page.textContent).not.toContain("Showing the list from before.");
+    expect(page.textContent).toContain("Couldn't load skills");
+  });
 });

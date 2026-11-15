@@ -32,9 +32,15 @@ export interface LibraryPageProps {
 
 type Load =
   | { readonly state: "loading" }
-  | { readonly state: "failed"; readonly kind: LibraryItemKind; readonly reason?: string }
+  | {
+      readonly state: "failed";
+      readonly host: LibraryItemsHost;
+      readonly kind: LibraryItemKind;
+      readonly reason?: string;
+    }
   | {
       readonly state: "loaded";
+      readonly host: LibraryItemsHost;
       readonly kind: LibraryItemKind;
       readonly listing: LibraryListing;
       /** A later read failed: the list stays, and the page says so above it. */
@@ -65,23 +71,23 @@ function useListing(
       const mine = ++latest;
       const wanted = () => current && mine === latest;
       host.list(kind).then(
-        (listing) => wanted() && setLoad({ state: "loaded", kind, listing }),
+        (listing) => wanted() && setLoad({ state: "loaded", host, kind, listing }),
         (error: unknown) => {
           if (!wanted()) return;
           const reason = failureReason(error, kind);
           const why = reason === undefined ? {} : { reason };
           // A list that was read stays on screen when a later read fails.
           setLoad((was) =>
-            was.state === "loaded" && was.kind === kind
+            was.state === "loaded" && was.host === host && was.kind === kind
               ? { ...was, stale: why, refreshing: false }
-              : { state: "failed", kind, ...why },
+              : { state: "failed", host, kind, ...why },
           );
         },
       );
     };
-    // The same tab's list stays while it is read again; another tab's is not this one's.
+    // The same tab's list stays while it is read again; another tab's, or another workspace's, is not this one's.
     setLoad((was) =>
-      was.state === "loaded" && was.kind === kind
+      was.state === "loaded" && was.host === host && was.kind === kind
         ? { ...was, refreshing: true }
         : { state: "loading" },
     );
@@ -93,9 +99,11 @@ function useListing(
     };
   }, [host, kind, attempt]);
 
-  // A result of the tab just left isn't this tab's: until its own read lands, it is loading.
+  // A result of the tab or workspace just left isn't this one's: until its own read lands, it is loading.
   const load: Load =
-    stored.state !== "loading" && stored.kind !== kind ? { state: "loading" } : stored;
+    stored.state !== "loading" && (stored.host !== host || stored.kind !== kind)
+      ? { state: "loading" }
+      : stored;
   return { load, retry: useCallback(() => setAttempt((count) => count + 1), []) };
 }
 
