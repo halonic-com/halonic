@@ -15,3 +15,6 @@ export function listNames(names: readonly string[], joiner: "and" | "or" = "and"
     type: joiner === "and" ? "conjunction" : "disjunction",
   }).format(names);
 }
+
+/** Where a person removes an app's access in their own Google account. */
+export const googleAccessUrl = "https://myaccount.google.com/permissions";

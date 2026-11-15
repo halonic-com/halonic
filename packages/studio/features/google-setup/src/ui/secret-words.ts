@@ -22,6 +22,13 @@ export function keptLine(keptOn: KeptOn): string {
     : "Kept encrypted on the computer that runs Halonic. Halonic can't show it.";
 }
 
+/** The connector block's Route row: whose Google app it is, and which computer holds its secret. */
+export function routeLine(keptOn: KeptOn): string {
+  return keptOn === "this-computer"
+    ? "Your own Google app, on this computer"
+    : "Your own Google app, on the computer that runs Halonic";
+}
+
 /** The hint under the empty secret field: where Google showed it, then {@link keptLine}. */
 export function entryHint(keptOn: KeptOn): string {
   return `Google showed it next to the client ID. ${keptLine(keptOn)}`;
