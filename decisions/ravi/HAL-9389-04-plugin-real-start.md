@@ -4,6 +4,7 @@
 - Task: HAL-9389
 - Approval: HAL-9389, the code reviewer's choice of option 2 on the pull request (serve the real start only outside the single executable for now, typed refusal inside it); the plan was approved on the same task
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:p5ZzAOlbeDjqj6Ll9xkzZpos1GvJdmmKBP7Dob2gYIogkluWFxXYhdKfr4OwWMnCegm3f6BdzFh+1oQhi3ypBg==
 
 ## What changes
 
