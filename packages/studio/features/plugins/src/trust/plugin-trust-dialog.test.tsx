@@ -230,7 +230,7 @@ verifies("plugins.plugin-trust-check", () => {
     expect(text).toContain(
       "Agents can use these through a connector. Each one asks a person first unless you change that.",
     );
-    expect(text).toContain("its answers are treated as outside text");
+    expect(text).toContain("its answers aren't trusted as instructions");
     expect(text).toContain("npx weather-mcp@1.2.3");
     expect(text).toContain(
       "Runs In a sandbox, in its own empty folder. Without a working sandbox it doesn't run",
@@ -243,7 +243,7 @@ verifies("plugins.plugin-trust-check", () => {
     );
     expect(text).toContain("radar.example.com (the program)");
     expect(text).toContain(
-      "Halonic draws these itself. Text from the plugin is shown as plain text.",
+      "Halonic draws these itself. Text from the plugin never becomes page code; at most it shows basic formatting and web links, each with its address.",
     );
   });
 

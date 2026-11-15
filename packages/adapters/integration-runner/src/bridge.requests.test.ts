@@ -91,6 +91,20 @@ verifies("integration-runner.requests", () => {
       ]);
     });
 
+    it("sends a secret's bearer placement by the secret's name, so the plugin's code never holds the value", async () => {
+      const kit = fakeKitClient(() => new Response("ok"));
+      const { run } = await bridged(async (host) => {
+        await host.http.fetch("https://api.example.com/v1/projects", {
+          auth: { secret: "example-key", as: "bearer" },
+        });
+        return "done";
+      }, kit);
+
+      expect(await run()).toBe("done");
+      expect(kit.sent[0]?.init.auth).toEqual([{ secret: "example-key", as: "bearer" }]);
+      expect(JSON.stringify(kit.sent[0]?.init)).not.toContain("Bearer");
+    });
+
     it("keeps a form a form, so the kit can still place a secret in a field", async () => {
       const kit = fakeKitClient(() => new Response(null, { status: 204 }));
       const { run } = await bridged(async (host) => {
