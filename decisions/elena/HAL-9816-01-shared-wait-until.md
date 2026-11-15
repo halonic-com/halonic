@@ -3,6 +3,7 @@
 - Task: HAL-9816 (follow-up to HAL-9336)
 - Approval: HAL-9816 asks for this change; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:r8c1dYeuCYUO4HnMZVG0HSmHnWYn8cvQ7G4lBixQ5wwltlEpv5qpjP4vNPjGpXThR1NzAgkPYg91aDC6Hw8PDg==
 
 ## What changes
 
