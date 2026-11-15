@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { type AskToolCall, askPolicy, type PathResolver, type ResolvedPath } from "./ask-policy.ts";
 
 const root = "/work/project";
+const SSH_KEY = "/home/me/.ssh/id"; // leak-guard: allow absolute-path fixture path
+const WIN_USER = "C:\\Users\\me"; // leak-guard: allow absolute-path fixture path
 const identity: PathResolver = async (path) => ({ real: path, linked: false });
 const mapped =
   (table: Record<string, ResolvedPath | null>): PathResolver =>
@@ -62,8 +64,7 @@ verifies("app.ask-policy", () => {
     });
 
     it("asks for a path outside the project, and for one that only starts like it", async () => {
-      expect(await run(read("/home/me/.ssh/id"))).toEqual({ // leak-guard: allow absolute-path fixture path
-        // leak-guard: allow absolute-path fixture path
+      expect(await run(read(SSH_KEY))).toEqual({
         decision: "ask",
         reason: "outside-project",
       });
@@ -133,8 +134,20 @@ verifies("app.ask-policy", () => {
     });
   });
 
+  it("asks for an edit of .Claude/settings.json without ignoreCase, as macOS would read it", async () => {
+    expect(await run(edit(`${root}/.Claude/settings.json`), identity, false)).toEqual({
+      decision: "ask",
+      reason: "protected-path",
+    });
+  });
+
+  it("asks for everything when the project root has no segments", async () => {
+    const verdict = await askPolicy(edit("/a.ts"), { projectRoot: "/", resolve: identity });
+    expect(verdict).toEqual({ decision: "ask", reason: "outside-project" });
+  });
+
   describe("on Windows", () => {
-    const windowsRoot = "C:\\Users\\me\\project"; // leak-guard: allow absolute-path fixture path
+    const windowsRoot = `${WIN_USER}\\project`; // leak-guard: allow absolute-path fixture path
     const win = (call: AskToolCall, resolve: PathResolver = identity) =>
       askPolicy(call, { projectRoot: windowsRoot, resolve, windows: true });
 
@@ -150,8 +163,7 @@ verifies("app.ask-policy", () => {
     });
 
     it("asks for a short name the resolver left alone", async () => {
-      expect(await win(read("C:\\Users\\me\\PROJEC~1\\a"))).toEqual({ // leak-guard: allow absolute-path fixture path
-        // leak-guard: allow absolute-path fixture path
+      expect(await win(read(`${WIN_USER}\\PROJEC~1\\a`))).toEqual({
         decision: "ask",
         reason: "short-name",
       });
@@ -159,11 +171,19 @@ verifies("app.ask-policy", () => {
 
     it("ignores letter case, in the project and in the protected list", async () => {
       expect(await win(edit("c:\\users\\ME\\Project\\src\\a.ts"))).toEqual({ decision: "allow" }); // leak-guard: allow absolute-path fixture path
-      expect(await win(edit("C:\\Users\\me\\project\\.GIT\\config"))).toEqual({ // leak-guard: allow absolute-path fixture path
-        // leak-guard: allow absolute-path fixture path
+      expect(await win(edit(`${windowsRoot}\\.GIT\\config`))).toEqual({
         decision: "ask",
         reason: "protected-path",
       });
+    });
+
+    it("asks for a segment that ends in a dot or a space, which Win32 drops", async () => {
+      for (const path of [
+        `${windowsRoot}\\.claude.\\settings.json`,
+        `${windowsRoot}\\.git \\hooks\\x`,
+      ]) {
+        expect(await win(edit(path))).toEqual({ decision: "ask", reason: "trailing-dot-or-space" });
+      }
     });
 
     it("keeps a colon in a POSIX name a plain name", async () => {

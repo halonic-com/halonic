@@ -156,6 +156,12 @@ export const DENIED_RESOLVED_ADDRESSES: readonly string[] = [
  * `.git` a read-only empty folder, so `git init` fails inside the fence. That
  * is on purpose: the program can't create a repository with its own hooks.
  *
+ * The list covers only what runs without the user choosing to run project
+ * code. It does not cover a git repository the program creates in a subfolder
+ * during the session, or project scripts the user runs later (`npm test`,
+ * `make`, a build file). Such a repository still runs its settings on the
+ * user's `git status` once the program adds it to the index (HAL-3493).
+ *
  * The session adds the git files only it can find at start, such as each
  * submodule's and each nested clone's settings (see `gitPathsToDeny`).
  */

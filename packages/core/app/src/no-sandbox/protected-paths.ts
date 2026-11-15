@@ -76,11 +76,13 @@ export const askProtectedPaths: readonly PathSegments[] = [...writeFencedPaths, 
  * segment is anywhere in it. The `.git` rule has no list to keep up to date:
  * a repository or submodule made during the session is covered too.
  *
- * @param ignoreCase `true` where the file system ignores letter case (Windows, macOS by default)
+ * Letter case is always ignored. A missing part keeps the case it was typed
+ * in, so no real-path lookup can fix it, and on a file system that ignores
+ * case (Windows, macOS by default) `.Claude` is `.claude`. Asking once too
+ * often costs a click; missing a match plants a hook.
  */
-export function isProtectedPath(inside: PathSegments, ignoreCase: boolean): boolean {
-  const same = (a: string, b: string): boolean =>
-    ignoreCase ? a.toLowerCase() === b.toLowerCase() : a === b;
+export function isProtectedPath(inside: PathSegments): boolean {
+  const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
   if (inside.some((segment) => same(segment, ".git"))) return true;
   return askProtectedPaths.some((entry) =>
     entry.every((segment, index) => index < inside.length && same(inside[index] ?? "", segment)),

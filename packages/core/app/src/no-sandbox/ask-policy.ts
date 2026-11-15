@@ -31,7 +31,8 @@ export type AskReason =
   | "outside-project"
   | "protected-path"
   | "linked-file"
-  | "short-name";
+  | "short-name"
+  | "trailing-dot-or-space";
 
 export type RefuseReason = "device-path" | "network-path" | "alternate-stream";
 
@@ -46,7 +47,7 @@ export interface AskPolicyOptions {
   readonly resolve: PathResolver;
   /** Windows: a drive or UNC path, short names and streams. Defaults to `false`. */
   readonly windows?: boolean;
-  /** `true` where the file system ignores letter case. Defaults to `windows`. */
+  /** `true` where the file system ignores letter case. Defaults to `windows`. Only the inside-the-project check uses it: protected paths always ignore case. */
   readonly ignoreCase?: boolean;
 }
 
@@ -66,7 +67,24 @@ function refusedForm(path: string, windows: boolean): AskVerdict | null {
   return null;
 }
 
+const endsInDotOrSpace = (segment: string): boolean =>
+  segment !== "." && segment !== ".." && /[. ]$/.test(segment);
+
 const isAbsolutePath = (path: string): boolean => /^([\\/]|[A-Za-z]:[\\/])/.test(path);
+
+/** What the path's spelling alone gives, before any link is followed. */
+function verdictFromPathForm(path: string, windows: boolean): AskVerdict | null {
+  const refused = refusedForm(path, windows);
+  if (refused !== null) return refused;
+  if (!isAbsolutePath(path)) return ask("relative-path");
+  if (!windows) return null;
+  const segments = segmentsOf(path);
+  // A short name (`PROGRA~1`) is expanded by the resolver; one it left alone still hides what it names.
+  if (segments.some((segment) => /~\d/.test(segment))) return ask("short-name");
+  // Win32 drops trailing dots and spaces, so `.claude.` can be written as `.claude`.
+  if (segments.some(endsInDotOrSpace)) return ask("trailing-dot-or-space");
+  return null;
+}
 
 /**
  * Answers `allow` for a read or an edit that is inside the project after the
@@ -84,13 +102,8 @@ export async function askPolicy(call: AskToolCall, options: AskPolicyOptions): P
   if (call.kind === "other") return ask("other-tool");
   const windows = options.windows ?? false;
   const ignoreCase = options.ignoreCase ?? windows;
-  const refused = refusedForm(call.path, windows);
-  if (refused !== null) return refused;
-  if (!isAbsolutePath(call.path)) return ask("relative-path");
-  // A short name (`PROGRA~1`) is expanded by the resolver; one it left alone still hides what it names.
-  if (windows && segmentsOf(call.path).some((segment) => /~\d/.test(segment))) {
-    return ask("short-name");
-  }
+  const early = verdictFromPathForm(call.path, windows);
+  if (early !== null) return early;
   let resolved: ResolvedPath | null;
   try {
     resolved = await options.resolve(call.path);
@@ -99,6 +112,7 @@ export async function askPolicy(call: AskToolCall, options: AskPolicyOptions): P
   }
   if (resolved === null) return ask("unresolved");
   const root = segmentsOf(options.projectRoot);
+  if (root.length === 0) return ask("outside-project"); // `/` would make every path inside
   const real = segmentsOf(resolved.real);
   const same = (a: string, b: string): boolean =>
     ignoreCase ? a.toLowerCase() === b.toLowerCase() : a === b;
@@ -107,7 +121,7 @@ export async function askPolicy(call: AskToolCall, options: AskPolicyOptions): P
   );
   if (!isInside) return ask("outside-project");
   if (call.kind === "edit") {
-    if (isProtectedPath(real.slice(root.length), ignoreCase)) return ask("protected-path");
+    if (isProtectedPath(real.slice(root.length))) return ask("protected-path");
   }
   if (resolved.linked) return ask("linked-file");
   return { decision: "allow" };
