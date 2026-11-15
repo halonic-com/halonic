@@ -17,9 +17,15 @@ test.use({ viewport: { width: 1440, height: 900 } });
 for (const state of states) {
   for (const scheme of schemes) {
     test(`run card, ${state}, ${scheme}`, async ({ page }) => {
+      const problems: string[] = [];
+      page.on("pageerror", (error) => problems.push(error.message));
+      page.on("requestfailed", (request) => problems.push(`${request.url()} failed`));
       await page.emulateMedia({ colorScheme: scheme });
       await page.goto(`/run-card.html?state=${state}`);
-      await expect(page.getByRole("complementary", { name: "Run 01jd8q" })).toBeVisible();
+      await expect(
+        page.getByRole("complementary", { name: "Run 01jd8q" }),
+        problems.join("; ") || "the page threw nothing",
+      ).toBeVisible();
       await page.screenshot({
         path: `test-results/screenshots/run-card-${state}-${scheme}.png`,
         fullPage: true,
