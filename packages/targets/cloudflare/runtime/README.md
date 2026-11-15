@@ -55,9 +55,14 @@ name, such as a preview address, or with an `Origin`, never reaches a route. A m
 | `PUT /admin/import/files/<path>` | the file's bytes as the body, `<path>` in the same three shapes | 204; the file is only staged |
 | `POST /admin/import` | the manifest as JSON | 200 `{"imported":{"runs":n,"records":n,"blobs":n}}` once every staged file matches the manifest's size and SHA-256 and is applied; 409 `{"code":"files_missing" or "files_differ","paths":[...]}` and nothing applied otherwise |
 
-Today every one of these routes answers 501 `{"code":"not_implemented"}` after the key check: the answers come
-in the next parts of HAL-9486, with the paths and shapes above unchanged. The CLI side can be written
-against this table now.
+The two export routes answer now. `GET /admin/export` reads one file at a time to measure it, so a large
+deployment takes a while. The export holds every run log, every collection's record log except the sign-in
+tokens' and every blob; no secret store is in it. A run log or record log that holds something shaped like a
+secret stops the export: the manifest and that file answer 409 `{"code":"secret_found","path":"...","shape":"..."}`,
+naming the file and the kind, never the text (requirement `runtime.export-data`).
+
+The two import routes still answer 501 `{"code":"not_implemented"}` after the key check: they come in the
+next part of HAL-9486, with the paths and shapes above unchanged.
 
 ## Durable Object classes
 

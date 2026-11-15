@@ -159,11 +159,23 @@ verifies("runtime.admin-key", () => {
       expect((await put("/admin/files/"))?.status).toBe(404);
     });
 
-    it("answers 501 on every export and import route until they are built", async () => {
+    it("guards the export routes with the key and takes only GET on them", async () => {
+      const env = await envWithKey();
+      for (const path of ["/admin/export", "/admin/export/files/runs/r1.jsonl"]) {
+        const withoutKey = await answerAdmin(call(path, {}), env, recording);
+        expect(withoutKey?.status, `GET ${path} without the key`).toBe(401);
+        const wrongMethod = await answerAdmin(
+          call(path, { authorization: `Bearer ${key}` }, "POST"),
+          env,
+          recording,
+        );
+        expect(wrongMethod?.status, `POST ${path}`).toBe(404);
+      }
+    });
+
+    it("answers 501 on every import route until it is built", async () => {
       const env = await envWithKey();
       for (const [method, path] of [
-        ["GET", "/admin/export"],
-        ["GET", "/admin/export/files/runs/r1.jsonl"],
         ["PUT", "/admin/import/files/runs/r1.jsonl"],
         ["POST", "/admin/import"],
       ] as const) {

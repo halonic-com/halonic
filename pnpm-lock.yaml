@@ -2943,6 +2943,9 @@ importers:
       '@halonicjs/adapter-token-store':
         specifier: workspace:*
         version: link:../../../adapters/token-store
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../../core/format
       '@halonicjs/host-server':
         specifier: workspace:*
         version: link:../../../host/server
