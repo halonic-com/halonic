@@ -294,6 +294,7 @@ export {
   ProgramCopyUnavailableError,
   type ProgramCopyVcs,
 } from "./program-copies.ts";
+export { type Reference, referencesTo } from "./references-to.ts";
 export { refusalStatusLine } from "./refusal-status.ts";
 export {
   type DataFolder,

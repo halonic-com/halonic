@@ -34,7 +34,7 @@ export interface ItemUsage {
 }
 
 /** The agent and hub field that lists each kind of item. */
-const LISTING_FIELD = {
+export const LISTING_FIELD = {
   skill: "skills",
   knowledge: "knowledge",
   collection: "collections",
@@ -53,15 +53,7 @@ const LISTING_FIELD = {
 export function whoUses(workspace: LoadedWorkspace, item: LibraryItemRef): ItemUsage {
   const field = LISTING_FIELD[item.kind];
   const listsIt = (ids: readonly string[]) => ids.includes(item.id);
-  const hubsWithOwn = new Set(
-    item.hub === null
-      ? filesOf(workspace, item.kind)
-          .filter((file) => file.value.id === item.id && file.hub !== null)
-          .map((file) => file.hub)
-      : [],
-  );
-  const inReach = (hub: string | null) =>
-    item.hub === null ? hub === null || !hubsWithOwn.has(hub) : hub === item.hub;
+  const inReach = reachOf(workspace, item);
 
   const agents = filesOf(workspace, "agent")
     .filter((file) => inReach(file.hub) && listsIt(file.value[field]))
@@ -94,6 +86,25 @@ export function whoUses(workspace: LoadedWorkspace, item: LibraryItemRef): ItemU
       : [];
 
   return { agents, hubs, routines, collections };
+}
+
+/**
+ * Whether a file in a hub (or at the root, `null`) sees the item: a hub's own
+ * item only from inside that hub; a shared item from the root and from every
+ * hub that has no item of its own with that id.
+ */
+export function reachOf(
+  workspace: LoadedWorkspace,
+  item: LibraryItemRef,
+): (hub: string | null) => boolean {
+  const hubsWithOwn = new Set(
+    item.hub === null
+      ? filesOf(workspace, item.kind)
+          .filter((file) => file.value.id === item.id && file.hub !== null)
+          .map((file) => file.hub)
+      : [],
+  );
+  return (hub) => (item.hub === null ? hub === null || !hubsWithOwn.has(hub) : hub === item.hub);
 }
 
 function usage(value: { readonly id: string; readonly name: string }, hub: string | null): Usage {
