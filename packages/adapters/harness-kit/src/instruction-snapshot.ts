@@ -6,7 +6,7 @@
 // workspace trust check).
 
 import { createHash } from "node:crypto";
-import { chmod, mkdir, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { contentDigest, type Sha256 } from "@halonicjs/std";
 
@@ -41,6 +41,10 @@ export type InstructionTrust =
 export interface InstructionDisk {
   /** Writes a new file, creating its folder, that nobody can change afterwards. Throws when it already exists. */
   writeReadOnly(path: string, text: string): Promise<void>;
+  /** Makes a new, empty folder only the user's, named `prefix` and a random end, and gives its path. */
+  makeFreshFolder(prefix: string): Promise<string>;
+  /** Removes a folder and the read-only files in it; a folder that isn't there is fine. */
+  removeFolder(path: string): Promise<void>;
 }
 
 /** This computer's disk. The mode means little on Windows, where the sandbox's read-only rule is what holds. */
@@ -50,6 +54,12 @@ export const instructionDiskOnThisComputer: InstructionDisk = {
     // `wx`: a run's folder is new, so a file that is there is a mistake, never a rewrite.
     await writeFile(path, text, { encoding: "utf8", flag: "wx", mode: 0o444 });
     await chmod(path, 0o444);
+  },
+  // `mkdtemp` makes the folder with mode 700. On Windows the mode means nothing.
+  makeFreshFolder: (prefix) => mkdtemp(prefix),
+  async removeFolder(path) {
+    // Node clears a read-only file's flag on Windows when removing it, so the copies can go.
+    await rm(path, { recursive: true, force: true, maxRetries: 3 });
   },
 };
 
@@ -132,6 +142,38 @@ export async function copyInstructions(
   for (const file of files)
     await disk.writeReadOnly(join(folder, ...file.name.split("/")), file.text);
   return pin;
+}
+
+/** A run's instructions as they were written: where, and what they were. */
+export interface InstructionSnapshot {
+  /** The run's own new folder; the files are in it under their names. */
+  readonly folder: string;
+  readonly pin: InstructionPin;
+}
+
+/**
+ * Copies the instructions into a new folder of the run's own, made in `root`.
+ * When any file can't be written, the folder is removed again, so a run never
+ * starts with part of its instructions.
+ *
+ * @param root - the run's folder in Halonic's data folder, where the new folder goes; it must already exist (`mkdtemp` does not create it)
+ * @throws the first error, whether from the names or from the disk
+ */
+export async function snapshotInstructions(
+  root: string,
+  files: readonly InstructionFile[],
+  disk: InstructionDisk = instructionDiskOnThisComputer,
+): Promise<InstructionSnapshot> {
+  // Names are checked before the folder is made, so a bad name leaves nothing behind.
+  await pinInstructions(files);
+  const folder = await disk.makeFreshFolder(join(root, "instructions-"));
+  try {
+    return { folder, pin: await copyInstructions(folder, files, disk) };
+  } catch (error) {
+    // The copy's own error is the one worth reporting; a folder that can't be removed is left behind in the run's folder.
+    await disk.removeFolder(folder).catch(() => undefined);
+    throw error;
+  }
 }
 
 /** One line for the run log: which instructions the run had. */
