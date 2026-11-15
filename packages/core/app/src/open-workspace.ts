@@ -1,6 +1,7 @@
 import type { DefinitionStore, Digest } from "@halonicjs/ports";
 import type { ListenerErrorHandler } from "./event-bus.ts";
 import { ReviewService } from "./review-service.ts";
+import type { Trash } from "./review-types.ts";
 import { ReviewingDefinitionStore } from "./reviewing-store.ts";
 import { serviceKey } from "./service-registry.ts";
 import { WorkspaceFiles } from "./workspace-files.ts";
@@ -29,6 +30,11 @@ export interface OpenWorkspaceOptions {
    * asks for: while it isn't, the assistant may write only Halonic items.
    */
   isTrusted: () => boolean;
+  /**
+   * Where a saved delete goes, so its text is kept (save model 4.2). It must
+   * work over the same store as `store`. Without it a delete removes the file.
+   */
+  trash?: Trash;
   /** Receives the error of an event listener that threw; see {@link WorkspaceScopeOptions}. */
   onListenerError: ListenerErrorHandler;
 }
@@ -63,15 +69,22 @@ export function openWorkspace(options: OpenWorkspaceOptions): WorkspaceScope {
       records: options.reviewRecords,
       digest: options.digest,
       isTrusted: options.isTrusted,
+      ...(options.trash === undefined ? {} : { trash: options.trash }),
       onListenerError: options.onListenerError,
     }),
   );
   // Everything but the review service writes through the review service's
   // write hook, so a reviewed file's baseline moves along with every edit.
   const store = new ReviewingDefinitionStore(options.store, review.writer);
+  // A saved delete goes to the trash the same way: through the write hook.
+  const { trash } = options;
+  const reviewedTrash: Trash | undefined =
+    trash === undefined
+      ? undefined
+      : { moveToTrash: store.moveToTrash, restore: (id) => trash.restore(id) };
   const files = scope.services.provide(
     workspaceFilesKey,
-    new WorkspaceFiles(store, scope.events, options.digest),
+    new WorkspaceFiles(store, scope.events, options.digest, reviewedTrash),
   );
   scope.commands.register("workspace.save", () => files.save());
   scope.commands.register("workspace.undo", () => files.undo());

@@ -3,16 +3,25 @@
 // an edit elsewhere in the file never shows up as the assistant's, and an
 // edit inside one of the assistant's changes accepts it.
 
-import type { RemoveOptions, RemoveResult, WriteOptions, WriteResult } from "@halonicjs/ports";
+import type {
+  ExpectedContent,
+  RemoveOptions,
+  RemoveResult,
+  WriteOptions,
+  WriteResult,
+} from "@halonicjs/ports";
 import { mergedText, mergeLines } from "@halonicjs/std";
 import { catchUp } from "./review-catch-up.ts";
 import type { ReviewFiles } from "./review-files.ts";
 import type { ReviewRecord } from "./review-record.ts";
+import type { Trash } from "./review-types.ts";
 
 /** Who carries out the writes a `ReviewingDefinitionStore` passes on: the review service's write hook. */
 export interface FileWriter {
   write(path: string, content: string, options?: WriteOptions): Promise<WriteResult>;
   remove(path: string, options?: RemoveOptions): Promise<RemoveResult>;
+  /** Moves the file into the trash, as {@link Trash.moveToTrash}, moving a reviewed file's baseline along like `remove`. */
+  moveToTrash: Trash["moveToTrash"];
 }
 
 /**
@@ -55,6 +64,25 @@ export class ReviewWriteHook implements FileWriter {
       await this.catchUp(path, before);
       const result = await this.files.store.remove(path, options);
       if (result.status === "removed") {
+        await this.moveBaseline(path, before, null);
+      }
+      return result;
+    });
+  }
+
+  moveToTrash(path: string, expected?: ExpectedContent): ReturnType<Trash["moveToTrash"]> {
+    return this.files.turn(path, async () => {
+      if (!(await this.files.hasRecord(path))) {
+        return this.files.trash().moveToTrash(path, expected);
+      }
+      const before = await this.files.store.read(path);
+      if (before === null) {
+        // Already gone: nothing moves, so the record stays as it is.
+        return this.files.trash().moveToTrash(path, expected);
+      }
+      await this.catchUp(path, before);
+      const result = await this.files.trash().moveToTrash(path, expected);
+      if (result.status === "done") {
         await this.moveBaseline(path, before, null);
       }
       return result;

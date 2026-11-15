@@ -4,6 +4,7 @@ import { expect, it } from "vitest";
 import { openWorkspace, workspaceFilesKey } from "./open-workspace.ts";
 import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
 import { ModelHistory, modelPaths, randomStep, seededRandom } from "./testing/model-history.ts";
+import { TestTrash } from "./testing/test-trash.ts";
 import { ChangedOnDiskError } from "./workspace-files.ts";
 
 const workflowPath = "hubs/p/workflows/f.workflow.yaml";
@@ -337,5 +338,71 @@ verifies("app.workspace-list", () => {
     files.change("Changed models", { "models.yaml": "m2" });
 
     expect(await files.list("providers")).toEqual(["providers/a.yaml", "providers/b.yaml"]);
+  });
+});
+
+verifies("app.workspace-delete-to-trash", () => {
+  it("moves a saved delete into the trash, and keeps the text", async () => {
+    const store = new TestDefinitionStore({ [workflowPath]: workflow }, digest);
+    const trash = new TestTrash(store, digest);
+    const scope = openWorkspace({
+      store,
+      trash,
+      reviewRecords: new TestDefinitionStore({}),
+      digest,
+      isTrusted: () => true,
+      onListenerError: (error) => {
+        throw error;
+      },
+    });
+    const files = scope.services.get(workspaceFilesKey);
+    await files.read(workflowPath);
+    files.change("Deleted f", { [workflowPath]: null });
+    expect(await files.save()).toBe(1);
+    expect(await store.read(workflowPath)).toBeNull();
+    expect([...trash.entries.values()]).toEqual([{ path: workflowPath, content: workflow }]);
+  });
+
+  it("does not delete a file that changed outside Halonic", async () => {
+    const store = new TestDefinitionStore({ [workflowPath]: workflow }, digest);
+    const trash = new TestTrash(store, digest);
+    const scope = openWorkspace({
+      store,
+      trash,
+      reviewRecords: new TestDefinitionStore({}),
+      digest,
+      isTrusted: () => true,
+      onListenerError: (error) => {
+        throw error;
+      },
+    });
+    const files = scope.services.get(workspaceFilesKey);
+    await files.read(workflowPath);
+    await store.write(workflowPath, "other: 1\n");
+    files.change("Deleted f", { [workflowPath]: null });
+    await expect(files.save()).rejects.toBeInstanceOf(ChangedOnDiskError);
+    expect(await store.read(workflowPath)).toBe("other: 1\n");
+    expect(trash.entries.size).toBe(0);
+  });
+
+  it("undoes a saved delete by writing the file back", async () => {
+    const store = new TestDefinitionStore({ [workflowPath]: workflow }, digest);
+    const scope = openWorkspace({
+      store,
+      trash: new TestTrash(store, digest),
+      reviewRecords: new TestDefinitionStore({}),
+      digest,
+      isTrusted: () => true,
+      onListenerError: (error) => {
+        throw error;
+      },
+    });
+    const files = scope.services.get(workspaceFilesKey);
+    await files.read(workflowPath);
+    files.change("Deleted f", { [workflowPath]: null });
+    await files.save();
+    expect(files.undo()).toBe(true);
+    await files.save();
+    expect(await store.read(workflowPath)).toBe(workflow);
   });
 });
