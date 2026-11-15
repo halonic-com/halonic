@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, expect, it, vi } from "vitest";
 import { OpenFolderAssistant } from "./assistant-workspace.ts";
 
@@ -28,7 +28,8 @@ const providerYaml = (secret: string) =>
 
 /** Waits for the first read, which the constructor starts. */
 async function settled(assistant: OpenFolderAssistant) {
-  await vi.waitFor(() => expect(assistant.current()).not.toBeNull());
+  await waitUntil("assistant.current() not to be null", () => assistant.current() !== null);
+  expect(assistant.current()).not.toBeNull();
   return assistant;
 }
 
@@ -73,7 +74,8 @@ verifies("settings.ai-agent-key-line", () => {
     expect(heard).not.toHaveBeenCalled();
     await writeFile(join(folder, "workspace.yaml"), workspaceYaml("privacy:\n  localOnly: true\n"));
     changed();
-    await vi.waitFor(() => expect(heard).toHaveBeenCalledTimes(1));
+    await waitUntil("heard to be called once", () => heard.mock.calls.length === 1);
+    expect(heard).toHaveBeenCalledTimes(1);
     expect(assistant.current()?.localOnly).toBe(true);
     assistant.dispose();
   });

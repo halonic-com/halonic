@@ -14,7 +14,7 @@ import { RecentWorkspaces } from "@halonicjs/studio-feature-workspace";
 import { WorkspacePageService } from "@halonicjs/studio-feature-workspace/api";
 import { hostSettingsStoreKey, secretsKey, tokenStoreKey } from "@halonicjs/studio-services";
 import { createShell } from "@halonicjs/studio-shell";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   desktopFeatures,
@@ -44,6 +44,10 @@ function desktopMediaQueries(query: string): MediaQueryList {
 /** The window's tabs and its heading, which React draws in the same pass. */
 const tabsSelector = '[role="tablist"][aria-label="Open tabs"]';
 const headingSelector = "main h1";
+
+const title = (el: Element) => el.querySelector("h1")?.textContent;
+const headingShown = (el: Element) =>
+  waitUntil("the Studio heading", () => title(el) === "Halonic Studio");
 
 /**
  * Waits until React has drawn the window's tabs and heading. React draws on its own schedule,
@@ -273,7 +277,8 @@ verifies("studio.open-folder", () => {
       userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
       storage,
     });
-    await vi.waitFor(() => expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio"));
+    await headingShown(element);
+    expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio");
     expect(started.host).toBe("desktop-app");
 
     element.querySelector("button")?.click();
@@ -297,7 +302,8 @@ verifies("studio.open-folder", () => {
       userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
       storage,
     });
-    await vi.waitFor(() => expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio"));
+    await headingShown(element);
+    expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio");
 
     const row = [...element.querySelectorAll("button")].find((button) =>
       button.textContent?.includes("/work/acme"),
@@ -415,9 +421,10 @@ verifies("studio.settings", () => {
         },
         desktopFeatures,
       );
-      await vi.waitFor(() => expect(element.querySelector("button")).not.toBeNull(), {
+      await waitUntil("a button", () => element.querySelector("button") !== null, {
         timeout: settingsWait,
       });
+      expect(element.querySelector("button")).not.toBeNull();
       element.querySelector("button")?.click();
       await drawn(element);
 

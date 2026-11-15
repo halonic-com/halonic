@@ -1,5 +1,6 @@
+import { isDeepStrictEqual } from "node:util";
 import { createToastStore, type ToastStore } from "@halonicjs/studio-kit";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { beforeEach, expect, it, vi } from "vitest";
 import { couldNotSaveText, SaveState, type SavingItem } from "./save-state.ts";
 
@@ -69,7 +70,10 @@ verifies("shell.save-state", () => {
     await saving.save(supportReply, write);
 
     saving.tryAgain();
-    await vi.waitFor(() => expect(saving.note).toEqual({ kind: "saved" }));
+    await waitUntil(`saving.note to equal { kind: "saved" }`, () =>
+      isDeepStrictEqual(saving.note, { kind: "saved" }),
+    );
+    expect(saving.note).toEqual({ kind: "saved" });
     expect(write).toHaveBeenCalledTimes(2);
     expect(toasts.list()).toEqual([]);
   });
@@ -82,7 +86,10 @@ verifies("shell.save-state", () => {
     await saving.save(supportReply, write);
 
     toasts.list()[0]?.action?.onClick();
-    await vi.waitFor(() => expect(saving.note).toEqual({ kind: "saved" }));
+    await waitUntil(`saving.note to equal { kind: "saved" }`, () =>
+      isDeepStrictEqual(saving.note, { kind: "saved" }),
+    );
+    expect(saving.note).toEqual({ kind: "saved" });
     expect(write).toHaveBeenCalledTimes(2);
   });
 
@@ -115,7 +122,10 @@ verifies("shell.save-state", () => {
     expect(saving.note).toEqual(failedNote(1, supportReply));
 
     saving.tryAgain();
-    await vi.waitFor(() => expect(saving.note).toEqual({ kind: "saved" }));
+    await waitUntil(`saving.note to equal { kind: "saved" }`, () =>
+      isDeepStrictEqual(saving.note, { kind: "saved" }),
+    );
+    expect(saving.note).toEqual({ kind: "saved" });
     expect(newerWrite).toHaveBeenCalledTimes(2);
   });
 

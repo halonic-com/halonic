@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { closeLimitMs, type StartedStudio, startStudio } from "./start-studio.ts";
 
@@ -72,11 +72,16 @@ verifies("studio.entry", () => {
   it("stops the Studio, then closes the desktop window, when the person closes it", async () => {
     const webview = closableWebview();
     started = startStudio({ element, window: webview.page, userAgent: "Mozilla/5.0 (X11; Linux)" });
-    await vi.waitFor(() => expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio"));
+    await waitUntil(
+      `element.querySelector("h1")?.textContent to be "Halonic Studio"`,
+      () => element.querySelector("h1")?.textContent === "Halonic Studio",
+    );
+    expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio");
 
     webview.press();
 
-    await vi.waitFor(() => expect(webview.destroyed()).toHaveLength(1));
+    await waitUntil("webview.destroyed() to have length 1", () => webview.destroyed().length === 1);
+    expect(webview.destroyed()).toHaveLength(1);
     expect(element.querySelector("h1")).toBeNull();
     expect(webview.calls.map((call) => call.command)).toContain("plugin:event|unlisten");
   });
