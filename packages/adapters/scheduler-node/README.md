@@ -37,7 +37,6 @@ store; on a server, pass the real store and `systemSetTimer`, which comes from
 ```ts
 import { ManualClock, MemoryRecordStore } from "@halonicjs/adapter-memory";
 import { nodeSchedulerFactory } from "@halonicjs/adapter-scheduler-node";
-// A server also imports: import { systemSetTimer } from "@halonicjs/adapter-scheduler-node/node";
 
 /** Sets a timer, restarts the scheduler on the same store, and gets the timer delivered. */
 export async function runExample(): Promise<{
