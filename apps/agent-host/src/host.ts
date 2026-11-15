@@ -141,6 +141,7 @@ export async function run(
     places,
     profileGoogleSetup(profileFolder, places.workspaceRoots),
     optionalProfileOf(profileFolder),
+    args.includes("--stdio") ? relayPortOf(args) : undefined,
   );
   try {
     if (args.includes("--stdio")) return await serveOverFrames(args, io, host);
@@ -273,9 +274,8 @@ async function serveOverFrames(
   io: HostIo,
   host: HostServices,
 ): Promise<number> {
-  const relayHost = args[args.indexOf("--relay-host") + 1] ?? "";
-  const relayPort = Number(relayHostPattern.exec(relayHost)?.[1] ?? 0);
-  if (relayPort === 0 || relayPort > 65_535) {
+  const relayPort = relayPortOf(args);
+  if (relayPort === undefined) {
     io.writeError("The agent host needs --relay-host 127.0.0.1:<port> with --stdio.\n");
     return 2;
   }
@@ -293,6 +293,13 @@ async function serveOverFrames(
   return 1;
 }
 
+/** The port `--relay-host` names, or `undefined` when it is missing or isn't `127.0.0.1:<port>`. */
+function relayPortOf(args: readonly string[]): number | undefined {
+  const relayHost = args[args.indexOf("--relay-host") + 1] ?? "";
+  const port = Number(relayHostPattern.exec(relayHost)?.[1] ?? 0);
+  return port === 0 || port > 65_535 ? undefined : port;
+}
+
 /** The routes the host serves, and how to stop all they started. */
 interface HostServices {
   routes: HostRoute[];
@@ -307,6 +314,7 @@ interface HostServices {
  * @param connectors - the folders the launcher named as workspaces, what a workspace connector's program may never reach, and the trust records it is checked against
  * @param google - the Google setup of the profile, or `undefined` without a profile folder (no Google route is served)
  * @param profile - the profile folder plugins and their trust are read from; `undefined` without one, and then no plugin call is served
+ * @param relayPort - the relay's port in `--stdio` mode, which the Google sign-in's redirect names; `undefined` when the host listens on its own port
  */
 function hostServices(
   version: string,
@@ -315,6 +323,7 @@ function hostServices(
   connectors: ReturnType<typeof connectorPlaces>,
   google: GoogleSetupPorts | undefined,
   profile: ProfileFolder | undefined,
+  relayPort: number | undefined,
 ): HostServices {
   const sessions = new SessionTable();
   const listeningPorts = new Set<number>();
@@ -354,7 +363,11 @@ function hostServices(
     ),
     ...(google === undefined
       ? []
-      : googleRoutes({ google, log: (text) => process.stderr.write(text) })),
+      : googleRoutes({
+          google,
+          log: (text) => process.stderr.write(text),
+          ...(relayPort === undefined ? {} : { relayPort }),
+        })),
     ...(plugins === undefined ? [] : pluginRoutes({ plugins: plugins.table, log: logToError })),
     signInRoute({ harnesses, openTerminal: (command) => openTerminal(command) }),
   ];

@@ -315,8 +315,46 @@ request names the account by a ref that is checked before anything is read. A
 sandboxed agent has no way to the launch token, which stays in the shell, and
 none to the profile folder, which the sandbox denies. A request that holds the
 token can disconnect an account, which removes access and grants none. The
-sign-in's callback, which has no token by design, is not served here yet (see
-the ADR `2026-11-14-google-sign-in-and-the-setup-record`).
+sign-in's callback has no token by design (see the ADR
+`2026-11-14-google-sign-in-and-the-setup-record`), and the host serves it in
+both modes, with the same route table and the same checks (`Host`, `Origin`,
+the sign-in's `state`). On the host's own port Google's redirect names that
+port and `/api/google/callback`. In WSL (`--stdio`) the host has no port, so
+the redirect names Studio's relay on Windows' loopback and
+`/v1/google/callback`, the one request the relay passes on without the token
+(`studio.src-tauri.crates.agent-host.relay-callback`: one request, no body, no
+reuse of the connection, at most 4 at once). The callback page is sent with
+`Cache-Control: no-store`, `Referrer-Policy: no-referrer` and
+`Connection: close`, and loads nothing outside itself, because the code is in
+the address bar and the history (`agent-host.google-callback-over-frames`).
+
+What the callback answers to, in relay mode as on the host's own port:
+
+- **A web page makes the browser call the callback.** The `Host` check (the
+  loopback name with the relay's port) stops DNS rebinding, and the `Origin`
+  refusal stops `fetch` and XHR, which carry one. It does not stop an `<img>`,
+  a top-level navigation or a `no-cors` GET, which carry no `Origin`; against
+  those the `state` is the whole defence: 32 random bytes, checked first,
+  compared in constant time, and the pending sign-in is taken once. A wrong
+  `state` gets the "no longer valid" page and changes nothing. `Sec-Fetch-Site`
+  is not used, because Google's redirect is itself cross-site.
+- **Another program on Windows sends a forged callback.** The same `state`
+  answer. Any local process can open the callback, as on the host's own port;
+  that is the accepted model of the ADR.
+- **Another program takes the relay's port after a relay crash and reads a real
+  callback.** It would see the code and the `state`. The sign-in uses PKCE
+  (S256), and the verifier stays in the host's memory, so the code is useless
+  without it. The pending sign-in goes with the host: a restart ends it, and
+  the page says the link is no longer valid.
+- **Request smuggling through the relay's narrow filter.** The relay passes
+  exactly the bytes up to the first blank line and stops reading the client;
+  the host answers with `Connection: close`, so the connection ends with the
+  one answer. Tests send a second request in the same write (relay) and a
+  callback that must close without waiting for `keepAliveTimeout` (host).
+- **The distro's other programs reach the relay port.** The host in the distro
+  already holds the launch token; it gets no more than a token-less `GET` that
+  it serves itself. Under mirrored networking another distro can reach the
+  relay port too, and the same `state` answer applies.
 
 A trusted plugin's backend (`agent-host.plugin-routes`) starts the same way,
 through `POST /v1/plugins/call`: the request names the plugin by an id of
