@@ -2,6 +2,19 @@
  * The services and types other features may use. Features import each
  * other only through this file.
  */
+
+export {
+  type CollectionCellEdit,
+  type CollectionChip,
+  type CollectionColumn,
+  type CollectionGridData,
+  type CollectionHost,
+  CollectionHostService,
+  type CollectionNewRow,
+  type CollectionRef,
+  type CollectionRow,
+  type CollectionSource,
+} from "./collection-host.ts";
 export {
   type ConnectionState,
   type ConnectionTone,
