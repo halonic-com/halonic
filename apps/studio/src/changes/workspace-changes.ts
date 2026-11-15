@@ -175,7 +175,7 @@ function firstLine(text: string): string {
 function knownGitProblem(answer: GitAnswer): string | null {
   const said = `${answer.stderr}\n${answer.stdout}`;
   if (/dubious ownership|safe\.directory/i.test(said)) {
-    return "Git won't open this workspace because another user owns its folder. Run git config --global --add safe.directory with this folder's path to allow it, then try again.";
+    return "Git won't open this workspace because another user owns its folder. Run git config --global --add safe.directory with the path of the folder git names to allow it, then try again.";
   }
   if (/index\.lock|another git process/i.test(said)) {
     return "Another program is using this workspace's history right now. Wait a moment, then try again.";
@@ -194,8 +194,6 @@ function readableProblem(answer: GitAnswer): string {
 /** Why a version couldn't be created, as one plain sentence: git's own output is never shown. */
 function gitReason(answer: GitAnswer): string {
   const said = `${answer.stderr}\n${answer.stdout}`;
-  const known = knownGitProblem(answer);
-  if (known !== null) return known;
   if (/tell me who you are|empty ident name|author identity unknown/i.test(said)) {
     return "Git doesn't know who versions should be from. Set your name and email in git, then try again.";
   }
@@ -205,7 +203,7 @@ function gitReason(answer: GitAnswer): string {
   if (/hook|permission denied|operation not permitted|read-only/i.test(said)) {
     return "Git refused to record the version. A check on this workspace or a permission stopped it.";
   }
-  return "Git didn't accept the version.";
+  return knownGitProblem(answer) ?? "Git didn't accept the version.";
 }
 
 /** Whether the shell refused because it found no git program (`GitRefusal.kind`). */

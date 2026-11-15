@@ -347,6 +347,17 @@ verifies("source-control.create-version", () => {
       await expect(failure).rejects.not.toThrow("secret detail");
     });
 
+    it("keeps the hook sentence when a hook fails with a permission error", async () => {
+      const { changes } = history(async (args) =>
+        args[0] === "commit"
+          ? answer("", 1, "fatal: cannot exec '.git/hooks/pre-commit': Permission denied")
+          : answer(""),
+      );
+      await expect(changes.createVersion({ message: "x", paths: ["a.md"] })).rejects.toThrow(
+        "A check on this workspace or a permission stopped it.",
+      );
+    });
+
     it("falls back to a plain sentence for anything else", async () => {
       const { changes } = history(async (args) =>
         args[0] === "commit" ? answer("", 1, "fatal: weird thing") : answer(""),
