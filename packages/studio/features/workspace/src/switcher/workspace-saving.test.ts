@@ -113,6 +113,26 @@ verifies("workspace.saves-itself", () => {
       expect([files.undos, files.redos]).toEqual([1, 1]);
     });
 
+    it("doesn't start a second save while one is still writing", async () => {
+      const { files, workspace } = setup();
+      let finish = () => {};
+      files.save = async () => {
+        files.saves += 1;
+        await new Promise<void>((resolve) => {
+          finish = resolve;
+        });
+        files.dirty = false;
+      };
+      files.change();
+      const first = workspace.saveNow();
+      const second = workspace.saveNow();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(files.saves).toBe(1);
+      finish();
+      expect(await Promise.all([first, second])).toEqual([true, true]);
+      expect(files.saves).toBe(1);
+    });
+
     it("stops saving once disposed", async () => {
       const { files, workspace } = setup();
       files.change();
