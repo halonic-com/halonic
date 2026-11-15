@@ -199,7 +199,11 @@ export function WorkflowScreen({
               name={name}
               openStep={openStep}
               strip={strip}
-              onClearStrip={() => setShownId(undefined)}
+              onClearStrip={() => {
+                setShownId(undefined);
+                // A run dock goes with the strip, or it would wait for a run that is already listed.
+                setDock((now) => (typeof now === "object" ? undefined : now));
+              }}
               kept={kept}
               onView={keep}
             />
