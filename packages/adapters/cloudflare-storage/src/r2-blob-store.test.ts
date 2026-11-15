@@ -98,7 +98,11 @@ verifies("cloudflare-storage.r2-blob-store", () => {
     it("answers null for a blob that isn't there", async () => {
       expect(await storeOver(new CountingBucket()).get(helloHash)).toBeNull();
     });
+  });
+});
 
+verifies("cloudflare-storage.r2-blob-store-hashes", () => {
+  describe("hashes", () => {
     it("lists the hash of every blob, across pages, and nothing else under the prefix", async () => {
       const bucket = new CountingBucket();
       bucket.pageSize = 1;

@@ -224,6 +224,17 @@ verifies("cloudflare-storage.d1-record-store", () => {
       expect(log.length).toBe(1);
     });
 
+    it("compacts an empty collection to nothing", async () => {
+      const store = new D1RecordStore(sqliteDatabase());
+      await store.compact("leads");
+
+      expect(await store.changes("leads")).toEqual([]);
+    });
+  });
+});
+
+verifies("cloudflare-storage.d1-record-store-collections", () => {
+  describe("collections", () => {
     it("names every collection that has a change, in order, once", async () => {
       const store = new D1RecordStore(sqliteDatabase());
       const inCollection = (collection: string, id: string): RecordChange => ({
@@ -239,13 +250,6 @@ verifies("cloudflare-storage.d1-record-store", () => {
       ]);
 
       expect(await store.collections()).toEqual(["agent", "leads"]);
-    });
-
-    it("compacts an empty collection to nothing", async () => {
-      const store = new D1RecordStore(sqliteDatabase());
-      await store.compact("leads");
-
-      expect(await store.changes("leads")).toEqual([]);
     });
   });
 });
