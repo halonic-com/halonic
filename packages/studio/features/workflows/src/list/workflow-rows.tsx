@@ -13,7 +13,7 @@ function avatarLetter(name: string): string {
   return (name.trim().charAt(0) || "?").toUpperCase();
 }
 
-function Avatar({ name }: { readonly name: string }) {
+export function Avatar({ name }: { readonly name: string }) {
   return (
     <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-small-strong text-accent-text">
       {avatarLetter(name)}
