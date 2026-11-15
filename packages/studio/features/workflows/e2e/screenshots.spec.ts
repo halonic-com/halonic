@@ -18,8 +18,12 @@ for (const state of states) {
   for (const scheme of schemes) {
     test(`run card, ${state}, ${scheme}`, async ({ page }) => {
       const problems: string[] = [];
-      page.on("pageerror", (error) => problems.push(`${error.message} @ ${(error.stack ?? "").slice(0, 600)}`));
-      page.on("console", (message) => problems.push(`console ${message.type()}: ${message.text()}`));
+      page.on("pageerror", (error) =>
+        problems.push(`${error.message} @ ${(error.stack ?? "").slice(0, 600)}`),
+      );
+      page.on("console", (message) =>
+        problems.push(`console ${message.type()}: ${message.text()}`),
+      );
       page.on("requestfailed", (request) => problems.push(`${request.url()} failed`));
       await page.emulateMedia({ colorScheme: scheme });
       await page.goto(`/run-card.html?state=${state}`);
