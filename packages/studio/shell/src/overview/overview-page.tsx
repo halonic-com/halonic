@@ -109,7 +109,18 @@ function rowsOf(
     title: item.name,
     ...(item.detail === undefined ? {} : { meta: item.detail }),
     ...(item.avatar === undefined ? {} : { avatar: item.avatar }),
-    ...(item.chips === undefined ? {} : { trailing: item.chips }),
+    ...(item.chips === undefined && item.usedBy === undefined
+      ? {}
+      : {
+          trailing: (
+            <span className="flex items-center gap-2">
+              {item.chips}
+              {item.usedBy === undefined ? null : (
+                <span className="text-small text-fg-muted">{item.usedBy}</span>
+              )}
+            </span>
+          ),
+        }),
     ...(menuOf === undefined || menuOf(item).length === 0
       ? {}
       : {
