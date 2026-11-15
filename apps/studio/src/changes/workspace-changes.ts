@@ -53,10 +53,14 @@ export class WorkspaceChanges implements ChangesSource {
   async read(): Promise<ChangesRead> {
     const inside = await this.#run(["rev-parse", "--is-inside-work-tree"]);
     if (inside === "no-git") return { kind: "no-git" };
+    // Git refuses a folder owned by someone else with the same exit code as "no repository here";
+    // saying "turn on history" for it would be wrong.
+    const refused = knownGitProblem(inside);
+    if (inside.code !== 0 && refused !== null) throw new KindedError("unavailable", refused);
     if (inside.code !== 0 || inside.stdout.trim() !== "true") return { kind: "not-a-repository" };
     const status = await this.#run(statusArgs);
     if (status === "no-git") return { kind: "no-git" };
-    if (status.code !== 0) throw new KindedError("unavailable", firstLine(status.stderr));
+    if (status.code !== 0) throw new KindedError("unavailable", readableProblem(status));
     return { kind: "ready", changes: parseStatus(status.stdout).filter(isVersioned) };
   }
 
@@ -101,7 +105,7 @@ export class WorkspaceChanges implements ChangesSource {
     await this.#ignoreStudioFolder();
     const init = await this.#run(["init", "--quiet"]);
     if (init === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
-    if (init.code !== 0) throw new KindedError("unavailable", firstLine(init.stderr));
+    if (init.code !== 0) throw new KindedError("unavailable", readableProblem(init));
   }
 
   subscribe(listener: () => void): () => void {
@@ -122,7 +126,7 @@ export class WorkspaceChanges implements ChangesSource {
     if (diff.code !== 0) {
       const head = await this.#run(["rev-parse", "--verify", "--quiet", "HEAD"]);
       if (head !== "no-git" && head.code !== 0) return null;
-      throw new KindedError("unavailable", firstLine(diff.stderr));
+      throw new KindedError("unavailable", readableProblem(diff));
     }
     return lastVersionFromDiff(diff.stdout, after);
   }
@@ -167,6 +171,26 @@ function firstLine(text: string): string {
   );
 }
 
+/** A plain sentence for the git failures people meet most, `null` for any other. */
+function knownGitProblem(answer: GitAnswer): string | null {
+  const said = `${answer.stderr}\n${answer.stdout}`;
+  if (/dubious ownership|safe\.directory/i.test(said)) {
+    return "Git won't open this workspace because another user owns its folder. Run git config --global --add safe.directory with the path of the folder git names to allow it, then try again.";
+  }
+  if (/index\.lock|another git process/i.test(said)) {
+    return "Another program is using this workspace's history right now. Wait a moment, then try again.";
+  }
+  if (/permission denied|operation not permitted|read-only file system/i.test(said)) {
+    return "Git can't read or change this workspace's history. Check that you have permission to the folder.";
+  }
+  return null;
+}
+
+/** Why a read of the history failed: a plain sentence when known, otherwise git's first line. */
+function readableProblem(answer: GitAnswer): string {
+  return knownGitProblem(answer) ?? firstLine(answer.stderr);
+}
+
 /** Why a version couldn't be created, as one plain sentence: git's own output is never shown. */
 function gitReason(answer: GitAnswer): string {
   const said = `${answer.stderr}\n${answer.stdout}`;
@@ -176,13 +200,10 @@ function gitReason(answer: GitAnswer): string {
   if (/nothing (added )?to commit|no changes added/i.test(said)) {
     return "There is nothing to record: these changes are already in a version.";
   }
-  if (/index\.lock|another git process/i.test(said)) {
-    return "Another program is using this workspace's history right now. Wait a moment, then try again.";
-  }
   if (/hook|permission denied|operation not permitted|read-only/i.test(said)) {
     return "Git refused to record the version. A check on this workspace or a permission stopped it.";
   }
-  return "Git didn't accept the version.";
+  return knownGitProblem(answer) ?? "Git didn't accept the version.";
 }
 
 /** Whether the shell refused because it found no git program (`GitRefusal.kind`). */

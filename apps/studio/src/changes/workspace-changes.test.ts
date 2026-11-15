@@ -81,6 +81,31 @@ verifies("source-control.changes-page", () => {
       await expect(changes.read()).rejects.toThrow("fatal: index file corrupt");
     });
 
+    it("explains dubious ownership instead of offering to turn on history", async () => {
+      const stderr =
+        "fatal: detected dubious ownership in repository at '/w'\nTo add an exception...";
+      const { changes } = history(async () => answer("", 128, stderr));
+      await expect(changes.read()).rejects.toMatchObject({
+        kind: "unavailable",
+        message: expect.stringContaining("another user owns its folder"),
+      });
+    });
+
+    it("explains a locked or unreadable history in a sentence", async () => {
+      const locked = history(async (args) =>
+        args[0] === "rev-parse"
+          ? answer("true\n")
+          : answer("", 128, "fatal: Unable to create '/w/.git/index.lock': File exists."),
+      );
+      await expect(locked.changes.read()).rejects.toThrow("Another program is using");
+      const denied = history(async () =>
+        answer("", 1, "error: cannot open .git: Permission denied"),
+      );
+      await expect(denied.changes.turnOnHistory()).rejects.toThrow(
+        "Check that you have permission",
+      );
+    });
+
     it("shows only the first line of a multi-line git message", async () => {
       const stderr = "\nfatal: index file corrupt\nhint: run git fsck\nhint: then retry\n";
       const status = history(async (args) =>
@@ -320,6 +345,17 @@ verifies("source-control.create-version", () => {
         "A check on this workspace or a permission stopped it.",
       );
       await expect(failure).rejects.not.toThrow("secret detail");
+    });
+
+    it("keeps the hook sentence when a hook fails with a permission error", async () => {
+      const { changes } = history(async (args) =>
+        args[0] === "commit"
+          ? answer("", 1, "fatal: cannot exec '.git/hooks/pre-commit': Permission denied")
+          : answer(""),
+      );
+      await expect(changes.createVersion({ message: "x", paths: ["a.md"] })).rejects.toThrow(
+        "A check on this workspace or a permission stopped it.",
+      );
     });
 
     it("falls back to a plain sentence for anything else", async () => {
