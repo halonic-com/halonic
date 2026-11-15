@@ -212,8 +212,7 @@ verifies("sandbox-srt.check", () => {
         },
       };
       const checks = [srt(machine(), runner).check(), srt(machine(), runner).check()];
-      await waitUntil("started to be 1", () => started === 1);
-      expect(started).toBe(1);
+      await waitUntil("the shared check to start", () => started === 1);
       end(1);
       const answers = await Promise.all(checks);
       expect(answers.map((answer) => answer.ok)).toEqual([false, false]);
