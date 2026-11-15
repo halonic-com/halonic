@@ -580,6 +580,9 @@ importers:
       '@halonicjs/adapter-fs-node':
         specifier: workspace:*
         version: link:../../packages/adapters/fs-node
+      '@halonicjs/app-agent-host':
+        specifier: workspace:*
+        version: link:../agent-host
       '@halonicjs/engine':
         specifier: workspace:*
         version: link:../../packages/core/engine

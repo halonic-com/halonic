@@ -36,6 +36,7 @@
     "@halonicjs/workspace": "workspace:*"
   },
   "devDependencies": {
+    "@halonicjs/app-agent-host": "workspace:*",
     "@halonicjs/adapter-fs-node": "workspace:*",
     "@halonicjs/engine": "workspace:*",
     "@halonicjs/format": "workspace:*",
