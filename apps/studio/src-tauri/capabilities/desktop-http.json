@@ -1,0 +1,17 @@
+{
+  "identifier": "desktop-http",
+  "description": "On desktop, the app's own page may make outbound HTTP calls through the http_fetch command: the shell checks the request, every address the host name resolves to and every redirect hop (crates/http-guard), and makes the call, so the page's network layer never holds a key. It is local only, so the Studio the computer serves gets no http_fetch.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-http-fetch",
+    "allow-http-fetch-abort"
+  ]
+}
