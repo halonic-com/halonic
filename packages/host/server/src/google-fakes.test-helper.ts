@@ -84,6 +84,7 @@ export interface FakeGoogleActions extends GoogleAccountActions {
   readonly checks: GoogleCheckRequest[];
   readonly revoked: string[];
   readonly signInStarts: GoogleSignInStart[];
+  readonly signInDrops: string[];
   /** The query parameters each callback carried, as the fake read them. */
   readonly callbacks: Record<string, string | null>[];
   /** What the next calls answer, until it is set again. */
@@ -102,6 +103,7 @@ function fakeGoogleActions(tokens: TokenStore): FakeGoogleActions {
     checks: [],
     revoked: [],
     signInStarts: [],
+    signInDrops: [],
     callbacks: [],
     signInOutcome: { kind: "linkNoLongerValid" },
     authUrl: "https://accounts.example/auth?state=fake-state",
@@ -111,6 +113,9 @@ function fakeGoogleActions(tokens: TokenStore): FakeGoogleActions {
     startSignIn: async (input) => {
       actions.signInStarts.push(input);
       return actions.authUrl;
+    },
+    dropSignIn: async (accountRef) => {
+      actions.signInDrops.push(accountRef);
     },
     finishSignIn: async (query) => {
       actions.callbacks.push({

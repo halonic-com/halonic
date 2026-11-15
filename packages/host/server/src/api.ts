@@ -283,6 +283,8 @@ export interface GoogleAccountActions {
   }): Promise<StagedSecretOutcome>;
   /** Makes the account's pending sign-in and gives the address to open in the browser. It holds no secret, and no verifier. */
   startSignIn(input: GoogleSignInStart): Promise<string>;
+  /** Drops the account's pending sign-in, so a callback that still arrives matches nothing. Does nothing when there is none. */
+  dropSignIn(accountRef: string): Promise<void>;
   /** Finishes a sign-in from the query parameters Google sent back to the callback. */
   finishSignIn(query: { get(name: string): string | null }): Promise<GoogleSignInOutcome>;
   /** Refreshes the token and checks each ticked service. */
