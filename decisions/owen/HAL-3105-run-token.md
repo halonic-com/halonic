@@ -4,6 +4,7 @@
 - Task: HAL-3105, step 2 of HAL-3023
 - Approval: the maintainer (Liam) approves and signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+gOjHAb14M8Eil9pfc25Ap/FYaTkKHfEBL0SGW1fioAC0Yu0dgrePJLNCKhyg9wcqbbOU3AiFgiOFOrkc5dBCA==
 
 ## What changes
 
