@@ -4,6 +4,7 @@
 - Task: HAL-9923, from HAL-9922 (for HAL-6706)
 - Approval: HAL-9923, Liam's task; Liam reviews and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yPmTAoVfNjCy6z1tU5g0ZqI1VdWbThmNMBtRO9nPWnY/qrmP/v3UGxQqJG5EAo6hUVENlipTraAggb1vOnYdCA==
 
 ## What changes
 
