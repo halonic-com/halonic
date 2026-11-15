@@ -1,5 +1,5 @@
 import type { PluginService } from "@halonicjs/app";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { acme } from "./acme-plugins.testing.ts";
 import { PluginFeed } from "./plugin-feed.ts";
@@ -86,7 +86,8 @@ verifies("studio.desktop-plugins-host", () => {
       return entries;
     });
     const first = feed.reload();
-    await vi.waitFor(() => expect(release).toHaveLength(1));
+    await waitUntil("release to have length 1", () => release.length === 1);
+    expect(release).toHaveLength(1);
     const weather = (await real()).find((each) => each.folder === "weather");
     if (weather === undefined || weather.status === "broken")
       throw new Error("weather should load");
@@ -100,7 +101,8 @@ verifies("studio.desktop-plugins-host", () => {
     await first;
     await Promise.resolve();
     expect(settled).toBe(false);
-    await vi.waitFor(() => expect(release).toHaveLength(2));
+    await waitUntil("release to have length 2", () => release.length === 2);
+    expect(release).toHaveLength(2);
     release[1]?.();
     await Promise.all([second, third]);
     expect(load).toHaveBeenCalledTimes(2);
@@ -128,11 +130,13 @@ verifies("studio.desktop-plugins-host", () => {
     const first = feed.reload().then(() => {
       inGap = feed.reload();
     });
-    await vi.waitFor(() => expect(release).toHaveLength(1));
+    await waitUntil("release to have length 1", () => release.length === 1);
+    expect(release).toHaveLength(1);
     const queued = feed.reload();
     release[0]?.();
     await first;
-    await vi.waitFor(() => expect(release.length).toBeGreaterThanOrEqual(2));
+    await waitUntil("release.length to be at least 2", () => release.length >= 2);
+    expect(release.length).toBeGreaterThanOrEqual(2);
     for (let next = 1; next < 3 && next < release.length; next += 1) release[next]?.();
     await Promise.all([queued, inGap]);
     expect(mostRunning).toBe(1);

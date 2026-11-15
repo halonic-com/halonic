@@ -18,6 +18,8 @@ import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import { libraryFeature } from "@halonicjs/studio-feature-library";
 import {
   ConnectorStatusHostService,
+  LibraryItemsHostService,
+  LibraryTabMemoryService,
   ListedToolsHostService,
 } from "@halonicjs/studio-feature-library/api";
 import { modelsFeature } from "@halonicjs/studio-feature-models";
@@ -183,6 +185,8 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
   ],
   hostServices: [
     ConnectorStatusHostService,
+    LibraryItemsHostService,
+    LibraryTabMemoryService,
     GoogleSetupAccountsService,
     ListedToolsHostService,
     InboxRunsService,

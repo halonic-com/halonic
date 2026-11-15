@@ -159,6 +159,16 @@ verifies("source-control.changes-page", () => {
       });
       expect(root.textContent).not.toContain("Couldn't load changes");
       expect(root.textContent).toContain("Nothing has changed since your last version.");
+      expect(document.activeElement).toBe(root.querySelector("h1"));
+    });
+
+    it("announces a later failure as an alert", async () => {
+      const fake = fakeSource({ kind: "ready", changes: [] });
+      const { root, list } = await openPage(fake);
+      expect(root.querySelector('[role="alert"]')).toBeNull();
+      fake.failReads(new KindedError("unavailable", "error: not a git repository"));
+      await act(() => list.refresh());
+      expect(root.querySelector('[role="alert"]')?.textContent).toContain("Couldn't load changes");
     });
 
     it("says Checking… while Check again reads, and Still can't find git when git is still missing", async () => {
@@ -202,6 +212,7 @@ verifies("source-control.changes-page", () => {
       const { root } = await openPage(fakeSource({ kind: "nested-repository" }));
       expect(root.textContent).toContain("Couldn't load changes");
       expect(root.textContent).toContain("This folder is part of a larger git repository.");
+      expect(root.textContent).toContain("Halonic can't keep versions for it yet.");
       expect(root.querySelector("button")).toBeNull();
     });
 

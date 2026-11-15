@@ -1,7 +1,7 @@
 import type { ModelAlias, Models, Provider } from "@halonicjs/format";
 import { parseAmount, type Result } from "@halonicjs/std";
 import { Field, FormRows, Input, Select } from "@halonicjs/studio-kit";
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { ModelsFiles } from "../api.ts";
 import {
   editAliasFallbacks,
@@ -16,6 +16,7 @@ import { saveModelsEdit } from "./alias-save.ts";
 import {
   aliasUpdatedLine,
   CACHE_PRICES_NOTE,
+  currencyPrefix,
   fallbacksHint,
   PRICE_HEADING,
   PRICE_HINT,
@@ -24,13 +25,13 @@ import { useDraft } from "./use-draft.ts";
 
 /** The props of {@link AliasFields}. */
 export interface AliasFieldsProps {
+  /** The workspace's budget currency (an ISO 4217 code), which the prices are in. */
+  readonly currency: string;
   readonly files: ModelsFiles;
   readonly models: Models;
   readonly providers: readonly Provider[];
   readonly name: string;
 }
-
-const EURO = { symbol: "€", name: "in euros" };
 
 const priceText = (amount: number | undefined) => (amount === undefined ? "" : String(amount));
 
@@ -52,10 +53,11 @@ function hasCachePrices(alias: ModelAlias): boolean {
  * field is left (the provider when it is picked), and the status line says so.
  *
  * @example
- * <AliasFields files={files} models={models} providers={providers} name="smart" />
+ * <AliasFields files={files} models={models} providers={providers} name="smart" currency="EUR" />
  */
-export function AliasFields({ files, models, providers, name }: AliasFieldsProps) {
+export function AliasFields({ files, models, providers, name, currency }: AliasFieldsProps) {
   const alias = models.aliases[name];
+  const warningId = useId();
   const [problem, setProblem] = useState<FieldProblem>();
   const [status, setStatus] = useState("");
   const [model, setModel] = useDraft(alias?.model ?? "");
@@ -116,11 +118,14 @@ export function AliasFields({ files, models, providers, name }: AliasFieldsProps
           />
         </Field>
       </FormRows>
-      <fieldset className="flex flex-col gap-2">
+      <fieldset
+        className="flex flex-col gap-2"
+        aria-describedby={zeroWarning === undefined ? undefined : warningId}
+      >
         <legend className="text-heading">{PRICE_HEADING}</legend>
         <p>{PRICE_HINT}</p>
-        <div className="flex gap-4">
-          <Field label="Input" prefix={EURO} error={problemFor("input")}>
+        <div className="flex flex-wrap gap-4">
+          <Field label="Input" prefix={currencyPrefix(currency)} error={problemFor("input")}>
             <Input
               value={input}
               inputMode="decimal"
@@ -128,7 +133,7 @@ export function AliasFields({ files, models, providers, name }: AliasFieldsProps
               onBlur={() => void savePrices()}
             />
           </Field>
-          <Field label="Output" prefix={EURO} error={problemFor("output")}>
+          <Field label="Output" prefix={currencyPrefix(currency)} error={problemFor("output")}>
             <Input
               value={output}
               inputMode="decimal"
@@ -137,7 +142,11 @@ export function AliasFields({ files, models, providers, name }: AliasFieldsProps
             />
           </Field>
         </div>
-        {zeroWarning === undefined ? null : <p>{zeroWarning}</p>}
+        {zeroWarning === undefined ? null : (
+          <p id={warningId} role="status">
+            {zeroWarning}
+          </p>
+        )}
         {emptiesCachePrices ? <p>{CACHE_PRICES_NOTE}</p> : null}
       </fieldset>
       {problemFor("yaml") === null ? null : <p role="alert">{problemFor("yaml")}</p>}

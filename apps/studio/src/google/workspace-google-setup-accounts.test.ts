@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from "node:util";
 import { webCryptoDigest } from "@halonicjs/adapter-fs-tauri";
 import {
   MemoryDefinitionStore,
@@ -6,7 +7,7 @@ import {
 } from "@halonicjs/adapter-memory";
 import { type SetupRecord, setupRecords } from "@halonicjs/google-setup";
 import { fixedClock, fixedIds } from "@halonicjs/std";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import {
   type GoogleSetupHost,
@@ -209,7 +210,7 @@ verifies("studio.workspace-google-setup-accounts", () => {
   });
 
   describe("changes", () => {
-    it("refuses a step, a secret and Start over with a plain message, and changes no record", async () => {
+    it("refuses a step, a secret, Start over, Check again and a new address with a plain message, and changes no record", async () => {
       const { accounts, records } = await accountsOf();
       const before = JSON.stringify(await records.changes("_google_setups"));
 
@@ -218,6 +219,8 @@ verifies("studio.workspace-google-setup-accounts", () => {
         accounts.saveClientSecret(),
         accounts.replaceClientSecret(),
         accounts.startOver(),
+        accounts.checkAgain(),
+        accounts.changeAddress(),
       ]) {
         await expect(attempt).rejects.toThrow("can't be saved in the Halonic app yet");
       }
@@ -325,7 +328,8 @@ verifies("studio.workspace-google-setup-accounts", () => {
       });
       expect(heard).toHaveBeenCalledTimes(1);
       stop();
-      await vi.waitFor(() => expect(heard).toHaveBeenCalledTimes(1));
+      await waitUntil("heard to be called once", () => heard.mock.calls.length === 1);
+      expect(heard).toHaveBeenCalledTimes(1);
       definitions.changeOutside({
         "library/connectors/mail.connector.yaml": connector("mail", "sam@acme.example"),
       });
@@ -349,7 +353,10 @@ verifies("studio.workspace-google-setup-accounts", () => {
       });
 
       const stop = accounts.subscribe(() => {});
-      await vi.waitFor(() => expect(onWatchError).toHaveBeenCalledWith(failure));
+      await waitUntil("onWatchError to be called with failure", () =>
+        onWatchError.mock.calls.some((call) => isDeepStrictEqual(call, [failure])),
+      );
+      expect(onWatchError).toHaveBeenCalledWith(failure);
       stop();
     });
   });

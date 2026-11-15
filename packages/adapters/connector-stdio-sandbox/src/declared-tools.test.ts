@@ -1,6 +1,6 @@
 import { defaultStdioLimits } from "@halonicjs/adapter-mcp";
 import type { FakeProgram } from "@halonicjs/testing-contracts";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { config, setUp } from "./connector-setup.spec.ts";
 import { type DeclaredTool, offeredTools } from "./declared-tools.ts";
@@ -101,7 +101,8 @@ verifies("connector-stdio-sandbox.call-timeout", () => {
     await expect(client.callTool("read_note", {})).rejects.toThrow(
       `Connector "notes"'s tool "read_note" didn't answer within 0.05 seconds, so Halonic stopped its program. The next call starts it again.`,
     );
-    await vi.waitFor(() => expect(sandbox.running).toBe(0));
+    await waitUntil("sandbox.running to be 0", () => sandbox.running === 0);
+    expect(sandbox.running).toBe(0);
     expect(await client.callTool("read_note", {})).toBe("done");
     expect(sandbox.started).toHaveLength(2);
     await client.close();

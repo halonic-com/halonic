@@ -1,0 +1,9 @@
+{
+  "extends": "@halonicjs/tooling-config/tsconfig/node.json",
+  "include": [
+    "src",
+    "live",
+    "vitest.config.ts",
+    "vitest.live.config.ts"
+  ]
+}

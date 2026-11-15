@@ -1,8 +1,8 @@
 import type { RunEvent } from "@halonicjs/events";
 import type { RunEventListener } from "@halonicjs/ports";
 import { completed, entered, started } from "@halonicjs/testing-contracts";
-import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it, vi } from "vitest";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
+import { describe, expect, it } from "vitest";
 import { DurableRunEvents } from "./durable-run-events.ts";
 import type { RunObjectApi } from "./run-object-api.ts";
 import { eventLine } from "./run-watchers.ts";
@@ -95,7 +95,8 @@ verifies("cloudflare-durable.run-events-subscription", () => {
       const { told, closed, listener } = noteListener();
       new DurableRunEvents({ namespace: object.namespace }).subscribe(runId, 0, listener);
       object.send(started(runId));
-      await vi.waitFor(() => expect(told).toEqual([1]));
+      await waitUntil("told to equal [1]", () => JSON.stringify(told) === JSON.stringify([1]));
+      expect(told).toEqual([1]);
       object.break(new Error("object reset"));
       await closed;
       expect(told).toEqual([1, "error: object reset"]);

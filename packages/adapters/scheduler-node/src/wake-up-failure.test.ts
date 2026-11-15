@@ -1,5 +1,5 @@
-import { verifies } from "@halonicjs/testing-spec";
-import { expect, it, vi } from "vitest";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { startScheduler } from "./harness.test-helper.ts";
 
 const second = 1000;
@@ -17,14 +17,16 @@ async function failedWakeUpAfter(s: Started, ms: number): Promise<void> {
   s.clock.advance(ms);
   s.timers.fireDue();
   s.clock.failNextNow = true;
-  await vi.waitFor(() => expect(s.errors).toHaveLength(failures + 1));
+  await waitUntil(`${failures + 1} wake-up errors`, () => s.errors.length === failures + 1);
+  expect(s.errors).toHaveLength(failures + 1);
 }
 
 async function wakeUpAfter(s: Started, ms: number): Promise<void> {
   const wokeUp = s.wokeUp.count;
   s.clock.advance(ms);
   s.timers.fireDue();
-  await vi.waitFor(() => expect(s.wokeUp.count).toBe(wokeUp + 1));
+  await waitUntil(`wake-up number ${wokeUp + 1}`, () => s.wokeUp.count === wokeUp + 1);
+  expect(s.wokeUp.count).toBe(wokeUp + 1);
 }
 
 verifies("scheduler-node.wake-up-failure", () => {

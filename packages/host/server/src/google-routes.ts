@@ -4,6 +4,7 @@ import type { GoogleCheckOutcome, GoogleSetupPorts, RequestContext } from "./api
 import { errorResponse, serverErrors } from "./errors.ts";
 import { readSetup } from "./google-read-setup.ts";
 import { createGoogleSecretRoutes } from "./google-secret-routes.ts";
+import { createGoogleSetupWriteRoutes } from "./google-setup-write-routes.ts";
 import { createGoogleSignInRoutes } from "./google-sign-in-routes.ts";
 import { refuseOtherSite } from "./secret-request.ts";
 import { WrongAccountNotes } from "./wrong-account-notes.ts";
@@ -49,6 +50,7 @@ export function createGoogleRoutes({ google, clock }: GoogleRoutePorts): GoogleR
   const signInRoutes = createGoogleSignInRoutes({ google, wrongAccountNotes });
 
   const secretRoutes = createGoogleSecretRoutes({ google });
+  const writeRoutes = createGoogleSetupWriteRoutes({ google });
 
   /** `GET /api/google/setups/<ref>`: the progress and the steps. Nothing secret is in it, and not even the secret's ref. */
   async function show(accountRef: string): Promise<Response> {
@@ -193,6 +195,9 @@ export function createGoogleRoutes({ google, clock }: GoogleRoutePorts): GoogleR
     callback: (request) => signInRoutes.callback(request),
     async handle(request, body, context) {
       const { pathname } = new URL(request.url);
+      if (request.method === "POST" && pathname === setupsPrefix.slice(0, -1)) {
+        return writeRoutes.start(request, body);
+      }
       if (!pathname.startsWith(setupsPrefix)) {
         return errorResponse(serverErrors.notFound);
       }
@@ -201,6 +206,10 @@ export function createGoogleRoutes({ google, clock }: GoogleRoutePorts): GoogleR
       switch (endpoint) {
         case "GET /":
           return show(accountRef);
+        case "PATCH /":
+          return writeRoutes.edit(request, body, accountRef);
+        case "POST /start-over":
+          return writeRoutes.startOver(request, accountRef);
         case "PUT /secret":
           return secretRoutes.save(request, body, context, accountRef);
         case "PUT /secret/staged":

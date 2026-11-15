@@ -1,7 +1,7 @@
 import { KindedError } from "@halonicjs/std";
 import { createToastStore } from "@halonicjs/studio-kit";
 import type { StudioWorkspace } from "@halonicjs/studio-shell";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { RecentWorkspaces } from "./recent-workspaces.ts";
 import type { WorkspaceSaving } from "./workspace-saving.ts";
@@ -219,7 +219,10 @@ verifies("workspace.failed-open-leaves-no-slot", () => {
     expect(toast?.action?.label).toBe("Copy details");
 
     toast?.action?.onClick();
-    await vi.waitFor(() => expect(titles(toasts)).toContain("Copied. Paste it into a bug report."));
+    await waitUntil(`titles(toasts) to contain "Copied. Paste it into a bug report."`, () =>
+      titles(toasts).includes("Copied. Paste it into a bug report."),
+    );
+    expect(titles(toasts)).toContain("Copied. Paste it into a bug report.");
     expect(writeText).toHaveBeenCalledWith(
       expect.stringContaining("Can't open /work/acme\nTypeError: services is undefined"),
     );

@@ -4,12 +4,14 @@
 - Since: 0.1.0
 - Source: HAL-8868 (step 5); Liam's decision on HAL-2213 (part 5)
 
-When the desktop app opens a folder, it shall give the Library feature the folder's connectors as its connector status: each connector file's id and name, shown with its state, with the engine's recent refusals for each. It shall read the files again when one changed outside the app and when the window comes to the front, and tell its listeners then, when a Google account's setup changes, and when a refusal arrives. A Google connector's state shall be read from its account's setup record, and it is not connected while it has none. The desktop app shall register the Library feature.
+When the desktop app opens a folder, it shall give the Library feature the folder's connectors as its connector status: each connector file's id and name, with the engine's recent refusals for each. A connector other than Google shall be shown as "Not checked yet" (the file does not say whether the sign-in or secret works, so a connector is never shown as connected on a guess). It shall read the files again when one changed outside the app and when the window comes to the front, and tell its listeners then, when a Google account's setup changes, and when a refusal arrives. A Google connector's state shall be read from its account's setup record, and it is not connected while it has none. A connector file that cannot be parsed shall be listed with an error state, not left out. The desktop app shall register the Library feature.
 
 ## Examples
 
 - Given Acme's `search` connector with the name "Web search",
-  then the status lists it as "Web search" and connected.
+  then the status lists it as "Web search" and not checked yet.
+- Given a connector file that does not parse,
+  then the status lists it, by its file name, as unreadable, with a sentence that says so.
 - Given Acme's Google connector and a setup record that has signed in,
   then the status lists it as connected.
 - Given Acme's Google connector with no setup record,

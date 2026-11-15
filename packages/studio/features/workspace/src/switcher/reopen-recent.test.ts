@@ -1,7 +1,7 @@
 import { KindedError } from "@halonicjs/std";
 import { createToastStore } from "@halonicjs/studio-kit";
 import type { StudioWorkspace } from "@halonicjs/studio-shell";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { RecentWorkspaces } from "./recent-workspaces.ts";
 import {
@@ -131,7 +131,8 @@ verifies("workspace.recent-reopens-picked-folder", () => {
     expect(toast?.title).toBe("Can't open /work/acme: pick the folder again.");
     expect(toast?.action?.label).toBe("Open folder");
     toast?.action?.onClick();
-    await vi.waitFor(() => expect(pickFolder).toHaveBeenCalledOnce());
+    await waitUntil("pickFolder to be called once", () => pickFolder.mock.calls.length === 1);
+    expect(pickFolder).toHaveBeenCalledOnce();
     expect(switcher.recent.list().map((each) => each.location)).toEqual(["/work/acme"]);
   });
 

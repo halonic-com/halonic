@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { listWords, runWhen } from "./list-words.ts";
+import { lastRunOutcome, runWhen } from "./list-words.ts";
 
 const now = new Date(2026, 10, 15, 12, 0);
 
@@ -12,9 +12,11 @@ verifies("workflows.list.rows-and-states", () => {
     expect(runWhen(new Date(2025, 11, 30, 9, 5).toISOString(), now)).toBe("Tue 30 Dec 2025 09:05");
   });
 
-  it("puts a glyph before a finished run's time and none before a run still going", () => {
-    expect(listWords.lastRun("completed", "Today 09:05")).toBe("Last run ✓ Today 09:05");
-    expect(listWords.lastRun("failed", "Today 09:05")).toBe("Last run ✕ Today 09:05");
-    expect(listWords.lastRun("waiting", "Today 09:05")).toBe("Last run Today 09:05");
+  it("gives a finished run a glyph and the words a screen reader hears, and a run still going neither", () => {
+    expect(lastRunOutcome.completed).toEqual({ glyph: "✓", spoken: "completed" });
+    expect(lastRunOutcome.failed).toEqual({ glyph: "✕", spoken: "failed" });
+    expect(lastRunOutcome["cant-try"]).toEqual({ glyph: "✕", spoken: "couldn't start" });
+    expect(lastRunOutcome.running).toBeNull();
+    expect(lastRunOutcome.waiting).toBeNull();
   });
 });

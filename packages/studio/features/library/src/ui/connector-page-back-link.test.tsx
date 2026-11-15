@@ -12,6 +12,8 @@ import { act } from "react";
 import { afterEach, beforeAll, beforeEach, expect, it } from "vitest";
 import { type ConnectorStatusHost, ConnectorStatusHostService } from "../connector-status-host.ts";
 import { libraryFeature } from "../feature.ts";
+import { type LibraryItemsHost, LibraryItemsHostService } from "../library-items-host.ts";
+import { type LibraryTabMemory, LibraryTabMemoryService } from "../library-tab-memory.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 
 const original = { matchMedia: window.matchMedia };
@@ -44,14 +46,23 @@ const host: ConnectorStatusHost = {
   subscribe: () => () => {},
 };
 
+const itemsHost: LibraryItemsHost = {
+  list: async () => ({ hubs: [] }),
+  subscribe: () => () => {},
+};
+
+const tabMemory: LibraryTabMemory = { get: () => undefined, set: () => {} };
+
 /** A workspace with the real Library feature and one connector, Notes, behind it. */
 function renderWindow() {
   const hostFeature = defineFeature({
     id: "connector-host",
     title: "Connector host",
-    provides: [ConnectorStatusHostService],
+    provides: [ConnectorStatusHostService, LibraryItemsHostService, LibraryTabMemoryService],
     register(studio) {
       studio.services.provide(ConnectorStatusHostService, () => host);
+      studio.services.provide(LibraryItemsHostService, () => itemsHost);
+      studio.services.provide(LibraryTabMemoryService, () => tabMemory);
     },
   });
   const shell = createShell({ features: [hostFeature, libraryFeature] });

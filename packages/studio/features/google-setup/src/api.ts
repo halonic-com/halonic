@@ -82,6 +82,22 @@ export type DisconnectAnswer =
   /** Google couldn't be reached to end the sign-in. It is still deleted here; access can be removed in the Google account. */
   | { readonly kind: "google-unreachable" };
 
+/**
+ * What the host says after **Check again** (design 3.5, item 7). When it `checked`, the results are
+ * on the setup record and the listeners were told, so the step reads them from there. The other
+ * answers have no new results.
+ */
+export type CheckAgainAnswer =
+  | { readonly kind: "checked" }
+  /** Google refuses the saved sign-in: signing in again is the way on. */
+  | { readonly kind: "sign-in-refused" }
+  /** Google refuses the saved client ID or secret: step 6 is the way on. */
+  | { readonly kind: "client-refused" }
+  /** Google couldn't be reached. */
+  | { readonly kind: "no-network" }
+  /** Anything else the host couldn't check, such as no sign-in yet or an answer it doesn't know. */
+  | { readonly kind: "not-checked" };
+
 /** The Google accounts of the open workspace. The app provides it. */
 export interface GoogleSetupAccounts {
   /** How the client secret is entered on this host. It doesn't change while the workspace is open. */
@@ -133,6 +149,25 @@ export interface GoogleSetupAccounts {
    * still arrives is refused. It rejects when the host can't.
    */
   cancelSignIn(accountRef: string): Promise<void>;
+  /**
+   * **Check again** (design 3.5, item 7): the host checks each ticked service with a fresh token
+   * and saves what it found on the record. It rejects when the engine can't do it; nothing
+   * changed then.
+   */
+  checkAgain(accountRef: string): Promise<CheckAgainAnswer>;
+  /**
+   * The address Google signed in when it wasn't the connector's, or `null` when the host no longer
+   * has it (it keeps it in memory for 10 minutes, and never on disk). Only read while the record
+   * says the last sign-in was for another account. It rejects when the engine can't answer.
+   */
+  wrongAccount(accountRef: string): Promise<string | null>;
+  /**
+   * "Use *other@example.com* for this connector instead": changes the connector's address to the
+   * one given and clears the wrong-account note on the record, so the step offers **Sign in with
+   * Google** again. It doesn't start a sign-in, since the browser has to be opened by a click. It
+   * rejects when the engine can't do it; nothing changes then.
+   */
+  changeAddress(accountRef: string, address: string): Promise<void>;
   /** Calls `listener` whenever an account may have changed. Returns a function that stops the calls. */
   subscribe(listener: () => void): () => void;
 }

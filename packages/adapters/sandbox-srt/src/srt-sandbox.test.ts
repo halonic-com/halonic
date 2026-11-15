@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SandboxProfile } from "@halonicjs/ports";
 import { sandboxCheckContract } from "@halonicjs/testing-contracts";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { cgroupNamesContainer, type Machine } from "./machine.ts";
 import type { Runner } from "./srt-runner.ts";
@@ -212,7 +212,7 @@ verifies("sandbox-srt.check", () => {
         },
       };
       const checks = [srt(machine(), runner).check(), srt(machine(), runner).check()];
-      await vi.waitFor(() => expect(started).toBe(1));
+      await waitUntil("the shared check to start", () => started === 1);
       end(1);
       const answers = await Promise.all(checks);
       expect(answers.map((answer) => answer.ok)).toEqual([false, false]);

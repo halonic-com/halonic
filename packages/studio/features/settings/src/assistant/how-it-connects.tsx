@@ -49,10 +49,15 @@ export function HowItConnects(props: HowItConnectsProps) {
   }, [focusBaseUrl]);
   return (
     <div ref={body}>
-      <Disclosure summary={text.HOW_IT_CONNECTS} defaultOpen={openAtFirst}>
+      <Disclosure
+        summary={text.HOW_IT_CONNECTS}
+        detail={text.HOW_IT_CONNECTS_DETAIL}
+        defaultOpen={openAtFirst}
+      >
         <div className="flex flex-col gap-4">
           <SavedTextField
             label={text.BASE_URL}
+            mono
             stored={baseUrl}
             check={(typed) => checkBaseUrl(provider, typed)}
             save={props.saveBaseUrl}
@@ -60,6 +65,7 @@ export function HowItConnects(props: HowItConnectsProps) {
           />
           <SavedTextField
             label={text.SECRET_NAME}
+            mono
             stored={props.secretName}
             check={checkSecretName}
             save={props.saveSecretName}

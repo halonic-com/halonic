@@ -1,8 +1,11 @@
+import { isSea } from "node:sea";
 import type { Readable, Writable } from "node:stream";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
 import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
+import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
+import { MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import type { GoogleSetupPorts } from "@halonicjs/host-server";
@@ -17,6 +20,10 @@ import { openGoogleSetup } from "./google/google-setup.ts";
 import { harnessRoutes } from "./harness/harness-routes.ts";
 import { RunTable } from "./harness/run-table.ts";
 import { signInRoute } from "./harness/sign-in-route.ts";
+import { hostPluginBackends, unavailablePluginBackends } from "./plugin/host-plugin-backends.ts";
+import { hostPluginMachine } from "./plugin/host-plugin-machine.ts";
+import { pluginRoutes } from "./plugin/plugin-routes.ts";
+import { PluginTable } from "./plugin/plugin-table.ts";
 import { sandboxRoutes } from "./sandbox/sandbox-routes.ts";
 import { SessionTable } from "./sandbox/session-table.ts";
 import { SetupJobs, setupRoutes } from "./sandbox/setup-routes.ts";
@@ -141,6 +148,7 @@ export async function run(
     socketFolder,
     connectorPlaces(given.roots, profileFolder),
     profileGoogleSetup(profileFolder),
+    optionalProfileOf(profileFolder),
   );
   try {
     if (args.includes("--stdio")) return await serveOverFrames(args, io, host);
@@ -174,6 +182,11 @@ function profileTrustStore(profileFolder: string): TrustStore {
 function profileGoogleSetup(profileFolder: string | undefined): GoogleSetupPorts | undefined {
   if (profileFolder === undefined) return undefined;
   return openGoogleSetup({ profile: profileOf(profileFolder), env: process.env });
+}
+
+/** The profile folder `--profile-folder` names, or `undefined` without one. */
+function optionalProfileOf(root: string | undefined): ProfileFolder | undefined {
+  return root === undefined ? undefined : profileOf(root);
 }
 
 /** The profile folder `--profile-folder` names, with the system its path belongs to. */
@@ -264,6 +277,7 @@ interface HostServices {
  *   `undefined` for bridges on loopback ports
  * @param connectors - the folders the launcher named as workspaces, what a workspace connector's program may never reach, and the trust records it is checked against
  * @param google - the Google setup of the profile, or `undefined` without a profile folder (no Google route is served)
+ * @param profile - the profile folder plugins and their trust are read from; `undefined` without one, and then no plugin call is served
  */
 function hostServices(
   version: string,
@@ -271,6 +285,7 @@ function hostServices(
   socketFolder: string | undefined,
   connectors: ReturnType<typeof connectorPlaces>,
   google: GoogleSetupPorts | undefined,
+  profile: ProfileFolder | undefined,
 ): HostServices {
   const sessions = new SessionTable();
   const bridges = new BridgeTable();
@@ -283,6 +298,7 @@ function hostServices(
     undefined,
     (text) => process.stderr.write(text),
   );
+  const plugins = hostPlugins(version, sandbox, profile);
   const routes = [
     healthRoute(version),
     ...sandboxRoutes(sandbox, sessions),
@@ -300,6 +316,7 @@ function hostServices(
     ...(google === undefined
       ? []
       : googleRoutes({ google, log: (text) => process.stderr.write(text) })),
+    ...(plugins === undefined ? [] : pluginRoutes({ plugins: plugins.table, log: logToError })),
     signInRoute({ harnesses, openTerminal: (command) => openTerminal(command) }),
   ];
   const stop = async () => {
@@ -308,10 +325,46 @@ function hostServices(
     await runs.cancelAll();
     // A connector closes its own session; then any session left.
     await connectorDeps.connectors.closeAll();
+    await plugins?.stop();
     await sessions.closeAll();
     await bridges.closeAll();
   };
   return { routes, stop };
+}
+
+function logToError(text: string): void {
+  process.stderr.write(text);
+}
+
+/**
+ * The table of plugin runners, started in the host's own sandbox. `stop`
+ * stops every runner and removes the temp folders of their starts.
+ */
+function hostPlugins(
+  version: string,
+  sandbox: SrtSandbox,
+  profile: ProfileFolder | undefined,
+): { table: PluginTable; stop(): Promise<void> } | undefined {
+  if (profile === undefined) return undefined;
+  if (isSea()) {
+    return { table: new PluginTable(unavailablePluginBackends()), stop: async () => undefined };
+  }
+  const { machine, dispose } = hostPluginMachine({ fenced: sandbox, profile, version });
+  // A backend reads no secret and no sign-in token yet.
+  const context = {
+    secrets: { get: async () => null },
+    tokens: new MemoryTokenStore(),
+    http: createNodeHttpClient({ hostClass: () => "public" }),
+    trust: null,
+  };
+  const table = new PluginTable(hostPluginBackends(machine, context, logToError));
+  return {
+    table,
+    stop: async () => {
+      await table.closeAll();
+      await dispose();
+    },
+  };
 }
 
 /** The harnesses the host runs: Claude Code and Codex, found with this computer's launcher. */

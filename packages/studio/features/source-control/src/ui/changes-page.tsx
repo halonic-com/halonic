@@ -6,6 +6,7 @@ import { type ChangesList, ChangesListService, type ChangesListState } from "../
 import { pageWords, stateWords } from "../changes-words.ts";
 import { loadFailureReason } from "../load-failure.ts";
 import { ChangeList } from "./change-list.tsx";
+import { CreateVersionDialog } from "./create-version-dialog.tsx";
 
 /** The Changes place's page: the open workspace's changes, from `ChangesListService`. */
 export function ChangesPage({ context }: PlaceViewProps) {
@@ -23,7 +24,7 @@ export interface ChangesViewProps {
  * work", "Halonic needs git to keep versions.", or "Nothing has changed since your last version.".
  * A later read that fails keeps what the page showed (states D1).
  *
- * Not here yet: Create version, History and the sharing strip.
+ * Not here yet: History and the sharing strip.
  */
 export function ChangesView({ list }: ChangesViewProps) {
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
@@ -37,6 +38,13 @@ export function ChangesView({ list }: ChangesViewProps) {
         </h1>
       </header>
       <PageBody list={list} state={state} focusHeading={() => heading.current?.focus()} />
+      {state.version === undefined ? null : (
+        <CreateVersionDialog
+          list={list}
+          files={list.versionFiles}
+          returnFocus={() => heading.current}
+        />
+      )}
     </div>
   );
 }
@@ -54,11 +62,13 @@ function PageBody({
   const retry = () => void list.refresh();
   const { read } = state;
   if (read === undefined && state.error !== undefined)
-    return <LoadFailed list={list} state={state} />;
+    return <LoadFailed list={list} state={state} focusHeading={focusHeading} />;
   if (read === undefined) return <Loading retry={retry} />;
   return (
     <>
-      {state.error === undefined ? null : <LoadFailed list={list} state={state} />}
+      {state.error === undefined ? null : (
+        <LoadFailed list={list} state={state} focusHeading={focusHeading} />
+      )}
       <ReadBody list={list} state={state} read={read} focusHeading={focusHeading} />
     </>
   );
@@ -116,19 +126,28 @@ function useBusy(work: () => Promise<void>): readonly [boolean, () => void] {
 function LoadFailed({
   list,
   state,
+  focusHeading,
 }: {
   readonly list: ChangesList;
   readonly state: ChangesListState;
+  readonly focusHeading: () => void;
 }) {
-  const [busy, retry] = useBusy(() => list.refresh());
+  const [busy, retry] = useBusy(async () => {
+    await list.refresh();
+    // Try again is gone once the read works, so focus goes to the heading.
+    if (list.state.error === undefined) focusHeading();
+  });
+  // An alert, so a screen reader says so once when the line appears over a page that looked fine.
   return (
-    <EmptyState
-      tone="error"
-      align="start"
-      title={stateWords.loadFailed}
-      description={loadFailureReason(state.error)}
-      action={{ label: stateWords.tryAgain, onClick: retry, busy }}
-    />
+    <div role="alert">
+      <EmptyState
+        tone="error"
+        align="start"
+        title={stateWords.loadFailed}
+        description={loadFailureReason(state.error)}
+        action={{ label: stateWords.tryAgain, onClick: retry, busy }}
+      />
+    </div>
   );
 }
 

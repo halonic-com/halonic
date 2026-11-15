@@ -1,6 +1,6 @@
 import type { SandboxExit, SandboxProcess } from "@halonicjs/ports";
-import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it, vi } from "vitest";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
+import { describe, expect, it } from "vitest";
 import { sandboxProgram } from "./sandbox-program.ts";
 
 /**
@@ -78,7 +78,8 @@ verifies("connector-stdio-sandbox.session-start", () => {
       const handedOn: Uint8Array[] = [];
       for await (const chunk of program.stderr) handedOn.push(chunk);
       expect(handedOn).toEqual([]);
-      await vi.waitFor(() => expect(pulls).toBe(4));
+      await waitUntil("pulls to be 4", () => pulls === 4);
+      expect(pulls).toBe(4);
     });
 
     it("hands on the output as it comes, and cancels it when the reader stops early", async () => {

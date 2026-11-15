@@ -1,7 +1,7 @@
 import { type BridgeEvent, harnessBridgeTokenHeader, type ModelPrice } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
-import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
+import { afterEach, describe, expect, it } from "vitest";
 import { anthropicRoute } from "./anthropic-route.ts";
 import { openBridge } from "./bridge.ts";
 import { controlledStream, fakeProvider } from "./fake-provider.test-helper.ts";
@@ -147,7 +147,8 @@ verifies("harness-bridge.spend", () => {
       const { bridge, recorded } = await open(anthropic.fetch);
       await (await programRequest(bridge, { stream: true })).text();
 
-      await vi.waitFor(() => expect(recorded).toHaveLength(2));
+      await waitUntil("recorded to have length 2", () => recorded.length === 2);
+      expect(recorded).toHaveLength(2);
       expect(recorded[0]).toEqual(request);
       expect(recorded[1]).toEqual({
         type: "llm.response",
@@ -177,7 +178,8 @@ verifies("harness-bridge.spend", () => {
       await reader?.read();
 
       program.abort();
-      await vi.waitFor(() => expect(recorded).toHaveLength(2));
+      await waitUntil("recorded to have length 2", () => recorded.length === 2);
+      expect(recorded).toHaveLength(2);
       expect(recorded[1]).toMatchObject({ usage: { inputTokens: 80, outputTokens: 1 }, text: "" });
     });
 
@@ -218,7 +220,8 @@ verifies("harness-bridge.spend", () => {
     const { bridge, recorded } = await open(anthropic.fetch);
     await (await programRequest(bridge)).text();
 
-    await vi.waitFor(() => expect(recorded).toHaveLength(2));
+    await waitUntil("recorded to have length 2", () => recorded.length === 2);
+    expect(recorded).toHaveLength(2);
     expect(recorded[1]).toMatchObject({
       usage: { inputTokens: 10, outputTokens: 3 },
       text: "Hi there",
@@ -233,7 +236,8 @@ verifies("harness-bridge.spend", () => {
       const anthropic = fakeProvider(() => Response.json(message));
       const { bridge, recorded } = await open(anthropic.fetch);
       await (await programRequest(bridge)).text();
-      await vi.waitFor(() => expect(recorded).toHaveLength(2));
+      await waitUntil("recorded to have length 2", () => recorded.length === 2);
+      expect(recorded).toHaveLength(2);
       return recorded[1];
     }
 
@@ -299,7 +303,8 @@ verifies("harness-bridge.spend", () => {
     const { bridge, recorded } = await open(anthropic.fetch);
     await (await programRequest(bridge, { model: "claude-unpriced-1" })).text();
 
-    await vi.waitFor(() => expect(recorded).toHaveLength(2));
+    await waitUntil("recorded to have length 2", () => recorded.length === 2);
+    expect(recorded).toHaveLength(2);
     expect(recorded[1]).toMatchObject({ model: "claude-unpriced-1", usage: { inputTokens: 10 } });
     expect(recorded[1]).not.toHaveProperty("cost");
   });

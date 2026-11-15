@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { WorkflowStep } from "../api.ts";
 import type { Box } from "../canvas/geometry.ts";
 import { pageWords } from "./page-words.ts";
@@ -9,6 +10,8 @@ export interface StepCardProps {
   /** The first step carries the "Start" chip. */
   readonly first: boolean;
   readonly selected: boolean;
+  /** Take focus on mount, for the card a problem's link opened. */
+  readonly focusOnMount?: boolean;
   readonly onSelect: () => void;
 }
 
@@ -17,10 +20,15 @@ export interface StepCardProps {
  * or "No agent" for a task step that has none (a step without an agent passes the data on). A
  * click selects it; the docked card that edits it lands with Configuration.
  */
-export function StepCard({ step, box, first, selected, onSelect }: StepCardProps) {
+export function StepCard({ step, box, first, selected, focusOnMount, onSelect }: StepCardProps) {
+  const button = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (focusOnMount) button.current?.focus();
+  }, [focusOnMount]);
   const ring = selected ? "border-accent ring-2 ring-accent" : "border-border";
   return (
     <button
+      ref={button}
       type="button"
       aria-pressed={selected}
       onClick={onSelect}

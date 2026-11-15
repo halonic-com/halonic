@@ -43,7 +43,8 @@ export class FakeBackends implements PluginBackends {
     return fingerprint;
   }
 
-  async open(plugin: string): Promise<ConnectorClient> {
+  async open(plugin: string, fingerprint: string): Promise<ConnectorClient> {
+    if (this.trusted.get(plugin) !== fingerprint) throw new PluginRefusal("plugin_not_trusted");
     if (this.refuseStart !== undefined) throw new PluginRefusal(this.refuseStart);
     const backend = new FakeBackend();
     this.started.push({ plugin, backend });

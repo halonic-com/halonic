@@ -6,8 +6,8 @@ import type {
   SandboxSetting,
 } from "@halonicjs/ports";
 import { FakeSandboxSession, idleProgram } from "@halonicjs/testing-contracts";
-import { verifies } from "@halonicjs/testing-spec";
-import { expect, expectTypeOf, it, vi } from "vitest";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
+import { expect, expectTypeOf, it } from "vitest";
 import {
   defaultBackendOrder,
   type LimitCode,
@@ -327,7 +327,8 @@ verifies("app.sandbox-choice", () => {
 
     const started = choice.start();
     const changed = choice.settingsChanged();
-    await vi.waitFor(() => expect(trustChecks("mxc")).toBe(1));
+    await waitUntil(`trustChecks("mxc") to be 1`, () => trustChecks("mxc") === 1);
+    expect(trustChecks("mxc")).toBe(1);
     // The first probe is still pending, so the second check waits its turn.
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(trustChecks("mxc")).toBe(1);

@@ -54,6 +54,10 @@ function show(props: Partial<OverviewPageProps> = {}): HTMLElement {
   );
 }
 
+it("shows the search field's name as its placeholder too", () => {
+  expect(search(show({ hubs: [] })).placeholder).toBe("Search for skills");
+});
+
 function search(page: HTMLElement): HTMLInputElement {
   const field = page.querySelector<HTMLInputElement>('input[aria-label="Search for skills"]');
   if (field === null) {
@@ -300,6 +304,14 @@ verifies("shell.overview.used-by", () => {
       ],
     },
   ];
+
+  it("puts the used-by text in the name of the row's main cell", () => {
+    const page = show({ hubs: used });
+    const cell = [...page.querySelectorAll('td[role="gridcell"]')].find((each) =>
+      each.textContent?.includes("Acme refunds"),
+    );
+    expect(cell?.textContent).toContain("Used by 2 agents");
+  });
 
   it("ends a row with its used-by text and leaves the others bare", () => {
     const page = show({ hubs: used });

@@ -22,6 +22,14 @@ export interface KeyLineProps {
 
 type Stored = "checking" | "yes" | "no" | "unknown";
 
+function dot(mark: string) {
+  return (
+    <>
+      <span aria-hidden="true">{mark}</span>{" "}
+    </>
+  );
+}
+
 function link(label: React.ReactNode, onPress: () => void) {
   return (
     <button type="button" className={inlineLinkClasses} onClick={onPress}>
@@ -45,11 +53,17 @@ export function KeyLine(props: KeyLineProps) {
     closeSettings();
     go();
   };
+  const added = text.keyAddProvider(open?.name ?? "");
   let line: React.ReactNode;
   if (secretName === "") {
     line = text.KEY_NOT_NEEDED;
   } else if (workspace === undefined || (!served && open === null)) {
-    line = text.KEY_NO_WORKSPACE;
+    line = (
+      <>
+        {dot(text.DOT_MISSING)}
+        {text.KEY_NO_WORKSPACE}
+      </>
+    );
   } else if (stored === "checking") {
     line = <SkeletonBar kind="title" width="1/2" />;
   } else if (stored === "unknown") {
@@ -59,6 +73,7 @@ export function KeyLine(props: KeyLineProps) {
   } else if (stored === "yes") {
     line = (
       <>
+        {dot(text.DOT_SET)}
         {text.KEY_SET} ·{" "}
         {link(
           text.KEY_REPLACE,
@@ -69,6 +84,7 @@ export function KeyLine(props: KeyLineProps) {
   } else if (open?.usesSecret(secretName)) {
     line = (
       <>
+        {dot(text.DOT_MISSING)}
         {text.KEY_MISSING} ·{" "}
         {link(
           text.KEY_ADD,
@@ -79,9 +95,14 @@ export function KeyLine(props: KeyLineProps) {
   } else {
     line = (
       <>
+        {dot(text.DOT_MISSING)}
         {text.KEY_MISSING}.{" "}
         {link(
-          text.keyAddProvider(open?.name ?? ""),
+          <>
+            {added.before}
+            <code className="font-mono">{secretName}</code>
+            {added.after}
+          </>,
           press(() => navigate?.addProvider(provider, secretName)),
         )}
       </>

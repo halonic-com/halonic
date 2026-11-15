@@ -1,9 +1,10 @@
+import { isDeepStrictEqual } from "node:util";
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import type { SetupRecord } from "@halonicjs/google-setup";
 import type { ChatTurnRefusal, DefinitionWatchListener } from "@halonicjs/ports";
 import type { GoogleSetupAccount } from "@halonicjs/studio-feature-google-setup/api";
 import { RefusalsFeed } from "@halonicjs/studio-feature-library/api";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { WorkspaceConnectorStatus } from "./workspace-connector-status.ts";
 
@@ -85,8 +86,8 @@ verifies("studio.workspace-connector-status", () => {
 
     expect(listed.map(({ id, name, state }) => ({ id, name, state }))).toEqual([
       { id: "mail", name: "mail", state: "not-connected" },
-      { id: "notes", name: "notes", state: "connected" },
-      { id: "search", name: "Web search", state: "connected" },
+      { id: "notes", name: "notes", state: "not-checked" },
+      { id: "search", name: "Web search", state: "not-checked" },
     ]);
   });
 
@@ -132,6 +133,29 @@ verifies("studio.workspace-connector-status", () => {
     await status.list();
 
     expect(list).not.toHaveBeenCalled();
+  });
+
+  it("lists a connector file that does not parse as unreadable, not gone", async () => {
+    const definitions = new MemoryDefinitionStore({
+      "workspace.yaml": "id: acme\nname: Acme\n",
+      "library/connectors/search.connector.yaml": searchFile,
+      "library/connectors/mail.connector.yaml": googleFile,
+      "library/connectors/broken.connector.yaml": "version: 1\nid: [oops\n",
+    });
+    const status = new WorkspaceConnectorStatus({
+      definitions,
+      refusals: new RefusalsFeed(),
+      google: noGoogle,
+    });
+
+    const listed = await status.list();
+
+    expect(listed.map(({ id, state }) => ({ id, state }))).toEqual([
+      { id: "mail", state: "not-connected" },
+      { id: "search", state: "not-checked" },
+      { id: "broken", state: "unreadable" },
+    ]);
+    expect(listed.find(({ id }) => id === "broken")?.reason).toContain("couldn't read");
   });
 
   it("gives the refusals recorded for a connector and tells its listeners", async () => {
@@ -199,7 +223,8 @@ verifies("studio.workspace-connector-status", () => {
     });
     const heard = vi.fn();
     const stop = status.subscribe(heard);
-    await vi.waitFor(() => expect(changed).toBeDefined());
+    await waitUntil("changed to be defined", () => changed !== undefined);
+    expect(changed).toBeDefined();
 
     focus();
     changed?.changed([{ path: "library/connectors/new.connector.yaml", kind: "changed" }]);
@@ -207,7 +232,8 @@ verifies("studio.workspace-connector-status", () => {
 
     stop();
     expect(stopFocus).toHaveBeenCalledTimes(1);
-    await vi.waitFor(() => expect(closed).toHaveBeenCalledTimes(1));
+    await waitUntil("closed to be called once", () => closed.mock.calls.length === 1);
+    expect(closed).toHaveBeenCalledTimes(1);
   });
 
   it("keeps listening to the window when the files can't be watched", async () => {
@@ -252,10 +278,14 @@ verifies("studio.workspace-connector-status", () => {
     });
 
     const stopFirst = status.subscribe(() => {});
-    await vi.waitFor(() => expect(reported).toHaveBeenCalledWith(openFailure));
+    await waitUntil("reported to be called with openFailure", () =>
+      reported.mock.calls.some((call) => isDeepStrictEqual(call, [openFailure])),
+    );
+    expect(reported).toHaveBeenCalledWith(openFailure);
     stopFirst();
     const stopSecond = status.subscribe(() => {});
-    await vi.waitFor(() => expect(listener).toBeDefined());
+    await waitUntil("listener to be defined", () => listener !== undefined);
+    expect(listener).toBeDefined();
     listener?.failed(laterFailure);
 
     expect(reported).toHaveBeenCalledWith(laterFailure);

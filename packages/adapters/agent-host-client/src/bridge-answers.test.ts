@@ -1,13 +1,17 @@
 import type { BridgeTools } from "@halonicjs/ports";
-import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it, vi } from "vitest";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
+import { describe, expect, it } from "vitest";
 import { answersSent, hostAnswering, openOn, services } from "./bridges.test-helper.ts";
 import { fitsAnswerLimit } from "./bridges.ts";
 import { type FakeHost, ok, refused } from "./fake-host.test-helper.ts";
 
 /** Waits until `host` has had `count` answers, and returns them. */
 async function answers(host: FakeHost, count: number): Promise<unknown[]> {
-  await vi.waitFor(() => expect(answersSent(host)).toHaveLength(count));
+  await waitUntil(
+    "answersSent(host) to have length count",
+    () => answersSent(host).length === count,
+  );
+  expect(answersSent(host)).toHaveLength(count);
   return answersSent(host);
 }
 

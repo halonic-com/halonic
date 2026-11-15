@@ -87,8 +87,8 @@ verifies("settings.ai-agent-key-line", () => {
   it("says a stored key is set and links to the provider page after closing Settings", async () => {
     const { workspace, calls } = fakeWorkspace(acme, true);
     const { view, closeSettings } = await setup(workspace);
-    expect(keyLine(view)).toContain("● Key set · Replace it on the provider page ›");
-    await click(buttonNamed(view, "Replace it on the provider page ›"));
+    expect(keyLine(view)).toContain("● Key set · Replace it in Models ›");
+    await click(buttonNamed(view, "Replace it in Models ›"));
     expect(closeSettings).toHaveBeenCalled();
     expect(calls).toEqual(["provider anthropic-api-key"]);
   });
@@ -96,15 +96,36 @@ verifies("settings.ai-agent-key-line", () => {
   it("offers the provider page when a provider uses the name and no key is stored", async () => {
     const { workspace } = fakeWorkspace(acme, false);
     const { view } = await setup(workspace);
-    expect(keyLine(view)).toContain("○ No key · Add it on the provider page ›");
+    expect(keyLine(view)).toContain("○ No key · Add it in Models ›");
   });
 
   it("starts Add provider filled in when no provider uses the name", async () => {
     const { workspace, calls } = fakeWorkspace({ ...acme, usesSecret: () => false }, false);
     const { view } = await setup(workspace);
-    expect(keyLine(view)).toContain("○ No key. Add a provider that uses the secret name to Acme ›");
-    await click(buttonNamed(view, "Add a provider that uses the secret name to Acme ›"));
+    expect(keyLine(view)).toContain(
+      "○ No key. Add a provider that uses anthropic-api-key to Acme ›",
+    );
+    await click(buttonNamed(view, "Add a provider that uses anthropic-api-key to Acme ›"));
     expect(calls).toEqual(["add anthropic anthropic-api-key"]);
+  });
+
+  it("hides the dots from a screen reader", async () => {
+    const { workspace } = fakeWorkspace(acme, true);
+    const { view } = await setup(workspace);
+    const line = [...view.querySelectorAll("p")].find((p) => p.textContent?.includes("Key set"));
+    expect(line?.querySelector('span[aria-hidden="true"]')?.textContent).toBe("●");
+  });
+
+  it("names the secret in code font when no provider uses it", async () => {
+    const { workspace } = fakeWorkspace({ ...acme, usesSecret: () => false }, false);
+    const { view } = await setup(workspace);
+    expect(view.querySelector("code")?.textContent).toBe("anthropic-api-key");
+  });
+
+  it("shows the local-only warning view-only too", async () => {
+    const { workspace } = fakeWorkspace({ ...acme, localOnly: true });
+    const { view } = await setup(workspace, "served");
+    expect(keyLine(view)).toContain("Acme is local only, so it can't use this cloud model.");
   });
 
   it("asks to open a workspace with none open, or without a workspace service", async () => {

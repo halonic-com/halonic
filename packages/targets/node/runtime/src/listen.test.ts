@@ -1,8 +1,8 @@
 import { type IncomingHttpHeaders, request } from "node:http";
 import { connect } from "node:net";
 import type { RequestContext, Server } from "@halonicjs/host-server";
-import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   type Listening,
   listenOnNode,
@@ -234,7 +234,8 @@ verifies("runtime.listen", () => {
         logError: (error) => errors.push(error),
       });
       await send(listening.port, { headers: { host: "localhost" } }).catch(() => undefined);
-      await vi.waitFor(() => expect(errors).toHaveLength(1));
+      await waitUntil("errors to have length 1", () => errors.length === 1);
+      expect(errors).toHaveLength(1);
       failing = false;
       const answer = await send(listening.port, { headers: { host: "localhost" } });
       expect(answer).toMatchObject({ status: 200, body: "ok" });

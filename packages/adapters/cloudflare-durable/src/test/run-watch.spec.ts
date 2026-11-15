@@ -1,3 +1,4 @@
+import { waitUntil } from "@halonicjs/testing-spec";
 /**
  * Watching a run through a real `RunObject` in workerd: the byte stream `watch` returns has to
  * cross the Durable Object call, carry the events a client appends meanwhile, and close after the
@@ -8,7 +9,7 @@
 import { env } from "cloudflare:workers";
 import type { RunEvent } from "@halonicjs/events";
 import { completed, entered, started } from "@halonicjs/testing-contracts";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { DurableRunEvents } from "../durable-run-events.ts";
 import { cases, SuiteClock, type TestRunObject } from "./test-run-object.ts";
 
@@ -91,7 +92,11 @@ describe("DurableRunEvents in workerd", () => {
     const { runId, object } = newRunObject();
     await object.append(runId, 0, [started(runId), entered(runId, 2), entered(runId, 3)]);
     const first = follow(runId, 0);
-    await vi.waitFor(() => expect(first.told).toEqual([1, 2, 3]));
+    await waitUntil(
+      "first.told to equal [1, 2, 3]",
+      () => JSON.stringify(first.told) === JSON.stringify([1, 2, 3]),
+    );
+    expect(first.told).toEqual([1, 2, 3]);
     first.subscription.close();
     await object.append(runId, 3, [entered(runId, 4), completed(runId, 5)]);
     const second = follow(runId, 3);

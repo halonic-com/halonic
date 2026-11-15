@@ -45,7 +45,7 @@ describe("resultText", () => {
   it("never repeats Google's own text for a failed check", () => {
     const busy = resultText({ ...drive, result: { kind: "checkFailed", status: 429 } });
     expect(busy.text).toBe(
-      "Drive: Google couldn't check it just now (error 429). Wait a moment, then sign in again.",
+      "Drive: Google couldn't check it just now (error 429). Wait a moment, then check again.",
     );
     const refused = resultText({ ...drive, result: { kind: "checkFailed", status: 403 } });
     expect(refused.text).toBe("Drive: Google refused the check (error 403). Sign in again.");

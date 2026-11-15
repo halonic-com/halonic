@@ -14,6 +14,10 @@ export interface ProvidersState {
   /** The `budget` of `workspace.yaml`, as written; `undefined` when there is none. */
   readonly budget: WorkspaceSettings["budget"];
   readonly localProviders: ReadonlySet<string>;
+  /** True when the `providers/` folder couldn't be read at all, which is not the same as no providers. */
+  readonly providersFailed: boolean;
+  /** The provider files that didn't parse, by path. */
+  readonly unreadableProviderFiles: readonly string[];
 }
 
 /**
@@ -38,7 +42,7 @@ export interface ProviderEntry {
 
 /** The workspace's aliases and providers; no `models.yaml` is no aliases, a file that doesn't parse is unreadable. */
 export async function readModels(files: ModelsFiles): Promise<ModelsState> {
-  const [entries, text] = await Promise.all([
+  const [{ entries, unreadable, failed }, text] = await Promise.all([
     readProviderEntries(files),
     files.readModels().catch(() => undefined),
   ]);
@@ -50,6 +54,8 @@ export async function readModels(files: ModelsFiles): Promise<ModelsState> {
     localOnly: workspace?.privacy.localOnly ?? false,
     workspaceName: workspace?.name,
     budget: workspace?.budget,
+    providersFailed: failed,
+    unreadableProviderFiles: unreadable,
     localProviders: new Set(providers.filter((provider) => provider.local).map(({ id }) => id)),
   };
   const models = text === undefined ? undefined : parseModelsOrEmpty(text);
@@ -79,12 +85,23 @@ async function readWorkspace(files: ModelsFiles) {
   return parsed?.ok ? parsed.value.value : undefined;
 }
 
-/** The providers whose files read; a file that doesn't read, or none at all, is left out of the list. */
-async function readProviderEntries(files: ModelsFiles): Promise<ProviderEntry[]> {
-  const found = await files.readProviders().catch(() => []);
-  return found.flatMap(({ path, text }) => {
-    const id = path.replace(/^.*\//, "").replace(/\.ya?ml$/, "");
-    const parsed = parseFile("provider", text, { id });
-    return parsed.ok ? [{ path, provider: parsed.value.value }] : [];
-  });
+/** The providers whose files read, the paths of those that don't parse, and whether the folder itself failed to read. */
+async function readProviderEntries(files: ModelsFiles) {
+  const found = await files.readProviders().then(
+    (list) => ({ list, failed: false }),
+    () => ({ list: [], failed: true }),
+  );
+  const entries: ProviderEntry[] = [];
+  const unreadable: string[] = [];
+  for (const { path, text } of found.list) {
+    const parsed = parseFile("provider", text, { id: fileId(path) });
+    if (parsed.ok) entries.push({ path, provider: parsed.value.value });
+    else unreadable.push(path);
+  }
+  return { entries, unreadable, failed: found.failed };
+}
+
+/** A provider's id: its file's name without the folder or `.yaml`. */
+export function fileId(path: string): string {
+  return path.replace(/^.*\//, "").replace(/\.ya?ml$/, "");
 }

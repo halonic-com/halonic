@@ -15,9 +15,10 @@
 
 import { mkdir, mkdtemp, realpath, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import type { Sandbox, SandboxCommand, SandboxSession } from "@halonicjs/ports";
 import { runnerCommand } from "../src/halonic/runner-command.ts";
+import { runnerNodeFolder } from "../src/halonic/runner-node-folder.ts";
 import {
   diskOnThisMachine,
   type RunnerBackend,
@@ -145,7 +146,7 @@ export async function openAttack(options: RunAttackOptions): Promise<OpenedAttac
   const { files, machine } = realRunnerPaths(
     {
       node: process.execPath,
-      nodeFolder: dirname(dirname(process.execPath)),
+      nodeFolder: runnerNodeFolder(process.execPath),
       runnerFile: scriptFile,
       integrationFolder: options.folders.integrationFolder,
     },

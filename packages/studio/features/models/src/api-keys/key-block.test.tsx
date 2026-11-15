@@ -135,7 +135,7 @@ verifies("models.api-keys.enter-key", () => {
     const view = await show(failing);
     const input = await type(view, "sk-acme-test-789");
     await press(view, "Save key");
-    expect(view.textContent).toContain("Couldn't save the key");
+    expect(view.textContent).toContain("Couldn't save the key: refused");
     expect(view.textContent).not.toContain("sk-acme-test-789");
     expect(input.value).toBe("sk-acme-test-789");
   });
@@ -197,7 +197,7 @@ verifies("models.api-keys.replace-or-remove", () => {
     expect(view.textContent).toContain("Key set");
   });
 
-  it("asks before replacing when the check failed, and sends nothing until confirmed", async () => {
+  it("asks 'Save a key as' when the check failed, and sends nothing until confirmed", async () => {
     const { keys, sent } = keysWith(desktop, ["anthropic"]);
     const view = await show({
       ...keys,
@@ -207,7 +207,8 @@ verifies("models.api-keys.replace-or-remove", () => {
     });
     await type(view, "sk-acme-test-456");
     await press(view, "Save key");
-    expect(document.body.textContent).toContain("Change anthropic?");
+    expect(document.body.textContent).not.toContain("Change anthropic?");
+    expect(document.body.textContent).toContain("Save a key as anthropic?");
     expect(sent).toEqual([]);
   });
 

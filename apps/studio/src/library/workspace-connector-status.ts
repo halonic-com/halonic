@@ -11,7 +11,7 @@ import type {
   RefusalsFeed,
 } from "@halonicjs/studio-feature-library/api";
 import { type ConnectionState, connectionStateOf } from "@halonicjs/studio-feature-library/api";
-import { filesOf, loadWorkspace } from "@halonicjs/workspace";
+import { filesOf, loadWorkspace, placeOf } from "@halonicjs/workspace";
 
 /** What {@link WorkspaceConnectorStatus} reads. */
 export interface WorkspaceConnectorStatusOptions {
@@ -42,12 +42,14 @@ const notSetUp: ConnectionState = connectionStateOf({
  * The connectors of one open workspace as the Library's status view reads them
  * (requirement `studio.workspace-connector-status`).
  *
- * A connector's state comes from its file: it is set up, so it counts as connected. What the
- * app can't see yet, such as an expired sign-in, is not in the file and shows only as a refusal
- * when a call fails. A Google connector's sign-in is in its account's setup record, so its state
- * comes from the record, the same one the Google setup block shows. A Google connector whose
- * account has no setup record yet is listed as not connected. When an account's setup changes,
- * the status tells its listeners, so the Library never shows an older state than the setup block.
+ * A connector's file says it is set up, not that it works, so its state is "Not checked yet"
+ * until something reads its sign-in and secret; it never says "Connected" on a guess. A connector
+ * whose file doesn't read is listed with an error state, so its page doesn't say it is gone.
+ * An expired sign-in shows as a refusal when a call fails. A Google connector's sign-in is in its
+ * account's setup record, so its state comes from the record, the same one the Google setup block
+ * shows. A Google connector whose account has no setup record yet is listed as not connected.
+ * When an account's setup changes, the status tells its listeners, so the Library never shows an
+ * older state than the setup block.
  *
  * @example
  * services.provide(
@@ -66,30 +68,47 @@ export class WorkspaceConnectorStatus implements ConnectorStatusHost {
 
   async list(): Promise<readonly ConnectorStatus[]> {
     const workspace = await loadWorkspace(this.#options.definitions);
-    const connectors = filesOf(workspace, "connector").map(({ value }) => value);
+    const files = filesOf(workspace, "connector");
+    const connectors = files.map(({ value }) => value);
     const accounts = connectors.some(({ transport }) => "google" in transport)
       ? await this.#options.google.list()
       : [];
-    return connectors.map((connector) => ({
-      id: connector.id,
-      name: connector.name ?? connector.id,
-      state: this.#stateOf(connector, accounts),
-    }));
+    const listed = connectors.map(
+      (connector): ConnectorStatus => ({
+        id: connector.id,
+        name: connector.name ?? connector.id,
+        state: this.#stateOf(connector, accounts),
+      }),
+    );
+    // A file that parsed is not an unreadable one.
+    const known = new Set(connectors.map(({ id }) => id));
+    const unreadable = new Set<string>();
+    for (const { file } of workspace.issues) {
+      const place = placeOf(file);
+      if (place?.kind !== "connector" || place.placeId === undefined) continue;
+      if (known.has(place.placeId) || unreadable.has(place.placeId)) continue;
+      unreadable.add(place.placeId);
+    }
+    return [
+      ...listed,
+      ...[...unreadable].map(
+        (id): ConnectorStatus => ({
+          id,
+          name: id,
+          state: "unreadable",
+          reason:
+            "Halonic couldn't read this connector's file. Open the file and fix what it says.",
+        }),
+      ),
+    ];
   }
 
-  /** A Google connector's state is its account's record's; any other connector is set up by its file. */
+  /** A Google connector's state is its account's record's; any other connector is not checked yet. */
   #stateOf(
     connector: { readonly id: string; readonly transport: object },
     accounts: readonly GoogleSetupAccount[],
   ): ConnectionState {
-    if (!("google" in connector.transport)) {
-      return connectionStateOf({
-        configured: true,
-        signedIn: true,
-        secretValid: true,
-        apiOn: true,
-      });
-    }
+    if (!("google" in connector.transport)) return "not-checked";
     const account = accounts.find(({ record }) => record.connector.id === connector.id);
     return account === undefined ? notSetUp : connectionStateOf(connectorFacts(account));
   }

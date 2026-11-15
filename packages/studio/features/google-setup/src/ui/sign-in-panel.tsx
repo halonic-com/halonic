@@ -14,6 +14,8 @@ export interface SignInPanelProps {
   readonly signInStartedAt: string | null;
   /** When the last sign-in finished, from the setup record. */
   readonly lastSignInAt: string | null;
+  /** When the last sign-in came back for another account, from the setup record. */
+  readonly wrongAccountAt: string | null;
   readonly answering: boolean;
   /** Opens step 6, for "check the client ID". */
   readonly onOpenClientStep: () => void;
@@ -42,7 +44,8 @@ type SignIn =
  * window never began one means the last one didn't finish.
  */
 export function SignInPanel(props: SignInPanelProps) {
-  const { start, cancel, signInStartedAt, lastSignInAt, answering, onOpenClientStep } = props;
+  const { start, cancel, signInStartedAt, lastSignInAt, wrongAccountAt, answering } = props;
+  const { onOpenClientStep } = props;
   const openExternal = useOpenExternal();
   const notAnswering = useNotAnswering();
   const reason = useId();
@@ -105,9 +108,10 @@ export function SignInPanel(props: SignInPanelProps) {
     if (lastSignIn(lastSignInAt) !== lastSignIn(lastSignInWhenStarted.current)) {
       setSignIn({ kind: "idle" });
     } else if (signInStartedAt === null && seenStarted.current) {
-      setSignIn({ kind: "dropped" });
+      // A sign-in for another account ended too, but its note says so: not "didn't finish".
+      setSignIn(wrongAccountAt === null ? { kind: "dropped" } : { kind: "idle" });
     }
-  }, [signIn.kind, signInStartedAt, lastSignInAt]);
+  }, [signIn.kind, signInStartedAt, lastSignInAt, wrongAccountAt]);
 
   // Cancel hands focus to the button that comes back in its place.
   useEffect(() => {
@@ -161,7 +165,8 @@ export function SignInPanel(props: SignInPanelProps) {
           unavailable={answering ? undefined : { reason }}
           onClick={begin}
         >
-          Sign in with Google<span aria-hidden="true"> ↗</span>
+          {wrongAccountAt === null ? "Sign in with Google" : "Sign in again"}
+          <span aria-hidden="true"> ↗</span>
           <span className="sr-only"> (opens in your browser)</span>
         </Button>
       </div>

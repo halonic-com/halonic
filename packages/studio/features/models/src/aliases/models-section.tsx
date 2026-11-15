@@ -120,7 +120,7 @@ function AliasList({
   return (
     <ul className="flex flex-col">
       {rows.map((row) => (
-        <li key={row.name} className="flex items-center gap-2">
+        <li key={row.name} className="flex flex-wrap items-center gap-x-2">
           <button type="button" className="text-left" onClick={() => open(row.name)}>
             {row.label}
           </button>

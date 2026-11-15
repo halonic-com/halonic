@@ -1,11 +1,12 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { SrtSandbox, sandboxRuntimeFolder } from "@halonicjs/adapter-sandbox-srt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildRunnerFile, type RunnerFile } from "../esbuild.config.ts";
 import type { ConnectRunnerOptions } from "../src/halonic/connect-runner.ts";
 import { type RunnerBlock, RunnerStoppedError } from "../src/halonic/limits.ts";
+import { runnerNodeFolder } from "../src/halonic/runner-node-folder.ts";
 import { socketFolders, systemFiles } from "../src/halonic/runner-profile.ts";
 import { type StartedRunner, startRunner } from "../src/halonic/start-runner.ts";
 import { bridgeOptions, fakeRunnerProcess } from "../src/pipes.test-helper.ts";
@@ -98,7 +99,7 @@ async function startRunnerFor(
     sandbox: new SrtSandbox(),
     files: {
       node: process.execPath,
-      nodeFolder: dirname(dirname(process.execPath)),
+      nodeFolder: runnerNodeFolder(process.execPath),
       runnerFile: runner.path,
       integrationFolder,
     },

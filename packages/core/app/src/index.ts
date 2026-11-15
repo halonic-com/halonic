@@ -17,6 +17,7 @@ export { describeFileChange, type FileChange } from "./changes/describe-file.ts"
 export { describeItemChange } from "./changes/describe-item.ts";
 export { describeRoutineChange } from "./changes/describe-routine.ts";
 export { describeWorkflowChange } from "./changes/describe-workflow.ts";
+export { type PartValue, partValueIn } from "./changes/part-value.ts";
 export {
   type ChangeLine,
   type ItemPath,
@@ -384,6 +385,12 @@ export {
   trustCheckFailures,
   trustCheckLeaks,
 } from "./sandbox-trust-check.ts";
+export {
+  SaveScheduler,
+  type SaveSchedulerOptions,
+  type SaveTimers,
+  type SaveTrigger,
+} from "./save-scheduler.ts";
 export { type SecretChange, type SecretInput, SecretService } from "./secret-service.ts";
 export {
   type Disposable,

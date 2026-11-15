@@ -40,6 +40,11 @@ verifies("library.connection-state", () => {
       label: "Not connected",
       tone: "attention",
     });
+    expect(connectionStateTable["not-checked"]).toEqual({
+      label: "Not checked yet",
+      tone: "neutral",
+    });
+    expect(connectionStateTable.unreadable.label).toBe("Can't read the file");
     for (const state of ["needs-sign-in", "needs-new-secret", "api-off"] as const) {
       expect(connectionStateTable[state].tone).toBe("attention");
     }

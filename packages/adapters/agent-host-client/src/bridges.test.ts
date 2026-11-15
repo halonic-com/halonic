@@ -1,5 +1,5 @@
 import type { BridgeApprovals, BridgeEvent, BridgeRecorder, BridgeTools } from "@halonicjs/ports";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import {
   agent,
@@ -16,7 +16,11 @@ import { AgentHostError } from "./transport.ts";
 
 /** Waits until `host` has had `count` answers, and returns them. */
 async function answers(host: FakeHost, count: number): Promise<unknown[]> {
-  await vi.waitFor(() => expect(answersSent(host)).toHaveLength(count));
+  await waitUntil(
+    "answersSent(host) to have length count",
+    () => answersSent(host).length === count,
+  );
+  expect(answersSent(host)).toHaveLength(count);
   return answersSent(host);
 }
 
@@ -252,7 +256,8 @@ verifies("agent-host-client.bridges", () => {
       await answers(host, 1);
       expect(signals).toHaveLength(1);
       stream.send({ type: "cancel", call: "1" });
-      await vi.waitFor(() => expect(signals[0]?.aborted).toBe(true));
+      await waitUntil("signals[0]?.aborted to be true", () => signals[0]?.aborted === true);
+      expect(signals[0]?.aborted).toBe(true);
     });
 
     it("answers a quick call while an approval waits, and a cancel aborts the approval unanswered", async () => {
@@ -272,7 +277,8 @@ verifies("agent-host-client.bridges", () => {
       stream.send({ type: "call", call: "2", method: "tools.list", params: {} });
       expect(await answers(host, 1)).toEqual([{ bridge: "b1", call: "2", result: [] }]);
       stream.send({ type: "cancel", call: "1" });
-      await vi.waitFor(() => expect(approvalSignal?.aborted).toBe(true));
+      await waitUntil("approvalSignal?.aborted to be true", () => approvalSignal?.aborted === true);
+      expect(approvalSignal?.aborted).toBe(true);
       stream.end();
       await Promise.resolve();
       expect(answersSent(host)).toHaveLength(1);
@@ -316,7 +322,8 @@ verifies("agent-host-client.bridges", () => {
         method: "tools.call",
         params: { name: "search", args: {} },
       });
-      await vi.waitFor(() => expect(signal).toBeDefined());
+      await waitUntil("signal to be defined", () => signal !== undefined);
+      expect(signal).toBeDefined();
       const closing = bridge.close();
       stream.end();
       await expect(closing).resolves.toBeUndefined();

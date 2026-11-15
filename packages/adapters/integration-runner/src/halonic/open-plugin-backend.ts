@@ -42,6 +42,24 @@ export interface OpenPluginBackendRequest {
   /** The plugin's id, which is its folder's name in the profile's plugins folder. */
   readonly plugin: string;
   readonly context: ConnectorFactoryContext;
+  /**
+   * The trust fingerprint the caller checked just before. The start refuses,
+   * as `changed`, when the folder it reads no longer has this fingerprint, so
+   * a plugin swapped between the caller's check and the start never runs.
+   */
+  readonly fingerprint?: string;
+}
+
+/** The sandbox that fences a plugin isn't available here, so nothing started and nothing runs without it. */
+export class PluginBackendNotFencedError extends Error {
+  override readonly name = "PluginBackendNotFencedError";
+  /** Why the gate says there is no fence, for a log. */
+  readonly reason: string;
+
+  constructor(reason: string) {
+    super(`the sandbox isn't available here (${reason}) and running without it isn't allowed yet`);
+    this.reason = reason;
+  }
 }
 
 /**
@@ -135,6 +153,7 @@ class PluginBackendOpening {
     const gated = await starts.start(
       this.#request.plugin,
       (sandbox, trusted, backend): Promise<StartedRunner> => {
+        this.#requireFingerprint(trusted);
         this.#requireReadPlugin(trusted, readPlugin);
         this.#requireTrustedFiles(trusted);
         return begin({
@@ -153,11 +172,16 @@ class PluginBackendOpening {
       },
     );
     if (gated.run === "fenced" || gated.run === "unfenced") return gated.runner;
-    throw new Error(
-      gated.run === "needs-yes"
-        ? `the sandbox isn't available here (${gated.reason}) and running without it isn't allowed yet`
-        : "the sandbox failed its check, so nothing runs",
-    );
+    if (gated.run === "needs-yes") throw new PluginBackendNotFencedError(gated.reason);
+    throw new Error("the sandbox failed its check, so nothing runs");
+  }
+
+  /** The folder the start trusted must be the one the caller checked, so a swap in between starts nothing. */
+  #requireFingerprint(trusted: TrustedPluginBackend): void {
+    const { fingerprint } = this.#request;
+    if (fingerprint !== undefined && fingerprint !== trusted.fingerprint) {
+      throw new PluginBackendNotTrustedError(this.#request.plugin, "changed");
+    }
   }
 
   /**

@@ -1,6 +1,6 @@
 import type { BridgeEvent, BridgeProviderAccess } from "@halonicjs/ports";
-import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
+import { afterEach, describe, expect, it } from "vitest";
 import { controlledStream, fakeProvider } from "./fake-provider.test-helper.ts";
 import { send } from "./fakes.test-helper.ts";
 import {
@@ -74,7 +74,11 @@ verifies("harness-bridge.openai", () => {
       await reply.body?.getReader().read();
 
       program.abort();
-      await vi.waitFor(() => expect(openai.calls[0]?.signal.aborted).toBe(true));
+      await waitUntil(
+        "openai.calls[0]?.signal.aborted to be true",
+        () => openai.calls[0]?.signal.aborted === true,
+      );
+      expect(openai.calls[0]?.signal.aborted).toBe(true);
     });
 
     it("gives back OpenAI's own error replies unchanged", async () => {
@@ -272,7 +276,8 @@ verifies("harness-bridge.spend", () => {
     const { bridge, recorded } = await open(openai.fetch);
     await (await programRequest(bridge, codexRequest)).text();
 
-    await vi.waitFor(() => expect(recorded).toHaveLength(2));
+    await waitUntil("recorded to have length 2", () => recorded.length === 2);
+    expect(recorded).toHaveLength(2);
     expect(recorded[0]).toEqual(request);
     expect(recorded[1]).toEqual({
       type: "llm.response",
@@ -292,7 +297,8 @@ verifies("harness-bridge.spend", () => {
     const { bridge, recorded } = await open(openai.fetch);
     await (await programRequest(bridge, { model: "gpt-5.5", input: "Hi" })).text();
 
-    await vi.waitFor(() => expect(recorded).toHaveLength(2));
+    await waitUntil("recorded to have length 2", () => recorded.length === 2);
+    expect(recorded).toHaveLength(2);
     expect(recorded[0]).toMatchObject({ messages: 1 });
   });
 

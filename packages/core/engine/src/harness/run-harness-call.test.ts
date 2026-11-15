@@ -1,6 +1,6 @@
 import { isRunFailureError } from "@halonicjs/ports";
 import { StopSource } from "@halonicjs/std";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { SandboxNotReadyError } from "../run/sandbox-not-ready-error.ts";
 import {
@@ -342,7 +342,8 @@ verifies("engine.harness-start-limits", () => {
     expect(ports.steps).toEqual(["bridge.open", "bridge.close"]);
 
     held.resolve();
-    await vi.waitFor(() => expect(ports.steps).toContain("session.close"));
+    await waitUntil("the harness step session.close", () => ports.steps.includes("session.close"));
+    expect(ports.steps).toContain("session.close");
     expect(ports.steps).toEqual(["bridge.open", "bridge.close", "sandbox.open", "session.close"]);
   });
 
@@ -436,7 +437,8 @@ verifies("engine.harness-stops-with-engine", () => {
     const result = runOn(ports, start.limits, stop.signal);
     // The first event is in once its start limit's timer is gone.
     await start.scheduler.waitFor("run_1", "start:harness:call-1");
-    await vi.waitFor(() => expect(start.scheduler.timers.size).toBe(0));
+    await waitUntil("start.scheduler.timers.size to be 0", () => start.scheduler.timers.size === 0);
+    expect(start.scheduler.timers.size).toBe(0);
     stop.stop(new Error("The engine stopped."));
     const { error, written } = await result;
 
@@ -460,7 +462,8 @@ verifies("engine.harness-stops-with-engine", () => {
     expect(String(error)).toContain("The engine stopped.");
     expect(ports.steps).toEqual(["bridge.open", "bridge.close"]);
     held.resolve();
-    await vi.waitFor(() => expect(ports.steps).toContain("session.close"));
+    await waitUntil("the harness step session.close", () => ports.steps.includes("session.close"));
+    expect(ports.steps).toContain("session.close");
     expect(stillOpen(ports.steps)).toBe(0);
   });
 });

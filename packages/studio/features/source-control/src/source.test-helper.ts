@@ -1,4 +1,4 @@
-import type { ChangesRead, ChangesSource, FileTexts } from "./api.ts";
+import type { ChangesRead, ChangesSource, FileTexts, VersionInput } from "./api.ts";
 
 /**
  * A source whose answer and failures a test sets, and which a test can wake as the window coming
@@ -8,9 +8,11 @@ export function fakeSource(initial: ChangesRead) {
   let answer = initial;
   let readFailure: unknown;
   let turnOnFailure: unknown;
+  let versionFailure: unknown;
   let turnedOn = 0;
   const texts = new Map<string, FileTexts>();
   const replaced: { path: string; text: string; expected: string }[] = [];
+  const versions: VersionInput[] = [];
   const listeners = new Set<() => void>();
   const source: ChangesSource = {
     read: async () => {
@@ -28,6 +30,14 @@ export function fakeSource(initial: ChangesRead) {
       if (current?.after !== expected) return "changed-on-disk";
       texts.set(path, { ...current, after: text });
       return "replaced";
+    },
+    createVersion: async (input) => {
+      if (versionFailure !== undefined) throw versionFailure;
+      versions.push(input);
+      const recorded = new Set(input.paths);
+      if (answer.kind === "ready") {
+        answer = { kind: "ready", changes: answer.changes.filter((c) => !recorded.has(c.path)) };
+      }
     },
     turnOnHistory: async () => {
       turnedOn += 1;
@@ -54,6 +64,12 @@ export function fakeSource(initial: ChangesRead) {
     /** Makes reads fail with `error`; `undefined` makes them work again. */
     failReads: (error: unknown) => {
       readFailure = error;
+    },
+    /** Every version `createVersion` recorded, in order. */
+    versions,
+    /** Makes Create version fail with `error`; `undefined` makes it work again. */
+    failVersion: (error: unknown) => {
+      versionFailure = error;
     },
     /** Makes Turn on history fail with `error`. */
     failTurnOn: (error: unknown) => {

@@ -29,6 +29,8 @@ interface InputBase extends Omit<InputHTMLAttributes<HTMLInputElement>, OwnedAtt
    * a phone, with a 48px hit area, so the box stays 48px.
    */
   readonly trailing?: ReactNode;
+  /** Mono text, for a value that is code: a model id, a secret name, a URL. */
+  readonly mono?: boolean;
   readonly ref?: Ref<HTMLInputElement>;
 }
 
@@ -65,6 +67,7 @@ export function Input({
   leadingIcon,
   leadingButton,
   trailing,
+  mono = false,
   ref,
   onKeyDown,
   ...native
@@ -106,7 +109,7 @@ export function Input({
         data-field-text=""
         data-text-entry=""
         // As tall as the box, so a press above or below the line of text lands on it.
-        className={`${fieldTextClasses} self-stretch`}
+        className={`${fieldTextClasses} self-stretch${mono ? " font-mono" : ""}`}
         aria-describedby={field?.describedBy}
         aria-invalid={invalid || undefined}
         aria-required={field?.required || undefined}

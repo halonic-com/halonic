@@ -4,12 +4,14 @@
  *
  * - `plugin_not_trusted`: the host's own trust record doesn't cover the plugin as it is in its folder now.
  * - `not_fenced`: the sandbox that fences a plugin isn't available on this computer, such as Windows before HAL-3403.
+ * - `not_in_this_build`: the shipped single executable has no runner mode yet, so it starts no plugin backend.
  * - `too_many_plugins`: the table already holds the most plugins it allows.
  * - `host_stopping`: the host is stopping and starts no more plugins.
  */
 export type PluginRefusalCode =
   | "plugin_not_trusted"
   | "not_fenced"
+  | "not_in_this_build"
   | "too_many_plugins"
   | "host_stopping";
 

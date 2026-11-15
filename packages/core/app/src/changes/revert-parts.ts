@@ -140,7 +140,7 @@ function neighbourBefore(
 }
 
 /** The value at `path` in plain data, and whether there is one; a list on the way means none. */
-function valueAt(data: unknown, path: ItemPath): { found: boolean; value: unknown } {
+export function valueAt(data: unknown, path: ItemPath): { found: boolean; value: unknown } {
   let value = data;
   for (const key of path) {
     if (!isPlainObject(value) || !Object.hasOwn(value, key)) {
