@@ -2,6 +2,7 @@
 
 - Approval: HAL-10017 (Liam, CTO; plan Revision 2)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:D0I8BfBPHC2PcAqj9jOboOXvbRK2Fk7P0gK544gBCFRlMx1rJgd4/uabRWr8rviMgtKUcyvCHF7rQ9+iVMQCAw==
 - Task: HAL-10028
 
 The relay's rule that a first request without the host's token is closed within 10 seconds gets one
