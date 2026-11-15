@@ -8,9 +8,7 @@ import {
   KEY_CHECK_FAILED,
   KEY_CHECKING,
   KEY_HEADING,
-  KEY_REMOVE_FAILED,
   KEY_REMOVED_LINE,
-  KEY_SAVE_FAILED,
   KEY_SET,
   keptLine,
   NEEDS_SECRET_NAME,
@@ -19,9 +17,12 @@ import {
   PASTE_FIRST,
   REMOVE_KEY,
   REPLACE_PLACEHOLDER,
+  removeFailedLine,
   removeQuestion,
   SAVE_KEY,
   savedLine,
+  saveFailedLine,
+  saveUnknownQuestion,
   TRY_AGAIN,
   unavailableLine,
 } from "./key-text.ts";
@@ -61,7 +62,7 @@ function useStoredKey(
 }
 
 /** What is being asked in the open confirm. */
-type Confirm = "change" | "remove";
+type Confirm = "change" | "save" | "remove";
 
 /**
  * The key block of a provider's page (`models.api-keys.*`): whether a key is stored, a masked
@@ -101,7 +102,12 @@ function KeyField({ keys, entry, secretName, providerName }: KeyFieldProps) {
   const [problem, setProblem] = useState<string>();
   const [done, setDone] = useState("");
 
-  async function run(action: () => Promise<void>, failure: string, line: string) {
+  async function run(
+    action: () => Promise<void>,
+    failure: (reason: string) => string,
+    line: string,
+    secret?: string,
+  ) {
     setBusy(true);
     setProblem(undefined);
     setDone("");
@@ -109,9 +115,10 @@ function KeyField({ keys, entry, secretName, providerName }: KeyFieldProps) {
       await action();
       setDone(line);
       return true;
-    } catch {
-      // The error never repeats the key, and neither does this line.
-      setProblem(failure);
+    } catch (error) {
+      // The key is taken out of the reason, in case the error repeats it.
+      const reason = error instanceof Error ? error.message : String(error);
+      setProblem(failure(secret === undefined ? reason : reason.split(secret).join("")));
       return false;
     } finally {
       setBusy(false);
@@ -123,8 +130,9 @@ function KeyField({ keys, entry, secretName, providerName }: KeyFieldProps) {
     if (secretName === undefined || value === "") return;
     const saved = await run(
       () => keys.save(secretName, new SecretText(value)),
-      KEY_SAVE_FAILED,
+      saveFailedLine,
       savedLine(providerName),
+      value,
     );
     if (!saved) return;
     if (input.current !== null) input.current.value = "";
@@ -135,7 +143,7 @@ function KeyField({ keys, entry, secretName, providerName }: KeyFieldProps) {
 
   async function remove() {
     if (secretName === undefined) return;
-    if (await run(() => keys.remove(secretName), KEY_REMOVE_FAILED, KEY_REMOVED_LINE)) {
+    if (await run(() => keys.remove(secretName), removeFailedLine, KEY_REMOVED_LINE)) {
       setStored("none");
     }
   }
@@ -148,7 +156,8 @@ function KeyField({ keys, entry, secretName, providerName }: KeyFieldProps) {
       input.current?.focus();
       return;
     }
-    if (stored !== "none") setConfirm("change");
+    if (stored === "unknown") setConfirm("save");
+    else if (stored !== "none") setConfirm("change");
     else void send();
   }
 
@@ -209,7 +218,7 @@ function KeyField({ keys, entry, secretName, providerName }: KeyFieldProps) {
               returnFocus={() => input.current}
               onConfirm={() => {
                 setConfirm(undefined);
-                void (confirm === "change" ? send() : remove());
+                void (confirm === "remove" ? remove() : send());
               }}
               onCancel={() => setConfirm(undefined)}
             />
@@ -260,20 +269,28 @@ interface KeyConfirmProps {
 
 /** The question before a stored key is changed or removed. */
 function KeyConfirm({ kind, secretName, returnFocus, onConfirm, onCancel }: KeyConfirmProps) {
-  const change = kind === "change";
+  const remove = kind === "remove";
   return (
     <Dialog
-      title={change ? "Change key?" : "Remove key?"}
+      title={{ change: "Change key?", save: "Save key?", remove: "Remove key?" }[kind]}
       confirm={{
-        label: change ? CHANGE_KEY : REMOVE_KEY,
-        variant: change ? "primary" : "danger",
-        busyLabel: change ? "Saving…" : "Removing…",
+        label: { change: CHANGE_KEY, save: SAVE_KEY, remove: REMOVE_KEY }[kind],
+        variant: remove ? "danger" : "primary",
+        busyLabel: remove ? "Removing…" : "Saving…",
       }}
       onConfirm={onConfirm}
       onCancel={onCancel}
       returnFocus={returnFocus}
     >
-      <p>{change ? changeQuestion(secretName) : removeQuestion(secretName)}</p>
+      <p>
+        {
+          {
+            change: changeQuestion(secretName),
+            save: saveUnknownQuestion(secretName),
+            remove: removeQuestion(secretName),
+          }[kind]
+        }
+      </p>
     </Dialog>
   );
 }
