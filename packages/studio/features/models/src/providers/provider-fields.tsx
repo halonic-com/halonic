@@ -17,6 +17,8 @@ export interface ProviderFieldsProps {
   readonly provider: Provider;
   /** The provider's file, like `providers/ollama.yaml`. */
   readonly path: string;
+  /** Called with the provider as it was, after an edit is applied (trigger (a) of the step). */
+  readonly onEdited?: (before: Provider) => void;
 }
 
 /** The known types, and the file's own when it isn't one of them, so the Select can show it. */
@@ -36,7 +38,7 @@ function typeOptions(current: string) {
  * @example
  * <ProviderFields files={files} provider={provider} path="providers/ollama.yaml" />
  */
-export function ProviderFields({ files, provider, path }: ProviderFieldsProps) {
+export function ProviderFields({ files, provider, path, onEdited }: ProviderFieldsProps) {
   const [problem, setProblem] = useState<ProviderProblem>();
   const [status, setStatus] = useState("");
   const [name, setName] = useDraft(provider.name ?? "");
@@ -56,6 +58,7 @@ export function ProviderFields({ files, provider, path }: ProviderFieldsProps) {
     if (edited.value === text) return;
     files.changeProvider(path, providerUpdatedLine(provider.name ?? provider.id), edited.value);
     setStatus(providerUpdatedLine(provider.name ?? provider.id));
+    onEdited?.(provider);
   };
   const problemFor = (field: ProviderField) => (problem?.field === field ? problem.message : null);
   const onBlur = (field: ProviderField, draft: string, saved: string | undefined) =>

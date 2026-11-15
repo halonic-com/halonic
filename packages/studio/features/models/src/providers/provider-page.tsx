@@ -1,10 +1,14 @@
+import type { Provider } from "@halonicjs/format";
 import { EmptyState } from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
+import { useEffect, useRef } from "react";
 import { MODELS_LOADING_LINE } from "../aliases/alias-text.ts";
 import { fileId } from "../aliases/read-models.ts";
 import { useModels } from "../aliases/use-models.ts";
-import { ModelKeysService, ModelsFilesService } from "../api.ts";
+import { ModelKeysService, ModelsFilesService, NoLimitMemoryService } from "../api.ts";
 import { KeyBlock } from "../api-keys/key-block.tsx";
+import { becamePayPerUse } from "../budget-step/step-asks.ts";
+import { useStepOffer } from "../budget-step/use-step-offer.tsx";
 import { ProviderFields } from "./provider-fields.tsx";
 import { providerName, providerPlace } from "./provider-rows.ts";
 import {
@@ -29,11 +33,22 @@ import {
 export function ProviderPage({ item, context }: ItemViewProps) {
   const files = context.services.get(ModelsFilesService);
   const keys = context.services.find(ModelKeysService);
+  const memory = context.services.find(NoLimitMemoryService);
   const [state, retry] = useModels(files);
   const entry =
     state.status !== "loading"
       ? state.providerFiles.find(({ provider }) => provider.id === item.id)
       : undefined;
+  const { offer, dialog } = useStepOffer(files, state, memory);
+  /** The provider as it was before an edit; the step is offered once the edited one is read back. */
+  const edited = useRef<Provider | undefined>(undefined);
+  const provider = entry?.provider;
+  useEffect(() => {
+    const before = edited.current;
+    if (before === undefined || provider === undefined || provider === before) return;
+    edited.current = undefined;
+    if (becamePayPerUse(before, provider)) offer(provider);
+  });
   const brokenFile =
     state.status !== "loading" && entry === undefined
       ? state.unreadableProviderFiles.find((path) => fileId(path) === item.id)
@@ -55,16 +70,25 @@ export function ProviderPage({ item, context }: ItemViewProps) {
           {state.localOnly && providerPlace(entry.provider) === "cloud" ? (
             <p role="alert">{blockedLocalOnlyLine(state.workspaceName)}</p>
           ) : null}
-          <ProviderFields files={files} provider={entry.provider} path={entry.path} />
+          <ProviderFields
+            files={files}
+            provider={entry.provider}
+            path={entry.path}
+            onEdited={(before) => {
+              edited.current = before;
+            }}
+          />
           {keys === undefined ? null : (
             <KeyBlock
               keys={keys}
               secretName={entry.provider.secret}
               providerName={providerName(entry.provider)}
+              onFirstKey={() => offer(entry.provider)}
             />
           )}
         </>
       ) : null}
+      {dialog}
     </div>
   );
 }

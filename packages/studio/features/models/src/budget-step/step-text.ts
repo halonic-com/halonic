@@ -4,6 +4,7 @@ import { budgetSummary } from "../budget/budget-text.ts";
 export const SAVE_PRICES = "Save prices";
 export const SAVE_BUDGET_STEP = "Save budget";
 export const NO_LIMIT = "No limit";
+export const NO_LIMIT_LINE = "No limit. Spend is still shown, estimated.";
 export const DECIDE_LATER = "Decide later";
 export const SAVING = "Saving…";
 export const PRICES_HEADING = "Prices per million tokens";
