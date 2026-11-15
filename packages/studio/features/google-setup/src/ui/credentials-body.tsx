@@ -2,7 +2,7 @@ import type { SetupStep } from "@halonicjs/google-setup";
 import type { SecretText } from "@halonicjs/studio-kit";
 import { Callout, CopyButton } from "@halonicjs/studio-kit";
 import { useRef } from "react";
-import type { SecretEntry } from "../api.ts";
+import type { SecretEntry, SecretReplaceAnswer } from "../api.ts";
 import { ClientIdField } from "./client-id-field.tsx";
 import { ConsoleLink } from "./console-link.tsx";
 import { SecretField, type SecretFieldHandle } from "./secret-field.tsx";
@@ -19,6 +19,12 @@ export interface CredentialsBodyProps {
   readonly answering: boolean;
   readonly onSaveClientId: (clientId: string) => Promise<void>;
   readonly onSaveSecret: (secret: SecretText) => Promise<void>;
+  /** Sends a new secret for a saved one, and answers what Google said to it. */
+  readonly onReplaceSecret: (secret: SecretText) => Promise<SecretReplaceAnswer>;
+  /** The setup hasn't been signed in yet, so a new secret replaces the old one at once. */
+  readonly beforeFirstSignIn: boolean;
+  /** Google refused the saved secret: the field opens ready for the new one. */
+  readonly needsNewSecret: boolean;
   /** Told whether the secret field holds unsaved text. */
   readonly onSecretTyped: (hasText: boolean) => void;
 }
@@ -69,6 +75,10 @@ export function CredentialsBody(props: CredentialsBodyProps) {
           answering={props.answering}
           handle={secret}
           onSave={props.onSaveSecret}
+          onReplace={props.onReplaceSecret}
+          beforeFirstSignIn={props.beforeFirstSignIn}
+          startReplacing={props.needsNewSecret && props.secretSavedAt !== null}
+          clientsLink={<ConsoleLink step={step} page="clients" />}
           onTyped={props.onSecretTyped}
         />
       ) : (

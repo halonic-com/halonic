@@ -57,6 +57,21 @@ export type SecretEntry =
       readonly commandExists: boolean;
     };
 
+/**
+ * What the host says after a new client secret was sent (design 4.3). Before the first sign-in the
+ * new secret replaces the old one at once (`replaced`). After it, the host checks the new secret
+ * with Google first, and swaps it in only when Google accepts it (`accepted`).
+ */
+export type SecretReplaceAnswer =
+  /** Google accepted it. `usedBy` lists every account address now on it, this account's too. */
+  | { readonly kind: "accepted"; readonly usedBy: readonly string[] }
+  /** Replaced straight away, because the setup hasn't been signed in yet: step 7 checks it. */
+  | { readonly kind: "replaced" }
+  /** Google refused it. The old secret is still saved and in use. */
+  | { readonly kind: "refused" }
+  /** Google couldn't be reached to check it. The old secret is still in use. */
+  | { readonly kind: "no-network" };
+
 /** The Google accounts of the open workspace. The app provides it. */
 export interface GoogleSetupAccounts {
   /** How the client secret is entered on this host. It doesn't change while the workspace is open. */
@@ -75,6 +90,13 @@ export interface GoogleSetupAccounts {
    * holds the secret.
    */
   saveClientSecret(accountRef: string, secret: SecretText): Promise<void>;
+  /**
+   * Sends a new client secret for an account that has one, on its own request like
+   * `saveClientSecret`. The host stages it, checks it with Google and tells the answer; it never
+   * replaces a working secret with one Google refused. It rejects when the engine can't do it;
+   * nothing changed then. Neither the answer nor a rejection ever holds the secret.
+   */
+  replaceClientSecret(accountRef: string, secret: SecretText): Promise<SecretReplaceAnswer>;
   /**
    * **Start over**: removes the account's setup, its sign-in and its client secret (unless another
    * account uses the client), and leaves a fresh setup at step 1 that `list` returns. It never
