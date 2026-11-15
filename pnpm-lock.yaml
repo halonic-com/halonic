@@ -2550,6 +2550,9 @@ importers:
       '@halonicjs/studio-shell':
         specifier: workspace:*
         version: link:../../shell
+      '@halonicjs/workspace':
+        specifier: workspace:*
+        version: link:../../../core/workspace
       '@halonicjs/yaml':
         specifier: workspace:*
         version: link:../../../core/yaml

@@ -1,5 +1,5 @@
 import { defaultCurrency } from "@halonicjs/app";
-import { type Models, type Provider, parseFile } from "@halonicjs/format";
+import { type Models, type Provider, parseFile, type WorkspaceSettings } from "@halonicjs/format";
 import type { ModelsFiles } from "../api.ts";
 
 /** What the provider views know of the workspace; it doesn't depend on `models.yaml`. */
@@ -11,6 +11,8 @@ export interface ProvidersState {
   readonly localOnly: boolean;
   /** The workspace's name, for words that name it; `undefined` when `workspace.yaml` doesn't read. */
   readonly workspaceName: string | undefined;
+  /** The `budget` of `workspace.yaml`, as written; `undefined` when there is none. */
+  readonly budget: WorkspaceSettings["budget"];
   readonly localProviders: ReadonlySet<string>;
 }
 
@@ -47,6 +49,7 @@ export async function readModels(files: ModelsFiles): Promise<ModelsState> {
     providerFiles: entries,
     localOnly: workspace?.privacy.localOnly ?? false,
     workspaceName: workspace?.name,
+    budget: workspace?.budget,
     localProviders: new Set(providers.filter((provider) => provider.local).map(({ id }) => id)),
   };
   const models = text === undefined ? undefined : parseModelsOrEmpty(text);

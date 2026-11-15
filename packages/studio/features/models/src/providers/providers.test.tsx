@@ -36,6 +36,7 @@ function filesWith(providers: Record<string, string>, workspace?: string): Model
     changeProvider: () => undefined,
     readWorkspace: async () => workspace ?? null,
     changeModels: () => undefined,
+    changeWorkspace: () => undefined,
     subscribe: () => () => undefined,
   };
 }

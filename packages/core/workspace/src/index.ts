@@ -34,6 +34,7 @@ export {
   planHubExtract,
 } from "./extract-plan.ts";
 export { harnessWorkingFolders } from "./harness-working-folders.ts";
+export { hasBudget } from "./has-budget.ts";
 export {
   type CreatedWorkspace,
   type CreateWorkspaceError,

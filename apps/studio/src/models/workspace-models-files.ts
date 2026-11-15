@@ -62,6 +62,10 @@ export class WorkspaceModelsFiles implements ModelsFiles {
     this.#parts.files.change(label, { [MODELS_PATH]: text });
   }
 
+  changeWorkspace(label: string, text: string): void {
+    this.#parts.files.change(label, { [WORKSPACE_PATH]: text });
+  }
+
   changeProvider(path: string, label: string, text: string): void {
     if (PROVIDER_PATH.test(path)) this.#parts.files.change(label, { [path]: text });
   }

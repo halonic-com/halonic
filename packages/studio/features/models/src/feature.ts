@@ -8,8 +8,8 @@ import { PROVIDER_KIND, PROVIDER_KIND_LABEL, providerTitle } from "./providers/p
  * budget" step and the spend line. Each part registers here as it lands; the
  * interface other features use is in `api.ts`. So far it adds the **Models**
  * section of the workspace page with the alias list (`models.aliases.list`)
- * and the alias tab, and the **Providers** section with the provider page
- * (`models.providers.list-and-show`).
+ * and the alias tab, the Budget block above it (`models.budget-settings`), and the
+ * **Providers** section with the provider page (`models.providers.list-and-show`).
  */
 export const modelsFeature = defineFeature({
   id: "models",

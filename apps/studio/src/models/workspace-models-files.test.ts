@@ -54,6 +54,16 @@ verifies("models.aliases.edit-target", () => {
     ]);
   });
 
+  it("changes workspace.yaml as one named step", () => {
+    const { changes, models } = setup();
+
+    models.changeWorkspace("Set the budget", "version: 1\n");
+
+    expect(changes).toEqual([
+      { label: "Set the budget", changes: { "workspace.yaml": "version: 1\n" } },
+    ]);
+  });
+
   it("changes a provider file as one named step, and only a file directly in providers/", async () => {
     const { changes, store, models } = setup();
     store["providers/ollama.yaml"] = "id: ollama\n";

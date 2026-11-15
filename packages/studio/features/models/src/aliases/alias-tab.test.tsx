@@ -41,6 +41,7 @@ function memoryFiles(initial: string, providers: ProviderFile[] = []) {
     readProvider: async () => null,
     changeProvider: () => undefined,
     readWorkspace: async () => null,
+    changeWorkspace: () => undefined,
     changeModels: (label, next) => {
       text = next;
       changes.push({ label, text: next });
