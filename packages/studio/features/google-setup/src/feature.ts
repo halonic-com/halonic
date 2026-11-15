@@ -5,8 +5,9 @@ import { googleSetupSource } from "./google-setup-source.ts";
 
 /**
  * The Google setup feature. When a workspace opens, it adds the Google setup source to that
- * workspace's Inbox, built from the accounts the app provides, and shows a header badge for each
- * account that needs a sign-in again or a new secret.
+ * workspace's Inbox, built from the accounts the app provides, shows a header badge for each
+ * account that needs a sign-in again or a new secret, and adds the Google block to the page of
+ * the connector each account belongs to.
  */
 export const googleSetupFeature = defineFeature({
   id: "google-setup",
@@ -24,6 +25,13 @@ export const googleSetupFeature = defineFeature({
       order: 20,
       view: "ConnectorBadges",
       load: () => import("./ui/connector-badges.tsx"),
+    });
+    studio.itemPage.addSection({
+      on: "connector",
+      id: "google-setup.connector",
+      order: 20,
+      view: "ConnectorSection",
+      load: () => import("./ui/connector-section.tsx"),
     });
   },
 });

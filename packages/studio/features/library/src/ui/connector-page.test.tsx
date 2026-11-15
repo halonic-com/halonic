@@ -25,6 +25,7 @@ function props(id: string, openPlace = vi.fn()): ItemViewProps {
       announcer: { announceState: vi.fn() },
       openPlace,
     },
+    Sections: () => <p>A section from another feature</p>,
   } as unknown as ItemViewProps;
 }
 
@@ -40,6 +41,14 @@ describe("ConnectorPage", () => {
     await settled();
     expect(root.querySelector("h1")?.textContent).toBe("Notes");
     expect(root.querySelector("h2")?.textContent).toBe("Recent refusals");
+  });
+
+  it("draws the sections other features add under the status section", async () => {
+    const root = render(<ConnectorPage {...props("notes")} />);
+    await settled();
+    expect(root.lastElementChild?.lastElementChild?.textContent).toBe(
+      "A section from another feature",
+    );
   });
 
   it("says the connector isn't in the workspace when the host doesn't list it", async () => {
