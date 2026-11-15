@@ -74,10 +74,10 @@ halonic --version
 `pnpm install` downloads about 150 MB, so it can take a while on a slow
 connection.
 
-If pnpm comes with Corepack, the first `pnpm` command may stop and ask
-"Corepack is about to download pnpm ... Proceed?". Answer `y`: this repository
-pins the pnpm version it needs. To skip the question, set
-`COREPACK_ENABLE_DOWNLOAD_PROMPT=0` first.
+If you set up pnpm with Corepack, the first `pnpm` command may stop with
+"Corepack is about to download ..." and ask "Do you want to continue?".
+Answer `y` (or press Enter): this repository pins the pnpm version it needs.
+To skip the question, set `COREPACK_ENABLE_DOWNLOAD_PROMPT=0` first.
 
 `pnpm add -g ./apps/cli` doesn't copy the CLI: it links your clone, so
 `halonic` always runs the code in that folder.
