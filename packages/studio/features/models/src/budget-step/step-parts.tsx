@@ -4,8 +4,18 @@ import type { RefObject } from "react";
 import { zeroPriceWarning } from "../aliases/alias-edits.ts";
 import { ZERO_PRICE_WARNING } from "../aliases/alias-text.ts";
 import type { PriceRow, StepProblem } from "./step-edits.ts";
-import { BUDGET_HINT, currencyChangedWarning, noAliasesLine } from "./step-text.ts";
-export interface BudgetFieldsProps {
+import {
+  BUDGET_HINT,
+  currencyChangedWarning,
+  INPUT_LABEL,
+  noAliasesLine,
+  OUTPUT_LABEL,
+  PER_MONTH_LABEL,
+  PER_RUN_LABEL,
+} from "./step-text.ts";
+
+/** The props of {@link StepBudgetFields}. */
+export interface StepBudgetFieldsProps {
   readonly prefix: { symbol: string; name: string };
   readonly fields: { readonly perRun: string; readonly monthly: string };
   readonly note: string | undefined;
@@ -16,24 +26,24 @@ export interface BudgetFieldsProps {
 }
 
 /** The two budget fields; the note that per run is higher is the description of per run. */
-export function BudgetFields({
+export function StepBudgetFields({
   prefix,
   fields,
   note,
   problemFor,
   onChange,
   focusFirst,
-}: BudgetFieldsProps) {
+}: StepBudgetFieldsProps) {
   return (
     <FormRows>
-      <Field label="Per run" prefix={prefix} error={problemFor("perRun")} hint={note}>
+      <Field label={PER_RUN_LABEL} prefix={prefix} error={problemFor("perRun")} hint={note}>
         <Input
           autoFocus={focusFirst}
           value={fields.perRun}
           onChange={(event) => onChange("perRun", event.target.value)}
         />
       </Field>
-      <Field label="Per month" prefix={prefix} error={problemFor("monthly")} hint={note}>
+      <Field label={PER_MONTH_LABEL} prefix={prefix} error={problemFor("monthly")}>
         <Input
           value={fields.monthly}
           onChange={(event) => onChange("monthly", event.target.value)}
@@ -44,6 +54,7 @@ export function BudgetFields({
   );
 }
 
+/** The props of {@link PriceRowFields}. */
 export interface PriceRowFieldsProps {
   readonly rows: readonly PriceRow[];
   readonly providerName: string;
@@ -61,14 +72,14 @@ export function PriceRowFields(props: PriceRowFieldsProps) {
   return rows.map((row, index) => (
     <FormRows key={row.alias}>
       <p className="font-mono">{row.alias}</p>
-      <Field label="Input" prefix={prefix} error={problemFor("input", row.alias)}>
+      <Field label={INPUT_LABEL} prefix={prefix} error={problemFor("input", row.alias)}>
         <Input
           {...(index === 0 ? { ref: props.firstPrice } : {})}
           value={row.input}
           onChange={(event) => onChange(row.alias, "input", event.target.value)}
         />
       </Field>
-      <Field label="Output" prefix={prefix} error={problemFor("output", row.alias)}>
+      <Field label={OUTPUT_LABEL} prefix={prefix} error={problemFor("output", row.alias)}>
         <Input
           value={row.output}
           onChange={(event) => onChange(row.alias, "output", event.target.value)}

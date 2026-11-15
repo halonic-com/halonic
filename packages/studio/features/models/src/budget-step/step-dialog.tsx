@@ -5,7 +5,7 @@ import { currencyPrefix } from "../aliases/alias-text.ts";
 import type { ModelsFiles } from "../api.ts";
 import { PER_RUN_ABOVE_MONTHLY } from "../budget/budget-text.ts";
 import { editStep, type PriceRow, type StepProblem } from "./step-edits.ts";
-import { BudgetFields, PriceRowFields, stepWarnings } from "./step-parts.tsx";
+import { PriceRowFields, StepBudgetFields, stepWarnings } from "./step-parts.tsx";
 import {
   BUDGET_DETAILS,
   BUDGET_HEADING_STEP,
@@ -53,7 +53,8 @@ export interface PricesBudgetDialogProps {
  * currency, and the budget fields. **Save budget** reads **Save prices** while both budget fields
  * are empty. It stays pressable with a wrong field: every wrong field says why at once and focus
  * goes to the first. With every field empty it writes nothing and closes, like **Decide later**.
- * Prices and budget are written as one undo step per file.
+ * Prices and budget are written as one undo step per file. In the narrowed step **Change** starts
+ * the fields at the budget the workspace has; emptying both removes it, as on the budget page.
  *
  * @example
  * <PricesBudgetDialog files={files} providerName="Anthropic" kind="full" aliases={["fast"]} currency="EUR" providerIsLocal={false} onClose={close} />
@@ -69,6 +70,7 @@ export function PricesBudgetDialog(props: PricesBudgetDialogProps) {
   const [problems, setProblems] = useState<readonly StepProblem[]>([]);
   const [failure, setFailure] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [failedSaves, setFailedSaves] = useState(0);
   const form = useRef<HTMLDivElement>(null);
   const firstPrice = useRef<HTMLInputElement>(null);
   const showBudgetFields = kind === "full" || changingBudget;
@@ -77,6 +79,20 @@ export function PricesBudgetDialog(props: PricesBudgetDialogProps) {
 
   /** Focus starts on the first price row, though the currency comes before it in the order. */
   useEffect(() => firstPrice.current?.focus(), []);
+
+  /** Focus goes to the first wrong field once it is marked, which is after the render. */
+  useEffect(() => {
+    if (failedSaves > 0) form.current?.querySelector<HTMLElement>("[aria-invalid=true]")?.focus();
+  }, [failedSaves]);
+
+  /** **Change** fills the fields from the budget, so saving without a touch keeps it. */
+  function changeBudget() {
+    setFields({
+      perRun: budget?.perRun === undefined ? "" : String(budget.perRun),
+      monthly: budget?.monthly === undefined ? "" : String(budget.monthly),
+    });
+    setChangingBudget(true);
+  }
 
   async function save() {
     setFailure(undefined);
@@ -99,8 +115,8 @@ export function PricesBudgetDialog(props: PricesBudgetDialogProps) {
       );
       if (!edited.ok) {
         setProblems(edited.error);
+        setFailedSaves((count) => count + 1);
         setBusy(false);
-        form.current?.querySelector<HTMLElement>("[aria-invalid=true]")?.focus();
         return;
       }
       const label = stepSavedLabel(providerName);
@@ -169,25 +185,23 @@ export function PricesBudgetDialog(props: PricesBudgetDialogProps) {
             onChange={setRow}
           />
           <p className="text-small text-fg-muted">{PRICES_HINT}</p>
-          {warnings.length > 0 ? (
-            <div role="status">
-              {warnings.map((line) => (
-                <p key={line}>{line}</p>
-              ))}
-            </div>
-          ) : null}
+          <div role="status">
+            {warnings.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </div>
         </section>
         <section className="flex flex-col gap-2">
           <h3 className="text-heading">{BUDGET_HEADING_STEP}</h3>
           {kind === "narrowed" && !changingBudget ? (
             <p className="flex items-center gap-2">
               {budgetLine(budget ?? {}, currency)}
-              <Button variant="secondary" onClick={() => setChangingBudget(true)}>
+              <Button variant="secondary" onClick={changeBudget}>
                 {CHANGE_STEP_BUDGET}
               </Button>
             </p>
           ) : (
-            <BudgetFields
+            <StepBudgetFields
               prefix={prefix}
               fields={fields}
               note={higher ? PER_RUN_ABOVE_MONTHLY : undefined}

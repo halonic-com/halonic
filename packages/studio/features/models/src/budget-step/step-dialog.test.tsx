@@ -29,12 +29,12 @@ afterEach(() => {
 const models = "version: 1\naliases:\n  fast:\n    provider: openai\n    model: gpt-mini\n";
 const workspace = "version: 1\nid: acme\nname: Acme\n";
 
-function setup(props: Partial<PricesBudgetDialogProps> = {}) {
+function setup(props: Partial<PricesBudgetDialogProps> = {}, workspaceText = workspace) {
   const changes: { file: string; label: string; text: string }[] = [];
   const closed: boolean[] = [];
   const files = {
     readModels: async () => models,
-    readWorkspace: async () => workspace,
+    readWorkspace: async () => workspaceText,
     changeModels: (label: string, text: string) => changes.push({ file: "models", label, text }),
     changeWorkspace: (label: string, text: string) =>
       changes.push({ file: "workspace", label, text }),
@@ -164,6 +164,31 @@ verifies("models.budget-step.ask-for-pay-per-use", () => {
       await press("Change");
 
       expect(document.activeElement).toBe(field("Per run"));
+    });
+
+    it("keeps the budget when Change is pressed and nothing else is touched", async () => {
+      const { changes } = setup(
+        { kind: "narrowed", aliases: ["fast"], budget: { monthly: 50 } },
+        `${workspace}budget:\n  monthly: 50\n`,
+      );
+
+      await press("Change");
+      expect(field("Per month").value).toBe("50");
+      type(field("Input", 0), "3");
+      type(field("Output", 0), "15");
+      await press("Save budget");
+
+      expect(changes.map((change) => change.file)).toEqual(["models"]);
+    });
+
+    it("moves focus to the first wrong field after a failed save", async () => {
+      setup();
+
+      type(field("Input", 0), "abc");
+      field("Per month").focus();
+      await press("Save prices");
+
+      expect(document.activeElement).toBe(field("Input", 0));
     });
 
     it("says so when no alias uses the provider", () => {

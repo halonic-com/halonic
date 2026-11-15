@@ -10,6 +10,10 @@ export const PRICES_HINT = "Find these on the provider's pricing page.";
 export const CURRENCY_LABEL = "Currency";
 export const BUDGET_HEADING_STEP = "Budget";
 export const BUDGET_HINT = "Fill in one or both.";
+export const PER_RUN_LABEL = "Per run";
+export const PER_MONTH_LABEL = "Per month";
+export const INPUT_LABEL = "Input";
+export const OUTPUT_LABEL = "Output";
 export const CHANGE_STEP_BUDGET = "Change";
 export const HONEST_LINE =
   "Runs stop at an estimated budget. Costs are estimated from the prices you enter.";
