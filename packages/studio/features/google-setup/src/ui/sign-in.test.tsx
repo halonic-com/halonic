@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { pendingSignInLifetimeMs } from "@halonicjs/google-setup";
+import { pendingSignInLifetimeMs, type ServiceCheckOutcome } from "@halonicjs/google-setup";
 import { type ExternalAddress, OpenExternalProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -219,5 +219,46 @@ verifies("google-setup.sign-in", () => {
     ).toContain("isn't answering");
     await press(signIn);
     expect(fake.signIns).toEqual([]);
+  });
+});
+
+const checkedAt = "2026-11-12T02:20:00.000Z";
+const signedInRecord = (result: ServiceCheckOutcome) =>
+  account(
+    record(upToSignIn, {
+      ...ready,
+      lastSignInAt: checkedAt,
+      services: { ledger: { result, checkedAt } },
+    }),
+  );
+
+verifies("google-setup.sign-in-results", () => {
+  it("says Google is set up when every service passed", async () => {
+    const { container } = await open(signedInRecord({ kind: "works" }));
+    expect(container.textContent).toContain("Google is set up for x@example.com. Ledger works.");
+  });
+
+  it("lists a service whose API is off with the page to switch it on", async () => {
+    const { container } = await open(
+      signedInRecord({
+        kind: "apiOff",
+        api: "ledger.googleapis.com",
+        apiName: "Ledger API",
+        project: "halonic-x1",
+        enableUrl: "https://console.example.com/enable",
+      }),
+    );
+    expect(container.textContent).toContain("Ledger: the Ledger API is off in project halonic-x1.");
+    const link = [...container.querySelectorAll("a")].find((a) =>
+      a.textContent?.startsWith("Switch it on"),
+    );
+    expect(link?.getAttribute("href")).toBe("https://console.example.com/enable");
+    expect(container.textContent).not.toContain("Google is set up for");
+  });
+
+  it("shows no results before a service was checked", async () => {
+    const { container } = await open(signedOut());
+    expect(container.textContent).not.toContain("Google is set up for");
+    expect(container.textContent).not.toContain("works");
   });
 });

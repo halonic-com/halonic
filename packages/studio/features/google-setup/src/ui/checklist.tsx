@@ -229,6 +229,15 @@ export function Checklist(props: ChecklistProps) {
                     lastSignInAt: account.record.lastSignInAt,
                     onOpenClientStep: () => setEditing("credentials"),
                   }}
+                  results={{
+                    email: account.email,
+                    lines: account.services.flatMap((service) => {
+                      const checked = account.record.services[service.id];
+                      return checked === undefined
+                        ? []
+                        : [{ service: service.id, label: service.label, result: checked.result }];
+                    }),
+                  }}
                   answering={answering}
                   busy={busy}
                   failed={failed ?? progressFailed}
@@ -303,6 +312,7 @@ interface OpenStepProps {
   readonly credentials: StepBodyProps["credentials"];
   readonly appName: string | undefined;
   readonly signIn: StepBodyProps["signIn"];
+  readonly results: StepBodyProps["results"];
   readonly answering: boolean;
   readonly busy: boolean;
   /** The reason the last save failed, as a sentence. */
@@ -342,6 +352,7 @@ function OpenStep(props: OpenStepProps) {
         appName={props.appName}
         savedProjectId={account.record.projectId}
         signIn={props.signIn}
+        results={props.results}
       />
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" onClick={close}>
