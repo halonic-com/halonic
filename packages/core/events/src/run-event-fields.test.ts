@@ -151,6 +151,21 @@ verifies("events.sandbox-off", () => {
   });
 });
 
+verifies("events.harness-instructions", () => {
+  typeTest(
+    "names the pinned instruction files by relative path and hash, never their contents",
+    () => {
+      expectTypeOf<EventOf<"harness.instructions">>().toEqualTypeOf<{
+        type: "harness.instructions";
+        state: string;
+        agent: string;
+        files: { path: string; sha256: string }[];
+        sha256: string;
+      }>();
+    },
+  );
+});
+
 verifies("events.llm-skipped", () => {
   typeTest("names the skipped alias, its model, why, and the alias tried instead", () => {
     expectTypeOf<EventOf<"llm.skipped">>().toEqualTypeOf<{
