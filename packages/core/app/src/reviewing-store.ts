@@ -13,6 +13,7 @@ import type {
   WriteResult,
 } from "@halonicjs/ports";
 import type { FileWriter } from "./review-hook.ts";
+import type { Trash } from "./review-types.ts";
 
 /**
  * The workspace's store with its writes and removes passed to a
@@ -60,6 +61,9 @@ export class ReviewingDefinitionStore implements DefinitionStore {
   remove(path: string, options?: RemoveOptions): Promise<RemoveResult> {
     return this.writer.remove(path, options);
   }
+
+  /** Moves the file into the trash through the write hook, so a reviewed file's baseline moves along as for `remove`. */
+  moveToTrash: Trash["moveToTrash"] = (path, expected) => this.writer.moveToTrash(path, expected);
 
   /**
    * The store's own watch. The write hook's writes still reach the store,

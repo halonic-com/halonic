@@ -69,15 +69,22 @@ export function openWorkspace(options: OpenWorkspaceOptions): WorkspaceScope {
       records: options.reviewRecords,
       digest: options.digest,
       isTrusted: options.isTrusted,
+      ...(options.trash === undefined ? {} : { trash: options.trash }),
       onListenerError: options.onListenerError,
     }),
   );
   // Everything but the review service writes through the review service's
   // write hook, so a reviewed file's baseline moves along with every edit.
   const store = new ReviewingDefinitionStore(options.store, review.writer);
+  // A saved delete goes to the trash the same way: through the write hook.
+  const { trash } = options;
+  const reviewedTrash: Trash | undefined =
+    trash === undefined
+      ? undefined
+      : { moveToTrash: store.moveToTrash, restore: (id) => trash.restore(id) };
   const files = scope.services.provide(
     workspaceFilesKey,
-    new WorkspaceFiles(store, scope.events, options.digest, options.trash),
+    new WorkspaceFiles(store, scope.events, options.digest, reviewedTrash),
   );
   scope.commands.register("workspace.save", () => files.save());
   scope.commands.register("workspace.undo", () => files.undo());

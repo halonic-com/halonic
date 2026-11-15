@@ -6,6 +6,7 @@ import { ReviewRecords } from "./review-records.ts";
 import { ReviewService } from "./review-service.ts";
 import { ReviewingDefinitionStore } from "./reviewing-store.ts";
 import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
+import { TestTrash } from "./testing/test-trash.ts";
 
 /** SHA-256 from Web Crypto, as the platform's `Digest` adapter gives it. */
 const digest: Digest = {
@@ -29,11 +30,13 @@ function lines(replaced: Record<number, string> = {}): string {
 async function withAssistantChange() {
   const inner = new TestDefinitionStore({ [path]: lines() }, digest);
   const recordStore = new TestDefinitionStore({}, digest);
+  const trash = new TestTrash(inner, digest);
   const review = new ReviewService({
     store: inner,
     records: recordStore,
     digest,
     isTrusted: () => true,
+    trash,
   });
   const store = new ReviewingDefinitionStore(inner, review.writer);
   await review.propose({
@@ -47,7 +50,7 @@ async function withAssistantChange() {
     const read = await records.read(path);
     return read.status === "found" ? read.record.baseline : undefined;
   };
-  return { inner, store, review, records, baseline };
+  return { inner, store, review, records, baseline, trash };
 }
 
 verifies("app.review-other-writes-merge", () => {
@@ -80,6 +83,17 @@ verifies("app.review-other-writes-merge", () => {
     const { store, review } = await withAssistantChange();
     await store.write(path, lines());
     expect(await review.itemsWithChangesToReview()).toEqual([]);
+  });
+
+  it("moves the baseline to no file when the person's delete goes to the trash", async () => {
+    const { inner, store, review, records, trash } = await withAssistantChange();
+    const expected = await contentDigest(lines({ 3: "line 3 by the assistant" }), digest);
+    const result = await store.moveToTrash(path, expected);
+    expect(result.status).toBe("done");
+    expect(inner.files.has(path)).toBe(false);
+    expect(trash.entries.size).toBe(1);
+    expect(await review.itemsWithChangesToReview()).toEqual([]);
+    expect((await records.read(path)).status).not.toBe("found");
   });
 
   it("drops the record when the person deletes the file", async () => {
