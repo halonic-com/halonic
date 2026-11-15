@@ -15,11 +15,14 @@ export interface PluginBackends {
    */
   trustedFingerprint(plugin: string): Promise<string>;
   /**
-   * Starts the plugin's backend in the sandbox, checking trust again at the start.
+   * Starts the plugin's backend in the sandbox, checking trust again at the
+   * start. It refuses the start when the folder no longer has `fingerprint`,
+   * the one {@link PluginBackends.trustedFingerprint} gave, so a plugin swapped
+   * in between never runs.
    *
    * @throws PluginRefusal `plugin_not_trusted` or `not_fenced` when nothing may start
    */
-  open(plugin: string): Promise<ConnectorClient>;
+  open(plugin: string, fingerprint: string): Promise<ConnectorClient>;
   /** Whether a runner is still good after this call error, such as the tool's own error; a crash isn't. */
   runnerSurvives(error: unknown): boolean;
 }
@@ -101,7 +104,10 @@ export class PluginTable {
     if (existing === undefined && this.#running.size >= this.#maxPlugins) {
       throw new PluginRefusal("too_many_plugins");
     }
-    const started: RunningPlugin = { fingerprint, client: this.#backends.open(plugin) };
+    const started: RunningPlugin = {
+      fingerprint,
+      client: this.#backends.open(plugin, fingerprint),
+    };
     // Set before anything waits, so calls at the same time share this one runner.
     this.#running.set(plugin, started);
     started.client.catch(() => this.#forget(plugin, started));
