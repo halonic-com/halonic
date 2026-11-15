@@ -27,6 +27,11 @@ export const agentHostRequestRoutes = [
   "POST /v1/connectors/close",
   "POST /v1/models/chat",
   "POST /v1/google/disconnect",
+  "POST /v1/google/setups",
+  "POST /v1/google/setups/edit",
+  "POST /v1/google/start-over",
+  "POST /v1/google/sign-in",
+  "POST /v1/google/sign-in/cancel",
   "POST /v1/plugins/call",
 ] as const;
 

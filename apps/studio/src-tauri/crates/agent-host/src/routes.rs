@@ -133,11 +133,31 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/models/chat",
         route(Method::Post, "/v1/models/chat", Answer::Json),
     ),
-    // The Google setup's one change a page may ask for so far (HAL-9911): the
+    // The changes a page may ask for to a Google setup (HAL-9911, HAL-9409): the
     // host holds the sealed tokens, the page and the shell never do.
     (
         "POST /v1/google/disconnect",
         route(Method::Post, "/v1/google/disconnect", Answer::Json),
+    ),
+    (
+        "POST /v1/google/setups",
+        route(Method::Post, "/v1/google/setups", Answer::Json),
+    ),
+    (
+        "POST /v1/google/setups/edit",
+        route(Method::Post, "/v1/google/setups/edit", Answer::Json),
+    ),
+    (
+        "POST /v1/google/start-over",
+        route(Method::Post, "/v1/google/start-over", Answer::Json),
+    ),
+    (
+        "POST /v1/google/sign-in",
+        route(Method::Post, "/v1/google/sign-in", Answer::Json),
+    ),
+    (
+        "POST /v1/google/sign-in/cancel",
+        route(Method::Post, "/v1/google/sign-in/cancel", Answer::Json),
     ),
     // A trusted plugin's tool call (HAL-9389): the host checks the trust and
     // runs the backend in its own sandbox; the page sends only the plugin's id.

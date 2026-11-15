@@ -109,7 +109,7 @@ verifies("studio.workspace-google-setup-accounts", () => {
 
     const entries = await opened.workspace.services.get(GoogleSetupSourceService).list();
     await expect(
-      opened.workspace.services.get(GoogleSetupAccountsService).startOver("gaccount_1"),
+      opened.workspace.services.get(GoogleSetupAccountsService).checkAgain("gaccount_1"),
     ).rejects.toThrow("can't be saved in the Halonic app yet");
 
     expect(entries.map(({ title }) => title)).toEqual(["Set up Google for sam@acme.example"]);
