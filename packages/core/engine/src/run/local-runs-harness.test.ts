@@ -148,6 +148,7 @@ verifies("engine.harness-start-limits", () => {
   it.each([
     ["sandbox", -1],
     ["sandbox", 0],
+    ["trust", 0],
     ["harness", 1.5],
     ["harness", Number.NaN],
   ])("refuses a %s start limit of %s when the executor is created", (phase, timeoutMs) => {

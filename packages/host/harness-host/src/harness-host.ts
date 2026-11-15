@@ -44,6 +44,12 @@ export interface HarnessHostInput {
   readonly startTimeoutsMs?: HarnessRunsOptions["startTimeoutsMs"];
   /** Where the run's instruction files come from; without it, the run log has no `harness.instructions`. */
   readonly instructions?: HarnessRunsOptions["instructions"];
+  /**
+   * Whether the instructions a run starts with are the ones a person trusted.
+   * Without it, no run is refused for its instructions, so a host that runs
+   * harnesses gives it.
+   */
+  readonly instructionTrust?: HarnessRunsOptions["instructionTrust"];
   /** Where each agent runs, as a person chose. */
   readonly placement: {
     /** The choices in the person's profile. */
@@ -115,6 +121,7 @@ export function harnessHostOf(input: HarnessHostInput): HarnessHost {
     profiles: input.profiles,
     home: input.home,
     ...(input.instructions === undefined ? {} : { instructions: input.instructions }),
+    ...(input.instructionTrust === undefined ? {} : { instructionTrust: input.instructionTrust }),
     ...(input.startTimeoutsMs === undefined ? {} : { startTimeoutsMs: input.startTimeoutsMs }),
   };
 
