@@ -9,6 +9,8 @@
 
 The requirement `settings.workspace-links` no longer lists Models: the Settings feature adds only the Trust link section. Models is added by the Models feature (`models.settings.settings-summary`) under the same id `models`, with one line ("3 aliases · 2 providers · budget €50.00 a month") and **Open Models**, so `settings.open('models')` keeps working. The Models examples and tests of the old requirement move to the new requirement. No test was weakened or skipped.
 
+The Trust link section no longer writes the first line ("Part of this workspace. …"): the shell writes it once for every workspace section, with the workspace's name, in the dialog and on the phone (`shell.settings-workspace-line`, HAL-10386). `settings.workspace-links` and its test are updated to match.
+
 ## Why
 
 The placeholder was to go once the Models feature registered its own section, and adding the same id twice throws.

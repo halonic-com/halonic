@@ -1,6 +1,6 @@
 import { Button } from "@halonicjs/studio-kit";
 import type { SettingsSectionProps } from "@halonicjs/studio-shell";
-import { OPEN_TRUST, WORKSPACE_LINE } from "./links-text.ts";
+import { OPEN_TRUST } from "./links-text.ts";
 
 /** The command that opens the workspace page at Models, as Ctrl K does (the Assistant section runs it). */
 export const openModelsCommand = "workspace.open-models";
@@ -18,13 +18,12 @@ interface LinkViewProps extends SettingsSectionProps {
 }
 
 /**
- * One line and a button that closes Settings and runs a command (`settings.workspace-links`),
+ * A button that closes Settings and runs a command (`settings.workspace-links`),
  * until the feature that owns the page adds its summary (Models has: `models.settings.settings-summary`).
  */
 function LinkView({ context, closeSettings, button, command }: LinkViewProps) {
   return (
     <div className="mt-2 flex flex-col items-start gap-4">
-      <p className="text-small text-fg-muted">{WORKSPACE_LINE}</p>
       <Button
         variant="secondary"
         onClick={() => {

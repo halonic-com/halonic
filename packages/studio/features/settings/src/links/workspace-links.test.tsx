@@ -36,9 +36,9 @@ verifies("settings.workspace-links", () => {
   });
 
   describe("Trust", () => {
-    it("shows one line and Open Trust", () => {
+    it("shows Open Trust and no line of its own", () => {
       const { view } = setup(TrustLinkSection);
-      expect(view.querySelectorAll("p")).toHaveLength(1);
+      expect(view.querySelectorAll("p")).toHaveLength(0);
       expect(control(view, "button").textContent).toBe("Open Trust");
     });
 

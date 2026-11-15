@@ -48,7 +48,7 @@ export async function lookUpKeys(
 /**
  * The chips of the section, in order: "Budget used up" first (the same test as the status bar,
  * so only where a provider may bill per use), then "No key for Anthropic" for each provider
- * whose stored key is known to be missing. A check that failed or hasn't answered shows no chip.
+ * whose stored key is known to be missing (one chip per name). A check that failed or hasn't answered shows no chip.
  */
 export function problems({ state, spent, stored }: ProblemInput): string[] {
   if (state.status === "loading") return [];
@@ -64,5 +64,6 @@ export function problems({ state, spent, stored }: ProblemInput): string[] {
       chips.push(noKeyFor(providerName(provider)));
     }
   }
-  return chips;
+  // Two providers with one name and no key read the same, so one chip says it.
+  return [...new Set(chips)];
 }
