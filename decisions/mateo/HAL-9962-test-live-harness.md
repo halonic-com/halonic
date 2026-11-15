@@ -5,7 +5,7 @@
 
 ## What changes
 
-- A new package, `@halonicjs/target-cloudflare-live`, with a `test:live` script. `live-cloud.yml` already runs `pnpm -r run test:live` once a package has one.
+- A new package, `@halonicjs/testing-cloudflare-live`, with a `test:live` script, in `packages/testing/cloudflare-live`. It is dev-only and depends on no target code, and the layout table has no `live` folder under a target, so it lives with the testing packages. `live-cloud.yml` already runs `pnpm -r run test:live` once a package has one.
 - New requirement `live.webhooks`: signed deliveries are sent to a deployed Worker over the network. A wrong signature, an old timestamp and an unknown address are checked live. The run-start and replay checks are pending: they assert today's 501 and fail the day the Worker answers anything else.
 
 ## Why

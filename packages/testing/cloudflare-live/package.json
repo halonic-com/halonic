@@ -1,5 +1,5 @@
 {
-  "name": "@halonicjs/target-cloudflare-live",
+  "name": "@halonicjs/testing-cloudflare-live",
   "private": true,
   "type": "module",
   "description": "The live suites against the real Cloudflare test account (ADR 5.9): what a deployed Worker answers, checked over the network.",
@@ -20,7 +20,7 @@
     "vitest": "catalog:"
   },
   "halonic": {
-    "layer": "targets",
+    "layer": "testing",
     "owner": "mateo",
     "coverage": {
       "lines": 80
