@@ -5,12 +5,14 @@ import { LibraryTabMemoryService } from "./library-tab-memory.ts";
 import { requestLibraryTab } from "./library-tab-request.ts";
 import { libraryKinds, tabLabel } from "./library-words.ts";
 import { ListedToolsHostService } from "./listed-tools-host.ts";
+import { SkillHostService } from "./skill-host.ts";
 
 /** Alt+4 to Alt+7 open the tabs, in the tabs' order. */
 const firstTabKey = 4;
 
 /**
- * The Library feature: the Library place with its four tabs (Alt+4 to Alt+7), and the `connector`
+ * The Library feature: the Library place with its four tabs (Alt+4 to Alt+7), the `skill` item
+ * kind (its page edits a skill's name, when to use it and instructions), and the `connector`
  * item kind, one tab per connector, whose page shows
  * the connector's state and what the engine refused from it. The full connector page (HAL-751)
  * takes the page over and keeps the status section.
@@ -20,7 +22,8 @@ export const libraryFeature = defineFeature({
   title: "Library",
   needs: [ConnectorStatusHostService, LibraryItemsHostService, LibraryTabMemoryService],
   // Without an agent host nothing can start a connector, so the review is not provided (HAL-8868).
-  wants: [ListedToolsHostService],
+  // Without a skill host a skill's page says the skill isn't in the workspace (HAL-1303 P5c gives it one).
+  wants: [ListedToolsHostService, SkillHostService],
   register(studio) {
     studio.places.add({
       id: "library",
@@ -43,6 +46,17 @@ export const libraryFeature = defineFeature({
         keys: `Alt+${firstTabKey + index}`,
         when: "workspaceFocused",
       });
+    });
+    studio.itemKinds.add({
+      kind: "skill",
+      label: "Skill",
+      icon: "library",
+      place: "library",
+      open: { view: "SkillPage", load: () => import("./ui/skill-page.tsx") },
+      tab: {
+        describe: (item) => ({ label: item.id }),
+        exists: () => true,
+      },
     });
     studio.itemKinds.add({
       kind: "connector",
