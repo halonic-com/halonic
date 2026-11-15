@@ -88,6 +88,10 @@ export function fakeAccounts(
     readonly disconnect?: (accountRef: string) => Promise<DisconnectAnswer>;
     /** Runs before an edit is recorded, and may reject: the edit then isn't saved. */
     readonly edit?: (edit: SetupEdit) => Promise<void>;
+    /** What starting a sign-in answers with, the address to open, and may reject. */
+    readonly startSignIn?: (accountRef: string) => Promise<string>;
+    /** Runs when a sign-in is cancelled, and may reject. */
+    readonly cancelSignIn?: (accountRef: string) => Promise<void>;
   } = {},
 ) {
   let accounts = initial;
@@ -95,6 +99,8 @@ export function fakeAccounts(
   const edits: { accountRef: string; edit: SetupEdit }[] = [];
   const startOvers: string[] = [];
   const disconnects: string[] = [];
+  const signIns: string[] = [];
+  const cancelled: string[] = [];
   const secrets: { accountRef: string; value: string }[] = [];
   const replacements: { accountRef: string; value: string }[] = [];
   const source: GoogleSetupAccounts = {
@@ -126,6 +132,14 @@ export function fakeAccounts(
       disconnects.push(accountRef);
       return answer;
     },
+    startSignIn: async (accountRef) => {
+      signIns.push(accountRef);
+      return (await options.startSignIn?.(accountRef)) ?? "https://accounts.example.com/sign-in";
+    },
+    cancelSignIn: async (accountRef) => {
+      await options.cancelSignIn?.(accountRef);
+      cancelled.push(accountRef);
+    },
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -144,6 +158,10 @@ export function fakeAccounts(
     startOvers,
     /** The account refs the view asked to disconnect, in order. */
     disconnects,
+    /** The account refs the view started a sign-in for, in order. */
+    signIns,
+    /** The account refs whose sign-in the view cancelled, in order. */
+    cancelled,
     change: (next: readonly GoogleSetupAccount[]) => {
       accounts = next;
       for (const listener of [...listeners]) listener();

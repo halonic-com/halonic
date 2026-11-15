@@ -1,0 +1,220 @@
+// @vitest-environment jsdom
+import { pendingSignInLifetimeMs } from "@halonicjs/google-setup";
+import { type ExternalAddress, OpenExternalProvider } from "@halonicjs/studio-kit";
+import { verifies } from "@halonicjs/testing-spec";
+import { act } from "react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { account, fakeAccounts, record } from "../accounts.test-helper.ts";
+import type { GoogleSetupAccount } from "../api.ts";
+import { render, unmountAll } from "../test-support/render.tsx";
+import { GoogleSetupView } from "./google-setup-view.tsx";
+
+beforeEach(() => vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] }));
+afterEach(() => {
+  unmountAll();
+  vi.useRealTimers();
+});
+
+const item = {
+  kind: "setup",
+  key: "setup:google:gaccount_1",
+  provider: "google",
+  account: "gaccount_1",
+  title: "Set up Google for x@example.com",
+  progress: "Step 7 of 7 · Sign in",
+  changedAt: "2026-11-12T02:10:00.000Z",
+} as const;
+
+const address = "https://accounts.example.com/sign-in?state=abc";
+const upToSignIn = ["project", "apis", "consent", "scopes", "client", "credentials"];
+const ready = {
+  projectId: "halonic-x1",
+  clientId: "123-abc.apps.googleusercontent.com",
+  inProductionTickedAt: "2026-11-12T02:10:00.000Z",
+};
+
+async function settle(): Promise<void> {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
+}
+
+async function open(
+  setup: GoogleSetupAccount,
+  options: Parameters<typeof fakeAccounts>[1] = {},
+  answering = true,
+) {
+  const fake = fakeAccounts([setup], options);
+  const opened: string[] = [];
+  const openExternal = async (target: ExternalAddress) => {
+    opened.push(await target);
+  };
+  const container = render(
+    <OpenExternalProvider openExternal={openExternal}>
+      <GoogleSetupView item={item} answering={answering} close={vi.fn()} accounts={fake.source} />
+    </OpenExternalProvider>,
+  );
+  await settle();
+  return { fake, container, opened };
+}
+
+function button(container: HTMLElement, name: string): HTMLButtonElement {
+  const found = [...container.querySelectorAll("button")].find((b) =>
+    b.textContent?.startsWith(name),
+  );
+  if (found === undefined) throw new Error(`No button "${name}"`);
+  return found;
+}
+
+async function press(element: HTMLElement): Promise<void> {
+  await act(async () => element.click());
+  await settle();
+}
+
+const signedOut = () => account(record(upToSignIn, ready));
+
+verifies("google-setup.sign-in", () => {
+  it("starts one sign-in and opens the address the host gave", async () => {
+    const { fake, container, opened } = await open(signedOut(), {
+      startSignIn: async () => address,
+    });
+    await press(button(container, "Sign in with Google"));
+    expect(fake.signIns).toEqual(["gaccount_1"]);
+    expect(opened).toEqual([address]);
+    expect(container.textContent).not.toContain("state=abc");
+  });
+
+  it("waits with Open again and Cancel, saying so once", async () => {
+    const { container } = await open(signedOut(), { startSignIn: async () => address });
+    await press(button(container, "Sign in with Google"));
+    expect(container.textContent).toContain("Waiting for Google… Finish in your browser.");
+    expect(container.querySelectorAll('[role="status"]')).toHaveLength(1);
+    expect(button(container, "Open again")).toBeDefined();
+    expect(button(container, "Cancel")).toBeDefined();
+    expect(container.textContent).not.toContain("Sign in with Google ↗");
+  });
+
+  it("opens the same sign-in again without starting another", async () => {
+    const { fake, container, opened } = await open(signedOut(), {
+      startSignIn: async () => address,
+    });
+    await press(button(container, "Sign in with Google"));
+    await press(button(container, "Open again"));
+    expect(opened).toEqual([address, address]);
+    expect(fake.signIns).toHaveLength(1);
+  });
+
+  it("drops the pending sign-in on Cancel and gives focus to the button that comes back", async () => {
+    const { fake, container } = await open(signedOut());
+    await press(button(container, "Sign in with Google"));
+    await press(button(container, "Cancel"));
+    expect(fake.cancelled).toEqual(["gaccount_1"]);
+    expect(container.textContent).not.toContain("Waiting for Google");
+    expect(document.activeElement).toBe(button(container, "Sign in with Google"));
+  });
+
+  it("says Cancel failed and keeps waiting", async () => {
+    const { container } = await open(signedOut(), {
+      cancelSignIn: async () => {
+        throw new Error("The engine isn't answering");
+      },
+    });
+    await press(button(container, "Sign in with Google"));
+    await press(button(container, "Cancel"));
+    expect(container.textContent).toContain(
+      "Couldn't cancel the sign-in: the engine isn't answering.",
+    );
+    expect(button(container, "Try again")).toBeDefined();
+  });
+
+  it("says the sign-in didn't come back after 10 minutes, and offers step 6 and the button", async () => {
+    const { container } = await open(signedOut());
+    await press(button(container, "Sign in with Google"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(pendingSignInLifetimeMs);
+    });
+    expect(container.textContent).toContain(
+      "The sign-in didn't come back, or Google showed an error page instead. If it did, check the client ID in step 6. Then sign in again.",
+    );
+    expect(container.textContent).not.toContain("Waiting for Google");
+    expect(button(container, "Sign in with Google")).toBeDefined();
+    await press(button(container, "Open step 6"));
+    expect(document.activeElement?.textContent).toContain("Client ID and secret");
+  });
+
+  it("says why the sign-in couldn't start, with Try again, and keeps focus on the button", async () => {
+    let fail = true;
+    const { container } = await open(signedOut(), {
+      startSignIn: async () => {
+        if (fail) throw new Error("The engine isn't answering");
+        return address;
+      },
+    });
+    const signIn = button(container, "Sign in with Google");
+    signIn.focus();
+    await press(signIn);
+    expect(container.textContent).toContain(
+      "Couldn't start the sign-in: the engine isn't answering.",
+    );
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain("Couldn't start");
+    expect(document.activeElement).toBe(button(container, "Sign in with Google"));
+    fail = false;
+    await press(button(container, "Try again"));
+    expect(container.textContent).toContain("Waiting for Google");
+  });
+
+  it("says the last sign-in didn't finish when the record says one started", async () => {
+    const { container } = await open(
+      account(record(upToSignIn, { ...ready, signInStartedAt: "2026-11-12T02:00:00.000Z" })),
+    );
+    expect(container.textContent).toContain("The last sign-in didn't finish. Sign in again.");
+    expect(button(container, "Sign in with Google")).toBeDefined();
+  });
+
+  it("stops waiting when the record says the sign-in finished", async () => {
+    const { fake, container } = await open(signedOut());
+    await press(button(container, "Sign in with Google"));
+    await act(async () => {
+      fake.change([
+        account(record(upToSignIn, { ...ready, signInStartedAt: "2026-11-12T03:00:00.000Z" })),
+      ]);
+    });
+    await settle();
+    expect(container.textContent).toContain("Waiting for Google");
+    await act(async () => {
+      fake.change([
+        account(record(upToSignIn, { ...ready, lastSignInAt: "2026-11-12T03:01:00.000Z" })),
+      ]);
+    });
+    await settle();
+    expect(container.textContent).not.toContain("Waiting for Google");
+  });
+
+  it("says the last sign-in didn't finish when the host drops the one that was waiting", async () => {
+    const { fake, container } = await open(signedOut());
+    await press(button(container, "Sign in with Google"));
+    await act(async () => {
+      fake.change([
+        account(record(upToSignIn, { ...ready, signInStartedAt: "2026-11-12T03:00:00.000Z" })),
+      ]);
+    });
+    await settle();
+    await act(async () => {
+      fake.change([account(record(upToSignIn, ready))]);
+    });
+    await settle();
+    expect(container.textContent).toContain("The last sign-in didn't finish. Sign in again.");
+    expect(container.textContent).not.toContain("Waiting for Google");
+  });
+
+  it("holds the button with its reason while the engine isn't answering", async () => {
+    const { fake, container } = await open(signedOut(), {}, false);
+    const signIn = button(container, "Sign in with Google");
+    expect(signIn.getAttribute("aria-disabled")).toBe("true");
+    expect(
+      document.getElementById(signIn.getAttribute("aria-describedby") ?? "")?.textContent,
+    ).toContain("isn't answering");
+    await press(signIn);
+    expect(fake.signIns).toEqual([]);
+  });
+});
