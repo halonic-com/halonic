@@ -14,7 +14,8 @@ const FALLBACK_VIEWPORT = { width: 800, height: 600 };
  * The workflow's canvas (`workflows.canvas`): step cards and arrows on a surface that pans by
  * dragging the background and zooms with the wheel or the buttons. It fits all steps once, when it
  * opens; after that the workflow can change under it and the zoom and pan stay (D9). The page
- * keeps the view (`saved`, `onView`), so it also stays across a visit to Configuration. To open a
+ * keeps the view (`saved`, `onView`), so it also stays across a visit to Configuration, and when a problem's link opens a card (kept
+ * on purpose, D9). To open a
  * different workflow, give it a new `key`.
  */
 export function WorkflowCanvas({
