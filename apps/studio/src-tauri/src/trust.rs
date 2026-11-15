@@ -48,7 +48,7 @@ fn picked_folders<R: Runtime>(app: &AppHandle<R>) -> Result<PickedFolders, Trust
 
 /// Runs one call on a worker thread: it reads and writes the profile, and a
 /// dialog waits for the person, neither of which may hold up the UI.
-async fn on_worker<R, T, F>(app: AppHandle<R>, call: F) -> Result<T, TrustRefusal>
+pub(crate) async fn on_worker<R, T, F>(app: AppHandle<R>, call: F) -> Result<T, TrustRefusal>
 where
     R: Runtime,
     T: Send + 'static,

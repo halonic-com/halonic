@@ -305,7 +305,7 @@ impl TrustState {
 
     /// Marks a dialog as showing until the guard drops, or refuses as
     /// `busy` when one already is.
-    fn start_asking(&self) -> Result<Asking<'_>, TrustRefusal> {
+    pub(crate) fn start_asking(&self) -> Result<Asking<'_>, TrustRefusal> {
         let started =
             self.asking
                 .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire);
@@ -320,7 +320,7 @@ impl TrustState {
 }
 
 /// A dialog showing; dropping it lets the next one show.
-struct Asking<'a>(&'a AtomicBool);
+pub(crate) struct Asking<'a>(&'a AtomicBool);
 
 impl Drop for Asking<'_> {
     fn drop(&mut self) {

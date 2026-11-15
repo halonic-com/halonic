@@ -35,6 +35,10 @@ const PLUGINS_FOLDER_NAME: &str = "plugins";
 /// The name of the folder in the profile that holds the plugins' records.
 const PLUGIN_RECORDS_FOLDER_NAME: &str = "plugin-records";
 
+/// The name of the folder in the profile that holds the instructions a
+/// person trusted for each agent.
+const INSTRUCTION_TRUST_FOLDER_NAME: &str = "instruction-trust";
+
 /// The systems Halonic keeps a profile on. `Linux` covers every other
 /// Unix-like system too.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -163,6 +167,14 @@ impl ProfileFolder {
     /// and settings values there.
     pub fn plugin_records_folder(&self) -> String {
         join_path(self.platform, &self.root, &[PLUGIN_RECORDS_FOLDER_NAME])
+    }
+
+    /// The folder for the instructions a person trusted for each agent,
+    /// `instruction-trust` in the profile folder. The CLI's
+    /// `FileInstructionTrustStore` and the shell's `instruction_trust_*`
+    /// commands both keep their records there.
+    pub fn instruction_trust_folder(&self) -> String {
+        join_path(self.platform, &self.root, &[INSTRUCTION_TRUST_FOLDER_NAME])
     }
 }
 

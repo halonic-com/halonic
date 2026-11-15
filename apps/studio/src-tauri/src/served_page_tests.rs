@@ -115,6 +115,9 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "trust_folders_found",
         "trust_grant",
         "trust_revoke",
+        "instruction_trust_get",
+        "instruction_trust_save",
+        "instruction_trust_remove",
         "reopen_folder",
         "forget_folder",
         "command_paths",
@@ -243,6 +246,23 @@ fn served_page_test_sees_the_connect_page_allowed_the_trust_commands_on_desktop(
     );
     let refusal = answer.expect_err("the folder doesn't exist");
     assert_eq!(refusal["kind"], "folder_unreadable", "{refusal}");
+}
+
+#[cfg(desktop)]
+#[test]
+fn served_page_test_sees_the_connect_page_allowed_the_instruction_trust_commands_on_desktop() {
+    // The save gets through to the command, which refuses a record that
+    // isn't trusted instructions before it asks the person or writes
+    // anything.
+    let window = app_window();
+    let answer = invoke(
+        &window,
+        CONNECT_PAGE,
+        "instruction_trust_save",
+        json!({"record": {"location": "/workspaces/acme", "agent": "coder"}}),
+    );
+    let refusal = answer.expect_err("the record isn't trusted instructions");
+    assert_eq!(refusal["kind"], "invalid_record", "{refusal}");
 }
 
 #[cfg(desktop)]
@@ -428,6 +448,9 @@ fn served_page_test_sees_trust_granted_to_the_local_main_window_only() {
             "allow-trust-folders-found",
             "allow-trust-grant",
             "allow-trust-revoke",
+            "allow-instruction-trust-get",
+            "allow-instruction-trust-save",
+            "allow-instruction-trust-remove",
             "allow-reopen-folder",
             "allow-forget-folder",
             "allow-command-paths"

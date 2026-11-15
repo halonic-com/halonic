@@ -11,3 +11,5 @@ Which folder a trust grant may open in the Studio shell, and the question the sh
 - **The question** (wording decided with Sofia on HAL-2653) shows the canonical path with control and text-direction characters written out as `\u{…}`, and a long path shortened in the middle.
 
 `TrustRefusal` serialises to the shape `isTrustRefusal` in `packages/adapters/fs-tauri` reads. The requirement in `requirements/` is a draft until the trace check reads `cargo test` results. Until then, each test's name starts with `trust_grants_`.
+
+`TrustState::grant_instructions` (HAL-10515) saves the instructions a person trusted for an agent, after the shell asks them: it reads the pin saved for the agent, shows `instruction_question_text` (the agent, its workspace, the files added, removed and changed since that pin, or "first time") and writes the record only on a yes. It shares the one-dialog-at-a-time rule with the folder question. Its tests start with `instruction_trust_grants_`.

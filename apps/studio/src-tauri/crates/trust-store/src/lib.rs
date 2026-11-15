@@ -9,10 +9,19 @@
 //! The store only keeps records. Which folders a grant may open is the
 //! shell's rule, not this crate's; `TrustService` in the page decides what
 //! is trusted. This crate holds no Tauri types.
+//!
+//! [`FileInstructionTrustStore`] does the same for the instructions a person
+//! trusted for an agent, as `FileInstructionTrustStore` in `fs-node` does
+//! (requirement `instruction-trust-files`).
 
 mod error;
+mod instruction_record;
+mod instruction_store;
 mod record_file;
 mod store;
+mod unlinked;
 
 pub use error::TrustError;
+pub use instruction_record::{InstructionKey, InstructionPin, InstructionRecord};
+pub use instruction_store::{FileInstructionTrustStore, instruction_file_name};
 pub use store::{FileTrustStore, Listing};
