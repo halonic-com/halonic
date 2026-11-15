@@ -33,18 +33,57 @@ function acmeFiles(agents: Record<string, string> = {}): MemoryDefinitionStore {
   return new MemoryDefinitionStore(files);
 }
 
+type Handler = (args: Record<string, unknown>) => unknown;
+
+/**
+ * What the shell keeps for one engine: run logs and snapshots, blobs, and records that stay empty.
+ * Each command is a handler, so a test starts a run on the page's own stores.
+ */
+function shellStores(): Record<string, Handler> {
+  const logs = new Map<string, string[]>();
+  const snapshots = new Map<string, string>();
+  const blobs = new Map<string, string>();
+  return {
+    run_append: ({ runId, expectedSeq, lines, snapshot }) => {
+      const log = logs.get(runId as string) ?? [];
+      if (log.length !== expectedSeq) return { ok: false, reason: "conflict", lastSeq: log.length };
+      logs.set(runId as string, [...log, ...(lines as string[])]);
+      if (snapshot !== null) snapshots.set(runId as string, snapshot as string);
+      return { ok: true, lastSeq: log.length + (lines as string[]).length };
+    },
+    run_events: ({ runId }) => (logs.get(runId as string) ?? []).join(""),
+    run_snapshot: ({ runId }) => {
+      const text = snapshots.get(runId as string);
+      return text === undefined
+        ? null
+        : { text, logEvents: logs.get(runId as string)?.length ?? 0 };
+    },
+    run_logs: () => [],
+    blob_put: ({ data }) => {
+      const hash = blobs.size.toString(16).padStart(64, "0");
+      blobs.set(hash, data as string);
+      return { hash };
+    },
+    blob_get: ({ hash }) => blobs.get(hash as string) ?? null,
+    record_read: () => ({ lines: "", version: "0", file: "records" }),
+    record_append: () => undefined,
+    record_replace: () => ({ status: "replaced" }),
+  };
+}
+
 /** A shell that holds the engine lock for one process and records each call. */
 function fakeShell(holder?: { pid: number }) {
   const calls: string[] = [];
+  const stores = shellStores();
   return {
     calls,
     ipc: {
-      invoke: async (command: string) => {
+      invoke: async (command: string, args?: unknown) => {
         calls.push(command);
         if (command === "engine_lock_hold" && holder !== undefined) {
           throw { kind: "conflict", message: "held", pid: holder.pid };
         }
-        return undefined;
+        return stores[command]?.((args ?? {}) as Record<string, unknown>);
       },
     },
   };
@@ -169,6 +208,36 @@ verifies("studio.engine-service", () => {
       await expect(
         serviceOn(fakeShell()).check({ hubId: "support", workflowId: "ghost" }),
       ).rejects.toThrow(RangeError);
+    });
+  });
+
+  describe("starting a run", () => {
+    const reply = { hubId: "support", workflowId: "reply" };
+
+    it("refuses a workflow the window can't run before the lock is taken", async () => {
+      const shell = fakeShell();
+      const service = serviceOn(shell, acmeFiles({ writer: "connectors: [mail]\n" }));
+
+      await expect(service.startRun(reply, {})).rejects.toMatchObject({ kind: "unavailable" });
+
+      expect(shell.calls).toEqual([]);
+    });
+
+    it("opens the engine and starts the run", async () => {
+      const shell = fakeShell();
+      const service = serviceOn(shell);
+
+      const started = await service.startRun(reply, {});
+
+      expect(started.id).toBe("run1");
+      expect(lockCalls(shell)).toEqual(["engine_lock_hold"]);
+      await service.close();
+    });
+
+    it("refuses as `conflict` when another engine holds the lock", async () => {
+      const service = serviceOn(fakeShell({ pid: 7 }));
+
+      await expect(service.startRun(reply, {})).rejects.toMatchObject({ kind: "conflict" });
     });
   });
 });

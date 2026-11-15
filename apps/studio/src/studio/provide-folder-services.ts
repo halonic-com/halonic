@@ -5,6 +5,7 @@ import {
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
 import { type ServiceRegistry, type WorkspaceScope, workspaceFilesKey } from "@halonicjs/app";
+import { randomIds, systemClock } from "@halonicjs/std";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import {
@@ -23,6 +24,7 @@ import { ChangesSourceService } from "@halonicjs/studio-feature-source-control/a
 import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
 import { shellKeychain, type TauriIpc, tauriAgentHostTransport } from "@halonicjs/studio-services";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
+import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
 import { provideLibraryServices } from "../library/provide-library-services.ts";
 import { WorkspaceLibraryItems } from "../library/workspace-library-items.ts";
@@ -74,12 +76,31 @@ export function provideFolderServices(
       onFilesChanged: (listener) => scope.events.on("files.changed", listener),
     }),
   );
+  const engine = services.provide(
+    engineServiceKey,
+    new EngineService({
+      ipc,
+      location,
+      definitions: new TauriDefinitionStore(files, location),
+      secrets: shellKeychain(ipc),
+      http: { fetch: (url, init) => globalThis.fetch(url, init) },
+      clock: systemClock,
+      ids: randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), systemClock),
+      setTimer: (callback, delayMs) => {
+        const timer = setTimeout(callback, delayMs);
+        return () => clearTimeout(timer);
+      },
+      newToken: () => crypto.randomUUID(),
+      reportError: (error) => console.error("The engine", error),
+    }),
+  );
   services.provide(
     WorkflowsHostService,
     new WorkspaceWorkflows({
       files: services.get(workspaceFilesKey),
       onChange: (listener) => scope.events.on("files.changed", listener),
       runs: services.get(RunsSourceService),
+      engine,
     }),
   );
   const transport = tauriAgentHostTransport(window);

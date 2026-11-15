@@ -31,6 +31,16 @@ export interface WorkspaceWorkflowsParts {
     /** One run's whole log, oldest event first; empty when the run has no log. */
     log(runId: string): Promise<readonly RunEvent[]>;
   };
+  /**
+   * The page's engine, which starts a run. Absent where the page has no engine, so the host has no
+   * `startRun` and the page shows no **Run**.
+   */
+  readonly engine?: {
+    startRun(
+      run: { readonly hubId: string; readonly workflowId: string },
+      input: Record<string, unknown>,
+    ): Promise<{ readonly id: string }>;
+  };
 }
 
 /** Where the workflow files of a hub are kept. */
@@ -61,7 +71,8 @@ function newWorkflowText(id: string, name: string): string {
 /**
  * The Workflows feature's host (`studio.workspace-workflows`), over the workspace's files: the list
  * reads the files with their unsaved changes, so a new workflow shows at once, and a new workflow is
- * one undoable change that saves itself like any other. Nothing here needs the engine.
+ * one undoable change that saves itself like any other. Only `startRun` needs the engine, which
+ * opens on the first run.
  *
  * @example
  * services.provide(WorkflowsHostService, new WorkspaceWorkflows({ files, onChange, runs }));
@@ -72,8 +83,18 @@ export class WorkspaceWorkflows implements WorkflowsHost {
   /** The names of the workflows read or made so far, by hub and id, for {@link WorkspaceWorkflows.nameOf}. */
   readonly #names = new Map<string, string>();
 
+  /** Present only when the page has an engine; see {@link WorkflowsHost.startRun}. */
+  startRun?: NonNullable<WorkflowsHost["startRun"]>;
+
   constructor(parts: WorkspaceWorkflowsParts) {
     this.#parts = parts;
+    const { engine } = parts;
+    if (engine !== undefined) {
+      this.startRun = async ({ hubId, id }, input) => {
+        const { id: runId } = await engine.startRun({ hubId, workflowId: id }, input);
+        return { runId };
+      };
+    }
   }
 
   /** The hubs the last {@link WorkspaceWorkflows.list} found; none before the first one. */
