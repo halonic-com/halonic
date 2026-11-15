@@ -131,7 +131,8 @@ export {
   type WorkflowLookup,
   workflowIn,
 } from "./hub-workflows.ts";
-export { type InstructionTrust, instructionTrust } from "./instruction-trust.ts";
+// biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
+export * from "./instruction-trust-exports.ts";
 export {
   type IntegrationFolder,
   type IntegrationFolderProblem,
