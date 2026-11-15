@@ -99,17 +99,20 @@ export function ToastCard({ toast, waiting, onClosed }: ToastCardProps) {
             <p className="text-small text-fg-muted">{toast.text}</p>
           )}
         </div>
-        {toast.action === undefined ? null : (
-          <button
-            type="button"
-            className={`max-w-full flex-none ${actionButton}`}
-            onClick={() => {
-              toast.action?.onClick();
-              setLeaving(true);
-            }}
-          >
-            {toast.action.label}
-          </button>
+        {[toast.action, toast.secondAction].map((action) =>
+          action === undefined ? null : (
+            <button
+              key={action.label}
+              type="button"
+              className={`max-w-full flex-none ${actionButton}`}
+              onClick={() => {
+                action.onClick();
+                setLeaving(true);
+              }}
+            >
+              {action.label}
+            </button>
+          ),
         )}
       </div>
       <div className="flex -my-1 -mr-1 touch:-mt-2.5 touch:-mr-2.5 touch:-mb-2.5 phone:-mt-3 phone:-mr-3 phone:mb-0">
@@ -126,7 +129,7 @@ export function ToastCard({ toast, waiting, onClosed }: ToastCardProps) {
 }
 
 function lifetime(toast: Toast): number | null {
-  if (toast.tone !== "success" && toast.tone !== "info") {
+  if (toast.sticky === true || (toast.tone !== "success" && toast.tone !== "info")) {
     return null;
   }
   return toast.action === undefined ? TOAST_CLOSES_AFTER_MS : TOAST_WITH_ACTION_CLOSES_AFTER_MS;

@@ -137,5 +137,12 @@ verifies("settings.about-section", () => {
     expect(checkAnnouncement(status({ kind: "available", version: "0.1.1", notesUrl }), now)).toBe(
       "Halonic 0.1.1 is available.",
     );
+    const managed = { by: "scoop", command: "scoop update halonic" } as const;
+    expect(
+      checkAnnouncement(
+        status({ kind: "available", version: "0.1.1", notesUrl }, { managed }),
+        now,
+      ),
+    ).toBe("Halonic 0.1.1 is out. You have 0.1.0.");
   });
 });

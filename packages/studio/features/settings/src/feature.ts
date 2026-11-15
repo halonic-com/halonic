@@ -3,6 +3,7 @@ import {
   AgentSandboxService,
   AssistantWorkspaceService,
   DisplaySettingsService,
+  HalonicVersionService,
   HostSettingsService,
   RestartRunsService,
   UpdaterService,
@@ -108,7 +109,13 @@ export const settingsFeature = defineFeature({
   needs: [DisplaySettingsService, HostSettingsService],
   // Only the desktop app gives these; served Studio and the demo show the sections without them.
   provides: [RestartFlowService],
-  wants: [UpdaterService, RestartRunsService, AgentSandboxService, AssistantWorkspaceService],
+  wants: [
+    HalonicVersionService,
+    UpdaterService,
+    RestartRunsService,
+    AgentSandboxService,
+    AssistantWorkspaceService,
+  ],
   register(studio) {
     studio.services.provide(RestartFlowService, createRestartFlow);
     studio.statusBar.add({

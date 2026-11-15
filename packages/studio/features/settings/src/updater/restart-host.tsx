@@ -177,17 +177,16 @@ function showStartToasts(
           .download()
           .catch(() => toasts.show({ tone: "danger", title: UPDATER_DIDNT_ANSWER })),
     };
-    const second = state.attempts >= 2;
     toasts.show({
       tone: "danger",
       title: text.didNotInstall(state.version, status.current),
-      ...(second ? { text: text.SECOND_FAILURE } : {}),
-      action: second
-        ? {
-            label: text.OPEN_RELEASE_PAGE,
-            onClick: () => void openExternal(releasePage(state.version)),
-          }
-        : again,
+      ...(state.attempts >= 2 ? { text: text.SECOND_FAILURE } : {}),
+      sticky: true,
+      action: again,
+      secondAction: {
+        label: text.OPEN_RELEASE_PAGE,
+        onClick: () => void openExternal(releasePage(state.version)),
+      },
     });
   }
 }

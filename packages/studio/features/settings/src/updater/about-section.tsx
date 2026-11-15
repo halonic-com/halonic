@@ -8,7 +8,7 @@ import {
   ViewOnlyLine,
 } from "@halonicjs/studio-kit";
 import type { SettingsSectionProps } from "@halonicjs/studio-shell";
-import { type UpdaterHost, UpdaterService } from "../api.ts";
+import { HalonicVersionService, type UpdaterHost, UpdaterService } from "../api.ts";
 import { type AboutAction, type AboutProgress, aboutView } from "./about-state.ts";
 import * as text from "./about-text.ts";
 import { repository } from "./links.ts";
@@ -16,10 +16,19 @@ import { RestartFlowService } from "./restart-flow.ts";
 import * as restartText from "./restart-text.ts";
 import { useUpdater } from "./use-updater.ts";
 
+/** Restart to update leads; Cancel download steps back; the rest are secondary. */
+const actionVariants: Record<AboutAction, "primary" | "secondary" | "ghost"> = {
+  restart: "primary",
+  download: "secondary",
+  cancel: "ghost",
+  "try-again": "secondary",
+};
+
 /** Settings › About Halonic as the settings container shows it. Without an updater it only says so. */
 export function AboutSection({ context }: SettingsSectionProps) {
   const host = hostOf(context);
-  if (host === undefined) return <ViewOnlyAbout />;
+  if (host === undefined)
+    return <ViewOnlyAbout version={context.services.find(HalonicVersionService)} />;
   const flow = context.services.find(RestartFlowService);
   return (
     <AboutHostView
@@ -76,10 +85,11 @@ export function AboutHostView({ host, announce, onRestart }: AboutHostViewProps)
           )}
         </div>
         <Button
-          variant="ghost"
+          variant="secondary"
           size="sm"
           busy={checking}
           busyLabel={text.CHECKING}
+          busyName={text.CHECKING_FOR_UPDATES}
           onClick={updater.checkNow}
         >
           {text.CHECK_NOW}
@@ -97,7 +107,12 @@ export function AboutHostView({ host, announce, onRestart }: AboutHostViewProps)
           {view.actions
             .filter((action) => action !== "restart" || onRestart !== undefined)
             .map((action) => (
-              <Button key={action} variant="secondary" size="sm" onClick={buttons[action].run}>
+              <Button
+                key={action}
+                variant={actionVariants[action]}
+                size="sm"
+                onClick={buttons[action].run}
+              >
                 {buttons[action].label}
               </Button>
             ))}
@@ -144,7 +159,7 @@ function NoAnswer({ onRetry }: { readonly onRetry: () => void }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <p className="text-small text-fg-muted">{text.UPDATER_DIDNT_ANSWER}</p>
-      <Button variant="ghost" size="sm" onClick={onRetry}>
+      <Button variant="secondary" size="sm" onClick={onRetry}>
         {text.TRY_AGAIN}
       </Button>
     </div>
@@ -209,9 +224,12 @@ function AboutLinks({ heading }: { readonly heading: string | null }) {
   );
 }
 
-function ViewOnlyAbout() {
+function ViewOnlyAbout({ version }: { readonly version: string | undefined }) {
   return (
     <div className="mt-2 flex max-w-120 flex-col gap-5">
+      {version === undefined ? null : (
+        <h3 className="text-body font-medium">{text.versionHeading(version)}</h3>
+      )}
       <ViewOnlyLine>{text.VIEW_ONLY}</ViewOnlyLine>
       <AboutLinks heading={null} />
     </div>
