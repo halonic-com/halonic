@@ -3,6 +3,7 @@
 // refusal says why.
 
 import type { InstructionTrustCheck } from "@halonicjs/app";
+import type { InstructionsRefusal } from "@halonicjs/events";
 import { escapeHidden } from "@halonicjs/std";
 import type {
   HarnessAgent,
@@ -14,11 +15,23 @@ import { type StartLimits, seconds } from "./start-limits.ts";
 /** How many file names of one kind a refusal lists before it says how many more there are. */
 const namesShown = 10;
 
-/** The run's instructions aren't trusted, so the harness didn't start; the message says what a person must look at. */
+/**
+ * The run's instructions aren't trusted, so the harness didn't start; the
+ * message says what a person must look at. `runFailureReasonOf` turns it into
+ * the run failure `instructions-not-trusted` with the agent and `refusal`, so
+ * a page can offer to trust exactly the pin the check saw (requirement
+ * `engine.run-failure-reason-of`).
+ */
 export class InstructionsNotTrustedError extends Error {
-  constructor(message: string) {
+  override readonly name = "InstructionsNotTrustedError";
+  /** The agent that didn't start. */
+  readonly agent: string;
+  readonly refusal: InstructionsRefusal;
+
+  constructor(message: string, agent: string, refusal: InstructionsRefusal) {
     super(message);
-    this.name = "InstructionsNotTrustedError";
+    this.agent = agent;
+    this.refusal = refusal;
   }
 }
 
@@ -49,6 +62,7 @@ export async function checkInstructionTrust(
     digest: pin.sha256,
     files: Object.fromEntries(pin.files.map((file) => [file.path, file.sha256])),
   };
+  const pinned = { pin: current };
   const check = await limits.within({
     phase: "trust",
     timeoutMs,
@@ -56,10 +70,15 @@ export async function checkInstructionTrust(
     timedOut: () =>
       new InstructionsNotTrustedError(
         `Halonic didn't start agent ${quoted(agent.agentId)}: the check of its instructions didn't answer within ${seconds(timeoutMs)}, so they can't be trusted.`,
+        agent.agentId,
+        pinned,
       ),
   });
   if (check.kind === "trusted") return;
-  throw new InstructionsNotTrustedError(refusalText(agent.agentId, check));
+  throw new InstructionsNotTrustedError(refusalText(agent.agentId, check), agent.agentId, {
+    ...pinned,
+    changed: check.hadTrusted,
+  });
 }
 
 function refusalText(

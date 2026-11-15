@@ -2,6 +2,7 @@ import type { AgentResume } from "./agent-resume.ts";
 import type {
   ApprovalResolver,
   CantTryStep,
+  LoggedInstructionPin,
   ModelSkipReason,
   ProviderText,
   RunFailureReason,
@@ -319,6 +320,8 @@ export type RunEventBody =
    * that answered.
    * `cantTry`: set instead of `reason` when the agent's step couldn't be
    * tried (requirement `events.run-cant-try`), as a parallel branch reports it.
+   * `pin` and `changed`: with the reason `instructions-not-trusted` only, as `run.failed` gives them
+   * (requirement `events.run-failed-instructions-not-trusted`); `agent` is the one that didn't start.
    */
   | {
       type: "agent.finished";
@@ -328,6 +331,8 @@ export type RunEventBody =
       parent?: string;
       error?: string;
       reason?: RunFailureReason;
+      pin?: LoggedInstructionPin;
+      changed?: boolean;
       cantTry?: CantTryStep;
     }
   | {
@@ -394,6 +399,10 @@ export type RunEventBody =
    * `sandboxReason`: with `sandbox-not-ready` only, why the sandbox can't start, as the `Sandbox`
    * port's reason code, such as `bubblewrap-missing` (requirement `events.run-failed-sandbox-not-ready`).
    * A reader that doesn't know the code reads it as `other`.
+   * `agent`, `pin` and `changed`: with `instructions-not-trusted` only, the agent that didn't start,
+   * the digests of the instructions the check saw (never their text) and whether a person had
+   * trusted instructions for it before (requirement `events.run-failed-instructions-not-trusted`);
+   * absent in older logs. A reader that doesn't know the reason still shows `error`.
    * `providerText`: the model provider's own error text, for `--debug` and Copy details only
    * (requirement `events.provider-text`); absent in older logs and when it gave none.
    */
@@ -404,6 +413,9 @@ export type RunEventBody =
       reason?: RunFailureReason;
       host?: string;
       sandboxReason?: string;
+      agent?: string;
+      pin?: LoggedInstructionPin;
+      changed?: boolean;
       providerText?: ProviderText;
     }
   /**

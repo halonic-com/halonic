@@ -216,6 +216,9 @@ export type ToolVerb = "sent" | "saved" | "created" | "updated" | "moved" | "dra
  *   has no harnesses, as in workflow tests, which never start programs.
  * - `local-only`: the workspace is local only, and no model the step could use runs on this
  *   computer, so Halonic called none of them.
+ * - `instructions-not-trusted`: the step's harness didn't start, because a person hasn't trusted
+ *   the agent's instructions (or they changed since); `run.failed` gives the agent in `agent`,
+ *   the pin the check saw in `pin` and whether something was trusted before in `changed`.
  */
 export type RunFailureReason =
   | "budget"
@@ -235,7 +238,32 @@ export type RunFailureReason =
   | "provider-busy"
   | "answer-not-an-option"
   | "harness-unavailable"
-  | "local-only";
+  | "local-only"
+  | "instructions-not-trusted";
+
+/**
+ * The instructions a harness step started with: the digest of the whole set
+ * and each file's digest by name. Only digests, never the text, so a log
+ * that is shared doesn't carry what a person wrote.
+ */
+export interface LoggedInstructionPin {
+  readonly digest: string;
+  readonly files: Readonly<Record<string, string>>;
+}
+
+/**
+ * What `run.failed` and a parallel branch's `agent.finished` carry with the
+ * reason `instructions-not-trusted` (requirement
+ * `events.run-failed-instructions-not-trusted`): the pin the check saw, so a
+ * page can ask a person to trust exactly that, and whether a person had
+ * trusted instructions for the agent before, so it says "changed" or "not
+ * trusted yet" without asking the store again. `changed` is absent when the
+ * check didn't answer.
+ */
+export interface InstructionsRefusal {
+  readonly pin: LoggedInstructionPin;
+  readonly changed?: boolean;
+}
 
 /**
  * The model provider's own error text, kept in the run log for `--debug` and

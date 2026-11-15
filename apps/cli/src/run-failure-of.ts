@@ -191,6 +191,7 @@ export function runFailureOf(
     case "sandbox-start-failed":
     case "harness-start-failed":
     case "harness-unavailable":
+    case "instructions-not-trusted":
     case "error":
       return generalFailure(failed);
     default:

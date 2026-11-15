@@ -44,6 +44,7 @@ export interface BusyRetries {
  *
  * - the newer ones of HAL-2264 (sandbox-start-failed, harness-start-failed,
  *   model-out-of-memory, disk-full, interrupted) wait for the board;
+ * - `instructions-not-trusted` waits for words too: the CLI prints the engine's own text;
  * - a run the sandbox check refused before it started is `sandboxMessages`;
  *   one that started and then found the sandbox can't start is `sandbox-not-ready`,
  *   in the same words by its code;

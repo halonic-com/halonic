@@ -246,6 +246,33 @@ verifies("engine.run-call-fails", () => {
   });
 });
 
+verifies("engine.run-failure-reason-of", () => {
+  it("puts the agent, the pin and whether it changed on run.failed for untrusted instructions", () => {
+    const pin = { digest: "sha256:b", files: { "AGENTS.md": "sha256:a" } };
+    const untrusted: DecideInput = {
+      type: "effect-failed",
+      at: "2026-11-09T09:00:05.000Z",
+      callId: "call-1",
+      error: 'Halonic didn\'t start agent "writer".',
+      reason: "instructions-not-trusted",
+      agent: "writer",
+      refusal: { pin, changed: true },
+    };
+    const { decisions } = play(reply, [startInput, untrusted]);
+    expect(decisions[1]?.events).toEqual([
+      {
+        type: "run.failed",
+        state: "draft",
+        error: 'Halonic didn\'t start agent "writer".',
+        reason: "instructions-not-trusted",
+        agent: "writer",
+        pin,
+        changed: true,
+      },
+    ]);
+  });
+});
+
 verifies("engine.provider-text", () => {
   it("puts the provider's text from the failed call on run.failed", () => {
     const failed: DecideInput = {

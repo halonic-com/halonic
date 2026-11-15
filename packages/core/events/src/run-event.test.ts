@@ -4,6 +4,7 @@ import type { AgentResume } from "./agent-resume.ts";
 import type {
   ApprovalResolver,
   CantTryStep,
+  LoggedInstructionPin,
   ProviderText,
   RunFailureReason,
   RunKind,
@@ -160,6 +161,10 @@ verifies("events.run-log-contract", () => {
       host?: string;
       // Added after the reference by events.run-failed-sandbox-not-ready (HAL-1709).
       sandboxReason?: string;
+      // Added after the reference by events.run-failed-instructions-not-trusted (HAL-10524).
+      agent?: string;
+      pin?: LoggedInstructionPin;
+      changed?: boolean;
       // Added after the reference by events.provider-text (HAL-3119).
       providerText?: ProviderText;
     }>();
@@ -214,6 +219,9 @@ verifies("events.run-log-contract", () => {
       // Added after the reference by events.agent-finished-error (HAL-1536).
       error?: string;
       reason?: RunFailureReason;
+      // Added after the reference by events.run-failed-instructions-not-trusted (HAL-10524).
+      pin?: LoggedInstructionPin;
+      changed?: boolean;
       // Added after the reference by events.run-cant-try (HAL-4285).
       cantTry?: CantTryStep;
     }>();

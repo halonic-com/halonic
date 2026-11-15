@@ -1,6 +1,7 @@
 import type {
   AgentResume,
   CantTryStep,
+  InstructionsRefusal,
   ProviderText,
   RunEventBase,
   RunEventBody,
@@ -159,6 +160,10 @@ export interface EffectFailedInput extends InputBase {
   readonly host?: string;
   /** Why the sandbox can't start, as the `Sandbox` port's code, for `sandbox-not-ready`. */
   readonly sandboxReason?: string;
+  /** The agent that didn't start, for `instructions-not-trusted`. */
+  readonly agent?: string;
+  /** What the trust check saw, for `instructions-not-trusted`. */
+  readonly refusal?: InstructionsRefusal;
   /** The model provider's own error text, for `--debug` and Copy details only. */
   readonly providerText?: ProviderText;
   /**

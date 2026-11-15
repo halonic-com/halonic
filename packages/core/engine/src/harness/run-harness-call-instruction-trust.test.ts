@@ -76,6 +76,15 @@ verifies("engine.harness-instructions-trust", () => {
       expect(stillOpen(ports.steps)).toBe(0);
     });
 
+    it("gives the agent, the pin the check saw and whether something was trusted before", async () => {
+      const pin = { digest: digest("b"), files: { "AGENTS.md": digest("a") } };
+      const first = await runCallOn(runWith(ask({ added: ["AGENTS.md"] })).ports);
+      const later = await runCallOn(runWith(ask({ changed: ["AGENTS.md"] }, true)).ports);
+
+      expect(first.error).toMatchObject({ agent: "writer", refusal: { pin, changed: false } });
+      expect(later.error).toMatchObject({ agent: "writer", refusal: { pin, changed: true } });
+    });
+
     it("names changed and removed files", async () => {
       const { ports } = runWith(ask({ changed: ["AGENTS.md"], removed: ["skills/old.md"] }, true));
 
@@ -145,6 +154,10 @@ verifies("engine.harness-instructions-trust", () => {
       expect((error as Error).message).toBe(
         "Halonic didn't start agent \"writer\": the check of its instructions didn't answer within 10 s, so they can't be trusted.",
       );
+      // Nothing was answered, so nothing is said about an earlier trust.
+      expect((error as InstructionsNotTrustedError).refusal).toEqual({
+        pin: { digest: digest("b"), files: { "AGENTS.md": digest("a") } },
+      });
       expect(written.map((event) => event.type)).toEqual(["sandbox.started", "sandbox.opened"]);
       expect(stillOpen(ports.steps)).toBe(0);
     });

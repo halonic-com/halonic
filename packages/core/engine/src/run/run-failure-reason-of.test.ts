@@ -1,6 +1,7 @@
 import { ModelCallError, RunFailureError } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { InstructionsNotTrustedError } from "../harness/check-instruction-trust.ts";
 import { runFailureReasonOf } from "./run-failure-reason-of.ts";
 import { SandboxNotReadyError } from "./sandbox-not-ready-error.ts";
 
@@ -84,6 +85,24 @@ verifies("engine.run-failure-reason-of", () => {
       reason: "sandbox-not-ready",
       sandboxReason: "bubblewrap-missing",
     });
+  });
+
+  it("gives instructions-not-trusted with the agent and the pin for the engine's own refusal", () => {
+    const refusal = {
+      pin: { digest: "sha256:b", files: { "AGENTS.md": "sha256:a" } },
+      changed: true,
+    };
+    const error = new InstructionsNotTrustedError("not trusted", "writer", refusal);
+    expect(runFailureReasonOf(error)).toEqual({
+      reason: "instructions-not-trusted",
+      agent: "writer",
+      refusal,
+    });
+  });
+
+  it("doesn't take instructions-not-trusted from an error that only copies the name", () => {
+    const error = fromOtherCopy("InstructionsNotTrustedError", { agent: "writer" });
+    expect(runFailureReasonOf(error)).toEqual({ reason: "error" });
   });
 
   it("doesn't take sandbox-not-ready from an error that only copies the name", () => {
