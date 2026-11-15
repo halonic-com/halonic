@@ -59,7 +59,11 @@ verifies("models.aliases.edit-target", () => {
     store["providers/ollama.yaml"] = "id: ollama\n";
 
     expect(await models.readProvider("providers/ollama.yaml")).toBe("id: ollama\n");
-    models.changeProvider("providers/ollama.yaml", "Updated provider Ollama", "id: ollama\nlocal: true\n");
+    models.changeProvider(
+      "providers/ollama.yaml",
+      "Updated provider Ollama",
+      "id: ollama\nlocal: true\n",
+    );
     models.changeProvider("workspace.yaml", "Nope", "x");
 
     expect(await models.readProvider("workspace.yaml")).toBeNull();
