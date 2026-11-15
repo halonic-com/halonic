@@ -229,7 +229,12 @@ fn served_page_test_sees_the_connect_page_allowed_to_fetch_on_desktop() {
     );
     let refusal = answer.expect_err("a method the guard refuses");
     assert_eq!(refusal["kind"], "method_refused", "{refusal}");
-    let aborted = invoke(&window, CONNECT_PAGE, "http_fetch_abort", json!({"call": 1}));
+    let aborted = invoke(
+        &window,
+        CONNECT_PAGE,
+        "http_fetch_abort",
+        json!({"call": 1}),
+    );
     assert_eq!(aborted, Ok(Value::Null));
 }
 
