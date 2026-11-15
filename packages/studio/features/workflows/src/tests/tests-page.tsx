@@ -1,5 +1,5 @@
 import { Button, EmptyState, SkeletonBar, useToastStore } from "@halonicjs/studio-kit";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { WorkflowRef, WorkflowsHost, WorkflowTests } from "../api.ts";
 import { failureReason } from "../list/list-words.ts";
 import { useHostRead } from "../page/use-workflow.ts";
@@ -26,8 +26,9 @@ export function TestsPage({ host, workflow, name, openRun }: TestsPageProps) {
   const { load, retry } = useHostRead(host, workflow, (one, ref) => one.tests(ref));
   const toasts = useToastStore();
   const [ran, setRan] = useState<WorkflowTests | undefined>();
-  const [done, setDone] = useState<ReadonlyMap<string, boolean> | undefined>();
-  const [picked, setPicked] = useState<string | undefined>();
+  const [done, setDone] = useState<ReadonlyMap<number, boolean> | undefined>();
+  const [picked, setPicked] = useState<number | undefined>();
+  const rowButtons = useRef(new Map<number, HTMLButtonElement>());
   // A newer read from the host replaces what a run handed back.
   useEffect(() => setRan(undefined), [load]);
 
@@ -72,8 +73,8 @@ export function TestsPage({ host, workflow, name, openRun }: TestsPageProps) {
     if (runTests === undefined) return;
     setDone(new Map());
     try {
-      const result = await runTests(workflow, (caseName, passed) =>
-        setDone((was) => new Map(was).set(caseName, passed)),
+      const result = await runTests(workflow, (at, passed) =>
+        setDone((was) => new Map(was).set(at, passed)),
       );
       setRan(result);
       const failed = result.cases.filter((one) => one.result?.passed === false).length;
@@ -94,9 +95,13 @@ export function TestsPage({ host, workflow, name, openRun }: TestsPageProps) {
   };
 
   const rows = testRows(tests.cases, done);
-  const open = tests.cases.find((one) => one.name === picked);
-  const runIdOf = (caseName: string) =>
-    tests.cases.find((one) => one.name === caseName)?.result?.runId;
+  const open = picked === undefined ? undefined : tests.cases[picked];
+  const openRunId = open?.result?.runId;
+  // Closing the card hands focus back to the row that opened it.
+  const closeCard = () => {
+    if (picked !== undefined) rowButtons.current.get(picked)?.focus();
+    setPicked(undefined);
+  };
   return (
     <div className="-m-6 flex min-h-0 flex-1">
       <div className="min-w-0 flex-1 overflow-auto p-6">
@@ -117,12 +122,12 @@ export function TestsPage({ host, workflow, name, openRun }: TestsPageProps) {
           )}
         </div>
         <ul aria-label={words.list} className="flex flex-col divide-y divide-border">
-          {rows.map((row) => {
-            const runId = runIdOf(row.name);
+          {rows.map((row, at) => {
+            const runId = tests.cases[at]?.result?.runId;
             return (
               <li
-                key={row.name}
-                className={`flex items-center gap-3 py-2 ${picked === row.name ? "bg-accent-soft" : ""}`}
+                key={at}
+                className={`flex items-center gap-3 py-2 ${picked === at ? "bg-accent-soft" : ""}`}
               >
                 <span
                   aria-hidden="true"
@@ -133,9 +138,13 @@ export function TestsPage({ host, workflow, name, openRun }: TestsPageProps) {
                 <span className="sr-only">{stateWords[row.state]}:</span>
                 <button
                   type="button"
-                  aria-pressed={picked === row.name}
+                  ref={(node) => {
+                    if (node) rowButtons.current.set(at, node);
+                    else rowButtons.current.delete(at);
+                  }}
+                  aria-pressed={picked === at}
                   className="focus-ring text-start"
-                  onClick={() => setPicked(picked === row.name ? undefined : row.name)}
+                  onClick={() => setPicked(picked === at ? undefined : at)}
                 >
                   {row.name}
                 </button>
@@ -152,14 +161,10 @@ export function TestsPage({ host, workflow, name, openRun }: TestsPageProps) {
       </div>
       {open && (
         <CaseCard
-          key={open.name}
+          key={picked}
           test={open}
-          onClose={() => setPicked(undefined)}
-          onOpenRun={
-            openRun && open.result?.runId !== undefined
-              ? () => openRun(open.result?.runId as string)
-              : undefined
-          }
+          onClose={closeCard}
+          onOpenRun={openRun && openRunId !== undefined ? () => openRun(openRunId) : undefined}
         />
       )}
     </div>

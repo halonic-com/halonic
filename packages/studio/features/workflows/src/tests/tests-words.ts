@@ -15,6 +15,10 @@ export const testsWords = {
   allPassed: (count: number) => (count === 1 ? "The test passed" : `All ${count} tests passed`),
   someFailed: (failed: number, count: number) =>
     `${failed} of ${count} ${count === 1 ? "test" : "tests"} failed`,
+  progress: (done: number, count: number) => `${done} of ${count} done`,
+  notRunYet: (count: number) => `${count} ${count === 1 ? "test" : "tests"}, not run yet`,
+  /** `time` is empty or starts with " · ". */
+  passCount: (passed: number, count: number, time: string) => `${passed} of ${count} pass${time}`,
   list: "Tests",
   passed: "Passed",
   failed: "Failed",

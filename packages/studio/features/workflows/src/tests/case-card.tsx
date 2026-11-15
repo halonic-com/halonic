@@ -13,7 +13,7 @@ export interface CaseCardProps {
 }
 
 /**
- * A test case docked at the right over the Tests page (`workflows.tests.edit-case`): its name, its
+ * A test case docked at the right over the Tests page (`workflows.tests.page`): its name, its
  * input and where it should end, and for a failed case with an expected path both paths side by
  * side, marked from the first difference. Read-only until the save model's fields land.
  */

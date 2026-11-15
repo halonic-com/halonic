@@ -41,7 +41,7 @@ verifies("workflows.tests.page", () => {
   });
 
   it("shows a still dot for each row without a result while the tests run", () => {
-    const rows = testRows([passed, failed, fresh], new Map([["spam", false]]));
+    const rows = testRows([passed, failed, fresh], new Map([[0, false]]));
     expect(rows.map((row) => row.state)).toEqual(["failed", "waiting", "waiting"]);
   });
 

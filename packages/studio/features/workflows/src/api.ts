@@ -175,7 +175,7 @@ export interface WorkflowsHost {
    */
   runTests?(
     ref: WorkflowRef,
-    onResult: (name: string, passed: boolean) => void,
+    onResult: (index: number, passed: boolean) => void,
   ): Promise<WorkflowTests>;
   /**
    * The name of a workflow the host has read or made, for a tab or a page title, or `undefined`

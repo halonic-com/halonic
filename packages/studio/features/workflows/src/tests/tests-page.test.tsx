@@ -71,7 +71,7 @@ verifies("workflows.tests.page", () => {
   });
 
   it("shows the running state with a busy button and a count that goes up", async () => {
-    let report: (name: string, passed: boolean) => void = () => {};
+    let report: (index: number, passed: boolean) => void = () => {};
     let finish: (tests: WorkflowTests) => void = () => {};
     const { page, toasts } = await open({
       tests: async () => afterRun,
@@ -87,7 +87,7 @@ verifies("workflows.tests.page", () => {
     expect(page.textContent).toContain("0 of 3 done");
     const busy = page.querySelector("button[aria-busy=true]");
     expect(busy?.textContent).toContain("Running…");
-    await act(async () => report("spam", true));
+    await act(async () => report(1, true));
     expect(page.textContent).toContain("1 of 3 done");
     expect(page.textContent).not.toContain("10:4");
 
@@ -143,6 +143,32 @@ verifies("workflows.tests.page", () => {
       card?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
     expect(page.querySelector("aside")).toBeNull();
+    expect(document.activeElement).toBe(buttonNamed(page, "personal mail"));
+  });
+
+  it("tells apart tests with the same name", async () => {
+    const twins: WorkflowTests = {
+      cases: [
+        { name: "spam", input: "{}", result: { passed: true } },
+        {
+          name: "spam",
+          input: '{ "n": 2 }',
+          result: { passed: false, runId: "run-2", failure: "No." },
+        },
+      ],
+    };
+    const openRun = vi.fn();
+    const { page } = await open({ tests: async () => twins }, openRun);
+
+    const rows = page.querySelectorAll("li");
+    expect(rows).toHaveLength(2);
+    await act(async () => rows[1]?.querySelector("button")?.click());
+    expect(page.querySelector("aside")?.textContent).toContain('"n": 2');
+    expect(rows[0]?.className).not.toContain("bg-accent-soft");
+    await act(async () =>
+      buttonNamed(page.querySelector("aside") as HTMLElement, "Open run")?.click(),
+    );
+    expect(openRun).toHaveBeenCalledWith("run-2");
   });
 
   it("says why the tests can't be read, and tries again", async () => {

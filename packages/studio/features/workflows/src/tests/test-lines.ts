@@ -1,4 +1,5 @@
 import type { WorkflowTestCase, WorkflowTests } from "../api.ts";
+import { testsWords as words } from "./tests-words.ts";
 
 /** How a row stands: passed, failed, not run yet, or (while the tests run) still to come. */
 export type TestRowState = "passed" | "failed" | "not-run" | "waiting";
@@ -27,15 +28,15 @@ function stateOf(passed: boolean | undefined): TestRowState {
 
 /**
  * The rows of the page. While the tests run, `done` holds the result of each case that has come in
- * by name; the others show a still dot, whatever they did last time.
+ * by place in the list; the others show a still dot, whatever they did last time.
  */
 export function testRows(
   cases: readonly WorkflowTestCase[],
-  done?: ReadonlyMap<string, boolean>,
+  done?: ReadonlyMap<number, boolean>,
 ): TestRow[] {
-  return cases.map((one) => {
+  return cases.map((one, at) => {
     if (done !== undefined) {
-      const passed = done.get(one.name);
+      const passed = done.get(at);
       const state = passed === undefined ? "waiting" : stateOf(passed);
       return { name: one.name, state, glyph: glyphs[state] };
     }
@@ -59,12 +60,12 @@ export function testSummary(
   locale?: string,
 ): string {
   const count = tests.cases.length;
-  if (running !== undefined) return `${running.done} of ${count} done`;
+  if (running !== undefined) return words.progress(running.done, count);
   const ran = tests.cases.filter((one) => one.result !== undefined);
-  if (ran.length === 0) return `${count} ${count === 1 ? "test" : "tests"}, not run yet`;
+  if (ran.length === 0) return words.notRunYet(count);
   const passed = ran.filter((one) => one.result?.passed).length;
   const time = tests.ranAt === undefined ? "" : ` · ${clockTime(tests.ranAt, locale)}`;
-  return `${passed} of ${count} pass${time}`;
+  return words.passCount(passed, count, time);
 }
 
 /** Where two paths first differ, and the sentence that says it. */
@@ -76,7 +77,7 @@ export interface PathSplit {
 
 /**
  * Compares the expected path with the one the run took. `undefined` when they are the same. The
- * step number in the sentence counts from 1 (`workflows.tests.path-split`).
+ * step number in the sentence counts from 1 (`workflows.tests.page`).
  */
 export function pathSplit(
   expected: readonly string[],
