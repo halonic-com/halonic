@@ -45,6 +45,23 @@ function rebase(snapshot: PendingChanges, saved: readonly SavedFile[]): PendingC
 }
 
 /**
+ * Puts a delete before the write of a path that differs from it only in case.
+ * On a disk that ignores case both are one file, so writing first and
+ * deleting after would delete the new text.
+ */
+function deletesFirstOnSameName(entries: [string, string | null][]): [string, string | null][] {
+  const written = new Set(
+    entries.filter(([, text]) => text !== null).map(([p]) => p.toLowerCase()),
+  );
+  const first = (path: string, text: string | null) =>
+    text === null && written.has(path.toLowerCase());
+  return [
+    ...entries.filter(([path, text]) => first(path, text)),
+    ...entries.filter(([path, text]) => !first(path, text)),
+  ];
+}
+
+/**
  * Thrown by a save when a file no longer holds what Halonic last read: it
  * changed outside Halonic. Nothing was written to that file; the changes stay
  * unsaved, so Compare can show both texts (save model 1.7).
@@ -175,12 +192,16 @@ export class WorkspaceFiles {
    * new path; Git sees the rename from the identical text.
    *
    * @param rewrites - new text by path for other files that name the old path; one for `from` is the text the new file gets
+   * A rename that only changes the case of the name, such as `a.yaml` to `A.yaml`, is allowed on a disk that
+   * ignores case, where both names are the same file. A save then deletes the old name before it writes the new.
+   *
    * @throws RenameRefusedError when `from` is missing or deleted, or `to` already exists, on disk or as an unsaved new file
    */
   async rename(from: string, to: string, rewrites: Record<string, string> = {}): Promise<void> {
     // Store reads first: `change` may run while they wait, so the unsaved changes are read after them.
     const fromStored = await this.store.read(from);
     const toSaved = (await this.store.read(to)) !== null;
+    const toIsFrom = toSaved && (await this.isSameFile(from, to));
     const changes = this.changes;
     const fromText = Object.hasOwn(changes, from) ? changes[from] : fromStored;
     if (!Object.hasOwn(changes, from)) {
@@ -192,7 +213,7 @@ export class WorkspaceFiles {
       changes,
       fromText: fromText ?? null,
       fromSaved: fromStored !== null,
-      toSaved,
+      toSaved: toSaved && !toIsFrom,
       rewrites,
     });
     const text = next[to] as string;
@@ -269,7 +290,7 @@ export class WorkspaceFiles {
   }
 
   private async saveOnce(): Promise<number> {
-    const saving = Object.entries(this.changes);
+    const saving = deletesFirstOnSameName(Object.entries(this.changes));
     if (saving.length === 0) {
       return 0;
     }
@@ -292,6 +313,7 @@ export class WorkspaceFiles {
       }
     } finally {
       // Also after a failed write: the files written so far are in the store now.
+      this.forgetSavedMoves(written);
       // After a discard the history and changes are already measured against the store.
       if (this.discards === discards) {
         this.history.map((snapshot) => rebase(snapshot, written));
@@ -356,6 +378,26 @@ export class WorkspaceFiles {
     this.known.clear();
     this.moves.clear();
     this.apply({}, "Unsaved changes discarded");
+  }
+
+  /**
+   * Whether two paths that differ only in case are one file in the store: it
+   * holds the file under both names, but lists it under one only.
+   */
+  private async isSameFile(from: string, to: string): Promise<boolean> {
+    if (from === to || from.toLowerCase() !== to.toLowerCase()) return false;
+    const slash = from.lastIndexOf("/");
+    const listed = await this.store.list(slash < 0 ? undefined : from.slice(0, slash));
+    return listed.includes(from) && !listed.includes(to);
+  }
+
+  /** Drops the renames whose delete or new file a save wrote, so they can't keep a later plain delete out of the trash. */
+  private forgetSavedMoves(written: readonly SavedFile[]): void {
+    for (const { path } of written) {
+      for (const [origin, move] of this.moves) {
+        if (origin === path || move.to === path) this.moves.delete(origin);
+      }
+    }
   }
 
   /** Whether the delete of this path is half of a rename whose new file is saved in the same go with the text the rename gave it. */
