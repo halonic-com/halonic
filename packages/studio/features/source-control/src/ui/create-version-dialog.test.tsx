@@ -100,7 +100,6 @@ verifies("source-control.create-version", () => {
       const items = [
         ...(dialog()?.querySelectorAll("section > ul > li:first-child > ul > li") ?? []),
       ];
-      expect(items[0]?.textContent).toContain("Important");
       expect(items[0]?.textContent).toContain("Instructions");
       expect(items[1]?.textContent).toContain("Model: claude → gpt");
       const first = items[0];
@@ -111,6 +110,64 @@ verifies("source-control.create-version", () => {
       const label = first?.querySelector("span.text-label:not(.text-fg-muted)");
       expect(label?.textContent).toBe("Instructions");
       expect(first?.querySelector(".sr-only")).toBeNull();
+      // The old value is struck through in fg-muted.
+      expect(was?.className).toContain("line-through");
+      expect(was?.className).toContain("text-fg-muted");
+      expect(is?.className).not.toContain("line-through");
+    });
+
+    it("puts the item with an Important setting first, its chip at the right of the row", async () => {
+      const fake = fakeSource({
+        kind: "ready",
+        changes: [
+          { path: "README.md", status: "modified", staged: false },
+          { path: agentPath, status: "modified", staged: false },
+        ],
+      });
+      fake.setTexts(agentPath, { before, after });
+      fake.setTexts("README.md", { before: "a\n", after: "b\n" });
+      const list = new ChangesList(fake.source);
+      render(<ChangesView list={list} />);
+      await act(settle);
+      await act(async () => list.startVersion());
+      const rows = [...(dialog()?.querySelectorAll("section > ul > li") ?? [])];
+      expect(rows[0]?.textContent).toContain(agentPath);
+      expect(rows[0]?.querySelector("div > span.rounded-full")?.textContent).toBe("Important");
+      expect(rows[1]?.querySelector("span.rounded-full")).toBeNull();
+    });
+
+    it("has a ticked checkbox on each item, and creates only the ticked ones", async () => {
+      const { fake } = await openDialog();
+      const boxes = [
+        ...(dialog()?.querySelectorAll<HTMLInputElement>("input[type=checkbox]") ?? []),
+      ];
+      expect(boxes).toHaveLength(2);
+      expect(boxes.every((box) => box.checked)).toBe(true);
+      await act(async () => boxes[0]?.click());
+      expect(boxes[0]?.checked).toBe(false);
+      await act(async () => {
+        button("Create version").click();
+        await settle();
+      });
+      expect(fake.versions).toHaveLength(1);
+      expect(fake.versions[0]?.paths).toEqual(["README.md"]);
+    });
+
+    it("builds the offered name from the ticked items until the name is edited", async () => {
+      await openDialog();
+      const boxes = () => [
+        ...(dialog()?.querySelectorAll<HTMLInputElement>("input[type=checkbox]") ?? []),
+      ];
+      await act(async () => boxes()[0]?.click());
+      expect(nameField()?.value).toBe("Changes to README");
+      await type(nameField(), "My own");
+      await act(async () => boxes()[0]?.click());
+      expect(nameField()?.value).toBe("My own");
+    });
+
+    it("gives the count beside the heading a word", async () => {
+      await openPage();
+      expect(document.body.textContent).toContain("2 items");
     });
 
     it("opens with one item when a screen asks for it", async () => {

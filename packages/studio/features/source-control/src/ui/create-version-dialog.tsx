@@ -25,7 +25,11 @@ export interface CreateVersionDialogProps {
 export function CreateVersionDialog({ list, files, returnFocus }: CreateVersionDialogProps) {
   const toasts = useToastStore();
   const nameField = useRef<HTMLInputElement>(null);
+  const [ticked, setTicked] = useState<ReadonlySet<string>>(
+    () => new Set(files.map((file) => file.path)),
+  );
   const [name, setName] = useState(() => suggestedVersionName(files.map((file) => file.path)));
+  const [nameEdited, setNameEdited] = useState(false);
   const [notes, setNotes] = useState("");
   const [nameEmpty, setNameEmpty] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -33,6 +37,17 @@ export function CreateVersionDialog({ list, files, returnFocus }: CreateVersionD
 
   // The offered name is selected, so typing replaces it.
   useEffect(() => nameField.current?.select(), []);
+
+  function tick(path: string, on: boolean) {
+    const next = new Set(ticked);
+    if (on) next.add(path);
+    else next.delete(path);
+    setTicked(next);
+    // The offered name follows the ticked items until the person writes their own.
+    if (!nameEdited) {
+      setName(suggestedVersionName(files.filter((file) => next.has(file.path)).map((f) => f.path)));
+    }
+  }
 
   async function create() {
     if (busy) return;
@@ -43,7 +58,7 @@ export function CreateVersionDialog({ list, files, returnFocus }: CreateVersionD
     }
     setBusy(true);
     setError(undefined);
-    const reason = await list.createVersion(name, notes);
+    const reason = await list.createVersion(name, notes, [...ticked]);
     if (reason === undefined) {
       // The dialog is gone with the version, and so is the button that opened it.
       toasts?.show({ tone: "success", title: versionWords.created(name.trim()) });
@@ -80,6 +95,7 @@ export function CreateVersionDialog({ list, files, returnFocus }: CreateVersionD
             onKeyDown={createOnCtrlEnter}
             onChange={(event) => {
               setNameEmpty(false);
+              setNameEdited(true);
               setName(event.target.value);
             }}
           />
@@ -91,7 +107,7 @@ export function CreateVersionDialog({ list, files, returnFocus }: CreateVersionD
             onChange={(event) => setNotes(event.target.value)}
           />
         </Field>
-        <WhatsInIt files={files} />
+        <WhatsInIt files={files} ticked={ticked} onTick={tick} />
       </div>
     </Dialog>
   );

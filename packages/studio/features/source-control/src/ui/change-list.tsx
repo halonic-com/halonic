@@ -21,7 +21,7 @@ export function ChangeList({ list, files }: ChangeListProps) {
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
         <h2 className="text-heading">{versionWords.sinceLastVersion}</h2>
-        <span className="text-small text-fg-muted">{files.length}</span>
+        <span className="text-small text-fg-muted">{versionWords.itemCount(files.length)}</span>
         <span className="flex-1" />
         <Button variant="primary" size="sm" onClick={() => list.startVersion()}>
           {versionWords.createVersion}

@@ -154,11 +154,17 @@ export class ChangesList {
 
   /**
    * Records the open Create version as one version, then closes it and reads again. Only its
-   * files go in; anything else stays a change. Gives the reason it didn't work, or `undefined`.
+   * files go in, or only those of them in `only` when it is given; anything else stays a change.
+   * Gives the reason it didn't work, or `undefined`.
    */
-  async createVersion(name: string, notes: string): Promise<string | undefined> {
+  async createVersion(
+    name: string,
+    notes: string,
+    only?: readonly string[],
+  ): Promise<string | undefined> {
     const { read } = this.#state;
-    const files = this.versionFiles;
+    const left = only === undefined ? undefined : new Set(only);
+    const files = this.versionFiles.filter((file) => left === undefined || left.has(file.path));
     if (read?.kind !== "ready" || files.length === 0) return versionWords.nothingToCreate;
     const chosen = new Set(files.map((file) => file.path));
     // A renamed file is two paths to git: the old one goes away, the new one comes in.

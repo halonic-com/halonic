@@ -57,6 +57,10 @@ export const undoWords = {
 export const versionWords = {
   /** The heading over the changes, with the count beside it. */
   sinceLastVersion: "Since your last version",
+  /** The count beside it, with its word so a screen reader says what it counts. */
+  itemCount: (count: number) => (count === 1 ? "1 item" : `${count} items`),
+  /** The name of an item's checkbox: "Include agents/triage.agent.yaml". */
+  include: (path: string) => `Include ${path}`,
   createVersion: "Create version",
   creating: "Creating version…",
   name: "Name",
