@@ -58,6 +58,14 @@ export function AssistantSection({ context, closeSettings, place }: SettingsSect
   );
 }
 
+/** A failure's message when it is one plain line; a path, a stack or a long dump gives null. */
+function plainReason(error: unknown): string | null {
+  if (!(error instanceof Error)) return null;
+  const message = error.message.trim();
+  const plain = message !== "" && message.length <= 140 && !/[\n\r/\\]|\bat .*:\d+/.test(message);
+  return plain ? message : null;
+}
+
 /** Whether the host settings are loaded, why not, and a way to load them again. */
 function useLoaded(settings: HostSettings) {
   const [, redraw] = useState(0);
@@ -73,8 +81,7 @@ function useLoaded(settings: HostSettings) {
         .load()
         .then(
           () => setReason(null),
-          (error: unknown) =>
-            setReason(error instanceof Error && error.message !== "" ? error.message : null),
+          (error: unknown) => setReason(plainReason(error)),
         )
         .finally(() => {
           setTrying(false);

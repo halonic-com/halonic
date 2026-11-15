@@ -196,4 +196,30 @@ verifies("settings.ai-agent-section", () => {
     expect(view.textContent).not.toContain("Couldn't load");
     expect(control<HTMLSelectElement>(view, "select").value).toBe("not-set-up");
   });
+
+  it("keeps a path or a stack out of the reason and gives the plain line instead", async () => {
+    const store = new MemoryHostSettingsStore();
+    store.read = async () => {
+      throw new Error("EACCES: open \\server\\share\\settings.json\n    at read (x.ts:1:1)");
+    };
+    const settings = new HostSettings(store);
+    await settings.load().catch(() => undefined);
+    const context = {
+      services: {
+        get: (key: unknown) => (key === HostSettingsService ? settings : undefined),
+        find: () => undefined,
+      },
+      announcer: { announce: vi.fn() },
+    } as unknown as SettingsSectionProps["context"];
+    const view = render(
+      <AssistantSection context={context} place="app" surface="window" closeSettings={() => {}} />,
+    );
+    const tryAgain = [...view.querySelectorAll("button")].find(
+      (b) => b.textContent === "Try again",
+    );
+    await act(async () => tryAgain?.click());
+
+    expect(view.textContent).not.toContain("\\server");
+    expect(view.textContent).toContain("Halonic couldn't read the settings stored");
+  });
 });
