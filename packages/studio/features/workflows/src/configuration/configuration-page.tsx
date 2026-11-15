@@ -1,5 +1,5 @@
 import { EmptyState, SkeletonBar, StatusChip } from "@halonicjs/studio-kit";
-import { type KeyboardEvent, useId, useState } from "react";
+import { type KeyboardEvent, type ReactNode, useId, useState } from "react";
 import type { WorkflowConfiguration } from "../api.ts";
 import type { Load } from "../page/use-workflow.ts";
 import { type ConfigurationPage, configurationPages, pageForKey } from "./configuration-pages.ts";
@@ -12,16 +12,18 @@ export interface ConfigurationProps {
   readonly name: string;
   readonly load: Load<WorkflowConfiguration>;
   readonly retry: () => void;
+  /** The Tests page, which loads its own cases. */
+  readonly tests: ReactNode;
   /** Called when a problem's step is picked; the page goes to Flow with that card open. */
   readonly onOpenStep: (stepId: string) => void;
 }
 
 /**
  * The workflow's Configuration (`workflows.configuration`): a list of pages on the left (General,
- * Request form, Problems) and the picked page beside it, in side-label rows. It is read-only until
+ * Request form, Tests, Problems) and the picked page beside it, in side-label rows. It is read-only until
  * the save model's fields land.
  */
-export function Configuration({ name, load, retry, onOpenStep }: ConfigurationProps) {
+export function Configuration({ name, load, retry, tests, onOpenStep }: ConfigurationProps) {
   const [page, setPage] = useState<ConfigurationPage>("general");
   const ids = useId();
   if (load.kind === "failed") {
@@ -54,33 +56,41 @@ export function Configuration({ name, load, retry, onOpenStep }: ConfigurationPr
         onKeyDown={onKeyDown}
         className="flex w-52 shrink-0 flex-col gap-1 border-e border-border px-2 py-4"
       >
-        {configurationPages.map((one) => (
-          <button
-            key={one}
-            id={`${ids}-${one}`}
-            type="button"
-            role="tab"
-            aria-selected={page === one}
-            aria-controls={`${ids}-panel`}
-            tabIndex={page === one ? 0 : -1}
-            onClick={() => setPage(one)}
-            className={`focus-ring flex h-control-md items-center justify-between rounded-sm px-3 text-start text-body ${
-              page === one ? "bg-accent-soft font-medium text-fg" : "text-fg-muted hover:text-fg"
-            }`}
-          >
-            {words.pageNames[one]}
-            {one === "problems" && errors > 0 && (
-              <StatusChip tone="danger" shape="count" name={words.errors(errors)}>
-                {errors}
-              </StatusChip>
-            )}
-          </button>
-        ))}
+        {configuration === undefined
+          ? configurationPages.map((one) => (
+              <div key={one} aria-hidden="true" className="flex h-control-md items-center px-3">
+                <SkeletonBar kind="meta" width="1/2" />
+              </div>
+            ))
+          : configurationPages.map((one) => (
+              <button
+                key={one}
+                id={`${ids}-${one}`}
+                type="button"
+                role="tab"
+                aria-selected={page === one}
+                aria-controls={`${ids}-panel`}
+                tabIndex={page === one ? 0 : -1}
+                onClick={() => setPage(one)}
+                className={`focus-ring flex h-control-md items-center justify-between rounded-sm px-3 text-start text-body ${
+                  page === one
+                    ? "bg-accent-soft font-medium text-fg"
+                    : "text-fg-muted hover:text-fg"
+                }`}
+              >
+                {words.pageNames[one]}
+                {one === "problems" && errors > 0 && (
+                  <StatusChip tone="danger" shape="count" name={words.errors(errors)}>
+                    {errors}
+                  </StatusChip>
+                )}
+              </button>
+            ))}
       </div>
       <div
         role="tabpanel"
         id={`${ids}-panel`}
-        aria-labelledby={`${ids}-${page}`}
+        aria-labelledby={configuration ? `${ids}-${page}` : undefined}
         className="min-w-0 flex-1 overflow-auto p-6"
       >
         {configuration === undefined ? (
@@ -90,7 +100,12 @@ export function Configuration({ name, load, retry, onOpenStep }: ConfigurationPr
             <SkeletonBar kind="value" />
           </div>
         ) : (
-          <ConfigurationBody page={page} configuration={configuration} onOpenStep={onOpenStep} />
+          <ConfigurationBody
+            page={page}
+            configuration={configuration}
+            tests={tests}
+            onOpenStep={onOpenStep}
+          />
         )}
       </div>
     </div>
@@ -110,10 +125,12 @@ function Row({ label, children }: { readonly label: string; readonly children: R
 function ConfigurationBody({
   page,
   configuration,
+  tests,
   onOpenStep,
 }: {
   readonly page: ConfigurationPage;
   readonly configuration: WorkflowConfiguration;
+  readonly tests: ReactNode;
   readonly onOpenStep: (stepId: string) => void;
 }) {
   if (page === "general") {
@@ -169,6 +186,7 @@ function ConfigurationBody({
       </dl>
     );
   }
+  if (page === "tests") return tests;
   const rows = problemRows(configuration.problems);
   if (rows.length === 0) return <p className="max-w-[744px] text-fg-muted">{words.noProblems}</p>;
   return (

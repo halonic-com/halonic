@@ -8,6 +8,7 @@ import type {
   WorkflowListing,
   WorkflowRef,
   WorkflowsHost,
+  WorkflowTests,
   WorkflowView,
 } from "@halonicjs/studio-feature-workflows/api";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
@@ -173,6 +174,29 @@ export class WorkspaceWorkflows implements WorkflowsHost {
           message: issue.message,
           stepId: issue.path[0] === "states" ? String(issue.path[1]) : undefined,
         })),
+    };
+  }
+
+  /**
+   * The cases of the workflow's test files, with no results: the app doesn't run tests yet, so
+   * there is no `runTests` and the page shows no **Run tests**.
+   */
+  async tests({ hubId, id }: WorkflowRef): Promise<WorkflowTests> {
+    const workspace = await this.#load();
+    const exists = filesOf(workspace, "workflow").some(
+      (one) => one.hub === hubId && one.value.id === id,
+    );
+    if (!exists) throw new Error(`The hub "${hubId}" has no workflow "${id}".`);
+    return {
+      cases: filesOf(workspace, "workflowTest")
+        .filter((file) => file.hub === hubId && file.value.workflow === id)
+        .flatMap((file) =>
+          file.value.cases.map((one) => ({
+            name: one.name,
+            input: JSON.stringify(one.input, null, 2),
+            endsIn: one.expect.final,
+          })),
+        ),
     };
   }
 

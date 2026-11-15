@@ -7,6 +7,8 @@ verifies("workflows.configuration.pages", () => {
     expect(pageForKey("general", "ArrowDown")).toBe("request-form");
     expect(pageForKey("problems", "ArrowDown")).toBe("general");
     expect(pageForKey("general", "ArrowUp")).toBe("problems");
+    expect(pageForKey("request-form", "ArrowDown")).toBe("tests");
+    expect(pageForKey("tests", "ArrowDown")).toBe("problems");
   });
 
   it("jumps to the ends and ignores other keys", () => {

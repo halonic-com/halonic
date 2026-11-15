@@ -252,4 +252,26 @@ verifies("studio.workspace-workflow-read", () => {
       'The hub "acme" has no workflow "gone".',
     );
   });
+
+  it("lists the cases of a workflow's test file, with its input and where it should end", async () => {
+    const { host, store } = setup();
+    store["hubs/acme/workflows/reply.test.yaml"] =
+      'version: 1\nworkflow: reply\ncases:\n  - name: spam\n    input: { subject: "Win" }\n    expect: { final: first }\n  - name: other\n';
+
+    const tests = await host.tests({ hubId: "acme", id: "reply" });
+
+    expect(tests.cases.map(({ name, endsIn }) => ({ name, endsIn }))).toEqual([
+      { name: "spam", endsIn: "first" },
+      { name: "other", endsIn: undefined },
+    ]);
+    expect(tests.cases[0]?.input).toBe('{\n  "subject": "Win"\n}');
+    expect(tests.cases[0]?.result).toBeUndefined();
+  });
+
+  it("gives no tests for a workflow without a test file, and rejects one that isn't there", async () => {
+    const { host } = setup();
+
+    expect((await host.tests({ hubId: "acme", id: "reply" })).cases).toEqual([]);
+    await expect(host.tests({ hubId: "acme", id: "gone" })).rejects.toThrow("has no workflow");
+  });
 });
