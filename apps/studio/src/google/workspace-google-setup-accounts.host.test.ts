@@ -1,8 +1,8 @@
 import type { SetupRecord, SetupRecords } from "@halonicjs/google-setup";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
-import type { GoogleSetupHost } from "./workspace-google-setup-accounts.ts";
 import { accountsOf, acmeKey } from "./workspace-google-setup-accounts.testing.ts";
+import type { GoogleSetupHost } from "./workspace-google-setup-accounts.ts";
 
 verifies("studio.workspace-google-setup-accounts", () => {
   describe("changes through the agent host", () => {

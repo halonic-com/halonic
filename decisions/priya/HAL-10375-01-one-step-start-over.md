@@ -2,7 +2,6 @@
 
 - Approval: follow-up asked by Liam in his review of #2947 (HAL-10375); the package owner (Liam) approves this note in review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ECk1RRMqsL8XXili2TLMg+ej5gsnATV+RdbR8TzhnppBeAV9Wbqf6gf+gMx71vgUj3OEKsnjrNQfpIk9Adm9AA==
 
 ## What changes
 
