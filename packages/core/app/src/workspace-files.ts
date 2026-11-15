@@ -1,6 +1,7 @@
-import type { DefinitionStore, ExpectedContent } from "@halonicjs/ports";
+import type { DefinitionStore, ExpectedContent, RemoveResult } from "@halonicjs/ports";
 import { contentDigest, type Sha256 } from "@halonicjs/std";
 import type { EventBus } from "./event-bus.ts";
+import type { Trash } from "./review-types.ts";
 import { UndoHistory } from "./undo-history.ts";
 import type { AppEvents } from "./workspace-scope.ts";
 
@@ -83,11 +84,16 @@ export class WorkspaceFiles {
   private readonly store: DefinitionStore;
   private readonly events: EventBus<AppEvents>;
   private readonly digest: Sha256;
+  private readonly trash: Trash | undefined;
   /** The store text Halonic last read or wrote by path, `null` for no file: what a save expects to find. */
   private readonly known = new Map<string, string | null>();
 
-  /** @param digest - hashes text for the write-if-unchanged check; core has no hash of its own */
-  constructor(store: DefinitionStore, events: EventBus<AppEvents>, digest: Sha256) {
+  /**
+   * @param digest - hashes text for the write-if-unchanged check; core has no hash of its own
+   * @param trash - where a saved delete goes, so the file's text is kept; it must work over the same store
+   */
+  constructor(store: DefinitionStore, events: EventBus<AppEvents>, digest: Sha256, trash?: Trash) {
+    this.trash = trash;
     this.store = store;
     this.events = events;
     this.digest = digest;
@@ -225,7 +231,7 @@ export class WorkspaceFiles {
         const expected = await this.expectedFor(path, before);
         const result =
           text === null
-            ? await this.store.remove(path, { expected })
+            ? await this.delete(path, before, expected)
             : await this.store.write(path, text, { expected });
         if (result.status === "changed-on-disk") {
           // `known` stays: another save must not overwrite the outside text. Only a fresh read moves it.
@@ -255,6 +261,19 @@ export class WorkspaceFiles {
     this.history.clear();
     this.known.clear();
     this.apply({}, "Unsaved changes discarded");
+  }
+
+  /** Deletes a file: into the trash when there is one, else out of the store. */
+  private async delete(
+    path: string,
+    before: string | null,
+    expected: ExpectedContent,
+  ): Promise<RemoveResult> {
+    if (this.trash === undefined || before === null) {
+      return this.store.remove(path, { expected });
+    }
+    const moved = await this.trash.moveToTrash(path, expected);
+    return moved.status === "done" ? { status: "removed" } : moved;
   }
 
   /** What the file should still hold: the text last read, or the text just read for a file never read. */

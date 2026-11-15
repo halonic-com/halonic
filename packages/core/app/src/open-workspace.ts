@@ -1,6 +1,7 @@
 import type { DefinitionStore, Digest } from "@halonicjs/ports";
 import type { ListenerErrorHandler } from "./event-bus.ts";
 import { ReviewService } from "./review-service.ts";
+import type { Trash } from "./review-types.ts";
 import { ReviewingDefinitionStore } from "./reviewing-store.ts";
 import { serviceKey } from "./service-registry.ts";
 import { WorkspaceFiles } from "./workspace-files.ts";
@@ -29,6 +30,11 @@ export interface OpenWorkspaceOptions {
    * asks for: while it isn't, the assistant may write only Halonic items.
    */
   isTrusted: () => boolean;
+  /**
+   * Where a saved delete goes, so its text is kept (save model 4.2). It must
+   * work over the same store as `store`. Without it a delete removes the file.
+   */
+  trash?: Trash;
   /** Receives the error of an event listener that threw; see {@link WorkspaceScopeOptions}. */
   onListenerError: ListenerErrorHandler;
 }
@@ -71,7 +77,7 @@ export function openWorkspace(options: OpenWorkspaceOptions): WorkspaceScope {
   const store = new ReviewingDefinitionStore(options.store, review.writer);
   const files = scope.services.provide(
     workspaceFilesKey,
-    new WorkspaceFiles(store, scope.events, options.digest),
+    new WorkspaceFiles(store, scope.events, options.digest, options.trash),
   );
   scope.commands.register("workspace.save", () => files.save());
   scope.commands.register("workspace.undo", () => files.undo());
