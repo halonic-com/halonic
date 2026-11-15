@@ -67,9 +67,10 @@ function refusalText(
   return parts.join(" ");
 }
 
-/** File names are text from the workspace: quoted and escaped, so one can't end the sentence or pose as another part of it. */
+/** File names are text from the workspace: quoted and escaped (line and paragraph separators too), so one can't end the sentence or pose as another part of it. */
 function quoted(text: string): string {
-  return escapeHidden(JSON.stringify(text));
+  const escaped = escapeHidden(JSON.stringify(text));
+  return escaped.replaceAll("\u2028", "\\u2028").replaceAll("\u2029", "\\u2029");
 }
 
 function listOf(names: readonly string[]): string {
