@@ -226,6 +226,22 @@ verifies("models.aliases.edit-price", () => {
     expect(local.textContent).not.toContain("A price of 0 means");
   });
 
+  it("shows the prices in the workspace currency and ties the warning to them", async () => {
+    const { files } = memoryFiles(workspaceModels, providerFiles);
+    const usd = {
+      ...files,
+      readWorkspace: async () => "version: 1\nid: acme\nname: Acme\nbudget: { currency: USD }\n",
+    };
+    const tab = await showTab(usd);
+    expect(tab.textContent).toContain("$");
+    expect(tab.textContent).not.toContain("€");
+
+    await typeInto(field(tab, "Input"), "0");
+    const warning = tab.querySelector("p[role=status]:not(:empty)");
+    expect(warning?.textContent).toContain("A price of 0 means these calls look free");
+    expect(tab.querySelector("fieldset")?.getAttribute("aria-describedby")).toBe(warning?.id);
+  });
+
   it("waits for the other price instead of calling it wrong, then saves both", async () => {
     const { files, changes } = memoryFiles(workspaceModels);
     const tab = await showTab(files, { kind: "model-alias", hub: "local", id: "fast" });

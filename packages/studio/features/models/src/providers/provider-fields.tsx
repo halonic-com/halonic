@@ -1,10 +1,15 @@
 import type { Provider } from "@halonicjs/format";
-import { Field, FormRows, Input, Switch } from "@halonicjs/studio-kit";
+import { Field, FormRows, Input, Select, Switch } from "@halonicjs/studio-kit";
 import { useState } from "react";
 import { useDraft } from "../aliases/use-draft.ts";
 import type { ModelsFiles } from "../api.ts";
 import { editProvider, type ProviderField, type ProviderProblem } from "./provider-edits.ts";
-import { DEFAULT_BASE_URL, providerUpdatedLine } from "./provider-text.ts";
+import {
+  DEFAULT_BASE_URL,
+  LOCAL_SWITCH_LABEL,
+  PROVIDER_TYPES,
+  providerUpdatedLine,
+} from "./provider-text.ts";
 
 /** The props of {@link ProviderFields}. */
 export interface ProviderFieldsProps {
@@ -12,6 +17,15 @@ export interface ProviderFieldsProps {
   readonly provider: Provider;
   /** The provider's file, like `providers/ollama.yaml`. */
   readonly path: string;
+}
+
+/** The known types, and the file's own when it isn't one of them, so the Select can show it. */
+function typeOptions(current: string) {
+  const types: readonly string[] = PROVIDER_TYPES;
+  return (types.includes(current) ? types : [...types, current]).map((value) => ({
+    value,
+    label: value,
+  }));
 }
 
 /**
@@ -26,7 +40,6 @@ export function ProviderFields({ files, provider, path }: ProviderFieldsProps) {
   const [problem, setProblem] = useState<ProviderProblem>();
   const [status, setStatus] = useState("");
   const [name, setName] = useDraft(provider.name ?? "");
-  const [type, setType] = useDraft(provider.type);
   const [baseUrl, setBaseUrl] = useDraft(provider.baseUrl ?? "");
   const [secret, setSecret] = useDraft(provider.secret ?? "");
 
@@ -59,18 +72,15 @@ export function ProviderFields({ files, provider, path }: ProviderFieldsProps) {
           />
         </Field>
         <Field label="Type" error={problemFor("type")}>
-          <Input
-            value={type}
-            onChange={(event) => setType(event.target.value)}
-            onBlur={() => onBlur("type", type, provider.type)}
+          <Select
+            options={typeOptions(provider.type)}
+            value={provider.type}
+            onChange={(picked) => void save("type", picked)}
           />
         </Field>
-        <Field
-          label="Base URL"
-          hint={`Empty means ${DEFAULT_BASE_URL.toLowerCase()}.`}
-          error={problemFor("baseUrl")}
-        >
+        <Field label="Base URL" error={problemFor("baseUrl")}>
           <Input
+            placeholder={DEFAULT_BASE_URL}
             value={baseUrl}
             onChange={(event) => setBaseUrl(event.target.value)}
             onBlur={() => onBlur("baseUrl", baseUrl, provider.baseUrl)}
@@ -85,7 +95,7 @@ export function ProviderFields({ files, provider, path }: ProviderFieldsProps) {
         </Field>
       </FormRows>
       <Switch checked={provider.local} onChange={(local) => void save("local", local)}>
-        Runs on this machine or your own network
+        {LOCAL_SWITCH_LABEL}
       </Switch>
       {problem?.field === "yaml" ? <p role="alert">{problem.message}</p> : null}
       <p role="status">{status}</p>

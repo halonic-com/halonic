@@ -60,6 +60,7 @@ export function AliasTab({ item, context }: ItemViewProps) {
           files={files}
           models={state.models}
           providers={state.providers}
+          currency={state.currency}
           name={item.id}
         />
       ) : null}

@@ -12,7 +12,7 @@ export const TRY_AGAIN = "Try again";
 export const NO_PRICE_LINE = "No price";
 export const ADD_A_PRICE = "Add a price";
 /** What a row of a model on this machine says in place of a price: no cost, nothing to add. */
-export const RUNS_LOCALLY_LINE = "Runs on this machine";
+export const RUNS_LOCALLY_LINE = "Runs on this computer";
 
 /** The name of an alias row's "Add a price" button, so a screen reader knows whose price it adds. */
 export function addPriceLabel(name: string): string {
@@ -44,6 +44,19 @@ export function aliasUpdatedLine(name: string): string {
 export function fallbacksHint(otherAliases: readonly string[]): string {
   const base = "Tried in order when this fails.";
   return otherAliases.length === 0 ? base : `${base} Other aliases: ${otherAliases.join(", ")}`;
+}
+
+/** The currency before a price box, and what a screen reader hears after the label: "€", "in euros". */
+export function currencyPrefix(currency: string): { symbol: string; name: string } {
+  const symbol =
+    new Intl.NumberFormat("en", { style: "currency", currency })
+      .formatToParts(0)
+      .find((part) => part.type === "currency")?.value ?? currency;
+  const unit =
+    new Intl.NumberFormat("en", { style: "currency", currency, currencyDisplay: "name" })
+      .formatToParts(2)
+      .find((part) => part.type === "currency")?.value ?? currency;
+  return { symbol, name: `in ${unit}` };
 }
 
 export const PRICE_HEADING = "Price per million tokens";

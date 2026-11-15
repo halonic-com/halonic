@@ -1,7 +1,7 @@
 import { defineFeature } from "@halonicjs/studio-shell";
 import { ALIAS_KIND, ALIAS_KIND_LABEL, aliasTitle } from "./aliases/alias-text.ts";
 import { ModelKeysService, ModelsFilesService } from "./api.ts";
-import { PROVIDER_KIND, PROVIDER_KIND_LABEL, providerTitle } from "./providers/provider-text.ts";
+import { PROVIDER_KIND, PROVIDER_KIND_LABEL, providerTabLabel } from "./providers/provider-text.ts";
 
 /**
  * The Models feature: providers, aliases, API keys, budget, the "Prices and
@@ -29,7 +29,7 @@ export const modelsFeature = defineFeature({
       label: PROVIDER_KIND_LABEL,
       icon: "settings",
       open: { view: "ProviderPage", load: () => import("./providers/provider-page.tsx") },
-      tab: { describe: (item) => ({ label: providerTitle(item.id) }), exists: () => true },
+      tab: { describe: (item) => ({ label: providerTabLabel(item.id) }), exists: () => true },
     });
     studio.itemPage.addSection({
       on: "workspace",
