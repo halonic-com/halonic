@@ -159,7 +159,8 @@ function ConfigurationBody({
           <span aria-hidden="true" className={row.severity === "error" ? "text-danger-text" : ""}>
             {row.glyph}
           </span>
-          <span className="sr-only">{row.kind}:</span>
+          <span className="sr-only">{row.severity === "error" ? words.error : words.warning}:</span>
+          <span>{row.text}</span>
           {row.stepId !== undefined && (
             <button
               type="button"
@@ -170,7 +171,6 @@ function ConfigurationBody({
               {row.stepId}
             </button>
           )}
-          <span>{row.text}</span>
         </li>
       ))}
     </ul>

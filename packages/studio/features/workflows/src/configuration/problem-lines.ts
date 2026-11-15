@@ -4,26 +4,26 @@ import type { WorkflowProblem } from "../api.ts";
 export const problemGlyph = { error: "✕", warning: "△" } as const;
 
 /**
- * The short line of each check, for a step card and for Configuration › Problems (HAL-413). It is
- * lowercase, leaves out the step's name (the card shows it) and is about 25 characters.
+ * The short line of each check, for a step card (HAL-413); its tooltip and Configuration › Problems carry the core's full message. It starts
+ * with a capital, leaves out the step's name (the card shows it) and is about 25 characters.
  */
 const stepLines: Readonly<Record<string, string>> = {
-  "unknown-target": "goes to a missing step",
-  "dead-end": "has no way out",
-  "unknown-gets": "gets data not written yet",
-  "timer-outside-wait": "timers only work in Wait",
-  "foreach-without-items": "has no list to go over",
-  "foreach-without-work": "needs agent or workflow",
-  "self-subflow": "runs its own workflow",
-  "unknown-workflow": "runs a missing workflow",
-  "workflow-without-target": "has no workflow to run",
-  "parallel-without-branches": "has no branches",
-  "unknown-agent": "uses a missing agent",
-  "final-has-transitions": "is an end, but has arrows",
-  "task-without-agent": "no agent, passes through",
-  "wait-without-events": "has no events to wait for",
-  "unguarded-shadow": "never fires",
-  unreachable: "can't be reached",
+  "unknown-target": "Goes to a missing step",
+  "dead-end": "Has no way out",
+  "unknown-gets": "Gets data not written yet",
+  "timer-outside-wait": "Timers only work in Wait",
+  "foreach-without-items": "Has no list to go over",
+  "foreach-without-work": "Needs agent or workflow",
+  "self-subflow": "Runs its own workflow",
+  "unknown-workflow": "Runs a missing workflow",
+  "workflow-without-target": "Has no workflow to run",
+  "parallel-without-branches": "Has no branches",
+  "unknown-agent": "Uses a missing agent",
+  "final-has-transitions": "Is an end, but has arrows",
+  "task-without-agent": "No agent, passes through",
+  "wait-without-events": "Has no events to wait for",
+  "unguarded-shadow": "Never fires",
+  unreachable: "Can't be reached",
 };
 
 /** The sentence of a check that is about the whole workflow, not one step. */
@@ -36,12 +36,10 @@ const stripLines: Readonly<Record<string, string>> = {
 export interface ProblemRow {
   readonly severity: WorkflowProblem["severity"];
   readonly glyph: string;
-  /** What the row says: the short line, or the sentence when no step is meant. */
+  /** What the row says: the core's full message. */
   readonly text: string;
   /** The step it is about, which the row links to; absent for a problem of the whole workflow. */
   readonly stepId?: string | undefined;
-  /** "Error" or "Warning", read before the row so colour and glyph are never the only sign. */
-  readonly kind: "Error" | "Warning";
 }
 
 /** The short line for a problem, without its glyph; the core's own message when no line is written for it. */
@@ -56,13 +54,11 @@ export function problemRows(problems: readonly WorkflowProblem[]): readonly Prob
   const errors = problems.filter((problem) => problem.severity === "error");
   const warnings = problems.filter((problem) => problem.severity === "warning");
   return [...errors, ...warnings].map((problem) => {
-    const text = problemLine(problem);
     return {
       severity: problem.severity,
       glyph: problemGlyph[problem.severity],
-      text,
+      text: problem.message,
       stepId: problem.stepId,
-      kind: problem.severity === "error" ? "Error" : "Warning",
     };
   });
 }

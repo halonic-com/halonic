@@ -31,8 +31,18 @@ const configuration: WorkflowConfiguration = {
   stepIds: ["start", "review"],
   file: "hubs/acme/workflows/reply.workflow.yaml",
   problems: [
-    { severity: "warning", code: "unreachable", message: "m", stepId: "start" },
-    { severity: "error", code: "dead-end", message: "m", stepId: "review" },
+    {
+      severity: "warning",
+      code: "unreachable",
+      message: "Step start is never reached from the first step.",
+      stepId: "start",
+    },
+    {
+      severity: "error",
+      code: "dead-end",
+      message: "Step review has no transitions and is not final.",
+      stepId: "review",
+    },
   ],
 };
 
@@ -69,8 +79,8 @@ verifies("workflows.configuration.pages", () => {
     await act(async () => tab(page, "Problems")?.click());
 
     const rows = [...page.querySelectorAll("li")].map((row) => row.textContent);
-    expect(rows[0]).toContain("has no way out");
-    expect(rows[1]).toContain("can't be reached");
+    expect(rows[0]).toBe("✕Error:Step review has no transitions and is not final.review");
+    expect(rows[1]).toBe("△Warning:Step start is never reached from the first step.start");
 
     await act(async () =>
       page.querySelector<HTMLButtonElement>("[aria-label='Open review']")?.click(),

@@ -20,6 +20,8 @@ export const configurationWords = {
   formTitle: "Form title",
   fields: "Fields",
   fileLater: "Editing the description comes with Files; until then, change it in the file.",
+  error: "Error",
+  warning: "Warning",
   noProblems: "No problems.",
   openStep: (stepId: string) => `Open ${stepId}`,
   loading: (name: string) => `Loading ${name}'s settings`,

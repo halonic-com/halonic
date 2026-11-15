@@ -11,8 +11,8 @@ const problem = (
 
 verifies("workflows.configuration.problem-lines", () => {
   it("writes a short line for a step's problem, without the step's name", () => {
-    expect(problemLine(problem("dead-end", "error", "review"))).toBe("has no way out");
-    expect(problemLine(problem("unreachable", "warning", "review"))).toBe("can't be reached");
+    expect(problemLine(problem("dead-end", "error", "review"))).toBe("Has no way out");
+    expect(problemLine(problem("unreachable", "warning", "review"))).toBe("Can't be reached");
   });
 
   it("writes a sentence for a problem of the whole workflow", () => {
@@ -35,13 +35,21 @@ verifies("workflows.configuration.problem-lines", () => {
     expect(rows.map((row) => row.glyph)).toEqual(["✕", "✕", "△", "△"]);
   });
 
-  it("reads a row with its step and its severity", () => {
+  it("reads a row with the core's message, its step and its severity", () => {
     const [step, whole] = problemRows([
       problem("dead-end", "error", "review"),
       problem("no-final", "warning"),
     ]);
-    expect([step?.kind, step?.stepId]).toEqual(["Error", "review"]);
-    expect([whole?.kind, whole?.stepId]).toEqual(["Warning", undefined]);
+    expect([step?.severity, step?.text, step?.stepId]).toEqual([
+      "error",
+      "core says dead-end",
+      "review",
+    ]);
+    expect([whole?.severity, whole?.text, whole?.stepId]).toEqual([
+      "warning",
+      "core says no-final",
+      undefined,
+    ]);
   });
 
   it("counts errors and warnings", () => {
@@ -52,7 +60,7 @@ verifies("workflows.configuration.problem-lines", () => {
 
   it("sums up several problems on one card", () => {
     expect(cardSummary([])).toBe("");
-    expect(cardSummary([problem("dead-end")])).toBe("✕ has no way out");
+    expect(cardSummary([problem("dead-end")])).toBe("✕ Has no way out");
     expect(cardSummary([problem("unreachable", "warning"), problem("dead-end")])).toBe(
       "✕ 2 problems",
     );
