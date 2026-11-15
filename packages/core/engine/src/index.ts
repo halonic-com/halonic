@@ -125,6 +125,16 @@ export {
   maxLoggedResultBytes,
   resultStartLength,
 } from "./tools/large-results.ts";
+export {
+  type CellEdit,
+  type CollectionGrid,
+  collectionGrid,
+  editCell,
+  type GridField,
+  type GridView,
+  type NewRow,
+  newRow,
+} from "./tools/records/collection-grid.ts";
 export type { CollectionRecord } from "./tools/records/record-query.ts";
 export { fieldSchema, type RecordToolsOptions, recordTools } from "./tools/records/record-tools.ts";
 export {
