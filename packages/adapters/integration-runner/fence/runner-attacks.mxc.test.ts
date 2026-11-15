@@ -13,6 +13,7 @@ import {
   openAttack,
   runAttack,
 } from "./attack-session.ts";
+import { credentialReadScript } from "./credential-probe.ts";
 import { type RealMxc, realMxc } from "./mxc-sandbox.ts";
 
 // The runner's attack list in MXC on Windows 11 (design HAL-958, sections 4.3
@@ -337,54 +338,11 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     // and records whether the value comes out. The gap is named: if the box
     // ever stops the read, this fails, and the gap and `attack-cases.md`
     // are to be updated.
-    const powershell = join(
-      windowsFolder,
-      "System32",
-      "WindowsPowerShell",
-      "v1.0",
-      "powershell.exe",
-    );
-    // The two calls are built in memory with reflection, not compiled with
-    // `Add-Type`: that starts the C# compiler, which the box may stop. Each
-    // step writes a marker to stderr, so a stuck run shows where it stopped.
-    // No cmdlet is used either: the first one (`New-Object`) hung before it
-    // returned, probably loading its module inside the box.
-    const readCredential = `
-      function Step($name) { [Console]::Error.WriteLine("step: " + $name) }
-      Step "start"
-      $name = [System.Reflection.AssemblyName]::new("HalonicVault")
-      Step "assembly name"
-      $assembly = [System.AppDomain]::CurrentDomain.DefineDynamicAssembly($name, [System.Reflection.Emit.AssemblyBuilderAccess]::Run)
-      Step "assembly"
-      $type = $assembly.DefineDynamicModule("HalonicVault").DefineType("Vault", "Public,Class")
-      Step "type"
-      $flags = [System.Reflection.MethodAttributes]"Public,Static,PinvokeImpl"
-      $read = $type.DefinePInvokeMethod("CredRead", "advapi32.dll", $flags, [System.Reflection.CallingConventions]::Standard, [bool], [type[]]@([string], [int], [int], [System.IntPtr].MakeByRefType()), [System.Runtime.InteropServices.CallingConvention]::Winapi, [System.Runtime.InteropServices.CharSet]::Unicode)
-      Step "CredRead declared"
-      $read.SetImplementationFlags($read.GetMethodImplementationFlags() -bor [System.Reflection.MethodImplAttributes]::PreserveSig)
-      $free = $type.DefinePInvokeMethod("CredFree", "advapi32.dll", $flags, [System.Reflection.CallingConventions]::Standard, [void], [type[]]@([System.IntPtr]), [System.Runtime.InteropServices.CallingConvention]::Winapi, [System.Runtime.InteropServices.CharSet]::Unicode)
-      $free.SetImplementationFlags($free.GetMethodImplementationFlags() -bor [System.Reflection.MethodImplAttributes]::PreserveSig)
-      Step "CredFree declared"
-      $vault = $type.CreateType()
-      Step "built"
-      $arguments = [object[]]@('${credentialTarget.replaceAll("'", "''")}', 1, 0, [System.IntPtr]::Zero)
-      $found = $vault.GetMethod("CredRead").Invoke($null, $arguments)
-      Step ("CredRead returned " + $found)
-      if (-not $found) { exit 1 }
-      $pointer = $arguments[3]
-      # CREDENTIALW: CredentialBlobSize follows Flags, Type, two strings and
-      # LastWritten (16 bytes + 2 pointers); CredentialBlob follows it, padded
-      # to a pointer. That is 32 and 40 on 64-bit Windows.
-      $size = [System.Runtime.InteropServices.Marshal]::ReadInt32($pointer, 16 + 2 * [System.IntPtr]::Size)
-      $blob = [System.Runtime.InteropServices.Marshal]::ReadIntPtr($pointer, 16 + 3 * [System.IntPtr]::Size)
-      [Console]::Out.Write([System.Runtime.InteropServices.Marshal]::PtrToStringUni($blob, $size / 2))
-      [void]$vault.GetMethod("CredFree").Invoke($null, @($pointer))
-    `;
     const { attempts, stderr } = await attack(
       `
       const { spawnSync } = await import("node:child_process");
       await attempt("secret", () => {
-        const run = spawnSync(${JSON.stringify(powershell)}, ["-NoProfile", "-NonInteractive", "-Command", ${JSON.stringify(readCredential)}], {
+        const run = spawnSync(${JSON.stringify(powershell)}, ["-NoProfile", "-NonInteractive", "-Command", ${JSON.stringify(credentialReadScript(credentialTarget))}], {
           encoding: "utf8",
           // No input to wait for, and an end well inside the attack's own, so a
           // stuck PowerShell is reported here with what it printed.
