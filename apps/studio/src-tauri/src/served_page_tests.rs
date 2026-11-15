@@ -16,6 +16,7 @@ use tauri::webview::{InvokeRequest, WebviewWindow};
 use crate::shell;
 
 mod engine_lock;
+mod http;
 mod runs;
 #[cfg(desktop)]
 mod updates;
@@ -100,6 +101,7 @@ fn served_page_is_refused_every_app_and_plugin_command() {
     for expected in [
         "connect",
         "git",
+        "http_request",
         "secret_get",
         "secret_set",
         "secret_delete",

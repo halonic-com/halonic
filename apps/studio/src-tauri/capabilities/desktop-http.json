@@ -1,0 +1,16 @@
+{
+  "identifier": "desktop-http",
+  "description": "On desktop, the app's own page may send a request to a model provider through the http_request command, because the page's content security policy stops it fetching one itself (HAL-10352). The command reaches provider hosts only, checks every address, follows no redirect and uses no proxy. It is local only, so the Studio the computer serves gets none.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-http-request"
+  ]
+}

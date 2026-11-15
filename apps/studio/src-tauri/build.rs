@@ -9,6 +9,7 @@ fn main() {
     let commands = tauri_build::AppManifest::new().commands(&[
         "connect",
         "git",
+        "http_request",
         "secret_get",
         "secret_set",
         "secret_delete",
