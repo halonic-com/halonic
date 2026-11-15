@@ -1,4 +1,5 @@
 import type { DefinitionStore } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
 import { unversionedFolders, type VcsChange } from "@halonicjs/ports";
 import type { ChangesRead, ChangesSource } from "@halonicjs/studio-feature-source-control/api";
 import { parseStatus, statusArgs } from "./parse-status.ts";
@@ -46,7 +47,7 @@ export class WorkspaceChanges implements ChangesSource {
     if (inside.code !== 0 || inside.stdout.trim() !== "true") return { kind: "not-a-repository" };
     const status = await this.#run(statusArgs);
     if (status === "no-git") return { kind: "no-git" };
-    if (status.code !== 0) throw new Error(status.stderr.trim());
+    if (status.code !== 0) throw new KindedError("unavailable", status.stderr.trim());
     return { kind: "ready", changes: parseStatus(status.stdout).filter(isVersioned) };
   }
 
@@ -54,8 +55,8 @@ export class WorkspaceChanges implements ChangesSource {
     // The ignore line first, so a failed init never leaves `.studio/` showing up as changed.
     await this.#ignoreStudioFolder();
     const init = await this.#run(["init", "--quiet"]);
-    if (init === "no-git") throw new Error("git isn't on this computer.");
-    if (init.code !== 0) throw new Error(init.stderr.trim());
+    if (init === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
+    if (init.code !== 0) throw new KindedError("unavailable", init.stderr.trim());
   }
 
   subscribe(listener: () => void): () => void {
@@ -87,7 +88,10 @@ export class WorkspaceChanges implements ChangesSource {
         ? await this.#options.files.write(".gitignore", text, { expected: "absent" })
         : await this.#options.files.write(".gitignore", text);
     if (result.status === "changed-on-disk") {
-      throw new Error(".gitignore changed while Halonic was changing it. Try again.");
+      throw new KindedError(
+        "conflict",
+        ".gitignore changed while Halonic was changing it. Try again.",
+      );
     }
   }
 }

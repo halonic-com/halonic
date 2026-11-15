@@ -50,7 +50,7 @@ export class ChangesList {
   /** How many files changed since the last version; zero when nothing did or there is no history. */
   get changedFileCount(): number {
     const read = this.#state.read;
-    return read?.kind === "ready" ? read.changes.length : 0;
+    return read?.kind === "ready" ? new Set(read.changes.map((change) => change.path)).size : 0;
   }
 
   /** The sidebar's count, "Changes, 3 changes"; nothing at zero. */

@@ -5,7 +5,6 @@ export const statusArgs: readonly string[] = [
   "status",
   "--porcelain=v2",
   "--untracked-files=all",
-  "--renames",
   "-z",
 ];
 

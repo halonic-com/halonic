@@ -114,13 +114,19 @@ verifies("source-control.changes-page", () => {
       const files = fakeFiles();
       files.write.mockResolvedValueOnce({ status: "changed-on-disk" as never });
       const { changes } = history(git, files);
-      await expect(changes.turnOnHistory()).rejects.toThrow(".gitignore changed");
+      await expect(changes.turnOnHistory()).rejects.toMatchObject({
+        kind: "conflict",
+        message: expect.stringContaining(".gitignore changed"),
+      });
       expect(git).not.toHaveBeenCalled();
     });
 
     it("reports a failed git init with git's words", async () => {
       const { changes } = history(async () => answer("", 1, "fatal: cannot mkdir .git"));
-      await expect(changes.turnOnHistory()).rejects.toThrow("fatal: cannot mkdir .git");
+      await expect(changes.turnOnHistory()).rejects.toMatchObject({
+        kind: "unavailable",
+        message: "fatal: cannot mkdir .git",
+      });
     });
 
     it("wakes its listener when the window comes to the front or a file changed, until stopped", () => {

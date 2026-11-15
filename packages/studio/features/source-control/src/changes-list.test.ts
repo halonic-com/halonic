@@ -24,6 +24,20 @@ verifies("source-control.changes-page", () => {
       expect(list.signal()).toBeUndefined();
     });
 
+    it("counts a file changed both staged and unstaged once", async () => {
+      const list = new ChangesList(
+        fakeSource({
+          kind: "ready",
+          changes: [
+            { path: "models.yaml", status: "modified", staged: true },
+            { path: "models.yaml", status: "modified", staged: false },
+          ],
+        }).source,
+      );
+      await settle();
+      expect(list.changedFileCount).toBe(1);
+    });
+
     it("reads 1 change in the singular", async () => {
       const list = new ChangesList(
         fakeSource({ kind: "ready", changes: [twoChanged.changes[0]] }).source,

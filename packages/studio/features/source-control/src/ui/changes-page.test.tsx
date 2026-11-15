@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { KindedError } from "@halonicjs/std";
 import { OpenExternalProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -115,6 +116,29 @@ verifies("source-control.changes-page", () => {
         await settle();
       });
       expect(root.textContent).toContain("Nothing has changed since your last version.");
+    });
+
+    it("shows git's own reason when the first read fails with one", async () => {
+      const fake = fakeSource({ kind: "ready", changes: [] });
+      fake.failReads(new KindedError("unavailable", "fatal: detected dubious ownership"));
+      const { root } = await openPage(fake);
+      expect(root.textContent).toContain("fatal: detected dubious ownership");
+      expect(root.textContent).not.toContain("Git didn't answer");
+    });
+
+    it("shows the reason turning history on failed", async () => {
+      const fake = fakeSource({ kind: "not-a-repository" });
+      fake.failTurnOn(
+        new KindedError("conflict", ".gitignore changed while Halonic was changing it."),
+      );
+      const { root } = await openPage(fake);
+      await act(async () => {
+        button(root, "Turn on history").click();
+        await settle();
+      });
+      expect(root.querySelector('[role="alert"]')?.textContent).toContain(
+        ".gitignore changed while Halonic was changing it.",
+      );
     });
 
     it("keeps the page when a later read fails", async () => {
