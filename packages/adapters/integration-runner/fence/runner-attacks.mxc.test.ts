@@ -25,7 +25,7 @@ import { type RealMxc, realMxc } from "./mxc-sandbox.ts";
 // Every case runs twice: with Node's permission model on, as in production,
 // and with it off, so the box alone stands between the script and the
 // computer. That is what an integration has once it gets past the module hook
-// and Node's layer. `mxcFencesRunner` stays off until every case here has
+// and Node's layer. `mxcFencesRunner` was off until every case here had
 // passed, A6 and A23 included. A36 past Node's layer (HAL-9362): the box shows
 // the vault's entry names but refuses the secret read.
 

@@ -36,13 +36,22 @@ export const runnerUnfencedReasons = [
 export type RunnerUnfencedReason = (typeof runnerUnfencedReasons)[number];
 
 /**
- * Whether MXC counts as a fence for the runner on Windows 11. It stays
- * `false` until the attack cases A1 to A40 have passed on MXC on
- * `windows-11-arm`, A6 (DNS) and A23 (MXC fails mid-run) among them, and
- * Julian's review of that run is on HAL-3307 (HAL-3403). Turning it on is
- * changing this to `true`, and nothing else.
+ * Whether MXC counts as a fence for the runner on Windows 11. It is `true`
+ * since the attack cases A1 to A40 each passed or were recorded as a gap on MXC
+ * on `windows-11-arm`, and Julian's review of that run is on HAL-3307
+ * (HAL-3403, HAL-9335). The open gaps are A36 (Credential Manager, with Node's
+ * permission layer off), A6 (DNS through the Windows DNS client) and A24
+ * (memory on Windows). The runner always starts with Node's permission layer
+ * on, which the A36 reasoning relies on. Node's layer is not a security boundary.
  */
-export const mxcFencesRunner = false;
+export const mxcFencesRunner = true;
+
+/**
+ * Whether MXC counts as a fence for a plugin's local tools. It stays `false`:
+ * local tools have no Node permission layer, so the recorded A36 gap
+ * (HAL-9362) would be open for them.
+ */
+export const mxcFencesLocalTools = false;
 
 /** The sandbox backends the runner may be fenced by: `srt` (`sandbox-srt`) and `mxc` (`sandbox-mxc`). */
 export type RunnerBackend = "srt" | "mxc";

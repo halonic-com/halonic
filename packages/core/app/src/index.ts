@@ -341,6 +341,7 @@ export {
 export { type RunStanding, type RunWait, runStanding, runWait } from "./run-standing.ts";
 export { type RunStep, runSteps, type StepEnd } from "./run-steps.ts";
 export {
+  mxcFencesLocalTools,
   mxcFencesRunner,
   type RunnerBackend,
   type RunnerFence,
