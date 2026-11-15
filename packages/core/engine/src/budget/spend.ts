@@ -16,7 +16,9 @@ const maxParentHops = 64;
  * What has been spent for `run` and in the month of `at`. A child run spends
  * from its top-level run's budget, so the run spend is the cost of the
  * top-level run and of every child run under it. The month counts every run
- * that started in the same calendar month (UTC) as `at`.
+ * that started in the same calendar month (UTC) as `at`. Test runs are left
+ * out, as the Studio's spend line leaves them out: a test case's scripted
+ * calls are priced from the alias, but nothing is paid.
  *
  * It lists only the runs that started since the earlier of the month's
  * start and the top-level run's start, since a child run starts after its
@@ -36,7 +38,7 @@ export async function spendOf(
   const top = await topRunOf(runs, run);
   const topStart = (await runs.get(top))?.startedAt ?? at;
   const since = Date.parse(topStart) < Date.parse(monthStart) ? topStart : monthStart;
-  const summaries = await runs.list({ startedSince: since });
+  const summaries = await runs.list({ kind: "run", startedSince: since });
   const monthSpend = summaries
     .filter((summary) => monthOf(summary.startedAt) === month)
     .reduce((total, summary) => total + summary.cost, 0);
@@ -59,7 +61,7 @@ export async function monthsSpend(
 ): Promise<MonthSpend[]> {
   const first = lastMonths(at, count)[0];
   if (first === undefined) return [];
-  const summaries = await runs.list({ startedSince: monthStartOf(first) });
+  const summaries = await runs.list({ kind: "run", startedSince: monthStartOf(first) });
   return spendByMonth(summaries, at, count);
 }
 
