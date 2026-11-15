@@ -186,6 +186,7 @@ function showStartToasts(
       secondAction: {
         label: text.OPEN_RELEASE_PAGE,
         onClick: () => void openExternal(releasePage(state.version)),
+        keepOpen: true,
       },
     });
   }

@@ -54,7 +54,7 @@ export function AboutHostView({ host, announce, onRestart }: AboutHostViewProps)
   const { status } = updater;
   if (status === null)
     return (
-      <div className="mt-2 flex max-w-120 flex-col gap-5">
+      <div className="mt-5 flex max-w-120 flex-col gap-5">
         {updater.unanswered ? (
           <NoAnswer onRetry={updater.retry} />
         ) : (
@@ -75,7 +75,7 @@ export function AboutHostView({ host, announce, onRestart }: AboutHostViewProps)
     "try-again": { label: text.TRY_AGAIN, run: updater.download },
   };
   return (
-    <div className="mt-2 flex max-w-120 flex-col gap-5">
+    <div className="mt-5 flex max-w-120 flex-col gap-5">
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1">
           <h3 className="text-body font-medium">{text.versionHeading(status.current)}</h3>
@@ -226,7 +226,7 @@ function AboutLinks({ heading }: { readonly heading: string | null }) {
 
 function ViewOnlyAbout({ version }: { readonly version: string | undefined }) {
   return (
-    <div className="mt-2 flex max-w-120 flex-col gap-5">
+    <div className="mt-5 flex max-w-120 flex-col gap-5">
       {version === undefined ? null : (
         <h3 className="text-body font-medium">{text.versionHeading(version)}</h3>
       )}

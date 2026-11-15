@@ -107,7 +107,9 @@ export function ToastCard({ toast, waiting, onClosed }: ToastCardProps) {
               className={`max-w-full flex-none ${actionButton}`}
               onClick={() => {
                 action.onClick();
-                setLeaving(true);
+                if (action.keepOpen !== true) {
+                  setLeaving(true);
+                }
               }}
             >
               {action.label}

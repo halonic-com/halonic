@@ -1,10 +1,14 @@
 /** The toast's colour and icon, the same tones as the Status chip's. `info` is the accent. */
 export type ToastTone = "success" | "info" | "running" | "warning" | "danger";
 
-/** The toast's one action, a text button: "Undo", "Open run". Pressing it closes the toast. */
+/**
+ * A text button on a toast: "Undo", "Open run". Pressing it closes the toast, unless `keepOpen`
+ * is set, for a button that leads away and leaves the message standing.
+ */
 export interface ToastAction {
   readonly label: string;
   readonly onClick: () => void;
+  readonly keepOpen?: boolean;
 }
 
 /** What a screen shows: "Agent saved", "Run failed". */

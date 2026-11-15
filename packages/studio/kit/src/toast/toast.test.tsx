@@ -123,12 +123,15 @@ verifies("kit.toast", () => {
       title: "Didn't install",
       sticky: true,
       action: { label: "Try again", onClick: vi.fn() },
-      secondAction: { label: "Open release page", onClick: open },
+      secondAction: { label: "Open release page", onClick: open, keepOpen: true },
     });
     pass(60_000);
     expect(drawn(container)).toEqual(["Didn't install"]);
     act(() => button(container, "Open release page").click());
     expect(open).toHaveBeenCalledOnce();
+    pass(TOAST_FADE_MS);
+    expect(store.list()).toHaveLength(1);
+    act(() => button(container, "Try again").click());
     pass(TOAST_FADE_MS);
     expect(store.list()).toHaveLength(0);
   });
