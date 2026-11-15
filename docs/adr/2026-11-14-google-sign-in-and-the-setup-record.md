@@ -59,7 +59,8 @@ refresh tokens are sealed in `<profile>/google/tokens`, and no route, record or
 command returns them. Studio on desktop reads the records through one
 read-only command, `google_setup_read`: it takes no argument, can't name a
 folder, never reads `google/tokens`, and is granted to the app's own window
-only. The CLI's host writes the records; Studio can't.
+only. The host, the CLI's or the agent host inside the desktop app, writes the
+records; the page and the shell can't.
 
 **The setup record points at its connector.** A record holds `connector: {
 workspace, id }`: the workspace's key in the profile (32 lower-case hex

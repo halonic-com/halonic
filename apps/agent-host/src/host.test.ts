@@ -1,3 +1,6 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { type Machine, SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import { describe, expect, it } from "vitest";
@@ -173,6 +176,41 @@ describe("run", () => {
     expect(await running).toBe(0);
     await expect(fetch(`${handshake.url}/v1/health`)).rejects.toThrow();
     expect(lines).toHaveLength(1);
+  });
+});
+
+describe("run with the Google routes", () => {
+  /** Serves with `args`, asks the Google disconnect route about an account nobody set up, and stops. */
+  async function disconnectAnswer(args: readonly string[]): Promise<string> {
+    const { io, input, lines, nextLine } = starter();
+    const running = run(args, "1.2.3", io);
+    await nextLine();
+    const handshake = JSON.parse(lines[0] ?? "") as Handshake;
+    const answer = await fetch(`${handshake.url}/v1/google/disconnect`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${handshake.token}`, "content-type": "application/json" },
+      body: JSON.stringify({ accountRef: "gaccount_missing1" }),
+    });
+    const text = `${answer.status} ${await answer.text()}`;
+    input.end();
+    await running;
+    return text;
+  }
+
+  it("serves the Google disconnect route for the profile folder it was given", async () => {
+    const profile = await mkdtemp(join(tmpdir(), "halonic-host-profile-"));
+    try {
+      expect(await disconnectAnswer(["--profile-folder", profile])).toMatch(
+        /^404 .*"kind":"google_setup_not_found"/u,
+      );
+    } finally {
+      await rm(profile, { recursive: true, force: true });
+    }
+  });
+
+  it("serves no Google route without a profile folder", async () => {
+    // The host's own 404 for a path it doesn't serve, not the route's answer for a missing account.
+    expect(await disconnectAnswer([])).toMatch(/^404 .*"not_found"/u);
   });
 });
 

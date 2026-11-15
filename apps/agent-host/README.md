@@ -90,6 +90,7 @@ A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413`
 | `POST /v1/connectors/tools` with `{"connector"}` | the connector's `ConnectorTool[]`, or `404 unknown_connector`, or `502 connector_failed` with a fixed message: the error's own detail goes only to the host's standard error, with the connector's secret values replaced |
 | `POST /v1/connectors/call` with `{"connector","tool","args"}`, and `"idempotencyKey"` | `{"text"}`, or the same errors |
 | `POST /v1/connectors/close` with `{"connector"}` | `{"closed":true}`, or `404`. The host closes every connector, and so its sessions, when it stops |
+| `POST /v1/google/disconnect` with `{"accountRef"}` | what the CLI host answers to `POST /api/google/setups/<ref>/disconnect`: `{"disconnected":true,"googleConfirmed","clientSecret"}` once Google was asked to end the sign-in and the refresh token, the record and the client secret (not while another account uses the client) are removed, or `404` for an account with no setup, `400` for a ref that isn't a ref, `502 google_failed` with a fixed message: the cause goes only to the host's standard error. Served only with `--profile-folder`; nothing secret is ever in an answer |
 | `GET /v1/harnesses` | `[{"id","name"}]` |
 | `POST /v1/harnesses/detect` with `{"harness"}`, and `"settingsFolder"` for one agent | the `HarnessDetection` |
 | `POST /v1/harnesses/sign-in` with `{"harness","settingsFolder"}` | `{"opened":true}`, or `{"opened":false,"reason","command"}` (below) |

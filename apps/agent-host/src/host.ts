@@ -5,12 +5,15 @@ import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
+import type { GoogleSetupPorts } from "@halonicjs/host-server";
 import type { Harness, TrustStore } from "@halonicjs/ports";
-import { type ProfilePlatform, trustFolder } from "@halonicjs/profile";
+import { type ProfileFolder, type ProfilePlatform, trustFolder } from "@halonicjs/profile";
 import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
 import { bridgeSocketFolder, sweepLeftOverBridges } from "./bridge/socket-folder.ts";
 import { hostConnectorRoutes } from "./connector/connector-factory.ts";
 import { connectorRoutes } from "./connector/connector-routes.ts";
+import { googleRoutes } from "./google/google-routes.ts";
+import { openGoogleSetup } from "./google/google-setup.ts";
 import { harnessRoutes } from "./harness/harness-routes.ts";
 import { RunTable } from "./harness/run-table.ts";
 import { signInRoute } from "./harness/sign-in-route.ts";
@@ -137,6 +140,7 @@ export async function run(
     sandbox,
     socketFolder,
     connectorPlaces(given.roots, profileFolder),
+    profileGoogleSetup(profileFolder),
   );
   try {
     if (args.includes("--stdio")) return await serveOverFrames(args, io, host);
@@ -163,12 +167,22 @@ function connectorPlaces(roots: readonly string[], profileFolder: string | undef
 }
 
 function profileTrustStore(profileFolder: string): TrustStore {
+  return new FileTrustStore(trustFolder(profileOf(profileFolder)));
+}
+
+/** The Google setup of the profile folder, or `undefined` without one. */
+function profileGoogleSetup(profileFolder: string | undefined): GoogleSetupPorts | undefined {
+  if (profileFolder === undefined) return undefined;
+  return openGoogleSetup({ profile: profileOf(profileFolder), env: process.env });
+}
+
+/** The profile folder `--profile-folder` names, with the system its path belongs to. */
+function profileOf(root: string): ProfileFolder {
   const platforms: Partial<Record<NodeJS.Platform, ProfilePlatform>> = {
     win32: "windows",
     darwin: "macos",
   };
-  const platform = platforms[process.platform] ?? "linux";
-  return new FileTrustStore(trustFolder({ platform, root: profileFolder }));
+  return { platform: platforms[process.platform] ?? "linux", root };
 }
 
 /** The value after `name` in `args`, when there is one. */
@@ -249,12 +263,14 @@ interface HostServices {
  * @param socketFolder - where each bridge serves a Unix socket (see {@link bridgeSocketFolder});
  *   `undefined` for bridges on loopback ports
  * @param connectors - the folders the launcher named as workspaces, what a workspace connector's program may never reach, and the trust records it is checked against
+ * @param google - the Google setup of the profile, or `undefined` without a profile folder (no Google route is served)
  */
 function hostServices(
   version: string,
   sandbox: SrtSandbox,
   socketFolder: string | undefined,
   connectors: ReturnType<typeof connectorPlaces>,
+  google: GoogleSetupPorts | undefined,
 ): HostServices {
   const sessions = new SessionTable();
   const bridges = new BridgeTable();
@@ -281,6 +297,9 @@ function hostServices(
     ),
     ...harnessRoutes({ harnesses, sessions, bridges, runs }),
     ...connectorRoutes(connectorDeps),
+    ...(google === undefined
+      ? []
+      : googleRoutes({ google, log: (text) => process.stderr.write(text) })),
     signInRoute({ harnesses, openTerminal: (command) => openTerminal(command) }),
   ];
   const stop = async () => {
