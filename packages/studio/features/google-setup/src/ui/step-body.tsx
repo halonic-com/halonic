@@ -19,6 +19,7 @@ import {
 } from "@halonicjs/studio-kit";
 import { type ReactNode, useId } from "react";
 import { listNames } from "./account-labels.ts";
+import { BeforeSignIn } from "./before-sign-in.tsx";
 import { ConsoleLink } from "./console-link.tsx";
 import { CopyLine } from "./copy-line.tsx";
 import { CredentialsBody, type CredentialsBodyProps } from "./credentials-body.tsx";
@@ -37,6 +38,9 @@ export interface StepBodyProps {
   readonly answering: boolean;
   /** What step 6 needs: the saved client ID and secret, and how each is saved. */
   readonly credentials: Omit<CredentialsBodyProps, "step" | "answering">;
+  /** The app name chosen in step 3, and the saved project ID, for step 7's text before the button. */
+  readonly appName: string | undefined;
+  readonly savedProjectId: string | null;
   /** A service's name from its id, for "Needed by …". Studio never knows the services itself. */
   readonly serviceName: (id: string) => string;
   readonly onProjectId: (text: string) => void;
@@ -47,8 +51,8 @@ export interface StepBodyProps {
 
 /**
  * What an open step shows under its one sentence: the actions to take in Google, with the
- * values to copy and the links, all from the step the generator made. Step 7 has its body in a
- * later pull request (HAL-714).
+ * values to copy and the links, all from the step the generator made. Step 7 shows what to read before
+ * the sign-in button.
  */
 export function StepBody(props: StepBodyProps) {
   const { step } = props;
@@ -66,7 +70,15 @@ export function StepBody(props: StepBodyProps) {
     case "credentials":
       return <CredentialsBody {...props.credentials} step={step} answering={props.answering} />;
     case "sign-in":
-      return null;
+      return (
+        <BeforeSignIn
+          step={step}
+          appName={props.appName}
+          projectId={props.savedProjectId}
+          clientId={props.credentials.clientId}
+          serviceName={props.serviceName}
+        />
+      );
   }
 }
 

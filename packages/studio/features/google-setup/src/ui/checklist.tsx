@@ -193,6 +193,11 @@ export function Checklist(props: ChecklistProps) {
                     needsNewSecret: problem?.actionStep === "credentials",
                     onSecretTyped: setSecretTyped,
                   }}
+                  appName={
+                    steps
+                      .find((candidate) => candidate.id === "consent")
+                      ?.copyValues.find((value) => value.id === "app-name")?.value
+                  }
                   answering={answering}
                   busy={busy}
                   failed={failed ?? progressFailed}
@@ -265,6 +270,7 @@ interface OpenStepProps {
   readonly onInProduction: (ticked: boolean) => void;
   readonly onEditProject: () => void;
   readonly credentials: StepBodyProps["credentials"];
+  readonly appName: string | undefined;
   readonly answering: boolean;
   readonly busy: boolean;
   /** The reason the last save failed, as a sentence. */
@@ -301,6 +307,8 @@ function OpenStep(props: OpenStepProps) {
         onInProduction={props.onInProduction}
         onEditProject={props.onEditProject}
         credentials={props.credentials}
+        appName={props.appName}
+        savedProjectId={account.record.projectId}
       />
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" onClick={close}>
