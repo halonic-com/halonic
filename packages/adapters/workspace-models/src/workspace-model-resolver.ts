@@ -23,7 +23,7 @@ import {
   modelPrice,
   resolveModel,
 } from "@halonicjs/workspace";
-import { modelMessages } from "./messages/models.ts";
+import { modelTexts } from "./model-texts.ts";
 import {
   type ProviderFile,
   WorkspaceModelError,
@@ -82,8 +82,8 @@ export function workspaceModelResolver(
     if (file === undefined) {
       throw new WorkspaceModelError(
         "no-provider",
-        modelMessages.noProvider(target.provider, target.alias ?? target.model),
-        modelMessages.noProviderFix(target.provider),
+        modelTexts.noProvider(target.provider, target.alias ?? target.model),
+        modelTexts.noProviderFix(target.provider),
       );
     }
     let provider = providers.get(file.id);
@@ -104,8 +104,8 @@ export function workspaceModelResolver(
     if (target === undefined) {
       throw new WorkspaceModelError(
         "unknown-model-alias",
-        modelMessages.unknownAlias(name, request.hubId),
-        modelMessages.unknownAliasFix(),
+        modelTexts.unknownAlias(name, request.hubId),
+        modelTexts.unknownAliasFix(),
       );
     }
     const fallback = target.fallback.map((next) => modelAt(definitions, next));

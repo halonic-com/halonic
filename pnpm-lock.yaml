@@ -446,6 +446,9 @@ importers:
       '@halonicjs/adapter-token-store':
         specifier: workspace:*
         version: link:../../packages/adapters/token-store
+      '@halonicjs/adapter-workspace-models':
+        specifier: workspace:*
+        version: link:../../packages/adapters/workspace-models
       '@halonicjs/app':
         specifier: workspace:*
         version: link:../../packages/core/app
@@ -1792,6 +1795,52 @@ importers:
       '@halonicjs/adapter-memory':
         specifier: workspace:*
         version: link:../memory
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../testing/spec
+      '@halonicjs/tooling-config':
+        specifier: workspace:*
+        version: link:../../../tooling/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  packages/adapters/workspace-models:
+    dependencies:
+      '@halonicjs/adapter-model-anthropic':
+        specifier: workspace:*
+        version: link:../model-anthropic
+      '@halonicjs/adapter-model-mock':
+        specifier: workspace:*
+        version: link:../model-mock
+      '@halonicjs/adapter-model-openai':
+        specifier: workspace:*
+        version: link:../model-openai
+      '@halonicjs/engine':
+        specifier: workspace:*
+        version: link:../../core/engine
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../core/format
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../core/ports
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../../core/std
+      '@halonicjs/workspace':
+        specifier: workspace:*
+        version: link:../../core/workspace
+    devDependencies:
+      '@halonicjs/adapter-fs-node':
+        specifier: workspace:*
+        version: link:../fs-node
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../testing/spec

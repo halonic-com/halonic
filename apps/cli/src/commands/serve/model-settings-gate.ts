@@ -1,6 +1,6 @@
+import { providerAddress } from "@halonicjs/adapter-workspace-models";
 import type { ModelSettingsGate } from "@halonicjs/host-server";
 import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
-import { providerAddress } from "../../workspace-providers.ts";
 
 /** The address a provider of this type calls, without a trailing slash, or `undefined` for the adapter's built-in one. */
 function addressOf(type: string, baseUrl: string | undefined): string | undefined {

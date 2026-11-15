@@ -42,6 +42,7 @@ import {
   type SetTimer,
 } from "@halonicjs/adapter-scheduler-node";
 import { systemSetTimer } from "@halonicjs/adapter-scheduler-node/node";
+import { abortOnStop, latestModelResolver } from "@halonicjs/adapter-workspace-models";
 import {
   assembleEngine,
   type LocalExecutor,
@@ -74,7 +75,6 @@ import {
   type LoadedWorkspace,
   runDefinitionsOf,
 } from "@halonicjs/workspace";
-import { abortOnStop } from "./abort-on-stop.ts";
 import { approvedIntegrations } from "./approved-integrations.ts";
 import {
   type LocalHarnessHost,
@@ -85,7 +85,6 @@ import { type LocalRunConnectorsInput, localRunConnectors } from "./local-run-co
 import { plainText } from "./messages/phrase.ts";
 import { workspaceMessages } from "./messages/workspace.ts";
 import { openProgramFolders, type ProgramFolders } from "./program-folders.ts";
-import { latestModelResolver } from "./workspace-model-resolver.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import type { WorkspaceVersions } from "./workspace-versions.ts";
 

@@ -1,0 +1,40 @@
+{
+  "name": "@halonicjs/adapter-workspace-models",
+  "private": true,
+  "type": "module",
+  "description": "The models a workspace's files name: provider files turned into model providers, and the engine's model resolver.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/adapter-fs-node": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "elena",
+    "coverage": {
+      "lines": 80
+    },
+    "runtime": "any"
+  },
+  "dependencies": {
+    "@halonicjs/adapter-model-anthropic": "workspace:*",
+    "@halonicjs/adapter-model-mock": "workspace:*",
+    "@halonicjs/adapter-model-openai": "workspace:*",
+    "@halonicjs/engine": "workspace:*",
+    "@halonicjs/format": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/std": "workspace:*",
+    "@halonicjs/workspace": "workspace:*"
+  }
+}

@@ -6,7 +6,7 @@ import type { ChatTurnRequest, HttpClient, Secrets } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { workspaceModelResolver } from "./workspace-model-resolver.ts";
+import { workspaceModelResolver } from "./index.ts";
 
 let root: string;
 

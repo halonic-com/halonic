@@ -17,10 +17,8 @@ import {
   workspaceSecrets,
 } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
-import { defaultLocalBaseUrl } from "./doctor-workspace.ts";
-import type { Message } from "./messages/define.ts";
-import { modelMessages } from "./messages/models.ts";
-import { plainText } from "./messages/phrase.ts";
+import { defaultLocalBaseUrl } from "./default-addresses.ts";
+import { type ModelText, modelTexts } from "./model-texts.ts";
 
 /** OpenAI's own API address, for a provider of type `openai` without a `baseUrl`. */
 export const openAiBaseUrl = "https://api.openai.com/v1";
@@ -77,8 +75,8 @@ export function workspaceProvider(
   }
   throw new WorkspaceModelError(
     "unknown-provider-type",
-    modelMessages.unknownType(file.id, file.type),
-    modelMessages.unknownTypeFix(file.id),
+    modelTexts.unknownType(file.id, file.type),
+    modelTexts.unknownTypeFix(file.id),
   );
 }
 
@@ -91,8 +89,8 @@ export class WorkspaceModelError extends KindedError {
   /** The detailed code on line 3 and in `--json`. */
   readonly code: WorkspaceModelErrorCode;
 
-  constructor(code: WorkspaceModelErrorCode, reason: Message, fix: Message) {
-    super("not_found", plainText(reason.phrase), { fix: plainText(fix.phrase) });
+  constructor(code: WorkspaceModelErrorCode, reason: ModelText, fix: ModelText) {
+    super("not_found", reason, { fix });
     this.code = code;
   }
 }
@@ -139,8 +137,8 @@ function openAiCompatibleAddress(file: ProviderFile): string {
   if (address === undefined) {
     throw new WorkspaceModelError(
       "no-provider-address",
-      modelMessages.noAddress(file.id),
-      modelMessages.noAddressFix(file.id),
+      modelTexts.noAddress(file.id),
+      modelTexts.noAddressFix(file.id),
     );
   }
   return address;
