@@ -1,6 +1,6 @@
 import { defineFeature } from "@halonicjs/studio-shell";
 import { ALIAS_KIND, ALIAS_KIND_LABEL, aliasTitle } from "./aliases/alias-text.ts";
-import { ModelKeysService, ModelsFilesService } from "./api.ts";
+import { ModelKeysService, ModelsFilesService, NoLimitMemoryService } from "./api.ts";
 import { PROVIDER_KIND, PROVIDER_KIND_LABEL, providerTabLabel } from "./providers/provider-text.ts";
 
 /**
@@ -15,7 +15,7 @@ export const modelsFeature = defineFeature({
   id: "models",
   title: "Models",
   needs: [ModelsFilesService],
-  wants: [ModelKeysService],
+  wants: [ModelKeysService, NoLimitMemoryService],
   register(studio) {
     studio.itemKinds.add({
       kind: ALIAS_KIND,

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { currencyPrefix } from "../aliases/alias-text.ts";
 import type { ModelsFiles } from "../api.ts";
 import { PER_RUN_ABOVE_MONTHLY } from "../budget/budget-text.ts";
-import { editStep, type PriceRow, type StepProblem } from "./step-edits.ts";
+import { editStep, type PriceRow, type StepProblem, type StepTexts } from "./step-edits.ts";
 import { PriceRowFields, StepBudgetFields, stepWarnings } from "./step-parts.tsx";
 import {
   BUDGET_DETAILS,
@@ -15,6 +15,7 @@ import {
   DECIDE_LATER,
   HONEST_LINE,
   HOW_THE_BUDGET_WORKS,
+  NO_LIMIT,
   PRICES_HEADING,
   PRICES_HINT,
   SAVE_BUDGET_STEP,
@@ -43,9 +44,26 @@ export interface PricesBudgetDialogProps {
   readonly budget?: { readonly perRun?: number | undefined; readonly monthly?: number | undefined };
   /** Whether the provider is on this computer, where a price of 0 is right. */
   readonly providerIsLocal: boolean;
+  /**
+   * Remembers "No limit" for this workspace, provider and host on this device. Without it the full
+   * step has no **No limit** button.
+   */
+  readonly onNoLimit?: () => void;
   /** Closes the step; `wrote` says a file was changed. */
   readonly onClose: (wrote: boolean) => void;
   readonly returnFocus?: () => HTMLElement | null;
+}
+
+/** Changes the files whose text differs, one undo step each; whether any did. */
+function writeStep(
+  files: ModelsFiles,
+  label: string,
+  before: StepTexts,
+  after: StepTexts,
+): boolean {
+  if (after.models !== before.models) files.changeModels(label, after.models);
+  if (after.workspace !== before.workspace) files.changeWorkspace(label, after.workspace);
+  return after.models !== before.models || after.workspace !== before.workspace;
 }
 
 /**
@@ -94,7 +112,8 @@ export function PricesBudgetDialog(props: PricesBudgetDialogProps) {
     setChangingBudget(true);
   }
 
-  async function save() {
+  /** Writes the fields. **No limit** writes the prices only, then remembers the answer. */
+  async function save(noLimit = false) {
     setFailure(undefined);
     setBusy(true);
     try {
@@ -110,7 +129,7 @@ export function PricesBudgetDialog(props: PricesBudgetDialogProps) {
           prices: rows,
           currency,
           workspaceCurrency,
-          budget: showBudgetFields ? fields : undefined,
+          budget: showBudgetFields && !noLimit ? fields : undefined,
         },
       );
       if (!edited.ok) {
@@ -119,11 +138,14 @@ export function PricesBudgetDialog(props: PricesBudgetDialogProps) {
         setBusy(false);
         return;
       }
-      const label = stepSavedLabel(providerName);
-      if (edited.value.models !== models) files.changeModels(label, edited.value.models);
-      if (edited.value.workspace !== workspace)
-        files.changeWorkspace(label, edited.value.workspace);
-      props.onClose(edited.value.models !== models || edited.value.workspace !== workspace);
+      const wrote = writeStep(
+        files,
+        stepSavedLabel(providerName),
+        { models, workspace },
+        edited.value,
+      );
+      if (noLimit) props.onNoLimit?.();
+      props.onClose(wrote);
     } catch {
       setFailure(STEP_NOT_SAVED);
       setBusy(false);
@@ -159,6 +181,9 @@ export function PricesBudgetDialog(props: PricesBudgetDialogProps) {
       cancelLabel={DECIDE_LATER}
       busy={busy}
       {...(failure === undefined ? {} : { error: failure })}
+      {...(kind === "full" && props.onNoLimit !== undefined
+        ? { alternative: { label: NO_LIMIT, onClick: () => void save(true) } }
+        : {})}
       onConfirm={() => void save()}
       onCancel={() => props.onClose(false)}
       {...(props.returnFocus === undefined ? {} : { returnFocus: props.returnFocus })}

@@ -11,7 +11,11 @@ import {
   LibraryItemsHostService,
   LibraryTabMemoryService,
 } from "@halonicjs/studio-feature-library/api";
-import { ModelKeysService, ModelsFilesService } from "@halonicjs/studio-feature-models/api";
+import {
+  ModelKeysService,
+  ModelsFilesService,
+  NoLimitMemoryService,
+} from "@halonicjs/studio-feature-models/api";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import { ChangesSourceService } from "@halonicjs/studio-feature-source-control/api";
 import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
@@ -23,6 +27,7 @@ import { WorkspaceLibraryItems } from "../library/workspace-library-items.ts";
 import { WorkspaceLibraryTab } from "../library/workspace-library-tab.ts";
 import { WorkspaceModelKeys } from "../models/workspace-model-keys.ts";
 import { WorkspaceModelsFiles } from "../models/workspace-models-files.ts";
+import { WorkspaceNoLimit } from "../models/workspace-no-limit.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
@@ -51,6 +56,7 @@ export function provideFolderServices(
     }),
   );
   services.provide(ModelKeysService, new WorkspaceModelKeys(shellKeychain(ipc)));
+  services.provide(NoLimitMemoryService, new WorkspaceNoLimit(storageOf(window), location));
   provideWorkspaceRuns(services, { ipc, files, window }, location);
   services.provide(
     ChangesSourceService,

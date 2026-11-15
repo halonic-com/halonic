@@ -3,6 +3,7 @@ import { budgetSummary } from "../budget/budget-text.ts";
 /** The words of the Prices and budget step (flow-models 4.2 and 4.3; microcopy 6.1). */
 export const SAVE_PRICES = "Save prices";
 export const SAVE_BUDGET_STEP = "Save budget";
+export const NO_LIMIT = "No limit";
 export const DECIDE_LATER = "Decide later";
 export const SAVING = "Saving…";
 export const PRICES_HEADING = "Prices per million tokens";
