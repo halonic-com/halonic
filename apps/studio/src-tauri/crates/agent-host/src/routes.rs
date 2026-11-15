@@ -132,6 +132,12 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/google/disconnect",
         route(Method::Post, "/v1/google/disconnect", Answer::Json),
     ),
+    // A trusted plugin's tool call (HAL-9389): the host checks the trust and
+    // runs the backend in its own sandbox; the page sends only the plugin's id.
+    (
+        "POST /v1/plugins/call",
+        route(Method::Post, "/v1/plugins/call", Answer::Json),
+    ),
 ];
 
 /// The route a page names, when it is one of the table's and answers as
