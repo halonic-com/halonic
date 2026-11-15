@@ -80,5 +80,7 @@ export const announceUpToDate = (current: string, when: string) =>
   `Halonic ${current} is up to date. Checked ${when}.`;
 export const announceCantCheck = (reason: string) => `Couldn't check for updates: ${reason}.`;
 export const announceAvailable = (version: string) => `Halonic ${version} is available.`;
+export const announceIsOut = (version: string, current: string) => isOut(version, current);
+/** What a screen reader hears while Check now is busy. */
 export const CHECKING_FOR_UPDATES = "Checking for updates";
 export const downloadingName = (version: string) => `Downloading Halonic ${version}`;

@@ -66,6 +66,8 @@ interface ButtonWithLabel extends ButtonBase {
    * labels, before, during and after, so nothing next to it moves.
    */
   readonly busyLabel?: string | undefined;
+  /** What screen readers hear while `busy`, when it differs from `busyLabel`: "Checking for updates". */
+  readonly busyName?: string | undefined;
   readonly label?: never;
 }
 
@@ -76,6 +78,7 @@ interface IconButton extends ButtonBase {
   readonly label: string;
   readonly children?: never;
   readonly busyLabel?: never;
+  readonly busyName?: never;
 }
 
 /** The props of `Button`. */
@@ -212,7 +215,7 @@ export function Button(props: ButtonProps) {
       id={props.id}
       type={props.type ?? "button"}
       className={classes.trim()}
-      aria-label={props.label}
+      aria-label={busy ? (props.busyName ?? props.label) : props.label}
       aria-busy={busy || undefined}
       aria-disabled={unavailable === undefined ? undefined : true}
       aria-haspopup={props["aria-haspopup"]}

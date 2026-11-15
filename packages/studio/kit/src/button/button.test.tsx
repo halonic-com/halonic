@@ -250,6 +250,22 @@ verifies("kit.button-unavailable", () => {
     expect(busyCopy?.querySelector("svg.animate-spin")).not.toBeNull();
   });
 
+  it("with a busyName, screen readers hear it while busy and the words otherwise", () => {
+    const { container, rerender } = render(
+      <Button busyLabel="Checking…" busyName="Checking for updates">
+        Check now
+      </Button>,
+    );
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(button.getAttribute("aria-label")).toBeNull();
+    rerender(
+      <Button busy busyLabel="Checking…" busyName="Checking for updates">
+        Check now
+      </Button>,
+    );
+    expect(button.getAttribute("aria-label")).toBe("Checking for updates");
+  });
+
   it("with a busyLabel, keeps its icon on the resting copy and the spinner on the busy one", () => {
     const button = renderButton({
       busy: true,

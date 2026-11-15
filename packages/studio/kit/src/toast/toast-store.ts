@@ -14,6 +14,10 @@ export interface ToastMessage {
   /** One line under the title, in `text-small`. */
   readonly text?: string;
   readonly action?: ToastAction;
+  /** A second text button after `action`: "Try again" and "Open release page". */
+  readonly secondAction?: ToastAction;
+  /** Stays until closed, whatever its tone. Success and info otherwise close by themselves. */
+  readonly sticky?: boolean;
 }
 
 /** A toast in the store, with the id `show` gave it. */

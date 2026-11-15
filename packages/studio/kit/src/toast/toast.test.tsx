@@ -115,6 +115,24 @@ verifies("kit.toast", () => {
     expect(store.list()).toHaveLength(0);
   });
 
+  it("keeps a sticky toast until closed, with both of its actions", () => {
+    const { container } = render(<ToastRegion store={store} />);
+    const open = vi.fn();
+    show({
+      tone: "info",
+      title: "Didn't install",
+      sticky: true,
+      action: { label: "Try again", onClick: vi.fn() },
+      secondAction: { label: "Open release page", onClick: open },
+    });
+    pass(60_000);
+    expect(drawn(container)).toEqual(["Didn't install"]);
+    act(() => button(container, "Open release page").click());
+    expect(open).toHaveBeenCalledOnce();
+    pass(TOAST_FADE_MS);
+    expect(store.list()).toHaveLength(0);
+  });
+
   it("pauses the timer while focus is in the toast", () => {
     const { container } = render(<ToastRegion store={store} />);
     show({ tone: "success", title: "Agent saved" });

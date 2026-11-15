@@ -119,6 +119,10 @@ export function checkAnnouncement(status: UpdateStatus, now: Date): string | nul
     return when === null ? null : text.announceUpToDate(status.current, when);
   }
   if (state.kind === "cant-check") return text.announceCantCheck(text.checkReasons[state.reason]);
-  if (state.kind === "available") return text.announceAvailable(state.version);
+  if (state.kind === "available") {
+    return status.managed === null
+      ? text.announceAvailable(state.version)
+      : text.announceIsOut(state.version, status.current);
+  }
   return null;
 }

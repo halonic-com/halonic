@@ -1886,7 +1886,7 @@ It copies the text and says "Copied" in place for two seconds (`COPIED_FOR_MS`).
 | --- | --- |
 | Ready | The secondary button at the small size (28px; 48px on a phone), saying "Copy" |
 | Copied | "Copied" in place, with no change in width. Screen readers hear "Copied" through a status region next to the button, which is always there |
-| Failed | The button still says "Copy". A caption under the row says "Couldn't copy. Select the text and copy it yourself." |
+| Failed | The button still says "Copy". A caption under the row says "Couldn't copy. Select the command and copy it." |
 | Hover, focus | A `surface-subtle` fill on hover; the standard focus ring |
 
 **Where it goes.** Beside what it copies, in a wrapping flex row. The button and its caption have

@@ -36,6 +36,7 @@ import {
   AgentSandboxService,
   AssistantWorkspaceService,
   DisplaySettingsService,
+  HalonicVersionService,
   HostSettingsService,
   RestartRunsService,
   UpdaterService,
@@ -79,7 +80,7 @@ import {
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
 import { newWorkspaceHostOf } from "./new-workspace-host.ts";
-import { openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
+import { halonicVersion, openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
 import { provideFolderServices } from "./provide-folder-services.ts";
 import { restartRunsOfWindow } from "./restart-runs.ts";
 import { startServedStudio } from "./served-studio.ts";
@@ -350,6 +351,7 @@ export async function openFolder(
   provideShellHostSettings(services, window);
   services.provide(HostSettingsService, await hostSettingsOf(services, window));
   provideAgentSandbox(services, window);
+  services.provide(HalonicVersionService, halonicVersion);
   if (ipc !== undefined) {
     services.provide(UpdaterService, updaterOf(ipc));
     services.provide(RestartRunsService, restartRunsOfWindow);

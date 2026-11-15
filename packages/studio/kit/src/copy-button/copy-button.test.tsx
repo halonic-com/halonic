@@ -89,7 +89,7 @@ verifies("kit.copy-button", () => {
     await click(button);
 
     expect(shownWord()).toBe("Copy");
-    expect(status.textContent).toBe("Couldn't copy. Select the text and copy it yourself.");
+    expect(status.textContent).toBe("Couldn't copy. Select the command and copy it.");
     expect(status.className).not.toContain("sr-only");
     // The hint goes on its own line, under the caller's whole row.
     expect(status.className).toContain("basis-full");
@@ -133,7 +133,7 @@ verifies("kit.kit-services", () => {
 
     await click(button);
 
-    expect(status.textContent).toBe("Couldn't copy. Select the text and copy it yourself.");
+    expect(status.textContent).toBe("Couldn't copy. Select the command and copy it.");
   });
 });
 

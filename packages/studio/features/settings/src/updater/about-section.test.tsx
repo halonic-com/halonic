@@ -185,7 +185,29 @@ verifies("settings.about-section", () => {
     expect(view.querySelector('button[aria-label="Copy command"]')).not.toBeNull();
   });
 
-  it("offers Restart to update for a ready update only where the restart flow is there", async () => {
+  it("says checks are off, and keeps the switch reachable, on a Scoop install", async () => {
+    const { host } = fakeHost(
+      statusOf(
+        { kind: "up-to-date" },
+        { automatic: false, managed: { by: "scoop", command: "scoop update halonic" } },
+      ),
+    );
+    const { view } = await show(host);
+    expect(view.textContent).toContain("Checks for new versions are off. Checked today at");
+    const toggle = view.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    expect(toggle?.checked).toBe(false);
+    await click(toggle as HTMLInputElement);
+    expect(host.setAutomatic).toHaveBeenCalledWith(true);
+  });
+
+  it("names the busy Check now button Checking for updates", async () => {
+    const { host } = fakeHost(statusOf({ kind: "up-to-date" }, { checking: true }));
+    const { view } = await show(host);
+    const busy = view.querySelector('button[aria-busy="true"]');
+    expect(busy?.getAttribute("aria-label")).toBe("Checking for updates");
+  });
+
+  it("offers Restart to update update only where the restart flow is there", async () => {
     const { host } = fakeHost(statusOf({ kind: "ready", version: "0.1.1", notesUrl }));
     const without = await show(host);
     expect(() => button(without.view, "Restart to update")).toThrow();

@@ -276,13 +276,16 @@ verifies("settings.restart-flow", () => {
     expect(toast?.tone).toBe("danger");
     expect(toast?.title).toBe("Halonic 0.1.1 didn't install. You're still on 0.1.0.");
     expect(toast?.action?.label).toBe("Try again");
+    expect(toast?.secondAction?.label).toBe("Open release page");
+    expect(toast?.sticky).toBe(true);
     toast?.action?.onClick();
     expect(first.host.download).toHaveBeenCalledOnce();
 
     first.set(statusOf({ kind: "did-not-install", version: "0.1.1", attempts: 2 }));
     const second = first.toasts.list()[1];
     expect(second?.text).toBe("Download it from the release page.");
-    expect(second?.action?.label).toBe("Open release page");
+    expect(second?.action?.label).toBe("Try again");
+    expect(second?.secondAction?.label).toBe("Open release page");
   });
 
   it("says the updater didn't answer when the toast's Try again can't download", async () => {

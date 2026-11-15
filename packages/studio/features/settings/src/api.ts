@@ -119,7 +119,10 @@ export type {
   UpdateStatus,
 } from "./updater/updater-status.ts";
 
-/** The updater the desktop app runs. Without it, About Halonic shows only the view-only line. */
+/** The version of Halonic that serves this window, for About where no updater runs (served Studio). */
+export const HalonicVersionService: ServiceKey<string> = serviceKey<string>("settings.version");
+
+/** The updater the desktop app runs. Without it, About Halonic shows its version and the view-only line. */
 export const UpdaterService: ServiceKey<UpdaterHost> = serviceKey<UpdaterHost>("settings.updater");
 
 export type { RestartRuns, RestartRunsHost } from "./updater/restart-runs.ts";
