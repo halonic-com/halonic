@@ -2,6 +2,7 @@
 
 - Approval: Liam reviews this on the review task for PR 2a; the change is built in HAL-10236
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:iQr6D+dGG25jMgskBOyAeYus0Q//gCvKrYqbdU+KRseyqhQimHZaaeHFnwUmwPA6md5oGsI8IE3F0tRlvYKOAQ==
 
 The model resolver, the provider factory, the stop-to-abort helper and the default local addresses move from
 `apps/cli` into the new package `@halonicjs/adapter-workspace-models`, so the CLI and the Studio app share them.
