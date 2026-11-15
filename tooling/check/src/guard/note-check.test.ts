@@ -3,45 +3,22 @@ import { dirname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
+import {
+  base,
+  baseFiles,
+  branch,
+  cto,
+  head,
+  julian,
+  note,
+  noteFile,
+  pull,
+  signed,
+} from "../test/note-fixture.ts";
 import { approvers, type Files, fakeGit, keyPair } from "../test/signing-fixture.ts";
-import type { PullRequest } from "./approvals.ts";
 import { policyFile } from "./guarded-paths.ts";
 import { checkNotes, trustRoots } from "./note-check.ts";
-import {
-  approversFile,
-  coveredObjects,
-  coveredPaths,
-  signatureLine,
-  signedText,
-} from "./signatures.ts";
-
-const julian = keyPair();
-const cto = keyPair();
-const branch = "julian/HAL-1337-example";
-const noteFile = `decisions/${branch}.md`;
-const base = "b".repeat(40);
-const head = "a".repeat(40);
-const pull: PullRequest = { repo: "halonic-com/halonic", number: 7, head, base };
-const baseFiles: Files = {
-  [approversFile]: approvers({
-    internal: [cto.publicKey],
-    "user-visible": [cto.publicKey],
-    guardians: [cto.publicKey, julian.publicKey],
-  }),
-  ".github/workflows/ci.yml": "on: pull_request\n",
-};
-
-const note = (kind: string, ...covers: string[]) => `# Decision: change CI
-
-- Approval: https://paperclip.example/HAL/issues/HAL-1337
-- Kind: ${kind}
-
-The build needs a new step.
-
-## Covers
-
-${covers.map((entry) => `- ${entry}`).join("\n")}
-`;
+import { approversFile, signatureLine, signedText } from "./signatures.ts";
 
 /** Runs the check on a pull request that changes ci.yml and adds `text`, signed by `signer`. */
 async function errorsOf(
@@ -157,7 +134,7 @@ verifies("check.guard-notes-own-paths", () => {
     ]);
   });
 
-  test("fails a note added under decisions/ with another name than the branch's, but not one already on the base", async () => {
+  test("fails a note added under decisions/ with another name than the branch's, but never reports one already on the base as a stray", async () => {
     const stray = "decisions/julian/HAL-1337-other-name.md";
     const old = "decisions/julian/HAL-1-old.md";
     const run = async (added: readonly string[]) =>
@@ -177,10 +154,13 @@ verifies("check.guard-notes-own-paths", () => {
           }),
         })
       ).problems.map((problem) => `${problem.file}: ${problem.message}`);
+    // A note already on base is never a stray; editing it is the append-only rule's business.
+    const appendOnly = `${old}: Edits or deletes ${old}, a decision note already on the base branch. Notes on base are append-only: add ${noteFile} and list "${old}" under Covers to change one.`;
     expect(await run([stray])).toEqual([
       `${stray}: ${stray} isn't this branch's note; rename it to ${noteFile}. Only that file is checked and signed.`,
+      appendOnly,
     ]);
-    expect(await run([])).toEqual([]);
+    expect(await run([])).toEqual([appendOnly]);
   });
 
   test("passes it with a user-visible note that lists .github/ and the CTO's signature", async () => {
@@ -245,17 +225,6 @@ async function policyErrorsOf(
     git: fakeGit({ [base]: before, [head]: files }),
   });
   return report.problems.map((problem) => `${problem.file}: ${problem.message}`);
-}
-
-/** `text` with a signature line over its Covers paths at the head, made with `privatePem`. */
-function signed(text: string, headFiles: Files, privatePem: string | readonly string[]): string {
-  const git = fakeGit({ [base]: baseFiles, [head]: headFiles });
-  const kind = text.includes("Kind: internal") ? "internal" : "user-visible";
-  const covers = (text.split("## Covers")[1] ?? "").match(/(?<=^- ).+$/gm) ?? [];
-  const objects = coveredObjects(coveredPaths(covers, git, head, base), git, head);
-  const facts = { repo: pull.repo, pr: pull.number, kind, unsigned: text, objects } as const;
-  const lines = [privatePem].flat().map((pem) => `${signatureLine(signedText(facts), pem)}\n`);
-  return text.replace(/(- Kind: .*\n)/, `$1${lines.join("")}`);
 }
 
 verifies("check.guard-extra-exports", () => {
