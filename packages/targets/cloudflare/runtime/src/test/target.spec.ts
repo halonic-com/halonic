@@ -10,9 +10,9 @@
 
 import { env } from "cloudflare:workers";
 import {
-  cases,
-  clocksByObjectName,
-  SuiteClock,
+  SuiteCase,
+  type TestCoordinationObject,
+  type TestRoutinesObject,
   type TestRunObject,
 } from "@halonicjs/adapter-cloudflare-durable/testing";
 import { writeDefinitionSnapshot } from "@halonicjs/adapter-cloudflare-storage";
@@ -41,13 +41,29 @@ const configured = {
   HALONIC_SECRET_SERVE_PASSWORD: "not-a-real-hash",
 };
 
-/** The Scheduler contract never appends, so no run list update is ever sent. */
-const noRunList = { publish: async () => {} };
+/** The Durable Object bindings: the Worker's classes, with a clock the suite sets. */
+const bindings = env as unknown as {
+  COORDINATION: DurableObjectNamespace<TestCoordinationObject>;
+  RUN: DurableObjectNamespace<TestRunObject>;
+  ROUTINES: DurableObjectNamespace<TestRoutinesObject>;
+};
 
-/** A runtime that has bindings and storage of its own, and the scope it lives under. */
-async function freshRuntime(): Promise<{ runtime: Runtime; scope: string }> {
+/**
+ * A runtime that has bindings and storage of its own, and the scope it lives under. With a
+ * `suiteCase`, its Durable Objects are the ones the case keeps on its clock and listener.
+ */
+async function freshRuntime(suiteCase?: SuiteCase): Promise<{ runtime: Runtime; scope: string }> {
   const scope = crypto.randomUUID();
-  return { runtime: await createRuntime(configured, { scope }), scope };
+  const runtimeEnv =
+    suiteCase === undefined
+      ? configured
+      : ({
+          ...configured,
+          COORDINATION: suiteCase.namespace(bindings.COORDINATION),
+          RUN: suiteCase.namespace(bindings.RUN),
+          ROUTINES: suiteCase.namespace(bindings.ROUTINES),
+        } as RuntimeEnv);
+  return { runtime: await createRuntime(runtimeEnv, { scope }), scope };
 }
 
 targetPortContracts("cloudflare", {
@@ -81,28 +97,22 @@ targetPortContracts("cloudflare", {
   },
 
   coordination: async () => {
-    const { runtime, scope } = await freshRuntime();
-    const clock = new SuiteClock();
-    clocksByObjectName.set(scope, clock);
-    return { coordination: runtime.coordination, clock };
+    const suiteCase = new SuiteCase();
+    const { runtime } = await freshRuntime(suiteCase);
+    return { coordination: runtime.coordination, clock: suiteCase.clock };
   },
 
   scheduler: async (listener) => {
-    const { runtime, scope } = await freshRuntime();
-    const clock = new SuiteClock();
-    const objectNames = new Set<string>();
-    cases.set(scope, { clock, listener, runList: noRunList, objectNames });
-    const { RUN } = env as unknown as { RUN: DurableObjectNamespace<TestRunObject> };
+    const suiteCase = new SuiteCase({ listener });
+    const { runtime } = await freshRuntime(suiteCase);
     return {
       scheduler: runtime.scheduler,
-      clock,
+      clock: suiteCase.clock,
       async settle() {
-        await Promise.all(
-          [...objectNames].map((name) => RUN.get(RUN.idFromName(name)).fireAlarm()),
-        );
+        await suiteCase.fireAlarms(bindings.RUN);
         // The cron's tick, through the runtime's routines object. A tick that rejects is not
         // retried: the next tick catches up.
-        await runtime.routines.tick(clock.now().toISOString()).catch(() => undefined);
+        await runtime.routines.tick(suiteCase.clock.now().toISOString()).catch(() => undefined);
       },
     };
   },

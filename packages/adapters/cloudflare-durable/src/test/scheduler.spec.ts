@@ -4,6 +4,8 @@
  * ten years ahead of real time, so workerd never fires an alarm by itself
  * before the suite asks (an alarm in the real past would fire at once, and
  * that is fine too: the handler only delivers what the suite's clock says is due).
+ * The objects read that clock from their own storage and call the suite's listener over RPC,
+ * so nothing lives in the suite's isolate.
  *
  * "Fire the alarm" is what `settle()` does for every object the scheduler
  * touched: it runs the object's `alarm()` handler when the alarm the object
@@ -15,12 +17,8 @@
 import { env } from "cloudflare:workers";
 import { schedulerContract } from "@halonicjs/testing-contracts";
 import { DurableScheduler } from "../durable-scheduler.ts";
-import {
-  cases,
-  SuiteClock,
-  type TestRoutinesObject,
-  type TestRunObject,
-} from "./test-run-object.ts";
+import { SuiteCase } from "./suite-case.ts";
+import type { TestRoutinesObject, TestRunObject } from "./test-run-object.ts";
 
 export { TestRoutinesObject, TestRunObject } from "./test-run-object.ts";
 
@@ -30,26 +28,24 @@ interface TestEnv {
   ROUTINES: DurableObjectNamespace<TestRoutinesObject>;
 }
 
-/** The Scheduler contract never appends, so no run list update is ever sent. */
-const noRunList = { publish: async () => {} };
-
 schedulerContract("durable object", async (listener) => {
   const caseId = crypto.randomUUID();
-  const clock = new SuiteClock();
-  const objectNames = new Set<string>();
-  cases.set(caseId, { clock, listener, runList: noRunList, objectNames });
+  const suiteCase = new SuiteCase({ listener });
   const { RUNS, ROUTINES } = env as TestEnv;
-  const scheduler = new DurableScheduler({ namespace: RUNS, namePrefix: caseId });
+  const scheduler = new DurableScheduler({
+    namespace: suiteCase.namespace(RUNS),
+    namePrefix: caseId,
+  });
+  const routines = suiteCase.namespace(ROUTINES);
   return {
     scheduler,
-    clock,
+    clock: suiteCase.clock,
     async settle() {
-      await Promise.all(
-        [...objectNames].map((name) => RUNS.get(RUNS.idFromName(name)).fireAlarm()),
-      );
+      await suiteCase.fireAlarms(RUNS);
       // The cron's tick, through the real routines object. A tick that rejects is not retried: the next tick catches up.
-      await ROUTINES.get(ROUTINES.idFromName(caseId))
-        .tick(clock.now().toISOString())
+      await routines
+        .get(routines.idFromName(caseId))
+        .tick(suiteCase.clock.now().toISOString())
         .catch(() => undefined);
     },
   };

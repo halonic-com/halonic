@@ -3,7 +3,8 @@
   "extends": "@halonicjs/tooling-config/tsconfig/base.json",
   "compilerOptions": {
     "lib": [
-      "es2024"
+      "es2024",
+      "esnext.disposable"
     ],
     "types": [
       "@cloudflare/workers-types"
