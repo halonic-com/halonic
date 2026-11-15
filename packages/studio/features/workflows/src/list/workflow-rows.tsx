@@ -21,6 +21,11 @@ export function Avatar({ name }: { readonly name: string }) {
   );
 }
 
+/** A chip's drawn symbol and its space: sighted people see "✕ 2 problems", a screen reader hears "2 problems". */
+function Glyph({ children }: { readonly children: string }) {
+  return <span aria-hidden="true">{children} </span>;
+}
+
 /**
  * The chips of a row, in the order flow-workflows 2.1 gives: "N needs you" when runs wait for a
  * person, else "N running", and the problems last. An idle row with no problems has none.
@@ -41,10 +46,16 @@ function Chips({ listing }: { readonly listing: WorkflowListing }) {
         </StatusChip>
       )}
       {errors > 0 && (
-        <StatusChip tone="danger">{`✕ ${listWords.problems(errors + warnings)}`}</StatusChip>
+        <StatusChip tone="danger">
+          <Glyph>✕</Glyph>
+          {listWords.problems(errors + warnings)}
+        </StatusChip>
       )}
       {errors === 0 && warnings > 0 && (
-        <StatusChip tone="attention">{`△ ${listWords.warnings(warnings)}`}</StatusChip>
+        <StatusChip tone="attention">
+          <Glyph>△</Glyph>
+          {listWords.warnings(warnings)}
+        </StatusChip>
       )}
     </>
   );

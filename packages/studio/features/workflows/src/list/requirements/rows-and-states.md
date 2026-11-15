@@ -17,5 +17,12 @@ The Workflows place shall list the workspace's workflows under "Workflows" in on
 - Given no workflow in any hub, then the page shows "No workflows yet", the sentence "A workflow is a set of steps your agents work through, one after the other." and **New workflow**, and no search field, no hub chips and no other New workflow button.
 - Given the user searches for "zzz", then the page says `No workflows match "zzz".` with **Clear search**.
 - Given the workflows are being read, then screen readers hear "Loading workflows".
-- Given the read failed because "The disk can't be read.", then the page shows "Couldn't load workflows", that reason and **Try again**, which reads again.
+- Given the first read failed, then the page shows "Couldn't load workflows", "The engine isn't answering. It may still be starting." (worded for the window's host: "Halonic on your computer isn't answering." on a phone) and **Try again**, which shows the loading rows while it reads again.
+- Given a read fails after the list was shown, then the rows stay and a line "The engine isn't answering. Showing what it said last." with **Try again** shows above them.
+- Given a row with problems, then its chip reads "2 problems" to a screen reader, without the symbol.
+- Given the user Ctrl-clicks, middle-clicks or presses Ctrl Enter on a row, then its page opens in a new tab.
+- Given the window is a phone, then the heading and sentence are there for screen readers only, because the top bar names the page.
+- Given the user runs **New workflow** from Ctrl K, then the Workflows page opens with the New workflow dialog.
+- Given the user searches Ctrl K for a workflow's name, id or description, then it is offered as "Workflow · hub name".
+- Given a workflow was created or read, then its tab and page title show its name, not its id.
 - Given the host says the workflows changed, then the list reads them again and shows the new rows.

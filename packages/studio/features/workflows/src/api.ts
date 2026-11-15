@@ -91,6 +91,11 @@ export interface WorkflowsHost {
   /** One workflow as its page draws it. Rejects with the reason it couldn't be read, or when it isn't there. */
   read(ref: WorkflowRef): Promise<WorkflowView>;
   /**
+   * The name of a workflow the host has read or made, for a tab or a page title, or `undefined`
+   * before it has read it. Sync, because a tab is named the moment it opens.
+   */
+  nameOf(ref: WorkflowRef): string | undefined;
+  /**
    * Calls `listener` each time the list may have changed (a file saved, a run started or
    * finished); returns the way to stop.
    */
