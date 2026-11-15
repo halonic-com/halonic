@@ -66,7 +66,8 @@ function LoadedKnowledgePage({
     [context.announcer],
   );
   const runCommand = context.runCommand;
-  const openModels = runCommand === undefined ? undefined : () => void runCommand(openModelsCommand);
+  const openModels =
+    runCommand === undefined ? undefined : () => void runCommand(openModelsCommand);
 
   if (gone) {
     return <Gone context={context} />;

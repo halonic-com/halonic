@@ -65,11 +65,7 @@ export function SummaryField({
         )}
       </div>
       {summarize.phase === "failed" ? (
-        <Problem
-          reason={summarize.reason}
-          name={name}
-          openModels={openModels}
-        />
+        <Problem reason={summarize.reason} name={name} openModels={openModels} />
       ) : null}
       {drafted ? (
         <div className="flex flex-col gap-2">
@@ -84,10 +80,14 @@ export function SummaryField({
             >
               {knowledgeWords.useDraft}
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => {
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
                 model.discardDraft();
                 backToAsk();
-              }}>
+              }}
+            >
               {knowledgeWords.discard}
             </Button>
           </div>

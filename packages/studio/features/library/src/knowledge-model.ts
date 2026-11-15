@@ -39,7 +39,13 @@ const idle: SummarizeState = { phase: "idle" };
  * changed. The page reads it with `useSyncExternalStore`.
  */
 export class KnowledgeModel {
-  state: KnowledgeState = { loaded: false, gone: false, unreadable: false, source: "", summarize: idle };
+  state: KnowledgeState = {
+    loaded: false,
+    gone: false,
+    unreadable: false,
+    source: "",
+    summarize: idle,
+  };
   private text = "";
   private readonly listeners = new Set<() => void>();
   private stopHost: (() => void) | undefined;
