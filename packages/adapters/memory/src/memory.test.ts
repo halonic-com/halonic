@@ -21,6 +21,7 @@ import {
   definitionStoreContract,
   hostSettingsStoreContract,
   idGeneratorContract,
+  instructionTrustStoreContract,
   knowledgeProviderContract,
   llmProviderContract,
   type MakeVcs,
@@ -56,6 +57,7 @@ import {
   MemoryCoordination,
   MemoryDefinitionStore,
   MemoryHostSettingsStore,
+  MemoryInstructionTrustStore,
   MemoryKnowledgeProvider,
   MemoryRecordStore,
   MemoryRemote,
@@ -120,6 +122,10 @@ trustServiceAttackContract(
 );
 agentPlacementStoreContract("memory", async () => {
   const store = new MemoryAgentPlacementStore();
+  return { store, damage: async (key) => store.damage(key) };
+});
+instructionTrustStoreContract("memory", async () => {
+  const store = new MemoryInstructionTrustStore();
   return { store, damage: async (key) => store.damage(key) };
 });
 sandboxSettingStoreContract("memory", async () => {

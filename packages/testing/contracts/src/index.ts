@@ -69,6 +69,14 @@ export {
 export { type HttpClientHarness, type HttpPeer, httpClientContract } from "./http-client.ts";
 export { idGeneratorContract, type MakeIdGenerator } from "./id-generator.ts";
 export {
+  type InstructionTrustStoreHarness,
+  instructionDigest,
+  instructionPin,
+  instructionTrustRecord,
+  instructionTrustStoreContract,
+  type MakeInstructionTrustStore,
+} from "./instruction-trust-store.ts";
+export {
   type KnowledgeProviderContractOptions,
   type KnowledgeSeed,
   knowledgeDocs,

@@ -19,6 +19,7 @@ export {
   FileHostSettingsStore,
   type FileHostSettingsStoreOptions,
 } from "./host-settings-store.ts";
+export { FileInstructionTrustStore } from "./instruction-trust-store.ts";
 export {
   FileSystemPluginFolder,
   type FileSystemPluginFolderOptions,
