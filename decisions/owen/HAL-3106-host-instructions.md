@@ -3,6 +3,7 @@
 - Task: HAL-3106 (migration plan step 2), pull request #2917
 - Approval: HAL-10210, Liam's review of #2917
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:URzgnu/PgV16l7Z+X0Y/sAz0d1ft+o6QTRRhfUtWnYq4q7lhqu/VzMptpevSxKWJZSsv0c9T/rRPg4T1gewcAw==
 
 ## What changes
 
