@@ -399,6 +399,14 @@ export {
   ServiceRegistry,
   serviceKey,
 } from "./service-registry.ts";
+export {
+  editSkillText,
+  readSkillText,
+  type SkillChange,
+  type SkillHeaderField,
+  type SkillParts,
+  type SkillTextError,
+} from "./skill-text.ts";
 export { checkToolCall, type ToolCallCheck } from "./tool-call-check.ts";
 export {
   type FencedTextsRequest,
