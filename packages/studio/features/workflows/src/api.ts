@@ -23,6 +23,37 @@ export interface WorkflowListing extends WorkflowRef {
   readonly runs: { readonly waiting: number; readonly running: number };
 }
 
+/** What a step does: run an agent, wait for a person, end, or run another workflow or several agents. */
+export type WorkflowStepType = "task" | "wait" | "final" | "workflow" | "parallel" | "foreach";
+
+/** One step of a workflow, as its card shows it. */
+export interface WorkflowStep {
+  readonly id: string;
+  readonly type: WorkflowStepType;
+  /** The agent a task step runs; `undefined` when it has none (the step passes the data on). */
+  readonly agent?: string | undefined;
+}
+
+/** One arrow between two steps. */
+export interface WorkflowArrow {
+  readonly from: string;
+  readonly to: string;
+  /** The words on the arrow, when the file gives some. */
+  readonly label?: string | undefined;
+}
+
+/** One workflow as its page draws it. */
+export interface WorkflowView extends WorkflowRef {
+  readonly name: string;
+  /** The id of the first step. */
+  readonly initial: string;
+  /** The steps in the file's order. */
+  readonly steps: readonly WorkflowStep[];
+  readonly arrows: readonly WorkflowArrow[];
+  /** Where a person put steps on the canvas; a step not in it takes the automatic place. */
+  readonly layout: Readonly<Record<string, { readonly x: number; readonly y: number }>>;
+}
+
 /** A hub a new workflow can go in. */
 export interface WorkflowHub {
   readonly id: string;
@@ -45,6 +76,8 @@ export interface WorkflowsHost {
   hubs(): readonly WorkflowHub[];
   /** Every workflow in the workspace's hubs. Rejects with the reason it couldn't read them. */
   list(): Promise<readonly WorkflowListing[]>;
+  /** One workflow as its page draws it. Rejects with the reason it couldn't be read, or when it isn't there. */
+  read(ref: WorkflowRef): Promise<WorkflowView>;
   /**
    * Calls `listener` each time the list may have changed (a file saved, a run started or
    * finished); returns the way to stop.

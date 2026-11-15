@@ -1,6 +1,12 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { WorkflowHub, WorkflowListing, WorkflowRef, WorkflowsHost } from "./api.ts";
+import type {
+  WorkflowHub,
+  WorkflowListing,
+  WorkflowRef,
+  WorkflowsHost,
+  WorkflowView,
+} from "./api.ts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -40,13 +46,22 @@ export function listing(
 }
 
 /** A host in memory that tells its listeners about each change, as the app's does. */
-export function memoryHost(hubs: readonly WorkflowHub[], initial: readonly WorkflowListing[]) {
+export function memoryHost(
+  hubs: readonly WorkflowHub[],
+  initial: readonly WorkflowListing[],
+  views: readonly WorkflowView[] = [],
+) {
   let listings = initial;
   const listeners = new Set<() => void>();
   const created: { name: string; hubId: string }[] = [];
   const host: WorkflowsHost = {
     hubs: () => hubs,
     list: async () => listings,
+    read: async (ref) => {
+      const view = views.find((one) => one.hubId === ref.hubId && one.id === ref.id);
+      if (view === undefined) throw new Error("This workflow isn't there.");
+      return view;
+    },
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);

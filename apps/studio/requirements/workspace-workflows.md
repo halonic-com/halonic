@@ -15,3 +15,5 @@ When the desktop app opens a folder, it shall give the Workflows feature the fol
 - Given a name with a quote or a colon, then the file's name is the name as typed.
 - Given a hub the workspace doesn't have (or an empty one), then creating a workflow fails and writes nothing.
 - Given a file changes, or a run starts, then a subscriber hears it, and not after it stopped.
+- Given the workflow `reply` with the steps `first` (an agent step with the agent `writer`) leading to `done` with the label "ok", then reading it gives its name, its first step, both steps in the file's order with the agent, the arrow `first → done` labelled "ok", and the places a person gave the steps.
+- Given a workflow that isn't in the hub, then reading it fails and says which one.

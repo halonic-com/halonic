@@ -95,6 +95,46 @@ verifies("studio.workspace-workflows", () => {
     expect(created).toMatchObject({ name: "Invoice intake", problems: { errors: 0, warnings: 1 } });
   });
 
+  it("reads one workflow's steps, arrows and places, with unsaved changes applied", async () => {
+    const { host, store } = setup();
+    store["hubs/acme/workflows/reply.workflow.yaml"] = [
+      "id: reply",
+      "name: Reply",
+      "initial: first",
+      "states:",
+      "  first:",
+      "    agent: writer",
+      "    on:",
+      "      - to: done",
+      "        label: ok",
+      "  done:",
+      "    type: final",
+      "layout:",
+      "  done: { x: 5, y: 7 }",
+      "",
+    ].join("\n");
+
+    expect(await host.read({ hubId: "acme", id: "reply" })).toEqual({
+      hubId: "acme",
+      id: "reply",
+      name: "Reply",
+      initial: "first",
+      steps: [
+        { id: "first", type: "task", agent: "writer" },
+        { id: "done", type: "final", agent: undefined },
+      ],
+      arrows: [{ from: "first", to: "done", label: "ok" }],
+      layout: { done: { x: 5, y: 7 } },
+    });
+  });
+
+  it("refuses a workflow the hub doesn't have, and says which", async () => {
+    const { host } = setup();
+    await expect(host.read({ hubId: "acme", id: "gone" })).rejects.toThrow(
+      'The hub "acme" has no workflow "gone".',
+    );
+  });
+
   it("takes -2 when the hub has the id, and writes the name as typed", async () => {
     const { host, store } = setup();
 
