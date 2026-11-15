@@ -50,9 +50,39 @@ verifies("harness-kit.instruction-snapshot", () => {
     it("refuses a name given twice", async () => {
       await expect(pinInstructions([agents, agents])).rejects.toThrow(/there twice/u);
     });
+
+    it("refuses names that differ only in letter case", async () => {
+      await expect(pinInstructions([agents, { name: "agents.md", text: "x" }])).rejects.toThrow(
+        /there twice/u,
+      );
+    });
+
+    it.each([
+      "a:stream",
+      "AGENTS.md.",
+      "AGENTS.md ",
+      "NUL",
+      "skills/con.md",
+      "COM1.txt",
+      "back\\slash",
+      "skills//SKILL.md",
+      "./AGENTS.md",
+      ".hidden",
+    ])("refuses the name %j", async (name) => {
+      await expect(pinInstructions([{ name, text: "x" }])).rejects.toThrow(/Instruction file/u);
+    });
   });
 
   describe("instructionTrust", () => {
+    it("treats a file named like an object method as added, not changed", async () => {
+      const pin = await pinInstructions([{ name: "constructor", text: "x" }]);
+      const answer = instructionTrust(await pinInstructions([agents]), pin);
+      expect(answer).toMatchObject({
+        kind: "ask",
+        changes: { added: ["constructor"], changed: [] },
+      });
+    });
+
     it("trusts the same set", async () => {
       const pin = await pinInstructions([agents, skill]);
       expect(instructionTrust(pin, pin)).toEqual({ kind: "trusted" });

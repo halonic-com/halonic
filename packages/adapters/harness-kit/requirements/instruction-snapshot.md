@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-3106, migration plan step 2
 
-The harness kit shall copy a run's instructions (the agent's `AGENTS.md` and its selected skills) into the run's own folder, each file read-only and never over an existing file. It shall pin them by content: one SHA-256 digest per file and one for the whole set, the same for the same files in any order. The pin shall be taken from the text that is written. A name that isn't a plain relative name with `/`, or that is given twice, shall be refused before anything is written. A person shall be asked again when there is no trusted pin or the set's digest differs, and the answer shall name the files added, removed and changed. The pin shall have a one-line form for the run log.
+The harness kit shall copy a run's instructions (the agent's `AGENTS.md` and its selected skills) into the run's own folder, each file read-only and never over an existing file. It shall pin them by content: one SHA-256 digest per file and one for the whole set, the same for the same files in any order. The pin shall be taken from the text that is written. A name that isn't a plain relative name with `/` (letters, digits, `_`, `-` and inner dots, and not a name Windows reserves for a device), or that is given twice, ignoring letter case, shall be refused before anything is written. A person shall be asked again when there is no trusted pin or the set's digest differs, and the answer shall name the files added, removed and changed. The pin shall have a one-line form for the run log.
 
 ## Examples
 

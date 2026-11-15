@@ -63,6 +63,7 @@ const nodeSha256: Sha256 = {
  * The pin of a set of instruction files. The order of `files` doesn't matter.
  *
  * @throws when a name isn't a plain relative name, or two files share one
+ *   (names that differ only in letter case count as one, as on Windows and macOS)
  *
  * @example
  * const pin = await pinInstructions([{ name: "AGENTS.md", text: "Be brief.\n" }]);
@@ -70,10 +71,14 @@ const nodeSha256: Sha256 = {
  */
 export async function pinInstructions(files: readonly InstructionFile[]): Promise<InstructionPin> {
   const digests = new Map<string, string>();
+  const seen = new Set<string>();
   for (const file of files) {
     const problem = nameProblem(file.name);
     if (problem !== null) throw new Error(`Instruction file '${file.name}' ${problem}.`);
-    if (digests.has(file.name)) throw new Error(`Instruction file '${file.name}' is there twice.`);
+    if (seen.has(file.name.toLowerCase())) {
+      throw new Error(`Instruction file '${file.name}' is there twice.`);
+    }
+    seen.add(file.name.toLowerCase());
     digests.set(file.name, await contentDigest(file.text, nodeSha256));
   }
   // By code unit, never by locale, so every computer pins the same set the same way.
@@ -96,13 +101,15 @@ export function instructionTrust(
   if (trusted !== null && trusted.digest === current.digest) return { kind: "trusted" };
   const before = trusted?.files ?? {};
   const names = (pin: Readonly<Record<string, string>>) => Object.keys(pin);
+  // `hasOwn`, because a file may be named `constructor` or `toString`.
+  const had = (name: string) => Object.hasOwn(before, name);
   return {
     kind: "ask",
     changes: {
-      added: names(current.files).filter((name) => !(name in before)),
+      added: names(current.files).filter((name) => !had(name)),
       removed: names(before).filter((name) => !(name in current.files)),
       changed: names(current.files).filter(
-        (name) => name in before && before[name] !== current.files[name],
+        (name) => had(name) && before[name] !== current.files[name],
       ),
     },
   };
@@ -132,13 +139,20 @@ export function describeInstructionPin(pin: InstructionPin): string {
   return `instructions ${pin.digest} (${count} ${count === 1 ? "file" : "files"})`;
 }
 
+/** Names Windows reads as a device, whatever the extension. */
+const windowsDeviceNames = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/iu;
+
+/** Letters, digits, `_` and `-`, with dots inside: no `:`, spaces or trailing dot that Windows treats specially. */
+const plainSegment = /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/u;
+
 /** Why a name can't be an instruction file's, or `null`. */
 function nameProblem(name: string): string | null {
   if (name === "") return "has no name";
-  if (name.includes("\\") || name.includes("\0")) return "has a backslash or a null in its name";
-  const parts = name.split("/");
-  if (parts.some((part) => part === "" || part === "." || part === "..")) {
-    return "isn't a plain relative name";
+  for (const part of name.split("/")) {
+    if (!plainSegment.test(part) || part.endsWith(".")) return "isn't a plain relative name";
+    if (windowsDeviceNames.test(part.split(".")[0] as string)) {
+      return "has a name Windows reserves for a device";
+    }
   }
   return null;
 }
