@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { RemoveOptions, RemoveResult, WriteOptions, WriteResult } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { openWorkspace, workspaceFilesKey } from "./open-workspace.ts";
@@ -14,11 +15,34 @@ const digest = {
   sha256: async (data: Uint8Array) => new Uint8Array(createHash("sha256").update(data).digest()),
 };
 
+/** A store on a disk that ignores case, like macOS and Windows: `A.yaml` and `a.yaml` are one file, which keeps the name it was made with. */
+class CaseInsensitiveStore extends TestDefinitionStore {
+  private named(path: string): string {
+    return [...this.files.keys()].find((k) => k.toLowerCase() === path.toLowerCase()) ?? path;
+  }
+  override async read(path: string): Promise<string | null> {
+    return await super.read(this.named(path));
+  }
+  override async write(
+    path: string,
+    content: string,
+    options?: WriteOptions,
+  ): Promise<WriteResult> {
+    return await super.write(this.named(path), content, options);
+  }
+  override async remove(path: string, options?: RemoveOptions): Promise<RemoveResult> {
+    return await super.remove(this.named(path), options);
+  }
+}
+
 verifies("app.workspace-rename", () => {
   const other = "hubs/p/workflows/g.workflow.yaml";
 
-  function openWithTrash(files: Record<string, string>) {
-    const store = new TestDefinitionStore(files, digest);
+  function openWithTrash(
+    files: Record<string, string>,
+    makeStore: typeof TestDefinitionStore = TestDefinitionStore,
+  ) {
+    const store = new makeStore(files, digest);
     const trash = new TestTrash(store, digest);
     const scope = openWorkspace({
       store,
@@ -134,5 +158,33 @@ verifies("app.workspace-rename", () => {
     expect(await store.read(workflowPath)).toBeNull();
     expect(await store.read("c.yaml")).toBe(workflow);
     expect(trash.entries.size).toBe(0);
+  });
+
+  it("renames a file to the same name in another case on a disk that ignores case", async () => {
+    const { store, trash, files } = openWithTrash({ "a.yaml": "x: 1\n" }, CaseInsensitiveStore);
+    await files.rename("a.yaml", "A.yaml");
+    expect(files.pending).toEqual({ "A.yaml": "x: 1\n", "a.yaml": null });
+    expect(await files.save()).toBe(2);
+    expect([...store.files]).toEqual([["A.yaml", "x: 1\n"]]);
+    expect(trash.entries.size).toBe(0);
+  });
+
+  it("refuses a name in another case that is a different file on a disk that tells them apart", async () => {
+    const { files } = openWithTrash({ "a.yaml": "x: 1\n", "A.yaml": "x: 1\n" });
+    await expect(files.rename("a.yaml", "A.yaml")).rejects.toBeInstanceOf(RenameRefusedError);
+    expect(files.pending).toEqual({});
+  });
+
+  it("sends a plain delete to the trash after a save that committed the rename", async () => {
+    const { store, trash, files } = openWithTrash({ [workflowPath]: workflow });
+    await files.rename(workflowPath, "c.yaml");
+    await files.save();
+    // The file is made again, then deleted in the same save that writes the rename's text to c.
+    files.change("New f", { [workflowPath]: "again\n" });
+    await files.save();
+    files.change("Delete f", { [workflowPath]: null, "c.yaml": workflow });
+    await files.save();
+    expect(await store.read(workflowPath)).toBeNull();
+    expect([...trash.entries.values()]).toEqual([{ path: workflowPath, content: "again\n" }]);
   });
 });
