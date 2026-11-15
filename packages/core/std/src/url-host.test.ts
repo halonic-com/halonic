@@ -68,6 +68,21 @@ verifies("std.url-host", () => {
       "http://[::1.2.3.256]",
       "http://[::zz]",
       "http://host:port",
+      "http://127.0.0.１",
+      "http://127。0。0。1",
+      "http://ａｐｉ.anthropic.com",
+      "http://bücher.example",
+      "http://09",
+      "http://1.2.3.09",
+      "http://[1.2.3.4::]",
+      "http://[::ffff:127.0.0.01]",
+      "http://a\u007fb",
+      "http://host:65536",
+      "http://[::1]:65536",
+      "http://host:99999999999999999999",
+      "http://\u00a0host",
+      "\u00a0http://host",
+      "http://host\u00a0",
     ]) {
       expect(urlHost(text), text).toBeUndefined();
     }
@@ -91,5 +106,27 @@ verifies("std.url-host", () => {
       expect(urlHost(text), text).toEqual(urlHost(`http://${canonical}`));
       expect(urlHost(text), text).toBeDefined();
     }
+  });
+
+  it("gives nothing for what the platform's URL rejects, and accepts the edges it accepts", () => {
+    for (const text of [
+      "http://09",
+      "http://1.2.3.09",
+      "http://[1.2.3.4::]",
+      "http://[::ffff:127.0.0.01]",
+      "http://a\u007fb",
+      "http://host:65536",
+      "http://[::1]:65536",
+      "\u00a0http://host",
+    ]) {
+      expect(() => new URL(text), text).toThrow();
+      expect(urlHost(text), text).toBeUndefined();
+    }
+    expect(urlHost("http://host:65535")).toEqual(domain("host"));
+    expect(urlHost("http://[::1]:65535")).toEqual({
+      kind: "ipv6",
+      groups: [0, 0, 0, 0, 0, 0, 0, 1],
+    });
+    expect(urlHost("\t http://host\n")).toEqual(domain("host"));
   });
 });

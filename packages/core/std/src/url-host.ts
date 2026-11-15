@@ -9,6 +9,7 @@ export type UrlHost =
   | { readonly kind: "ipv6"; readonly groups: readonly number[] };
 
 const urlShape = /^(https?):\/\/([^/?#\\]*)/i;
+const maxPort = 65535;
 const forbiddenInDomain = /[\s#%/:<>?@[\\\]^|]/;
 
 /**
@@ -18,8 +19,9 @@ const forbiddenInDomain = /[\s#%/:<>?@[\\\]^|]/;
  * `0x7f.0.0.1`, and an IPv6 address in brackets. The core has no `URL`
  * class, so it is read by hand.
  *
- * It does not give the full IDNA mapping, and percent-encoded hosts, other
- * schemes and anything it doesn't fully understand give `undefined`.
+ * It does not give the full IDNA mapping, so a host with any non-ASCII
+ * character, a percent-encoded host, other schemes and anything it doesn't
+ * fully understand give `undefined`.
  * Callers that need a safe answer treat that as "unknown".
  *
  * @param url - the URL as written
@@ -30,7 +32,7 @@ const forbiddenInDomain = /[\s#%/:<>?@[\\\]^|]/;
  * urlHost("http://localhost@evil.example"); // { kind: "domain", name: "evil.example" }
  */
 export function urlHost(url: string): UrlHost | undefined {
-  const match = urlShape.exec(url.trim());
+  const match = urlShape.exec(trimEdges(url));
   if (match === null) {
     return undefined;
   }
@@ -40,15 +42,21 @@ export function urlHost(url: string): UrlHost | undefined {
   }
   const colon = authority.indexOf(":");
   const text = colon === -1 ? authority : authority.slice(0, colon);
-  if (colon !== -1 && !/^\d*$/.test(authority.slice(colon + 1))) {
+  if (colon !== -1 && !isPort(authority.slice(colon + 1))) {
     return undefined;
   }
   return nameOrIpv4(text);
 }
 
+/** A port is digits only, or empty, and fits in 16 bits. */
+function isPort(text: string): boolean {
+  return /^\d*$/.test(text) && (text === "" || Number(text) <= maxPort);
+}
+
 function ipv6Host(authority: string): UrlHost | undefined {
   const end = authority.indexOf("]");
-  if (end === -1 || !/^(:\d*)?$/.test(authority.slice(end + 1))) {
+  const after = authority.slice(end + 1);
+  if (end === -1 || !(after === "" || (after.startsWith(":") && isPort(after.slice(1))))) {
     return undefined;
   }
   const groups = parseIpv6(authority.slice(1, end));
@@ -56,7 +64,13 @@ function ipv6Host(authority: string): UrlHost | undefined {
 }
 
 function nameOrIpv4(text: string): UrlHost | undefined {
-  if (text === "" || forbiddenInDomain.test(text) || hasControlCharacter(text)) {
+  // Non-ASCII hosts would need the full IDNA mapping, so a wrong guess is worse than none.
+  if (
+    text === "" ||
+    hasNonAscii(text) ||
+    forbiddenInDomain.test(text) ||
+    hasControlCharacter(text)
+  ) {
     return undefined;
   }
   const name = asciiHost(text.endsWith(".") ? text.slice(0, -1) : text);
@@ -105,7 +119,8 @@ function ipv4Number(label: string): number | undefined {
   if (/^0[0-7]+$/.test(label)) {
     return Number.parseInt(label, 8);
   }
-  return /^\d+$/.test(label) ? Number.parseInt(label, 10) : undefined;
+  // A leading 0 means octal, so `09` is not a number.
+  return /^(0|[1-9]\d*)$/.test(label) ? Number.parseInt(label, 10) : undefined;
 }
 
 function parseIpv6(text: string): number[] | undefined {
@@ -113,8 +128,8 @@ function parseIpv6(text: string): number[] | undefined {
   if (sides.length > 2) {
     return undefined;
   }
-  const head = groupsOf(sides[0] ?? "");
-  const tail = sides.length === 2 ? groupsOf(sides[1] ?? "") : [];
+  const head = groupsOf(sides[0] ?? "", sides.length === 1);
+  const tail = sides.length === 2 ? groupsOf(sides[1] ?? "", true) : [];
   if (head === undefined || tail === undefined) {
     return undefined;
   }
@@ -125,8 +140,8 @@ function parseIpv6(text: string): number[] | undefined {
   return missing < 1 ? undefined : [...head, ...new Array<number>(missing).fill(0), ...tail];
 }
 
-/** The groups of one side of an IPv6 address; the last may be an IPv4 address that makes two. */
-function groupsOf(side: string): number[] | undefined {
+/** The groups of one side of an IPv6 address; the end of the address may be an IPv4 address that makes two. */
+function groupsOf(side: string, endsAddress: boolean): number[] | undefined {
   if (side === "") {
     return [];
   }
@@ -134,8 +149,11 @@ function groupsOf(side: string): number[] | undefined {
   const groups: number[] = [];
   for (const [index, part] of parts.entries()) {
     if (index === parts.length - 1 && part.includes(".")) {
-      const octets = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(part)?.slice(1).map(Number);
-      if (octets === undefined || octets.some((octet) => octet > 255)) {
+      const octets = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
+        .exec(part)
+        ?.slice(1)
+        .map(Number);
+      if (!endsAddress || octets === undefined || octets.some((octet) => octet > 255)) {
         return undefined;
       }
       groups.push(
@@ -152,5 +170,25 @@ function groupsOf(side: string): number[] | undefined {
 }
 
 function hasControlCharacter(text: string): boolean {
-  return [...text].some((character) => (character.codePointAt(0) ?? 0) < 0x20);
+  return [...text].some((character) => {
+    const code = character.codePointAt(0) ?? 0;
+    return code < 0x20 || code === 0x7f;
+  });
+}
+
+/** What the URL rules strip from both ends: control characters and the space, not Unicode spaces. */
+function trimEdges(text: string): string {
+  let start = 0;
+  let end = text.length;
+  while (start < end && text.charCodeAt(start) <= 0x20) {
+    start += 1;
+  }
+  while (end > start && text.charCodeAt(end - 1) <= 0x20) {
+    end -= 1;
+  }
+  return text.slice(start, end);
+}
+
+function hasNonAscii(text: string): boolean {
+  return [...text].some((character) => (character.codePointAt(0) ?? 0) > 0x7f);
 }
