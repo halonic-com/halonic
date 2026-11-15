@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { advance, goalOf, headTo, restOn, restPose } from "./light-flight.ts";
+import { advance, goalOf, headTo, LIGHT_REST_EASE_MS, restOn, restPose } from "./light-flight.ts";
 
 const A = { x: 0, y: 0 };
 const B = { x: 120, y: 0 };
@@ -11,7 +11,7 @@ verifies("workflows.canvas.point-of-light-rest", () => {
   it("floats at most 2 px and breathes between 85 % and 130 %", () => {
     let low = 9;
     let high = 0;
-    for (let ms = 0; ms <= 14_400; ms += 50) {
+    for (let ms = LIGHT_REST_EASE_MS; ms <= 14_400 + LIGHT_REST_EASE_MS; ms += 50) {
       const pose = restPose(ms);
       expect(Math.hypot(pose.offset.x, pose.offset.y)).toBeCloseTo(2);
       low = Math.min(low, pose.brightness);
@@ -20,6 +20,22 @@ verifies("workflows.canvas.point-of-light-rest", () => {
     expect(low).toBeCloseTo(0.85, 2);
     expect(high).toBeCloseTo(1.3, 2);
     expect(restPose(7000).offset.x).toBeCloseTo(2);
+  });
+
+  it("eases the float and the breath in after landing, with no jump", () => {
+    const first = restPose(0);
+    expect(first.offset).toEqual({ x: 0, y: 0 });
+    expect(first.brightness).toBe(1);
+    let last = first;
+    for (let ms = 1; ms <= LIGHT_REST_EASE_MS; ms += 1) {
+      const pose = restPose(ms);
+      expect(Math.hypot(pose.offset.x - last.offset.x, pose.offset.y - last.offset.y)).toBeLessThan(
+        0.02,
+      );
+      expect(Math.abs(pose.brightness - last.brightness)).toBeLessThan(0.005);
+      expect(pose.brightness).toBeLessThanOrEqual(1);
+      last = pose;
+    }
   });
 
   it("lifts off at once from rest and lands exactly on the dot", () => {
