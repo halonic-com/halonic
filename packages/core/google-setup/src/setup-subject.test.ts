@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { expect, it } from "vitest";
 import { googleSetupSubject } from "./setup-subject.ts";
 
 const connectors = [
