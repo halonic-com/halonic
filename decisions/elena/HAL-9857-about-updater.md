@@ -1,12 +1,11 @@
-# Decision: Settings › About follows microcopy 20.6, including the Scoop switch
+# Decision: Settings › About follows microcopy 20.6 for buttons, the served version and the failed-install toast
 
 - Requirement: `settings.about-section` (`packages/studio/features/settings/requirements/about-section.md`)
 - Task: HAL-9857 (design check on HAL-9835)
 - Approval: Liam approves this note in review on the review task of HAL-9857
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mbdNbajVotcehPQ9mLgFlHaDXXuDfX6PzXi+EUO1nrM9YKLSFlJch+g6FyxMTFEIX3ySp1+FANDXY0Tvek1aAQ==
 
-Microcopy 20.6 gives a Scoop install the switch **Tell me when a new Halonic is out**, on by default, with its own sentence, and a status line "Checks for new versions are off." The note of HAL-9371 said "no switch (spec 20.6)"; that was wrong, and the About section now shows the switch. The Scoop block now reads as 20.6 gives it (heading, sentence, command box), Check now announces "Halonic 0.1.1 is out. You have 0.1.0." on Scoop, the Restart to update button is primary and Cancel download ghost, a served Studio shows "Halonic" and its version, and the "didn't install" toast stays until closed with both **Try again** and **Open release page**. Nothing the requirements said before was removed except "no switch", and no test was removed.
+The Scoop wording of microcopy 20.6 (the switch **Tell me when a new Halonic is out**, the heading, the sentence and the command box) is already on `main` from HAL-1295. This change brings the rest of About in line with 20.6: Check now announces "Halonic 0.1.1 is out. You have 0.1.0." on a Scoop install, **Restart to update** is the one primary button and **Cancel download** a ghost button, a busy Check now is named "Checking for updates" for screen readers, a served Studio shows "Halonic" and its version above the view-only line, and the "didn't install" toast stays until closed with both **Try again** and **Open release page**, from the first failure on. Nothing the requirements said before was removed, and no test was removed.
 
 The words are the ones the approved microcopy already gives; this brings the page in line with it.
 
