@@ -3,6 +3,7 @@
 - Task: HAL-6703 (step 2a of the HAL-198 build plan, ADR 5.9), part 3: the Durable Object contract specs
 - Approval: Liam decided the approach in HAL-10413; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:iSCxiwO4qpj1wQ7+ET299sUaben4gBdKDiD8CY4CsRDKy69pBDgpLfNNOgOcBCd+hXSFIiijd28qJNMr9lcqCA==
 
 ## What changes
 
