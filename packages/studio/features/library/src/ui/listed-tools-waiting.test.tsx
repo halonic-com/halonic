@@ -115,19 +115,44 @@ describe("the connector page's listed tools", () => {
       expect(reviewButton(root)).toBeUndefined();
     });
 
-    it("shows no line and no button when the tools can't be read", async () => {
+    it("says the tools couldn't be read and offers Try again", async () => {
+      let fail = true;
       const root = render(
         <ConnectorPage
           {...page(
             toolsHost(async () => {
-              throw new Error("server down");
+              if (fail) throw new Error("server down");
+              return snapshot(["read_note"]);
             }),
           )}
         />,
       );
       await settled();
-      expect(root.textContent).not.toContain("waiting for your approval");
+      expect(root.textContent).toContain("Couldn't list the tools");
       expect(reviewButton(root)).toBeUndefined();
+
+      fail = false;
+      const retry = [...root.querySelectorAll("button")].find((b) => b.textContent === "Try again");
+      act(() => retry?.click());
+      await settled();
+      expect(root.textContent).toContain("1 tool is waiting for your approval");
+    });
+
+    it("says a refused list or an unreadable approval has no rows, with Review tools", async () => {
+      const refused = { ...snapshot([]), listingRefused: "too many tools" };
+      const unreadable = { ...snapshot([]), unreadable: { toolName: undefined } };
+      for (const [read, text] of [
+        [refused, "Couldn't use this server's tool list"],
+        [unreadable, "Couldn't read an approval"],
+      ] as const) {
+        const root = render(<ConnectorPage {...page(toolsHost(async () => read))} />);
+        await settled();
+        expect(root.textContent).toContain(text);
+        act(() => reviewButton(root)?.click());
+        await settled();
+        expect(root.querySelector("dialog[open]")).not.toBeNull();
+        unmountAll();
+      }
     });
 
     it("shows neither without a listed-tools service", async () => {

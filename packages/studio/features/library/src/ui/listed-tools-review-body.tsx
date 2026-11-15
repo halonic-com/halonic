@@ -14,13 +14,6 @@ export interface ListedToolsReviewBodyProps {
   readonly onOutcome: (outcome: ReviewOutcome) => void;
 }
 
-/** A refused tool's reason, cut for the screen. The full text stays in the tooltip. */
-function cutReason(reason: string): string {
-  const limit = listedToolsWords.refusedReasonLimit;
-  const characters = Array.from(reason);
-  return characters.length > limit ? `${characters.slice(0, limit).join("")}…` : reason;
-}
-
 /**
  * The groups of one connector's review, in their order: the tools to decide on (Changed first,
  * then Not approved), Keeps changing, Refused, then Approved folded. The dialog around it owns
@@ -61,14 +54,6 @@ export function ListedToolsReviewBody({ model, onRemoved, onOutcome }: ListedToo
             headingLevel={2}
             name={listedToolsWords.keepsChangingHeading}
           />
-          {shown.keepsChanging.map((row, index) => (
-            <p
-              key={`${index}:${row.name}`}
-              className="px-4 text-small text-fg-muted [overflow-wrap:anywhere]"
-            >
-              {listedToolsWords.keepsChangingLine(row.name)}
-            </p>
-          ))}
           <PlainList>
             {shown.keepsChanging.map((row, index) => (
               <ListedToolRowView
@@ -78,6 +63,7 @@ export function ListedToolsReviewBody({ model, onRemoved, onOutcome }: ListedToo
                 workspaceName={snapshot.workspaceName}
                 tick={null}
                 showState={false}
+                note={listedToolsWords.keepsChangingLine(row.name)}
                 action={
                   <Button
                     variant="ghost"
@@ -100,13 +86,9 @@ export function ListedToolsReviewBody({ model, onRemoved, onOutcome }: ListedToo
           <p className="px-4 pb-1 text-small text-fg-muted">{listedToolsWords.refusedLine}</p>
           <PlainList>
             {shown.refused.map((row) => (
-              <li
-                key={row.name}
-                title={`${row.name}: ${row.reason}`}
-                className="px-4 py-2 text-body [overflow-wrap:anywhere]"
-              >
+              <li key={row.name} className="px-4 py-2 text-body [overflow-wrap:anywhere]">
                 <span className="font-mono">{row.name}</span>
-                {`: ${cutReason(row.reason)}`}
+                {`: ${row.reason}`}
               </li>
             ))}
           </PlainList>

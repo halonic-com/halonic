@@ -95,8 +95,10 @@ describe("the review body", () => {
     it("gives tools that keep changing and refused tools no tick box", async () => {
       const { container } = await open(base);
       expect(container.querySelectorAll('input[type="checkbox"]')).toHaveLength(1);
-      const refused = container.querySelector('li[title^="look up"]');
-      expect(refused?.textContent).toBe(`look up: ${"x".repeat(64)}…`);
+      const refused = [...container.querySelectorAll("li")].find((item) =>
+        item.textContent?.startsWith("look up"),
+      );
+      expect(refused?.textContent).toBe(`look up: ${"x".repeat(80)}`);
     });
 
     it("names the refused group in plain words and says an approved tool still asks", async () => {
@@ -179,6 +181,14 @@ describe("the review body", () => {
       expect(container.textContent).toContain(
         "This server keeps changing sync_tags. It stays off.",
       );
+      const line = [...container.querySelectorAll("p")].find((p) =>
+        p.textContent?.includes("keeps changing sync_tags"),
+      );
+      const button = [...container.querySelectorAll("button")].find((b) =>
+        b.textContent?.startsWith("Turn it on anyway"),
+      );
+      expect(line?.closest("li")).toBe(button?.closest("li"));
+      expect(line?.compareDocumentPosition(button as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
       expect(container.textContent).not.toContain("Off until you approve");
       const names = [...container.querySelectorAll("li .font-mono")].map((n) => n.textContent);
       expect(names.indexOf("beta")).toBeLessThan(names.indexOf("alpha"));
@@ -192,15 +202,6 @@ describe("the review body", () => {
       expect(container.textContent).toContain(
         "Doesn't ask before each use: Acme lowered its risk.",
       );
-    });
-
-    it("cuts a refused reason between characters, not inside an emoji", async () => {
-      const { container } = await open({
-        ...base,
-        refused: [{ name: "look up", reason: `${"x".repeat(63)}😀😀` }],
-      });
-      const refused = container.querySelector('li[title^="look up"]');
-      expect(refused?.textContent).toBe(`look up: ${"x".repeat(63)}😀…`);
     });
 
     it("shows no toast and keeps the approval when removing fails", async () => {

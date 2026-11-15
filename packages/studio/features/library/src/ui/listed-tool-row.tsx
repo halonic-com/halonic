@@ -18,6 +18,8 @@ export interface ListedToolRowViewProps {
   readonly showState: boolean;
   /** A button of the row's own, at the right of the name: "Turn it on anyway". */
   readonly action?: ReactNode;
+  /** A line of the row's own, directly above its button: why the tool stays off. */
+  readonly note?: string;
 }
 
 /** Whether the three-line clamp hides part of `element`: the only honest test, since lines break by width. */
@@ -37,6 +39,7 @@ export function ListedToolRowView({
   tick,
   showState,
   action,
+  note,
 }: ListedToolRowViewProps) {
   const descriptionId = useId();
   const [unfolded, setUnfolded] = useState(false);
@@ -70,8 +73,11 @@ export function ListedToolRowView({
                 {listedToolsWords.states[row.state === "changed" ? "changed" : "notApproved"]}
               </StatusChip>
             ) : null}
-            {action}
           </div>
+          {note === undefined ? null : (
+            <p className="text-small text-fg-muted [overflow-wrap:anywhere]">{note}</p>
+          )}
+          {action === undefined ? null : <div className="flex">{action}</div>}
           <p
             id={descriptionId}
             ref={descriptionRef}
