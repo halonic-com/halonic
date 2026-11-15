@@ -82,6 +82,19 @@ verifies("workflows.configuration.pages", () => {
     expect(document.activeElement?.textContent).toContain("review");
   });
 
+  it("doesn't re-pick the card or take focus when the Flow tab is clicked directly", async () => {
+    const page = await open([configuration]);
+    await act(async () => tab(page, "Problems")?.click());
+    await act(async () =>
+      page.querySelector<HTMLButtonElement>("[aria-label='Open review']")?.click(),
+    );
+    await act(async () => tab(page, "Configuration")?.click());
+    await act(async () => tab(page, "Flow")?.click());
+
+    expect(page.querySelector("[aria-pressed=true]")).toBeNull();
+    expect(document.activeElement?.getAttribute("aria-pressed")).toBeNull();
+  });
+
   it("shows only what the file says about the request form's field", async () => {
     const page = await open([
       { ...configuration, request: { label: "Ask for a reply", field: "message" } },

@@ -67,7 +67,11 @@ export function WorkflowScreen({ host, hubId, id }: WorkflowScreenProps) {
           },
         ]}
         selected={view}
-        onSelect={setView}
+        onSelect={(next) => {
+          // A direct tab click must not re-pick the card a problem link opened.
+          setOpenStep(undefined);
+          setView(next);
+        }}
       >
         {view === "configuration" ? (
           <Configuration
