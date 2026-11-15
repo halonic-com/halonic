@@ -95,6 +95,12 @@ export function StepBody(props: StepBodyProps) {
         scopes: step.scopesToGrant,
         serviceName: props.serviceName,
       });
+      // Google's error page never comes back, so leaving to fix the cause ends the wait first. A
+      // failed cancel must not stop the person: the host drops the sign-in after 10 minutes anyway.
+      const leaveWaiting = (id: StepId) => {
+        props.signIn.cancel().catch(() => {});
+        props.onOpenStep(id);
+      };
       return (
         <div className="flex flex-col gap-3">
           <BeforeSignIn
@@ -103,6 +109,8 @@ export function StepBody(props: StepBodyProps) {
             projectId={props.savedProjectId}
             clientId={props.credentials.clientId}
             serviceName={props.serviceName}
+            // The note below says it, with the same button.
+            hideAdminNote={props.signInEnded.ending === "adminBlocked"}
           />
           <WrongAccount {...props.wrongAccount} />
           <SignInEnded
@@ -120,7 +128,7 @@ export function StepBody(props: StepBodyProps) {
                 canPublish={props.canPublish}
                 email={props.results.email}
                 adminNote={note}
-                onOpenStep={props.onOpenStep}
+                onOpenStep={leaveWaiting}
                 onClearInProduction={() => props.onInProduction(false)}
               />
             }

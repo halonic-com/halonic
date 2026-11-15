@@ -107,4 +107,24 @@ verifies("google-setup.google-error-list", () => {
     expect(container.textContent).toContain('The status says "In production"');
     expect(() => button(container, "Open again")).toThrow();
   });
+
+  it("ends the wait before it opens a step", async () => {
+    const { fake, container } = await waiting(signedOut());
+    await press(button(container, "Open step 6"));
+    expect(fake.cancelled).toEqual(["gaccount_1"]);
+    expect(container.textContent).toContain("Client secret");
+  });
+
+  it("opens the step even when the cancel fails", async () => {
+    const { fake, container } = await open(signedOut(), {
+      startSignIn: async () => address,
+      cancelSignIn: async () => {
+        throw new Error("offline");
+      },
+    });
+    await press(button(container, "Sign in with Google"));
+    await press(button(container, "Open step 6"));
+    expect(fake.cancelled).toEqual([]);
+    expect(container.textContent).toContain("Client secret");
+  });
 });

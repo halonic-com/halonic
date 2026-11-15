@@ -231,7 +231,9 @@ export function Checklist(props: ChecklistProps) {
                     onSaveSecret: saves.saveSecret,
                     onReplaceSecret: props.onReplaceSecret,
                     beforeFirstSignIn: account.record.lastSignInAt === null,
-                    needsNewSecret: problem?.actionStep === "credentials",
+                    needsNewSecret:
+                      problem?.actionStep === "credentials" ||
+                      account.record.lastSignInEnded?.kind === "secretRefused",
                     focusSecret: secretTakesFocus,
                     onSecretTyped: setSecretTyped,
                   }}

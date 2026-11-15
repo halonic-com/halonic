@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+
+import type { SetupRecord } from "@halonicjs/google-setup";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -27,8 +29,13 @@ afterEach(() => {
 
 const endedAt = "2026-11-12T02:40:00.000Z";
 
-function ended(kind: "cancelled" | "secretRefused" | "adminBlocked") {
-  return account(record(upToSignIn, { ...ready, lastSignInEnded: { kind, at: endedAt } }));
+function ended(
+  kind: "cancelled" | "secretRefused" | "adminBlocked",
+  extra: Partial<SetupRecord> = {},
+) {
+  return account(
+    record(upToSignIn, { ...ready, ...extra, lastSignInEnded: { kind, at: endedAt } }),
+  );
 }
 
 verifies("google-setup.sign-in-ended", () => {
@@ -40,12 +47,16 @@ verifies("google-setup.sign-in-ended", () => {
   });
 
   it("says Google refused the client secret and opens step 6", async () => {
-    const { container } = await open(ended("secretRefused"));
+    const { container } = await open(
+      ended("secretRefused", { clientSecret: { clientRef: "gclient_1", savedAt: endedAt } }),
+    );
     expect(container.textContent).toContain(
       "Google didn't accept the client secret. Paste it again from your client's page, then sign in again.",
     );
     await press(button(container, "Open step 6"));
     expect(container.textContent).toContain("Client secret");
+    // Step 6 opens with the field for the new secret, not with the saved one to replace first.
+    expect(container.textContent).toContain("Save new secret");
   });
 
   it("says the admin blocked the app and offers the note", async () => {
@@ -56,6 +67,14 @@ verifies("google-setup.sign-in-ended", () => {
     expect(
       container.querySelector('button[aria-label="Copy a note for your admin"]'),
     ).not.toBeNull();
+  });
+
+  it("shows one note for the admin on a Workspace account, not two", async () => {
+    const { container } = await open(ended("adminBlocked", { accountType: "workspace" }));
+    expect(
+      container.querySelectorAll('button[aria-label="Copy a note for your admin"]'),
+    ).toHaveLength(1);
+    expect(container.textContent).not.toContain("Your admin may have to allow this app");
   });
 
   it("shows none of them when the record has no ending", async () => {
