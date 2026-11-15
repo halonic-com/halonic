@@ -1,0 +1,148 @@
+import type { SetupRecord, SetupRecords } from "@halonicjs/google-setup";
+import { verifies } from "@halonicjs/testing-spec";
+import { describe, expect, it, vi } from "vitest";
+import { accountsOf, acmeKey } from "./workspace-google-setup-accounts.testing.ts";
+import type { GoogleSetupHost } from "./workspace-google-setup-accounts.ts";
+
+verifies("studio.workspace-google-setup-accounts", () => {
+  describe("changes through the agent host", () => {
+    /** A host that does what the real one does to the records, and says what it was asked. */
+    function hostOver(setups: SetupRecords, asked: string[]): GoogleSetupHost {
+      const route = { app: "own", runsOn: "this-computer" } as const;
+      return {
+        disconnect: async () => ({ googleConfirmed: true }),
+        start: async (connector, accountType) => {
+          asked.push(`start ${connector.workspace}/${connector.id} ${accountType}`);
+          return (await setups.start({ route, accountType, connector })).accountRef;
+        },
+        edit: async (accountRef, change) => {
+          asked.push(`edit ${accountRef} ${change.kind}`);
+        },
+        startOver: async (accountRef) => {
+          asked.push(`start-over ${accountRef}`);
+          await setups.remove(accountRef);
+          return "gclient_1";
+        },
+        startSignIn: async (accountRef) => {
+          asked.push(`sign-in ${accountRef}`);
+          return "https://accounts.example/auth";
+        },
+        cancelSignIn: async (accountRef) => {
+          asked.push(`cancel ${accountRef}`);
+        },
+      };
+    }
+
+    it("starts a setup for a connector with the link to it, and lists it as an account", async () => {
+      const asked: string[] = [];
+      const { accounts: bare, setups } = await accountsOf({ host: (own) => hostOver(own, asked) });
+
+      const ref = await bare.start("calendar", "workspace");
+
+      expect(asked).toEqual([`start ${acmeKey}/calendar workspace`]);
+      expect((await setups.read(ref))?.connector).toEqual({ workspace: acmeKey, id: "calendar" });
+    });
+
+    it("keeps the record a connector already has instead of starting a second", async () => {
+      const asked: string[] = [];
+      const { accounts, setups } = await accountsOf({ host: (own) => hostOver(own, asked) });
+      const mail = (await setups.forConnector(acmeKey, "mail")) as SetupRecord;
+
+      expect(await accounts.start("mail", "personal")).toBe(mail.accountRef);
+      expect(asked).toEqual([]);
+    });
+
+    it("saves one edit and tells its listeners", async () => {
+      const asked: string[] = [];
+      const { accounts } = await accountsOf({ host: (own) => hostOver(own, asked) });
+      const listener = vi.fn();
+      accounts.subscribe(listener);
+
+      await accounts.edit("gaccount_1", { kind: "project-id", projectId: "acme-project" });
+
+      expect(asked).toEqual(["edit gaccount_1 project-id"]);
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it("starts over by removing the record and starting a fresh one for the same connector", async () => {
+      const asked: string[] = [];
+      const { accounts, setups } = await accountsOf({ host: (own) => hostOver(own, asked) });
+      const mail = (await setups.forConnector(acmeKey, "mail")) as SetupRecord;
+
+      await accounts.startOver(mail.accountRef);
+
+      const fresh = (await setups.forConnector(acmeKey, "mail")) as SetupRecord;
+      expect(fresh.accountRef).not.toBe(mail.accountRef);
+      expect(fresh.accountType).toBe(mail.accountType);
+      expect(asked).toEqual([`start-over ${mail.accountRef}`, `start ${acmeKey}/mail personal`]);
+    });
+
+    it("says the old setup was removed when the fresh one can't be started, and tells its listeners", async () => {
+      const asked: string[] = [];
+      const { accounts, setups } = await accountsOf({
+        host: (own) => ({
+          ...hostOver(own, asked),
+          start: async () => {
+            throw new Error("The agent host answered with 502 (google_failed).");
+          },
+        }),
+      });
+      const mail = (await setups.forConnector(acmeKey, "mail")) as SetupRecord;
+      const listener = vi.fn();
+      accounts.subscribe(listener);
+
+      const attempt = accounts.startOver(mail.accountRef);
+
+      await expect(attempt).rejects.toThrow(
+        "Halonic couldn't make a fresh setup. The old setup was removed. The agent host answered with 502",
+      );
+      await expect(attempt).rejects.not.toThrow("couldn't start over");
+      expect(await setups.forConnector(acmeKey, "mail")).toBeNull();
+      expect(listener).toHaveBeenCalledTimes(2);
+    });
+
+    it("starts and cancels a sign-in", async () => {
+      const asked: string[] = [];
+      const { accounts } = await accountsOf({ host: (own) => hostOver(own, asked) });
+
+      expect(await accounts.startSignIn("gaccount_1")).toBe("https://accounts.example/auth");
+      await accounts.cancelSignIn("gaccount_1");
+
+      expect(asked).toEqual(["sign-in gaccount_1", "cancel gaccount_1"]);
+    });
+
+    it("rejects in plain words with the host's reason, and tells its listeners to read again, when the host can't", async () => {
+      const { accounts } = await accountsOf({
+        host: (own) => ({
+          ...hostOver(own, []),
+          edit: async () => {
+            throw new Error("The agent host answered with 502 (google_failed).");
+          },
+        }),
+      });
+      const listener = vi.fn();
+      accounts.subscribe(listener);
+
+      await expect(accounts.edit("gaccount_1", { kind: "sign-in-dropped" })).rejects.toThrow(
+        "Halonic couldn't save this. The agent host answered with 502",
+      );
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it("says the app needs its agent host when it has none, without the old 'not yet' text", async () => {
+      const { accounts } = await accountsOf();
+
+      for (const attempt of [
+        accounts.start("mail", "personal"),
+        accounts.edit("gaccount_1", { kind: "sign-in-dropped" }),
+        accounts.startOver("gaccount_1"),
+        accounts.startSignIn("gaccount_1"),
+        accounts.cancelSignIn("gaccount_1"),
+        accounts.disconnect("gaccount_1"),
+      ]) {
+        await expect(attempt).rejects.toThrow("needs its agent host");
+        await expect(attempt).rejects.not.toThrow("yet");
+      }
+    });
+  });
+});

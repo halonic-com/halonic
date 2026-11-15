@@ -1,105 +1,19 @@
 import { isDeepStrictEqual } from "node:util";
 import { webCryptoDigest } from "@halonicjs/adapter-fs-tauri";
-import {
-  MemoryDefinitionStore,
-  MemoryFolderReader,
-  MemoryRecordStore,
-} from "@halonicjs/adapter-memory";
-import { type SetupRecord, setupRecords } from "@halonicjs/google-setup";
-import { fixedClock, fixedIds } from "@halonicjs/std";
+import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
+import type { SetupRecord } from "@halonicjs/google-setup";
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import {
-  type GoogleSetupHost,
-  WorkspaceGoogleSetupAccounts,
-} from "./workspace-google-setup-accounts.ts";
-
-const acmeKey = "a".repeat(32);
-const otherKey = "b".repeat(32);
-
-/** A Google sheet: reads Acme's ledger. Invented, so the test proves the app knows no service. */
-const ledgerSheet = `id: ledger
-version: 1.0.0
-kit: 2
-provides: [connector]
-hosts: [ledger.googleapis.com]
-secrets:
-  google-account:
-    purpose: Access to your Google account.
-    hosts: [ledger.googleapis.com]
-    as: bearer
-googleScopes:
-  - scope: https://www.googleapis.com/auth/ledger
-    reason: Reads your ledger
-googleApis:
-  - api: ledger.googleapis.com
-    name: Ledger API
-`;
-
-const plainSheet = ledgerSheet
-  .replace("id: ledger", "id: plain")
-  .replace(/googleScopes:[\s\S]*$/, "");
-
-function connector(id: string, address: string): string {
-  return `version: 1\nid: ${id}\ntransport: { google: { account: ${address} } }\n`;
-}
-
-function acmeDefinitions(): MemoryDefinitionStore {
-  return new MemoryDefinitionStore({
-    "workspace.yaml": "id: acme\nname: Acme\n",
-    "library/connectors/mail.connector.yaml": connector("mail", "sam@acme.example"),
-    "library/connectors/files.connector.yaml": connector("files", "kim@acme.example"),
-    "library/connectors/bare.connector.yaml": connector("bare", "lee@acme.example"),
-    "library/connectors/search.connector.yaml":
-      "version: 1\nid: search\ntransport: { http: { url: https://search.acme.example/mcp } }\n",
-  });
-}
-
-function acmeFolder(sheets: Record<string, string> = { ledger: ledgerSheet, plain: plainSheet }) {
-  const folder = new MemoryFolderReader();
-  folder.putFolder("integrations");
-  for (const [name, sheet] of Object.entries(sheets)) {
-    folder.putFolder(`integrations/${name}`);
-    folder.putFile(`integrations/${name}/integration.yaml`, sheet);
-  }
-  return folder;
-}
-
-async function accountsOf(
-  options: {
-    definitions?: MemoryDefinitionStore;
-    folder?: MemoryFolderReader;
-    start?: (workspace: string, id: string) => Promise<void>;
-    host?: GoogleSetupHost;
-  } = {},
-) {
-  const records = new MemoryRecordStore();
-  const setups = setupRecords({
-    records,
-    clock: fixedClock(Date.UTC(2026, 10, 12, 2)),
-    ids: fixedIds(),
-  });
-  for (const [workspace, id] of [
-    [acmeKey, "mail"],
-    [acmeKey, "files"],
-    [otherKey, "bare"],
-  ] as const) {
-    await setups.start({
-      route: { app: "own", runsOn: "this-computer" },
-      accountType: "personal",
-      connector: { workspace, id },
-    });
-  }
-  const accounts = new WorkspaceGoogleSetupAccounts({
-    definitions: options.definitions ?? acmeDefinitions(),
-    folder: options.folder ?? acmeFolder(),
-    digest: webCryptoDigest,
-    setups,
-    workspaceKey: async () => acmeKey,
-    ...(options.host === undefined ? {} : { host: options.host }),
-  });
-  return { accounts, setups, records };
-}
+  accountsOf,
+  acmeDefinitions,
+  acmeFolder,
+  acmeKey,
+  connector,
+  hostWith,
+  ledgerSheet,
+} from "./workspace-google-setup-accounts.testing.ts";
+import { WorkspaceGoogleSetupAccounts } from "./workspace-google-setup-accounts.ts";
 
 verifies("studio.workspace-google-setup-accounts", () => {
   it("lists an account for each Google connector that has a record linked to this workspace", async () => {
@@ -210,15 +124,13 @@ verifies("studio.workspace-google-setup-accounts", () => {
   });
 
   describe("changes", () => {
-    it("refuses a step, a secret, Start over, Check again and a new address with a plain message, and changes no record", async () => {
+    it("refuses a secret, Check again and a new address with a plain message, and changes no record", async () => {
       const { accounts, records } = await accountsOf();
       const before = JSON.stringify(await records.changes("_google_setups"));
 
       for (const attempt of [
-        accounts.edit(),
         accounts.saveClientSecret(),
         accounts.replaceClientSecret(),
-        accounts.startOver(),
         accounts.checkAgain(),
         accounts.changeAddress(),
       ]) {
@@ -238,7 +150,7 @@ verifies("studio.workspace-google-setup-accounts", () => {
           return { googleConfirmed: true };
         },
       };
-      const { accounts } = await accountsOf({ host });
+      const { accounts } = await accountsOf({ host: hostWith(host) });
       const listener = vi.fn();
       accounts.subscribe(listener);
 
@@ -251,7 +163,7 @@ verifies("studio.workspace-google-setup-accounts", () => {
 
     it("says when Google couldn't be reached, as the setup was still removed", async () => {
       const host = { disconnect: async () => ({ googleConfirmed: false }) };
-      const { accounts } = await accountsOf({ host });
+      const { accounts } = await accountsOf({ host: hostWith(host) });
 
       expect(await accounts.disconnect("gaccount_1")).toEqual({ kind: "google-unreachable" });
     });
@@ -262,7 +174,7 @@ verifies("studio.workspace-google-setup-accounts", () => {
           throw new Error("The agent host answered with 502 (google_failed).");
         },
       };
-      const { accounts } = await accountsOf({ host });
+      const { accounts } = await accountsOf({ host: hostWith(host) });
       const listener = vi.fn();
       accounts.subscribe(listener);
 
@@ -275,9 +187,7 @@ verifies("studio.workspace-google-setup-accounts", () => {
     it("is refused in plain words without an agent host", async () => {
       const { accounts } = await accountsOf();
 
-      await expect(accounts.disconnect("gaccount_1")).rejects.toThrow(
-        "can't be saved in the Halonic app yet",
-      );
+      await expect(accounts.disconnect("gaccount_1")).rejects.toThrow("needs its agent host");
     });
   });
 

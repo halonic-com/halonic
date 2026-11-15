@@ -1,5 +1,5 @@
 import { readLocalIntegrations } from "@halonicjs/app";
-import type { SetupRecord, SetupRecords } from "@halonicjs/google-setup";
+import type { AccountType, SetupEdit, SetupRecord, SetupRecords } from "@halonicjs/google-setup";
 import type { DefinitionStore, DefinitionWatch, Digest, FolderReader } from "@halonicjs/ports";
 import type {
   DisconnectAnswer,
@@ -15,6 +15,19 @@ import { googleServices } from "./google-services.ts";
 export interface GoogleSetupHost {
   /** Ends the account's sign-in and removes its sign-in, record and client secret. Rejects when the host can't. */
   disconnect(accountRef: string): Promise<{ readonly googleConfirmed: boolean }>;
+  /** Starts a record for the connector, which keeps the link to it, and answers the record's ref. */
+  start(
+    connector: { readonly workspace: string; readonly id: string },
+    accountType: AccountType,
+  ): Promise<string>;
+  /** Applies one change a person makes to the record. */
+  edit(accountRef: string, change: SetupEdit): Promise<void>;
+  /** Removes the record, the sign-in and the client secret (unless another account uses it), without asking Google. */
+  startOver(accountRef: string): Promise<string>;
+  /** Starts the sign-in and answers the address to open in the browser. */
+  startSignIn(accountRef: string): Promise<string>;
+  /** Drops the pending sign-in. */
+  cancelSignIn(accountRef: string): Promise<void>;
 }
 
 /** What {@link WorkspaceGoogleSetupAccounts} reads. */
@@ -47,10 +60,16 @@ const notYet =
  */
 const disconnectFailed = "Halonic couldn't finish disconnecting this account.";
 
+/** Said when start over removed the setup and the fresh one couldn't be started. */
+const freshSetupFailed = "make a fresh setup. The old setup was removed";
+
 /** What the host said, in its own words when it gave some. */
 function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : "The agent host didn't answer.";
 }
+
+/** Said when a change is tried in a window that has no agent host to make it. */
+const needsHost = "Halonic needs its agent host to save this, and it isn't running.";
 
 /** The client secret is typed in the app's own field; where it is kept is this computer. */
 const desktopEntry: SecretEntry = { kind: "field", keptOn: "this-computer", plainHttp: false };
@@ -62,8 +81,9 @@ const desktopEntry: SecretEntry = { kind: "field", keptOn: "this-computer", plai
  * A Google connector is an account once it has a setup record linked to this workspace and its
  * id. The record is found by `forConnector` with the workspace's key, so another workspace's
  * connector with the same id is never this one's. A connector with no record has no account yet:
- * starting a setup is a later step. Every change is refused with a plain message, since the
- * desktop app has no way to write the records, the sign-in or the secret yet.
+ * `start` makes one, with the link to the connector. The page never writes a record: the agent
+ * host does, so `start`, `edit`, `startOver` and the sign-in go to it, and are refused in plain
+ * words when the app has none. The client secret and the checks can't be done in the app yet.
  *
  * @example
  * services.provide(GoogleSetupAccountsService, new WorkspaceGoogleSetupAccounts(options));
@@ -104,8 +124,25 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
     );
   }
 
-  async edit(): Promise<void> {
-    throw new Error(notYet);
+  /**
+   * Starts a setup for one of this workspace's connectors, so it becomes an account that `list`
+   * returns. A connector that already has a record keeps it.
+   *
+   * @returns the record's ref
+   */
+  async start(connectorId: string, accountType: AccountType): Promise<string> {
+    const host = this.#host();
+    const workspace = await this.#options.workspaceKey();
+    const existing = await this.#options.setups.forConnector(workspace, connectorId);
+    if (existing !== null) return existing.accountRef;
+    return this.#asked("start this setup", () =>
+      host.start({ workspace, id: connectorId }, accountType),
+    );
+  }
+
+  async edit(accountRef: string, edit: SetupEdit): Promise<void> {
+    const host = this.#host();
+    await this.#asked("save this", () => host.edit(accountRef, edit));
   }
 
   async saveClientSecret(): Promise<void> {
@@ -116,13 +153,17 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
     throw new Error(notYet);
   }
 
-  async startOver(): Promise<void> {
-    throw new Error(notYet);
+  async startOver(accountRef: string): Promise<void> {
+    const host = this.#host();
+    const record = await this.#options.setups.read(accountRef);
+    await this.#asked("start over", () => host.startOver(accountRef));
+    // The host removed the record; the setup begins again at step 1 for the same connector.
+    if (record === null) return;
+    await this.#asked(freshSetupFailed, () => host.start(record.connector, record.accountType));
   }
 
   async disconnect(accountRef: string): Promise<DisconnectAnswer> {
-    const { host } = this.#options;
-    if (host === undefined) throw new Error(notYet);
+    const host = this.#host();
     let answer: { readonly googleConfirmed: boolean };
     try {
       answer = await host.disconnect(accountRef);
@@ -134,12 +175,14 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
     return answer.googleConfirmed ? { kind: "ended" } : { kind: "google-unreachable" };
   }
 
-  async startSignIn(): Promise<never> {
-    throw new Error(notYet);
+  async startSignIn(accountRef: string): Promise<string> {
+    const host = this.#host();
+    return this.#asked("start the sign-in", () => host.startSignIn(accountRef));
   }
 
-  async cancelSignIn(): Promise<never> {
-    throw new Error(notYet);
+  async cancelSignIn(accountRef: string): Promise<void> {
+    const host = this.#host();
+    await this.#asked("cancel the sign-in", () => host.cancelSignIn(accountRef));
   }
 
   async checkAgain(): Promise<never> {
@@ -161,6 +204,27 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
       this.#listeners.delete(listener);
       if (this.#listeners.size === 0) this.#stopWatchingAll();
     };
+  }
+
+  /** The agent host that makes a change, or a refusal in plain words when the app has none. */
+  #host(): GoogleSetupHost {
+    const { host } = this.#options;
+    if (host === undefined) throw new Error(needsHost);
+    return host;
+  }
+
+  /**
+   * Runs one change on the host and tells the listeners afterwards, also when it failed: the
+   * host may have finished before the answer was lost, so the page reads the accounts again.
+   */
+  async #asked<T>(what: string, change: () => Promise<T>): Promise<T> {
+    try {
+      return await change();
+    } catch (error) {
+      throw new Error(`Halonic couldn't ${what}. ${reasonOf(error)}`, { cause: error });
+    } finally {
+      this.#tellListeners();
+    }
   }
 
   /** Listens to the window's focus and the files, for as long as anyone listens. */
