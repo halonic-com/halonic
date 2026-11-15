@@ -131,8 +131,7 @@ verifies("inbox.secret-hold", () => {
     const root = await openInbox({ accounts: false });
     const dialog = await holdSecret(root);
     expect(dialog.textContent).toContain("Google client secret");
-    expect([...dialog.querySelectorAll("button")].map((each) => each.textContent)).not.toContain(
-      "Go to the secret field",
-    );
+    const labels = [...dialog.querySelectorAll("button")].map((each) => each.textContent ?? "");
+    expect(labels.some((label) => label.startsWith("Go to the secret field"))).toBe(false);
   });
 });

@@ -239,7 +239,7 @@ function OpenCard({
       return;
     }
     // The Library stands in until there is a Connectors view with **New connector**.
-    // Follow-up: send it to that view's New connector once the Connectors view exists.
+    // Follow-up (HAL-9823): send it to that view's New connector once the Connectors view exists.
     openPlace?.("library");
   };
   if (item.kind === "setup") {
