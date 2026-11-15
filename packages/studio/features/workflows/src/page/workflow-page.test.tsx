@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
+import { RunsListService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { WorkflowView } from "../api.ts";
+import { WorkflowsHostService, type WorkflowView } from "../api.ts";
 import {
   buttonNamed,
   listing,
@@ -14,7 +15,7 @@ import {
   show,
   unmount,
 } from "../test-support.tsx";
-import { WorkflowScreen } from "./workflow-page.tsx";
+import { WorkflowPage, WorkflowScreen } from "./workflow-page.tsx";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
 afterEach(() => {
@@ -323,5 +324,39 @@ verifies("workflows.runs.runs-view", () => {
     expect(tab?.textContent).toContain("1");
     await act(async () => tab?.click());
     expect(page.querySelector("section[aria-label=Now]")).not.toBeNull();
+  });
+
+  it("asks the Runs list to show this workflow before See all opens it", async () => {
+    const { host } = memoryHost([], [], [reply]);
+    const { source } = memoryRuns([runSummary({ id: "run_a_01done1", status: "completed" })]);
+    const calls: string[] = [];
+    const list = {
+      showWorkflow: (workflow: { hubId: string; id: string }) => {
+        calls.push(`show ${workflow.hubId}/${workflow.id}`);
+      },
+    };
+    const services = new Map<unknown, unknown>([
+      [WorkflowsHostService, host],
+      [RunsSourceService, source],
+      [RunsListService, list],
+    ]);
+    const context = {
+      services: { get: (key: unknown) => services.get(key) },
+      openPlace: (place: string) => calls.push(`open ${place}`),
+    };
+    const page = await show(
+      <WorkflowPage
+        item={{ kind: "workflow", hub: "acme", id: "reply" }}
+        context={context as never}
+      />,
+    );
+
+    const tab = [...page.querySelectorAll<HTMLElement>("[role=tab]")].find((one) =>
+      one.textContent?.startsWith("Runs"),
+    );
+    await act(async () => tab?.click());
+    await act(async () => buttonNamed(page, "See all")?.click());
+
+    expect(calls).toEqual(["show acme/reply", "open runs"]);
   });
 });

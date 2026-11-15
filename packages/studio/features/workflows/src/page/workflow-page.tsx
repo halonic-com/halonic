@@ -1,5 +1,9 @@
 import type { RunRow } from "@halonicjs/studio-feature-runs/api";
-import { type RunsSource, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
+import {
+  RunsListService,
+  type RunsSource,
+  RunsSourceService,
+} from "@halonicjs/studio-feature-runs/api";
 import {
   Button,
   CloseIcon,
@@ -41,7 +45,8 @@ type WorkflowView = "flow" | "configuration" | "runs";
 
 /** The workflow's page in its tab: `item` names the workflow, the host gives its steps. */
 export function WorkflowPage({ item, context }: ItemViewProps) {
-  const { openItem } = context;
+  const { openItem, openPlace } = context;
+  const runsList = context.services.get(RunsListService);
   return (
     <WorkflowScreen
       host={context.services.get(WorkflowsHostService)}
@@ -52,7 +57,12 @@ export function WorkflowPage({ item, context }: ItemViewProps) {
       {...(openItem && {
         openRun: (runId: string) => openItem({ kind: "run", hub: item.hub, id: runId }),
       })}
-      {...(context.openPlace && { seeAllRuns: () => context.openPlace?.("runs") })}
+      {...(openPlace && {
+        seeAllRuns: () => {
+          runsList.showWorkflow({ hubId: item.hub, id: item.id });
+          openPlace("runs");
+        },
+      })}
     />
   );
 }
