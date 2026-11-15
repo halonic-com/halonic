@@ -354,7 +354,7 @@ jobs:
   build:
     name: Typecheck, lint, test, build
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     # The write token for the remote cache and the key that signs its entries
     # live in the environment `turbo-cache-write`, which only `main` and the
     # merge queue may use (deployment branch rule). A pull request gets the
