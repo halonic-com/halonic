@@ -134,7 +134,9 @@ verifies("workflows.page.frame-and-states", () => {
 
   it("keeps the zoom and pan across a visit to Configuration", async () => {
     const { host } = memoryHost([], [], [reply]);
-    const page = await show(<WorkflowScreen host={host} hubId="acme" id="reply" />);
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
     await act(async () => buttonNamed(page, "Zoom in")?.click());
     await act(async () => buttonNamed(page, "Zoom in")?.click());
     const zoomed = surface(page)?.style.transform;
@@ -155,7 +157,7 @@ verifies("workflows.page.frame-and-states", () => {
           <button type="button" onClick={() => setId("other")}>
             Switch
           </button>
-          <WorkflowScreen host={host} hubId="acme" id={id} />
+          <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id={id} />
         </>
       );
     };
