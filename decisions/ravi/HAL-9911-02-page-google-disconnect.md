@@ -2,6 +2,7 @@
 
 - Approval: the task to build this is HAL-9911, and the review of this change is HAL-9921; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:lvqXfZ+k1kpynKSWC53gng4XdEwAB8Q5yxIikldtStt13jiRv+0vaslFQXDE9p5Moh+w6VmhcvSzo2+ydq+UCA==
 - Task: HAL-9911
 
 ## What changes
