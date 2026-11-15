@@ -32,7 +32,6 @@ mod files;
 mod git;
 mod google_setups;
 mod host_settings;
-mod system_region;
 mod native_dialogs;
 mod navigation;
 mod plugin_folder;
@@ -41,6 +40,7 @@ mod profile;
 mod records;
 mod runs;
 mod secrets;
+mod system_region;
 mod trust;
 #[cfg(desktop)]
 mod updates;

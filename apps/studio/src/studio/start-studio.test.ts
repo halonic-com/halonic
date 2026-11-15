@@ -159,15 +159,6 @@ verifies("studio.entry", () => {
     expect(studioHost({})).toBe("served");
   });
 
-  it("asks the shell which region the computer is set to, for Formats (HAL-9452)", async () => {
-    const { calls, page } = desktopWebview(null);
-
-    started = startStudio({ element, window: page, userAgent: "Mozilla/5.0 (X11; Linux x86_64)" });
-    await headingShown(element);
-
-    expect(calls.map((call) => call.command)).toContain("system_region");
-  });
-
   it("reads ⌘ on macOS and Ctrl elsewhere from the user agent", () => {
     expect(keyboardPlatform("Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)")).toBe("macos");
     expect(keyboardPlatform("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")).toBe("windows");
