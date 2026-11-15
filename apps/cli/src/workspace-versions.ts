@@ -53,6 +53,19 @@ export interface WorkspaceVersions {
     hubId: string,
     agentId: string,
   ): Promise<Uint8Array>;
+  /**
+   * The `SKILL.md` text of a skill an agent selected, as the version a run
+   * read has it, found as the run's hub sees the skill: its own, else the
+   * shared one. Taken from the same load as {@link WorkspaceVersions.agentFileOf},
+   * so an agent's `AGENTS.md` and its skills in one pin are from one version.
+   *
+   * @throws when the run's version can't be read or may not run here, or has no such skill
+   */
+  skillTextOf(
+    run: { readonly runId: string; readonly version: RunVersion | null },
+    hubId: string,
+    skillId: string,
+  ): Promise<string>;
   /** Forgets what is kept for a run that has ended. */
   forget(runId: string): void;
 }

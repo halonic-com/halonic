@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
@@ -46,7 +46,6 @@ verifies("harness-kit.instruction-snapshot", () => {
     it("writes the files read-only in a folder of the run's own", async () => {
       const agent = writerAgent(null, writerFile({ instructions: "Be brief.\n" }));
       await sourceOf().pinOf(agent);
-      const { readdir } = await import("node:fs/promises");
       const [folder] = await readdir(join(base, "instructions"));
       const file = join(base, "instructions", folder as string, "AGENTS.md");
       expect(await readFile(file, "utf8")).toBe("Be brief.\n");
@@ -60,6 +59,7 @@ verifies("harness-kit.instruction-snapshot", () => {
     it("fails, writing nothing, when a skill has no text", async () => {
       const agent = writerAgent(null, writerFile({ skills: ["missing"] }));
       await expect(sourceOf().pinOf(agent)).rejects.toThrow('No skill "missing".');
+      expect(await readdir(base)).toEqual([]);
     });
   });
 });

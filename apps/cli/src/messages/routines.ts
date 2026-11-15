@@ -81,6 +81,9 @@ export const routinesMessages = defineMessages("routines", {
    */
   noAgentFileInVersion: (hubId: string, agentId: string) =>
     phrase`The version this run reads has no agent ${agentId} in hub ${hubId}.`,
+  /** A skill an agent selected that the version a run reads doesn't have: the harness run doesn't start. */
+  noSkillInVersion: (hubId: string, skillId: string) =>
+    phrase`The version this run reads has no skill ${skillId} for hub ${hubId}.`,
   /** The same for a run that names no version, which has nothing to read the agent's file from. */
   noVersionForAgentFile: (runId: string) =>
     phrase`Run ${runId} doesn't name the version it read, so its agent's file can't be checked.`,
