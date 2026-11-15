@@ -23,8 +23,9 @@ import { WaitCard } from "./wait-card.tsx";
 const loadFailed = "Couldn't load the Inbox";
 
 /**
- * The Inbox's empty state (microcopy 10.1). The desktop shows it in the right pane; a phone has
- * no pane beside the list, so the list shows it in full instead of the quiet line.
+ * The Inbox's empty state (microcopy 10.1). The desktop list says the short line and the right pane
+ * only the description, so the title shows once; a phone has no pane beside the list, so the list
+ * shows both in full.
  */
 const nothingWaiting = {
   title: "Nothing is waiting for you",
@@ -283,9 +284,7 @@ function NothingOpen({ loaded, waiting }: { readonly loaded: boolean; readonly w
     );
   }
   return (
-    <div className="m-auto p-6">
-      <EmptyState {...nothingWaiting} />
-    </div>
+    <p className="m-auto p-6 text-center text-body text-fg-muted">{nothingWaiting.description}</p>
   );
 }
 

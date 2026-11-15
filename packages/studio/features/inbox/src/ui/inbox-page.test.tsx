@@ -189,6 +189,7 @@ verifies("inbox.page", () => {
       expect(root.textContent).toContain("Nothing is waiting for you.");
       expect(root.textContent).toContain("Approvals and questions from your runs show up here.");
       expect(root.textContent).not.toContain("waiting,");
+      expect(root.textContent?.match(/Nothing is waiting for you/g)).toHaveLength(1);
     });
 
     it("says it's loading the Inbox until the first list loads", async () => {
