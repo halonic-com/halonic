@@ -1,4 +1,4 @@
-import { defaultCurrency, spendByMonth, treeCost, treeUnpriced } from "@halonicjs/app";
+import { defaultCurrency, treeCost, treeUnpriced } from "@halonicjs/app";
 import { type RunsList, RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { Button, Tooltip } from "@halonicjs/studio-kit";
 import type { ItemRef, StatusBarItemProps, WorkspaceContext } from "@halonicjs/studio-shell";
@@ -6,6 +6,7 @@ import { isPayPerUse } from "@halonicjs/workspace";
 import { useCallback, useSyncExternalStore } from "react";
 import { useModels } from "../aliases/use-models.ts";
 import { ModelsFilesService } from "../api.ts";
+import { monthSpent } from "./month-spent.ts";
 import { monthLine, type RunSpend, SPEND_TOOLTIP } from "./spend-text.ts";
 
 /** The command that opens the workspace page, where the Models section and its Budget block are. */
@@ -31,7 +32,7 @@ export function SpendItem({ context }: StatusBarItemProps) {
     run && { spend: run, perRun: state.budget?.perRun },
   );
   return (
-    <Tooltip text={SPEND_TOOLTIP}>
+    <Tooltip text={`${line.text}. ${SPEND_TOOLTIP}`}>
       {(trigger) => (
         <Button
           variant="ghost"
@@ -39,7 +40,15 @@ export function SpendItem({ context }: StatusBarItemProps) {
           onClick={() => context.runCommand?.(openModelsCommand)}
           {...trigger}
         >
-          <span className={line.usedUp ? "text-attention" : undefined}>{line.text}</span>
+          <span
+            className={`flex h-[1lh] min-w-0 flex-wrap overflow-hidden ${line.usedUp ? "text-attention" : ""}`}
+          >
+            {line.parts.map((part) => (
+              <span key={part} className="whitespace-nowrap">
+                {part}{" "}
+              </span>
+            ))}
+          </span>
         </Button>
       )}
     </Tooltip>
@@ -72,13 +81,12 @@ function useRunsSpend(
   );
   const state = useSyncExternalStore(subscribe, () => list?.state);
   if (state === undefined || !state.loaded) return { spent: undefined, run: undefined };
-  const at = new Date().toISOString();
   const summaries = state.runs.map(({ summary }) => summary);
   const found =
     inView &&
     state.runs.find(({ summary }) => summary.id === inView.id && summary.hubId === inView.hub);
   return {
-    spent: spendByMonth(summaries, at, 1)[0]?.spent,
+    spent: monthSpent(state),
     run: found && {
       cost: treeCost(summaries, found.summary.id),
       unpricedCalls: treeUnpriced(summaries, found.summary.id),
