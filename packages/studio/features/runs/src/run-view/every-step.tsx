@@ -201,7 +201,7 @@ export interface RunLogRead {
  * `listState` is the runs list's state: it changes on every refresh.
  */
 export function useRunLog(
-  source: RunsSource,
+  source: Pick<RunsSource, "log">,
   runId: string,
   lastSeq: number,
   listState: unknown,
@@ -214,7 +214,13 @@ export function useRunLog(
   const [failure, setFailure] = useState<{ readonly runId: string; readonly error: unknown }>();
   const [attempt, setAttempt] = useState(0);
   const read = useRef<
-    | { source: RunsSource; runId: string; lastSeq: number; done: boolean; attempt: number }
+    | {
+        source: Pick<RunsSource, "log">;
+        runId: string;
+        lastSeq: number;
+        done: boolean;
+        attempt: number;
+      }
     | undefined
   >(undefined);
   useEffect(() => {

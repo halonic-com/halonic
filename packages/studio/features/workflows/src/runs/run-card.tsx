@@ -1,4 +1,9 @@
-import type { RunRow, SourcedRun } from "@halonicjs/studio-feature-runs/api";
+import {
+  RunCardReceipt,
+  type RunRow,
+  type RunsSource,
+  type SourcedRun,
+} from "@halonicjs/studio-feature-runs/api";
 import { Button, CloseIcon, StatusChip } from "@halonicjs/studio-kit";
 import { type KeyboardEvent, useEffect, useRef } from "react";
 import { runsWords as words } from "./runs-words.ts";
@@ -6,6 +11,10 @@ import { SaveAsTest, type SaveAsTestProps } from "./save-as-test.tsx";
 
 /** Props for {@link RunCard}. */
 export interface RunCardProps {
+  /** The runs feature's source, which the receipt reads the run's log from. */
+  readonly source: Pick<RunsSource, "log" | "workflow" | "currency">;
+  /** The workspace's runs, to name a child run's workflow. */
+  readonly runs: readonly SourcedRun[];
   readonly row: RunRow;
   readonly run: SourcedRun;
   readonly onClose: () => void;
@@ -16,11 +25,10 @@ export interface RunCardProps {
 }
 
 /**
- * The simple run card (UX 10.14, W-D3), docked at the right over the Runs view until T8's receipt
- * replaces it: the status, what the run is doing or waits for, who started it, the steps so far,
- * **Open the run log** and **Save as test**.
+ * The run card (UX 10.14, W-D3), docked at the right over the Runs view: the status, who started
+ * it, the run's receipt at card width, **Open the run log** and **Save as test**.
  */
-export function RunCard({ row, run, onClose, onOpenLog, saveAsTest }: RunCardProps) {
+export function RunCard({ source, runs, row, run, onClose, onOpenLog, saveAsTest }: RunCardProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), []);
   const onKeyDown = (event: KeyboardEvent) => {
@@ -50,17 +58,13 @@ export function RunCard({ row, run, onClose, onOpenLog, saveAsTest }: RunCardPro
           onClick={onClose}
         />
       </div>
-      <p>{row.line}</p>
       <dl className="flex flex-col gap-3 text-small">
         <div>
           <dt className="text-fg-muted">{words.startedBy}</dt>
           <dd>{row.startedBy}</dd>
         </div>
-        <div>
-          <dt className="text-fg-muted">{words.stepsSoFar}</dt>
-          <dd>{run.summary.statesVisited.join(" → ")}</dd>
-        </div>
       </dl>
+      <RunCardReceipt source={source} run={run} runs={runs} />
       {(onOpenLog || saveAsTest) && (
         <div className="flex gap-2">
           {onOpenLog && (
