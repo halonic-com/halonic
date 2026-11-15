@@ -3,6 +3,7 @@
 - Task: HAL-10493
 - Approval: Liam approved the code of PR #2993 on HAL-10493; Liam signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:cgUxfXagGDz3u1HC0TqswmLR5+DBEGXFHbGD5FLy+DI6B9wzsb49xJOww+RTNjt60RqG6l4oCkqkwBTCP7HiDw==
 
 ## What changes
 
