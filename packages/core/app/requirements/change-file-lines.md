@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1302 (T9); req-source-control (HAL-110) revision 4, `source-control.changes.discard-per-change`; Changes design 8
 
-`describeFileChange` shall give what changed in one workspace file from its two texts: it takes the kind from where the file sits, reads both texts as that kind and gives the lines `describeItemChange` gives, Important ones first. A file no kind places, a text that doesn't read as the kind, or an item whose texts differ only in comments or spacing shall give one line without parts, "New", "Deleted" or "Changed", and the result shall say its lines were not described from the item's contents.
+The `describeFileChange` function shall give what changed in one workspace file from its two texts: it takes the kind from where the file sits, reads both texts as that kind and gives the lines `describeItemChange` gives, Important ones first. A file no kind places, a text that doesn't read as the kind, or an item whose texts differ only in comments or spacing shall give one line without parts, "New", "Deleted" or "Changed", and the result shall say its lines were not described from the item's contents.
 
 ## Examples
 
