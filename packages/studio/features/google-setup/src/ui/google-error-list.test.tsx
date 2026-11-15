@@ -86,6 +86,17 @@ verifies("google-setup.google-error-list", () => {
     expect(() => button(container, "Open again")).toThrow();
   });
 
+  it("gives the redirect_uri_mismatch row one button, to step 5", async () => {
+    const { container } = await waiting(signedOut());
+    const list = summary(container).closest("details");
+    const row = [...(list?.querySelectorAll("li") ?? [])].find((li) =>
+      li.textContent?.includes("redirect_uri_mismatch"),
+    );
+    expect([...(row?.querySelectorAll("button") ?? [])].map((b) => b.textContent)).toEqual([
+      "Open step 5",
+    ]);
+  });
+
   it("clears the In production tick and opens step 3 from the access_denied row", async () => {
     const { fake, container } = await waiting(signedOut());
     await press(button(container, "Open step 3"));

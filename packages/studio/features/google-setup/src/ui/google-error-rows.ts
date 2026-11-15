@@ -35,10 +35,8 @@ export function errorRows(
     {
       code: "Error 400: redirect_uri_mismatch",
       fix: "Your client is the wrong type. Create a new one with Application type Desktop app (step 5) and paste its ID and secret.",
-      actions: [
-        { kind: "open-step", step: "client", label: "Open step 5" },
-        { kind: "open-step", step: "credentials", label: "Open step 6" },
-      ],
+      // Step 5 already holds the ID and secret fields, so one button is enough.
+      actions: [{ kind: "open-step", step: "client", label: "Open step 5" }],
     },
   ];
   // An Internal app has no Testing status and no Publish action, so step 3 has no tick for it.
