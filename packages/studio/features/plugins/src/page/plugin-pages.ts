@@ -66,6 +66,8 @@ export interface PluginPageOptions {
   readonly openPanel: (plugin: string) => void;
   /** Remove trust, Remove plugin…, Check again and Open folder. */
   readonly actions: PluginActions;
+  /** `served` in a browser on `halonic serve`; the page is view only there. Default `app`. */
+  readonly place?: "app" | "served";
 }
 
 /** The item a plugin's page is. */

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { parseFile } from "@halonicjs/format";
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import {
   createShell,
   defineFeature,
@@ -73,15 +74,19 @@ async function showPage(
   plugin: InstalledPlugin,
   onOpenPanel = () => {},
   usedBy: PluginActions["usedBy"] = async () => [],
+  where: { phone?: boolean; place?: "app" | "served" } = {},
 ) {
   const view = render(
-    <PluginPage
-      plugin={plugin}
-      {...noSettings()}
-      actions={{ ...noActions().actions, usedBy }}
-      onOpenPanel={onOpenPanel}
-      now={now}
-    />,
+    <PresentationProvider presentation={where.phone === true ? "phone" : "desktop"}>
+      <PluginPage
+        plugin={plugin}
+        {...noSettings()}
+        actions={{ ...noActions().actions, usedBy }}
+        onOpenPanel={onOpenPanel}
+        {...(where.place === undefined ? {} : { place: where.place })}
+        now={now}
+      />
+    </PresentationProvider>,
   );
   await act(async () => {});
   return view;
@@ -286,5 +291,51 @@ verifies("plugins.plugin-page", () => {
 
     expect(view.textContent).not.toContain("Not trusted yet");
     expect(view.textContent).toContain("Trusted on 3 Nov");
+  });
+
+  it("is view only on a phone: no trust, update, remove or folder actions, the line and the command", async () => {
+    const view = await showPage(
+      withCity("not-trusted"),
+      () => {},
+      async () => [],
+      { phone: true },
+    );
+
+    expect(view.textContent).toContain("Not trusted yet");
+    expect(button(view, "Review")).toBeUndefined();
+    expect(button(view, "Remove plugin…")).toBeUndefined();
+    expect(view.querySelector('button[aria-label^="More actions for"]')).toBeNull();
+    expect(view.textContent).toContain(
+      "View only on a phone. Add, trust and remove plugins on your computer:",
+    );
+    expect(view.textContent).toContain("halonic plugin add <folder or git address>");
+  });
+
+  it("is view only in a served browser, still opening the panel from its ⋮", async () => {
+    const view = await showPage(
+      { ...withCity("on"), panel: weather().panel },
+      () => {},
+      async () => [],
+      { place: "served" },
+    );
+
+    expect(view.textContent).toContain(
+      "View only here. Add, trust and remove plugins on the computer that runs Halonic:",
+    );
+    expect(button(view, "Check for updates")).toBeUndefined();
+    expect(view.querySelector('button[aria-label^="More actions for"]')).not.toBeNull();
+  });
+
+  it("hides Check again and Open folder for a plugin that can't load when view only", async () => {
+    const view = await showPage(
+      broken,
+      () => {},
+      async () => [],
+      { phone: true },
+    );
+
+    expect(view.textContent).toContain("weather couldn't load.");
+    expect(button(view, "Check again")).toBeUndefined();
+    expect(button(view, "Open folder")).toBeUndefined();
   });
 });

@@ -1,6 +1,15 @@
-import { Button, Menu, type MenuEntry, MoreIcon } from "@halonicjs/studio-kit";
+import {
+  Button,
+  CommandBox,
+  Menu,
+  type MenuEntry,
+  MoreIcon,
+  usePresentation,
+  ViewOnlyLine,
+} from "@halonicjs/studio-kit";
 import { saveNoteWords } from "@halonicjs/studio-shell";
 import { useId, useState } from "react";
+import { ADD_COMMAND, viewOnlyLine } from "../list/list-text.ts";
 import {
   type PluginSecretStore,
   type PluginSettingsReader,
@@ -36,6 +45,11 @@ export interface PluginPageProps {
   readonly onOpenPanel: () => void;
   /** Remove trust, Remove plugin…, Check again and Open folder, through the app. */
   readonly actions: PluginActions;
+  /**
+   * Where Studio is shown: `app` (the default) or `served`, a browser on `halonic serve`.
+   * Plugins are view only on a phone and when served (design section 10).
+   */
+  readonly place?: "app" | "served";
   /** Today, for the trust date's year. */
   readonly now?: () => Date;
 }
@@ -54,6 +68,10 @@ export interface PluginPageProps {
  * The ⋮ (F17) has Open panel, Open folder, Remove trust (while it's trusted) and **Remove
  * plugin…**, which asks first (F18). An action that fails says so in a toast.
  *
+ * On a phone, and in a browser on `halonic serve`, the page is view only: no Trust, Update,
+ * Remove trust, Remove, Check again or Open folder, the ⋮ only when there's a panel to open, and
+ * at the end the view-only line with the command to run on the computer.
+ *
  * @example
  * <PluginPage plugin={weather} settings={pluginService} secrets={keychain} actions={actions}
  *   onOpenPanel={() => openPanel("weather")} />
@@ -64,8 +82,10 @@ export function PluginPage({
   secrets,
   onOpenPanel,
   actions,
+  place = "app",
   now = () => new Date(),
 }: PluginPageProps) {
+  const { phone, viewOnly } = useViewOnly(place);
   const statusId = useId();
   const [saveState, setSaveState] = useState<SettingsSaveState | undefined>(undefined);
   const [removing, setRemoving] = useState(false);
@@ -75,7 +95,21 @@ export function PluginPage({
   const manifest = plugin.manifest;
   const off = plugin.status === "on" ? undefined : { reason: statusId };
   const fromFolder = plugin.origin?.kind === "folder";
-  const canUpdate = plugin.status === "on" && plugin.origin !== undefined && manifest !== undefined;
+  const canUpdate =
+    !viewOnly && plugin.status === "on" && plugin.origin !== undefined && manifest !== undefined;
+  const menu = menuEntries(
+    plugin,
+    {
+      openPanel: onOpenPanel,
+      openFolder: () => run("openFolder", () => actions.openFolder(plugin.plugin)),
+      ...(canUpdate && update.kind === "idle"
+        ? { checkForUpdate: () => void checkForUpdate(), fromFolder }
+        : {}),
+      revoke: () => run("revoke", () => actions.revoke(plugin.plugin)),
+      remove: () => setRemoving(true),
+    },
+    viewOnly,
+  );
 
   async function checkForUpdate() {
     if (manifest === undefined) return;
@@ -109,27 +143,21 @@ export function PluginPage({
             {OPEN_PANEL}
           </Button>
         )}
-        <Menu
-          align="end"
-          entries={menuEntries(plugin, {
-            openPanel: onOpenPanel,
-            openFolder: () => run("openFolder", () => actions.openFolder(plugin.plugin)),
-            ...(canUpdate && update.kind === "idle"
-              ? { checkForUpdate: () => void checkForUpdate(), fromFolder }
-              : {}),
-            revoke: () => run("revoke", () => actions.revoke(plugin.plugin)),
-            remove: () => setRemoving(true),
-          })}
-          trigger={(trigger) => (
-            <Button
-              {...trigger}
-              variant="ghost"
-              size="sm"
-              icon={<MoreIcon />}
-              label={moreActionsFor(plugin.name)}
-            />
-          )}
-        />
+        {menu.length === 0 ? null : (
+          <Menu
+            align="end"
+            entries={menu}
+            trigger={(trigger) => (
+              <Button
+                {...trigger}
+                variant="ghost"
+                size="sm"
+                icon={<MoreIcon />}
+                label={moreActionsFor(plugin.name)}
+              />
+            )}
+          />
+        )}
       </header>
       {reviewing && manifest !== undefined ? (
         <ReviewPluginDialog
@@ -175,6 +203,7 @@ export function PluginPage({
           onCheckAgain={() => run("reload", actions.reload)}
           onOpenFolder={() => run("openFolder", () => actions.openFolder(plugin.plugin))}
           onReview={() => setReviewing(true)}
+          viewOnly={viewOnly}
           update={
             canUpdate ? updateControl(update, fromFolder, () => void checkForUpdate()) : undefined
           }
@@ -192,7 +221,24 @@ export function PluginPage({
           </>
         )}
         <UsedBy plugin={plugin.plugin} usedBy={actions.usedBy} />
+        {viewOnly ? <ViewOnlyFooter phone={phone} /> : null}
       </div>
+    </div>
+  );
+}
+
+/** Plugins are view only on a phone and in a served browser (design section 10). */
+function useViewOnly(place: "app" | "served") {
+  const phone = usePresentation() === "phone";
+  return { phone, viewOnly: phone || place === "served" };
+}
+
+/** The view-only line and the command to run on the computer (design section 10). */
+function ViewOnlyFooter({ phone }: { readonly phone: boolean }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <ViewOnlyLine>{viewOnlyLine(phone)}</ViewOnlyLine>
+      <CommandBox command={ADD_COMMAND} />
     </div>
   );
 }
@@ -250,8 +296,14 @@ interface MenuActions {
   readonly remove: () => void;
 }
 
-/** The ⋮'s items (F17): Remove trust only while there's trust to remove. */
-function menuEntries(plugin: InstalledPlugin, act: MenuActions): MenuEntry[] {
+/** The ⋮'s items (F17): Remove trust only while there's trust to remove; view only, just the panel. */
+function menuEntries(plugin: InstalledPlugin, act: MenuActions, viewOnly: boolean): MenuEntry[] {
+  // View only: nothing that changes the computer, so just the panel.
+  if (viewOnly) {
+    return plugin.panel === undefined
+      ? []
+      : [{ id: "panel", label: OPEN_PANEL, onSelect: act.openPanel }];
+  }
   const trusted = plugin.status === "on" || plugin.status === "changed";
   return [
     ...(plugin.panel === undefined
