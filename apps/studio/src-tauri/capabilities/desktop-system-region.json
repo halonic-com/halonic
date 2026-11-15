@@ -1,0 +1,16 @@
+{
+  "identifier": "desktop-system-region",
+  "description": "On desktop, the app's own page may ask which region and language the computer is set to, through system_region, so Formats can follow the system (HAL-9452). The command takes nothing and reads only the operating system's locale. It is local only, so the Studio the computer serves gets nothing through the shell.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-system-region"
+  ]
+}

@@ -40,6 +40,7 @@ mod profile;
 mod records;
 mod runs;
 mod secrets;
+mod system_region;
 mod trust;
 #[cfg(desktop)]
 mod updates;
@@ -137,6 +138,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             secrets::secret_delete,
             trust::pick_folder,
             trust::documents_folder,
+            system_region::system_region,
             trust::pick_parent_folder,
             trust::create_workspace_folder,
             trust::probe_workspace_folder,

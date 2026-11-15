@@ -97,6 +97,7 @@ import { startServedStudio } from "./served-studio.ts";
 
 export { servedServices } from "./served-studio.ts";
 
+import { followSystemRegion } from "./system-region.ts";
 import { trustedSourcesOf } from "./trusted-sources.ts";
 import { hostSettingsOf } from "./window-host-settings.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
@@ -242,13 +243,16 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     recent: new RecentWorkspaces(page.storage ?? noStorage),
     toasts: shell.toasts,
   });
-  const window = mountWorkspaceWindow(page.element, {
+  const parts = {
     shell,
     switcher,
     platform,
     language: studioLanguage,
     ...newWorkspaceOf(page.window, platform),
-  });
+  };
+  const window = mountWorkspaceWindow(page.element, parts);
+  // Formats follows the system's region once the shell has read it; until then, the browser's.
+  const stopRegion = followSystemRegion(ipc, (r) => window.update({ ...parts, regionFormat: r }));
   const stopListening = onWindowCloseRequested(page.window, async () => {
     // A save that fails keeps the window open on "Close Acme?" (HAL-9370); a hung one doesn't.
     const saved = await withinLimit(switcher.saveAllForWindowClose(), closeLimitMs, true);
@@ -257,6 +261,7 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     return true;
   });
   const stopped = once(async () => {
+    stopRegion();
     await stopListening();
     window.unmount();
     stopAppearance();
