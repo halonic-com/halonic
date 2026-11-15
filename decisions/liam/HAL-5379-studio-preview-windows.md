@@ -3,6 +3,7 @@
 - Task: HAL-5379 (the board approved an early unsigned Windows build on HAL-45, 11 Nov)
 - Approval: reviewed on a Paperclip review task, Liam signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Na4sGYejgdPhIfy2KnFCKg1BUr79m6yXt2tbuYQg6uyXgDZPzRM6KDxt6IvLJAdLT3ik0A1yN35h5WHXejl3Cw==
 
 ## What changes
 
