@@ -3,6 +3,7 @@
 - Task: HAL-10505
 - Approval: Liam approved the code of PR #2995 on HAL-10505
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:IVoyqA7ML/iOt8Ona2pAOVSODYO7+QB/BmoUxBuvGJjHy0JSwQKxm2VrufrVV2z/1fn3JMhj84TYTnx42PVCDA==
 
 ## What changes
 
