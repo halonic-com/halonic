@@ -15,6 +15,8 @@ export interface SavedTextFieldProps<Value> {
   readonly save: (value: Value) => Promise<boolean>;
   /** The line to show when the last save failed. */
   readonly saveError: string | null;
+  /** Mono text, for a value that is code. */
+  readonly mono?: boolean;
   /** Several lines that grow to 12, instead of one. */
   readonly multiline?: boolean;
 }
@@ -32,6 +34,7 @@ export function SavedTextField<Value>({
   check,
   save,
   saveError,
+  mono = false,
   multiline = false,
 }: SavedTextFieldProps<Value>) {
   const [draft, setDraft] = useState<string | undefined>(undefined);
@@ -70,6 +73,7 @@ export function SavedTextField<Value>({
       ) : (
         <Input
           {...common}
+          mono={mono}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !isComposing(event)) void commit();
           }}

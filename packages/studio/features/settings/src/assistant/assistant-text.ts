@@ -27,7 +27,9 @@ export const INSTRUCTIONS_PLACEHOLDER = "Add instructions";
 export const NOT_SET_UP_LINE = "Not set up. Assistant chats use each workspace's model aliases.";
 
 /** The Callout when the computer's host settings can't be read, with its button. */
-export const NOT_LOADED = "Couldn't load the Assistant settings from this computer.";
+export const NOT_LOADED = "Couldn't load the Assistant settings";
+/** The reason when the load failed without one to show. */
+export const NOT_LOADED_REASON = "Halonic couldn't read the settings stored on this computer.";
 export const TRY_AGAIN = "Try again";
 
 /** The line under a control whose save failed. */
@@ -36,6 +38,7 @@ export function notSaved(what: string): string {
 }
 
 export const HOW_IT_CONNECTS = "How it connects";
+export const HOW_IT_CONNECTS_DETAIL = "Base URL, secret name, local";
 export const BASE_URL = "Base URL";
 export const SECRET_NAME = "Secret name";
 export const LOCAL = "Local";
@@ -50,6 +53,7 @@ export const ON = "On";
 export const OFF = "Off";
 
 export const TUNING = "Tuning";
+export const TUNING_DETAIL = "Temperature, top-p, max tokens, stop, reasoning effort";
 export const TEMPERATURE = "Temperature";
 export const TOP_P = "Top-p";
 export const MAX_TOKENS = "Max tokens";
@@ -61,18 +65,22 @@ export const PROVIDER_DEFAULT = "Provider default";
 
 export const KEY = "Key";
 export const KEY_NOT_NEEDED = "No key needed.";
-export const KEY_SET = "● Key set";
-export const KEY_MISSING = "○ No key";
-export const KEY_REPLACE = "Replace it on the provider page ›";
-export const KEY_ADD = "Add it on the provider page ›";
-export const KEY_NO_WORKSPACE = "○ No key. Open a workspace to add it.";
+/** The dots are drawn but not read: the words say it. */
+export const DOT_SET = "●";
+export const DOT_MISSING = "○";
+export const KEY_SET = "Key set";
+export const KEY_MISSING = "No key";
+/** The links open the Models page until the provider page can be the target (HAL-9856). */
+export const KEY_REPLACE = "Replace it in Models ›";
+export const KEY_ADD = "Add it in Models ›";
+export const KEY_NO_WORKSPACE = "No key. Open a workspace to add it.";
 export const KEY_UNKNOWN = "Couldn't check for a key.";
 export const KEY_SERVED_SET = "Set on the computer running Halonic";
 export const KEY_SERVED_MISSING = "No key on the computer running Halonic";
 
-/** The tail of the key line when no provider of the open workspace uses the secret name. */
-export function keyAddProvider(workspace: string): string {
-  return `Add a provider that uses the secret name to ${workspace} ›`;
+/** The words around the secret name in the link when no provider of the open workspace uses it. */
+export function keyAddProvider(workspace: string): { before: string; after: string } {
+  return { before: "Add a provider that uses ", after: ` to ${workspace} ›` };
 }
 
 /** The warning above the fields (`settings.ai-agent.local-only-warning`). */

@@ -179,14 +179,19 @@ verifies("settings.ai-agent-section", () => {
       <AssistantSection context={context} place="app" surface="window" closeSettings={() => {}} />,
     );
 
-    expect(view.textContent).toContain("Couldn't load the Assistant settings from this computer.");
+    expect(view.textContent).toContain("Couldn't load the Assistant settings");
+    expect(view.textContent).toContain("Halonic couldn't read the settings stored");
     expect(view.querySelector("select")).toBeNull();
     const tryAgain = [...view.querySelectorAll("button")].find(
       (b) => b.textContent === "Try again",
     );
 
-    readable = true;
     await act(async () => tryAgain?.click());
+    expect(view.textContent).toContain("The settings file is locked.");
+
+    readable = true;
+    const again = [...view.querySelectorAll("button")].find((b) => b.textContent === "Try again");
+    await act(async () => again?.click());
 
     expect(view.textContent).not.toContain("Couldn't load");
     expect(control<HTMLSelectElement>(view, "select").value).toBe("not-set-up");

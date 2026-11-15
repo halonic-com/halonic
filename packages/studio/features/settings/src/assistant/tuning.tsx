@@ -57,7 +57,7 @@ export function Tuning(props: TuningProps) {
     />
   );
   return (
-    <Disclosure summary={text.TUNING}>
+    <Disclosure summary={text.TUNING} detail={text.TUNING_DETAIL}>
       <div className="flex flex-col gap-4">
         <p className="text-small text-fg-muted">{text.TUNING_HINT}</p>
         {numberField(text.TEMPERATURE, "the temperature", props.temperature, checkTemperature)}

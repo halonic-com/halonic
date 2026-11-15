@@ -2,6 +2,7 @@ import type { HostSettings } from "@halonicjs/app";
 import type { HostSettingValue } from "@halonicjs/ports";
 import {
   Callout,
+  EmptyState,
   Field,
   inlineLinkClasses,
   Select,
@@ -42,7 +43,9 @@ const providerOptions = assistantProviders.map((provider) => ({
 export function AssistantSection({ context, closeSettings, place }: SettingsSectionProps) {
   const settings = context.services.get(HostSettingsService);
   const loaded = useLoaded(settings);
-  if (!loaded.ready) return <NotLoaded onTryAgain={loaded.tryAgain} />;
+  if (!loaded.ready) {
+    return <NotLoaded reason={loaded.reason} trying={loaded.trying} onTryAgain={loaded.tryAgain} />;
+  }
   return (
     <AssistantView
       settings={settings}
@@ -55,26 +58,48 @@ export function AssistantSection({ context, closeSettings, place }: SettingsSect
   );
 }
 
-/** Whether the host settings are loaded, and a way to load them again when they aren't. */
+/** Whether the host settings are loaded, why not, and a way to load them again. */
 function useLoaded(settings: HostSettings) {
   const [, redraw] = useState(0);
+  const [trying, setTrying] = useState(false);
+  const [reason, setReason] = useState<string | null>(null);
   return {
     ready: settings.loaded,
-    tryAgain: () =>
-      settings.load().then(
-        () => redraw((count) => count + 1),
-        (error: unknown) => console.error(error),
-      ),
+    trying,
+    reason,
+    tryAgain: () => {
+      setTrying(true);
+      settings
+        .load()
+        .then(
+          () => setReason(null),
+          (error: unknown) =>
+            setReason(error instanceof Error && error.message !== "" ? error.message : null),
+        )
+        .finally(() => {
+          setTrying(false);
+          redraw((count) => count + 1);
+        });
+    },
   };
 }
 
 /** What the section says when the host settings couldn't be read (`settings.ai-agent-section`). */
-function NotLoaded({ onTryAgain }: { readonly onTryAgain: () => void }) {
+function NotLoaded(props: {
+  readonly reason: string | null;
+  readonly trying: boolean;
+  readonly onTryAgain: () => void;
+}) {
   return (
-    <div className="mt-5 flex max-w-90 flex-col gap-4">
-      <Callout tone="warning" action={{ label: text.TRY_AGAIN, onClick: onTryAgain }}>
-        {text.NOT_LOADED}
-      </Callout>
+    <div className="mt-5 max-w-90">
+      <EmptyState
+        tone="error"
+        align="start"
+        headingLevel={4}
+        title={text.NOT_LOADED}
+        description={props.reason ?? text.NOT_LOADED_REASON}
+        action={{ label: text.TRY_AGAIN, onClick: props.onTryAgain, busy: props.trying }}
+      />
     </div>
   );
 }
@@ -170,6 +195,17 @@ function SetsItsOwn({
   );
 }
 
+/** The warning when the open workspace is local only and the chosen cloud model isn't marked Local. */
+function LocalOnlyWarning(props: {
+  readonly open: AssistantWorkspaceFacts | null;
+  readonly provider: AssistantProvider;
+  readonly local: boolean;
+}) {
+  const { open, provider, local } = props;
+  if (provider === "not-set-up" || !open?.localOnly || local) return null;
+  return <Callout tone="warning">{text.localOnlyWarning(open.name)}</Callout>;
+}
+
 /** A tuning setting for {@link Tuning}: an empty value puts the setting back to its default. */
 function tuned<Value extends HostSettingValue>(
   shown: ShownHostSetting<Value>,
@@ -233,6 +269,7 @@ function AssistantViewOnly({ settings, workspace }: AssistantViewProps) {
     <div className="mt-5 flex max-w-90 flex-col gap-4">
       <p className="text-small text-fg-muted">{text.FIRST_LINE.served}</p>
       <ViewOnlyLine>{text.VIEW_ONLY_LINE}</ViewOnlyLine>
+      <LocalOnlyWarning open={open} provider={provider} local={local} />
       <SetsItsOwn open={open} link={null} />
       <dl className="flex flex-col gap-3">
         {rows.map(([label, value]) => (
@@ -339,9 +376,7 @@ function AssistantEditor({
   return (
     <div className="mt-5 flex max-w-90 flex-col gap-4">
       <p className="text-small text-fg-muted">{text.FIRST_LINE[place]}</p>
-      {chosen !== "not-set-up" && open?.localOnly && !local.value ? (
-        <Callout tone="warning">{text.localOnlyWarning(open.name)}</Callout>
-      ) : null}
+      <LocalOnlyWarning open={open} provider={chosen} local={local.value} />
       {open === null || workspace === undefined ? null : (
         <SetsItsOwn
           open={open}
@@ -359,14 +394,17 @@ function AssistantEditor({
       >
         <Select options={providerOptions} value={chosen} onChange={pick} />
       </Field>
-      <SavedTextField
-        label={text.MODEL}
-        placeholder={providerDefaults[chosen].modelPlaceholder}
-        stored={model.value}
-        check={(typed) => checkModel(chosen, typed)}
-        save={(value) => saveTyped("the model", model, value)}
-        saveError={failedLine("the model", model.failed)}
-      />
+      {chosen === "not-set-up" ? null : (
+        <SavedTextField
+          mono
+          label={text.MODEL}
+          placeholder={providerDefaults[chosen].modelPlaceholder}
+          stored={model.value}
+          check={(typed) => checkModel(chosen, typed)}
+          save={(value) => saveTyped("the model", model, value)}
+          saveError={failedLine("the model", model.failed)}
+        />
+      )}
       {chosen === "not-set-up" ? null : (
         <KeyLine
           provider={chosen}
