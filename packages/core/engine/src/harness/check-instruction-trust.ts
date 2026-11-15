@@ -67,9 +67,10 @@ function refusalText(
   check: Exclude<InstructionTrustCheck, { kind: "trusted" }>,
 ): string {
   const { added, removed, changed } = check.changes;
-  const parts = [
-    `Halonic didn't start agent ${quoted(agentId)}: a person hasn't trusted its instructions yet.`,
-  ];
+  const reason = check.hadTrusted
+    ? "its instructions changed since a person trusted them."
+    : "a person hasn't trusted its instructions yet.";
+  const parts = [`Halonic didn't start agent ${quoted(agentId)}: ${reason}`];
   if (check.unreadable !== undefined) {
     parts.push(`What was trusted before can't be used: ${quoted(check.unreadable)}.`);
   }

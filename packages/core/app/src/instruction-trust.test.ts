@@ -28,6 +28,7 @@ verifies("app.instruction-trust", () => {
     it("asks when nothing is trusted yet, naming every file as added", () => {
       expect(instructionTrust(null, pinOf({ "AGENTS.md": "a" }))).toEqual({
         kind: "ask",
+        hadTrusted: false,
         changes: { added: ["AGENTS.md"], removed: [], changed: [] },
       });
     });
@@ -37,6 +38,7 @@ verifies("app.instruction-trust", () => {
       const current = pinOf({ "AGENTS.md": "c", "skills/new/SKILL.md": "d" });
       expect(instructionTrust(trusted, current)).toEqual({
         kind: "ask",
+        hadTrusted: true,
         changes: {
           added: ["skills/new/SKILL.md"],
           removed: ["skills/review/SKILL.md"],
