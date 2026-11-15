@@ -1,5 +1,6 @@
 import { defineFeature } from "@halonicjs/studio-shell";
 import { ConnectorStatusHostService } from "./connector-status-host.ts";
+import { KnowledgeHostService } from "./knowledge-host.ts";
 import { LibraryItemsHostService } from "./library-items-host.ts";
 import { LibraryTabMemoryService } from "./library-tab-memory.ts";
 import { requestLibraryTab } from "./library-tab-request.ts";
@@ -12,7 +13,8 @@ const firstTabKey = 4;
 
 /**
  * The Library feature: the Library place with its four tabs (Alt+4 to Alt+7), the `skill` item
- * kind (its page edits a skill's name, when to use it and instructions), and the `connector`
+ * kind (its page edits a skill's name, when to use it and instructions), the `knowledge` kind
+ * (its page sets a source's summary and lookup mode), and the `connector`
  * item kind, one tab per connector, whose page shows
  * the connector's state and what the engine refused from it. The full connector page (HAL-751)
  * takes the page over and keeps the status section.
@@ -23,7 +25,7 @@ export const libraryFeature = defineFeature({
   needs: [ConnectorStatusHostService, LibraryItemsHostService, LibraryTabMemoryService],
   // Without an agent host nothing can start a connector, so the review is not provided (HAL-8868).
   // Without a skill host a skill's page says the skill isn't in the workspace (HAL-1303 P5c gives it one).
-  wants: [ListedToolsHostService, SkillHostService],
+  wants: [ListedToolsHostService, SkillHostService, KnowledgeHostService],
   register(studio) {
     studio.places.add({
       id: "library",
@@ -53,6 +55,17 @@ export const libraryFeature = defineFeature({
       icon: "library",
       place: "library",
       open: { view: "SkillPage", load: () => import("./ui/skill-page.tsx") },
+      tab: {
+        describe: (item) => ({ label: item.id }),
+        exists: () => true,
+      },
+    });
+    studio.itemKinds.add({
+      kind: "knowledge",
+      label: "Knowledge",
+      icon: "library",
+      place: "library",
+      open: { view: "KnowledgePage", load: () => import("./ui/knowledge-page.tsx") },
       tab: {
         describe: (item) => ({ label: item.id }),
         exists: () => true,

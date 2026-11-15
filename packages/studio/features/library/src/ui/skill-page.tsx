@@ -15,6 +15,7 @@ import { SkillHostService, type SkillRef } from "../skill-host.ts";
 import { type SkillField, SkillModel } from "../skill-model.ts";
 import { skillWords } from "../skill-words.ts";
 import { sharedHubKey } from "./library-place.tsx";
+import { UsedByField } from "./used-by-field.tsx";
 
 type Edited = keyof SkillChange;
 type Drafts = Partial<Record<Edited, string>>;
@@ -174,32 +175,7 @@ function LoadedSkillPage({
             </ul>
           </Field>
         )}
-        <Field label={skillWords.usedBy} align="text">
-          {usage === undefined || usage.agents.length === 0 ? (
-            <p>{skillWords.notUsed}</p>
-          ) : (
-            <p>
-              {usage.agents.map((agent, index) => (
-                <Fragment key={`${agent.hub ?? ""}/${agent.id}`}>
-                  {index === 0 ? null : " · "}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      context.openItem?.({
-                        kind: "agent",
-                        hub: agent.hub ?? sharedHubKey,
-                        id: agent.id,
-                      })
-                    }
-                  >
-                    {agent.name}
-                  </Button>
-                </Fragment>
-              ))}
-            </p>
-          )}
-        </Field>
+        <UsedByField usage={usage} notUsed={skillWords.notUsed} context={context} />
       </FormRows>
     </div>
   );
