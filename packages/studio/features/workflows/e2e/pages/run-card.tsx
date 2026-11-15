@@ -1,4 +1,4 @@
-import type { RunSummary } from "@halonicjs/events";
+import type { RunEvent, RunEventBody, RunSummary } from "@halonicjs/events";
 import type { RunRow, SourcedRun } from "@halonicjs/studio-feature-runs/api";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -72,8 +72,49 @@ const states: Record<
   },
 };
 
+/** The log of the run in `base`: each body with the minute after 10:40 it happened at. */
+const logOf = (timed: readonly (readonly [number, RunEventBody])[]): RunEvent[] =>
+  [
+    [
+      0,
+      {
+        type: "run.started",
+        hubId: "acme",
+        workflowId: "reply",
+        input: {},
+        kind: "run",
+        definitionsVersion: "v1",
+      },
+    ] as const,
+    ...timed,
+  ].map(([minutes, body], index) => ({
+    ...body,
+    runId: base.id,
+    seq: index + 1,
+    at: at(minutes),
+  }));
+
+const logs: Record<string, RunEvent[]> = {
+  finished: logOf([
+    [0, { type: "state.entered", state: "read" }],
+    [1, { type: "state.entered", state: "draft" }],
+    [2, { type: "state.entered", state: "send" }],
+    [2, { type: "run.completed", state: "send", context: {} }],
+  ]),
+  waiting: logOf([
+    [0, { type: "state.entered", state: "read" }],
+    [1, { type: "state.entered", state: "draft" }],
+    [2, { type: "run.waiting", state: "draft", events: ["approve", "reject"] }],
+  ]),
+  failed: logOf([
+    [0, { type: "state.entered", state: "read" }],
+    [1, { type: "state.entered", state: "draft" }],
+    [2, { type: "run.failed", state: "draft", error: "The model didn't answer" }],
+  ]),
+};
+
 const source = {
-  log: async () => [],
+  log: async () => logs[new URLSearchParams(location.search).get("state") ?? "finished"] ?? [],
   workflow: () => ({ name: "Support reply", stepDescription: () => undefined }),
   currency: () => "EUR",
 };
@@ -105,6 +146,7 @@ function Card() {
         run={run}
         onClose={() => undefined}
         onOpenLog={() => undefined}
+        reviewInInbox={() => undefined}
       />
     </div>
   );

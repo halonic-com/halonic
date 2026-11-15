@@ -40,6 +40,7 @@ import { TestsPage } from "../tests/tests-page.tsx";
 import { pageWords } from "./page-words.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
 import { WorkflowCanvas } from "./workflow-canvas.tsx";
+import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
 
 type WorkflowView = "flow" | "configuration" | "runs";
 
@@ -58,6 +59,7 @@ export function WorkflowPage({ item, context }: ItemViewProps) {
         openRun: (runId: string) => openItem({ kind: "run", hub: item.hub, id: runId }),
       })}
       {...(openPlace && {
+        reviewInInbox: () => openPlace("inbox"),
         seeAllRuns: () => {
           runsList.showWorkflow({ hubId: item.hub, id: item.id });
           openPlace("runs");
@@ -65,21 +67,6 @@ export function WorkflowPage({ item, context }: ItemViewProps) {
       })}
     />
   );
-}
-
-/** Props for {@link WorkflowScreen}. */
-export interface WorkflowScreenProps {
-  readonly host: WorkflowsHost;
-  /** The workspace's runs, which the Runs view shows the real ones of. */
-  readonly runs: RunsSource;
-  readonly hubId: string;
-  readonly id: string;
-  /** Why a start failed when the engine can't be reached, in the words for where Studio runs; the desktop app's when absent. */
-  readonly notAnswering?: string;
-  /** Opens a test run's card from the Tests page; absent where there is no run card. */
-  readonly openRun?: (runId: string) => void;
-  /** Opens the Runs list; absent where the app can't open it. */
-  readonly seeAllRuns?: () => void;
 }
 
 /**
@@ -95,6 +82,7 @@ export function WorkflowScreen({
   notAnswering = engineWordsOf({}).notAnswering,
   openRun,
   seeAllRuns,
+  reviewInInbox,
 }: WorkflowScreenProps) {
   const { load, retry } = useWorkflow(host, { hubId, id });
   const name = load.kind === "ready" ? load.value.name : id;
@@ -227,6 +215,7 @@ export function WorkflowScreen({
               retry={runsRead.retry}
               workflow={{ hubId, id }}
               openRun={openRun}
+              reviewInInbox={reviewInInbox}
               seeAll={seeAllRuns}
               saveAsTest={saveAsTest}
             />

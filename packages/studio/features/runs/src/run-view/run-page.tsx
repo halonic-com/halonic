@@ -204,7 +204,7 @@ function DesktopRun({
 }
 
 /** The red banner for a log with a damaged line; nothing for a log that reads whole. */
-function DamagedLogBanner({ line }: { readonly line: number | undefined }) {
+export function DamagedLogBanner({ line }: { readonly line: number | undefined }) {
   if (line === undefined) return null;
   return (
     <section aria-label={runPageWords.damagedLogName}>
@@ -274,7 +274,7 @@ function RunLayout({
 }
 
 /** The page's one banner: the sandbox's failed banner for a run it stopped, else the usual one. */
-function PageBanner({
+export function PageBanner({
   run,
   context,
   log,

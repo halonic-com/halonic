@@ -16,6 +16,7 @@ export const runsWords = {
   cardKind: "RUN",
   closeCard: "Close run",
   startedBy: "Started by",
+  /** The footer link, in every state: it leaves the card for the run's page. */
   openLog: "Open the run log",
   saveAsTest: "Save as test",
   saveTitle: "Save as test",
