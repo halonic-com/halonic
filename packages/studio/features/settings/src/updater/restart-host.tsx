@@ -47,6 +47,7 @@ function RestartHostView({ host, flow, runs, announce }: RestartHostViewProps) {
   const [asking, setAsking] = useState<{ runs: RestartRuns; version: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const before = useRef<UpdateStatus["state"]["kind"] | null>(null);
+  const asked = useRef(false);
   const statusNow = useRef(status);
   statusNow.current = status;
 
@@ -66,7 +67,8 @@ function RestartHostView({ host, flow, runs, announce }: RestartHostViewProps) {
   /** Counts the runs, then restarts or asks; Try again repeats all of it, so the question isn't skipped. */
   const request = async () => {
     const version = readyVersion(statusNow.current);
-    if (version === null) return;
+    if (version === null || asked.current) return;
+    asked.current = true;
     try {
       const counted = (await runs?.count()) ?? { running: 0, waitingForYou: 0 };
       if (counted.running === 0) await restart();
@@ -77,6 +79,8 @@ function RestartHostView({ host, flow, runs, announce }: RestartHostViewProps) {
         title: UPDATER_DIDNT_ANSWER,
         action: { label: TRY_AGAIN, onClick: () => void request() },
       });
+    } finally {
+      asked.current = false;
     }
   };
 
@@ -148,7 +152,13 @@ function showStartToasts(
     });
   }
   if (state.kind === "did-not-install" && once(`failed:${state.version}:${state.attempts}`)) {
-    const again = { label: text.TRY_AGAIN, onClick: () => void host.download() };
+    const again = {
+      label: text.TRY_AGAIN,
+      onClick: () =>
+        void host
+          .download()
+          .catch(() => toasts.show({ tone: "danger", title: UPDATER_DIDNT_ANSWER })),
+    };
     const second = state.attempts >= 2;
     toasts.show({
       tone: "danger",
