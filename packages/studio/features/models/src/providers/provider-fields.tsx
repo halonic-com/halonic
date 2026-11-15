@@ -1,4 +1,4 @@
-import type { Provider } from "@halonicjs/format";
+import { type Provider, parseFile } from "@halonicjs/format";
 import { Field, FormRows, Input, Select, Switch } from "@halonicjs/studio-kit";
 import { useState } from "react";
 import { useDraft } from "../aliases/use-draft.ts";
@@ -17,8 +17,8 @@ export interface ProviderFieldsProps {
   readonly provider: Provider;
   /** The provider's file, like `providers/ollama.yaml`. */
   readonly path: string;
-  /** Called with the provider as it was, after an edit is applied (trigger (a) of the step). */
-  readonly onEdited?: (before: Provider) => void;
+  /** Called with the provider as it was and as the edit made it (trigger (a) of the step). */
+  readonly onEdited?: (before: Provider, after: Provider) => void;
 }
 
 /** The known types, and the file's own when it isn't one of them, so the Select can show it. */
@@ -58,7 +58,8 @@ export function ProviderFields({ files, provider, path, onEdited }: ProviderFiel
     if (edited.value === text) return;
     files.changeProvider(path, providerUpdatedLine(provider.name ?? provider.id), edited.value);
     setStatus(providerUpdatedLine(provider.name ?? provider.id));
-    onEdited?.(provider);
+    const after = parseFile("provider", edited.value, { id: provider.id });
+    if (after.ok) onEdited?.(provider, after.value.value);
   };
   const problemFor = (field: ProviderField) => (problem?.field === field ? problem.message : null);
   const onBlur = (field: ProviderField, draft: string, saved: string | undefined) =>

@@ -33,7 +33,7 @@ function aliasesOf(state: Extract<ModelsState, { status: "ready" }>, provider: P
  * `offer` is called by trigger (a), a provider edit that made it pay-per-use or moved its host, and
  * trigger (b), the first key saved. It reads the state at that moment: no step when the provider
  * can't bill per use or "No limit" is remembered; the whole step without a budget; only the prices
- * of the unpriced aliases with one.
+ * of the unpriced aliases with one. An offer while the dialog is open is ignored.
  *
  * @example
  * const { offer, dialog } = useStepOffer(files, state, memory);
@@ -46,7 +46,7 @@ export function useStepOffer(
   const toasts = useToastStore();
   const [open, setOpen] = useState<{ provider: Provider; kind: Exclude<StepKind, "none"> }>();
   const offer = (provider: Provider) => {
-    if (state.status !== "ready") return;
+    if (state.status !== "ready" || open !== undefined) return;
     const { unpriced } = aliasesOf(state, provider);
     const kind = stepToAsk({
       provider,

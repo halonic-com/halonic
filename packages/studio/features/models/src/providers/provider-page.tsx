@@ -1,7 +1,5 @@
-import type { Provider } from "@halonicjs/format";
 import { EmptyState } from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
-import { useEffect, useRef } from "react";
 import { MODELS_LOADING_LINE } from "../aliases/alias-text.ts";
 import { fileId } from "../aliases/read-models.ts";
 import { useModels } from "../aliases/use-models.ts";
@@ -40,15 +38,6 @@ export function ProviderPage({ item, context }: ItemViewProps) {
       ? state.providerFiles.find(({ provider }) => provider.id === item.id)
       : undefined;
   const { offer, dialog } = useStepOffer(files, state, memory);
-  /** The provider as it was before an edit; the step is offered once the edited one is read back. */
-  const edited = useRef<Provider | undefined>(undefined);
-  const provider = entry?.provider;
-  useEffect(() => {
-    const before = edited.current;
-    if (before === undefined || provider === undefined || provider === before) return;
-    edited.current = undefined;
-    if (becamePayPerUse(before, provider)) offer(provider);
-  });
   const brokenFile =
     state.status !== "loading" && entry === undefined
       ? state.unreadableProviderFiles.find((path) => fileId(path) === item.id)
@@ -74,8 +63,8 @@ export function ProviderPage({ item, context }: ItemViewProps) {
             files={files}
             provider={entry.provider}
             path={entry.path}
-            onEdited={(before) => {
-              edited.current = before;
+            onEdited={(before, after) => {
+              if (becamePayPerUse(before, after)) offer(after);
             }}
           />
           {keys === undefined ? null : (
