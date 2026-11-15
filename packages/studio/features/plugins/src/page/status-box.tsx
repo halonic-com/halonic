@@ -33,6 +33,7 @@ export function StatusBox({
   onOpenFolder,
   onReview,
   update,
+  viewOnly = false,
 }: {
   readonly id: string;
   readonly plugin: InstalledPlugin;
@@ -43,6 +44,8 @@ export function StatusBox({
   readonly onReview: () => void;
   /** The update action of a plugin that is on and was added from somewhere; none otherwise. */
   readonly update?: UpdateControl | undefined;
+  /** View only (a phone, a served browser): the status shows, with none of the actions. */
+  readonly viewOnly?: boolean;
 }) {
   const [checking, setChecking] = useState(false);
   if (plugin.status === "cant-load") {
@@ -56,20 +59,22 @@ export function StatusBox({
         <Callout tone="danger" title={cantLoadTitle(plugin.name)}>
           <p>{CANT_LOAD_LINE}</p>
           <Problems problems={plugin.problems} />
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              busy={checking}
-              busyLabel={CHECKING}
-              onClick={() => void checkAgain()}
-            >
-              {CHECK_AGAIN}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={onOpenFolder}>
-              {OPEN_FOLDER}
-            </Button>
-          </div>
+          {viewOnly ? null : (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                busy={checking}
+                busyLabel={CHECKING}
+                onClick={() => void checkAgain()}
+              >
+                {CHECK_AGAIN}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onOpenFolder}>
+                {OPEN_FOLDER}
+              </Button>
+            </div>
+          )}
         </Callout>
       </div>
     );
@@ -90,7 +95,7 @@ export function StatusBox({
           <p className="text-small text-fg-muted wrap-anywhere">{box.line}</p>
         )}
         {plugin.status === "on" && update !== undefined ? <UpdateAction update={update} /> : null}
-        {plugin.status === "on" || plugin.manifest === undefined ? null : (
+        {viewOnly || plugin.status === "on" || plugin.manifest === undefined ? null : (
           <div className="mt-2">
             <Button variant="secondary" size="sm" onClick={onReview}>
               {plugin.status === "changed" ? REVIEW_CHANGES : REVIEW}
