@@ -15,12 +15,24 @@ export interface WorkflowRef {
 export interface WorkflowListing extends WorkflowRef {
   /** The display name; renaming changes it and keeps the id. */
   readonly name: string;
-  /** What the workflow is for, as its file says. The list search reads it; the row doesn't show it. */
+  /** What the workflow is for, as its file says. The row shows it under the name, and the list search reads it. */
   readonly description?: string | undefined;
   /** Problems the checks found, which the row shows as "2 warnings" or "2 problems". */
   readonly problems: { readonly errors: number; readonly warnings: number };
   /** Runs of this workflow that wait for a person, and runs that are still going. */
   readonly runs: { readonly waiting: number; readonly running: number };
+  /** The newest run of this workflow, as the row's Last run shows it; absent when it has never run. */
+  readonly lastRun?: WorkflowLastRun | undefined;
+}
+
+/** How a run of a workflow stands: still going, waiting for a person, done, failed or not tried. */
+export type WorkflowRunOutcome = "running" | "waiting" | "completed" | "failed" | "cant-try";
+
+/** The newest run of a workflow. */
+export interface WorkflowLastRun {
+  /** ISO time the run started. */
+  readonly startedAt: string;
+  readonly outcome: WorkflowRunOutcome;
 }
 
 /** What a step does: run an agent, wait for a person, end, or run another workflow or several agents. */

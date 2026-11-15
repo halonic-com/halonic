@@ -49,11 +49,11 @@ const reply = { hubId: "acme", workflowId: "reply", kind: "run" } as const;
 verifies("studio.workspace-workflows", () => {
   it("lists the hub workflows with their problems and their waiting and running runs", async () => {
     const { host } = setup([
-      { ...reply, status: "waiting" },
-      { ...reply, status: "running" },
-      { ...reply, status: "completed" },
-      { ...reply, status: "running", kind: "test" },
-      { ...reply, hubId: "beta", status: "waiting" },
+      { ...reply, status: "waiting", startedAt: "2026-11-10T09:00:00Z" },
+      { ...reply, status: "running", startedAt: "2026-11-10T09:01:00Z" },
+      { ...reply, status: "completed", startedAt: "2026-11-09T09:00:00Z" },
+      { ...reply, status: "running", kind: "test", startedAt: "2026-11-11T09:00:00Z" },
+      { ...reply, hubId: "beta", status: "waiting", startedAt: "2026-11-12T09:00:00Z" },
     ]);
 
     expect(await host.list()).toEqual([
@@ -64,12 +64,35 @@ verifies("studio.workspace-workflows", () => {
         description: undefined,
         problems: { errors: 0, warnings: 0 },
         runs: { waiting: 1, running: 1 },
+        lastRun: { startedAt: "2026-11-10T09:01:00Z", outcome: "running" },
       },
     ]);
     expect(host.hubs()).toEqual([
       { id: "acme", name: "Acme" },
       { id: "beta", name: "Beta" },
     ]);
+  });
+
+  it("gives the newest run of the workflow as its last run, whatever order the runs come in", async () => {
+    const { host } = setup([
+      { ...reply, status: "completed", startedAt: "2026-11-08T09:00:00Z" },
+      { ...reply, status: "failed", startedAt: "2026-11-09T09:00:00Z" },
+      { ...reply, status: "completed", startedAt: "2026-11-07T09:00:00Z" },
+    ]);
+
+    const [listing] = await host.list();
+
+    expect(listing?.lastRun).toEqual({ startedAt: "2026-11-09T09:00:00Z", outcome: "failed" });
+  });
+
+  it("has no last run for a workflow that never ran, nor for one that only has tests", async () => {
+    const { host } = setup([
+      { ...reply, kind: "test", status: "completed", startedAt: "2026-11-09T09:00:00Z" },
+    ]);
+
+    const [listing] = await host.list();
+
+    expect(listing?.lastRun).toBeUndefined();
   });
 
   it("counts the errors and warnings the checks found in a workflow's file", async () => {
