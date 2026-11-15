@@ -3,6 +3,7 @@
 - Task: HAL-5394 (the WSL setup), reviewed on HAL-10573
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-10573 (Liam reviewed the entry on HAL-10572 and HAL-10573)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TdKuzzfuHWDiwvJMiuTscEaNgGoSXxC7qGi8fGvVrCE6TD/AknJ3GcY3cwGquR4lsGpDERdd/IWq/BvWCIPfCQ==
 
 ## What changes
 
