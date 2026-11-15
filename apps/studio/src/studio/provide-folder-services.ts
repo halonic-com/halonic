@@ -65,20 +65,21 @@ export function provideFolderServices(
       runs: services.get(RunsSourceService),
     }),
   );
+  const transport = tauriAgentHostTransport(window);
   provideGoogleSetup(services, {
     ipc,
     files,
+    transport,
     location,
     onFocus: (listener) => focusOf(window, listener),
   });
   provideLibraryServices(services, {
     ipc,
     files,
-    transport: tauriAgentHostTransport(window),
+    transport,
     trust,
     google: services.get(GoogleSetupAccountsService),
     location,
-    transport: tauriAgentHostTransport(window),
     onFocus: (listener) => focusOf(window, listener),
   });
 }
