@@ -42,16 +42,14 @@ import {
   type SetTimer,
 } from "@halonicjs/adapter-scheduler-node";
 import { systemSetTimer } from "@halonicjs/adapter-scheduler-node/node";
-import { abortOnStop, latestModelResolver } from "@halonicjs/adapter-workspace-models";
+import { workspaceExecutorOptions } from "@halonicjs/adapter-workspace-models";
 import {
   assembleEngine,
   type LocalExecutor,
   type RoutineEngine,
   type RoutineTicks,
 } from "@halonicjs/engine";
-import type { Agent } from "@halonicjs/format";
 import type {
-  ChatTurnRequest,
   Clock,
   ConnectorClient,
   Coordination,
@@ -68,13 +66,7 @@ import {
   workspaceFolders,
 } from "@halonicjs/profile";
 import { KindedError, randomIds, systemClock } from "@halonicjs/std";
-import {
-  connectorToolsOf,
-  definitionsOf,
-  filesOf,
-  type LoadedWorkspace,
-  runDefinitionsOf,
-} from "@halonicjs/workspace";
+import { type LoadedWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
 import { approvedIntegrations } from "./approved-integrations.ts";
 import {
   type LocalHarnessHost,
@@ -322,19 +314,14 @@ function engineOn(
       ...(input.onWokeUp === undefined ? {} : { onWokeUp: input.onWokeUp }),
     }),
     executor: {
-      resolveModel: latestModelResolver(input, latest),
-      halonicTools: [],
-      connectors: input.connectors ?? [],
-      secrets: input.secrets,
-      clock,
-      // A chat turn reads the workspace's files as a run does: its agent's file,
-      // and its connector files' `allow` and `approve` lists (HAL-5645).
-      chatAgentOf: async (request) => chatAgentOf(latest(), request),
-      chatConnectorToolsOf: async (request) =>
-        connectorToolsOf(definitionsOf(latest(), request.hubId)),
-      // Without a workspace.yaml that parsed, the format default: not local only.
-      localOnly: filesOf(input.workspace, "workspace")[0]?.value.privacy.localOnly === true,
-      abortOnStop,
+      ...workspaceExecutorOptions({
+        workspace: input.workspace,
+        latest,
+        secrets: input.secrets,
+        http: input.http,
+        clock,
+        ...(input.connectors === undefined ? {} : { connectors: input.connectors }),
+      }),
       runs: {
         harnesses: harnessHost.harnesses,
         proposalFolders: harnessHost.proposalFolders,
@@ -388,14 +375,6 @@ function engineOn(
 async function openRunsOf(runs: RunStore): Promise<ReadonlySet<string>> {
   const open = await runs.list({ status: ["running", "waiting"] });
   return new Set(open.map((run) => run.id));
-}
-
-/** The file of the agent a chat turn names, or `undefined` when the hub has none by that id. */
-function chatAgentOf(workspace: LoadedWorkspace, request: ChatTurnRequest): Agent | undefined {
-  const { agents } = definitionsOf(workspace, request.hubId);
-  return request.agentId !== undefined && Object.hasOwn(agents, request.agentId)
-    ? agents[request.agentId]
-    : undefined;
 }
 
 /**

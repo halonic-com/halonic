@@ -2,6 +2,11 @@ export { abortOnStop } from "./abort-on-stop.ts";
 export { defaultLocalAddress, defaultLocalBaseUrl } from "./default-addresses.ts";
 export type { ModelText } from "./model-texts.ts";
 export {
+  type WorkspaceExecutorInput,
+  type WorkspaceExecutorOptions,
+  workspaceExecutorOptions,
+} from "./workspace-executor-options.ts";
+export {
   latestModelResolver,
   type WorkspaceModelResolverInput,
   workspaceModelResolver,
