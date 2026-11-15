@@ -242,6 +242,17 @@ verifies("models.aliases.edit-price", () => {
     expect(tab.querySelector("fieldset")?.getAttribute("aria-describedby")).toBe(warning?.id);
   });
 
+  it("falls back to the code when the budget currency is not an ISO code", async () => {
+    const { files } = memoryFiles(workspaceModels, providerFiles);
+    const odd = {
+      ...files,
+      readWorkspace: async () => "version: 1\nid: acme\nname: Acme\nbudget: { currency: euro }\n",
+    };
+    const tab = await showTab(odd);
+    expect(tab.textContent).toContain("euro");
+    expect(field(tab, "Input")).toBeTruthy();
+  });
+
   it("waits for the other price instead of calling it wrong, then saves both", async () => {
     const { files, changes } = memoryFiles(workspaceModels);
     const tab = await showTab(files, { kind: "model-alias", hub: "local", id: "fast" });

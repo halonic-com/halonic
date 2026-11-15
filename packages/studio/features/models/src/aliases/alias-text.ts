@@ -46,17 +46,22 @@ export function fallbacksHint(otherAliases: readonly string[]): string {
   return otherAliases.length === 0 ? base : `${base} Other aliases: ${otherAliases.join(", ")}`;
 }
 
-/** The currency before a price box, and what a screen reader hears after the label: "€", "in euros". */
+/** The currency before a price box, and what a screen reader hears after the label: "€", "in euros". A code Intl does not know is shown as it is. */
 export function currencyPrefix(currency: string): { symbol: string; name: string } {
-  const symbol =
-    new Intl.NumberFormat("en", { style: "currency", currency })
-      .formatToParts(0)
-      .find((part) => part.type === "currency")?.value ?? currency;
-  const unit =
-    new Intl.NumberFormat("en", { style: "currency", currency, currencyDisplay: "name" })
-      .formatToParts(2)
-      .find((part) => part.type === "currency")?.value ?? currency;
-  return { symbol, name: `in ${unit}` };
+  try {
+    const symbol =
+      new Intl.NumberFormat("en", { style: "currency", currency })
+        .formatToParts(0)
+        .find((part) => part.type === "currency")?.value ?? currency;
+    const unit =
+      new Intl.NumberFormat("en", { style: "currency", currency, currencyDisplay: "name" })
+        .formatToParts(2)
+        .find((part) => part.type === "currency")?.value ?? currency;
+    return { symbol, name: `in ${unit}` };
+  } catch {
+    // The schema allows any non-empty currency, and Intl throws a RangeError for a non-ISO code.
+    return { symbol: currency, name: `in ${currency}` };
+  }
 }
 
 export const PRICE_HEADING = "Price per million tokens";

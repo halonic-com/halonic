@@ -12,6 +12,8 @@ import {
   PROVIDER_CAPTION,
   PROVIDER_FILE_UNREADABLE_TITLE,
   PROVIDER_GONE_LINE,
+  PROVIDERS_UNREADABLE_REASON,
+  PROVIDERS_UNREADABLE_TITLE,
   providerFileUnreadableLine,
   TRY_AGAIN,
 } from "./provider-text.ts";
@@ -41,17 +43,11 @@ export function ProviderPage({ item, context }: ItemViewProps) {
       <p className="text-label uppercase text-fg-subtle">{PROVIDER_CAPTION}</p>
       <h1 className="text-title">{entry ? providerName(entry.provider) : item.id}</h1>
       {state.status === "loading" ? <p role="status">{MODELS_LOADING_LINE}</p> : null}
-      {state.status !== "loading" && entry === undefined && brokenFile === undefined ? (
-        <p>{PROVIDER_GONE_LINE}</p>
-      ) : null}
-      {brokenFile === undefined ? null : (
-        <EmptyState
-          tone="error"
-          align="start"
-          headingLevel={3}
-          title={PROVIDER_FILE_UNREADABLE_TITLE}
-          description={providerFileUnreadableLine(brokenFile)}
-          action={{ label: TRY_AGAIN, onClick: retry }}
+      {state.status === "loading" || entry !== undefined ? null : (
+        <MissingProvider
+          providersFailed={state.providersFailed}
+          brokenFile={brokenFile}
+          retry={retry}
         />
       )}
       {state.status !== "loading" && entry !== undefined ? (
@@ -71,4 +67,31 @@ export function ProviderPage({ item, context }: ItemViewProps) {
       ) : null}
     </div>
   );
+}
+
+interface MissingProviderProps {
+  readonly providersFailed: boolean;
+  readonly brokenFile: string | undefined;
+  readonly retry: () => void;
+}
+
+/** What the page says instead of the fields: the folder or this file can't be read, or the provider is gone. */
+function MissingProvider({ providersFailed, brokenFile, retry }: MissingProviderProps) {
+  if (providersFailed || brokenFile !== undefined) {
+    return (
+      <EmptyState
+        tone="error"
+        align="start"
+        headingLevel={3}
+        title={providersFailed ? PROVIDERS_UNREADABLE_TITLE : PROVIDER_FILE_UNREADABLE_TITLE}
+        description={
+          providersFailed
+            ? PROVIDERS_UNREADABLE_REASON
+            : providerFileUnreadableLine(brokenFile ?? "")
+        }
+        action={{ label: TRY_AGAIN, onClick: retry }}
+      />
+    );
+  }
+  return <p>{PROVIDER_GONE_LINE}</p>;
 }

@@ -14,7 +14,7 @@ export const PROVIDER_GONE_LINE = "This provider is no longer in providers/.";
 /** The Base URL box's placeholder: what an empty box means. */
 export const DEFAULT_BASE_URL = "The provider's own";
 
-/** The adapter types a provider can have, for the Type list. */
+/** The adapter types a provider can have, for the Type list. Keep in step with the provider type enum in `@halonicjs/format` (`kinds/provider/schema.ts`). */
 export const PROVIDER_TYPES = [
   "anthropic",
   "openai",
@@ -29,7 +29,7 @@ export const PROVIDER_CAPTION = "Provider";
 export const PROVIDERS_UNREADABLE_TITLE = "Couldn't load providers";
 export const PROVIDERS_UNREADABLE_REASON = "Halonic couldn't read the providers folder.";
 export const PROVIDER_FILE_UNREADABLE_TITLE = "Couldn't read this provider's file";
-export const TRY_AGAIN = "Try again";
+export { TRY_AGAIN } from "../aliases/alias-text.ts";
 export const LOCAL_SWITCH_LABEL = "This computer or your own network";
 
 /** What a provider page says when its file doesn't parse, naming the file. */

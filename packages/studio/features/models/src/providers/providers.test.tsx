@@ -108,7 +108,7 @@ verifies("models.providers.list-and-show", () => {
     expect(view.querySelector("p")?.textContent).toContain("No providers yet.");
   });
 
-  it("shows the fields and the file on a provider's page", async () => {
+  it("shows the fields, and no file line, on a provider's page", async () => {
     const view = await page("anthropic", filesWith({ anthropic }));
 
     expect(view.querySelector("h1")?.textContent).toBe("Anthropic");
@@ -145,6 +145,13 @@ verifies("models.providers.list-and-show", () => {
     expect(view.textContent).toContain("Halonic couldn't read providers/anthropic.yaml");
     expect(view.textContent).not.toContain("no longer in providers/");
     expect(view.textContent).toContain("Try again");
+    act(() => root?.unmount());
+    element?.remove();
+
+    const gone = await page("anthropic", failing);
+    expect(gone.textContent).toContain("Couldn't load providers");
+    expect(gone.textContent).not.toContain("no longer in providers/");
+    expect(gone.textContent).toContain("Try again");
   });
 
   it("still lists providers and shows their pages when models.yaml does not parse", async () => {
