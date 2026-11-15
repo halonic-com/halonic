@@ -10,10 +10,10 @@
 // program inside gave no result), so a retry is allowed.
 import { spawn } from "node:child_process";
 import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { listenOutsideProxyRange } from "./fence-probe-port.mjs";
 
 const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const srtCli = join(packageDir, "node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js");
@@ -26,16 +26,18 @@ mkdirSync(hidden);
 const canaryFile = join(hidden, "canary.txt");
 writeFileSync(canaryFile, "canary");
 
-// A loopback port the fence must block: srt only permits 60080-60089.
+// A loopback port the fence must block: srt only permits 60080-60089, so the
+// port is picked outside that range (the pick itself retries).
 let connections = 0;
-const server = createServer((socket) => {
-  connections += 1;
-  socket.destroy();
-});
-await new Promise((done) => server.listen(0, "127.0.0.1", done));
-const canaryPort = server.address().port;
-if (canaryPort >= 60080 && canaryPort <= 60089) {
-  console.error(`Port ${canaryPort} is inside the proxy range, so it proves nothing.`);
+let server;
+let canaryPort;
+try {
+  ({ server, port: canaryPort } = await listenOutsideProxyRange((socket) => {
+    connections += 1;
+    socket.destroy();
+  }));
+} catch (error) {
+  console.error(error.message);
   process.exit(2);
 }
 
