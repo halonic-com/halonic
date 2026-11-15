@@ -58,9 +58,11 @@ name, such as a preview address, or with an `Origin`, never reaches a route. A m
 
 The two export routes answer now. `GET /admin/export` reads one file at a time to measure it, so a large
 deployment takes a while. The export holds every run log, every collection's record log except the sign-in
-tokens' and every blob; no secret store is in it. A run log or record log that holds something shaped like a
+tokens' and every blob; no secret store is in it. A run log, record log or text blob (valid UTF-8) that holds something shaped like a
 secret stops the export: the manifest and that file answer 409 `{"code":"secret_found","path":"...","shape":"..."}`,
-naming the file and the kind, never the text (requirement `runtime.export-data`).
+naming the file and the kind, never the text (requirement `runtime.export-data`). The check knows only common
+key formats (`sk-`, `GOCSPX-`, `AIza`, `ghp_`, `github_pat_`, `xoxb-`), so a clean export is not proof that
+it holds no secret; binary blobs are not scanned.
 
 **Importing.** Send each file with `PUT /admin/import/files/<path>` (up to 50 MiB; it is staged in the blobs
 bucket under `import-staging/`), then the manifest with `POST /admin/import`. Nothing is written until every
