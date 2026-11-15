@@ -42,7 +42,12 @@ import {
   type SetTimer,
 } from "@halonicjs/adapter-scheduler-node";
 import { systemSetTimer } from "@halonicjs/adapter-scheduler-node/node";
-import { workspaceExecutorOptions } from "@halonicjs/adapter-workspace-models";
+import {
+  engineLockFile,
+  routineStateCollection,
+  runTimerCollection,
+  workspaceExecutorOptions,
+} from "@halonicjs/adapter-workspace-models";
 import {
   assembleEngine,
   type LocalExecutor,
@@ -80,14 +85,7 @@ import { openProgramFolders, type ProgramFolders } from "./program-folders.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import type { WorkspaceVersions } from "./workspace-versions.ts";
 
-/** The collection of the workspace's record store that keeps the run timers. */
-export const runTimerCollection = "halonic.run-timers";
-
-/** The collection of the workspace's record store that keeps what the routine scheduler shares between ticks. */
-export const routineStateCollection = "halonic.routine-state";
-
-/** The file in the workspace's folder in the profile that the one engine on it holds. */
-export const engineLockFile = "engine.lock";
+export { engineLockFile, routineStateCollection, runTimerCollection };
 
 /**
  * What an error the engine handles itself came from: the scheduler, the

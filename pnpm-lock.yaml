@@ -522,15 +522,27 @@ importers:
       '@halonicjs/adapter-agent-host-client':
         specifier: workspace:*
         version: link:../../packages/adapters/agent-host-client
+      '@halonicjs/adapter-coordination-node':
+        specifier: workspace:*
+        version: link:../../packages/adapters/coordination-node
       '@halonicjs/adapter-fs-tauri':
         specifier: workspace:*
         version: link:../../packages/adapters/fs-tauri
       '@halonicjs/adapter-memory':
         specifier: workspace:*
         version: link:../../packages/adapters/memory
+      '@halonicjs/adapter-scheduler-node':
+        specifier: workspace:*
+        version: link:../../packages/adapters/scheduler-node
+      '@halonicjs/adapter-workspace-models':
+        specifier: workspace:*
+        version: link:../../packages/adapters/workspace-models
       '@halonicjs/app':
         specifier: workspace:*
         version: link:../../packages/core/app
+      '@halonicjs/engine':
+        specifier: workspace:*
+        version: link:../../packages/core/engine
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../../packages/core/events
@@ -595,9 +607,6 @@ importers:
       '@halonicjs/app-agent-host':
         specifier: workspace:*
         version: link:../agent-host
-      '@halonicjs/engine':
-        specifier: workspace:*
-        version: link:../../packages/core/engine
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../packages/core/format
