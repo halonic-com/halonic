@@ -23,7 +23,8 @@ export const stateWords = {
   stillNoGit: "Still can't find git.",
   turningOnHistory: "Turning on history…",
   /** The reason under "Couldn't load changes" for a folder inside a larger repository. */
-  nestedRepository: "This folder is part of a larger git repository.",
+  nestedRepository:
+    "This folder is part of a larger git repository. Halonic can't keep versions for it yet.",
   nothingChanged: "Nothing has changed since your last version.",
   loading: "Loading changes",
   loadFailed: "Couldn't load changes",
