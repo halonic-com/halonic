@@ -108,15 +108,50 @@ verifies("models.providers.list-and-show", () => {
     expect(view.querySelector("p")?.textContent).toContain("No providers yet.");
   });
 
-  it("shows the fields and the file on a provider's page", async () => {
+  it("shows the fields, and no file line, on a provider's page", async () => {
     const view = await page("anthropic", filesWith({ anthropic }));
 
-    expect(view.querySelector("h1")?.textContent).toBe("Provider: Anthropic");
+    expect(view.querySelector("h1")?.textContent).toBe("Anthropic");
+    expect(view.querySelector("h1")?.previousElementSibling?.textContent).toBe("Provider");
     const values = [...view.querySelectorAll<HTMLInputElement>("input:not([role=switch])")].map(
       (input) => input.value,
     );
-    expect(values).toEqual(["Anthropic", "anthropic", "", "anthropic"]);
-    expect(view.textContent).toContain("providers/anthropic.yaml");
+    expect(values).toEqual(["Anthropic", "", "anthropic"]);
+    expect(view.querySelector("select")?.value).toBe("anthropic");
+    expect(view.querySelector<HTMLInputElement>("input[placeholder]")?.placeholder).toBe(
+      "The provider's own",
+    );
+    expect(view.textContent).not.toContain("File:");
+    expect(view.textContent).toContain("This computer or your own network");
+  });
+
+  it("says so, naming the file, when the providers can't be read or a file doesn't parse", async () => {
+    const failing = { ...filesWith({}), readProviders: async () => Promise.reject(new Error("x")) };
+    const failed = await section(failing);
+    expect(failed.textContent).toContain("Couldn't load providers");
+    expect(failed.textContent).not.toContain("No providers yet");
+    expect(failed.textContent).toContain("Try again");
+    act(() => root?.unmount());
+    element?.remove();
+
+    const broken = filesWith({ ollama, anthropic: "version: 1\ntype: [\n" });
+    const list = await section(broken);
+    expect(list.textContent).toContain("providers/anthropic.yaml");
+    expect(list.textContent).toContain("Ollama · ollama · local");
+    act(() => root?.unmount());
+    element?.remove();
+
+    const view = await page("anthropic", broken);
+    expect(view.textContent).toContain("Halonic couldn't read providers/anthropic.yaml");
+    expect(view.textContent).not.toContain("no longer in providers/");
+    expect(view.textContent).toContain("Try again");
+    act(() => root?.unmount());
+    element?.remove();
+
+    const gone = await page("anthropic", failing);
+    expect(gone.textContent).toContain("Couldn't load providers");
+    expect(gone.textContent).not.toContain("no longer in providers/");
+    expect(gone.textContent).toContain("Try again");
   });
 
   it("still lists providers and shows their pages when models.yaml does not parse", async () => {
@@ -130,7 +165,7 @@ verifies("models.providers.list-and-show", () => {
     element?.remove();
 
     const view = await page("anthropic", broken);
-    expect(view.querySelector("h1")?.textContent).toBe("Provider: Anthropic");
+    expect(view.querySelector("h1")?.textContent).toBe("Anthropic");
   });
 
   it("saves a base URL when the field is left, and shows a bad one's problem instead", async () => {
@@ -141,7 +176,7 @@ verifies("models.providers.list-and-show", () => {
       changeProvider: (_path: string, label: string, text: string) => saved.push({ label, text }),
     };
     const view = await page("ollama", files);
-    const baseUrl = view.querySelectorAll("input")[2] as HTMLInputElement;
+    const baseUrl = view.querySelectorAll("input")[1] as HTMLInputElement;
 
     await typeAndLeave(baseUrl, "localhost:11434");
     expect(saved).toEqual([]);
@@ -161,7 +196,7 @@ verifies("models.providers.list-and-show", () => {
       changeProvider: (_path: string, _label: string, text: string) => saved.push(text),
     };
     const view = await page("anthropic", files);
-    const secret = view.querySelectorAll("input")[3] as HTMLInputElement;
+    const secret = view.querySelectorAll("input")[2] as HTMLInputElement;
 
     await typeAndLeave(secret, key);
 
@@ -180,7 +215,7 @@ verifies("models.providers.list-and-show", () => {
     const view = await page("ollama", files);
     const inputs = view.querySelectorAll("input");
 
-    await typeAndLeave(inputs[2] as HTMLInputElement, "localhost:11434");
+    await typeAndLeave(inputs[1] as HTMLInputElement, "localhost:11434");
     await typeAndLeave(inputs[0] as HTMLInputElement, "My Ollama");
 
     expect(saved).toHaveLength(1);
