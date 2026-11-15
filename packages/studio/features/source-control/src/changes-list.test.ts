@@ -178,7 +178,7 @@ verifies("source-control.create-version", () => {
       const { fake, list } = await listWith("agents/a.agent.yaml");
       fake.failVersion(new KindedError("unavailable", "Unable to create index.lock"));
       list.startVersion();
-      expect(await list.createVersion("x", "")).toBe("Unable to create index.lock");
+      expect(await list.createVersion("x", "")).toBe("Unable to create index.lock.");
       expect(list.state.version).toBeDefined();
     });
 
