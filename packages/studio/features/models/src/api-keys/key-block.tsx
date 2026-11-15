@@ -34,6 +34,8 @@ export interface KeyBlockProps {
   readonly secretName: string | undefined;
   /** The provider's name, for "Saved key for …". */
   readonly providerName: string;
+  /** Called after a key is saved where none was stored (trigger (b) of the Prices and budget step). */
+  readonly onFirstKey?: () => void;
 }
 
 /** What the block knows about the stored key; `unknown` after a failed check. */
@@ -73,7 +75,7 @@ type Confirm = "change" | "save" | "remove";
  * @example
  * <KeyBlock keys={keys} secretName={provider.secret} />
  */
-export function KeyBlock({ keys, secretName, providerName }: KeyBlockProps) {
+export function KeyBlock({ keys, secretName, providerName, onFirstKey }: KeyBlockProps) {
   const { entry } = keys;
   if (entry.kind === "unavailable") {
     return (
@@ -85,7 +87,15 @@ export function KeyBlock({ keys, secretName, providerName }: KeyBlockProps) {
       </section>
     );
   }
-  return <KeyField keys={keys} entry={entry} secretName={secretName} providerName={providerName} />;
+  return (
+    <KeyField
+      keys={keys}
+      entry={entry}
+      secretName={secretName}
+      providerName={providerName}
+      {...(onFirstKey === undefined ? {} : { onFirstKey })}
+    />
+  );
 }
 
 interface KeyFieldProps extends KeyBlockProps {
@@ -93,7 +103,7 @@ interface KeyFieldProps extends KeyBlockProps {
 }
 
 /** The status, the field and the buttons, for a Studio where a key can be typed. */
-function KeyField({ keys, entry, secretName, providerName }: KeyFieldProps) {
+function KeyField({ keys, entry, secretName, providerName, onFirstKey }: KeyFieldProps) {
   const input = useRef<HTMLInputElement>(null);
   const [stored, setStored, check] = useStoredKey(keys, secretName);
   const [hasText, setHasText] = useState(false);
@@ -137,8 +147,10 @@ function KeyField({ keys, entry, secretName, providerName }: KeyFieldProps) {
     if (!saved) return;
     if (input.current !== null) input.current.value = "";
     setHasText(false);
+    const first = stored === "none";
     setStored("set");
     input.current?.focus();
+    if (first) onFirstKey?.();
   }
 
   async function remove() {
