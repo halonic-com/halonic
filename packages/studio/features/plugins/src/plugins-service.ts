@@ -28,6 +28,8 @@ export interface PluginsHost {
   readonly secrets: PluginSecretStore;
   /** Remove trust, Remove plugin, Check again and Open folder, from a plugin's page. */
   readonly actions: PluginActions;
+  /** `served` when the app is open in a browser the Studio serves; the page is then view only. */
+  readonly place?: "app" | "served";
 }
 
 /**
@@ -41,6 +43,7 @@ export interface StudioPlugins {
   readonly settings: PluginSettingsReader;
   readonly secrets: PluginSecretStore;
   readonly actions: PluginActions;
+  readonly place?: "app" | "served";
 }
 
 /** The plugins of a workspace, built from what the app gives. */
@@ -52,6 +55,7 @@ export function studioPlugins(host: PluginsHost): StudioPlugins {
     settings: host.settings,
     secrets: host.secrets,
     actions: host.actions,
+    place: host.place,
   };
 }
 
@@ -74,6 +78,7 @@ export function pageOptions(plugins: StudioPlugins, context: WorkspaceContext): 
     settings: plugins.settings,
     secrets: plugins.secrets,
     actions: plugins.actions,
+    place: plugins.place,
     openPanel: (plugin) => context.openItem?.(pluginPanelItem(plugin)),
   };
 }
