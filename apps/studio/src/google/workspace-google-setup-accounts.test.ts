@@ -253,7 +253,7 @@ verifies("studio.workspace-google-setup-accounts", () => {
       expect(await accounts.disconnect("gaccount_1")).toEqual({ kind: "google-unreachable" });
     });
 
-    it("rejects in plain words with the host's reason, and tells nobody, when the host can't", async () => {
+    it("rejects in plain words with the host's reason, and tells its listeners to read again, when the host can't", async () => {
       const host = {
         disconnect: async () => {
           throw new Error("The agent host answered with 502 (google_failed).");
@@ -264,9 +264,9 @@ verifies("studio.workspace-google-setup-accounts", () => {
       accounts.subscribe(listener);
 
       await expect(accounts.disconnect("gaccount_1")).rejects.toThrow(
-        "Halonic couldn't disconnect this account, and nothing was removed. The agent host answered with 502",
+        "Halonic couldn't finish disconnecting this account. The agent host answered with 502",
       );
-      expect(listener).not.toHaveBeenCalled();
+      expect(listener).toHaveBeenCalledTimes(1);
     });
 
     it("is refused in plain words without an agent host", async () => {

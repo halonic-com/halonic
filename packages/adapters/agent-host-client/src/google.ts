@@ -34,7 +34,7 @@ export class AgentHostGoogleSetup {
    * record and the client secret (unless another account uses the client),
    * even when Google can't be reached.
    *
-   * @throws {@link AgentHostError} when the host can't be reached or refuses (`google_setup_not_found`, `google_failed`); nothing is removed then
+   * @throws {@link AgentHostError} when the host can't be reached or refuses (`google_setup_not_found`, `google_failed`); some of it may still have been removed, so read the accounts again
    */
   async disconnect(accountRef: string): Promise<GoogleDisconnected> {
     const route = "POST /v1/google/disconnect";

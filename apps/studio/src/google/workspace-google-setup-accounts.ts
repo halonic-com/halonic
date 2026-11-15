@@ -41,8 +41,11 @@ export interface WorkspaceGoogleSetupAccountsOptions {
 const notYet =
   "This can't be saved in the Halonic app yet. Use the halonic google commands in a terminal for now.";
 
-/** Said when the agent host couldn't disconnect: nothing was removed. */
-const disconnectFailed = "Halonic couldn't disconnect this account, and nothing was removed.";
+/**
+ * Said when the agent host couldn't disconnect. It doesn't say nothing was removed: the answer
+ * can be lost after the host finished, so the page reads the list again to show what is left.
+ */
+const disconnectFailed = "Halonic couldn't finish disconnecting this account.";
 
 /** What the host said, in its own words when it gave some. */
 function reasonOf(error: unknown): string {
@@ -124,6 +127,7 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
     try {
       answer = await host.disconnect(accountRef);
     } catch (error) {
+      this.#tellListeners();
       throw new Error(`${disconnectFailed} ${reasonOf(error)}`, { cause: error });
     }
     this.#tellListeners();
