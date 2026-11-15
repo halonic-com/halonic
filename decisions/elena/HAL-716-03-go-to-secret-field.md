@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-1019, UX checklists section 6 (U13 to U15), the user's approved list for HAL-716
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:p3swKAO5ChndxhxQPpdXMfvmHBsiA3qHAyu1AcAFAuNdhTTmvATOB1SPv9DpXQjEtty+LplenTYj8OiYMayKCg==
 
 When the Ask for changes dialog holds a note that looks like a Google client secret, a computer now
 shows **Go to the secret field** beside **Send anyway**. Before, the held note only said where the
