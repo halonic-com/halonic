@@ -88,6 +88,21 @@ verifies("cloudflare-live.adapters", () => {
     expect(body.secrets["HALONIC_TEST_RUNNER_TOKEN"]).toBe("r".repeat(64));
   });
 
+  it("binds the Durable Object classes it is given and creates them with one migration", async () => {
+    const f = fakes();
+    await deployAdapterRunner({
+      ...options(f),
+      durableObjects: [{ binding: "LIVE_RUNS", className: "LiveRunObject" }],
+    });
+    const body = f.upload["body"] as { bindings: Record<string, unknown>[] };
+    expect(body.bindings).toContainEqual({
+      type: "durable_object_namespace",
+      name: "LIVE_RUNS",
+      class_name: "LiveRunObject",
+    });
+    expect(f.upload["migrations"]).toEqual([{ tag: "v1", new_sqlite_classes: ["LiveRunObject"] }]);
+  });
+
   it("deletes the Worker, the buckets and the database at the end, once", async () => {
     const f = fakes();
     const runner = await deployAdapterRunner(options(f));
