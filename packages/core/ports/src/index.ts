@@ -352,3 +352,4 @@ export {
   type VcsWorktree,
   vcsVersion,
 } from "./vcs.ts";
+export { parseStatus } from "./vcs-status.ts";
