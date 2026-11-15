@@ -40,6 +40,8 @@ export {
   TauriHostSettingsStore,
   type TauriHostSettingsStoreOptions,
 } from "./host-settings-store.ts";
+export { instructionTrustCommands } from "./instruction-trust-commands.ts";
+export { TauriInstructionTrustStore } from "./instruction-trust-store.ts";
 export { pickedFolderCommands, TauriPickedFolders } from "./picked-folders.ts";
 export { pluginFolderCommands } from "./plugin-folder-commands.ts";
 export { TauriPluginFolderReader } from "./plugin-folder-reader.ts";
