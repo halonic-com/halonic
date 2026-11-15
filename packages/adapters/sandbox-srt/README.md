@@ -117,7 +117,7 @@ that grant beats a deny inherited from a parent folder, so a later session could
 run's files (HAL-5882). On every way a session ends (`close()`, an abort, the time limit, a failed
 open) the session runs `srt-win acl forget <folder>` on both folders. This is wrapped in one
 module, `src/kept-grants.ts`, which fails closed: only the sandbox-runtime versions in
-`testedSrtVersions` (now 0.0.81) open a session. `acl forget` checks for live sessions only with
+`testedSrtVersions` (now 0.0.82) open a session. `acl forget` checks for live sessions only with
 `--all`, not for named folders, so the module counts which folders the live sessions of this host
 use, and a folder another of them still uses is forgotten when that one closes. If forgetting
 fails, `close()` rejects naming the folder and the reason. Give

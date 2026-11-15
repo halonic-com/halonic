@@ -152,12 +152,11 @@ type PackageJson = {
 };
 
 /** The `package.json` of `name` as Node finds it from `fromDirectory`: the nearest `node_modules` that has it. */
-function findManifest(name: string, fromDirectory: string): string {
+function findManifest(name: string, fromDirectory: string): string | undefined {
   for (let folder = fromDirectory; ; folder = dirname(folder)) {
     const candidate = join(folder, "node_modules", name, "package.json");
     if (existsSync(candidate)) return realpathSync(candidate);
-    if (dirname(folder) === folder)
-      throw new Error(`${name} isn't installed for ${fromDirectory}.`);
+    if (dirname(folder) === folder) return undefined;
   }
 }
 
@@ -168,11 +167,17 @@ function readJson(path: string): PackageJson {
 /**
  * Copies the sandbox runtime as the workspace resolves it (patched), and
  * everything it needs to run, flat into `target`. Returns the package names.
+ *
+ * An optional dependency the workspace doesn't install (`ignoredOptionalDependencies`
+ * in `pnpm-workspace.yaml`, such as `@microsoft/mxc-sdk`, HAL-7606) is left out,
+ * and out of the copied `package.json` too, so npm doesn't fetch it on install.
  */
 function copyBundledDependencies(root: string, target: string): Map<string, string> {
   const copied = new Map<string, string>();
   const visit = (name: string, fromDirectory: string): void => {
     const manifestPath = findManifest(name, fromDirectory);
+    if (manifestPath === undefined)
+      throw new Error(`${name} isn't installed for ${fromDirectory}.`);
     const manifest = readJson(manifestPath);
     const known = copied.get(name);
     if (known !== undefined) {
@@ -184,16 +189,30 @@ function copyBundledDependencies(root: string, target: string): Map<string, stri
       return;
     }
     copied.set(name, manifest.version);
-    cpSync(dirname(manifestPath), join(target, name), { recursive: true, dereference: true });
-    for (const dependency of Object.keys({
-      ...manifest.dependencies,
-      ...manifest.optionalDependencies,
-    })) {
-      visit(dependency, dirname(manifestPath));
+    const packageDirectory = dirname(manifestPath);
+    cpSync(packageDirectory, join(target, name), { recursive: true, dereference: true });
+    const optional = Object.keys(manifest.optionalDependencies ?? {});
+    const missing = optional.filter((dependency) => !findManifest(dependency, packageDirectory));
+    if (missing.length > 0) dropOptionalDependencies(join(target, name, "package.json"), missing);
+    const needed = [...Object.keys(manifest.dependencies ?? {}), ...optional];
+    for (const dependency of needed.filter((dependency) => !missing.includes(dependency))) {
+      visit(dependency, packageDirectory);
     }
   };
   visit(sandboxRuntime, join(root, "packages/adapters/sandbox-srt"));
   return copied;
+}
+
+/** Removes `names` from the `optionalDependencies` of the copied `package.json` at `manifestPath`. */
+function dropOptionalDependencies(manifestPath: string, names: string[]): void {
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as Record<string, unknown> & {
+    optionalDependencies?: Record<string, string>;
+  };
+  const kept = Object.entries(manifest.optionalDependencies ?? {}).filter(
+    ([name]) => !names.includes(name),
+  );
+  manifest.optionalDependencies = Object.fromEntries(kept);
+  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 }
 
 function writeManifest(directory: string, version: string, bundled: Map<string, string>): void {

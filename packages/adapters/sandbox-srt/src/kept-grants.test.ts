@@ -18,7 +18,7 @@ function fakeSrtWin(answer: (args: string[]) => Partial<SrtWinResult> = () => ({
     calls.push(args);
     return { status: 0, stdout: "", stderr: "", ...answer(args) };
   };
-  return { calls, grants: new KeptGrants(run, () => "0.0.81") };
+  return { calls, grants: new KeptGrants(run, () => "0.0.82") };
 }
 
 verifies("sandbox-srt.kept-grants", () => {
@@ -59,7 +59,7 @@ verifies("sandbox-srt.kept-grants", () => {
         async () => {
           throw new Error("srt-win.exe not found");
         },
-        () => "0.0.81",
+        () => "0.0.82",
       );
       const result = await grants.forget(["work"]);
       expect(result.failed[0]?.reason).toBe("srt-win.exe not found");
