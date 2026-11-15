@@ -18,6 +18,11 @@ without a password) and sends it to the secret store (`saveClientSecret`, on its
 secret is a kit `SecretText` from the input to that call: it is never part of an edit, the setup
 record, an error or a log line. Steps 5 and 6 show the client ID and the secret fields.
 
+`GoogleConnectorBlock` (from `/api`) is the Google block of the connector page: the account's rows,
+**Sign in again** and **Replace secret** (which open the setup item) and **Disconnect Google…**,
+which calls the service's `disconnect`. The page that mounts it passes the account and refreshes it
+after a change.
+
 ## Example
 
 ```ts

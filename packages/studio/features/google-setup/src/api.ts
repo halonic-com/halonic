@@ -72,6 +72,16 @@ export type SecretReplaceAnswer =
   /** Google couldn't be reached to check it. The old secret is still in use. */
   | { readonly kind: "no-network" };
 
+/**
+ * What the host says after **Disconnect Google…** (design 4.4). Either way the account's sign-in
+ * and, unless another account uses the client, its client secret are deleted here.
+ */
+export type DisconnectAnswer =
+  /** Google was asked to end the sign-in and did. */
+  | { readonly kind: "ended" }
+  /** Google couldn't be reached to end the sign-in. It is still deleted here; access can be removed in the Google account. */
+  | { readonly kind: "google-unreachable" };
+
 /** The Google accounts of the open workspace. The app provides it. */
 export interface GoogleSetupAccounts {
   /** How the client secret is entered on this host. It doesn't change while the workspace is open. */
@@ -103,6 +113,14 @@ export interface GoogleSetupAccounts {
    * talks to Google. It rejects when the engine can't do it; nothing changes then.
    */
   startOver(accountRef: string): Promise<void>;
+  /**
+   * **Disconnect Google…**: asks Google to end the account's sign-in, then deletes the sign-in and
+   * the client secret (unless another account uses the client) and leaves a fresh setup that
+   * `list` returns. It deletes locally even when Google can't be reached, and says so. It rejects
+   * when the engine can't do it; nothing changes then. Neither the answer nor a rejection ever
+   * holds a token or the secret.
+   */
+  disconnect(accountRef: string): Promise<DisconnectAnswer>;
   /** Calls `listener` whenever an account may have changed. Returns a function that stops the calls. */
   subscribe(listener: () => void): () => void;
 }
@@ -114,3 +132,6 @@ export const GoogleSetupAccountsService: ServiceKey<GoogleSetupAccounts> =
 /** The Google setup source, offered so it is added to the Inbox when a workspace opens. */
 export const GoogleSetupSourceService: ServiceKey<InboxSetupSource> =
   serviceKey<InboxSetupSource>("google-setup.source");
+
+/** The connector page's Google block, for the page that mounts it. */
+export { GoogleConnectorBlock, type GoogleConnectorBlockProps } from "./ui/connector-block.tsx";

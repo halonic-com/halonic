@@ -1,6 +1,7 @@
 import type { SetupEdit, SetupRecord, SetupService } from "@halonicjs/google-setup";
 import type { SecretText } from "@halonicjs/studio-kit";
 import type {
+  DisconnectAnswer,
   GoogleSetupAccount,
   GoogleSetupAccounts,
   SecretEntry,
@@ -83,6 +84,8 @@ export function fakeAccounts(
     readonly saveSecret?: (accountRef: string, value: string) => Promise<void>;
     /** What replacing a secret answers, and may reject. It gets the value, a fake in a test. */
     readonly replaceSecret?: (accountRef: string, value: string) => Promise<SecretReplaceAnswer>;
+    /** What disconnecting answers, and may reject. */
+    readonly disconnect?: (accountRef: string) => Promise<DisconnectAnswer>;
     /** Runs before an edit is recorded, and may reject: the edit then isn't saved. */
     readonly edit?: (edit: SetupEdit) => Promise<void>;
   } = {},
@@ -91,6 +94,7 @@ export function fakeAccounts(
   const listeners = new Set<() => void>();
   const edits: { accountRef: string; edit: SetupEdit }[] = [];
   const startOvers: string[] = [];
+  const disconnects: string[] = [];
   const secrets: { accountRef: string; value: string }[] = [];
   const replacements: { accountRef: string; value: string }[] = [];
   const source: GoogleSetupAccounts = {
@@ -117,6 +121,11 @@ export function fakeAccounts(
     startOver: async (accountRef) => {
       startOvers.push(accountRef);
     },
+    disconnect: async (accountRef) => {
+      const answer = (await options.disconnect?.(accountRef)) ?? { kind: "ended" as const };
+      disconnects.push(accountRef);
+      return answer;
+    },
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -133,6 +142,8 @@ export function fakeAccounts(
     replacements,
     /** The account refs the view asked to start over, in order. */
     startOvers,
+    /** The account refs the view asked to disconnect, in order. */
+    disconnects,
     change: (next: readonly GoogleSetupAccount[]) => {
       accounts = next;
       for (const listener of [...listeners]) listener();

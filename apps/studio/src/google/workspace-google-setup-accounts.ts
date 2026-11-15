@@ -100,6 +100,10 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
     throw new Error(notYet);
   }
 
+  async disconnect(): Promise<never> {
+    throw new Error(notYet);
+  }
+
   subscribe(listener: () => void): () => void {
     this.#listeners.add(listener);
     this.#startWatching();
