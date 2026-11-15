@@ -71,17 +71,16 @@ verifies("fs-node.instruction-trust-store-files", () => {
       await store.remove(coder);
     });
 
-    it.runIf(process.platform !== "win32")(
-      "[platform:win32] needs POSIX links, modes and signals: makes the folder and the files private to the user",
-      async () => {
-        const root = join(await tempFolder(), "instruction-trust");
-        await new FileInstructionTrustStore(root).save(
-          instructionTrustRecord(coder.location, coder.agent),
-        );
-        expect((await stat(root)).mode & 0o777).toBe(0o700);
-        expect((await stat(fileFor(root, coder))).mode & 0o777).toBe(0o600);
-      },
-    );
+    it("makes the folder and the files private to the user", async () => {
+      const root = join(await tempFolder(), "instruction-trust");
+      await new FileInstructionTrustStore(root).save(
+        instructionTrustRecord(coder.location, coder.agent),
+      );
+      // Windows has no POSIX modes; there the profile folder's access rules apply.
+      if (process.platform === "win32") return;
+      expect((await stat(root)).mode & 0o777).toBe(0o700);
+      expect((await stat(fileFor(root, coder))).mode & 0o777).toBe(0o600);
+    });
   });
 
   describe("a record that can't be read", () => {
@@ -216,19 +215,19 @@ verifies("fs-node.instruction-trust-store-files", () => {
       );
     });
 
-    it.runIf(process.platform !== "win32")(
-      "[platform:win32] needs POSIX links, modes and signals: keeps a file and a folder private when they were already there",
-      async () => {
-        const root = await emptyRoot();
-        const store = new FileInstructionTrustStore(root);
-        await store.save(instructionTrustRecord(coder.location, coder.agent));
+    it("keeps a file and a folder private when they were already there", async () => {
+      const root = await emptyRoot();
+      const store = new FileInstructionTrustStore(root);
+      await store.save(instructionTrustRecord(coder.location, coder.agent));
+      if (process.platform !== "win32") {
         await chmod(fileFor(root, coder), 0o666);
         await chmod(root, 0o777);
+      }
 
-        await store.save(instructionTrustRecord(coder.location, coder.agent, "c"));
-        expect((await stat(fileFor(root, coder))).mode & 0o777).toBe(0o600);
-        expect((await stat(root)).mode & 0o777).toBe(0o700);
-      },
-    );
+      await store.save(instructionTrustRecord(coder.location, coder.agent, "c"));
+      if (process.platform === "win32") return;
+      expect((await stat(fileFor(root, coder))).mode & 0o777).toBe(0o600);
+      expect((await stat(root)).mode & 0o777).toBe(0o700);
+    });
   });
 });
