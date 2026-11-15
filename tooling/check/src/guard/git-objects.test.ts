@@ -101,7 +101,7 @@ verifies("check.guard-signed-notes", () => {
     const { root, commit } = repo();
     const lines: string[] = [];
     gitObjects(root, (line) => lines.push(line)).readFiles(commit, ["src/a.ts"]);
-    expect(lines).toEqual([`reading 1 files at ${commit.slice(0, 12)}`]);
+    expect(lines).toEqual([`reading 1 file at ${commit.slice(0, 12)}`]);
   });
 
   test("takes only full commit IDs, so no argument reads as an option", () => {
