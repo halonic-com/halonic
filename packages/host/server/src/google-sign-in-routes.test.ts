@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { RequestLogEntry, Server } from "./api.ts";
 import { fakeClientId, fakeGoogle, fakeSecret, ledgerSubject } from "./google-fakes.test-helper.ts";
 import { FakeCoordination, FakePasswordHasher, TestClock, testServer } from "./test-server.ts";
+import { wrongAccountNoteLifetimeMs } from "./wrong-account-notes.ts";
 
 const route = { app: "own", runsOn: "this-computer" } as const;
 // An invented workspace key: 32 hex characters, as the profile makes them.
@@ -30,7 +31,7 @@ function setup(options: { password?: boolean } = {}) {
     errorLog: { record: (cause) => errors.push(cause) },
     config: { allowedHosts: ["localhost", lanHost] },
   });
-  return { server, google, requestLog, errors };
+  return { server, google, clock, requestLog, errors };
 }
 
 type Setup = ReturnType<typeof setup>;
@@ -388,6 +389,103 @@ describe("google sign-in callback with no setup", () => {
 
       expect(response.status).toBe(500);
       expect(await state.google.tokens.get(tokenName)).not.toBeNull();
+    });
+  });
+});
+
+/** `GET /api/google/setups/<ref>/sign-in/wrong-account`, as the open item reads it. */
+function readWrongAccount(server: Server, accountRef: string): Promise<Response> {
+  return server.handle(
+    new Request(`http://localhost:4321/api/google/setups/${accountRef}/sign-in/wrong-account`, {
+      headers: { host: "localhost:4321" },
+    }),
+  );
+}
+
+describe("google sign-in as another account", () => {
+  const otherAddress = "someone-else@example.com";
+
+  /** A setup whose sign-in came back for `otherAddress`. */
+  async function wrongSignIn(state: Setup): Promise<string> {
+    const accountRef = await readySetup(state);
+    state.google.actions.signInOutcome = {
+      kind: "wrongAccount",
+      accountRef,
+      signedInAs: otherAddress,
+    };
+    await callback(state.server, codeQuery);
+    return accountRef;
+  }
+
+  verifies("server.google-sign-in", () => {
+    it("notes the wrong account on the record without the address, and gives the address on the read route", async () => {
+      const state = setup();
+      const accountRef = await wrongSignIn(state);
+
+      const record = await state.google.setups.read(accountRef);
+      expect(record?.wrongAccountAt).toBe(state.clock.now().toISOString());
+      expect(record?.signInStartedAt).toBeNull();
+      expect(JSON.stringify(record)).not.toContain(otherAddress);
+      const response = await readWrongAccount(state.server, accountRef);
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ signedInAs: otherAddress });
+    });
+
+    it("answers 404 when the account has no note, and when the setup doesn't exist", async () => {
+      const state = setup();
+      const accountRef = await readySetup(state);
+
+      const noNote = await readWrongAccount(state.server, accountRef);
+      const noSetup = await readWrongAccount(state.server, "unknown-ref");
+
+      expect(noNote.status).toBe(404);
+      expect(await noNote.json()).toMatchObject({ code: "google_wrong_account_not_found" });
+      expect(noSetup.status).toBe(404);
+      expect(await noSetup.json()).toMatchObject({ code: "google_setup_not_found" });
+    });
+
+    it("forgets the address after ten minutes but keeps the record's note", async () => {
+      const state = setup();
+      const accountRef = await wrongSignIn(state);
+
+      state.clock.advance(wrongAccountNoteLifetimeMs);
+
+      expect((await readWrongAccount(state.server, accountRef)).status).toBe(404);
+      expect((await state.google.setups.read(accountRef))?.wrongAccountAt).not.toBeNull();
+    });
+
+    it("forgets the note and clears the record's mark when a new sign-in starts", async () => {
+      const state = setup();
+      const accountRef = await wrongSignIn(state);
+
+      await startSignIn(state.server, accountRef);
+
+      expect((await readWrongAccount(state.server, accountRef)).status).toBe(404);
+      expect((await state.google.setups.read(accountRef))?.wrongAccountAt).toBeNull();
+    });
+
+    it("forgets the note when a sign-in succeeds", async () => {
+      const state = setup();
+      const accountRef = await wrongSignIn(state);
+      state.google.actions.signInOutcome = { kind: "signedIn", accountRef, services: [] };
+      await callback(state.server, codeQuery);
+
+      expect((await readWrongAccount(state.server, accountRef)).status).toBe(404);
+      expect((await state.google.setups.read(accountRef))?.wrongAccountAt).toBeNull();
+    });
+
+    it("keeps the address out of the page, the request log and the errors", async () => {
+      const state = setup();
+      const accountRef = await readySetup(state);
+      state.google.actions.signInOutcome = {
+        kind: "wrongAccount",
+        accountRef,
+        signedInAs: otherAddress,
+      };
+
+      const page = await (await callback(state.server, codeQuery)).text();
+
+      expect(everythingSaid([page], state.requestLog, state.errors)).not.toContain(otherAddress);
     });
   });
 });

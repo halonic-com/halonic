@@ -122,6 +122,11 @@ export const serverErrors = {
     code: "google_setup_not_found",
     message: "There is no Google setup for this account.",
   },
+  googleWrongAccountNotFound: {
+    status: 404,
+    code: "google_wrong_account_not_found",
+    message: "There is no wrong-account sign-in to show for this account.",
+  },
   secretFromOtherSite: {
     status: 403,
     code: "secret_from_other_site",

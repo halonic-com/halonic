@@ -94,6 +94,7 @@ verifies("google-setup.setup-record", () => {
       clientSecret: null,
       signInStartedAt: null,
       lastSignInAt: null,
+      wrongAccountAt: null,
       services: {},
       refreshRefused: null,
     });
@@ -187,6 +188,25 @@ verifies("google-setup.setup-record", () => {
     });
   });
 
+  it("notes a sign-in for another account as a time, and a new sign-in or a good one clears it", async () => {
+    const setups = newSetups();
+    const { accountRef } = await setups.start({ route, accountType: "personal", connector });
+    await setups.update(accountRef, { kind: "sign-in-started" });
+
+    const wrong = await setups.update(accountRef, { kind: "wrong-account" });
+    expect(wrong).toMatchObject({
+      signInStartedAt: null,
+      lastSignInAt: null,
+      wrongAccountAt: "2026-01-01T00:00:02.000Z",
+    });
+
+    const again = await setups.update(accountRef, { kind: "sign-in-started" });
+    expect(again.wrongAccountAt).toBeNull();
+    await setups.update(accountRef, { kind: "wrong-account" });
+    const signedIn = await setups.update(accountRef, { kind: "signed-in" });
+    expect(signedIn.wrongAccountAt).toBeNull();
+  });
+
   it("lists every record and reads an unknown account ref as null", async () => {
     const setups = newSetups();
     await setups.start({ route, accountType: "personal", connector });
@@ -225,6 +245,7 @@ verifies("google-setup.setup-record-holds-no-secret", () => {
       "signInStartedAt",
       "startedAt",
       "stepsDone",
+      "wrongAccountAt",
     ]);
   });
 

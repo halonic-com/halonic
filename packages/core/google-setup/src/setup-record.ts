@@ -189,6 +189,12 @@ const setupValues = s
     signInStartedAt: time.nullable(),
     /** When the last sign-in came back, for the 7-day hint. */
     lastSignInAt: time.nullable(),
+    /**
+     * When a sign-in came back for another account than the connector's, and
+     * nothing was saved. It holds no address: the host keeps that for a few
+     * minutes in memory only.
+     */
+    wrongAccountAt: time.nullable().default(null),
     /** The last check after sign-in per ticked service, by service id. */
     services: s.record(s.string().regex(serviceIdPattern), serviceResult),
     /** The last refused token refresh, until a sign-in or an accepted secret clears it. */

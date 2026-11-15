@@ -49,6 +49,7 @@ function samsAccount(extra: Partial<SetupRecord>): GoogleSetupAccount {
     clientSecret: null,
     signInStartedAt: null,
     lastSignInAt: null,
+    wrongAccountAt: null,
     services: {},
     refreshRefused: null,
     ...extra,

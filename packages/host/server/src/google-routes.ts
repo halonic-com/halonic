@@ -1,10 +1,12 @@
 import { savedConnectorState, setupSteps, startOver } from "@halonicjs/google-setup";
+import type { Clock } from "@halonicjs/ports";
 import type { GoogleCheckOutcome, GoogleSetupPorts, RequestContext } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { readSetup } from "./google-read-setup.ts";
 import { createGoogleSecretRoutes } from "./google-secret-routes.ts";
 import { createGoogleSignInRoutes } from "./google-sign-in-routes.ts";
 import { refuseOtherSite } from "./secret-request.ts";
+import { WrongAccountNotes } from "./wrong-account-notes.ts";
 
 /** Every Google setup route starts with this path. */
 export const googlePathPrefix = "/api/google/";
@@ -39,11 +41,12 @@ export interface GoogleRoutes {
 }
 
 /** The ports the Google routes work with. */
-type GoogleRoutePorts = { readonly google: GoogleSetupPorts };
+type GoogleRoutePorts = { readonly google: GoogleSetupPorts; readonly clock: Clock };
 
-export function createGoogleRoutes({ google }: GoogleRoutePorts): GoogleRoutes {
+export function createGoogleRoutes({ google, clock }: GoogleRoutePorts): GoogleRoutes {
   const { setups, clientSecrets, source, tokens, actions } = google;
-  const signInRoutes = createGoogleSignInRoutes({ google });
+  const wrongAccountNotes = new WrongAccountNotes(clock);
+  const signInRoutes = createGoogleSignInRoutes({ google, wrongAccountNotes });
 
   const secretRoutes = createGoogleSecretRoutes({ google });
 
@@ -72,6 +75,7 @@ export function createGoogleRoutes({ google }: GoogleRoutePorts): GoogleRoutes {
       clientSecretSavedAt: record.clientSecret?.savedAt ?? null,
       signInStartedAt: record.signInStartedAt,
       lastSignInAt: record.lastSignInAt,
+      wrongAccountAt: record.wrongAccountAt,
       services: record.services,
       problem: savedConnectorState(record),
       steps,
@@ -143,6 +147,7 @@ export function createGoogleRoutes({ google }: GoogleRoutePorts): GoogleRoutes {
       return errorResponse(serverErrors.googleSetupNotFound);
     }
     const revoked = await actions.revoke(accountRef);
+    wrongAccountNotes.clear(accountRef);
     const secret = await startOver({ setups, secrets: clientSecrets, tokens }, accountRef);
     return Response.json({
       disconnected: true,
@@ -176,6 +181,14 @@ export function createGoogleRoutes({ google }: GoogleRoutePorts): GoogleRoutes {
     return signInRoutes.cancel(accountRef);
   }
 
+  /** `GET /api/google/setups/<ref>/sign-in/wrong-account`: see `wrongAccount` in `createGoogleSignInRoutes`. */
+  async function wrongAccount(accountRef: string): Promise<Response> {
+    if ((await readSetup(setups, accountRef)) === null) {
+      return errorResponse(serverErrors.googleSetupNotFound);
+    }
+    return signInRoutes.wrongAccount(accountRef);
+  }
+
   return {
     callback: (request) => signInRoutes.callback(request),
     async handle(request, body, context) {
@@ -202,6 +215,8 @@ export function createGoogleRoutes({ google }: GoogleRoutePorts): GoogleRoutes {
           return startSignIn(request, accountRef);
         case "DELETE /sign-in":
           return cancelSignIn(request, accountRef);
+        case "GET /sign-in/wrong-account":
+          return wrongAccount(accountRef);
         case "POST /disconnect":
           return disconnect(request, accountRef);
         default:

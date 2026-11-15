@@ -151,6 +151,7 @@ export function setupRecords(options: SetupRecordsOptions): SetupRecords {
         clientSecret: null,
         signInStartedAt: null,
         lastSignInAt: null,
+        wrongAccountAt: null,
         services: {},
         refreshRefused: null,
       };

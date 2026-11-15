@@ -97,7 +97,9 @@ export const createServer: CreateServer = ({ config, ports }) => {
   const studioPageRoutes =
     ports.studioPage === undefined ? null : createStudioPageRoutes(ports.studioPage);
   const googleRoutes =
-    ports.google === undefined ? null : createGoogleRoutes({ google: ports.google });
+    ports.google === undefined
+      ? null
+      : createGoogleRoutes({ google: ports.google, clock: ports.clock });
 
   /** Answers `serve` when the caller is signed in (or no password is set), and 401 otherwise. */
   async function whenSignedIn(
