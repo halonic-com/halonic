@@ -2,6 +2,7 @@
 
 - Approval: HAL-10435, comment 6a88ede0-f995-41fd-b888-f998468c1a5a (scope set on HAL-7193, approved by Liam as package owner)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Wcsp9ENoYxBvqhMDivo1g+pLYzfJDkjlpkFOqKY6IGPJUYX83AqWOVGz+Fda5mc7z5j6S/b4wSFGcCAoosAODg==
 
 ## What changes
 
