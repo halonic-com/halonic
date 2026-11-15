@@ -1,10 +1,21 @@
 import type { Coordination, ScheduledTimer, Scheduler, SchedulerListener } from "@halonicjs/ports";
 import { fixedIds } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { secretsWith } from "./agent/turn-test-kit.test-helper.ts";
 import { assembleEngine, type EngineAssemblyOptions } from "./engine-assembly.ts";
-import { KernelBlobs, KernelRuns, replyWorkflow } from "./kernel/kernel-test-kit.test-helper.ts";
+import {
+  harnessPorts,
+  NotingScheduler,
+  stillOpen,
+} from "./harness/harness-test-kit.test-helper.ts";
+import {
+  KernelBlobs,
+  KernelRuns,
+  replyWorkflow,
+  writerAgent,
+} from "./kernel/kernel-test-kit.test-helper.ts";
+import { replyStart, typesOf } from "./run/local-runs-test-kit.test-helper.ts";
 
 /** A scheduler that remembers its listener and what happened to it. */
 class StubScheduler implements Scheduler {
@@ -177,5 +188,68 @@ verifies("engine.engine-assembly", () => {
     await engine.abandon();
 
     expect(steps).toEqual(["release"]);
+  });
+});
+
+verifies("engine.harness-stops-with-engine", () => {
+  it("stops a harness run going on when the host closes the engine, before the scheduler closes", async () => {
+    const ports = harnessPorts();
+    ports.harness.hangs = true;
+    const order: string[] = [];
+    const runs = new KernelRuns();
+    class NotingEngineScheduler extends NotingScheduler {
+      readonly listener: SchedulerListener;
+      constructor(listener: SchedulerListener) {
+        super();
+        this.listener = listener;
+      }
+      async close(): Promise<void> {
+        // What the harness had left open when the scheduler began to close.
+        order.push(`scheduler (${stillOpen(ports.steps)} open)`);
+      }
+    }
+    let scheduler: NotingEngineScheduler | undefined;
+    const engine = assembleEngine({
+      createScheduler: (listener) => {
+        scheduler = new NotingEngineScheduler(listener);
+        return scheduler;
+      },
+      executor: {
+        resolveModel: async () => {
+          throw new Error("No model is used here.");
+        },
+        halonicTools: [],
+        connectors: [],
+        secrets: secretsWith(),
+        clock: { now: () => new Date("2026-11-03T08:00:00Z") },
+        runs: {
+          store: runs,
+          blobs: new KernelBlobs(),
+          ids: fixedIds(),
+          harnesses: ports.options,
+          definitionsOf: async () => ({
+            workflow: replyWorkflow,
+            agents: { writer: writerAgent("claude-code") },
+          }),
+        },
+      },
+      coordination: noCoordination,
+      release: async () => {
+        order.push("release");
+      },
+    });
+
+    await engine.executor.start(replyStart);
+    const timer = await scheduler?.waitFor("run_1", "harness:call-1");
+    const delivery = scheduler?.listener.onTimer({ ...(timer as ScheduledTimer) });
+    await vi.waitFor(() => expect(ports.steps).toContain("harness.start"));
+    await engine.close();
+    await delivery;
+
+    expect(ports.steps.slice(-3)).toEqual(["harness.cancel", "session.close", "bridge.close"]);
+    expect(stillOpen(ports.steps)).toBe(0);
+    expect(order).toEqual(["scheduler (0 open)", "release"]);
+    expect(await runs.get("run_1")).toMatchObject({ status: "running" });
+    expect(typesOf(runs.logs.get("run_1")).at(-1)).toBe("harness.started");
   });
 });
