@@ -1,6 +1,6 @@
 # Decision: the export scans text blobs for secrets, and a binary blob is exported unscanned
 
-- Approval: [HAL-10435](/HAL/issues/HAL-10435#comment-6a88ede0-f995-41fd-b888-f998468c1a5a) (scope set on HAL-7193, approved by Liam as package owner)
+- Approval: HAL-10435, comment 6a88ede0-f995-41fd-b888-f998468c1a5a (scope set on HAL-7193, approved by Liam as package owner)
 - Kind: user-visible
 
 ## What changes
