@@ -50,3 +50,12 @@ export const updatedTo = (version: string) => `Updated to Halonic ${version}`;
 export const didNotInstall = (version: string, current: string) =>
   `Halonic ${version} didn't install. You're still on ${current}.`;
 export const SECOND_FAILURE = "Download it from the release page.";
+
+/** Mc 20.6: the status bar line while Scoop has a newer version; the command is shown in code. */
+export const MANAGED_SHORT = "Update with Scoop";
+export const MANAGED_RUN = "Updates are managed by Scoop. Run ";
+export const managedLine = (command: string) => `${MANAGED_RUN}${command}.`;
+export const managedItemName = (version: string, command: string) =>
+  `Halonic ${version} is out. ${managedLine(command)}`;
+export const announceManaged = (version: string, command: string) =>
+  `Halonic ${version} is out. Run ${command} to update.`;

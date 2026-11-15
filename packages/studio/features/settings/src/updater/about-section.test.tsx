@@ -153,7 +153,7 @@ verifies("settings.about-section", () => {
     expect(host.setAutomatic).toHaveBeenCalledWith(false);
   });
 
-  it("hides the switch and the buttons when another tool manages updates", async () => {
+  it("shows the notify switch in place of the automatic one, and no buttons, when another tool manages updates", async () => {
     const { host } = fakeHost(
       statusOf(
         { kind: "available", version: "0.1.1", notesUrl },
@@ -161,8 +161,10 @@ verifies("settings.about-section", () => {
       ),
     );
     const { view } = await show(host);
-    expect(view.querySelector('input[type="checkbox"]')).toBeNull();
-    expect(view.querySelectorAll("button")).toHaveLength(2);
+    expect(view.textContent).toContain("Tell me when a new Halonic is out");
+    expect(view.textContent).not.toContain("Update Halonic automatically");
+    expect(view.querySelectorAll('input[type="checkbox"]')).toHaveLength(1);
+    expect(() => button(view, "Download Halonic 0.1.1")).toThrow();
     expect(button(view, "Check now")).toBeDefined();
   });
 
@@ -175,9 +177,12 @@ verifies("settings.about-section", () => {
     );
     const { view } = await show(host);
     expect(view.textContent).toContain("Halonic 0.1.1 is out. You have 0.1.0.");
-    expect(view.textContent).toContain("Updates are managed by Scoop.");
+    expect(view.textContent).toContain("Updates are managed by Scoop");
+    expect(view.textContent).toContain(
+      "Scoop installs new versions of Halonic. Quit Halonic, then run this in a terminal:",
+    );
     expect(view.textContent).toContain("scoop update halonic");
-    expect(view.querySelector('button[aria-label="Copy the update command"]')).not.toBeNull();
+    expect(view.querySelector('button[aria-label="Copy command"]')).not.toBeNull();
   });
 
   it("offers Restart to update for a ready update only where the restart flow is there", async () => {
