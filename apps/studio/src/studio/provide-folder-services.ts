@@ -9,6 +9,7 @@ import { randomIds, systemClock } from "@halonicjs/std";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import {
+  KnowledgeHostService,
   LibraryItemsHostService,
   LibraryTabMemoryService,
   NewSkillHostService,
@@ -27,6 +28,7 @@ import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.t
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
 import { provideLibraryServices } from "../library/provide-library-services.ts";
+import { WorkspaceKnowledge } from "../library/workspace-knowledge.ts";
 import { WorkspaceLibraryItems } from "../library/workspace-library-items.ts";
 import { WorkspaceLibraryTab } from "../library/workspace-library-tab.ts";
 import { WorkspaceNewSkill } from "../library/workspace-new-skill.ts";
@@ -116,6 +118,15 @@ export function provideFolderServices(
     new WorkspaceSkills({
       files: services.get(workspaceFilesKey),
       onChange: (listener) => scope.events.on("files.changed", listener),
+    }),
+  );
+  services.provide(
+    KnowledgeHostService,
+    new WorkspaceKnowledge({
+      files: services.get(workspaceFilesKey),
+      onChange: (listener) => scope.events.on("files.changed", listener),
+      // The window has no way to call a model yet: Summarize says it couldn't, until it has.
+      chat: () => Promise.reject(new Error("Studio doesn't call models yet.")),
     }),
   );
   services.provide(

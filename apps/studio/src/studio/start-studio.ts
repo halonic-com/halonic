@@ -18,6 +18,7 @@ import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import { libraryFeature } from "@halonicjs/studio-feature-library";
 import {
   ConnectorStatusHostService,
+  KnowledgeHostService,
   LibraryItemsHostService,
   LibraryTabMemoryService,
   ListedToolsHostService,
@@ -194,6 +195,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
   ],
   hostServices: [
     ConnectorStatusHostService,
+    KnowledgeHostService,
     LibraryItemsHostService,
     LibraryTabMemoryService,
     NewSkillHostService,
