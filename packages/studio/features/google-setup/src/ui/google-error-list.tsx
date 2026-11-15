@@ -5,6 +5,8 @@ import { type ErrorAction, errorRows } from "./google-error-rows.ts";
 /** Props for {@link GoogleErrorList}. */
 export interface GoogleErrorListProps {
   readonly accountType: AccountType | null;
+  /** Whether step 3 asks for the "In production" tick, so the Testing row has a fix to point to. */
+  readonly canPublish: boolean;
   /** The connector's address, for the row that says which account to choose. */
   readonly email: string;
   /** The note for the admin, for the row about an admin block. */
@@ -38,7 +40,7 @@ export function GoogleErrorList(props: GoogleErrorListProps) {
   return (
     <Disclosure summary="Google showed an error instead?">
       <ul className="flex flex-col gap-3 p-4 text-body">
-        {errorRows(accountType, email).map((row) => (
+        {errorRows(accountType, email, props.canPublish).map((row) => (
           <li key={row.code} className="flex flex-col items-start gap-1">
             <strong className="text-body-strong">{row.code}</strong>
             <span>{row.fix}</span>

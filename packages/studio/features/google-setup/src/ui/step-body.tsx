@@ -36,6 +36,8 @@ export interface StepBodyProps {
   readonly step: SetupStep;
   /** Personal or Workspace, which decides what the scopes note may say. */
   readonly accountType: AccountType | null;
+  /** Whether step 3 asks for the "In production" tick: false for an Internal app. */
+  readonly canPublish: boolean;
   /** The "In production" tick as saved. */
   readonly inProduction: boolean;
   /** The project ID as typed in step 1, and what is wrong with it, if anything. */
@@ -101,6 +103,7 @@ export function StepBody(props: StepBodyProps) {
             whileWaiting={
               <GoogleErrorList
                 accountType={props.accountType}
+                canPublish={props.canPublish}
                 email={props.results.email}
                 adminNote={adminNote({
                   projectId: props.savedProjectId,

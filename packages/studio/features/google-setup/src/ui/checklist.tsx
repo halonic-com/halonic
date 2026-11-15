@@ -202,6 +202,11 @@ export function Checklist(props: ChecklistProps) {
                   account={account}
                   projectId={typedProjectId ?? account.record.projectId ?? ""}
                   projectIdError={projectIdError}
+                  canPublish={steps.some(
+                    (candidate) =>
+                      candidate.id === "consent" &&
+                      candidate.requiredTicks.includes("in-production"),
+                  )}
                   onProjectId={(text) => {
                     setTypedProjectId(text);
                     setProjectIdError(null);
@@ -325,6 +330,8 @@ interface OpenStepProps {
   readonly account: GoogleSetupAccount;
   readonly projectId: string;
   readonly projectIdError: string | null;
+  /** Whether step 3 asks for the "In production" tick. */
+  readonly canPublish: boolean;
   readonly onProjectId: (text: string) => void;
   readonly onInProduction: (ticked: boolean) => void;
   readonly onEditProject: () => void;
@@ -361,6 +368,7 @@ function OpenStep(props: OpenStepProps) {
       <StepBody
         step={step}
         accountType={account.record.accountType}
+        canPublish={props.canPublish}
         inProduction={account.record.inProductionTickedAt !== null}
         projectId={props.projectId}
         projectIdError={props.projectIdError}

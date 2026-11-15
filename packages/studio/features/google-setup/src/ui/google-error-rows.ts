@@ -18,9 +18,14 @@ export interface ErrorRow {
  * The errors Google shows in the browser instead of coming back to Halonic (design 5.1). For these
  * Studio can't tell what happened, so it lists them next to the waiting state, matched on the code
  * the person can read on Google's page. The two rows that only a Workspace account can meet are
- * left out for a personal account (UX checklist U11).
+ * left out for a personal account (UX checklist U11), and the Testing row when step 3 has no
+ * "In production" tick to go back to.
  */
-export function errorRows(accountType: AccountType | null, email: string): ErrorRow[] {
+export function errorRows(
+  accountType: AccountType | null,
+  email: string,
+  canPublish: boolean,
+): ErrorRow[] {
   const rows: ErrorRow[] = [
     {
       code: "Error 401: invalid_client",
@@ -35,12 +40,15 @@ export function errorRows(accountType: AccountType | null, email: string): Error
         { kind: "open-step", step: "credentials", label: "Open step 6" },
       ],
     },
-    {
-      code: "Error 403: access_denied",
-      fix: "Your app is still in Testing. Publish it on the Audience page (step 3c).",
-      actions: [{ kind: "reopen-consent", label: "Open step 3" }],
-    },
   ];
+  // An Internal app has no Testing status and no Publish action, so step 3 has no tick for it.
+  if (canPublish) {
+    rows.push({
+      code: "Error 403: access_denied",
+      fix: "Your app is still in Testing. Publish it on the Audience page (step 3d).",
+      actions: [{ kind: "reopen-consent", label: "Open step 3" }],
+    });
+  }
   if (accountType !== "workspace") return rows;
   return [
     ...rows,

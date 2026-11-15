@@ -59,14 +59,13 @@ verifies("google-setup.google-error-list", () => {
     );
   });
 
-  it("adds the organisation rows for a Workspace account, with the note for the admin", async () => {
+  it("adds the organisation rows for a Workspace account, with the note for the admin, and no Testing row", async () => {
     const { container } = await waiting(
       account(record(upToSignIn, { ...ready, accountType: "workspace" })),
     );
     expect(errorCodes(container)).toEqual([
       "Error 401: invalid_client",
       "Error 400: redirect_uri_mismatch",
-      "Error 403: access_denied",
       "Error 403: org_internal",
       "admin_policy_enforced",
     ]);
