@@ -61,6 +61,31 @@ describe("google setup write routes", () => {
       expect(record).toMatchObject({ accountRef, accountType: "workspace", connector });
     });
 
+    it("keeps the record a connector has when it is started again", async () => {
+      const state = setup();
+      const first = await started(state);
+
+      const response = await send(state, "POST", "", { accountType: "personal", connector });
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ accountRef: first });
+      expect(await state.google.setups.list()).toHaveLength(1);
+    });
+
+    it("makes one record when two starts arrive together", async () => {
+      const state = setup();
+      const body = { accountType: "personal", connector };
+
+      const [first, second] = await Promise.all([
+        send(state, "POST", "", body),
+        send(state, "POST", "", body),
+      ]);
+
+      const refs = [await first.json(), await second.json()] as { accountRef: string }[];
+      expect(refs[0]?.accountRef).toBe(refs[1]?.accountRef);
+      expect(await state.google.setups.list()).toHaveLength(1);
+    });
+
     it("refuses a body or a link that is wrong, and writes nothing", async () => {
       const state = setup();
       const bodies = [
@@ -161,8 +186,16 @@ describe("google setup write routes", () => {
       const response = await send(state, "POST", `/${accountRef}/start-over`);
 
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ clientSecret: "none-saved" });
+      const answer = (await response.json()) as { clientSecret: string; accountRef: string };
+      expect(answer.clientSecret).toBe("none-saved");
+      expect(answer.accountRef).not.toBe(accountRef);
       expect(await state.google.setups.read(accountRef)).toBeNull();
+      expect(
+        await state.google.setups.forConnector(connector.workspace, connector.id),
+      ).toMatchObject({
+        accountRef: answer.accountRef,
+        accountType: "personal",
+      });
       expect(await state.google.tokens.get(refreshTokenName(accountRef))).toBeNull();
     });
   });

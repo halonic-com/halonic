@@ -20,8 +20,14 @@ verifies("studio.workspace-google-setup-accounts", () => {
         },
         startOver: async (accountRef) => {
           asked.push(`start-over ${accountRef}`);
+          const old = (await setups.read(accountRef)) as SetupRecord;
           await setups.remove(accountRef);
-          return "gclient_1";
+          const fresh = await setups.start({
+            route,
+            accountType: old.accountType,
+            connector: old.connector,
+          });
+          return { clientSecret: "none-saved", accountRef: fresh.accountRef };
         },
         startSignIn: async (accountRef) => {
           asked.push(`sign-in ${accountRef}`);
@@ -64,7 +70,7 @@ verifies("studio.workspace-google-setup-accounts", () => {
       expect(listener).toHaveBeenCalledTimes(1);
     });
 
-    it("starts over by removing the record and starting a fresh one for the same connector", async () => {
+    it("starts over in one host step that leaves a fresh record for the same connector", async () => {
       const asked: string[] = [];
       const { accounts, setups } = await accountsOf({ host: (own) => hostOver(own, asked) });
       const mail = (await setups.forConnector(acmeKey, "mail")) as SetupRecord;
@@ -74,15 +80,14 @@ verifies("studio.workspace-google-setup-accounts", () => {
       const fresh = (await setups.forConnector(acmeKey, "mail")) as SetupRecord;
       expect(fresh.accountRef).not.toBe(mail.accountRef);
       expect(fresh.accountType).toBe(mail.accountType);
-      expect(asked).toEqual([`start-over ${mail.accountRef}`, `start ${acmeKey}/mail personal`]);
+      expect(asked).toEqual([`start-over ${mail.accountRef}`]);
     });
 
-    it("says the old setup was removed when the fresh one can't be started, and tells its listeners", async () => {
-      const asked: string[] = [];
+    it("tells its listeners to read again when start over fails", async () => {
       const { accounts, setups } = await accountsOf({
         host: (own) => ({
-          ...hostOver(own, asked),
-          start: async () => {
+          ...hostOver(own, []),
+          startOver: async () => {
             throw new Error("The agent host answered with 502 (google_failed).");
           },
         }),
@@ -91,14 +96,11 @@ verifies("studio.workspace-google-setup-accounts", () => {
       const listener = vi.fn();
       accounts.subscribe(listener);
 
-      const attempt = accounts.startOver(mail.accountRef);
-
-      await expect(attempt).rejects.toThrow(
-        "Halonic couldn't make a fresh setup. The old setup was removed. The agent host answered with 502",
+      await expect(accounts.startOver(mail.accountRef)).rejects.toThrow(
+        "Halonic couldn't start over. The agent host answered with 502",
       );
-      await expect(attempt).rejects.not.toThrow("couldn't start over");
-      expect(await setups.forConnector(acmeKey, "mail")).toBeNull();
-      expect(listener).toHaveBeenCalledTimes(2);
+
+      expect(listener).toHaveBeenCalledTimes(1);
     });
 
     it("starts and cancels a sign-in", async () => {

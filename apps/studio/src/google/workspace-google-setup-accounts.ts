@@ -22,8 +22,13 @@ export interface GoogleSetupHost {
   ): Promise<string>;
   /** Applies one change a person makes to the record. */
   edit(accountRef: string, change: SetupEdit): Promise<void>;
-  /** Removes the record, the sign-in and the client secret (unless another account uses it), without asking Google. */
-  startOver(accountRef: string): Promise<string>;
+  /**
+   * Removes the record, the sign-in and the client secret (unless another account uses it),
+   * without asking Google, and starts a fresh record for the same connector, all in one step.
+   */
+  startOver(
+    accountRef: string,
+  ): Promise<{ readonly clientSecret: string; readonly accountRef: string }>;
   /** Starts the sign-in and answers the address to open in the browser. */
   startSignIn(accountRef: string): Promise<string>;
   /** Drops the pending sign-in. */
@@ -59,9 +64,6 @@ const notYet =
  * can be lost after the host finished, so the page reads the list again to show what is left.
  */
 const disconnectFailed = "Halonic couldn't finish disconnecting this account.";
-
-/** Said when start over removed the setup and the fresh one couldn't be started. */
-const freshSetupFailed = "make a fresh setup. The old setup was removed";
 
 /** What the host said, in its own words when it gave some. */
 function reasonOf(error: unknown): string {
@@ -155,11 +157,7 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
 
   async startOver(accountRef: string): Promise<void> {
     const host = this.#host();
-    const record = await this.#options.setups.read(accountRef);
     await this.#asked("start over", () => host.startOver(accountRef));
-    // The host removed the record; the setup begins again at step 1 for the same connector.
-    if (record === null) return;
-    await this.#asked(freshSetupFailed, () => host.start(record.connector, record.accountType));
   }
 
   async disconnect(accountRef: string): Promise<DisconnectAnswer> {
