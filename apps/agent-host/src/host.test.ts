@@ -27,7 +27,7 @@ function windows(state: { installed: boolean; prompt?: "yes" | "cancelled" }): M
     appArmorRestrictsUserNamespaces: async () => false,
     hasSeatbelt: async () => false,
     packageManager: async () => null,
-    hasWindowsSandbox: async () => state.installed,
+    windowsSandboxState: async () => (state.installed ? ("ok" as const) : ("setup-needed" as const)),
     installWindowsSandbox: async () => {
       if (cancelled) return "cancelled";
       state.installed = true;
