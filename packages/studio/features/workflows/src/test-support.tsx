@@ -1,3 +1,5 @@
+import type { RunSummary } from "@halonicjs/events";
+import type { RunsSource } from "@halonicjs/studio-feature-runs/api";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type {
@@ -123,4 +125,75 @@ export function openDialogsInJsdom(): void {
     },
   });
   Element.prototype.scrollIntoView = () => {};
+}
+
+/** A run of Acme's `reply` workflow, running in `draft`, for a test to change what it cares about. */
+export function runSummary(changes: Partial<RunSummary>): RunSummary {
+  const minute = (at: number) => new Date(2026, 10, 9, 10, 40 + at).toISOString();
+  return {
+    id: "run_mfx3k2a1_01jd8q",
+    hubId: "acme",
+    workflowId: "reply",
+    kind: "run",
+    status: "running",
+    state: "draft",
+    startedAt: minute(0),
+    endedAt: null,
+    usage: { inputTokens: 0, outputTokens: 0 },
+    cost: 0,
+    unpricedCalls: 0,
+    subscriptionCalls: 0,
+    statesVisited: ["read", "draft"],
+    context: {},
+    error: null,
+    reason: null,
+    definitionsVersion: "v1",
+    trigger: null,
+    parentRunId: null,
+    waitingOn: null,
+    accepts: [],
+    answerLabels: {},
+    nextTimer: null,
+    waitingFor: null,
+    lastWaitingAt: null,
+    approvals: [],
+    signals: [],
+    cantTry: [],
+    lastSeq: 3,
+    updatedAt: minute(1),
+    ...changes,
+  };
+}
+
+/** A runs source in memory: it lists `summaries` newest first and tells its listeners of a change. */
+export function memoryRuns(summaries: readonly RunSummary[] = []) {
+  let runs = summaries;
+  let failure: Error | undefined;
+  const listeners = new Set<() => void>();
+  const source: RunsSource = {
+    list: async () => {
+      if (failure) throw failure;
+      return runs.map((summary) => ({ summary, madeToolCalls: false }));
+    },
+    log: async () => [],
+    workflow: () => ({ name: "Support reply", stepDescription: () => undefined }),
+    routine: () => undefined,
+    runnableWorkflows: async () => ["reply"],
+    currency: () => "EUR",
+    monthlyBudget: () => undefined,
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+  };
+  return {
+    source,
+    change: (next: readonly RunSummary[]) => {
+      runs = next;
+      for (const listener of listeners) listener();
+    },
+    failWith: (error: Error | undefined) => {
+      failure = error;
+    },
+  };
 }

@@ -1,3 +1,4 @@
+import { type RunsSource, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import {
   Button,
   CommandBox,
@@ -17,10 +18,16 @@ import { Configuration } from "../configuration/configuration-page.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
 import { countProblems } from "../configuration/problem-lines.ts";
 import { Avatar } from "../list/workflow-rows.tsx";
+import { runCount } from "../runs/runs-model.ts";
+import { RunsView } from "../runs/runs-view.tsx";
+import { runsWords } from "../runs/runs-words.ts";
+import { useRuns } from "../runs/use-runs.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
 import { pageWords } from "./page-words.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
 import { WorkflowCanvas } from "./workflow-canvas.tsx";
+
+type WorkflowView = "flow" | "configuration" | "runs";
 
 /** The workflow's page in its tab: `item` names the workflow, the host gives its steps. */
 export function WorkflowPage({ item, context }: ItemViewProps) {
@@ -28,11 +35,13 @@ export function WorkflowPage({ item, context }: ItemViewProps) {
   return (
     <WorkflowScreen
       host={context.services.get(WorkflowsHostService)}
+      runs={context.services.get(RunsSourceService)}
       hubId={item.hub}
       id={item.id}
       {...(openItem && {
         openRun: (runId: string) => openItem({ kind: "run", hub: item.hub, id: runId }),
       })}
+      {...(context.openPlace && { seeAllRuns: () => context.openPlace?.("runs") })}
     />
   );
 }
@@ -40,10 +49,14 @@ export function WorkflowPage({ item, context }: ItemViewProps) {
 /** Props for {@link WorkflowScreen}. */
 export interface WorkflowScreenProps {
   readonly host: WorkflowsHost;
+  /** The workspace's runs, which the Runs view shows the real ones of. */
+  readonly runs: RunsSource;
   readonly hubId: string;
   readonly id: string;
   /** Opens a test run's card from the Tests page; absent where there is no run card. */
   readonly openRun?: (runId: string) => void;
+  /** Opens the Runs list; absent where the app can't open it. */
+  readonly seeAllRuns?: () => void;
 }
 
 /**
@@ -51,12 +64,20 @@ export interface WorkflowScreenProps {
  * until the Assistant lands. The header has the letter avatar, "WORKFLOW" and the name; under it
  * is the canvas, a skeleton when the file takes over 300 ms, or why it couldn't be read.
  */
-export function WorkflowScreen({ host, hubId, id, openRun }: WorkflowScreenProps) {
+export function WorkflowScreen({
+  host,
+  runs,
+  hubId,
+  id,
+  openRun,
+  seeAllRuns,
+}: WorkflowScreenProps) {
   const { load, retry } = useWorkflow(host, { hubId, id });
   const name = load.kind === "ready" ? load.value.name : id;
   const settings = useHostRead(host, { hubId, id }, (one, ref) => one.configuration(ref));
   const everyWorkflow = useHostRead(host, { hubId, id }, (one) => one.list());
-  const [view, setView] = useState<"flow" | "configuration">("flow");
+  const runsRead = useRuns(runs);
+  const [view, setView] = useState<WorkflowView>("flow");
   // The canvas unmounts on Configuration, so the page keeps its zoom and pan (D9). They belong to
   // one workflow: the same screen can be handed another, which opens fitted.
   const [kept, setKept] = useState<{ readonly of: string; readonly view: View } | undefined>();
@@ -72,20 +93,8 @@ export function WorkflowScreen({ host, hubId, id, openRun }: WorkflowScreenProps
     everyWorkflow.load.kind === "ready" &&
     everyWorkflow.load.value.some((one) => one.id === id && one.hubId !== hubId);
   const startCommand = inSeveralHubs ? `halonic run ${hubId}/${id}` : `halonic run ${id}`;
-  const views: readonly Tab<"flow" | "configuration">[] = [
-    { id: "flow", label: configurationWords.flowTab },
-    {
-      id: "configuration",
-      label: configurationWords.tab,
-      ...(errors > 0 && {
-        count: {
-          value: errors,
-          tone: "danger" as const,
-          name: configurationWords.errors(errors),
-        },
-      }),
-    },
-  ];
+  const needYou = runCount(runsRead.load, { hubId, id }, runs);
+  const views = workflowTabs(errors, needYou);
   return (
     <div className="flex size-full min-h-0 flex-col">
       <header
@@ -130,7 +139,7 @@ export function WorkflowScreen({ host, hubId, id, openRun }: WorkflowScreenProps
         selected={view}
         className={view === "flow" ? "flex min-h-0 flex-1 flex-col" : undefined}
       >
-        {view === "configuration" ? (
+        {view === "configuration" && (
           <Configuration
             name={name}
             load={settings.load}
@@ -141,7 +150,18 @@ export function WorkflowScreen({ host, hubId, id, openRun }: WorkflowScreenProps
               setView("flow");
             }}
           />
-        ) : (
+        )}
+        {view === "runs" && (
+          <RunsView
+            source={runs}
+            load={runsRead.load}
+            retry={runsRead.retry}
+            workflow={{ hubId, id }}
+            openRun={openRun}
+            seeAll={seeAllRuns}
+          />
+        )}
+        {view === "flow" && (
           <FlowView
             load={load}
             retry={retry}
@@ -210,4 +230,29 @@ function FlowView({ load, retry, hubId, id, name, openStep, kept, onView }: Flow
       )}
     </>
   );
+}
+
+/** The page's tabs: Flow, Configuration with its error count, and Runs with the count of runs that need you. */
+function workflowTabs(errors: number, needYou: number): readonly Tab<WorkflowView>[] {
+  return [
+    { id: "flow", label: configurationWords.flowTab },
+    {
+      id: "configuration",
+      label: configurationWords.tab,
+      ...(errors > 0 && {
+        count: {
+          value: errors,
+          tone: "danger" as const,
+          name: configurationWords.errors(errors),
+        },
+      }),
+    },
+    {
+      id: "runs",
+      label: runsWords.tab,
+      ...(needYou > 0 && {
+        count: { value: needYou, tone: "warning" as const, name: runsWords.needYou(needYou) },
+      }),
+    },
+  ];
 }

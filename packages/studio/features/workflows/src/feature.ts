@@ -1,3 +1,4 @@
+import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import { defineFeature } from "@halonicjs/studio-shell";
 import { WorkflowsHostService } from "./api.ts";
 import { searchWords } from "./list/list-words.ts";
@@ -11,7 +12,7 @@ import { requestNewWorkflow } from "./list/new-request.ts";
 export const workflowsFeature = defineFeature({
   id: "workflows",
   title: "Workflows",
-  needs: [WorkflowsHostService],
+  needs: [WorkflowsHostService, RunsSourceService],
   register(studio) {
     studio.places.add({
       id: "workflows",
