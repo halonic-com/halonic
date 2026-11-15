@@ -211,9 +211,10 @@ fn prepared(request: &HttpRequest) -> Result<(Target, reqwest::Method), HttpRefu
 pub async fn http_request(request: HttpRequest) -> Result<HttpAnswer, HttpRefusal> {
     let (target, method) = prepared(&request)?;
     let lookup = target.clone();
-    let addresses = tauri::async_runtime::spawn_blocking(move || checked_addresses(&lookup))
-        .await
-        .map_err(|error| HttpRefusal::new("unreachable", error.to_string()))??;
+    let addresses =
+        tauri::async_runtime::spawn_blocking(move || checked_addresses(&lookup, &system_resolver))
+            .await
+            .map_err(|error| HttpRefusal::new("unreachable", error.to_string()))??;
     let client = reqwest::Client::builder()
         .no_proxy()
         .redirect(reqwest::redirect::Policy::none())
