@@ -1,12 +1,16 @@
 import type { KnowledgeLookupMode } from "@halonicjs/app";
-import { Button, EmptyState, Field, FormRows, RadioGroup } from "@halonicjs/studio-kit";
+import { EmptyState, Field, FormRows, RadioGroup } from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { KnowledgeHostService, type KnowledgeRef } from "../knowledge-host.ts";
 import { KnowledgeModel } from "../knowledge-model.ts";
 import { knowledgeWords } from "../knowledge-words.ts";
 import { sharedHubKey } from "./library-place.tsx";
+import { SummaryField } from "./summary-field.tsx";
 import { UsedByField } from "./used-by-field.tsx";
+
+/** The command that opens Models (`workspace.open-models`); the library only runs it by id. */
+const openModelsCommand = "workspace.open-models";
 
 function refOf(hub: string, id: string): KnowledgeRef {
   return { hub: hub === sharedHubKey ? null : hub, id };
@@ -52,10 +56,17 @@ function LoadedKnowledgePage({
   model,
 }: Pick<ItemViewProps, "item" | "context"> & { readonly model: KnowledgeModel }) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
-  const { loaded, gone, unreadable, parts, source, usage } = useSyncExternalStore(
+  const { loaded, gone, unreadable, parts, source, usage, summarize } = useSyncExternalStore(
     subscribe,
     () => model.state,
   );
+
+  const announce = useCallback(
+    (text: string) => context.announcer.announceState("knowledge-summary", text),
+    [context.announcer],
+  );
+  const runCommand = context.runCommand;
+  const openModels = runCommand === undefined ? undefined : () => void runCommand(openModelsCommand);
 
   if (gone) {
     return <Gone context={context} />;
@@ -81,14 +92,14 @@ function LoadedKnowledgePage({
         >
           <p className="[overflow-wrap:anywhere]">{source}</p>
         </Field>
-        <Field label={knowledgeWords.summary} align="text">
-          <p className="[overflow-wrap:anywhere]">{parts.summary || knowledgeWords.noSummary}</p>
-          {parts.summary === "" ? null : (
-            <Button variant="ghost" size="sm" onClick={() => void model.save({ summary: null })}>
-              {knowledgeWords.removeSummary}
-            </Button>
-          )}
-        </Field>
+        <SummaryField
+          model={model}
+          name={parts.name || item.id}
+          summary={parts.summary}
+          summarize={summarize}
+          announce={announce}
+          openModels={openModels}
+        />
         <Field label={knowledgeWords.lookup}>
           <RadioGroup<KnowledgeLookupMode>
             options={[

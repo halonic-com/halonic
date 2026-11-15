@@ -5,7 +5,17 @@ import {
   type KnowledgeParts,
   readKnowledgeText,
 } from "@halonicjs/app";
-import type { KnowledgeHost, KnowledgeRef } from "./knowledge-host.ts";
+import type { KnowledgeHost, KnowledgeRef, SummarizeOutcome } from "./knowledge-host.ts";
+
+/** Where Summarize is: not asked, running, a draft waiting for a choice, or why there is none. */
+export type SummarizeState =
+  | { readonly phase: "idle" }
+  | { readonly phase: "working" }
+  | { readonly phase: "draft"; readonly text: string }
+  | {
+      readonly phase: "failed";
+      readonly reason: Exclude<SummarizeOutcome["kind"], "drafted"> | "failed";
+    };
 
 /** What the knowledge page shows. */
 export interface KnowledgeState {
@@ -18,7 +28,10 @@ export interface KnowledgeState {
   /** Where the documents are: "Folder docs · 14 documents". */
   readonly source: string;
   readonly usage?: ItemUsage;
+  readonly summarize: SummarizeState;
 }
+
+const idle: SummarizeState = { phase: "idle" };
 
 /**
  * One knowledge source's page state: its parts read from the host's text, a save for each change
@@ -26,7 +39,7 @@ export interface KnowledgeState {
  * changed. The page reads it with `useSyncExternalStore`.
  */
 export class KnowledgeModel {
-  state: KnowledgeState = { loaded: false, gone: false, unreadable: false, source: "" };
+  state: KnowledgeState = { loaded: false, gone: false, unreadable: false, source: "", summarize: idle };
   private text = "";
   private readonly listeners = new Set<() => void>();
   private stopHost: (() => void) | undefined;
@@ -77,6 +90,7 @@ export class KnowledgeModel {
         unreadable: !parts.ok,
         source: read.source,
         usage,
+        summarize: this.state.summarize,
         ...(parts.ok ? { parts: parts.value } : {}),
       });
     } catch {
@@ -109,6 +123,35 @@ export class KnowledgeModel {
     });
     await this.refresh();
     return true;
+  }
+
+  /** Drafts a summary on request. A draft is only text until `useDraft` saves it; asking twice at once runs once. */
+  async summarize(): Promise<void> {
+    if (this.state.summarize.phase === "working") return;
+    this.set({ ...this.state, summarize: { phase: "working" } });
+    let summarize: SummarizeState;
+    try {
+      const outcome = await this.host.summarize(this.source);
+      summarize =
+        outcome.kind === "drafted"
+          ? { phase: "draft", text: outcome.text }
+          : { phase: "failed", reason: outcome.kind };
+    } catch {
+      summarize = { phase: "failed", reason: "failed" };
+    }
+    this.set({ ...this.state, summarize });
+  }
+
+  /** Saves the draft's text (as edited) as the summary and closes the draft. A failed save keeps the draft. */
+  async useDraft(text: string): Promise<boolean> {
+    const saved = await this.save({ summary: text.trim() === "" ? null : text.trim() });
+    if (saved) this.discardDraft();
+    return saved;
+  }
+
+  /** Closes the draft without saving it, or clears the reason it failed. */
+  discardDraft(): void {
+    this.set({ ...this.state, summarize: idle });
   }
 
   private set(state: KnowledgeState): void {
