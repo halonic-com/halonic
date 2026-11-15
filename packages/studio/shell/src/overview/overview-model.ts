@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 /** One item on an overview page: a skill, an agent, a routine. The feature builds it. */
 export interface OverviewItem {
   /** Stable, never the index: focus and the search follow it. */
@@ -9,6 +11,10 @@ export interface OverviewItem {
   readonly detail?: string;
   /** Pinned items come first in their section. */
   readonly pinned?: boolean;
+  /** A 28px avatar before the name, such as a workflow's letter. Screen readers skip it. */
+  readonly avatar?: ReactNode;
+  /** The row's chips, after the name: "1 needs you", "2 warnings". The feature words them. */
+  readonly chips?: ReactNode;
 }
 
 /** A hub and the items of one kind in it. */

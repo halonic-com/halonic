@@ -231,3 +231,54 @@ verifies("shell.overview.filters-new-and-menu", () => {
     expect(page.textContent).not.toContain("New skill");
   });
 });
+
+verifies("shell.overview.row-parts-and-quiet-head", () => {
+  const withParts: readonly OverviewHub[] = [
+    {
+      id: "acme",
+      name: "acme",
+      items: [
+        { id: "invoice", name: "Invoice intake", avatar: "I", chips: <span>1 running</span> },
+      ],
+    },
+  ];
+
+  it("draws an item's avatar and chips in its row", () => {
+    const page = show({ hubs: withParts });
+    expect(page.textContent).toContain("Invoice intake");
+    expect(page.textContent).toContain("I");
+    expect(page.textContent).toContain("1 running");
+  });
+
+  it("hides the head while nothing is listed, when the feature asks for a quiet head", () => {
+    const page = show({
+      hubs: [{ id: "acme", name: "acme", items: [] }],
+      quietWhenEmpty: true,
+      newButton: { label: "New skill", onClick: () => undefined },
+    });
+    expect(page.textContent).toContain("No skills yet");
+    expect(page.querySelector('input[type="search"]')).toBeNull();
+    expect(page.textContent).not.toContain("New skill");
+    const onClick = vi.fn();
+    const withButton = show({
+      hubs: [{ id: "acme", name: "acme", items: [] }],
+      quietWhenEmpty: true,
+      words: {
+        ...words,
+        nothingYet: { title: "No skills yet", action: { label: "New skill", onClick } },
+      },
+    });
+    press(withButton, "button");
+    expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it("shows the head once something is listed", () => {
+    const page = show({
+      hubs: withParts,
+      quietWhenEmpty: true,
+      newButton: { label: "New skill", onClick: () => undefined },
+    });
+    expect(search(page)).not.toBeNull();
+    expect(page.textContent).toContain("New skill");
+  });
+});

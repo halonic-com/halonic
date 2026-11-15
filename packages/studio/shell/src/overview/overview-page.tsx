@@ -47,8 +47,12 @@ export interface OverviewWords {
   readonly emptySection: (sectionName: string) => string;
   /** Nothing matches the search: `No skills match "sorter".` The shell adds **Clear search**. */
   readonly noMatch: (query: string) => string;
-  /** No hub and nothing shared: "No skills yet". */
-  readonly nothingYet: { readonly title: string; readonly description?: string };
+  /** No hub and nothing shared: "No skills yet", with the create button when the head is quiet. */
+  readonly nothingYet: {
+    readonly title: string;
+    readonly description?: string;
+    readonly action?: { readonly label: string; readonly onClick: () => void };
+  };
 }
 
 /** The button under "No skills match …", which the shell draws itself (microcopy 1.1 and 11.1). */
@@ -84,6 +88,11 @@ export interface OverviewPageProps {
   readonly itemMenu?: (item: OverviewItem) => readonly MenuEntry[];
   /** A tab list the feature draws above the search field, as the Library's four tabs. */
   readonly tabs?: ReactNode;
+  /**
+   * While nothing is listed, the search field, the create button and the hub chips are hidden, so
+   * the empty state holds the only button (Workflows, flow-workflows 2.1).
+   */
+  readonly quietWhenEmpty?: boolean;
 }
 
 /** Opens an item's ⋮ menu below the button that was pressed. */
@@ -99,6 +108,8 @@ function rowsOf(
     id: item.id,
     title: item.name,
     ...(item.detail === undefined ? {} : { meta: item.detail }),
+    ...(item.avatar === undefined ? {} : { avatar: item.avatar }),
+    ...(item.chips === undefined ? {} : { trailing: item.chips }),
     ...(menuOf === undefined || menuOf(item).length === 0
       ? {}
       : {
@@ -129,6 +140,7 @@ export function OverviewPage({
   newButton,
   itemMenu,
   tabs,
+  quietWhenEmpty = false,
 }: OverviewPageProps) {
   const [query, setQuery] = useState("");
   const searchField = useRef<HTMLInputElement>(null);
@@ -137,6 +149,9 @@ export function OverviewPage({
   const chips = overviewChips(hubs, shared, { all: words.allChip, shared: words.sharedChip });
   const filter = currentFilter(chosen, chips);
   const sections = overviewSections(hubs, shared, { filter, query });
+  const nothingListed =
+    !hubs.some((hub) => hub.items.length > 0) && (shared?.items.length ?? 0) === 0;
+  const showHead = failure === undefined && !(quietWhenEmpty && !loading && nothingListed);
   const headingOf = (section: OverviewSection) =>
     section.shared ? words.sharedSection(section.name) : section.name;
 
@@ -157,7 +172,7 @@ export function OverviewPage({
   return (
     <div>
       {tabs}
-      {failure === undefined && (
+      {showHead && (
         <>
           <div className="flex items-center gap-2 px-4 py-2">
             <div className="min-w-0 flex-1">
@@ -190,7 +205,9 @@ export function OverviewPage({
       <OverviewBody
         sections={sections}
         headingOf={headingOf}
-        hasAnySection={hubs.length > 0 || (shared?.items.length ?? 0) > 0}
+        hasAnySection={
+          quietWhenEmpty ? !nothingListed : hubs.length > 0 || (shared?.items.length ?? 0) > 0
+        }
         query={query}
         onClearSearch={clearSearch}
         words={words}
