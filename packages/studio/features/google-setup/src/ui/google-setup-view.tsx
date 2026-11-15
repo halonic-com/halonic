@@ -174,6 +174,8 @@ function GoogleSetupBody({ item, answering, close, accounts, focus }: GoogleSetu
           onReplaceSecret={(secret) =>
             accounts.replaceClientSecret(account.record.accountRef, secret)
           }
+          onStartSignIn={() => accounts.startSignIn(account.record.accountRef)}
+          onCancelSignIn={() => accounts.cancelSignIn(account.record.accountRef)}
           close={close}
         />
       )}

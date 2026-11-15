@@ -27,6 +27,10 @@ export interface ChecklistProps {
   readonly onSaveSecret: (secret: SecretText) => Promise<void>;
   /** Sends a new client secret to be checked and swapped in, and answers what Google said. */
   readonly onReplaceSecret: (secret: SecretText) => Promise<SecretReplaceAnswer>;
+  /** **Sign in with Google**: gives the address to open. It rejects with a readable reason. */
+  readonly onStartSignIn: () => Promise<string>;
+  /** **Cancel** while waiting for Google. */
+  readonly onCancelSignIn: () => Promise<void>;
   /** **Not now**: closes the item. */
   readonly close: () => void;
   /**
@@ -218,6 +222,13 @@ export function Checklist(props: ChecklistProps) {
                       .find((candidate) => candidate.id === "consent")
                       ?.copyValues.find((value) => value.id === "app-name")?.value
                   }
+                  signIn={{
+                    start: props.onStartSignIn,
+                    cancel: props.onCancelSignIn,
+                    signInStartedAt: account.record.signInStartedAt,
+                    lastSignInAt: account.record.lastSignInAt,
+                    onOpenClientStep: () => setEditing("credentials"),
+                  }}
                   answering={answering}
                   busy={busy}
                   failed={failed ?? progressFailed}
@@ -291,6 +302,7 @@ interface OpenStepProps {
   readonly onEditProject: () => void;
   readonly credentials: StepBodyProps["credentials"];
   readonly appName: string | undefined;
+  readonly signIn: StepBodyProps["signIn"];
   readonly answering: boolean;
   readonly busy: boolean;
   /** The reason the last save failed, as a sentence. */
@@ -329,6 +341,7 @@ function OpenStep(props: OpenStepProps) {
         credentials={props.credentials}
         appName={props.appName}
         savedProjectId={account.record.projectId}
+        signIn={props.signIn}
       />
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" onClick={close}>

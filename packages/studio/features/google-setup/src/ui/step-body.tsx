@@ -24,6 +24,7 @@ import { ConsoleLink } from "./console-link.tsx";
 import { CopyLine } from "./copy-line.tsx";
 import { CredentialsBody, type CredentialsBodyProps } from "./credentials-body.tsx";
 import { useNotAnswering } from "./not-answering.tsx";
+import { SignInPanel, type SignInPanelProps } from "./sign-in-panel.tsx";
 
 /** Props for {@link StepBody}. */
 export interface StepBodyProps {
@@ -41,6 +42,8 @@ export interface StepBodyProps {
   /** The app name chosen in step 3, and the saved project ID, for step 7's text before the button. */
   readonly appName: string | undefined;
   readonly savedProjectId: string | null;
+  /** What step 7's sign-in needs from the host and the record. */
+  readonly signIn: Omit<SignInPanelProps, "answering">;
   /** A service's name from its id, for "Needed by …". Studio never knows the services itself. */
   readonly serviceName: (id: string) => string;
   readonly onProjectId: (text: string) => void;
@@ -52,7 +55,7 @@ export interface StepBodyProps {
 /**
  * What an open step shows under its one sentence: the actions to take in Google, with the
  * values to copy and the links, all from the step the generator made. Step 7 shows what to read before
- * the sign-in button.
+ * the sign-in button, then the button and its waiting state.
  */
 export function StepBody(props: StepBodyProps) {
   const { step } = props;
@@ -71,13 +74,16 @@ export function StepBody(props: StepBodyProps) {
       return <CredentialsBody {...props.credentials} step={step} answering={props.answering} />;
     case "sign-in":
       return (
-        <BeforeSignIn
-          step={step}
-          appName={props.appName}
-          projectId={props.savedProjectId}
-          clientId={props.credentials.clientId}
-          serviceName={props.serviceName}
-        />
+        <div className="flex flex-col gap-3">
+          <BeforeSignIn
+            step={step}
+            appName={props.appName}
+            projectId={props.savedProjectId}
+            clientId={props.credentials.clientId}
+            serviceName={props.serviceName}
+          />
+          <SignInPanel {...props.signIn} answering={props.answering} />
+        </div>
       );
   }
 }

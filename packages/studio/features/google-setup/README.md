@@ -18,7 +18,9 @@ without a password) and sends it to the secret store (`saveClientSecret`, on its
 secret is a kit `SecretText` from the input to that call: it is never part of an edit, the setup
 record, an error or a log line. Steps 5 and 6 show the client ID and the secret fields. Step 7 shows what to read before the
 sign-in: for a personal account a preview of Google's warning, for a Workspace account the note to
-send the admin (`adminNote`, which never holds the secret).
+send the admin (`adminNote`, which never holds the secret). The same step has **Sign in with Google**: the service's
+`startSignIn` gives the address to open, `cancelSignIn` drops it, and the step says "Waiting for
+Google…" until the record shows the sign-in ended or 10 minutes pass.
 
 `GoogleConnectorBlock` (from `/api`) is the Google block of the connector page: the account's rows,
 **Sign in again** and **Replace secret** (which open the setup item) and **Disconnect Google…**,

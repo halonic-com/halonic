@@ -121,6 +121,18 @@ export interface GoogleSetupAccounts {
    * holds a token or the secret.
    */
   disconnect(accountRef: string): Promise<DisconnectAnswer>;
+  /**
+   * **Sign in with Google** (design 3.5): the host makes the account's pending sign-in and gives
+   * the address to open in the browser. A second call replaces the pending sign-in, so a sign-in
+   * that is waiting is reopened from the address already given, not started again. It rejects when
+   * the host can't start one, with a reason a person can read. The address holds no secret.
+   */
+  startSignIn(accountRef: string): Promise<string>;
+  /**
+   * **Cancel** while waiting: the host drops the account's pending sign-in, so a callback that
+   * still arrives is refused. It rejects when the host can't.
+   */
+  cancelSignIn(accountRef: string): Promise<void>;
   /** Calls `listener` whenever an account may have changed. Returns a function that stops the calls. */
   subscribe(listener: () => void): () => void;
 }
