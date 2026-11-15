@@ -109,6 +109,25 @@ verifies("studio.workspace-workflows", () => {
     expect(store["hubs/acme/workflows/reply-2.workflow.yaml"]).toContain("id: reply-2");
   });
 
+  it("refuses a hub the workspace doesn't have, before and after the first list, and writes nothing", async () => {
+    const { host, changes } = setup();
+
+    await expect(host.create({ name: "Reply", hubId: "" })).rejects.toThrow(/no hub/);
+    await expect(host.create({ name: "Reply", hubId: "gone" })).rejects.toThrow(/no hub/);
+    await host.list();
+    await expect(host.create({ name: "Reply", hubId: "gone" })).rejects.toThrow(/no hub/);
+    expect(changes).toEqual([]);
+  });
+
+  it("refuses a hub that was removed after the last list", async () => {
+    const { host, store, changes } = setup();
+    await host.list();
+    delete store["hubs/beta/hub.yaml"];
+
+    await expect(host.create({ name: "Reply", hubId: "beta" })).rejects.toThrow(/no hub/);
+    expect(changes).toEqual([]);
+  });
+
   it("tells subscribers of file and run changes until they stop", () => {
     const { host, fileListeners, runListeners } = setup();
     let heard = 0;

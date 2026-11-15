@@ -71,14 +71,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
   }
 
   async list(): Promise<readonly WorkflowListing[]> {
-    const [workspace, runs] = await Promise.all([
-      loadWorkspace(this.#source()),
-      this.#parts.runs.list(),
-    ]);
-    this.#hubs = filesOf(workspace, "hub").map((file) => ({
-      id: file.value.id,
-      name: file.value.name,
-    }));
+    const [workspace, runs] = await Promise.all([this.#load(), this.#parts.runs.list()]);
     return filesOf(workspace, "workflow").flatMap((file) => {
       if (file.hub === null) return [];
       const issues = workspace.issues.filter((issue) => issue.file === file.path);
@@ -114,7 +107,12 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     };
   }
 
+  /** Creates the workflow in `hubId`; throws when the workspace has no such hub, so no stray folder is made. */
   async create({ name, hubId }: NewWorkflow): Promise<WorkflowRef> {
+    await this.#load();
+    if (!this.#hubs.some((hub) => hub.id === hubId)) {
+      throw new Error(`The workspace has no hub "${hubId}".`);
+    }
     const folder = workflowFolder(hubId);
     const taken = (await this.#parts.files.list(folder))
       .filter((path) => path.startsWith(`${folder}/`) && path.endsWith(workflowSuffix))
@@ -125,6 +123,16 @@ export class WorkspaceWorkflows implements WorkflowsHost {
       [`${folder}/${id}${workflowSuffix}`]: newWorkflowText(id, name),
     });
     return { hubId, id };
+  }
+
+  /** Loads the workspace from its files as they are now, and keeps its hubs for {@link WorkspaceWorkflows.hubs}. */
+  async #load() {
+    const workspace = await loadWorkspace(this.#source());
+    this.#hubs = filesOf(workspace, "hub").map((file) => ({
+      id: file.value.id,
+      name: file.value.name,
+    }));
+    return workspace;
   }
 
   /**
