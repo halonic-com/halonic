@@ -77,6 +77,32 @@ export interface SettingsSectionContribution extends Ordered, ViewRef {
 }
 
 /**
+ * A view the sidebar can show instead of the Studio's places, such as the workspace's file tree.
+ * While any feature adds one, the sidebar's header gets a switch between "Studio" (the places,
+ * which the shell draws itself) and each added view by its `label`, in `order`. The shell knows
+ * nothing about what a view shows: it loads `view` only while it is the shown one.
+ */
+export interface SidebarViewContribution extends Ordered, ViewRef {
+  /** The name on the switch, such as "Files". */
+  readonly label: string;
+  /**
+   * A button the header shows only while this view is shown, such as "New file". The shell calls
+   * `run` with the feature's context for the open workspace.
+   */
+  readonly action?: SidebarViewAction;
+}
+
+/** A button in the sidebar's header that belongs to one {@link SidebarViewContribution}. */
+export interface SidebarViewAction {
+  /** The button's name for screen readers and its tooltip, such as "New file". */
+  readonly label: string;
+  /** The outline icon's name, such as `plus`. */
+  readonly icon: string;
+  /** Called when the button is pressed. */
+  run(context: WorkspaceContext): void;
+}
+
+/**
  * The sidebar's places, in the only order they are shown (component specs 24.4 S2): places only,
  * no agents, workflows or pins. A place whose feature hasn't added it isn't listed.
  */

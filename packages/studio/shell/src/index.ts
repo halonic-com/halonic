@@ -263,6 +263,8 @@ export {
   type SettingsSectionContribution,
   type ShownPlace,
   type SidebarPlace,
+  type SidebarViewAction,
+  type SidebarViewContribution,
   settingsScopes,
   showPlace,
   sidebarPlaces,
