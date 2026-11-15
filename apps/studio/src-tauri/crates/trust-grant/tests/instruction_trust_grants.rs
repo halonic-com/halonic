@@ -309,3 +309,17 @@ fn instruction_trust_grants_show_one_question_at_a_time() {
     // Once the first is answered, the next may ask.
     state.grant_instructions(&store, &second, |_| true).unwrap();
 }
+
+#[test]
+fn instruction_trust_grants_shorten_a_500_character_name_in_the_question() {
+    let long_name = "a".repeat(500);
+    let long_pin = pin(&[(long_name.as_str(), 'a')]);
+    let text = instruction_question_text(
+        &long_name,
+        &long_name,
+        &TrustedBefore::Never,
+        &long_pin,
+    );
+    assert!(!text.contains(&long_name), "{text}");
+    assert_eq!(text.matches('…').count(), 3, "{text}");
+}
