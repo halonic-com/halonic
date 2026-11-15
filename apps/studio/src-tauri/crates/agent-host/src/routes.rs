@@ -126,6 +126,12 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/connectors/close",
         route(Method::Post, "/v1/connectors/close", Answer::Json),
     ),
+    // The Google setup's one change a page may ask for so far (HAL-9911): the
+    // host holds the sealed tokens, the page and the shell never do.
+    (
+        "POST /v1/google/disconnect",
+        route(Method::Post, "/v1/google/disconnect", Answer::Json),
+    ),
 ];
 
 /// The route a page names, when it is one of the table's and answers as

@@ -78,6 +78,7 @@ export function provideFolderServices(
     trust,
     google: services.get(GoogleSetupAccountsService),
     location,
+    transport: tauriAgentHostTransport(window),
     onFocus: (listener) => focusOf(window, listener),
   });
 }
