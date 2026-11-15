@@ -159,7 +159,7 @@ verifies("deploy.admin-key", () => {
   });
 });
 
-verifies("deploy.rollback", () => {
+verifies("deploy.admin-key", () => {
   it("never rolls back to a deployment an admin key made, and rolls back from the code before it", async () => {
     const api = fakeCloudflareApi({
       accounts: [],

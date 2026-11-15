@@ -34,7 +34,7 @@ function client(routes: Record<string, Route>, seen: string[]) {
 
 const worker = "/accounts/a1/workers/scripts/w";
 
-verifies("deploy.rollback", () => {
+verifies("deploy.admin-key", () => {
   it("marks a deployment Cloudflare made for a secret change", async () => {
     const api = client(
       {
