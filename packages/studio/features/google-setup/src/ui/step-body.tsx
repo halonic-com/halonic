@@ -27,6 +27,7 @@ import { CopyLine } from "./copy-line.tsx";
 import { CredentialsBody, type CredentialsBodyProps } from "./credentials-body.tsx";
 import { GoogleErrorList } from "./google-error-list.tsx";
 import { useNotAnswering } from "./not-answering.tsx";
+import { SignInEnded, type SignInEndedProps } from "./sign-in-ended.tsx";
 import { SignInPanel, type SignInPanelProps } from "./sign-in-panel.tsx";
 import { SignInResults, type SignInResultsProps } from "./sign-in-results.tsx";
 import { WrongAccount, type WrongAccountProps } from "./wrong-account.tsx";
@@ -55,6 +56,8 @@ export interface StepBodyProps {
   readonly results: SignInResultsProps;
   /** The note for a sign-in that came back for another account. */
   readonly wrongAccount: WrongAccountProps;
+  /** How the last sign-in ended without signing anyone in, as a note above the button. */
+  readonly signInEnded: Pick<SignInEndedProps, "ending">;
   /** A service's name from its id, for "Needed by …". Studio never knows the services itself. */
   readonly serviceName: (id: string) => string;
   readonly onProjectId: (text: string) => void;
@@ -85,7 +88,19 @@ export function StepBody(props: StepBodyProps) {
       return <ClientBody {...props} step={step} />;
     case "credentials":
       return <CredentialsBody {...props.credentials} step={step} answering={props.answering} />;
-    case "sign-in":
+    case "sign-in": {
+      const note = adminNote({
+        projectId: props.savedProjectId,
+        clientId: props.credentials.clientId,
+        scopes: step.scopesToGrant,
+        serviceName: props.serviceName,
+      });
+      // Google's error page never comes back, so leaving to fix the cause ends the wait first. A
+      // failed cancel must not stop the person: the host drops the sign-in after 10 minutes anyway.
+      const leaveWaiting = (id: StepId) => {
+        props.signIn.cancel().catch(() => {});
+        props.onOpenStep(id);
+      };
       return (
         <div className="flex flex-col gap-3">
           <BeforeSignIn
@@ -94,8 +109,15 @@ export function StepBody(props: StepBodyProps) {
             projectId={props.savedProjectId}
             clientId={props.credentials.clientId}
             serviceName={props.serviceName}
+            // The note below says it, with the same button.
+            hideAdminNote={props.signInEnded.ending === "adminBlocked"}
           />
           <WrongAccount {...props.wrongAccount} />
+          <SignInEnded
+            {...props.signInEnded}
+            adminNote={note}
+            onOpenSecretStep={() => props.onOpenStep("credentials")}
+          />
           <SignInResults {...props.results} />
           <SignInPanel
             {...props.signIn}
@@ -105,19 +127,15 @@ export function StepBody(props: StepBodyProps) {
                 accountType={props.accountType}
                 canPublish={props.canPublish}
                 email={props.results.email}
-                adminNote={adminNote({
-                  projectId: props.savedProjectId,
-                  clientId: props.credentials.clientId,
-                  scopes: step.scopesToGrant,
-                  serviceName: props.serviceName,
-                })}
-                onOpenStep={props.onOpenStep}
+                adminNote={note}
+                onOpenStep={leaveWaiting}
                 onClearInProduction={() => props.onInProduction(false)}
               />
             }
           />
         </div>
       );
+    }
   }
 }
 

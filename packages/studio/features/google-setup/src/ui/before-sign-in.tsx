@@ -11,6 +11,8 @@ export interface BeforeSignInProps {
   readonly projectId: string | null;
   readonly clientId: string | null;
   readonly serviceName: (id: string) => string;
+  /** Leaves out the admin note, when a note about an admin block already shows it. */
+  readonly hideAdminNote?: boolean;
 }
 
 /**
@@ -20,11 +22,8 @@ export interface BeforeSignInProps {
  * allow the app, with the note to send. The step says which one, from the account type.
  */
 export function BeforeSignIn(props: BeforeSignInProps) {
-  return props.step.beforeSignIn === "warning-preview" ? (
-    <WarningPreview {...props} />
-  ) : (
-    <AdminNote {...props} />
-  );
+  if (props.step.beforeSignIn === "warning-preview") return <WarningPreview {...props} />;
+  return props.hideAdminNote ? null : <AdminNote {...props} />;
 }
 
 function WarningPreview({ step, appName, serviceName }: BeforeSignInProps) {

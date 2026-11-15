@@ -231,7 +231,9 @@ export function Checklist(props: ChecklistProps) {
                     onSaveSecret: saves.saveSecret,
                     onReplaceSecret: props.onReplaceSecret,
                     beforeFirstSignIn: account.record.lastSignInAt === null,
-                    needsNewSecret: problem?.actionStep === "credentials",
+                    needsNewSecret:
+                      problem?.actionStep === "credentials" ||
+                      account.record.lastSignInEnded?.kind === "secretRefused",
                     focusSecret: secretTakesFocus,
                     onSecretTyped: setSecretTyped,
                   }}
@@ -246,6 +248,7 @@ export function Checklist(props: ChecklistProps) {
                     signInStartedAt: account.record.signInStartedAt,
                     lastSignInAt: account.record.lastSignInAt,
                     wrongAccountAt: account.record.wrongAccountAt,
+                    signInEndedAt: account.record.lastSignInEnded?.at ?? null,
                     onOpenClientStep: () => setEditing("credentials"),
                   }}
                   results={{
@@ -255,6 +258,7 @@ export function Checklist(props: ChecklistProps) {
                     onCheckAgain: props.onCheckAgain,
                     answering,
                   }}
+                  signInEnded={{ ending: account.record.lastSignInEnded?.kind ?? null }}
                   wrongAccount={{
                     at: account.record.wrongAccountAt,
                     email: account.email,
@@ -341,6 +345,7 @@ interface OpenStepProps {
   readonly signIn: StepBodyProps["signIn"];
   readonly results: StepBodyProps["results"];
   readonly wrongAccount: StepBodyProps["wrongAccount"];
+  readonly signInEnded: StepBodyProps["signInEnded"];
   readonly answering: boolean;
   readonly busy: boolean;
   /** The reason the last save failed, as a sentence. */
@@ -384,6 +389,7 @@ function OpenStep(props: OpenStepProps) {
         signIn={props.signIn}
         results={props.results}
         wrongAccount={props.wrongAccount}
+        signInEnded={props.signInEnded}
       />
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" onClick={close}>
