@@ -304,6 +304,19 @@ through the `/v1/connectors` routes: a request carries the connector file's
 fields, its own secrets and the trust grant, never a sandbox profile, and a
 workspace the launcher didn't name is refused.
 
+The host also opens the **Google setup** of the profile it serves (HAL-9911):
+`POST /v1/google/disconnect` asks Google to end an account's sign-in and removes
+the refresh token, the record and the client secret. The page and the shell
+never hold a token or a client secret: the host seals and opens them in
+`<profile>/google/tokens`, and no route answers one. The route sits behind the
+host's `Host`, `Origin` and launch-token checks like every other, and its
+request names the account by a ref that is checked before anything is read. A
+sandboxed agent has no way to the launch token, which stays in the shell, and
+none to the profile folder, which the sandbox denies. A request that holds the
+token can disconnect an account, which removes access and grants none. The
+sign-in's callback, which has no token by design, is not served here yet (see
+the ADR `2026-11-14-google-sign-in-and-the-setup-record`).
+
 #### What the sandbox is meant to stop
 
 An agent tricked by a mail, a web page or a file (B2), or a careless command,
