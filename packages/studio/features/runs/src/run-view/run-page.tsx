@@ -14,9 +14,8 @@ import type { SourcedRun } from "../api.ts";
 import { loadFailureReason } from "../load-failure.ts";
 import { emptyListWords, runPageWords } from "../run-words.ts";
 import { type RunsList, RunsListService } from "../runs-list.ts";
-import { RunsOnComputer } from "../ui/runs-on-computer.tsx";
 import { BlockedFailureBanner, blockedFailure } from "./blocked-banner.tsx";
-import { Details } from "./details.tsx";
+import { Details, type DetailsProps, DetailsRow } from "./details.tsx";
 import { detailRows } from "./details-model.ts";
 import { EveryStep, useRunLog } from "./every-step.tsx";
 import { entryIdOfStep, everyStep, type StepEntry } from "./every-step-model.ts";
@@ -77,7 +76,7 @@ export interface RunViewProps {
 }
 
 /**
- * The run page on the desktop (checklist part 1, 1.5, 1.6 and 1.8): the
+ * The run page (checklist part 1, 1.5, 1.6 and 1.8): the
  * header, then a banner only when the run needs attention. It reads the same
  * runs as the Runs list, so it updates in place as the run moves on (R14,
  * D1), and keeps what it showed when a later load fails (R18).
@@ -87,14 +86,13 @@ export interface RunViewProps {
  * Above them, the receipt's summary line; its sections come in the next pull requests.
  *
  * Not here yet: the header's ⋮, Run again (T7) and the failed banners by cause (HAL-1845).
+ *
+ * On a phone (1.15) it is one column: the heading is for screen readers (the top bar says "Run
+ * #42"), Details is one row that opens a sheet, and a step's events fill the screen with Back.
+ * Not on the phone yet: the ⋮, the 48px link rows in the header, and the receipt's **Show each
+ * call** sheet.
  */
-export function RunView(props: RunViewProps) {
-  // The phone layout comes after 0.1.0; until then the phone says so (HAL-9390).
-  if (usePresentation() === "phone") return <RunsOnComputer />;
-  return <DesktopRun {...props} />;
-}
-
-function DesktopRun({
+export function RunView({
   list,
   runId,
   step,
@@ -103,6 +101,7 @@ function DesktopRun({
   openRun,
   now = () => new Date(),
 }: RunViewProps) {
+  const phone = usePresentation() === "phone";
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
   const state = useSyncExternalStore(subscribe, () => list.state);
   const run = state.runs.find((candidate) => candidate.summary.id === runId);
@@ -122,7 +121,12 @@ function DesktopRun({
     const open = entries.find((entry) => entry.id === openEntry);
     return (
       <div className="flex min-h-full w-full items-start">
-        <RunLayout run={run} context={context} showingLast={state.error !== undefined}>
+        <RunLayout
+          run={run}
+          context={context}
+          showingLast={state.error !== undefined}
+          phone={phone}
+        >
           <PageBanner
             run={run}
             context={context}
@@ -133,29 +137,26 @@ function DesktopRun({
             onSeeStep={setOpenEntry}
           />
           <DamagedLogBanner line={logRead.damagedLine} />
-          <div className="grid items-start gap-6 wide:grid-cols-[minmax(0,1fr)_16rem]">
+          <div
+            className={
+              phone
+                ? "flex flex-col gap-4"
+                : "grid items-start gap-6 wide:grid-cols-[minmax(0,1fr)_16rem]"
+            }
+          >
             <div className="flex min-w-0 flex-col gap-4">
-              {log === undefined ? (
-                <LogUnread failure={logRead.failure} retry={logRead.retry} />
-              ) : (
-                <>
-                  <Receipt
-                    summary={summaryLine(run, log, context)}
-                    approvals={approvalLines(log)}
-                    messages={messageLines(log)}
-                    reads={readLines(log)}
-                    models={modelLines(log, run.summary, context.currency)}
-                  />
-                  <EveryStep
-                    log={log}
-                    entries={entries}
-                    openEntry={open?.id}
-                    onOpenEntry={setOpenEntry}
-                  />
-                </>
-              )}
+              <ReceiptAndSteps
+                run={run}
+                context={context}
+                log={log}
+                logRead={logRead}
+                entries={entries}
+                openEntry={open?.id}
+                onOpenEntry={setOpenEntry}
+              />
             </div>
-            <Details
+            <RunDetails
+              phone={phone}
               rows={detailRows(run, context, routineOf(list, run))}
               version={startedVersion(log)}
               logRead={log !== undefined}
@@ -172,6 +173,7 @@ function DesktopRun({
             log={log}
             workflowName={(workflowId) => workflowName(list, run, workflowId)}
             openRun={openRun}
+            phone={phone}
             onClose={() => setOpenEntry(undefined)}
           />
         )}
@@ -179,16 +181,12 @@ function DesktopRun({
     );
   }
   if (state.loaded) {
-    return goToRuns === undefined ? (
-      <EmptyState title={runPageWords.notHere} />
-    ) : (
-      <ItemGone kindName="run" place="Runs" onGoTo={goToRuns} />
-    );
+    return <RunNotHere goToRuns={goToRuns} />;
   }
   return (
-    <div className="flex w-full flex-col gap-4 px-6 py-5">
+    <div className={`flex w-full flex-col gap-4 ${phone ? "px-4 py-4" : "px-6 py-5"}`}>
       <PageBackLinkSlot />
-      <h1 className="text-title">{title}</h1>
+      <h1 className={phone ? "sr-only" : "text-title"}>{title}</h1>
       {state.error === undefined ? (
         <List
           label={title}
@@ -208,6 +206,55 @@ function DesktopRun({
       )}
     </div>
   );
+}
+
+/** A run that isn't in the workspace (any more): the shell's gone page when it can open the list. */
+function RunNotHere({ goToRuns }: { readonly goToRuns: (() => void) | undefined }) {
+  return goToRuns === undefined ? (
+    <EmptyState title={runPageWords.notHere} />
+  ) : (
+    <ItemGone kindName="run" place="Runs" onGoTo={goToRuns} />
+  );
+}
+
+/** The receipt and Every step, or what stands in their place while the log isn't read. */
+function ReceiptAndSteps({
+  run,
+  context,
+  log,
+  logRead,
+  entries,
+  openEntry,
+  onOpenEntry,
+}: {
+  readonly run: SourcedRun;
+  readonly context: RunPageContext;
+  readonly log: readonly RunEvent[] | undefined;
+  readonly logRead: ReturnType<typeof useRunLog>;
+  readonly entries: readonly StepEntry[];
+  readonly openEntry: string | undefined;
+  readonly onOpenEntry: (entryId: string | undefined) => void;
+}) {
+  if (log === undefined) {
+    return <LogUnread failure={logRead.failure} retry={logRead.retry} />;
+  }
+  return (
+    <>
+      <Receipt
+        summary={summaryLine(run, log, context)}
+        approvals={approvalLines(log)}
+        messages={messageLines(log)}
+        reads={readLines(log)}
+        models={modelLines(log, run.summary, context.currency)}
+      />
+      <EveryStep log={log} entries={entries} openEntry={openEntry} onOpenEntry={onOpenEntry} />
+    </>
+  );
+}
+
+/** Details beside the page on the desktop, one row that opens a sheet on a phone. */
+function RunDetails({ phone, ...details }: DetailsProps & { readonly phone: boolean }) {
+  return phone ? <DetailsRow {...details} /> : <Details {...details} />;
 }
 
 /**
@@ -269,21 +316,23 @@ function RunLayout({
   run,
   context,
   showingLast,
+  phone,
   children,
 }: {
   readonly run: SourcedRun;
   readonly context: RunPageContext;
   readonly showingLast: boolean;
+  readonly phone: boolean;
   readonly children: ReactNode;
 }) {
   const header = runHeader(run, context);
   return (
-    <div className="flex w-full min-w-0 flex-col gap-4 px-6 py-5">
+    <div className={`flex w-full min-w-0 flex-col gap-4 ${phone ? "px-4 py-4" : "px-6 py-5"}`}>
       <PageBackLinkSlot />
       <header className="flex flex-col gap-1">
         <p className="text-small text-fg-muted">{header.kindLabel}</p>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-title">{header.title}</h1>
+          <h1 className={phone ? "sr-only" : "text-title"}>{header.title}</h1>
           <StatusChip tone={header.chip.tone} dot={header.chip.dot}>
             {header.chip.word}
           </StatusChip>
