@@ -17,7 +17,8 @@ extract "$img" "$root"
 conf="$(awk '/^\[/ { s = $0; next } NF && !/^#/ { print s $0 }' "$root/etc/wsl.conf")"
 for want in "[interop]enabled=false" "[interop]appendWindowsPath=false" \
             "[automount]enabled=false" "[automount]mountFsTab=false" \
-            "[user]default=halonic" "[boot]systemd=false"; do
+            "[user]default=halonic" "[boot]systemd=false" \
+            '[boot]command="install -d -m 0755 -o root -g root /mnt/halonic"'; do
   grep -qxF "$want" <<<"$conf" || fail "wsl.conf lacks '$want'"
 done
 

@@ -137,7 +137,12 @@ pub fn wsl_exe(system_root: Option<&str>) -> Result<PathBuf, WslError> {
 /// [`crate::AgentHost::start_relayed`].
 pub fn distro_host_command(wsl: &Path, relay_port: u16) -> Command {
     let mut command = distro_command(wsl, DISTRO_USER, DISTRO_HOST);
-    command.args(["--profile-folder", DISTRO_PROFILE_FOLDER, "--stdio"]);
+    command.args([
+        "--profile-folder",
+        DISTRO_PROFILE_FOLDER,
+        "--stdio",
+        "--wsl-shared-folders",
+    ]);
     command
         .arg("--relay-host")
         .arg(format!("127.0.0.1:{relay_port}"));

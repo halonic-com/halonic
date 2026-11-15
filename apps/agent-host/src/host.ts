@@ -7,7 +7,7 @@ import { codexHarness } from "@halonicjs/adapter-harness-codex";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
-import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
+import { SrtSandbox, WSL_SHARED_FOLDERS } from "@halonicjs/adapter-sandbox-srt";
 import type { GoogleSetupPorts } from "@halonicjs/host-server";
 import type { Harness, TrustStore } from "@halonicjs/ports";
 import { type ProfileFolder, type ProfilePlatform, trustFolder } from "@halonicjs/profile";
@@ -81,6 +81,7 @@ const relayHostPattern = /^127\.0\.0\.1:([1-9][0-9]{0,4})$/;
  * - `--sandbox-setup` sets the sandbox up, for the installer and Studio, with one administrator prompt (see {@link SrtSandbox.setUp}), and prints whether it worked, as JSON: `ok`, or the `outcome` (`cancelled`, `failed`, `check_failed`) and the `reason`;
  * - `--sandbox-remove` removes what the setup left, for the uninstaller and Studio (see {@link SrtSandbox.remove}), and prints whether it worked, as JSON;
  * - `--sandbox-cleanup` removes what sessions added to the user's access lists, for the uninstaller (see {@link SrtSandbox.cleanUp}), and prints whether it worked, as JSON. It reads the profile folder from `--profile-folder`, which the executable passes on;
+ * - `--wsl-shared-folders` (with serving) is how Studio's launcher says the host runs in Halonic's WSL distro: every session then denies the distro's shared folders (see {@link WSL_SHARED_FOLDERS}, security review W1);
  * - `--stdio --relay-host 127.0.0.1:<port>` serves over standard input and output (see {@link serveOverFrames});
  * - otherwise it serves on loopback (see {@link serve}).
  *
@@ -94,28 +95,30 @@ const relayHostPattern = /^127\.0\.0\.1:([1-9][0-9]{0,4})$/;
  * The holder also removes, before it serves, the bridges' run folders that a
  * crashed host left in the profile (see {@link sweepLeftOverBridges}).
  *
- * @param makeSandbox - makes the sandbox on this machine with the sweep roots it may sweep; tests make one on a fake machine
+ * @param makeSandbox - makes the sandbox on this machine with the sweep roots it may sweep and the shared folders its sessions deny; tests make one on a fake machine
  * @returns the exit code
  */
 export async function run(
   args: readonly string[],
   version: string,
   io: HostIo = standardIo(),
-  makeSandbox: (sweepRoots: readonly string[]) => SrtSandbox = (roots) =>
-    new SrtSandbox(undefined, undefined, null, { sweepRoots: roots }),
+  makeSandbox: (sweepRoots: readonly string[], sharedFolders: readonly string[]) => SrtSandbox = (
+    roots,
+    sharedFolders,
+  ) => new SrtSandbox(undefined, undefined, null, { sweepRoots: roots, sharedFolders }),
 ): Promise<number> {
   if (args.includes("--version")) {
     io.write(`halonic-agent-host ${version}\n`);
     return 0;
   }
   if (args.includes("--sandbox-check")) {
-    return answer(io, await makeSandbox([]).check());
+    return answer(io, await makeSandbox([], []).check());
   }
   if (args.includes("--sandbox-setup")) {
-    return answer(io, await makeSandbox([]).setUp());
+    return answer(io, await makeSandbox([], []).setUp());
   }
   if (args.includes("--sandbox-remove")) {
-    return answer(io, await makeSandbox([]).remove());
+    return answer(io, await makeSandbox([], []).remove());
   }
   if (args.includes("--sandbox-cleanup")) {
     const profileFolder = argumentAfter(args, "--profile-folder");
@@ -123,7 +126,7 @@ export async function run(
       const missing = { ok: false, reason: "--sandbox-cleanup needs --profile-folder." };
       return answer(io, missing);
     }
-    return answer(io, await makeSandbox([]).cleanUp(profileFolder));
+    return answer(io, await makeSandbox([], []).cleanUp(profileFolder));
   }
   const given = sweepRoots(args);
   if ("error" in given) {
@@ -136,7 +139,8 @@ export async function run(
     if (given.roots.length > 0) io.writeError(text);
   };
   const lock = profileFolder === undefined ? null : await takeHostLock(profileFolder, warn);
-  const sandbox = makeSandbox(lock === null ? [] : given.roots);
+  const sharedFolders = args.includes("--wsl-shared-folders") ? WSL_SHARED_FOLDERS : [];
+  const sandbox = makeSandbox(lock === null ? [] : given.roots, sharedFolders);
   // Right after the lock is taken, so a host starting next skips its sweep
   // before any session of ours could lose a grant to it.
   if (lock !== null) void sandbox.sweepOnce();

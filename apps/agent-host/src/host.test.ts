@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
-import { type Machine, SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
+import { type Machine, SrtSandbox, WSL_SHARED_FOLDERS } from "@halonicjs/adapter-sandbox-srt";
 import { describe, expect, it } from "vitest";
 import { type FramedHandshake, type Handshake, type HostIo, run } from "./host.ts";
 import { FrameKind } from "./stdio/frame-codec.ts";
@@ -218,7 +218,10 @@ describe("run --stdio", () => {
   const relayPort = 50_123;
 
   /** A relay in front of a host started with `args`, with what the host wrote to standard error. */
-  function relayed(args: readonly string[]) {
+  function relayed(
+    args: readonly string[],
+    makeSandbox?: (roots: readonly string[], sharedFolders: readonly string[]) => SrtSandbox,
+  ) {
     const relay = new TestRelay(true);
     const errors: string[] = [];
     const io: HostIo = {
@@ -230,7 +233,7 @@ describe("run --stdio", () => {
       takeOutput: () => relay.streams.output,
     };
     const sandbox = new SrtSandbox(windows({ installed: true }));
-    return { relay, errors, running: run(args, "1.2.3", io, () => sandbox) };
+    return { relay, errors, running: run(args, "1.2.3", io, makeSandbox ?? (() => sandbox)) };
   }
 
   it("serves every route over frames after a handshake with only the token, until its input ends", async () => {
@@ -261,6 +264,27 @@ describe("run --stdio", () => {
     relay.streams.input.end();
     expect(await running).toBe(0);
   });
+
+  it.each([
+    [["--wsl-shared-folders"], WSL_SHARED_FOLDERS],
+    [[], []],
+  ])(
+    "makes the sandbox with the distro's shared folders only when launched with them (%j)",
+    async (extra, expected) => {
+      const seen: (readonly string[])[] = [];
+      const { relay, running } = relayed(
+        ["--stdio", "--relay-host", `127.0.0.1:${relayPort}`, ...extra],
+        (_roots, sharedFolders) => {
+          seen.push(sharedFolders);
+          return new SrtSandbox(windows({ installed: true }));
+        },
+      );
+      await relay.handshakeLine();
+      relay.streams.input.end();
+      expect(await running).toBe(0);
+      expect(seen).toEqual([expected]);
+    },
+  );
 
   it("stops with 1, and says why on standard error, when the frame stream breaks", async () => {
     const { relay, errors, running } = relayed([
