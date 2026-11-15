@@ -65,6 +65,12 @@ export function packageFiles(spec: PackageSpec): Record<string, string> {
     }),
     "tsconfig.test.json": json({
       extends: "@halonicjs/tooling-config/tsconfig/node.json",
+      ...(spec.isFeature
+        ? {
+            "//": "Tests run in Node. They read the shell, which brings the kit's DOM types and JSX.",
+            compilerOptions: { lib: ["es2024", "dom", "dom.iterable"], jsx: "react-jsx" },
+          }
+        : {}),
       include: ["src", "vitest.config.ts"],
     }),
     "vitest.config.ts": [

@@ -41,6 +41,7 @@ describe("packageFiles", () => {
       ".": "./src/index.ts",
       "./api": "./src/api.ts",
     });
+    expect(files["tsconfig.test.json"]).toContain('"jsx": "react-jsx"');
     expect(files["src/feature.ts"]).toContain("export const inboxFeature = defineFeature({");
     expect(files["src/feature.ts"]).toContain(
       'import { defineFeature } from "@halonicjs/studio-shell";',
