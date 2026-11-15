@@ -6,7 +6,7 @@ import { deliver, signDelivery, type WebhookTarget, webhookChecks } from "./webh
 const secret = "a webhook secret made up for this test";
 const rejected = {
   code: "webhook_rejected",
-  message: "The request isn't a valid, signed webhook.",
+  message: "The request isn't a valid, signed webhook for this address.",
 };
 
 /**

@@ -5,7 +5,7 @@ import { defineConfig } from "vitest/config";
 // biome-ignore lint/style/noDefaultExport: Vitest reads the config from the default export.
 export default defineConfig({
   test: {
-    include: ["live/**/*.live.ts"],
+    include: ["live/**/*.live.test.ts"],
     testTimeout: 60_000,
     hookTimeout: 120_000,
     fileParallelism: false,

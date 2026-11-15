@@ -93,7 +93,7 @@ function codeOf(text: string): string | undefined {
   }
 }
 
-/** The signature, replay and unknown-address checks are live. A check that fails throws an `Error` that names what differed. */
+/** The signature, old-timestamp and unknown-address checks are live; the run-start and replay checks are pending. A check that fails throws an `Error` that names what differed. */
 export const webhookChecks = {
   /** A wrong signature is refused with the one webhook answer. */
   async badSignature(target: WebhookTarget): Promise<void> {
