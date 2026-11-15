@@ -15,4 +15,4 @@ When the active step of a run changes, the workflows feature shall move the poin
 
 ## Notes
 
-This covers the curve, the time and the spring. Drawing the light, reduced motion and the rest rules come in the next requirements.
+This covers the curve, the time and the spring. Drawing the light, its rest, the hand-off and reduced motion are in `workflows.canvas.point-of-light-rest`.

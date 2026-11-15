@@ -4,6 +4,11 @@ import type { Point } from "./geometry.ts";
 export const LIGHT_BOW = 0.36;
 /** The spring's damping ratio: about 4 % past the end, then back. */
 export const LIGHT_DAMPING = 0.72;
+/** The spring's speed: its natural frequency times the hop's seconds, which settles it within 0.5 % at the end. */
+export const LIGHT_SETTLE = 7.36;
+/** A hop takes this long, plus {@link LIGHT_HOP_MS_PER_PX} for every pixel, held between the two limits below. */
+export const LIGHT_HOP_BASE_MS = 500;
+export const LIGHT_HOP_MS_PER_PX = 2.5;
 /** The shortest and the longest a hop takes, in milliseconds. */
 export const LIGHT_HOP_MIN_MS = 700;
 export const LIGHT_HOP_MAX_MS = 1100;
@@ -33,7 +38,10 @@ export function lightCurve(from: Point, to: Point): LightCurve {
 
 /** How long a hop of `distance` pixels takes: 500 ms plus 2.5 ms a pixel, held between 700 and 1100 ms. */
 export function lightHopDuration(distance: number): number {
-  return Math.min(LIGHT_HOP_MAX_MS, Math.max(LIGHT_HOP_MIN_MS, 500 + 2.5 * distance));
+  return Math.min(
+    LIGHT_HOP_MAX_MS,
+    Math.max(LIGHT_HOP_MIN_MS, LIGHT_HOP_BASE_MS + LIGHT_HOP_MS_PER_PX * distance),
+  );
 }
 
 /** Where the spring's own correction starts and how much of the run it takes (Noah, HAL-10400). */
@@ -41,7 +49,7 @@ export const LIGHT_SETTLE_START = 0.6;
 
 /** The damped spring from rest, over a normalised run `u` of 0 to 1 (`duration` sets its speed). */
 function spring(u: number, duration: number): number {
-  const omega = 7.36 / (duration / 1000);
+  const omega = LIGHT_SETTLE / (duration / 1000);
   const damped = omega * Math.sqrt(1 - LIGHT_DAMPING * LIGHT_DAMPING);
   const tau = (u * duration) / 1000;
   const decay = Math.exp(-LIGHT_DAMPING * omega * tau);
