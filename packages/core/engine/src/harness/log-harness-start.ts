@@ -1,5 +1,4 @@
 import type { Harness } from "@halonicjs/ports";
-<<<<<<< HEAD
 import { checkInstructionTrust } from "./check-instruction-trust.ts";
 import type { HarnessAgent, HarnessInstructionsPin, HarnessRunsOptions } from "./harness-host.ts";
 import type { HarnessCall, HarnessEventLog } from "./run-harness-call.ts";
