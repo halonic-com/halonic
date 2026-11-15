@@ -329,6 +329,11 @@ backend gets no secret and no sign-in token through the host yet. The shipped
 single executable has no runner mode of its own (its `process.execPath` is the
 host, not Node), so there the route answers `403 not_in_this_build` and starts
 nothing, rather than start a second host without Node's permission layer.
+The runner can read the folder that holds the Node executable and nothing
+above it, built by one function (`runnerNodeFolder`) that the fence's attack
+cases use as well. If Node sits in a shared folder such as Homebrew's `bin` or
+`~/.local/bin`, every program there is readable to the runner; a Node that
+needs sibling libraries outside that folder fails closed at start.
 
 #### What the sandbox is meant to stop
 

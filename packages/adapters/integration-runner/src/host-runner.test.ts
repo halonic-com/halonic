@@ -1,10 +1,11 @@
 import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { createHostSandbox } from "@halonicjs/adapter-sandbox-host";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildRunnerFile, type RunnerFile } from "../esbuild.config.ts";
+import { runnerNodeFolder } from "./halonic/runner-node-folder.ts";
 import { socketFolders, systemFiles } from "./halonic/runner-profile.ts";
 import { type StartedRunner, startRunner } from "./halonic/start-runner.ts";
 import { bridgeOptions, fakeRunnerProcess } from "./pipes.test-helper.ts";
@@ -82,7 +83,7 @@ async function startThroughLauncher(source: string): Promise<StartedRunner> {
     sandbox: createHostSandbox(),
     files: {
       node: process.execPath,
-      nodeFolder: dirname(dirname(process.execPath)),
+      nodeFolder: runnerNodeFolder(process.execPath),
       runnerFile: runner.path,
       integrationFolder,
     },

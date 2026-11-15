@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import {
   FileRecordStore,
   FileSystemFolderReader,
@@ -10,7 +10,9 @@ import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import {
   type PluginBackendMachine,
   runnerFile,
+  runnerNodeFolder,
   socketFolders,
+  startRunner,
   systemFiles,
 } from "@halonicjs/adapter-integration-runner";
 import { createHostSandbox } from "@halonicjs/adapter-sandbox-host";
@@ -86,11 +88,26 @@ export function hostPluginMachine(options: HostPluginMachineOptions): HostPlugin
     }),
     runtime: {
       node: process.execPath,
-      nodeFolder: dirname(process.execPath),
+      nodeFolder: runnerNodeFolder(process.execPath),
       runnerFile: runnerFile(),
     },
     // The plugin's own sheet limits the hosts; public sites only.
     transport: createNodeHttpClient({ hostClass: () => "public" }),
+    // The start's temp folder goes when its runner stops, or when the start fails.
+    startRunner: async (startOptions) => {
+      const { tempFolder } = startOptions.machine;
+      const removeTemp = async () => {
+        const index = made.indexOf(tempFolder);
+        if (index !== -1) made.splice(index, 1);
+        await rm(tempFolder, { recursive: true, force: true });
+      };
+      const runner = await startRunner(startOptions).catch(async (error: unknown) => {
+        await removeTemp();
+        throw error;
+      });
+      void runner.stopped.then(removeTemp, removeTemp);
+      return runner;
+    },
     runnerMachine: async () => {
       const parent = runnerTempFolder(profile);
       await mkdir(parent, { recursive: true, mode: 0o700 });

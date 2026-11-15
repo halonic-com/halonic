@@ -75,8 +75,10 @@ function sandbox(check: SandboxCheck): Sandbox {
 }
 
 /** The host's machine over a folder in the temp folder, with a runner that answers, and the folders read. */
-async function setup(options: { check?: SandboxCheck; trusted?: boolean } = {}) {
-  const { check = passes, trusted = true } = options;
+async function setup(
+  options: { check?: SandboxCheck; trusted?: boolean; platform?: NodeJS.Platform } = {},
+) {
+  const { check = passes, trusted = true, platform = "linux" } = options;
   const folders = new FileSystemFolderReader(root, root);
   const readNames: string[] = [];
   const plugins: FolderReader = {
@@ -109,7 +111,7 @@ async function setup(options: { check?: SandboxCheck; trusted?: boolean } = {}) 
     digest,
     trust,
     gate: new RunnerStartGate({
-      platform: "linux",
+      platform,
       fenced: sandbox(check),
       // Never reached: the host's gate has no saved yes, so it never takes the launcher's path.
       launcher: sandbox(passes),
@@ -232,6 +234,13 @@ verifies("agent-host.plugin-routes", () => {
       expect(logged.join("")).toContain("windows");
     });
 
+    it("answers not_fenced on Windows even when the sandbox passes its check, as the host wires no MXC", async () => {
+      const { backends, seen } = await setup({ platform: "win32" });
+      const fingerprint = await backends.trustedFingerprint("acme");
+      expect(await refusedWith(backends.open("acme", fingerprint))).toBe("not_fenced");
+      expect(seen.starts).toBe(0);
+    });
+
     it.each([
       ["a path", "../acme"],
       ["a nested path", "acme/backend"],
@@ -245,6 +254,9 @@ verifies("agent-host.plugin-routes", () => {
       ["a hidden name", ".acme"],
       ["a null byte", "acme\0"],
       ["a space", "acme "],
+      ["a trailing dot", "acme."],
+      ["a Windows device name", "con"],
+      ["a Windows device name with an extension", "nul.txt"],
     ])("reads nothing from the disk for %s as a plugin id", async (_name, plugin) => {
       const { backends, readNames } = await setup();
       expect(await refusedWith(backends.trustedFingerprint(plugin))).toBe("plugin_not_trusted");
