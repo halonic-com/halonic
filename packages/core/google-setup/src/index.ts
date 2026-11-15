@@ -56,6 +56,12 @@ export {
 export { mayRefresh } from "./refresh-refused.ts";
 export { type ServiceScopes, serviceScopes } from "./service-scopes.ts";
 export type { SetupEdit } from "./setup-edit.ts";
+export {
+  googleSetupSubject,
+  type SetupSubject,
+  type SubjectConnector,
+  type SubjectIntegration,
+} from "./setup-subject.ts";
 export type {
   GoogleApi,
   GoogleCheck,
