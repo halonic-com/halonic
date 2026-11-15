@@ -42,6 +42,16 @@ function read(content: PaletteContent): string[] {
 }
 
 verifies("shell.palette-groups", () => {
+  it("shows a place named like a command once, as the Action", () => {
+    const settings: TabLocation = { key: "workspace/local/settings", title: "Workspace settings" };
+    const content = palette({
+      words: "settings",
+      openTabs: [settings],
+      actions: [{ id: "workspace.open", title: "Workspace settings" }],
+    });
+    expect(read(content)).toEqual(["Actions:", "Workspace settings"]);
+  });
+
   it("shows Open tabs, then Recent places no tab shows, while nothing is typed", () => {
     const content = palette({
       words: " ",

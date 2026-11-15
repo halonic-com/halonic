@@ -124,7 +124,12 @@ export function WorkflowScreen({ host, hubId, id, openRun }: WorkflowScreenProps
           <CommandBox command={startCommand} />
         </div>
       )}
-      <TabPanel ids={ids} tabs={views} selected={view}>
+      <TabPanel
+        ids={ids}
+        tabs={views}
+        selected={view}
+        className={view === "flow" ? "flex min-h-0 flex-1 flex-col" : undefined}
+      >
         {view === "configuration" ? (
           <Configuration
             name={name}
