@@ -2,6 +2,7 @@
 
 - Approval: team decision on HAL-9854 under HAL-2282 (small wording on an approved screen), signed off on HAL-9920
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Kd8n7+UTKv+B8B4pKZCGwtRsxEkQmQAYs/kLn+BPqMsFEHJab6VOKQDhPqgKJl3a+gQr6Q0sKoMPivaBvigsAA==
 - Task: HAL-9854
 
 ## What changes
