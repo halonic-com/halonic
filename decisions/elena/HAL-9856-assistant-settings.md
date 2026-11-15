@@ -3,6 +3,7 @@
 - Task: HAL-9856 (Settings › Assistant design check, from HAL-9835)
 - Approval: Sofia's design check on HAL-9835 and her check of #2841 on HAL-9856 ask for this wording; the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:dCr3DdMOlA+BlMvlGX/GXbwdaI9OkRVCC40O5R1euc8PBnX8xftD25zFAD/X7dgaDn/GBEFTfIyha3TrrlT6Bw==
 
 ## What changes
 
