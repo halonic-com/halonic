@@ -2,6 +2,7 @@
 
 - Approval: Mara's claims check on HAL-9383 (items 4 to 6), small wording fixes the team decides; Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:eciRrsEsT3zmgTnEbjVhoXrRpvFssskVH8Gmxt97pNI5hSWNZO3ItvF7XDS1FZPLp8xuLCLo3SOG+/f/gj7YAg==
 - Task: HAL-9383
 
 ## What changes
