@@ -159,3 +159,27 @@ verifies("workflows.list.rows-and-states", () => {
     expect(openItem).toHaveBeenCalledWith({ kind: "workflow", hub: "acme", id: "mail-triage" });
   });
 });
+
+verifies("workflows.list.rows-and-states", () => {
+  it("keeps the newest read when an older read settles after it", async () => {
+    const reads: ((rows: readonly WorkflowListing[]) => void)[] = [];
+    let changed = () => {};
+    const host = {
+      ...memoryHost(hubs, []).host,
+      list: () => new Promise<readonly WorkflowListing[]>((resolve) => reads.push(resolve)),
+      subscribe: (listener: () => void) => {
+        changed = listener;
+        return () => {};
+      },
+    };
+    const page = await show(<WorkflowsView host={host} />);
+    await act(async () => changed());
+    expect(reads).toHaveLength(2);
+
+    await act(async () => reads[1]?.(workflows));
+    await act(async () => reads[0]?.([]));
+
+    expect(page.textContent).toContain("Mail triage");
+    expect(page.textContent).not.toContain("No workflows yet");
+  });
+});

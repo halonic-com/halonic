@@ -1,7 +1,7 @@
 import type { ItemViewProps } from "@halonicjs/studio-shell";
 
 /**
- * The workflow's page, until the canvas lands in the next pull request: the name from the tab
+ * The workflow's page, until the canvas lands in the next pull request: the workflow's id
  * and nothing to press, so no control does nothing.
  */
 export function WorkflowPage({ item }: ItemViewProps) {

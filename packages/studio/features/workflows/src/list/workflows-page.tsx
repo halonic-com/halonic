@@ -1,6 +1,6 @@
 import { EmptyState } from "@halonicjs/studio-kit";
 import { OverviewPage, type PlaceViewProps } from "@halonicjs/studio-shell";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type WorkflowListing,
   type WorkflowRef,
@@ -48,16 +48,29 @@ export function WorkflowsView({ host, open }: WorkflowsViewProps) {
   const [load, setLoad] = useState<Load>({ kind: "loading" });
   const [creating, setCreating] = useState(false);
 
+  // Each read takes a number; only the newest read's result is shown, so a slow older read never
+  // overwrites a newer one, and nothing is set after unmount.
+  const newestRead = useRef(0);
+
   const read = useCallback(() => {
+    const mine = ++newestRead.current;
     host.list().then(
-      (listings) => setLoad({ kind: "ready", listings }),
-      (error: unknown) => setLoad({ kind: "failed", reason: failureReason(error) }),
+      (listings) => {
+        if (mine === newestRead.current) setLoad({ kind: "ready", listings });
+      },
+      (error: unknown) => {
+        if (mine === newestRead.current) setLoad({ kind: "failed", reason: failureReason(error) });
+      },
     );
   }, [host]);
 
   useEffect(() => {
     read();
-    return host.subscribe(read);
+    const unsubscribe = host.subscribe(read);
+    return () => {
+      unsubscribe();
+      newestRead.current += 1;
+    };
   }, [host, read]);
 
   const listings = load.kind === "ready" ? load.listings : [];
