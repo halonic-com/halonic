@@ -1,12 +1,31 @@
+import { type ChangeLine, describeFileChange, type FileChange, revertParts } from "@halonicjs/app";
+import type { VcsChange } from "@halonicjs/ports";
 import type { PlaceSignal, ServiceKey } from "@halonicjs/studio-shell";
 import { serviceKey } from "@halonicjs/studio-shell";
-import type { ChangesRead, ChangesSource } from "./api.ts";
-import { pageWords } from "./changes-words.ts";
+import type { ChangesRead, ChangesSource, FileTexts } from "./api.ts";
+import { pageWords, undoWords } from "./changes-words.ts";
+import { loadFailureReason } from "./load-failure.ts";
+
+/** One changed file: what changed in it, and the texts the changes can be undone from. */
+export interface ChangedFile {
+  readonly path: string;
+  readonly description: FileChange;
+  /** `undefined` when the file couldn't be read as text; its lines then have no parts to undo. */
+  readonly texts: FileTexts | undefined;
+}
+
+/** What {@link ChangesList.undoChange} did. */
+export type UndoOutcome =
+  /** The change is undone; `undo` puts it back, as the toast's Undo does. */
+  | { readonly kind: "undone"; readonly undo: () => Promise<void> }
+  | { readonly kind: "failed"; readonly reason: string };
 
 /** What the Changes list holds now. */
 export interface ChangesListState {
   /** The last read that worked; `undefined` before the first one. */
   readonly read: ChangesRead | undefined;
+  /** What changed in each file of `read`, one entry for each path. Empty until a read worked. */
+  readonly files: readonly ChangedFile[];
   /** Why the last read failed, until one works; `read` stays as it was. */
   readonly error: unknown;
   /** Why Turn on history failed, until the next try. */
@@ -28,6 +47,7 @@ export class ChangesList {
   readonly source: ChangesSource;
   #state: ChangesListState = {
     read: undefined,
+    files: [],
     error: undefined,
     turnOnError: undefined,
     turningOn: false,
@@ -69,12 +89,63 @@ export class ChangesList {
     const read = ++this.#reads;
     try {
       const answer = await this.source.read();
+      const files = answer.kind === "ready" ? await this.#describe(answer.changes) : [];
       if (read !== this.#reads || this.#disposed) return;
-      this.#set({ ...this.#state, read: answer, error: undefined });
+      this.#set({ ...this.#state, read: answer, files, error: undefined });
     } catch (error) {
       if (read !== this.#reads || this.#disposed) return;
       this.#set({ ...this.#state, error });
     }
+  }
+
+  /**
+   * Undoes one line of what changed in a file: its parts go back to how the last version has them
+   * and the rest of the file stays as it is. Nothing is written when the file changed since the
+   * list read it.
+   */
+  async undoChange(file: ChangedFile, line: ChangeLine): Promise<UndoOutcome> {
+    const { texts } = file;
+    if (texts?.before == null || texts.after === null || line.parts.length === 0) {
+      return { kind: "failed", reason: undoWords.cantUndo };
+    }
+    const reverted = revertParts(texts.after, texts.before, line.parts);
+    if (!reverted.ok) return { kind: "failed", reason: undoWords.cantUndo };
+    const { after } = texts;
+    const outcome = await this.#replace(file.path, reverted.value, after);
+    if (outcome === undefined) {
+      return {
+        kind: "undone",
+        undo: async () => void (await this.#replace(file.path, after, reverted.value)),
+      };
+    }
+    return { kind: "failed", reason: outcome };
+  }
+
+  /** Writes a file's new text, then reads again; the reason it didn't work, or `undefined`. */
+  async #replace(path: string, text: string, expected: string): Promise<string | undefined> {
+    try {
+      const result = await this.source.replaceFile(path, text, expected);
+      await this.refresh();
+      return result === "replaced" ? undefined : undoWords.changedMeanwhile;
+    } catch (error) {
+      return loadFailureReason(error);
+    }
+  }
+
+  /** What changed in each file, one entry for each path. A file that can't be read is just "Changed". */
+  async #describe(changes: readonly VcsChange[]): Promise<ChangedFile[]> {
+    const firstOfEachPath = [...new Map(changes.map((change) => [change.path, change])).values()];
+    return Promise.all(
+      firstOfEachPath.map(async (change) => {
+        try {
+          const texts = await this.source.readTexts(change);
+          const description = describeFileChange(change.path, texts.before, texts.after);
+          return { path: change.path, description, texts };
+        } catch {
+          return { path: change.path, description: unreadable(change), texts: undefined };
+        }
+      }),
+    );
   }
 
   /** Turns history on, then reads again. A failure stays in `turnOnError` for the page to say. */
@@ -109,6 +180,19 @@ export class ChangesList {
     this.#state = state;
     for (const listener of [...this.#listeners]) listener();
   }
+}
+
+/** The one line for a file that couldn't be read as text: only that it is new, deleted or changed. */
+function unreadable(change: VcsChange): FileChange {
+  let sentence = "Changed";
+  if (change.status === "added" || change.status === "untracked") sentence = "New";
+  if (change.status === "deleted") sentence = "Deleted";
+  return {
+    path: change.path,
+    kind: undefined,
+    lines: [{ id: "item", sentence, parts: [] }],
+    described: false,
+  };
 }
 
 /** The open workspace's {@link ChangesList}; the feature provides it from `ChangesSourceService`. */

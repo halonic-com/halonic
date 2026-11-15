@@ -1,7 +1,13 @@
 import type { DefinitionStore } from "@halonicjs/ports";
 import { unversionedFolders, type VcsChange } from "@halonicjs/ports";
-import { KindedError } from "@halonicjs/std";
-import type { ChangesRead, ChangesSource } from "@halonicjs/studio-feature-source-control/api";
+import { contentDigest, KindedError, type Sha256 } from "@halonicjs/std";
+import type {
+  ChangesRead,
+  ChangesSource,
+  FileTexts,
+  ReplaceResult,
+} from "@halonicjs/studio-feature-source-control/api";
+import { lastVersionDiffArgs, lastVersionFromDiff } from "./last-version.ts";
 import { parseStatus, statusArgs } from "./parse-status.ts";
 
 /** What git said, as the shell's `git` command gives it back. */
@@ -20,6 +26,8 @@ export interface WorkspaceChangesOptions {
   readonly git: (args: readonly string[]) => Promise<GitAnswer>;
   /** The folder's files, for `.gitignore`. */
   readonly files: Pick<DefinitionStore, "read" | "write">;
+  /** Hashes a file's text for the write-if-unchanged check. */
+  readonly digest: Sha256;
   /** Calls its listener when the window comes to the front; returns a function that stops it. */
   readonly onFocus: (listener: () => void) => () => void;
   /** Calls its listener when a file of the workspace changed; returns a function that stops it. */
@@ -51,6 +59,18 @@ export class WorkspaceChanges implements ChangesSource {
     return { kind: "ready", changes: parseStatus(status.stdout).filter(isVersioned) };
   }
 
+  async readTexts(change: VcsChange): Promise<FileTexts> {
+    const after = change.status === "deleted" ? null : await this.#options.files.read(change.path);
+    return { before: await this.#lastVersionOf(change, after), after };
+  }
+
+  async replaceFile(path: string, text: string, expected: string): Promise<ReplaceResult> {
+    const result = await this.#options.files.write(path, text, {
+      expected: await contentDigest(expected, this.#options.digest),
+    });
+    return result.status === "written" ? "replaced" : "changed-on-disk";
+  }
+
   async turnOnHistory(): Promise<void> {
     // The ignore line first, so a failed init never leaves `.studio/` showing up as changed.
     await this.#ignoreStudioFolder();
@@ -64,6 +84,22 @@ export class WorkspaceChanges implements ChangesSource {
     return () => {
       for (const stop of stops) stop();
     };
+  }
+
+  /**
+   * The file as the last version has it, `null` for a file that wasn't there. A repository with no
+   * version yet has none of its files.
+   */
+  async #lastVersionOf(change: VcsChange, after: string | null): Promise<string | null> {
+    if (change.status === "untracked") return null;
+    const diff = await this.#run(lastVersionDiffArgs(change.from ?? change.path));
+    if (diff === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
+    if (diff.code !== 0) {
+      const head = await this.#run(["rev-parse", "--verify", "--quiet", "HEAD"]);
+      if (head !== "no-git" && head.code !== 0) return null;
+      throw new KindedError("unavailable", firstLine(diff.stderr));
+    }
+    return lastVersionFromDiff(diff.stdout, after);
   }
 
   /** Runs git; `"no-git"` when the shell says the git program isn't found. */

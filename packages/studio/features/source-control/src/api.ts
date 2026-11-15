@@ -15,10 +15,26 @@ export type ChangesRead =
   /** The git program isn't on this computer. */
   | { readonly kind: "no-git" };
 
+/** One changed file's text in the last version and now. `null` is a file that isn't there. */
+export interface FileTexts {
+  readonly before: string | null;
+  readonly after: string | null;
+}
+
+/** What {@link ChangesSource.replaceFile} did. */
+export type ReplaceResult = "replaced" | "changed-on-disk";
+
 /** The history of one open workspace, as the app provides it. */
 export interface ChangesSource {
   /** Reads what changed since the last version. Throws when git answers with an error. */
   readonly read: () => Promise<ChangesRead>;
+  /** Reads one changed file's text in the last version and now. Throws when it can't be read as text. */
+  readonly readTexts: (change: VcsChange) => Promise<FileTexts>;
+  /**
+   * Replaces a file's text, only while it still holds `expected`; otherwise nothing is written and
+   * the answer is `"changed-on-disk"`.
+   */
+  readonly replaceFile: (path: string, text: string, expected: string) => Promise<ReplaceResult>;
   /**
    * Turns the folder into a repository and keeps `.studio/` out of it (`.gitignore`),
    * so Halonic can save versions of it.

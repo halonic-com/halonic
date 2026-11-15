@@ -52,16 +52,6 @@ verifies("source-control.changes-page", () => {
       expect(root.textContent).toContain("Nothing has changed since your last version.");
     });
 
-    it("counts the changed files until the items are listed", async () => {
-      const { root } = await openPage(
-        fakeSource({
-          kind: "ready",
-          changes: [{ path: "models.yaml", status: "modified", staged: false }],
-        }),
-      );
-      expect(root.textContent).toContain("1 file changed since your last version.");
-    });
-
     it("offers Turn on history for a folder without git history, and then shows the page", async () => {
       const fake = fakeSource({ kind: "not-a-repository" });
       const { root } = await openPage(fake);
