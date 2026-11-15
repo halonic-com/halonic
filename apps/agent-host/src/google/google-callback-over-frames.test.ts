@@ -10,7 +10,7 @@ import { type FramedHostServer, serveHostOverFrames } from "../server/host-serve
 import { randomLaunchToken } from "../server/launch-token.ts";
 import { FrameKind } from "../stdio/frame-codec.ts";
 import { TestRelay } from "../stdio/relay.test-helper.ts";
-import { googleRoutes } from "./google-routes.ts";
+import { googleRoutes, relayCallbackPath } from "./google-routes.ts";
 import { openGoogleSetup } from "./google-setup.ts";
 
 // Invented values only: none is a real key or token.
@@ -20,7 +20,6 @@ const fakeClientSecret = "fake-client-secret-0000000001";
 const relayPort = 50_123;
 const relayHost = `127.0.0.1:${relayPort}`;
 const token = randomLaunchToken();
-const callbackPath = "/v1/google/callback";
 
 const gmailSheet = `id: gmail
 version: 0.1.0
@@ -129,7 +128,7 @@ verifies("agent-host.google-callback-over-frames", () => {
       });
       const authUrl = new URL((JSON.parse(started.body) as { authUrl: string }).authUrl);
       const redirect = new URL(authUrl.searchParams.get("redirect_uri") ?? "");
-      expect(redirect.origin + redirect.pathname).toBe(`http://${relayHost}${callbackPath}`);
+      expect(redirect.origin + redirect.pathname).toBe(`http://${relayHost}${relayCallbackPath}`);
       expect(authUrl.searchParams.get("code_challenge_method")).toBe("S256");
       const state = authUrl.searchParams.get("state") ?? "";
 
@@ -146,7 +145,7 @@ verifies("agent-host.google-callback-over-frames", () => {
     it("answers the page with no-store, no referrer and a closed connection", async () => {
       const { relay } = served();
 
-      const answer = await relay.request(`${callbackPath}?state=nobody&code=fake-code`, {
+      const answer = await relay.request(`${relayCallbackPath}?state=nobody&code=fake-code`, {
         headers: { host: relayHost },
       });
 
@@ -159,7 +158,7 @@ verifies("agent-host.google-callback-over-frames", () => {
     it("closes the connection at once, without waiting for the keep-alive timeout", async () => {
       const { relay } = served();
 
-      await relay.request(`${callbackPath}?state=nobody&code=fake-code`, {
+      await relay.request(`${relayCallbackPath}?state=nobody&code=fake-code`, {
         headers: { host: relayHost },
       });
       // Fails by the test's own time limit, well under Node's 5 s `keepAliveTimeout`.
@@ -171,7 +170,7 @@ verifies("agent-host.google-callback-over-frames", () => {
       const { relay } = served();
 
       const answer = await relay.request(
-        `${callbackPath}?state=nobody-started-this&code=fake-code`,
+        `${relayCallbackPath}?state=nobody-started-this&code=fake-code`,
         {
           headers: { host: relayHost },
         },
@@ -188,7 +187,7 @@ verifies("agent-host.google-callback-over-frames", () => {
     ])("still refuses a callback with %s", async (_name, headers, status) => {
       const { relay } = served();
 
-      const answer = await relay.request(`${callbackPath}?state=nobody&code=fake-code`, {
+      const answer = await relay.request(`${relayCallbackPath}?state=nobody&code=fake-code`, {
         headers,
       });
 
