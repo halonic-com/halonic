@@ -31,7 +31,10 @@ export function SignInResults({ email, ticked, lines }: SignInResultsProps) {
             <span className="sr-only">{text.passed ? "Passed: " : "Failed: "}</span>
             <span>{text.text}</span>
             {text.enableUrl === undefined ? null : (
-              <ExternalLink href={text.enableUrl}>Switch it on</ExternalLink>
+              <>
+                <ExternalLink href={text.enableUrl}>Switch it on</ExternalLink>
+                <span>then sign in again.</span>
+              </>
             )}
           </li>
         );

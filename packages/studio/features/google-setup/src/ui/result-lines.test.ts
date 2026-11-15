@@ -16,7 +16,9 @@ describe("resultText", () => {
       result: { kind: "scopeNotGranted", missingScopes: ["https://example.com/drive"] },
     });
     expect(text.passed).toBe(false);
-    expect(text.text).toBe("Drive: you didn't allow Drive access. Sign in again and tick Drive.");
+    expect(text.text).toBe(
+      "Drive: you didn't allow Drive access. Drive won't work until you sign in again and tick it.",
+    );
   });
 
   it("names the API and project and offers the switch-on page", () => {
@@ -41,8 +43,12 @@ describe("resultText", () => {
   });
 
   it("never repeats Google's own text for a failed check", () => {
-    const text = resultText({ ...drive, result: { kind: "checkFailed", status: 429 } });
-    expect(text.text).toContain("(429)");
+    const busy = resultText({ ...drive, result: { kind: "checkFailed", status: 429 } });
+    expect(busy.text).toBe(
+      "Drive: Google couldn't check it just now (error 429). Wait a moment, then sign in again.",
+    );
+    const refused = resultText({ ...drive, result: { kind: "checkFailed", status: 403 } });
+    expect(refused.text).toBe("Drive: Google refused the check (error 403). Sign in again.");
     expect(resultText({ ...drive, result: { kind: "unreachable" } }).passed).toBe(false);
   });
 });

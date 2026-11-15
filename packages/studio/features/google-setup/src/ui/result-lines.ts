@@ -34,6 +34,11 @@ export interface ResultText {
   readonly enableUrl?: string;
 }
 
+/** Google being busy or down (429, 5xx): waiting helps. Any other refusal doesn't get better by waiting. */
+function isBusyStatus(status: number): boolean {
+  return status === 429 || status >= 500;
+}
+
 /**
  * The words for one service's result (design 3.5, item 3; 5.1). Nothing here repeats text from
  * Google: the record holds only kinds, codes and names from the sheet.
@@ -48,7 +53,7 @@ export function resultText(line: ServiceResultLine): ResultText {
     case "scopeNotGranted":
       return {
         passed: false,
-        text: `${label}: you didn't allow ${label} access. Sign in again and tick ${label}.`,
+        text: `${label}: you didn't allow ${label} access. ${label} won't work until you sign in again and tick it.`,
       };
     case "apiOff": {
       const api = result.apiName === undefined ? `the ${label} API` : `the ${result.apiName}`;
@@ -62,7 +67,9 @@ export function resultText(line: ServiceResultLine): ResultText {
     case "checkFailed":
       return {
         passed: false,
-        text: `${label}: Google answered the check with an error (${result.status}). Sign in again in a moment.`,
+        text: isBusyStatus(result.status)
+          ? `${label}: Google couldn't check it just now (error ${result.status}). Wait a moment, then sign in again.`
+          : `${label}: Google refused the check (error ${result.status}). Sign in again.`,
       };
     case "unreachable":
       return {
