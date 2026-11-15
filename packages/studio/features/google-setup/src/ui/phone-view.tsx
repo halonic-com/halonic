@@ -1,11 +1,12 @@
 import type { SetupStep } from "@halonicjs/google-setup";
 import { ViewOnlyLine } from "@halonicjs/studio-kit";
-import type { GoogleSetupAccount } from "../api.ts";
+import type { GoogleSetupAccount, SignInEntry } from "../api.ts";
 import { connectorProblem } from "../connector-problem.ts";
 import { stepTitle } from "../step-names.ts";
 import { accountTypeNames, listNames } from "./account-labels.ts";
 import { currentStep } from "./checklist.tsx";
 import { ProblemBanner } from "./problem-banner.tsx";
+import { SignInElsewhere } from "./sign-in-elsewhere.tsx";
 import { StepMark, type StepState, stepStateWords } from "./step-mark.tsx";
 
 /** Props for {@link PhoneView}. */
@@ -13,11 +14,34 @@ export interface PhoneViewProps {
   readonly account: GoogleSetupAccount;
   /** The generated steps, in order. The count and the order come from here alone. */
   readonly steps: readonly SetupStep[];
+  /** Whether the host has `halonic google sign-in`, for step 7's text. */
+  readonly signInEntry: SignInEntry;
 }
 
 function stateOf(step: SetupStep, current: SetupStep | undefined, done: boolean): StepState {
   if (step.id === current?.id) return "now";
   return done ? "done" : "todo";
+}
+
+/** What the current step adds on a phone. A phone is never the computer that runs Halonic. */
+function WhatNext(props: {
+  readonly step: SetupStep;
+  readonly account: GoogleSetupAccount;
+  readonly signInEntry: SignInEntry;
+}) {
+  const { step, account, signInEntry } = props;
+  if (step.id !== "sign-in") {
+    return <p className="pl-9 pt-1 text-body text-fg-muted">Continue on a computer.</p>;
+  }
+  return (
+    <div className="pl-9 pt-1 text-fg-muted">
+      <SignInElsewhere
+        email={account.email}
+        commandExists={signInEntry.kind === "elsewhere" && signInEntry.commandExists}
+        copyable={false}
+      />
+    </div>
+  );
 }
 
 /**
@@ -26,7 +50,7 @@ function stateOf(step: SetupStep, current: SetupStep | undefined, done: boolean)
  * state; the current step adds "Continue on a computer." It has no buttons, no fields and no
  * Start over: Google Cloud Console is hard to use on a phone.
  */
-export function PhoneView({ account, steps }: PhoneViewProps) {
+export function PhoneView({ account, steps, signInEntry }: PhoneViewProps) {
   const current = currentStep(account, steps);
   const problem = connectorProblem(account);
   const doneCount = steps.filter((step) => account.record.stepsDone[step.id] !== undefined).length;
@@ -72,7 +96,7 @@ export function PhoneView({ account, steps }: PhoneViewProps) {
                 </span>
               </div>
               {state === "now" ? (
-                <p className="pl-9 pt-1 text-body text-fg-muted">Continue on a computer.</p>
+                <WhatNext step={step} account={account} signInEntry={signInEntry} />
               ) : null}
             </li>
           );

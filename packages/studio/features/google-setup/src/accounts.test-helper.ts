@@ -7,6 +7,7 @@ import type {
   GoogleSetupAccounts,
   SecretEntry,
   SecretReplaceAnswer,
+  SignInEntry,
 } from "./api.ts";
 
 // Invented services, so the tests prove Studio doesn't know Gmail or Drive.
@@ -84,6 +85,8 @@ export function fakeAccounts(
   initial: readonly GoogleSetupAccount[],
   options: {
     readonly entry?: SecretEntry;
+    /** Whether this window can sign in; the computer that runs Halonic unless a test says otherwise. */
+    readonly signInEntry?: SignInEntry;
     readonly saveSecret?: (accountRef: string, value: string) => Promise<void>;
     /** What replacing a secret answers, and may reject. It gets the value, a fake in a test. */
     readonly replaceSecret?: (accountRef: string, value: string) => Promise<SecretReplaceAnswer>;
@@ -116,6 +119,7 @@ export function fakeAccounts(
   const replacements: { accountRef: string; value: string }[] = [];
   const source: GoogleSetupAccounts = {
     secretEntry: options.entry ?? desktopEntry,
+    signInEntry: options.signInEntry ?? { kind: "here" },
     saveClientSecret: async (accountRef: string, secret: SecretText) => {
       const value = secret.reveal();
       await options.saveSecret?.(accountRef, value);

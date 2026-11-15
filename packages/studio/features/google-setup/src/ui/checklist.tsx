@@ -7,6 +7,7 @@ import type {
   GoogleSetupAccount,
   SecretEntry,
   SecretReplaceAnswer,
+  SignInEntry,
 } from "../api.ts";
 import { connectorProblem } from "../connector-problem.ts";
 import { stepTitle } from "../step-names.ts";
@@ -29,6 +30,8 @@ export interface ChecklistProps {
   readonly onEdit: (edit: SetupEdit) => Promise<void>;
   /** How the client secret is entered on this host. */
   readonly secretEntry: SecretEntry;
+  /** Whether this window can sign in, or says where to. */
+  readonly signInEntry: SignInEntry;
   /** Sends the client secret to the secret store. It rejects when it can't be saved. */
   readonly onSaveSecret: (secret: SecretText) => Promise<void>;
   /** Sends a new client secret to be checked and swapped in, and answers what Google said. */
@@ -242,6 +245,7 @@ export function Checklist(props: ChecklistProps) {
                       .find((candidate) => candidate.id === "consent")
                       ?.copyValues.find((value) => value.id === "app-name")?.value
                   }
+                  signInEntry={props.signInEntry}
                   signIn={{
                     start: props.onStartSignIn,
                     cancel: props.onCancelSignIn,
@@ -342,6 +346,7 @@ interface OpenStepProps {
   readonly onOpenStep: (step: StepId) => void;
   readonly credentials: StepBodyProps["credentials"];
   readonly appName: string | undefined;
+  readonly signInEntry: SignInEntry;
   readonly signIn: StepBodyProps["signIn"];
   readonly results: StepBodyProps["results"];
   readonly wrongAccount: StepBodyProps["wrongAccount"];
@@ -386,6 +391,7 @@ function OpenStep(props: OpenStepProps) {
         credentials={props.credentials}
         appName={props.appName}
         savedProjectId={account.record.projectId}
+        signInEntry={props.signInEntry}
         signIn={props.signIn}
         results={props.results}
         wrongAccount={props.wrongAccount}

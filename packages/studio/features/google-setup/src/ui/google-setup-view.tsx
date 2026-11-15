@@ -140,7 +140,8 @@ function GoogleSetupBody({ item, answering, close, accounts, focus }: GoogleSetu
     );
   }
 
-  if (phone) return <PhoneView account={account} steps={steps} />;
+  if (phone)
+    return <PhoneView account={account} steps={steps} signInEntry={accounts.signInEntry} />;
 
   const edit = (change: SetupEdit) => accounts.edit(account.record.accountRef, change);
   const asking = account.askAccountType;
@@ -170,6 +171,7 @@ function GoogleSetupBody({ item, answering, close, accounts, focus }: GoogleSetu
           onEdit={edit}
           focus={focus}
           secretEntry={accounts.secretEntry}
+          signInEntry={accounts.signInEntry}
           onSaveSecret={(secret) => accounts.saveClientSecret(account.record.accountRef, secret)}
           onReplaceSecret={(secret) =>
             accounts.replaceClientSecret(account.record.accountRef, secret)

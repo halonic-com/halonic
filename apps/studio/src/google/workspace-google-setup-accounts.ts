@@ -6,6 +6,7 @@ import type {
   GoogleSetupAccount,
   GoogleSetupAccounts,
   SecretEntry,
+  SignInEntry,
 } from "@halonicjs/studio-feature-google-setup/api";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import { googleAccountOf } from "./google-account.ts";
@@ -76,6 +77,9 @@ const needsHost = "Halonic needs its agent host to save this, and it isn't runni
 /** The client secret is typed in the app's own field; where it is kept is this computer. */
 const desktopEntry: SecretEntry = { kind: "field", keptOn: "this-computer", plainHttp: false };
 
+/** The app runs on the computer that runs Halonic, so Google's answer comes back to it. */
+const desktopSignIn: SignInEntry = { kind: "here" };
+
 /**
  * The Google accounts of one open workspace as the Google setup feature reads them (requirement
  * `studio.workspace-google-setup-accounts`).
@@ -92,6 +96,7 @@ const desktopEntry: SecretEntry = { kind: "field", keptOn: "this-computer", plai
  */
 export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
   readonly secretEntry = desktopEntry;
+  readonly signInEntry = desktopSignIn;
   readonly #options: WorkspaceGoogleSetupAccountsOptions;
   readonly #listeners = new Set<() => void>();
   #stopWatching: (() => void) | undefined;
