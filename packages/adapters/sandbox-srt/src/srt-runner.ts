@@ -147,7 +147,11 @@ export function windowsCommandLine(request: RunRequest): string {
     return `set ${quoteForCmd(`${name}=${value}`)}`;
   });
   const program = [request.program, ...request.args].map(quoteForCmd).join(" ");
-  return [...removes, ...sets, program].join(" && ");
+  // cmd.exe /c drops the first and last quote of a line that starts with one, which would break the
+  // program's path. A line with no variables to set would start with the quoted program, so `cd .`
+  // (a command that changes nothing) leads it instead.
+  const lead = removes.length + sets.length === 0 ? ["cd ."] : [];
+  return [...lead, ...removes, ...sets, program].join(" && ");
 }
 
 /** Ends `pid` and everything under it. Windows has no process groups and no SIGTERM: `taskkill /T /F` is the only way, so there is no grace period. */
