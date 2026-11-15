@@ -62,9 +62,9 @@ export interface PluginTrustDialogProps {
    * For `reason="update"`: the version the person has now, which **Keep** names, and for a git
    * plugin the newer commit. `manifest` is the new version, `origin` where it comes from now.
    */
+  readonly update?: { readonly keep: string; readonly toCommit?: string | undefined } | undefined;
   /** Whether the plugin's programs can run here; when unsaid, the Runs line holds either way. */
   readonly programsRun?: ProgramsRun;
-  readonly update?: { readonly keep: string; readonly toCommit?: string | undefined } | undefined;
   readonly onTrust: () => void;
   /** **Not now** and Escape, or **Keep** for an update: the plugin stays as it was. */
   readonly onNotNow: () => void;
@@ -86,7 +86,7 @@ export interface PluginTrustDialogProps {
 export function PluginTrustDialog(props: PluginTrustDialogProps) {
   const { manifest, reason } = props;
   const content = trustCheckContent(manifest);
-  const summary = trustSummary(content.counts);
+  const summary = trustSummary(content.counts, props.programsRun);
   return (
     <Dialog
       title={trustTitle(reason, manifest.name, props.trustedOn, manifest.version)}

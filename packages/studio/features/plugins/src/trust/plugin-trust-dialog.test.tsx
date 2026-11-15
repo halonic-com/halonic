@@ -175,6 +175,20 @@ verifies("plugins.plugin-trust-check", () => {
     expect(dialog().textContent).toContain(line);
   });
 
+  it.each([
+    ["ready", "Starts 1 program in a sandbox on this computer"],
+    ["needs-desktop-app", "Has 1 program that doesn't run here"],
+    ["sandbox-unavailable", "Has 1 program that doesn't run now"],
+  ] as const)(
+    "keeps the summary true to the Runs line when programs are %s",
+    (programsRun, line) => {
+      open(weather, { programsRun });
+
+      expect(dialog().textContent).toContain(line);
+      expect(dialog().textContent?.includes("Starts 1 program")).toBe(programsRun === "ready");
+    },
+  );
+
   it("lists the sections in order, Tools open when one changes things", () => {
     open(weather);
 

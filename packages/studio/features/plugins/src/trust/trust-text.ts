@@ -2,6 +2,7 @@
 // T6 to T10 and the UX acceptance checklist 4 (HAL-1739, HAL-751, HAL-1952). The plugin's name,
 // version, tool names and addresses are only ever a value in these lines.
 
+import type { LocalToolState } from "@halonicjs/app";
 import { hostFromSetting } from "../settings/settings-text.ts";
 
 /** Why the trust check opens: right after Add, or from **Review** on the plugin's page. */
@@ -126,7 +127,7 @@ export const CAN_REACH = "Can reach";
  * program only ever starts in a working sandbox, so each case says what is true; when the host
  * doesn't say, the line holds in every case.
  */
-export type ProgramsRun = "ready" | "needs-desktop-app" | "sandbox-unavailable" | undefined;
+export type ProgramsRun = LocalToolState["kind"] | undefined;
 
 /** Where a program runs (T8, Mara's claims check item 2): one true line per case. */
 export function runsLine(state: ProgramsRun): string {
@@ -207,11 +208,13 @@ export interface TrustCounts {
 
 /**
  * The summary, in risk order, zero counts left out (design section 5, checklist 4.1): "Adds 2
- * tools for agents, 1 of which changes things. Starts 1 program in a sandbox on this computer, sends 1 secret
- * to api.example.com and reaches 2 addresses." `""` when the plugin adds none of these.
+ * tools for agents, 1 of which changes things. Starts 1 program in a sandbox on this computer,
+ * sends 1 secret to api.example.com and reaches 2 addresses." `""` when the plugin adds none of
+ * these. Programs are said to start only where they can: with `programsRun` saying they can't,
+ * the line says so, as the Runs line does.
  */
-export function trustSummary(counts: TrustCounts): string {
-  const sentences = [toolsSentence(counts), reachSentence(counts)];
+export function trustSummary(counts: TrustCounts, programsRun?: ProgramsRun): string {
+  const sentences = [toolsSentence(counts), reachSentence(counts, programsRun)];
   return sentences.filter((sentence) => sentence !== "").join(" ");
 }
 
@@ -234,7 +237,21 @@ function riskVerb(counts: TrustCounts, one: boolean): string {
   return "change things or send";
 }
 
-function reachSentence(counts: TrustCounts): string {
+function programsPart(programs: number, programsRun: ProgramsRun): string {
+  const named = counted(programs, "program", "programs");
+  const doesnt = programs === 1 ? "doesn't" : "don't";
+  switch (programsRun) {
+    case "needs-desktop-app":
+      return `has ${named} that ${doesnt} run here`;
+    case "sandbox-unavailable":
+      return `has ${named} that ${doesnt} run now`;
+    case "ready":
+    case undefined:
+      return `starts ${named} in a sandbox on this computer`;
+  }
+}
+
+function reachSentence(counts: TrustCounts, programsRun: ProgramsRun): string {
   const secrets =
     counts.secrets === 0
       ? undefined
@@ -242,9 +259,7 @@ function reachSentence(counts: TrustCounts): string {
           counts.secretsTo === undefined ? "" : ` to ${counts.secretsTo}`
         }`;
   const parts = [
-    counts.programs === 0
-      ? undefined
-      : `starts ${counted(counts.programs, "program", "programs")} in a sandbox on this computer`,
+    counts.programs === 0 ? undefined : programsPart(counts.programs, programsRun),
     secrets,
     counts.addresses === 0
       ? undefined
