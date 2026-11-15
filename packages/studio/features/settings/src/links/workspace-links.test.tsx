@@ -5,12 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { settingsSections } from "../feature.ts";
 import { click, control } from "../test-support/controls.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
-import {
-  ModelsLinkSection,
-  openModelsCommand,
-  openTrustCommand,
-  TrustLinkSection,
-} from "./workspace-links.tsx";
+import { openTrustCommand, TrustLinkSection } from "./workspace-links.tsx";
 
 afterEach(unmountAll);
 
@@ -29,13 +24,9 @@ function setup(View: (props: SettingsSectionProps) => React.ReactNode, withComma
 }
 
 verifies("settings.workspace-links", () => {
-  it("adds Models and Trust to the workspace group, Models first", () => {
+  it("adds Trust to the workspace group; Models comes from the Models feature", () => {
     const links = settingsSections.filter((section) => section.scope === "workspace");
-    expect(links.map(({ id, title }) => [id, title])).toEqual([
-      ["models", "Models"],
-      ["trust", "Trust"],
-    ]);
-    expect(links[0]?.order).toBeLessThan(links[1]?.order ?? 0);
+    expect(links.map(({ id, title }) => [id, title])).toEqual([["trust", "Trust"]]);
   });
 
   it("loads the views the sections name", async () => {
@@ -44,25 +35,10 @@ verifies("settings.workspace-links", () => {
     }
   });
 
-  describe("Models", () => {
-    it("shows one line and Open Models, with no summary or chip", () => {
-      const { view } = setup(ModelsLinkSection);
-      expect(view.querySelectorAll("p")).toHaveLength(1);
-      expect(view.querySelectorAll("button")).toHaveLength(1);
-      expect(control(view, "button").textContent).toBe("Open Models");
-    });
-
-    it("closes Settings, then runs the command that opens Models", async () => {
-      const { calls, view } = setup(ModelsLinkSection);
-      await click(control(view, "button"));
-      expect(calls).toEqual(["close", `run ${openModelsCommand}`]);
-    });
-  });
-
   describe("Trust", () => {
-    it("shows one line and Open Trust", () => {
+    it("shows Open Trust and no line of its own", () => {
       const { view } = setup(TrustLinkSection);
-      expect(view.querySelectorAll("p")).toHaveLength(1);
+      expect(view.querySelectorAll("p")).toHaveLength(0);
       expect(control(view, "button").textContent).toBe("Open Trust");
     });
 

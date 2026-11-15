@@ -66,6 +66,12 @@ export interface SettingsSectionContribution extends Ordered, ViewRef {
    * answer later, as a section that asks the engine does; the list shows the name alone until then.
    */
   summary?(context: WorkspaceContext): string | undefined | Promise<string | undefined>;
+  /**
+   * Whether the section has a problem to look at. The dialog's list then marks its row with a
+   * warning triangle (flow-settings 3.1), so a problem isn't hidden until someone opens the
+   * section. It may answer later; the row has no mark until then.
+   */
+  attention?(context: WorkspaceContext): boolean | Promise<boolean>;
   /** `false` leaves the section out on a phone, as Developer does. */
   readonly phone?: false;
 }

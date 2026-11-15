@@ -58,6 +58,15 @@ export const displaySavedLines: Readonly<Record<SettingsPlace, string>> = {
 /** The same line on the phone's Settings page, where the values are saved on the phone itself. */
 export const phoneSavedLine = "Saved on this phone. Your computer keeps its own.";
 
+/**
+ * The line under the name of a workspace section: whose settings these are, and that changing
+ * them shows in Changes. The same for Models, Trust and Workspace, so the container writes it
+ * (flow-settings 4).
+ */
+export function workspaceSectionLine(workspaceName: string): string {
+  return `Part of ${workspaceName}. Changes here show in Changes and can be undone.`;
+}
+
 /** Props for {@link SettingsDialog}. */
 export interface SettingsDialogProps {
   /** `shell.contributions.settings.list()`. */
@@ -122,11 +131,12 @@ export function SettingsDialog(props: SettingsDialogProps) {
     () => settingsGroups({ sections, workspaceName, place }),
     [sections, workspaceName, place],
   );
-  const listed = listedSections(groups);
+  const listed = useMemo(() => listedSections(groups), [groups]);
   const [current, setCurrent] = useState(
     () => settingsSectionToOpen(listed, props.requested, props.lastShown) ?? "",
   );
   const nav = useRef<HTMLElement>(null);
+  const attention = useAttention(listed, props.contextFor, current);
   const section = listed.find((candidate) => candidate.id === current);
   useRowKey(nav, props.rowKey);
 
@@ -159,7 +169,13 @@ export function SettingsDialog(props: SettingsDialogProps) {
       initialFocus={() => currentRow(nav.current)}
     >
       <div className="flex h-full min-h-0">
-        <SettingsNav groups={groups} current={current} onShow={show} navRef={nav} />
+        <SettingsNav
+          groups={groups}
+          current={current}
+          attention={attention}
+          onShow={show}
+          navRef={nav}
+        />
         <div className="min-w-0 flex-1 overflow-y-auto bg-surface-raised px-6 pt-5 pb-6">
           {section === undefined ? null : (
             <SectionView
@@ -170,12 +186,50 @@ export function SettingsDialog(props: SettingsDialogProps) {
               place={place}
               surface="window"
               regionFormat={regionFormat}
+              workspaceName={workspaceName}
             />
           )}
         </div>
       </div>
     </Dialog>
   );
+}
+
+/**
+ * The ids of the sections that have a problem, asked again whenever the section shown changes
+ * (a section's own chips may have just been fixed). A section that answers late has no mark until
+ * it does; one that fails to answer has none.
+ */
+function useAttention(
+  listed: readonly Registered<SettingsSectionContribution>[],
+  contextFor: (featureId: string) => WorkspaceContext,
+  current: string,
+): ReadonlySet<string> {
+  const [marked, setMarked] = useState<ReadonlySet<string>>(new Set());
+  // The caller's `contextFor` is usually a new function each render; only the sections and the
+  // section shown should ask again.
+  const context = useRef(contextFor);
+  context.current = contextFor;
+  useEffect(() => {
+    let live = true;
+    void Promise.all(
+      listed.map(async (section) => {
+        try {
+          return (await section.attention?.(context.current(section.featureId))) === true
+            ? section.id
+            : undefined;
+        } catch {
+          return undefined;
+        }
+      }),
+    ).then((ids) => {
+      if (live) setMarked(new Set(ids.filter((id) => id !== undefined)));
+    });
+    return () => {
+      live = false;
+    };
+  }, [listed, current]);
+  return marked;
 }
 
 /**
@@ -217,6 +271,8 @@ export interface SectionViewProps extends SettingsSectionProps {
    * top bar shows it. In the dialog it is a visible `h3`.
    */
   readonly page?: boolean;
+  /** The open workspace's name: a workspace section then shows `workspaceSectionLine` under its name. */
+  readonly workspaceName?: string | undefined;
 }
 
 /** A section's name, its saved line where it has one, and its view, as the dialog and the phone show it. */
@@ -228,6 +284,7 @@ export function SectionView({
   surface,
   page,
   regionFormat,
+  workspaceName,
 }: SectionViewProps) {
   const View = useSectionView(section);
   return (
@@ -245,6 +302,9 @@ export function SectionView({
         <p className="mt-1 text-small text-fg-muted">
           {place === "served" && surface === "phone" ? phoneSavedLine : displaySavedLines[place]}
         </p>
+      ) : null}
+      {section.scope === "workspace" && workspaceName !== undefined ? (
+        <p className="mt-1 text-small text-fg-muted">{workspaceSectionLine(workspaceName)}</p>
       ) : null}
       {/* A view that fails to load or draw shows nothing; the list and the other sections keep working. */}
       <ViewErrorBoundary>

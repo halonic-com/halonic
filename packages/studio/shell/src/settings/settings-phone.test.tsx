@@ -333,3 +333,15 @@ verifies("shell.settings-saved-line", () => {
     );
   });
 });
+
+verifies("shell.settings-workspace-line", () => {
+  it("shows the line under a workspace section's page on the phone", async () => {
+    const { container, tapRow, tapMore } = await renderPhone();
+    tapMore();
+    await tapRow("Settings");
+    const lineUnder = () => container.querySelector("section h1 + p")?.textContent ?? "";
+
+    await tapRow("Models");
+    expect(lineUnder()).toBe("Part of Acme. Changes here show in Changes and can be undone.");
+  });
+});

@@ -1,4 +1,4 @@
-import { ListHeading, SectionIcon, type SectionIconName } from "@halonicjs/studio-kit";
+import { ListHeading, SectionIcon, type SectionIconName, WarningIcon } from "@halonicjs/studio-kit";
 import { type FocusEvent, type KeyboardEvent, type RefObject, useId, useState } from "react";
 import { listedSections, type SettingsGroup } from "./settings-groups.ts";
 
@@ -7,6 +7,8 @@ export interface SettingsNavProps {
   readonly groups: readonly SettingsGroup[];
   /** The id of the section shown on the right. */
   readonly current: string;
+  /** The ids of the sections with a problem: their rows carry a warning mark (flow-settings 3.1). */
+  readonly attention?: ReadonlySet<string>;
   /** Enter or a click on a row: show that section. */
   readonly onShow: (sectionId: string) => void;
   /** Holds the list, so the dialog can find the current row to focus. */
@@ -23,7 +25,7 @@ export interface SettingsNavProps {
  * @example
  * <SettingsNav groups={groups} current="appearance" onShow={setCurrent} navRef={nav} />
  */
-export function SettingsNav({ groups, current, onShow, navRef }: SettingsNavProps) {
+export function SettingsNav({ groups, current, attention, onShow, navRef }: SettingsNavProps) {
   const idPrefix = useId();
   const [focused, setFocused] = useState<string | undefined>(undefined);
   const order = listedSections(groups).map((section) => section.id);
@@ -71,6 +73,7 @@ export function SettingsNav({ groups, current, onShow, navRef }: SettingsNavProp
                 title={section.title}
                 icon={section.icon}
                 current={section.id === current}
+                needsAttention={attention?.has(section.id) === true}
                 tabStop={section.id === tabStop}
                 onFocus={() => setFocused(section.id)}
                 onShow={() => onShow(section.id)}
@@ -88,6 +91,7 @@ function SettingsRow(props: {
   readonly title: string;
   readonly icon: SectionIconName | undefined;
   readonly current: boolean;
+  readonly needsAttention: boolean;
   readonly tabStop: boolean;
   readonly onFocus: () => void;
   readonly onShow: () => void;
@@ -109,6 +113,14 @@ function SettingsRow(props: {
           </span>
         )}
         <span className="min-w-0 flex-1 wrap-break-word">{props.title}</span>
+        {props.needsAttention ? (
+          <>
+            <span className="size-icon-md shrink-0 text-warning *:size-full">
+              <WarningIcon />
+            </span>
+            <span className="sr-only">, needs attention</span>
+          </>
+        ) : null}
       </button>
     </li>
   );

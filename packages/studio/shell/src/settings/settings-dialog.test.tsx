@@ -195,3 +195,45 @@ verifies("shell.settings-section-icons", () => {
     expect(row(container, "Appearance").querySelector("svg")).toBeNull();
   });
 });
+
+verifies("shell.settings-workspace-line", () => {
+  it("says whose settings a workspace section holds, under its name, and only there", async () => {
+    const lineUnder = (container: HTMLElement) =>
+      container.querySelector("section h3 + p")?.textContent;
+    const { container } = await open({ requested: "models" });
+    expect(lineUnder(container)).toBe(
+      "Part of Acme. Changes here show in Changes and can be undone.",
+    );
+    unmountAll();
+    const host = await open({ requested: "assistant" });
+    expect(lineUnder(host.container) ?? "").not.toContain("Part of");
+  });
+});
+
+verifies("shell.settings-attention-mark", () => {
+  const marked = (container: HTMLElement, name: string) =>
+    row(container, name).querySelector("svg") !== null;
+
+  it("marks the row of a section that answers yes, with words for a screen reader", async () => {
+    const { container } = await open({
+      sections: [appearance, { ...models, attention: () => true }],
+    });
+    expect(marked(container, "Models, needs attention")).toBe(true);
+    expect(row(container, "Models, needs attention").querySelector(".sr-only")?.textContent).toBe(
+      ", needs attention",
+    );
+  });
+
+  it("leaves a row bare when the answer is no, fails or has no section to ask", async () => {
+    const { container } = await open({
+      sections: [
+        appearance,
+        { ...formats, attention: async () => false },
+        { ...models, attention: async () => Promise.reject(new Error("no")) },
+      ],
+    });
+    expect(marked(container, "Formats")).toBe(false);
+    expect(marked(container, "Models")).toBe(false);
+    expect(marked(container, "Appearance")).toBe(false);
+  });
+});

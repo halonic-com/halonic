@@ -138,6 +138,7 @@ function PhonePageBody({
           place={settingsPlace}
           surface="phone"
           regionFormat={regionFormat}
+          workspaceName={workspaceName}
         />
       </div>
     );
