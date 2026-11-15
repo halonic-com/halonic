@@ -17,6 +17,8 @@ export interface DisclosureProps {
    * Screen readers hear it inside the row: "What's in it, 3 items, collapsed".
    */
   readonly label?: string;
+  /** Muted words after the summary that say what is inside: "Base URL, secret name, local". */
+  readonly detail?: string;
   /** What opens in place. Nothing in it is part of the row. */
   readonly children: ReactNode;
 }
@@ -61,6 +63,7 @@ export function Disclosure({
   tone = "label",
   defaultOpen = false,
   label,
+  detail,
   children,
 }: DisclosureProps) {
   const hasLabel = label !== undefined && label !== "";
@@ -70,7 +73,12 @@ export function Disclosure({
         className={`${summaryClasses} ${tone === "label" ? "text-body-strong" : "text-body"}`}
       >
         {hasLabel ? <span className="sr-only">{`${label}, `}</span> : null}
-        <span className="min-w-0 flex-1 wrap-break-word">{summary}</span>
+        <span className="min-w-0 flex-1 wrap-break-word">
+          {summary}
+          {detail === undefined || detail === "" ? null : (
+            <span className="text-small font-normal text-fg-muted">{` ${detail}`}</span>
+          )}
+        </span>
         <span aria-hidden="true" className={chevronClasses}>
           <ChevronDownIcon />
         </span>
