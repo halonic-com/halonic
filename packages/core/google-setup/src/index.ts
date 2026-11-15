@@ -38,6 +38,7 @@ export {
   testingHintWindowMs,
 } from "./connector-state.ts";
 export { type ConsolePage, isApiHost, isProjectId } from "./console-links.ts";
+export { type GoogleTokenLocation, googleTokenFor } from "./google-token-for.ts";
 export { looksLikeGoogleClientSecret } from "./looks-like-google-client-secret.ts";
 export { type LoopbackRedirect, loopbackRedirectUri } from "./loopback-redirect.ts";
 export {
