@@ -181,6 +181,14 @@ verifies("runtime.export-data", () => {
         }
       });
 
+      it("scans a blob of long key-shaped runs in time that follows its size", () => {
+        // base64url data has no spaces: every chunk ends inside a long run.
+        const bytes = encode("a".repeat(8 * 1024 * 1024));
+        const started = performance.now();
+        scan(bytes);
+        expect(performance.now() - started).toBeLessThan(2000);
+      });
+
       it("finds a key that spans the default chunk boundary of a large blob", () => {
         const oneMiB = 1024 * 1024;
         const before = "a ".repeat(oneMiB / 2 - 5);

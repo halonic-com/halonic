@@ -74,12 +74,20 @@ const scanChunkBytes = 1024 * 1024;
  */
 const maxCarriedRunLength = 4096;
 
-const trailingKeyRun = /[A-Za-z0-9_-]*$/;
+function isKeyCharacter(character: string): boolean {
+  return /^[A-Za-z0-9_-]$/.test(character);
+}
 
-/** The end of the text that may be the start of a key the next chunk finishes. */
+/**
+ * The end of the text that may be the start of a key the next chunk finishes.
+ * It walks back from the end, so the work is the length of the run, not of the
+ * chunk times the length of every run in it.
+ */
 function carriedTail(text: string): string {
-  const tail = text.slice(-maxCarriedRunLength);
-  return trailingKeyRun.exec(tail)?.[0] ?? "";
+  const earliest = Math.max(0, text.length - maxCarriedRunLength);
+  let start = text.length;
+  while (start > earliest && isKeyCharacter(text[start - 1] as string)) start -= 1;
+  return text.slice(start);
 }
 
 /**
