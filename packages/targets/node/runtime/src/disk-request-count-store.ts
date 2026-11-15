@@ -1,4 +1,5 @@
-import { NodeCoordination, randomLeaseToken } from "@halonicjs/adapter-coordination-node";
+import { NodeCoordination } from "@halonicjs/adapter-coordination-node";
+import { randomLeaseToken } from "@halonicjs/adapter-coordination-node/node";
 import { FileRecordStore } from "@halonicjs/adapter-fs-node";
 import type { Clock } from "@halonicjs/ports";
 import {

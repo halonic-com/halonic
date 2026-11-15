@@ -7,7 +7,8 @@ app, where one Node process runs the engine.
 
 - **Layer:** adapters
 - **Owner:** priya
-- **Public API:** `@halonicjs/adapter-coordination-node`
+- **Public API:** `@halonicjs/adapter-coordination-node`, and `@halonicjs/adapter-coordination-node/node` for what
+  needs Node's own modules (`randomLeaseToken`, on `node:crypto`)
 
 ## Where the state is kept
 
@@ -33,7 +34,8 @@ store and moves its clock by hand; on a server, pass the real store and
 
 ```ts
 import { ManualClock, MemoryRecordStore } from "@halonicjs/adapter-memory";
-import { NodeCoordination, randomLeaseToken } from "@halonicjs/adapter-coordination-node";
+import { NodeCoordination } from "@halonicjs/adapter-coordination-node";
+import { randomLeaseToken } from "@halonicjs/adapter-coordination-node/node";
 
 /** Takes a lease, sets a value, counts against a limit, then restarts on the same store. */
 export async function runExample(): Promise<{
@@ -101,7 +103,8 @@ export async function runExample(): Promise<{
 
 - **Leases** end at their expiry time by the adapter's clock. Renewing keeps
   the token; an old token can neither renew nor release. Tokens come from
-  `newToken`; `randomLeaseToken` uses Node's cryptographic random source, so
+  `newToken`; `randomLeaseToken` (from `@halonicjs/adapter-coordination-node/node`, so the
+  package root has no `node:` imports) uses Node's cryptographic random source, so
   a token can't be guessed and never repeats after a restart.
 - **Input rules** are the port's: keys of 1 to 256 UTF-8 bytes, values up to
   64 KiB, positive safe whole amounts. Breaking one throws a `RangeError`

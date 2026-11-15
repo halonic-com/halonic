@@ -1,5 +1,6 @@
 import { ManualClock, MemoryRecordStore } from "@halonicjs/adapter-memory";
-import { NodeCoordination, randomLeaseToken } from "../src/index.ts";
+import { NodeCoordination } from "../src/index.ts";
+import { randomLeaseToken } from "../src/node/index.ts";
 
 /** Takes a lease, sets a value, counts against a limit, then restarts on the same store. */
 export async function runExample(): Promise<{

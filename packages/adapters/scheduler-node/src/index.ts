@@ -1,4 +1,3 @@
-export { systemSetTimer } from "./node/system-timer.ts";
 export {
   defaultTimerCollection,
   NodeScheduler,
