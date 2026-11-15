@@ -21,6 +21,7 @@ import {
  * Whether the run may start with its instructions. When a person must be
  * asked, `unreadable` says why the trusted pin couldn't be used, if that is
  * the reason, so the prompt doesn't present a damaged record as a new agent.
+ * `hadTrusted` is `false` for a record that can't be read: nothing usable was trusted.
  */
 export type InstructionTrustCheck =
   | { readonly kind: "trusted" }
@@ -61,7 +62,12 @@ export class InstructionTrustService {
       trusted = await this.#trustedPin(key);
     } catch (error) {
       const unreadable = error instanceof Error ? error.message : String(error);
-      return { kind: "ask", changes: instructionChanges(null, current), unreadable };
+      return {
+        kind: "ask",
+        changes: instructionChanges(null, current),
+        hadTrusted: false,
+        unreadable,
+      };
     }
     return instructionTrust(trusted, current);
   }

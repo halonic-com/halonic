@@ -42,6 +42,7 @@ verifies("app.instruction-trust-service", () => {
       const check = await serviceOn(new FakeStore()).check(key, pin);
       expect(check).toEqual({
         kind: "ask",
+        hadTrusted: false,
         changes: { added: ["AGENTS.md"], removed: [], changed: [] },
       });
     });
@@ -54,6 +55,7 @@ verifies("app.instruction-trust-service", () => {
       const edited = { digest: digest("2"), files: { "AGENTS.md": digest("b") } };
       expect(await service.check(key, edited)).toEqual({
         kind: "ask",
+        hadTrusted: true,
         changes: { added: [], removed: [], changed: ["AGENTS.md"] },
       });
     });
@@ -69,6 +71,7 @@ verifies("app.instruction-trust-service", () => {
       store.getError = new Error("The trusted instructions can't be read.");
       expect(await serviceOn(store).check(key, pin)).toEqual({
         kind: "ask",
+        hadTrusted: false,
         changes: { added: ["AGENTS.md"], removed: [], changed: [] },
         unreadable: "The trusted instructions can't be read.",
       });

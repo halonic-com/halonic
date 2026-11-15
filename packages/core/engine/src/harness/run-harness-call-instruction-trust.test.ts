@@ -33,9 +33,13 @@ function runWith(answer: InstructionTrustCheck, files: readonly string[] = ["AGE
   return { ports, asked };
 }
 
-const ask = (changes: Partial<{ added: string[]; removed: string[]; changed: string[] }>) =>
+const ask = (
+  changes: Partial<{ added: string[]; removed: string[]; changed: string[] }>,
+  hadTrusted = false,
+) =>
   ({
     kind: "ask",
+    hadTrusted,
     changes: { added: [], removed: [], changed: [], ...changes },
   }) satisfies InstructionTrustCheck;
 
@@ -70,11 +74,21 @@ verifies("engine.harness-instructions-trust", () => {
     });
 
     it("names changed and removed files", async () => {
-      const { ports } = runWith(ask({ changed: ["AGENTS.md"], removed: ["skills/old.md"] }));
+      const { ports } = runWith(ask({ changed: ["AGENTS.md"], removed: ["skills/old.md"] }, true));
 
       const { error } = await runCallOn(ports);
 
       expect(String(error)).toContain('Changed: "AGENTS.md". Removed: "skills/old.md".');
+    });
+
+    it("says the instructions changed when a person trusted others before", async () => {
+      const { ports } = runWith(ask({ changed: ["AGENTS.md"] }, true));
+
+      const { error } = await runCallOn(ports);
+
+      expect((error as Error).message).toBe(
+        'Halonic didn\'t start agent "writer": its instructions changed since a person trusted them. Changed: "AGENTS.md". Trust the instructions, then run again.',
+      );
     });
 
     it("says why the trusted pin couldn't be used", async () => {
