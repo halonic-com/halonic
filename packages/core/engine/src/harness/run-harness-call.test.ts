@@ -67,45 +67,6 @@ verifies("engine.run-harness", () => {
     ]);
   });
 
-  it("records the pin of the run's instruction files right before harness.started", async () => {
-    const ports = harnessPorts();
-    ports.harness.events = [finished("ok")];
-    ports.options = {
-      ...ports.options,
-      instructions: {
-        pinOf: async () => ({
-          files: [{ path: "AGENTS.md", sha256: "sha256:aa" }],
-          sha256: "sha256:bb",
-        }),
-      },
-    };
-
-    const { written } = await runOn(ports);
-
-    expect(written.map((event) => event.type).slice(1, 4)).toEqual([
-      "sandbox.opened",
-      "harness.instructions",
-      "harness.started",
-    ]);
-    expect(written[2]).toEqual({
-      type: "harness.instructions",
-      state: "draft",
-      agent: "writer",
-      files: [{ path: "AGENTS.md", sha256: "sha256:aa" }],
-      sha256: "sha256:bb",
-    });
-  });
-
-  it("writes no harness.instructions when the agent has no instruction files", async () => {
-    const ports = harnessPorts();
-    ports.harness.events = [finished("ok")];
-    ports.options = { ...ports.options, instructions: { pinOf: async () => null } };
-
-    const { written } = await runOn(ports);
-
-    expect(written.some((event) => event.type === "harness.instructions")).toBe(false);
-  });
-
   it("gives the program the profile's variables and the harness's own, and no others", async () => {
     const ports = harnessPorts();
     ports.harness.events = [finished("ok")];

@@ -32,6 +32,7 @@ import type { RunHarnessEffect } from "../kernel/decide-types.ts";
 import { SandboxNotReadyError } from "../run/sandbox-not-ready-error.ts";
 import { BlockedAccesses } from "./blocked-accesses.ts";
 import type { HarnessAgent, HarnessRunsOptions, PlacementAnswer } from "./harness-host.ts";
+import { logHarnessStart } from "./log-harness-start.ts";
 import { defaultStartTimeoutsMs, type StartLimits, type StartPhase } from "./start-limits.ts";
 import { unlessStopped } from "./unless-stopped.ts";
 
@@ -237,15 +238,8 @@ async function runInBridge(
     );
     const stopReports = session.onBlocked((block) => blocked.note(block));
     try {
-      await logInstructions(started);
       const timeoutMs = startTimeoutOf(options, "harness");
-      await log.append({
-        type: "harness.started",
-        state: effect.state,
-        agent: effect.agent,
-        harness: harness.id,
-        timeoutMs,
-      });
+      await logHarnessStart(started, timeoutMs);
       const task = {
         runId: call.runId,
         hubId: call.hubId,
@@ -276,20 +270,6 @@ async function runInBridge(
     await bridge.close();
     await log.settled();
   }
-}
-
-/** Writes `harness.instructions` when the host has instruction files for the agent. */
-async function logInstructions({ options, agent, call, log }: StartedCall): Promise<void> {
-  const pin = await options.instructions?.pinOf(agent);
-  if (pin === undefined || pin === null) return;
-  const { state, agent: agentId } = call.effect;
-  await log.append({
-    type: "harness.instructions",
-    state,
-    agent: agentId,
-    files: pin.files.map(({ path, sha256 }) => ({ path, sha256 })),
-    sha256: pin.sha256,
-  });
 }
 
 /**
