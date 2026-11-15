@@ -3,6 +3,7 @@
 - Task: HAL-5394 (the WSL setup), reviewed on HAL-10573
 - Approval: [HAL-10573](/HAL/issues/HAL-10573), Liam reviewed the entry on HAL-10572 and HAL-10573
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:A2vZEFPT7jVjQije2sjEpgFZniVH201548iRNzrhL52Rleg8ioHcCwBDOen7tcXewtnaSTgmAwDn4+qB7wIKAw==
 
 ## What changes
 
