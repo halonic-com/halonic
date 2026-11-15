@@ -3,6 +3,7 @@
 - Task: HAL-9452 (design check B15 of HAL-9385)
 - Approval: Sofia's design check on HAL-9316 and the wording of microcopy revision 99; a small wording detail on an approved screen, decided by the team (board, HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:x5uCxJvON4u9wHmZoBn0lbdariLSD14gOtVcPmm5UD8kpGihXfB58r6yvgKLqeBUDHTnnlwDSh4ktxKtttbhAQ==
 
 ## What changes
 
