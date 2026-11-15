@@ -8,12 +8,14 @@ import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import { ModelsFilesService } from "@halonicjs/studio-feature-models/api";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import { ChangesSourceService } from "@halonicjs/studio-feature-source-control/api";
+import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
 import { type TauriIpc, tauriAgentHostTransport } from "@halonicjs/studio-services";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
 import { provideLibraryServices } from "../library/provide-library-services.ts";
 import { WorkspaceModelsFiles } from "../models/workspace-models-files.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
+import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
 
 /** What the services of one open folder read: the shell, the page's window and the folder. */
@@ -48,6 +50,14 @@ export function provideFolderServices(
       files: new TauriDefinitionStore(files, location),
       onFocus: (listener) => focusOf(window, listener),
       onFilesChanged: (listener) => scope.events.on("files.changed", listener),
+    }),
+  );
+  services.provide(
+    WorkflowsHostService,
+    new WorkspaceWorkflows({
+      files: services.get(workspaceFilesKey),
+      onChange: (listener) => scope.events.on("files.changed", listener),
+      runs: services.get(RunsSourceService),
     }),
   );
   provideLibraryServices(services, {
