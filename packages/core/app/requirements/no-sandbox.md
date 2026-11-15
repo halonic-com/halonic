@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-5397; HAL-3779 design (section 7); security conditions N8 on HAL-5397
 
-Choosing no sandbox shall save the setting `none` with the time of the choice and the running app version, replacing any choice before, and taking it back shall delete the setting. Only these two calls shall save or delete the choice `none`, and taking it back shall keep any other saved backend. A command line `--no-sandbox` shall be allowed only when the saved setting already says `none`; otherwise it shall be refused with the reason `not-chosen`. The command line check shall never save or remove anything, and shall fail when the saved setting can't be read, so a damaged setting never allows it.
+When the person chooses no sandbox, the app shall save the setting `none` with the time of the choice and the running app version, replacing any choice before, and taking it back shall delete the setting. Only these two calls shall save or delete the choice `none`, and taking it back shall keep any other saved backend. A command line `--no-sandbox` shall be allowed only when the saved setting already says `none`; otherwise it shall be refused with the reason `not-chosen`. The command line check shall never save or remove anything, and shall fail when the saved setting can't be read, so a damaged setting never allows it.
 
 ## Examples
 
