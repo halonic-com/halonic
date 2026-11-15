@@ -11,7 +11,8 @@ import type {
   SandboxProfile,
   SandboxSession,
 } from "@halonicjs/ports";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { waitUntil } from "@halonicjs/testing-spec";
+import { afterEach, describe, expect, it } from "vitest";
 import { type HostRoute, type HostServer, startHostServer } from "../server/host-server.ts";
 import { maxBodyBytes } from "../server/json-body.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
@@ -451,7 +452,10 @@ describe("sandbox routes, attacked by a caller with the token", () => {
     await expect(answer).rejects.toThrow();
     // The server sees the closed connection before the session arrives. The ceiling stays under
     // the test timeout, so a close the server never sees fails here and not on "Test timed out".
-    await vi.waitFor(() => expect(openConnectionsClosed).toBe(1), { timeout: 4_000 });
+    await waitUntil("openConnectionsClosed to be 1", () => openConnectionsClosed === 1, {
+      timeout: 4_000,
+    });
+    expect(openConnectionsClosed).toBe(1);
     release.settle();
     await eventually(() => sandbox.opened[0]?.closeCount === 1);
     // Nobody can name it: the table holds nothing to close at stop.
