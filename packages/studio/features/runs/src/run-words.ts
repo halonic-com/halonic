@@ -123,13 +123,27 @@ export const costWords = {
 /** What joins the parts of a line: "Sent nothing · estimated cost €0.004". */
 export const lineSeparator = " · ";
 
+/**
+ * The command the empty lines show: `halonic run support-reply` with the first workflow's name,
+ * and `halonic run` while the names aren't known (HAL-10128).
+ */
+export function runCommand(workflows: readonly string[] | undefined): string {
+  const [first] = workflows ?? [];
+  return first === undefined ? "halonic run" : `halonic run ${first}`;
+}
+
 /** What the Runs list says in place of rows (mc 15.1; states R1 to R6, R10 and R17). */
 export const emptyListWords = {
   noRunsTitle: "No runs yet",
-  /** The body is the three parts around the command, which shows in code style (HAL-9369). */
+  /**
+   * The body is the parts around the command, which shows in code style (HAL-9369). With a
+   * workflow it names one to run (HAL-10128); with none it points to Workflows; while the names
+   * aren't known it keeps the sentence without a name.
+   */
   noRunsBody: "Runs started from the command line show up here. To start one, type ",
-  noRunsCommand: "halonic run",
   noRunsBodyEnd: " in a terminal.",
+  noRunsNoWorkflow:
+    "Runs started from the command line show up here. This workspace has no workflow yet: add one in Workflows.",
   onlyTestRuns: "Only test runs so far.",
   showTestRuns: "Show test runs",
   /** A status chip with no runs; no button, since All is next to it (D13). */
@@ -429,6 +443,9 @@ export const homeWords = {
     "halonic run",
     ".",
   ],
+  /** The same note when the workspace has no workflow yet (HAL-10128). */
+  noWorkflowNote:
+    "This workspace has no workflows yet. Add one in Workflows, then start it from the command line.",
 };
 
 /** Home's Spend tile (HAL-8553): the tile's title, the line under the number, and its empty text. */

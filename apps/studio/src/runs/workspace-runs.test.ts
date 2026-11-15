@@ -84,6 +84,28 @@ verifies("studio.workspace-runs", () => {
     expect(runs.currency()).toBe("USD");
   });
 
+  it("names the workflows as `halonic run` takes them, in the Workflows list's order", async () => {
+    const { engine } = await waitingRun();
+    const workflow = (id: string, name: string) =>
+      `id: ${id}\nname: ${name}\ninitial: done\nstates:\n  done:\n    type: final\n`;
+    const definitions = new MemoryDefinitionStore({
+      "workspace.yaml": "id: acme\nname: Acme\n",
+      "hubs/acme/hub.yaml": "id: acme\nname: Acme\n",
+      "hubs/acme/workflows/welcome.workflow.yaml": workflow("welcome", "Welcome"),
+      "hubs/acme/workflows/reply.workflow.yaml": workflow("reply", "Support reply"),
+      "hubs/sales/hub.yaml": "id: sales\nname: Sales\n",
+      "hubs/sales/workflows/reply.workflow.yaml": workflow("reply", "Sales reply"),
+    });
+    const runs = new WorkspaceRuns({ runs: engine.stores.store, definitions });
+    const empty = new WorkspaceRuns({
+      runs: engine.stores.store,
+      definitions: new MemoryDefinitionStore({ "workspace.yaml": "id: new\nname: New\n" }),
+    });
+
+    expect(await runs.runnableWorkflows()).toEqual(["acme/reply", "welcome", "sales/reply"]);
+    expect(await empty.runnableWorkflows()).toEqual([]);
+  });
+
   it("reads the workspace's monthly budget, and none when it sets none", async () => {
     const { engine } = await waitingRun();
     const capped = new WorkspaceRuns({

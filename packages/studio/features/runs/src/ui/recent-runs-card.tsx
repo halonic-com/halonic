@@ -5,7 +5,7 @@ import { use, useCallback, useSyncExternalStore } from "react";
 import { listRows } from "../list/list-rows.ts";
 import { recentRuns } from "../list/recent-runs.ts";
 import type { RunRow } from "../list/run-row.ts";
-import { homeWords } from "../run-words.ts";
+import { homeWords, runCommand } from "../run-words.ts";
 import { type RunsList, RunsListService } from "../runs-list.ts";
 import { firstLoad } from "./first-load.ts";
 
@@ -42,7 +42,8 @@ export interface RecentRunsViewProps {
  * a failed run's line is its Failed sentence. The heading's "*N* running" chip is the Runs
  * place's signal, which the shell draws. On a phone, **See all runs** follows the rows. With no
  * runs: "No runs yet. When an agent or workflow runs, you'll see it here." and, so Home doesn't end on
- * nothing, how to start one from the command line.
+ * nothing, how to start one from the command line, naming the first workflow to run, or saying the
+ * workspace has none (HAL-10128).
  *
  * The section shows its skeleton until the first list loads, and its error with **Try again** if
  * that load fails; a later failed load keeps the rows as they were.
@@ -77,9 +78,15 @@ export function RecentRunsView({
       />
       {shown.length === 0 ? (
         <p className="m-0 px-4 text-fg-muted">
-          {homeWords.startNote[0]}
-          <code className="font-mono">{homeWords.startNote[1]}</code>
-          {homeWords.startNote[2]}
+          {state.workflows?.length === 0 ? (
+            homeWords.noWorkflowNote
+          ) : (
+            <>
+              {homeWords.startNote[0]}
+              <code className="font-mono">{runCommand(state.workflows)}</code>
+              {homeWords.startNote[2]}
+            </>
+          )}
         </p>
       ) : null}
       {phone && openRuns !== undefined && shown.length > 0 ? (

@@ -173,12 +173,39 @@ verifies("runs.list", () => {
     it("says there are no runs yet, with no filters and no Workflows button", async () => {
       const { root } = await openPage(fakeSource([]).source);
       expect(root.textContent).toContain("No runs yet");
+      expect(root.querySelector("[role=radiogroup]")).toBeNull();
+      expect(root.textContent).not.toContain("Go to Workflows");
+    });
+
+    it("names the first workflow to run when the workspace has one", async () => {
+      const fake = fakeSource([]);
+      fake.workflows(["support-reply", "welcome"]);
+      const { root } = await openPage(fake.source);
+      expect(root.textContent).toContain(
+        "Runs started from the command line show up here. To start one, type halonic run support-reply in a terminal.",
+      );
+      expect(root.querySelector("code")?.textContent).toBe("halonic run support-reply");
+    });
+
+    it("sends a workspace with no workflow to Workflows", async () => {
+      const fake = fakeSource([]);
+      fake.workflows([]);
+      const { root } = await openPage(fake.source);
+      expect(root.textContent).toContain(
+        "Runs started from the command line show up here. This workspace has no workflow yet: add one in Workflows.",
+      );
+      expect(root.querySelector("code")).toBeNull();
+    });
+
+    it("keeps the sentence without a name when the workflows can't be read", async () => {
+      const fake = fakeSource([]);
+      fake.workflows(new Error("unreadable"));
+      const { root } = await openPage(fake.source);
+      expect(root.textContent).not.toContain("Couldn't load runs");
       expect(root.textContent).toContain(
         "Runs started from the command line show up here. To start one, type halonic run in a terminal.",
       );
       expect(root.querySelector("code")?.textContent).toBe("halonic run");
-      expect(root.querySelector("[role=radiogroup]")).toBeNull();
-      expect(root.textContent).not.toContain("Go to Workflows");
     });
 
     it("says only test runs are there, and Show test runs shows them", async () => {

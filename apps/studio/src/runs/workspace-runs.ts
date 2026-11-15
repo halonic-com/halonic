@@ -2,6 +2,7 @@ import {
   defaultCurrency,
   type HubWorkflow,
   hubWorkflows,
+  lookUpWorkflow,
   shortRunId,
   workflowIn,
 } from "@halonicjs/app";
@@ -120,6 +121,24 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
 
   routine(key: string): RunRoutine | undefined {
     return this.#facts?.routines.get(key);
+  }
+
+  async runnableWorkflows(): Promise<readonly string[]> {
+    await this.#readFacts();
+    const workflows = this.#facts?.workflows ?? [];
+    // The Workflows list's order: the hubs as the workspace has them, each hub's workflows by name.
+    const hubs = [...new Set(workflows.map((each) => each.hubId))];
+    return hubs
+      .flatMap((hubId) =>
+        workflows
+          .filter((each) => each.hubId === hubId)
+          .toSorted((a, b) => a.workflow.name.localeCompare(b.workflow.name)),
+      )
+      .map(({ hubId, workflow }) => {
+        // The name `halonic run` takes: the id, or `hub/id` when another hub has the same id.
+        const lookup = lookUpWorkflow(workflows, workflow.id);
+        return lookup.found === "several" ? `${hubId}/${workflow.id}` : workflow.id;
+      });
   }
 
   currency(): string {

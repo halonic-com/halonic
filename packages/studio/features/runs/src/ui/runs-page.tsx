@@ -25,7 +25,7 @@ import {
   statusCounts,
 } from "../list/runs-filter.ts";
 import { loadFailureReason } from "../load-failure.ts";
-import { emptyListWords, pageWords } from "../run-words.ts";
+import { emptyListWords, pageWords, runCommand } from "../run-words.ts";
 import { type RunsList, RunsListService, type RunsListState } from "../runs-list.ts";
 import { RunsOnComputer } from "./runs-on-computer.tsx";
 
@@ -141,7 +141,7 @@ function PageBody({
   }
   const empty = state.loaded ? emptyList(rows, filters) : undefined;
   if (empty?.kind === "no-runs") {
-    return <NoRuns />;
+    return <NoRuns workflows={state.workflows} />;
   }
   return (
     <>
@@ -159,17 +159,21 @@ function PageBody({
   );
 }
 
-/** No runs at all (R1), with no filters above it: there's nothing to filter. */
-function NoRuns() {
+/** No runs at all (R1), with no filters above it: there's nothing to filter. The line names a workflow to run, or says there is none (HAL-10128). */
+function NoRuns({ workflows }: { readonly workflows: readonly string[] | undefined }) {
   return (
     <EmptyState
       title={emptyListWords.noRunsTitle}
       description={
-        <>
-          {emptyListWords.noRunsBody}
-          <code className="font-mono text-code">{emptyListWords.noRunsCommand}</code>
-          {emptyListWords.noRunsBodyEnd}
-        </>
+        workflows?.length === 0 ? (
+          emptyListWords.noRunsNoWorkflow
+        ) : (
+          <>
+            {emptyListWords.noRunsBody}
+            <code className="font-mono text-code">{runCommand(workflows)}</code>
+            {emptyListWords.noRunsBodyEnd}
+          </>
+        )
       }
     />
   );

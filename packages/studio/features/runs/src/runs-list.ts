@@ -11,6 +11,11 @@ export interface RunsListState {
   readonly loaded: boolean;
   /** Why the last load failed, until one succeeds; the runs stay as they were. */
   readonly error: unknown;
+  /**
+   * The names `halonic run` takes for the workspace's workflows, in the Workflows list's order;
+   * `undefined` until they are read and when reading them failed, so the empty lines then name none.
+   */
+  readonly workflows: readonly string[] | undefined;
 }
 
 /**
@@ -25,7 +30,7 @@ export interface RunsListState {
  */
 export class RunsList {
   readonly source: RunsSource;
-  #state: RunsListState = { runs: [], loaded: false, error: undefined };
+  #state: RunsListState = { runs: [], loaded: false, error: undefined, workflows: undefined };
   readonly #listeners = new Set<() => void>();
   readonly #stopWatching: () => void;
   #loads = 0;
@@ -62,9 +67,13 @@ export class RunsList {
     if (this.#disposed) return;
     const load = ++this.#loads;
     try {
-      const runs = await this.source.list();
+      const [runs, workflows] = await Promise.all([
+        this.source.list(),
+        // A failed read only leaves the lines without a name; it isn't the list's error.
+        this.source.runnableWorkflows().catch(() => undefined),
+      ]);
       if (load !== this.#loads || this.#disposed) return;
-      this.#set({ runs, loaded: true, error: undefined });
+      this.#set({ runs, loaded: true, error: undefined, workflows });
     } catch (error) {
       if (load !== this.#loads || this.#disposed) return;
       this.#set({ ...this.#state, error });
