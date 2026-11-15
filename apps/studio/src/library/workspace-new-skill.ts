@@ -21,7 +21,7 @@ const refusals = {
  * Makes skills for the New skill dialog (`studio.workspace-new-skill`). Core's `newLibraryFile`
  * makes the id, path and text; the file is written as one change that shows in Changes and can be
  * undone. The dialog asks for the hubs and the folder while it is open, so they are read from a
- * snapshot of the workspace that is loaded again after every change of its files.
+ * snapshot of the workspace that `prepare` and `create` load again.
  *
  * @example
  * services.provide(NewSkillHostService, new WorkspaceNewSkill({ files, onChange }));
@@ -32,10 +32,6 @@ export class WorkspaceNewSkill implements NewSkillHost {
 
   constructor(parts: WorkspaceSkillsParts) {
     this.#parts = parts;
-    // Once the dialog has read the workspace, later changes keep the snapshot current.
-    parts.onChange(() => {
-      if (this.#snapshot !== undefined) void this.prepare().catch(() => undefined);
-    });
   }
 
   async prepare(): Promise<void> {
@@ -51,6 +47,7 @@ export class WorkspaceNewSkill implements NewSkillHost {
   }
 
   folder({ name, hub }: NewSkillDraft): string {
+    // The description is a placeholder: only the path is wanted, and a made file needs one.
     const made =
       this.#snapshot === undefined
         ? undefined

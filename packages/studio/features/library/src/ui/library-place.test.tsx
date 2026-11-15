@@ -7,6 +7,8 @@ import { afterEach, expect, it, vi } from "vitest";
 import { type LibraryItemsHost, LibraryItemsHostService } from "../library-items-host.ts";
 import { type LibraryTabMemory, LibraryTabMemoryService } from "../library-tab-memory.ts";
 import { requestLibraryTab } from "../library-tab-request.ts";
+import { type NewSkillHost, NewSkillHostService } from "../new-skill-host.ts";
+import { fakeModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { LibraryPlace } from "./library-place.tsx";
 
@@ -117,5 +119,30 @@ verifies("library.library-place", () => {
     act(() => cell("Tone")?.click());
     expect(openItem).toHaveBeenNthCalledWith(1, { kind: "skill", hub: "acme", id: "refunds" });
     expect(openItem).toHaveBeenNthCalledWith(2, { kind: "skill", hub: "~workspace", id: "tone" });
+  });
+
+  it("opens the New skill dialog even when the host fails to prepare", async () => {
+    fakeModal();
+    const { context } = contextOf(undefined);
+    const host: NewSkillHost = {
+      prepare: async () => {
+        throw new Error("unreadable");
+      },
+      hubs: () => [],
+      folder: () => "library/skills/",
+      create: async () => ({ hub: null, id: "x" }),
+    };
+    const find = context.services.find;
+    context.services.find = ((key: unknown) =>
+      key === NewSkillHostService ? host : find(key as never)) as typeof find;
+    const page = await show(context);
+    const button = [...page.querySelectorAll("button")].find((each) =>
+      each.textContent?.includes("New"),
+    );
+    await act(async () => {
+      button?.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(page.ownerDocument.querySelector("dialog[open]")).not.toBeNull();
   });
 });
