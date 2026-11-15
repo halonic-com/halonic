@@ -107,7 +107,7 @@ verifies("workflows.runs.runs-view", () => {
     expect(page.textContent).toContain("Still loading");
   });
 
-  it("docks the simple card with the status, the line and Open the run log, and Esc closes it", async () => {
+  it("docks the card with the status, the receipt and Open the run log, and Esc closes it", async () => {
     const openRun = vi.fn();
     const page = await show(<Connected source={memoryRuns([finished]).source} openRun={openRun} />);
 
@@ -115,7 +115,7 @@ verifies("workflows.runs.runs-view", () => {
     const card = page.querySelector("aside");
     expect(card?.getAttribute("aria-label")).toBe("Run 01done");
     expect(card?.textContent).toContain("Done");
-    expect(card?.textContent).toContain("read → draft");
+    expect(card?.textContent).toContain("Finished in");
     await act(async () => buttonNamed(card as HTMLElement, runsWords.openLog)?.click());
     expect(openRun).toHaveBeenCalledWith("run_a_01done");
 
@@ -123,5 +123,39 @@ verifies("workflows.runs.runs-view", () => {
       card?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
     expect(page.querySelector("aside")).toBeNull();
+  });
+});
+
+verifies("workflows.runs.card-receipt", () => {
+  it("shows the receipt's summary line on the card", async () => {
+    const page = await show(<Connected source={memoryRuns([finished]).source} />);
+
+    await act(async () => page.querySelector<HTMLButtonElement>("li button")?.click());
+
+    expect(page.querySelector("aside section[aria-labelledby=run-receipt] p")?.textContent).toMatch(
+      /^Finished in /,
+    );
+  });
+
+  it("says the log can't be read, and keeps Open the run log", async () => {
+    const { source } = memoryRuns([finished]);
+    const unreadable: RunsSource = { ...source, log: async () => Promise.reject(new Error("x")) };
+    const page = await show(<Connected source={unreadable} openRun={vi.fn()} />);
+
+    await act(async () => page.querySelector<HTMLButtonElement>("li button")?.click());
+
+    const card = page.querySelector("aside");
+    expect(card?.textContent).toContain("Couldn't read this run's log");
+    expect(buttonNamed(card as HTMLElement, runsWords.openLog)).toBeDefined();
+  });
+
+  it("shows a skeleton named Loading the run while the log is read", async () => {
+    const { source } = memoryRuns([finished]);
+    const slow: RunsSource = { ...source, log: () => new Promise(() => undefined) };
+    const page = await show(<Connected source={slow} />);
+
+    await act(async () => page.querySelector<HTMLButtonElement>("li button")?.click());
+
+    expect(page.querySelector("aside [role=status]")?.textContent).toBe("Loading the run");
   });
 });

@@ -11,7 +11,7 @@ import type { RunsLoad } from "./use-runs.ts";
 /** Props for {@link RunsView}. */
 export interface RunsViewProps {
   /** The runs feature's lookups for a row: the workflow's step names, the routine, the currency. */
-  readonly source: Pick<RunsSource, "workflow" | "routine" | "currency">;
+  readonly source: Pick<RunsSource, "workflow" | "routine" | "currency" | "log">;
   /** What {@link useRuns} read; the page reads it so the Runs tab can count the runs that need you. */
   readonly load: RunsLoad;
   readonly retry: () => void;
@@ -140,6 +140,8 @@ export function RunsView({
       {open && openedRun && (
         <RunCard
           key={open.id}
+          source={source}
+          runs={load.runs}
           row={open}
           run={openedRun}
           onClose={closeCard}

@@ -13,4 +13,4 @@ When a workflow's Runs view opens, the workflows feature shall list only that wo
 - Given two runs that need the person, then the Runs tab shows a count of 2.
 - Given no runs, then the view says "No runs yet. Press Run to start one."
 - Given the source can't list the runs, then the view says "Couldn't load runs" with the reason and **Try again**.
-- Given the person picks a row, then its card shows the status, the line and **Open the run log**, which opens the run's page.
+- Given the person picks a row, then its card shows the status, the receipt's summary line and **Open the run log**, which opens the run's page.

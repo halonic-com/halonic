@@ -16,7 +16,6 @@ export const runsWords = {
   cardKind: "RUN",
   closeCard: "Close run",
   startedBy: "Started by",
-  stepsSoFar: "Steps so far",
   openLog: "Open the run log",
   saveAsTest: "Save as test",
   saveTitle: "Save as test",

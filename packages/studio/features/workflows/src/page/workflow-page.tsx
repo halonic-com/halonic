@@ -400,6 +400,8 @@ function useShownRun(
     return {
       run,
       row,
+      source,
+      runs,
       line: shownRun(row, run, source.workflow(summary.hubId, summary.workflowId)),
     };
   }, [runs, runId, workflow.hubId, workflow.id, source]);
@@ -484,6 +486,8 @@ function RunDock({
     return (
       <RunCard
         key={shown.row.id}
+        source={shown.source}
+        runs={shown.runs}
         row={shown.row}
         run={shown.run}
         onClose={() => onDock(undefined)}
