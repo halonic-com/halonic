@@ -21,6 +21,7 @@ const FALLBACK_VIEWPORT = { width: 800, height: 600 };
 export function WorkflowCanvas({
   workflow,
   selectedStep,
+  failedStep,
   saved,
   onView,
 }: {
@@ -31,6 +32,8 @@ export function WorkflowCanvas({
   readonly onView?: ((view: View) => void) | undefined;
   /** The card that starts picked, when the person came from a problem's link. */
   readonly selectedStep?: string | undefined;
+  /** The step the shown run failed in, ringed with its Failed chip. */
+  readonly failedStep?: string | undefined;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number } | undefined>(undefined);
@@ -109,6 +112,7 @@ export function WorkflowCanvas({
               box={box}
               first={step.id === workflow.initial}
               selected={selected === step.id}
+              failed={failedStep === step.id}
               focusOnMount={selectedStep === step.id}
               onSelect={() => setSelected(step.id)}
             />
