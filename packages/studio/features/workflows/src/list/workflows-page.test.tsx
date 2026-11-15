@@ -65,8 +65,23 @@ verifies("workflows.list.rows-and-states", () => {
     const text = (await show(<WorkflowsView host={memoryHost(hubs, rows).host} />)).textContent;
 
     expect(text).toContain("Sorts the inbox every morning.");
-    expect(text).toMatch(/Last run ✕ Today \d\d:\d\d/);
+    expect(text).toMatch(/Last run ✕ failed, Today \d\d:\d\d/);
     expect(text?.match(/Last run/g)).toHaveLength(1);
+  });
+
+  it("says the last run's outcome in words to a screen reader and hides the glyph", async () => {
+    const rows = [
+      listing("acme", "mail-triage", "Mail triage", {
+        lastRun: { startedAt: new Date().toISOString(), outcome: "failed" },
+      }),
+    ];
+    const page = await show(<WorkflowsView host={memoryHost(hubs, rows).host} />);
+
+    expect(page.querySelector(".sr-only")?.textContent).toBe("failed, ");
+    const glyph = [...page.querySelectorAll('[aria-hidden="true"]')].find((each) =>
+      each.textContent?.startsWith("✕"),
+    );
+    expect(glyph).toBeDefined();
   });
 
   it("opens the workflow of the chosen row", async () => {

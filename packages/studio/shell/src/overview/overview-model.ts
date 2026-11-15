@@ -9,8 +9,8 @@ export interface OverviewItem {
   readonly description?: string;
   /** The row's one line under the name: "Runs every morning". */
   readonly detail?: string;
-  /** What uses the item, on the row's right: "Used by 2 agents". The search doesn't read it. */
-  readonly usedBy?: string;
+  /** What uses the item, on the row's right: "Used by 2 agents"; a node when a glyph needs words for a screen reader. The search doesn't read it. */
+  readonly usedBy?: ReactNode;
   /** Pinned items come first in their section. */
   readonly pinned?: boolean;
   /** A 28px avatar before the name, such as a workflow's letter. Screen readers skip it. */

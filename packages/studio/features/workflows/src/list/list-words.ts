@@ -20,18 +20,21 @@ export const listWords = {
   running: (count: number) => `${count} running`,
   warnings: (count: number) => `${count === 1 ? "1 warning" : `${count} warnings`}`,
   problems: (count: number) => `${count === 1 ? "1 problem" : `${count} problems`}`,
-  lastRun: (outcome: WorkflowRunOutcome, when: string) =>
-    `Last run ${outcomeGlyph[outcome]}${when}`,
+  lastRun: "Last run",
 } as const;
 
-/** The glyph before a finished run's time, so the outcome never rests on colour alone. */
-const outcomeGlyph: Record<WorkflowRunOutcome, string> = {
-  completed: "✓ ",
-  failed: "✕ ",
-  "cant-try": "✕ ",
-  running: "",
-  waiting: "",
-};
+/**
+ * A finished run's outcome before its time: the glyph sighted people see, so the outcome never
+ * rests on colour alone, and the words a screen reader hears in its place. A run still going has none.
+ */
+export const lastRunOutcome: Record<WorkflowRunOutcome, { glyph: string; spoken: string } | null> =
+  {
+    completed: { glyph: "✓", spoken: "completed" },
+    failed: { glyph: "✕", spoken: "failed" },
+    "cant-try": { glyph: "✕", spoken: "couldn't start" },
+    running: null,
+    waiting: null,
+  };
 
 const shortDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const shortMonths = [
