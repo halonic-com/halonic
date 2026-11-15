@@ -7,7 +7,9 @@ import { type ServiceRegistry, type WorkspaceScope, workspaceFilesKey } from "@h
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import { ModelsFilesService } from "@halonicjs/studio-feature-models/api";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
+import { ChangesSourceService } from "@halonicjs/studio-feature-source-control/api";
 import { type TauriIpc, tauriAgentHostTransport } from "@halonicjs/studio-services";
+import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
 import { provideLibraryServices } from "../library/provide-library-services.ts";
 import { WorkspaceModelsFiles } from "../models/workspace-models-files.ts";
@@ -38,6 +40,16 @@ export function provideFolderServices(
     }),
   );
   provideWorkspaceRuns(services, { ipc, files, window }, location);
+  services.provide(
+    ChangesSourceService,
+    new WorkspaceChanges({
+      git: async (args) =>
+        (await ipc.invoke("git", { root: location, args: [...args] })) as GitAnswer,
+      files: new TauriDefinitionStore(files, location),
+      onFocus: (listener) => focusOf(window, listener),
+      onFilesChanged: (listener) => scope.events.on("files.changed", listener),
+    }),
+  );
   provideLibraryServices(services, {
     ipc,
     files,

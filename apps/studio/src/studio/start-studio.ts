@@ -40,6 +40,8 @@ import {
   RestartRunsService,
   UpdaterService,
 } from "@halonicjs/studio-feature-settings/api";
+import { sourceControlFeature } from "@halonicjs/studio-feature-source-control";
+import { ChangesSourceService } from "@halonicjs/studio-feature-source-control/api";
 import {
   folderName,
   mountWorkspaceWindow,
@@ -173,6 +175,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     modelsFeature,
     runsFeature,
     settingsFeature,
+    sourceControlFeature,
     workspaceFeature,
   ],
   hostServices: [
@@ -181,6 +184,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     ListedToolsHostService,
     InboxRunsService,
     RunsSourceService,
+    ChangesSourceService,
     ModelsFilesService,
     DisplaySettingsService,
     HostSettingsService,
