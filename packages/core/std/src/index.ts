@@ -46,5 +46,6 @@ export { isSecretVariableName } from "./secret-variable-name.ts";
 export { type SiteName, siteName, siteNameMaxLength } from "./site-name.ts";
 export { type StopSignal, StopSource } from "./stop-signal.ts";
 export { slugify, uniqueName } from "./text.ts";
+export { type UrlHost, urlHost } from "./url-host.ts";
 export { decodeUtf8, encodeUtf8 } from "./utf8.ts";
 export { compareVersions, formatVersion, isAtLeast, readVersion, type Version } from "./version.ts";
