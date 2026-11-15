@@ -16,6 +16,7 @@ export {
   type HarnessEnvironment,
   type SignInOpened,
 } from "./harness.ts";
+export { AgentHostPluginToolCaller, type PluginToolArgs } from "./plugins.ts";
 export { AgentHostSandbox, AgentHostSession } from "./sandbox.ts";
 export {
   AgentHostSandboxSetup,

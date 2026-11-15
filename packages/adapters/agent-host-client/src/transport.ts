@@ -27,6 +27,7 @@ export const agentHostRequestRoutes = [
   "POST /v1/connectors/close",
   "POST /v1/models/chat",
   "POST /v1/google/disconnect",
+  "POST /v1/plugins/call",
 ] as const;
 
 /** The agent host's routes that answer with an NDJSON stream. */
