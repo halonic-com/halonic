@@ -22,7 +22,7 @@ import type { FileWriter } from "./review-hook.ts";
  *
  * @example
  * const review = new ReviewService({ store, records, digest });
- * const files = new WorkspaceFiles(new ReviewingDefinitionStore(store, review.writer), events);
+ * const files = new WorkspaceFiles(new ReviewingDefinitionStore(store, review.writer), events, digest);
  */
 export class ReviewingDefinitionStore implements DefinitionStore {
   private readonly inner: DefinitionStore;

@@ -69,7 +69,10 @@ export function openWorkspace(options: OpenWorkspaceOptions): WorkspaceScope {
   // Everything but the review service writes through the review service's
   // write hook, so a reviewed file's baseline moves along with every edit.
   const store = new ReviewingDefinitionStore(options.store, review.writer);
-  const files = scope.services.provide(workspaceFilesKey, new WorkspaceFiles(store, scope.events));
+  const files = scope.services.provide(
+    workspaceFilesKey,
+    new WorkspaceFiles(store, scope.events, options.digest),
+  );
   scope.commands.register("workspace.save", () => files.save());
   scope.commands.register("workspace.undo", () => files.undo());
   scope.commands.register("workspace.redo", () => files.redo());

@@ -1,19 +1,25 @@
+import { createHash } from "node:crypto";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { openWorkspace, workspaceFilesKey } from "./open-workspace.ts";
 import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
 import { ModelHistory, modelPaths, randomStep, seededRandom } from "./testing/model-history.ts";
+import { ChangedOnDiskError } from "./workspace-files.ts";
 
 const workflowPath = "hubs/p/workflows/f.workflow.yaml";
 const workflow =
   "name: F\ninitial: s\nstates:\n  s: { agent: a, output: out, on: [{ to: end }] }\n  end: { type: final }\n";
 
+const digest = {
+  sha256: async (data: Uint8Array) => new Uint8Array(createHash("sha256").update(data).digest()),
+};
+
 function open(files: Record<string, string> = { [workflowPath]: workflow }) {
-  const store = new TestDefinitionStore(files);
+  const store = new TestDefinitionStore(files, digest);
   const scope = openWorkspace({
     store,
     reviewRecords: new TestDefinitionStore({}),
-    digest: { sha256: async () => new Uint8Array(32) },
+    digest,
     isTrusted: () => true,
     onListenerError: (error) => {
       throw error;
@@ -251,6 +257,49 @@ verifies("app.workspace-save", () => {
     // a.yaml didn't exist before the change, so undoing it is an unsaved delete.
     expect(files.pending).toEqual({ "a.yaml": null });
     expect(await files.read("a.yaml")).toBeNull();
+  });
+});
+
+verifies("app.workspace-save-unchanged", () => {
+  it("stops and keeps the change unsaved when the file changed outside Halonic", async () => {
+    const { store, files } = open({ "a.yaml": "one", "b.yaml": "b" });
+    expect(await files.read("a.yaml")).toBe("one");
+    store.files.set("a.yaml", "outside");
+    files.change("Edited", { "a.yaml": "mine", "b.yaml": "b2" });
+    const failure = await files.save().catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(ChangedOnDiskError);
+    expect(failure).toMatchObject({ path: "a.yaml", current: "outside" });
+    expect(store.files.get("a.yaml")).toBe("outside");
+    expect(store.files.get("b.yaml")).toBe("b");
+    expect(files.pending).toEqual({ "a.yaml": "mine", "b.yaml": "b2" });
+  });
+
+  it("does not delete a file that changed outside Halonic", async () => {
+    const { store, files } = open({ "a.yaml": "one" });
+    await files.read("a.yaml");
+    store.files.set("a.yaml", "outside");
+    files.change("Deleted", { "a.yaml": null });
+    await expect(files.save()).rejects.toBeInstanceOf(ChangedOnDiskError);
+    expect(store.files.get("a.yaml")).toBe("outside");
+  });
+
+  it("does not create a file that appeared outside Halonic", async () => {
+    const { store, files } = open({});
+    expect(await files.read("n.yaml")).toBeNull();
+    store.files.set("n.yaml", "outside");
+    files.change("Created", { "n.yaml": "mine" });
+    await expect(files.save()).rejects.toMatchObject({ current: "outside" });
+    expect(store.files.get("n.yaml")).toBe("outside");
+  });
+
+  it("saves again after the file was read again, and after its own save", async () => {
+    const { store, files } = open({ "a.yaml": "one" });
+    await files.read("a.yaml");
+    files.change("First", { "a.yaml": "two" });
+    expect(await files.save()).toBe(1);
+    files.change("Second", { "a.yaml": "three" });
+    expect(await files.save()).toBe(1);
+    expect(store.files.get("a.yaml")).toBe("three");
   });
 });
 
