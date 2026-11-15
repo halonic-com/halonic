@@ -3,6 +3,7 @@
 - Task: HAL-5394
 - Approval: Liam approves this note in review on HAL-10558; the change is built in HAL-5394
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:zo/+tn8YUrkdL3pt+O/Ive+yVa7QphlAGLu9F332LggYlCiqqoA2as9yYnfcaktmk0/CFck6YW4aEgTapZugBw==
 
 ## What changes
 
