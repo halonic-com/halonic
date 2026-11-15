@@ -1,15 +1,13 @@
 import { parseFile } from "@halonicjs/format";
 import { err, ok, parseAmount, type Result } from "@halonicjs/std";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
-import { ZERO_PRICE_WARNING } from "./alias-text.ts";
+import { AMOUNT_MESSAGE, ZERO_PRICE_WARNING } from "./alias-text.ts";
 
 /** What is wrong with a field, in the words the field shows under itself. */
 export interface FieldProblem {
   readonly field: "name" | "provider" | "model" | "fallbacks" | "input" | "output" | "yaml";
   readonly message: string;
 }
-
-const amountMessage = "Enter an amount, like you'd write it on a receipt.";
 
 /** Applies the edits to the text of `models.yaml`; a file that can't be read is a `yaml` problem. */
 function applyEdits(text: string, edits: readonly YamlEdit[]): Result<string, FieldProblem> {
@@ -147,11 +145,11 @@ export function editAliasPrice(
   const outputEmpty = fields.output.trim() === "";
   const input = parseAmount(fields.input);
   if (input === undefined && !inputEmpty) {
-    return err({ field: "input", message: amountMessage });
+    return err({ field: "input", message: AMOUNT_MESSAGE });
   }
   const output = parseAmount(fields.output);
   if (output === undefined && !outputEmpty) {
-    return err({ field: "output", message: amountMessage });
+    return err({ field: "output", message: AMOUNT_MESSAGE });
   }
   if (input === undefined || output === undefined) return ok(text);
   return applyEdits(text, [

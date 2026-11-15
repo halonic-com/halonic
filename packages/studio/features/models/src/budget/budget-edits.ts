@@ -21,6 +21,18 @@ function amountOf(field: string): number | undefined | null {
   return amount === undefined || amount <= 0 ? null : amount;
 }
 
+/** Every budget field that isn't empty or an amount above 0, per run first, each with its message. */
+export function budgetProblems(fields: BudgetFields): BudgetProblem[] {
+  const problems: BudgetProblem[] = [];
+  if (amountOf(fields.perRun) === null) {
+    problems.push({ field: "perRun", message: AMOUNT_ABOVE_ZERO });
+  }
+  if (amountOf(fields.monthly) === null) {
+    problems.push({ field: "monthly", message: AMOUNT_ABOVE_ZERO });
+  }
+  return problems;
+}
+
 /**
  * Writes the budget amounts into the text of `workspace.yaml`: a filled field sets its amount, an
  * empty one removes it, and the currency stays as it is. Both empty removes the budget, and the
@@ -31,10 +43,10 @@ function amountOf(field: string): number | undefined | null {
  * editBudget(text, { perRun: "5", monthly: "50,00" });
  */
 export function editBudget(text: string, fields: BudgetFields): Result<string, BudgetProblem> {
-  const perRun = amountOf(fields.perRun);
-  const monthly = amountOf(fields.monthly);
-  if (perRun === null) return err({ field: "perRun", message: AMOUNT_ABOVE_ZERO });
-  if (monthly === null) return err({ field: "monthly", message: AMOUNT_ABOVE_ZERO });
+  const [first] = budgetProblems(fields);
+  if (first !== undefined) return err(first);
+  const perRun = amountOf(fields.perRun) ?? undefined;
+  const monthly = amountOf(fields.monthly) ?? undefined;
   const edited = editYaml(text, [amountEdit("perRun", perRun), amountEdit("monthly", monthly)]);
   if (!edited.ok) return err(yamlProblem);
   if (perRun !== undefined || monthly !== undefined || hasCurrency(edited.value.text)) {
