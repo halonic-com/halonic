@@ -71,7 +71,7 @@ function button(page: HTMLElement, name: string): HTMLButtonElement | undefined 
   return [...page.querySelectorAll("button")].find((each) => each.textContent?.includes(name));
 }
 
-verifies("library.page", () => {
+verifies("library.library-page", () => {
   it("shows four tabs, the tab's sentence, its rows with Used by and its New button", async () => {
     const page = await show(hostWith({ skill: skills }), { onNew: () => undefined });
     const tabs = [...page.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent);

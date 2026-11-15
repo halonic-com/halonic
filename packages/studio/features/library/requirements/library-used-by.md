@@ -1,4 +1,4 @@
-# library.rows.used-by
+# library.library-used-by
 
 - Status: active
 - Since: 0.1.0

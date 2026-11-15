@@ -10,7 +10,7 @@ function usage(parts: Partial<ItemUsage>): ItemUsage {
   return { agents: [], hubs: [], routines: [], collections: [], ...parts };
 }
 
-verifies("library.rows.used-by", () => {
+verifies("library.library-used-by", () => {
   it("names a single agent", () => {
     expect(usedByText(usage({ agents: named("Support") }))).toBe("Used by Support");
   });

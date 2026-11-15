@@ -1,4 +1,4 @@
-# library.page
+# library.library-page
 
 - Status: active
 - Since: 0.1.0
