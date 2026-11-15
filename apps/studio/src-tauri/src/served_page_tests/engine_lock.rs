@@ -12,8 +12,14 @@ fn served_page_test_sees_the_connect_page_allowed_the_engine_lock_commands_on_de
     // Each call gets through to its command, which refuses the workspace
     // before it makes a folder or a lock: no folder is opened yet.
     let window = app_window();
-    for command in ["engine_lock_hold", "engine_lock_release"] {
-        let answer = invoke(&window, CONNECT_PAGE, command, json!({"workspace": "."}));
+    // `engine_lock_hold` also takes the channel that reports a lost lock; the
+    // page sends a channel as this prefixed id.
+    let bodies = [
+        ("engine_lock_hold", json!({"workspace": ".", "onLost": "__CHANNEL__:1"})),
+        ("engine_lock_release", json!({"workspace": "."})),
+    ];
+    for (command, body) in bodies {
+        let answer = invoke(&window, CONNECT_PAGE, command, body);
         let refusal = answer.expect_err("no folder is opened yet");
         assert_eq!(refusal["kind"], "folder_not_open", "{command}: {refusal}");
     }
