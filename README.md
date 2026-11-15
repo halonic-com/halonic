@@ -12,6 +12,11 @@ Halonic is a local-first Studio, engine and command-line tool for designing,
 running and supervising AI agent workflows. Workflows, agents and settings live
 as plain files in your own git repository.
 
+New here? [Getting started](https://docs.halonic.dev/getting-started) has the
+fuller Windows (WSL 2), macOS and Linux steps, and
+[Troubleshooting](https://docs.halonic.dev/getting-started/troubleshooting) helps
+when something fails.
+
 **Built by humans with the help of AI.** [How Halonic is built](#how-halonic-is-built)
 
 ## Studio
@@ -144,17 +149,19 @@ lists your routines and when each runs next. It starts nothing. Your "Next"
 date will differ. To run routines at their set times, keep
 `halonic routines watch` open in a terminal, and stop it with Ctrl C.
 
-Next, read how to
-[add your first agent](https://docs.halonic.dev/examples/approval-step), or
-open the `acme` folder and change a file. Run `halonic validate` after each
-change to check your files.
+## Next steps
 
-`halonic init` on its own makes an empty workspace: a folder with no agents
-yet. Add your first agent with the
-[approval-step example](https://docs.halonic.dev/examples/approval-step),
-then [give it a tool](https://docs.halonic.dev/examples/agent-with-a-tool),
-and check your files with `halonic validate` as you go. Want to see a working
-one first? Run `halonic init --example acme` and follow the steps above.
+1. [Your first routine](https://docs.halonic.dev/getting-started/first-routine)
+   continues in the `acme` folder you just made.
+2. [Add an approval step](https://docs.halonic.dev/examples/approval-step) to a
+   workflow.
+3. [Give an agent a tool](https://docs.halonic.dev/examples/agent-with-a-tool).
+4. [Connect a real model](https://docs.halonic.dev/guides/connect-provider-and-tool)
+   instead of the built-in test model.
+
+Run `halonic validate` after each change to check your files. `halonic init` on
+its own makes an empty workspace with no agents yet; the examples above show how
+to add the first one.
 
 ## Something failed?
 
