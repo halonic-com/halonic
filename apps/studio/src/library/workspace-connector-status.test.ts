@@ -140,7 +140,9 @@ verifies("studio.workspace-connector-status", () => {
       "library/connectors/mail.connector.yaml": googleFile,
       "library/connectors/broken.connector.yaml": "version: 1\nid: [oops\n",
     });
-    const status = new WorkspaceConnectorStatus({ definitions, refusals: new RefusalsFeed(),
+    const status = new WorkspaceConnectorStatus({
+      definitions,
+      refusals: new RefusalsFeed(),
       google: noGoogle,
     });
 
