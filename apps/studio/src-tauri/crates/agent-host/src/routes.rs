@@ -126,6 +126,13 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/connectors/close",
         route(Method::Post, "/v1/connectors/close", Answer::Json),
     ),
+    // One chat call on a workspace provider that runs on this computer, for
+    // the window, whose policy lets it call no model itself. The host refuses
+    // any other provider.
+    (
+        "POST /v1/models/chat",
+        route(Method::Post, "/v1/models/chat", Answer::Json),
+    ),
     // The Google setup's one change a page may ask for so far (HAL-9911): the
     // host holds the sealed tokens, the page and the shell never do.
     (

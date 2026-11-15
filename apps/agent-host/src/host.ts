@@ -20,6 +20,8 @@ import { openGoogleSetup } from "./google/google-setup.ts";
 import { harnessRoutes } from "./harness/harness-routes.ts";
 import { RunTable } from "./harness/run-table.ts";
 import { signInRoute } from "./harness/sign-in-route.ts";
+import { hostModelRoutes } from "./model/host-model-routes.ts";
+import { modelRoutes } from "./model/model-routes.ts";
 import { hostPluginBackends, unavailablePluginBackends } from "./plugin/host-plugin-backends.ts";
 import { hostPluginMachine } from "./plugin/host-plugin-machine.ts";
 import { pluginRoutes } from "./plugin/plugin-routes.ts";
@@ -316,6 +318,14 @@ function hostServices(
     ),
     ...harnessRoutes({ harnesses, sessions, bridges, runs }),
     ...connectorRoutes(connectorDeps),
+    ...modelRoutes(
+      hostModelRoutes({
+        workspaceRoots: connectors.workspaceRoots,
+        profile,
+        env: process.env,
+        log: logToError,
+      }),
+    ),
     ...(google === undefined
       ? []
       : googleRoutes({ google, log: (text) => process.stderr.write(text) })),

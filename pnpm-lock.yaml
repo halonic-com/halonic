@@ -304,6 +304,12 @@ importers:
       '@halonicjs/adapter-memory':
         specifier: workspace:*
         version: link:../../packages/adapters/memory
+      '@halonicjs/adapter-model-mock':
+        specifier: workspace:*
+        version: link:../../packages/adapters/model-mock
+      '@halonicjs/adapter-model-openai':
+        specifier: workspace:*
+        version: link:../../packages/adapters/model-openai
       '@halonicjs/adapter-sandbox-host':
         specifier: workspace:*
         version: link:../../packages/adapters/sandbox-host
