@@ -64,6 +64,13 @@ export interface HarnessTask {
   agentId: string;
   /** The agent's instructions from its file; empty when it has none. */
   instructions: string;
+  /**
+   * The run's own folder of pinned instruction files, which the sandbox
+   * opens read-only: `AGENTS.md` and each selected skill as
+   * `skills/<id>/SKILL.md`. Absent when the agent has none. The harness
+   * hands the skills to its program and never writes in the folder.
+   */
+  instructionsFolder?: string;
   /** What the agent is asked to do in this run: the task step's prompt, or the chat message. */
   prompt: string;
   /** The model the agent's file names; the harness's own default when absent. */

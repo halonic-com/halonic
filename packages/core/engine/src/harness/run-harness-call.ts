@@ -32,7 +32,12 @@ import type { RunHarnessEffect } from "../kernel/decide-types.ts";
 import { SandboxNotReadyError } from "../run/sandbox-not-ready-error.ts";
 import { StartFailedError } from "../run/start-failed-error.ts";
 import { BlockedAccesses } from "./blocked-accesses.ts";
-import type { HarnessAgent, HarnessRunsOptions, PlacementAnswer } from "./harness-host.ts";
+import type {
+  HarnessAgent,
+  HarnessRunsOptions,
+  OpenInstructions,
+  PlacementAnswer,
+} from "./harness-host.ts";
 import { logHarnessStart } from "./log-harness-start.ts";
 import { harnessCauseOf, sandboxWhyOf } from "./start-failure-causes.ts";
 import {
@@ -237,8 +242,20 @@ async function runInBridge(
   const bridge = await unlessStopped(stop, options.bridges.open(agent, recorder), (late) =>
     late.close(),
   );
+  let instructions: OpenInstructions | null = null;
   try {
-    const session = await openSandbox(started, placement, sandbox, bridge);
+    instructions = await unlessStopped(
+      stop,
+      options.instructions?.open(agent) ?? Promise.resolve(null),
+      async (late) => late?.release(),
+    );
+    const session = await openSandbox(
+      started,
+      placement,
+      sandbox,
+      bridge,
+      instructions?.folder ?? null,
+    );
     const blocked = new BlockedAccesses(
       log,
       { state: effect.state, agent: effect.agent },
@@ -247,13 +264,19 @@ async function runInBridge(
     const stopReports = session.onBlocked((block) => blocked.note(block));
     try {
       const timeoutMs = startTimeoutOf(options, "harness");
-      await logHarnessStart(started, timeoutMs, startTimeoutOf(options, "trust"));
+      await logHarnessStart(
+        started,
+        instructions?.pin ?? null,
+        timeoutMs,
+        startTimeoutOf(options, "trust"),
+      );
       const task = {
         runId: call.runId,
         hubId: call.hubId,
         agentId: effect.agent,
         instructions: call.agent.instructions,
         prompt: effect.prompt,
+        ...(instructions === null ? {} : { instructionsFolder: instructions.folder }),
         ...(call.agent.model === undefined ? {} : { model: call.agent.model }),
       };
       const run = harness.start(task, session, bridge);
@@ -275,6 +298,8 @@ async function runInBridge(
       if (!engineStop.stopped) await blocked.writeTotals();
     }
   } finally {
+    // After the session: the sandbox may still read the folder until it has closed.
+    await instructions?.release();
     await bridge.close();
     await log.settled();
   }
@@ -344,10 +369,15 @@ async function openSandbox(
   placement: PlacementAnswer,
   sandbox: Sandbox,
   bridge: OpenHarnessBridge,
+  instructionsFolder: string | null,
 ): Promise<SandboxSession> {
   stop.throwIfStopped();
   const { state, agent } = call.effect;
-  const { profile, deniedGroups } = await options.profiles.profileOf(subject, bridge);
+  const { profile, deniedGroups } = await options.profiles.profileOf(
+    subject,
+    bridge,
+    instructionsFolder,
+  );
   const env = addHarnessEnvironment(profile.env, harness.environment?.(bridge, profile) ?? {});
   const timeoutMs = startTimeoutOf(options, "sandbox");
   await log.append({ type: "sandbox.started", state, agent, timeoutMs });

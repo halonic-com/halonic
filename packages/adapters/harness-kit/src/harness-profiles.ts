@@ -88,12 +88,16 @@ export class HarnessProfiles implements HarnessProfileBuilder {
   /**
    * @throws when the working folder leaves the workspace or the proposal
    *   folder, or is in `.git`, a definition folder or Halonic's data folder
-   * @throws when the temp or settings folder is a top-level folder of
-   *   Halonic's data folder, or the run's folders overlap one another
+   * @throws when the temp, settings or instructions folder is a top-level
+   *   folder of Halonic's data folder, or the run's folders overlap one another
    * @throws when a folder the program needs is in a denied one, such as
    *   a harness installed in `~/.claude` on Windows
    */
-  async profileOf(agent: HarnessAgent, bridge: HarnessBridge): Promise<HarnessProfile> {
+  async profileOf(
+    agent: HarnessAgent,
+    bridge: HarnessBridge,
+    instructionsFolder: string | null,
+  ): Promise<HarnessProfile> {
     const { host } = this.#options;
     const disk = this.#disk;
     await disk.makeFolder(this.#options.halonicData);
@@ -115,8 +119,13 @@ export class HarnessProfiles implements HarnessProfileBuilder {
     const named = await host.settingsFolder(agent);
     const settingsFolder =
       named === null ? null : await this.#ownFolder("settings folder", named, data);
+    const instructions =
+      instructionsFolder === null
+        ? null
+        : await this.#ownFolder("instructions folder", instructionsFolder, data);
     refuseOverlapping([
       { name: "temp folder", path: tempFolder },
+      ...(instructions === null ? [] : [{ name: "instructions folder", path: instructions }]),
       ...(settingsFolder ? [{ name: "settings folder", path: settingsFolder }] : []),
       ...(agent.filesFolder === null ? [] : [{ name: "proposal folder", path: root }]),
     ]);
@@ -133,7 +142,10 @@ export class HarnessProfiles implements HarnessProfileBuilder {
     // be readable.
     // On Windows the data folder itself isn't denied, so nothing of the run's
     // lies in a denied path and nothing is reopened.
+    // The instructions folder is the run's own too, but read-only: it is
+    // reopened and kept out of the denied entries, and never listed as writable.
     const writable = [tempFolder, ...(settingsFolder ? [settingsFolder] : [])];
+    const readable = instructions === null ? [] : [instructions];
     if (agent.filesFolder !== null) writable.unshift(workingFolder);
     const reopenedPaths =
       this.#platform === "win32"
@@ -141,13 +153,22 @@ export class HarnessProfiles implements HarnessProfileBuilder {
         : [
             ...(agent.filesFolder === null ? [] : await this.#entriesOfRoot(root, workingFolder)),
             ...writable,
+            ...readable,
           ];
     const deniedGroups: DeniedPathGroup[] = [
       ...(await homeDeniedGroups(this.#options.home, this.#platform, disk)),
-      { code: "halonic-data", paths: await this.#dataDenied(data, [root, ...writable]) },
+      {
+        code: "halonic-data",
+        paths: await this.#dataDenied(data, [root, ...writable, ...readable]),
+      },
     ];
     refuseDeniedInstall(deniedGroups, installPaths);
-    const needed = [...(agent.filesFolder === null ? [root] : []), workingFolder, ...writable];
+    const needed = [
+      ...(agent.filesFolder === null ? [root] : []),
+      workingFolder,
+      ...writable,
+      ...readable,
+    ];
     refuseDeniedHolding(deniedGroups, needed, reopenedPaths);
     // A definition path the profile denies, such as a workspace's `.halonic`
     // that is Halonic's data folder, is left out: the deny already keeps the
@@ -157,6 +178,7 @@ export class HarnessProfiles implements HarnessProfileBuilder {
         (path) => deniedHolding(deniedGroups, path, reopenedPaths) === null,
       ),
       ...installPaths,
+      ...readable,
     ];
     const profile: SandboxProfile = {
       workingFolder,

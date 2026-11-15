@@ -9,6 +9,7 @@ When the engine asks for a harness call's sandbox profile, the harness kit shall
 - The working folder shall be the one the agent's file names, or `files/agents/<agent id>`, inside the run's proposal folder when the agent has one (`filesFolder`), and inside the workspace otherwise. Each missing part shall be made inside the real place of the part before it. The builder shall refuse a working folder that, as named or at its real place, is that folder itself, leaves it, or is in `.git`, a definition folder or a folder that starts with `.`, and, without a proposal folder, one that is, holds or is inside Halonic's data folder.
 - A proposal folder shall be inside Halonic's data folder and shall neither be, hold nor be inside the workspace, so a profile with one writes nowhere in the workspace.
 - The temp folder and the settings folder the host gives shall be inside Halonic's data folder.
+- When the engine gives the run's instruction folder, it shall be inside Halonic's data folder, below one of its top-level folders, and shall neither hold nor be inside the temp or settings folder. The profile shall open it read-only (a read-only path, and reopened on Linux and macOS) and never writable.
 - The definition files and folders at the top of the folder the agent works in shall be read-only. On Windows, the harness's install folders in the user profile shall be read-only too (`harness-kit.windows-install-folders`).
 - The denied paths shall be in groups: the person's SSH keys, cloud sign-ins, browser data, password stores, package registry tokens (`registry-tokens`), shell histories (`shell-history`) and their own Claude Code and Codex settings, as far as they exist in the home folder, and `halonic-data`. On Linux and macOS, `halonic-data` shall deny the whole data folder, so a folder made in it after the profile is built is denied too. On Windows it shall name the data folder's entries that aren't on the way to the run's own folders, and not the data folder itself, so a program can still look at the folders on the way to its own.
 - On Linux and macOS, the profile shall reopen the run's own folders in the data folder: the temp and settings folders, and with a proposal folder the working folder and the proposal folder's entries around it, at their real places. An entry that links out of the proposal folder shall stay denied.
@@ -26,6 +27,9 @@ When the engine asks for a harness call's sandbox profile, the harness kit shall
 - Given a profile built on Linux or macOS,
   when another run then makes its proposal, temp or settings folder in the data folder,
   then that folder is in a denied path and in no reopened one.
+- Given a run's instruction folder in the data folder,
+  when its profile is built,
+  then the folder is read-only and reopened, and is no writable folder; outside the data folder, or a top-level folder of it, it is refused.
 - Given a working folder reached through a link out of the workspace, or into `.git`,
   when its profile is built,
   then it is refused.

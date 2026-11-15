@@ -99,7 +99,7 @@ verifies("engine.run-harness", () => {
     };
     expect(placed).toHaveBeenCalledWith(agent);
     expect(opened).toHaveBeenCalledWith(agent, expect.anything());
-    expect(built).toHaveBeenCalledWith(agent, expect.anything());
+    expect(built).toHaveBeenCalledWith(agent, expect.anything(), null);
   });
 
   it("writes what the bridge records to the same log", async () => {

@@ -138,7 +138,7 @@ verifies("harness-kit.proposal-worktree-git", () => {
     it("keeps the .git file, the gitdir and the repository's hooks outside every writable folder", async () => {
       const { profiles, worktree, workspace } = ready();
 
-      const { profile } = await profiles.profileOf(writerAgent(worktree), bridge);
+      const { profile } = await profiles.profileOf(writerAgent(worktree), bridge, null);
 
       const gitdir = await gitdirOf(worktree);
       expect(isInsideOrSame(gitdir, join(workspace, ".git"))).toBe(true);
@@ -160,7 +160,7 @@ verifies("harness-kit.proposal-worktree-git", () => {
       await mkdir(join(workspace, ".git", "hooks"), { recursive: true });
       await symlink(join(workspace, ".git", "hooks"), join(worktree, "files"), "junction");
 
-      await expect(profiles.profileOf(writerAgent(worktree), bridge)).rejects.toThrow(
+      await expect(profiles.profileOf(writerAgent(worktree), bridge, null)).rejects.toThrow(
         /leads out of/,
       );
     });
@@ -170,7 +170,7 @@ verifies("harness-kit.proposal-worktree-git", () => {
       const gitdir = await gitdirOf(worktree);
       await symlink(gitdir, join(worktree, "files"), "junction");
 
-      await expect(profiles.profileOf(writerAgent(worktree), bridge)).rejects.toThrow(
+      await expect(profiles.profileOf(writerAgent(worktree), bridge, null)).rejects.toThrow(
         /leads out of/,
       );
     });
