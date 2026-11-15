@@ -166,7 +166,7 @@ export const THE_PROGRAM = "(the program)";
 
 /** The first line in In Studio (T8). */
 export const IN_STUDIO_LINE =
-  "Halonic draws these itself. A plugin's text can show bold, lists and links (with their addresses), and nothing else.";
+  "Halonic draws these itself. A plugin's text can show basic formatting (bold, lists, quotes, code) and links with their addresses, and nothing else.";
 
 // British English: no comma before "and", as in every Halonic text.
 const list = new Intl.ListFormat("en-GB", { type: "conjunction" });

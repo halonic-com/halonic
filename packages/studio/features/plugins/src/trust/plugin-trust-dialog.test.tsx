@@ -243,7 +243,7 @@ verifies("plugins.plugin-trust-check", () => {
     );
     expect(text).toContain("radar.example.com (the program)");
     expect(text).toContain(
-      "Halonic draws these itself. A plugin's text can show bold, lists and links (with their addresses), and nothing else.",
+      "Halonic draws these itself. A plugin's text can show basic formatting (bold, lists, quotes, code) and links with their addresses, and nothing else.",
     );
   });
 

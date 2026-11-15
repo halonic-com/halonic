@@ -6,7 +6,7 @@
 
 ## What changes
 
-`plugins.plugin-trust-check`: the first line under In Studio said "Text from the plugin never becomes page code; at most it shows basic formatting and web links, each with its address." It now says "A plugin's text can show bold, lists and links (with their addresses), and nothing else." after "Halonic draws these itself."
+`plugins.plugin-trust-check`: the first line under In Studio said "Text from the plugin never becomes page code; at most it shows basic formatting and web links, each with its address." It now says "A plugin's text can show basic formatting (bold, lists, quotes, code) and links with their addresses, and nothing else." after "Halonic draws these itself."
 
 ## Why
 
