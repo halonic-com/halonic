@@ -26,7 +26,12 @@ import { type AssembledEngine, assembleEngine } from "@halonicjs/engine";
 import type { Clock, DefinitionStore, HttpClient, IdGenerator, Secrets } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { TauriIpc } from "@halonicjs/studio-services";
+import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import { loadWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
+
+/** The open workspace's engine service, provided by the app. */
+export const engineServiceKey: ServiceKey<EngineService> =
+  serviceKey<EngineService>("studio.engine");
 
 /** What an {@link EngineService} is built from. */
 export interface EngineServiceOptions {
@@ -96,6 +101,25 @@ export class EngineService {
   }
 
   /**
+   * Starts a run of the workflow with `input`, on the workspace's files as they are saved: refuses
+   * what the page can't run ({@link EngineService.check}), opens the engine, and returns once the
+   * run has started, not when it ends.
+   *
+   * @returns the new run's id
+   * @throws what {@link EngineService.check} and {@link EngineService.open} throw, or the
+   *   executor's refusal of the input
+   */
+  async startRun(
+    run: WorkflowRef,
+    input: Record<string, unknown>,
+  ): Promise<{ readonly id: string }> {
+    await this.check(run);
+    const engine = await this.open();
+    const { id } = await engine.executor.start({ ...run, input });
+    return { id };
+  }
+
+  /**
    * Closes the engine, if open, and gives the workspace's lock back, as when
    * the workspace changes. Safe to call twice; a later {@link open} starts afresh.
    */
@@ -105,6 +129,11 @@ export class EngineService {
     if (opening === undefined) return;
     const engine = await opening.catch(() => undefined);
     await engine?.close();
+  }
+
+  /** Lets the workspace's service registry close the engine with the workspace. */
+  dispose(): Promise<void> {
+    return this.close();
   }
 
   async #openOnce(): Promise<AssembledEngine> {

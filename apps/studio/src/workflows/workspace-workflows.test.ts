@@ -1,11 +1,15 @@
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { WorkspaceWorkflows } from "./workspace-workflows.ts";
+import { WorkspaceWorkflows, type WorkspaceWorkflowsParts } from "./workspace-workflows.ts";
 
 const replyFile = "id: reply\nname: Reply\ninitial: first\nstates:\n  first:\n    type: final\n";
 
-function setup(runs: Partial<RunSummary>[] = [], logs: Record<string, RunEvent[]> = {}) {
+function setup(
+  runs: Partial<RunSummary>[] = [],
+  logs: Record<string, RunEvent[]> = {},
+  engine?: WorkspaceWorkflowsParts["engine"],
+) {
   const store: Record<string, string> = {
     "hubs/acme/hub.yaml": "id: acme\nname: Acme\n",
     "hubs/beta/hub.yaml": "id: beta\nname: Beta\n",
@@ -41,6 +45,7 @@ function setup(runs: Partial<RunSummary>[] = [], logs: Record<string, RunEvent[]
       },
       log: async (runId) => logs[runId] ?? [],
     },
+    ...(engine === undefined ? {} : { engine }),
   });
   return { store, changes, fileListeners, runListeners, host };
 }
@@ -358,5 +363,46 @@ verifies("studio.workspace-workflow-read", () => {
         'no workflow "gone"',
       );
     });
+  });
+
+  it("offers no startRun while the page has no engine", () => {
+    expect(setup().host.startRun).toBeUndefined();
+  });
+
+  it("starts a run through the engine and returns the run's id", async () => {
+    const started: unknown[] = [];
+    const { host } = setup(
+      [],
+      {},
+      {
+        startRun: async (run, input) => {
+          started.push({ run, input });
+          return { id: "run_1" };
+        },
+      },
+    );
+
+    const result = await host.startRun?.({ hubId: "acme", id: "reply" }, { ticket: 42 });
+
+    expect(result).toEqual({ runId: "run_1" });
+    expect(started).toEqual([
+      { run: { hubId: "acme", workflowId: "reply" }, input: { ticket: 42 } },
+    ]);
+  });
+
+  it("passes on the engine's refusal", async () => {
+    const { host } = setup(
+      [],
+      {},
+      {
+        startRun: async () => {
+          throw new Error("can't start yet");
+        },
+      },
+    );
+
+    await expect(host.startRun?.({ hubId: "acme", id: "reply" }, {})).rejects.toThrow(
+      "can't start yet",
+    );
   });
 });
