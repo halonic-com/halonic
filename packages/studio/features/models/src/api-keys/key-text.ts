@@ -13,7 +13,14 @@ export const NEEDS_SECRET_NAME =
 export const SAVE_KEY = "Save key";
 export const REMOVE_KEY = "Remove key";
 export const CHANGE_KEY = "Change key";
-export const KEY_SAVED_LINE = "Key saved";
+export const TRY_AGAIN = "Try again";
+export const PASTE_FIRST = "Paste the key first.";
+export const REPLACE_PLACEHOLDER = "Paste a new key to replace it";
+
+/** The line after a key is stored. */
+export function savedLine(provider: string): string {
+  return `Saved key for ${provider}`;
+}
 export const KEY_REMOVED_LINE = "Key removed";
 
 /** The host command that stores a key from the machine that runs `halonic serve`. */
@@ -33,7 +40,7 @@ export function removeQuestion(secretName: string): string {
 
 /** Where a key is kept, for the line under the field. */
 export function keptLine(entry: Extract<KeyEntry, { kind: "field" }>): string {
-  if (entry.keptOn === "this-computer") return "The key is kept in the system keychain.";
+  if (entry.keptOn === "this-computer") return "Kept in your system keychain, never in files.";
   return entry.offHostHttps
     ? "The key is kept on the host. It is sent over an encrypted connection."
     : "The key is kept on the host.";

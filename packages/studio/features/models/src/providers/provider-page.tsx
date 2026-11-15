@@ -36,7 +36,13 @@ export function ProviderPage({ item, context }: ItemViewProps) {
             <p role="alert">{blockedLocalOnlyLine(state.workspaceName)}</p>
           ) : null}
           <ProviderFields files={files} provider={entry.provider} path={entry.path} />
-          {keys === undefined ? null : <KeyBlock keys={keys} secretName={entry.provider.secret} />}
+          {keys === undefined ? null : (
+            <KeyBlock
+              keys={keys}
+              secretName={entry.provider.secret}
+              providerName={providerName(entry.provider)}
+            />
+          )}
           <p>
             File: <code>{entry.path}</code>
           </p>

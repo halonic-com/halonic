@@ -53,7 +53,9 @@ async function show(keys: ModelKeys, secretName: string | undefined = "anthropic
   element = document.createElement("div");
   document.body.append(element);
   root = createRoot(element);
-  await act(async () => root?.render(<KeyBlock keys={keys} secretName={secretName} />));
+  await act(async () =>
+    root?.render(<KeyBlock keys={keys} secretName={secretName} providerName="Anthropic" />),
+  );
   return element;
 }
 
@@ -86,6 +88,17 @@ verifies("models.api-keys.enter-key", () => {
     expect(sent).toEqual(["anthropic=sk-acme-test-123"]);
     expect(input.value).toBe("");
     expect(view.textContent).toContain("Key set");
+    expect(view.textContent).toContain("Saved key for Anthropic");
+    expect(document.activeElement).toBe(input);
+  });
+
+  it("asks for the key and keeps focus in the field when Save key is pressed empty", async () => {
+    const { keys, sent } = keysWith(desktop);
+    const view = await show(keys);
+    await press(view, "Save key");
+    expect(view.textContent).toContain("Paste the key first.");
+    expect(document.activeElement).toBe(view.querySelector("input"));
+    expect(sent).toEqual([]);
   });
 
   it("warns on another device over https and names the host command", async () => {
@@ -129,6 +142,36 @@ verifies("models.api-keys.enter-key", () => {
 });
 
 verifies("models.api-keys.key-status", () => {
+  it("draws a filled dot for a stored key and a hollow ring for none, hidden from readers", async () => {
+    const set = await show(keysWith(desktop, ["anthropic"]).keys);
+    expect(set.querySelector('[role="status"] [aria-hidden="true"]')?.className).toContain(
+      "bg-success",
+    );
+    expect(set.querySelector("input")?.placeholder).toContain("replace");
+    act(() => root?.unmount());
+    set.remove();
+    const none = await show(keysWith(desktop).keys);
+    expect(none.querySelector('[role="status"] [aria-hidden="true"]')?.className).toContain(
+      "border",
+    );
+  });
+
+  it("offers Try again after a failed check and shows the state once it works", async () => {
+    const { keys } = keysWith(desktop, ["anthropic"]);
+    let calls = 0;
+    const view = await show({
+      ...keys,
+      stored: async (name) => {
+        if (calls++ === 0) throw new Error("unreachable");
+        return keys.stored(name);
+      },
+    });
+    expect(view.textContent).toContain("Couldn't check");
+    await press(view, "Try again");
+    expect(view.textContent).toContain("Key set");
+    expect(view.textContent).not.toContain("Try again");
+  });
+
   it("says Key set for a stored key and never shows it", async () => {
     const view = await show(keysWith(desktop, ["anthropic"]).keys);
     expect(view.textContent).toContain("Key set");
