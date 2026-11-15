@@ -7,6 +7,11 @@ export const SPEND_TOOLTIP =
 /** What the spend item says, and whether the month's budget is used up. */
 export interface MonthLine {
   readonly text: string;
+  /**
+   * The line in the order a narrow window drops them, last first: the text is `parts.join(" ")`.
+   * "Est. this run €0.15" is the first part and the one that stays.
+   */
+  readonly parts: readonly string[];
   readonly usedUp: boolean;
 }
 
@@ -32,18 +37,18 @@ function unpricedText(calls: number): string {
 }
 
 /**
- * The run's part of the line: "this run €0.15 of €5.00", "this run €0.10 + 2 calls without a
- * price". A run whose calls all lack a price names no amount, so it never reads "€0.00".
+ * The run's part of the line, in the parts a narrow window drops from the right: ["this run
+ * €0.15", "of €5.00", "+ 2 calls without a price"]. A run whose calls all lack a price names no
+ * amount, so it never reads "€0.00".
  */
-function runPart(run: RunSpend, perRun: number | undefined, currency: string): string {
+function runParts(run: RunSpend, perRun: number | undefined, currency: string): string[] {
   if (run.cost === 0 && run.unpricedCalls > 0) {
-    return `this run ${unpricedText(run.unpricedCalls)}`;
+    return [`this run ${unpricedText(run.unpricedCalls)}`];
   }
-  const amount = moneyAmount(run.cost, currency);
-  const spent = perRun === undefined ? amount : `${amount} of ${moneyAmount(perRun, currency)}`;
-  return run.unpricedCalls > 0
-    ? `this run ${spent} + ${unpricedText(run.unpricedCalls)}`
-    : `this run ${spent}`;
+  const parts = [`this run ${moneyAmount(run.cost, currency)}`];
+  if (perRun !== undefined) parts.push(`of ${moneyAmount(perRun, currency)}`);
+  if (run.unpricedCalls > 0) parts.push(`+ ${unpricedText(run.unpricedCalls)}`);
+  return parts;
 }
 
 /**
@@ -58,9 +63,8 @@ export function monthLine(
   run?: { readonly spend: RunSpend; readonly perRun: number | undefined },
 ): MonthLine {
   const month = monthPart(spent, monthly, currency);
-  const text =
-    run === undefined
-      ? `Est. ${month.text}`
-      : `Est. ${runPart(run.spend, run.perRun, currency)} · ${month.text}`;
-  return { text, usedUp: month.usedUp };
+  const [first = "", ...rest] = run === undefined ? [] : runParts(run.spend, run.perRun, currency);
+  const parts =
+    run === undefined ? [`Est. ${month.text}`] : [`Est. ${first}`, ...rest, `· ${month.text}`];
+  return { text: parts.join(" "), parts, usedUp: month.usedUp };
 }

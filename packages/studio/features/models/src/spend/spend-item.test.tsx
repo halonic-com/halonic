@@ -88,7 +88,7 @@ async function show(
 }
 
 /** What the item says on the bar, without the tooltip text. */
-const lineOf = (item: HTMLElement) => item.querySelector("button span")?.textContent ?? "";
+const lineOf = (item: HTMLElement) => item.querySelector("button span")?.textContent?.trim() ?? "";
 
 verifies("models.spend.month-line", () => {
   describe("the words", () => {
@@ -100,6 +100,7 @@ verifies("models.spend.month-line", () => {
     it("says used up once the budget is reached", () => {
       expect(monthLine(50.02, 50, "EUR")).toEqual({
         text: "Est. €50.02 of €50.00 this month · used up",
+        parts: ["Est. €50.02 of €50.00 this month · used up"],
         usedUp: true,
       });
       expect(monthLine(50, 50, "EUR").usedUp).toBe(true);
@@ -293,6 +294,20 @@ verifies("models.spend.month-line", () => {
       const item = await show(filesOf(header, cloud), runsOf([]), runCommand);
       await act(async () => item.querySelector("button")?.click());
       expect(runCommand).toHaveBeenCalledWith("workspace.open-models");
+    });
+
+    it("lays the parts out right to left for a narrow window and puts the full line in the tooltip", () => {
+      const line = monthLine(3.35, 50, "EUR", {
+        spend: { cost: 0.1, unpricedCalls: 2 },
+        perRun: 5,
+      });
+      expect(line.parts).toEqual([
+        "Est. this run €0.10",
+        "of €5.00",
+        "+ 2 calls without a price",
+        "· €3.35 of €50.00 this month",
+      ]);
+      expect(line.parts.join(" ")).toBe(line.text);
     });
 
     it("keeps the estimate wording in its tooltip text", () => {
