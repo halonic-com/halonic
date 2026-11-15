@@ -10,7 +10,11 @@ const marginMs = 1_000;
  * `globalThis.process`, because the Cloudflare test shim has no `process`.
  */
 const defaultTimeout = (): number => {
-  const requested = Number(globalThis.process?.env?.["HALONIC_TEST_TIMEOUT"]);
+  const host: { env?: Record<string, string | undefined> } | undefined = Reflect.get(
+    globalThis,
+    "process",
+  );
+  const requested = Number(host?.env?.["HALONIC_TEST_TIMEOUT"]);
   return Number.isInteger(requested) && requested > marginMs
     ? requested - marginMs
     : fallbackTimeoutMs;
