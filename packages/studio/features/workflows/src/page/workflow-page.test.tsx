@@ -357,6 +357,7 @@ verifies("workflows.runs.runs-view", () => {
       <WorkflowPage
         item={{ kind: "workflow", hub: "acme", id: "reply" }}
         context={context as never}
+        Sections={() => null}
       />,
     );
 
