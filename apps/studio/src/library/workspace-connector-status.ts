@@ -20,7 +20,7 @@ export interface WorkspaceConnectorStatusOptions {
   /** What the engine refused since Halonic started. */
   readonly refusals: RefusalsFeed;
   /** The workspace's Google accounts, where a Google connector's sign-in is kept. */
-  readonly google: Pick<GoogleSetupAccounts, "list">;
+  readonly google: Pick<GoogleSetupAccounts, "list" | "subscribe">;
   /**
    * Calls its listener when the window comes to the front, so the connectors are read again
    * then too; returns a function that stops it.
@@ -30,6 +30,14 @@ export interface WorkspaceConnectorStatusOptions {
   readonly onWatchError?: (error: unknown) => void;
 }
 
+/** The state of a Google connector whose account has no setup record yet. */
+const notSetUp: ConnectionState = connectionStateOf({
+  configured: false,
+  signedIn: false,
+  secretValid: false,
+  apiOn: false,
+});
+
 /**
  * The connectors of one open workspace as the Library's status view reads them
  * (requirement `studio.workspace-connector-status`).
@@ -38,7 +46,8 @@ export interface WorkspaceConnectorStatusOptions {
  * app can't see yet, such as an expired sign-in, is not in the file and shows only as a refusal
  * when a call fails. A Google connector's sign-in is in its account's setup record, so its state
  * comes from the record, the same one the Google setup block shows. A Google connector whose
- * account has no setup record yet is listed as not connected.
+ * account has no setup record yet is listed as not connected. When an account's setup changes,
+ * the status tells its listeners, so the Library never shows an older state than the setup block.
  *
  * @example
  * services.provide(
@@ -82,11 +91,7 @@ export class WorkspaceConnectorStatus implements ConnectorStatusHost {
       });
     }
     const account = accounts.find(({ record }) => record.connector.id === connector.id);
-    return connectionStateOf(
-      account === undefined
-        ? { configured: false, signedIn: false, secretValid: false, apiOn: false }
-        : connectorFacts(account),
-    );
+    return account === undefined ? notSetUp : connectionStateOf(connectorFacts(account));
   }
 
   async refusals(connectorId: string): Promise<readonly RecordedRefusal[]> {
@@ -102,13 +107,14 @@ export class WorkspaceConnectorStatus implements ConnectorStatusHost {
     };
   }
 
-  /** Listens to the refusals, the window's focus and the files, for as long as anyone listens. */
+  /** Listens to the refusals, the Google accounts, the window's focus and the files, for as long as anyone listens. */
   #startWatching(): void {
     if (this.#stopWatching !== undefined) return;
     const tell = () => {
       for (const listener of [...this.#listeners]) listener();
     };
     const stopRefusals = this.#options.refusals.subscribe(tell);
+    const stopGoogle = this.#options.google.subscribe(tell);
     const stopFocus = this.#options.onFocus?.(tell) ?? (() => {});
     const reportWatchError = (error: unknown) => this.#options.onWatchError?.(error);
     // A watch that fails or never opens costs only the live update: the files are still read
@@ -121,6 +127,7 @@ export class WorkspaceConnectorStatus implements ConnectorStatusHost {
       });
     this.#stopWatching = () => {
       stopRefusals();
+      stopGoogle();
       stopFocus();
       void watch.then((open) => open?.close());
     };

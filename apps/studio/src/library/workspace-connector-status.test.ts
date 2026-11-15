@@ -32,7 +32,7 @@ function acmeFiles(): MemoryDefinitionStore {
   });
 }
 
-const noGoogle = { list: async () => [] };
+const noGoogle = { list: async () => [], subscribe: () => () => {} };
 
 /** Sam's account for the `mail` connector, with the record fields a test changes. */
 function samsAccount(extra: Partial<SetupRecord>): GoogleSetupAccount {
@@ -95,7 +95,7 @@ verifies("studio.workspace-connector-status", () => {
       const status = new WorkspaceConnectorStatus({
         definitions: acmeFiles(),
         refusals: new RefusalsFeed(),
-        google: { list: async () => [samsAccount(extra)] },
+        google: { ...noGoogle, list: async () => [samsAccount(extra)] },
       });
       return (await status.list()).find(({ id }) => id === "mail")?.state;
     };
@@ -125,7 +125,7 @@ verifies("studio.workspace-connector-status", () => {
     const status = new WorkspaceConnectorStatus({
       definitions: files,
       refusals: new RefusalsFeed(),
-      google: { list },
+      google: { ...noGoogle, list },
     });
 
     await status.list();
@@ -151,6 +151,30 @@ verifies("studio.workspace-connector-status", () => {
     stop();
     refusals.record([refusal]);
     expect(heard).toHaveBeenCalledTimes(1);
+  });
+
+  it("tells its listeners when a Google account's setup changes", () => {
+    let changed: () => void = () => {};
+    const stopGoogle = vi.fn();
+    const status = new WorkspaceConnectorStatus({
+      definitions: acmeFiles(),
+      refusals: new RefusalsFeed(),
+      google: {
+        list: async () => [],
+        subscribe: (listener) => {
+          changed = listener;
+          return stopGoogle;
+        },
+      },
+    });
+    const heard = vi.fn();
+    const stop = status.subscribe(heard);
+
+    changed();
+
+    expect(heard).toHaveBeenCalledTimes(1);
+    stop();
+    expect(stopGoogle).toHaveBeenCalledTimes(1);
   });
 
   it("tells its listeners when the window comes to the front and when a file changes", async () => {

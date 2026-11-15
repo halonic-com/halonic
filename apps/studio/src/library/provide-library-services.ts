@@ -29,7 +29,7 @@ export interface LibraryServiceParts {
   readonly trust: WorkspaceTrust;
   readonly location: string;
   /** The workspace's Google accounts, which the status of a Google connector is read from. */
-  readonly google: Pick<GoogleSetupAccounts, "list">;
+  readonly google: Pick<GoogleSetupAccounts, "list" | "subscribe">;
   /** Calls the listener whenever the window comes to the front; returns a function that stops it. */
   readonly onFocus: (listener: () => void) => () => void;
 }
