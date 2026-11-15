@@ -3,6 +3,7 @@
 // service and no adapter: the host wires `AgentPlacement`, the sandboxes,
 // the harnesses and the bridge server into them.
 
+import type { InstructionTrustService } from "@halonicjs/app";
 import type { DeniedPathGroup, RunVersion } from "@halonicjs/events";
 import type { Agent } from "@halonicjs/format";
 import type {
@@ -130,6 +131,18 @@ export interface HarnessInstructionSource {
   pinOf(agent: HarnessAgent): Promise<HarnessInstructionsPin | null>;
 }
 
+/**
+ * Whether a person trusted the instructions a harness run starts with. The
+ * host gives the app's `InstructionTrustService` and the workspace's resolved
+ * real path; the engine only asks, so nothing on a run's path can trust
+ * instructions.
+ */
+export interface HarnessInstructionTrust {
+  readonly service: Pick<InstructionTrustService, "check">;
+  /** The workspace's resolved real path, as in the trusted pins' keys. */
+  readonly location: string;
+}
+
 /** What the local executor needs to carry out `run-harness` effects. */
 export interface HarnessRunsOptions {
   readonly placement: PlacementPolicy;
@@ -145,6 +158,12 @@ export interface HarnessRunsOptions {
   readonly profiles: HarnessProfileBuilder;
   /** Where the run's instruction files come from; without it, no `harness.instructions` is written. */
   readonly instructions?: HarnessInstructionSource;
+  /**
+   * Whether the instructions the run starts with are trusted. A run whose
+   * instructions aren't doesn't start (requirement
+   * `engine.harness-instructions-trust`). Without it, nothing is checked.
+   */
+  readonly instructionTrust?: HarnessInstructionTrust;
   /** The person's home folder, so `sandbox.opened` and `sandbox.blocked` show paths in it with `~`; `null` when unknown. */
   readonly home: string | null;
   /**

@@ -84,6 +84,13 @@ verifies("app.instruction-trust-service", () => {
       );
     });
 
+    it("refuses to trust a pin that would never read back", async () => {
+      const store = new FakeStore();
+      const damaged = { digest: "not-a-digest", files: { "AGENTS.md": digest("a") } };
+      await expect(serviceOn(store).trust(key, damaged)).rejects.toThrow('"coder"');
+      expect(store.record).toBeNull();
+    });
+
     it("forgets what was trusted, so the next run asks", async () => {
       const store = new FakeStore();
       const service = serviceOn(store);

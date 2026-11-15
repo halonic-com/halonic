@@ -4,9 +4,13 @@
 - Since: 0.1.0
 - Source: HAL-3106 slice 3c; Liam's decision on HAL-10213
 
-The app package shall have `InstructionTrustService`, which checks a run's instruction pin against the pin saved in the `InstructionTrustStore` for the agent, and saves a pin as trusted only when its `trust` is called, which only a person's action does. It shall answer `ask`, never `trusted`, when the store has no record, when the store can't read the record, and when the record it gives back isn't valid for the agent asked about; in the last two cases the answer shall say why. `revoke` shall delete the agent's record, so the next check asks.
+The app package shall have `InstructionTrustService`, which checks a run's instruction pin against the pin saved in the `InstructionTrustStore` for the agent, and saves a pin as trusted only when its `trust` is called, which only a person's action does. It shall answer `ask`, never `trusted`, when the store has no record, when the store can't read the record, and when the record it gives back isn't valid for the agent asked about; in the last two cases the answer shall say why. `trust` shall refuse a pin that isn't valid (a digest not in `sha256:` form) and save nothing. `revoke` shall delete the agent's record, so the next check asks.
 
 ## Examples
+
+- Given a pin with a digest that isn't in `sha256:` form,
+  when a person's yes is saved with `trust`,
+  then it throws and nothing is saved.
 
 - Given an agent nobody has trusted,
   when its pin is checked,

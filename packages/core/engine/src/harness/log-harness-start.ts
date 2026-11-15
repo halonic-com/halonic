@@ -1,4 +1,5 @@
 import type { Harness } from "@halonicjs/ports";
+import { checkInstructionTrust } from "./check-instruction-trust.ts";
 import type { HarnessAgent, HarnessRunsOptions } from "./harness-host.ts";
 import type { HarnessCall, HarnessEventLog } from "./run-harness-call.ts";
 
@@ -15,6 +16,7 @@ interface HarnessStartCall {
  * Writes `harness.instructions`, when the host has instruction files for the
  * agent, and then `harness.started`.
  *
+ * @throws InstructionsNotTrustedError when the host checks instruction trust and a person must be asked
  * @throws what the host's instruction source or the log throws; the harness doesn't start
  */
 export async function logHarnessStart(
@@ -22,8 +24,9 @@ export async function logHarnessStart(
   timeoutMs: number,
 ): Promise<void> {
   const { state, agent: agentId } = call.effect;
-  const pin = await options.instructions?.pinOf(agent);
-  if (pin !== undefined && pin !== null) {
+  const pin = (await options.instructions?.pinOf(agent)) ?? null;
+  await checkInstructionTrust(options.instructionTrust, agent, pin);
+  if (pin !== null) {
     await log.append({
       type: "harness.instructions",
       state,
