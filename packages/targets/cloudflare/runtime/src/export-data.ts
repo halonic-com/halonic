@@ -58,10 +58,21 @@ export async function recordFileName(collection: string): Promise<string> {
   return `records/${await sha256Hex(units)}.jsonl`;
 }
 
-/** The text of a run log or a record log must not hold a secret: a run can have handled one. */
+/** The text of a run log, a record log or a text blob must not hold a secret: a run can have handled one. */
 function refuseSecrets(path: string, text: string): void {
   const shape = findSecretShape(text);
   if (shape !== undefined) throw new ExportSecretError(path, shape);
+}
+
+const strictDecoder = new TextDecoder("utf-8", { fatal: true });
+
+/** The bytes as text, or `undefined` when they aren't valid UTF-8, so a binary blob is left unscanned. */
+function textOf(bytes: Uint8Array): string | undefined {
+  try {
+    return strictDecoder.decode(bytes);
+  } catch {
+    return undefined;
+  }
 }
 
 /** Byte order of the paths, which for these ASCII paths is the order the manifest lists them in. */
@@ -99,7 +110,16 @@ async function listFiles(source: ExportSource): Promise<ExportFile[]> {
     });
   }
   for (const hash of await source.blobs.hashes()) {
-    files.push({ path: `blobs/${hash.slice(0, 2)}/${hash}`, read: () => source.blobs.get(hash) });
+    const path = `blobs/${hash.slice(0, 2)}/${hash}`;
+    files.push({
+      path,
+      async read() {
+        const bytes = await source.blobs.get(hash);
+        const text = bytes === null ? undefined : textOf(bytes);
+        if (text !== undefined) refuseSecrets(path, text);
+        return bytes;
+      },
+    });
   }
   return files.sort((a, b) => comparePaths(a.path, b.path));
 }
@@ -110,7 +130,7 @@ async function listFiles(source: ExportSource): Promise<ExportFile[]> {
  *
  * @param deployment - the deployment's id, written into the manifest
  * @param now - the time of the export
- * @throws ExportSecretError when a run log or record log holds something shaped like a secret; nothing is exported then
+ * @throws ExportSecretError when a run log, record log or text blob holds something shaped like a secret; nothing is exported then
  */
 export async function buildManifest(
   source: ExportSource,

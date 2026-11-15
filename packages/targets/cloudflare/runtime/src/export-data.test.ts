@@ -31,7 +31,7 @@ function event(runId: string, text: string) {
   return { runId, seq: 1, at: "2026-11-05T07:00:00.000Z", type: "note", text };
 }
 
-function sourceWith(runText = "hello"): ExportSource {
+function sourceWith(runText = "hello", blobBytes: Uint8Array = blob): ExportSource {
   return {
     records: {
       collections: async () => ["_tokens", "leads"],
@@ -39,7 +39,7 @@ function sourceWith(runText = "hello"): ExportSource {
     },
     runs: { list: async () => [{ id: "r-invoice" }, { id: "../escape" }] },
     runStore: { events: async (runId) => [event(runId, runText)] as never },
-    blobs: { hashes: async () => [blobHash], get: async () => blob },
+    blobs: { hashes: async () => [blobHash], get: async () => blobBytes },
   };
 }
 
@@ -123,6 +123,49 @@ verifies("runtime.export-data", () => {
         });
         expect(text).not.toContain(keyShapedValue);
       }
+    });
+    it("finds a key inside the args of a tool call", async () => {
+      const source: ExportSource = {
+        ...sourceWith(),
+        runStore: {
+          events: async (runId) =>
+            [
+              {
+                runId,
+                seq: 1,
+                at: "2026-11-05T07:00:00.000Z",
+                type: "tool.called",
+                args: { headers: { authorization: keyShapedValue } },
+              },
+            ] as never,
+        },
+      };
+      const response = await get("/admin/export", source);
+      const text = await response.text();
+      expect(response.status).toBe(409);
+      expect(JSON.parse(text)).toMatchObject({
+        code: "secret_found",
+        path: "runs/r-invoice.jsonl",
+        shape: "ai-provider-key",
+      });
+      expect(text).not.toContain(keyShapedValue);
+    });
+
+    it("stops the export for a text blob with a key, and leaves a binary blob unscanned", async () => {
+      const textBlob = new TextEncoder().encode(`token=${keyShapedValue}`);
+      const stopped = await get("/admin/export", sourceWith("hello", textBlob));
+      const text = await stopped.text();
+      expect(stopped.status).toBe(409);
+      expect(JSON.parse(text)).toMatchObject({
+        code: "secret_found",
+        path: `blobs/00/${blobHash}`,
+        shape: "ai-provider-key",
+      });
+      expect(text).not.toContain(keyShapedValue);
+
+      // Not valid UTF-8, so it is bytes rather than text.
+      const binary = new Uint8Array([0xff, 0xfe, ...new TextEncoder().encode(keyShapedValue)]);
+      expect((await get("/admin/export", sourceWith("hello", binary))).status).toBe(200);
     });
   });
 });
