@@ -16,11 +16,18 @@ const FALLBACK_VIEWPORT = { width: 800, height: 600 };
  * opens; after that the workflow can change under it and the zoom and pan stay (D9). To open a
  * different workflow, give it a new `key`.
  */
-export function WorkflowCanvas({ workflow }: { readonly workflow: WorkflowView }) {
+export function WorkflowCanvas({
+  workflow,
+  selectedStep,
+}: {
+  readonly workflow: WorkflowView;
+  /** The card that starts picked, when the person came from a problem's link. */
+  readonly selectedStep?: string | undefined;
+}) {
   const viewport = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number } | undefined>(undefined);
   const [view, setView] = useState<View>({ zoom: 1, pan: { x: 0, y: 0 } });
-  const [selected, setSelected] = useState<string | undefined>();
+  const [selected, setSelected] = useState<string | undefined>(selectedStep);
 
   const boxes = useMemo(
     () =>
@@ -90,6 +97,7 @@ export function WorkflowCanvas({ workflow }: { readonly workflow: WorkflowView }
               box={box}
               first={step.id === workflow.initial}
               selected={selected === step.id}
+              focusOnMount={selectedStep === step.id}
               onSelect={() => setSelected(step.id)}
             />
           );

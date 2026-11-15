@@ -1,6 +1,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type {
+  WorkflowConfiguration,
   WorkflowHub,
   WorkflowListing,
   WorkflowRef,
@@ -50,6 +51,7 @@ export function memoryHost(
   hubs: readonly WorkflowHub[],
   initial: readonly WorkflowListing[],
   views: readonly WorkflowView[] = [],
+  configurations: readonly WorkflowConfiguration[] = [],
 ) {
   let listings = initial;
   const listeners = new Set<() => void>();
@@ -66,6 +68,11 @@ export function memoryHost(
     nameOf: (ref) =>
       [...listings, ...madeListings].find((each) => each.hubId === ref.hubId && each.id === ref.id)
         ?.name,
+    configuration: async (ref) => {
+      const found = configurations.find((one) => one.hubId === ref.hubId && one.id === ref.id);
+      if (found === undefined) throw new Error("This workflow isn't there.");
+      return found;
+    },
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
