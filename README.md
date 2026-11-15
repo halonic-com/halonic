@@ -34,7 +34,9 @@ sample yet; a new workspace starts empty. To try Halonic with a sample, run
 
 0.1.0 is a first release; expect rough edges. The list below is what we
 know about today.
-<!-- CHECK (HAL-6394): once the "Known issues in 0.1.0" issue is posted, link it here by its number. The old label-search link found nothing. -->
+<!-- CHECK (HAL-6394): once the "Known issues in 0.1.0" issue is posted, link it here by its number. The old label-search link found nothing. For now, the link below goes to all open issues. -->
+
+Read or report known problems in the [open issues](https://github.com/halonic-com/halonic/issues).
 
 - Not on npm yet. `npm install -g halonic` installs an empty placeholder, not
   this release.
@@ -58,8 +60,6 @@ The `halonic` command installs from this repository. You need
 [pnpm](https://pnpm.io/installation) 12.18 or later. On Windows, run all of
 this inside [WSL 2](https://learn.microsoft.com/windows/wsl/install) (Ubuntu),
 not in PowerShell or Command Prompt.
-<!-- CHECK (HAL-7650): whether the command line on Windows is still WSL 2 only
-     on the release candidate, or also runs natively or comes with Studio (HAL-7651). -->
 
 Check your Node.js first with `node --version`: it must say v26.12 or later.
 With an older Node.js, `halonic` stops and says which version it needs. Many
@@ -164,6 +164,25 @@ Acme has one routine, the weekly report, set for Monday at 9:00. This command
 lists your routines and when each runs next. It starts nothing. Your "Next"
 date will differ. To run routines at their set times, keep
 `halonic routines watch` open in a terminal, and stop it with Ctrl C.
+
+## Use a real model
+
+Acme runs on the built-in test model. To use your own, follow
+[Connect a provider and a tool](https://docs.halonic.dev/guides/connect-provider-and-tool):
+it shows which file to edit and how to store your API key. Then:
+
+```sh
+halonic doctor
+halonic trust
+halonic run support-reply --input examples/refund-question.json
+```
+
+`halonic doctor` tells you if a model still needs a key. `halonic trust` asks
+you to confirm that this computer may run Acme. Without a terminal, use
+`halonic trust --yes --fingerprint <fingerprint>`. If the provider refuses,
+[the provider says no](https://docs.halonic.dev/guides/provider-says-no) shows
+what each message means. There is no spending limit yet: set one at your
+provider.
 
 ## Next steps
 
