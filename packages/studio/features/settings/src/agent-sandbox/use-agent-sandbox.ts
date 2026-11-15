@@ -12,6 +12,9 @@ import {
 } from "./sandbox-state.ts";
 import * as text from "./sandbox-text.ts";
 
+/** The last check each host answered, so reopening Settings shows it at once while a new check runs. */
+const lastChecks = new WeakMap<AgentSandboxHost, SandboxCheckFacts>();
+
 /** What the section can do: each starts only when the person presses its button. */
 export interface AgentSandboxControls {
   readonly facts: SandboxFacts;
@@ -31,10 +34,9 @@ export function useAgentSandbox(
   place: SandboxFacts["place"],
   announce: (line: string) => void,
 ): AgentSandboxControls {
-  const [check, setCheck] = useState<SandboxCheckFacts>({
-    state: "checking",
-  });
-  const [rechecking, setRechecking] = useState(false);
+  const remembered = host === undefined ? undefined : lastChecks.get(host);
+  const [check, setCheck] = useState<SandboxCheckFacts>(remembered ?? { state: "checking" });
+  const [rechecking, setRechecking] = useState(remembered !== undefined);
   const [running, setRunning] = useState<SandboxRunning | null>(null);
   const [outcome, setOutcome] = useState<SandboxOutcome | null>(null);
   const alive = useRef(true);
@@ -97,7 +99,12 @@ export function useAgentSandbox(
 
   useEffect(() => {
     alive.current = true;
-    void readCheck().then((facts) => alive.current && setCheck(facts));
+    void readCheck().then((facts) => {
+      if (host !== undefined && facts.state !== "unknown") lastChecks.set(host, facts);
+      if (!alive.current) return;
+      setCheck(facts);
+      setRechecking(false);
+    });
     // A setup or removal that began before Settings opened shows as running and is followed,
     // never started: opening Settings sends no command.
     void host?.running().then(
@@ -134,6 +141,7 @@ export function useAgentSandbox(
         if (!alive.current) return;
         setRechecking(false);
         setCheck(facts);
+        if (host !== undefined && facts.state !== "unknown") lastChecks.set(host, facts);
         announceRef.current(text.announceChecked(checkedLine(facts)));
       });
     },

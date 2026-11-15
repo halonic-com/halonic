@@ -106,6 +106,15 @@ verifies("workspace.trusted-sources", () => {
     expect(announce).toHaveBeenCalledWith("Removed trust from inbox-helper");
   });
 
+  it("puts the folder under the name in mono and moves focus to the next row's Remove", async () => {
+    const host = hostOf([inbox, pdf]);
+    await show(host);
+    expect(element.querySelector("li .font-mono")?.textContent).toBe("/skills/pdf-tools");
+    act(() => button("Remove", element.querySelectorAll("li")[0] as HTMLElement)?.click());
+    await act(async () => confirm()?.click());
+    expect(document.activeElement).toBe(button("Remove"));
+  });
+
   it("keeps the dialog open and says why when removing fails", async () => {
     const host = hostOf([inbox], async () => {
       throw new Error("the disk is full");

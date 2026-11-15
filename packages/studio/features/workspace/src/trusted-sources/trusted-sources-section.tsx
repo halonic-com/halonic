@@ -47,6 +47,9 @@ export function TrustedSourcesView({ host, readOnly, announce }: TrustedSourcesV
   const [error, setError] = useState<string | undefined>();
   const lead = useRef<HTMLParagraphElement | null>(null);
   const alive = useRef(true);
+  const removeButtons = useRef(new Map<string, HTMLButtonElement>());
+  // Where focus goes when the dialog closes after a Remove: the next row's button, else the previous.
+  const focusAfter = useRef<string | undefined>(undefined);
 
   const load = useCallback(() => {
     setLoaded({ state: "loading" });
@@ -77,6 +80,10 @@ export function TrustedSourcesView({ host, readOnly, announce }: TrustedSourcesV
       return;
     }
     if (!alive.current) return;
+    if (loaded.state === "ready") {
+      const at = loaded.sources.findIndex((one) => one.location === source.location);
+      focusAfter.current = (loaded.sources[at + 1] ?? loaded.sources[at - 1])?.location;
+    }
     setBusy(false);
     setRemoving(undefined);
     setLoaded((now) =>
@@ -119,9 +126,11 @@ export function TrustedSourcesView({ host, readOnly, announce }: TrustedSourcesV
             key={source.location}
             className="flex items-center gap-3 border-b border-line py-2 last:border-b-0"
           >
-            <span className="min-w-0 flex-1">
-              <span className="text-body-strong">{source.name}</span>{" "}
-              <span className="break-all text-small text-fg-muted">{source.location}</span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="text-body-strong">{source.name}</span>
+              <span className="break-all font-mono text-small text-fg-muted">
+                {source.location}
+              </span>
             </span>
             <span className="text-small text-fg-muted">
               {source.found === false ? text.FOLDER_NOT_FOUND : text.trustedOn(source.trustedAt)}
@@ -131,6 +140,10 @@ export function TrustedSourcesView({ host, readOnly, announce }: TrustedSourcesV
                 variant="ghost"
                 size="sm"
                 aria-label={text.removeTitle(source.name).replace(/\?$/u, "")}
+                ref={(node) => {
+                  if (node) removeButtons.current.set(source.location, node);
+                  else removeButtons.current.delete(source.location);
+                }}
                 onClick={() => {
                   setError(undefined);
                   setRemoving(source);
@@ -146,7 +159,7 @@ export function TrustedSourcesView({ host, readOnly, announce }: TrustedSourcesV
   };
   const content = renderContent();
   return (
-    <div className="mt-1 flex flex-col gap-4">
+    <div className="mt-5 flex flex-col gap-4">
       {readOnly ? <ViewOnlyLine>{text.VIEW_ONLY}</ViewOnlyLine> : null}
       <p ref={lead} tabIndex={-1} className="text-small text-fg-muted">
         {readOnly ? text.LEAD_SERVED : text.LEAD}
@@ -165,7 +178,11 @@ export function TrustedSourcesView({ host, readOnly, announce }: TrustedSourcesV
           confirm={{ label: text.REMOVE_TRUST, variant: "danger", busyLabel: text.REMOVING }}
           busy={busy}
           {...(error === undefined ? {} : { error })}
-          returnFocus={() => lead.current}
+          returnFocus={() => {
+            const next = focusAfter.current;
+            focusAfter.current = undefined;
+            return (next && removeButtons.current.get(next)) || lead.current;
+          }}
           onConfirm={() => void confirmRemove(removing)}
           onCancel={() => setRemoving(undefined)}
         >
