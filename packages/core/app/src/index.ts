@@ -161,14 +161,7 @@ export {
 } from "./live-version.ts";
 export { integrationsFolder, readLocalIntegrations } from "./local-integrations.ts";
 export { defaultCurrency, moneyAmount } from "./money-amount.ts";
-export {
-  lastMonths,
-  type MonthSpend,
-  monthOf,
-  monthStartOf,
-  spendByMonth,
-  treeCost,
-} from "./month-spend.ts";
+export { lastMonths, type MonthSpend, monthOf, monthStartOf, spendByMonth } from "./month-spend.ts";
 export {
   type NewAgentsRun,
   newAgentPlacement,
@@ -441,6 +434,7 @@ export {
   type ToolRefusal,
   workspaceRisksOf,
 } from "./tool-listing.ts";
+export { treeCost } from "./tree-cost.ts";
 export type {
   PersonTrustOrigin,
   TrustRefusal,

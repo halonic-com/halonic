@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { lastMonths, spendByMonth, treeCost } from "./month-spend.ts";
+import { lastMonths, spendByMonth } from "./month-spend.ts";
 
 verifies("app.month-spend", () => {
   it("sums each run's cost into the UTC month it started in, oldest month first", () => {
@@ -29,24 +29,5 @@ verifies("app.month-spend", () => {
   it("counts back across a year, and answers nothing for no months", () => {
     expect(lastMonths("2026-02-10T00:00:00.000Z", 3)).toEqual(["2025-12", "2026-01", "2026-02"]);
     expect(spendByMonth([], "2026-02-10T00:00:00.000Z", 0)).toEqual([]);
-  });
-
-  it("adds a run's sub-runs, at any depth, to its cost, and nothing from other runs", () => {
-    const run = (id: string, parentRunId: string | null, cost: number) => ({
-      id,
-      parentRunId,
-      cost,
-    });
-    const summaries = [
-      run("top", null, 1),
-      run("child", "top", 0.5),
-      run("grandchild", "child", 0.25),
-      run("other", null, 9),
-      run("other-child", "other", 9),
-    ];
-
-    expect(treeCost(summaries, "top")).toBe(1.75);
-    expect(treeCost(summaries, "child")).toBe(0.75);
-    expect(treeCost(summaries, "missing")).toBe(0);
   });
 });
