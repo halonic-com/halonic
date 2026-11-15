@@ -13,6 +13,7 @@ export {
 } from "./agent-placement.ts";
 export { joinLinesThatNeedEachOther } from "./changes/change-needs.ts";
 export { describeAgentChange } from "./changes/describe-agent.ts";
+export { describeFileChange, type FileChange } from "./changes/describe-file.ts";
 export { describeItemChange } from "./changes/describe-item.ts";
 export { describeRoutineChange } from "./changes/describe-routine.ts";
 export { describeWorkflowChange } from "./changes/describe-workflow.ts";
