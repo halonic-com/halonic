@@ -55,7 +55,7 @@ export function studioPlugins(host: PluginsHost): StudioPlugins {
     settings: host.settings,
     secrets: host.secrets,
     actions: host.actions,
-    place: host.place,
+    ...(host.place === undefined ? {} : { place: host.place }),
   };
 }
 
@@ -78,7 +78,7 @@ export function pageOptions(plugins: StudioPlugins, context: WorkspaceContext): 
     settings: plugins.settings,
     secrets: plugins.secrets,
     actions: plugins.actions,
-    place: plugins.place,
+    ...(plugins.place === undefined ? {} : { place: plugins.place }),
     openPanel: (plugin) => context.openItem?.(pluginPanelItem(plugin)),
   };
 }
