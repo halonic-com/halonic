@@ -142,7 +142,9 @@ verifies("workspace.provider-cost", () => {
       ).toBe(false);
     });
   });
+});
 
+verifies("workspace.provider-host", () => {
   describe("provider host", () => {
     it("is the host of the address, in lower case, or the type's default", () => {
       expect(providerHost(provider(undefined, { type: "openai" }))).toBe("api.openai.com");
