@@ -66,6 +66,8 @@ export const listedToolsWords = {
   approvedAsks: "Approved. It still asks before each use.",
   /** The button next to the waiting line on the connector's page; it opens the review. */
   reviewTools: "Review tools",
+  /** Instead of **Review tools** on a phone: approving tools is for the computer running Halonic. */
+  reviewToolsViewOnly: "View only here. Review the tools on the computer running Halonic.",
   /** The line on the connector's page, above **Review tools**. */
   waitingBadge: (count: number) =>
     count === 1
