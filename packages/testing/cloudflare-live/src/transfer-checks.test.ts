@@ -26,6 +26,8 @@ interface Behavior {
   readonly closed?: boolean;
   /** Takes the key from the URL as well, which a Worker must not. */
   readonly keyInUrl?: boolean;
+  /** Takes the SHA-256 of the key as the key, as a Worker that compared the stored value would. */
+  readonly hashAsKey?: boolean;
   /** Corrupts one file in the export. */
   readonly corrupt?: boolean;
   /** Answers /health with this. */
@@ -59,7 +61,10 @@ function keyGiven(behavior: Behavior, url: URL, headers: Headers): boolean {
   const given =
     headers.get("authorization") === `Bearer ${key}` ||
     (behavior.keyInUrl === true && url.searchParams.get("key") === key);
-  return given && !headers.has("origin");
+  const hash = createHash("sha256").update(key).digest("hex");
+  const hashGiven =
+    behavior.hashAsKey === true && headers.get("authorization") === `Bearer ${hash}`;
+  return (given || hashGiven) && !headers.has("origin");
 }
 
 /** A Worker in memory with the admin routes of the README's contract. */
@@ -75,6 +80,7 @@ function fakeWorker(behavior: Behavior = {}): {
     const method = init?.method ?? "GET";
     if (url.pathname === "/health") return new Response("ok", { status: behavior.health ?? 200 });
     if (!url.pathname.startsWith("/admin/") || behavior.closed) return neutral();
+    if (headers.has("origin")) return Response.json({ code: "not_found" }, { status: 404 });
     if (!keyGiven(behavior, url, headers)) {
       return Response.json({ code: "unauthorized" }, { status: 401 });
     }
@@ -123,6 +129,17 @@ verifies("cloudflare-live.transfer", () => {
     it("fails when /admin answers anything else", async () => {
       await expect(workerChecks.adminClosed(fakeWorker().target, key)).rejects.toThrow(/401/);
     });
+    it("fails when only an import route is left open while no key is set", async () => {
+      const inner = fakeWorker({ closed: true }).target;
+      const leaky: WorkerTarget = {
+        baseUrl: base,
+        fetch: async (input, init) =>
+          init?.method === "POST" && new URL(String(input)).pathname === "/admin/import"
+            ? Response.json({ imported: {} })
+            : (inner.fetch as typeof fetch)(input, init),
+      };
+      await expect(workerChecks.adminClosed(leaky, key)).rejects.toThrow(/POST \/admin\/import/);
+    });
   });
 
   describe("waiting for the key to take effect", () => {
@@ -164,6 +181,50 @@ verifies("cloudflare-live.transfer", () => {
         .catch((e: Error) => e);
       expect((error as Error).message).toMatch(/key in the URL was answered 200/);
       expect((error as Error).message).not.toContain(key);
+    });
+    it("fail when the stored hash is taken as the key", async () => {
+      await expect(
+        workerChecks.adminRefusesBadKeys(fakeWorker({ hashAsKey: true }).target, key),
+      ).rejects.toThrow(/stored hash as the key was answered 200/);
+    });
+    it("fail when one of the four routes doesn't refuse, naming the route", async () => {
+      const { target } = fakeWorker();
+      const open: WorkerTarget = {
+        baseUrl: base,
+        fetch: async (input, init) =>
+          init?.method === "POST"
+            ? new Response("{}", { status: 200 })
+            : (target.fetch ?? fetch)(input, init),
+      };
+      await expect(workerChecks.adminRefusesBadKeys(open, key)).rejects.toThrow(
+        /POST \/admin\/import without a key was answered 200/,
+      );
+    });
+    it("fail on a 200 for an Origin and accept a 403", async () => {
+      const { target } = fakeWorker();
+      const forbid: WorkerTarget = {
+        baseUrl: base,
+        fetch: async (input, init) =>
+          new Headers(init?.headers).has("origin")
+            ? new Response("{}", { status: 403 })
+            : (target.fetch ?? fetch)(input, init),
+      };
+      await expect(workerChecks.adminRefusesBadKeys(forbid, key)).resolves.toBeUndefined();
+    });
+    it("refuse a Worker address that isn't HTTPS and never follow a redirect", async () => {
+      const { target } = fakeWorker();
+      await expect(
+        workerChecks.adminRefusesBadKeys({ ...target, baseUrl: "http://hlt.example" }, key),
+      ).rejects.toThrow(/not HTTPS/);
+      let redirect: RequestInit["redirect"];
+      await workerChecks.smoke({
+        baseUrl: base,
+        fetch: async (_input, init) => {
+          redirect = init?.redirect;
+          return new Response("ok");
+        },
+      });
+      expect(redirect).toBe("error");
     });
     it("fail when a request with an Origin gets 200", async () => {
       const { target } = fakeWorker();
