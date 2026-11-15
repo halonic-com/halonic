@@ -96,6 +96,40 @@ verifies("workflows.start.start-run", () => {
     expect(page.querySelector("aside[aria-label='Run 01jd8q']")).not.toBeNull();
   });
 
+  it("says it is waiting in the dock until the runs list the new run", async () => {
+    const runs = memoryRuns();
+    const { page } = await open(async () => ({ runId: "run_mfx3k2a1_01jd8q" }), runs);
+
+    await click(runButton(page));
+    await click(buttonNamed(page, "Start run"));
+
+    expect(page.textContent).toContain("Run started. Waiting for it to appear…");
+    expect(page.querySelector("aside[aria-label='Run 01jd8q']")).toBeNull();
+    await act(async () => {
+      runs.change([runSummary({ status: "running", state: "draft" })]);
+    });
+    expect(page.textContent).not.toContain("Waiting for it to appear");
+    expect(page.querySelector("aside[aria-label='Run 01jd8q']")).not.toBeNull();
+  });
+
+  it("closes the dock with the strip, so it never waits for a run that is already listed", async () => {
+    const runs = memoryRuns();
+    const { page } = await open(async () => ({ runId: "run_mfx3k2a1_01jd8q" }), runs);
+
+    await click(runButton(page));
+    await click(buttonNamed(page, "Start run"));
+    await act(async () => {
+      runs.change([runSummary({ status: "running", state: "draft" })]);
+    });
+    await click(
+      page.querySelector<HTMLButtonElement>("button[aria-label='Stop showing this run']") ??
+        undefined,
+    );
+
+    expect(page.textContent).not.toContain("Waiting for it to appear");
+    expect(page.querySelector("aside[aria-label='Run 01jd8q']")).toBeNull();
+  });
+
   it("says how a failed run ended and rings its step with Failed", async () => {
     const runs = memoryRuns([
       runSummary({
