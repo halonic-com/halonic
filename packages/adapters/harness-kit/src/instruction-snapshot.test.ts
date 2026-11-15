@@ -83,6 +83,15 @@ verifies("harness-kit.instruction-snapshot", () => {
       });
     });
 
+    it("lists a dropped file named like an object method as removed", async () => {
+      const trusted = await pinInstructions([{ name: "constructor", text: "x" }]);
+      const answer = instructionTrust(trusted, await pinInstructions([agents]));
+      expect(answer).toMatchObject({
+        kind: "ask",
+        changes: { removed: ["constructor"] },
+      });
+    });
+
     it("trusts the same set", async () => {
       const pin = await pinInstructions([agents, skill]);
       expect(instructionTrust(pin, pin)).toEqual({ kind: "trusted" });

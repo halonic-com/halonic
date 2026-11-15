@@ -103,11 +103,12 @@ export function instructionTrust(
   const names = (pin: Readonly<Record<string, string>>) => Object.keys(pin);
   // `hasOwn`, because a file may be named `constructor` or `toString`.
   const had = (name: string) => Object.hasOwn(before, name);
+  const has = (name: string) => Object.hasOwn(current.files, name);
   return {
     kind: "ask",
     changes: {
       added: names(current.files).filter((name) => !had(name)),
-      removed: names(before).filter((name) => !(name in current.files)),
+      removed: names(before).filter((name) => !has(name)),
       changed: names(current.files).filter(
         (name) => had(name) && before[name] !== current.files[name],
       ),
