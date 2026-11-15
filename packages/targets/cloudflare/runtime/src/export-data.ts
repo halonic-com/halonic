@@ -64,14 +64,48 @@ function refuseSecrets(path: string, text: string): void {
   if (shape !== undefined) throw new ExportSecretError(path, shape);
 }
 
-const strictDecoder = new TextDecoder("utf-8", { fatal: true });
+/** How many bytes of a blob are decoded and scanned at a time, so the text never grows with the blob. */
+const scanChunkBytes = 1024 * 1024;
 
-/** The bytes as text, or `undefined` when they aren't valid UTF-8, so a binary blob is left unscanned. */
-function textOf(bytes: Uint8Array): string | undefined {
+/**
+ * How much of a key-shaped run a chunk hands on to the next one. A key is a
+ * run of letters, digits, `-` and `_`, so a run that reaches the end of a chunk
+ * is scanned again with the start of the next. No real key is this long.
+ */
+const maxCarriedRunLength = 4096;
+
+const trailingKeyRun = /[A-Za-z0-9_-]*$/;
+
+/** The end of the text that may be the start of a key the next chunk finishes. */
+function carriedTail(text: string): string {
+  const tail = text.slice(-maxCarriedRunLength);
+  return trailingKeyRun.exec(tail)?.[0] ?? "";
+}
+
+/**
+ * Scans a blob that is text for secrets, a chunk at a time, so the Worker
+ * holds the bytes and one chunk of text, not the whole blob twice over. A blob
+ * that isn't valid UTF-8 is bytes rather than text: scanning stops at the
+ * first chunk that doesn't decode, and what came before it has been scanned.
+ */
+export function refuseSecretsInBlob(
+  path: string,
+  bytes: Uint8Array,
+  chunkBytes: number = scanChunkBytes,
+): void {
+  const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
+  let carried = "";
   try {
-    return strictDecoder.decode(bytes);
-  } catch {
-    return undefined;
+    for (let start = 0; start < bytes.byteLength; start += chunkBytes) {
+      const chunk = bytes.subarray(start, start + chunkBytes);
+      const text = carried + decoder.decode(chunk, { stream: true });
+      refuseSecrets(path, text);
+      carried = carriedTail(text);
+    }
+    decoder.decode();
+  } catch (error) {
+    // A fatal decoder throws a TypeError for bytes that aren't UTF-8; a secret is not one.
+    if (!(error instanceof TypeError)) throw error;
   }
 }
 
@@ -115,8 +149,7 @@ async function listFiles(source: ExportSource): Promise<ExportFile[]> {
       path,
       async read() {
         const bytes = await source.blobs.get(hash);
-        const text = bytes === null ? undefined : textOf(bytes);
-        if (text !== undefined) refuseSecrets(path, text);
+        if (bytes !== null) refuseSecretsInBlob(path, bytes);
         return bytes;
       },
     });

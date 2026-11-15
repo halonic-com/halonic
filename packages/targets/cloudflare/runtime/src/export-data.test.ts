@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { answerAdmin } from "./admin.ts";
 import { adminRoutesOf } from "./admin-routes.ts";
 import type { RuntimeEnv } from "./env.ts";
-import type { ExportSource } from "./export-data.ts";
+import { ExportSecretError, type ExportSource, refuseSecretsInBlob } from "./export-data.ts";
 
 const host = "halonic.example.com";
 const key = ["one", "job", "admin", "key", "for", "export", "tests"].join("-");
@@ -166,6 +166,50 @@ verifies("runtime.export-data", () => {
       // Not valid UTF-8, so it is bytes rather than text.
       const binary = new Uint8Array([0xff, 0xfe, ...new TextEncoder().encode(keyShapedValue)]);
       expect((await get("/admin/export", sourceWith("hello", binary))).status).toBe(200);
+    });
+
+    describe("a text blob scanned in chunks", () => {
+      const encode = (text: string) => new TextEncoder().encode(text);
+      const scan = (bytes: Uint8Array, chunkBytes?: number) =>
+        refuseSecretsInBlob("blobs/00/x", bytes, chunkBytes);
+
+      it("finds a key that spans a chunk boundary, at every offset", () => {
+        const chunkBytes = 64;
+        for (let offset = 0; offset <= keyShapedValue.length; offset += 1) {
+          const bytes = encode(`${" ".repeat(chunkBytes - offset)}${keyShapedValue} end`);
+          expect(() => scan(bytes, chunkBytes), `offset ${offset}`).toThrow(ExportSecretError);
+        }
+      });
+
+      it("finds a key that spans the default chunk boundary of a large blob", () => {
+        const oneMiB = 1024 * 1024;
+        const before = "a ".repeat(oneMiB / 2 - 5);
+        expect(() => scan(encode(`${before}${keyShapedValue} end`))).toThrow(ExportSecretError);
+      });
+
+      it("finds a key whose body is longer than a chunk", () => {
+        const body = "a".repeat(200);
+        expect(() => scan(encode(`x ${keyShapedValue}${body}`), 16)).toThrow(ExportSecretError);
+      });
+
+      it("does not count a word that ends a chunk and continues a longer one", () => {
+        expect(() => scan(encode(`task-${keyShapedValue} end`), 8)).not.toThrow();
+      });
+
+      it("decodes a character split by a chunk boundary", () => {
+        const bytes = encode(`\u00e9\u4e16 ${keyShapedValue}`);
+        for (let chunkBytes = 1; chunkBytes < 8; chunkBytes += 1) {
+          expect(() => scan(bytes, chunkBytes)).toThrow(ExportSecretError);
+        }
+      });
+
+      it("stops at the first chunk that isn't UTF-8, keeping what it already scanned", () => {
+        const binary = new Uint8Array([0xff, 0xfe]);
+        const keyFirst = new Uint8Array([...encode(keyShapedValue), ...binary]);
+        expect(() => scan(keyFirst, 8)).toThrow(ExportSecretError);
+        const binaryFirst = new Uint8Array([...binary, ...encode(keyShapedValue)]);
+        expect(() => scan(binaryFirst, 8)).not.toThrow();
+      });
     });
   });
 });
