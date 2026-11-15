@@ -3,6 +3,7 @@
 - Task: HAL-9757
 - Approval: Liam decided on HAL-9757 (https://paperclip.halonic.com/HAL/issues/HAL-9757) to replace the Studio's copy with one shared parser; Julian reviewed it on HAL-10197. A team decision with no board card (HAL-2282 rule), Liam signs this note as the CTO.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:XEKxGV5I2W78+vd8t5NBX3jjEy4MJkJxCIq6ckz7x8OcEb9GKdVMy38chwk2KjXWV/XtFFT/CeRrM3ISwJYqCg==
 
 ## What changes
 
