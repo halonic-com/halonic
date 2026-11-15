@@ -26,6 +26,7 @@ import { useSettingsOpening } from "../settings/settings-opening.ts";
 import type { Shell } from "../shell.ts";
 import type { WorkspaceSwitcherProps } from "../sidebar/workspace-switcher.tsx";
 import { usePageHeadingFocus } from "../tabs/history-moves.ts";
+import { openLocation } from "../tabs/open-location.ts";
 import { TabPages } from "../tabs/tab-pages.tsx";
 import type { TabLocation } from "../tabs/tab-set.ts";
 import { useWindowKeys } from "../tabs/use-window-keys.ts";
@@ -158,12 +159,17 @@ export function StudioWindow(props: StudioWindowProps) {
         focusNewPage();
       }
     : (location) => phone.open(location);
+  const openItemInNewTab = useRef<(location: TabLocation) => void>(phone.open);
+  openItemInNewTab.current = desktop
+    ? (location) => openLocation(tabs, announcer, location, true)
+    : (location) => phone.open(location);
   const contextFor = useCallback(
     (featureId: string): WorkspaceContext => ({
       ...shell.services.contextFor(featureId, workspace.services),
       openPlace: (place) => openPlaceHere.current(place),
       badges: shell.badges,
       openItem: (item) => openHere.current(locationOfItem(item)),
+      openItemInNewTab: (item) => openItemInNewTab.current(locationOfItem(item)),
       openSettings,
       settingsSections,
       runCommand: (commandId) => {

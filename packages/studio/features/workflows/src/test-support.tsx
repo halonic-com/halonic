@@ -54,6 +54,7 @@ export function memoryHost(
   let listings = initial;
   const listeners = new Set<() => void>();
   const created: { name: string; hubId: string }[] = [];
+  const madeListings: WorkflowListing[] = [];
   const host: WorkflowsHost = {
     hubs: () => hubs,
     list: async () => listings,
@@ -62,12 +63,16 @@ export function memoryHost(
       if (view === undefined) throw new Error("This workflow isn't there.");
       return view;
     },
+    nameOf: (ref) =>
+      [...listings, ...madeListings].find((each) => each.hubId === ref.hubId && each.id === ref.id)
+        ?.name,
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
     create: async (newWorkflow) => {
       created.push(newWorkflow);
+      madeListings.push(listing(newWorkflow.hubId, "made", newWorkflow.name));
       return { hubId: newWorkflow.hubId, id: "made" } satisfies WorkflowRef;
     },
   };

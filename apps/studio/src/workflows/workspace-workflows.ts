@@ -61,6 +61,8 @@ function newWorkflowText(id: string, name: string): string {
 export class WorkspaceWorkflows implements WorkflowsHost {
   readonly #parts: WorkspaceWorkflowsParts;
   #hubs: readonly WorkflowHub[] = [];
+  /** The names of the workflows read or made so far, by hub and id, for {@link WorkspaceWorkflows.nameOf}. */
+  readonly #names = new Map<string, string>();
 
   constructor(parts: WorkspaceWorkflowsParts) {
     this.#parts = parts;
@@ -71,9 +73,13 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     return this.#hubs;
   }
 
+  nameOf({ hubId, id }: WorkflowRef): string | undefined {
+    return this.#names.get(`${hubId}/${id}`);
+  }
+
   async list(): Promise<readonly WorkflowListing[]> {
     const [workspace, runs] = await Promise.all([this.#load(), this.#parts.runs.list()]);
-    return filesOf(workspace, "workflow").flatMap((file) => {
+    const listings = filesOf(workspace, "workflow").flatMap((file) => {
       if (file.hub === null) return [];
       const issues = workspace.issues.filter((issue) => issue.file === file.path);
       const own = runs.filter(
@@ -108,6 +114,8 @@ export class WorkspaceWorkflows implements WorkflowsHost {
         },
       ];
     });
+    for (const { hubId, id, name } of listings) this.#names.set(`${hubId}/${id}`, name);
+    return listings;
   }
 
   /** Reads one workflow from its file, with unsaved changes applied; throws when the hub has no such workflow. */
@@ -118,6 +126,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     );
     if (file === undefined) throw new Error(`The hub "${hubId}" has no workflow "${id}".`);
     const { value } = file;
+    this.#names.set(`${hubId}/${id}`, value.name);
     return {
       hubId,
       id,
@@ -157,6 +166,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     this.#parts.files.change(`Created workflow ${name}`, {
       [`${folder}/${id}${workflowSuffix}`]: newWorkflowText(id, name),
     });
+    this.#names.set(`${hubId}/${id}`, name);
     return { hubId, id };
   }
 

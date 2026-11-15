@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -13,6 +14,7 @@ import {
   typeInto,
   unmount,
 } from "../test-support.tsx";
+import { requestNewWorkflow } from "./new-request.ts";
 import { WorkflowsPage, WorkflowsView } from "./workflows-page.tsx";
 
 beforeEach(openDialogsInJsdom);
@@ -137,10 +139,105 @@ verifies("workflows.list.rows-and-states", () => {
     const page = await show(<WorkflowsView host={{ ...host, list }} />);
 
     expect(page.textContent).toContain("Couldn't load workflows");
-    expect(page.textContent).toContain("The disk can't be read.");
+    expect(page.textContent).toContain("The engine isn't answering. It may still be starting.");
+    expect(page.textContent).not.toContain("The disk can't be read");
 
     await act(async () => buttonNamed(page, "Try again")?.click());
     expect(page.textContent).toContain("Mail triage");
+  });
+
+  it("words the failure for the phone's host", async () => {
+    const { host } = memoryHost(hubs, workflows);
+    const page = await show(
+      <WorkflowsView
+        host={{ ...host, list: () => Promise.reject(new Error("x")) }}
+        engine={engineWords.phone}
+      />,
+    );
+
+    expect(page.textContent).toContain("Halonic on your computer isn't answering.");
+  });
+
+  it("shows the skeleton while Try again reads after a first failure", async () => {
+    const { host } = memoryHost(hubs, workflows);
+    const list = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("x"))
+      .mockReturnValue(new Promise(() => undefined));
+    const page = await show(<WorkflowsView host={{ ...host, list }} />);
+
+    await act(async () => buttonNamed(page, "Try again")?.click());
+
+    expect(page.textContent).not.toContain("Couldn't load workflows");
+    expect(page.querySelector('[aria-busy="true"]')).not.toBeNull();
+  });
+
+  it("keeps the rows and adds a line with Try again when a refresh fails", async () => {
+    const { host, change } = memoryHost(hubs, workflows);
+    let failing = false;
+    const list = () => (failing ? Promise.reject(new Error("x")) : host.list());
+    const page = await show(<WorkflowsView host={{ ...host, list }} />);
+
+    failing = true;
+    await act(async () => change(workflows));
+
+    expect(page.textContent).toContain("Mail triage");
+    expect(page.textContent).not.toContain("Couldn't load workflows");
+    expect(page.textContent).toContain("The engine isn't answering. Showing what it said last.");
+
+    failing = false;
+    await act(async () => buttonNamed(page, "Try again")?.click());
+    expect(page.textContent).not.toContain("Showing what it said last");
+    expect(page.textContent).toContain("Mail triage");
+  });
+
+  it("hides the chip glyphs from screen readers", async () => {
+    const rows = [listing("acme", "bad", "Bad one", { problems: { errors: 1, warnings: 1 } })];
+    const page = await show(<WorkflowsView host={memoryHost(hubs, rows).host} />);
+
+    const glyphs = [...page.querySelectorAll('[aria-hidden="true"]')].map(
+      (each) => each.textContent,
+    );
+    expect(glyphs.some((text) => text?.includes("✕"))).toBe(true);
+  });
+
+  it("opens a Ctrl-clicked row in a new tab, else in this one", async () => {
+    const open = vi.fn();
+    const openInNewTab = vi.fn();
+    const page = await show(
+      <WorkflowsView
+        host={memoryHost(hubs, workflows).host}
+        open={open}
+        openInNewTab={openInNewTab}
+      />,
+    );
+    const row = [...page.querySelectorAll('[role="gridcell"]')].find((each) =>
+      each.textContent?.includes("Mail triage"),
+    ) as HTMLElement;
+
+    await act(async () =>
+      row.dispatchEvent(new MouseEvent("click", { bubbles: true, ctrlKey: true })),
+    );
+
+    expect(openInNewTab).toHaveBeenCalledWith(expect.objectContaining({ id: "mail-triage" }));
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it("opens New workflow when Ctrl K asks for it, even before the page is drawn", async () => {
+    requestNewWorkflow();
+    await show(<WorkflowsView host={memoryHost(hubs, workflows).host} />);
+
+    expect(document.querySelector("dialog")).not.toBeNull();
+  });
+
+  it("drops Ctrl K's New workflow when there is no hub to put one in", async () => {
+    requestNewWorkflow();
+    await show(<WorkflowsView host={memoryHost([], workflows).host} />);
+    expect(document.querySelector("dialog")).toBeNull();
+
+    unmount();
+    await show(<WorkflowsView host={memoryHost(hubs, workflows).host} />);
+    expect(document.querySelector("dialog")).toBeNull();
   });
 
   it("reads again when the host says the workflows changed", async () => {

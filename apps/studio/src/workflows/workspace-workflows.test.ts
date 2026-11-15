@@ -118,6 +118,18 @@ verifies("studio.workspace-workflows", () => {
     expect(created).toMatchObject({ name: "Invoice intake", problems: { errors: 0, warnings: 1 } });
   });
 
+  it("knows a workflow's name once it has read or made it, for the tab and the page title", async () => {
+    const { host } = setup();
+    expect(host.nameOf({ hubId: "acme", id: "invoice-intake" })).toBeUndefined();
+
+    await host.create({ name: "Invoice intake", hubId: "acme" });
+    expect(host.nameOf({ hubId: "acme", id: "invoice-intake" })).toBe("Invoice intake");
+
+    const [first] = await host.list();
+    if (first === undefined) throw new Error("no workflow listed");
+    expect(host.nameOf(first)).toBe(first.name);
+  });
+
   it("takes -2 when the hub has the id, and writes the name as typed", async () => {
     const { host, store } = setup();
 

@@ -10,6 +10,8 @@ export const listWords = {
   chipsLabel: "Hub",
   allChip: "All",
   loadFailedTitle: "Couldn't load workflows",
+  tryAgain: "Try again",
+  tryingAgain: "Trying again…",
   nothingYetTitle: "No workflows yet",
   emptyHub: (hubName: string) => `No workflows in ${hubName} yet.`,
   noMatch: (query: string) => `No workflows match "${query}".`,
@@ -72,3 +74,10 @@ export function failureReason(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   return message.endsWith(".") ? message : `${message}.`;
 }
+
+/** The search and command words (microcopy 9.1). */
+export const searchWords = {
+  title: "Workflows",
+  detail: (hubName: string) => `Workflow · ${hubName}`,
+  newCommand: "New workflow",
+} as const;

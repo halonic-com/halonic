@@ -41,6 +41,13 @@ export interface WorkspaceContext {
    */
   readonly openItem?: (item: ItemRef) => void;
   /**
+   * Opens an item in a new tab next to the active one, as a Ctrl-click, a middle click or Ctrl
+   * Enter on a row does, and says so to a screen reader; an item another tab shows already stays
+   * where it is. On a phone, which has no tabs, it opens the page as `openItem` does. The window
+   * gives it to the views it draws; a context built without a window has none.
+   */
+  readonly openItemInNewTab?: (item: ItemRef) => void;
+  /**
    * Opens Settings (`settings.open`) on the section asked for, such as `agent-sandbox` from the
    * Harness page's **Open Settings ›**, else on the one `settingsSectionToOpen` picks. The window
    * gives it to the views and commands it draws; a context built without a window has none.
