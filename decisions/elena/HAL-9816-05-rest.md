@@ -12,6 +12,11 @@ check the same thing once with `expect`. Every test checks exactly what it check
 `expect` count of each requirement goes down to the lowest number a run could ever have reached,
 and then stays the same on every run.
 
+The waits now poll every 10 ms (`vi.waitFor` polled every 50 ms) and give up after 4 s, or just
+under `HALONIC_TEST_TIMEOUT` when it is set (`vi.waitFor` gave up after 1 s). One wait in the
+agent-host attack test needs no `expect` after it, because its `waitUntil` already proves what the
+removed `expect` said (the 4 s ceiling stays), and the test checks the session close right after.
+
 ## Why
 
 `vi.waitFor` runs its callback again on every try, so every retry counted as one more `expect`.

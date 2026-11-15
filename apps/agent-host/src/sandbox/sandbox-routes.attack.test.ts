@@ -450,12 +450,8 @@ describe("sandbox routes, attacked by a caller with the token", () => {
     await sandbox.openCalled.promise;
     abort.abort();
     await expect(answer).rejects.toThrow();
-    // The server sees the closed connection before the session arrives. The ceiling stays under
-    // the test timeout, so a close the server never sees fails here and not on "Test timed out".
-    await waitUntil("openConnectionsClosed to be 1", () => openConnectionsClosed === 1, {
-      timeout: 4_000,
-    });
-    expect(openConnectionsClosed).toBe(1);
+    // The server sees the hang-up before the session arrives. The ceiling stays under the test timeout.
+    await waitUntil("the hang-up", () => openConnectionsClosed === 1, { timeout: 4_000 });
     release.settle();
     await eventually(() => sandbox.opened[0]?.closeCount === 1);
     // Nobody can name it: the table holds nothing to close at stop.
