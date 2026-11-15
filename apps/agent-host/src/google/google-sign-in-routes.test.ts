@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { workspaceFolders } from "@halonicjs/profile";
+import { type ProfileFolder, workspaceFolders } from "@halonicjs/profile";
 import { encodeBase64url } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -66,7 +66,11 @@ afterEach(async () => {
   await rm(folder, { recursive: true, force: true });
 });
 
-const profile = () => ({ platform: "linux", root: join(folder, "profile") }) as const;
+/** The profile of a temporary folder, with the system the test runs on: `acme`'s path must be absolute there. */
+const profile = (): ProfileFolder => ({
+  platform: process.platform === "win32" ? "windows" : "linux",
+  root: join(folder, "profile"),
+});
 
 /** The routes over the real stores of a temporary profile that serves `acme`. */
 async function started() {
