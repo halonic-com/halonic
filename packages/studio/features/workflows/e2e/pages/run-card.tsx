@@ -41,7 +41,10 @@ const base: RunSummary = {
   updatedAt: at(2),
 };
 
-const states = {
+const states: Record<
+  string,
+  { readonly chip: RunRow["chip"]; readonly line: string; readonly summary: RunSummary }
+> = {
   finished: {
     chip: { word: "Done", tone: "success", dot: false },
     line: "Finished in 2 min",
@@ -67,7 +70,7 @@ const states = {
       error: "The model didn't answer",
     },
   },
-} as const;
+};
 
 const source = {
   log: async () => [],
@@ -78,10 +81,10 @@ const source = {
 /** The run card for the state in the page's `state` query parameter, docked at the right as in the app. */
 function Card() {
   const name = new URLSearchParams(location.search).get("state") ?? "finished";
-  if (!(name in states)) {
+  const state = states[name];
+  if (state === undefined) {
     throw new Error(`The run card page has no state "${name}".`);
   }
-  const state = states[name as keyof typeof states];
   const row = {
     id: base.id,
     hubId: "acme",
