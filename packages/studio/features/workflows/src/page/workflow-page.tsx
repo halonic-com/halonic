@@ -1,3 +1,4 @@
+import type { RunRow } from "@halonicjs/studio-feature-runs/api";
 import { type RunsSource, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import {
   Button,
@@ -12,7 +13,7 @@ import {
   useTabIds,
 } from "@halonicjs/studio-kit";
 import { engineWordsOf, type ItemViewProps } from "@halonicjs/studio-shell";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { type WorkflowRef, type WorkflowsHost, WorkflowsHostService } from "../api.ts";
 import type { View } from "../canvas/geometry.ts";
 import { Configuration } from "../configuration/configuration-page.tsx";
@@ -23,7 +24,11 @@ import { RunCard } from "../runs/run-card.tsx";
 import { realRunsOf, runCount, runRowsOf } from "../runs/runs-model.ts";
 import { RunsView } from "../runs/runs-view.tsx";
 import { runsWords } from "../runs/runs-words.ts";
+import type { SaveAsTestProps } from "../runs/save-as-test.tsx";
+import { StepInRunCard } from "../runs/step-card.tsx";
+import { stepInRun } from "../runs/step-in-run.ts";
 import { type RunsLoad, useRuns } from "../runs/use-runs.ts";
+import { useSaveAsTest } from "../runs/use-save-as-test.ts";
 import { type ShownRun, shownRun } from "../start/run-strip.ts";
 import { StartRunCard } from "../start/start-card.tsx";
 import { startWords } from "../start/start-words.ts";
@@ -96,6 +101,14 @@ export function WorkflowScreen({
   // The card docked at the right: the start form, then the run it started (C18, C25).
   const [dock, setDock] = useState<Dock>();
   const [shownId, setShownId] = useState<string | undefined>();
+  // The step picked on the canvas, which says what happened to it while a run is shown (4.5).
+  const [pickedStep, setPickedStep] = useState<string | undefined>();
+  // The test just made from a run: Configuration opens on Tests with it picked.
+  // `n` counts the tests made, so each one remounts Configuration and the Tests page reads again.
+  const [madeTest, setMadeTest] = useState<
+    { readonly name: string; readonly n: number } | undefined
+  >();
+  const testsMade = useRef(0);
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
   const errors =
@@ -110,6 +123,12 @@ export function WorkflowScreen({
   const shown = useShownRun(runsRead.load, { hubId, id }, runs, shownId);
   const strip = shown?.line;
   const { startRun } = host;
+  const saveAsTest = useSaveAsTest(host, { hubId, id }, (testName) => {
+    testsMade.current += 1;
+    setMadeTest({ name: testName, n: testsMade.current });
+    setDock(undefined);
+    setView("configuration");
+  });
   return (
     <div className="flex size-full min-h-0 flex-col">
       <header
@@ -134,6 +153,8 @@ export function WorkflowScreen({
           onSelect={(next) => {
             // A direct tab click must not re-pick the card a problem link opened.
             setOpenStep(undefined);
+            // The test just made was shown once; coming back opens Configuration on General.
+            if (next !== view) setMadeTest(undefined);
             setView(next);
           }}
           ids={ids}
@@ -168,14 +189,23 @@ export function WorkflowScreen({
         >
           {view === "configuration" && (
             <Configuration
+              key={madeTest?.n ?? 0}
               name={name}
               load={settings.load}
               retry={settings.retry}
               tests={
-                <TestsPage host={host} workflow={{ hubId, id }} name={name} openRun={openRun} />
+                <TestsPage
+                  host={host}
+                  workflow={{ hubId, id }}
+                  name={name}
+                  openRun={openRun}
+                  pickName={madeTest?.name}
+                />
               }
+              startOn={madeTest === undefined ? undefined : "tests"}
               onOpenStep={(stepId) => {
                 setOpenStep(stepId);
+                setMadeTest(undefined);
                 setView("flow");
               }}
             />
@@ -188,6 +218,7 @@ export function WorkflowScreen({
               workflow={{ hubId, id }}
               openRun={openRun}
               seeAll={seeAllRuns}
+              saveAsTest={saveAsTest}
             />
           )}
           {view === "flow" && (
@@ -201,9 +232,11 @@ export function WorkflowScreen({
               strip={strip}
               onClearStrip={() => {
                 setShownId(undefined);
+                setPickedStep(undefined);
                 // A run dock goes with the strip, or it would wait for a run that is already listed.
                 setDock((now) => (typeof now === "object" ? undefined : now));
               }}
+              onSelectStep={setPickedStep}
               kept={kept}
               onView={keep}
             />
@@ -216,8 +249,15 @@ export function WorkflowScreen({
           notAnswering={notAnswering}
           shown={shown}
           onDock={setDock}
-          onStarted={setShownId}
+          onStarted={(runId) => {
+            setShownId(runId);
+            // A step picked before the run isn't about this run: its card would hide the run's.
+            setPickedStep(undefined);
+          }}
           openRun={openRun}
+          saveAsTest={saveAsTest}
+          pickedStep={view === "flow" ? pickedStep : undefined}
+          onClosePickedStep={() => setPickedStep(undefined)}
         />
       </div>
     </div>
@@ -234,6 +274,7 @@ interface FlowViewProps {
   /** The shown run's strip and the step it failed in (D8); absent when no run is shown. */
   readonly strip: ShownRun | undefined;
   readonly onClearStrip: () => void;
+  readonly onSelectStep: (stepId: string) => void;
   readonly kept: { readonly of: string; readonly view: View } | undefined;
   readonly onView: (next: View) => void;
 }
@@ -248,6 +289,7 @@ function FlowView({
   openStep,
   strip,
   onClearStrip,
+  onSelectStep,
   kept,
   onView,
 }: FlowViewProps) {
@@ -274,6 +316,7 @@ function FlowView({
           failedStep={strip?.failedStep}
           saved={kept?.of === workflowKey ? kept.view : undefined}
           onView={onView}
+          onSelectStep={onSelectStep}
         />
       )}
       {load.kind === "failed" && (
@@ -363,6 +406,10 @@ interface RunDockProps {
   readonly onDock: (next: Dock) => void;
   readonly onStarted: (runId: string) => void;
   readonly openRun: ((runId: string) => void) | undefined;
+  readonly saveAsTest: (row: RunRow) => SaveAsTestProps | undefined;
+  /** The step picked on the canvas; while a run is shown its card replaces the run's. */
+  readonly pickedStep: string | undefined;
+  readonly onClosePickedStep: () => void;
 }
 
 /** The card docked at the right: the start form, then the simple card of the run it started. */
@@ -375,8 +422,22 @@ function RunDock({
   onDock,
   onStarted,
   openRun,
+  saveAsTest,
+  pickedStep,
+  onClosePickedStep,
 }: RunDockProps) {
   const { startRun } = host;
+  if (shown && pickedStep !== undefined && dock !== "start") {
+    return (
+      <StepInRunCard
+        key={pickedStep}
+        stepId={pickedStep}
+        inRun={stepInRun(pickedStep, shown.row, shown.run)}
+        onClose={onClosePickedStep}
+        onSeeInAndOut={openRun && (() => openRun(shown.row.id))}
+      />
+    );
+  }
   if (dock === "start" && startRun) {
     return (
       <StartRunCard
@@ -417,6 +478,7 @@ function RunDock({
         run={shown.run}
         onClose={() => onDock(undefined)}
         onOpenLog={openRun && (() => openRun(shown.row.id))}
+        saveAsTest={saveAsTest(shown.row)}
       />
     );
   }

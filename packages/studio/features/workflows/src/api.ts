@@ -185,6 +185,13 @@ export interface WorkflowsHost {
    */
   startRun?(ref: WorkflowRef, input: Record<string, unknown>): Promise<{ readonly runId: string }>;
   /**
+   * Saves the real run `runId` as a test case called `name` in the workflow's test file: the run's
+   * input, and the step it ended in as the step the case expects. Absent while the app can't write
+   * test cases, so the run card shows no **Save as test**. Rejects with the reason it couldn't be
+   * written, and rejects a name another test case already has.
+   */
+  saveRunAsTest?(ref: WorkflowRef, runId: string, name: string): Promise<void>;
+  /**
    * The name of a workflow the host has read or made, for a tab or a page title, or `undefined`
    * before it has read it. Sync, because a tab is named the moment it opens.
    */

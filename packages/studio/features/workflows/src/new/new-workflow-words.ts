@@ -10,5 +10,6 @@ export const newWorkflowWords = {
   startsWith: "It starts with a step “start” that leads to “done”.",
   file: (path: string) => `File: ${path}`,
   folder: (path: string) => `Folder: ${path}`,
+  describe: "Describe it to the Assistant instead ›",
   createFailed: (reason: string) => `Couldn't create the workflow: ${reason}.`,
 } as const;

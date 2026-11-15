@@ -12,6 +12,8 @@ export interface ConfigurationProps {
   readonly name: string;
   readonly load: Load<WorkflowConfiguration>;
   readonly retry: () => void;
+  /** The page that starts picked; General when absent. */
+  readonly startOn?: ConfigurationPage | undefined;
   /** The Tests page, which loads its own cases. */
   readonly tests: ReactNode;
   /** Called when a problem's step is picked; the page goes to Flow with that card open. */
@@ -23,8 +25,15 @@ export interface ConfigurationProps {
  * Request form, Tests, Problems) and the picked page beside it, in side-label rows. It is read-only until
  * the save model's fields land.
  */
-export function Configuration({ name, load, retry, tests, onOpenStep }: ConfigurationProps) {
-  const [page, setPage] = useState<ConfigurationPage>("general");
+export function Configuration({
+  name,
+  load,
+  retry,
+  tests,
+  startOn = "general",
+  onOpenStep,
+}: ConfigurationProps) {
+  const [page, setPage] = useState<ConfigurationPage>(startOn);
   const ids = useId();
   if (load.kind === "failed") {
     return (

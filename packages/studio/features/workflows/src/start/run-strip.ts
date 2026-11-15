@@ -11,7 +11,7 @@ export interface ShownRun {
 }
 
 /** The step the run is in, or ended in: the id of the last state it reached. */
-function stateOf(run: SourcedRun): string {
+export function stateOf(run: SourcedRun): string {
   const { summary } = run;
   return summary.approvals[0]?.state ?? summary.state ?? summary.statesVisited.at(-1) ?? "";
 }

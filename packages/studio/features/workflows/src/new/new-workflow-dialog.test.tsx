@@ -150,6 +150,24 @@ verifies("workflows.new.create", () => {
 
     expect(create).toHaveBeenCalledWith({ name: "Invoice intake", hubId: "beta" });
   });
+
+  it("shows no Describe link until the app can start the Assistant", async () => {
+    await show(dialog().node);
+
+    expect(body()).not.toContain("Describe it to the Assistant instead");
+  });
+
+  it("hands the typed name to the Assistant from the Describe link", async () => {
+    const onDescribe = vi.fn();
+    await show(dialog({ onDescribe }).node);
+    await typeInto(nameField(), "Invoice intake");
+
+    await act(async () =>
+      buttonNamed(document.body, "Describe it to the Assistant instead ›")?.click(),
+    );
+
+    expect(onDescribe).toHaveBeenCalledWith("Invoice intake");
+  });
 });
 
 it("names the folder alone while the name is empty", () => {

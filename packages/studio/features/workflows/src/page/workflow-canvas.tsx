@@ -24,6 +24,7 @@ export function WorkflowCanvas({
   failedStep,
   saved,
   onView,
+  onSelectStep,
 }: {
   readonly workflow: WorkflowView;
   /** The zoom and pan the canvas had when it was last shown; absent the first time. */
@@ -34,6 +35,8 @@ export function WorkflowCanvas({
   readonly selectedStep?: string | undefined;
   /** The step the shown run failed in, ringed with its Failed chip. */
   readonly failedStep?: string | undefined;
+  /** Told when a card is picked, so the page can dock what it has to say about the step. */
+  readonly onSelectStep?: ((stepId: string) => void) | undefined;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number } | undefined>(undefined);
@@ -114,7 +117,10 @@ export function WorkflowCanvas({
               selected={selected === step.id}
               failed={failedStep === step.id}
               focusOnMount={selectedStep === step.id}
-              onSelect={() => setSelected(step.id)}
+              onSelect={() => {
+                setSelected(step.id);
+                onSelectStep?.(step.id);
+              }}
             />
           );
         })}

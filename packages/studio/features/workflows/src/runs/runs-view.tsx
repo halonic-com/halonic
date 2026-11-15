@@ -5,6 +5,7 @@ import type { WorkflowRef } from "../api.ts";
 import { RunCard } from "./run-card.tsx";
 import { realRunsOf, runRowsOf, runSections } from "./runs-model.ts";
 import { runsWords as words } from "./runs-words.ts";
+import type { SaveAsTestProps } from "./save-as-test.tsx";
 import type { RunsLoad } from "./use-runs.ts";
 
 /** Props for {@link RunsView}. */
@@ -17,6 +18,8 @@ export interface RunsViewProps {
   readonly workflow: WorkflowRef;
   /** Opens a run's page, where its log is; absent where the app has no run page. */
   readonly openRun?: ((runId: string) => void) | undefined;
+  /** What a row's card needs for **Save as test**; absent where the host can't write test cases, and for a run still going. */
+  readonly saveAsTest?: ((row: RunRow) => SaveAsTestProps | undefined) | undefined;
   /** Opens the Runs list, which starts with Test runs off; absent where it can't be opened. */
   readonly seeAll?: (() => void) | undefined;
 }
@@ -25,7 +28,15 @@ export interface RunsViewProps {
  * The workflow's Runs view (`workflows.runs.runs-view`): real runs only, **Now** (running and waiting) then
  * **Earlier** (the 20 newest), **See all** under them, and a row's simple card docked at the right.
  */
-export function RunsView({ source, load, retry, workflow, openRun, seeAll }: RunsViewProps) {
+export function RunsView({
+  source,
+  load,
+  retry,
+  workflow,
+  openRun,
+  seeAll,
+  saveAsTest,
+}: RunsViewProps) {
   const [picked, setPicked] = useState<string | undefined>();
   const rowButtons = useRef(new Map<string, HTMLButtonElement>());
   const { hubId, id } = workflow;
@@ -133,6 +144,7 @@ export function RunsView({ source, load, retry, workflow, openRun, seeAll }: Run
           run={openedRun}
           onClose={closeCard}
           onOpenLog={openRun && (() => openRun(open.id))}
+          saveAsTest={saveAsTest?.(open)}
         />
       )}
     </div>

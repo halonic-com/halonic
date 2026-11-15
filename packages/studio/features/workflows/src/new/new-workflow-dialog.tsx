@@ -1,4 +1,12 @@
-import { Dialog, Field, InfoIcon, Input, Select, usePresentation } from "@halonicjs/studio-kit";
+import {
+  Button,
+  Dialog,
+  Field,
+  InfoIcon,
+  Input,
+  Select,
+  usePresentation,
+} from "@halonicjs/studio-kit";
 import { useRef, useState } from "react";
 import type { NewWorkflow, WorkflowHub, WorkflowRef } from "../api.ts";
 import { newWorkflowWords as words } from "./new-workflow-words.ts";
@@ -14,6 +22,12 @@ export interface NewWorkflowDialogProps {
   /** After the workflow is written: the caller opens it in its tab. */
   readonly onCreated: (ref: WorkflowRef) => void;
   readonly onCancel: () => void;
+  /**
+   * Closes the dialog and opens a Build chat in the Assistant with "Make a workflow …" typed in,
+   * given the name typed so far. Absent until the Assistant has landed, so the link isn't shown
+   * (no dead controls).
+   */
+  readonly onDescribe?: ((name: string) => void) | undefined;
   readonly returnFocus: () => HTMLElement | null;
 }
 
@@ -32,6 +46,7 @@ export function NewWorkflowDialog({
   create,
   onCreated,
   onCancel,
+  onDescribe,
   returnFocus,
 }: NewWorkflowDialogProps) {
   const [name, setName] = useState("");
@@ -113,6 +128,13 @@ export function NewWorkflowDialog({
           </span>
           {words.startsWith}
         </p>
+        {onDescribe && (
+          <div>
+            <Button variant="ghost" size="sm" onClick={() => onDescribe(name.trim())}>
+              {words.describe}
+            </Button>
+          </div>
+        )}
       </div>
     </Dialog>
   );
