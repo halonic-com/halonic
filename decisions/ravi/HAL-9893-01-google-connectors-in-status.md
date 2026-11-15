@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-9893 (the follow-up Liam set up on HAL-9773; the way to build it is his decision on HAL-9902)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FHhlqws6MISIRvOT6fMGE6f9TDfmnCO4F826rj7SGsgsDMZlZO0jPFV7JCg7djRupOjwvlRLQBzaw8FmA0uSBw==
 
 The requirement `studio.workspace-connector-status` said the desktop app leaves Google connectors out
 of the Library's connector status, because the app could not read their sign-in yet. It can now: the
