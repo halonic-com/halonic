@@ -23,13 +23,20 @@ export function SetupPane({
   answering,
   words = engineWords["desktop-app"],
   close,
+  focus,
 }: SetupPaneProps) {
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key !== "Escape" || event.defaultPrevented) return;
     event.preventDefault();
     close();
   };
-  const props: SetupViewProps = { item, answering, words, close };
+  const props: SetupViewProps = {
+    item,
+    answering,
+    words,
+    close,
+    focus,
+  };
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: Escape from anywhere in the item closes it

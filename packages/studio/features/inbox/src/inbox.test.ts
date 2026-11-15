@@ -223,3 +223,24 @@ describe("inboxFeature", () => {
     expect(workspace.get(InboxService).signal().value).toBe(1);
   });
 });
+
+verifies("inbox.secret-hold", () => {
+  it("opens a setup item with what it was asked to reach, once", () => {
+    const inbox = new Inbox(fakeRuns([]).runs);
+    inbox.openSetup("google", "gaccount_1", "secret");
+    expect(inbox.takeOpenFocus()).toBe("secret");
+    expect(inbox.takeOpenFocus()).toBeUndefined();
+    inbox.openSetup("google", "gaccount_1");
+    expect(inbox.takeOpenFocus()).toBeUndefined();
+  });
+
+  it("keeps a note aside in memory until it is taken, and drops it when the workspace closes", () => {
+    const inbox = new Inbox(fakeRuns([]).runs);
+    inbox.setAside("r1:call-1", "a note");
+    expect(inbox.takeAside("r1:call-1")).toBe("a note");
+    expect(inbox.takeAside("r1:call-1")).toBeUndefined();
+    inbox.setAside("r1:call-1", "another");
+    inbox.dispose();
+    expect(inbox.takeAside("r1:call-1")).toBeUndefined();
+  });
+});

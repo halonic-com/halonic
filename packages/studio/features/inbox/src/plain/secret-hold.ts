@@ -9,14 +9,6 @@ export interface SecretHold {
 
 const keptInRunLog = "Messages are kept in the run log.";
 
-/**
- * Whether the Google setup has a secret field to point to: step 6, the client ID and secret
- * (HAL-713). A line must not point at a field that isn't there, so until it lands the Google line
- * stops after the run log sentence (microcopy 10.2). Switch it on with step 6's body (HAL-713).
- */
-// TODO(HAL-713): turn this on when step 6 has its body.
-const GOOGLE_SECRET_FIELD_EXISTS = false;
-
 /** Where Studio runs: the Google setup and Providers can't be reached from a phone (10.4). */
 export interface SecretHoldWhere {
   readonly phone?: boolean;
@@ -26,9 +18,7 @@ export interface SecretHoldWhere {
 function lineFor(shape: SecretShape, where: SecretHoldWhere): string {
   const onComputer = where.phone === true ? " on your computer" : "";
   if (shape === "google-client-secret") {
-    const found = `This looks like a Google client secret. ${keptInRunLog}`;
-    if (!GOOGLE_SECRET_FIELD_EXISTS) return found;
-    return `${found} Put it in the secret field of the Google setup${onComputer} instead.`;
+    return `This looks like a Google client secret. ${keptInRunLog} Put it in the secret field of the Google setup${onComputer} instead.`;
   }
   return `This looks like a secret key. ${keptInRunLog} Put it in Providers${onComputer} instead.`;
 }

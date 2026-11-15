@@ -30,6 +30,7 @@ verifies("inbox.setup-items", () => {
         title: "Set up Google for x@example.com",
         progress: "Step 4 of 7 · Scopes",
         changedAt: "2026-11-10T10:00:00.000Z",
+        needsSecret: false,
       },
     ]);
   });

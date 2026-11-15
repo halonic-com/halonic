@@ -15,9 +15,10 @@ afterEach(() => {
 // Invented, shaped like the real thing: a prefix and random-looking characters.
 const googleSecret = `GOCSPX-${"aB3".repeat(8)}`;
 const providerKey = `sk-proj-${"Xy7".repeat(8)}`;
-const googleLine = "This looks like a Google client secret. Messages are kept in the run log.";
+const googleLine =
+  "This looks like a Google client secret. Messages are kept in the run log. Put it in the secret field of the Google setup instead.";
 
-function openDialog() {
+function openDialog(onGoToSecret?: (note: string) => void) {
   const sent: string[] = [];
   function Host() {
     const [note, setNote] = useState("");
@@ -28,6 +29,7 @@ function openDialog() {
         busy={false}
         error={undefined}
         onSend={(text) => sent.push(text)}
+        {...(onGoToSecret === undefined ? {} : { onGoToSecret })}
         onCancel={() => {}}
       />
     );
@@ -110,6 +112,33 @@ verifies("inbox.secret-hold", () => {
       expect(document.querySelector("dialog")?.textContent).toContain(
         "Put it in Providers instead.",
       );
+    });
+
+    it("offers Go to the secret field for a Google client secret and hands over the note", async () => {
+      const gone: string[] = [];
+      const sent = openDialog((note) => gone.push(note));
+      await type(`the secret is ${googleSecret}`);
+      await click("Send note");
+      await click("Go to the secret field");
+      expect(gone).toEqual([`the secret is ${googleSecret}`]);
+      expect(sent).toEqual([]);
+    });
+
+    it("offers Go to the secret field for a Google client secret but not for another key", async () => {
+      openDialog(() => {});
+      await type(providerKey);
+      await click("Send note");
+      expect(buttonNamed("Go to the secret field")).toBeUndefined();
+      await type(googleSecret);
+      await click("Send note");
+      expect(buttonNamed("Go to the secret field")).toBeDefined();
+    });
+
+    it("has no Go to the secret field without a place to go to", async () => {
+      openDialog();
+      await type(googleSecret);
+      await click("Send note");
+      expect(buttonNamed("Go to the secret field")).toBeUndefined();
     });
 
     it("sends a note that only names a prefix", async () => {

@@ -5,16 +5,19 @@ import {
   engineWordsOf,
   errorMessageFor,
   type PlaceViewProps,
+  type SidebarPlace,
 } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import { InboxService } from "../api.ts";
-import type { Inbox } from "../inbox.ts";
+import type { Inbox, SetupFocus } from "../inbox.ts";
 import type { InboxItem } from "../inbox-items.ts";
+import { secretTarget } from "../plain/secret-target.ts";
 import { ApprovalCard } from "./approval-card.tsx";
 import type { NextItem } from "./card-parts.tsx";
 import { countDetail, itemTitle, lateCount, rowFor } from "./inbox-row.tsx";
 import { SetupPane } from "./setup-pane.tsx";
+import { useOpenItem } from "./use-open-item.ts";
 import { WaitCard } from "./wait-card.tsx";
 
 const loadFailed = "Couldn't load the Inbox";
@@ -30,7 +33,13 @@ const nothingWaiting = {
 
 /** The Inbox place's page: the open workspace's Inbox, from `InboxService`. */
 export function InboxPage({ context }: PlaceViewProps) {
-  return <InboxView inbox={context.services.get(InboxService)} words={engineWordsOf(context)} />;
+  return (
+    <InboxView
+      inbox={context.services.get(InboxService)}
+      words={engineWordsOf(context)}
+      {...(context.openPlace === undefined ? {} : { openPlace: context.openPlace })}
+    />
+  );
 }
 
 /** Props for {@link InboxView}. */
@@ -43,6 +52,8 @@ export interface InboxViewProps {
    * and over the list when a later load fails (microcopy 10.1). The desktop app's by default.
    */
   readonly words?: EngineWords;
+  /** Opens a sidebar place, for a secret pasted when no account is there to take it: the Library. */
+  readonly openPlace?: (place: SidebarPlace) => void;
 }
 
 /**
@@ -66,34 +77,11 @@ export function InboxView({
   inbox,
   now = () => new Date(),
   words = engineWords["desktop-app"],
+  openPlace,
 }: InboxViewProps) {
   const subscribe = useCallback((listener: () => void) => inbox.subscribe(listener), [inbox]);
   const state = useSyncExternalStore(subscribe, () => inbox.state);
-  // The open item, kept here rather than looked up in the list: once you answer it, it leaves
-  // the list, but its card stays to say what you decided.
-  const [open, setOpen] = useState<InboxItem | null>(null);
-  // Where the open row was when last seen in the list: once it leaves, the item that moves into
-  // its place is the next one.
-  const openIndex = open === null ? -1 : state.items.findIndex((item) => item.key === open.key);
-  const openAt = useRef(-1);
-  useEffect(() => {
-    if (openIndex !== -1) openAt.current = openIndex;
-  }, [openIndex]);
-  // An open setup item follows its source's latest step, and keeps the last one once it's done.
-  useEffect(() => {
-    if (open?.kind !== "setup") return;
-    const latest = state.items.find((item) => item.key === open.key);
-    if (latest !== undefined && latest !== open) setOpen(latest);
-  }, [state.items, open]);
-  // Home's Needs you asks for an item before it opens the Inbox; take it now and on each change.
-  useEffect(() => {
-    const take = () => {
-      const asked = inbox.takeOpenRequest();
-      if (asked !== undefined) setOpen(asked);
-    };
-    take();
-    return inbox.subscribe(take);
-  }, [inbox]);
+  const { open, focus, openItem, openAt } = useOpenItem(inbox, state.items);
   const retry = () => void inbox.refresh();
   const list = useRef<HTMLDivElement>(null);
   // Not now: the pane empties and focus goes back to the row the item was open from.
@@ -102,7 +90,7 @@ export function InboxView({
       'tr[aria-current="true"] [role="gridcell"]',
     );
     // On a phone the list is hidden until the item closes, and a hidden row can't take focus.
-    flushSync(() => setOpen(null));
+    flushSync(() => openItem(null));
     row?.focus();
   };
   const failedFirst = !state.loaded && state.error !== undefined;
@@ -134,7 +122,7 @@ export function InboxView({
                 ...countDetail(state.items.length, lateCount(state.items, now())),
               }}
               rows={state.items.map((item) => rowFor(item, now()))}
-              onOpen={(key) => setOpen(state.items.find((item) => item.key === key) ?? null)}
+              onOpen={(key) => openItem(state.items.find((item) => item.key === key) ?? null)}
               {...(open === null ? {} : { current: open.key })}
               empty={
                 phone
@@ -167,7 +155,10 @@ export function InboxView({
               key={open.key}
               item={open}
               inbox={inbox}
-              next={nextItem(state.items, open, openAt.current, setOpen)}
+              next={nextItem(state.items, open, openAt.current, openItem)}
+              items={state.items}
+              focus={focus}
+              openPlace={openPlace}
               now={now}
               answering={state.error === undefined}
               words={words}
@@ -216,15 +207,41 @@ function OpenCard({
   answering,
   words,
   close,
+  items,
+  focus,
+  openPlace,
 }: {
   readonly item: InboxItem;
   readonly inbox: Inbox;
+  /** Everything waiting, to find the account a pasted secret belongs to. */
+  readonly items: readonly InboxItem[];
+  readonly focus: SetupFocus | undefined;
+  readonly openPlace: ((place: SidebarPlace) => void) | undefined;
   readonly next: NextItem | null;
   readonly now: () => Date;
   readonly answering: boolean;
   readonly words: EngineWords;
   readonly close: () => void;
 }) {
+  // A note set aside for a secret comes back with the card, once. It is read while rendering and
+  // removed in an effect, so a render React throws away doesn't lose it.
+  const [aside] = useState(() => inbox.peekAside(item.key));
+  useEffect(() => {
+    inbox.takeAside(item.key);
+  }, [inbox, item.key]);
+  const target = secretTarget("google", items);
+  // With no account to set up and no place to open, the button would do nothing, so it isn't offered.
+  const somewhereToGo = target.kind === "setup" || openPlace !== undefined;
+  const goToSecret = (note: string) => {
+    inbox.setAside(item.key, note);
+    if (target.kind === "setup") {
+      inbox.openSetup(target.provider, target.account, "secret");
+      return;
+    }
+    // The Library stands in until there is a Connectors view with **New connector**.
+    // Follow-up (HAL-9823): send it to that view's New connector once the Connectors view exists.
+    openPlace?.("library");
+  };
   if (item.kind === "setup") {
     return (
       <SetupPane
@@ -233,6 +250,7 @@ function OpenCard({
         answering={answering}
         words={words}
         close={close}
+        focus={focus}
       />
     );
   }
@@ -246,6 +264,8 @@ function OpenCard({
         next={next}
         back={null}
         now={now}
+        initialNote={aside}
+        {...(somewhereToGo ? { onGoToSecret: goToSecret } : {})}
       />
     );
   }

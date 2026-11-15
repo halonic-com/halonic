@@ -55,17 +55,19 @@ export function setupEntry(
 ): SetupEntry | undefined {
   if (account.services.length === 0) return undefined;
   const { record, email } = account;
-  const entry = (title: string, progress: string): SetupEntry => ({
+  const entry = (title: string, progress: string, needsSecret = false): SetupEntry => ({
     account: record.accountRef,
     title,
     progress,
     changedAt: account.changedAt,
+    needsSecret,
   });
 
   if (record.refreshRefused?.reason === "client") {
     return entry(
       `Replace the Google client secret for ${email}`,
       `Needs a new client secret${onHold(account)}`,
+      true,
     );
   }
   if (record.refreshRefused !== null) {
@@ -81,6 +83,7 @@ export function setupEntry(
     return entry(
       `Set up Google for ${email}`,
       `Step ${next.number} of ${all.length} · ${stepNames[next.id]}`,
+      record.clientSecret === null,
     );
   }
   if (account.adding.length > 0) {
