@@ -159,11 +159,9 @@ verifies("runtime.admin-key", () => {
       expect((await put("/admin/files/"))?.status).toBe(404);
     });
 
-    it("answers 501 on every export and import route until they are built", async () => {
+    it("answers 501 on every import route until it is built", async () => {
       const env = await envWithKey();
       for (const [method, path] of [
-        ["GET", "/admin/export"],
-        ["GET", "/admin/export/files/runs/r1.jsonl"],
         ["PUT", "/admin/import/files/runs/r1.jsonl"],
         ["POST", "/admin/import"],
       ] as const) {

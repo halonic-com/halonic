@@ -8,7 +8,8 @@
     "src/password-limit.test.ts",
     "src/self-test.test.ts",
     "src/serve.test.ts",
-    "src/admin.test.ts"
+    "src/admin.test.ts",
+    "src/export-data.test.ts"
   ],
   "exclude": []
 }

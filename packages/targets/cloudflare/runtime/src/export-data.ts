@@ -1,0 +1,145 @@
+import { tokenCollection } from "@halonicjs/adapter-token-store";
+import {
+  RUNTIME_EXPORT_FORMAT_VERSION,
+  type RuntimeExportManifest,
+} from "@halonicjs/format/runtime-export";
+import {
+  type BlobStore,
+  formatLogLines,
+  formatRecordLines,
+  isRunId,
+  type RecordStore,
+  type RunStore,
+} from "@halonicjs/ports";
+import { bytesToHex, findSecretShape, type SecretShape } from "@halonicjs/std";
+
+/** The stores an export reads, in the shape the Worker's adapters already have. */
+export interface ExportSource {
+  readonly records: Pick<RecordStore, "changes"> & { collections(): Promise<string[]> };
+  readonly runs: { list(): Promise<readonly { readonly id: string }[]> };
+  readonly runStore: Pick<RunStore, "events">;
+  readonly blobs: Pick<BlobStore, "get"> & { hashes(): Promise<string[]> };
+}
+
+/** Thrown when a file of the export holds something shaped like a secret. It names the file and the kind, never the text. */
+export class ExportSecretError extends Error {
+  override readonly name = "ExportSecretError";
+  readonly path: string;
+  readonly shape: SecretShape;
+
+  constructor(path: string, shape: SecretShape) {
+    super(`${path} holds something shaped like a secret (${shape}).`);
+    this.path = path;
+    this.shape = shape;
+  }
+}
+
+/** Where a file of the export is read from; its path is what the manifest lists. */
+interface ExportFile {
+  readonly path: string;
+  /** Reads the file's bytes; `null` when it has gone since the listing. */
+  read(): Promise<Uint8Array | null>;
+}
+
+const encoder = new TextEncoder();
+
+async function sha256Hex(bytes: ArrayBuffer | ArrayBufferView): Promise<string> {
+  return bytesToHex(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)));
+}
+
+/** The name `FileRecordStore` gives a collection's log: the SHA-256 of the name in UTF-16LE. */
+async function recordFileName(collection: string): Promise<string> {
+  const units = new Uint8Array(collection.length * 2);
+  const view = new DataView(units.buffer);
+  for (let index = 0; index < collection.length; index += 1) {
+    view.setUint16(index * 2, collection.charCodeAt(index), true);
+  }
+  return `records/${await sha256Hex(units)}.jsonl`;
+}
+
+/** The text of a run log or a record log must not hold a secret: a run can have handled one. */
+function refuseSecrets(path: string, text: string): void {
+  const shape = findSecretShape(text);
+  if (shape !== undefined) throw new ExportSecretError(path, shape);
+}
+
+/** Byte order of the paths, which for these ASCII paths is the order the manifest lists them in. */
+function comparePaths(a: string, b: string): number {
+  if (a === b) return 0;
+  return a < b ? -1 : 1;
+}
+
+async function listFiles(source: ExportSource): Promise<ExportFile[]> {
+  const files: ExportFile[] = [];
+  for (const run of await source.runs.list()) {
+    // A run whose id couldn't be a file name has no place in the export's layout.
+    if (!isRunId(run.id)) continue;
+    const path = `runs/${run.id}.jsonl`;
+    files.push({
+      path,
+      async read() {
+        const text = formatLogLines(await source.runStore.events(run.id));
+        refuseSecrets(path, text);
+        return encoder.encode(text);
+      },
+    });
+  }
+  for (const collection of await source.records.collections()) {
+    // The sign-in tokens' own collection never leaves the deployment.
+    if (collection === tokenCollection) continue;
+    const path = await recordFileName(collection);
+    files.push({
+      path,
+      async read() {
+        const text = formatRecordLines(await source.records.changes(collection));
+        refuseSecrets(path, text);
+        return encoder.encode(text);
+      },
+    });
+  }
+  for (const hash of await source.blobs.hashes()) {
+    files.push({ path: `blobs/${hash.slice(0, 2)}/${hash}`, read: () => source.blobs.get(hash) });
+  }
+  return files.sort((a, b) => comparePaths(a.path, b.path));
+}
+
+/**
+ * Lists and measures every file of the deployment's export, one file at a time,
+ * so the Worker never holds more than one file in memory.
+ *
+ * @param deployment - the deployment's id, written into the manifest
+ * @param now - the time of the export
+ * @throws ExportSecretError when a run log or record log holds something shaped like a secret; nothing is exported then
+ */
+export async function buildManifest(
+  source: ExportSource,
+  deployment: string,
+  now: Date,
+): Promise<RuntimeExportManifest> {
+  const entries: RuntimeExportManifest["files"] = [];
+  for (const file of await listFiles(source)) {
+    const bytes = await file.read();
+    if (bytes === null) continue;
+    entries.push({ path: file.path, bytes: bytes.byteLength, sha256: await sha256Hex(bytes) });
+  }
+  return {
+    formatVersion: RUNTIME_EXPORT_FORMAT_VERSION,
+    deployment,
+    exportedAt: now.toISOString(),
+    files: entries,
+  };
+}
+
+/**
+ * Reads one file of the export by its manifest path.
+ *
+ * @returns the bytes, or `null` when no file of the export has that path
+ * @throws ExportSecretError when the file holds something shaped like a secret
+ */
+export async function readExportFile(
+  source: ExportSource,
+  path: string,
+): Promise<Uint8Array | null> {
+  const file = (await listFiles(source)).find((candidate) => candidate.path === path);
+  return file === undefined ? null : file.read();
+}
