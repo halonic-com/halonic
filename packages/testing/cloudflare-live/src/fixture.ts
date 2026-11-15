@@ -49,6 +49,11 @@ export interface DeployedFixture {
   destroy(): Promise<void>;
 }
 
+/** The Worker's name for a prefix: the fixture makes it, and the live suites that set an admin key on it find it again. */
+export function fixtureWorkerName(prefix: string): string {
+  return `${prefix}-w`;
+}
+
 function newSecret(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
@@ -67,7 +72,7 @@ export async function deployWebhookFixture(options: FixtureOptions): Promise<Dep
     throw new RangeError(`A live fixture's names start with "hlt-", not "${prefix}".`);
   }
   const random = options.randomSecret ?? newSecret;
-  const worker = `${prefix}-w`;
+  const worker = fixtureWorkerName(prefix);
   const database = resourcesFor(worker)[0]?.name ?? "";
   const blobs = `${worker}-blobs`;
   const definitions = `${worker}-defs`;

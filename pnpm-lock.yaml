@@ -3179,6 +3179,12 @@ importers:
       '@halonicjs/adapter-cloudflare-storage':
         specifier: workspace:*
         version: link:../../adapters/cloudflare-storage
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../core/format
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../core/ports
       '@halonicjs/target-cloudflare-deploy':
         specifier: workspace:*
         version: link:../../targets/cloudflare/deploy

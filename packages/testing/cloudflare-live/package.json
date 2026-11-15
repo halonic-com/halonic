@@ -14,6 +14,8 @@
   },
   "devDependencies": {
     "@halonicjs/adapter-cloudflare-storage": "workspace:*",
+    "@halonicjs/format": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
     "@halonicjs/target-cloudflare-deploy": "workspace:*",
     "@halonicjs/target-cloudflare-runtime": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
