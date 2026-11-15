@@ -1,6 +1,6 @@
 import type { Workflow } from "@halonicjs/format";
 import type { HarnessEvent } from "@halonicjs/ports";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { finished, harnessPorts, stillOpen } from "../harness/harness-test-kit.test-helper.ts";
 import { KernelBlobs, KernelRuns, writerAgent } from "../kernel/kernel-test-kit.test-helper.ts";
@@ -213,7 +213,8 @@ verifies("engine.harness-stops-with-engine", () => {
 
     await executor.start(replyStart);
     const harnessCall = scheduler.deliver("run_1", "harness:call-1");
-    await vi.waitFor(() => expect(ports.steps).toContain("harness.start"));
+    await waitUntil("the harness step harness.start", () => ports.steps.includes("harness.start"));
+    expect(ports.steps).toContain("harness.start");
     await executor.close();
     await harnessCall;
 
@@ -246,7 +247,8 @@ verifies("engine.harness-stops-with-engine", () => {
     const first = runsOn([], runs, { agents, harnesses: ports.options });
     await first.executor.start(replyStart);
     const harnessCall = first.scheduler.deliver("run_1", "harness:call-1");
-    await vi.waitFor(() => expect(ports.steps).toContain("harness.start"));
+    await waitUntil("the harness step harness.start", () => ports.steps.includes("harness.start"));
+    expect(ports.steps).toContain("harness.start");
     await first.executor.close();
     await harnessCall;
 

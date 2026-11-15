@@ -1,7 +1,7 @@
 import type { Coordination, ScheduledTimer, Scheduler, SchedulerListener } from "@halonicjs/ports";
 import { fixedIds } from "@halonicjs/std";
-import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it, vi } from "vitest";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
+import { describe, expect, it } from "vitest";
 import { secretsWith } from "./agent/turn-test-kit.test-helper.ts";
 import { assembleEngine, type EngineAssemblyOptions } from "./engine-assembly.ts";
 import {
@@ -242,7 +242,8 @@ verifies("engine.harness-stops-with-engine", () => {
     await engine.executor.start(replyStart);
     const timer = await scheduler?.waitFor("run_1", "harness:call-1");
     const delivery = scheduler?.listener.onTimer({ ...(timer as ScheduledTimer) });
-    await vi.waitFor(() => expect(ports.steps).toContain("harness.start"));
+    await waitUntil("the harness step harness.start", () => ports.steps.includes("harness.start"));
+    expect(ports.steps).toContain("harness.start");
     await engine.close();
     await delivery;
 

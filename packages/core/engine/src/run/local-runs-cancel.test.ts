@@ -1,6 +1,6 @@
 import type { Workflow } from "@halonicjs/format";
-import { verifies } from "@halonicjs/testing-spec";
-import { expect, it, vi } from "vitest";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { harnessPorts, stillOpen } from "../harness/harness-test-kit.test-helper.ts";
 import {
   approvalWorkflow,
@@ -97,7 +97,8 @@ verifies("engine.local-run-cancel", () => {
     });
     await executor.start(replyStart);
     const harnessCall = scheduler.deliver("run_1", "harness:call-1");
-    await vi.waitFor(() => expect(ports.steps).toContain("harness.start"));
+    await waitUntil("the harness step harness.start", () => ports.steps.includes("harness.start"));
+    expect(ports.steps).toContain("harness.start");
 
     await executor.cancel("run_1");
     await harnessCall;

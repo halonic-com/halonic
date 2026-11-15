@@ -1,6 +1,6 @@
 import type { ChatResponse } from "@halonicjs/ports";
-import { verifies } from "@halonicjs/testing-spec";
-import { expect, it, vi } from "vitest";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import { harnessPorts } from "../harness/harness-test-kit.test-helper.ts";
 import { KernelRuns, writerAgent } from "../kernel/kernel-test-kit.test-helper.ts";
 import { call, callAnswer, textAnswer } from "../testing/scripted-model.ts";
@@ -26,7 +26,8 @@ verifies("engine.local-run-subscribe", () => {
 
     const harnessCall = scheduler.deliver("run_1", "harness:call-1");
 
-    await vi.waitFor(() => expect(types).toContain("harness.started"));
+    await waitUntil(`types to contain "harness.started"`, () => types.includes("harness.started"));
+    expect(types).toContain("harness.started");
     await executor.cancel("run_1");
     await harnessCall;
   });
@@ -41,7 +42,8 @@ verifies("engine.local-run-subscribe", () => {
 
     const modelCall = scheduler.deliver("run_1", "call:call-1");
 
-    await vi.waitFor(() => expect(types).toContain("tool.refused"));
+    await waitUntil(`types to contain "tool.refused"`, () => types.includes("tool.refused"));
+    expect(types).toContain("tool.refused");
     secondAnswer.resolve(textAnswer("Dear support"));
     await modelCall;
   });
