@@ -71,6 +71,11 @@ export const listedToolsWords = {
     count === 1
       ? "1 tool is waiting for your approval"
       : `${count} tools are waiting for your approval`,
+  /** The line on the connector's page when the review can't open its rows: **Review tools** or **Try again** follows it. */
+  waitingNotice: {
+    listingRefused: "Couldn't use this server's tool list, so none of its listed tools are on.",
+    unreadable: "Couldn't read an approval, so none of this server's listed tools are on.",
+  },
   leftOut: (reason: string) => `Halonic left out part of its arguments: ${reason}.`,
   serverChangedOnly: (source: string) =>
     `Its text hasn't changed, but ${source} connects differently than when you approved it: another address, version or settings.`,
@@ -101,8 +106,6 @@ export const listedToolsWords = {
   loadFailed: (reason: string) => `Couldn't list the tools: ${reason}.`,
   tryAgain: "Try again",
   connecting: "Connecting…",
-  /** A refused tool's reason is cut to this many characters on screen; the full text is its tooltip. */
-  refusedReasonLimit: 64,
   /** More tools than this on the screen turns the search field on. */
   searchThreshold: 10,
 } as const;
