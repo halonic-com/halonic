@@ -3,6 +3,7 @@
 - Task: HAL-10387
 - Approval: Sofia's design check of #2941 on HAL-10387 (https://paperclip.halonic.com/HAL/issues/HAL-10387) asks for it: "Narrow window: drop parts right to left, keeping "Est. this run €0.15"; the full text in the tooltip." It builds on flow-models 5, which the board approved. A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:HZHNk2ZYYFhb9OpzSqI1yTx8gJT++26NO/zA6ygJTQ/UIViAYWP6L5k5bHR51dFad8LA29HdM3SEr+jYvIjjCg==
 
 ## What changes
 
