@@ -40,6 +40,14 @@ bridge. The engine offers them next to its own tools. The token is read from `Se
 goes only to `api.github.com`; the bridge records each call as `tool.called` and `tool.result`
 (requirement `harness-bridge.github-read`).
 
+## GitHub write tools
+
+`GitHubWriteTools` is a `BridgeTools` with two tools on one repository fixed when it is made
+(`github_open_pull_request`, `github_update_pull_request`). Every call with acceptable arguments is
+checked as `ask`, so a person approves it before it runs; the tools offer no way to merge, close or
+release. Its token should be short-lived, for that repository alone, with no admin right, and is read
+from `Secrets` on each call (requirement `harness-bridge.github-write`).
+
 ## What the bridge does
 
 - **Host and origin.** A request whose `Host` isn't `127.0.0.1` or `localhost`
