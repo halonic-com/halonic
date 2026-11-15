@@ -264,6 +264,7 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
       await attempt("workspace .env", () => fs.readFile(${JSON.stringify(workspaceEnv)}, "utf8"));
       await attempt("list home", async () => (await fs.readdir(${JSON.stringify(homeFolder)})).join(","));
       await attempt("outside file", () => fs.readFile(${JSON.stringify(outside)}, "utf8"));
+      await attempt("Windows folder", async () => (await fs.readdir(${JSON.stringify(windowsFolder)})).length);
       await attempt("key through a junction", () => fs.readFile(${JSON.stringify(join(junction, ".ssh", "id_ed25519"))}, "utf8"));
       await attempt("list home through a junction", async () => (await fs.readdir(${JSON.stringify(junction)})).join(","));
       await attempt("key through a file link", () => fs.readFile(${JSON.stringify(fileLink)}, "utf8"));
@@ -280,6 +281,8 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
       "list home through a junction",
       ...(hasFileLink ? ["key through a file link"] : []),
     ];
+    // Programs need it to start, so with Node's layer off the Windows folder stays readable.
+    expect(attempts["Windows folder"]?.outcome).toBe(nodeLayer === "on" ? "refused" : "allowed");
     for (const name of names) {
       expect(attempts[name]?.outcome, name).toBe("refused");
       expect(attempts[name]?.detail, name).not.toContain(canary);
