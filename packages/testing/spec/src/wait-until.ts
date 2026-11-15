@@ -11,7 +11,9 @@ const marginMs = 1_000;
  */
 const defaultTimeout = (): number => {
   const requested = Number(globalThis.process?.env?.["HALONIC_TEST_TIMEOUT"]);
-  return Number.isInteger(requested) && requested > marginMs ? requested - marginMs : fallbackTimeoutMs;
+  return Number.isInteger(requested) && requested > marginMs
+    ? requested - marginMs
+    : fallbackTimeoutMs;
 };
 
 /** How long `waitUntil` pauses between two tries, in milliseconds. */

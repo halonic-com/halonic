@@ -2,7 +2,7 @@
 
 - Task: HAL-9816 (follow-up to HAL-9336)
 - Approval: HAL-9816 asks for this change; Liam approves this note in review
-- Kind: internal
+- Kind: user-visible
 
 ## What changes
 
@@ -15,7 +15,7 @@ timers.
 
 The two old copies are deleted and their call sites (five CLI test files, three contract
 suites) now use the shared one and name what they wait for. The two small tests of the old
-contracts copy are replaced by the five tests of the shared one, which also cover the promise
+contracts copy are replaced by the six tests of the shared one, which also cover the promise
 case, the already-true case and both timeouts. No test checks less than before, and the `expect`
 count of every touched requirement stays the same.
 
@@ -40,3 +40,4 @@ a message that did not say what was missing.
 - contracts.llm-stream
 - contracts.scheduler
 - packages/testing/contracts/src/wait-until.test.ts
+- packages/testing/spec/
