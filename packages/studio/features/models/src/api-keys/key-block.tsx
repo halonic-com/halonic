@@ -4,6 +4,7 @@ import type { KeyEntry, ModelKeys } from "../api.ts";
 import {
   CHANGE_KEY,
   changeQuestion,
+  hostCommand,
   KEY_CHECK_FAILED,
   KEY_CHECKING,
   KEY_HEADING,
@@ -15,7 +16,7 @@ import {
   keptLine,
   NEEDS_SECRET_NAME,
   NO_KEY,
-  offHostHttpsLine,
+  OFF_HOST_HTTPS_LEAD,
   REMOVE_KEY,
   removeQuestion,
   SAVE_KEY,
@@ -73,7 +74,7 @@ export function KeyBlock({ keys, secretName }: KeyBlockProps) {
         <h2 id="key-heading" className="text-heading">
           {KEY_HEADING}
         </h2>
-        <p>{unavailableLine(entry.reason, secretName ?? "<name>")}</p>
+        <HostCommandLine {...unavailableLine(entry.reason)} secretName={secretName ?? "<name>"} />
       </section>
     );
   }
@@ -134,7 +135,7 @@ function KeyField({ keys, entry, secretName }: KeyFieldProps) {
 
   function save() {
     if (!hasText || busy) return;
-    if (stored === "set") setConfirm("change");
+    if (stored !== "none") setConfirm("change");
     else void send();
   }
 
@@ -148,7 +149,9 @@ function KeyField({ keys, entry, secretName }: KeyFieldProps) {
         <p>{NEEDS_SECRET_NAME}</p>
       ) : (
         <>
-          {entry.offHostHttps ? <p>{offHostHttpsLine(secretName)}</p> : null}
+          {entry.offHostHttps ? (
+            <HostCommandLine lead={OFF_HOST_HTTPS_LEAD} command secretName={secretName} />
+          ) : null}
           <p role="status">{status[stored]}</p>
           <form
             className="flex flex-wrap items-start gap-2"
@@ -217,7 +220,7 @@ function KeyConfirm({ kind, secretName, returnFocus, onConfirm, onCancel }: KeyC
       confirm={{
         label: change ? CHANGE_KEY : REMOVE_KEY,
         variant: change ? "primary" : "danger",
-        busyLabel: "Saving…",
+        busyLabel: change ? "Saving…" : "Removing…",
       }}
       onConfirm={onConfirm}
       onCancel={onCancel}
@@ -225,5 +228,26 @@ function KeyConfirm({ kind, secretName, returnFocus, onConfirm, onCancel }: KeyC
     >
       <p>{change ? changeQuestion(secretName) : removeQuestion(secretName)}</p>
     </Dialog>
+  );
+}
+
+interface HostCommandLineProps {
+  readonly lead: string;
+  readonly command: boolean;
+  readonly secretName: string;
+}
+
+/** A sentence that ends with the host command, shown as code. */
+function HostCommandLine({ lead, command, secretName }: HostCommandLineProps) {
+  return (
+    <p>
+      {lead}
+      {command ? (
+        <>
+          {" "}
+          <code>{hostCommand(secretName)}</code>.
+        </>
+      ) : null}
+    </p>
   );
 }

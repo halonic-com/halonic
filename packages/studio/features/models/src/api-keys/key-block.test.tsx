@@ -154,6 +154,20 @@ verifies("models.api-keys.replace-or-remove", () => {
     expect(view.textContent).toContain("Key set");
   });
 
+  it("asks before replacing when the check failed, and sends nothing until confirmed", async () => {
+    const { keys, sent } = keysWith(desktop, ["anthropic"]);
+    const view = await show({
+      ...keys,
+      stored: async () => {
+        throw new Error("unreachable");
+      },
+    });
+    await type(view, "sk-acme-test-456");
+    await press(view, "Save key");
+    expect(document.body.textContent).toContain("Change anthropic?");
+    expect(sent).toEqual([]);
+  });
+
   it("removes a key after a confirm and then says No key", async () => {
     const { keys, stored } = keysWith(desktop, ["anthropic"]);
     const view = await show(keys);

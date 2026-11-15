@@ -39,23 +39,31 @@ export function keptLine(entry: Extract<KeyEntry, { kind: "field" }>): string {
     : "The key is kept on the host.";
 }
 
-/** Why there is no field, and what to do instead. */
-export function unavailableLine(
-  reason: Extract<KeyEntry, { kind: "unavailable" }>["reason"],
-  secretName: string,
-): string {
-  const command = `On the machine that runs halonic serve, run \`${hostCommand(secretName)}\`.`;
+/** Why there is no field; `command` is true when the host command follows it. */
+export function unavailableLine(reason: Extract<KeyEntry, { kind: "unavailable" }>["reason"]): {
+  readonly lead: string;
+  readonly command: boolean;
+} {
+  const run = "On the machine that runs halonic serve, run";
   switch (reason) {
     case "demo":
-      return "The demo runs on the built-in test model and keeps no keys. Use the desktop app or halonic serve for real models.";
+      return {
+        lead: "The demo runs on the built-in test model and keeps no keys. Use the desktop app or halonic serve for real models.",
+        command: false,
+      };
     case "no-password":
-      return `A password is needed for serve to take keys from another device. ${command}`;
+      return {
+        lead: `A password is needed for serve to take keys from another device. ${run}`,
+        command: true,
+      };
     case "unencrypted":
-      return `You are not on the machine that runs halonic serve, and this connection is not encrypted, so the key can't be sent from here. ${command}`;
+      return {
+        lead: `You are not on the machine that runs halonic serve, and this connection is not encrypted, so the key can't be sent from here. ${run}`,
+        command: true,
+      };
   }
 }
 
 /** The line above the field on another device over https: encrypted, and the command still works. */
-export function offHostHttpsLine(secretName: string): string {
-  return `You are not on the machine that runs halonic serve. Safer: on that machine run \`${hostCommand(secretName)}\`.`;
-}
+export const OFF_HOST_HTTPS_LEAD =
+  "You are not on the machine that runs halonic serve. Safer: on that machine run";
