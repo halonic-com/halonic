@@ -5,6 +5,7 @@ import {
   type Tab,
   TabList,
   TabPanel,
+  usePresentation,
   useTabIds,
 } from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
@@ -55,6 +56,7 @@ export function WorkflowScreen({ host, hubId, id, openRun }: WorkflowScreenProps
   const [view, setView] = useState<"flow" | "configuration">("flow");
   const [openStep, setOpenStep] = useState<string | undefined>();
   const ids = useTabIds();
+  const phone = usePresentation() === "phone";
   const errors =
     settings.load.kind === "ready" ? countProblems(settings.load.value.problems).errors : 0;
   const views: readonly Tab<"flow" | "configuration">[] = [
@@ -73,11 +75,20 @@ export function WorkflowScreen({ host, hubId, id, openRun }: WorkflowScreenProps
   ];
   return (
     <div className="flex size-full min-h-0 flex-col">
-      <header className="flex items-center gap-3 border-b border-border px-6 py-3">
-        <Avatar name={name} />
-        <div className="flex flex-col">
-          <p className="text-caption text-fg-muted">{pageWords.kind}</p>
-          <h1 className="text-title">{name}</h1>
+      <header
+        className={
+          phone
+            ? "flex flex-col gap-3 border-b border-border px-4 py-3"
+            : "flex items-center gap-3 border-b border-border px-6 py-3"
+        }
+      >
+        {/* On a phone the top bar already names the workflow, so the page keeps only its type. */}
+        <div className="flex items-center gap-3">
+          <Avatar name={name} />
+          <div className="flex flex-col">
+            <p className="text-caption text-fg-muted">{pageWords.kind}</p>
+            <h1 className={phone ? "sr-only" : "text-title"}>{name}</h1>
+          </div>
         </div>
         <TabList
           label={configurationWords.tabs}

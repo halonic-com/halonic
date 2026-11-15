@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -42,6 +43,18 @@ verifies("workflows.page.frame-and-states", () => {
     expect(page.textContent).toContain("WORKFLOW");
     expect(page.querySelector("[role=status]")).toBeNull();
     expect(page.querySelector("[aria-label*=ximise], [aria-label=Close]")).toBeNull();
+  });
+
+  it("doesn't repeat the name on a phone, where the top bar has it", async () => {
+    const { host } = memoryHost([], [], [reply]);
+    const page = await show(
+      <PresentationProvider presentation="phone">
+        <WorkflowScreen host={host} hubId="acme" id="reply" />
+      </PresentationProvider>,
+    );
+    expect(page.textContent).toContain("WORKFLOW");
+    expect(page.querySelector("h1")?.className).toContain("sr-only");
+    expect(page.querySelector("header")?.className).toContain("flex-col");
   });
 
   it("shows a skeleton only after 300 ms, and Still loading after 10 s", async () => {

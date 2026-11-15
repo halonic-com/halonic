@@ -76,7 +76,7 @@ export function RecentRunsView({
         empty={{ title: homeWords.empty, plain: true }}
       />
       {shown.length === 0 ? (
-        <p className="m-0 text-fg-muted">
+        <p className="m-0 px-4 text-fg-muted">
           {homeWords.startNote[0]}
           <code className="font-mono">{homeWords.startNote[1]}</code>
           {homeWords.startNote[2]}
