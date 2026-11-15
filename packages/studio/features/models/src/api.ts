@@ -101,3 +101,19 @@ export interface ModelKeys {
 
 /** The workspace's API keys, provided by the app for each open folder. It is optional. */
 export const ModelKeysService: ServiceKey<ModelKeys> = serviceKey<ModelKeys>("models.keys");
+
+/**
+ * Which providers the user chose "No limit" for, on this device. It is remembered per workspace,
+ * provider and the provider's host (such as `api.openai.com`), never the computer running Halonic,
+ * so a second device asks again and a provider that moves to a new host asks again.
+ */
+export interface NoLimitMemory {
+  /** Whether "No limit" is remembered for the provider at the host. */
+  remembered(providerId: string, host: string): boolean;
+  /** Remembers "No limit" for the provider at the host. */
+  remember(providerId: string, host: string): void;
+}
+
+/** The "No limit" answers of this device, provided by the app for each open folder. It is optional. */
+export const NoLimitMemoryService: ServiceKey<NoLimitMemory> =
+  serviceKey<NoLimitMemory>("models.no-limit");

@@ -198,3 +198,41 @@ verifies("models.budget-step.ask-for-pay-per-use", () => {
     });
   });
 });
+
+verifies("models.budget-step.no-limit-remembered", () => {
+  describe("PricesBudgetDialog No limit", () => {
+    it("saves the prices only, remembers No limit and closes", async () => {
+      const remembered: string[] = [];
+      const { changes, closed } = setup({ onNoLimit: () => remembered.push("openai") });
+      type(field("Input", 0), "3");
+      type(field("Output", 0), "15");
+      type(field("Per run"), "5");
+
+      await press("No limit");
+
+      expect(changes.map((change) => change.file)).toEqual(["models"]);
+      expect(remembered).toEqual(["openai"]);
+      expect(closed).toEqual([true]);
+    });
+
+    it("has no No limit button without a memory or in the narrowed step", () => {
+      setup();
+      expect(button("No limit")).toBeUndefined();
+      act(() => root?.unmount());
+      element?.remove();
+
+      setup({ kind: "narrowed", onNoLimit: () => undefined });
+      expect(button("No limit")).toBeUndefined();
+    });
+
+    it("remembers nothing when a price is wrong", async () => {
+      const remembered: string[] = [];
+      setup({ onNoLimit: () => remembered.push("x") });
+      type(field("Input", 0), "abc");
+
+      await press("No limit");
+
+      expect(remembered).toEqual([]);
+    });
+  });
+});
