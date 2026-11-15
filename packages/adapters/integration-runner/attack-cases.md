@@ -47,7 +47,7 @@ One difference from the design: A30 on plain `http` is refused as `scheme-not-al
 | A33 | frames outside the protocol | `adapters/integration-runner/src/halonic/strict-protocol.test.ts`, `attacks.test.ts` |
 | A34 | loading code around the static checks | `adapters/integration-runner/src/runner-file.test.ts` |
 | A35 | Unix sockets on disk | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts` |
-| A36 | the OS key store | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts`, `runner-attacks.mxc.test.ts`, `adapters/sandbox-srt/fence/srt-keychain.test.ts`; on MXC and native Windows only Node's layer covers it, and past that layer it is a recorded gap, like A39 |
+| A36 | the OS key store | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts`, `runner-attacks.mxc.test.ts`, `adapters/sandbox-srt/fence/srt-keychain.test.ts`; on MXC the box refuses the secret read past Node's layer, and the entry names stay visible; on native Windows only Node's layer covers it, and past that layer it is a recorded gap, like A39 |
 | A37 | work outside a call | `adapters/integration-runner/src/bridge.refusals.test.ts`, `src/halonic/call-limits.test.ts`, `call-requests.test.ts`, `attacks.test.ts` |
 | A38 | replaying a fence proof | `adapters/integration-runner/src/halonic/attacks.test.ts`, `strict-protocol.test.ts` |
 | A39 | ending Halonic's host on native Windows | fence: `runner-attacks.windows.test.ts`; a recorded gap |
@@ -78,3 +78,10 @@ assumption. Even if lookups did leave, it is bounded: the runner holds no key in
 (A17, A25) and its MXC profile has `settingsFolder: null` and `keyStore: "denied"`, which
 `runner-profile.test.ts` checks. If a later change gives the runner a secret or the settings
 folder, re-check this. MXC stays opt-in (CTO decision on HAL-9155).
+
+The host user's Credential Manager is only partly fenced on MXC. With Node's layer off, a program
+in the box can still see that entries exist (`cmdkey /list`), but a real `CredRead` fails, while the
+same call succeeds on the host (A36 checks both, with a control outside the box). The runner holds no key in its environment (A17, A25) and its MXC profile
+has `settingsFolder: null`, which `runner-profile.test.ts` checks. If a later change gives the
+runner a secret or the settings folder, `sandbox-mxc` is not fenced for the runner again. Decided
+by the CTO on HAL-9155. MXC stays opt-in.
