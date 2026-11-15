@@ -7,7 +7,8 @@ the engine.
 
 - **Layer:** adapters
 - **Owner:** priya
-- **Public API:** `@halonicjs/adapter-scheduler-node`
+- **Public API:** `@halonicjs/adapter-scheduler-node`, and `@halonicjs/adapter-scheduler-node/node` for what
+  needs Node's own modules (`systemSetTimer`, on `node:timers`)
 
 ## Where the timers are kept
 
@@ -30,7 +31,8 @@ A timer that survives a restart. The code lives in
 typechecked and run by `src/example.test.ts`; keep this copy in step with it. The file imports
 `../src/index.ts`, because a package may not import itself by name; outside this package, import
 `@halonicjs/adapter-scheduler-node` as below. The example keeps its timers in the memory adapter's
-store; on a server, pass the real store and `systemSetTimer`.
+store; on a server, pass the real store and `systemSetTimer`, which comes from
+`@halonicjs/adapter-scheduler-node/node`. The package root has no `node:` imports, so a window can load it.
 
 ```ts
 import { ManualClock, MemoryRecordStore } from "@halonicjs/adapter-memory";

@@ -33,6 +33,9 @@
     "@halonicjs/adapter-cloudflare-durable": [
       "./testing"
     ],
+    "@halonicjs/adapter-coordination-node": [
+      "./node"
+    ],
     "@halonicjs/adapter-git": [
       "./testing"
     ],
@@ -47,6 +50,9 @@
     ],
     "@halonicjs/adapter-mcp": [
       "./protocol"
+    ],
+    "@halonicjs/adapter-scheduler-node": [
+      "./node"
     ],
     "@halonicjs/app": [
       "./listed-tools",

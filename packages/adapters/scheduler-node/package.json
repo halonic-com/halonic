@@ -4,7 +4,8 @@
   "type": "module",
   "description": "The Scheduler port on Node: timers per key kept in a RecordStore, so they survive a restart, the retry back-off and the routine tick.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./node": "./src/node/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

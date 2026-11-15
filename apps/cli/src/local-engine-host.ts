@@ -23,7 +23,8 @@
 
 import { realpath } from "node:fs/promises";
 import { join } from "node:path";
-import { NodeCoordination, randomLeaseToken } from "@halonicjs/adapter-coordination-node";
+import { NodeCoordination } from "@halonicjs/adapter-coordination-node";
+import { randomLeaseToken } from "@halonicjs/adapter-coordination-node/node";
 import {
   FileRecordStore,
   FolderBlobStore,
@@ -39,8 +40,8 @@ import {
   nodeSchedulerFactory,
   type SchedulerErrorSource,
   type SetTimer,
-  systemSetTimer,
 } from "@halonicjs/adapter-scheduler-node";
+import { systemSetTimer } from "@halonicjs/adapter-scheduler-node/node";
 import {
   assembleEngine,
   type LocalExecutor,
