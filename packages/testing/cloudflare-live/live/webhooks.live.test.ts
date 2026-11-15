@@ -4,7 +4,7 @@ import { webhookChecks } from "../src/webhook-checks.ts";
 
 // Run by `pnpm test:live`, never by `pnpm test`: it calls a Worker deployed in the CI Cloudflare
 // account. The signature, old-timestamp and unknown-address checks are live. The run-start and replay checks are
-// pending: they pass while the Worker answers 501 and fail the day it starts runs (live.webhooks).
+// pending: they pass while the Worker answers 501 and fail the day it starts runs (cloudflare-live.webhooks).
 describe("webhooks of the deployed Worker", () => {
   const target = liveWebhookTarget(process.env);
 

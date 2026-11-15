@@ -43,7 +43,7 @@ function fakeWorker(starts: "501" | "202" | "202-never-replays" = "501"): Webhoo
   };
 }
 
-verifies("live.webhooks", () => {
+verifies("cloudflare-live.webhooks", () => {
   describe("a delivery", () => {
     it("is signed over the delivery id, the timestamp and the body", async () => {
       const signature = await signDelivery(secret, "d-1", 1700000000, '{"id":"o-7"}');

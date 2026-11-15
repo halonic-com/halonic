@@ -8,7 +8,7 @@ const env = {
   HALONIC_LIVE_WEBHOOK_SECRET: "made-up-secret-value",
 };
 
-verifies("live.webhooks", () => {
+verifies("cloudflare-live.webhooks", () => {
   describe("the Worker the live suites call", () => {
     it("is read from the environment", () => {
       expect(liveWebhookTarget(env)).toEqual({
