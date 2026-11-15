@@ -86,8 +86,8 @@ verifies("studio.workspace-connector-status", () => {
 
     expect(listed.map(({ id, name, state }) => ({ id, name, state }))).toEqual([
       { id: "mail", name: "mail", state: "not-connected" },
-      { id: "notes", name: "notes", state: "connected" },
-      { id: "search", name: "Web search", state: "connected" },
+      { id: "notes", name: "notes", state: "not-checked" },
+      { id: "search", name: "Web search", state: "not-checked" },
     ]);
   });
 
@@ -133,6 +133,29 @@ verifies("studio.workspace-connector-status", () => {
     await status.list();
 
     expect(list).not.toHaveBeenCalled();
+  });
+
+  it("lists a connector file that does not parse as unreadable, not gone", async () => {
+    const definitions = new MemoryDefinitionStore({
+      "workspace.yaml": "id: acme\nname: Acme\n",
+      "library/connectors/search.connector.yaml": searchFile,
+      "library/connectors/mail.connector.yaml": googleFile,
+      "library/connectors/broken.connector.yaml": "version: 1\nid: [oops\n",
+    });
+    const status = new WorkspaceConnectorStatus({
+      definitions,
+      refusals: new RefusalsFeed(),
+      google: noGoogle,
+    });
+
+    const listed = await status.list();
+
+    expect(listed.map(({ id, state }) => ({ id, state }))).toEqual([
+      { id: "mail", state: "not-connected" },
+      { id: "search", state: "not-checked" },
+      { id: "broken", state: "unreadable" },
+    ]);
+    expect(listed.find(({ id }) => id === "broken")?.reason).toContain("couldn't read");
   });
 
   it("gives the refusals recorded for a connector and tells its listeners", async () => {

@@ -4,10 +4,14 @@ export type ConnectionState =
   | "needs-sign-in"
   | "needs-new-secret"
   | "api-off"
-  | "not-connected";
+  | "not-connected"
+  /** Nothing has read the connector's sign-in or secret yet, so nothing is claimed. */
+  | "not-checked"
+  /** The connector's file is there but can't be read, so its state is unknown. */
+  | "unreadable";
 
 /** The colour family of a state. It only decorates: the label always carries the meaning. */
-export type ConnectionTone = "success" | "attention";
+export type ConnectionTone = "success" | "attention" | "neutral";
 
 /**
  * What is known about a connector, in terms that fit every connector. A connector
@@ -45,4 +49,6 @@ export const connectionStateTable: Readonly<
   "needs-new-secret": { label: "Needs new secret", tone: "attention" },
   "api-off": { label: "API off", tone: "attention" },
   "not-connected": { label: "Not connected", tone: "attention" },
+  "not-checked": { label: "Not checked yet", tone: "neutral" },
+  unreadable: { label: "Can't read the file", tone: "attention" },
 };
