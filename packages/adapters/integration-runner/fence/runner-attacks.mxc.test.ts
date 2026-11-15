@@ -26,8 +26,8 @@ import { type RealMxc, realMxc } from "./mxc-sandbox.ts";
 // and with it off, so the box alone stands between the script and the
 // computer. That is what an integration has once it gets past the module hook
 // and Node's layer. `mxcFencesRunner` stays off until every case here has
-// passed, A6 and A23 included. A36 past Node's layer (HAL-9362) is a recorded
-// gap: it expects what gets through, so a gap that closes fails too.
+// passed, A6 and A23 included. A36 past Node's layer (HAL-9362): the box shows
+// the vault's entry names but refuses the secret read.
 
 let mxc: RealMxc;
 let base: string;
@@ -332,12 +332,12 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     }
   });
 
-  it("A36: reads a Credential Manager secret once past Node's layer (known gap)", async () => {
+  it("A36: cannot read a Credential Manager secret even past Node's layer", async () => {
     // `cmdkey /list` above only shows the vault is not hidden. This asks for
     // the secret itself, through the same call a program uses (`CredRead`),
-    // and records whether the value comes out. The gap is named: if the box
-    // ever stops the read, this fails, and the gap and `attack-cases.md`
-    // are to be updated.
+    // and checks that no value comes out. With Node's layer off the box
+    // itself refuses: `CredRead` fails (the probe exits 1) although the same
+    // probe reads the secret on this computer, shown by the control below.
     // The control: the same probe on this computer, outside the box, must read
     // the secret. Otherwise a failure in the box says nothing about the box.
     const control = spawnSync(powershell, ["-NoProfile", "-NonInteractive", "-Command", credentialReadScript(credentialTarget)], {
@@ -368,10 +368,9 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     `,
       nodeLayer,
     );
-    if (nodeLayer === "on") {
-      expect(attempts["secret"]?.outcome).toBe("refused");
-    } else {
-      expect(attempts["secret"], stderr).toEqual({ outcome: "allowed", detail: "read" });
+    expect(attempts["secret"]?.outcome, stderr).toBe("refused");
+    if (nodeLayer === "off") {
+      expect(attempts["secret"]?.detail, stderr).toBe("EXIT_1");
     }
   });
 
