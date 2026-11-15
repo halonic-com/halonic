@@ -5,6 +5,7 @@ import type {
   ProjectStep,
   ScopesStep,
   SetupStep,
+  StepId,
 } from "@halonicjs/google-setup";
 import {
   Button,
@@ -18,11 +19,13 @@ import {
   useOpenExternal,
 } from "@halonicjs/studio-kit";
 import { type ReactNode, useId } from "react";
+import { adminNote } from "../admin-note.ts";
 import { listNames } from "./account-labels.ts";
 import { BeforeSignIn } from "./before-sign-in.tsx";
 import { ConsoleLink } from "./console-link.tsx";
 import { CopyLine } from "./copy-line.tsx";
 import { CredentialsBody, type CredentialsBodyProps } from "./credentials-body.tsx";
+import { GoogleErrorList } from "./google-error-list.tsx";
 import { useNotAnswering } from "./not-answering.tsx";
 import { SignInPanel, type SignInPanelProps } from "./sign-in-panel.tsx";
 import { SignInResults, type SignInResultsProps } from "./sign-in-results.tsx";
@@ -45,7 +48,7 @@ export interface StepBodyProps {
   readonly appName: string | undefined;
   readonly savedProjectId: string | null;
   /** What step 7's sign-in needs from the host and the record. */
-  readonly signIn: Omit<SignInPanelProps, "answering">;
+  readonly signIn: Omit<SignInPanelProps, "answering" | "whileWaiting">;
   /** The last check per service, shown above the button once a sign-in has come back. */
   readonly results: SignInResultsProps;
   /** The note for a sign-in that came back for another account. */
@@ -56,6 +59,8 @@ export interface StepBodyProps {
   readonly onInProduction: (ticked: boolean) => void;
   /** Opens a finished step again, for the way back from "Internal isn't available?". */
   readonly onEditProject: () => void;
+  /** Opens a step, for the fixes under "Google showed an error instead?". */
+  readonly onOpenStep: (step: StepId) => void;
 }
 
 /**
@@ -90,7 +95,24 @@ export function StepBody(props: StepBodyProps) {
           />
           <WrongAccount {...props.wrongAccount} />
           <SignInResults {...props.results} />
-          <SignInPanel {...props.signIn} answering={props.answering} />
+          <SignInPanel
+            {...props.signIn}
+            answering={props.answering}
+            whileWaiting={
+              <GoogleErrorList
+                accountType={props.accountType}
+                email={props.results.email}
+                adminNote={adminNote({
+                  projectId: props.savedProjectId,
+                  clientId: props.credentials.clientId,
+                  scopes: step.scopesToGrant,
+                  serviceName: props.serviceName,
+                })}
+                onOpenStep={props.onOpenStep}
+                onClearInProduction={() => props.onInProduction(false)}
+              />
+            }
+          />
         </div>
       );
   }

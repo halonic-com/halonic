@@ -1,77 +1,26 @@
 // @vitest-environment jsdom
 import { pendingSignInLifetimeMs, type ServiceCheckOutcome } from "@halonicjs/google-setup";
-import { type ExternalAddress, OpenExternalProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { account, atlas, fakeAccounts, ledger, record } from "../accounts.test-helper.ts";
-import type { GoogleSetupAccount } from "../api.ts";
-import { render, unmountAll } from "../test-support/render.tsx";
-import { GoogleSetupView } from "./google-setup-view.tsx";
+import { account, atlas, ledger, record } from "../accounts.test-helper.ts";
+import {
+  address,
+  button,
+  open,
+  press,
+  ready,
+  settle,
+  signedOut,
+  upToSignIn,
+} from "../sign-in-view.test-helper.tsx";
+import { unmountAll } from "../test-support/render.tsx";
 
 beforeEach(() => vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] }));
 afterEach(() => {
   unmountAll();
   vi.useRealTimers();
 });
-
-const item = {
-  kind: "setup",
-  key: "setup:google:gaccount_1",
-  provider: "google",
-  account: "gaccount_1",
-  title: "Set up Google for x@example.com",
-  progress: "Step 7 of 7 · Sign in",
-  changedAt: "2026-11-12T02:10:00.000Z",
-} as const;
-
-const address = "https://accounts.example.com/sign-in?state=abc";
-const upToSignIn = ["project", "apis", "consent", "scopes", "client", "credentials"];
-const ready = {
-  projectId: "halonic-x1",
-  clientId: "123-abc.apps.googleusercontent.com",
-  inProductionTickedAt: "2026-11-12T02:10:00.000Z",
-};
-
-async function settle(): Promise<void> {
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(0);
-  });
-}
-
-async function open(
-  setup: GoogleSetupAccount,
-  options: Parameters<typeof fakeAccounts>[1] = {},
-  answering = true,
-) {
-  const fake = fakeAccounts([setup], options);
-  const opened: string[] = [];
-  const openExternal = async (target: ExternalAddress) => {
-    opened.push(await target);
-  };
-  const container = render(
-    <OpenExternalProvider openExternal={openExternal}>
-      <GoogleSetupView item={item} answering={answering} close={vi.fn()} accounts={fake.source} />
-    </OpenExternalProvider>,
-  );
-  await settle();
-  return { fake, container, opened };
-}
-
-function button(container: HTMLElement, name: string): HTMLButtonElement {
-  const found = [...container.querySelectorAll("button")].find((b) =>
-    b.textContent?.startsWith(name),
-  );
-  if (found === undefined) throw new Error(`No button "${name}"`);
-  return found;
-}
-
-async function press(element: HTMLElement): Promise<void> {
-  await act(async () => element.click());
-  await settle();
-}
-
-const signedOut = () => account(record(upToSignIn, ready));
 
 verifies("google-setup.sign-in", () => {
   it("starts one sign-in and opens the address the host gave", async () => {

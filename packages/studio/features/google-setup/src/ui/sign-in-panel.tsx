@@ -1,6 +1,6 @@
 import { pendingSignInLifetimeMs } from "@halonicjs/google-setup";
 import { Button, Callout, Spinner, useOpenExternal } from "@halonicjs/studio-kit";
-import { useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { failureLine } from "./failure-line.ts";
 import { useNotAnswering } from "./not-answering.tsx";
 
@@ -19,6 +19,8 @@ export interface SignInPanelProps {
   readonly answering: boolean;
   /** Opens step 6, for "check the client ID". */
   readonly onOpenClientStep: () => void;
+  /** What shows under the waiting state: Google's own error pages, which never come back here. */
+  readonly whileWaiting: ReactNode;
 }
 
 /**
@@ -45,7 +47,7 @@ type SignIn =
  */
 export function SignInPanel(props: SignInPanelProps) {
   const { start, cancel, signInStartedAt, lastSignInAt, wrongAccountAt, answering } = props;
-  const { onOpenClientStep } = props;
+  const { onOpenClientStep, whileWaiting } = props;
   const openExternal = useOpenExternal();
   const notAnswering = useNotAnswering();
   const reason = useId();
@@ -126,6 +128,7 @@ export function SignInPanel(props: SignInPanelProps) {
     return (
       <Waiting
         problem={cancelProblem}
+        below={whileWaiting}
         onOpenAgain={() => void openExternal(signIn.address)}
         onCancel={() => void cancelWaiting()}
       />
@@ -186,6 +189,7 @@ function lastSignIn(at: string | null): string {
 
 function Waiting(props: {
   readonly problem: string | null;
+  readonly below: ReactNode;
   readonly onOpenAgain: () => void;
   readonly onCancel: () => void;
 }) {
@@ -215,6 +219,7 @@ function Waiting(props: {
           </p>
         </>
       )}
+      {props.below}
     </div>
   );
 }
