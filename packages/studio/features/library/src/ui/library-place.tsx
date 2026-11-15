@@ -5,7 +5,10 @@ import { LibraryItemsHostService } from "../library-items-host.ts";
 import type { LibraryEntryPlace } from "../library-overview.ts";
 import { LibraryTabMemoryService } from "../library-tab-memory.ts";
 import { takeLibraryTabRequests } from "../library-tab-request.ts";
+import { NewSkillHostService } from "../new-skill-host.ts";
+import type { SkillRef } from "../skill-host.ts";
 import { LibraryPage } from "./library-page.tsx";
+import { NewSkillDialog } from "./new-skill-dialog.tsx";
 
 /**
  * The hub in an item's tab key (`kind/hub/id`), which has to name one: what the workspace shares
@@ -34,14 +37,34 @@ export function LibraryPlace({ context }: PlaceViewProps) {
     [memory],
   );
   useEffect(() => takeLibraryTabRequests(show), [show]);
+  const newSkillHost = context.services.find(NewSkillHostService);
+  const [makingSkill, setMakingSkill] = useState(false);
   const { openItem, openItemInNewTab } = context;
+  const openSkill = ({ hub, id }: SkillRef) =>
+    openItem?.({ kind: "skill", hub: hub ?? sharedHubKey, id });
   return (
-    <LibraryPage
-      host={host}
-      kind={kind}
-      onKindChange={show}
-      onOpen={(each, entry) => openItem?.(refOf(each, entry))}
-      onOpenInNewTab={(each, entry) => openItemInNewTab?.(refOf(each, entry))}
-    />
+    <>
+      <LibraryPage
+        host={host}
+        kind={kind}
+        onKindChange={show}
+        onOpen={(each, entry) => openItem?.(refOf(each, entry))}
+        onOpenInNewTab={(each, entry) => openItemInNewTab?.(refOf(each, entry))}
+        // Only Skills has a New dialog so far; the other tabs show no button until theirs lands.
+        {...(newSkillHost === undefined || kind !== "skill"
+          ? {}
+          : { onNew: () => setMakingSkill(true) })}
+      />
+      {makingSkill && newSkillHost !== undefined && (
+        <NewSkillDialog
+          host={newSkillHost}
+          onCreated={(skill) => {
+            setMakingSkill(false);
+            openSkill(skill);
+          }}
+          onCancel={() => setMakingSkill(false)}
+        />
+      )}
+    </>
   );
 }
