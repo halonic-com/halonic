@@ -32,6 +32,7 @@ import type { RunHarnessEffect } from "../kernel/decide-types.ts";
 import { SandboxNotReadyError } from "../run/sandbox-not-ready-error.ts";
 import { BlockedAccesses } from "./blocked-accesses.ts";
 import type { HarnessAgent, HarnessRunsOptions, PlacementAnswer } from "./harness-host.ts";
+import { logHarnessStart } from "./log-harness-start.ts";
 import { defaultStartTimeoutsMs, type StartLimits, type StartPhase } from "./start-limits.ts";
 import { unlessStopped } from "./unless-stopped.ts";
 
@@ -238,13 +239,7 @@ async function runInBridge(
     const stopReports = session.onBlocked((block) => blocked.note(block));
     try {
       const timeoutMs = startTimeoutOf(options, "harness");
-      await log.append({
-        type: "harness.started",
-        state: effect.state,
-        agent: effect.agent,
-        harness: harness.id,
-        timeoutMs,
-      });
+      await logHarnessStart(started, timeoutMs);
       const task = {
         runId: call.runId,
         hubId: call.hubId,
