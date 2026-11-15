@@ -6,6 +6,7 @@ import type {
   WorkflowListing,
   WorkflowRef,
   WorkflowsHost,
+  WorkflowTests,
   WorkflowView,
 } from "./api.ts";
 
@@ -52,6 +53,7 @@ export function memoryHost(
   initial: readonly WorkflowListing[],
   views: readonly WorkflowView[] = [],
   configurations: readonly WorkflowConfiguration[] = [],
+  overrides: Partial<WorkflowsHost> = {},
 ) {
   let listings = initial;
   const listeners = new Set<() => void>();
@@ -73,6 +75,8 @@ export function memoryHost(
       if (found === undefined) throw new Error("This workflow isn't there.");
       return found;
     },
+    tests: async () => ({ cases: [] }) satisfies WorkflowTests,
+    ...overrides,
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);

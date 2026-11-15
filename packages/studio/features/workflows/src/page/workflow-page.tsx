@@ -14,17 +14,22 @@ import { Configuration } from "../configuration/configuration-page.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
 import { countProblems } from "../configuration/problem-lines.ts";
 import { Avatar } from "../list/workflow-rows.tsx";
+import { TestsPage } from "../tests/tests-page.tsx";
 import { pageWords } from "./page-words.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
 import { WorkflowCanvas } from "./workflow-canvas.tsx";
 
 /** The workflow's page in its tab: `item` names the workflow, the host gives its steps. */
 export function WorkflowPage({ item, context }: ItemViewProps) {
+  const { openItem } = context;
   return (
     <WorkflowScreen
       host={context.services.get(WorkflowsHostService)}
       hubId={item.hub}
       id={item.id}
+      {...(openItem && {
+        openRun: (runId: string) => openItem({ kind: "run", hub: item.hub, id: runId }),
+      })}
     />
   );
 }
@@ -34,6 +39,8 @@ export interface WorkflowScreenProps {
   readonly host: WorkflowsHost;
   readonly hubId: string;
   readonly id: string;
+  /** Opens a test run's card from the Tests page; absent where there is no run card. */
+  readonly openRun?: (runId: string) => void;
 }
 
 /**
@@ -41,7 +48,7 @@ export interface WorkflowScreenProps {
  * until the Assistant lands. The header has the letter avatar, "WORKFLOW" and the name; under it
  * is the canvas, a skeleton when the file takes over 300 ms, or why it couldn't be read.
  */
-export function WorkflowScreen({ host, hubId, id }: WorkflowScreenProps) {
+export function WorkflowScreen({ host, hubId, id, openRun }: WorkflowScreenProps) {
   const { load, retry } = useWorkflow(host, { hubId, id });
   const name = load.kind === "ready" ? load.value.name : id;
   const settings = useHostRead(host, { hubId, id }, (one, ref) => one.configuration(ref));
@@ -90,6 +97,7 @@ export function WorkflowScreen({ host, hubId, id }: WorkflowScreenProps) {
             name={name}
             load={settings.load}
             retry={settings.retry}
+            tests={<TestsPage host={host} workflow={{ hubId, id }} name={name} openRun={openRun} />}
             onOpenStep={(stepId) => {
               setOpenStep(stepId);
               setView("flow");

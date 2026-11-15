@@ -1,4 +1,4 @@
-/** Configuration's words (microcopy 9.5; states F9, F10, F16 to F18). */
+/** Configuration's words (microcopy 9.5; states F9, F10, F16 to F18; Tests live in tests/tests-words.ts). */
 export const configurationWords = {
   tab: "Configuration",
   flowTab: "Flow",
@@ -7,6 +7,7 @@ export const configurationWords = {
   pageNames: {
     general: "General",
     "request-form": "Request form",
+    tests: "Tests",
     problems: "Problems",
   },
   description: "Description",
