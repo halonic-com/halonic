@@ -108,6 +108,7 @@ fn wsl_launch_starts_the_agent_host_in_halonics_distro_with_fixed_arguments() {
             "--profile-folder",
             concat!("/home", "/halonic/.local/share/halonic"),
             "--stdio",
+            "--wsl-shared-folders",
             "--relay-host",
             "127.0.0.1:49152",
         ],

@@ -11,6 +11,7 @@
 mod handshake;
 mod relay;
 mod routes;
+mod security_updates;
 mod wsl;
 
 use std::io::{BufRead, BufReader, Read};
@@ -22,6 +23,7 @@ use std::time::{Duration, Instant};
 pub use handshake::{Handshake, read_handshake};
 use relay::Relay;
 pub use routes::{Answer, LineSplitter, LineTooLong, Method, Route, find_route};
+pub use security_updates::{OVERDUE_AFTER_DAYS, SecurityUpdates, security_updates};
 pub use wsl::{
     DISTRO, DISTRO_HOST, DISTRO_PROFILE_FOLDER, DISTRO_USER, RUNTIME_UPDATER, RuntimeStep,
     WslError, distro_host_command, file_sha256, install_runtime, run_runtime_step, runtime_command,
