@@ -25,11 +25,18 @@ const aliases = (n: number) =>
     : `version: 1\naliases:\n${Array.from({ length: n }, (_, i) => `  a${i}: { provider: p, model: m }\n`).join("")}`;
 const provider = (id: string) => `version: 1\nid: ${id}\ntype: anthropic\nsecret: k-${id}\n`;
 
-function filesWith(options: { aliases: number; providers: string[]; workspace?: string }) {
+function filesWith(options: {
+  aliases: number | "unreadable";
+  providers: string[] | "unreadable";
+  workspace?: string;
+}) {
   const files: ModelsFiles = {
-    readModels: async () => aliases(options.aliases),
+    readModels: async () =>
+      options.aliases === "unreadable" ? "version: 1\naliases: [\n" : aliases(options.aliases),
     readProviders: async () =>
-      options.providers.map((id) => ({ path: `providers/${id}.yaml`, text: provider(id) })),
+      options.providers === "unreadable"
+        ? Promise.reject(new Error("no folder"))
+        : options.providers.map((id) => ({ path: `providers/${id}.yaml`, text: provider(id) })),
     readProvider: async () => null,
     readWorkspace: async () => options.workspace ?? "version: 1\nid: acme\nname: Acme\n",
     changeModels: () => undefined,
@@ -81,6 +88,22 @@ verifies("models.settings.settings-summary", () => {
   it("says no providers yet when there are none", async () => {
     const { view } = await show(filesWith({ aliases: 2, providers: [] }));
     expect(view.querySelector("p")?.textContent).toBe("No providers yet");
+  });
+
+  it("leaves the aliases out while models.yaml can't be read", async () => {
+    const { view } = await show(
+      filesWith({
+        aliases: "unreadable",
+        providers: ["a", "b"],
+        workspace: "version: 1\nid: acme\nname: Acme\nbudget: { currency: USD, monthly: 50 }\n",
+      }),
+    );
+    expect(view.querySelector("p")?.textContent).toBe("2 providers · budget $50.00 a month");
+  });
+
+  it("leaves the providers out, not 'no providers yet', while the providers folder can't be read", async () => {
+    const { view } = await show(filesWith({ aliases: 2, providers: "unreadable" }));
+    expect(view.querySelector("p")?.textContent).toBe("2 aliases");
   });
 
   it("closes Settings, then opens Models", async () => {
