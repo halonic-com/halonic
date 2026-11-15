@@ -1,6 +1,7 @@
 import type { AccountType } from "@halonicjs/google-setup";
 import { ExternalLink, Field, RadioGroup, type RadioOption } from "@halonicjs/studio-kit";
 import { adminConsoleUrl } from "./account-labels.ts";
+import { useNotAnswering } from "./not-answering.tsx";
 
 /** Props for {@link AccountTypeQuestion}. */
 export interface AccountTypeQuestionProps {
@@ -20,11 +21,10 @@ export interface AccountTypeQuestionProps {
  */
 export function AccountTypeQuestion(props: AccountTypeQuestionProps) {
   const { email, value, answering, onChange } = props;
+  const notAnswering = useNotAnswering();
   // The same rule as **Done, next**: an answer that can't be saved stays listed, with the reason.
   const option = (value: AccountType, label: string, note: string): RadioOption<AccountType> =>
-    answering
-      ? { value, label, note }
-      : { value, label, note: "The engine isn't answering.", unavailable: true };
+    answering ? { value, label, note } : { value, label, note: notAnswering, unavailable: true };
   return (
     <Field
       label={`What kind of Google account is ${email}?`}

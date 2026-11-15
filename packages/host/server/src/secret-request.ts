@@ -49,7 +49,7 @@ export function refuseOtherSite(request: Request): ServerError | null {
 }
 
 /** Refuses a body that doesn't say it is JSON. */
-function refuseNonJson(request: Request): ServerError | null {
+export function refuseNonJson(request: Request): ServerError | null {
   const contentType = request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
   return contentType === "application/json" ? null : serverErrors.secretNeedsJson;
 }

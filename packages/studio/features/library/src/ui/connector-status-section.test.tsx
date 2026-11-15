@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { ChatTurnRefusal } from "@halonicjs/ports";
+import { type EngineWords, engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -58,11 +59,16 @@ async function settled(): Promise<void> {
   });
 }
 
-async function openSection(host: ConnectorStatusHost, announceState?: () => void) {
+async function openSection(
+  host: ConnectorStatusHost,
+  announceState?: () => void,
+  words?: EngineWords,
+) {
   const model = new ConnectorStatusModel(host, "notes");
   const root = render(
     <ConnectorStatusSection
       model={model}
+      {...(words === undefined ? {} : { words })}
       {...(announceState === undefined ? {} : { announceState })}
     />,
   );
@@ -184,6 +190,20 @@ verifies("library.status-section", () => {
       expect(root.textContent).toContain("The engine isn't answering. Showing what it said last.");
       expect(lines(root)).toHaveLength(1);
       expect(root.textContent).toContain("Needs sign-in");
+    });
+  });
+
+  describe("on another host", () => {
+    it("words the lost engine for the phone, not the desktop app", async () => {
+      const fake = fakeHost({ connectors: [notes], refusals: [refusal(1)] });
+      const { root } = await openSection(fake.host, undefined, engineWords.phone);
+      fake.host.fail = new Error("gone");
+      await act(async () => fake.changed());
+      await settled();
+      expect(root.textContent).toContain(
+        "Halonic on your computer isn't answering. Showing what it said last.",
+      );
+      expect(root.textContent).not.toContain("The engine isn't answering");
     });
   });
 

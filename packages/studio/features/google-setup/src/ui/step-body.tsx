@@ -22,6 +22,7 @@ import { listNames } from "./account-labels.ts";
 import { ConsoleLink } from "./console-link.tsx";
 import { CopyLine } from "./copy-line.tsx";
 import { CredentialsBody, type CredentialsBodyProps } from "./credentials-body.tsx";
+import { useNotAnswering } from "./not-answering.tsx";
 
 /** Props for {@link StepBody}. */
 export interface StepBodyProps {
@@ -147,6 +148,7 @@ function ConsentBody({
   onInProduction,
   onEditProject,
 }: StepBodyProps & { readonly step: ConsentStep }) {
+  const notAnswering = useNotAnswering();
   const reason = useId();
   const external = step.audience === "external";
   return (
@@ -186,7 +188,7 @@ function ConsentBody({
           </p>
           {answering ? null : (
             <p id={reason} className="pl-6 text-small text-fg-muted">
-              The engine isn't answering.
+              {notAnswering}
             </p>
           )}
         </div>

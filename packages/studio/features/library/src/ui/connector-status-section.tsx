@@ -1,5 +1,5 @@
 import { EmptyState, SkeletonBar, StatusChip } from "@halonicjs/studio-kit";
-import { errorMessageFor } from "@halonicjs/studio-shell";
+import { type EngineWords, engineWords, errorMessageFor } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useId, useRef, useSyncExternalStore } from "react";
 import { type ConnectionState, connectionStateTable } from "../connection-state.ts";
 import { type ConnectorStatusModel, refusalLimit } from "../connector-status-model.ts";
@@ -9,6 +9,8 @@ import { statusWords } from "../status-words.ts";
 /** Props for {@link ConnectorStatusSection}. */
 export interface ConnectorStatusSectionProps {
   readonly model: ConnectorStatusModel;
+  /** The engine words for this window's host; the desktop app's when left out. */
+  readonly words?: EngineWords;
   /** Reads a state change to screen readers (`announcer.announceState`); without it nothing is read. */
   readonly announceState?: (key: string, text: string) => void;
 }
@@ -18,7 +20,11 @@ export interface ConnectorStatusSectionProps {
  * with the sentence that says why, then "Recent refusals" as a plain list of text lines. It is
  * a plain `div`, with no landmark of its own: the shell owns the landmarks.
  */
-export function ConnectorStatusSection({ model, announceState }: ConnectorStatusSectionProps) {
+export function ConnectorStatusSection({
+  model,
+  words = engineWords["desktop-app"],
+  announceState,
+}: ConnectorStatusSectionProps) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
   const state = useSyncExternalStore(subscribe, () => model.state);
   const headingId = useId();
@@ -27,7 +33,7 @@ export function ConnectorStatusSection({ model, announceState }: ConnectorStatus
   return (
     <div className="flex min-w-0 flex-col gap-4">
       {state.loaded && state.error !== undefined ? (
-        <p className="text-small text-fg-muted">{statusWords.engineLost}</p>
+        <p className="text-small text-fg-muted">{words.showingLast}</p>
       ) : null}
       {state.connector === undefined ? null : (
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
@@ -47,6 +53,7 @@ export function ConnectorStatusSection({ model, announceState }: ConnectorStatus
           headingId={headingId}
           loaded={state.loaded}
           error={state.error}
+          notAnswering={words.reason}
           rows={state.refusals.map(({ refusal, at }) => ({ line: refusalLine(refusal), at }))}
           retry={() => void model.refresh()}
         />
@@ -82,12 +89,14 @@ function Refusals({
   headingId,
   loaded,
   error,
+  notAnswering,
   rows,
   retry,
 }: {
   readonly headingId: string;
   readonly loaded: boolean;
   readonly error: unknown;
+  readonly notAnswering: string;
   readonly rows: readonly { readonly line: string; readonly at: Date }[];
   readonly retry: () => void;
 }) {
@@ -99,7 +108,7 @@ function Refusals({
         align="start"
         headingLevel={3}
         title={statusWords.loadFailed}
-        description={reason === "" ? statusWords.notAnswering : reason}
+        description={reason === "" ? notAnswering : reason}
         action={{ label: statusWords.tryAgain, onClick: retry }}
       />
     );

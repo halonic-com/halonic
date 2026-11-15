@@ -46,6 +46,7 @@ code is built the way it is, before you change something they describe.
 | [Harness detect for one agent](2026-11-11-harness-detect-for-one-agent.md) | `detect()` can ask about an agent's settings folder; the probe sets only that variable (v3) |
 | [Sandbox bridge on a socket](2026-11-11-sandbox-bridge-on-a-socket.md) | The profile's bridge says its kind: a loopback port, or a name srt's proxy sends to a Unix socket (v7) |
 | [Sandbox check fix data](2026-11-12-sandbox-check-fix-data.md) | A refused check may name its fix as data: an install with the package manager found, or an AppArmor profile for one program (v7, optional) |
+| [Google sign-in and the setup record](2026-11-14-google-sign-in-and-the-setup-record.md) | The callback sits outside the session with `state` as proof, on loopback only; the setup record holds no secret and points at its connector |
 
 The exact rules of the workflow decision are in the
 [workflow semantics spec](../specs/workflow-semantics.md).

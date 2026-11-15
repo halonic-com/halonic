@@ -2,8 +2,6 @@
 export const PROVIDERS_HEADING = "Providers";
 export const NO_PROVIDERS_LINE =
   "No providers yet. A provider is the company or local server that runs your models, like Anthropic or Ollama.";
-export const PROVIDERS_UNREADABLE_TITLE = "Couldn't load providers";
-export const PROVIDERS_UNREADABLE_REASON = "Halonic couldn't read the providers.";
 export const PROVIDERS_LOADING_LINE = "Loading providers";
 export const PROVIDER_KIND = "model-provider";
 export const PROVIDER_KIND_LABEL = "Model provider";
@@ -19,4 +17,9 @@ export const NO_SECRET = "none";
 /** The title of a provider's tab and page. */
 export function providerTitle(name: string): string {
   return `Provider: ${name}`;
+}
+
+/** The status line after a provider field is saved, and the name of its undo step. */
+export function providerUpdatedLine(name: string): string {
+  return `Updated provider ${name}`;
 }

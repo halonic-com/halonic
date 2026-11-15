@@ -85,6 +85,18 @@ verifies("publish.staged-cli", () => {
     expect(existsSync(join(installed, "src"))).toBe(false);
   });
 
+  it("leaves out an optional dependency the workspace doesn't install, so npm won't fetch it", () => {
+    const runtime = join(
+      consumer,
+      "node_modules/halonic/node_modules/@anthropic-ai/sandbox-runtime",
+    );
+    const manifest = JSON.parse(readFileSync(join(runtime, "package.json"), "utf8")) as {
+      optionalDependencies?: Record<string, string>;
+    };
+    expect(Object.keys(manifest.optionalDependencies ?? {})).not.toContain("@microsoft/mxc-sdk");
+    expect(existsSync(join(consumer, "node_modules/@microsoft/mxc-sdk"))).toBe(false);
+  });
+
   it("carries the third-party notices", () => {
     expect(
       readFileSync(join(consumer, "node_modules/halonic/THIRD-PARTY-NOTICES.txt"), "utf8"),

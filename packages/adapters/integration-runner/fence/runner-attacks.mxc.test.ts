@@ -1,4 +1,4 @@
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createSocket, type Socket as UdpSocket } from "node:dgram";
 import { lookup } from "node:dns/promises";
 import { existsSync } from "node:fs";
@@ -13,6 +13,7 @@ import {
   openAttack,
   runAttack,
 } from "./attack-session.ts";
+import { credentialReadScript } from "./credential-probe.ts";
 import { type RealMxc, realMxc } from "./mxc-sandbox.ts";
 
 // The runner's attack list in MXC on Windows 11 (design HAL-958, sections 4.3
@@ -25,8 +26,8 @@ import { type RealMxc, realMxc } from "./mxc-sandbox.ts";
 // and with it off, so the box alone stands between the script and the
 // computer. That is what an integration has once it gets past the module hook
 // and Node's layer. `mxcFencesRunner` stays off until every case here has
-// passed, A6 and A23 included. A36 past Node's layer (HAL-9362) is a recorded
-// gap: it expects what gets through, so a gap that closes fails too.
+// passed, A6 and A23 included. A36 past Node's layer (HAL-9362): the box shows
+// the vault's entry names but refuses the secret read.
 
 let mxc: RealMxc;
 let base: string;
@@ -328,6 +329,52 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
       });
     } else {
       expect(attempts["credential"]).toEqual({ outcome: "allowed", detail: "listed" });
+    }
+  });
+
+  it("A36: cannot read a Credential Manager secret even past Node's layer", async () => {
+    // `cmdkey /list` above only shows the vault is not hidden. This asks for
+    // the secret itself, through the same call a program uses (`CredRead`),
+    // and checks that no value comes out. With Node's layer off the box
+    // itself refuses: `CredRead` fails (the probe exits 1) although the same
+    // probe reads the secret on this computer, shown by the control below.
+    // The control: the same probe on this computer, outside the box, must read
+    // the secret. Otherwise a failure in the box says nothing about the box.
+    const control = spawnSync(
+      powershell,
+      ["-NoProfile", "-NonInteractive", "-Command", credentialReadScript(credentialTarget)],
+      {
+        encoding: "utf8",
+        timeout: 20000,
+      },
+    );
+    expect(control.stdout, control.stderr).toBe(canary);
+
+    const { attempts, stderr } = await attack(
+      `
+      const { spawnSync } = await import("node:child_process");
+      await attempt("secret", () => {
+        const run = spawnSync(${JSON.stringify(powershell)}, ["-NoProfile", "-NonInteractive", "-Command", ${JSON.stringify(credentialReadScript(credentialTarget))}], {
+          encoding: "utf8",
+          // No input to wait for, and an end well inside the attack's own, so a
+          // stuck PowerShell is reported here with what it printed.
+          stdio: ["ignore", "pipe", "pipe"],
+          timeout: 20000,
+        });
+        // An attempt keeps only the error's code, so what the probe printed goes
+        // to this script's stderr, where the test reads it on a failure.
+        process.stderr.write("probe stdout: " + run.stdout.length + " bytes; probe stderr: " + run.stderr + "\\n");
+        if (run.error) throw run.error;
+        if (run.status !== 0) throw Object.assign(new Error("exit " + run.status), { code: "EXIT_" + run.status });
+        // Report whether the secret came out, never the secret itself.
+        return run.stdout === ${JSON.stringify(canary)} ? "read" : "other output";
+      });
+    `,
+      nodeLayer,
+    );
+    expect(attempts["secret"]?.outcome, stderr).toBe("refused");
+    if (nodeLayer === "off") {
+      expect(attempts["secret"]?.detail, stderr).toBe("EXIT_1");
     }
   });
 

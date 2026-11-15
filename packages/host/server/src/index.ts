@@ -12,6 +12,7 @@ export type {
   GoogleSignInOutcome,
   GoogleSignInStart,
   ModelSettingsGate,
+  ProviderKeyStore,
   RequestContext,
   RequestCountStore,
   RequestLog,
@@ -32,5 +33,6 @@ export type {
 } from "./api.ts";
 export { createServer } from "./create-server.ts";
 export { MemoryRequestCountStore } from "./memory-request-count-store.ts";
+export { providerKeysOf } from "./provider-key-routes.ts";
 export { passwordSecretName } from "./sign-in.ts";
 export { WEBHOOK_TOLERANCE_SECONDS } from "./webhooks.ts";

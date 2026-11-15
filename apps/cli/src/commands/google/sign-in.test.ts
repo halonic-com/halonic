@@ -104,7 +104,7 @@ async function keyOf(workspace: string): Promise<string> {
     await realpath(workspace),
     webCryptoDigest,
   );
-  return folders.folder.split(/[\\/]/).at(-1) ?? "";
+  return folders.key;
 }
 
 function idToken(email: string): string {
@@ -356,6 +356,9 @@ verifies("cli.loopback-callback", () => {
       const waiting = listener.firstCallback(AbortSignal.timeout(5000), "s1");
       const bogus = await fetch(`${base}${callbackPath}?state=other&code=x`);
       expect(bogus.status).toBe(200);
+      const strayText = await bogus.text();
+      expect(strayText).not.toContain("close this tab");
+      expect(strayText).not.toContain("other");
       let settled = false;
       void waiting.then(() => {
         settled = true;
@@ -369,9 +372,11 @@ verifies("cli.loopback-callback", () => {
       expect(answered.headers.get("cache-control")).toBe("no-store");
       expect(answered.headers.get("referrer-policy")).toBe("no-referrer");
       expect((await waiting)?.get("state")).toBe("s1");
-      expect((await listener.firstCallback(AbortSignal.timeout(5000), "s1"))?.get("state")).toBe(
-        "s1",
-      );
+      expect(await answered.text()).toContain("close this tab");
+      // Nothing is kept: a request that no wait wanted is gone, and so is one already given.
+      await fetch(`${base}${callbackPath}?state=s2&code=c2`);
+      expect(await listener.firstCallback(AbortSignal.timeout(50), "s2")).toBeUndefined();
+      expect(await listener.firstCallback(AbortSignal.timeout(50), "s1")).toBeUndefined();
     } finally {
       await listener.close();
     }

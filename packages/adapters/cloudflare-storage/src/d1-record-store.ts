@@ -74,6 +74,15 @@ export class D1RecordStore implements RecordStore {
     return (await this.#rows(collection)).map(toChange);
   }
 
+  /** The name of every collection that has at least one change, in byte order. */
+  async collections(): Promise<string[]> {
+    await this.#migrated();
+    const { results } = await this.#db
+      .prepare("SELECT DISTINCT collection FROM record_changes ORDER BY collection")
+      .all<{ collection: string }>();
+    return results.map((row) => row.collection);
+  }
+
   async compact(collection: string): Promise<void> {
     // The version is read before the rows: a compaction that lands in between fails our claim.
     const version = await this.#compactionVersion(collection);

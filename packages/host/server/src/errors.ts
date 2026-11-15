@@ -178,6 +178,16 @@ export const serverErrors = {
       "Google sends the sign-in back to the computer that runs Halonic. Finish it there, or run halonic google sign-in on it.",
   },
   notFound: { status: 404, code: "not_found", message: "There is nothing at this address." },
+  keysNotSupported: {
+    status: 404,
+    code: "keys_not_supported",
+    message: "This server can't keep provider keys.",
+  },
+  secretNameRefused: {
+    status: 400,
+    code: "secret_name_refused",
+    message: "That isn't a name a provider key can have.",
+  },
   internal: {
     status: 500,
     code: "internal_error",

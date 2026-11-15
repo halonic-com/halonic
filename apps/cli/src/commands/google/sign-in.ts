@@ -183,7 +183,7 @@ async function workspaceKeyOf(setup: GoogleSetup, location: string): Promise<str
     location,
     webCryptoDigest,
   );
-  return folders.folder.split(/[\\/]/).at(-1) ?? "";
+  return folders.key;
 }
 
 async function listen(setup: GoogleSignInMachine): Promise<CallbackListener> {
@@ -255,6 +255,11 @@ async function runSignIn(run: SignInRun): Promise<GoogleSignInResult> {
     pendingSignIns,
   );
   await host.setups.update(accountRef, { kind: "sign-in-started" });
+  const waiting = AbortSignal.any([
+    context.signal,
+    AbortSignal.timeout(run.setup.waitMs ?? signInWaitMs),
+  ]);
+  const answer = run.listener.firstCallback(waiting, new URL(url).searchParams.get("state") ?? "");
   const opened = (await run.setup.openBrowser?.(url)) ?? false;
   if (!opened) {
     for (const line of [googleMessages.signInOpenThis().phrase, plainLine(url)]) {
@@ -263,15 +268,7 @@ async function runSignIn(run: SignInRun): Promise<GoogleSignInResult> {
     }
   }
   const waitingLine = context.progress(googleMessages.signInWaiting().phrase);
-
-  const waiting = AbortSignal.any([
-    context.signal,
-    AbortSignal.timeout(run.setup.waitMs ?? signInWaitMs),
-  ]);
-  const query = await run.listener.firstCallback(
-    waiting,
-    new URL(url).searchParams.get("state") ?? "",
-  );
+  const query = await answer;
   waitingLine.end();
   if (query === undefined) {
     await host.setups.update(accountRef, { kind: "sign-in-dropped" });

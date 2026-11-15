@@ -16,8 +16,10 @@ export interface CallbackListener {
   readonly port: number;
   /**
    * The query of the first callback whose `state` is `state`, or `undefined`
-   * when `signal` ends first. Any other request (a stray one, a probe, one
-   * with another `state`) is not the sign-in's answer and is ignored.
+   * when `signal` ends first. Call it before the browser is sent to Google:
+   * only a request that a call waits for is kept. Any other request (a
+   * stray one, a probe, one with another `state`) is not the sign-in's
+   * answer, is not kept and gets a neutral page.
    */
   firstCallback(signal: AbortSignal, state: string): Promise<URLSearchParams | undefined>;
   /** Stops listening. Safe to call twice. */
@@ -28,6 +30,16 @@ export interface CallbackListener {
 const donePage =
   "<!doctype html><title>Halonic</title><p>You can close this tab and go back to the terminal.</p>";
 
+/** The page for a request no sign-in waits for. It says nothing about a sign-in having worked. */
+const strayPage =
+  "<!doctype html><title>Halonic</title><p>This address is not waiting for a sign-in.</p>";
+
+const pageHeaders = {
+  "content-type": "text/html; charset=utf-8",
+  "cache-control": "no-store",
+  "referrer-policy": "no-referrer",
+};
+
 /**
  * Starts listening on `127.0.0.1` and a free port.
  *
@@ -35,7 +47,6 @@ const donePage =
  */
 export async function listenForCallback(): Promise<CallbackListener> {
   const waiting: Array<{ state: string; resolve: (query: URLSearchParams) => void }> = [];
-  const arrived: URLSearchParams[] = [];
   const server = createServer((request, response) => {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");
     if (request.method !== "GET" || url.pathname !== callbackPath) {
@@ -47,21 +58,16 @@ export async function listenForCallback(): Promise<CallbackListener> {
       response.writeHead(400, { "content-type": "text/html; charset=utf-8" }).end();
       return;
     }
-    arrived.push(url.searchParams);
-    for (const waiter of waiting.splice(0)) {
-      if (waiter.state === state) {
-        waiter.resolve(url.searchParams);
-      } else {
-        waiting.push(waiter);
-      }
+    const matched = waiting.filter((waiter) => waiter.state === state);
+    if (matched.length === 0) {
+      response.writeHead(200, pageHeaders).end(strayPage);
+      return;
     }
-    response
-      .writeHead(200, {
-        "content-type": "text/html; charset=utf-8",
-        "cache-control": "no-store",
-        "referrer-policy": "no-referrer",
-      })
-      .end(donePage);
+    waiting.splice(0, waiting.length, ...waiting.filter((waiter) => waiter.state !== state));
+    for (const waiter of matched) {
+      waiter.resolve(url.searchParams);
+    }
+    response.writeHead(200, pageHeaders).end(donePage);
   });
   await listening(server);
   const { port } = server.address() as AddressInfo;
@@ -69,17 +75,23 @@ export async function listenForCallback(): Promise<CallbackListener> {
     port,
     firstCallback: (signal, state) =>
       new Promise((resolve) => {
-        const match = arrived.find((query) => query.get("state") === state);
-        if (match !== undefined) {
-          resolve(match);
-          return;
-        }
         if (signal.aborted) {
           resolve(undefined);
           return;
         }
-        waiting.push({ state, resolve });
-        signal.addEventListener("abort", () => resolve(undefined), { once: true });
+        const waiter = { state, resolve };
+        waiting.push(waiter);
+        signal.addEventListener(
+          "abort",
+          () => {
+            const at = waiting.indexOf(waiter);
+            if (at >= 0) {
+              waiting.splice(at, 1);
+            }
+            resolve(undefined);
+          },
+          { once: true },
+        );
       }),
     close: () =>
       new Promise((resolve) => {

@@ -110,7 +110,7 @@ workspace you didn't write is like running its code.
 | --- | --- | --- |
 | A workspace starts programs before you trust it | Ask "trust this workspace" before any program starts; no `shell: true`. The CLI asks: `halonic trust` shows what the workspace can start and trusts it on this computer, by a fingerprint of its connectors, agents and providers. `run`, `runs send` and `routines watch` refuse a workspace that isn't trusted here, or changed since, and start nothing (exit 3); a run that can only reach the test model needs no trust (`reachesOnlyTheTestModel`). A trust record that can't be read counts as no trust. Studio doesn't ask yet: its "Trust this folder?" question only lets it open the folder, and doesn't check the workspace. The requirement `ports.connector-trust-enforcement` is still a draft, because the stdio launcher that checks the grant itself isn't built (HAL-230) | CLI **On `main`** (`apps/cli`, `workspace-trust.ts`); Studio **Planned** (phase 2, plan HAL-9); the requirement becomes active with the contract suites (HAL-181) |
 | A hub or an agent lists the token collection | Halonic's own collections (`_tokens`, `_google_setups`) start with `_`, which no workspace collection id may, so a hub, an agent or a ref field can't name them; the scheduler's and coordination's collections (`halonic.scheduler.timers`, `halonic.coordination`) are kept out by their `.` (`packages/core/format`, `collectionId`) | **On `main`** |
-| A workspace picks a token or one of Halonic's own secrets by name | A provider's or a model's `secret` is read through `workspaceSecrets`, which refuses `token-key`, `serve-password` and every name under the token prefix `halonic_token_`, in any case and with `-` or `_` (`packages/core/ports`). Together with the row above, no workspace name reaches a token or Halonic's own secrets in either store: the record store keeps tokens in `_tokens`, and a store that holds secrets and tokens together, such as the desktop keychain, keeps tokens under the prefix | **On `main`** (`ports.workspace-secrets`); tokens under the prefix in the keychain: the bridge **On `main`** (`services.shell-secrets`), the app using it **Planned** (HAL-2952) |
+| A workspace picks a token or one of Halonic's own secrets by name | A provider's or a model's `secret` is read through `workspaceSecrets`, which refuses `token-key`, `serve-password` and every name under the token prefix `halonic_token_`, in any case and with `-` or `_` (`packages/core/ports`). Together with the row above, no workspace name reaches a token or Halonic's own secrets in either store: the record store keeps tokens in `_tokens`, and a store that holds secrets and tokens together, such as the desktop keychain, keeps tokens under the prefix | **On `main`** (`ports.workspace-secrets`); tokens under the prefix in the keychain: the bridge **On `main`** (`services.shell-secrets`), and the desktop app using it **On `main`** (`apps/studio`, `start-studio.ts`; HAL-2952) |
 | A workspace reads another workspace's or hub's data | Isolation between workspaces and hubs is not built | **Planned** (phase 2, plan HAL-9) |
 | A listed tool of an untrusted workspace lowers its risk | Without a trust grant every listed tool counts as `write`; `readToolListing` ignores the workspace's lower risks (`packages/core/app/src/tool-listing.ts`) | **On `main`** |
 | Secrets committed to the repository | The leak guard blocks private keys, Google client secrets, OAuth tokens, protected personal terms and absolute local paths (`tooling/check/src/leaks`, [leak guard](../guides/leak-guard.md)) | **On `main`** |
@@ -211,9 +211,9 @@ Its text is attacker text. The rules are the requirement
 | A stored token is read from disk or a copy | AES-256-GCM, a new random nonce per write, bound to the token's name so a value can't be moved to another name; the key is the secret `token-key` (32 bytes) | **On `main`** (`packages/adapters/token-store`) |
 | A wrong key looks like "not signed in" | A value that won't open throws `UnreadableTokenError`, never `null`; the error names the token, not its value | **On `main`** |
 | Token names fold into each other | Case and `-` versus `_` are treated as the same name; bad names are refused before anything is read | **On `main`** |
-| A workspace's secret pick reads a token or the token key | The names a workspace picks for providers and models go through `workspaceSecrets`, which refuses `token-key`, `serve-password` and the token prefix `halonic_token_` by their `secretKey` form; its error never repeats the name. A store that holds secrets and tokens together keeps tokens under that prefix | **On `main`** (`ports.workspace-secrets`); tokens under the prefix in the keychain: the bridge **On `main`** (`services.shell-secrets`), the app using it **Planned** (HAL-2952) |
+| A workspace's secret pick reads a token or the token key | The names a workspace picks for providers and models go through `workspaceSecrets`, which refuses `token-key`, `serve-password` and the token prefix `halonic_token_` by their `secretKey` form; its error never repeats the name. A store that holds secrets and tokens together keeps tokens under that prefix | **On `main`** (`ports.workspace-secrets`); tokens under the prefix in the keychain: the bridge **On `main`** (`services.shell-secrets`), and the desktop app using it **On `main`** (`apps/studio`, `start-studio.ts`; HAL-2952) |
 | A program a workspace starts reads the keys in your environment | A `stdio` connector's program gets only a base of the app's environment, plus its connector's `env` and `secretEnv` and the variables it names in `inheritEnv`. The base holds variables such as the program lookup (`PATH`), home, user, shell, terminal, temp, time zone and locale, `XDG_*_HOME`, your proxy, certificate and library folders, and on Windows the system folders a program needs. A model key or token in your shell, the `HALONIC_SECRET_…` variables included, stays out unless the connector names it in `secretEnv`, which the trust check lists. `inheritEnv` refuses a name that looks like it holds a secret, such as `ANTHROPIC_API_KEY`, and the trust check lists the names it takes. `NODE_TLS_REJECT_UNAUTHORIZED`, `LD_PRELOAD` and `DYLD_INSERT_LIBRARIES` stay out of the base | **On `main`** (`app.connector-base-env`, `app.connector-inherited-env`, `format.connector-inherit-env`, `mcp.stdio-connector`, `mcp.pinned-launcher`) |
-| A copied data folder gives away tokens (desktop) | In the desktop shell, Studio's services keep secrets and tokens in the OS keychain; the data folder holds no token and no key (`packages/studio/services`) | The bridge **On `main`** (`services.shell-secrets`), the app using it **Planned** (HAL-2952) |
+| A copied data folder gives away tokens (desktop) | In the desktop shell, Studio's services keep secrets and tokens in the OS keychain; the data folder holds no token and no key (`packages/studio/services`) | **On `main`**: the bridge (`services.shell-secrets`) and the desktop app using it (`apps/studio`, `start-studio.ts`; HAL-2952) |
 
 **Known limits.**
 
@@ -254,36 +254,36 @@ Its text is attacker text. The rules are the requirement
   before you trust a workspace. A pinned connector can't name a variable that
   moves its registry, proxy or certificates, and a connector in a sandbox
   can't use `inheritEnv` at all.
-- **The desktop app doesn't use the keychain yet.** The bridge that gives
-  Studio's services the keychain is on `main`; the code in the app that builds
-  those services is Planned (HAL-2952). Until then, no desktop token reaches the
-  keychain: on desktop, tokens still go to whatever store the app provides, or
-  to none.
+- **Outside the desktop shell there is no keychain.** The desktop app gives each
+  workspace's services the keychain before any feature's services are built
+  (`provideShellSecrets`, HAL-2952). In a browser, tokens go to whatever store
+  the app provides, or to none.
 
 ### 4.5 Google setup and sign-in (B5)
 
 The Google setup flow stores your own Google client secret and signs you in.
 Decisions from the security reviews. What is on `main` is the library
-(`packages/host/google-sign-in`, and the setup code in `core/google-setup`):
-nothing outside it calls the library yet, because the callback route and the
-setup flow are Planned (HAL-699). The rows that only a route can keep are
-listed as Planned, with a draft requirement
-(`packages/host/google-sign-in/requirements/callback-route.md`) to write the
-route against:
+(`packages/host/google-sign-in`, and the setup code in `core/google-setup`)
+and the host's two routes, the sign-in start and the callback
+(`packages/host/server`). The reasons are in
+[the sign-in record](../adr/2026-11-14-google-sign-in-and-the-setup-record.md).
+The setup flow in Studio is Planned (HAL-699):
 
 | Threat | Mitigation | Mark |
 | --- | --- | --- |
 | A leaked client secret or token is committed | The leak guard has `google-client-secret` and OAuth token and code rules | **On `main`** |
-| Sign-in code intercepted | PKCE (S256); the verifier is 32 random bytes, stays in memory and goes only to Google's token endpoint, in the code exchange (`packages/host/google-sign-in`) | Library **on `main`**; route **Planned** (HAL-699) |
-| Forged or replayed callback | A random `state` (32 bytes), compared in constant time; a missing one never matches | Library **on `main`**; route **Planned** (HAL-699) |
-| A callback with the wrong `state` cancels or consumes a sign-in | A missing or wrong `state` is checked first and changes nothing; the pending sign-in is taken once, synchronously | Library **on `main`**; route **Planned** (HAL-699) |
-| Crafted redirect or auth URL | Only `127.0.0.1` redirects; every value is URL-encoded; no `error_description` is read | Library **on `main`**; route **Planned** (HAL-699) |
+| Sign-in code intercepted | PKCE (S256); the verifier is 32 random bytes, stays in memory and goes only to Google's token endpoint, in the code exchange (`packages/host/google-sign-in`) | **On `main`** |
+| Forged or replayed callback | A random `state` (32 bytes), compared in constant time; a missing one never matches | **On `main`** |
+| A callback with the wrong `state` cancels or consumes a sign-in | A missing or wrong `state` is checked first and changes nothing; the pending sign-in is taken once, synchronously | **On `main`** |
+| Crafted redirect or auth URL | Only `127.0.0.1` redirects; every value is URL-encoded; no `error_description` is read | **On `main`** |
 | The client secret is read by an integration or hub | It goes only through the `TokenStore`; only the host's sign-in and refresh code reads it; integrations get only `scopedTokens` | Library **on `main`** (HAL-698); the setup flow that calls it is **Planned** |
 | Two setup refs map to one stored name | A ref is checked against the store's name folding before use, so none fold to another's name | Library **on `main`** (HAL-698); the setup flow that calls it is **Planned** |
 | A secret ends up in an error message | Errors have fixed texts; a rejected input is never repeated | Library **on `main`** (HAL-698); the setup flow that calls it is **Planned** |
-| Another program or web page reaches the sign-in callback | The callback server is one-shot, binds only to `127.0.0.1`, closes after the first valid callback or a time limit, and refuses a request whose `Host` isn't the one it was started with | **Planned** (HAL-699, the route) |
-| The callback page reflects something an attacker chose | The page the callback answers with escapes everything it takes from the query, or shows none of it | **Planned** (HAL-699, the route) |
-| The callback URL, with its code and `state`, ends up in a log | The route is kept out of request logging, or only its path is logged, never its query | **Planned** (HAL-699, the route) |
+| Another computer or web page reaches the sign-in callback | The callback needs no session, so it answers only a request addressed to a loopback name (404 on any other) after the `Host` and `Origin` checks. That check reads the `Host` header, which a request made by hand on another computer can set, so the guard against such a request is the `state`: one with no matching `state` changes nothing (`packages/host/server`) | **On `main`** |
+| The callback page reflects something an attacker chose | The page is fixed text for each outcome, with no script; nothing from the query, Google's answer or the record goes into it, and it is sent with `no-store`, a `default-src 'none'` content policy, `no-referrer` and no framing | **On `main`** |
+| The callback URL, with its code and `state`, ends up in a log | The request log records method, path and status, never a query string | **On `main`** |
+| A dead sign-in link is used to flood or spoof the open setup item | A `state` that matches no sign-in has no account: it gets the page and publishes no event | **On `main`** |
+| Studio or a hub reads or changes a Google secret or setup | Setup records are in `google/setups`; secrets only in `google/tokens`, never returned. Studio reads the records through the read-only `google_setup_read` command, which takes no argument and is granted to the app's own window only | **On `main`** |
 
 **Known limit.** The token store's old-copies limit (4.4) applies to the
 client secret and to refresh tokens.

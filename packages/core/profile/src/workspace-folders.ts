@@ -41,6 +41,8 @@ const windowsDeviceNames = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/;
 
 /** The folders one workspace has in the profile. Nothing is created. */
 export interface WorkspaceFolders {
+  /** The workspace's key: the name of its folder in `workspaces`. Records that link to the workspace keep this. */
+  readonly key: string;
   /** The workspace's own folder in the profile. */
   readonly folder: string;
   /**
@@ -154,6 +156,7 @@ export async function workspaceFolders(
   const key = await workspaceKey(profile, workspaceRealPath, digest);
   const folder = joinPath(profile.platform, profile.root, workspacesFolderName, key);
   return {
+    key,
     folder,
     runsFolder(deploymentId?: string): string {
       if (deploymentId === undefined) {

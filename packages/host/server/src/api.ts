@@ -378,6 +378,20 @@ export interface StudioPage {
   read(path: string): Promise<Uint8Array | null>;
 }
 
+/**
+ * The three things the write-only key routes do with a provider key. It has no
+ * way to read a value back, so a route can't leak one even by mistake. A host
+ * with a `SecretStore` makes one with `providerKeysOf`.
+ */
+export interface ProviderKeyStore {
+  /** Whether a key is stored under the name. */
+  has(name: string): Promise<boolean>;
+  /** Saves a key, replacing the one under the same name. */
+  set(name: string, value: string): Promise<void>;
+  /** Removes a key. Removing one that isn't stored succeeds. */
+  remove(name: string): Promise<void>;
+}
+
 /** What the server needs from its host. Every port is replaceable, so a test runs the handler with fakes. */
 export interface ServerPorts {
   /** Runs workflows; the server only forwards start, send, cancel and subscribe calls to it. */
@@ -389,6 +403,11 @@ export interface ServerPorts {
   readonly runStore: Pick<RunStore, "list" | "get">;
   /** Configured secrets, such as the sign-in password hash and webhook secrets. Read-only. */
   readonly secrets: Secrets;
+  /**
+   * Where provider keys are kept, for the write-only `/api/secrets/<name>`
+   * routes. Without it those routes answer 404 `keys_not_supported`.
+   */
+  readonly providerKeys?: ProviderKeyStore;
   /** Hashes and checks the sign-in password. The target picks the format. */
   readonly passwordHasher: PasswordHasher;
   /** Shared login limits and session records, so every instance of a deployment agrees. */

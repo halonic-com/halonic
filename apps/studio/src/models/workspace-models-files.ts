@@ -50,12 +50,20 @@ export class WorkspaceModelsFiles implements ModelsFiles {
     return files.flatMap(({ path, text }) => (text === null ? [] : [{ path, text }]));
   }
 
+  readProvider(path: string): Promise<string | null> {
+    return PROVIDER_PATH.test(path) ? this.#parts.files.read(path) : Promise.resolve(null);
+  }
+
   readWorkspace(): Promise<string | null> {
     return this.#parts.files.read(WORKSPACE_PATH);
   }
 
   changeModels(label: string, text: string): void {
     this.#parts.files.change(label, { [MODELS_PATH]: text });
+  }
+
+  changeProvider(path: string, label: string, text: string): void {
+    if (PROVIDER_PATH.test(path)) this.#parts.files.change(label, { [path]: text });
   }
 
   subscribe(listener: () => void): () => void {
