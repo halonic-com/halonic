@@ -97,6 +97,12 @@ async function typeAndLeave(input: HTMLInputElement, value: string) {
   });
 }
 
+function byLabel(view: HTMLElement, text: string) {
+  const label = [...view.querySelectorAll("label")].find((l) => l.textContent?.startsWith(text));
+  if (!(label?.control instanceof HTMLInputElement)) throw new Error(`no field ${text}`);
+  return label.control;
+}
+
 const stepOpen = () => document.body.textContent?.includes("Prices and budget") ?? false;
 
 const keysWith = (stored: boolean): ModelKeys => ({
@@ -121,7 +127,17 @@ verifies("models.budget-step.ask-for-pay-per-use", () => {
     const view = await show("ollama", fakeFiles(ollama, "ollama", {}));
     expect(stepOpen()).toBe(false);
 
-    await typeAndLeave(view.querySelectorAll("input")[2] as HTMLInputElement, "ollama-key");
+    await typeAndLeave(byLabel(view, "Secret name"), "ollama-key");
+
+    expect(stepOpen()).toBe(true);
+  });
+
+  it("offers it without waiting for the page to read the file back", async () => {
+    const files = fakeFiles(ollama, "ollama", {});
+    const silent: ModelsFiles = { ...files, changeProvider: () => undefined };
+    const view = await show("ollama", silent);
+
+    await typeAndLeave(byLabel(view, "Secret name"), "ollama-key");
 
     expect(stepOpen()).toBe(true);
   });
@@ -129,12 +145,12 @@ verifies("models.budget-step.ask-for-pay-per-use", () => {
   it("does not offer it for an edit that leaves the provider as it was", async () => {
     const view = await show("anthropic", fakeFiles(anthropic, "anthropic", {}));
 
-    await typeAndLeave(view.querySelectorAll("input")[0] as HTMLInputElement, "Claude");
+    await typeAndLeave(byLabel(view, "Name"), "Claude");
 
     expect(stepOpen()).toBe(false);
   });
 
-  it("offers it after the first key is saved, but not after a replacement", async () => {
+  it("offers it after the first key is saved", async () => {
     const first = await show("anthropic", fakeFiles(anthropic, "anthropic", {}), keysWith(false));
     await saveKey(first);
     expect(stepOpen()).toBe(true);
