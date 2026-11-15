@@ -5,6 +5,7 @@ import { readModels } from "./aliases/read-models.ts";
 import { ModelKeysService, ModelsFilesService, NoLimitMemoryService } from "./api.ts";
 import { PROVIDER_KIND, PROVIDER_KIND_LABEL, providerTabLabel } from "./providers/provider-text.ts";
 import { modelsSummary } from "./settings/settings-text.ts";
+import { hasProblems } from "./settings/use-problems.ts";
 
 /**
  * The Models feature: providers, aliases, API keys, budget, the "Prices and
@@ -31,6 +32,7 @@ export const modelsFeature = defineFeature({
       async summary(context) {
         return modelsSummary(await readModels(context.services.get(ModelsFilesService)));
       },
+      attention: hasProblems,
       view: "ModelsSettingsSection",
       load: () => import("./settings/models-settings-section.tsx"),
     });
