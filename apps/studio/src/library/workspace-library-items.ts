@@ -90,18 +90,22 @@ export class WorkspaceLibraryItems implements LibraryItemsHost {
 
   /** The workspace as files, with unsaved changes applied. */
   #source(): DefinitionSource {
-    const { files } = this.#parts;
-    return {
-      location: "workspace:unsaved",
-      list: async () => {
-        const listed = await Promise.all(folders.map((folder) => files.list(folder)));
-        const settings = (await files.read(settingsPath)) === null ? [] : [settingsPath];
-        return [...settings, ...listed.flat()];
-      },
-      read: (path) => files.read(path),
-      version: async () => "unsaved",
-    };
+    return unsavedSource(this.#parts.files);
   }
+}
+
+/** The workspace's files, with the unsaved changes the kernel's `WorkspaceFiles` applies, as a source to load. */
+export function unsavedSource(files: WorkspaceLibraryItemsParts["files"]): DefinitionSource {
+  return {
+    location: "workspace:unsaved",
+    list: async () => {
+      const listed = await Promise.all(folders.map((folder) => files.list(folder)));
+      const settings = (await files.read(settingsPath)) === null ? [] : [settingsPath];
+      return [...settings, ...listed.flat()];
+    },
+    read: (path) => files.read(path),
+    version: async () => "unsaved",
+  };
 }
 
 function nameOf(workspace: LoadedWorkspace): string {
