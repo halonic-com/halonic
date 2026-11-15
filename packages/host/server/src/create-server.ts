@@ -11,6 +11,11 @@ import {
   isSecretPath,
 } from "./google-routes.ts";
 import { googleCallbackPath } from "./google-sign-in-routes.ts";
+import {
+  createProviderKeyRoutes,
+  isProviderKeyPath,
+  providerKeyPathPrefix,
+} from "./provider-key-routes.ts";
 import { createRunRoutes, isJsonRequest, parseRunId, runPathPrefix } from "./run-routes.ts";
 import {
   checkHost,
@@ -55,6 +60,7 @@ export const createServer: CreateServer = ({ config, ports }) => {
   const runRoutes = createRunRoutes(ports);
   const connectorRoutes = createConnectorRoutes(ports);
   const chatTurnRoutes = createChatTurnRoutes(ports);
+  const providerKeyRoutes = createProviderKeyRoutes(ports);
 
   /** `/api/runs/<runId>` and `/api/runs/<runId>/<action>`: the routes of one run, behind the sign-in. */
   async function runRoute(
@@ -121,6 +127,32 @@ export const createServer: CreateServer = ({ config, ports }) => {
     return whenSignedIn(request, context, () => routes.handle(request, body, context));
   }
 
+  /** The exact-address routes that need a session: a chat turn, a connector call and the provider keys. `null` when the address is none of them. */
+  async function signedInOnlyRoute(
+    request: Request,
+    context: RequestContext,
+    body: Uint8Array,
+    pathname: string,
+  ): Promise<Response | null> {
+    if (request.method === "POST" && pathname === chatTurnPath) {
+      return whenSignedIn(request, context, () => chatTurnRoutes.chatTurn(request, body));
+    }
+    if (request.method === "POST" && pathname === connectorCallPath) {
+      return whenSignedIn(request, context, () => connectorRoutes.call(request, body));
+    }
+    if (pathname.startsWith(providerKeyPathPrefix)) {
+      return whenSignedIn(request, context, () =>
+        providerKeyRoutes.handle(
+          request,
+          context,
+          body,
+          pathname.slice(providerKeyPathPrefix.length),
+        ),
+      );
+    }
+    return null;
+  }
+
   async function route(
     request: Request,
     context: RequestContext,
@@ -131,11 +163,9 @@ export const createServer: CreateServer = ({ config, ports }) => {
     if (request.method === "POST" && pathname.startsWith(webhookPathPrefix)) {
       return webhookRoutes.receive(request, pathname.slice(webhookPathPrefix.length), body);
     }
-    if (request.method === "POST" && pathname === chatTurnPath) {
-      return whenSignedIn(request, context, () => chatTurnRoutes.chatTurn(request, body));
-    }
-    if (request.method === "POST" && pathname === connectorCallPath) {
-      return whenSignedIn(request, context, () => connectorRoutes.call(request, body));
+    const signedInRoute = await signedInOnlyRoute(request, context, body, pathname);
+    if (signedInRoute !== null) {
+      return signedInRoute;
     }
     if (pathname.startsWith(runPathPrefix)) {
       return runRoute(request, context, body, pathname.slice(runPathPrefix.length));
@@ -224,7 +254,7 @@ export const createServer: CreateServer = ({ config, ports }) => {
   /** Logs method, path and status. A route that takes a secret is left out, and no query string is ever logged. */
   function logRequest(request: Request, response: Response): void {
     const { pathname } = new URL(request.url);
-    if (ports.requestLog === undefined || isSecretPath(pathname)) {
+    if (ports.requestLog === undefined || isSecretPath(pathname) || isProviderKeyPath(pathname)) {
       return;
     }
     ports.requestLog.record({ method: request.method, path: pathname, status: response.status });
