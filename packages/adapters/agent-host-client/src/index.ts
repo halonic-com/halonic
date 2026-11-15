@@ -8,6 +8,7 @@ export {
   fitsAnswerLimit,
 } from "./bridges.ts";
 export { AgentHostConnectorFactory } from "./connector.ts";
+export { AgentHostGoogleSetup, type GoogleDisconnected } from "./google.ts";
 export {
   AgentHostHarness,
   type AgentHostHarnessOptions,

@@ -8,7 +8,10 @@ import { type SetupRecord, setupRecords } from "@halonicjs/google-setup";
 import { fixedClock, fixedIds } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
-import { WorkspaceGoogleSetupAccounts } from "./workspace-google-setup-accounts.ts";
+import {
+  type GoogleSetupHost,
+  WorkspaceGoogleSetupAccounts,
+} from "./workspace-google-setup-accounts.ts";
 
 const acmeKey = "a".repeat(32);
 const otherKey = "b".repeat(32);
@@ -66,6 +69,7 @@ async function accountsOf(
     definitions?: MemoryDefinitionStore;
     folder?: MemoryFolderReader;
     start?: (workspace: string, id: string) => Promise<void>;
+    host?: GoogleSetupHost;
   } = {},
 ) {
   const records = new MemoryRecordStore();
@@ -91,6 +95,7 @@ async function accountsOf(
     digest: webCryptoDigest,
     setups,
     workspaceKey: async () => acmeKey,
+    ...(options.host === undefined ? {} : { host: options.host }),
   });
   return { accounts, setups, records };
 }
@@ -204,7 +209,7 @@ verifies("studio.workspace-google-setup-accounts", () => {
   });
 
   describe("changes", () => {
-    it("refuses a step, a secret, Start over and Disconnect with a plain message, and changes no record", async () => {
+    it("refuses a step, a secret and Start over with a plain message, and changes no record", async () => {
       const { accounts, records } = await accountsOf();
       const before = JSON.stringify(await records.changes("_google_setups"));
 
@@ -213,12 +218,63 @@ verifies("studio.workspace-google-setup-accounts", () => {
         accounts.saveClientSecret(),
         accounts.replaceClientSecret(),
         accounts.startOver(),
-        accounts.disconnect(),
       ]) {
         await expect(attempt).rejects.toThrow("can't be saved in the Halonic app yet");
       }
 
       expect(JSON.stringify(await records.changes("_google_setups"))).toBe(before);
+    });
+  });
+
+  describe("disconnect", () => {
+    it("asks the agent host, answers whether Google ended the sign-in, and tells its listeners", async () => {
+      const disconnected: string[] = [];
+      const host = {
+        disconnect: async (accountRef: string) => {
+          disconnected.push(accountRef);
+          return { googleConfirmed: true };
+        },
+      };
+      const { accounts } = await accountsOf({ host });
+      const listener = vi.fn();
+      accounts.subscribe(listener);
+
+      const answer = await accounts.disconnect("gaccount_1");
+
+      expect(answer).toEqual({ kind: "ended" });
+      expect(disconnected).toEqual(["gaccount_1"]);
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it("says when Google couldn't be reached, as the setup was still removed", async () => {
+      const host = { disconnect: async () => ({ googleConfirmed: false }) };
+      const { accounts } = await accountsOf({ host });
+
+      expect(await accounts.disconnect("gaccount_1")).toEqual({ kind: "google-unreachable" });
+    });
+
+    it("rejects in plain words with the host's reason, and tells its listeners to read again, when the host can't", async () => {
+      const host = {
+        disconnect: async () => {
+          throw new Error("The agent host answered with 502 (google_failed).");
+        },
+      };
+      const { accounts } = await accountsOf({ host });
+      const listener = vi.fn();
+      accounts.subscribe(listener);
+
+      await expect(accounts.disconnect("gaccount_1")).rejects.toThrow(
+        "Halonic couldn't finish disconnecting this account. The agent host answered with 502",
+      );
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it("is refused in plain words without an agent host", async () => {
+      const { accounts } = await accountsOf();
+
+      await expect(accounts.disconnect("gaccount_1")).rejects.toThrow(
+        "can't be saved in the Halonic app yet",
+      );
     });
   });
 

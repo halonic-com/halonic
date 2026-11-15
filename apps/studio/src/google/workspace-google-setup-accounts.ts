@@ -2,6 +2,7 @@ import { readLocalIntegrations } from "@halonicjs/app";
 import type { SetupRecord, SetupRecords } from "@halonicjs/google-setup";
 import type { DefinitionStore, DefinitionWatch, Digest, FolderReader } from "@halonicjs/ports";
 import type {
+  DisconnectAnswer,
   GoogleSetupAccount,
   GoogleSetupAccounts,
   SecretEntry,
@@ -9,6 +10,12 @@ import type {
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import { googleAccountOf } from "./google-account.ts";
 import { googleServices } from "./google-services.ts";
+
+/** What changes a Google setup, on the agent host, which holds the sealed tokens. */
+export interface GoogleSetupHost {
+  /** Ends the account's sign-in and removes its sign-in, record and client secret. Rejects when the host can't. */
+  disconnect(accountRef: string): Promise<{ readonly googleConfirmed: boolean }>;
+}
 
 /** What {@link WorkspaceGoogleSetupAccounts} reads. */
 export interface WorkspaceGoogleSetupAccountsOptions {
@@ -22,15 +29,28 @@ export interface WorkspaceGoogleSetupAccountsOptions {
   readonly setups: SetupRecords;
   /** The workspace's key in the profile, which the record's connector link names. */
   readonly workspaceKey: () => Promise<string>;
+  /** The agent host that changes a setup, when the app has one; without it every change is refused. */
+  readonly host?: GoogleSetupHost;
   /** Calls its listener when the window comes to the front; returns a function that stops it. */
   readonly onFocus?: (listener: () => void) => () => void;
   /** Called with the error when the files can't be watched; the Studio logs it. */
   readonly onWatchError?: (error: unknown) => void;
 }
 
-/** Said when a change is tried: the desktop app can read a setup but not write one yet. */
+/** Said when a change is tried that the desktop app can't make yet, or has no agent host to make. */
 const notYet =
   "This can't be saved in the Halonic app yet. Use the halonic google commands in a terminal for now.";
+
+/**
+ * Said when the agent host couldn't disconnect. It doesn't say nothing was removed: the answer
+ * can be lost after the host finished, so the page reads the list again to show what is left.
+ */
+const disconnectFailed = "Halonic couldn't finish disconnecting this account.";
+
+/** What the host said, in its own words when it gave some. */
+function reasonOf(error: unknown): string {
+  return error instanceof Error ? error.message : "The agent host didn't answer.";
+}
 
 /** The client secret is typed in the app's own field; where it is kept is this computer. */
 const desktopEntry: SecretEntry = { kind: "field", keptOn: "this-computer", plainHttp: false };
@@ -100,8 +120,18 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
     throw new Error(notYet);
   }
 
-  async disconnect(): Promise<never> {
-    throw new Error(notYet);
+  async disconnect(accountRef: string): Promise<DisconnectAnswer> {
+    const { host } = this.#options;
+    if (host === undefined) throw new Error(notYet);
+    let answer: { readonly googleConfirmed: boolean };
+    try {
+      answer = await host.disconnect(accountRef);
+    } catch (error) {
+      this.#tellListeners();
+      throw new Error(`${disconnectFailed} ${reasonOf(error)}`, { cause: error });
+    }
+    this.#tellListeners();
+    return answer.googleConfirmed ? { kind: "ended" } : { kind: "google-unreachable" };
   }
 
   async startSignIn(): Promise<never> {
@@ -124,9 +154,7 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
   /** Listens to the window's focus and the files, for as long as anyone listens. */
   #startWatching(): void {
     if (this.#stopWatching !== undefined) return;
-    const tell = () => {
-      for (const listener of [...this.#listeners]) listener();
-    };
+    const tell = () => this.#tellListeners();
     const stopFocus = this.#options.onFocus?.(tell) ?? (() => {});
     const reportWatchError = (error: unknown) => this.#options.onWatchError?.(error);
     // A watch that fails or never opens costs only the live update: the files are still read
@@ -141,6 +169,10 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
       stopFocus();
       void watch.then((open) => open?.close());
     };
+  }
+
+  #tellListeners(): void {
+    for (const listener of [...this.#listeners]) listener();
   }
 
   #stopWatchingAll(): void {

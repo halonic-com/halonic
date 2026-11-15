@@ -1,4 +1,8 @@
 import {
+  AgentHostGoogleSetup,
+  type AgentHostTransport,
+} from "@halonicjs/adapter-agent-host-client";
+import {
   readWorkspaceKey,
   TauriDefinitionStore,
   type TauriFileShell,
@@ -18,6 +22,8 @@ export interface GoogleSetupServiceParts {
   readonly ipc: TauriShell;
   readonly files: TauriFileShell;
   readonly location: string;
+  /** The agent host, which changes a setup; `undefined` when the page isn't in the desktop app. */
+  readonly transport: AgentHostTransport | undefined;
   /** Calls the listener whenever the window comes to the front; returns a function that stops it. */
   readonly onFocus: (listener: () => void) => () => void;
 }
@@ -25,13 +31,14 @@ export interface GoogleSetupServiceParts {
 /**
  * Gives the Google setup feature the folder's Google accounts, read through the shell
  * (`studio.workspace-google-setup-accounts`): the connectors from the folder's files, the setup
- * records from the profile, and the key that links a record to this folder.
+ * records from the profile, and the key that links a record to this folder. A change goes to the
+ * agent host, which holds the sealed tokens and the client secrets (HAL-9911).
  */
 export function provideGoogleSetup(
   services: ServiceRegistry,
   parts: GoogleSetupServiceParts,
 ): void {
-  const { ipc, files, location, onFocus } = parts;
+  const { ipc, files, location, transport, onFocus } = parts;
   // Only the records are read here, so nothing makes an account ref.
   const noIds = {
     next: (): never => {
@@ -50,6 +57,7 @@ export function provideGoogleSetup(
         ids: noIds,
       }),
       workspaceKey: () => readWorkspaceKey(ipc, location),
+      ...(transport === undefined ? {} : { host: new AgentHostGoogleSetup(transport) }),
       onFocus,
       onWatchError: (error) => console.error(error),
     }),
