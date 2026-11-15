@@ -1,5 +1,5 @@
 import { shortRunId } from "@halonicjs/app";
-import { type RunEvent, type RunVersion, summarize } from "@halonicjs/events";
+import { type RunEvent, type RunSummary, type RunVersion, summarize } from "@halonicjs/events";
 import {
   Callout,
   type CalloutAction,
@@ -19,7 +19,7 @@ import { BlockedFailureBanner, blockedFailure } from "./blocked-banner.tsx";
 import { Details } from "./details.tsx";
 import { detailRows } from "./details-model.ts";
 import { EveryStep, useRunLog } from "./every-step.tsx";
-import { everyStep, type StepEntry } from "./every-step-model.ts";
+import { entryIdOfStep, everyStep, type StepEntry } from "./every-step-model.ts";
 import { Receipt } from "./receipt.tsx";
 import {
   approvalLines,
@@ -38,12 +38,13 @@ import {
 import { StepPanel } from "./step-panel.tsx";
 
 /** The `run` item kind's page: one run of the open workspace, from `RunsListService`. */
-export function RunPage({ item, context }: ItemViewProps) {
+export function RunPage({ item, context, step }: ItemViewProps) {
   const { openPlace, openItem } = context;
   return (
     <RunView
       list={context.services.get(RunsListService)}
       runId={item.id}
+      {...(step === undefined ? {} : { step })}
       {...(openPlace === undefined
         ? {}
         : { goToRuns: () => openPlace("runs"), reviewInInbox: () => openPlace("inbox") })}
@@ -60,6 +61,11 @@ export function RunPage({ item, context }: ItemViewProps) {
 export interface RunViewProps {
   readonly list: RunsList;
   readonly runId: string;
+  /**
+   * The id of a step of the run's workflow to open on, as the workflow page's **See what went in
+   * and out ›** asks for. A step the run didn't reach opens the page at the top.
+   */
+  readonly step?: string;
   /** Opens the Runs list, for a run that isn't there any more. */
   readonly goToRuns?: () => void;
   /** Opens the Inbox, for Review in Inbox; without it the button isn't there. */
@@ -91,6 +97,7 @@ export function RunView(props: RunViewProps) {
 function DesktopRun({
   list,
   runId,
+  step,
   goToRuns,
   reviewInInbox,
   openRun,
@@ -101,7 +108,7 @@ function DesktopRun({
   const run = state.runs.find((candidate) => candidate.summary.id === runId);
   const logRead = useRunLog(list.source, runId, run?.summary.lastSeq ?? 0, state);
   const log = logRead.events;
-  const [openEntry, setOpenEntry] = useState<string>();
+  const [openEntry, setOpenEntry] = useOpenEntry(runId, step, log, run?.summary);
   const title = runPageWords.title(shortRunId(runId));
   const retry = () => void list.refresh();
 
@@ -201,6 +208,27 @@ function DesktopRun({
       )}
     </div>
   );
+}
+
+/**
+ * The entry the step panel shows, and how to change it. The step the page was asked to open on
+ * (`step`) opens its entry once per run, when the log is first read; closing it doesn't open it
+ * again. A live run that hadn't reached the step by then opens at the top.
+ */
+function useOpenEntry(
+  runId: string,
+  step: string | undefined,
+  log: readonly RunEvent[] | undefined,
+  summary: RunSummary | undefined,
+) {
+  const [openEntry, setOpenEntry] = useState<string>();
+  const [opened, setOpened] = useState<string>();
+  const request = step === undefined ? undefined : `${runId}/${step}`;
+  if (step !== undefined && request !== opened && log !== undefined && summary !== undefined) {
+    setOpened(request);
+    setOpenEntry(entryIdOfStep(log, summarize(log) ?? summary, step));
+  }
+  return [openEntry, setOpenEntry] as const;
 }
 
 /** The red banner for a log with a damaged line; nothing for a log that reads whole. */

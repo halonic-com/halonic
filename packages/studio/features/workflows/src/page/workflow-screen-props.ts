@@ -11,7 +11,7 @@ export interface WorkflowScreenProps {
   /** Why a start failed when the engine can't be reached, in the words for where Studio runs; the desktop app's when absent. */
   readonly notAnswering?: string;
   /** Opens a test run's card from the Tests page; absent where there is no run card. */
-  readonly openRun?: (runId: string) => void;
+  readonly openRun?: (runId: string, step?: string) => void;
   /** Opens the Runs list; absent where the app can't open it. */
   readonly seeAllRuns?: () => void;
   /** Opens the Inbox, for a run card's Review in Inbox; absent where the app can't open it. */

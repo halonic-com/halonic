@@ -17,7 +17,7 @@ import { settingsLocation } from "../phone/place-stacks.ts";
 import { sectionLocation } from "../phone/settings-list-page.tsx";
 import { usePhonePlaces } from "../phone/use-phone-places.ts";
 import { placeNames, type SidebarPlace } from "../points/frame.ts";
-import type { ItemRef } from "../points/item-kinds.ts";
+import type { ItemRef, OpenItemOptions } from "../points/item-kinds.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import { announceSaveNotes } from "../save/save-note-words.ts";
 import { SettingsDialog } from "../settings/settings-dialog.tsx";
@@ -171,7 +171,7 @@ export function StudioWindow(props: StudioWindowProps) {
       ...(onDesktop.current ? { activeItem } : {}),
       openPlace: (place) => openPlaceHere.current(place),
       badges: shell.badges,
-      openItem: (item) => openHere.current(locationOfItem(item)),
+      openItem: (item, options) => openHere.current(locationOfItem(item, options)),
       openItemInNewTab: (item) => openItemInNewTab.current(locationOfItem(item)),
       openSettings,
       settingsSections,
@@ -196,10 +196,11 @@ export function StudioWindow(props: StudioWindowProps) {
   };
   const sidebarSwitcher = withActions(props.switcher, { runCommand });
   /** The item's place, named as its kind's tab names it, as Ctrl K opens a found item. */
-  function locationOfItem(item: ItemRef): TabLocation {
+  function locationOfItem(item: ItemRef, options?: OpenItemOptions): TabLocation {
     const kind = contributions.itemKinds.get(item.kind);
     const label = kind?.tab?.describe(item, contextFor(kind.featureId)).label ?? item.id;
-    return itemLocation(item, label, contributions.itemKinds);
+    const location = itemLocation(item, label, contributions.itemKinds);
+    return options?.step === undefined ? location : { ...location, step: options.step };
   }
   // The same list each render, so the sidebar subscribes to the places' signals only once.
   const places = useMemo(() => contributions.places.list(), [contributions]);

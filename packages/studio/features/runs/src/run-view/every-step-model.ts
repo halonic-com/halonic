@@ -79,6 +79,19 @@ export function everyStep(
   });
 }
 
+/**
+ * The entry for a step of the run's workflow, by the step's id: the last time the run was in it,
+ * which is where it failed or waits. `undefined` when the run never reached the step.
+ */
+export function entryIdOfStep(
+  events: readonly RunEvent[],
+  summary: RunSummary,
+  stepId: string,
+): string | undefined {
+  const index = runSteps(events, summary).findLastIndex((step) => step.stateId === stepId);
+  return index === -1 ? undefined : `step-${index}`;
+}
+
 /** The step's mark, the state word a screen reader hears first, and its line. */
 function howItWent(
   step: RunStep,

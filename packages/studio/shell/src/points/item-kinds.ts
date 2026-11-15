@@ -9,6 +9,15 @@ export interface ItemRef {
   readonly id: string;
 }
 
+/** What else a request to open an item can ask for, next to the {@link ItemRef}. */
+export interface OpenItemOptions {
+  /**
+   * The part of the item's page to open on, such as a run's step entry. The kind's page decides
+   * what a step is; one it doesn't know opens the page at the top.
+   */
+  readonly step?: string;
+}
+
 /** An entry in an item's ⋮ menu, such as "Run now". */
 export interface ItemAction {
   readonly id: string;

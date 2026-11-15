@@ -2,6 +2,7 @@
 import type { RunEventBody } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { RunsList } from "../runs-list.ts";
 import { fakeSource } from "../source.test-helper.ts";
@@ -51,7 +52,7 @@ function refused(host: string, count: number): RunEventBody {
   };
 }
 
-async function openRun(openOther?: (runId: string) => void) {
+async function openRun(openOther?: (runId: string) => void, step?: string) {
   const list = new RunsList(
     fakeSource([summaryWith({ id: runId, lastSeq: log.length })], { [runId]: log }).source,
   );
@@ -60,6 +61,7 @@ async function openRun(openOther?: (runId: string) => void) {
       list={list}
       runId={runId}
       now={() => mondayMorning}
+      {...(step === undefined ? {} : { step })}
       {...(openOther === undefined ? {} : { openRun: openOther })}
     />,
   );
@@ -101,6 +103,51 @@ verifies("runs.run-view.step-events", () => {
     expect(tool?.querySelector("summary")?.textContent).toContain("send_email");
     expect(tool?.open).toBe(false);
     expect(entry(root, 1).closest("tr")?.getAttribute("aria-current")).toBe("true");
+  });
+
+  it("opens the entry of the step it was asked to open on, and not again once closed", async () => {
+    const root = await openRun(undefined, "draft");
+
+    expect(root.querySelector("aside h2")?.textContent).toBe("Draft");
+    act(() => (root.querySelector('[aria-label="Close Draft"]') as HTMLElement).click());
+    expect(root.querySelector("aside")).toBeNull();
+  });
+
+  it("opens the step again when the same tab moves to another run", async () => {
+    const other = "run_b_3x8q1w";
+    const list = new RunsList(
+      fakeSource(
+        [
+          summaryWith({ id: runId, lastSeq: log.length }),
+          summaryWith({ id: other, lastSeq: log.length }),
+        ],
+        { [runId]: log, [other]: log.map((event) => ({ ...event, runId: other })) },
+      ).source,
+    );
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const view = (id: string) => (
+      <RunView list={list} runId={id} step="draft" now={() => mondayMorning} />
+    );
+    const settle = () => act(async () => void (await new Promise((done) => setTimeout(done, 0))));
+    act(() => root.render(view(runId)));
+    await settle();
+    act(() => (container.querySelector('[aria-label="Close Draft"]') as HTMLElement).click());
+
+    act(() => root.render(view(other)));
+    await settle();
+
+    expect(container.querySelector("aside h2")?.textContent).toBe("Draft");
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it("opens at the top for a step the run didn't reach", async () => {
+    const root = await openRun(undefined, "archive");
+
+    expect(root.querySelector("aside")).toBeNull();
+    expect(root.querySelector("h1")?.textContent).toBe("Run 7k2m9p");
   });
 
   it("says so for a step without calls", async () => {

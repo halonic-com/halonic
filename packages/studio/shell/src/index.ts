@@ -279,6 +279,7 @@ export type {
   ItemAction,
   ItemKindContribution,
   ItemRef,
+  OpenItemOptions,
   TabBehaviour,
   TabDescription,
 } from "./points/item-kinds.ts";

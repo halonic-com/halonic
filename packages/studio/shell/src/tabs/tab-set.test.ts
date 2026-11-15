@@ -135,6 +135,26 @@ verifies("shell.tab-set", () => {
     expect(tabs.state.tabs).toHaveLength(2);
   });
 
+  it("moves the tab that shows an item to the step asked for, without a new history entry", () => {
+    const run: TabLocation = { key: "run/acme/run_a", title: "Run a" };
+    const tabs = tabsOn(supportReply, run);
+
+    tabs.openHere({ ...run, step: "draft" });
+
+    expect(strip(tabs)).toEqual(["Support reply", "*Run a"]);
+    expect(currentLocation(tabs.active).step).toBe("draft");
+    expect(tabs.active.history).toHaveLength(1);
+  });
+
+  it("leaves the step of an item alone when it is opened without one", () => {
+    const run: TabLocation = { key: "run/acme/run_a", title: "Run a", step: "draft" };
+    const tabs = tabsOn(run);
+
+    tabs.openHere({ key: run.key, title: run.title });
+
+    expect(currentLocation(tabs.active).step).toBe("draft");
+  });
+
   it("tells whether a new tab was added or a tab already showed the place", () => {
     const tabs = tabsOn(agents, supportReply);
     const before = tabs.state;

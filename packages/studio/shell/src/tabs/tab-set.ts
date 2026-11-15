@@ -9,6 +9,11 @@ export interface TabLocation {
   readonly title: string;
   /** An item's kind as a screen reader reads it after the name, such as "workflow"; places have none. */
   readonly kind?: string;
+  /**
+   * The part of an item's page to open on, such as a run's step entry. It isn't part of the key:
+   * the same item is the same place, whichever part it opens on.
+   */
+  readonly step?: string;
 }
 
 /** One window tab with its own history, like a browser tab. */
@@ -97,15 +102,17 @@ export class TabSet {
   /**
    * Opens `location` in the active tab, after the place it shows, and drops that tab's Forward.
    * If the active tab shows it already, nothing changes; if another tab does, that tab becomes
-   * active instead.
+   * active instead. A `step` on `location` moves the tab that shows it to that step.
    */
   openHere(location: TabLocation): void {
     const tab = this.active;
     if (currentLocation(tab).key === location.key) {
+      this.moveToStep(tab, location);
       return;
     }
     const open = this.tabShowing(location.key);
     if (open !== undefined) {
+      this.moveToStep(open, location);
       this.activate(open.id);
       return;
     }
@@ -299,6 +306,18 @@ export class TabSet {
     const tabs = [...this.current.tabs];
     tabs.splice(index, 0, tab);
     this.update({ tabs, activeId });
+  }
+
+  /** Points the tab's current place at the step `location` asks for, without a new history entry. */
+  private moveToStep(tab: WindowTab, location: TabLocation): void {
+    const { step } = location;
+    if (step === undefined || currentLocation(tab).step === step) {
+      return;
+    }
+    const history = tab.history.map((place, index) =>
+      index === tab.position ? { ...place, step } : place,
+    );
+    this.replace(tab.id, { ...tab, history });
   }
 
   private replace(tabId: string, tab: WindowTab): void {

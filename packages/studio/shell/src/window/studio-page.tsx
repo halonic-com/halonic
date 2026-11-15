@@ -83,6 +83,7 @@ export function StudioPage({
         context={contextFor(kind.featureId)}
         sections={contributions.itemPage.sectionsFor(kind.kind)}
         contextFor={contextFor}
+        step={location.step}
       />
     );
     if (!backLink || kind.place === undefined) {

@@ -62,7 +62,7 @@ const click = (button: HTMLElement | null | undefined) =>
 async function showRunAndPick(
   step: string,
   changes: Parameters<typeof runSummary>[0],
-  openRun?: (runId: string) => void,
+  openRun?: (runId: string, step?: string) => void,
 ) {
   const runs = memoryRuns([runSummary(changes)]);
   const { host } = memoryHost([], [], [reply], [], {
@@ -150,7 +150,7 @@ verifies("workflows.runs.step-in-run", () => {
     expect(stepCard(page)?.textContent).toContain("See what went in and out ›");
   });
 
-  it("opens the run's page from See what went in and out", async () => {
+  it("opens the run's page at the step from See what went in and out", async () => {
     const openRun = vi.fn();
     const page = await showRunAndPick(
       "draft",
@@ -160,7 +160,7 @@ verifies("workflows.runs.step-in-run", () => {
 
     await click(buttonNamed(stepCard(page) ?? page, "See what went in and out"));
 
-    expect(openRun).toHaveBeenCalledWith("run_mfx3k2a1_01jd8q");
+    expect(openRun).toHaveBeenCalledWith("run_mfx3k2a1_01jd8q", "draft");
   });
 
   it("gives a step the run never reached no link, and closes with Esc", async () => {
