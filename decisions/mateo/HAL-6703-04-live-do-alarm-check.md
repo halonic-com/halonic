@@ -3,6 +3,7 @@
 - Task: HAL-6703 (step 2a of the HAL-198 build plan, ADR 5.9), part 2: Durable Objects and alarms
 - Approval: Liam decided the approach in HAL-10413; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gKv1rz0MNEl1wmVEZaQy5XTYo8XWgFjUOErrcPntl22tKWKdyetL7qNyXUFZNF6v/e/oZjUVXUcYOweh+PY5Bw==
 
 ## What changes
 
