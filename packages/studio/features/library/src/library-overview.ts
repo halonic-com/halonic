@@ -8,9 +8,27 @@ export interface LibraryOverview {
   readonly shared?: OverviewShared;
 }
 
-function rowOf(entry: LibraryEntry): OverviewItem {
+/** Where an entry sits: its hub's id, or `null` when the workspace shares it. */
+export interface LibraryEntryPlace {
+  readonly hub: string | null;
+  readonly id: string;
+}
+
+/** A row's id: two hubs may each have a skill `refunds`, so the hub is part of it. */
+function rowId(hub: string | null, id: string): string {
+  return `${hub ?? ""}/${id}`;
+}
+
+/** The entry a row id names, the inverse of the ids {@link libraryOverview} gives. */
+export function entryOfRow(row: string): LibraryEntryPlace {
+  const slash = row.indexOf("/");
+  const hub = row.slice(0, slash);
+  return { hub: hub === "" ? null : hub, id: row.slice(slash + 1) };
+}
+
+function rowOf(hub: string | null, entry: LibraryEntry): OverviewItem {
   return {
-    id: entry.id,
+    id: rowId(hub, entry.id),
     name: entry.name,
     ...(entry.description === undefined ? {} : { description: entry.description }),
     ...(entry.detail === undefined ? {} : { detail: entry.detail }),
@@ -24,14 +42,14 @@ export function libraryOverview(listing: LibraryListing): LibraryOverview {
     hubs: listing.hubs.map((hub) => ({
       id: hub.id,
       name: hub.name,
-      items: hub.entries.map(rowOf),
+      items: hub.entries.map((entry) => rowOf(hub.id, entry)),
     })),
     ...(listing.shared === undefined
       ? {}
       : {
           shared: {
             workspaceName: listing.shared.workspaceName,
-            items: listing.shared.entries.map(rowOf),
+            items: listing.shared.entries.map((entry) => rowOf(null, entry)),
           },
         }),
   };
