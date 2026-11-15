@@ -1088,6 +1088,8 @@ CSS; `vite.config.ts` builds those pages, and the tests are `e2e/*.spec.ts`. `pn
 pages, serves them with `vite preview` and runs the tests. Only CI's `e2e` job runs them, because
 only it has the browsers: don't run them on the shared runner (HAL-2418). Read the result with
 `gh pr checks`; a failed run uploads its report and traces as the `e2e-report` artifact.
+[Screenshots of Studio from CI](../../../docs/guides/e2e-screenshots.md) says how to get a screen's
+light and dark pictures from a pull request.
 
 ## Example
 
