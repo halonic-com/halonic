@@ -9,6 +9,7 @@ import {
   type CompareView,
   compareTexts,
 } from "./workspace-compare.ts";
+import { planRename } from "./workspace-rename.ts";
 import type { AppEvents } from "./workspace-scope.ts";
 
 /**
@@ -93,6 +94,12 @@ export class WorkspaceFiles {
   private readonly trash: Trash | undefined;
   /** The store text Halonic last read or wrote by path, `null` for no file: what a save expects to find. */
   private readonly known = new Map<string, string | null>();
+  /**
+   * Each rename since the last discard by old path: the new path and the text
+   * the rename gave it. A save of the old path's delete keeps it out of the
+   * trash only when it writes exactly that text there.
+   */
+  private readonly moves = new Map<string, { to: string; text: string }>();
 
   /**
    * @param digest - hashes text for the write-if-unchanged check; core has no hash of its own
@@ -159,6 +166,43 @@ export class WorkspaceFiles {
   change(label: string, changes: Record<string, string | null>, options: ChangeOptions = {}): void {
     this.history.record(this.changes, options.coalesceKey ?? null);
     this.apply({ ...this.changes, ...changes }, label);
+  }
+
+  /**
+   * Renames a file as one undo step: its text moves to the new path, the old
+   * path is deleted when saved and `rewrites` change the files that name it.
+   * The old file does not go to the trash, because its text lives on at the
+   * new path; Git sees the rename from the identical text.
+   *
+   * @param rewrites - new text by path for other files that name the old path; one for `from` is the text the new file gets
+   * @throws RenameRefusedError when `from` is missing or deleted, or `to` already exists, on disk or as an unsaved new file
+   */
+  async rename(from: string, to: string, rewrites: Record<string, string> = {}): Promise<void> {
+    // Store reads first: `change` may run while they wait, so the unsaved changes are read after them.
+    const fromStored = await this.store.read(from);
+    const toSaved = (await this.store.read(to)) !== null;
+    const changes = this.changes;
+    const fromText = Object.hasOwn(changes, from) ? changes[from] : fromStored;
+    if (!Object.hasOwn(changes, from)) {
+      this.known.set(from, fromStored);
+    }
+    const next = planRename({
+      from,
+      to,
+      changes,
+      fromText: fromText ?? null,
+      fromSaved: fromStored !== null,
+      toSaved,
+      rewrites,
+    });
+    const text = next[to] as string;
+    this.history.record(changes, null);
+    // A rename of a file that was itself just moved carries the first move on to the new path.
+    for (const [origin, move] of this.moves) {
+      if (move.to === from) this.moves.set(origin, { to, text });
+    }
+    this.moves.set(from, { to, text });
+    this.apply(next, `Renamed ${from} to ${to}`);
   }
 
   /** Goes back one step. Returns `false` when there was nothing to undo. */
@@ -237,7 +281,7 @@ export class WorkspaceFiles {
         const expected = await this.expectedFor(path, before);
         const result =
           text === null
-            ? await this.delete(path, before, expected)
+            ? await this.delete(path, before, expected, this.isMoved(path, saving))
             : await this.store.write(path, text, { expected });
         if (result.status === "changed-on-disk") {
           // `known` stays: another save must not overwrite the outside text. Only a fresh read moves it.
@@ -310,16 +354,26 @@ export class WorkspaceFiles {
     this.discards++;
     this.history.clear();
     this.known.clear();
+    this.moves.clear();
     this.apply({}, "Unsaved changes discarded");
   }
 
-  /** Deletes a file: into the trash when there is one, else out of the store. */
+  /** Whether the delete of this path is half of a rename whose new file is saved in the same go with the text the rename gave it. */
+  private isMoved(path: string, saving: readonly [string, string | null][]): boolean {
+    const move = this.moves.get(path);
+    return (
+      move !== undefined && saving.some(([each, text]) => each === move.to && text === move.text)
+    );
+  }
+
+  /** Deletes a file: into the trash when there is one and the file wasn't renamed, else out of the store. */
   private async delete(
     path: string,
     before: string | null,
     expected: ExpectedContent,
+    renamed: boolean,
   ): Promise<RemoveResult> {
-    if (this.trash === undefined || before === null) {
+    if (this.trash === undefined || before === null || renamed) {
       return this.store.remove(path, { expected });
     }
     const moved = await this.trash.moveToTrash(path, expected);
