@@ -45,6 +45,7 @@ describe("packageFiles", () => {
     expect(files["src/feature.ts"]).toContain(
       'import { defineFeature } from "@halonicjs/studio-shell";',
     );
+    expect(files["src/feature.ts"]).toContain("  register() {");
     expect(JSON.parse(files["package.json"] ?? "{}").dependencies).toEqual({
       "@halonicjs/studio-shell": "workspace:*",
     });
