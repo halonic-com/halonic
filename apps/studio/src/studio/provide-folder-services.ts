@@ -5,14 +5,15 @@ import {
 } from "@halonicjs/adapter-fs-tauri";
 import { type ServiceRegistry, type WorkspaceScope, workspaceFilesKey } from "@halonicjs/app";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
-import { ModelsFilesService } from "@halonicjs/studio-feature-models/api";
+import { ModelKeysService, ModelsFilesService } from "@halonicjs/studio-feature-models/api";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import { ChangesSourceService } from "@halonicjs/studio-feature-source-control/api";
 import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
-import { type TauriIpc, tauriAgentHostTransport } from "@halonicjs/studio-services";
+import { shellKeychain, type TauriIpc, tauriAgentHostTransport } from "@halonicjs/studio-services";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
 import { provideLibraryServices } from "../library/provide-library-services.ts";
+import { WorkspaceModelKeys } from "../models/workspace-model-keys.ts";
 import { WorkspaceModelsFiles } from "../models/workspace-models-files.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
@@ -41,6 +42,7 @@ export function provideFolderServices(
       onChange: (listener) => scope.events.on("files.changed", listener),
     }),
   );
+  services.provide(ModelKeysService, new WorkspaceModelKeys(shellKeychain(ipc)));
   provideWorkspaceRuns(services, { ipc, files, window }, location);
   services.provide(
     ChangesSourceService,

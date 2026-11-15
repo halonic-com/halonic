@@ -8,7 +8,7 @@ import {
   tokenNamePrefix,
   workspaceSecrets,
 } from "@halonicjs/ports";
-import { tauriIpc } from "./tauri-ipc.ts";
+import { type TauriIpc, tauriIpc } from "./tauri-ipc.ts";
 
 /** The configured secrets, such as provider API keys. */
 export const secretsKey = serviceKey<Secrets>("platform.secrets");
@@ -52,6 +52,17 @@ export function provideShellSecrets(
   services.provide(secretsKey, workspaceSecrets(keychain));
   services.provide(tokenStoreKey, prefixedTokens(keychain));
   return true;
+}
+
+/**
+ * The OS keychain (the service `halonic`) as it is, with no name rule beyond the keychain's own.
+ * A caller that lets a workspace pick the name must refuse Halonic's and a plugin's names itself,
+ * as `workspaceSecrets` does for reading.
+ *
+ * @param ipc - the shell's IPC, from `tauriIpc`
+ */
+export function shellKeychain(ipc: TauriIpc): Secrets & TokenStore {
+  return new TauriSecrets(ipc);
 }
 
 /**
