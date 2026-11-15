@@ -1,3 +1,4 @@
+import { SaveScheduler } from "@halonicjs/app";
 import {
   type KeyboardPlatform,
   type SaveReason,
@@ -50,12 +51,23 @@ export interface SaveProblem {
 export class WorkspaceSaving {
   readonly #options: WorkspaceSavingOptions;
   readonly #stop: () => void;
-  #timer: ReturnType<typeof setTimeout> | undefined;
+  readonly #scheduler: SaveScheduler;
   #problem: SaveProblem | undefined;
 
   constructor(options: WorkspaceSavingOptions) {
     this.#options = options;
-    this.#stop = options.onChange(() => this.#changed());
+    this.#scheduler = new SaveScheduler({
+      save: () => this.#write(),
+      isDirty: () => options.files.dirty,
+      timers: {
+        set: (callback, delayMs) => setTimeout(callback, delayMs),
+        clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+      },
+      // A failed save has already shown its toast and kept its reason in `problem`.
+      onError: () => undefined,
+      delayMs: options.delayMs ?? AUTOSAVE_DELAY_MS,
+    });
+    this.#stop = options.onChange(() => this.#scheduler.changed());
   }
 
   /** Why the last save failed, until a save works; `undefined` when it didn't. */
@@ -65,21 +77,7 @@ export class WorkspaceSaving {
 
   /** Saves what's waiting now, without the pause. Resolves to whether nothing is left unsaved. */
   async saveNow(): Promise<boolean> {
-    this.#cancelTimer();
-    const { files, saving, name } = this.#options;
-    if (!files.dirty) {
-      return true;
-    }
-    const saved = await saving.save({ key: "workspace", title: name }, async () => {
-      try {
-        await files.save();
-        this.#problem = undefined;
-      } catch (error) {
-        this.#problem = { reason: saveFailureFor(error).reason };
-        throw error;
-      }
-    });
-    return saved && !files.dirty;
+    return this.#scheduler.flush("save-now");
   }
 
   /** Ctrl Z: goes back one step. */
@@ -94,26 +92,22 @@ export class WorkspaceSaving {
 
   /** Stops following the files and drops a save that was waiting. Call it once, when the workspace closes. */
   dispose(): void {
-    this.#cancelTimer();
+    this.#scheduler.dispose();
     this.#stop();
   }
 
-  #changed(): void {
-    this.#cancelTimer();
-    if (!this.#options.files.dirty) {
-      return;
-    }
-    this.#timer = setTimeout(() => {
-      this.#timer = undefined;
-      void this.saveNow();
-    }, this.#options.delayMs ?? AUTOSAVE_DELAY_MS);
-  }
-
-  #cancelTimer(): void {
-    if (this.#timer !== undefined) {
-      clearTimeout(this.#timer);
-      this.#timer = undefined;
-    }
+  /** One save through the window's {@link SaveState}, which shows its note and a failure's toast. */
+  async #write(): Promise<void> {
+    const { files, saving, name } = this.#options;
+    await saving.save({ key: "workspace", title: name }, async () => {
+      try {
+        await files.save();
+        this.#problem = undefined;
+      } catch (error) {
+        this.#problem = { reason: saveFailureFor(error).reason };
+        throw error;
+      }
+    });
   }
 }
 
