@@ -3,6 +3,7 @@
 - Task: HAL-6703
 - Approval: Liam (CTO) approves lowering the expect count of `cloudflare-live.adapters` from 11 to 10, in /HAL/issues/HAL-10314#comment-a50345f2-04c9-430c-8d4a-834b580a100f
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6vq3uNloiz1hZmSXXiJh4Dsc7IxEv96b+4H8w3pXC0M4jAeuu0Lc/uSbyJFLpStvooSUvV1lMYY0Gxm1SbmqBA==
 
 ## What changes
 
