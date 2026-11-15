@@ -117,8 +117,8 @@ export class WorkspaceFiles {
       return this.changes[path] ?? null;
     }
     const text = await this.store.read(path);
-    // Keep an older read: it is what the unsaved edits were made against.
-    if (!this.known.has(path)) this.known.set(path, text);
+    // No unsaved edit here, so this read is what the next edits are made against.
+    this.known.set(path, text);
     return text;
   }
 
@@ -228,8 +228,7 @@ export class WorkspaceFiles {
             ? await this.store.remove(path, { expected })
             : await this.store.write(path, text, { expected });
         if (result.status === "changed-on-disk") {
-          // The outside text is now the one the user compares with.
-          this.known.set(path, result.current);
+          // `known` stays: another save must not overwrite the outside text. Only a fresh read moves it.
           throw new ChangedOnDiskError(path, result.current);
         }
         this.known.set(path, text);
@@ -254,6 +253,7 @@ export class WorkspaceFiles {
   discard(): void {
     this.discards++;
     this.history.clear();
+    this.known.clear();
     this.apply({}, "Unsaved changes discarded");
   }
 

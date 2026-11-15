@@ -292,7 +292,7 @@ verifies("app.workspace-save-unchanged", () => {
     expect(store.files.get("n.yaml")).toBe("outside");
   });
 
-  it("saves again after the file was read again, and after its own save", async () => {
+  it("saves again after its own save", async () => {
     const { store, files } = open({ "a.yaml": "one" });
     await files.read("a.yaml");
     files.change("First", { "a.yaml": "two" });
@@ -300,6 +300,28 @@ verifies("app.workspace-save-unchanged", () => {
     files.change("Second", { "a.yaml": "three" });
     expect(await files.save()).toBe(1);
     expect(store.files.get("a.yaml")).toBe("three");
+  });
+
+  it("does not overwrite the outside text when saved a second time", async () => {
+    const { store, files } = open({ "a.yaml": "one" });
+    await files.read("a.yaml");
+    store.files.set("a.yaml", "outside");
+    files.change("Edited", { "a.yaml": "mine" });
+    await expect(files.save()).rejects.toBeInstanceOf(ChangedOnDiskError);
+    await expect(files.save()).rejects.toBeInstanceOf(ChangedOnDiskError);
+    expect(store.files.get("a.yaml")).toBe("outside");
+    expect(files.pending).toEqual({ "a.yaml": "mine" });
+  });
+
+  it("saves after a discard and a fresh read of a file changed outside", async () => {
+    const { store, files } = open({ "a.yaml": "one" });
+    await files.read("a.yaml");
+    store.files.set("a.yaml", "outside");
+    files.discard();
+    expect(await files.read("a.yaml")).toBe("outside");
+    files.change("Edited", { "a.yaml": "mine" });
+    expect(await files.save()).toBe(1);
+    expect(store.files.get("a.yaml")).toBe("mine");
   });
 });
 
