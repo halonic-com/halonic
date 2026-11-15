@@ -1,7 +1,6 @@
 import type { RunsSource, SourcedRun } from "@halonicjs/studio-feature-runs/api";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { failureReason } from "../list/list-words.ts";
-import { SKELETON_AFTER_MS, STILL_LOADING_AFTER_MS } from "../page/use-workflow.ts";
+import { useMemo } from "react";
+import { useLoad } from "../page/use-load.ts";
 
 /** Whether the runs have loaded once: waiting for them, why not, or the runs. */
 export type RunsLoad =
@@ -15,60 +14,13 @@ export type RunsLoad =
  * (R11). Only the newest read's answer counts.
  */
 export function useRuns(source: RunsSource): { load: RunsLoad; retry: () => void } {
-  const [result, setResult] = useState<
-    { kind: "failed"; reason: string } | { kind: "ready"; runs: readonly SourcedRun[] } | undefined
-  >();
-  const [waited, setWaited] = useState({ skeleton: false, slow: false });
-  const newest = useRef(0);
-
-  const read = useCallback(() => {
-    const mine = ++newest.current;
-    source.list().then(
-      (runs) => {
-        if (mine === newest.current) setResult({ kind: "ready", runs });
-      },
-      (error: unknown) => {
-        if (mine === newest.current)
-          setResult((was) =>
-            was?.kind === "ready" ? was : { kind: "failed", reason: failureReason(error) },
-          );
-      },
-    );
-  }, [source]);
-
-  useEffect(() => {
-    setResult(undefined);
-    setWaited({ skeleton: false, slow: false });
-    read();
-    const stop = source.subscribe(read);
-    return () => {
-      stop();
-      newest.current += 1;
-    };
-  }, [source, read]);
-
-  const waiting = result === undefined;
-  useEffect(() => {
-    if (!waiting) return;
-    const skeleton = setTimeout(
-      () => setWaited((was) => ({ ...was, skeleton: true })),
-      SKELETON_AFTER_MS,
-    );
-    const slow = setTimeout(
-      () => setWaited((was) => ({ ...was, slow: true })),
-      STILL_LOADING_AFTER_MS,
-    );
-    return () => {
-      clearTimeout(skeleton);
-      clearTimeout(slow);
-    };
-  }, [waiting]);
-
-  const retry = useCallback(() => {
-    setResult(undefined);
-    setWaited({ skeleton: false, slow: false });
-    read();
-  }, [read]);
-
-  return { load: result ?? { kind: "loading", ...waited }, retry };
+  const loadSource = useMemo(
+    () => ({
+      fetch: () => source.list(),
+      subscribe: (onChange: () => void) => source.subscribe(onChange),
+    }),
+    [source],
+  );
+  const { load, retry } = useLoad(loadSource);
+  return { load: load.kind === "ready" ? { kind: "ready", runs: load.value } : load, retry };
 }

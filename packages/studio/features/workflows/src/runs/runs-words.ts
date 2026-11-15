@@ -18,5 +18,4 @@ export const runsWords = {
   startedBy: "Started by",
   stepsSoFar: "Steps so far",
   openLog: "Open the run log",
-  cardLoading: (shortId: string) => `Loading run ${shortId}`,
 } as const;

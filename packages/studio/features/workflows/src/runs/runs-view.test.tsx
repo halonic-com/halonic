@@ -84,6 +84,29 @@ verifies("workflows.runs", () => {
     expect(failing.textContent).toContain("01done");
   });
 
+  it("starts the skeleton and Still loading timers over when Try again is pressed while still waiting", async () => {
+    const { source } = memoryRuns([finished]);
+    let reads = 0;
+    const hanging: RunsSource = {
+      ...source,
+      list: () => {
+        reads += 1;
+        return new Promise(() => {});
+      },
+    };
+    const page = await show(<Connected source={hanging} />);
+    await act(async () => vi.advanceTimersByTime(10_000));
+    expect(page.textContent).toContain("Still loading");
+
+    await act(async () => buttonNamed(page, "Try again")?.click());
+    expect(reads).toBe(2);
+    expect(page.textContent).not.toContain("Still loading");
+    await act(async () => vi.advanceTimersByTime(300));
+    expect(page.querySelector("[role=status]")?.textContent).toContain("Loading runs");
+    await act(async () => vi.advanceTimersByTime(10_000));
+    expect(page.textContent).toContain("Still loading");
+  });
+
   it("docks the simple card with the status, the line and Open the run log, and Esc closes it", async () => {
     const openRun = vi.fn();
     const page = await show(<Connected source={memoryRuns([finished]).source} openRun={openRun} />);

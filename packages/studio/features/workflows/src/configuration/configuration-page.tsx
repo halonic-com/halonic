@@ -1,7 +1,7 @@
 import { EmptyState, SkeletonBar, StatusChip } from "@halonicjs/studio-kit";
 import { type KeyboardEvent, type ReactNode, useId, useState } from "react";
 import type { WorkflowConfiguration } from "../api.ts";
-import type { Load } from "../page/use-workflow.ts";
+import type { Load } from "../page/use-load.ts";
 import { type ConfigurationPage, configurationPages, pageForKey } from "./configuration-pages.ts";
 import { configurationWords as words } from "./configuration-words.ts";
 import { countProblems, problemRows } from "./problem-lines.ts";
