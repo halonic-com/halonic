@@ -2,6 +2,7 @@
 
 - Approval: HAL-10561 (Liam)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:88DRws1rSE9oGfs0C/s42JFdgMspK/5lba4cC+T6JB/oyNQY5i5y4Y7Rn6uKAEcy7Zo/0rXEi5hJEOB+OmftCA==
 
 ## What changes
 
