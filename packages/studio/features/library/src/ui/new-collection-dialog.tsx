@@ -1,4 +1,4 @@
-import { Dialog, Field, Input, Select } from "@halonicjs/studio-kit";
+import { Dialog, Field, Input } from "@halonicjs/studio-kit";
 import { useRef, useState } from "react";
 import type { CollectionRef } from "../collection-host.ts";
 import type { NewCollectionHost } from "../new-collection-host.ts";
@@ -20,7 +20,7 @@ function reasonOf(error: unknown): string {
 }
 
 /**
- * "New collection" (`library.new-collection`): Name and Hub (only with more than one), with the
+ * "New collection" (`library.new-collection`): Name, with the
  * collection's file under Name. **Create** stays pressable while Name is empty and shows what is
  * missing under it.
  *
@@ -33,14 +33,12 @@ export function NewCollectionDialog({
   onCancel,
   returnFocus,
 }: NewCollectionDialogProps) {
-  const hubs = host.hubs();
   const [name, setName] = useState("");
-  const [hub, setHub] = useState<string | null>(hubs[0]?.id ?? null);
   const [asked, setAsked] = useState(false);
   const [failure, setFailure] = useState<string>();
   const [busy, setBusy] = useState(false);
   const nameField = useRef<HTMLInputElement>(null);
-  const draft = { name, hub };
+  const draft = { name };
 
   async function create() {
     setAsked(true);
@@ -81,15 +79,6 @@ export function NewCollectionDialog({
             onChange={(event) => setName(event.target.value)}
           />
         </Field>
-        {hubs.length > 1 && (
-          <Field label={newCollectionWords.hub}>
-            <Select
-              options={hubs.map((each) => ({ value: each.id, label: each.name }))}
-              value={hub ?? ""}
-              onChange={setHub}
-            />
-          </Field>
-        )}
       </div>
     </Dialog>
   );

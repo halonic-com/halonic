@@ -3,7 +3,6 @@ export const newCollectionWords = {
   title: "New collection",
   name: "Name",
   nameMissing: "Give it a name.",
-  hub: "Hub",
   create: "Create",
   creating: "Creating…",
   retry: "Try again",

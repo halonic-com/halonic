@@ -54,7 +54,6 @@ export {
   type NewCollectionDraft,
   type NewCollectionHost,
   NewCollectionHostService,
-  type NewCollectionHub,
 } from "./new-collection-host.ts";
 export {
   type NewSkillDraft,

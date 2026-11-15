@@ -14,13 +14,12 @@ afterEach(() => {
   fakeModal();
 });
 
-function setup(hubIds: readonly string[] = ["acme"], create?: NewCollectionHost["create"]) {
-  const made = vi.fn(async () => ({ hub: "acme", id: "claims" }));
+function setup(create?: NewCollectionHost["create"]) {
+  const made = vi.fn(async () => ({ hub: null, id: "claims" }));
   const host: NewCollectionHost = {
     prepare: async () => {},
-    hubs: () => hubIds.map((id) => ({ id, name: id })),
     file: ({ name }) =>
-      `hubs/acme/library/collections/${name.trim() === "" ? "" : `${name.trim().toLowerCase()}.collection.yaml`}`,
+      `library/collections/${name.trim() === "" ? "" : `${name.trim().toLowerCase()}.collection.yaml`}`,
     create: create ?? made,
   };
   const onCreated = vi.fn();
@@ -58,9 +57,9 @@ verifies("library.new-collection", () => {
   describe("NewCollectionDialog", () => {
     it("shows the collection's file under Name, following the name", async () => {
       const { root } = setup();
-      expect(page(root)).toContain("File: hubs/acme/library/collections/");
+      expect(page(root)).toContain("File: library/collections/");
       await type(root, "Name", "Claims");
-      expect(page(root)).toContain("File: hubs/acme/library/collections/claims.collection.yaml");
+      expect(page(root)).toContain("File: library/collections/claims.collection.yaml");
     });
 
     it("asks for the name and makes nothing", async () => {
@@ -74,18 +73,12 @@ verifies("library.new-collection", () => {
       const { root, made, onCreated } = setup();
       await type(root, "Name", "Claims");
       await press(root, "Create");
-      expect(made).toHaveBeenCalledWith({ name: "Claims", hub: "acme" });
-      expect(onCreated).toHaveBeenCalledWith({ hub: "acme", id: "claims" });
-    });
-
-    it("shows the Hub field only with more than one hub", () => {
-      expect(page(setup(["acme"]).root)).not.toContain("Hub");
-      unmountAll();
-      expect(page(setup(["acme", "beta"]).root)).toContain("Hub");
+      expect(made).toHaveBeenCalledWith({ name: "Claims" });
+      expect(onCreated).toHaveBeenCalledWith({ hub: null, id: "claims" });
     });
 
     it("says why it couldn't create the collection and keeps what was typed", async () => {
-      const { root, onCreated } = setup(["acme"], async () => {
+      const { root, onCreated } = setup(async () => {
         throw new Error("The disk is full.");
       });
       await type(root, "Name", "Claims");
