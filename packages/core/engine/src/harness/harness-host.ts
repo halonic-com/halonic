@@ -109,6 +109,27 @@ export interface HarnessProfileBuilder {
   profileOf(agent: HarnessAgent, bridge: HarnessBridge): Promise<HarnessProfile>;
 }
 
+/** The instructions a harness run starts with, pinned by hash: no contents, no absolute paths. */
+export interface HarnessInstructionsPin {
+  /** `AGENTS.md` and each skill file, by path relative to the run's folder, with its `sha256:` digest. */
+  readonly files: readonly { readonly path: string; readonly sha256: string }[];
+  /** The digest of the whole set. */
+  readonly sha256: string;
+}
+
+/**
+ * Where the instructions of a harness run come from. The host copies the
+ * agent's `AGENTS.md` and selected skills into the run's folder, read-only,
+ * and pins them; the engine records the pin and never reads the files.
+ */
+export interface HarnessInstructionSource {
+  /**
+   * @returns the pin of what the run starts with, or `null` when the agent has no instruction files
+   * @throws when the files can't be copied; the call fails before the harness starts
+   */
+  pinOf(agent: HarnessAgent): Promise<HarnessInstructionsPin | null>;
+}
+
 /** What the local executor needs to carry out `run-harness` effects. */
 export interface HarnessRunsOptions {
   readonly placement: PlacementPolicy;
@@ -122,6 +143,8 @@ export interface HarnessRunsOptions {
   readonly harnesses: Readonly<Partial<Record<ProgramHarness, Harness>>>;
   readonly bridges: HarnessBridgeHost;
   readonly profiles: HarnessProfileBuilder;
+  /** Where the run's instruction files come from; without it, no `harness.instructions` is written. */
+  readonly instructions?: HarnessInstructionSource;
   /** The person's home folder, so `sandbox.opened` and `sandbox.blocked` show paths in it with `~`; `null` when unknown. */
   readonly home: string | null;
   /**

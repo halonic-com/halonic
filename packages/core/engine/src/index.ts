@@ -18,6 +18,8 @@ export {
 export type {
   HarnessAgent,
   HarnessBridgeHost,
+  HarnessInstructionSource,
+  HarnessInstructionsPin,
   HarnessProfile,
   HarnessProfileBuilder,
   HarnessRunsOptions,
