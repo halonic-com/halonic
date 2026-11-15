@@ -24,6 +24,11 @@ export const stateWords = {
   installGit: "How to install git",
   installGitAddress: "https://git-scm.com/downloads",
   checkAgain: "Check again",
+  checking: "Checking…",
+  stillNoGit: "Still can't find git.",
+  turningOnHistory: "Turning on history…",
+  /** The reason under "Couldn't load changes" for a folder inside a larger repository. */
+  nestedRepository: "This folder is part of a larger git repository.",
   nothingChanged: "Nothing has changed since your last version.",
   loading: "Loading changes",
   loadFailed: "Couldn't load changes",

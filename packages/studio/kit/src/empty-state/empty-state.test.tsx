@@ -98,6 +98,16 @@ verifies("kit.empty-state", () => {
     expect(onRetry).not.toHaveBeenCalled();
   });
 
+  it("shows the busy label of a busy button", () => {
+    const { container } = render(
+      <EmptyState
+        title="Halonic needs git"
+        action={{ label: "Check again", onClick: vi.fn(), busy: true, busyLabel: "Checking…" }}
+      />,
+    );
+    expect(container.querySelector("button")?.textContent).toContain("Checking…");
+  });
+
   it("shows an error with the danger alert mark on its tile and a secondary Try again", () => {
     const { container } = render(
       <EmptyState

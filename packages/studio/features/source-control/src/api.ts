@@ -13,7 +13,12 @@ export type ChangesRead =
   /** The folder isn't a git repository yet. */
   | { readonly kind: "not-a-repository" }
   /** The git program isn't on this computer. */
-  | { readonly kind: "no-git" };
+  | { readonly kind: "no-git" }
+  /**
+   * The folder sits inside a larger git repository, so git's answer would be about that one.
+   * Until Halonic can keep a history of the folder itself (HAL-9756), the page only says so.
+   */
+  | { readonly kind: "nested-repository" };
 
 /** The history of one open workspace, as the app provides it. */
 export interface ChangesSource {
