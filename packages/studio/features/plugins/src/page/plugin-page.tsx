@@ -24,6 +24,7 @@ import { ReviewPluginDialog } from "./review-plugin-dialog.tsx";
 import { StatusBox, type UpdateControl } from "./status-box.tsx";
 import { UpdatePluginDialog } from "./update-plugin-dialog.tsx";
 import { usePageActions } from "./use-page-actions.ts";
+import { UsedBy } from "./used-by.tsx";
 import { WhatItAdds } from "./what-it-adds.tsx";
 
 /** The props of `PluginPage`. */
@@ -190,6 +191,7 @@ export function PluginPage({
             <WhatItAdds manifest={manifest} />
           </>
         )}
+        <UsedBy plugin={plugin.plugin} usedBy={actions.usedBy} />
       </div>
     </div>
   );

@@ -129,6 +129,17 @@ export function trustedDay(iso: string | undefined, now: Date): string | undefin
 /** The section that lists what the plugin adds. */
 export const WHAT_IT_ADDS = "What it adds";
 
+/** The section that lists the connectors using the plugin. */
+export const USED_BY = "Used by";
+
+/** What Used by says while no connector uses the plugin. */
+export const USED_BY_NONE = "No connector uses it yet.";
+
+/** A connector in Used by: its name, then the workspace it is in. */
+export function usedByLine(connector: string, workspace: string): string {
+  return `${connector} · in ${workspace}`;
+}
+
 /** The group of the plugin's tools in What it adds. */
 export const TOOLS_FOR_AGENTS = "Tools for agents";
 
