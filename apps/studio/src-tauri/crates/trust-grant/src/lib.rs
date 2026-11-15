@@ -11,12 +11,18 @@
 //! that is then opened without them.
 
 mod grants;
+mod instruction_grant;
+mod instruction_question;
 mod picked;
 mod question;
 mod refusal;
 mod workspace_name;
 
 pub use grants::{FolderProbe, TrustState};
+pub use instruction_question::{
+    INSTRUCTIONS_QUESTION_TITLE, InstructionChanges, TrustedBefore, instruction_changes,
+    instruction_question_text,
+};
 pub use picked::{MAX_PICKED_FOLDERS, PickedFolders};
 pub use question::{CANCEL_BUTTON, QUESTION_TITLE, TRUST_BUTTON, question_text, shown_path};
 pub use refusal::TrustRefusal;

@@ -7,7 +7,7 @@
 //! (capabilities/desktop-secrets.json) and `pick_folder`, `documents_folder`,
 //! `pick_parent_folder`, `create_workspace_folder`,
 //! `probe_workspace_folder`, `open_workspace_folder` and the `trust_*`
-//! commands (capabilities/desktop-trust.json) and the `host_settings_*`
+//! and `instruction_trust_*` commands (capabilities/desktop-trust.json) and the `host_settings_*`
 //! commands (capabilities/desktop-host-settings.json) and the `run_*` commands
 //! (capabilities/desktop-runs.json) and the `engine_lock_*` commands
 //! (capabilities/desktop-engine-lock.json) and the `agent_host_*` commands
@@ -32,6 +32,7 @@ mod files;
 mod git;
 mod google_setups;
 mod host_settings;
+mod instruction_trust;
 mod native_dialogs;
 mod navigation;
 mod plugin_folder;
@@ -148,6 +149,9 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             trust::trust_folders_found,
             trust::trust_grant,
             trust::trust_revoke,
+            instruction_trust::instruction_trust_get,
+            instruction_trust::instruction_trust_save,
+            instruction_trust::instruction_trust_remove,
             trust::reopen_folder,
             trust::forget_folder,
             command_paths::command_paths,

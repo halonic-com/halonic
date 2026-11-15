@@ -166,7 +166,7 @@ fn unreadable(location: Option<&str>, file: &Path) -> TrustError {
 }
 
 /// Creates the folder, and any missing parents, readable by its owner only.
-fn create_private_folder(folder: &Path) -> Result<(), TrustError> {
+pub(crate) fn create_private_folder(folder: &Path) -> Result<(), TrustError> {
     let mut builder = DirBuilder::new();
     builder.recursive(true);
     #[cfg(unix)]
@@ -177,7 +177,7 @@ fn create_private_folder(folder: &Path) -> Result<(), TrustError> {
 
 /// Writes `text` to a new temporary file next to `file`, then renames it
 /// over `file`, so a reader never sees half a record.
-fn write_replacing(file: &Path, text: &str) -> Result<(), TrustError> {
+pub(crate) fn write_replacing(file: &Path, text: &str) -> Result<(), TrustError> {
     let temporary = temporary_for(file);
     if let Err(error) = write_then_rename(&temporary, file, text) {
         // A half-written temporary file must not stay behind. If removing

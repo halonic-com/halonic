@@ -1,14 +1,15 @@
-//! The shell's two native dialogs: the folder picker and the trust question
-//! (HAL-2612). They are shown with `rfd`, the library `tauri-plugin-dialog`
-//! uses, called from Rust only: registering the plugin would put its script
-//! in every page, the served Studio too, replacing `alert` and `confirm`.
+//! The shell's native dialogs: the folder picker and the two trust
+//! questions, about a folder (HAL-2612) and about an agent's instructions.
+//! They are shown with `rfd`, the library `tauri-plugin-dialog` uses, called
+//! from Rust only: registering the plugin would put its script in every
+//! page, the served Studio too, replacing `alert` and `confirm`.
 //!
 //! Both block, so they are called from a worker thread, never the UI's.
 //! Both belong to the shell's window, so they can't open behind it: on
 //! Windows the window waits for the answer, on macOS the dialog is a sheet
 //! on it. rfd's GTK dialogs take no parent, so on Linux nothing changes.
-//! Android and iOS have neither dialog: the picker picks nothing and the
-//! question is answered no.
+//! Android and iOS have none of these dialogs: the picker picks nothing and
+//! the questions are answered no.
 
 use std::path::PathBuf;
 
@@ -18,7 +19,9 @@ use tauri::{AppHandle, Runtime};
 use tauri::{Manager, WebviewWindow};
 
 #[cfg(desktop)]
-use halonic_trust_grant::{CANCEL_BUTTON, QUESTION_TITLE, TRUST_BUTTON};
+use halonic_trust_grant::{
+    CANCEL_BUTTON, INSTRUCTIONS_QUESTION_TITLE, QUESTION_TITLE, TRUST_BUTTON,
+};
 
 /// The label of the shell's only window. tauri.conf.json gives the window
 /// no label, so Tauri names it `main`, as the capabilities do.
@@ -39,17 +42,29 @@ pub fn pick_folder<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
     picked.map(|folder| folder.path().to_owned())
 }
 
-/// Shows the trust question; `true` only when the person presses Trust.
-/// Closing the dialog or pressing Escape answers Cancel.
+/// Shows the trust question about a folder; `true` only when the person
+/// presses Trust. Closing the dialog or pressing Escape answers Cancel.
 #[cfg(desktop)]
 pub fn ask_to_trust<R: Runtime>(app: &AppHandle<R>, question: &str) -> bool {
+    ask_with_title(app, QUESTION_TITLE, question)
+}
+
+/// Shows the trust question about an agent's instructions, answered as
+/// [`ask_to_trust`] answers.
+#[cfg(desktop)]
+pub fn ask_to_trust_instructions<R: Runtime>(app: &AppHandle<R>, question: &str) -> bool {
+    ask_with_title(app, INSTRUCTIONS_QUESTION_TITLE, question)
+}
+
+#[cfg(desktop)]
+fn ask_with_title<R: Runtime>(app: &AppHandle<R>, title: &'static str, question: &str) -> bool {
     use rfd::{AsyncMessageDialog, MessageButtons, MessageDialogResult, MessageLevel};
 
     let question = question.to_owned();
     let answer = show_and_wait(app, move |parent| {
         let dialog = AsyncMessageDialog::new()
             .set_level(MessageLevel::Warning)
-            .set_title(QUESTION_TITLE)
+            .set_title(title)
             .set_description(question)
             .set_buttons(MessageButtons::OkCancelCustom(
                 TRUST_BUTTON.to_owned(),
@@ -111,6 +126,11 @@ pub fn pick_folder<R: Runtime>(_app: &AppHandle<R>) -> Option<PathBuf> {
 
 #[cfg(mobile)]
 pub fn ask_to_trust<R: Runtime>(_app: &AppHandle<R>, _question: &str) -> bool {
+    false
+}
+
+#[cfg(mobile)]
+pub fn ask_to_trust_instructions<R: Runtime>(_app: &AppHandle<R>, _question: &str) -> bool {
     false
 }
 

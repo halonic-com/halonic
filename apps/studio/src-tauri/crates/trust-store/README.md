@@ -8,6 +8,8 @@ The trust records the Studio shell keeps in the profile (HAL-2612). `FileTrustSt
 - `list` gives a `Listing`. `fs-node` keeps records for Windows locations with a lone surrogate, which a Rust string can't hold. The shell can never ask about such a location, so `list` leaves the record out and gives its file in `left_out` for the shell to report, instead of failing the whole list (HAL-2826). `halonic trust` in the CLI still lists and removes it.
 - Writes go through a temporary file and a rename. The folder gets mode `700` and each file `600`.
 
+`FileInstructionTrustStore` keeps the instructions a person trusted for each agent in the profile's `instruction-trust` folder, as `FileInstructionTrustStore` in `fs-node` does (HAL-10515): one file per agent, named by the SHA-256 of the JSON of `[location, agent]` as UTF-16 code units, mode `700` and `600`, temporary file and rename, links refused when reading. Its records are typed (`InstructionRecord`), checked as `isInstructionTrustFor` checks them, and written with the key first. `read_unlinked` in `src/unlinked.rs` is copied from `host-settings`; a crate for both is worth making when a third caller needs it. Its tests start with `instruction_trust_files_`.
+
 The store doesn't decide which folders a grant may open. That is the shell's rule: it calls `OpenedFolders::open` only for a folder the person chose in the shell.
 
 `tests/fixtures/written-by-fs-node` holds three records written by `fs-node`'s `FileTrustStore`, byte for byte, one of them for `/a\uD800`; the tests read them and write the same record back. The requirement in `requirements/` is a draft until the trace check reads `cargo test` results. Until then, each test's name starts with `trust_files_`.

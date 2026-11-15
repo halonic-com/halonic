@@ -67,3 +67,30 @@ fn plugin_records_folder_is_plugin_records_in_the_profile_on_every_platform() {
         );
     }
 }
+
+#[test]
+fn instruction_trust_folder_is_instruction_trust_in_the_profile_on_every_platform() {
+    let cases = [
+        (
+            Platform::Linux,
+            "/srv/acme/.local/share/halonic",
+            "/srv/acme/.local/share/halonic/instruction-trust",
+        ),
+        (
+            Platform::Windows,
+            "<drive>\\Users\\acme\\halonic",
+            "<drive>\\Users\\acme\\halonic\\instruction-trust",
+        ),
+    ];
+    for (platform, root, expected) in cases {
+        let profile = ProfileFolder {
+            platform,
+            root: with_drive(root),
+        };
+        assert_eq!(
+            profile.instruction_trust_folder(),
+            with_drive(expected),
+            "{platform:?}"
+        );
+    }
+}
