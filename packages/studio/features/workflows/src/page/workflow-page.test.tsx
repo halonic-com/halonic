@@ -169,3 +169,41 @@ verifies("workflows.page.step-cards", () => {
     expect(surface(page)?.style.transform).toBe(fitted);
   });
 });
+
+const settings = {
+  hubId: "acme",
+  id: "reply",
+  name: "Support reply",
+  initial: "start",
+  stepIds: ["start", "write", "done"],
+  file: "hubs/acme/workflows/reply.workflow.yaml",
+  problems: [],
+} as const;
+
+verifies("workflows.page.start-command", () => {
+  it("shows how to start the workflow, with Copy command, on both tabs", async () => {
+    const { host } = memoryHost([], [], [reply], [settings]);
+    const page = await show(<WorkflowScreen host={host} hubId="acme" id="reply" />);
+    for (const tabName of ["Flow", "Configuration"]) {
+      await act(async () =>
+        [...page.querySelectorAll<HTMLElement>("[role=tab]")]
+          .find((one) => one.textContent?.startsWith(tabName))
+          ?.click(),
+      );
+      expect(page.textContent).toContain("Start it from a terminal:");
+      expect(page.querySelector("code")?.textContent).toBe("halonic run reply");
+      expect(page.querySelector("button[aria-label='Copy command']")).not.toBeNull();
+    }
+  });
+
+  it("shows no command when the workflow has an error", async () => {
+    const broken = {
+      ...settings,
+      problems: [{ severity: "error", code: "dead-end", message: "No way on." }],
+    } as const;
+    const { host } = memoryHost([], [], [reply], [broken]);
+    const page = await show(<WorkflowScreen host={host} hubId="acme" id="reply" />);
+    expect(page.textContent).not.toContain("Start it from a terminal");
+    expect(page.querySelector("code")).toBeNull();
+  });
+});

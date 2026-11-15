@@ -7,6 +7,7 @@ export const pageWords = {
   stillLoading: "Still loading",
   loadFailedTitle: "Couldn't load this workflow",
   tryAgain: "Try again",
+  startIt: "Start it from a terminal:",
   canvas: "Workflow canvas",
   zoomIn: "Zoom in",
   zoomOut: "Zoom out",

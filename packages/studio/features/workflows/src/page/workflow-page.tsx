@@ -1,5 +1,6 @@
 import {
   Button,
+  CommandBox,
   EmptyState,
   SkeletonBar,
   type Tab,
@@ -91,6 +92,12 @@ export function WorkflowScreen({ host, hubId, id, openRun }: WorkflowScreenProps
           ids={ids}
         />
       </header>
+      {settings.load.kind === "ready" && errors === 0 && (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-6 py-2 text-small text-fg-muted">
+          <p>{pageWords.startIt}</p>
+          <CommandBox command={`halonic run ${id}`} />
+        </div>
+      )}
       <TabPanel ids={ids} tabs={views} selected={view}>
         {view === "configuration" ? (
           <Configuration
