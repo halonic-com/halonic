@@ -139,8 +139,8 @@ describe("the connector page's listed tools", () => {
     });
 
     it("says a refused list or an unreadable approval has no rows, with Review tools", async () => {
-      const refused = { ...snapshot([]), listingRefused: "too many tools" };
-      const unreadable = { ...snapshot([]), unreadable: { toolName: undefined } };
+      const refused: ListedToolsSnapshot = { ...snapshot([]), listingRefused: "too many tools" };
+      const unreadable: ListedToolsSnapshot = { ...snapshot([]), unreadable: {} };
       for (const [read, text] of [
         [refused, "Couldn't use this server's tool list"],
         [unreadable, "Couldn't read an approval"],
