@@ -32,6 +32,7 @@ import { WorkspaceSkills } from "../library/workspace-skills.ts";
 import { WorkspaceModelKeys } from "../models/workspace-model-keys.ts";
 import { WorkspaceModelsFiles } from "../models/workspace-models-files.ts";
 import { WorkspaceNoLimit } from "../models/workspace-no-limit.ts";
+import { providePlugins } from "../plugins/provide-plugins.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
@@ -110,6 +111,12 @@ export function provideFolderServices(
     transport,
     location,
     onFocus: (listener) => focusOf(window, listener),
+  });
+  providePlugins(services, {
+    ipc,
+    window,
+    onFocus: (listener) => focusOf(window, listener),
+    onReloadFailed: (error) => console.error("Couldn't read the plugins folder", error),
   });
   provideLibraryServices(services, {
     ipc,
