@@ -2,8 +2,8 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, expect, it, vi } from "vitest";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
+import { afterEach, expect, it } from "vitest";
 import { type StartedStudio, startStudio } from "./start-studio.ts";
 
 // Under jsdom `import.meta.url` isn't a file URL, so the page is found from the package
@@ -31,9 +31,14 @@ function desktopMediaQueries(query: string): MediaQueryList {
  * fixed wait is too short when CI is busy; this polls until the heading is there instead.
  */
 async function drawn(root: HTMLElement): Promise<void> {
-  await vi.waitFor(() => expect(root.querySelector("main h1")).not.toBeNull(), {
-    timeout: 10_000,
-  });
+  await waitUntil(
+    `root.querySelector("main h1") not to be null`,
+    () => root.querySelector("main h1") !== null,
+    {
+      timeout: 10_000,
+    },
+  );
+  expect(root.querySelector("main h1")).not.toBeNull();
 }
 
 let started: StartedStudio | undefined;

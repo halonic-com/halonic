@@ -1,9 +1,10 @@
+import { isDeepStrictEqual } from "node:util";
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import type { SetupRecord } from "@halonicjs/google-setup";
 import type { ChatTurnRefusal, DefinitionWatchListener } from "@halonicjs/ports";
 import type { GoogleSetupAccount } from "@halonicjs/studio-feature-google-setup/api";
 import { RefusalsFeed } from "@halonicjs/studio-feature-library/api";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { WorkspaceConnectorStatus } from "./workspace-connector-status.ts";
 
@@ -198,7 +199,8 @@ verifies("studio.workspace-connector-status", () => {
     });
     const heard = vi.fn();
     const stop = status.subscribe(heard);
-    await vi.waitFor(() => expect(changed).toBeDefined());
+    await waitUntil("changed to be defined", () => changed !== undefined);
+    expect(changed).toBeDefined();
 
     focus();
     changed?.changed([{ path: "library/connectors/new.connector.yaml", kind: "changed" }]);
@@ -206,7 +208,8 @@ verifies("studio.workspace-connector-status", () => {
 
     stop();
     expect(stopFocus).toHaveBeenCalledTimes(1);
-    await vi.waitFor(() => expect(closed).toHaveBeenCalledTimes(1));
+    await waitUntil("closed to be called 1 times", () => closed.mock.calls.length === 1);
+    expect(closed).toHaveBeenCalledTimes(1);
   });
 
   it("keeps listening to the window when the files can't be watched", async () => {
@@ -251,10 +254,14 @@ verifies("studio.workspace-connector-status", () => {
     });
 
     const stopFirst = status.subscribe(() => {});
-    await vi.waitFor(() => expect(reported).toHaveBeenCalledWith(openFailure));
+    await waitUntil("reported to be called with openFailure", () =>
+      reported.mock.calls.some((call) => isDeepStrictEqual(call, [openFailure])),
+    );
+    expect(reported).toHaveBeenCalledWith(openFailure);
     stopFirst();
     const stopSecond = status.subscribe(() => {});
-    await vi.waitFor(() => expect(listener).toBeDefined());
+    await waitUntil("listener to be defined", () => listener !== undefined);
+    expect(listener).toBeDefined();
     listener?.failed(laterFailure);
 
     expect(reported).toHaveBeenCalledWith(laterFailure);

@@ -14,7 +14,7 @@ import { RecentWorkspaces } from "@halonicjs/studio-feature-workspace";
 import { WorkspacePageService } from "@halonicjs/studio-feature-workspace/api";
 import { hostSettingsStoreKey, secretsKey, tokenStoreKey } from "@halonicjs/studio-services";
 import { createShell } from "@halonicjs/studio-shell";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   desktopFeatures,
@@ -273,7 +273,11 @@ verifies("studio.open-folder", () => {
       userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
       storage,
     });
-    await vi.waitFor(() => expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio"));
+    await waitUntil(
+      `element.querySelector("h1")?.textContent to be "Halonic Studio"`,
+      () => element.querySelector("h1")?.textContent === "Halonic Studio",
+    );
+    expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio");
     expect(started.host).toBe("desktop-app");
 
     element.querySelector("button")?.click();
@@ -297,7 +301,11 @@ verifies("studio.open-folder", () => {
       userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
       storage,
     });
-    await vi.waitFor(() => expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio"));
+    await waitUntil(
+      `element.querySelector("h1")?.textContent to be "Halonic Studio"`,
+      () => element.querySelector("h1")?.textContent === "Halonic Studio",
+    );
+    expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio");
 
     const row = [...element.querySelectorAll("button")].find((button) =>
       button.textContent?.includes("/work/acme"),
@@ -415,9 +423,14 @@ verifies("studio.settings", () => {
         },
         desktopFeatures,
       );
-      await vi.waitFor(() => expect(element.querySelector("button")).not.toBeNull(), {
-        timeout: settingsWait,
-      });
+      await waitUntil(
+        `element.querySelector("button") not to be null`,
+        () => element.querySelector("button") !== null,
+        {
+          timeout: settingsWait,
+        },
+      );
+      expect(element.querySelector("button")).not.toBeNull();
       element.querySelector("button")?.click();
       await drawn(element);
 
