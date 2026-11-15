@@ -293,7 +293,7 @@ verifies("studio.workspace-google-setup-accounts", () => {
 
     it("saves one edit and tells its listeners", async () => {
       const asked: string[] = [];
-      const { accounts, setups } = await accountsOf({ host: (own) => hostOver(own, asked) });
+      const { accounts } = await accountsOf({ host: (own) => hostOver(own, asked) });
       const listener = vi.fn();
       accounts.subscribe(listener);
 
@@ -318,7 +318,7 @@ verifies("studio.workspace-google-setup-accounts", () => {
 
     it("starts and cancels a sign-in", async () => {
       const asked: string[] = [];
-      const { accounts, setups } = await accountsOf({ host: (own) => hostOver(own, asked) });
+      const { accounts } = await accountsOf({ host: (own) => hostOver(own, asked) });
 
       expect(await accounts.startSignIn("gaccount_1")).toBe("https://accounts.example/auth");
       await accounts.cancelSignIn("gaccount_1");
