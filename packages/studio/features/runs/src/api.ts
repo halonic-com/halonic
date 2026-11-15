@@ -1,14 +1,16 @@
 /**
  * The services and types other features may use. Features import each
  * other only through this file. The app provides `RunsSourceService` for
- * each open workspace; the Runs list, the run page and Home read it.
+ * each open workspace; the Runs list, the run page and Home read it. The
+ * Runs feature keeps one `RunsList` per workspace (`RunsListService`) that
+ * other features read instead of listing the runs again.
  */
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
 export { type RunChip, type RunRow, runRow } from "./list/run-row.ts";
 export type { WorkflowRef } from "./list/runs-filter.ts";
-export { type RunsList, RunsListService } from "./runs-list.ts";
+export { type RunsList, RunsListService, type RunsListState } from "./runs-list.ts";
 
 /** One run as the Runs list reads it: its summary, and the one fact the summary doesn't hold. */
 export interface SourcedRun {
