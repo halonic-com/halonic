@@ -1,8 +1,7 @@
 import type { ScheduledTimer } from "@halonicjs/ports";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { type MakeScheduler, startScheduler } from "./scheduler-harness.ts";
-import { waitUntil } from "./wait-until.ts";
 
 const second = 1000;
 const minute = 60 * second;
@@ -188,9 +187,9 @@ function duringCallCases(make: MakeScheduler): void {
     await s.scheduler.schedule("run_1", "start-limit", s.inMs(30 * second));
 
     const calling = s.wait(0);
-    await waitUntil(() => deliveredCount(s) === 1);
+    await waitUntil("the first delivery", () => deliveredCount(s) === 1);
     const limited = s.wait(30 * second);
-    await waitUntil(() => deliveredCount(s) === 2);
+    await waitUntil("the second delivery", () => deliveredCount(s) === 2);
     expect(delivered(s).map((timer) => timer.timerId)).toEqual(["harness-call", "start-limit"]);
     release.resolve();
     await Promise.all([calling, limited]);

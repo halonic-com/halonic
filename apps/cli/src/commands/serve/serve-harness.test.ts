@@ -13,7 +13,7 @@ import type {
   SandboxProfile,
 } from "@halonicjs/ports";
 import { fixedClock } from "@halonicjs/std";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { runCli } from "../../run-cli.ts";
 import { openGitHistory } from "../../run-workspace.ts";
@@ -27,7 +27,6 @@ import {
 import { captureIo } from "../../test/capture-io.ts";
 import { fakeSignals } from "../../test/fake-signals.ts";
 import { engineStart } from "../../test/run-setup.ts";
-import { waitUntil } from "../../test/wait-until.test-helper.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns, webCryptoDigest } from "../../workspace-runs.ts";
 import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
@@ -193,7 +192,7 @@ async function serveAcme(sandbox: SandboxCheck = sandboxStarts): Promise<string>
     stop: { signals, exitNow: () => undefined },
   });
   running = { signals, serving };
-  await waitUntil(() => io.stdout.length >= 1, slowTest);
+  await waitUntil("the server to print its address", () => io.stdout.length >= 1, slowTest);
   const found = /(http:\/\/localhost:\d+)/u.exec(io.stdout[0] ?? "");
   if (found?.[1] === undefined) throw new Error(`No address in ${JSON.stringify(io.stdout[0])}.`);
   return found[1];
@@ -219,12 +218,16 @@ verifies("cli.commands.serve.harness", () => {
       expect(started.status).toBe(200);
       const { id } = (await started.json()) as { id: string };
 
-      await waitUntil(async () => {
-        const summary = (await (await fetch(`${address}/api/runs/${id}`)).json()) as {
-          status: string;
-        };
-        return summary.status === "completed";
-      }, slowTest);
+      await waitUntil(
+        "the run to complete",
+        async () => {
+          const summary = (await (await fetch(`${address}/api/runs/${id}`)).json()) as {
+            status: string;
+          };
+          return summary.status === "completed";
+        },
+        slowTest,
+      );
       // The start named no version: it read the live one and the run records it.
       const runs = await openWorkspaceRuns(acmeRuns.acme, acmeRuns.profile);
       const runStarted = (await runs.events(id)).find((event) => event.type === "run.started");

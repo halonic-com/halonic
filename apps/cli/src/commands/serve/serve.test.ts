@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { runCli } from "../../run-cli.ts";
 import {
@@ -11,7 +11,6 @@ import {
 } from "../../test/acme-runs.ts";
 import { captureIo } from "../../test/capture-io.ts";
 import { fakeSignals } from "../../test/fake-signals.ts";
-import { waitUntil } from "../../test/wait-until.test-helper.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import { serveCommandWith } from "./command.ts";
@@ -84,7 +83,7 @@ verifies("cli.commands.serve.serve", () => {
   it("serves a trusted workspace on this computer until Ctrl C", async () => {
     await trustAcme();
     const { io, signals, serving } = startServe("--port", "0");
-    await waitUntil(() => io.stdout.length >= 1, slowStart);
+    await waitUntil("the server to print its address", () => io.stdout.length >= 1, slowStart);
     const address = addressOf(io.stdout[0]);
     expect(io.stdout[0]).toMatch(/^Serving Acme at http:\/\/localhost:\d+\. Stop with Ctrl C\.$/u);
     expect(io.stdout[1]).toContain("halonic secret set serve-password");
@@ -101,7 +100,7 @@ verifies("cli.commands.serve.serve", () => {
   it("tells a workspace under the home folder by its path from home, with a ~", async () => {
     await trustAcme();
     const { io } = startServeHomedAt(acmeRuns.folder, "--port", "0");
-    await waitUntil(() => io.stdout.length >= 1, slowStart);
+    await waitUntil("the server to print its address", () => io.stdout.length >= 1, slowStart);
     const address = addressOf(io.stdout[0]);
 
     const workspace = await (await fetch(`${address}/api/workspace`)).json();
@@ -111,7 +110,7 @@ verifies("cli.commands.serve.serve", () => {
   it("tells a workspace outside the home folder by its own name only, never its absolute path", async () => {
     await trustAcme();
     const { io } = startServeHomedAt(join(acmeRuns.folder, "profile"), "--port", "0");
-    await waitUntil(() => io.stdout.length >= 1, slowStart);
+    await waitUntil("the server to print its address", () => io.stdout.length >= 1, slowStart);
     const address = addressOf(io.stdout[0]);
 
     const workspace = await (await fetch(`${address}/api/workspace`)).json();
@@ -123,7 +122,7 @@ verifies("cli.commands.serve.serve", () => {
     const studioFolder = join(acmeRuns.folder, "studio-build");
     await writeFiles(studioFolder, { "studio.html": "<title>Halonic</title>" });
     const { io } = startServeWith({ ...acmeRunsSetup(acmeRuns), studioFolder }, "--port", "0");
-    await waitUntil(() => io.stdout.length >= 1, slowStart);
+    await waitUntil("the server to print its address", () => io.stdout.length >= 1, slowStart);
     const address = addressOf(io.stdout[0]);
 
     const page = await fetch(`${address}/`);
@@ -138,7 +137,7 @@ verifies("cli.commands.serve.serve", () => {
     await trustAcme();
     const studioFolder = join(acmeRuns.folder, "no-studio-build");
     const { io } = startServeWith({ ...acmeRunsSetup(acmeRuns), studioFolder }, "--port", "0");
-    await waitUntil(() => io.stdout.length >= 3, slowStart);
+    await waitUntil("the server to print three lines", () => io.stdout.length >= 3, slowStart);
     const address = addressOf(io.stdout[0]);
 
     expect(io.stdout[2]).toContain("The Studio page isn't built");
@@ -148,7 +147,7 @@ verifies("cli.commands.serve.serve", () => {
   it("asks the trust gate again for every request, so an edit after the start shows as changed", async () => {
     await trustAcme();
     const { io } = startServe("--port", "0");
-    await waitUntil(() => io.stdout.length >= 1, slowStart);
+    await waitUntil("the server to print its address", () => io.stdout.length >= 1, slowStart);
     const address = addressOf(io.stdout[0]);
     expect(await (await fetch(`${address}/api/trust`)).json()).toMatchObject({ state: "trusted" });
 

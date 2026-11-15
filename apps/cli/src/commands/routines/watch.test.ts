@@ -1,5 +1,5 @@
 import { RunHistory } from "@halonicjs/app";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
@@ -14,7 +14,6 @@ import { captureIo } from "../../test/capture-io.ts";
 import { fakeSignals } from "../../test/fake-signals.ts";
 import { type FakeTime, fakeTime, wokenUp } from "../../test/fake-time.ts";
 import { engineStart } from "../../test/run-setup.ts";
-import { waitUntil } from "../../test/wait-until.test-helper.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { routinesCommandWith } from "./command.ts";
 
@@ -113,12 +112,16 @@ verifies("cli.commands.routines.watch", () => {
   }, async () => {
     const time = fakeTime(engineStart);
     const { io, signals, watching } = startWatch(time);
-    await waitUntil(() => io.stdout.length === 1, slowWatch);
+    await waitUntil("the first watch line", () => io.stdout.length === 1, slowWatch);
     expect(io.stdout).toEqual(["Watching 1 routine in Acme. Stop with Ctrl C."]);
 
     // The next tick after 15:00 starts the run due at 15:00.
     time.set("2026-11-10T15:00:10.000Z");
-    await waitUntil(() => wokenUp(time) && io.stdout.length > 1, slowWatch);
+    await waitUntil(
+      "the second watch line",
+      () => wokenUp(time) && io.stdout.length > 1,
+      slowWatch,
+    );
     expect(io.stdout[1]).toMatch(/^✓ Started Hourly follow-up · run \w{6} · due 15:00$/u);
     const [started] = await storedRuns();
     expect(started).toMatchObject({
@@ -130,6 +133,7 @@ verifies("cli.commands.routines.watch", () => {
     // Five minutes on, its timer moves it on by itself.
     time.set("2026-11-10T15:05:30.000Z");
     await waitUntil(
+      "the woken-up run to complete",
       async () => wokenUp(time) && (await storedRuns())[0]?.status === "completed",
       slowWatch,
     );
@@ -160,11 +164,15 @@ verifies("cli.commands.routines.watch", () => {
     });
     const time = fakeTime(engineStart);
     const { io, signals, watching } = startWatch(time, "--debug");
-    await waitUntil(() => io.stdout.length === 1, slowWatch);
+    await waitUntil("the first watch line", () => io.stdout.length === 1, slowWatch);
     expect(io.stdout).toHaveLength(1);
 
     time.set("2026-11-10T15:00:10.000Z");
-    await waitUntil(() => wokenUp(time) && io.stdout.length > 1, slowWatch);
+    await waitUntil(
+      "the second watch line",
+      () => wokenUp(time) && io.stdout.length > 1,
+      slowWatch,
+    );
     expect(io.stdout[1]).toBe("✕ Hourly follow-up didn't start · due 15:00 · see why with --debug");
     expect(io.stderr.join("\n")).toContain("Routine support/hourly-follow-up didn't start:");
     expect(await storedRuns()).toEqual([]);
@@ -175,7 +183,7 @@ verifies("cli.commands.routines.watch", () => {
 
   it("ends with 143 at SIGTERM", { timeout: watchTestTimeout }, async () => {
     const { io, signals, watching } = startWatch(fakeTime(engineStart));
-    await waitUntil(() => io.stdout.length === 1, slowWatch);
+    await waitUntil("the first watch line", () => io.stdout.length === 1, slowWatch);
     expect(io.stdout).toHaveLength(1);
 
     signals.send("SIGTERM");

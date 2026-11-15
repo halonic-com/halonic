@@ -7,7 +7,7 @@ import { AgentPlacement, RunHistory } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
 import type { SandboxCheck } from "@halonicjs/ports";
 import { fixedClock } from "@halonicjs/std";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
@@ -23,7 +23,6 @@ import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { fakeSignals } from "../../test/fake-signals.ts";
 import { type FakeTime, fakeTime, wokenUp } from "../../test/fake-time.ts";
 import { engineStart } from "../../test/run-setup.ts";
-import { waitUntil } from "../../test/wait-until.test-helper.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns, webCryptoDigest } from "../../workspace-runs.ts";
 import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
@@ -193,6 +192,7 @@ async function watchUntil(watch: StartedWatch, ready: () => boolean): Promise<vo
   );
   let passed = false;
   await waitUntil(
+    "the watch output to pass the check or the watch to end",
     () => {
       passed = ready();
       return passed || ended !== undefined;
