@@ -2,6 +2,7 @@
 
 - Approval: the task asks for this change (HAL-10089, follow-up to HAL-9962); Liam approves and signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:seDaV0MIF6+ZU+wEafebRCa/HLSfruraGoRLJn6k1b6P5oukbz20WX2iTR7YI9aDRz4jcCjerujQQ5j39rpaAA==
 
 ## What changes
 
