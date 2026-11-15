@@ -342,9 +342,7 @@ verifies("engine.harness-start-limits", () => {
     expect(ports.steps).toEqual(["bridge.open", "bridge.close"]);
 
     held.resolve();
-    await waitUntil(`ports.steps to contain "session.close"`, () =>
-      ports.steps.includes("session.close"),
-    );
+    await waitUntil("the harness step session.close", () => ports.steps.includes("session.close"));
     expect(ports.steps).toContain("session.close");
     expect(ports.steps).toEqual(["bridge.open", "bridge.close", "sandbox.open", "session.close"]);
   });
@@ -464,9 +462,7 @@ verifies("engine.harness-stops-with-engine", () => {
     expect(String(error)).toContain("The engine stopped.");
     expect(ports.steps).toEqual(["bridge.open", "bridge.close"]);
     held.resolve();
-    await waitUntil(`ports.steps to contain "session.close"`, () =>
-      ports.steps.includes("session.close"),
-    );
+    await waitUntil("the harness step session.close", () => ports.steps.includes("session.close"));
     expect(ports.steps).toContain("session.close");
     expect(stillOpen(ports.steps)).toBe(0);
   });

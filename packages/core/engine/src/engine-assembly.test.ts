@@ -242,9 +242,7 @@ verifies("engine.harness-stops-with-engine", () => {
     await engine.executor.start(replyStart);
     const timer = await scheduler?.waitFor("run_1", "harness:call-1");
     const delivery = scheduler?.listener.onTimer({ ...(timer as ScheduledTimer) });
-    await waitUntil(`ports.steps to contain "harness.start"`, () =>
-      ports.steps.includes("harness.start"),
-    );
+    await waitUntil("the harness step harness.start", () => ports.steps.includes("harness.start"));
     expect(ports.steps).toContain("harness.start");
     await engine.close();
     await delivery;

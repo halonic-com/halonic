@@ -163,9 +163,7 @@ verifies("engine.run-proposal-folder", () => {
     ports.harness.hangs = true;
     await executor.start(replyStart);
     const harnessCall = scheduler.deliver("run_1", "harness:call-1");
-    await waitUntil(`ports.steps to contain "harness.start"`, () =>
-      ports.steps.includes("harness.start"),
-    );
+    await waitUntil("the harness step harness.start", () => ports.steps.includes("harness.start"));
     expect(ports.steps).toContain("harness.start");
 
     await executor.cancel("run_1");
@@ -202,9 +200,7 @@ verifies("engine.run-proposal-folder", () => {
     ports.harness.hangs = true;
     await executor.start(replyStart);
     const harnessCall = scheduler.deliver("run_1", "harness:call-1");
-    await waitUntil(`ports.steps to contain "harness.start"`, () =>
-      ports.steps.includes("harness.start"),
-    );
+    await waitUntil("the harness step harness.start", () => ports.steps.includes("harness.start"));
     expect(ports.steps).toContain("harness.start");
     await executor.close();
     await harnessCall;
