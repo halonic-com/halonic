@@ -69,6 +69,13 @@ export const TOAST_SET_UP = "The agent sandbox is set up";
 export const toastNotSetUp = (cause: string) => `The agent sandbox isn't set up: ${cause}`;
 export const toastNotRemoved = (cause: string) => `The agent sandbox wasn't removed: ${cause}`;
 
+export const TOAST_SETTING_UP = "Setting up the agent sandbox…";
+export const SET_UP_COMMAND = "Set up the agent sandbox";
+export const OPEN_SETTINGS = "Open Settings";
+export const DENIED_CAUSE = "Windows didn't give Halonic administrator rights.";
+export const TIMED_OUT_CAUSE = "the setup didn't finish within 3 minutes.";
+export const RESTART_CAUSE = "Windows needs to restart to finish the setup.";
+
 /** When the check after a setup still doesn't pass and the host gave no reason. */
 export const STILL_NEEDS_SETUP = "the check still says the sandbox needs setting up.";
 
