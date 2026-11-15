@@ -1,3 +1,4 @@
+import { RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { defineFeature } from "@halonicjs/studio-shell";
 import { ALIAS_KIND, ALIAS_KIND_LABEL, aliasTitle } from "./aliases/alias-text.ts";
 import { ModelKeysService, ModelsFilesService, NoLimitMemoryService } from "./api.ts";
@@ -9,14 +10,21 @@ import { PROVIDER_KIND, PROVIDER_KIND_LABEL, providerTabLabel } from "./provider
  * interface other features use is in `api.ts`. So far it adds the **Models**
  * section of the workspace page with the alias list (`models.aliases.list`)
  * and the alias tab, the Budget block above it (`models.budget.budget-settings`), and the
- * **Providers** section with the provider page (`models.providers.list-and-show`).
+ * **Providers** section with the provider page (`models.providers.list-and-show`), and the month
+ * spend in the status bar (`models.spend.month-line`).
  */
 export const modelsFeature = defineFeature({
   id: "models",
   title: "Models",
   needs: [ModelsFilesService],
-  wants: [ModelKeysService, NoLimitMemoryService],
+  wants: [ModelKeysService, NoLimitMemoryService, RunsListService],
   register(studio) {
+    studio.statusBar.add({
+      id: "models.spend",
+      order: 100,
+      view: "SpendItem",
+      load: () => import("./spend/spend-item.tsx"),
+    });
     studio.itemKinds.add({
       kind: ALIAS_KIND,
       label: ALIAS_KIND_LABEL,
