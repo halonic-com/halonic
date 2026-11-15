@@ -164,6 +164,18 @@ export function createGoogleRoutes({ google }: GoogleRoutePorts): GoogleRoutes {
     return signInRoutes.start(request, accountRef, record);
   }
 
+  /** `DELETE /api/google/setups/<ref>/sign-in`: Cancel, see `cancel` in `createGoogleSignInRoutes`. */
+  async function cancelSignIn(request: Request, accountRef: string): Promise<Response> {
+    const refusal = refuseOtherSite(request);
+    if (refusal !== null) {
+      return errorResponse(refusal);
+    }
+    if ((await readSetup(setups, accountRef)) === null) {
+      return errorResponse(serverErrors.googleSetupNotFound);
+    }
+    return signInRoutes.cancel(accountRef);
+  }
+
   return {
     callback: (request) => signInRoutes.callback(request),
     async handle(request, body, context) {
@@ -188,6 +200,8 @@ export function createGoogleRoutes({ google }: GoogleRoutePorts): GoogleRoutes {
           return checkAgain(request, accountRef);
         case "POST /sign-in":
           return startSignIn(request, accountRef);
+        case "DELETE /sign-in":
+          return cancelSignIn(request, accountRef);
         case "POST /disconnect":
           return disconnect(request, accountRef);
         default:

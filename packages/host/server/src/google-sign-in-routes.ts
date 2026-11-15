@@ -58,6 +58,14 @@ export interface GoogleSignInRoutes {
    * setup exists.
    */
   start(request: Request, accountRef: string, record: SetupRecord): Promise<Response>;
+  /**
+   * `DELETE /api/google/setups/<ref>/sign-in`: Cancel. Drops the account's
+   * pending sign-in, so a callback that still arrives is refused, and notes on
+   * the record that the sign-in is over. It answers 204 whether or not one was
+   * pending. The caller has checked the sign-in, the site and that the setup
+   * exists.
+   */
+  cancel(accountRef: string): Promise<Response>;
   /** `GET /api/google/callback`: finishes the sign-in Google's redirect belongs to, records how it ended and tells the open item. */
   callback(request: Request): Promise<Response>;
 }
@@ -130,6 +138,12 @@ export function createGoogleSignInRoutes({
       });
       await setups.update(accountRef, { kind: "sign-in-started" });
       return Response.json({ authUrl });
+    },
+
+    async cancel(accountRef) {
+      await actions.dropSignIn(accountRef);
+      await setups.update(accountRef, { kind: "sign-in-dropped" });
+      return new Response(null, { status: 204 });
     },
 
     async callback(request) {

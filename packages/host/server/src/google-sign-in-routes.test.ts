@@ -167,6 +167,65 @@ describe("google sign-in start", () => {
   });
 });
 
+function cancelSignIn(
+  server: Server,
+  accountRef: string,
+  headers: Record<string, string> = {},
+  origin = "http://localhost:4321",
+): Promise<Response> {
+  return server.handle(
+    new Request(`${origin}/api/google/setups/${accountRef}/sign-in`, {
+      method: "DELETE",
+      headers: { host: new URL(origin).host, "sec-fetch-site": "same-origin", ...headers },
+    }),
+  );
+}
+
+describe("google sign-in cancel", () => {
+  verifies("server.google-sign-in", () => {
+    it("drops the pending sign-in, ends it on the record and answers 204 each time", async () => {
+      const state = setup();
+      const accountRef = await readySetup(state);
+      await startSignIn(state.server, accountRef);
+
+      const first = await cancelSignIn(state.server, accountRef);
+      const second = await cancelSignIn(state.server, accountRef);
+
+      expect(first.status).toBe(204);
+      expect(second.status).toBe(204);
+      expect(state.google.actions.signInDrops).toEqual([accountRef, accountRef]);
+      expect((await state.google.setups.read(accountRef))?.signInStartedAt).toBeNull();
+    });
+
+    it("needs the sign-in and the same site, and answers 404 for a ref with no record", async () => {
+      const state = setup({ password: true });
+      const accountRef = await readySetup(state);
+      const loginResponse = await state.server.handle(
+        new Request("http://localhost/api/login", {
+          method: "POST",
+          headers: { host: "localhost", "content-type": "application/json" },
+          body: JSON.stringify({ password: "pw" }),
+        }),
+      );
+      const cookie = loginResponse.headers.get("set-cookie")?.split(";")[0] ?? "";
+
+      const noSession = await cancelSignIn(state.server, accountRef, {}, "http://localhost");
+      const otherSite = await cancelSignIn(
+        state.server,
+        accountRef,
+        { cookie, "sec-fetch-site": "cross-site" },
+        "http://localhost",
+      );
+      const unknown = await cancelSignIn(state.server, "not-a-ref", { cookie }, "http://localhost");
+
+      expect(noSession.status).toBe(401);
+      expect(otherSite.status).toBe(403);
+      expect(unknown.status).toBe(404);
+      expect(state.google.actions.signInDrops).toEqual([]);
+    });
+  });
+});
+
 describe("google sign-in callback", () => {
   verifies("server.google-sign-in", () => {
     it("records a sign-in, tells the open item and answers a page with no code or state", async () => {
