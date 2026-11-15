@@ -25,6 +25,7 @@
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*",
     "@halonicjs/std": "workspace:*",
+    "@halonicjs/studio-feature-files": "workspace:*",
     "@halonicjs/studio-feature-google-setup": "workspace:*",
     "@halonicjs/studio-feature-inbox": "workspace:*",
     "@halonicjs/studio-feature-library": "workspace:*",
