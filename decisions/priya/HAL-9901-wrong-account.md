@@ -2,6 +2,7 @@
 
 - Approval: Liam decided this on HAL-9936 as a team call (HAL-2282 rule): the screen and its wording are in the board-approved Google setup design (HAL-621, section 3.5 item 3)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:z3lkY5nFIeGWEOd86ip7T94tesDwwg+qDvzPeW1SOiCsdzixoJRpXXnBYpWOelH5Fk1kCHNXRKboR+LX2SUeBw==
 - Task: HAL-9901
 
 ## What changes
