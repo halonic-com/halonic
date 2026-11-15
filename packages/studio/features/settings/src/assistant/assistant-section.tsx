@@ -1,14 +1,6 @@
 import type { HostSettings } from "@halonicjs/app";
 import type { HostSettingValue } from "@halonicjs/ports";
-import {
-  Callout,
-  EmptyState,
-  Field,
-  inlineLinkClasses,
-  Select,
-  Switch,
-  ViewOnlyLine,
-} from "@halonicjs/studio-kit";
+import { EmptyState, Field, Select, Switch } from "@halonicjs/studio-kit";
 import type { SettingsPlace, SettingsSectionProps, SettingsSurface } from "@halonicjs/studio-shell";
 import { useState, useSyncExternalStore } from "react";
 import {
@@ -20,6 +12,7 @@ import {
 } from "../api.ts";
 import { openModelsCommand } from "../links/workspace-links.tsx";
 import { checkModel, checkTurnLimit } from "./assistant-checks.ts";
+import { LocalOnlyWarning, SetsItsOwn, ViewOnlyNotes } from "./assistant-notes.tsx";
 import { assistantPrefs, turnLimitRange } from "./assistant-prefs.ts";
 import {
   type AssistantProvider,
@@ -181,41 +174,6 @@ export function AssistantView(props: AssistantViewProps) {
   return <AssistantEditor {...props} />;
 }
 
-/** The line under the warning when the open workspace sets its own model, with its link unless served. */
-function SetsItsOwn({
-  open,
-  link,
-}: {
-  readonly open: AssistantWorkspaceFacts | null;
-  readonly link: (() => void) | null;
-}) {
-  if (open === null || open.sessionModel === null) return null;
-  return (
-    <p className="text-small text-fg-muted">
-      {text.setsItsOwn(open.name, open.sessionModel)}
-      {link === null ? null : (
-        <>
-          {" "}
-          <button type="button" className={inlineLinkClasses} onClick={link}>
-            {text.WORKSPACE_SETTINGS}
-          </button>
-        </>
-      )}
-    </p>
-  );
-}
-
-/** The warning when the open workspace is local only and the chosen cloud model isn't marked Local. */
-function LocalOnlyWarning(props: {
-  readonly open: AssistantWorkspaceFacts | null;
-  readonly provider: AssistantProvider;
-  readonly local: boolean;
-}) {
-  const { open, provider, local } = props;
-  if (provider === "not-set-up" || !open?.localOnly || local) return null;
-  return <Callout tone="warning">{text.localOnlyWarning(open.name)}</Callout>;
-}
-
 /** A tuning setting for {@link Tuning}: an empty value puts the setting back to its default. */
 function tuned<Value extends HostSettingValue>(
   shown: ShownHostSetting<Value>,
@@ -237,27 +195,6 @@ function ServedKey(props: {
   const { provider, ...rest } = props;
   if (provider === "not-set-up") return null;
   return <KeyLine provider={provider} closeSettings={() => {}} served {...rest} />;
-}
-
-/** The view-only line, then what the section says about Not set up and a local-only workspace. */
-function ViewOnlyNotes(props: {
-  readonly surface: SettingsSurface | undefined;
-  readonly provider: AssistantProvider;
-  readonly open: AssistantWorkspaceFacts | null;
-  readonly local: boolean;
-}) {
-  const { surface, provider, open, local } = props;
-  return (
-    <>
-      <ViewOnlyLine>
-        {surface === "phone" ? text.VIEW_ONLY_PHONE_LINE : text.VIEW_ONLY_LINE}
-      </ViewOnlyLine>
-      {provider === "not-set-up" ? (
-        <p className="text-small text-fg-muted">{text.NOT_SET_UP_LINE}</p>
-      ) : null}
-      <LocalOnlyWarning open={open} provider={provider} local={local} />
-    </>
-  );
 }
 
 /** The label-over-value rows of the section served to another device. */
