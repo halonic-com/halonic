@@ -21,7 +21,7 @@ import {
   ListedToolsHostService,
 } from "@halonicjs/studio-feature-library/api";
 import { modelsFeature } from "@halonicjs/studio-feature-models";
-import { ModelsFilesService } from "@halonicjs/studio-feature-models/api";
+import { ModelKeysService, ModelsFilesService } from "@halonicjs/studio-feature-models/api";
 import { runsFeature } from "@halonicjs/studio-feature-runs";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import {
@@ -190,6 +190,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     ChangesSourceService,
     WorkflowsHostService,
     ModelsFilesService,
+    ModelKeysService,
     DisplaySettingsService,
     HostSettingsService,
     AssistantWorkspaceService,

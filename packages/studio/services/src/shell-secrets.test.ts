@@ -6,8 +6,10 @@ import {
   maxShellTokenNameLength,
   provideShellSecrets,
   secretsKey,
+  shellKeychain,
   tokenStoreKey,
 } from "./shell-secrets.ts";
+import { tauriIpc } from "./tauri-ipc.ts";
 
 /**
  * A page in the shell whose keychain commands keep values in memory. Like the
@@ -114,6 +116,24 @@ verifies("services.shell-secrets", () => {
       await expect(set).rejects.not.toThrow(tooLong);
       expect(names).toEqual([tokenNamePrefix + longest]);
       expect((tokenNamePrefix + longest).length).toBe(128);
+    });
+  });
+
+  describe("shellKeychain", () => {
+    it("is the keychain as it is, under the name it is given", async () => {
+      const { page, keychain, names } = shellPage();
+      const ipc = tauriIpc(page);
+      if (ipc === undefined) {
+        throw new Error("The test page has no shell.");
+      }
+      const store = shellKeychain(ipc);
+
+      await store.set("openai-key", "example-key");
+
+      expect(await store.get("openai-key")).toBe("example-key");
+      await store.remove("openai-key");
+      expect(keychain.size).toBe(0);
+      expect(names).toEqual(["openai-key", "openai-key", "openai-key"]);
     });
   });
 });
