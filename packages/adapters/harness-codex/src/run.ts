@@ -24,6 +24,7 @@ import {
   codexConfigFile,
   codexConfigText,
   codexOwnSandboxArgs,
+  codexPinnedInstructionsArgs,
 } from "./config.ts";
 import { codexProgram } from "./detect.ts";
 import { RunEvents } from "./run-events.ts";
@@ -132,7 +133,12 @@ export class CodexRun implements HarnessRun {
     if (this.#cancelled) throw cancelledError();
     return session.start({
       program: codexProgram,
-      args: ["app-server", ...codexConfigArgs(bridge), ...(own ? codexOwnSandboxArgs : [])],
+      args: [
+        "app-server",
+        ...codexConfigArgs(bridge),
+        ...codexPinnedInstructionsArgs,
+        ...(own ? codexOwnSandboxArgs : []),
+      ],
     });
   }
 

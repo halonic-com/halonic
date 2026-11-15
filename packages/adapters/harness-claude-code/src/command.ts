@@ -35,7 +35,13 @@ export function hasInstructions(task: HarnessTask): boolean {
  * - `--setting-sources user`: only the settings in the agent's own settings
  *   folder (`CLAUDE_CONFIG_DIR`), which Halonic writes. A working folder's
  *   `.claude/settings.json` and `settings.local.json` are not read, so a
- *   downloaded workspace can't add permission rules or hooks.
+ *   downloaded workspace can't add permission rules or hooks. Without
+ *   `project` and `local`, Claude Code also reads no `CLAUDE.md`,
+ *   `CLAUDE.local.md` or `.claude/skills` from the working folder, so the
+ *   instructions it runs with are only the pinned text. Checked by hand
+ *   against Claude Code 2.1.318: with a marker in each file, the model
+ *   request held none of them; with `project` and `local` added it held
+ *   all three.
  * - `--settings` with {@link unfencedSettingsFile}, when its own sandbox is
  *   on. These settings load next to the agent's own, whatever
  *   `--setting-sources` says.

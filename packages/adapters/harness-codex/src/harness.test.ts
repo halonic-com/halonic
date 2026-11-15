@@ -3,7 +3,7 @@ import type { HarnessEvent } from "@halonicjs/ports";
 import { type FakeProgram, FakeSandboxSession } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { codexConfigText } from "./config.ts";
+import { codexConfigText, codexPinnedInstructionsArgs } from "./config.ts";
 import {
   answer,
   CodexLog,
@@ -63,6 +63,7 @@ verifies("harness-codex.start", () => {
           'model_providers.halonic.base_url="http://127.0.0.1:4100/v1"',
           "-c",
           'mcp_servers.halonic.url="http://127.0.0.1:4100/mcp"',
+          ...codexPinnedInstructionsArgs,
         ],
       });
     });

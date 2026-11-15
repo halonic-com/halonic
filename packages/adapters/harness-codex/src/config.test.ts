@@ -1,7 +1,13 @@
 import type { HarnessBridge } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { codexConfigArgs, codexConfigText, codexOwnSandboxArgs, tomlString } from "./config.ts";
+import {
+  codexConfigArgs,
+  codexConfigText,
+  codexOwnSandboxArgs,
+  codexPinnedInstructionsArgs,
+  tomlString,
+} from "./config.ts";
 
 const bridge: HarnessBridge = {
   url: "http://127.0.0.1:4100",
@@ -20,6 +26,17 @@ verifies("harness-codex.config", () => {
     it("turns Codex's own sandbox on for one process, with the commands' writes kept to the working folder", () => {
       expect(codexOwnSandboxArgs).toEqual(["-c", 'sandbox_mode="workspace-write"']);
       expect(codexConfigText()).toContain('sandbox_mode = "danger-full-access"');
+    });
+  });
+
+  describe("codexPinnedInstructionsArgs", () => {
+    it("keeps Codex from reading the working folder's AGENTS.md files and listing its skills", () => {
+      expect(codexPinnedInstructionsArgs).toEqual([
+        "-c",
+        "project_doc_max_bytes=0",
+        "-c",
+        "skills.include_instructions=false",
+      ]);
     });
   });
 

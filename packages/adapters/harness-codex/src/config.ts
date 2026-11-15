@@ -63,6 +63,29 @@ export function codexConfigText(): string {
 export const codexOwnSandboxArgs: readonly string[] = ["-c", 'sandbox_mode="workspace-write"'];
 
 /**
+ * The arguments that stop Codex from reading instructions out of the
+ * working folder (requirement `harness-codex.config`). Codex reads the
+ * folder's `AGENTS.md` and `AGENTS.override.md`, and lists the skills in its
+ * `.agents/skills`, live when the run starts, so a person would trust one
+ * version and the agent would run another. The agent's instructions reach
+ * Codex only as the pinned text, as developer instructions.
+ *
+ * - `project_doc_max_bytes=0` keeps Codex from reading project docs.
+ * - `skills.include_instructions=false` keeps it from listing skills.
+ *
+ * They are `-c` arguments, not lines of `config.toml`, because a setting on
+ * the command line wins over a project's own `.codex/config.toml`.
+ * Checked by hand against Codex 0.166.0: with a marker in each file, the
+ * model request held none of them.
+ */
+export const codexPinnedInstructionsArgs: readonly string[] = [
+  "-c",
+  "project_doc_max_bytes=0",
+  "-c",
+  "skills.include_instructions=false",
+];
+
+/**
  * The arguments that give `codex app-server` the run's bridge: the model
  * provider's address (`/v1`, where the bridge serves `POST /v1/responses`)
  * and the MCP server's (`/mcp`). Codex reads a provider's address only from

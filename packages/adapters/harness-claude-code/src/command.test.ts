@@ -60,6 +60,14 @@ verifies("harness-claude-code.command", () => {
       expect(claudeCodeCommand(task, files).args).not.toContain("--settings");
     });
 
+    it("reads settings from the user source alone, so the working folder's CLAUDE.md files and skills aren't read", () => {
+      const args = claudeCodeCommand(task, files).args;
+
+      expect(args.filter((arg) => arg === "--setting-sources")).toHaveLength(1);
+      expect(args[args.indexOf("--setting-sources") + 1]).toBe("user");
+      expect(args.join(" ")).not.toMatch(/project|local|--add-dir/);
+    });
+
     it("keeps the prompt and the instructions out of the arguments", () => {
       const commandLine = claudeCodeCommand(task, files).args.join(" ");
 
