@@ -48,6 +48,14 @@ checked as `ask`, so a person approves it before it runs; the tools offer no way
 release. Its token should be short-lived, for that repository alone, with no admin right, and is read
 from `Secrets` on each call (requirement `harness-bridge.github-write`).
 
+## Paperclip write tools
+
+`PaperclipWriteTools` is a `BridgeTools` with two tools on one Paperclip task fixed when it is made
+(`paperclip_post_comment`, `paperclip_set_status`). Every call with acceptable arguments is checked
+as `ask`, so a person approves it before it runs; the tools can't cancel, reassign or create a task.
+Its key should be short-lived and for that task alone, and is read from `Secrets` on each call
+(requirement `harness-bridge.paperclip-write`).
+
 ## What the bridge does
 
 - **Host and origin.** A request whose `Host` isn't `127.0.0.1` or `localhost`
