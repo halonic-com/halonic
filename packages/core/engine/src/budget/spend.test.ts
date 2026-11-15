@@ -44,6 +44,18 @@ verifies("engine.budget-stops", () => {
     expect(spend).toEqual({ run: 0.5, month: 0.5 });
   });
 
+  it("leaves test runs out of the month, as the Studio's spend line does", async () => {
+    const runs = new KernelRuns();
+    putSpentRun(runs, "run_1", { startedAt: "2026-01-02T08:00:00.000Z", cost: 0.5 });
+    putSpentRun(runs, "test_1", { startedAt: "2026-01-03T08:00:00.000Z", cost: 7, kind: "test" });
+
+    const spend = await spendOf(runs, await stateOf(runs, "run_1"), at);
+    const months = await monthsSpend(runs, at, 1);
+
+    expect(spend).toEqual({ run: 0.5, month: 0.5 });
+    expect(months).toEqual([{ month: "2026-01", spent: 0.5 }]);
+  });
+
   it("lists only this month's runs, and a whole run that started last month", async () => {
     const runs = new KernelRuns();
     putSpentRun(runs, "run_0", { startedAt: "2025-11-30T08:00:00.000Z", cost: 5 });
@@ -59,8 +71,8 @@ verifies("engine.budget-stops", () => {
     expect(child).toEqual({ run: 0.375, month: 1.125 });
     expect(plain).toEqual({ run: 1, month: 1.125 });
     expect(list.mock.calls).toEqual([
-      [{ startedSince: "2025-12-31T23:00:00.000Z" }],
-      [{ startedSince: "2026-01-01T00:00:00.000Z" }],
+      [{ kind: "run", startedSince: "2025-12-31T23:00:00.000Z" }],
+      [{ kind: "run", startedSince: "2026-01-01T00:00:00.000Z" }],
     ]);
   });
 });
@@ -90,7 +102,7 @@ verifies("engine.month-spend", () => {
       { month: "2025-12", spent: 2 },
       { month: "2026-01", spent: 0.25 },
     ]);
-    expect(list.mock.calls).toEqual([[{ startedSince: "2025-08-01T00:00:00.000Z" }]]);
+    expect(list.mock.calls).toEqual([[{ kind: "run", startedSince: "2025-08-01T00:00:00.000Z" }]]);
   });
 
   it("agrees with the month spend the budget stops on", async () => {

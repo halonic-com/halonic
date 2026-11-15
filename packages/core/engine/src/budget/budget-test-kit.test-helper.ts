@@ -8,6 +8,8 @@ export interface SpentRun {
   /** Set for a call the person's own subscription paid for. */
   readonly paidBy?: "subscription";
   readonly parent?: RunParent;
+  /** Set to `"test"` for a test case's run, which the budget leaves out. */
+  readonly kind?: "run" | "test";
 }
 
 /** One model call that cost `cost`, as a run's turn log or harness writes it. */
@@ -36,7 +38,7 @@ export function pricedCall(
 
 /** Puts a run that started at `startedAt` and made one call into `runs`. */
 export function putSpentRun(runs: KernelRuns, runId: string, spent: SpentRun): void {
-  const { startedAt, cost, paidBy, parent } = spent;
+  const { startedAt, cost, paidBy, parent, kind = "run" } = spent;
   runs.logs.set(runId, [
     {
       runId,
@@ -46,7 +48,7 @@ export function putSpentRun(runs: KernelRuns, runId: string, spent: SpentRun): v
       hubId: "acme",
       workflowId: "reply",
       input: {},
-      kind: "run",
+      kind,
       definitionsVersion: "0".repeat(64),
       ...(parent === undefined ? {} : { parent }),
     },
