@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-700; Google setup flow design, section 3.1; base component specs 18.5; HAL-1966 (states page design check, CB2); HAL-2324
 
-When the user clicks a `CopyButton`, the kit shall put the button's text on the clipboard, show "Copied" in place of "Copy" for `COPIED_FOR_MS`, and announce "Copied" through a status region that is in the page before the click. If the clipboard API is missing or refuses, then the kit shall copy by selecting the text and running the browser's copy command. If that fails too, then the button shall keep saying "Copy" and a hint on the line under the row that holds the button shall say "Couldn't copy. Select the command and copy it."
+When the user clicks a `CopyButton`, the kit shall put the button's text on the clipboard, show "Copied" in place of "Copy" for `COPIED_FOR_MS`, and announce "Copied" through a status region that is in the page before the click. If the clipboard API is missing or refuses, then the kit shall copy by selecting the text and running the browser's copy command. If that fails too, then the button shall keep saying "Copy" and a hint on the line under the row that holds the button shall say "Couldn't copy. Select the text and copy it yourself."
 
 ## Examples
 
@@ -19,4 +19,4 @@ When the user clicks a `CopyButton`, the kit shall put the button's text on the 
   then the text is copied through the hidden text box, which is removed afterwards, and the focus goes back where it was.
 - Given the clipboard API and the copy command both refuse,
   when the user clicks the button,
-  then the hint says "Couldn't copy. Select the command and copy it."
+  then the hint says "Couldn't copy. Select the text and copy it yourself."

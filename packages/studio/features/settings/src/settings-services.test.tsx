@@ -10,6 +10,7 @@ import {
   type AssistantWorkspace,
   AssistantWorkspaceService,
   DisplaySettingsService,
+  HalonicVersionService,
   HostSettingsService,
   type UpdaterHost,
   UpdaterService,
@@ -69,6 +70,15 @@ verifies("settings.feature", () => {
     );
     expect(view.textContent).toContain("Updates are installed on the computer running Halonic.");
     expect(without.services.find(UpdaterService)).toBeUndefined();
+  });
+
+  it("shows the version that serves the window in the view-only About, when the app gives one", async () => {
+    const served = await sectionContext([[HalonicVersionService as ServiceKey<never>, "0.1.0"]]);
+    const view = render(
+      <AboutSection context={served} place="app" surface="window" closeSettings={() => {}} />,
+    );
+    expect(view.textContent).toContain("Halonic 0.1.0");
+    expect(view.textContent).toContain("Updates are installed on the computer running Halonic.");
   });
 
   it("reaches the agent sandbox the app provides, and reads Not available without one", async () => {

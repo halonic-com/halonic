@@ -88,7 +88,7 @@ function statusText(state: CopyState): string {
     case "copied":
       return "Copied";
     case "failed":
-      return "Couldn't copy. Select the command and copy it.";
+      return "Couldn't copy. Select the text and copy it yourself.";
   }
 }
 

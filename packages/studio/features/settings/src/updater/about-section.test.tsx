@@ -207,7 +207,7 @@ verifies("settings.about-section", () => {
     expect(busy?.getAttribute("aria-label")).toBe("Checking for updates");
   });
 
-  it("offers Restart to update update only where the restart flow is there", async () => {
+  it("offers Restart to update for a ready update only where the restart flow is there", async () => {
     const { host } = fakeHost(statusOf({ kind: "ready", version: "0.1.1", notesUrl }));
     const without = await show(host);
     expect(() => button(without.view, "Restart to update")).toThrow();

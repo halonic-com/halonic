@@ -1,5 +1,6 @@
 import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
 import { ServiceRegistry } from "@halonicjs/app";
+import { HalonicVersionService } from "@halonicjs/studio-feature-settings/api";
 import {
   type MountedServedWindow,
   mountServedWindow,
@@ -12,6 +13,7 @@ import {
   type StudioHost,
   StudioWorkspace,
 } from "@halonicjs/studio-shell";
+import { halonicVersion } from "./open-trusts.ts";
 import { loadServedWorkspace } from "./served-workspace.ts";
 import type { StartedStudio, StudioPage } from "./start-studio.ts";
 
@@ -70,10 +72,12 @@ export function startServedStudio(
 /**
  * The served Studio's services. Without the shell it can't reach the profile, so its host
  * settings are kept in memory, as in the browser demo, until `halonic serve` gives it the
- * server's (HAL-6159 design, section 5). They last until the page is closed.
+ * server's (HAL-6159 design, section 5). They last until the page is closed. It shows the version
+ * of Halonic that serves it, for now `halonicVersion`.
  */
 export function servedServices(): ServiceRegistry {
   const services = new ServiceRegistry();
   services.provide(hostSettingsStoreKey, new MemoryHostSettingsStore());
+  services.provide(HalonicVersionService, halonicVersion);
   return services;
 }
