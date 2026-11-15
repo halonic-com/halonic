@@ -1,5 +1,6 @@
 import {
   DurableCoordination,
+  DurableRunEvents,
   DurableRunStore,
   DurableScheduler,
   defaultCoordinationObjectName,
@@ -31,6 +32,7 @@ export interface Runtime {
   readonly records: D1RecordStore;
   readonly runs: D1RunList;
   readonly runStore: DurableRunStore<DurableObjectId>;
+  readonly runEvents: DurableRunEvents<DurableObjectId>;
   readonly blobs: R2BlobStore;
   readonly definitions: R2DefinitionSource;
   readonly coordination: DurableCoordination<DurableObjectId>;
@@ -110,6 +112,7 @@ export async function createRuntime(
       runList: runs,
       namePrefix: scope ?? "",
     }),
+    runEvents: new DurableRunEvents({ namespace: env.RUN, namePrefix: scope ?? "" }),
     blobs: new R2BlobStore(env.BLOBS, scope === undefined ? undefined : scopedKeyPrefix(scope)),
     definitions: new R2DefinitionSource(env.DEFINITIONS, definitionOptions),
     coordination: new DurableCoordination({

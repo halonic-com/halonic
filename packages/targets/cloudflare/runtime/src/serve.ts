@@ -1,7 +1,7 @@
 import { createServer, type Server, type ServerPorts } from "@halonicjs/host-server";
 import { ConfigurationError, type RuntimeEnv } from "./env.ts";
 import { CoordinationRequestCountStore } from "./request-counts.ts";
-import { runsNotAvailable } from "./runs-not-available.ts";
+import { workerRuns } from "./runs-not-available.ts";
 import { createRuntime, type Runtime, type RuntimeOptions } from "./runtime.ts";
 import { serverConfigOf } from "./serve-config.ts";
 
@@ -34,7 +34,7 @@ const workerErrorLog: ServerPorts["errorLog"] = {
 /** The ports `host/server` needs, from the adapters of one deployment. */
 export function serverPortsOf(runtime: Runtime): ServerPorts {
   return {
-    runs: runsNotAvailable,
+    runs: workerRuns(runtime.runEvents),
     runStore: runtime.runStore,
     secrets: runtime.secrets,
     passwordHasher: runtime.passwords,
