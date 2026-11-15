@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-8419; Noah's spec on HAL-8428; board decision 13 Nov (HAL-8416)
 
-When the active step of a run changes, the workflows feature shall move the point of light from the old step's status dot to the new one's on one quadratic curve that bows to the left of the direction of travel, taking 700 to 1100 ms on a spring that runs about 4 % past the end and settles back, with no tail.
+When the active step of a run changes, the workflows feature shall move the point of light from the old step's status dot to the new one's on one quadratic curve that bows to the left of the direction of travel, taking 700 to 1100 ms on a spring that runs about 4 % past the end and settles back and ends exactly on the target with no snap on a hop of any length, with no tail.
 
 ## Examples
 
