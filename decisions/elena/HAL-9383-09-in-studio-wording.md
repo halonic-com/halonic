@@ -2,6 +2,7 @@
 
 - Approval: Sofia's wording check on HAL-9383, a small wording change on an approved dialog that the team decides; Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:rJgNl23t94sHCLKgNxkPfgjrhgeKhZt5xxTLPgdkRI0kVZ3EGED1osLEUmiGDchRR7dvU26j71O2Oa0nGJaJDw==
 - Task: HAL-9383
 
 ## What changes
