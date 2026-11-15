@@ -3019,6 +3019,9 @@ importers:
       '@halonicjs/adapter-token-store':
         specifier: workspace:*
         version: link:../../../adapters/token-store
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../../core/app
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../../core/format
@@ -3028,9 +3031,15 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../../core/ports
+      '@halonicjs/routines':
+        specifier: workspace:*
+        version: link:../../../core/routines
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std
+      '@halonicjs/workspace':
+        specifier: workspace:*
+        version: link:../../../core/workspace
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'

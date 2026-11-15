@@ -10,12 +10,13 @@ The names the API answers to shall be the plain variable `HALONIC_ALLOWED_HOSTS`
 
 A deployment that lacks a binding, a secret or one of the two required variables (or has a daily ceiling that isn't a whole number above zero) shall answer every request but `/health` with 503 and a fixed body that names nothing. The names of what is missing go to the Worker's log only, never a value.
 
-The workspace is trusted, because the deployer uploaded it. No routine is found for a webhook and no run is started yet: starting a run answers 501, and a webhook answers as an unknown address.
+The workspace is trusted, because the deployer uploaded it. A webhook finds its routine in the snapshot the deployer uploaded, read at every delivery, and the checks of `host/server` apply unchanged: the signature, the time window, the replay refusal, and one neutral answer for an unknown address, a routine that is off and a bad signature. No run is started by the Worker yet: starting a run answers 501, so a signed delivery for a routine answers 501 too, and its delivery id is not used up.
 
 ## Examples
 
 - Given a complete deployment, when `GET /api/hello` has `Host` of a listed name, then it is 200 with the three `hello` keys.
 - Given the same request with the Worker's preview address as `Host`, then it is 421 `host_not_allowed`.
+- Given a routine with a webhook trigger in the snapshot and an executor that starts runs, when a delivery signed with its secret arrives, then it is 202 with the run id; the same delivery again is 409, and one with a wrong signature or for an address with no routine is the same 401.
 - Given `GET /api/unknown`, then it is the same 404 body as `/health/` gets.
 - Given `HALONIC_ALLOWED_HOSTS` is not set, then `GET /api/hello` is 503 with no variable name in the body, and `GET /health` is still 200.
 - Given `HALONIC_DAILY_REQUESTS` of 2, when a third request arrives on the same day, then it is 429 `daily_limit_reached`.

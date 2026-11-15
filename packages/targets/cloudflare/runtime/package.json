@@ -17,10 +17,13 @@
     "@halonicjs/adapter-env-secrets": "workspace:*",
     "@halonicjs/adapter-password-pbkdf2": "workspace:*",
     "@halonicjs/adapter-token-store": "workspace:*",
+    "@halonicjs/app": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/host-server": "workspace:*",
     "@halonicjs/ports": "workspace:*",
-    "@halonicjs/std": "workspace:*"
+    "@halonicjs/routines": "workspace:*",
+    "@halonicjs/std": "workspace:*",
+    "@halonicjs/workspace": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
