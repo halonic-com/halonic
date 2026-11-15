@@ -9,10 +9,10 @@ import type {
   HarnessInstructionSource,
   HarnessInstructionsPin,
 } from "@halonicjs/engine";
+import type { InstructionPin } from "@halonicjs/ports";
 import {
   type InstructionDisk,
   type InstructionFile,
-  type InstructionPin,
   instructionDiskOnThisComputer,
   snapshotInstructions,
 } from "./instruction-snapshot.ts";

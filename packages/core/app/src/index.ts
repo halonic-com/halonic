@@ -131,6 +131,7 @@ export {
   type WorkflowLookup,
   workflowIn,
 } from "./hub-workflows.ts";
+export { type InstructionTrust, instructionTrust } from "./instruction-trust.ts";
 export {
   type IntegrationFolder,
   type IntegrationFolderProblem,

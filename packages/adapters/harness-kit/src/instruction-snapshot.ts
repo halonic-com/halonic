@@ -8,6 +8,7 @@
 import { createHash } from "node:crypto";
 import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import type { InstructionPin } from "@halonicjs/ports";
 import { contentDigest, type Sha256 } from "@halonicjs/std";
 
 /** One instruction file: its name inside the instructions folder, and its text. */
@@ -16,26 +17,6 @@ export interface InstructionFile {
   readonly name: string;
   readonly text: string;
 }
-
-/** What a run's instructions were: a digest per file, and one digest for all of them. */
-export interface InstructionPin {
-  /** The digest of the whole set, so two runs with the same instructions share it. */
-  readonly digest: string;
-  /** Each file's `sha256:` digest, by file name. */
-  readonly files: Readonly<Record<string, string>>;
-}
-
-/** How a set of instructions differs from a trusted pin. */
-export interface InstructionChanges {
-  readonly added: readonly string[];
-  readonly removed: readonly string[];
-  readonly changed: readonly string[];
-}
-
-/** Whether the run may start with its instructions, or a person must trust them first. */
-export type InstructionTrust =
-  | { readonly kind: "trusted" }
-  | { readonly kind: "ask"; readonly changes: InstructionChanges };
 
 /** Where the copies are written: this computer's disk, or a fake in tests. */
 export interface InstructionDisk {
@@ -97,32 +78,6 @@ export async function pinInstructions(files: readonly InstructionFile[]): Promis
   return {
     digest: await contentDigest(listing, nodeSha256),
     files: Object.fromEntries(names.map((name) => [name, digests.get(name) as string])),
-  };
-}
-
-/**
- * Whether `current` is what a person trusted. With no trusted pin, or any
- * difference, they are asked, and the answer says what changed.
- */
-export function instructionTrust(
-  trusted: InstructionPin | null,
-  current: InstructionPin,
-): InstructionTrust {
-  if (trusted !== null && trusted.digest === current.digest) return { kind: "trusted" };
-  const before = trusted?.files ?? {};
-  const names = (pin: Readonly<Record<string, string>>) => Object.keys(pin);
-  // `hasOwn`, because a file may be named `constructor` or `toString`.
-  const had = (name: string) => Object.hasOwn(before, name);
-  const has = (name: string) => Object.hasOwn(current.files, name);
-  return {
-    kind: "ask",
-    changes: {
-      added: names(current.files).filter((name) => !had(name)),
-      removed: names(before).filter((name) => !has(name)),
-      changed: names(current.files).filter(
-        (name) => had(name) && before[name] !== current.files[name],
-      ),
-    },
   };
 }
 
