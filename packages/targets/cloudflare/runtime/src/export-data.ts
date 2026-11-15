@@ -67,25 +67,48 @@ function refuseSecrets(path: string, text: string): void {
 /** How many bytes of a blob are decoded and scanned at a time, so a large blob never becomes one big string. */
 const SCAN_CHUNK_BYTES = 1024 * 1024;
 
-/** The tail of a chunk that is scanned again with the next one, so a key across the boundary is still found. Longer than any key shape. */
-const SCAN_OVERLAP_CHARS = 256;
+/**
+ * How much of a key-shaped run a chunk hands on to the next one. A key is a
+ * run of letters, digits, `-` and `_`, so a run that reaches the end of a chunk
+ * is scanned again with the start of the next. No real key is this long.
+ */
+const MAX_CARRIED_RUN_CHARS = 4096;
+
+function isKeyCharacter(character: string): boolean {
+  return /^[A-Za-z0-9_-]$/.test(character);
+}
+
+/**
+ * The end of the text that may be the start of a key the next chunk finishes.
+ * It walks back from the end, so the work is the length of the run, not of the
+ * chunk times the length of every run in it.
+ */
+function carriedTail(text: string): string {
+  const earliest = Math.max(0, text.length - MAX_CARRIED_RUN_CHARS);
+  let start = text.length;
+  while (start > earliest && isKeyCharacter(text[start - 1] as string)) start -= 1;
+  return text.slice(start);
+}
 
 /**
  * The first kind of secret a blob holds, scanning it in chunks, or `undefined` when it holds none.
  * A blob that isn't valid UTF-8 is binary and is left unscanned, so it also gives `undefined`.
  */
-function secretShapeInBlob(bytes: Uint8Array): SecretShape | undefined {
+export function secretShapeInBlob(
+  bytes: Uint8Array,
+  chunkBytes: number = SCAN_CHUNK_BYTES,
+): SecretShape | undefined {
   const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
   let found: SecretShape | undefined;
-  let carry = "";
+  let carried = "";
   try {
-    for (let start = 0; start < bytes.byteLength; start += SCAN_CHUNK_BYTES) {
-      const last = start + SCAN_CHUNK_BYTES >= bytes.byteLength;
-      const slice = bytes.subarray(start, start + SCAN_CHUNK_BYTES);
-      const text = carry + decoder.decode(slice, { stream: !last });
+    for (let start = 0; start < bytes.byteLength; start += chunkBytes) {
+      const last = start + chunkBytes >= bytes.byteLength;
+      const slice = bytes.subarray(start, start + chunkBytes);
+      const text = carried + decoder.decode(slice, { stream: !last });
       // Keep decoding after a hit: a blob that turns out to be binary is not scanned at all.
       found ??= findSecretShape(text);
-      carry = text.slice(-SCAN_OVERLAP_CHARS);
+      carried = carriedTail(text);
     }
     decoder.decode();
   } catch {

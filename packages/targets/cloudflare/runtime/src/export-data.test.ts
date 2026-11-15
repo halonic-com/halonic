@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { answerAdmin } from "./admin.ts";
 import { adminRoutesOf } from "./admin-routes.ts";
 import type { RuntimeEnv } from "./env.ts";
-import type { ExportSource } from "./export-data.ts";
+import { type ExportSource, secretShapeInBlob } from "./export-data.ts";
 
 const host = "halonic.example.com";
 const key = ["one", "job", "admin", "key", "for", "export", "tests"].join("-");
@@ -185,6 +185,49 @@ verifies("runtime.export-data", () => {
       blobBytes.set(key, 100);
       blobBytes[chunkBytes + 5] = 0xff;
       expect((await get("/admin/export", sourceWith("hello", blobBytes))).status).toBe(200);
+    });
+
+    describe("a text blob scanned in chunks", () => {
+      const encode = (text: string) => new TextEncoder().encode(text);
+
+      it("finds a key that spans a chunk boundary, at every offset", () => {
+        const chunkBytes = 64;
+        for (let offset = 0; offset <= keyShapedValue.length; offset += 1) {
+          const bytes = encode(`${" ".repeat(chunkBytes - offset)}${keyShapedValue} end`);
+          expect(secretShapeInBlob(bytes, chunkBytes), `offset ${offset}`).toBe("ai-provider-key");
+        }
+      });
+
+      it("scans a blob of long key-shaped runs in time that follows its size", () => {
+        // base64url data has no spaces: every chunk ends inside a long run.
+        const bytes = encode("a".repeat(8 * 1024 * 1024));
+        const started = performance.now();
+        expect(secretShapeInBlob(bytes)).toBeUndefined();
+        expect(performance.now() - started).toBeLessThan(2000);
+      });
+
+      it("finds a key whose body is longer than a chunk", () => {
+        const body = "a".repeat(200);
+        expect(secretShapeInBlob(encode(`x ${keyShapedValue}${body}`), 16)).toBe("ai-provider-key");
+      });
+
+      it("does not count a word that ends a chunk and continues a longer one", () => {
+        expect(secretShapeInBlob(encode(`task-${keyShapedValue} end`), 8)).toBeUndefined();
+      });
+
+      it("decodes a character split by a chunk boundary", () => {
+        const bytes = encode(`\u00e9\u4e16 ${keyShapedValue}`);
+        for (let chunkBytes = 1; chunkBytes < 8; chunkBytes += 1) {
+          expect(secretShapeInBlob(bytes, chunkBytes), `chunk ${chunkBytes}`).toBe(
+            "ai-provider-key",
+          );
+        }
+      });
+
+      it("leaves a blob unscanned when bytes that aren't UTF-8 follow a key", () => {
+        const keyFirst = new Uint8Array([...encode(keyShapedValue), 0xff, 0xfe]);
+        expect(secretShapeInBlob(keyFirst, 8)).toBeUndefined();
+      });
     });
   });
 });
