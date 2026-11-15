@@ -74,9 +74,12 @@ cd halonic
 pnpm install
 pnpm add -g ./apps/cli
 halonic --version
+cd ..
 ```
 
 The last command should print `Halonic 0.1.0`.
+
+`cd ..` leaves the clone, so the next steps don't create files inside it.
 
 `pnpm install` downloads about 150 MB, so it can take a while on a slow
 connection.
