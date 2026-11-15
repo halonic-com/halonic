@@ -54,6 +54,12 @@ export interface HostPluginMachineOptions {
   readonly fenced: Sandbox;
   readonly profile: ProfileFolder;
   readonly version: string;
+  /** Removes a folder and everything in it; the host's own is `rm`. A test passes one that fails. */
+  readonly removeFolder?: (folder: string) => Promise<void>;
+  /** Where a failed removal is told, in the host's standard error. A test passes its own. */
+  readonly log?: (text: string) => void;
+  /** Starts one runner; the real one is `startRunner`. A test passes one whose runner stops on its own. */
+  readonly start?: typeof startRunner;
 }
 
 /** The machine for plugin backends in the host, and the removal of the temp folders its starts made. */
@@ -72,6 +78,10 @@ export interface HostPluginMachine {
  */
 export function hostPluginMachine(options: HostPluginMachineOptions): HostPluginMachine {
   const { profile } = options;
+  const removeFolder =
+    options.removeFolder ?? (async (folder) => await rm(folder, { recursive: true, force: true }));
+  const log = options.log ?? ((text) => process.stderr.write(text));
+  const start = options.start ?? startRunner;
   const made: string[] = [];
   const store = new FileTrustStore(trustFolder(profile));
   const digest = webCryptoDigest;
@@ -99,13 +109,24 @@ export function hostPluginMachine(options: HostPluginMachineOptions): HostPlugin
       const removeTemp = async () => {
         const index = made.indexOf(tempFolder);
         if (index !== -1) made.splice(index, 1);
-        await rm(tempFolder, { recursive: true, force: true });
+        await removeFolder(tempFolder);
       };
-      const runner = await startRunner(startOptions).catch(async (error: unknown) => {
-        await removeTemp();
+      // A failed removal is logged without its path and never thrown: after a stop nothing awaits it,
+      // and on a failed start it would hide the start's own error.
+      const removeTempAndLog = async () => {
+        try {
+          await removeTemp();
+        } catch (error) {
+          log(
+            `The agent host could not remove a plugin runner's temp folder: ${errorText(error)}\n`,
+          );
+        }
+      };
+      const runner = await start(startOptions).catch(async (error: unknown) => {
+        await removeTempAndLog();
         throw error;
       });
-      void runner.stopped.then(removeTemp, removeTemp);
+      void runner.stopped.then(removeTempAndLog, removeTempAndLog);
       return runner;
     },
     runnerMachine: async () => {
@@ -128,9 +149,15 @@ export function hostPluginMachine(options: HostPluginMachineOptions): HostPlugin
     settings: async (plugin) => await settings.values(plugin),
   };
   const dispose = async () => {
-    await Promise.all(made.splice(0).map((folder) => rm(folder, { recursive: true, force: true })));
+    await Promise.all(made.splice(0).map(removeFolder));
   };
   return { machine, dispose };
+}
+
+/** The reason of a failure, with no path of ours added; `rm` errors carry the path, so only the code is kept. */
+function errorText(error: unknown): string {
+  const code = error instanceof Error && "code" in error ? String(error.code) : undefined;
+  return code ?? "unknown error";
 }
 
 const webCryptoDigest = {

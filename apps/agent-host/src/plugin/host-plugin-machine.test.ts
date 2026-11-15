@@ -5,8 +5,8 @@ import { runnerNodeFolder, runnerProfile } from "@halonicjs/adapter-integration-
 import type { Sandbox } from "@halonicjs/ports";
 import { runnerTempFolder } from "@halonicjs/profile";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { hostPluginMachine } from "./host-plugin-machine.ts";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { type HostPluginMachineOptions, hostPluginMachine } from "./host-plugin-machine.ts";
 
 let root: string;
 
@@ -26,8 +26,9 @@ const unusedSandbox: Sandbox = {
   },
 };
 
-function machineOf() {
+function machineOf(extra: Partial<HostPluginMachineOptions> = {}) {
   return hostPluginMachine({
+    ...extra,
     fenced: unusedSandbox,
     profile: { platform: process.platform === "win32" ? "windows" : "linux", root },
     version: "0.0.0",
@@ -77,6 +78,66 @@ verifies("agent-host.plugin-routes", () => {
         expect(await readdir(runnerTempFolder({ platform: "linux", root }))).toHaveLength(0);
       } finally {
         await dispose();
+      }
+    });
+
+    const failingRemoval = Object.assign(new Error(`EACCES: cannot remove ${"/secret/folder"}`), {
+      code: "EACCES",
+    });
+
+    it("keeps the start's own error and logs the removal that failed, without the path", async () => {
+      const logged: string[] = [];
+      const { machine, dispose } = machineOf({
+        removeFolder: async () => {
+          throw failingRemoval;
+        },
+        log: (text) => logged.push(text),
+        start: async () => {
+          throw new Error("the runner did not start");
+        },
+      });
+      try {
+        const runnerMachine = await machine.runnerMachine();
+        await expect(machine.startRunner?.({ machine: runnerMachine } as never)).rejects.toThrow(
+          "the runner did not start",
+        );
+        expect(logged).toHaveLength(1);
+        expect(logged[0]).toContain("EACCES");
+        expect(logged[0]).not.toContain("/secret/folder");
+      } finally {
+        await dispose().catch(() => undefined);
+      }
+    });
+
+    it("logs the removal that failed after a runner stops, with no unhandled rejection", async () => {
+      const logged: string[] = [];
+      const unhandled: unknown[] = [];
+      const onUnhandled = (reason: unknown) => unhandled.push(reason);
+      process.on("unhandledRejection", onUnhandled);
+      let stop: () => void = () => undefined;
+      const stopped = new Promise<void>((resolve) => {
+        stop = resolve;
+      });
+      const { machine, dispose } = machineOf({
+        removeFolder: async () => {
+          throw failingRemoval;
+        },
+        log: (text) => logged.push(text),
+        start: async () => ({ stopped }) as never,
+      });
+      try {
+        const runnerMachine = await machine.runnerMachine();
+        await machine.startRunner?.({ machine: runnerMachine } as never);
+        stop();
+        await stopped;
+        await vi.waitFor(() => expect(logged).toHaveLength(1));
+        // One more turn, so an unhandled rejection would have been reported.
+        await new Promise((resolve) => setImmediate(resolve));
+        expect(unhandled).toEqual([]);
+        expect(logged[0]).not.toContain("/secret/folder");
+      } finally {
+        process.off("unhandledRejection", onUnhandled);
+        await dispose().catch(() => undefined);
       }
     });
   });
