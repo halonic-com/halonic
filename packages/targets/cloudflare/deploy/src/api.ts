@@ -212,4 +212,9 @@ export interface CloudflareApi {
    * A bucket that still holds objects is refused with `bucket-not-empty`.
    */
   deleteResource(accountId: string, ref: ResourceRef): Promise<void>;
+  /**
+   * Deletes every object in a bucket, listing and deleting page by page; nothing happens when the
+   * bucket is already gone. Only the live-test sweeper calls this, and only for its own prefix.
+   */
+  emptyBucket(accountId: string, name: string): Promise<void>;
 }

@@ -26,6 +26,7 @@ export interface ClientPlumbing {
 
 const maxPages = 100;
 const listPageSize = 100;
+const objectPageSize = 1000;
 
 /** The read and delete calls `status`, `rollback`, `destroy` and the sweeper use. */
 export function manageCalls(
@@ -38,6 +39,7 @@ export function manageCalls(
   | "workersDevUrl"
   | "listResources"
   | "deleteResource"
+  | "emptyBucket"
 > & { workersDevAddress(accountId: string, worker: string): Promise<string> } {
   const { get, request, failed, workerPath, databaseId } = plumbing;
 
@@ -161,6 +163,25 @@ export function manageCalls(
     }
   }
 
+  async function emptyBucket(accountId: string, name: string): Promise<void> {
+    const path = `/accounts/${encodeURIComponent(accountId)}/r2/buckets/${encodeURIComponent(name)}/objects`;
+    // Each round lists the first page of what is left and deletes it, so a delete never shifts a cursor.
+    for (let round = 1; round <= maxPages; round += 1) {
+      const body = await request("GET", `${path}?per_page=${objectPageSize}`, undefined, true);
+      if (!body) return;
+      const keys = Array.isArray(body.result)
+        ? (body.result as { key?: unknown }[]).flatMap((o) =>
+            typeof o.key === "string" ? [o.key] : [],
+          )
+        : [];
+      if (keys.length === 0) return;
+      for (const key of keys) {
+        await request("DELETE", `${path}/${encodeURIComponent(key)}`, undefined, true);
+      }
+    }
+    throw failed(`bucket ${name} still holds objects after ${maxPages * objectPageSize} deletes`);
+  }
+
   return {
     workersDevAddress,
     async currentDeployment(accountId, worker) {
@@ -206,6 +227,9 @@ export function manageCalls(
     },
     async listResources(accountId, kind, prefix) {
       return listResources(accountId, kind, prefix);
+    },
+    async emptyBucket(accountId, name) {
+      return emptyBucket(accountId, name);
     },
     async deleteResource(accountId, ref) {
       if (ref.kind === "bucket") return deleteBucket(accountId, ref.name);

@@ -12,7 +12,8 @@ const kinds: readonly ResourceKind[] = ["worker", "bucket", "database"];
 /**
  * The sweeper's view of one Cloudflare account. It lists only names that start with `prefix`
  * and refuses to delete any other, so a wrong call can't reach a real deployment. Workers are
- * listed first so they stop serving before their data goes.
+ * listed first so they stop serving before their data goes. A bucket is emptied before it is
+ * deleted, which `destroy` never does for a real deployment.
  */
 export function cloudflareSweeper(
   api: CloudflareApi,
@@ -35,6 +36,8 @@ export function cloudflareSweeper(
       if (!kind || !resource.name.startsWith(prefix)) {
         throw new RangeError(`not a live test resource: ${resource.kind} ${resource.name}`);
       }
+      // A run killed before its teardown leaves objects behind, and Cloudflare only deletes an empty bucket.
+      if (kind === "bucket") await api.emptyBucket(accountId, resource.name);
       await api.deleteResource(accountId, { kind, name: resource.name });
     },
   };
