@@ -26,7 +26,11 @@ export interface SaveTimers {
 
 /** What {@link SaveScheduler} needs. */
 export interface SaveSchedulerOptions {
-  /** Writes what is unsaved, as `WorkspaceFiles.save` does; rejects when a write fails. */
+  /**
+   * Writes what is unsaved, as `WorkspaceFiles.save` does; rejects when a write fails. The
+   * scheduler never runs two saves at once. Edits made while a write is running must stay
+   * unsaved (`isDirty` true afterwards), as the scheduler only reads `isDirty`.
+   */
   readonly save: (trigger: SaveTrigger) => Promise<unknown>;
   /** Whether anything is unsaved; a save of nothing is never asked for. */
   readonly isDirty: () => boolean;
@@ -52,6 +56,9 @@ export class SaveScheduler {
   private readonly options: SaveSchedulerOptions;
   private handle: unknown;
   private waiting = false;
+  private disposed = false;
+  /** The save that is writing now, so the next one waits for it. */
+  private running: Promise<void> | undefined;
 
   constructor(options: SaveSchedulerOptions) {
     this.options = options;
@@ -60,7 +67,7 @@ export class SaveScheduler {
   /** Something was edited: starts the pause again, so a run of typing is one save. */
   changed(): void {
     this.cancel();
-    if (!this.options.isDirty()) {
+    if (this.disposed || !this.options.isDirty()) {
       return;
     }
     this.waiting = true;
@@ -85,14 +92,31 @@ export class SaveScheduler {
     return !this.options.isDirty();
   }
 
-  /** Drops a save that was waiting. Call it once, when the workspace closes. */
+  /** Drops a save that was waiting; `changed` does nothing afterwards. Call it when the workspace closes. */
   dispose(): void {
+    this.disposed = true;
     this.cancel();
   }
 
+  /**
+   * Waits for the save that is writing, then saves what is still unsaved. A failure of the earlier
+   * save goes to its own caller; this one tries again, so it never reports success for it.
+   */
   private async run(trigger: SaveTrigger): Promise<void> {
-    if (this.options.isDirty()) {
+    while (this.running !== undefined) {
+      await this.running.catch(() => undefined);
+    }
+    if (!this.options.isDirty()) {
+      return;
+    }
+    const writing = (async () => {
       await this.options.save(trigger);
+    })();
+    this.running = writing;
+    try {
+      await writing;
+    } finally {
+      this.running = undefined;
     }
   }
 

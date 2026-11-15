@@ -79,9 +79,7 @@ verifies("app.save-scheduler", () => {
       const { clock, errors, edit } = setup({ failWith: failure });
       edit();
       clock.advance(1000);
-      await Promise.resolve();
-      await Promise.resolve();
-      expect(errors).toEqual([failure]);
+      await expect.poll(() => errors).toEqual([failure]);
     });
   });
 
@@ -111,11 +109,88 @@ verifies("app.save-scheduler", () => {
     });
   });
 
-  it("drops a waiting save on dispose", () => {
+  it("drops a waiting save on dispose, and ignores changes after it", () => {
     const { clock, saved, scheduler, edit } = setup();
     edit();
     scheduler.dispose();
     clock.advance(5000);
+    edit();
+    clock.advance(5000);
     expect(saved).toEqual([]);
+    expect(scheduler.pending).toBe(false);
+  });
+
+  describe("a save that is still writing", () => {
+    /** A scheduler whose `save` the test settles by hand. */
+    function slowSetup() {
+      const clock = new HandClock();
+      const calls: SaveTrigger[] = [];
+      const errors: unknown[] = [];
+      const writes: { resolve(leftUnsaved?: boolean): void; reject(error: Error): void }[] = [];
+      const state = { dirty: false };
+      const scheduler = new SaveScheduler({
+        timers: clock,
+        isDirty: () => state.dirty,
+        onError: (error) => errors.push(error),
+        save: (trigger) => {
+          calls.push(trigger);
+          return new Promise<void>((resolve, reject) => {
+            writes.push({
+              resolve: (leftUnsaved = false) => {
+                state.dirty = leftUnsaved;
+                resolve();
+              },
+              reject,
+            });
+          });
+        },
+      });
+      const edit = () => {
+        state.dirty = true;
+        scheduler.changed();
+      };
+      return { clock, calls, errors, writes, state, scheduler, edit };
+    }
+
+    it("does not start a second save when typing goes on", async () => {
+      const { clock, calls, writes, edit } = slowSetup();
+      edit();
+      clock.advance(1000);
+      edit();
+      clock.advance(1000);
+      expect(calls).toEqual(["typing-paused"]);
+      writes[0]?.resolve(true);
+      await expect.poll(() => calls).toEqual(["typing-paused", "typing-paused"]);
+    });
+
+    it("saves once when the window closes during a pause save", async () => {
+      const { clock, calls, writes, scheduler, edit } = slowSetup();
+      edit();
+      clock.advance(1000);
+      let result: boolean | undefined;
+      const flushed = scheduler.flush("window-closing").then((all) => {
+        result = all;
+      });
+      await Promise.resolve();
+      expect(calls).toEqual(["typing-paused"]);
+      expect(result).toBeUndefined();
+      writes[0]?.resolve();
+      await flushed;
+      expect(calls).toEqual(["typing-paused"]);
+      expect(result).toBe(true);
+    });
+
+    it("saves again for a flush when the running save failed", async () => {
+      const failure = new Error("disk full");
+      const { clock, calls, errors, writes, scheduler, edit } = slowSetup();
+      edit();
+      clock.advance(1000);
+      const flushed = scheduler.flush("save-now");
+      writes[0]?.reject(failure);
+      await expect.poll(() => errors).toEqual([failure]);
+      await expect.poll(() => calls).toEqual(["typing-paused", "save-now"]);
+      writes[1]?.reject(failure);
+      await expect(flushed).rejects.toBe(failure);
+    });
   });
 });
