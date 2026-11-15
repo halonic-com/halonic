@@ -65,6 +65,24 @@ export interface WorkspaceContext {
    * Ctrl K can offer a section by its name only when it is there. Given with `openSettings`.
    */
   readonly settingsSections?: readonly SettingsSectionName[];
+  /**
+   * The item the active window tab shows, so a status bar item can follow it, such as a run's cost
+   * while its tab is in view. Read-only and nothing but the item: no tab or editor. The window
+   * gives it to the views it draws on the desktop; a context built without a window, and a phone,
+   * which has no tabs, have none.
+   */
+  readonly activeItem?: ActiveItemSource;
+}
+
+/** The item the active window tab shows, and a way to hear it change. */
+export interface ActiveItemSource {
+  /** The active tab's item, or `null` when it shows Home, a place or a search. */
+  get(): ItemRef | null;
+  /**
+   * Calls `listener` when the item changes, not on every focus or tab event. Returns a function
+   * that stops it.
+   */
+  subscribe(listener: () => void): () => void;
 }
 
 /** A Settings section as Ctrl K names it: its id and the title its row shows. */

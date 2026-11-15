@@ -34,6 +34,7 @@ import { WindowTabStrip } from "../tabs/window-tab-strip.tsx";
 import { HistoryButtons } from "../title-bar/history-buttons.tsx";
 import { TitleBarBrand } from "../title-bar/title-bar-brand.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
+import { activeItemOf } from "./active-item.ts";
 import { useClosingGoneItemTabs } from "./gone-item-tabs.ts";
 import { shownPlaces } from "./shown-places.ts";
 import { StudioPage } from "./studio-page.tsx";
@@ -163,9 +164,11 @@ export function StudioWindow(props: StudioWindowProps) {
   openItemInNewTab.current = desktop
     ? (location) => openLocation(tabs, announcer, location, true)
     : (location) => phone.open(location);
+  const activeItem = useMemo(() => activeItemOf(tabs), [tabs]);
   const contextFor = useCallback(
     (featureId: string): WorkspaceContext => ({
       ...shell.services.contextFor(featureId, workspace.services),
+      ...(onDesktop.current ? { activeItem } : {}),
       openPlace: (place) => openPlaceHere.current(place),
       badges: shell.badges,
       openItem: (item) => openHere.current(locationOfItem(item)),
@@ -181,7 +184,7 @@ export function StudioWindow(props: StudioWindowProps) {
         return true;
       },
     }),
-    [shell, workspace, openSettings, settingsSections, contributions],
+    [shell, workspace, openSettings, settingsSections, contributions, activeItem],
   );
   const runCommand = (commandId: string): boolean => {
     const command = contributions.commands.get(commandId, contextFor);
