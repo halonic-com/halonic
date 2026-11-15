@@ -75,6 +75,7 @@ function page(tools: ListedToolsHost | undefined): ItemViewProps {
       },
       announcer: { announceState: vi.fn() },
     },
+    Sections: () => null,
   } as unknown as ItemViewProps;
 }
 

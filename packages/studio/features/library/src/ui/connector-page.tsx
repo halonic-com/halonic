@@ -14,9 +14,10 @@ import { ListedToolsWaiting } from "./listed-tools-waiting.tsx";
 
 /**
  * The `connector` item kind's page, kept thin so the full connector page (HAL-751) can replace it
- * without touching the section: the connector's name as the `h1`, then the status section.
+ * without touching the section: the connector's name as the `h1`, then the status section, then the sections other features add
+ * (the Google block, for a Google connector).
  */
-export function ConnectorPage({ item, context }: ItemViewProps) {
+export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
   const host = context.services.get(ConnectorStatusHostService);
   const model = useMemo(() => new ConnectorStatusModel(host, item.id), [host, item.id]);
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
@@ -51,6 +52,7 @@ export function ConnectorPage({ item, context }: ItemViewProps) {
         words={engineWordsOf(context)}
         announceState={(key, text) => context.announcer.announceState(key, text)}
       />
+      <Sections />
     </div>
   );
 }
