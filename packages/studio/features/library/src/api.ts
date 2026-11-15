@@ -31,3 +31,10 @@ export {
 } from "./listed-tools-host.ts";
 export { listedToolsSnapshot } from "./listed-tools-snapshot.ts";
 export { RefusalsFeed } from "./refusals-feed.ts";
+export {
+  type SkillFile,
+  type SkillHost,
+  SkillHostService,
+  type SkillRef,
+  type SkillSource,
+} from "./skill-host.ts";
