@@ -176,6 +176,9 @@ function GoogleSetupBody({ item, answering, close, accounts, focus }: GoogleSetu
           }
           onStartSignIn={() => accounts.startSignIn(account.record.accountRef)}
           onCancelSignIn={() => accounts.cancelSignIn(account.record.accountRef)}
+          onCheckAgain={() => accounts.checkAgain(account.record.accountRef)}
+          onReadWrongAccount={() => accounts.wrongAccount(account.record.accountRef)}
+          onChangeAddress={(address) => accounts.changeAddress(account.record.accountRef, address)}
           close={close}
         />
       )}

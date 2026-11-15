@@ -20,7 +20,9 @@ record, an error or a log line. Steps 5 and 6 show the client ID and the secret 
 sign-in: for a personal account a preview of Google's warning, for a Workspace account the note to
 send the admin (`adminNote`, which never holds the secret). The same step has **Sign in with Google**: the service's
 `startSignIn` gives the address to open, `cancelSignIn` drops it, and the step says "Waiting for
-Google…" until the record shows the sign-in ended or 10 minutes pass.
+Google…" until the record shows the sign-in ended or 10 minutes pass. After it, `checkAgain` is
+**Check again** under the result lines, `wrongAccount` reads the other address for a sign-in that
+came back for another account, and `changeAddress` is "Use that address for this connector instead".
 
 `GoogleConnectorBlock` (from `/api`) is the Google block of the connector page: the account's rows,
 **Sign in again** and **Replace secret** (which open the setup item) and **Disconnect Google…**,

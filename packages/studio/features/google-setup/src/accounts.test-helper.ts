@@ -1,6 +1,7 @@
 import type { SetupEdit, SetupRecord, SetupService } from "@halonicjs/google-setup";
 import type { SecretText } from "@halonicjs/studio-kit";
 import type {
+  CheckAgainAnswer,
   DisconnectAnswer,
   GoogleSetupAccount,
   GoogleSetupAccounts,
@@ -93,6 +94,12 @@ export function fakeAccounts(
     readonly startSignIn?: (accountRef: string) => Promise<string>;
     /** Runs when a sign-in is cancelled, and may reject. */
     readonly cancelSignIn?: (accountRef: string) => Promise<void>;
+    /** What Check again answers, and may reject. */
+    readonly checkAgain?: (accountRef: string) => Promise<CheckAgainAnswer>;
+    /** The address the host kept from a wrong-account sign-in; `null` when it forgot. */
+    readonly wrongAccount?: (accountRef: string) => Promise<string | null>;
+    /** Runs when the connector is changed to the other address, and may reject. */
+    readonly changeAddress?: (accountRef: string, address: string) => Promise<void>;
   } = {},
 ) {
   let accounts = initial;
@@ -102,6 +109,8 @@ export function fakeAccounts(
   const disconnects: string[] = [];
   const signIns: string[] = [];
   const cancelled: string[] = [];
+  const checks: string[] = [];
+  const addressChanges: { accountRef: string; address: string }[] = [];
   const secrets: { accountRef: string; value: string }[] = [];
   const replacements: { accountRef: string; value: string }[] = [];
   const source: GoogleSetupAccounts = {
@@ -141,6 +150,15 @@ export function fakeAccounts(
       await options.cancelSignIn?.(accountRef);
       cancelled.push(accountRef);
     },
+    checkAgain: async (accountRef) => {
+      checks.push(accountRef);
+      return (await options.checkAgain?.(accountRef)) ?? { kind: "checked" as const };
+    },
+    wrongAccount: async (accountRef) => (await options.wrongAccount?.(accountRef)) ?? null,
+    changeAddress: async (accountRef, address) => {
+      await options.changeAddress?.(accountRef, address);
+      addressChanges.push({ accountRef, address });
+    },
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -163,6 +181,10 @@ export function fakeAccounts(
     signIns,
     /** The account refs whose sign-in the view cancelled, in order. */
     cancelled,
+    /** The account refs the view asked to check again, in order. */
+    checks,
+    /** The address changes the view asked for, in order. */
+    addressChanges,
     change: (next: readonly GoogleSetupAccount[]) => {
       accounts = next;
       for (const listener of [...listeners]) listener();
