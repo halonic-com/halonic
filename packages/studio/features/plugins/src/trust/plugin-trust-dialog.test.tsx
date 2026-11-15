@@ -14,7 +14,7 @@ import type { PluginOrigin } from "../page/page-text.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { PluginTrustDialog } from "./plugin-trust-dialog.tsx";
-import { TRUST_CHECK_LAST_LINE, type TrustCheckReason } from "./trust-text.ts";
+import { type ProgramsRun, TRUST_CHECK_LAST_LINE, type TrustCheckReason } from "./trust-text.ts";
 
 beforeEach(fakeModal);
 afterEach(() => {
@@ -88,6 +88,7 @@ function open(
     readonly reason?: TrustCheckReason;
     readonly origin?: PluginOrigin;
     readonly failure?: string;
+    readonly programsRun?: ProgramsRun;
   } = {},
 ) {
   const pressed: string[] = [];
@@ -97,6 +98,7 @@ function open(
       origin={options.origin}
       reason={options.reason ?? "add"}
       failure={options.failure}
+      programsRun={options.programsRun}
       onTrust={() => pressed.push("trust")}
       onNotNow={() => pressed.push("not now")}
     />,
@@ -154,11 +156,38 @@ verifies("plugins.plugin-trust-check", () => {
     );
     expect(dialog().querySelector("p code")?.textContent).toBe("3f9c2a1");
     expect(dialog().textContent).toContain(
-      "Adds 3 tools for agents, 1 of which changes things. Starts 1 program on this computer, sends 1 secret to api.example.com and reaches 2 addresses.",
+      "Adds 3 tools for agents, 1 of which changes things. Starts 1 program in a sandbox on this computer, sends 1 secret to api.example.com and reaches 2 addresses.",
     );
     expect(document.activeElement).toBe(button("Not now"));
     expect(dialog().querySelector('button[aria-label^="Close"]')).toBeNull();
   });
+
+  it.each([
+    ["ready", "Runs In the agent sandbox, in its own empty folder"],
+    [
+      "needs-desktop-app",
+      "Runs Doesn't run here. Programs run only in the Halonic desktop app, in a sandbox",
+    ],
+    ["sandbox-unavailable", "Runs Doesn't run now. The sandbox can't start on this computer"],
+  ] as const)("says what is true about the Runs line when programs are %s", (programsRun, line) => {
+    open(weather, { programsRun });
+
+    expect(dialog().textContent).toContain(line);
+  });
+
+  it.each([
+    ["ready", "Starts 1 program in a sandbox on this computer"],
+    ["needs-desktop-app", "Has 1 program that doesn't run here"],
+    ["sandbox-unavailable", "Has 1 program that doesn't run now"],
+  ] as const)(
+    "keeps the summary true to the Runs line when programs are %s",
+    (programsRun, line) => {
+      open(weather, { programsRun });
+
+      expect(dialog().textContent).toContain(line);
+      expect(dialog().textContent?.includes("Starts 1 program")).toBe(programsRun === "ready");
+    },
+  );
 
   it("lists the sections in order, Tools open when one changes things", () => {
     open(weather);
@@ -203,7 +232,9 @@ verifies("plugins.plugin-trust-check", () => {
     );
     expect(text).toContain("its answers are treated as outside text");
     expect(text).toContain("npx weather-mcp@1.2.3");
-    expect(text).toContain("Runs In the agent sandbox, in its own empty folder");
+    expect(text).toContain(
+      "Runs In a sandbox, in its own empty folder. Without a working sandbox it doesn't run",
+    );
     expect(text).toContain("Version 1.2.3");
     expect(text).toContain("Goes only to api.example.com");
     expect(text).toContain("How Authorization header");

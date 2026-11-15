@@ -64,7 +64,23 @@ verifies("plugins.plugin-trust-check", () => {
     const content = trustCheckContent(weather);
 
     expect(trustSummary(content.counts)).toBe(
-      "Adds 3 tools for agents, 1 of which changes things. Starts 1 program on this computer, sends 1 secret to api.example.com and reaches 2 addresses.",
+      "Adds 3 tools for agents, 1 of which changes things. Starts 1 program in a sandbox on this computer, sends 1 secret to api.example.com and reaches 2 addresses.",
+    );
+  });
+
+  it("doesn't say the programs start when they can't run", () => {
+    const content = trustCheckContent(weather);
+    const tail = "sends 1 secret to api.example.com and reaches 2 addresses.";
+
+    expect(trustSummary(content.counts, "ready")).toBe(trustSummary(content.counts));
+    expect(trustSummary(content.counts, "needs-desktop-app")).toBe(
+      `Adds 3 tools for agents, 1 of which changes things. Has 1 program that doesn't run here, ${tail}`,
+    );
+    expect(trustSummary(content.counts, "sandbox-unavailable")).toBe(
+      `Adds 3 tools for agents, 1 of which changes things. Has 1 program that doesn't run now, ${tail}`,
+    );
+    expect(trustSummary({ ...content.counts, programs: 2 }, "sandbox-unavailable")).toContain(
+      "Has 2 programs that don't run now",
     );
   });
 

@@ -5,6 +5,7 @@
 
 import type { PluginTrustChanges } from "@halonicjs/app";
 import type { Plugin } from "@halonicjs/format";
+import type { ProgramsRun } from "../trust/trust-text.ts";
 
 /** How removing a plugin ended: core's `PluginService.remove`. */
 export type PluginRemoveOutcome =
@@ -68,6 +69,8 @@ export interface PluginActions {
   readonly applyUpdate: (plugin: string, approved: PluginUpdateApproval) => Promise<void>;
   /** **Check again**: reads the plugins folder again, so the feed has the plugin as it is now. */
   readonly reload: () => Promise<void>;
+  /** Whether this computer can run the plugins' programs (`PluginLocalTools.state()`); the trust check says so. */
+  readonly programsRun?: ProgramsRun;
   /** **Open folder**: shows the plugin's folder in the computer's file manager. */
   readonly openFolder: (plugin: string) => Promise<void>;
 }

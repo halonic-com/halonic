@@ -2,6 +2,7 @@ import { useState } from "react";
 import { messageOf } from "../message-of.ts";
 import { changeSummary } from "../trust/change-rows.ts";
 import { PluginTrustDialog } from "../trust/plugin-trust-dialog.tsx";
+import type { ProgramsRun } from "../trust/trust-text.ts";
 import type { PluginActions, PluginUpdateCheck } from "./plugin-actions.ts";
 import type { InstalledPlugin } from "./plugin-pages.ts";
 
@@ -11,6 +12,7 @@ export interface UpdatePluginDialogProps {
   /** What the check found: the newer version. */
   readonly found: Extract<PluginUpdateCheck, { kind: "available" }>;
   readonly applyUpdate: PluginActions["applyUpdate"];
+  readonly programsRun?: ProgramsRun;
   /** After **Trust and update** is saved. */
   readonly onUpdated: () => void;
   /** **Keep** *version* and Escape: everything stays as it was. */
@@ -31,6 +33,7 @@ export function UpdatePluginDialog({
   plugin,
   found,
   applyUpdate,
+  programsRun,
   onUpdated,
   onKeep,
 }: UpdatePluginDialogProps) {
@@ -62,6 +65,7 @@ export function UpdatePluginDialog({
         found.changes === undefined ? undefined : changeSummary(found.manifest, found.changes)
       }
       update={{ keep: plugin.manifest?.version ?? "", toCommit: found.toCommit }}
+      programsRun={programsRun}
       busy={busy}
       failure={failure}
       onTrust={() => void confirm()}
