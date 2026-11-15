@@ -3,6 +3,7 @@
 - Task: HAL-9895
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-9895 (Sofia's design check on HAL-9890 and checklist A.2 on HAL-9765; a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JubDgNPxQ+Rzf229In3wVIiwVyqTkz3dQlTUSCuBPPuK28RhHLZm8hEDlLHkefa/74tlSGTKZM9rlz9lnwhkBg==
 
 ## What changes
 
