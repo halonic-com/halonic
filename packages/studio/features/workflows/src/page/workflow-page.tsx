@@ -386,6 +386,25 @@ function RunDock({
       />
     );
   }
+  if (typeof dock === "object" && !shown) {
+    // The runs source hasn't listed the new run yet; the card takes its place when it does.
+    return (
+      <aside
+        role="status"
+        aria-label={startWords.cardKind}
+        className="flex w-80 shrink-0 items-start justify-between gap-3 border-s border-border p-4 text-small text-fg-muted"
+      >
+        <p>{startWords.waitingForRun}</p>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<CloseIcon />}
+          label={startWords.closeCard}
+          onClick={() => onDock(undefined)}
+        />
+      </aside>
+    );
+  }
   if (typeof dock === "object" && shown) {
     return (
       <RunCard
