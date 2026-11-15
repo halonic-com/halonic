@@ -100,12 +100,14 @@ export function Configuration({ name, load, retry, tests, onOpenStep }: Configur
             <SkeletonBar kind="value" />
           </div>
         ) : (
-          <ConfigurationBody
-            page={page}
-            configuration={configuration}
-            tests={tests}
-            onOpenStep={onOpenStep}
-          />
+          <div className={page === "tests" ? undefined : "max-w-column"}>
+            <ConfigurationBody
+              page={page}
+              configuration={configuration}
+              tests={tests}
+              onOpenStep={onOpenStep}
+            />
+          </div>
         )}
       </div>
     </div>
@@ -135,7 +137,7 @@ function ConfigurationBody({
 }) {
   if (page === "general") {
     return (
-      <dl className="max-w-[744px]">
+      <dl>
         <Row label={words.description}>
           {configuration.description ?? (
             <span className="text-fg-muted">{words.noDescription}</span>
@@ -152,7 +154,7 @@ function ConfigurationBody({
   if (page === "request-form") {
     const { request } = configuration;
     return (
-      <dl className="max-w-[744px]">
+      <dl>
         <Row label={words.inbox}>
           {request ? words.offered : words.notOffered}
           <p className="text-small text-fg-muted">{words.inboxLater}</p>
@@ -188,9 +190,9 @@ function ConfigurationBody({
   }
   if (page === "tests") return tests;
   const rows = problemRows(configuration.problems);
-  if (rows.length === 0) return <p className="max-w-[744px] text-fg-muted">{words.noProblems}</p>;
+  if (rows.length === 0) return <p className="text-fg-muted">{words.noProblems}</p>;
   return (
-    <ul className="flex max-w-[744px] flex-col divide-y divide-border">
+    <ul className="flex flex-col divide-y divide-border">
       {rows.map((row, at) => (
         <li key={at} className="flex items-center gap-3 py-3">
           <span aria-hidden="true" className={row.severity === "error" ? "text-danger-text" : ""}>

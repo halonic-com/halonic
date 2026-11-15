@@ -205,6 +205,7 @@
   --spacing-nav-pill: 56px; /* width of the "where you are" pill in the bottom navigation */
   --container-page: 1120px;
   --container-reading: 680px; /* long text */
+  --container-column: 744px; /* a form or list column inside a page body */
   --container-empty: 360px; /* the Empty state's text and buttons */
   --container-toast: 360px; /* the toast stack on desktop */
   --container-dialog-sm: 440px; /* confirmations and short forms */

@@ -43,9 +43,10 @@ verifies("kit.dialog", () => {
   });
 
   it("writes a rule for the max-width tokens the app uses, and none for Tailwind's own sizes", async () => {
-    const css = await buildCss(["max-w-dialog-sm", "max-w-reading", "max-w-md"]);
+    const css = await buildCss(["max-w-dialog-sm", "max-w-reading", "max-w-column", "max-w-md"]);
     expect(css).toContain("max-width: var(--container-dialog-sm)");
     expect(css).toContain("max-width: var(--container-reading)");
+    expect(css).toContain("max-width: var(--container-column)");
     expect(css).not.toContain("max-w-md");
   });
 });
