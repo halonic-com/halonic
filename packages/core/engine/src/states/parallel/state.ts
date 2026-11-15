@@ -109,7 +109,7 @@ function takeBranchResult(context: StateContext, input: DecideInput): StateStep 
     return endWith(context, branch, {
       error,
       reason,
-      ...(refusal === undefined ? {} : { refusal }),
+      ...(refusal === undefined ? {} : { agent: input.agent ?? branch.call?.agent, refusal }),
     });
   }
   switch (input.result.type) {

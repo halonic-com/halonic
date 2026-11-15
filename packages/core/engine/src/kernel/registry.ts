@@ -1,4 +1,4 @@
-import type { CantTryStep, RunFailureReason } from "@halonicjs/events";
+import type { CantTryStep, InstructionsRefusal, RunFailureReason } from "@halonicjs/events";
 import type { Agent, StateType, Workflow, WorkflowState } from "@halonicjs/format";
 import type { Scope } from "@halonicjs/workflow";
 import type { DecidedEvent, DecideInput, Effect } from "./decide-types.ts";
@@ -42,7 +42,14 @@ export interface StateContext {
 export type StateOutcome =
   | { readonly type: "finish"; readonly event: string }
   | { readonly type: "take"; readonly event: string; readonly to: string }
-  | { readonly type: "fail"; readonly error: string; readonly reason?: RunFailureReason }
+  | {
+      readonly type: "fail";
+      readonly error: string;
+      readonly reason?: RunFailureReason;
+      /** The agent whose instructions weren't trusted, with what the check saw in `refusal`. */
+      readonly agent?: string;
+      readonly refusal?: InstructionsRefusal;
+    }
   | { readonly type: "cant-try"; readonly found: readonly CantTryStep[] };
 
 /** What a handler decided: events to append, effects to carry out, and how its work ended. */

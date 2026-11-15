@@ -1,53 +1,9 @@
-import type { RunFailureReason } from "@halonicjs/events";
-import type { Agent, AgentMethod, Workflow, WorkflowState } from "@halonicjs/format";
+import type { Agent, AgentMethod, Workflow } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import type { DecideInput, StartInput } from "../../kernel/decide-types.ts";
-import { answer, play, startInput, writerAgent } from "../../kernel/kernel-test-kit.test-helper.ts";
-
-/** A `research` state with two branches, then a final state. */
-function researchWorkflow(extra: Partial<WorkflowState> = {}): Workflow {
-  return {
-    version: 1,
-    id: "research",
-    name: "Research a topic",
-    initial: "research",
-    context: {},
-    states: {
-      research: {
-        type: "parallel",
-        branches: {
-          web: { agent: "searcher", input: "Search the web for {{input.topic}}" },
-          notes: { agent: "reader", input: "Read the notes on {{input.topic}}" },
-        },
-        output: "findings",
-        on: [{ to: "done", event: "done" }],
-        ...extra,
-      },
-      done: { type: "final", on: [] },
-    },
-    layout: {},
-  };
-}
-
-const start: StartInput = {
-  ...startInput("sha-1"),
-  workflowId: "research",
-  input: { topic: "tea" },
-};
-
-function failure(callId: string, reason: RunFailureReason = "model-unreachable"): DecideInput {
-  return {
-    type: "effect-failed",
-    at: "2026-11-09T09:00:05.000Z",
-    callId,
-    error: "No model answered.",
-    reason,
-  };
-}
-
-const bodies = (log: ReturnType<typeof play>["log"], from: number) =>
-  log.slice(from).map(({ runId: _r, seq: _s, at: _a, ...body }) => body);
+import type { DecideInput } from "../../kernel/decide-types.ts";
+import { answer, play, writerAgent } from "../../kernel/kernel-test-kit.test-helper.ts";
+import { bodies, failure, researchWorkflow, start } from "./parallel-test-kit.test-helper.ts";
 
 verifies("engine.parallel-state", () => {
   it("starts every branch at once, in name order, each with its own call", () => {
@@ -161,11 +117,13 @@ verifies("engine.parallel-state", () => {
 
   it("keeps the pin of a branch whose instructions weren't trusted, and reads it back from the log", () => {
     const pin = { digest: "sha256:b", files: { "AGENTS.md": "sha256:a" } };
+    const untrustedText =
+      "Halonic didn't start agent \"searcher\": a person hasn't trusted its instructions yet. Trust the instructions, then run again.";
     const untrusted: DecideInput = {
       type: "effect-failed",
       at: "2026-11-09T09:00:05.000Z",
       callId: "call-2",
-      error: "No model answered.",
+      error: untrustedText,
       reason: "instructions-not-trusted",
       agent: "searcher",
       refusal: { pin, changed: false },
@@ -177,7 +135,7 @@ verifies("engine.parallel-state", () => {
         state: "research",
         agent: "searcher",
         output: null,
-        error: "No model answered.",
+        error: untrustedText,
         reason: "instructions-not-trusted",
         pin,
         changed: false,
@@ -185,8 +143,9 @@ verifies("engine.parallel-state", () => {
       },
     ]);
     expect(run?.parallel?.branches.find((branch) => branch.name === "web")?.end).toEqual({
-      error: "No model answered.",
+      error: untrustedText,
       reason: "instructions-not-trusted",
+      agent: "searcher",
       refusal: { pin, changed: false },
     });
   });
