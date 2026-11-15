@@ -2,6 +2,7 @@
 
 - Approval: Liam reviews and signs on HAL-10527
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:tU+pZDHaq3wdoNBmX41BUuk5v6utN27OWjwfUAcac8U7BPuuEx+QmDlfhDzjk89wghD9eEd2GTR4L7PujReBDg==
 - Task: HAL-3106 slice 3f (HAL-10527)
 
 ## What changes
