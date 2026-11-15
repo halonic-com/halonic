@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { gzipSync } from "node:zlib";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { buildWorkerBundle, hashScript } from "./worker-bundle.ts";
+import { buildWorkerBundle, hashScript, MAX_COMPRESSED_BYTES } from "./worker-bundle.ts";
 
 const entryPoint = fileURLToPath(
   new URL("../../../packages/targets/cloudflare/runtime/src/index.ts", import.meta.url),
@@ -58,6 +59,30 @@ verifies("publish.worker-bundle", () => {
       // A drive letter on its own, then a name: not the `s:\/` inside the `https:\/\/` of a bundled pattern.
       expect(script).not.toMatch(/(?<![A-Za-z0-9])[A-Za-z]:\\[A-Za-z0-9_.-]/);
       expect(script).not.toContain("sourceMappingURL");
+    });
+  });
+
+  describe("buildWorkerBundle failures", () => {
+    it("names the import that can't be bundled", async () => {
+      const folder = await mkdtemp(`${tmpdir()}/halonic-bundle-`);
+      try {
+        const entry = `${folder}/index.ts`;
+        await writeFile(entry, 'import "halonic-no-such-package";\n');
+        await expect(buildWorkerBundle(entry)).rejects.toThrow(/halonic-no-such-package/);
+      } finally {
+        await rm(folder, { recursive: true, force: true });
+      }
+    });
+
+    it("builds the real Worker under the size limit", async () => {
+      const { script } = await buildWorkerBundle(entryPoint);
+      expect(gzipSync(script).byteLength).toBeLessThan(MAX_COMPRESSED_BYTES);
+    });
+
+    it("refuses a script over the size limit", async () => {
+      await expect(buildWorkerBundle(entryPoint, { maxCompressedBytes: 1000 })).rejects.toThrow(
+        /too big to upload/,
+      );
     });
   });
 
