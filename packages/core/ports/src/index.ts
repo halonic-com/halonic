@@ -183,6 +183,7 @@ export {
   type ProgramSettingsFolder,
   programProbeVersion,
 } from "./program-probe.ts";
+export { defaultBaseUrl } from "./provider-default-base-url.ts";
 export {
   type CurrentRecord,
   compactedChanges,

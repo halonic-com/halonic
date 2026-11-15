@@ -1,8 +1,13 @@
 import type { Provider } from "@halonicjs/format";
+import { defaultBaseUrl } from "@halonicjs/ports";
 import { type UrlHost, urlHost } from "@halonicjs/std";
 import type { ModelTarget } from "./resolve-model.ts";
 
-/** A header whose name says it carries a credential. */
+/**
+ * A header whose name says it carries a credential. It also matches names
+ * like `X-Monkey` and `Keep-Alive`; a false yes only costs a question the
+ * step always lets the user skip.
+ */
 const authHeaderName = /auth|key|token|secret|credential|cookie/i;
 
 /** The parts of a provider the cost rules read. */
@@ -10,22 +15,25 @@ type CostProvider = Pick<Provider, "type" | "baseUrl" | "secret" | "options">;
 
 /**
  * Whether requests to a provider stay on this machine (HAL-63 B4). It
- * fails closed: only the test model (by its type, never by a setting) and a
- * `baseUrl` whose host is `localhost`, in `127.0.0.0/8` or `::1` count. A
- * gateway or tunnel on a loopback address may forward to a paid service,
- * so this alone doesn't say there is no cost, see {@link isNoCostOnThisMachine}.
+ * fails closed: only the test model (by its type, never by a setting) and
+ * the address the provider calls, `baseUrl` or else its type's default
+ * ({@link defaultBaseUrl}), with the host `localhost`, in `127.0.0.0/8` or
+ * `::1` count. `Provider.local` is ignored on purpose. A gateway or tunnel
+ * on a loopback address may forward to a paid service, so this alone doesn't
+ * say there is no cost, see {@link isNoCostOnThisMachine}.
  * No address is looked up and no text is matched: an address that can't be
- * read, or no `baseUrl`, is not this machine.
+ * read, or an unknown type with no `baseUrl`, is not this machine.
  *
  * @example
  * isOnThisMachine({ type: "ollama", baseUrl: "http://127.1:11434/v1", options: {} }); // true
+ * isOnThisMachine({ type: "ollama", options: {} }); // true, its default is localhost
  * isOnThisMachine({ type: "openai", baseUrl: "http://localhost.evil.example", options: {} }); // false
  */
 export function isOnThisMachine(provider: CostProvider): boolean {
   if (provider.type === "mock") {
     return true;
   }
-  const host = provider.baseUrl === undefined ? undefined : urlHost(provider.baseUrl);
+  const host = addressHost(provider);
   return host !== undefined && isLoopback(host);
 }
 
@@ -54,12 +62,14 @@ export function isNoCostOnThisMachine(
 
 /**
  * Whether a provider may bill per use (HAL-63 B3), which is when the
- * Studio asks for prices and a budget. It is when the provider isn't on
- * this machine without a cost, and has a secret, an auth-like header in
+ * Studio asks for prices and a budget. The test model never does. Any other
+ * provider does when it has a secret, an auth-like header in
  * `options.headers`, a query string in its `baseUrl`, or a public host: not
  * `10/8`, `172.16/12`, `192.168/16`, `fc00::/7`, `fe80::/10`, a single-label
- * name or this machine. A host that can't be read, or no `baseUrl`, is
- * public. A false yes costs little, as the step always offers "No limit".
+ * name or this machine. The host is the one {@link isOnThisMachine} reads.
+ * A host that can't be read, or an unknown type with no `baseUrl`, is
+ * public. `*.local` names and `100.64/10` count as public too. A false yes
+ * costs little, as the step always offers "No limit".
  *
  * @example
  * isPayPerUse({ type: "anthropic", baseUrl: "https://api.anthropic.com/v1", options: {} }); // true
@@ -70,10 +80,14 @@ export function isPayPerUse(provider: CostProvider): boolean {
     return false;
   }
   return (
-    holdsCredential(provider) ||
-    hasQuery(provider.baseUrl) ||
-    !isPrivateHost(provider.baseUrl === undefined ? undefined : urlHost(provider.baseUrl))
+    holdsCredential(provider) || hasQuery(provider.baseUrl) || !isPrivateHost(addressHost(provider))
   );
+}
+
+/** The host the adapter really calls: `baseUrl`, or else its type's default. */
+function addressHost(provider: CostProvider): UrlHost | undefined {
+  const address = provider.baseUrl ?? defaultBaseUrl(provider.type);
+  return address === undefined ? undefined : urlHost(address);
 }
 
 function holdsCredential(provider: CostProvider): boolean {

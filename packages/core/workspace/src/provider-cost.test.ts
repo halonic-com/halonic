@@ -41,11 +41,31 @@ verifies("workspace.provider-cost", () => {
       ]) {
         expect(isOnThisMachine(provider(url)), url).toBe(false);
       }
-      expect(isOnThisMachine(provider(undefined, { type: "ollama" }))).toBe(false);
+      expect(isOnThisMachine(provider(undefined, { type: "openai" }))).toBe(false);
+      expect(isOnThisMachine(provider(undefined, { type: "openai-compatible" }))).toBe(false);
+      expect(isOnThisMachine(provider(undefined, { type: "anthropic" }))).toBe(false);
+    });
+
+    it("reads the type's default address when there is no baseUrl", () => {
+      expect(isOnThisMachine(provider(undefined, { type: "ollama" }))).toBe(true);
+      expect(isOnThisMachine(provider(undefined, { type: "lmstudio" }))).toBe(true);
+      expect(isOnThisMachine(provider(undefined, { type: "constructor" }))).toBe(false);
+      expect(isOnThisMachine(provider("http://10.0.0.5:11434", { type: "ollama" }))).toBe(false);
     });
   });
 
   describe("no cost on this machine", () => {
+    it("holds for Ollama and LM Studio with no baseUrl", () => {
+      for (const type of ["ollama", "lmstudio"]) {
+        const bare = provider(undefined, { type });
+        expect(isNoCostOnThisMachine(bare, { model: "llama3.2" }), type).toBe(true);
+        expect(isPayPerUse(bare), type).toBe(false);
+        expect(isNoCostOnThisMachine({ ...bare, secret: "k" }, { model: "llama3.2" }), type).toBe(
+          false,
+        );
+      }
+    });
+
     const local = provider("http://localhost:11434/v1");
 
     it("holds without a key, a cloud model or a price", () => {
@@ -73,6 +93,8 @@ verifies("workspace.provider-cost", () => {
     it("holds for a public host or no address", () => {
       expect(isPayPerUse(provider("https://api.anthropic.com/v1"))).toBe(true);
       expect(isPayPerUse(provider(undefined, { type: "anthropic" }))).toBe(true);
+      expect(isPayPerUse(provider(undefined, { type: "openai" }))).toBe(true);
+      expect(isPayPerUse(provider(undefined, { type: "openai-compatible" }))).toBe(true);
       expect(isPayPerUse(provider("http://172.32.0.1"))).toBe(true);
       expect(isPayPerUse(provider("http://169.254.1.1"))).toBe(true);
       expect(isPayPerUse(provider("http://0.0.0.0"))).toBe(true);

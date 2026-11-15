@@ -4,6 +4,7 @@
 // provider's YAML sets wins over the type's default.
 
 import {
+  defaultBaseUrl,
   isSecretName,
   type LlmProvider,
   type LlmProviderFactory,
@@ -28,7 +29,7 @@ interface Preset {
 /** OpenAI itself: its own address, always a key, and the newer length field its models need. */
 export const openAiFactory = presetFactory({
   type: "openai",
-  baseUrl: "https://api.openai.com/v1",
+  baseUrl: defaultBaseUrl("openai"),
   needsKey: true,
   maxTokensField: "max_completion_tokens",
 });
@@ -48,7 +49,7 @@ export const openAiCompatibleFactory = presetFactory({
  */
 export const ollamaFactory = presetFactory({
   type: "ollama",
-  baseUrl: "http://localhost:11434/v1",
+  baseUrl: defaultBaseUrl("ollama"),
   needsKey: false,
   maxTokensField: "max_tokens",
 });
@@ -56,7 +57,7 @@ export const ollamaFactory = presetFactory({
 /** LM Studio's server on this machine. */
 export const lmStudioFactory = presetFactory({
   type: "lmstudio",
-  baseUrl: "http://localhost:1234/v1",
+  baseUrl: defaultBaseUrl("lmstudio"),
   needsKey: false,
   maxTokensField: "max_tokens",
 });
