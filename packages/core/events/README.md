@@ -25,7 +25,12 @@ optional and come with a requirement.
   that doesn't know a code reads it as `other`. `local-only` means the
   workspace is local only and no model the step could use is local; the
   `llm.skipped` events with that reason name them (requirement
-  `run-failed-local-only`).
+  `run-failed-local-only`). `instructions-not-trusted` means a harness step
+  didn't start because a person hasn't trusted the agent's instructions, or
+  they changed; `agent`, `pin` (digests only) and `changed` say which and
+  whether something was trusted before, and a parallel branch's
+  `agent.finished` carries `pin` and `changed` too (requirement
+  `run-failed-instructions-not-trusted`).
 - `summarize(events)`: folds a run's events into a `RunSummary`. Every run
   store uses it.
 - `upgradeEvent(raw)` and `parseEventLine(line)`: read stored events,

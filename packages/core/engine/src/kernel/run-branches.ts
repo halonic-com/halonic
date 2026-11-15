@@ -1,4 +1,4 @@
-import type { CantTryStep, RunFailureReason } from "@halonicjs/events";
+import type { CantTryStep, InstructionsRefusal, RunFailureReason } from "@halonicjs/events";
 import type { Branch, WorkflowState } from "@halonicjs/format";
 import type { PendingCall } from "./run-state.ts";
 
@@ -14,11 +14,16 @@ export function branchesOf(state: WorkflowState): [string, Branch][] {
 
 /**
  * How a branch ended: its agent's answer, why it failed, or the step it
- * couldn't try, which ends the branch as a failure does.
+ * couldn't try, which ends the branch as a failure does. A branch whose
+ * instructions weren't trusted also keeps what the check saw.
  */
 export type BranchEnd =
   | { readonly output: unknown }
-  | { readonly error: string; readonly reason: RunFailureReason }
+  | {
+      readonly error: string;
+      readonly reason: RunFailureReason;
+      readonly refusal?: InstructionsRefusal;
+    }
   | { readonly error: string; readonly cantTry: CantTryStep };
 
 /** One branch of a `parallel` state, from its `agent.started` on. */

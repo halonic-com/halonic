@@ -159,6 +159,38 @@ verifies("engine.parallel-state", () => {
     expect(decisions[2]?.events).toEqual([]);
   });
 
+  it("keeps the pin of a branch whose instructions weren't trusted, and reads it back from the log", () => {
+    const pin = { digest: "sha256:b", files: { "AGENTS.md": "sha256:a" } };
+    const untrusted: DecideInput = {
+      type: "effect-failed",
+      at: "2026-11-09T09:00:05.000Z",
+      callId: "call-2",
+      error: "No model answered.",
+      reason: "instructions-not-trusted",
+      agent: "searcher",
+      refusal: { pin, changed: false },
+    };
+    const { decisions, run } = play(researchWorkflow(), [start, untrusted]);
+    expect(decisions[1]?.events).toEqual([
+      {
+        type: "agent.finished",
+        state: "research",
+        agent: "searcher",
+        output: null,
+        error: "No model answered.",
+        reason: "instructions-not-trusted",
+        pin,
+        changed: false,
+        branch: "web",
+      },
+    ]);
+    expect(run?.parallel?.branches.find((branch) => branch.name === "web")?.end).toEqual({
+      error: "No model answered.",
+      reason: "instructions-not-trusted",
+      refusal: { pin, changed: false },
+    });
+  });
+
   describe("a failed branch", () => {
     it("is recorded with its error and reason, and the run goes on", () => {
       const { decisions, run } = play(researchWorkflow(), [start, failure("call-2")]);

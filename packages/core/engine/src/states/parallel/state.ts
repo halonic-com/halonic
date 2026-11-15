@@ -102,8 +102,15 @@ function takeBranchResult(context: StateContext, input: DecideInput): StateStep 
     return nothing;
   }
   if (input.type === "effect-failed") {
-    const { error, reason, cantTry } = input;
-    return endWith(context, branch, cantTry === undefined ? { error, reason } : { error, cantTry });
+    const { error, reason, refusal, cantTry } = input;
+    if (cantTry !== undefined) {
+      return endWith(context, branch, { error, cantTry });
+    }
+    return endWith(context, branch, {
+      error,
+      reason,
+      ...(refusal === undefined ? {} : { refusal }),
+    });
   }
   switch (input.result.type) {
     case "model":
@@ -151,7 +158,7 @@ function branchFinished(
     return { ...base, output: null, error: end.error, cantTry: end.cantTry };
   }
   if ("error" in end) {
-    return { ...base, output: null, error: end.error, reason: end.reason };
+    return { ...base, output: null, error: end.error, reason: end.reason, ...end.refusal };
   }
   return { ...base, output: end.output };
 }

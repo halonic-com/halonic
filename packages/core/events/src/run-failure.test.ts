@@ -33,6 +33,7 @@ verifies("events.run-failed-reason", () => {
       | "answer-not-an-option"
       | "harness-unavailable"
       | "local-only"
+      | "instructions-not-trusted"
     >();
     expectTypeOf<EventOf<"run.failed">["reason"]>().toEqualTypeOf<RunFailureReason | undefined>();
   });
@@ -203,5 +204,30 @@ verifies("events.provider-text", () => {
     ]);
     expect(summary?.error).toBe('acme refused the call to the model "acme-small" (HTTP 400)');
     expect(JSON.stringify(summary)).not.toContain(providerText.text);
+  });
+});
+
+verifies("events.run-failed-instructions-not-trusted", () => {
+  typeTest("names the agent, the pin the check saw and whether it changed", () => {
+    expectTypeOf<IsReason<"instructions-not-trusted">>().toEqualTypeOf<true>();
+    expectTypeOf<{
+      type: "run.failed";
+      state: string;
+      error: string;
+      reason: "instructions-not-trusted";
+      agent: string;
+      pin: { digest: string; files: Record<string, string> };
+      changed: boolean;
+    }>().toExtend<EventOf<"run.failed">>();
+    expectTypeOf<{
+      type: "agent.finished";
+      state: string;
+      agent: string;
+      output: null;
+      error: string;
+      reason: "instructions-not-trusted";
+      pin: { digest: string; files: Record<string, string> };
+      changed: boolean;
+    }>().toExtend<EventOf<"agent.finished">>();
   });
 });
