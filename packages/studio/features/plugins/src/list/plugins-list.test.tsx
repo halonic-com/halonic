@@ -47,14 +47,14 @@ function show(
     actions?: PluginActions;
     builtIn?: boolean;
     phone?: boolean;
-    host?: "this-computer" | "served";
+    place?: "app" | "served";
   } = {},
 ): Seen {
   const seen: Seen = { opened: [], tabs: [], builtIns: [], calls: [] };
   render(
     <PresentationProvider presentation={options.phone === true ? "phone" : "desktop"}>
       <PluginsList
-        host={options.host ?? "this-computer"}
+        place={options.place ?? "app"}
         load={options.load ?? { kind: "ready" }}
         plugins={plugins}
         builtIn={options.builtIn === false ? [] : [{ id: "gmail", name: "Gmail" }]}
@@ -117,7 +117,7 @@ verifies("plugins.plugin-list", () => {
   });
 
   it("is view only in a served browser, naming the computer that runs Halonic", () => {
-    show([], { host: "served" });
+    show([], { place: "served" });
     expect(text()).toContain(
       "View only here. Add, trust and remove plugins on the computer that runs Halonic:",
     );

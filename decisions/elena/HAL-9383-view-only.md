@@ -2,12 +2,11 @@
 
 - Approval: board-approved plugin screens design, section 10, and microcopy 24 T17 (HAL-1739, HAL-1801); Liam signs this note with the pull request
 - Kind: user-visible
-- Signature: unsigned
 - Task: HAL-9383 (B27, view-only slice)
 
 ## What changes
 
-`plugins.plugin-list` gains view-only: on a phone, and in a browser on `halonic serve`, the list has no **Add plugin** (also not in the empty state), the ⋮ of a plugin offers only Open and Open in new tab, and the list ends with the view-only line and a copyable `halonic plugin add <folder or git address>`. The app tells the list it is served with the new `host` prop (HAL-9373). Nothing was removed on desktop.
+`plugins.plugin-list` gains view-only: on a phone, and in a browser on `halonic serve`, the list has no **Add plugin** (also not in the empty state), the ⋮ of a plugin offers only Open and Open in new tab, and the list ends with the view-only line and a copyable `halonic plugin add <folder or git address>`. The app tells the list it is served with the new `place` prop (`"app"` or `"served"`, as the settings sections use) when it mounts the feature (HAL-9373). Nothing was removed on desktop.
 
 ## Why
 

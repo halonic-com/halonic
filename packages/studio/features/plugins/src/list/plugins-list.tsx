@@ -24,6 +24,7 @@ import type { InstalledPlugin } from "../page/plugin-pages.ts";
 import { RemovePluginDialog } from "../page/remove-plugin-dialog.tsx";
 import { usePageActions } from "../page/use-page-actions.ts";
 import {
+  ADD_COMMAND,
   ADD_PLUGIN,
   BUILT_IN_CHIP,
   BUILT_IN_HEADING,
@@ -41,7 +42,6 @@ import {
   OPEN_IN_NEW_TAB,
   PLUGINS,
   PLUGINS_SENTENCE,
-  ADD_COMMAND,
   rowMeta,
   TRY_AGAIN,
   viewOnlyLine,
@@ -76,10 +76,10 @@ export interface PluginsListProps {
   /** **Try again** after the list couldn't load. */
   readonly onRetry: () => void;
   /**
-   * Where Studio is shown: `this-computer` (the default) or `served`, a browser on `halonic
-   * serve`. Plugins are view only on a phone and when served (design section 10).
+   * Where Studio is shown: `app` (the default) or `served`, a browser on `halonic serve`.
+   * Plugins are view only on a phone and when served (design section 10).
    */
-  readonly host?: "this-computer" | "served";
+  readonly place?: "app" | "served";
   readonly now?: () => Date;
 }
 
@@ -108,11 +108,11 @@ export function PluginsList({
   onOpenBuiltIn,
   onAdd,
   onRetry,
-  host = "this-computer",
+  place = "app",
   now = () => new Date(),
 }: PluginsListProps) {
   const phone = usePresentation() === "phone";
-  const viewOnly = phone || host === "served";
+  const viewOnly = phone || place === "served";
   const [menu, setMenu] = useState<
     { readonly id: string; readonly target: ContextMenuTarget } | undefined
   >(undefined);
