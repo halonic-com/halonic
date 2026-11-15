@@ -93,9 +93,13 @@ export class WorkspaceFiles {
   private readonly digest: Sha256;
   private readonly trash: Trash | undefined;
   /** The store text Halonic last read or wrote by path, `null` for no file: what a save expects to find. */
-  /** Old path to new path of each rename since the last discard: a save of the old path's delete keeps it out of the trash. */
-  private readonly moves = new Map<string, string>();
   private readonly known = new Map<string, string | null>();
+  /**
+   * Each rename since the last discard by old path: the new path and the text
+   * the rename gave it. A save of the old path's delete keeps it out of the
+   * trash only when it writes exactly that text there.
+   */
+  private readonly moves = new Map<string, { to: string; text: string }>();
 
   /**
    * @param digest - hashes text for the write-if-unchanged check; core has no hash of its own
@@ -174,17 +178,30 @@ export class WorkspaceFiles {
    * @throws RenameRefusedError when `from` is missing or deleted, or `to` already exists, on disk or as an unsaved new file
    */
   async rename(from: string, to: string, rewrites: Record<string, string> = {}): Promise<void> {
+    // Store reads first: `change` may run while they wait, so the unsaved changes are read after them.
+    const fromStored = await this.store.read(from);
+    const toSaved = (await this.store.read(to)) !== null;
+    const changes = this.changes;
+    const fromText = Object.hasOwn(changes, from) ? changes[from] : fromStored;
+    if (!Object.hasOwn(changes, from)) {
+      this.known.set(from, fromStored);
+    }
     const next = planRename({
       from,
       to,
-      changes: this.changes,
-      fromText: await this.read(from),
-      fromSaved: (await this.store.read(from)) !== null,
-      toSaved: (await this.store.read(to)) !== null,
+      changes,
+      fromText: fromText ?? null,
+      fromSaved: fromStored !== null,
+      toSaved,
       rewrites,
     });
-    this.history.record(this.changes, null);
-    this.moves.set(from, to);
+    const text = next[to] as string;
+    this.history.record(changes, null);
+    // A rename of a file that was itself just moved carries the first move on to the new path.
+    for (const [origin, move] of this.moves) {
+      if (move.to === from) this.moves.set(origin, { to, text });
+    }
+    this.moves.set(from, { to, text });
     this.apply(next, `Renamed ${from} to ${to}`);
   }
 
@@ -341,10 +358,12 @@ export class WorkspaceFiles {
     this.apply({}, "Unsaved changes discarded");
   }
 
-  /** Whether the delete of this path is half of a rename whose new file is saved in the same go. */
+  /** Whether the delete of this path is half of a rename whose new file is saved in the same go with the text the rename gave it. */
   private isMoved(path: string, saving: readonly [string, string | null][]): boolean {
-    const to = this.moves.get(path);
-    return to !== undefined && saving.some(([each, text]) => each === to && text !== null);
+    const move = this.moves.get(path);
+    return (
+      move !== undefined && saving.some(([each, text]) => each === move.to && text === move.text)
+    );
   }
 
   /** Deletes a file: into the trash when there is one and the file wasn't renamed, else out of the store. */

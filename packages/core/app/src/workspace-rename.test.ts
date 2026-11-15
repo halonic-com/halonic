@@ -104,4 +104,35 @@ verifies("app.workspace-rename", () => {
     await expect(files.rename(workflowPath, "x.yaml")).rejects.toBeInstanceOf(RenameRefusedError);
     expect(files.pending).toEqual({ [workflowPath]: null });
   });
+
+  it("sends the old file to the trash when the new path was saved with other text", async () => {
+    const { store, trash, files } = openWithTrash({ [workflowPath]: workflow });
+    await files.rename(workflowPath, "c.yaml");
+    files.undo();
+    files.change("Edit c", { "c.yaml": "unrelated\n" });
+    files.change("Deleted f", { [workflowPath]: null });
+    await files.save();
+    expect(await store.read(workflowPath)).toBeNull();
+    expect([...trash.entries.values()]).toEqual([{ path: workflowPath, content: workflow }]);
+  });
+
+  it("keeps an edit made while the rename waits for the store", async () => {
+    const { files } = openWithTrash({ [workflowPath]: workflow });
+    const renaming = files.rename(workflowPath, "c.yaml");
+    files.change("Edit x", { "x.yaml": "x2\n" });
+    await renaming;
+    expect(files.pending).toEqual({ "c.yaml": workflow, [workflowPath]: null, "x.yaml": "x2\n" });
+    expect(files.undo()).toBe(true);
+    expect(files.pending).toEqual({ "x.yaml": "x2\n" });
+  });
+
+  it("keeps the original out of the trash when a file is renamed twice before a save", async () => {
+    const { store, trash, files } = openWithTrash({ [workflowPath]: workflow });
+    await files.rename(workflowPath, "b.yaml");
+    await files.rename("b.yaml", "c.yaml");
+    expect(await files.save()).toBe(2);
+    expect(await store.read(workflowPath)).toBeNull();
+    expect(await store.read("c.yaml")).toBe(workflow);
+    expect(trash.entries.size).toBe(0);
+  });
 });
