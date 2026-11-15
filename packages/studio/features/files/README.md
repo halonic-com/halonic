@@ -12,7 +12,7 @@ The Files feature of the Studio: the workspace's file tree, and (in later change
 
 - `buildTree` turns the engine's file list into rows: folders first, sorted by name, without `.studio`, `.git` or `node_modules`, with errors, warnings and "changed outside Halonic" added up on each folder.
 - `visibleRows` lists the rows shown for a set of opened folders; `revealFile` opens the folders above a file.
-- `pressKey` is all of the tree's keyboard: arrows, Home, End, `*`, type-ahead, Enter, F2 and Delete. It returns the new state and, for Enter, F2 and Delete, an intent for the Studio to act on.
+- `pressKey` is all of the tree's keyboard: arrows, Home, End, `*`, type-ahead, Enter, F2 and Delete. A key held with Ctrl, Meta or Alt is left unhandled, so copy and app shortcuts still work. It returns the new state and, for Enter, F2 and Delete, an intent for the Studio to act on.
 - `cutInMiddle` shortens a long name and keeps its ending.
 
 ## Example
@@ -24,6 +24,6 @@ import { visibleRows } from "./tree/visible-rows.ts";
 
 const roots = buildTree(["hubs/p/hub.yaml", "models.yaml"]);
 const rows = visibleRows(roots, new Set());
-const { state } = pressKey(rows, { ...emptyTreeState, focus: "hubs" }, "ArrowRight", Date.now());
+const { state } = pressKey(rows, { ...emptyTreeState, focus: "hubs" }, { key: "ArrowRight", ctrlKey: false, metaKey: false, altKey: false }, Date.now());
 // state.expanded now holds "hubs"
 ```

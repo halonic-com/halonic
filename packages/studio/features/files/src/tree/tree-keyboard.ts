@@ -154,16 +154,20 @@ function typeAhead(
  *
  * @param rows - the shown rows from `visibleRows`
  * @param state - where the tree is now
- * @param key - the key's `KeyboardEvent.key`
+ * @param event - the key press; a key held with Ctrl, Meta or Alt is a shortcut (copy, the command
+ *   palette) and is left unhandled
  * @param now - the time of the key press in milliseconds, for type-ahead
  */
 export function pressKey(
   rows: readonly TreeRow[],
   state: TreeState,
-  key: string,
+  event: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey">,
   now: number,
 ): TreeKeyResult {
-  if (rows.length === 0) return { state, handled: false };
+  const { key } = event;
+  if (rows.length === 0 || event.ctrlKey || event.metaKey || event.altKey) {
+    return { state, handled: false };
+  }
   const handler = Object.hasOwn(handlers, key) ? handlers[key] : undefined;
   if (handler === undefined && !isLetter(key)) return { state, handled: false };
   const index = rows.findIndex((row) => row.node.path === state.focus);

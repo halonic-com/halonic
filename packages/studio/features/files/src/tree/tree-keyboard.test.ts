@@ -20,6 +20,11 @@ const tree = buildTree([
   "workspace.yaml",
 ]);
 
+/** A key press with no modifier held. */
+function keyEvent(key: string) {
+  return { key, ctrlKey: false, metaKey: false, altKey: false };
+}
+
 /** Presses keys one after another, 1 second apart, and returns the state and the last intent. */
 function press(start: Partial<TreeState>, ...keys: string[]) {
   let state: TreeState = { ...emptyTreeState, ...start };
@@ -27,7 +32,7 @@ function press(start: Partial<TreeState>, ...keys: string[]) {
   let handled = false;
   let now = 10_000;
   for (const key of keys) {
-    const result = pressKey(visibleRows(tree, state.expanded), state, key, now);
+    const result = pressKey(visibleRows(tree, state.expanded), state, keyEvent(key), now);
     state = result.state;
     intent = result.intent;
     handled = result.handled;
@@ -106,7 +111,7 @@ verifies("files.tree.keyboard", () => {
     const slow = pressKey(
       visibleRows(tree, new Set()),
       { ...emptyTreeState, focus: "hubs", typeAhead: { text: "s", at: 0 } },
-      "m",
+      keyEvent("m"),
       typeAheadPauseMs + 1,
     );
     expect(slow.state.focus).toBe("models.yaml");
@@ -114,9 +119,9 @@ verifies("files.tree.keyboard", () => {
 
   it("walks through the rows that start with one letter typed again", () => {
     const rows = visibleRows(tree, new Set());
-    const first = pressKey(rows, { ...emptyTreeState, focus: "providers" }, "s", 1000);
+    const first = pressKey(rows, { ...emptyTreeState, focus: "providers" }, keyEvent("s"), 1000);
     expect(first.state.focus).toBe("skills");
-    const again = pressKey(rows, first.state, "s", 1100);
+    const again = pressKey(rows, first.state, keyEvent("s"), 1100);
     expect(again.state.focus).toBe("skills");
   });
 
@@ -138,9 +143,20 @@ verifies("files.tree.keyboard", () => {
     expect(press({ focus: "hubs" }, " ").handled).toBe(false);
   });
 
+  it("leaves a key pressed with Ctrl, Meta or Alt to the app, so copy and shortcuts still work", () => {
+    const rows = visibleRows(tree, new Set());
+    const state = { ...emptyTreeState, focus: "hubs" };
+    for (const modifier of ["ctrlKey", "metaKey", "altKey"] as const) {
+      for (const key of ["c", "p", "ArrowDown", "Enter", "Delete"]) {
+        const result = pressKey(rows, state, { ...keyEvent(key), [modifier]: true }, 1000);
+        expect(result).toEqual({ state, handled: false });
+      }
+    }
+  });
+
   describe("an empty tree", () => {
     it("handles nothing", () => {
-      expect(pressKey([], emptyTreeState, "ArrowDown", 0).handled).toBe(false);
+      expect(pressKey([], emptyTreeState, keyEvent("ArrowDown"), 0).handled).toBe(false);
     });
   });
 });
