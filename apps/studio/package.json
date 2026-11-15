@@ -33,7 +33,8 @@
     "@halonicjs/studio-feature-workspace": "workspace:*",
     "@halonicjs/studio-services": "workspace:*",
     "@halonicjs/studio-shell": "workspace:*",
-    "@halonicjs/workspace": "workspace:*"
+    "@halonicjs/workspace": "workspace:*",
+    "@halonicjs/yaml": "workspace:*"
   },
   "devDependencies": {
     "@halonicjs/app-agent-host": "workspace:*",
