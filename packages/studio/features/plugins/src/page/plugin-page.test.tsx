@@ -15,6 +15,7 @@ import { afterEach, expect, it } from "vitest";
 import type { PluginCardStatus } from "../cards/plugin-card.tsx";
 import { feedOf, noActions, noSettings, weather } from "../test-support/plugins.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
+import type { PluginActions, PluginUse } from "./plugin-actions.ts";
 import { PluginPage } from "./plugin-page.tsx";
 import {
   type InstalledPlugin,
@@ -68,12 +69,16 @@ const broken: InstalledPlugin = {
   ],
 };
 
-async function showPage(plugin: InstalledPlugin, onOpenPanel = () => {}) {
+async function showPage(
+  plugin: InstalledPlugin,
+  onOpenPanel = () => {},
+  usedBy: PluginActions["usedBy"] = async () => [],
+) {
   const view = render(
     <PluginPage
       plugin={plugin}
       {...noSettings()}
-      {...noActions()}
+      actions={{ ...noActions().actions, usedBy }}
       onOpenPanel={onOpenPanel}
       now={now}
     />,
@@ -114,6 +119,13 @@ async function showItem(feed: InstalledPluginFeed) {
 function button(view: HTMLElement, name: string): HTMLButtonElement | undefined {
   return [...view.querySelectorAll("button")].find(
     (candidate) => candidate.textContent?.trim() === name,
+  );
+}
+
+/** The page's Used by section. */
+function usedBySection(view: HTMLElement): HTMLElement | undefined {
+  return [...view.querySelectorAll("section")].find(
+    (section) => section.querySelector("h2")?.textContent === "Used by",
   );
 }
 
@@ -158,6 +170,61 @@ verifies("plugins.plugin-page", () => {
     expect(adds?.textContent).toContain("Show the forecast · in Ctrl K");
     expect(adds?.textContent).toContain("Today's weather · on Home");
     expect(adds?.textContent).toContain("Weather · opens in a tab");
+  });
+
+  it("lists the connectors that use the plugin under Used by, each with its workspace", async () => {
+    const view = await showPage(
+      weather(),
+      () => {},
+      async () => [
+        { connector: "Planner", workspace: "Acme" },
+        { connector: "<b>Digest</b>", workspace: "Home" },
+      ],
+    );
+    const used = usedBySection(view);
+
+    expect(used?.querySelectorAll("li")[0]?.textContent).toBe("Planner · in Acme");
+    expect(used?.querySelectorAll("li")[1]?.textContent).toBe("<b>Digest</b> · in Home");
+    expect(used?.querySelector("b")).toBeNull();
+  });
+
+  it("says no connector uses the plugin yet, and says it is looking while it checks", async () => {
+    let answer: (uses: readonly PluginUse[]) => void = () => {};
+    const view = await showPage(
+      weather(),
+      () => {},
+      () => new Promise((resolve) => (answer = resolve)),
+    );
+
+    expect(usedBySection(view)?.textContent).toContain("Checking which connectors use it…");
+
+    await act(async () => answer([]));
+
+    expect(usedBySection(view)?.textContent).toBe("Used byNo connector uses it yet.");
+  });
+
+  it("says Halonic couldn't check, not that none use the plugin, when the check fails", async () => {
+    const view = await showPage(
+      weather(),
+      () => {},
+      async () => {
+        throw new Error("The store is locked.");
+      },
+    );
+
+    expect(usedBySection(view)?.textContent).toContain(
+      "Halonic couldn't check which connectors use it.",
+    );
+    expect(usedBySection(view)?.textContent).not.toContain("No connector");
+  });
+
+  it("shows Used by while the plugin is off or can't load", async () => {
+    const used = async () => [{ connector: "Planner", workspace: "Acme" }];
+
+    expect(usedBySection(await showPage(withCity("not-trusted"), () => {}, used))).toBeDefined();
+    expect(usedBySection(await showPage(broken, () => {}, used))?.textContent).toContain(
+      "Planner · in Acme",
+    );
   });
 
   it("says a plugin isn't trusted yet, and makes its settings unavailable", async () => {
