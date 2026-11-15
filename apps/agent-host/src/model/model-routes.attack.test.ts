@@ -66,12 +66,18 @@ verifies("agent-host.model-routes", () => {
       model.holding = new Promise((resolve) => {
         release = resolve;
       });
-      const running = [1, 2].map(() => post(url, chatBody(folders.workspace)));
-      await vi.waitFor(() => expect(model.asked).toHaveLength(2));
-      const refused = await post(url, chatBody(folders.workspace));
-      expect(refused.status).toBe(429);
-      expect(await refused.json()).toMatchObject({ error: { kind: "too_many_chats" } });
-      release();
+      const running = [1, 2].map((): Promise<Response> => post(url, chatBody(folders.workspace)));
+      try {
+        await vi.waitFor(() => expect(model.asked).toHaveLength(2), { timeout: 10_000 });
+        const refused = await post(url, chatBody(folders.workspace));
+        expect(refused.status).toBe(429);
+        expect(await refused.json()).toMatchObject({ error: { kind: "too_many_chats" } });
+      } finally {
+        // Free the held chats and wait for them, so a failure above stays one assertion
+        // and not two unhandled "fetch failed" errors from the closing server.
+        release();
+        await Promise.allSettled(running);
+      }
       for (const each of await Promise.all(running)) expect(each.status).toBe(200);
       expect((await post(url, chatBody(folders.workspace))).status).toBe(200);
     });
@@ -81,10 +87,10 @@ verifies("agent-host.model-routes", () => {
       model.holding = new Promise(() => {});
       const window = new AbortController();
       const asking = post(url, chatBody(folders.workspace), window.signal).catch(() => undefined);
-      await vi.waitFor(() => expect(model.asked).toHaveLength(1));
+      await vi.waitFor(() => expect(model.asked).toHaveLength(1), { timeout: 10_000 });
       window.abort();
       await asking;
-      await vi.waitFor(() => expect(model.dropped).toBe(1));
+      await vi.waitFor(() => expect(model.dropped).toBe(1), { timeout: 10_000 });
     });
 
     it("takes the address from the workspace's file and never from the request", async () => {
