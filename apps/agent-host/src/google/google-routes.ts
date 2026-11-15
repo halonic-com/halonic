@@ -1,4 +1,5 @@
 import { createGoogleRoutes, type GoogleSetupPorts } from "@halonicjs/host-server";
+import { type Clock, systemClock } from "@halonicjs/std";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
 import { disconnectBody } from "./google-schemas.ts";
@@ -6,6 +7,8 @@ import { disconnectBody } from "./google-schemas.ts";
 /** What the Google routes reach. */
 export interface GoogleRouteDeps {
   google: GoogleSetupPorts;
+  /** Times how long the host keeps a wrong-account sign-in; the host's own clock unless a test sets one. */
+  clock?: Clock;
   /** Where the host writes what it keeps from a failure; the answer never carries it. */
   log?: (text: string) => void;
 }
@@ -29,7 +32,7 @@ const googleFailedMessage =
  * hold paths, so it goes only to the host's log.
  */
 export function googleRoutes(deps: GoogleRouteDeps): HostRoute[] {
-  const handler = createGoogleRoutes({ google: deps.google });
+  const handler = createGoogleRoutes({ google: deps.google, clock: deps.clock ?? systemClock });
   return [
     {
       method: "POST",
