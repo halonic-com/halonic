@@ -75,6 +75,7 @@ function Dot({
 
 /** The still light of reduced motion: it cross-fades from the old dot to the new one, never travels. */
 function StillLight({ target, color }: { readonly target: Point; readonly color: string }) {
+  // Each dot is keyed by its place, so the old place's element is the one that fades out.
   const [shown, setShown] = useState({ now: target, before: undefined as Point | undefined });
   const [lit, setLit] = useState(false);
   // Adjusting state while rendering: the target changed, so the old dot becomes the fading one.
@@ -101,11 +102,13 @@ function StillLight({ target, color }: { readonly target: Point; readonly color:
     <>
       {shown.before !== undefined && (
         <Dot
+          key={`${shown.before.x},${shown.before.y}`}
           color={color}
           style={{ transform: `translate(${shown.before.x}px, ${shown.before.y}px)`, ...fade(0) }}
         />
       )}
       <Dot
+        key={`${shown.now.x},${shown.now.y}`}
         color={color}
         style={{
           transform: `translate(${shown.now.x}px, ${shown.now.y}px)`,
@@ -184,8 +187,12 @@ function FlyingLight({ target, color }: { readonly target: Point; readonly color
 
   useEffect(() => {
     flight.current = headTo(flight.current, target, performance.now());
-    // While paused nothing draws, so go straight to the new place.
-    if (frame.current === undefined) flight.current = restOn(goalOf(flight.current));
+    // While paused no frame runs, so rest on the new place and draw it now: coming back on screen
+    // then finds the light there, not stuck on the old place.
+    if (frame.current === undefined) {
+      flight.current = restOn(goalOf(flight.current));
+      draw(performance.now());
+    }
   }, [target.x, target.y]);
 
   // Only the first place is set by React; after that the frames move the dot, so a re-render
