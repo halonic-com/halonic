@@ -25,7 +25,7 @@ import { RunsView } from "../runs/runs-view.tsx";
 import { runsWords } from "../runs/runs-words.ts";
 import { type RunsLoad, useRuns } from "../runs/use-runs.ts";
 import { type ShownRun, shownRun } from "../start/run-strip.ts";
-import { StartRunCard } from "../start/start-card.tsx";
+import { StartRunCard, WaitingForRunCard } from "../start/start-card.tsx";
 import { startWords } from "../start/start-words.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
 import { pageWords } from "./page-words.ts";
@@ -385,6 +385,9 @@ function RunDock({
         onClose={() => onDock(undefined)}
       />
     );
+  }
+  if (typeof dock === "object" && !shown) {
+    return <WaitingForRunCard onClose={() => onDock(undefined)} />;
   }
   if (typeof dock === "object" && shown) {
     return (

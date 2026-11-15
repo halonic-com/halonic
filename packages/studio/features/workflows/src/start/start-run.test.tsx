@@ -96,6 +96,25 @@ verifies("workflows.start.start-run", () => {
     expect(page.querySelector("aside[aria-label='Run 01jd8q']")).not.toBeNull();
   });
 
+  it("docks a waiting card until the run reaches the Runs list, then its card", async () => {
+    const runs = memoryRuns();
+    const { page } = await open(async () => ({ runId: "run_mfx3k2a1_01jd8q" }), runs);
+
+    await click(runButton(page));
+    await click(buttonNamed(page, "Start run"));
+
+    expect(page.querySelector("[role='status']")?.textContent).toContain(
+      "Run started. Waiting for it to show here…",
+    );
+    expect(page.querySelector("aside[aria-label='Run 01jd8q']")).toBeNull();
+    runs.change([runSummary({ status: "running", state: "draft" })]);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(page.querySelector("aside[aria-label='Run 01jd8q']")).not.toBeNull();
+    expect(page.textContent).not.toContain("Waiting for it to show here");
+  });
+
   it("says how a failed run ended and rings its step with Failed", async () => {
     const runs = memoryRuns([
       runSummary({

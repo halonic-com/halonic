@@ -142,3 +142,34 @@ export function StartRunCard({ start, notAnswering, onStarted, onClose }: StartR
     </aside>
   );
 }
+
+/**
+ * The card docked after **Start run**, until the run's first row reaches the Runs list: the run is
+ * started, but the page has nothing to show of it yet.
+ */
+export function WaitingForRunCard({ onClose }: { readonly onClose: () => void }) {
+  return (
+    <aside
+      aria-label={words.startRun}
+      onKeyDown={(event) => event.key === "Escape" && onClose()}
+      className="flex w-120 shrink-0 flex-col gap-4 overflow-auto border-s border-border bg-surface-raised p-6 shadow-2"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-caption text-fg-muted">{words.cardKind}</p>
+          <h2 className="text-title">{words.run}</h2>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<CloseIcon />}
+          label={words.closeCard}
+          onClick={onClose}
+        />
+      </div>
+      <p role="status" className="text-small text-fg-muted">
+        {words.waitingForRun}
+      </p>
+    </aside>
+  );
+}

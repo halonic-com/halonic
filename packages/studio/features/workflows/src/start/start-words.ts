@@ -7,6 +7,8 @@ export const startWords = {
   inputNotObject: "The input has to be a JSON object, such as {}.",
   startRun: "Start run",
   starting: "Starting…",
+  /** The docked card between Start run and the run's first row on the Runs list. */
+  waitingForRun: "Run started. Waiting for it to show here…",
   tryAgain: "Try again",
   /** D7 and C19: the reason follows the colon; the engine's own words end in a full stop already. */
   couldntStart: (reason: string) => `Couldn't start the run: ${reason}`,
