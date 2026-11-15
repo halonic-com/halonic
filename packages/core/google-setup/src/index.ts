@@ -68,6 +68,7 @@ export type {
   RefreshRefusalReason,
   SetupRecord,
   SetupValues,
+  SignInEnding,
 } from "./setup-record.ts";
 export { setupCollection } from "./setup-record.ts";
 export { SetupRecordError, type SetupRecordErrorReason } from "./setup-record-error.ts";

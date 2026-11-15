@@ -43,6 +43,7 @@ export function record(done: readonly string[], extra: Partial<SetupRecord> = {}
     signInStartedAt: null,
     lastSignInAt: null,
     wrongAccountAt: null,
+    lastSignInEnded: null,
     services: {},
     refreshRefused: null,
     ...extra,

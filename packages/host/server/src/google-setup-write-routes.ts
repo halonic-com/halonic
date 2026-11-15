@@ -10,6 +10,7 @@ import type { GoogleSetupPorts } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { readSetup } from "./google-read-setup.ts";
 import { refuseOtherSite } from "./secret-request.ts";
+import type { WrongAccountNotes } from "./wrong-account-notes.ts";
 
 /** The routes that start, change and remove a setup record. */
 export interface GoogleSetupWriteRoutes {
@@ -71,6 +72,15 @@ function readId(value: unknown): string | null {
     : null;
 }
 
+/** The project ID edit for a value: an ID, or `null` to clear it. */
+function readProjectIdEdit(projectId: unknown): SetupEdit | null {
+  if (projectId === null) {
+    return { kind: "project-id", projectId: null };
+  }
+  const valid = readId(projectId);
+  return valid === null ? null : { kind: "project-id", projectId: valid };
+}
+
 /**
  * The edit a body names, or `null`. Only the changes a person makes are
  * accepted. The ones the host itself records (sign-in, client secret,
@@ -82,14 +92,8 @@ function readEdit(fields: Fields): SetupEdit | null {
       return isAccountType(fields["accountType"])
         ? { kind: "account-type", accountType: fields["accountType"] }
         : null;
-    case "project-id": {
-      const projectId = fields["projectId"];
-      if (projectId === null) {
-        return { kind: "project-id", projectId: null };
-      }
-      const valid = readId(projectId);
-      return valid === null ? null : { kind: "project-id", projectId: valid };
-    }
+    case "project-id":
+      return readProjectIdEdit(fields["projectId"]);
     case "step-done":
     case "step-reopened":
       return isStepId(fields["step"]) ? { kind: fields["kind"], step: fields["step"] } : null;
@@ -97,6 +101,8 @@ function readEdit(fields: Fields): SetupEdit | null {
       return typeof fields["ticked"] === "boolean"
         ? { kind: "in-production", ticked: fields["ticked"] }
         : null;
+    case "address-changed":
+      return { kind: "address-changed" };
     case "client-id": {
       const clientId = readId(fields["clientId"]);
       return clientId === null ? null : { kind: "client-id", clientId };
@@ -109,8 +115,10 @@ function readEdit(fields: Fields): SetupEdit | null {
 /** The start, edit and start-over routes of the Google setup. */
 export function createGoogleSetupWriteRoutes({
   google,
+  wrongAccountNotes,
 }: {
   readonly google: GoogleSetupPorts;
+  readonly wrongAccountNotes: WrongAccountNotes;
 }): GoogleSetupWriteRoutes {
   const { setups } = google;
 
@@ -145,6 +153,15 @@ export function createGoogleSetupWriteRoutes({
     }
   }
 
+  /** Saves an edit, and forgets what the host keeps in memory that the edit makes untrue. */
+  async function applyEdit(accountRef: string, change: SetupEdit): Promise<void> {
+    await setups.update(accountRef, change);
+    if (change.kind === "address-changed") {
+      // The note holds the other account's address, which no longer applies.
+      wrongAccountNotes.clear(accountRef);
+    }
+  }
+
   /**
    * `PATCH /api/google/setups/<ref>` with one edit, see {@link readEdit}:
    * applies it and answers `{ updated: true }`. The record is checked before
@@ -164,7 +181,7 @@ export function createGoogleSetupWriteRoutes({
       return errorResponse(serverErrors.googleSetupNotFound);
     }
     try {
-      await setups.update(accountRef, change);
+      await applyEdit(accountRef, change);
       return Response.json({ updated: true });
     } catch (error) {
       if (error instanceof SetupRecordError && error.reason === "refused") {

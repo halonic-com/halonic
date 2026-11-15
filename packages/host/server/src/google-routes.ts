@@ -50,7 +50,7 @@ export function createGoogleRoutes({ google, clock }: GoogleRoutePorts): GoogleR
   const signInRoutes = createGoogleSignInRoutes({ google, wrongAccountNotes });
 
   const secretRoutes = createGoogleSecretRoutes({ google });
-  const writeRoutes = createGoogleSetupWriteRoutes({ google });
+  const writeRoutes = createGoogleSetupWriteRoutes({ google, wrongAccountNotes });
 
   /** `GET /api/google/setups/<ref>`: the progress and the steps. Nothing secret is in it, and not even the secret's ref. */
   async function show(accountRef: string): Promise<Response> {
@@ -78,6 +78,7 @@ export function createGoogleRoutes({ google, clock }: GoogleRoutePorts): GoogleR
       signInStartedAt: record.signInStartedAt,
       lastSignInAt: record.lastSignInAt,
       wrongAccountAt: record.wrongAccountAt,
+      lastSignInEnded: record.lastSignInEnded,
       services: record.services,
       problem: savedConnectorState(record),
       steps,

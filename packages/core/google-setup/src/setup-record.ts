@@ -153,6 +153,30 @@ const refreshRefused = s
   .default(null);
 
 /**
+ * How a sign-in ended without signing anyone in, in words Studio has a row
+ * for (step 7):
+ * - `cancelled`: the person cancelled at Google.
+ * - `secretRefused`: Google refused the client secret when the code was exchanged.
+ * - `adminBlocked`: the organisation's admin hasn't allowed the app.
+ */
+export const signInEndings = ["cancelled", "secretRefused", "adminBlocked"] as const;
+
+/** One of `signInEndings`. */
+export type SignInEnding = (typeof signInEndings)[number];
+
+/**
+ * How the last sign-in ended and when. It holds a fixed word and a time,
+ * never text from Google, so the record stays strict. A new sign-in, or a
+ * sign-in that ends in any other way, clears it.
+ */
+const lastSignInEnded = s
+  .object({ kind: s.enum(signInEndings), at: time })
+  .strict()
+  .nullable()
+  // Records written before HAL-10323 have no such key: they read as not ended this way.
+  .default(null);
+
+/**
  * The values of a setup record as stored. Every key is always there, `null`
  * when it isn't set yet, so an update can clear a value by writing `null`.
  *
@@ -195,6 +219,8 @@ const setupValues = s
      * minutes in memory only.
      */
     wrongAccountAt: time.nullable().default(null),
+    /** How the last sign-in ended when it was cancelled, refused or blocked, for step 7. */
+    lastSignInEnded,
     /** The last check after sign-in per ticked service, by service id. */
     services: s.record(s.string().regex(serviceIdPattern), serviceResult),
     /** The last refused token refresh, until a sign-in or an accepted secret clears it. */

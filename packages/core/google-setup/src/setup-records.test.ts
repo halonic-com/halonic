@@ -95,6 +95,7 @@ verifies("google-setup.setup-record", () => {
       signInStartedAt: null,
       lastSignInAt: null,
       wrongAccountAt: null,
+      lastSignInEnded: null,
       services: {},
       refreshRefused: null,
     });
@@ -207,6 +208,37 @@ verifies("google-setup.setup-record", () => {
     expect(signedIn.wrongAccountAt).toBeNull();
   });
 
+  it("keeps how a sign-in ended as a word and a time, until the next sign-in or a different ending", async () => {
+    const setups = newSetups();
+    const { accountRef } = await setups.start({ route, accountType: "personal", connector });
+    await setups.update(accountRef, { kind: "sign-in-started" });
+
+    const ended = await setups.update(accountRef, {
+      kind: "sign-in-ended",
+      ending: "adminBlocked",
+    });
+    expect(ended).toMatchObject({
+      signInStartedAt: null,
+      lastSignInEnded: { kind: "adminBlocked", at: "2026-01-01T00:00:02.000Z" },
+    });
+
+    const again = await setups.update(accountRef, { kind: "sign-in-started" });
+    expect(again.lastSignInEnded).toBeNull();
+    await setups.update(accountRef, { kind: "sign-in-ended", ending: "cancelled" });
+    const dropped = await setups.update(accountRef, { kind: "sign-in-dropped" });
+    expect(dropped.lastSignInEnded).toBeNull();
+  });
+
+  it("clears the wrong-account note when the connector's address changes", async () => {
+    const setups = newSetups();
+    const { accountRef } = await setups.start({ route, accountType: "personal", connector });
+    await setups.update(accountRef, { kind: "wrong-account" });
+
+    const changed = await setups.update(accountRef, { kind: "address-changed" });
+
+    expect(changed.wrongAccountAt).toBeNull();
+  });
+
   it("lists every record and reads an unknown account ref as null", async () => {
     const setups = newSetups();
     await setups.start({ route, accountType: "personal", connector });
@@ -238,6 +270,7 @@ verifies("google-setup.setup-record-holds-no-secret", () => {
       "connector",
       "inProductionTickedAt",
       "lastSignInAt",
+      "lastSignInEnded",
       "projectId",
       "refreshRefused",
       "route",

@@ -1,6 +1,6 @@
 import type { AccountType } from "./account-type.ts";
 import type { ServiceCheckOutcome } from "./check-result.ts";
-import type { SetupValues } from "./setup-record.ts";
+import type { SetupValues, SignInEnding } from "./setup-record.ts";
 import type { StepId } from "./setup-step.ts";
 
 /**
@@ -28,8 +28,12 @@ export type SetupEdit =
   | { readonly kind: "sign-in-started" }
   /** The sign-in was cancelled, timed out or failed: nothing is waiting any more. */
   | { readonly kind: "sign-in-dropped" }
+  /** The sign-in came back cancelled, with a refused client secret or blocked by the admin: nothing is waiting any more. */
+  | { readonly kind: "sign-in-ended"; readonly ending: SignInEnding }
   /** Google signed in another account than the connector's: nothing was saved and nothing is waiting any more. */
   | { readonly kind: "wrong-account" }
+  /** The connector's address was changed, so a wrong-account note about the old one no longer applies. */
+  | { readonly kind: "address-changed" }
   /** Google answered the sign-in. It clears a saved refresh refusal. */
   | { readonly kind: "signed-in" }
   /** The check after sign-in for one service (design 3.5, plan D5 rev. 5). */
@@ -70,11 +74,15 @@ export function editedValues(
     case "client-secret-saved":
       return { clientSecret: { clientRef: edit.clientRef, savedAt: now } };
     case "sign-in-started":
-      return { signInStartedAt: now, wrongAccountAt: null };
+      return { signInStartedAt: now, wrongAccountAt: null, lastSignInEnded: null };
     case "sign-in-dropped":
-      return { signInStartedAt: null };
+      return { signInStartedAt: null, lastSignInEnded: null };
+    case "sign-in-ended":
+      return { signInStartedAt: null, lastSignInEnded: { kind: edit.ending, at: now } };
     case "wrong-account":
-      return { signInStartedAt: null, wrongAccountAt: now };
+      return { signInStartedAt: null, wrongAccountAt: now, lastSignInEnded: null };
+    case "address-changed":
+      return { wrongAccountAt: null };
     case "signed-in":
       // A new refresh token, so a refused refresh no longer applies to this
       // account. Other accounts on the same client sign in themselves.
@@ -82,6 +90,7 @@ export function editedValues(
         signInStartedAt: null,
         lastSignInAt: now,
         wrongAccountAt: null,
+        lastSignInEnded: null,
         refreshRefused: null,
       };
     case "service-checked":
