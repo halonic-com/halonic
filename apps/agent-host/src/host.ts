@@ -111,23 +111,8 @@ export async function run(
     io.write(`halonic-agent-host ${version}\n`);
     return 0;
   }
-  if (args.includes("--sandbox-check")) {
-    return answer(io, await makeSandbox([], []).check());
-  }
-  if (args.includes("--sandbox-setup")) {
-    return answer(io, await makeSandbox([], []).setUp());
-  }
-  if (args.includes("--sandbox-remove")) {
-    return answer(io, await makeSandbox([], []).remove());
-  }
-  if (args.includes("--sandbox-cleanup")) {
-    const profileFolder = argumentAfter(args, "--profile-folder");
-    if (profileFolder === undefined) {
-      const missing = { ok: false, reason: "--sandbox-cleanup needs --profile-folder." };
-      return answer(io, missing);
-    }
-    return answer(io, await makeSandbox([], []).cleanUp(profileFolder));
-  }
+  const sandboxExit = sandboxCommand(args, io, makeSandbox);
+  if (sandboxExit !== undefined) return await sandboxExit;
   const given = sweepRoots(args);
   if ("error" in given) {
     io.writeError(given.error);
@@ -167,6 +152,36 @@ export async function run(
       io.writeError(`The host lock couldn't be released: ${String(error)}\n`);
     });
   }
+}
+
+/** Runs the `--sandbox-*` command in the arguments, or returns `undefined` when there is none. */
+function sandboxCommand(
+  args: readonly string[],
+  io: HostIo,
+  makeSandbox: (sweepRoots: readonly string[], sharedFolders: readonly string[]) => SrtSandbox,
+): Promise<number> | undefined {
+  const sandbox = () => makeSandbox([], []);
+  if (args.includes("--sandbox-check"))
+    return sandbox()
+      .check()
+      .then((result) => answer(io, result));
+  if (args.includes("--sandbox-setup"))
+    return sandbox()
+      .setUp()
+      .then((result) => answer(io, result));
+  if (args.includes("--sandbox-remove"))
+    return sandbox()
+      .remove()
+      .then((result) => answer(io, result));
+  if (!args.includes("--sandbox-cleanup")) return undefined;
+  const profileFolder = argumentAfter(args, "--profile-folder");
+  if (profileFolder === undefined) {
+    const missing = { ok: false, reason: "--sandbox-cleanup needs --profile-folder." };
+    return Promise.resolve(answer(io, missing));
+  }
+  return sandbox()
+    .cleanUp(profileFolder)
+    .then((result) => answer(io, result));
 }
 
 /**
