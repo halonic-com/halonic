@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import type { CloudflareApi } from "@halonicjs/target-cloudflare-deploy";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -87,7 +86,6 @@ verifies("cloudflare-live.adapters", () => {
     };
     expect(body.bindings.map((b) => b.name)).toEqual(["DB", "BLOBS", "DEFINITIONS"]);
     expect(body.secrets["HALONIC_TEST_RUNNER_TOKEN"]).toBe("r".repeat(64));
-    expect(createHash("sha256").update(script).digest("hex")).toHaveLength(64);
   });
 
   it("deletes the Worker, the buckets and the database at the end, once", async () => {
