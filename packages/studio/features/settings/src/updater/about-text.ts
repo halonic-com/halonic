@@ -29,9 +29,16 @@ export const AUTOMATIC_OFF_NOTE = "Automatic updates are off.";
 export const UPDATER_DIDNT_ANSWER = "Halonic's updater didn't answer.";
 export const LOADING_STATUS = "Loading update status";
 
-export const managedBy = (tool: string) => `Updates are managed by ${tool}.`;
-export const RUN_IN_TERMINAL = "To update, run this in a terminal:";
-export const copyCommandLabel = "Copy the update command";
+/** Mc 20.6: the Scoop block, the switch that takes the place of the automatic one, and its line. */
+export const MANAGED_HEADING = "Updates are managed by Scoop";
+export const MANAGED_SENTENCE =
+  "Scoop installs new versions of Halonic. Quit Halonic, then run this in a terminal:";
+export const NOTIFY = "Tell me when a new Halonic is out";
+export const NOTIFY_SENTENCE =
+  "Halonic checks once a day whether Scoop has a new version, and shows it here and in the status bar. The check sends nothing about you or your work.";
+export const checksOff = (when: string | null) =>
+  when === null ? CHECKS_OFF_NOTE : `${CHECKS_OFF_NOTE} Checked ${when}.`;
+const CHECKS_OFF_NOTE = "Checks for new versions are off.";
 export const isOut = (version: string, current: string) =>
   `Halonic ${version} is out. You have ${current}.`;
 

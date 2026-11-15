@@ -82,6 +82,11 @@ export class WorkspaceWorkflows implements WorkflowsHost {
           summary.hubId === file.hub &&
           summary.workflowId === file.value.id,
       );
+      const newest = own.reduce<RunSummary | undefined>(
+        (best, { summary }) =>
+          best === undefined || summary.startedAt > best.startedAt ? summary : best,
+        undefined,
+      );
       return [
         {
           hubId: file.hub,
@@ -96,6 +101,10 @@ export class WorkspaceWorkflows implements WorkflowsHost {
             waiting: own.filter(({ summary }) => summary.status === "waiting").length,
             running: own.filter(({ summary }) => summary.status === "running").length,
           },
+          lastRun:
+            newest === undefined
+              ? undefined
+              : { startedAt: newest.startedAt, outcome: newest.status },
         },
       ];
     });

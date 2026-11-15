@@ -88,3 +88,4 @@ export const RUN_HERE_TITLE = "Run new agents on this computer?";
 export const RUN_HERE_BODY =
   "New agents will have your access to files and the network, without the sandbox. Agents you already have keep their setting. This applies on this computer only.";
 export const RUN_HERE_CONFIRM = "Run new agents on this computer";
+export const NEW_AGENTS_NOT_LOADED = "Couldn't load where new agents run on this computer.";

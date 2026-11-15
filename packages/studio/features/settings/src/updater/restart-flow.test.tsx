@@ -74,6 +74,7 @@ function setup(
   const updater = fakeUpdater(first);
   const flow = createRestartFlow();
   const announce = vi.fn();
+  const openSettings = vi.fn();
   const services = new Map<string, unknown>([
     [UpdaterService.name, updater.host],
     [RestartFlowService.name, flow],
@@ -82,6 +83,7 @@ function setup(
   const context = {
     services: { find: (key: { name: string }) => services.get(key.name) },
     announcer: { announce },
+    openSettings,
   } as unknown as WorkspaceContext;
   const toasts = createToastStore();
   const openExternal = vi.fn(async () => {});
@@ -90,7 +92,7 @@ function setup(
       <OpenExternalProvider openExternal={openExternal}>{child}</OpenExternalProvider>
     </ToastStoreProvider>
   );
-  return { ...updater, flow, announce, context, toasts, openExternal, frame };
+  return { ...updater, flow, announce, openSettings, context, toasts, openExternal, frame };
 }
 
 async function mount(first: UpdateStatus, runs?: RestartRuns, count?: () => Promise<RestartRuns>) {
@@ -126,6 +128,36 @@ verifies("settings.restart-flow", () => {
     const managed = { by: "scoop", command: "scoop update halonic" } as const;
     const { view } = await mount(statusOf(ready, { managed }));
     expect(view.querySelector("button")).toBeNull();
+  });
+
+  it("under Scoop, shows the command in place of Restart to update only while a newer version is out", async () => {
+    const managed = { by: "scoop", command: "scoop update halonic" } as const;
+    const available = { kind: "available", version: "0.1.1", notesUrl: ready.notesUrl } as const;
+    const { view, set, announce, openSettings } = await mount(
+      statusOf({ kind: "up-to-date" }, { managed }),
+    );
+    expect(view.querySelector("button")).toBeNull();
+    set(statusOf(available, { managed }));
+    const item = view.querySelector("button");
+    expect(item?.textContent).toContain("Updates are managed by Scoop. Run scoop update halonic.");
+    expect(item?.textContent).toContain("Update with Scoop");
+    expect(item?.textContent).toContain(
+      "Halonic 0.1.1 is out. Updates are managed by Scoop. Run scoop update halonic.",
+    );
+    expect(item?.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    expect(announce).toHaveBeenCalledWith(
+      "Halonic 0.1.1 is out. Run scoop update halonic to update.",
+      "polite",
+    );
+    await click(item as HTMLElement);
+    expect(openSettings).toHaveBeenCalledWith("about");
+    for (const quiet of [
+      { kind: "never-checked" },
+      { kind: "cant-check", reason: "offline" },
+    ] as const) {
+      set(statusOf(quiet, { managed }));
+      expect(view.querySelector("button")).toBeNull();
+    }
   });
 
   it("restarts at once when no run would stop", async () => {

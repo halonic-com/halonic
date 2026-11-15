@@ -145,5 +145,7 @@ export const GoogleSetupAccountsService: ServiceKey<GoogleSetupAccounts> =
 export const GoogleSetupSourceService: ServiceKey<InboxSetupSource> =
   serviceKey<InboxSetupSource>("google-setup.source");
 
+/** What an account's setup record says in the library's terms, for the library's status view. */
+export { connectorFacts } from "./connector-facts.ts";
 /** The connector page's Google block, for the page that mounts it. */
 export { GoogleConnectorBlock, type GoogleConnectorBlockProps } from "./ui/connector-block.tsx";

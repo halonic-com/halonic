@@ -45,7 +45,7 @@ verifies("settings.agent-sandbox-state", () => {
       "part of it is missing or out of date: its firewall filters are missing.",
     );
     expect(v.primary?.label).toBe("Repair the sandbox");
-    expect(v.secondary).toEqual(["remove"]);
+    expect(v.secondary).toEqual(["check-again", "remove"]);
   });
 
   it("says when it can't check, and offers Check again only", () => {
@@ -79,9 +79,13 @@ verifies("settings.agent-sandbox-state", () => {
     expect(v.secondary).toEqual(["check-again"]);
   });
 
+  it("offers Check again in Needs setting up", () => {
+    expect(view({}).secondary).toEqual(["check-again"]);
+  });
+
   it("shows Not available and no button when the build has no sandbox", () => {
     const v = view({ available: false });
-    expect(v.chip?.label).toBe("Not available");
+    expect(v.chip).toEqual({ label: "Not available", tone: "attention" });
     expect(v.primary).toBeNull();
     expect(v.secondary).toEqual([]);
   });
