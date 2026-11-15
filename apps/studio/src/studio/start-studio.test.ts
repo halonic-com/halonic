@@ -45,6 +45,10 @@ function desktopMediaQueries(query: string): MediaQueryList {
 const tabsSelector = '[role="tablist"][aria-label="Open tabs"]';
 const headingSelector = "main h1";
 
+const title = (el: Element) => el.querySelector("h1")?.textContent;
+const headingShown = (el: Element) =>
+  waitUntil("the Studio heading", () => title(el) === "Halonic Studio");
+
 /**
  * Waits until React has drawn the window's tabs and heading. React draws on its own schedule,
  * so a fixed wait is too short when CI is busy; this polls until both are there instead. The
@@ -273,10 +277,7 @@ verifies("studio.open-folder", () => {
       userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
       storage,
     });
-    await waitUntil(
-      `element.querySelector("h1")?.textContent to be "Halonic Studio"`,
-      () => element.querySelector("h1")?.textContent === "Halonic Studio",
-    );
+    await headingShown(element);
     expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio");
     expect(started.host).toBe("desktop-app");
 
@@ -301,10 +302,7 @@ verifies("studio.open-folder", () => {
       userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
       storage,
     });
-    await waitUntil(
-      `element.querySelector("h1")?.textContent to be "Halonic Studio"`,
-      () => element.querySelector("h1")?.textContent === "Halonic Studio",
-    );
+    await headingShown(element);
     expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio");
 
     const row = [...element.querySelectorAll("button")].find((button) =>
@@ -423,13 +421,9 @@ verifies("studio.settings", () => {
         },
         desktopFeatures,
       );
-      await waitUntil(
-        `element.querySelector("button") not to be null`,
-        () => element.querySelector("button") !== null,
-        {
-          timeout: settingsWait,
-        },
-      );
+      await waitUntil("a button", () => element.querySelector("button") !== null, {
+        timeout: settingsWait,
+      });
       expect(element.querySelector("button")).not.toBeNull();
       element.querySelector("button")?.click();
       await drawn(element);

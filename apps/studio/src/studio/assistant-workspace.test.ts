@@ -74,7 +74,7 @@ verifies("settings.ai-agent-key-line", () => {
     expect(heard).not.toHaveBeenCalled();
     await writeFile(join(folder, "workspace.yaml"), workspaceYaml("privacy:\n  localOnly: true\n"));
     changed();
-    await waitUntil("heard to be called 1 times", () => heard.mock.calls.length === 1);
+    await waitUntil("heard to be called once", () => heard.mock.calls.length === 1);
     expect(heard).toHaveBeenCalledTimes(1);
     expect(assistant.current()?.localOnly).toBe(true);
     assistant.dispose();

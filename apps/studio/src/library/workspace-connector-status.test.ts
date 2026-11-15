@@ -208,7 +208,7 @@ verifies("studio.workspace-connector-status", () => {
 
     stop();
     expect(stopFocus).toHaveBeenCalledTimes(1);
-    await waitUntil("closed to be called 1 times", () => closed.mock.calls.length === 1);
+    await waitUntil("closed to be called once", () => closed.mock.calls.length === 1);
     expect(closed).toHaveBeenCalledTimes(1);
   });
 

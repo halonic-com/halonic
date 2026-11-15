@@ -270,7 +270,7 @@ verifies("studio.workspace-google-setup-accounts", () => {
       });
       expect(heard).toHaveBeenCalledTimes(1);
       stop();
-      await waitUntil("heard to be called 1 times", () => heard.mock.calls.length === 1);
+      await waitUntil("heard to be called once", () => heard.mock.calls.length === 1);
       expect(heard).toHaveBeenCalledTimes(1);
       definitions.changeOutside({
         "library/connectors/mail.connector.yaml": connector("mail", "sam@acme.example"),
