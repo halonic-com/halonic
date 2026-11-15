@@ -167,12 +167,22 @@ function firstLine(text: string): string {
   );
 }
 
-/** Why a git call failed, as a sentence: git's message, or what it says when it knows nobody. */
+/** Why a version couldn't be created, as one plain sentence: git's own output is never shown. */
 function gitReason(answer: GitAnswer): string {
-  if (/tell me who you are|empty ident name/i.test(answer.stderr)) {
+  const said = `${answer.stderr}\n${answer.stdout}`;
+  if (/tell me who you are|empty ident name|author identity unknown/i.test(said)) {
     return "Git doesn't know who versions should be from. Set your name and email in git, then try again.";
   }
-  return firstLine(answer.stderr) || firstLine(answer.stdout);
+  if (/nothing (added )?to commit|no changes added/i.test(said)) {
+    return "There is nothing to record: these changes are already in a version.";
+  }
+  if (/index\.lock|another git process/i.test(said)) {
+    return "Another program is using this workspace's history right now. Wait a moment, then try again.";
+  }
+  if (/hook|permission denied|operation not permitted|read-only/i.test(said)) {
+    return "Git refused to record the version. A check on this workspace or a permission stopped it.";
+  }
+  return "Git didn't accept the version.";
 }
 
 /** Whether the shell refused because it found no git program (`GitRefusal.kind`). */

@@ -107,6 +107,10 @@ verifies("source-control.create-version", () => {
       const [was, is] = first?.querySelectorAll("pre") ?? [];
       expect(was?.textContent).toBe("Sort mail.");
       expect(is?.textContent).toBe("Sort all mail.");
+      // The part's name is visible over its pair, not only spoken.
+      const label = first?.querySelector("span.text-label:not(.text-fg-muted)");
+      expect(label?.textContent).toBe("Instructions");
+      expect(first?.querySelector(".sr-only")).toBeNull();
     });
 
     it("opens with one item when a screen asks for it", async () => {

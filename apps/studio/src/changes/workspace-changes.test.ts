@@ -286,7 +286,7 @@ verifies("source-control.create-version", () => {
       expect(calls[2]?.slice(-3)).toEqual(["old.md", "renamed.md", "new.md"]);
     });
 
-    it("doesn't commit when adding failed, and gives git's first line", async () => {
+    it("doesn't commit when adding failed, and says another program has the history", async () => {
       const calls: string[] = [];
       const { changes } = history(async (args) => {
         calls.push(args[0] ?? "");
@@ -295,17 +295,39 @@ verifies("source-control.create-version", () => {
           : answer("", 128, "fatal: Unable to create index.lock\nsecond line");
       });
       await expect(changes.createVersion({ message: "x", paths: ["a.md"] })).rejects.toThrow(
-        "fatal: Unable to create index.lock",
+        "Another program is using this workspace's history right now.",
       );
       expect(calls).toEqual(["ls-files", "add"]);
     });
 
-    it("says what git said on stdout when a commit fails without a message on stderr", async () => {
+    it("says there is nothing to record when git has nothing to commit", async () => {
       const { changes } = history(async (args) =>
         args[0] === "commit" ? answer("nothing to commit, working tree clean", 1) : answer(""),
       );
       await expect(changes.createVersion({ message: "x", paths: ["a.md"] })).rejects.toThrow(
-        "nothing to commit, working tree clean",
+        "There is nothing to record",
+      );
+    });
+
+    it("says that a hook or permission stopped it, and never shows git's own words", async () => {
+      const { changes } = history(async (args) =>
+        args[0] === "commit"
+          ? answer("", 1, "error: pre-commit hook failed\nsecret detail")
+          : answer(""),
+      );
+      const failure = changes.createVersion({ message: "x", paths: ["a.md"] });
+      await expect(failure).rejects.toThrow(
+        "A check on this workspace or a permission stopped it.",
+      );
+      await expect(failure).rejects.not.toThrow("secret detail");
+    });
+
+    it("falls back to a plain sentence for anything else", async () => {
+      const { changes } = history(async (args) =>
+        args[0] === "commit" ? answer("", 1, "fatal: weird thing") : answer(""),
+      );
+      await expect(changes.createVersion({ message: "x", paths: ["a.md"] })).rejects.toThrow(
+        "Git didn't accept the version.",
       );
     });
 

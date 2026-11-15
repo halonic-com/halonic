@@ -52,38 +52,28 @@ function ImportantChange({
       {file.texts === undefined
         ? null
         : line.parts.map((part) => (
-            <div key={part.join("/")} className="grid grid-cols-2 gap-2">
-              <Value
-                title={versionWords.before}
-                part={part.join(" › ")}
-                value={partValueIn(file.texts?.before ?? null, part)}
-              />
-              <Value
-                title={versionWords.after}
-                part={part.join(" › ")}
-                value={partValueIn(file.texts?.after ?? null, part)}
-              />
+            <div key={part.join("/")} className="flex flex-col gap-1">
+              <span className="text-label">{partName(part)}</span>
+              <div className="grid grid-cols-2 gap-2">
+                <Value
+                  title={versionWords.before}
+                  value={partValueIn(file.texts?.before ?? null, part)}
+                />
+                <Value
+                  title={versionWords.after}
+                  value={partValueIn(file.texts?.after ?? null, part)}
+                />
+              </div>
             </div>
           ))}
     </div>
   );
 }
 
-function Value({
-  title,
-  part,
-  value,
-}: {
-  readonly title: string;
-  readonly part: string;
-  readonly value: PartValue;
-}) {
+function Value({ title, value }: { readonly title: string; readonly value: PartValue }) {
   return (
     <div className="flex min-w-0 flex-col">
-      <span className="text-small text-fg-muted">
-        {title}
-        <span className="sr-only">: {part}</span>
-      </span>
+      <span className="text-small text-fg-muted">{title}</span>
       <pre className="text-small whitespace-pre-wrap break-words">
         {value.found ? shown(value.value) : versionWords.notSet}
       </pre>
@@ -94,4 +84,10 @@ function Value({
 /** A value as the person would write it: text as it is, anything else as indented JSON. */
 function shown(value: unknown): string {
   return typeof value === "string" ? value : JSON.stringify(value, null, 2);
+}
+
+/** A part's name over its before and after: its path, the first letter capital. */
+function partName(part: readonly string[]): string {
+  const name = part.join(" › ");
+  return name.charAt(0).toUpperCase() + name.slice(1);
 }
