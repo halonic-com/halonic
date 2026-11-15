@@ -78,7 +78,8 @@ verifies("google-setup.google-error-list", () => {
   it("opens step 6 from the invalid_client row", async () => {
     const { container } = await waiting(signedOut());
     await press(button(container, "Open step 6"));
-    expect(container.textContent).toContain("Client ID");
+    expect(container.textContent).toContain("Closed Google's window before copying the secret?");
+    expect(() => summary(container)).toThrow();
     expect(() => button(container, "Open again")).toThrow();
   });
 
@@ -89,5 +90,7 @@ verifies("google-setup.google-error-list", () => {
       accountRef: "gaccount_1",
       edit: { kind: "in-production", ticked: false },
     });
+    expect(container.textContent).toContain('The status says "In production"');
+    expect(() => button(container, "Open again")).toThrow();
   });
 });

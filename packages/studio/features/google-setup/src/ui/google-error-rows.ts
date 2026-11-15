@@ -1,6 +1,6 @@
 import type { AccountType, StepId } from "@halonicjs/google-setup";
 
-/** What a row's button does. Each one opens a step, and `publish` first clears the "In production" tick. */
+/** What a row's button does: open a step, open step 3 after clearing the "In production" tick, or copy the note for the admin. */
 export type ErrorAction =
   | { readonly kind: "open-step"; readonly step: StepId; readonly label: string }
   | { readonly kind: "reopen-consent"; readonly label: string }

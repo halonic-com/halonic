@@ -1,6 +1,7 @@
 import type { ExternalAddress } from "@halonicjs/studio-kit";
 import { OpenExternalProvider } from "@halonicjs/studio-kit";
 import { act } from "react";
+import { vi } from "vitest";
 import { account, fakeAccounts, record } from "./accounts.test-helper.ts";
 import type { GoogleSetupAccount } from "./api.ts";
 import { render } from "./test-support/render.tsx";
@@ -25,9 +26,8 @@ export const ready = {
 };
 
 export async function settle(): Promise<void> {
-  // Only `setTimeout` is faked, so a microtask is the way to let the view's promises settle.
   await act(async () => {
-    for (let turn = 0; turn < 5; turn++) await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(0);
   });
 }
 

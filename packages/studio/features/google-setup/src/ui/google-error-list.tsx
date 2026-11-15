@@ -22,12 +22,17 @@ export interface GoogleErrorListProps {
  */
 export function GoogleErrorList(props: GoogleErrorListProps) {
   const { accountType, email } = props;
-  function run(action: ErrorAction) {
-    if (action.kind === "open-step") {
-      props.onOpenStep(action.step);
-    } else if (action.kind === "reopen-consent") {
-      props.onClearInProduction();
-      props.onOpenStep("consent");
+  function run(action: Exclude<ErrorAction, { kind: "copy-note" }>) {
+    switch (action.kind) {
+      case "open-step":
+        props.onOpenStep(action.step);
+        return;
+      case "reopen-consent":
+        props.onClearInProduction();
+        props.onOpenStep("consent");
+        return;
+      default:
+        action satisfies never;
     }
   }
   return (
