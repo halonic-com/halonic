@@ -38,6 +38,7 @@ verifies("settings.ai-agent-connection", () => {
     await change(control(view, "select"), "anthropic");
     expect(row(view)?.open).toBe(false);
     expect(row(view)?.textContent).toContain("How it connects");
+    expect(row(view)?.textContent).toContain("Which provider the assistant talks to");
   });
 
   it("opens the row with the focus in Base URL when OpenAI-compatible is picked", async () => {
