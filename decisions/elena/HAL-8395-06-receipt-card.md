@@ -3,6 +3,7 @@
 - Task: HAL-8395 (T8 PR 6)
 - Approval: Liam, in the review on HAL-10361 (/HAL/issues/HAL-10361)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:tmLeInD6d/BtqIbpE81Nvas/CMrUkZxFE+XxFOFIG74c6eSQxKVxe/k2FnF869xhK/FxkWARlT0BbHZewEyeBg==
 
 ## What changes
 
