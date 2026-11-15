@@ -1,0 +1,19 @@
+# harness-kit.instruction-snapshot
+
+- Status: active
+- Since: 0.1.0
+- Source: HAL-3106, migration plan step 2
+
+The harness kit shall copy a run's instructions (the agent's `AGENTS.md` and its selected skills) into the run's own folder, each file read-only and never over an existing file. It shall pin them by content: one SHA-256 digest per file and one for the whole set, the same for the same files in any order. The pin shall be taken from the text that is written. A name that isn't a plain relative name with `/`, or that is given twice, shall be refused before anything is written. A person shall be asked again when there is no trusted pin or the set's digest differs, and the answer shall name the files added, removed and changed. The pin shall have a one-line form for the run log.
+
+## Examples
+
+- Given the same two files in a different order,
+  when each set is pinned,
+  then both pins have the same digest.
+- Given a trusted pin and a skill whose text has changed,
+  when the trust is checked,
+  then the answer is to ask, and names that skill as changed.
+- Given a name such as `../outside`,
+  when the instructions are copied,
+  then nothing is written and the error names the file.

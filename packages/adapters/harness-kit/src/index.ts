@@ -14,6 +14,18 @@ export {
   type WindowsUserFolders,
   windowsInstallReadPaths,
 } from "./install-folders.ts";
+export {
+  copyInstructions,
+  describeInstructionPin,
+  type InstructionChanges,
+  type InstructionDisk,
+  type InstructionFile,
+  type InstructionPin,
+  type InstructionTrust,
+  instructionDiskOnThisComputer,
+  instructionTrust,
+  pinInstructions,
+} from "./instruction-snapshot.ts";
 export { outputTail } from "./output-tail.ts";
 export {
   bwrapCheckArgs,
