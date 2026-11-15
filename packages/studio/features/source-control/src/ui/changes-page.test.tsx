@@ -25,7 +25,7 @@ async function openPage(fake: ReturnType<typeof fakeSource>) {
 
 function button(root: HTMLElement, name: string): HTMLElement {
   const found = [...root.querySelectorAll<HTMLElement>("button")].find(
-    (element) => element.textContent?.trim() === name,
+    (element) => element.textContent?.trim().startsWith(name) === true,
   );
   if (found === undefined) throw new Error(`no button "${name}"`);
   return found;
@@ -123,7 +123,8 @@ verifies("source-control.changes-page", () => {
       const fake = fakeSource({ kind: "ready", changes: [] });
       fake.failReads(new KindedError("unavailable", "fatal: detected dubious ownership"));
       const { root } = await openPage(fake);
-      expect(root.textContent).toContain("fatal: detected dubious ownership");
+      expect(root.textContent).toContain("Detected dubious ownership.");
+      expect(root.textContent).not.toContain("fatal:");
       expect(root.textContent).not.toContain("Git didn't answer");
     });
 
@@ -142,13 +143,71 @@ verifies("source-control.changes-page", () => {
       );
     });
 
-    it("keeps the page when a later read fails", async () => {
+    it("keeps the page and says Couldn't load changes with Try again when a later read fails", async () => {
       const fake = fakeSource({ kind: "ready", changes: [] });
       const { root, list } = await openPage(fake);
-      fake.failReads(new Error("git died"));
+      fake.failReads(new KindedError("unavailable", "error: not a git repository"));
       await act(() => list.refresh());
       expect(root.textContent).toContain("Nothing has changed since your last version.");
+      expect(root.textContent).toContain("Couldn't load changes");
+      expect(root.textContent).toContain("Not a git repository.");
+
+      fake.failReads(undefined);
+      await act(async () => {
+        button(root, "Try again").click();
+        await settle();
+      });
       expect(root.textContent).not.toContain("Couldn't load changes");
+      expect(root.textContent).toContain("Nothing has changed since your last version.");
+    });
+
+    it("says Checking… while Check again reads, and Still can't find git when git is still missing", async () => {
+      const fake = fakeSource({ kind: "no-git" });
+      let release: () => void = () => {};
+      const { root } = await openPage({
+        ...fake,
+        source: {
+          ...fake.source,
+          read: async () => {
+            await new Promise<void>((resolve) => {
+              release = resolve;
+            });
+            return { kind: "no-git" };
+          },
+        },
+      });
+      await act(async () => release());
+      const check = button(root, "Check again");
+      await act(async () => check.click());
+      expect(check.getAttribute("aria-busy")).toBe("true");
+      expect(check.textContent).toContain("Checking…");
+      await act(async () => release());
+      expect(check.getAttribute("aria-busy")).not.toBe("true");
+      expect(root.querySelector('[role="status"]')?.textContent).toBe("Still can't find git.");
+    });
+
+    it("says Turning on history… while it works, then focuses the heading", async () => {
+      const fake = fakeSource({ kind: "not-a-repository" });
+      const { root } = await openPage(fake);
+      const turnOn = button(root, "Turn on history");
+      await act(async () => {
+        turnOn.click();
+      });
+      expect(turnOn.textContent).toContain("Turning on history…");
+      await act(settle);
+      expect(document.activeElement).toBe(root.querySelector("h1"));
+    });
+
+    it("says the folder is part of a larger repository, without Try again", async () => {
+      const { root } = await openPage(fakeSource({ kind: "nested-repository" }));
+      expect(root.textContent).toContain("Couldn't load changes");
+      expect(root.textContent).toContain("This folder is part of a larger git repository.");
+      expect(root.querySelector("button")).toBeNull();
+    });
+
+    it("lets the heading take focus from code", async () => {
+      const { root } = await openPage(fakeSource({ kind: "ready", changes: [] }));
+      expect(root.querySelector("h1")?.getAttribute("tabindex")).toBe("-1");
     });
   });
 });

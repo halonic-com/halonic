@@ -16,6 +16,8 @@ export interface EmptyStateAction {
   readonly onClick: () => void;
   /** While its request runs, such as Try again while the list loads again. */
   readonly busy?: boolean;
+  /** The label while `busy`: "Checking…". The button keeps the width of the wider label. */
+  readonly busyLabel?: string;
 }
 
 interface EmptyStateBase {
@@ -193,7 +195,13 @@ function actionButton(
     return null;
   }
   return (
-    <Button variant={variant} size={size} busy={action.busy === true} onClick={action.onClick}>
+    <Button
+      variant={variant}
+      size={size}
+      busy={action.busy === true}
+      busyLabel={action.busyLabel}
+      onClick={action.onClick}
+    >
       {action.label}
     </Button>
   );
