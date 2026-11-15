@@ -9,7 +9,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act, type ReactNode, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { account, atlas, desktopEntry, ledger, record } from "../accounts.test-helper.ts";
-import type { DisconnectAnswer, GoogleSetupAccount } from "../api.ts";
+import type { DisconnectAnswer, GoogleSetupAccount, SecretEntry } from "../api.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { GoogleConnectorBlock } from "./connector-block.tsx";
@@ -43,6 +43,18 @@ function button(container: HTMLElement, name: string): HTMLButtonElement {
   return found;
 }
 
+/**
+ * A button in the open question, found by its text. The confirm button also holds its busy label,
+ * so the text only has to start with the name.
+ */
+function questionButton(container: HTMLElement, name: string): HTMLButtonElement {
+  const found = [...(dialog(container)?.querySelectorAll("button") ?? [])].find((b) =>
+    b.textContent?.startsWith(name),
+  );
+  if (found === undefined) throw new Error(`No button "${name}" in the question`);
+  return found;
+}
+
 async function press(element: HTMLElement): Promise<void> {
   await act(async () => element.click());
   await settled();
@@ -57,6 +69,7 @@ function Page(props: {
   readonly initial: GoogleSetupAccount;
   readonly answer: () => Promise<DisconnectAnswer>;
   readonly answering?: boolean;
+  readonly entry?: SecretEntry;
   readonly open: (ref: string) => void;
   readonly children?: ReactNode;
 }) {
@@ -64,7 +77,7 @@ function Page(props: {
   return (
     <GoogleConnectorBlock
       account={current}
-      secretEntry={desktopEntry}
+      secretEntry={props.entry ?? desktopEntry}
       answering={props.answering ?? true}
       onOpenSetup={props.open}
       onDisconnect={async () => {
@@ -81,6 +94,7 @@ async function show(
   options: {
     answer?: () => Promise<DisconnectAnswer>;
     answering?: boolean;
+    entry?: SecretEntry;
     phone?: boolean;
   } = {},
 ) {
@@ -93,6 +107,7 @@ async function show(
         initial={initial}
         answer={answer}
         {...(options.answering === undefined ? {} : { answering: options.answering })}
+        {...(options.entry === undefined ? {} : { entry: options.entry })}
         open={open}
       />
     </ToastStoreProvider>
@@ -128,6 +143,16 @@ verifies("google-setup.connector-block", () => {
     expect(text).toContain("LedgerAtlas");
     expect(container.querySelector("a")?.getAttribute("href")).toContain("project=halonic-x");
     expect(container.querySelector('[aria-label="Copy the client ID"]')).not.toBeNull();
+  });
+
+  it("names the computer that runs Halonic when the secret is kept there", async () => {
+    const { container } = await show(account(signedIn), {
+      entry: { kind: "field", keptOn: "host-computer", plainHttp: false },
+    });
+    const text = container.textContent ?? "";
+    expect(text).toContain("Your own Google app, on the computer that runs Halonic");
+    expect(text).toContain("Kept encrypted on the computer that runs Halonic.");
+    expect(text).not.toContain("on this computer");
   });
 
   it("opens the setup item from Sign in again and Replace secret", async () => {
@@ -175,10 +200,7 @@ verifies("google-setup.connector-block", () => {
     const trigger = button(container, "Disconnect Google…");
     trigger.focus();
     await press(trigger);
-    const cancel = [...(dialog(container)?.querySelectorAll("button") ?? [])].find(
-      (b) => b.textContent === "Cancel",
-    );
-    await press(cancel as HTMLElement);
+    await press(questionButton(container, "Cancel"));
     expect(dialog(container)).toBeNull();
     expect(answer).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(trigger);
@@ -187,7 +209,7 @@ verifies("google-setup.connector-block", () => {
   it("disconnects, toasts, and puts focus on Set up", async () => {
     const { container, toasts, answer } = await show(account(signedIn));
     await press(button(container, "Disconnect Google…"));
-    await press(dialog(container)?.querySelector<HTMLElement>("button[id]") as HTMLElement);
+    await press(questionButton(container, "Disconnect"));
     expect(answer).toHaveBeenCalledOnce();
     expect(dialog(container)).toBeNull();
     expect(toasts.list().map(({ tone, title }) => ({ tone, title }))).toEqual([
@@ -201,7 +223,7 @@ verifies("google-setup.connector-block", () => {
       answer: async () => ({ kind: "google-unreachable" }),
     });
     await press(button(container, "Disconnect Google…"));
-    await press(dialog(container)?.querySelector<HTMLElement>("button[id]") as HTMLElement);
+    await press(questionButton(container, "Disconnect"));
     const [toast] = toasts.list();
     expect(toast?.tone).toBe("warning");
     expect(toast?.text).toBe(
@@ -217,7 +239,7 @@ verifies("google-setup.connector-block", () => {
       },
     });
     await press(button(container, "Disconnect Google…"));
-    await press(dialog(container)?.querySelector<HTMLElement>("button[id]") as HTMLElement);
+    await press(questionButton(container, "Disconnect"));
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
     });
@@ -225,6 +247,23 @@ verifies("google-setup.connector-block", () => {
       "Couldn't disconnect: the engine isn't answering.",
     );
     expect(toasts.list()).toEqual([]);
+  });
+
+  it("doesn't bring an old error back when you cancel and ask again", async () => {
+    const { container } = await show(account(signedIn), {
+      answer: async () => {
+        throw new Error("The engine isn't answering.");
+      },
+    });
+    await press(button(container, "Disconnect Google…"));
+    await press(questionButton(container, "Disconnect"));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(dialog(container)?.textContent).toContain("Couldn't disconnect");
+    await press(questionButton(container, "Cancel"));
+    await press(button(container, "Disconnect Google…"));
+    expect(dialog(container)?.textContent).not.toContain("Couldn't disconnect");
   });
 
   it("makes Disconnect unavailable, with its reason, while the engine isn't answering", async () => {

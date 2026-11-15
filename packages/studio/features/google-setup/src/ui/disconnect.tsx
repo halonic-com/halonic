@@ -89,7 +89,10 @@ export function Disconnect(props: DisconnectProps) {
         ref={link}
         variant="ghost"
         unavailable={answering ? undefined : { reason }}
-        onClick={() => setAsking(true)}
+        onClick={() => {
+          setFailed(undefined);
+          setAsking(true);
+        }}
       >
         Disconnect Google…
       </Button>
@@ -105,7 +108,10 @@ export function Disconnect(props: DisconnectProps) {
           busy={busy}
           error={failed ?? ""}
           onConfirm={() => void confirm()}
-          onCancel={() => setAsking(false)}
+          onCancel={() => {
+            setFailed(undefined);
+            setAsking(false);
+          }}
           returnFocus={() => link.current}
         >
           <p>{body}</p>

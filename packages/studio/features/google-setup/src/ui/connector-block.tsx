@@ -7,13 +7,13 @@ import {
   usePresentation,
   ViewOnlyLine,
 } from "@halonicjs/studio-kit";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { accountSteps } from "../account-steps.ts";
 import type { DisconnectAnswer, GoogleSetupAccount, SecretEntry } from "../api.ts";
 import { connectorFacts } from "../connector-facts.ts";
 import { accountTypeNames, listNames } from "./account-labels.ts";
 import { Disconnect } from "./disconnect.tsx";
-import { keptLine, savedOn } from "./secret-words.ts";
+import { type KeptOn, keptLine, routeLine, savedOn } from "./secret-words.ts";
 
 /** Props for {@link GoogleConnectorBlock}. */
 export interface GoogleConnectorBlockProps {
@@ -38,7 +38,7 @@ function Row({ label, children }: { readonly label: string; readonly children: R
 
 interface BlockRowsProps {
   readonly account: GoogleSetupAccount;
-  readonly keptOn: "this-computer" | "host-computer";
+  readonly keptOn: KeptOn;
   readonly phone: boolean;
   /** The client's page in Google Cloud, when the project is known. */
   readonly clientsUrl: string | undefined;
@@ -63,7 +63,7 @@ function BlockRows({ account, keptOn, phone, clientsUrl, onOpenSetup }: BlockRow
           </Button>
         )}
       </Row>
-      <Row label="Route">Your own Google app, on this computer</Row>
+      <Row label="Route">{routeLine(keptOn)}</Row>
       <Row label="Account type">{accountTypeNames[record.accountType]}</Row>
       {record.projectId === null ? null : (
         <Row label="Google project">
@@ -112,6 +112,7 @@ function BlockRows({ account, keptOn, phone, clientsUrl, onOpenSetup }: BlockRow
 export function GoogleConnectorBlock(props: GoogleConnectorBlockProps) {
   const { account, secretEntry, answering, onOpenSetup, onDisconnect } = props;
   const phone = usePresentation() === "phone";
+  const titleId = useId();
   const { record } = account;
   const ref = record.accountRef;
   const state = connectionStateTable[connectionStateOf(connectorFacts(account))];
@@ -134,8 +135,8 @@ export function GoogleConnectorBlock(props: GoogleConnectorBlockProps) {
 
   if (!setUp) {
     return (
-      <section aria-labelledby="google-block-title" className="flex flex-col gap-3">
-        <h2 id="google-block-title" className="text-heading">
+      <section aria-labelledby={titleId} className="flex flex-col gap-3">
+        <h2 id={titleId} className="text-heading">
           Google account
         </h2>
         <p className="text-body text-fg-muted">{account.email} isn't signed in to Google yet.</p>
@@ -152,9 +153,9 @@ export function GoogleConnectorBlock(props: GoogleConnectorBlockProps) {
     );
   }
   return (
-    <section aria-labelledby="google-block-title" className="flex flex-col gap-3">
+    <section aria-labelledby={titleId} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 id="google-block-title" className="text-heading">
+        <h2 id={titleId} className="text-heading">
           Google account
         </h2>
         <StatusChip tone={state.tone} dot>
