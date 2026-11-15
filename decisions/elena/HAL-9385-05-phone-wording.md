@@ -11,7 +11,7 @@
 
 - On the phone's Settings page, the line under Appearance and Formats reads "Saved on this phone. Your computer keeps its own." instead of "…The computer running Halonic keeps its own." A browser window still reads "Saved in this browser. …".
 - The view-only Assistant reads "View only on a phone. Change the assistant on your computer." on the phone's page; elsewhere it keeps "View only here. Change the assistant on the computer running Halonic."
-- The view-only Assistant now also shows "Not set up. Assistant chats use each workspace's model aliases." while no provider is set, and the local-only warning when the open workspace is local only and the model isn't local. The editable view already did both.
+- The view-only Assistant now also shows "Not set up. Assistant chats use each workspace's model aliases." while no provider is set, as the editable view does. The local-only warning HAL-9856 added to it stays, now under that line, and the requirement names it.
 
 Tests changed: none weakened. New tests cover the phone saved line, the phone view-only line, the Not set up line and the warning (with and without Local on). Examples were added to both requirements; none removed.
 

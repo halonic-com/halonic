@@ -252,7 +252,9 @@ function ViewOnlyNotes(props: {
       <ViewOnlyLine>
         {surface === "phone" ? text.VIEW_ONLY_PHONE_LINE : text.VIEW_ONLY_LINE}
       </ViewOnlyLine>
-      {provider === "not-set-up" ? <p className="text-small text-fg-muted">{text.NOT_SET_UP_LINE}</p> : null}
+      {provider === "not-set-up" ? (
+        <p className="text-small text-fg-muted">{text.NOT_SET_UP_LINE}</p>
+      ) : null}
       <LocalOnlyWarning open={open} provider={provider} local={local} />
     </>
   );
