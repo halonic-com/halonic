@@ -71,6 +71,8 @@ export const CACHE_PRICES_NOTE =
 export const ALIAS_GONE_LINE = "This model alias isn't in this workspace any more.";
 export const ZERO_PRICE_WARNING =
   "A price of 0 means these calls look free in your estimated spend.";
+/** The message under a price field that isn't an amount. */
+export const AMOUNT_MESSAGE = "Enter an amount, like you'd write it on a receipt.";
 export const GO_TO_MODELS = "Go to Models";
 export const STILL_LOADING_LINE = "Still loading";
 export const ALIAS_UNREADABLE_TITLE = "Couldn't load this model alias";

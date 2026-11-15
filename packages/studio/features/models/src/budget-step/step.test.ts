@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { AMOUNT_MESSAGE } from "../aliases/alias-text.ts";
 import { becamePayPerUse, stepToAsk } from "./step-asks.ts";
 import { editStep, type StepFields } from "./step-edits.ts";
 
@@ -86,12 +87,37 @@ verifies("models.budget-step.ask-for-pay-per-use", () => {
 
       expect(edited).toEqual({
         ok: false,
-        error: {
-          field: "output",
-          alias: "fast",
-          message: "Enter an amount, like you'd write it on a receipt.",
-        },
+        error: [{ field: "output", alias: "fast", message: AMOUNT_MESSAGE }],
       });
+    });
+
+    it("names the price that is already wrong, not the empty one beside it", () => {
+      const edited = editStep(texts, {
+        ...base,
+        prices: [{ alias: "fast", input: "abc", output: "" }],
+      });
+
+      expect(!edited.ok && edited.error).toEqual([
+        { field: "input", alias: "fast", message: AMOUNT_MESSAGE },
+      ]);
+    });
+
+    it("names every wrong field at once, prices before budget", () => {
+      const edited = editStep(texts, {
+        ...base,
+        prices: [
+          { alias: "fast", input: "x", output: "2" },
+          { alias: "smart", input: "3", output: "" },
+        ],
+        budget: { perRun: "0", monthly: "-1" },
+      });
+
+      expect(!edited.ok && edited.error.map((problem) => problem.field)).toEqual([
+        "input",
+        "output",
+        "perRun",
+        "monthly",
+      ]);
     });
 
     it("names the price field that isn't an amount", () => {
@@ -101,13 +127,13 @@ verifies("models.budget-step.ask-for-pay-per-use", () => {
       });
 
       expect(edited.ok).toBe(false);
-      expect(!edited.ok && edited.error).toMatchObject({ field: "input", alias: "fast" });
+      expect(!edited.ok && edited.error).toMatchObject([{ field: "input", alias: "fast" }]);
     });
 
     it("names the budget field that isn't above 0", () => {
       const edited = editStep(texts, { ...base, budget: { perRun: "0", monthly: "" } });
 
-      expect(!edited.ok && edited.error.field).toBe("perRun");
+      expect(!edited.ok && edited.error.map((problem) => problem.field)).toEqual(["perRun"]);
     });
 
     it("refuses a file that can't be edited", () => {
