@@ -96,7 +96,8 @@ export const workerChecks = {
   /**
    * While the key is set, on all four admin routes: no key, a wrong key, an empty Bearer, a
    * non-Bearer scheme, the stored hash of the key, and the key in the URL are all 401, and the right
-   * key together with an `Origin` header is refused (401 or 403). The right key alone is not tried
+   * key together with an `Origin` header is refused (401, 403 or the 404 of any request the Worker won't
+   * serve to a page). The right key alone is not tried
    * here: the round trip does. The key-in-URL request puts the key in a URL on purpose, to prove it
    * is refused; it is a one-job key, so a log that keeps the URL keeps nothing of use.
    */
@@ -122,9 +123,9 @@ export const workerChecks = {
         { authorization: `Bearer ${key}`, origin: "https://attacker.example" },
         method,
       );
-      if (withOrigin.status !== 401 && withOrigin.status !== 403) {
+      if (![401, 403, 404].includes(withOrigin.status)) {
         throw new Error(
-          `${method} ${route} with an Origin header was answered ${withOrigin.status}, expected 401 or 403.`,
+          `${method} ${route} with an Origin header was answered ${withOrigin.status}, expected 401, 403 or 404.`,
         );
       }
     }

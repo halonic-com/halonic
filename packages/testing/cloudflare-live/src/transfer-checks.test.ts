@@ -80,6 +80,7 @@ function fakeWorker(behavior: Behavior = {}): {
     const method = init?.method ?? "GET";
     if (url.pathname === "/health") return new Response("ok", { status: behavior.health ?? 200 });
     if (!url.pathname.startsWith("/admin/") || behavior.closed) return neutral();
+    if (headers.has("origin")) return Response.json({ code: "not_found" }, { status: 404 });
     if (!keyGiven(behavior, url, headers)) {
       return Response.json({ code: "unauthorized" }, { status: 401 });
     }
