@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
     "test": "vitest run",
-    "build:sea": "node scripts/build.ts",
+    "build:sea": "pnpm --filter @halonicjs/adapter-integration-runner build && node scripts/build.ts",
     "smoke:sea": "node scripts/smoke.ts"
   },
   "devDependencies": {
