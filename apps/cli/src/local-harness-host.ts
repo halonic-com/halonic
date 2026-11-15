@@ -51,6 +51,7 @@ import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { lazyProposalGit } from "./lazy-proposal-git.ts";
 import { placementFolder } from "./sandbox-gate-machine.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
+import { skillFileOf } from "./skill-file.ts";
 import { halonicVersion } from "./version.ts";
 import type { WorkspaceVersions } from "./workspace-versions.ts";
 
@@ -99,7 +100,7 @@ export interface LocalHarnessInput {
    * files on disk (`routines watch`): the placement check hashes the
    * agent's file from the run's version. Without it, from disk.
    */
-  readonly versions?: Pick<WorkspaceVersions, "agentFileOf">;
+  readonly versions?: Pick<WorkspaceVersions, "agentFileOf" | "skillTextOf">;
   /** The workspace's files, which Accept writes (not wired yet) and a proposal's base is read from. */
   readonly store: DefinitionStore;
   readonly digest: Digest;
@@ -328,12 +329,19 @@ function agentFilesOf(input: LocalHarnessInput): AgentFiles {
   };
 }
 
-/** A skill's `SKILL.md` as it is on disk now, found by its folder name in the loaded workspace. */
+/**
+ * A skill's `SKILL.md` as the run's version has it when runs start from
+ * versions, else as it is on disk now, so the agent's file and its skills in
+ * one pin are from one version.
+ */
 function skillTextOf(
   input: LocalHarnessInput,
 ): (agent: HarnessAgent, id: string) => Promise<string> {
-  return async (_agent, id) => {
-    const file = filesOf(input.workspace(), "skill").find((each) => each.value.id === id);
+  return async (agent, id) => {
+    if (input.versions !== undefined) {
+      return await input.versions.skillTextOf(agent, agent.hubId, id);
+    }
+    const file = skillFileOf(input.workspace(), agent.hubId, id);
     if (file === undefined) throw new Error(`The workspace has no skill "${id}".`);
     return await readFile(join(input.location, file.path), "utf8");
   };

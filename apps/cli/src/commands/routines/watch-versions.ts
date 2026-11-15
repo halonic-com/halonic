@@ -30,6 +30,7 @@ import {
   type OpenWorkspaceHistory,
   openGitHistory,
 } from "../../run-workspace.ts";
+import { skillFileOf } from "../../skill-file.ts";
 import type { OpenWorkspaceDir } from "../../workspace-dir.ts";
 import type { WorkspaceVersions } from "../../workspace-versions.ts";
 
@@ -235,20 +236,47 @@ export class WatchedVersions implements WorkspaceVersions {
     hubId: string,
     agentId: string,
   ): Promise<Uint8Array> {
-    const kept = this.#versionOfRun.get(run.runId);
-    if (kept === undefined && run.version === null) {
-      throw new Error(plainText(routinesMessages.noVersionForAgentFile(run.runId).phrase));
-    }
-    const { workspace, agentTexts } =
-      kept ?? (await this.#versionAllowedAt(run.version ?? undefined));
+    const { workspace, fileTexts } = await this.#loadedForFiles(run);
     const file = filesOf(workspace, "agent").find(
       (each) => each.hub === hubId && each.value.id === agentId,
     );
-    const text = file === undefined ? undefined : agentTexts.get(file.path);
+    const text = file === undefined ? undefined : fileTexts.get(file.path);
     if (text === undefined) {
       throw new Error(plainText(routinesMessages.noAgentFileInVersion(hubId, agentId).phrase));
     }
     return encodeUtf8(text);
+  }
+
+  /**
+   * A skill's `SKILL.md` as the version a run read has it, from the same
+   * load as {@link agentFileOf}.
+   *
+   * @throws when the run names no version, it can't be read or may not run here, or it has no such skill
+   */
+  async skillTextOf(
+    run: { readonly runId: string; readonly version: RunVersion | null },
+    hubId: string,
+    skillId: string,
+  ): Promise<string> {
+    const { workspace, fileTexts } = await this.#loadedForFiles(run);
+    const file = skillFileOf(workspace, hubId, skillId);
+    const text = file === undefined ? undefined : fileTexts.get(file.path);
+    if (text === undefined) {
+      throw new Error(plainText(routinesMessages.noSkillInVersion(hubId, skillId).phrase));
+    }
+    return text;
+  }
+
+  /** The load a run's files are read from: the one kept for it, else its recorded version, loaded now. */
+  async #loadedForFiles(run: {
+    readonly runId: string;
+    readonly version: RunVersion | null;
+  }): Promise<LoadedVersion> {
+    const kept = this.#versionOfRun.get(run.runId);
+    if (kept === undefined && run.version === null) {
+      throw new Error(plainText(routinesMessages.noVersionForAgentFile(run.runId).phrase));
+    }
+    return kept ?? (await this.#versionAllowedAt(run.version ?? undefined));
   }
 
   /** Forgets the load kept for a run that has ended. */
@@ -291,24 +319,24 @@ export class WatchedVersions implements WorkspaceVersions {
 }
 
 /**
- * A version's workspace, with its agents' files as the load read them. The
- * saved files can change under a run, so the texts are taken with the load
- * and not read again from the source later.
+ * A version's workspace, with its agents' and skills' files as the load read
+ * them. The saved files can change under a run, so the texts are taken with
+ * the load and not read again from the source later.
  */
 interface LoadedVersion {
   readonly workspace: LoadedWorkspace;
-  /** The text of each agent file, by its workspace-relative path. */
-  readonly agentTexts: ReadonlyMap<string, string>;
+  /** The text of each agent and skill file, by its workspace-relative path. */
+  readonly fileTexts: ReadonlyMap<string, string>;
 }
 
 async function loadVersion(source: DefinitionSource): Promise<LoadedVersion> {
   const workspace = await loadWorkspace(source);
-  const agentTexts = new Map<string, string>();
-  for (const file of filesOf(workspace, "agent")) {
+  const fileTexts = new Map<string, string>();
+  for (const file of [...filesOf(workspace, "agent"), ...filesOf(workspace, "skill")]) {
     const text = await source.read(file.path);
-    if (text !== null) agentTexts.set(file.path, text);
+    if (text !== null) fileTexts.set(file.path, text);
   }
-  return { workspace, agentTexts };
+  return { workspace, fileTexts };
 }
 
 /** Whether the workspace is local only; without a workspace.yaml that parsed, the format default: not. */

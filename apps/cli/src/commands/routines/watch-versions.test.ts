@@ -1,4 +1,4 @@
-import { cp, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -162,6 +162,26 @@ verifies("cli.local-engine", () => {
     const bytes = await watched.agentFileOf(savedRun, agent.hub ?? "", agent.value.id);
 
     expect(new TextDecoder().decode(bytes)).toBe(before);
+  });
+
+  it("gives a run's skill as its version had it, the hub's own before the shared one", async () => {
+    const skill = (hub: string | null, text: string) => ({
+      path: join(acme, ...(hub === null ? [] : ["hubs", hub]), "library", "skills", "tone"),
+      text: `---\nname: Tone\ndescription: Kind and short.\n---\n${text}\n`,
+    });
+    for (const { path, text } of [skill(null, "Shared."), skill("support", "Support's own.")]) {
+      await mkdir(path, { recursive: true });
+      await writeFile(join(path, "SKILL.md"), text);
+    }
+    const watched = await watchAcme();
+    await watched.definitionsOf("support", "support-reply", savedRun.version, savedRun.runId);
+    await writeFile(join(skill(null, "").path, "SKILL.md"), "Edited since.\n");
+
+    expect(await watched.skillTextOf(savedRun, "support", "tone")).toContain("Support's own.");
+    expect(await watched.skillTextOf(savedRun, "reports", "tone")).toContain("Shared.");
+    await expect(watched.skillTextOf(savedRun, "support", "missing")).rejects.toThrow(
+      "has no skill missing",
+    );
   });
 
   it(
