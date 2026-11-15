@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -41,22 +42,31 @@ interface Seen {
 
 function show(
   plugins: readonly InstalledPlugin[],
-  options: { load?: PluginsLoad; actions?: PluginActions; builtIn?: boolean } = {},
+  options: {
+    load?: PluginsLoad;
+    actions?: PluginActions;
+    builtIn?: boolean;
+    phone?: boolean;
+    host?: "this-computer" | "served";
+  } = {},
 ): Seen {
   const seen: Seen = { opened: [], tabs: [], builtIns: [], calls: [] };
   render(
-    <PluginsList
-      load={options.load ?? { kind: "ready" }}
-      plugins={plugins}
-      builtIn={options.builtIn === false ? [] : [{ id: "gmail", name: "Gmail" }]}
-      actions={options.actions ?? noActions().actions}
-      onOpen={(id) => seen.opened.push(id)}
-      onOpenInNewTab={(id) => seen.tabs.push(id)}
-      onOpenBuiltIn={(id) => seen.builtIns.push(id)}
-      onAdd={() => seen.calls.push("add")}
-      onRetry={() => seen.calls.push("retry")}
-      now={now}
-    />,
+    <PresentationProvider presentation={options.phone === true ? "phone" : "desktop"}>
+      <PluginsList
+        host={options.host ?? "this-computer"}
+        load={options.load ?? { kind: "ready" }}
+        plugins={plugins}
+        builtIn={options.builtIn === false ? [] : [{ id: "gmail", name: "Gmail" }]}
+        actions={options.actions ?? noActions().actions}
+        onOpen={(id) => seen.opened.push(id)}
+        onOpenInNewTab={(id) => seen.tabs.push(id)}
+        onOpenBuiltIn={(id) => seen.builtIns.push(id)}
+        onAdd={() => seen.calls.push("add")}
+        onRetry={() => seen.calls.push("retry")}
+        now={now}
+      />
+    </PresentationProvider>,
   );
   return seen;
 }
@@ -95,6 +105,32 @@ async function choose(label: string) {
 const text = () => document.body.textContent ?? "";
 
 verifies("plugins.plugin-list", () => {
+  it("is view only on a phone: the line, the command, no Add plugin, and a ⋮ that only opens", async () => {
+    show([weather()], { phone: true });
+    expect(text()).toContain(
+      "View only on a phone. Add, trust and remove plugins on your computer:",
+    );
+    expect(text()).toContain("halonic plugin add <folder or git address>");
+    expect(document.body.textContent).not.toContain("Add plugin");
+    await openMenu("Weather");
+    expect(items()).toEqual(["Open", "Open in new tab"]);
+  });
+
+  it("is view only in a served browser, naming the computer that runs Halonic", () => {
+    show([], { host: "served" });
+    expect(text()).toContain(
+      "View only here. Add, trust and remove plugins on the computer that runs Halonic:",
+    );
+    expect(text()).toContain("No plugins yet");
+    expect(text()).not.toContain("Add plugin");
+  });
+
+  it("shows no view-only line on this computer", () => {
+    show([weather()]);
+    expect(text()).not.toContain("View only");
+    expect(text()).toContain("Add plugin");
+  });
+
   it("shows the sentence, the sections and a row with what it adds, its version and trust date", () => {
     show([described(weather())]);
     expect(text()).toContain(
