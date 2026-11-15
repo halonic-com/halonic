@@ -2,6 +2,7 @@
 
 - Approval: the task asks for this change (HAL-6706, part 3 of 3c); Liam approves this note in review, Julian reviews the live code (HAL-6701)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:y9SpMySq6KUS8TfKzNGqSJ1k5zImY05LmdfI5DzYC2vDNXHTipTspxdtr5mwE7eqTxtHLLw/74XQqJfNRyLgBA==
 
 ## What changes
 
