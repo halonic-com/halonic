@@ -82,12 +82,14 @@ verifies("workspace.provider-cost", () => {
 
     it("holds with a key, an auth header or a query string, even on a private host", () => {
       expect(isPayPerUse(provider("http://localhost:11434", { secret: "k" }))).toBe(true);
-      expect(isPayPerUse(provider("http://nas", { options: { headers: { "X-Api-Key": "" } } }))).toBe(
-        true,
-      );
-      expect(isPayPerUse(provider("http://nas", { options: { headers: { bearer: "x" } } }))).toBe(
-        true,
-      );
+      expect(
+        isPayPerUse(provider("http://nas", { options: { headers: { "X-Api-Key": "" } } })),
+      ).toBe(true);
+      expect(
+        isPayPerUse(
+          provider("http://nas", { options: { headers: { "Proxy-Authorization": "x" } } }),
+        ),
+      ).toBe(true);
       expect(isPayPerUse(provider("http://localhost:11434?key=x"))).toBe(true);
       expect(isPayPerUse(provider("http://localhost:11434/v1?"))).toBe(true);
     });
