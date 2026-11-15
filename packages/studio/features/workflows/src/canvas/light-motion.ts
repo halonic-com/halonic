@@ -59,7 +59,8 @@ function spring(u: number, duration: number): number {
   );
 }
 
-function smootherstep(x: number): number {
+/** The smooth 0-to-1 ramp over `x` of 0 to 1: flat at both ends. */
+export function smootherstep(x: number): number {
   const c = Math.min(1, Math.max(0, x));
   return c * c * c * (c * (c * 6 - 15) + 10);
 }

@@ -5,6 +5,7 @@ import {
   lightHopDuration,
   lightPoint,
   lightProgress,
+  smootherstep,
 } from "./light-motion.ts";
 
 /** How far the resting light floats from its dot, in pixels, and how long one turn takes. */
@@ -14,6 +15,8 @@ export const LIGHT_FLOAT_MS = 7000;
 export const LIGHT_BREATH_MS = 3600;
 export const LIGHT_BREATH_MIN = 0.85;
 export const LIGHT_BREATH_MAX = 1.3;
+/** How long the float and the breath take to ease in after a landing, in milliseconds. */
+export const LIGHT_REST_EASE_MS = 800;
 /** How long the cross-fade takes when the person asked for less motion (`--duration-fast`). */
 export const LIGHT_FADE_MS = 120;
 
@@ -79,12 +82,21 @@ export function goalOf(flight: LightFlight): Point {
   return flight.next ?? flight.curve.to;
 }
 
-/** The float and the breath of a resting light `ms` after it started: an offset and a brightness. */
+/**
+ * The float and the breath of a resting light `ms` after it landed: an offset and a brightness.
+ * Both ease in over {@link LIGHT_REST_EASE_MS}: the light lands at full brightness exactly on its
+ * dot, then the float grows to 2 px and the brightness settles into the breath, with no jump.
+ */
 export function restPose(ms: number): { readonly offset: Point; readonly brightness: number } {
   const turn = (2 * Math.PI * ms) / LIGHT_FLOAT_MS;
   const breath = 0.5 - 0.5 * Math.cos((Math.PI * ms) / LIGHT_BREATH_MS);
+  const settled = LIGHT_BREATH_MIN + (LIGHT_BREATH_MAX - LIGHT_BREATH_MIN) * breath;
+  const weight = smootherstep(ms / LIGHT_REST_EASE_MS);
   return {
-    offset: { x: LIGHT_FLOAT_RADIUS * Math.cos(turn), y: LIGHT_FLOAT_RADIUS * Math.sin(turn) },
-    brightness: LIGHT_BREATH_MIN + (LIGHT_BREATH_MAX - LIGHT_BREATH_MIN) * breath,
+    offset: {
+      x: weight * LIGHT_FLOAT_RADIUS * Math.cos(turn),
+      y: weight * LIGHT_FLOAT_RADIUS * Math.sin(turn),
+    },
+    brightness: 1 + (settled - 1) * weight,
   };
 }
