@@ -2,6 +2,7 @@ import { Button, EmptyState } from "@halonicjs/studio-kit";
 import type { ItemPageSectionViewProps } from "@halonicjs/studio-shell";
 import { useId, useRef, useState } from "react";
 import { ModelsFilesService } from "../api.ts";
+import { BudgetBlock } from "../budget/budget-block.tsx";
 import { type AliasRow, aliasRows, providerChoiceLabel } from "./alias-rows.ts";
 import {
   ADD_A_PRICE,
@@ -48,6 +49,7 @@ export function ModelsSection({ context }: ItemPageSectionViewProps) {
           {NEW_ALIAS}
         </Button>
       </div>
+      <BudgetBlock files={files} state={state} />
       <AliasList state={state} retry={retry} open={open} create={() => setCreating(true)} />
       {creating ? (
         <NewAliasDialog

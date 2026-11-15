@@ -56,6 +56,7 @@ function filesWith(
     changeProvider: () => undefined,
     readWorkspace: async () => others.workspace ?? null,
     changeModels: () => undefined,
+    changeWorkspace: () => undefined,
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
