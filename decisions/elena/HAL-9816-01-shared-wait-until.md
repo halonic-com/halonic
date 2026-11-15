@@ -9,7 +9,7 @@
 `waitUntil` had two copies: one in `apps/cli` (50 ms steps, 1 s limit) and one in the contract
 suites (10 ms steps, no limit of its own). There is now one, in `@halonicjs/testing-spec`, so
 every package can use it. Its first argument says what the test waits for, and a wait that
-runs past the deadline (4 s unless the test sets one) fails with "Timed out after N ms waiting
+runs past the deadline (the test's `timeout`, else 1 s under `HALONIC_TEST_TIMEOUT` when CI sets it, else 4 s) fails with "Timed out after N ms waiting
 for <that>." A new requirement, `spec.wait-until-checks-once`, covers it, with tests on fake
 timers.
 
@@ -18,6 +18,8 @@ suites) now use the shared one and name what they wait for. The two small tests 
 contracts copy are replaced by the five tests of the shared one, which also cover the promise
 case, the already-true case and both timeouts. No test checks less than before, and the `expect`
 count of every touched requirement stays the same.
+
+The CLI waits now poll every 10 ms instead of 50 ms, and give up after 4 s by default instead of 1 s.
 
 ## Why
 

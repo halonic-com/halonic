@@ -10,6 +10,7 @@ verifies("spec.wait-until-checks-once", () => {
 
     afterEach(() => {
       vi.useRealTimers();
+      vi.unstubAllEnvs();
     });
 
     it("returns once the check turns true, without touching expect", async () => {
@@ -59,12 +60,24 @@ verifies("spec.wait-until-checks-once", () => {
     });
 
     it("gives up after 4 000 ms when the test sets no timeout", async () => {
+      vi.stubEnv("HALONIC_TEST_TIMEOUT", "");
       const waiting = waitUntil("a check that never passes", () => false);
       const outcome = expect(waiting).rejects.toThrow(
         "Timed out after 4000 ms waiting for a check that never passes.",
       );
 
       await vi.advanceTimersByTimeAsync(4_100);
+      await outcome;
+    });
+
+    it("gives up 1 000 ms before HALONIC_TEST_TIMEOUT when it is set", async () => {
+      vi.stubEnv("HALONIC_TEST_TIMEOUT", "30000");
+      const waiting = waitUntil("a check that never passes", () => false);
+      const outcome = expect(waiting).rejects.toThrow(
+        "Timed out after 29000 ms waiting for a check that never passes.",
+      );
+
+      await vi.advanceTimersByTimeAsync(29_100);
       await outcome;
     });
   });
