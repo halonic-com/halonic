@@ -58,10 +58,18 @@ async function freePort(): Promise<number> {
   return port;
 }
 
-/** Tries to connect to `port` on loopback until `ms` pass; true once one connects. */
-async function connectWhileListening(port: number, ms: number): Promise<boolean> {
-  const until = Date.now() + ms;
-  while (Date.now() < until) {
+/**
+ * Tries to connect to `port` on loopback until `boxRun` settles; true once one connects.
+ * It does not stop on a clock: MXC can take any time to start the box, and a probe that
+ * gave up first would report "not reached" without ever having tried.
+ */
+async function connectWhileListening(port: number, boxRun: Promise<unknown>): Promise<boolean> {
+  let boxRunSettled = false;
+  const markSettled = () => {
+    boxRunSettled = true;
+  };
+  boxRun.then(markSettled, markSettled);
+  while (!boxRunSettled) {
     const connected = await new Promise<boolean>((resolve) => {
       const socket = connect({ host: "127.0.0.1", port });
       socket.on("connect", () => {
@@ -198,7 +206,7 @@ describe("the box's own loopback on MXC (A15)", () => {
       `,
       "off",
     );
-    const reached = await connectWhileListening(port, 7000);
+    const reached = await connectWhileListening(port, boxRun);
     const { attempts } = await boxRun;
     expect(attempts["listener"]?.outcome).toBe("allowed");
     expect({ listener: attempts["listener"]?.detail, connectedFromOutside: reached }).toEqual({
