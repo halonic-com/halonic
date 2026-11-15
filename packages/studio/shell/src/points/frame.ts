@@ -1,3 +1,4 @@
+import type { SectionIconName } from "@halonicjs/studio-kit";
 import type { ViewRef } from "../view.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import type { Ordered } from "./point-store.ts";
@@ -54,6 +55,11 @@ export type SettingsScope = (typeof settingsScopes)[number];
 export interface SettingsSectionContribution extends Ordered, ViewRef {
   readonly title: string;
   readonly scope: SettingsScope;
+  /**
+   * The section's icon, in the dialog's list and the phone's. A section without one shows the
+   * Settings gear on the phone and no icon in the dialog.
+   */
+  readonly icon?: SectionIconName;
   /**
    * The line under the section's name in the phone's settings list, or `undefined` for none: its
    * current values in one line, parts separated by " · " ("System theme · characters on"). It may

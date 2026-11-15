@@ -95,7 +95,7 @@ const sectionsFeature = defineFeature({
         summary: () => new Promise((resolve) => (answerFormats = resolve)),
       }),
     );
-    studio.settings.add(section("assistant", "Assistant", "host", 30));
+    studio.settings.add(section("assistant", "Assistant", "host", 30, { icon: "assistant" }));
     studio.settings.add(section("models", "Models", "workspace", 10));
     studio.settings.add(section("developer", "Developer", "display", 90, { phone: false }));
     studio.home.addCard({
@@ -299,5 +299,18 @@ verifies("shell.settings-list-page", () => {
     back();
 
     expect((container.querySelector("main") as HTMLElement).scrollTop).toBe(120);
+  });
+});
+
+verifies("shell.settings-section-icons", () => {
+  it("draws a section's own icon on the phone's list, and the gear for one without", async () => {
+    const { container, tapRow, tapMore } = await renderPhone();
+    tapMore();
+    await tapRow("Settings");
+    const rowOf = (name: string) =>
+      [...container.querySelectorAll("main tr")].find((tr) => tr.textContent?.startsWith(name));
+    expect(rowOf("Assistant")?.querySelector("[data-section-icon=assistant]")).not.toBeNull();
+    expect(rowOf("Models")?.querySelector("[data-section-icon]")).toBeNull();
+    expect(rowOf("Models")?.querySelector("svg")).not.toBeNull();
   });
 });

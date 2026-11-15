@@ -184,3 +184,14 @@ verifies("shell.settings-saved-line", () => {
     expect(host.container.querySelector("section")?.textContent).not.toContain("Saved");
   });
 });
+
+verifies("shell.settings-section-icons", () => {
+  it("draws a section's icon before its name, and none for a section without one", async () => {
+    const withIcon = { ...assistant, icon: "assistant" as const };
+    const { container } = await open({ sections: [appearance, withIcon] });
+    expect(
+      row(container, "Assistant").querySelector("[data-section-icon=assistant]"),
+    ).not.toBeNull();
+    expect(row(container, "Appearance").querySelector("svg")).toBeNull();
+  });
+});

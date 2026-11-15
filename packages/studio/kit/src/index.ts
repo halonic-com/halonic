@@ -154,6 +154,11 @@ export { PlusIcon } from "./icons/plus-icon.tsx";
 export { RefreshIcon } from "./icons/refresh-icon.tsx";
 export { RestoreIcon } from "./icons/restore-icon.tsx";
 export { SearchIcon } from "./icons/search-icon.tsx";
+export {
+  SectionIcon,
+  type SectionIconName,
+  sectionIconNames,
+} from "./icons/section-icon.tsx";
 export { SettingsIcon } from "./icons/settings-icon.tsx";
 export { TickIcon } from "./icons/tick-icon.tsx";
 export { UpdateReadyIcon } from "./icons/update-ready-icon.tsx";

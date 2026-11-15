@@ -26,6 +26,7 @@ export const workspaceFeature = defineFeature({
   register(studio) {
     studio.settings.add({
       id: "trusted-sources",
+      icon: "trusted-sources",
       title: "Trusted sources",
       scope: "host",
       order: 40,
