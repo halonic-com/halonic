@@ -34,6 +34,31 @@ function client(routes: Record<string, Route>, seen: string[]) {
 
 const worker = "/accounts/a1/workers/scripts/w";
 
+verifies("deploy.admin-key", () => {
+  it("marks a deployment Cloudflare made for a secret change", async () => {
+    const api = client(
+      {
+        [`GET ${worker}/deployments`]: {
+          result: {
+            deployments: [
+              {
+                versions: [{ version_id: "v3", percentage: 100 }],
+                annotations: { "workers/triggered_by": "secret" },
+              },
+              { versions: [{ version_id: "v2", percentage: 100 }] },
+            ],
+          },
+        },
+      },
+      [],
+    );
+    expect(await api.deploymentHistory("a1", "w")).toEqual([
+      [{ id: "v3", percentage: 100, secretChange: true }],
+      [{ id: "v2", percentage: 100 }],
+    ]);
+  });
+});
+
 verifies("deploy.status", () => {
   it("reads versions, deployment history and the workers.dev address without writing", async () => {
     const seen: string[] = [];
@@ -161,5 +186,26 @@ verifies("deploy.destroy", () => {
     await expect(api.deleteResource("a1", { kind: "bucket", name: "b" })).rejects.toMatchObject({
       code: "bucket-not-empty",
     });
+  });
+});
+
+verifies("deploy.admin-key", () => {
+  it("sets and removes a Workers secret through the secrets route", async () => {
+    const seen: string[] = [];
+    const api = client(
+      {
+        [`PUT ${worker}/secrets`]: { result: { name: "S" } },
+        [`DELETE ${worker}/secrets/S`]: { result: {} },
+      },
+      seen,
+    );
+    await api.setWorkerSecret("a1", "w", "S", "value");
+    await api.deleteWorkerSecret("a1", "w", "S");
+    expect(seen).toEqual([`PUT ${worker}/secrets`, `DELETE ${worker}/secrets/S`]);
+  });
+
+  it("treats a secret that is already gone as removed", async () => {
+    const api = client({ [`DELETE ${worker}/secrets/S`]: { status: 404 } }, []);
+    await expect(api.deleteWorkerSecret("a1", "w", "S")).resolves.toBeUndefined();
   });
 });

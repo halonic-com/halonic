@@ -30,6 +30,9 @@ export interface RollbackResult {
   readonly health?: Health;
 }
 
+const isSecretChange = (deployment: readonly DeployedVersion[]) =>
+  deployment.length > 0 && deployment.every((v) => v.secretChange === true);
+
 const ids = (versions: readonly DeployedVersion[]) =>
   versions
     .map((v) => v.id)
@@ -38,7 +41,7 @@ const ids = (versions: readonly DeployedVersion[]) =>
 
 /**
  * Switches traffic back to the version that served before the current one. A version that only
- * ever had 0% (a failed deploy's) is skipped. Database migrations are not undone: they only go
+ * ever had 0% (a failed deploy's) is skipped, and so is a deployment Cloudflare made for a secret change. Database migrations are not undone: they only go
  * forward. Run twice, it switches forward again.
  *
  * @throws DeployError `not-deployed` when the Worker or its database isn't there
@@ -53,7 +56,7 @@ export async function rollback(
 
   const choose = async () => {
     const history = await api.deploymentHistory(accountId, worker);
-    const [latest, ...earlier] = history;
+    const [latest] = history;
     const from = (latest ?? []).filter((v) => v.percentage > 0);
     if (from.length === 0) {
       throw new DeployError(
@@ -61,9 +64,15 @@ export async function rollback(
         `${worker} has no live version, so there is nothing to roll back.`,
       );
     }
-    const target = earlier
+    // A deployment Cloudflare made for a secret change (the admin key's) runs the code of the one
+    // before it and may still hold the secret, so it is never a target. What counts as the
+    // current code is the newest deployment that isn't one.
+    const real = history.filter((d) => !isSecretChange(d));
+    const current = (real[0] ?? latest ?? []).filter((v) => v.percentage > 0);
+    const target = real
+      .slice(1)
       .map((d) => d.filter((v) => v.percentage > 0))
-      .find((d) => d.length > 0 && ids(d) !== ids(from));
+      .find((d) => d.length > 0 && ids(d) !== ids(current));
     if (!target) {
       throw new DeployError(
         "nothing-to-roll-back",

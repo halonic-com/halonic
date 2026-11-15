@@ -81,6 +81,11 @@ export interface WorkerUpload {
 export interface DeployedVersion {
   readonly id: string;
   readonly percentage: number;
+  /**
+   * Set when Cloudflare made this deployment itself because a Workers secret changed (the admin
+   * key's, see `withAdminKey`). It runs the code of the version before it, so `rollback` skips it.
+   */
+  readonly secretChange?: true;
 }
 
 /** One version Cloudflare knows, with the note the deploy left on it. */
@@ -163,6 +168,14 @@ export interface CloudflareApi {
     upload: WorkerUpload,
     migrations: readonly DurableObjectMigration[],
   ): Promise<void>;
+  /**
+   * Sets one Workers secret on a deployed Worker. Cloudflare makes a new version with it and
+   * deploys that at once. For a short-lived value such as the admin key's hash, never for a
+   * deploy's own secrets: those go up with the version.
+   */
+  setWorkerSecret(accountId: string, worker: string, name: string, value: string): Promise<void>;
+  /** Removes one Workers secret; nothing happens when it is already gone. */
+  deleteWorkerSecret(accountId: string, worker: string, name: string): Promise<void>;
   /** Sets which versions serve traffic; the percentages add up to 100. */
   deployVersions(
     accountId: string,

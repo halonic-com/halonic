@@ -50,14 +50,21 @@ export interface FakeCloudflareState {
   workersDevOn?: boolean;
   /** Closing workers.dev throws. */
   closeFails?: boolean;
+  /** Setting a Workers secret throws. */
+  secretSetFails?: boolean;
+  /** Removing a Workers secret throws: always when `true`, else for that many calls. */
+  secretDeleteFails?: boolean | number;
   /** A migration the Worker's own runner applies just before our batch lands, so our batch fails. */
   racedBy?: string;
 }
 
 /** A {@link CloudflareApi} in memory that records each call, for tests of everything above the client. */
-export function fakeCloudflareApi(
-  state: FakeCloudflareState,
-): CloudflareApi & { calls: string[]; messages: (string | undefined)[] } {
+export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
+  calls: string[];
+  messages: (string | undefined)[];
+  /** The names of the Workers secrets set through `setWorkerSecret` and not removed. */
+  workerSecretNames(): string[];
+} {
   const calls: string[] = [];
   const messages: (string | undefined)[] = [];
   const answer = (value: TokenStatus | Error | undefined): TokenStatus => {
@@ -83,6 +90,13 @@ export function fakeCloudflareApi(
   ];
   const deploy = (next: readonly DeployedVersion[]) => history.unshift(next);
   let versions = 0;
+  let deleteFailures = state.secretDeleteFails === true ? Infinity : state.secretDeleteFails || 0;
+  // What Cloudflare does when a secret changes: a new version with the same code, deployed at once.
+  const deploySecretChange = () => {
+    versions += 1;
+    deploy([{ id: `v${versions}`, percentage: 100, secretChange: true }]);
+  };
+  const secrets = new Set<string>();
   let workersDevOn = state.workersDevOn ?? true;
   return {
     calls,
@@ -136,6 +150,21 @@ export function fakeCloudflareApi(
       lockWrite(`deployVersions ${next.map((v) => `${v.id}:${v.percentage}`).join(",")}`);
       deploy(next);
     },
+    async setWorkerSecret(_accountId, worker, name) {
+      lockWrite(`setWorkerSecret ${worker} ${name}`);
+      if (state.secretSetFails) throw new Error("Cloudflare is down");
+      secrets.add(name);
+      deploySecretChange();
+    },
+    async deleteWorkerSecret(_accountId, worker, name) {
+      lockWrite(`deleteWorkerSecret ${worker} ${name}`);
+      if (deleteFailures > 0) {
+        deleteFailures -= 1;
+        throw new Error("Cloudflare is down");
+      }
+      if (secrets.delete(name)) deploySecretChange();
+    },
+    workerSecretNames: () => [...secrets].sort(),
     async workersDevEnabled() {
       calls.push("workersDevEnabled");
       return workersDevOn;
