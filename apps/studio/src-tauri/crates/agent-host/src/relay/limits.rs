@@ -30,6 +30,19 @@ pub(super) const HOST_READ_TIMEOUT: Duration = Duration::from_secs(30);
 /// (HAL-7659).
 pub(super) const TOKEN_TIMEOUT: Duration = Duration::from_secs(10);
 
+/// The most connections open at once that may be, or may still become, a
+/// callback-only one. They count toward [`CONNECTION_LIMIT`] too, and are
+/// kept apart so they can't starve the connections with the token.
+pub(super) const CALLBACK_CONNECTION_LIMIT: usize = 4;
+
+/// How long a connection that starts like the Google callback has to send
+/// its whole head.
+pub(super) const CALLBACK_HEAD_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// How long a connection that starts like the Google callback may stay open
+/// in all, counted from when the relay accepted it.
+pub(super) const CALLBACK_LIFETIME: Duration = Duration::from_secs(30);
+
 /// What one relay holds at most and waits for at most.
 #[derive(Clone, Copy)]
 pub(super) struct Limits {
@@ -37,6 +50,9 @@ pub(super) struct Limits {
     pub(super) connections: usize,
     pub(super) host_read: Duration,
     pub(super) token: Duration,
+    pub(super) callback_connections: usize,
+    pub(super) callback_head: Duration,
+    pub(super) callback_lifetime: Duration,
 }
 
 impl Default for Limits {
@@ -46,6 +62,9 @@ impl Default for Limits {
             connections: CONNECTION_LIMIT,
             host_read: HOST_READ_TIMEOUT,
             token: TOKEN_TIMEOUT,
+            callback_connections: CALLBACK_CONNECTION_LIMIT,
+            callback_head: CALLBACK_HEAD_TIMEOUT,
+            callback_lifetime: CALLBACK_LIFETIME,
         }
     }
 }

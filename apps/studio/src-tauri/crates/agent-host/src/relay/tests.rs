@@ -11,30 +11,30 @@ use super::limits::{Limits, QUEUED_FRAMES, QUEUED_FRAMES_PER_CONNECTION};
 use super::{DATA, END, FRAME_LIMIT, OPEN, RESET, Relay, frame};
 
 /// Long enough for a thread to run on a busy CI machine.
-const WAIT: Duration = Duration::from_secs(20);
+pub(super) const WAIT: Duration = Duration::from_secs(20);
 
 /// Short, so a test waits little for a deadline to pass.
-const SHORT: Duration = Duration::from_millis(300);
+pub(super) const SHORT: Duration = Duration::from_millis(300);
 
-const TOKEN: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ";
+pub(super) const TOKEN: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ";
 
-type Frame = (u32, u8, Vec<u8>);
+pub(super) type Frame = (u32, u8, Vec<u8>);
 
 /// The host's side of a relay: the frames it got, and its output.
-struct StandIn {
-    frames: Receiver<Frame>,
-    output: Option<PipeWriter>,
+pub(super) struct StandIn {
+    pub(super) frames: Receiver<Frame>,
+    pub(super) output: Option<PipeWriter>,
 }
 
 impl StandIn {
-    fn next(&self) -> Frame {
+    pub(super) fn next(&self) -> Frame {
         self.frames
             .recv_timeout(WAIT)
             .expect("the relay sends a frame")
     }
 
     /// True once the relay closed the host's input.
-    fn input_closed(&self) -> bool {
+    pub(super) fn input_closed(&self) -> bool {
         loop {
             match self.frames.recv_timeout(WAIT) {
                 Ok(_) => {}
@@ -58,7 +58,7 @@ impl StandIn {
         }
     }
 
-    fn send(&mut self, id: u32, kind: u8, bytes: &[u8]) {
+    pub(super) fn send(&mut self, id: u32, kind: u8, bytes: &[u8]) {
         let output = self.output.as_mut().expect("the output is open");
         output
             .write_all(&frame(id, kind, bytes))
@@ -66,11 +66,11 @@ impl StandIn {
     }
 }
 
-fn relay() -> (Relay, StandIn) {
+pub(super) fn relay() -> (Relay, StandIn) {
     relay_with_limits(Limits::default())
 }
 
-fn relay_with_limits(limits: Limits) -> (Relay, StandIn) {
+pub(super) fn relay_with_limits(limits: Limits) -> (Relay, StandIn) {
     let mut relay = Relay::bind_with_limits(limits).expect("bind the relay");
     let (mut input, relay_input) = io::pipe().expect("a pipe");
     let (relay_output, output) = io::pipe().expect("a pipe");
@@ -91,7 +91,7 @@ fn relay_with_limits(limits: Limits) -> (Relay, StandIn) {
 }
 
 /// The next frame the relay wrote to the host's input, until it closes it.
-fn read_frame(input: &mut PipeReader) -> Option<Frame> {
+pub(super) fn read_frame(input: &mut PipeReader) -> Option<Frame> {
     let mut header = [0_u8; 9];
     input.read_exact(&mut header).ok()?;
     let id = u32::from_be_bytes([header[0], header[1], header[2], header[3]]);
@@ -102,7 +102,7 @@ fn read_frame(input: &mut PipeReader) -> Option<Frame> {
 }
 
 /// Waits until `done` holds, for state the test can't wait on otherwise.
-fn wait_until(mut done: impl FnMut() -> bool) {
+pub(super) fn wait_until(mut done: impl FnMut() -> bool) {
     let deadline = Instant::now() + WAIT;
     while !done() {
         assert!(Instant::now() < deadline, "waited too long");
@@ -110,20 +110,20 @@ fn wait_until(mut done: impl FnMut() -> bool) {
     }
 }
 
-fn connect(relay: &Relay) -> TcpStream {
+pub(super) fn connect(relay: &Relay) -> TcpStream {
     let client = TcpStream::connect((Ipv4Addr::LOCALHOST, relay.port())).expect("connect");
     client.set_read_timeout(Some(WAIT)).expect("a read timeout");
     client
 }
 
-fn read_all(client: &mut TcpStream) -> Vec<u8> {
+pub(super) fn read_all(client: &mut TcpStream) -> Vec<u8> {
     let mut bytes = Vec::new();
     client.read_to_end(&mut bytes).expect("the relay closes it");
     bytes
 }
 
 /// True when the relay closed the client's connection, by end or reset.
-fn closed(client: &mut TcpStream) -> bool {
+pub(super) fn closed(client: &mut TcpStream) -> bool {
     let mut byte = [0_u8; 1];
     match client.read(&mut byte) {
         Ok(read) => read == 0,

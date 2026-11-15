@@ -24,11 +24,13 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use connections::{Connection, Connections};
-use deadlines::Deadline;
+use connections::{Connection, Connections, Mode};
+use deadlines::{Deadline, Due};
 use limits::{Limits, QUEUED_FRAMES, QUEUED_FRAMES_PER_CONNECTION, Quota};
 use token::TokenCheck;
 
+mod callback;
+mod client_bytes;
 mod connections;
 mod deadlines;
 mod from_host;
@@ -271,6 +273,7 @@ impl Shared {
                 client_ended: false,
                 host_ended: false,
                 has_token: false,
+                mode: Mode::Streaming,
             };
             connections.open.insert(id, connection);
             id
@@ -279,62 +282,20 @@ impl Shared {
         self.send_taking(id, OPEN, &[], Taken::Place)?;
         #[cfg(test)]
         self.opens_queued.fetch_add(1, Ordering::SeqCst);
+        let accepted = Instant::now();
         let _ = self
             .deadlines
-            .send(Some((id, Instant::now() + self.limits.token)));
+            .send(Some((id, accepted + self.limits.token, Due::Token)));
         let check = TokenCheck::new(token);
         let shared = Arc::clone(self);
         spawn("relay-client-in", move || {
-            shared.pass_client_bytes(id, reader, &quota, check);
+            shared.pass_client_bytes(id, reader, &quota, check, accepted);
         });
         let shared = Arc::clone(self);
         spawn("relay-client-out", move || {
             shared.pass_host_bytes(id, writer, &from_host, &backlog);
         });
         Ok(())
-    }
-
-    /// Passes what the client sends to the host, until the client ends,
-    /// fails, or the connection closes. It waits while the client has its
-    /// share of the queue to the host, so the others still get through.
-    fn pass_client_bytes(
-        &self,
-        id: u32,
-        mut socket: TcpStream,
-        quota: &Arc<Quota>,
-        mut check: TokenCheck,
-    ) {
-        let mut buffer = vec![0_u8; FRAME_LIMIT];
-        loop {
-            match socket.read(&mut buffer) {
-                Ok(0) => {
-                    self.client_ended(id);
-                    return;
-                }
-                Ok(read) => {
-                    if let Some(connection) = self.connections().open.get_mut(&id) {
-                        connection.has_token |= check.found(&buffer[..read]);
-                    } else {
-                        return;
-                    }
-                    if !quota.take() || !self.queue.take() {
-                        return;
-                    }
-                    let data = frame(id, DATA, &buffer[..read]);
-                    let queued = ToHost::Frame(data, Taken::PlaceAndShare(Arc::clone(quota)));
-                    if self.to_host.send(queued).is_err() {
-                        return;
-                    }
-                }
-                Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
-                Err(_) => {
-                    if self.close(id) {
-                        let _ = self.send(id, RESET, &[]);
-                    }
-                    return;
-                }
-            }
-        }
     }
 
     /// Writes what the host sent to the client, in order. When the client
@@ -382,12 +343,14 @@ impl Shared {
         let _ = self.send(id, END, &[]);
     }
 
-    /// The client has all the host sent. A connection both sides ended is closed.
+    /// The client has all the host sent. A connection both sides ended is
+    /// closed, and so is a callback-only one: its client sends no more, so it
+    /// never ends, and it must not wait for the host's keep-alive timeout.
     fn host_ended(&self, id: u32) {
         let mut connections = self.connections();
         if let Some(connection) = connections.open.get_mut(&id) {
             connection.host_ended = true;
-            if connection.client_ended {
+            if connection.client_ended || connection.mode == Mode::CallbackOnly {
                 connections.open.remove(&id);
             }
         }
@@ -475,5 +438,7 @@ fn spawn(name: &str, work: impl FnOnce() + Send + 'static) {
     let _ = thread::Builder::new().name(name.to_owned()).spawn(work);
 }
 
+#[cfg(test)]
+mod callback_tests;
 #[cfg(test)]
 mod tests;
