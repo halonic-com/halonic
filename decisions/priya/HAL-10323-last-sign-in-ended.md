@@ -2,7 +2,6 @@
 
 - Approval: team call under the HAL-2282 rule, for the rows in the board-approved Google setup design (HAL-621, section 3.5, step 7); Liam to confirm on the pull request
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:eTk+8+SPYb75ECaelsAUQ3yVv3Zai0pDBNryYq6U6dDJxstQzWY2uViAoOU9P2U+37CtWOXrhSxLup7sfrfOBg==
 - Task: HAL-10323
 
 ## What changes
@@ -18,3 +17,4 @@ Step 7 has to show three rows that come back through the callback, and the recor
 
 - server.google-sign-in
 - server.google-setup-write
+- packages/host/server/src/google-sign-in-routes.test.ts
