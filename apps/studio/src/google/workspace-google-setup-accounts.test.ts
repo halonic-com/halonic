@@ -261,6 +261,7 @@ verifies("studio.workspace-google-setup-accounts", () => {
         startOver: async (accountRef) => {
           asked.push(`start-over ${accountRef}`);
           await setups.remove(accountRef);
+          return "gclient_1";
         },
         startSignIn: async (accountRef) => {
           asked.push(`sign-in ${accountRef}`);
@@ -316,6 +317,30 @@ verifies("studio.workspace-google-setup-accounts", () => {
       expect(asked).toEqual([`start-over ${mail.accountRef}`, `start ${acmeKey}/mail personal`]);
     });
 
+    it("says the old setup was removed when the fresh one can't be started, and tells its listeners", async () => {
+      const asked: string[] = [];
+      const { accounts, setups } = await accountsOf({
+        host: (own) => ({
+          ...hostOver(own, asked),
+          start: async () => {
+            throw new Error("The agent host answered with 502 (google_failed).");
+          },
+        }),
+      });
+      const mail = (await setups.forConnector(acmeKey, "mail")) as SetupRecord;
+      const listener = vi.fn();
+      accounts.subscribe(listener);
+
+      const attempt = accounts.startOver(mail.accountRef);
+
+      await expect(attempt).rejects.toThrow(
+        "Halonic couldn't make a fresh setup. The old setup was removed. The agent host answered with 502",
+      );
+      await expect(attempt).rejects.not.toThrow("couldn't start over");
+      expect(await setups.forConnector(acmeKey, "mail")).toBeNull();
+      expect(listener).toHaveBeenCalledTimes(2);
+    });
+
     it("starts and cancels a sign-in", async () => {
       const asked: string[] = [];
       const { accounts } = await accountsOf({ host: (own) => hostOver(own, asked) });
@@ -353,6 +378,7 @@ verifies("studio.workspace-google-setup-accounts", () => {
         accounts.startOver("gaccount_1"),
         accounts.startSignIn("gaccount_1"),
         accounts.cancelSignIn("gaccount_1"),
+        accounts.disconnect("gaccount_1"),
       ]) {
         await expect(attempt).rejects.toThrow("needs its agent host");
         await expect(attempt).rejects.not.toThrow("yet");
@@ -406,9 +432,7 @@ verifies("studio.workspace-google-setup-accounts", () => {
     it("is refused in plain words without an agent host", async () => {
       const { accounts } = await accountsOf();
 
-      await expect(accounts.disconnect("gaccount_1")).rejects.toThrow(
-        "can't be saved in the Halonic app yet",
-      );
+      await expect(accounts.disconnect("gaccount_1")).rejects.toThrow("needs its agent host");
     });
   });
 
