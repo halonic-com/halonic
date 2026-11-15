@@ -46,18 +46,24 @@ verifies("fs-node.real-path-resolver", () => {
     );
   });
 
-  it.skipIf(win32)("follows a link before it reads a `..` after it (POSIX)", async () => {
-    await symlink(outside, join(project, "dir"));
-    expect((await resolveRealPath(`${project}/dir/../project/file`))?.real).toBe(
-      join(project, "file"),
-    );
-    expect((await resolveRealPath(`${project}/dir/../outside`))?.real).toBe(outside);
-  });
+  it.runIf(!win32)(
+    "[platform:win32] reason: Win32 reads a `..` as text first, so a POSIX link is followed before it",
+    async () => {
+      await symlink(outside, join(project, "dir"));
+      expect((await resolveRealPath(`${project}/dir/../project/file`))?.real).toBe(
+        join(project, "file"),
+      );
+      expect((await resolveRealPath(`${project}/dir/../outside`))?.real).toBe(outside);
+    },
+  );
 
-  it.skipIf(!win32)("reads a `..` as text before it follows a link (Win32)", async () => {
-    await symlink(outside, join(project, "dir"));
-    expect((await resolveRealPath(`${project}/dir/../file`))?.real).toBe(join(project, "file"));
-  });
+  it.runIf(win32)(
+    "[platform:linux] reason: only Win32 reads a `..` as text before it follows a link",
+    async () => {
+      await symlink(outside, join(project, "dir"));
+      expect((await resolveRealPath(`${project}/dir/../file`))?.real).toBe(join(project, "file"));
+    },
+  );
 
   it("adds the missing names to the nearest existing parent's real path", async () => {
     await symlink(outside, join(project, "dir"));
@@ -67,14 +73,20 @@ verifies("fs-node.real-path-resolver", () => {
     });
   });
 
-  it.skipIf(win32)("gives nothing for a `..` in the part that isn't there (POSIX)", async () => {
-    expect(await resolveRealPath(`${project}/new/../x`)).toBeNull();
-    expect(await resolveRealPath(`${project}/new/./x`)).toBeNull();
-  });
+  it.runIf(!win32)(
+    "[platform:win32] reason: Win32 reads a `..` in the missing part as text, POSIX gives nothing",
+    async () => {
+      expect(await resolveRealPath(`${project}/new/../x`)).toBeNull();
+      expect(await resolveRealPath(`${project}/new/./x`)).toBeNull();
+    },
+  );
 
-  it.skipIf(!win32)("reads a `..` in the part that isn't there as text (Win32)", async () => {
-    expect((await resolveRealPath(`${project}/new/../file`))?.real).toBe(join(project, "file"));
-  });
+  it.runIf(win32)(
+    "[platform:linux] reason: only Win32 reads a `..` in the missing part as text",
+    async () => {
+      expect((await resolveRealPath(`${project}/new/../file`))?.real).toBe(join(project, "file"));
+    },
+  );
 
   it("gives nothing for a link to nothing, which a write would create", async () => {
     await symlink(join(outside, "not-there"), join(project, "dangling"));
