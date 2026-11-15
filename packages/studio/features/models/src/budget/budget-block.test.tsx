@@ -86,7 +86,7 @@ async function type(input: HTMLInputElement, value: string) {
 const blockOf = (section: HTMLElement) =>
   section.querySelector<HTMLElement>("section[aria-labelledby]:has(h3)") as HTMLElement;
 
-verifies("models.budget-settings", () => {
+verifies("models.budget.budget-settings", () => {
   describe("what the block says", () => {
     it("says the amounts that are set, with Change", async () => {
       const { files } = setup(`${header}budget: { currency: EUR, perRun: 5, monthly: 50 }\n`, {

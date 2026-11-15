@@ -20,7 +20,7 @@ export interface BudgetBlockProps {
 }
 
 /**
- * The Budget block at the top of the Models section (`models.budget-settings`): the budget that is
+ * The Budget block at the top of the Models section (`models.budget.budget-settings`): the budget that is
  * set, or a quiet line naming the providers that may bill per use and have none, and **Change** to
  * edit the two amounts in place. It shows only when a provider may bill per use or a budget is set.
  * When the editor closes, focus returns to the button that opened it. After a budget is removed

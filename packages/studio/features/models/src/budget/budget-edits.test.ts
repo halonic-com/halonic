@@ -5,7 +5,7 @@ import { editBudget } from "./budget-edits.ts";
 const withBudget =
   "version: 1\nid: acme\nname: Acme\nbudget:\n  currency: USD\n  perRun: 5 # keep\n";
 
-verifies("models.budget-settings", () => {
+verifies("models.budget.budget-settings", () => {
   describe("editBudget", () => {
     it("writes both amounts, reading , as the decimal separator", () => {
       const edited = editBudget("version: 1\nid: acme\nname: Acme\n", {

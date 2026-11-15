@@ -1,4 +1,4 @@
-# models.budget-settings
+# models.budget.budget-settings
 
 - Status: draft
 - Since: 0.1.0
