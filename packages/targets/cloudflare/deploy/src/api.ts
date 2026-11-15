@@ -81,6 +81,11 @@ export interface WorkerUpload {
 export interface DeployedVersion {
   readonly id: string;
   readonly percentage: number;
+  /**
+   * Set when Cloudflare made this deployment itself because a Workers secret changed (the admin
+   * key's, see `withAdminKey`). It runs the code of the version before it, so `rollback` skips it.
+   */
+  readonly secretChange?: true;
 }
 
 /** One version Cloudflare knows, with the note the deploy left on it. */

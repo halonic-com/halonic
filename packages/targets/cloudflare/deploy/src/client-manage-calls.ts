@@ -52,21 +52,30 @@ export function manageCalls(
       undefined,
       true,
     );
-    const list = (body?.result as { deployments?: { versions?: unknown }[] } | undefined)
-      ?.deployments;
+    const list = (
+      body?.result as
+        | { deployments?: { versions?: unknown; annotations?: Record<string, unknown> }[] }
+        | undefined
+    )?.deployments;
     if (!Array.isArray(list)) return [];
-    return list.flatMap((deployment) =>
-      Array.isArray(deployment.versions)
-        ? [
-            (deployment.versions as { version_id?: unknown; percentage?: unknown }[]).flatMap(
-              (v) =>
-                typeof v.version_id === "string" && typeof v.percentage === "number"
-                  ? [{ id: v.version_id, percentage: v.percentage }]
-                  : [],
-            ),
-          ]
-        : [],
-    );
+    return list.flatMap((deployment) => {
+      if (!Array.isArray(deployment.versions)) return [];
+      // Cloudflare marks a deployment it made for a secret change with this annotation.
+      const secretChange = deployment.annotations?.["workers/triggered_by"] === "secret";
+      return [
+        (deployment.versions as { version_id?: unknown; percentage?: unknown }[]).flatMap((v) =>
+          typeof v.version_id === "string" && typeof v.percentage === "number"
+            ? [
+                {
+                  id: v.version_id,
+                  percentage: v.percentage,
+                  ...(secretChange ? { secretChange: true as const } : {}),
+                },
+              ]
+            : [],
+        ),
+      ];
+    });
   }
 
   async function workersDevAddress(accountId: string, worker: string): Promise<string> {

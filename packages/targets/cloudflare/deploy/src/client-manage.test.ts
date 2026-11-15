@@ -34,6 +34,31 @@ function client(routes: Record<string, Route>, seen: string[]) {
 
 const worker = "/accounts/a1/workers/scripts/w";
 
+verifies("deploy.rollback", () => {
+  it("marks a deployment Cloudflare made for a secret change", async () => {
+    const api = client(
+      {
+        [`GET ${worker}/deployments`]: {
+          result: {
+            deployments: [
+              {
+                versions: [{ version_id: "v3", percentage: 100 }],
+                annotations: { "workers/triggered_by": "secret" },
+              },
+              { versions: [{ version_id: "v2", percentage: 100 }] },
+            ],
+          },
+        },
+      },
+      [],
+    );
+    expect(await api.deploymentHistory("a1", "w")).toEqual([
+      [{ id: "v3", percentage: 100, secretChange: true }],
+      [{ id: "v2", percentage: 100 }],
+    ]);
+  });
+});
+
 verifies("deploy.status", () => {
   it("reads versions, deployment history and the workers.dev address without writing", async () => {
     const seen: string[] = [];
