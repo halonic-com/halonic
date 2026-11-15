@@ -18,7 +18,9 @@ export interface RestartFlow {
 }
 
 /** Whether Restart to update applies to this status: ready, and nothing else manages updates. */
-export function restartApplies(status: UpdateStatus | null): boolean {
+export function restartApplies(status: UpdateStatus | null): status is UpdateStatus & {
+  readonly state: Extract<UpdateStatus["state"], { kind: "ready" }>;
+} {
   return status !== null && status.state.kind === "ready" && status.managed === null;
 }
 

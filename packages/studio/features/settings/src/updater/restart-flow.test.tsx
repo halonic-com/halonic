@@ -172,6 +172,18 @@ verifies("settings.restart-flow", () => {
     );
   });
 
+  it("ignores a second press while the first is still counting runs", async () => {
+    let release: (runs: RestartRuns) => void = () => {};
+    const count = vi.fn(() => new Promise<RestartRuns>((resolve) => (release = resolve)));
+    const { view, host } = await mount(statusOf(ready), undefined, count);
+    const button = view.querySelector("button") as HTMLElement;
+    await click(button);
+    await click(button);
+    await act(async () => release({ running: 0, waitingForYou: 0 }));
+    expect(count).toHaveBeenCalledOnce();
+    expect(host.restart).toHaveBeenCalledOnce();
+  });
+
   it("words one run and several waiting runs", () => {
     expect(runsBody({ running: 1, waitingForYou: 0 })).toBe(
       "1 run is still running. Restarting stops it. You can run it again afterwards.",
@@ -239,5 +251,12 @@ verifies("settings.restart-flow", () => {
     const second = first.toasts.list()[1];
     expect(second?.text).toBe("Download it from the release page.");
     expect(second?.action?.label).toBe("Open release page");
+  });
+
+  it("says the updater didn't answer when the toast's Try again can't download", async () => {
+    const page = await mount(statusOf({ kind: "did-not-install", version: "0.1.1", attempts: 1 }));
+    page.host.download.mockRejectedValueOnce(new Error("down"));
+    await act(async () => page.toasts.list()[0]?.action?.onClick());
+    expect(titles(page.toasts).at(-1)).toBe("Halonic's updater didn't answer.");
   });
 });

@@ -26,7 +26,7 @@ function ReadyItem({
   readonly request: () => void;
 }) {
   const status = useUpdateStatus(host);
-  if (status === null || !restartApplies(status) || status.state.kind !== "ready") return null;
+  if (status === null || !restartApplies(status)) return null;
   return (
     <span className="hidden wide:contents">
       <Button variant="ghost" size="sm" icon={<UpdateReadyIcon />} onClick={request}>

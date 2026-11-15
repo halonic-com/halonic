@@ -5,7 +5,7 @@ import { RestartFlowService } from "./restart-flow.ts";
 import * as text from "./restart-text.ts";
 
 /**
- * The update commands Ctrl K lists (`settings.update-commands`): "Check for Halonic updates"
+ * The update commands Ctrl K lists (`settings.restart-flow`): "Check for Halonic updates"
  * wherever the app has an updater, and "Restart to update Halonic" only while an update is ready.
  * "About Halonic" opens Settings on its section, also without an updater: the section then says
  * where updates are installed. The others need an updater.
