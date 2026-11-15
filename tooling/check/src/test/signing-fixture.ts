@@ -10,6 +10,14 @@ export function fakeGit(commits: Readonly<Record<string, Files>>): GitObjects {
     hasCommit: (commit) => commit in commits,
     listFiles: (commit) => Object.keys(commits[commit] ?? {}),
     readFile: (commit, path) => commits[commit]?.[path],
+    readFiles: (commit, paths) =>
+      new Map(
+        paths.flatMap((path) =>
+          commits[commit]?.[path] === undefined
+            ? []
+            : [[path, commits[commit][path]] as [string, string]],
+        ),
+      ),
     objectId: (commit, path) => {
       const files = commits[commit] ?? {};
       const file = files[path];

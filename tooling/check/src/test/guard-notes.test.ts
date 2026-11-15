@@ -80,6 +80,7 @@ verifies("check.guard-approval-fails-closed", () => {
     objectId: () => "0".repeat(40),
     listFiles: () => [],
     readFile: () => "",
+    readFiles: () => new Map(),
   };
   const pull = {
     repo: "halonic-com/halonic",

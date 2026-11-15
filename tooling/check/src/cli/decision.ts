@@ -48,7 +48,7 @@ function main(argv: readonly string[]): number {
     return 1;
   }
   run("git", "fetch", "--quiet", "--no-tags", "origin", `refs/pull/${number}/head`);
-  const git = gitObjects(root);
+  const git = gitObjects(root, (line) => console.error(`decision: ${line}...`));
   if (!git.hasCommit(pr.headRefOid)) {
     console.error(`decision: pull request ${number} moved while fetching; run this again.`);
     return 1;

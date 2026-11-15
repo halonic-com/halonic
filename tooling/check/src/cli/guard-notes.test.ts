@@ -46,6 +46,8 @@ describe("guard-notes entry point", () => {
         objectId: () => undefined,
         listFiles: () => Object.keys(files),
         readFile: (_commit, path) => files[path],
+        readFiles: (_commit, paths) =>
+          new Map(paths.filter((path) => path in files).map((path) => [path, files[path]])),
       };
       console.log(JSON.stringify(coveredPaths(["a.b"], git, "head", "base")));
     `;
