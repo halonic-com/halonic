@@ -13,14 +13,14 @@ mod version;
 
 use std::time::Duration;
 
-pub use managed::{bucket_version, detect as detect_managed, Managed, ManagedBy};
+pub use managed::{Managed, ManagedBy, bucket_version, detect as detect_managed};
 pub use record::{
-    read_record, record_text, BadSignature, CheckResult, InstallRecord, RecordRead, StartOutcome,
-    UpdaterRecord, FORMAT, MAX_BAD_SIGNATURES,
+    BadSignature, CheckResult, FORMAT, InstallRecord, MAX_BAD_SIGNATURES, RecordRead, StartOutcome,
+    UpdaterRecord, read_record, record_text,
 };
-pub use settings::{backup_path, migrate_settings_file, Migrated};
+pub use settings::{Migrated, backup_path, migrate_settings_file};
 pub use status::{
-    notes_url, CheckFailure, DownloadFailure, JustUpdated, Unit, UpdateState, UpdateStatus,
+    CheckFailure, DownloadFailure, JustUpdated, Unit, UpdateState, UpdateStatus, notes_url,
 };
 pub use version::Version;
 
@@ -68,7 +68,7 @@ pub fn check_due(
 
 #[cfg(test)]
 mod tests {
-    use super::{check_due, CHECK_EVERY, FIRST_CHECK_AFTER};
+    use super::{CHECK_EVERY, FIRST_CHECK_AFTER, check_due};
     use std::time::Duration;
 
     const DAY: u64 = 24 * 60 * 60 * 1000;
