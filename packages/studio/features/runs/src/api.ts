@@ -7,6 +7,8 @@ import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
 export { type RunChip, type RunRow, runRow } from "./list/run-row.ts";
+export type { WorkflowRef } from "./list/runs-filter.ts";
+export { type RunsList, RunsListService } from "./runs-list.ts";
 
 /** One run as the Runs list reads it: its summary, and the one fact the summary doesn't hold. */
 export interface SourcedRun {

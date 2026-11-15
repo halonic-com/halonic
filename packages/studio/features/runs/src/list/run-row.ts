@@ -39,6 +39,8 @@ export interface RunRow {
   readonly id: string;
   /** The hub the run's workflow is in; with `id` it names the run's item. */
   readonly hubId: string;
+  /** The id of the run's workflow in its hub; with `hubId` it names the workflow. */
+  readonly workflowId: string;
   /** The last 6 characters of the id, as stored: the Run column, in the monospace style. */
   readonly shortId: string;
   readonly standing: RunStanding;
@@ -110,6 +112,7 @@ export function runRow(run: SourcedRun, context: RowContext): RunRow {
   return {
     id: summary.id,
     hubId: summary.hubId,
+    workflowId: summary.workflowId,
     shortId,
     standing,
     chip: { word: chipWords[standing], ...chipLooks[standing] },

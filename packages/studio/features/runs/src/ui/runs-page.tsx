@@ -11,7 +11,7 @@ import {
   usePresentation,
 } from "@halonicjs/studio-kit";
 import type { PlaceViewProps } from "@halonicjs/studio-shell";
-import { useCallback, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { listRows } from "../list/list-rows.ts";
 import type { RunRow } from "../list/run-row.ts";
 import {
@@ -23,6 +23,7 @@ import {
   type StatusFilter,
   startFilters,
   statusCounts,
+  type WorkflowRef,
 } from "../list/runs-filter.ts";
 import { loadFailureReason } from "../load-failure.ts";
 import { emptyListWords, pageWords, runCommand } from "../run-words.ts";
@@ -73,10 +74,16 @@ export function RunsView(props: RunsViewProps) {
 function DesktopRuns({ list, openRun, now = () => new Date() }: RunsViewProps) {
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
   const state = useSyncExternalStore(subscribe, () => list.state);
-  const [filters, setFilters] = useState<RunsFilters>(startFilters);
+  const [filters, setFilters] = useState<RunsFilters>(() => ({
+    ...startFilters,
+    workflow: list.requestedWorkflow,
+  }));
+  // The request is for this opening only; a later plain open shows every workflow.
+  useEffect(() => list.clearRequest(), [list]);
   const retry = () => void list.refresh();
   const rows = listRows(list, now());
   const showTestRuns = () => setFilters({ ...filters, testRuns: true });
+  const showEveryWorkflow = () => setFilters({ ...filters, workflow: undefined });
   const openRow =
     openRun === undefined
       ? undefined
@@ -101,6 +108,7 @@ function DesktopRuns({ list, openRun, now = () => new Date() }: RunsViewProps) {
         onFilters={setFilters}
         retry={retry}
         showTestRuns={showTestRuns}
+        showEveryWorkflow={showEveryWorkflow}
         openRow={openRow}
         now={now()}
       />
@@ -116,6 +124,7 @@ function PageBody({
   onFilters,
   retry,
   showTestRuns,
+  showEveryWorkflow,
   openRow,
   now,
 }: {
@@ -125,6 +134,7 @@ function PageBody({
   readonly onFilters: (filters: RunsFilters) => void;
   readonly retry: () => void;
   readonly showTestRuns: () => void;
+  readonly showEveryWorkflow: () => void;
   readonly openRow: ((id: string) => void) | undefined;
   readonly now: Date;
 }) {
@@ -152,6 +162,7 @@ function PageBody({
         empty={empty}
         retry={retry}
         showTestRuns={showTestRuns}
+        showEveryWorkflow={showEveryWorkflow}
         openRow={openRow}
         now={now}
       />
@@ -186,6 +197,7 @@ function Runs({
   empty,
   retry,
   showTestRuns,
+  showEveryWorkflow,
   openRow,
   now,
 }: {
@@ -195,6 +207,7 @@ function Runs({
   readonly empty: Exclude<EmptyList, { kind: "no-runs" }> | undefined;
   readonly retry: () => void;
   readonly showTestRuns: () => void;
+  readonly showEveryWorkflow: () => void;
   readonly openRow: ((id: string) => void) | undefined;
   readonly now: Date;
 }) {
@@ -221,10 +234,21 @@ function Runs({
       />
     );
   }
+  if (empty.kind === "workflow") {
+    return (
+      <EmptyLine
+        line={empty.line}
+        action={{ label: emptyListWords.showEveryWorkflow, onClick: showEveryWorkflow }}
+      />
+    );
+  }
   return <EmptyLine line={empty.line} />;
 }
 
-/** The status chips, one choice, with counts on Live and Needs you; then the Test runs chip. */
+/**
+ * The status chips, one choice, with counts on Live and Needs you; then the Test runs chip, and
+ * the Workflow chip while the list is of one workflow, which clears it.
+ */
 function Filters({
   rows,
   filters,
@@ -234,7 +258,7 @@ function Filters({
   readonly filters: RunsFilters;
   readonly onChange: (filters: RunsFilters) => void;
 }) {
-  const counts = statusCounts(rows, filters.testRuns);
+  const counts = statusCounts(rows, filters);
   const chip = (value: StatusFilter, count?: number) => ({
     value,
     label:
@@ -263,10 +287,25 @@ function Filters({
             pressed: filters.testRuns,
             onChange: (testRuns) => onChange({ ...filters, testRuns }),
           },
+          ...(filters.workflow === undefined
+            ? []
+            : [
+                {
+                  label: pageWords.workflow(workflowName(rows, filters.workflow)),
+                  pressed: true,
+                  onChange: () => onChange({ ...filters, workflow: undefined }),
+                },
+              ]),
         ]}
       />
     </div>
   );
+}
+
+/** The workflow's name as its runs show it, or its id when it has no run yet. */
+function workflowName(rows: readonly RunRow[], workflow: WorkflowRef): string {
+  const run = rows.find((row) => row.hubId === workflow.hubId && row.workflowId === workflow.id);
+  return run?.workflow ?? workflow.id;
 }
 
 /** A row's columns, in `halonic runs`' order (checklist 1.2; T8-F1). */
