@@ -4,6 +4,7 @@
 - Task: HAL-9857 (design check on HAL-9835)
 - Approval: Liam approves this note in review on the review task of HAL-9857
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mbdNbajVotcehPQ9mLgFlHaDXXuDfX6PzXi+EUO1nrM9YKLSFlJch+g6FyxMTFEIX3ySp1+FANDXY0Tvek1aAQ==
 
 Microcopy 20.6 gives a Scoop install the switch **Tell me when a new Halonic is out**, on by default, with its own sentence, and a status line "Checks for new versions are off." The note of HAL-9371 said "no switch (spec 20.6)"; that was wrong, and the About section now shows the switch. The Scoop block now reads as 20.6 gives it (heading, sentence, command box), Check now announces "Halonic 0.1.1 is out. You have 0.1.0." on Scoop, the Restart to update button is primary and Cancel download ghost, a served Studio shows "Halonic" and its version, and the "didn't install" toast stays until closed with both **Try again** and **Open release page**. Nothing the requirements said before was removed except "no switch", and no test was removed.
 
