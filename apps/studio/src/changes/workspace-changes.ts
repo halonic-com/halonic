@@ -6,6 +6,7 @@ import type {
   ChangesSource,
   FileTexts,
   ReplaceResult,
+  VersionInput,
 } from "@halonicjs/studio-feature-source-control/api";
 import { lastVersionDiffArgs, lastVersionFromDiff } from "./last-version.ts";
 import { parseStatus, statusArgs } from "./parse-status.ts";
@@ -69,6 +70,16 @@ export class WorkspaceChanges implements ChangesSource {
       expected: await contentDigest(expected, this.#options.digest),
     });
     return result.status === "written" ? "replaced" : "changed-on-disk";
+  }
+
+  async createVersion({ message, paths }: VersionInput): Promise<void> {
+    // Only these paths, so files staged some other way stay out of the version.
+    const add = await this.#run(["add", "--all", "--", ...paths]);
+    if (add === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
+    if (add.code !== 0) throw new KindedError("unavailable", gitReason(add));
+    const commit = await this.#run(["commit", "-m", message, "--", ...paths]);
+    if (commit === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
+    if (commit.code !== 0) throw new KindedError("unavailable", gitReason(commit));
   }
 
   async turnOnHistory(): Promise<void> {
@@ -140,6 +151,14 @@ function firstLine(text: string): string {
       .map((line) => line.trim())
       .find((line) => line !== "") ?? ""
   );
+}
+
+/** Why a git call failed, as a sentence: git's message, or what it says when it knows nobody. */
+function gitReason(answer: GitAnswer): string {
+  if (/tell me who you are|empty ident name/i.test(answer.stderr)) {
+    return "Git doesn't know who versions should be from. Set your name and email in git, then try again.";
+  }
+  return firstLine(answer.stderr) || firstLine(answer.stdout);
 }
 
 /** Whether the shell refused because it found no git program (`GitRefusal.kind`). */

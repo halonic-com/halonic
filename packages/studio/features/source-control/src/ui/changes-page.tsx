@@ -6,6 +6,7 @@ import { type ChangesList, ChangesListService, type ChangesListState } from "../
 import { pageWords, stateWords } from "../changes-words.ts";
 import { loadFailureReason } from "../load-failure.ts";
 import { ChangeList } from "./change-list.tsx";
+import { CreateVersionDialog } from "./create-version-dialog.tsx";
 
 /** The Changes place's page: the open workspace's changes, from `ChangesListService`. */
 export function ChangesPage({ context }: PlaceViewProps) {
@@ -23,7 +24,7 @@ export interface ChangesViewProps {
  * work", "Halonic needs git to keep versions.", or "Nothing has changed since your last version.".
  * A later read that fails keeps what the page showed (states D1).
  *
- * Not here yet: Create version, History and the sharing strip.
+ * Not here yet: History and the sharing strip.
  */
 export function ChangesView({ list }: ChangesViewProps) {
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
@@ -37,6 +38,13 @@ export function ChangesView({ list }: ChangesViewProps) {
         </h1>
       </header>
       <PageBody list={list} state={state} focusHeading={() => heading.current?.focus()} />
+      {state.version === undefined ? null : (
+        <CreateVersionDialog
+          list={list}
+          files={list.versionFiles}
+          returnFocus={() => heading.current}
+        />
+      )}
     </div>
   );
 }

@@ -236,3 +236,71 @@ verifies("source-control.changes-page", () => {
     });
   });
 });
+
+verifies("source-control.create-version", () => {
+  describe("WorkspaceChanges.createVersion", () => {
+    it("adds and commits only the given paths, with the message", async () => {
+      const calls: (readonly string[])[] = [];
+      const { changes } = history(async (args) => {
+        calls.push(args);
+        return answer("");
+      });
+      await changes.createVersion({
+        message: "First reply flow\n\nTone changed.",
+        paths: ["agents/triage.agent.yaml", "skills/tone/SKILL.md"],
+      });
+      expect(calls).toEqual([
+        ["add", "--all", "--", "agents/triage.agent.yaml", "skills/tone/SKILL.md"],
+        [
+          "commit",
+          "-m",
+          "First reply flow\n\nTone changed.",
+          "--",
+          "agents/triage.agent.yaml",
+          "skills/tone/SKILL.md",
+        ],
+      ]);
+    });
+
+    it("doesn't commit when adding failed, and gives git's first line", async () => {
+      const calls: string[] = [];
+      const { changes } = history(async (args) => {
+        calls.push(args[0] ?? "");
+        return answer("", 128, "fatal: Unable to create index.lock\nsecond line");
+      });
+      await expect(changes.createVersion({ message: "x", paths: ["a.md"] })).rejects.toThrow(
+        "fatal: Unable to create index.lock",
+      );
+      expect(calls).toEqual(["add"]);
+    });
+
+    it("says what git said on stdout when a commit fails without a message on stderr", async () => {
+      const { changes } = history(async (args) =>
+        args[0] === "commit" ? answer("nothing to commit, working tree clean", 1) : answer(""),
+      );
+      await expect(changes.createVersion({ message: "x", paths: ["a.md"] })).rejects.toThrow(
+        "nothing to commit, working tree clean",
+      );
+    });
+
+    it("says that git doesn't know who the version is from", async () => {
+      const { changes } = history(async (args) =>
+        args[0] === "commit"
+          ? answer("", 128, "Author identity unknown\n\n*** Please tell me who you are.")
+          : answer(""),
+      );
+      await expect(changes.createVersion({ message: "x", paths: ["a.md"] })).rejects.toThrow(
+        "Git doesn't know who versions should be from.",
+      );
+    });
+
+    it("says git is missing when the shell found no git program", async () => {
+      const { changes } = history(async () => {
+        throw { kind: "git_not_found" };
+      });
+      await expect(changes.createVersion({ message: "x", paths: ["a.md"] })).rejects.toThrow(
+        "git isn't on this computer.",
+      );
+    });
+  });
+});

@@ -1,3 +1,4 @@
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { ChangesList } from "./changes-list.ts";
@@ -111,6 +112,82 @@ verifies("source-control.changes-page", () => {
       fake.answer({ kind: "ready", changes: [] });
       await list.refresh();
       expect(list.changedFileCount).toBe(2);
+    });
+  });
+});
+
+verifies("source-control.create-version", () => {
+  describe("ChangesList creating a version", () => {
+    async function listWith(...paths: string[]) {
+      const fake = fakeSource({
+        kind: "ready",
+        changes: paths.map((path) => ({ path, status: "modified" as const, staged: false })),
+      });
+      for (const path of paths) fake.setTexts(path, { before: "a: 1\n", after: "a: 2\n" });
+      const list = new ChangesList(fake.source);
+      await settle();
+      return { fake, list };
+    }
+
+    it("opens for every changed file, or only for the paths it is given", async () => {
+      const { list } = await listWith("agents/a.agent.yaml", "agents/b.agent.yaml");
+      list.startVersion();
+      expect(list.versionFiles.map((file) => file.path)).toEqual([
+        "agents/a.agent.yaml",
+        "agents/b.agent.yaml",
+      ]);
+      list.startVersion(["agents/b.agent.yaml"]);
+      expect(list.versionFiles.map((file) => file.path)).toEqual(["agents/b.agent.yaml"]);
+      list.cancelVersion();
+      expect(list.versionFiles).toEqual([]);
+      expect(list.state.version).toBeUndefined();
+    });
+
+    it("records only the files it was opened for, with the name and notes as the message", async () => {
+      const { fake, list } = await listWith("agents/a.agent.yaml", "agents/b.agent.yaml");
+      list.startVersion(["agents/b.agent.yaml"]);
+      expect(await list.createVersion("  First reply\nflow ", "Tone changed.")).toBeUndefined();
+      expect(fake.versions).toEqual([
+        { message: "First reply flow\n\nTone changed.", paths: ["agents/b.agent.yaml"] },
+      ]);
+      expect(list.state.version).toBeUndefined();
+      expect(list.changedFileCount).toBe(1);
+    });
+
+    it("names both paths of a renamed file", async () => {
+      const fake = fakeSource({
+        kind: "ready",
+        changes: [
+          {
+            path: "agents/new.agent.yaml",
+            from: "agents/old.agent.yaml",
+            status: "renamed",
+            staged: true,
+          },
+        ],
+      });
+      fake.setTexts("agents/new.agent.yaml", { before: "a: 1\n", after: "a: 1\n" });
+      const list = new ChangesList(fake.source);
+      await settle();
+      list.startVersion();
+      await list.createVersion("Rename", "");
+      expect(fake.versions[0]?.paths).toEqual(["agents/new.agent.yaml", "agents/old.agent.yaml"]);
+    });
+
+    it("keeps the dialog open and gives git's reason when it refuses", async () => {
+      const { fake, list } = await listWith("agents/a.agent.yaml");
+      fake.failVersion(new KindedError("unavailable", "Unable to create index.lock"));
+      list.startVersion();
+      expect(await list.createVersion("x", "")).toBe("Unable to create index.lock");
+      expect(list.state.version).toBeDefined();
+    });
+
+    it("says nothing has changed when its files are gone", async () => {
+      const { list } = await listWith("agents/a.agent.yaml");
+      list.startVersion(["agents/other.agent.yaml"]);
+      expect(await list.createVersion("x", "")).toBe(
+        "Nothing has changed since your last version.",
+      );
     });
   });
 });
