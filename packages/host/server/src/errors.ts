@@ -183,6 +183,12 @@ export const serverErrors = {
     code: "keys_not_supported",
     message: "This server can't keep provider keys.",
   },
+  keysReadOnly: {
+    status: 409,
+    code: "keys_read_only",
+    message:
+      "This server's provider keys are set when it is deployed, so they can't be changed here.",
+  },
   secretNameRefused: {
     status: 400,
     code: "secret_name_refused",

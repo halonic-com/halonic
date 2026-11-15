@@ -235,4 +235,87 @@ describe("the API in workerd", () => {
       expect(setup.started).toEqual([]);
     });
   });
+
+  describe("the provider keys", () => {
+    const keyName = "canary-provider";
+    const canaryKey = "sk-canary-provider-key-1234";
+    const canaryEnv = { HALONIC_SECRET_CANARY_PROVIDER: canaryKey };
+
+    /** A request on the key route from a signed-in session, over the given scheme. */
+    async function keyRequest(
+      method: string,
+      scheme: "http" | "https",
+      options: { env?: object; name?: string } = {},
+    ): Promise<{ response: Response; text: string }> {
+      const scope = nextScope();
+      // The session is made over the scheme of the write, since its cookie's name depends on it.
+      const login = await serveRequest(
+        new Request(`${scheme}://${host}/api/login`, {
+          method: "POST",
+          headers: { host, "content-type": "application/json", "cf-connecting-ip": "203.0.113.7" },
+          body: JSON.stringify({ password }),
+        }),
+        await deployment(),
+        { scope },
+      );
+      const cookie = (login.headers.get("set-cookie") ?? "").split(";")[0] ?? "";
+      const response = await serveRequest(
+        new Request(`${scheme}://${host}/api/secrets/${options.name ?? keyName}`, {
+          method,
+          headers: {
+            host,
+            cookie,
+            "content-type": "application/json",
+            "cf-connecting-ip": "203.0.113.7",
+          },
+          ...(method === "PUT" ? { body: JSON.stringify({ value: "sk-new-value-5678" }) } : {}),
+        }),
+        { ...(await deployment()), ...options.env } as RuntimeEnv,
+        { scope },
+      );
+      return { response, text: await response.clone().text() };
+    }
+
+    it("says whether a key is set, and never its value", async () => {
+      const set = await keyRequest("GET", "https", { env: canaryEnv });
+      expect(set.response.status).toBe(200);
+      expect(JSON.parse(set.text)).toEqual({ stored: true });
+      const missing = await keyRequest("GET", "https");
+      expect(JSON.parse(missing.text)).toEqual({ stored: false });
+    });
+
+    it("refuses a write over plain http with 403 before the store is asked", async () => {
+      const { response, text } = await keyRequest("PUT", "http", { env: canaryEnv });
+      expect(response.status).toBe(403);
+      expect(JSON.parse(text)).toMatchObject({ code: "secure_connection_required" });
+      expect(text).not.toContain(canaryKey);
+    });
+
+    for (const method of ["PUT", "DELETE"]) {
+      it(`refuses ${method} over https with 409 and says nothing about the key`, async () => {
+        const { response, text } = await keyRequest(method, "https", { env: canaryEnv });
+        expect(response.status).toBe(409);
+        expect(response.headers.get("cache-control")).toBe("no-store");
+        expect(JSON.parse(text)).toMatchObject({ code: "keys_read_only" });
+        expect(text).not.toContain(canaryKey);
+        expect(text).not.toContain("sk-new-value-5678");
+        expect(text).not.toContain(keyName);
+      });
+    }
+
+    it("leaves the key as it was after a refused write", async () => {
+      await keyRequest("PUT", "https", { env: canaryEnv });
+      const after = await keyRequest("GET", "https", { env: canaryEnv });
+      expect(JSON.parse(after.text)).toEqual({ stored: true });
+    });
+
+    it("answers 503 and names nothing when the deployment lacks a secret", async () => {
+      const { response, text } = await keyRequest("PUT", "https", {
+        env: { ...canaryEnv, HALONIC_SECRET_TOKEN_KEY: undefined },
+      });
+      expect(response.status).toBe(503);
+      expect(JSON.parse(text)).toEqual({ code: "unavailable", message: "The server isn't ready." });
+      expect(text).not.toContain("TOKEN_KEY");
+    });
+  });
 });

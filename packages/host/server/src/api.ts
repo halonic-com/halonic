@@ -388,9 +388,12 @@ export interface StudioPage {
 export interface ProviderKeyStore {
   /** Whether a key is stored under the name. */
   has(name: string): Promise<boolean>;
-  /** Saves a key, replacing the one under the same name. */
+  /**
+   * Saves a key, replacing the one under the same name. A store whose keys can't change throws
+   * `ProviderKeysReadOnlyError`, which the routes answer with 409 `keys_read_only`.
+   */
   set(name: string, value: string): Promise<void>;
-  /** Removes a key. Removing one that isn't stored succeeds. */
+  /** Removes a key. Removing one that isn't stored succeeds. A read-only store throws as `set` does. */
   remove(name: string): Promise<void>;
 }
 
