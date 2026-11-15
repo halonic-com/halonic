@@ -26,11 +26,12 @@ import { codexHarness } from "@halonicjs/adapter-harness-codex";
 import {
   type HarnessInstall,
   HarnessProfiles,
+  RunInstructions,
   WorkspaceHarnessHost,
 } from "@halonicjs/adapter-harness-kit";
 import { createHostSandbox, createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
-import type { HarnessRunsOptions } from "@halonicjs/engine";
+import type { HarnessAgent, HarnessRunsOptions } from "@halonicjs/engine";
 import {
   type AgentFiles,
   type BridgeServices,
@@ -178,6 +179,11 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
     services: { servicesFor: () => bridgeServices },
     profiles,
     home: input.environment.homeFolder,
+    instructions: new RunInstructions({
+      // Inside the temp root, so what an engine that stopped left is cleared when the next one opens.
+      root: join(tempRoot, "instructions"),
+      skillTextOf: skillTextOf(input),
+    }),
     placement: {
       store: new FileAgentPlacementStore(placementFolder(profile)),
       location: input.location,
@@ -319,6 +325,17 @@ function agentFilesOf(input: LocalHarnessInput): AgentFiles {
       }
       return new Uint8Array(await readFile(join(input.location, file.path)));
     },
+  };
+}
+
+/** A skill's `SKILL.md` as it is on disk now, found by its folder name in the loaded workspace. */
+function skillTextOf(
+  input: LocalHarnessInput,
+): (agent: HarnessAgent, id: string) => Promise<string> {
+  return async (_agent, id) => {
+    const file = filesOf(input.workspace(), "skill").find((each) => each.value.id === id);
+    if (file === undefined) throw new Error(`The workspace has no skill "${id}".`);
+    return await readFile(join(input.location, file.path), "utf8");
   };
 }
 
