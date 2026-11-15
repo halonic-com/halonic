@@ -7,6 +7,7 @@ import type {
   PhoneBarContribution,
   PlaceContribution,
   SettingsSectionContribution,
+  SidebarViewContribution,
 } from "./frame.ts";
 import { sidebarPlaces } from "./frame.ts";
 import { type HomeCardContribution, type HomePoint, homeSections } from "./home.ts";
@@ -42,6 +43,11 @@ export interface FramePoints {
   readonly places: Point<PlaceContribution>;
   /** Adds a card to Home; the shell sets their order. */
   readonly home: HomePoint;
+  /**
+   * Adds a view to the sidebar's Studio switch, such as the file tree. Throws a `ShellError` for a
+   * `label` that is empty.
+   */
+  readonly sidebarViews: Point<SidebarViewContribution>;
 }
 
 /**
@@ -60,6 +66,8 @@ export interface FrameContributions {
   readonly places: { list(): readonly Registered<PlaceContribution>[] };
   /** The cards features added to Home, in Home's fixed order. */
   readonly home: { cards(): readonly Registered<HomeCardContribution>[] };
+  /** The views features added next to the Studio's places, by `order`, then `id`; none while no feature adds one. */
+  readonly sidebarViews: { list(): readonly Registered<SidebarViewContribution>[] };
 }
 
 /** The id the shell's own contributions carry as their `featureId`, such as the Home place. */
@@ -84,6 +92,9 @@ export class FrameStores {
   private readonly dialogs = new PointStore<DialogHostContribution>("dialogs.add", ["id"]);
   private readonly settings = new PointStore<SettingsSectionContribution>("settings.add", ["id"]);
   private readonly places = new PointStore<PlaceContribution>("places.add", ["id"]);
+  private readonly sidebarViews = new PointStore<SidebarViewContribution>("sidebarViews.add", [
+    "id",
+  ]);
   private readonly homeCards = new PointStore<HomeCardContribution>("home.addCard", ["id"]);
 
   constructor() {
@@ -119,6 +130,13 @@ export class FrameStores {
           this.places.add(featureId, place);
         },
       },
+      sidebarViews: {
+        add: (view) => {
+          guard("sidebarViews.add");
+          this.sidebarViews.add(featureId, view);
+          checkViewLabel(featureId, view);
+        },
+      },
       home: {
         addCard: (card) => {
           guard("home.addCard");
@@ -148,6 +166,7 @@ export class FrameStores {
             (left, right) => sidebarPlaces.indexOf(left.id) - sidebarPlaces.indexOf(right.id),
           ),
       },
+      sidebarViews: { list: () => byOrder(this.sidebarViews.all()) },
       home: {
         cards: () =>
           [...this.homeCards.all()].sort(
@@ -197,6 +216,15 @@ function rejectUnknownSection(card: HomeCardContribution, featureId: string): vo
   if (!(homeSections as readonly string[]).includes(card.id)) {
     throw new ShellError(
       `home.addCard: the feature "${featureId}" adds the section ${JSON.stringify(card.id)}, which isn't one of Home's sections (${homeSections.join(", ")}). Show it on your own place's page instead, or ask for a new section in the design.`,
+    );
+  }
+}
+
+/** The switch names the view by its label, so a view without one would be a button with no name. */
+function checkViewLabel(featureId: string, view: SidebarViewContribution): void {
+  if (typeof view.label !== "string" || view.label.trim() === "") {
+    throw new ShellError(
+      `sidebarViews.add: the feature "${featureId}" gives the view "${view.id}" no label. Give it the name the sidebar's switch shows, such as "Files".`,
     );
   }
 }
