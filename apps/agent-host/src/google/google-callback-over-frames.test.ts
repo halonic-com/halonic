@@ -1,8 +1,8 @@
 import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type ProfileFolder, workspaceFolders } from "@halonicjs/profile";
 import type { GoogleAccountActions } from "@halonicjs/host-server";
+import { type ProfileFolder, workspaceFolders } from "@halonicjs/profile";
 import { encodeBase64url } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
