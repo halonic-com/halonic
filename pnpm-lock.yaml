@@ -3169,12 +3169,24 @@ importers:
 
   packages/testing/cloudflare-live:
     devDependencies:
+      '@halonicjs/adapter-cloudflare-storage':
+        specifier: workspace:*
+        version: link:../../adapters/cloudflare-storage
+      '@halonicjs/target-cloudflare-deploy':
+        specifier: workspace:*
+        version: link:../../targets/cloudflare/deploy
+      '@halonicjs/target-cloudflare-runtime':
+        specifier: workspace:*
+        version: link:../../targets/cloudflare/runtime
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../spec
       '@halonicjs/tooling-config':
         specifier: workspace:*
         version: link:../../../tooling/config
+      '@halonicjs/tooling-publish':
+        specifier: workspace:*
+        version: link:../../../tooling/publish
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.6
