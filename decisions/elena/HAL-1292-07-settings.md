@@ -3,6 +3,7 @@
 - Task: HAL-1292
 - Approval: Liam approves the Models summary and the removal of the placeholder on HAL-10289 (https://paperclip.halonic.com/HAL/issues/HAL-10289): "PR 7 Settings Models summary: yes. ... Register it under the same id `models`, and remove the T11 placeholder in the same PR." Liam approves the shared first line, the chips and the warning mark (HAL-10386) on HAL-10397 (https://paperclip.halonic.com/HAL/issues/HAL-10397): "all three points are fixed, and the code is approved." A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:lFYVPDOu/FIyrpU+4FGve1kppHcV5YqZ5C+DjCIfhygJK1W0vPkYi8fxU/MYKM7fyASF0rYnDH6YlqkEnOhZDw==
 
 ## What changes
 
