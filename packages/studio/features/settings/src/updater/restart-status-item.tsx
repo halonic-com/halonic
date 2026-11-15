@@ -56,6 +56,9 @@ function UpdateItem({
   );
 }
 
+/** The tooltip is for the short words only: from 1200px the full line is already on screen. */
+const isNarrowManaged = () => !window.matchMedia("(min-width: 1200px)").matches;
+
 /** From 900px the short words with the full line as a tooltip; from 1200px the full line. */
 function ManagedItem({
   version,
@@ -68,7 +71,7 @@ function ManagedItem({
 }) {
   return (
     <span className="hidden wide:contents">
-      <Tooltip text={text.managedLine(command)}>
+      <Tooltip text={text.managedLine(command)} isName showIf={isNarrowManaged}>
         {(trigger) => (
           <Button
             variant="ghost"
