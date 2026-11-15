@@ -99,11 +99,12 @@ export function createShell(options: ShellOptions): Shell {
   commands.check();
   const announcer =
     options.timers === undefined ? createAnnouncer() : createAnnouncer({ timers: options.timers });
+  const engine = createShellEngine(announcer, options.timers ?? systemTimers, options.host);
   return {
     features,
     announcer,
     closeStack: createCloseStack(),
-    engine: createShellEngine(announcer, options.timers ?? systemTimers, options.host),
+    engine,
     toasts: createToastStore(),
     badges: createBadgeRegistry(),
     services: {
@@ -111,6 +112,7 @@ export function createShell(options: ShellOptions): Shell {
       contextFor: (featureId, target) => ({
         services: lookupFor(findFeature(features, featureId), target),
         announcer,
+        engineWords: engine.words,
       }),
     },
     contributions: {

@@ -1,6 +1,6 @@
 import type { RunSummary } from "@halonicjs/events";
 import type { RunExecutor } from "@halonicjs/ports";
-import type { PlaceSignal, ViewRef } from "@halonicjs/studio-shell";
+import type { EngineWords, PlaceSignal, ViewRef } from "@halonicjs/studio-shell";
 import { type InboxDecisions, inboxDecisions } from "./decide.ts";
 import { inboxSignal } from "./inbox-count.ts";
 import {
@@ -72,6 +72,8 @@ export interface SetupViewProps {
    * buttons and links working, and marks the buttons that act with `aria-disabled`.
    */
   readonly answering: boolean;
+  /** The engine words for this window's host (the desktop app's when left out), for the reason beside a control that can't act. */
+  readonly words?: EngineWords;
   /** **Not now**: closes the item and puts focus back on its row. */
   readonly close: () => void;
 }

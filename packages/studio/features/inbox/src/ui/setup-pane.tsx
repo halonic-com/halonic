@@ -1,11 +1,8 @@
 import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
-import { errorMessageFor, loadView, type ViewRef } from "@halonicjs/studio-shell";
+import { engineWords, errorMessageFor, loadView, type ViewRef } from "@halonicjs/studio-shell";
 import { type ComponentType, type KeyboardEvent, useEffect, useState } from "react";
 import type { InboxSetupSource, SetupViewProps } from "../inbox.ts";
 import { SetupCard } from "./setup-card.tsx";
-
-/** Over the item while the engine isn't answering (UX checklist 1, U3). */
-export const notAnsweringLine = "The engine isn't answering. Showing what it said last.";
 
 /** Props for {@link SetupPane}. */
 export interface SetupPaneProps extends SetupViewProps {
@@ -16,21 +13,28 @@ export interface SetupPaneProps extends SetupViewProps {
 /**
  * An open setup item in the Inbox's pane: the source's own view at the current step, loaded when
  * it opens, else the item's title and progress line. Escape closes it, as **Not now** does.
+ * While the engine isn't answering, the host's "showing what it said last" line sits over the item (UX checklist 1, U3).
  * While the view loads, a skeleton says "Loading the Google setup"; when it can't load, "Couldn't
  * load the Google setup", the reason and **Try again** (UX checklist 1, U2).
  */
-export function SetupPane({ source, item, answering, close }: SetupPaneProps) {
+export function SetupPane({
+  source,
+  item,
+  answering,
+  words = engineWords["desktop-app"],
+  close,
+}: SetupPaneProps) {
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key !== "Escape" || event.defaultPrevented) return;
     event.preventDefault();
     close();
   };
-  const props: SetupViewProps = { item, answering, close };
+  const props: SetupViewProps = { item, answering, words, close };
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: Escape from anywhere in the item closes it
     <div className="flex flex-col" onKeyDown={onKeyDown}>
-      {answering ? null : <p className="px-4 pt-4 text-small text-fg-muted">{notAnsweringLine}</p>}
+      {answering ? null : <p className="px-4 pt-4 text-small text-fg-muted">{words.showingLast}</p>}
       {source?.view === undefined ? (
         <SetupCard {...props} />
       ) : (

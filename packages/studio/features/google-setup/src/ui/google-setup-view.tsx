@@ -1,11 +1,13 @@
 import type { AccountType, SetupEdit } from "@halonicjs/google-setup";
 import type { SetupViewProps } from "@halonicjs/studio-feature-inbox/api";
 import { EmptyState, SkeletonBar, usePresentation } from "@halonicjs/studio-kit";
+import { engineWords } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { accountSteps } from "../account-steps.ts";
 import type { GoogleSetupAccount, GoogleSetupAccounts } from "../api.ts";
 import { AccountHeader } from "./account-header.tsx";
 import { Checklist, currentStep } from "./checklist.tsx";
+import { NotAnsweringProvider, useNotAnswering } from "./not-answering.tsx";
 import { PhoneView } from "./phone-view.tsx";
 import { resumeLine } from "./resume-line.ts";
 import { StartOver } from "./start-over.tsx";
@@ -83,7 +85,17 @@ function useAccount(accounts: GoogleSetupAccounts, ref: string): AccountRead {
  * The Google setup item at its current step (UX checklist section 2): the header, then the
  * checklist. The title of the step in hand takes focus as it mounts.
  */
-export function GoogleSetupView({ item, answering, close, accounts }: GoogleSetupViewProps) {
+export function GoogleSetupView(props: GoogleSetupViewProps) {
+  const reason = (props.words ?? engineWords["desktop-app"]).reason;
+  return (
+    <NotAnsweringProvider value={reason}>
+      <GoogleSetupBody {...props} />
+    </NotAnsweringProvider>
+  );
+}
+
+function GoogleSetupBody({ item, answering, close, accounts }: GoogleSetupViewProps) {
+  const notAnswering = useNotAnswering();
   const { account, problem, retry, refresh } = useAccount(accounts, item.account);
   const phone = usePresentation() === "phone";
   // Counts the times the setup was started over: the checklist starts afresh, at step 1.
@@ -112,7 +124,7 @@ export function GoogleSetupView({ item, answering, close, accounts }: GoogleSetu
           description={
             problem === "unlisted"
               ? "This Google account isn't set up here any more."
-              : "The engine isn't answering."
+              : notAnswering
           }
           action={{ label: "Try again", onClick: retry }}
         />

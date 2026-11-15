@@ -7,6 +7,8 @@ export type StudioHost = "desktop-app" | "served" | "phone";
 
 /** The texts that say whether the engine answers, worded for one {@link StudioHost}. */
 export interface EngineWords {
+  /** The sentence alone, for beside a control that can't act: "The engine isn't answering." */
+  readonly reason: string;
   /** The reason of a "Couldn't load …" state, such as "The engine isn't answering. It may still be starting." */
   readonly notAnswering: string;
   /** The line over a page that keeps what it showed, read once when the engine goes. */
@@ -21,18 +23,32 @@ export interface EngineWords {
  */
 export const engineWords: Readonly<Record<StudioHost, EngineWords>> = {
   "desktop-app": {
+    reason: "The engine isn't answering.",
     notAnswering: "The engine isn't answering. It may still be starting.",
     showingLast: "The engine isn't answering. Showing what it said last.",
     answeringAgain: "The engine is answering again.",
   },
   served: {
+    reason: "Halonic on the server isn't answering.",
     notAnswering: "Halonic on the server isn't answering.",
     showingLast: "Halonic on the server isn't answering. Showing what it said last.",
     answeringAgain: "Halonic is answering again.",
   },
   phone: {
+    reason: "Halonic on your computer isn't answering.",
     notAnswering: "Halonic on your computer isn't answering.",
     showingLast: "Halonic on your computer isn't answering. Showing what it said last.",
     answeringAgain: "Halonic is answering again.",
   },
 };
+
+/**
+ * The engine words a feature's view should use: the ones for this window's host, or the desktop
+ * app's when its context was built without a window (a test).
+ *
+ * @example
+ * engineWordsOf(context).notAnswering; // "Halonic on your computer isn't answering." on a phone
+ */
+export function engineWordsOf(context: { readonly engineWords?: EngineWords }): EngineWords {
+  return context.engineWords ?? engineWords["desktop-app"];
+}
