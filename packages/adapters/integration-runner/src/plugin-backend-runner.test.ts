@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { homedir, tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import type { AddressCheckingHttpClient } from "@halonicjs/adapter-integration-kit";
 import { createHostSandbox } from "@halonicjs/adapter-sandbox-host";
 import { type Plugin, parseFile } from "@halonicjs/format";
@@ -13,6 +13,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildRunnerFile, type RunnerFile } from "../esbuild.config.ts";
 import type { RunnerConnection } from "./halonic/connect-runner.ts";
 import { loadPluginBackend } from "./halonic/plugin-backend.ts";
+import { runnerNodeFolder } from "./halonic/runner-node-folder.ts";
 import { socketFolders, systemFiles } from "./halonic/runner-profile.ts";
 import { startRunner } from "./halonic/start-runner.ts";
 import { fakeSecret } from "./pipes.test-helper.ts";
@@ -158,7 +159,7 @@ async function loadHostile() {
         sandbox: createHostSandbox(),
         files: {
           node: process.execPath,
-          nodeFolder: dirname(dirname(process.execPath)),
+          nodeFolder: runnerNodeFolder(process.execPath),
           runnerFile: runner.path,
           integrationFolder: pluginFolder,
         },

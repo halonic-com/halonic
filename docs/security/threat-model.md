@@ -317,6 +317,24 @@ token can disconnect an account, which removes access and grants none. The
 sign-in's callback, which has no token by design, is not served here yet (see
 the ADR `2026-11-14-google-sign-in-and-the-setup-record`).
 
+A trusted plugin's backend (`agent-host.plugin-routes`) starts the same way,
+through `POST /v1/plugins/call`: the request names the plugin by an id of
+lower-case letters, digits, `.`, `_` and `-` only, never a path. The host reads
+the plugin's folder in its own profile and checks its own trust record at every
+call; the start refuses a folder that no longer has the fingerprint just
+checked. The runner starts only in the host's fenced sandbox. The host holds no
+saved yes for running without it, so a computer without the sandbox (Windows
+until HAL-3403) answers `403 not_fenced` and starts nothing. A plugin's
+backend gets no secret and no sign-in token through the host yet. The shipped
+single executable has no runner mode of its own (its `process.execPath` is the
+host, not Node), so there the route answers `403 not_in_this_build` and starts
+nothing, rather than start a second host without Node's permission layer.
+The runner can read the folder that holds the Node executable and nothing
+above it, built by one function (`runnerNodeFolder`) that the fence's attack
+cases use as well. If Node sits in a shared folder such as Homebrew's `bin` or
+`~/.local/bin`, every program there is readable to the runner; a Node that
+needs sibling libraries outside that folder fails closed at start.
+
 #### What the sandbox is meant to stop
 
 An agent tricked by a mail, a web page or a file (B2), or a careless command,
