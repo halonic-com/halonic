@@ -55,6 +55,7 @@ export {
   loadWorkspace,
   type WorkspaceIssue,
 } from "./load-workspace.ts";
+export { isNoCostOnThisMachine, isOnThisMachine, isPayPerUse } from "./provider-cost.ts";
 export { type PlaceMatch, placeOf, settingsPath } from "./places.ts";
 export {
   type ModelTarget,
