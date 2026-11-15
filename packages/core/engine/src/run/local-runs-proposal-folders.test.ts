@@ -1,7 +1,7 @@
 import type { RunVersion } from "@halonicjs/events";
 import type { Workflow } from "@halonicjs/format";
-import { verifies } from "@halonicjs/testing-spec";
-import { expect, it, vi } from "vitest";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
 import {
   type FakeStep,
   finished,
@@ -163,7 +163,10 @@ verifies("engine.run-proposal-folder", () => {
     ports.harness.hangs = true;
     await executor.start(replyStart);
     const harnessCall = scheduler.deliver("run_1", "harness:call-1");
-    await vi.waitFor(() => expect(ports.steps).toContain("harness.start"));
+    await waitUntil(`ports.steps to contain "harness.start"`, () =>
+      ports.steps.includes("harness.start"),
+    );
+    expect(ports.steps).toContain("harness.start");
 
     await executor.cancel("run_1");
     await harnessCall;
@@ -199,7 +202,10 @@ verifies("engine.run-proposal-folder", () => {
     ports.harness.hangs = true;
     await executor.start(replyStart);
     const harnessCall = scheduler.deliver("run_1", "harness:call-1");
-    await vi.waitFor(() => expect(ports.steps).toContain("harness.start"));
+    await waitUntil(`ports.steps to contain "harness.start"`, () =>
+      ports.steps.includes("harness.start"),
+    );
+    expect(ports.steps).toContain("harness.start");
     await executor.close();
     await harnessCall;
     expect(folders.ended).toEqual([]);
