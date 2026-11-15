@@ -33,8 +33,10 @@ export function lastVersionFromDiff(diff: string, current: string | null): strin
   if (lines.some((line) => line.startsWith("Binary files ") || line === "GIT binary patch")) {
     throw new Error("This file isn't text, so its changes can't be shown.");
   }
-  if (lines.includes("--- /dev/null")) return null;
   const start = lines.findIndex((line) => line.startsWith("@@"));
+  // Only the header can say the file is new; a removed line "-- /dev/null" sits after it.
+  const header = start === -1 ? lines : lines.slice(0, start);
+  if (header.includes("--- /dev/null")) return null;
   if (start === -1) return current;
   return oldLines(lines.slice(start + 1))
     .map((line) => line.text + (line.endsWithBreak ? "\n" : ""))

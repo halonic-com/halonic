@@ -41,6 +41,8 @@ export const undoWords = {
   undone: "Change undone",
   undo: "Undo",
   failed: "Couldn't undo this change",
+  /** The toast's Undo, when putting the change back didn't work. */
+  undoFailed: "Couldn't put the change back",
   cantUndo: "This change can't be undone on its own.",
   changedMeanwhile: "The file changed while you were looking. Look at the change again.",
 };

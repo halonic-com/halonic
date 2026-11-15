@@ -38,6 +38,11 @@ verifies("source-control.change-list", () => {
       expect(lastVersionFromDiff(text, "hi\n")).toBeNull();
     });
 
+    it("doesn't take a removed line that reads -- /dev/null for a new file", () => {
+      const text = diff(...header, "@@ -1,2 +1,1 @@", " one", "--- /dev/null");
+      expect(lastVersionFromDiff(text, "one\n")).toBe("one\n-- /dev/null\n");
+    });
+
     it("gives every line of a deleted file", () => {
       const text = diff("--- a/d.txt", "+++ /dev/null", "@@ -1,2 +0,0 @@", "-a", "-b");
       expect(lastVersionFromDiff(text, null)).toBe("a\nb\n");

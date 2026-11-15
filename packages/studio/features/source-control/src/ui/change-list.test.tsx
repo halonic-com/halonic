@@ -106,6 +106,53 @@ verifies("source-control.change-list", () => {
       expect(fake.replaced[0]?.expected).toBe(after);
     });
 
+    it("shows why the toast's Undo didn't work when the file changed in the meantime", async () => {
+      const { fake, root, toasts } = await openPage();
+      const [undoInstructions] = buttons(root, "Undo this change");
+      await act(async () => {
+        undoInstructions?.click();
+        await settle();
+      });
+      const toast = toasts.list()[0];
+      const changed = lines("id: triage", "name: Triage", "model: gpt", "instructions: Edited.");
+      fake.setTexts(agentPath, { before, after: changed });
+      await act(async () => {
+        toast?.action?.onClick();
+        await settle();
+      });
+      const failure = toasts.list().find((item) => item.title === "Couldn't put the change back");
+      expect(failure?.tone).toBe("danger");
+      expect(failure?.text).toContain("The file changed while you were looking");
+    });
+
+    it("reads the changed files' texts a few at a time", async () => {
+      const paths = Array.from({ length: 10 }, (_, index) => `notes/${index}.txt`);
+      const fake = fakeSource({
+        kind: "ready",
+        changes: paths.map((path) => ({ path, status: "modified" as const, staged: false })),
+      });
+      let running = 0;
+      let most = 0;
+      const list = new ChangesList({
+        ...fake.source,
+        readTexts: async () => {
+          running += 1;
+          most = Math.max(most, running);
+          await settle();
+          running -= 1;
+          return { before: "a\n", after: "b\n" };
+        },
+      });
+      await act(async () => {
+        await settle();
+        await settle();
+        await settle();
+        await settle();
+      });
+      expect(list.state.files).toHaveLength(10);
+      expect(most).toBe(4);
+    });
+
     it("makes Undo this change unavailable, with the reason on screen, while another change builds on it", () => {
       const file = {
         path: "workflows/alert.workflow.yaml",

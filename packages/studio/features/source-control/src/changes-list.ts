@@ -6,6 +6,9 @@ import type { ChangesRead, ChangesSource, FileTexts } from "./api.ts";
 import { pageWords, undoWords } from "./changes-words.ts";
 import { loadFailureReason } from "./load-failure.ts";
 
+/** How many changed files' texts are read at the same time. */
+const readsAtOnce = 4;
+
 /** One changed file: what changed in it, and the texts the changes can be undone from. */
 export interface ChangedFile {
   readonly path: string;
@@ -16,8 +19,8 @@ export interface ChangedFile {
 
 /** What {@link ChangesList.undoChange} did. */
 export type UndoOutcome =
-  /** The change is undone; `undo` puts it back, as the toast's Undo does. */
-  | { readonly kind: "undone"; readonly undo: () => Promise<void> }
+  /** The change is undone; `undo` puts it back, as the toast's Undo does, and says why when it can't. */
+  | { readonly kind: "undone"; readonly undo: () => Promise<string | undefined> }
   | { readonly kind: "failed"; readonly reason: string };
 
 /** What the Changes list holds now. */
@@ -115,7 +118,7 @@ export class ChangesList {
     if (outcome === undefined) {
       return {
         kind: "undone",
-        undo: async () => void (await this.#replace(file.path, after, reverted.value)),
+        undo: () => this.#replace(file.path, after, reverted.value),
       };
     }
     return { kind: "failed", reason: outcome };
@@ -135,17 +138,23 @@ export class ChangesList {
   /** What changed in each file, one entry for each path. A file that can't be read is just "Changed". */
   async #describe(changes: readonly VcsChange[]): Promise<ChangedFile[]> {
     const firstOfEachPath = [...new Map(changes.map((change) => [change.path, change])).values()];
-    return Promise.all(
-      firstOfEachPath.map(async (change) => {
-        try {
-          const texts = await this.source.readTexts(change);
-          const description = describeFileChange(change.path, texts.before, texts.after);
-          return { path: change.path, description, texts };
-        } catch {
-          return { path: change.path, description: unreadable(change), texts: undefined };
-        }
-      }),
-    );
+    const files: ChangedFile[] = [];
+    // A few files at a time: every read starts a git process.
+    for (let start = 0; start < firstOfEachPath.length; start += readsAtOnce) {
+      const batch = firstOfEachPath.slice(start, start + readsAtOnce);
+      files.push(...(await Promise.all(batch.map((change) => this.#describeFile(change)))));
+    }
+    return files;
+  }
+
+  async #describeFile(change: VcsChange): Promise<ChangedFile> {
+    try {
+      const texts = await this.source.readTexts(change);
+      const description = describeFileChange(change.path, texts.before, texts.after);
+      return { path: change.path, description, texts };
+    } catch {
+      return { path: change.path, description: unreadable(change), texts: undefined };
+    }
   }
 
   /** Turns history on, then reads again. A failure stays in `turnOnError` for the page to say. */

@@ -1,6 +1,6 @@
 import type { ChangeLine } from "@halonicjs/app";
 import { Button, useToastStore } from "@halonicjs/studio-kit";
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { ChangedFile, ChangesList } from "../changes-list.ts";
 import { listWords, undoWords } from "../changes-words.ts";
 
@@ -87,7 +87,7 @@ function ChangeRow({
   const toasts = useToastStore();
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string>();
-  const reasonId = `undo-reason-${file.path}-${line.id}`;
+  const reasonId = useId();
   const dependent = file.description.lines.find((other) => other.needs?.includes(line.id));
 
   async function undo() {
@@ -103,8 +103,15 @@ function ChangeRow({
       tone: "success",
       title: undoWords.undone,
       text: line.sentence,
-      action: { label: undoWords.undo, onClick: () => void outcome.undo() },
+      action: { label: undoWords.undo, onClick: () => void putBack(outcome.undo) },
     });
+  }
+
+  /** The toast's Undo: puts the change back, or says why it couldn't. */
+  async function putBack(undo: () => Promise<string | undefined>) {
+    const reason = await undo();
+    if (reason === undefined) return;
+    toasts?.show({ tone: "danger", title: undoWords.undoFailed, text: reason });
   }
 
   return (
