@@ -1,7 +1,7 @@
 import type { RunsSource } from "@halonicjs/studio-feature-runs/api";
 import type { WorkflowsHost } from "../api.ts";
 
-/** Props for {@link WorkflowScreen}. */
+/** Props for `WorkflowScreen`. */
 export interface WorkflowScreenProps {
   readonly host: WorkflowsHost;
   /** The workspace's runs, which the Runs view shows the real ones of. */

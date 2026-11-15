@@ -108,7 +108,7 @@ verifies("workflows.runs.runs-view", () => {
     expect(page.textContent).toContain("Still loading");
   });
 
-  it("docks the card with the status, the receipt and Show the run log, and Esc closes it", async () => {
+  it("docks the card with the status, the receipt and Open the run log, and Esc closes it", async () => {
     const openRun = vi.fn();
     const page = await show(<Connected source={memoryRuns([finished]).source} openRun={openRun} />);
 
@@ -117,7 +117,7 @@ verifies("workflows.runs.runs-view", () => {
     expect(card?.getAttribute("aria-label")).toBe("Run 01done");
     expect(card?.textContent).toContain("Done");
     expect(card?.textContent).toContain("Finished in");
-    await act(async () => buttonNamed(card as HTMLElement, runsWords.showLog)?.click());
+    await act(async () => buttonNamed(card as HTMLElement, runsWords.openLog)?.click());
     expect(openRun).toHaveBeenCalledWith("run_a_01done");
 
     await act(async () => {
@@ -162,7 +162,7 @@ verifies("workflows.runs.card-receipt", () => {
     await act(async () => buttonNamed(card, "Try again")?.click());
     expect(card.textContent).not.toContain("Couldn't load run");
     expect(card.querySelector("section[aria-labelledby=run-receipt]")).not.toBeNull();
-    expect(buttonNamed(card, runsWords.showLog)).toBeDefined();
+    expect(buttonNamed(card, runsWords.openLog)).toBeDefined();
   });
 
   it("shows a skeleton named Loading run 01done, and no chip, while the log is read", async () => {
@@ -227,13 +227,16 @@ verifies("workflows.runs.card-receipt", () => {
         { type: "state.entered", state: "draft", runId: finished.id, seq: 2, at },
       ],
     };
-    const page = await show(<Connected source={withLog} />);
+    const page = await show(<Connected source={withLog} openRun={vi.fn()} />);
 
     await act(async () => page.querySelector<HTMLButtonElement>("li button")?.click());
 
     const card = page.querySelector("aside") as HTMLElement;
-    expect([...card.querySelectorAll("h2")].map((one) => one.textContent)).toContain("Every step");
-    expect(card.querySelectorAll("button").length).toBeGreaterThan(0);
-    expect(card.textContent).toContain("Show the run log");
+    const heading = [...card.querySelectorAll("h2")].find((one) => one.textContent === "Every step");
+    const section = heading?.closest("section") as HTMLElement;
+    expect(section).not.toBeNull();
+    expect(buttonNamed(section, "Show the run log")).toBeDefined();
+    expect(buttonNamed(card, "Open the run log")).toBeDefined();
+    expect(buttonNamed(card, "Show the run log")?.closest("section")).toBe(section);
   });
 });

@@ -16,10 +16,8 @@ export const runsWords = {
   cardKind: "RUN",
   closeCard: "Close run",
   startedBy: "Started by",
-  /** The footer link on the fallback card, where no receipt could be read. */
+  /** The footer link, in every state: it leaves the card for the run's page. */
   openLog: "Open the run log",
-  /** The footer link once the receipt shows (W-D3). */
-  showLog: "Show the run log",
   saveAsTest: "Save as test",
   saveTitle: "Save as test",
   nameField: "Name",

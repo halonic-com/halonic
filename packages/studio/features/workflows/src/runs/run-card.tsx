@@ -31,8 +31,8 @@ export interface RunCardProps {
 
 /**
  * The run card (UX 10.14, W-D3), docked at the right over the Runs view: the status, who started
- * it, the run's receipt at card width (its banner, summary and Every step), then **Show the run
- * log** and **Save as test**. Where the receipt can't be read, the footer says **Open the run log**.
+ * it, the run's receipt at card width (its banner, summary and Every step), then **Open the run
+ * log** (the footer link to the run's page) and **Save as test**. Only the toggle inside Every step says **Show the run log**.
  */
 export function RunCard({
   source,
@@ -97,7 +97,7 @@ export function RunCard({
         <div className="flex gap-2">
           {onOpenLog && (
             <Button variant="secondary" size="sm" onClick={onOpenLog}>
-              {read.events === undefined ? words.openLog : words.showLog}
+              {words.openLog}
             </Button>
           )}
           {saveAsTest && <SaveAsTest {...saveAsTest} />}

@@ -7,7 +7,7 @@
 
 ## What changes
 
-- `workflows.runs.card-receipt`: the card shows the run's banner and Every step (with **Show the run log**) under its header, not only the summary and the sections. While the log is read it says "Loading run 01jd8q" with no status chip; when it can't be read it says "Couldn't load run 01jd8q", why, and **Try again**. The footer link says **Show the run log** once the receipt shows and **Open the run log** on the fallback card.
+- `workflows.runs.card-receipt`: the card shows the run's banner and Every step (with **Show the run log**) under its header, not only the summary and the sections. While the log is read it says "Loading run 01jd8q" with no status chip; when it can't be read it says "Couldn't load run 01jd8q", why, and **Try again**. The footer link says **Open the run log** in every state; only the toggle inside Every step says **Show the run log** (two buttons with one name that do different things is an accessibility fault).
 - `workflows.runs.runs-view`: no change to its text.
 
 Nothing is removed or weakened. The test expectations that named "Couldn't read this run's log" and "Loading the run" now name the words above, and tests for the banner, Every step and Try again are added.
