@@ -1,6 +1,14 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
-import { build } from "esbuild";
+import { gzipSync } from "node:zlib";
+import { type BuildFailure, build } from "esbuild";
+
+/**
+ * The most a Worker script may weigh once compressed: 10 MB, the paid-plan limit of Cloudflare Workers,
+ * which counts the gzip size. Counted as 10,000,000 bytes, so a script near the limit fails here and
+ * not at the upload.
+ */
+export const MAX_COMPRESSED_BYTES = 10_000_000;
 
 /** The Worker as one ES module script, and the SHA-256 of its bytes. */
 export interface WorkerBundle {
@@ -20,10 +28,15 @@ export interface WorkerBundle {
  *
  * @param entryPoint - absolute path of the Worker's entry file, `src/index.ts` of
  *   `@halonicjs/target-cloudflare-runtime`. Tooling can't depend on a target, so the caller resolves it.
+ * @param options.maxCompressedBytes - the size limit of the gzip-compressed script, `MAX_COMPRESSED_BYTES` by default
  * @returns the script and its hash
- * @throws Error when the bundle doesn't build
+ * @throws Error when the bundle doesn't build (the message names each import that couldn't be bundled)
+ *   or when the compressed script is over the limit
  */
-export async function buildWorkerBundle(entryPoint: string): Promise<WorkerBundle> {
+export async function buildWorkerBundle(
+  entryPoint: string,
+  options: { readonly maxCompressedBytes?: number } = {},
+): Promise<WorkerBundle> {
   const result = await build({
     entryPoints: [entryPoint],
     absWorkingDir: path.resolve(path.dirname(entryPoint), ".."),
@@ -41,13 +54,29 @@ export async function buildWorkerBundle(entryPoint: string): Promise<WorkerBundl
     write: false,
     logLevel: "silent",
   }).catch((error: unknown) => {
-    throw new Error(`The Worker didn't build.\n${String(error)}`, { cause: error });
+    throw new Error(`The Worker didn't build.\n${describeFailure(error)}`, { cause: error });
   });
   const [file] = result.outputFiles;
   if (file === undefined || result.outputFiles.length !== 1) {
     throw new Error("esbuild didn't return exactly one file for the Worker.");
   }
+  const limit = options.maxCompressedBytes ?? MAX_COMPRESSED_BYTES;
+  const compressed = gzipSync(file.text).byteLength;
+  if (compressed > limit) {
+    throw new Error(
+      `The Worker is too big to upload: ${compressed} bytes compressed, the limit is ${limit}.`,
+    );
+  }
   return { script: file.text, hash: hashScript(file.text) };
+}
+
+/** One line per esbuild error, so a failing import shows by name, e.g. `Could not resolve "left-pad"`. */
+function describeFailure(error: unknown): string {
+  const { errors } = error as Partial<BuildFailure>;
+  if (!Array.isArray(errors) || errors.length === 0) return String(error);
+  return errors
+    .map(({ text, location }) => (location ? `${text} (${location.file}:${location.line})` : text))
+    .join("\n");
 }
 
 /** The lowercase hex SHA-256 of the script's UTF-8 bytes. */
