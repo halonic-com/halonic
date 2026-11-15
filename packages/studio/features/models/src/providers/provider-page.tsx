@@ -1,7 +1,8 @@
 import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { MODELS_LOADING_LINE } from "../aliases/alias-text.ts";
 import { useModels } from "../aliases/use-models.ts";
-import { ModelsFilesService } from "../api.ts";
+import { ModelKeysService, ModelsFilesService } from "../api.ts";
+import { KeyBlock } from "../api-keys/key-block.tsx";
 import { ProviderFields } from "./provider-fields.tsx";
 import { providerName, providerPlace } from "./provider-rows.ts";
 import { blockedLocalOnlyLine, PROVIDER_GONE_LINE, providerTitle } from "./provider-text.ts";
@@ -16,6 +17,7 @@ import { blockedLocalOnlyLine, PROVIDER_GONE_LINE, providerTitle } from "./provi
  */
 export function ProviderPage({ item, context }: ItemViewProps) {
   const files = context.services.get(ModelsFilesService);
+  const keys = context.services.find(ModelKeysService);
   const [state] = useModels(files);
   const entry =
     state.status !== "loading"
@@ -34,6 +36,7 @@ export function ProviderPage({ item, context }: ItemViewProps) {
             <p role="alert">{blockedLocalOnlyLine(state.workspaceName)}</p>
           ) : null}
           <ProviderFields files={files} provider={entry.provider} path={entry.path} />
+          {keys === undefined ? null : <KeyBlock keys={keys} secretName={entry.provider.secret} />}
           <p>
             File: <code>{entry.path}</code>
           </p>

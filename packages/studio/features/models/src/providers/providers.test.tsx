@@ -48,7 +48,7 @@ async function show(
   element = document.createElement("div");
   document.body.append(element);
   const context = {
-    services: { get: () => files },
+    services: { get: () => files, find: () => undefined },
     openItem: (item: ItemRef) => opened.push(item),
   } as unknown as WorkspaceContext;
   root = createRoot(element);

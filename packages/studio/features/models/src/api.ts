@@ -3,6 +3,7 @@
  * other only through this file. Settings › Assistant and the status bar
  * reach the Models feature through `ModelsService`.
  */
+import type { SecretText } from "@halonicjs/studio-kit";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
 /** Where on a provider's page the Studio should land. */
@@ -57,3 +58,44 @@ export interface ModelsFiles {
 
 /** The workspace's `models.yaml`, provided by the app for each open folder. */
 export const ModelsFilesService: ServiceKey<ModelsFiles> = serviceKey<ModelsFiles>("models.files");
+
+/**
+ * Where an API key can be typed on a provider's page. The host knows how Studio reaches it, so the
+ * page never guesses from the address bar.
+ */
+export type KeyEntry =
+  /**
+   * The field is there. `keptOn` says which computer keeps the key. `offHostHttps` is set on a
+   * served page opened from another device over https: the page says the key crosses the network
+   * encrypted and still names the host command.
+   */
+  | {
+      readonly kind: "field";
+      readonly keptOn: "this-computer" | "host-computer";
+      readonly offHostHttps: boolean;
+    }
+  /**
+   * There is no field. `demo`: the browser demo keeps no keys. `no-password`: `serve` has no
+   * password, so another device can't enter keys. `unencrypted`: another device over plain http,
+   * which the server refuses (`server.secrets-refusals`). The page shows the host command instead.
+   */
+  | { readonly kind: "unavailable"; readonly reason: "demo" | "no-password" | "unencrypted" };
+
+/**
+ * The API keys of the open workspace's providers, write-only: no method returns a key. The app
+ * provides it for each open workspace (the keychain on desktop, the host's key routes when served).
+ * A Studio without it shows no key block.
+ */
+export interface ModelKeys {
+  /** How a key can be entered here. It doesn't change while the workspace is open. */
+  readonly entry: KeyEntry;
+  /** Whether a key is stored under the secret name. */
+  stored(secretName: string): Promise<boolean>;
+  /** Stores the key under the secret name, replacing any. It rejects when it can't; the key is never in the error. */
+  save(secretName: string, key: SecretText): Promise<void>;
+  /** Deletes the key under the secret name. It rejects when it can't. */
+  remove(secretName: string): Promise<void>;
+}
+
+/** The workspace's API keys, provided by the app for each open folder. It is optional. */
+export const ModelKeysService: ServiceKey<ModelKeys> = serviceKey<ModelKeys>("models.keys");
