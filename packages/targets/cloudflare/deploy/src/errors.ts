@@ -20,7 +20,10 @@ export type DeployErrorCode =
   | "destroy-refused"
   | "destroy-changed"
   | "bucket-not-empty"
-  | "admin-key-left";
+  | "admin-key-left"
+  | "transfer-failed"
+  | "export-refused"
+  | "import-refused";
 
 /** A deploy failure with a stable code. The message never holds a token or a secret. */
 export class DeployError extends Error {
