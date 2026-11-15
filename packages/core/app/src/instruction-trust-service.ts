@@ -7,10 +7,15 @@ import {
   type Clock,
   type InstructionPin,
   type InstructionTrustKey,
+  type InstructionTrustRecord,
   type InstructionTrustStore,
   isInstructionTrustFor,
 } from "@halonicjs/ports";
-import { type InstructionTrust, instructionTrust } from "./instruction-trust.ts";
+import {
+  type InstructionTrust,
+  instructionChanges,
+  instructionTrust,
+} from "./instruction-trust.ts";
 
 /**
  * Whether the run may start with its instructions. When a person must be
@@ -56,22 +61,30 @@ export class InstructionTrustService {
       trusted = await this.#trustedPin(key);
     } catch (error) {
       const unreadable = error instanceof Error ? error.message : String(error);
-      const ask = instructionTrust(null, current);
-      // `instructionTrust` gives `ask` whenever nothing is trusted.
-      if (ask.kind !== "ask") throw new Error("Nothing trusted must ask.");
-      return { ...ask, unreadable };
+      return { kind: "ask", changes: instructionChanges(null, current), unreadable };
     }
     return instructionTrust(trusted, current);
   }
 
-  /** Saves `pin` as what a person trusted for the agent, replacing any earlier pin. */
+  /**
+   * Saves `pin` as what a person trusted for the agent, replacing any earlier pin.
+   *
+   * @throws when `pin` isn't a valid pin (a digest not in `sha256:` form): saved, it
+   *   would never be read back, and the person would be asked again after saying yes
+   */
   async trust(key: InstructionTrustKey, pin: InstructionPin): Promise<void> {
-    await this.#options.store.save({
+    const record: InstructionTrustRecord = {
       location: key.location,
       agent: key.agent,
       pin,
       grantedAt: this.#options.clock.now().toISOString(),
-    });
+    };
+    if (!isInstructionTrustFor(key, record)) {
+      throw new Error(
+        `The instructions for the agent ${JSON.stringify(key.agent)} aren't a valid pin, so they weren't trusted.`,
+      );
+    }
+    await this.#options.store.save(record);
   }
 
   /** Forgets what was trusted for the agent, so the next run asks. */

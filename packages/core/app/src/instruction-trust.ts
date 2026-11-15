@@ -21,19 +21,29 @@ export function instructionTrust(
   current: InstructionPin,
 ): InstructionTrust {
   if (trusted !== null && trusted.digest === current.digest) return { kind: "trusted" };
+  return { kind: "ask", changes: instructionChanges(trusted, current) };
+}
+
+/**
+ * How `current` differs from `trusted`; with nothing trusted, every file is added.
+ *
+ * @example
+ * instructionChanges(null, pin); // { added: ["AGENTS.md"], removed: [], changed: [] }
+ */
+export function instructionChanges(
+  trusted: InstructionPin | null,
+  current: InstructionPin,
+): InstructionChanges {
   const before = trusted?.files ?? {};
   const names = (pin: Readonly<Record<string, string>>) => Object.keys(pin);
   // `hasOwn`, because a file may be named `constructor` or `toString`.
   const had = (name: string) => Object.hasOwn(before, name);
   const has = (name: string) => Object.hasOwn(current.files, name);
   return {
-    kind: "ask",
-    changes: {
-      added: names(current.files).filter((name) => !had(name)),
-      removed: names(before).filter((name) => !has(name)),
-      changed: names(current.files).filter(
-        (name) => had(name) && before[name] !== current.files[name],
-      ),
-    },
+    added: names(current.files).filter((name) => !had(name)),
+    removed: names(before).filter((name) => !has(name)),
+    changed: names(current.files).filter(
+      (name) => had(name) && before[name] !== current.files[name],
+    ),
   };
 }
