@@ -1,7 +1,7 @@
 # Decision: reach the listed-tools failure screens, show refused reasons in full
 
 - Task: HAL-9855
-- Approval: Liam approves this change on HAL-9855 (link the approving comment here before signing).
+- Approval: Liam approves this change on HAL-10010 (https://paperclip.halonic.com/HAL/issues/HAL-10010#comment-b42ab0af-c462-4b7f-983a-aa5295d44b54), for HAL-9855. A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
 
 ## What changes
