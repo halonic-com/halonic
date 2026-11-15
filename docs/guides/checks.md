@@ -234,6 +234,50 @@ inside `verifies()`, so the count no longer depends on the runner; once it
 lands, this exception goes away. `check.guard-fewer-assertions` has the exact
 rule.
 
+**Before you ask for a signature**, go through this list. Most failed note
+checks come from one of these:
+
+1. The file is `decisions/<branch name>.md`, so renaming the branch means
+   renaming the note. A note under another name is
+   an error, and so is a name the base branch already has.
+2. `- Approval:` holds the link to the Paperclip task where the change was
+   approved. The guard only checks that it isn't empty, so you are the check.
+3. `- Kind:` is `user-visible` if the change touches one of the guard's own
+   paths (the second-to-last row of the table above) or anything a user sees.
+   Otherwise it is `internal`. Routine changes under `.github/`,
+   `tooling/check/` and `.gitattributes` may be `internal`, unless they reach
+   a trust root (see the two guardians below).
+4. `## Covers` lists every requirement ID, test file or guard path the guard
+   flags, one per `- ` line, with a path written exactly as in the table, for
+   example `- packages/testing/spec/` ([the table above](#requirement-guard-nothing-that-works-may-break)).
+5. Run the formatter on the note (`pnpm format`): the `Fast gates` job checks
+   Markdown as well, and the signature covers the note's final text.
+6. Push and wait for CI. The only guard error left should be
+   "the note has no signature line".
+7. Only then ask the approver to sign. They sign last, because the signature
+   covers the note and the covered files at that head. Any later edit to
+   either needs a new signature (the signed text is listed below).
+
+A note for a change under `packages/testing/spec/`, on the branch
+`maya/HAL-9999-spec-helper`, is
+`decisions/maya/HAL-9999-spec-helper.md`:
+
+```markdown
+# Decision: add a shared helper to the spec package
+
+- Approval: <link to the Paperclip task where it was approved>
+- Kind: user-visible
+
+The spec package gets a helper that several packages need, so each of them
+doesn't write its own copy.
+
+## Covers
+
+- packages/testing/spec/
+```
+
+The approver adds the `- Signature:` line last.
+
 **The decision note** is `decisions/<branch-name>.md`, so the branch
 `alex/HAL-42-retire-timer-rule` adds `decisions/alex/HAL-42-retire-timer-rule.md`:
 
