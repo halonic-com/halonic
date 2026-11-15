@@ -1,3 +1,4 @@
+import { AgentHostChat } from "@halonicjs/adapter-agent-host-client";
 import {
   TauriDefinitionStore,
   type TauriFileShell,
@@ -125,8 +126,11 @@ export function provideFolderServices(
     new WorkspaceKnowledge({
       files: services.get(workspaceFilesKey),
       onChange: (listener) => scope.events.on("files.changed", listener),
-      // The window has no way to call a model yet: Summarize says it couldn't, until it has.
-      chat: () => Promise.reject(new Error("Studio doesn't call models yet.")),
+      // The window can't reach a model: the agent host calls one on this computer for it.
+      chat:
+        transport === undefined
+          ? () => Promise.reject(new Error("Summarize needs the agent host, which isn't running."))
+          : (provider, request) => new AgentHostChat(transport, location).chat(provider, request),
     }),
   );
   services.provide(

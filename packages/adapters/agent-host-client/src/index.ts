@@ -7,6 +7,7 @@ export {
   bridgeAnswerLimitBytes,
   fitsAnswerLimit,
 } from "./bridges.ts";
+export { AgentHostChat } from "./chat.ts";
 export { AgentHostConnectorFactory } from "./connector.ts";
 export {
   AgentHostGoogleSetup,
