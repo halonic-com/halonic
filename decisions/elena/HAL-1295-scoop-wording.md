@@ -3,6 +3,7 @@
 - Task: HAL-1295
 - Approval: HAL-9883 (Liam reviews this note with the pull request)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:U6hH5bgh7trH2T9pOSN04ynCHBSmHtfZ2hWBwSfxr8EnTBtkAt6VMsnhRxFQv+Ygyeis0UpirYZOfoaYnQWoDQ==
 
 ## What changes
 
