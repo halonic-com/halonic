@@ -22,6 +22,10 @@ const refusals: Record<PluginRefusalCode, { status: number; message: string }> =
     message:
       "Plugin tools can't run on this computer yet: the sandbox that fences a plugin isn't available here.",
   },
+  not_in_this_build: {
+    status: 403,
+    message: "Plugin tools aren't available in this build of the agent host yet.",
+  },
   too_many_plugins: {
     status: 429,
     message: "The agent host already runs the most plugins it allows. Try again in a moment.",

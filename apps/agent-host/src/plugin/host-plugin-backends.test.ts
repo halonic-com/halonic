@@ -23,7 +23,7 @@ import type {
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { hostPluginBackends } from "./host-plugin-backends.ts";
+import { hostPluginBackends, unavailablePluginBackends } from "./host-plugin-backends.ts";
 import { PluginRefusal } from "./plugin-refusal.ts";
 
 const clock = fixedClock(Date.UTC(2026, 10, 14, 9));
@@ -172,6 +172,16 @@ async function refusedWith(promise: Promise<unknown>): Promise<string | undefine
 }
 
 verifies("agent-host.plugin-routes", () => {
+  describe("the shipped executable's backends", () => {
+    it("refuse every call as not in this build and start nothing", async () => {
+      const backends = unavailablePluginBackends();
+      await expect(backends.trustedFingerprint("acme")).rejects.toMatchObject({
+        code: "not_in_this_build",
+      });
+      await expect(backends.open("acme", "f")).rejects.toBeInstanceOf(PluginRefusal);
+    });
+  });
+
   describe("the host's plugin backends", () => {
     it("starts a trusted plugin's backend in the runner and calls its tool", async () => {
       const { backends, seen } = await setup();

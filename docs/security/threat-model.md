@@ -325,7 +325,10 @@ call; the start refuses a folder that no longer has the fingerprint just
 checked. The runner starts only in the host's fenced sandbox. The host holds no
 saved yes for running without it, so a computer without the sandbox (Windows
 until HAL-3403) answers `403 not_fenced` and starts nothing. A plugin's
-backend gets no secret and no sign-in token through the host yet.
+backend gets no secret and no sign-in token through the host yet. The shipped
+single executable has no runner mode of its own (its `process.execPath` is the
+host, not Node), so there the route answers `403 not_in_this_build` and starts
+nothing, rather than start a second host without Node's permission layer.
 
 #### What the sandbox is meant to stop
 

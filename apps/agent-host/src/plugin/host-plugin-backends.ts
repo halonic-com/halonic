@@ -78,3 +78,16 @@ function refusalFor(error: unknown, log: (text: string) => void): PluginRefusal 
 function errorName(error: unknown): string {
   return error instanceof Error ? error.name : "Error";
 }
+
+/**
+ * The backends of the shipped single executable: every call is refused. In
+ * it `process.execPath` is the host itself, not Node, so a runner start would
+ * fail or start a second host without the Node permission layer. Replaced
+ * once the executable has a runner mode of its own.
+ */
+export function unavailablePluginBackends(): PluginBackends {
+  const refuse = async (): Promise<never> => {
+    throw new PluginRefusal("not_in_this_build");
+  };
+  return { trustedFingerprint: refuse, open: refuse, runnerSurvives: () => false };
+}

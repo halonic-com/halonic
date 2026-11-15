@@ -1,3 +1,4 @@
+import { isSea } from "node:sea";
 import type { Readable, Writable } from "node:stream";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
@@ -19,7 +20,7 @@ import { openGoogleSetup } from "./google/google-setup.ts";
 import { harnessRoutes } from "./harness/harness-routes.ts";
 import { RunTable } from "./harness/run-table.ts";
 import { signInRoute } from "./harness/sign-in-route.ts";
-import { hostPluginBackends } from "./plugin/host-plugin-backends.ts";
+import { hostPluginBackends, unavailablePluginBackends } from "./plugin/host-plugin-backends.ts";
 import { hostPluginMachine } from "./plugin/host-plugin-machine.ts";
 import { pluginRoutes } from "./plugin/plugin-routes.ts";
 import { PluginTable } from "./plugin/plugin-table.ts";
@@ -345,6 +346,9 @@ function hostPlugins(
   profile: ProfileFolder | undefined,
 ): { table: PluginTable; stop(): Promise<void> } | undefined {
   if (profile === undefined) return undefined;
+  if (isSea()) {
+    return { table: new PluginTable(unavailablePluginBackends()), stop: async () => undefined };
+  }
   const { machine, dispose } = hostPluginMachine({ fenced: sandbox, profile, version });
   // A backend reads no secret and no sign-in token yet.
   const context = {
