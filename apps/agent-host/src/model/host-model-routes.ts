@@ -15,6 +15,12 @@ export interface HostModelOptions {
   profile: ProfileFolder | undefined;
   /** The host's own environment, where `HALONIC_SECRET_<NAME>` may hold a key. */
   env: Readonly<Record<string, string | undefined>>;
+  /**
+   * Halonic's own ports on this computer, read on every request: the host's
+   * own and the ones it knows, such as its open bridges'. The client refuses
+   * a provider file whose address is one of them.
+   */
+  ownPorts: () => Iterable<number>;
   log?: (text: string) => void;
 }
 
@@ -32,7 +38,7 @@ export function hostModelRoutes(options: HostModelOptions): ModelRouteDeps {
     workspaceRoots: options.workspaceRoots,
     factories: [...openAiFactories, mockFactory],
     secrets: workspaceSecrets(providerKeys(options)),
-    http: createNodeHttpClient({ hostClass: () => "loopback" }),
+    http: createNodeHttpClient({ hostClass: () => "loopback", ownPorts: options.ownPorts }),
     ...(options.log === undefined ? {} : { log: options.log }),
   };
 }

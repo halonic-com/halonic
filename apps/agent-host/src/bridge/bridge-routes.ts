@@ -67,6 +67,13 @@ export class BridgeTable {
     return id;
   }
 
+  /** The loopback ports the open bridges listen on; a bridge on a Unix socket has none. */
+  ports(): number[] {
+    return [...this.bridges.values()]
+      .filter((open) => open.bridge.socketPath === undefined)
+      .map((open) => Number(new URL(open.bridge.url).port));
+  }
+
   get(id: string): OpenBridge | undefined {
     return this.bridges.get(id);
   }

@@ -12,6 +12,7 @@ import type {
 } from "@halonicjs/ports";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
+import { namedWorkspace } from "../server/named-workspace.ts";
 import {
   callToolBody,
   configOf,
@@ -217,12 +218,8 @@ async function contextOf(
   deps: ConnectorRouteDeps,
   body: OpenConnectorBody,
 ): Promise<(ConnectorFactoryContext & { workspaceRoot: string }) | "folder_outside" | undefined> {
-  const workspaceRoot = await realpath(body.workspaceRoot).catch(() => undefined);
+  const workspaceRoot = await namedWorkspace(deps.workspaceRoots, body.workspaceRoot);
   if (workspaceRoot === undefined) return undefined;
-  const named = await Promise.all(
-    deps.workspaceRoots.map((root) => realpath(root).catch(() => root)),
-  );
-  if (!named.includes(workspaceRoot)) return undefined;
   const given = await Promise.all(body.workingFolders.map(realPathOrGiven));
   if (!given.every((folder) => isInside(workspaceRoot, folder))) return "folder_outside";
   return {

@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { chatBody, post, type Setup, startRoutes } from "./model-routes.test-helper.ts";
 
 /**
@@ -46,6 +46,45 @@ verifies("agent-host.model-routes", () => {
         });
       }
       expect(model.asked).toEqual([]);
+    });
+
+    it("refuses a provider whose address is the host's own port, a port Halonic uses on this computer", async () => {
+      const { url, folders, model } = await started();
+      await setup?.provider("own", { type: "ollama", local: "true", baseUrl: `${url}/v1` });
+      const response = await post(url, chatBody(folders.workspace, "own"));
+      expect(response.status).toBe(502);
+      // Without the check the host would answer 401 ("didn't accept the key").
+      expect(JSON.stringify(await response.json())).toContain("couldn't reach own");
+      expect(model.asked).toEqual([]);
+    });
+
+    it("runs no more chats at once than its cap, and frees a place when one ends", async () => {
+      setup = await startRoutes({}, 2);
+      const { url, folders, model } = setup;
+      await setup.provider("ollama", { type: "ollama", local: "true", baseUrl: model.url });
+      let release = () => {};
+      model.holding = new Promise((resolve) => {
+        release = resolve;
+      });
+      const running = [1, 2].map(() => post(url, chatBody(folders.workspace)));
+      await vi.waitFor(() => expect(model.asked).toHaveLength(2));
+      const refused = await post(url, chatBody(folders.workspace));
+      expect(refused.status).toBe(429);
+      expect(await refused.json()).toMatchObject({ error: { kind: "too_many_chats" } });
+      release();
+      for (const each of await Promise.all(running)) expect(each.status).toBe(200);
+      expect((await post(url, chatBody(folders.workspace))).status).toBe(200);
+    });
+
+    it("stops the model call when the window drops its connection", async () => {
+      const { url, folders, model } = await started();
+      model.holding = new Promise(() => {});
+      const window = new AbortController();
+      const asking = post(url, chatBody(folders.workspace), window.signal).catch(() => undefined);
+      await vi.waitFor(() => expect(model.asked).toHaveLength(1));
+      window.abort();
+      await asking;
+      await vi.waitFor(() => expect(model.dropped).toBe(1));
     });
 
     it("takes the address from the workspace's file and never from the request", async () => {
