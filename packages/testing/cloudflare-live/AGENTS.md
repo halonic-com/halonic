@@ -5,7 +5,7 @@ Owner: mateo · Layer: testing · Read the root `AGENTS.md` first; this file add
 ## Scope
 
 The live suites of the Cloudflare target: checks of a deployed Worker over the network, run by
-`pnpm test:live` (the `live-cloud` workflow) against the CI Cloudflare account. So far: the webhook checks, and the fixture (`live/fixture.setup.ts`) that deploys the Worker they call and deletes it afterwards.
+`pnpm test:live` (the `live-cloud` workflow) against the CI Cloudflare account. So far: the webhook checks, the smoke, admin-key and export round-trip checks (`live/transfer.live.test.ts`), and the fixture (`live/fixture.setup.ts`) that deploys the Worker they call and deletes it afterwards.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.
