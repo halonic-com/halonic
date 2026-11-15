@@ -16,6 +16,12 @@ export {
   type RecordedRefusal,
 } from "./connector-status-host.ts";
 export {
+  type KnowledgeHost,
+  KnowledgeHostService,
+  type KnowledgeRef,
+  type KnowledgeSource,
+} from "./knowledge-host.ts";
+export {
   type LibraryEntry,
   type LibraryHubEntries,
   type LibraryItemsHost,

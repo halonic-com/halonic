@@ -11,7 +11,6 @@ export const skillWords = {
   otherHeader: "Also in the header",
   otherHeaderHint: "Kept as they are. Edit them in the file.",
   files: "Files in this skill",
-  usedBy: "Used by",
   notUsed: "No agent uses this skill yet. Add it under an agent's Tools.",
   loading: "Loading the skill",
   unreadable: "This skill's file can't be read here. Open it as a file to fix its header.",
