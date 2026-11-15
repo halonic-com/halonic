@@ -5,6 +5,7 @@ import {
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
 import { type ServiceRegistry, type WorkspaceScope, workspaceFilesKey } from "@halonicjs/app";
+import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import { ModelKeysService, ModelsFilesService } from "@halonicjs/studio-feature-models/api";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
@@ -64,17 +65,18 @@ export function provideFolderServices(
       runs: services.get(RunsSourceService),
     }),
   );
+  provideGoogleSetup(services, {
+    ipc,
+    files,
+    location,
+    onFocus: (listener) => focusOf(window, listener),
+  });
   provideLibraryServices(services, {
     ipc,
     files,
     transport: tauriAgentHostTransport(window),
     trust,
-    location,
-    onFocus: (listener) => focusOf(window, listener),
-  });
-  provideGoogleSetup(services, {
-    ipc,
-    files,
+    google: services.get(GoogleSetupAccountsService),
     location,
     onFocus: (listener) => focusOf(window, listener),
   });
