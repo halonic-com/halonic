@@ -52,6 +52,21 @@ verifies("workflows.list.rows-and-states", () => {
     expect(text).toContain("✕ 2 problems");
   });
 
+  it("shows a row's description under its name, and its last run with the outcome as a glyph", async () => {
+    const rows = [
+      listing("acme", "mail-triage", "Mail triage", {
+        description: "Sorts the inbox every morning.",
+        lastRun: { startedAt: new Date().toISOString(), outcome: "failed" },
+      }),
+      listing("acme", "invoice-intake", "Invoice intake"),
+    ];
+    const text = (await show(<WorkflowsView host={memoryHost(hubs, rows).host} />)).textContent;
+
+    expect(text).toContain("Sorts the inbox every morning.");
+    expect(text).toMatch(/Last run ✕ Today \d\d:\d\d/);
+    expect(text?.match(/Last run/g)).toHaveLength(1);
+  });
+
   it("opens the workflow of the chosen row", async () => {
     const open = vi.fn();
     const page = await show(<WorkflowsView host={memoryHost(hubs, workflows).host} open={open} />);

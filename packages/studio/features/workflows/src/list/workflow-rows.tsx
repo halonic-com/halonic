@@ -1,7 +1,7 @@
 import { StatusChip } from "@halonicjs/studio-kit";
 import type { OverviewHub, OverviewItem } from "@halonicjs/studio-shell";
 import type { WorkflowHub, WorkflowListing, WorkflowRef } from "../api.ts";
-import { listWords } from "./list-words.ts";
+import { listWords, runWhen } from "./list-words.ts";
 
 /** The row id of a workflow: unique across hubs, because two hubs can both have a `reply`. */
 export function rowId(ref: WorkflowRef): string {
@@ -54,11 +54,17 @@ function hasChips({ runs, problems }: WorkflowListing): boolean {
   return runs.waiting > 0 || runs.running > 0 || problems.errors > 0 || problems.warnings > 0;
 }
 
-function itemOf(listing: WorkflowListing): OverviewItem {
+function itemOf(listing: WorkflowListing, now: Date): OverviewItem {
+  const { lastRun } = listing;
   return {
     id: rowId(listing),
     name: listing.name,
-    ...(listing.description === undefined ? {} : { description: listing.description }),
+    ...(listing.description === undefined || listing.description === ""
+      ? {}
+      : { description: listing.description, detail: listing.description }),
+    ...(lastRun === undefined
+      ? {}
+      : { usedBy: listWords.lastRun(lastRun.outcome, runWhen(lastRun.startedAt, now)) }),
     avatar: <Avatar name={listing.name} />,
     ...(hasChips(listing) ? { chips: <Chips listing={listing} /> } : {}),
   };
@@ -68,6 +74,7 @@ function itemOf(listing: WorkflowListing): OverviewItem {
 export function workflowHubs(
   hubs: readonly WorkflowHub[],
   listings: readonly WorkflowListing[],
+  now: Date = new Date(),
 ): readonly OverviewHub[] {
   return hubs.map((hub) => ({
     id: hub.id,
@@ -75,6 +82,6 @@ export function workflowHubs(
     items: listings
       .filter((listing) => listing.hubId === hub.id)
       .toSorted((a, b) => a.name.localeCompare(b.name))
-      .map(itemOf),
+      .map((listing) => itemOf(listing, now)),
   }));
 }
