@@ -3,6 +3,7 @@
 - Task: HAL-3106 slice 3e (HAL-10521)
 - Approval: Liam reviews the trust path on HAL-10521
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:K7HHjdgb3t7V8zjB+PxVMmWHu1n6gt8CbcW4RYDKkH6BrlvoXirNJOAI5LWmnSxV9iRkuHWjyBxCb7TiPf9oDQ==
 
 ## What changes
 
