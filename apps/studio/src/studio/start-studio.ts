@@ -30,6 +30,8 @@ import {
   ModelsFilesService,
   NoLimitMemoryService,
 } from "@halonicjs/studio-feature-models/api";
+import { pluginsFeature } from "@halonicjs/studio-feature-plugins";
+import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
 import { runsFeature } from "@halonicjs/studio-feature-runs";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import {
@@ -183,6 +185,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     inboxFeature,
     libraryFeature,
     modelsFeature,
+    pluginsFeature,
     runsFeature,
     settingsFeature,
     sourceControlFeature,
@@ -204,6 +207,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     ModelsFilesService,
     ModelKeysService,
     NoLimitMemoryService,
+    PluginsHostService,
     DisplaySettingsService,
     HostSettingsService,
     AssistantWorkspaceService,
