@@ -2,7 +2,7 @@
 
 import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { WorkflowView } from "../api.ts";
 import { buttonNamed, listing, memoryHost, show, unmount } from "../test-support.tsx";
@@ -114,6 +114,44 @@ verifies("workflows.page.frame-and-states", () => {
     await act(async () => tell());
     expect(page.querySelectorAll("button[aria-pressed]")).toHaveLength(4);
     expect(surface(page)?.style.transform).toBe(zoomed);
+  });
+
+  it("keeps the zoom and pan across a visit to Configuration", async () => {
+    const { host } = memoryHost([], [], [reply]);
+    const page = await show(<WorkflowScreen host={host} hubId="acme" id="reply" />);
+    await act(async () => buttonNamed(page, "Zoom in")?.click());
+    await act(async () => buttonNamed(page, "Zoom in")?.click());
+    const zoomed = surface(page)?.style.transform;
+
+    await act(async () => buttonNamed(page, "Configuration")?.click());
+    expect(surface(page)).toBeNull();
+    await act(async () => buttonNamed(page, "Flow")?.click());
+    expect(surface(page)?.style.transform).toBe(zoomed);
+  });
+
+  it("opens another workflow fitted, not at the zoom and pan of the one before", async () => {
+    const other: WorkflowView = { ...reply, id: "other", name: "Other" };
+    const { host } = memoryHost([], [], [reply, other]);
+    const Switch = () => {
+      const [id, setId] = useState("reply");
+      return (
+        <>
+          <button type="button" onClick={() => setId("other")}>
+            Switch
+          </button>
+          <WorkflowScreen host={host} hubId="acme" id={id} />
+        </>
+      );
+    };
+    const page = await show(<Switch />);
+    const fitted = surface(page)?.style.transform;
+    await act(async () => buttonNamed(page, "Zoom in")?.click());
+    await act(async () => buttonNamed(page, "Zoom in")?.click());
+    expect(surface(page)?.style.transform).not.toBe(fitted);
+
+    await act(async () => buttonNamed(page, "Switch")?.click());
+    expect(page.querySelector("h1")?.textContent).toBe("Other");
+    expect(surface(page)?.style.transform).toBe(fitted);
   });
 
   it("keeps the canvas when a refresh fails", async () => {

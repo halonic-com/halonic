@@ -10,8 +10,9 @@ import {
   useTabIds,
 } from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { type WorkflowsHost, WorkflowsHostService } from "../api.ts";
+import type { View } from "../canvas/geometry.ts";
 import { Configuration } from "../configuration/configuration-page.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
 import { countProblems } from "../configuration/problem-lines.ts";
@@ -56,6 +57,11 @@ export function WorkflowScreen({ host, hubId, id, openRun }: WorkflowScreenProps
   const settings = useHostRead(host, { hubId, id }, (one, ref) => one.configuration(ref));
   const everyWorkflow = useHostRead(host, { hubId, id }, (one) => one.list());
   const [view, setView] = useState<"flow" | "configuration">("flow");
+  // The canvas unmounts on Configuration, so the page keeps its zoom and pan (D9). They belong to
+  // one workflow: the same screen can be handed another, which opens fitted.
+  const [kept, setKept] = useState<{ readonly of: string; readonly view: View } | undefined>();
+  const workflowKey = `${hubId}/${id}`;
+  const keep = useCallback((next: View) => setKept({ of: workflowKey, view: next }), [workflowKey]);
   const [openStep, setOpenStep] = useState<string | undefined>();
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
@@ -132,11 +138,13 @@ export function WorkflowScreen({ host, hubId, id, openRun }: WorkflowScreenProps
           />
         ) : (
           <>
-            {load.kind === "ready" && (
+            {load.kind === "ready" && load.value.id === id && load.value.hubId === hubId && (
               <WorkflowCanvas
                 key={`${hubId}/${id}/${openStep}`}
                 workflow={load.value}
                 selectedStep={openStep}
+                saved={kept?.of === workflowKey ? kept.view : undefined}
+                onView={keep}
               />
             )}
             {load.kind === "failed" && (

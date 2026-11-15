@@ -1,5 +1,5 @@
 import { Button } from "@halonicjs/studio-kit";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowView } from "../api.ts";
 import { boxesFor } from "../canvas/auto-layout.ts";
 import { boundsOf, fitView, panBy, type View, zoomAround } from "../canvas/geometry.ts";
@@ -13,20 +13,29 @@ const FALLBACK_VIEWPORT = { width: 800, height: 600 };
 /**
  * The workflow's canvas (`workflows.canvas`): step cards and arrows on a surface that pans by
  * dragging the background and zooms with the wheel or the buttons. It fits all steps once, when it
- * opens; after that the workflow can change under it and the zoom and pan stay (D9). To open a
+ * opens; after that the workflow can change under it and the zoom and pan stay (D9). The page
+ * keeps the view (`saved`, `onView`), so it also stays across a visit to Configuration, and when a problem's link opens a card (kept
+ * on purpose, D9). To open a
  * different workflow, give it a new `key`.
  */
 export function WorkflowCanvas({
   workflow,
   selectedStep,
+  saved,
+  onView,
 }: {
   readonly workflow: WorkflowView;
+  /** The zoom and pan the canvas had when it was last shown; absent the first time. */
+  readonly saved?: View | undefined;
+  /** Told each time the zoom or pan changes, so the page can hand it back on the next mount. */
+  readonly onView?: ((view: View) => void) | undefined;
   /** The card that starts picked, when the person came from a problem's link. */
   readonly selectedStep?: string | undefined;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number } | undefined>(undefined);
-  const [view, setView] = useState<View>({ zoom: 1, pan: { x: 0, y: 0 } });
+  const [view, setView] = useState<View>(saved ?? { zoom: 1, pan: { x: 0, y: 0 } });
+  useEffect(() => onView?.(view), [view, onView]);
   const [selected, setSelected] = useState<string | undefined>(selectedStep);
 
   const boxes = useMemo(
@@ -44,9 +53,12 @@ export function WorkflowCanvas({
     width: viewport.current?.clientWidth || FALLBACK_VIEWPORT.width,
     height: viewport.current?.clientHeight || FALLBACK_VIEWPORT.height,
   });
-  const fit = () => setView(fitView(boundsOf([...boxes.values()]), size()));
-  // Fit once, before the first paint, so the canvas never shows its steps in the wrong place.
-  useLayoutEffect(fit, []);
+  const fitAll = () => setView(fitView(boundsOf([...boxes.values()]), size()));
+  // Fit once, before the first paint, so the canvas never shows its steps in the wrong place. A
+  // view the page kept stays as it was.
+  useLayoutEffect(() => {
+    if (saved === undefined) fitAll();
+  }, []);
 
   const centre = () => ({ x: size().width / 2, y: size().height / 2 });
   return (
@@ -118,7 +130,7 @@ export function WorkflowCanvas({
         >
           {pageWords.zoomOut}
         </Button>
-        <Button variant="secondary" size="sm" onClick={fit}>
+        <Button variant="secondary" size="sm" onClick={fitAll}>
           {pageWords.fit}
         </Button>
       </div>
