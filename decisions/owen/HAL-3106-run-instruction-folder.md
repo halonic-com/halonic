@@ -3,6 +3,7 @@
 - Task: HAL-3106 (slice 2), reviewed on HAL-10108
 - Approval: HAL-10108, Liam's review of the stacked pull request; Liam signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:K5WWTGFX8f8sGIwiii9NN5WyFhBGzagfQGbbHGXOq5kvFG7z7ykG8yTxpGe5sw/AJ9m9tfs9rDmnMSAaA7zQDA==
 
 ## What changes
 
