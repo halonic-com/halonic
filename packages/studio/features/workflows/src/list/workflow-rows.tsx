@@ -1,7 +1,7 @@
 import { StatusChip } from "@halonicjs/studio-kit";
 import type { OverviewHub, OverviewItem } from "@halonicjs/studio-shell";
-import type { WorkflowHub, WorkflowListing, WorkflowRef } from "../api.ts";
-import { listWords, runWhen } from "./list-words.ts";
+import type { WorkflowHub, WorkflowLastRun, WorkflowListing, WorkflowRef } from "../api.ts";
+import { lastRunOutcome, listWords, runWhen } from "./list-words.ts";
 
 /** The row id of a workflow: unique across hubs, because two hubs can both have a `reply`. */
 export function rowId(ref: WorkflowRef): string {
@@ -24,6 +24,23 @@ export function Avatar({ name }: { readonly name: string }) {
 /** A chip's drawn symbol and its space: sighted people see "✕ 2 problems", a screen reader hears "2 problems". */
 function Glyph({ children }: { readonly children: string }) {
   return <span aria-hidden="true">{children} </span>;
+}
+
+/** "Last run ✓ Today 09:05" for sighted people; a screen reader hears "Last run completed, Today 09:05". */
+function LastRun({ lastRun, now }: { readonly lastRun: WorkflowLastRun; readonly now: Date }) {
+  const outcome = lastRunOutcome[lastRun.outcome];
+  return (
+    <>
+      {listWords.lastRun}{" "}
+      {outcome !== null && (
+        <>
+          <span aria-hidden="true">{outcome.glyph} </span>
+          <span className="sr-only">{outcome.spoken}, </span>
+        </>
+      )}
+      {runWhen(lastRun.startedAt, now)}
+    </>
+  );
 }
 
 /**
@@ -73,9 +90,7 @@ function itemOf(listing: WorkflowListing, now: Date): OverviewItem {
     ...(listing.description === undefined || listing.description === ""
       ? {}
       : { description: listing.description, detail: listing.description }),
-    ...(lastRun === undefined
-      ? {}
-      : { usedBy: listWords.lastRun(lastRun.outcome, runWhen(lastRun.startedAt, now)) }),
+    ...(lastRun === undefined ? {} : { usedBy: <LastRun lastRun={lastRun} now={now} /> }),
     avatar: <Avatar name={listing.name} />,
     ...(hasChips(listing) ? { chips: <Chips listing={listing} /> } : {}),
   };
