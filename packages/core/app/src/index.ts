@@ -98,6 +98,7 @@ export {
   type ProviderReport,
 } from "./doctor-models-line.ts";
 export { type MxcLine, mxcLine } from "./doctor-mxc-line.ts";
+export { type NoSandboxLine, noSandboxLine } from "./doctor-no-sandbox-line.ts";
 export {
   type DoctorProvider,
   type DoctorReport,
@@ -175,6 +176,11 @@ export {
   type NewLibraryItemError,
   newLibraryFile,
 } from "./new-library-item.ts";
+export {
+  type NoSandboxFlagDecision,
+  type NoSandboxOptions,
+  NoSandboxService,
+} from "./no-sandbox.ts";
 export {
   type OpenWorkspaceOptions,
   openWorkspace,

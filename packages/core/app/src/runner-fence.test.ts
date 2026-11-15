@@ -72,3 +72,29 @@ verifies("app.runner-fence", () => {
     expect(mxcFencesLocalTools).toBe(false);
   });
 });
+
+verifies("app.runner-fence-no-sandbox", () => {
+  const failing: SandboxCheck = { ok: false, reason: "container", missing: [] };
+
+  it.each([
+    ["win32", passes],
+    ["linux", passes],
+    ["linux", failing],
+  ])("is not fenced with no-sandbox on %s, whatever the check says", (platform, check) => {
+    expect(runnerFence({ platform, check, proof: { state: "fenced" }, noSandbox: true })).toEqual({
+      state: "not-fenced",
+      reason: "no-sandbox",
+    });
+  });
+
+  it("keeps the usual status when the person didn't choose no sandbox", () => {
+    expect(runnerFence({ platform: "win32", check: passes, noSandbox: false })).toEqual({
+      state: "not-fenced",
+      reason: "windows",
+    });
+  });
+
+  it("lists no-sandbox as a reason of its own", () => {
+    expect(runnerUnfencedReasons).toContain("no-sandbox");
+  });
+});

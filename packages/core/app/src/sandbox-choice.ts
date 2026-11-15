@@ -32,6 +32,7 @@ export { type SandboxBackendId, sandboxBackendIds };
  * - `kept-roots-readable`: the folders Halonic keeps outside a project can be read.
  * - `files-leave-machine`: project files are copied to another machine.
  * - `project-folder-writable`: the project folder is writable (true for every backend).
+ * - `no-file-fence`, `no-network-fence`: with no sandbox, nothing fences files or the network.
  * - `anonymous-loopback`, `deny-only-user-sid`, `lowered-integrity-unprobed`: srt's own
  *   residuals on Windows, as `srt-win wfp verify` reports them.
  */
@@ -43,6 +44,8 @@ export const limitCodes = [
   "kept-roots-readable",
   "files-leave-machine",
   "project-folder-writable",
+  "no-file-fence",
+  "no-network-fence",
   "anonymous-loopback",
   "deny-only-user-sid",
   "lowered-integrity-unprobed",
