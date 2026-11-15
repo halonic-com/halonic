@@ -9,7 +9,11 @@
 
 import { realpath } from "node:fs/promises";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
-import type { ServiceCheckOutcome, SetupService } from "@halonicjs/google-setup";
+import {
+  googleSetupSubject,
+  type ServiceCheckOutcome,
+  type SetupService,
+} from "@halonicjs/google-setup";
 import {
   createPendingSignIns,
   finishGoogleSignIn,
@@ -19,7 +23,7 @@ import {
 import type { Clock, HttpClient } from "@halonicjs/ports";
 import { profileFolder, workspaceFolders } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
-import { filesOf, type LocalIntegrationInput, loadWorkspace } from "@halonicjs/workspace";
+import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import {
   type CommandContext,
   type CommandInput,
@@ -128,22 +132,26 @@ export async function signInGoogle(
     );
   }
   const connections = filesOf(workspace, "connector").map((file) => file.value);
-  const connection = connections.find((candidate) => candidate.id === link.id);
-  if (connection === undefined) {
+  const subject = googleSetupSubject(
+    connections,
+    await workspaceIntegrations(location, dir.shown),
+    link.id,
+  );
+  if (subject.kind === "noConnector") {
     throw new OwnLineError(
       "not_found",
       googleMessages.unknownConnection(printable(link.id), printable(name)),
       googleMessages.seeConnections(),
     );
   }
-  if (!("google" in connection.transport)) {
+  if (subject.kind === "notGoogle") {
     throw new OwnLineError(
       "invalid_input",
       googleMessages.notGoogle(printable(link.id)),
       googleMessages.notGoogleFix(),
     );
   }
-  const services = googleServices(await workspaceIntegrations(location, dir.shown));
+  const { services } = subject;
   if (services.length === 0) {
     throw new OwnLineError(
       "invalid_input",
@@ -166,7 +174,7 @@ export async function signInGoogle(
       accountRef,
       clientId: record.clientId,
       clientRef: record.clientSecret.clientRef,
-      address: connection.transport.google.account,
+      address: subject.address,
       services,
       ...(record.projectId === null ? {} : { projectId: record.projectId }),
     });
@@ -196,29 +204,6 @@ async function listen(setup: GoogleSignInMachine): Promise<CallbackListener> {
       googleMessages.signInNoPortFix(),
     );
   }
-}
-
-/** Every integration that asks for Google scopes, as the setup's services. */
-function googleServices(integrations: readonly LocalIntegrationInput[]): SetupService[] {
-  return integrations.flatMap(({ sheet }) => {
-    const scopes = sheet.googleScopes ?? [];
-    if (scopes.length === 0) {
-      return [];
-    }
-    return [
-      {
-        id: sheet.id,
-        label: sheet.id,
-        googleApis: sheet.googleApis ?? [],
-        googleScopes: scopes.map(({ scope, reason, restricted }) => ({
-          scope,
-          reason,
-          ...(restricted === undefined ? {} : { restricted }),
-        })),
-        ...(sheet.googleCheck === undefined ? {} : { googleCheck: sheet.googleCheck }),
-      },
-    ];
-  });
 }
 
 interface SignInRun {
