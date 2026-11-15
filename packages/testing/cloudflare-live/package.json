@@ -1,0 +1,29 @@
+{
+  "name": "@halonicjs/testing-cloudflare-live",
+  "private": true,
+  "type": "module",
+  "description": "The live suites against the real Cloudflare test account (ADR 5.9): what a deployed Worker answers, checked over the network.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run",
+    "test:live": "vitest run --config vitest.live.config.ts"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "testing",
+    "owner": "mateo",
+    "coverage": {
+      "lines": 80
+    }
+  }
+}
