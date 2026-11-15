@@ -110,7 +110,11 @@ const none = {
  */
 export function sandboxView(facts: SandboxFacts, now: Date = new Date()): SandboxView {
   if (!facts.available)
-    return { ...none, lead: text.NOT_AVAILABLE, chip: { label: "Not available", tone: "neutral" } };
+    return {
+      ...none,
+      lead: text.NOT_AVAILABLE,
+      chip: { label: "Not available", tone: "attention" },
+    };
   const { check, running, outcome } = facts;
   const callout = outcome ? calloutFor(outcome) : null;
 
@@ -147,7 +151,7 @@ function checkedView(
         callout,
         hint: hint(text.REPAIR_HINT),
         primary: viewOnly ? null : { action: "repair", label: text.REPAIR, busy: false },
-        secondary: viewOnly ? ["check-again"] : ["remove"],
+        secondary: viewOnly ? ["check-again"] : ["check-again", "remove"],
       };
     case "unavailable":
       return {
@@ -183,7 +187,7 @@ function checkedView(
         callout,
         hint: hint(text.ADMIN_ONCE),
         primary: viewOnly ? null : { action: "set-up", label: text.SET_UP, busy: false },
-        secondary: viewOnly ? ["check-again"] : [],
+        secondary: ["check-again"],
       };
   }
 }

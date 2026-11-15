@@ -1,5 +1,12 @@
 import type { HostSettings } from "@halonicjs/app";
-import { Button, Callout, Dialog, StatusChip, type StatusChipTone } from "@halonicjs/studio-kit";
+import {
+  Button,
+  Callout,
+  Dialog,
+  RefreshIcon,
+  StatusChip,
+  type StatusChipTone,
+} from "@halonicjs/studio-kit";
 import type { SettingsSectionProps } from "@halonicjs/studio-shell";
 import { type ReactNode, useState } from "react";
 import { type AgentSandboxHost, AgentSandboxService, HostSettingsService } from "../api.ts";
@@ -45,6 +52,32 @@ export function AgentSandboxHostView({
 }: AgentSandboxHostViewProps) {
   const sandbox = useAgentSandbox(host, place, announce);
   const [removing, setRemoving] = useState(false);
+  const [reloading, setReloading] = useState(false);
+  const tryLoadAgain = () => {
+    if (!settings) return;
+    setReloading(true);
+    settings.load().then(
+      () => setReloading(false),
+      () => setReloading(false),
+    );
+  };
+  let newAgents: ReactNode = null;
+  if (settings?.loaded) {
+    newAgents = (
+      <div className="max-w-90">
+        <NewAgentsRunControl settings={settings} viewOnly={place === "served"} />
+      </div>
+    );
+  } else if (settings) {
+    newAgents = (
+      <div className="flex max-w-90 flex-col items-start gap-2">
+        <p className="text-small text-fg-muted">{text.NEW_AGENTS_NOT_LOADED}</p>
+        <Button variant="ghost" size="sm" busy={reloading} onClick={tryLoadAgain}>
+          {text.TRY_AGAIN}
+        </Button>
+      </div>
+    );
+  }
   return (
     <>
       <AgentSandboxView
@@ -52,11 +85,7 @@ export function AgentSandboxHostView({
         onSetUp={sandbox.setUp}
         onRemove={() => setRemoving(true)}
         onCheckAgain={sandbox.checkAgain}
-        newAgents={
-          settings?.loaded ? (
-            <NewAgentsRunControl settings={settings} viewOnly={place === "served"} />
-          ) : null
-        }
+        newAgents={newAgents}
       />
       {removing ? (
         <Dialog
@@ -113,7 +142,7 @@ export function AgentSandboxView({
   } as const;
   return (
     <div className="mt-5 flex max-w-120 flex-col gap-4">
-      <p className="text-body text-fg-muted">{text.FIRST_LINE}</p>
+      <p className="text-small text-fg-muted">{text.FIRST_LINE}</p>
       {view.chip ? (
         <StatusChip tone={chipTones[view.chip.tone]}>{view.chip.label}</StatusChip>
       ) : null}
@@ -147,6 +176,8 @@ export function AgentSandboxView({
           <Button
             key={action}
             variant="ghost"
+            size="sm"
+            {...(action === "check-again" ? { icon: <RefreshIcon /> } : {})}
             busy={action === "check-again" && view.checkBusy}
             onClick={buttons[action].onClick}
           >

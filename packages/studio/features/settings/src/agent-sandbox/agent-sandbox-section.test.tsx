@@ -281,3 +281,20 @@ it("keeps the last result, busies Check again and announces the new one", async 
   );
   expect(button(view, "Check again").getAttribute("aria-busy")).not.toBe("true");
 });
+
+it("offers Try again when the host settings aren't loaded, and shows New agents run once they are", async () => {
+  const { host } = fakeHost(ready);
+  const settings = { loaded: false, load: vi.fn(async () => undefined) };
+  const view = render(
+    <AgentSandboxHostView
+      host={host}
+      place="app"
+      settings={settings as never}
+      announce={vi.fn()}
+    />,
+  );
+  await act(async () => {});
+  expect(view.textContent).toContain("Couldn't load where new agents run");
+  await click(button(view, "Try again"));
+  expect(settings.load).toHaveBeenCalledTimes(1);
+});
