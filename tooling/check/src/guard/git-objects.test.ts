@@ -101,7 +101,8 @@ verifies("check.guard-signed-notes", () => {
     const { root, git, commit } = repo();
     writeFileSync(join(root, "src/z.test.ts"), 'verifies("x.y", () => {});\n');
     git("add", ".");
-    // One submodule points at a missing commit (a `missing` answer), one at a commit git has.
+    // One submodule points at a missing commit (`<spec> missing`, or `<id> submodule` on
+    // newer git), one at a commit git has.
     git("update-index", "--add", "--cacheinfo", `160000,${"1".repeat(40)},foo blob 12 x.test.ts`);
     git("update-index", "--add", "--cacheinfo", `160000,${commit},bar blob 3 y.test.ts`);
     git("commit", "--quiet", "--no-verify", "-m", "submodules");

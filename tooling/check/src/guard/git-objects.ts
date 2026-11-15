@@ -87,8 +87,12 @@ function readBatch(
  */
 const objectHeader = /^(?:[0-9a-f]{40}|[0-9a-f]{64}) ([a-z]+) (\d+)$/;
 
-/** A spec git can't read as one object, like one read per file skips it. */
-const unreadable = / (?:missing|ambiguous)$/;
+/**
+ * A spec git can't read as one object, like one read per file skips it.
+ * Newer git answers a submodule whose commit it lacks with `<id> submodule`
+ * instead of `<spec> missing`; that line holds no path, so it can't be faked.
+ */
+const unreadable = /(?: (?:missing|ambiguous)|^(?:[0-9a-f]{40}|[0-9a-f]{64}) submodule)$/;
 
 /** Runs the batch and reads its `<id> <type> <size>` or `<spec> missing` answers in order. */
 function batchTexts(
