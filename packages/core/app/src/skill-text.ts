@@ -119,10 +119,10 @@ export function editSkillText(text: string, change: SkillChange): Result<string,
     return err("description_missing");
   }
   const headerEdits = [
-    ...(name !== undefined && name !== current.value.name
+    ...(name !== undefined && name !== current.value.name.trim()
       ? [{ kind: "set" as const, path: ["name"], value: name }]
       : []),
-    ...(description !== undefined && description !== current.value.description
+    ...(description !== undefined && description !== current.value.description.trim()
       ? [{ kind: "set" as const, path: ["description"], value: description }]
       : []),
   ];
@@ -130,9 +130,20 @@ export function editSkillText(text: string, change: SkillChange): Result<string,
   if (!edited.ok) {
     return err("unreadable");
   }
-  return ok(
-    `${parts.opening}${edited.value.text.replace(/\r?\n$/, "")}${parts.closing}${bodyOf(parts.body, change.instructions)}`,
-  );
+  // The header's own trailing newline (and any blank line before the closing `---`) stays as it was.
+  let header = parts.header;
+  if (headerEdits.length > 0) {
+    header = parts.header.endsWith("\n")
+      ? edited.value.text
+      : edited.value.text.replace(/\r?\n$/, "");
+  }
+  const body = bodyOf(parts.body, change.instructions);
+  // Instructions added after a closing `---` with no newline need one, or they join the line.
+  const closing =
+    body !== parts.body && body !== "" && !/\n$/.test(parts.closing)
+      ? `${parts.closing}\n`
+      : parts.closing;
+  return ok(`${parts.opening}${header}${closing}${body}`);
 }
 
 /** The body after the header: as it was unless the instructions changed, then the new ones keep the leading blank lines. */
@@ -140,7 +151,8 @@ function bodyOf(body: string, instructions: string | undefined): string {
   if (instructions === undefined || instructions.trim() === body.trim()) {
     return body;
   }
-  const leading = /^\s*/.exec(body)?.[0] ?? "";
+  // Only blank lines carry over; the old first line's indentation would turn the new text into a code block.
+  const leading = /^(?:[ \t]*\r?\n)*/.exec(body)?.[0] ?? "";
   const trimmed = instructions.trim();
   return trimmed === "" ? "" : `${leading}${trimmed}\n`;
 }

@@ -66,7 +66,10 @@ verifies("app.skill-text", () => {
   });
 
   it("refuses an empty name or description", () => {
-    expect(editSkillText(skill, { name: "   " })).toEqual({ ok: false, error: "name_missing" });
+    expect(editSkillText(skill, { name: "   " })).toEqual({
+      ok: false,
+      error: "name_missing",
+    });
     expect(editSkillText(skill, { description: "" })).toEqual({
       ok: false,
       error: "description_missing",
@@ -74,8 +77,14 @@ verifies("app.skill-text", () => {
   });
 
   it("says a file without a header is unreadable", () => {
-    expect(readSkillText("Just text")).toEqual({ ok: false, error: "unreadable" });
-    expect(editSkillText("Just text", { name: "A" })).toEqual({ ok: false, error: "unreadable" });
+    expect(readSkillText("Just text")).toEqual({
+      ok: false,
+      error: "unreadable",
+    });
+    expect(editSkillText("Just text", { name: "A" })).toEqual({
+      ok: false,
+      error: "unreadable",
+    });
   });
 
   it("shows a header value that isn't text as JSON", () => {
@@ -83,5 +92,27 @@ verifies("app.skill-text", () => {
     expect(readSkillText(text)).toMatchObject({
       value: { otherHeader: [{ key: "tools", value: '["Read","Grep"]' }] },
     });
+  });
+
+  it("leaves a block-scalar description alone when it is unchanged", () => {
+    const text = "---\nname: A\ndescription: |\n  Use for refunds\n---\nBody\n";
+    expect(edited({ description: "Use for refunds" }, text)).toBe(text);
+  });
+
+  it("starts added instructions on a new line when the file ends at the closing line", () => {
+    expect(edited({ instructions: "Be kind." }, "---\nname: A\ndescription: B\n---")).toBe(
+      "---\nname: A\ndescription: B\n---\nBe kind.\n",
+    );
+  });
+
+  it("keeps a blank line before the closing line when nothing changed", () => {
+    const text = "---\nname: A\ndescription: B\n\n---\nBody\n";
+    expect(edited({ name: "A" }, text)).toBe(text);
+  });
+
+  it("doesn't pass the old body's indentation on to new instructions", () => {
+    expect(
+      edited({ instructions: "Be kind." }, "---\nname: A\ndescription: B\n---\n    old code\n"),
+    ).toBe("---\nname: A\ndescription: B\n---\nBe kind.\n");
   });
 });
