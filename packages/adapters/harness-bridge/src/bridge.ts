@@ -129,7 +129,9 @@ async function serve(context: ServeContext, request: IncomingMessage, response: 
   response.on("close", () => requestEnded.abort());
   const signal = AbortSignal.any([closing, requestEnded.signal]);
   try {
-    if (!runTokenMatches(request.headers[harnessBridgeTokenHeader], token)) {
+    // The token dies with the run: once closing has begun, even a request that got in on a
+    // connection that is still open is refused, whatever it carries.
+    if (closing.aborted || !runTokenMatches(request.headers[harnessBridgeTokenHeader], token)) {
       throw new KindedError(
         "unauthenticated",
         "The request doesn't carry this run's bridge token.",
