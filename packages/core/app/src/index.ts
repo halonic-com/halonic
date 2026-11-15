@@ -384,6 +384,7 @@ export {
   trustCheckFailures,
   trustCheckLeaks,
 } from "./sandbox-trust-check.ts";
+export { SaveScheduler, type SaveTimers, type SaveTrigger } from "./save-scheduler.ts";
 export { type SecretChange, type SecretInput, SecretService } from "./secret-service.ts";
 export {
   type Disposable,
