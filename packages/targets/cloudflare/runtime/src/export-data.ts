@@ -43,12 +43,13 @@ interface ExportFile {
 
 const encoder = new TextEncoder();
 
-async function sha256Hex(bytes: ArrayBuffer | ArrayBufferView): Promise<string> {
+/** The lower-case hex SHA-256 of some bytes. */
+export async function sha256Hex(bytes: ArrayBuffer | ArrayBufferView): Promise<string> {
   return bytesToHex(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)));
 }
 
 /** The name `FileRecordStore` gives a collection's log: the SHA-256 of the name in UTF-16LE. */
-async function recordFileName(collection: string): Promise<string> {
+export async function recordFileName(collection: string): Promise<string> {
   const units = new Uint8Array(collection.length * 2);
   const view = new DataView(units.buffer);
   for (let index = 0; index < collection.length; index += 1) {

@@ -173,19 +173,21 @@ verifies("runtime.admin-key", () => {
       }
     });
 
-    it("answers 501 on every import route until it is built", async () => {
+    it("guards the import routes with the key and takes only PUT and POST on them", async () => {
       const env = await envWithKey();
-      for (const [method, path] of [
-        ["PUT", "/admin/import/files/runs/r1.jsonl"],
-        ["POST", "/admin/import"],
+      for (const [method, path, wrongMethod] of [
+        ["PUT", "/admin/import/files/runs/r1.jsonl", "GET"],
+        ["POST", "/admin/import", "GET"],
       ] as const) {
-        const response = await worker.fetch(
-          call(path, { authorization: `Bearer ${key}` }, method),
+        const withoutKey = await worker.fetch(call(path, {}, method), env);
+        expect(withoutKey.status, `${method} ${path} without the key`).toBe(401);
+        const wrong = await worker.fetch(
+          call(path, { authorization: `Bearer ${key}` }, wrongMethod),
           env,
         );
-        expect(response.status, `${method} ${path}`).toBe(501);
-        expect(adminRoutes.length).toBe(4);
+        expect(wrong.status, `${wrongMethod} ${path}`).toBe(404);
       }
+      expect(adminRoutes.length).toBe(4);
     });
   });
 });
