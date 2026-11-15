@@ -15,6 +15,11 @@ export function requestWorkspaceTarget(target: WorkspacePageTarget): void {
   for (const listener of [...listeners]) listener();
 }
 
+/** Whether a request is still waiting for a page to take it. */
+export function hasWorkspaceTarget(): boolean {
+  return pending !== undefined && Date.now() - pending.at <= PENDING_MS;
+}
+
 /** Takes the pending target, so each request moves focus once. */
 export function takeWorkspaceTarget(): WorkspacePageTarget | undefined {
   const request = pending;

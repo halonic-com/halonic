@@ -41,6 +41,8 @@ function ModelsStub() {
   );
 }
 
+const later = () => new Promise((done) => setTimeout(done, 5));
+
 function show(
   facts: Facts,
   Sections: () => React.ReactNode = () => <p className="added-section">Models</p>,
@@ -114,11 +116,14 @@ verifies("workspace.workspace-page", () => {
     expect(document.activeElement?.textContent).toBe("Models");
   });
 
-  it("moves focus again when the page is already open", () => {
+  it("moves focus again when the page is already open", async () => {
     const page = show({ name: "Acme", trust }, ModelsStub);
     expect(document.activeElement).toBe(document.body);
 
-    act(() => requestWorkspaceTarget("models"));
+    await act(async () => {
+      requestWorkspaceTarget("models");
+      await later();
+    });
 
     expect(document.activeElement).toBe(
       page.querySelector("section[data-workspace-section=models] h2"),
@@ -165,5 +170,42 @@ verifies("workspace.workspace-page", () => {
     );
     act(() => hiddenRoot.unmount());
     hidden.remove();
+  });
+
+  it("takes the target when a hidden page is shown after the request", async () => {
+    const page = show({ name: "Acme", trust }, ModelsStub);
+    const tab = page.parentElement as HTMLElement;
+    tab.hidden = true;
+
+    await act(async () => {
+      requestWorkspaceTarget("models");
+      await later();
+    });
+    expect(document.activeElement).toBe(document.body);
+
+    await act(async () => {
+      tab.hidden = false;
+      await later();
+    });
+
+    expect(document.activeElement).toBe(
+      page.querySelector("section[data-workspace-section=models] h2"),
+    );
+  });
+
+  it("keeps the section focus when the page heading takes focus right after the request", async () => {
+    const page = show({ name: "Acme", trust }, ModelsStub);
+    const heading = page.querySelector<HTMLElement>("h1");
+    heading?.setAttribute("tabindex", "-1");
+
+    await act(async () => {
+      requestWorkspaceTarget("models");
+      heading?.focus();
+      await later();
+    });
+
+    expect(document.activeElement).toBe(
+      page.querySelector("section[data-workspace-section=models] h2"),
+    );
   });
 });

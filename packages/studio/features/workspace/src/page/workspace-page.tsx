@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { WorkspacePageService } from "../api.ts";
 import { WorkspaceTrustSection } from "../trust/workspace-trust-section.tsx";
 import {
+  hasWorkspaceTarget,
   onWorkspaceTarget,
   takeWorkspaceTarget,
   WORKSPACE_SECTION_ATTRIBUTE,
@@ -63,19 +64,53 @@ export function WorkspacePage({ context, Sections }: ItemViewProps) {
   const element = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let stop: () => void = () => undefined;
+    let unwatch: () => void = () => undefined;
+    let wait: number | undefined;
+    // A page in a background tab or hidden beside a chat can't take focus. It leaves the target
+    // and watches for the `hidden` or `inert` that hides it to go, so a tab the command is about
+    // to show takes the target once it is shown.
+    const watchUntilShown = () => {
+      unwatch();
+      const end = () => {
+        watcher.disconnect();
+        window.clearTimeout(timer);
+        unwatch = () => undefined;
+      };
+      const watcher = new MutationObserver(() => {
+        if (!hasWorkspaceTarget()) return end();
+        follow();
+      });
+      const timer = window.setTimeout(end, REVEAL_WAIT_MS);
+      watcher.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["hidden", "inert"],
+        subtree: true,
+      });
+      unwatch = end;
+    };
     const follow = () => {
-      // A page kept in a background tab or hidden beside a chat can't take focus. Leave the
-      // target for the page that is shown, or the one about to open.
-      if (element.current === null || element.current.closest("[hidden], [inert]") !== null) return;
+      if (element.current === null || !hasWorkspaceTarget()) return;
+      if (element.current.closest("[hidden], [inert]") !== null) {
+        watchUntilShown();
+        return;
+      }
       const target = takeWorkspaceTarget();
       if (target === undefined) return;
+      unwatch();
       stop();
       stop = reveal(element.current, target);
     };
     follow();
-    const unsubscribe = onWorkspaceTarget(follow);
+    // The command that asks may also switch to this page. Look after that change is drawn, and
+    // after the page's heading took focus, so the section keeps it.
+    const unsubscribe = onWorkspaceTarget(() => {
+      window.clearTimeout(wait);
+      wait = window.setTimeout(follow, 0);
+    });
     return () => {
+      window.clearTimeout(wait);
       unsubscribe();
+      unwatch();
       stop();
     };
   }, []);
