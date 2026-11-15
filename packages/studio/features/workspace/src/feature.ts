@@ -1,5 +1,6 @@
 import { defineFeature } from "@halonicjs/studio-shell";
 import { TrustedSourcesService, WorkspacePageService } from "./api.ts";
+import { requestWorkspaceTarget, type WorkspacePageTarget } from "./page/workspace-page-target.ts";
 import {
   WORKSPACE_PAGE_ITEM,
   WORKSPACE_PAGE_TAB,
@@ -40,12 +41,19 @@ export const workspaceFeature = defineFeature({
       open: { view: "WorkspacePage", load: () => import("./page/workspace-page.tsx") },
       tab: { describe: () => ({ label: WORKSPACE_PAGE_TAB }), exists: () => true },
     });
-    for (const [id, title] of [
-      [openWorkspaceCommand, WORKSPACE_PAGE_TITLE],
-      [openTrustCommand, "Workspace trust"],
-      [openModelsCommand, "Workspace models"],
-    ] as const) {
-      studio.commands.add({ id, title, run: (context) => context.openItem?.(WORKSPACE_PAGE_ITEM) });
+    for (const [id, title, target] of [
+      [openWorkspaceCommand, WORKSPACE_PAGE_TITLE, undefined],
+      [openTrustCommand, "Workspace trust", "trust"],
+      [openModelsCommand, "Workspace models", "models"],
+    ] as const satisfies readonly (readonly [string, string, WorkspacePageTarget | undefined])[]) {
+      studio.commands.add({
+        id,
+        title,
+        run: (context) => {
+          if (target !== undefined) requestWorkspaceTarget(target);
+          context.openItem?.(WORKSPACE_PAGE_ITEM);
+        },
+      });
     }
   },
 });

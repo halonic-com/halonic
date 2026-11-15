@@ -71,7 +71,11 @@ export function WorkspaceTrustSection({ trust, name, toasts }: WorkspaceTrustSec
   };
 
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-3">
+    <section
+      aria-labelledby={headingId}
+      data-workspace-section="trust"
+      className="flex flex-col gap-3"
+    >
       <h2 id={headingId} tabIndex={-1} className="text-heading">
         {TRUST_HEADING}
       </h2>
