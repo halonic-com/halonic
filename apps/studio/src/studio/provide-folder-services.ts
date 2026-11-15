@@ -115,6 +115,7 @@ export function provideFolderServices(
   providePlugins(services, {
     ipc,
     window,
+    transport,
     onFocus: (listener) => focusOf(window, listener),
     onReloadFailed: (error) => console.error("Couldn't read the plugins folder", error),
   });

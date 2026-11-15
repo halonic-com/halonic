@@ -14,3 +14,12 @@ The desktop app shall register the plugins feature and give each open folder the
 - Given a desktop folder that is opened,
   when its services are built,
   then it has the plugins host.
+- Given a window that has opened a folder,
+  when the window comes to the front,
+  then the plugins folder is read again, and a failed read is reported.
+- Given a window that has opened two folders,
+  when the second one gets its services,
+  then it shares the first one's host and the window has one focus listener.
+- Given a page without the agent host's transport,
+  when a folder gets its services,
+  then no plugins host is provided.

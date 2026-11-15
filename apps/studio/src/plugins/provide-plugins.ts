@@ -1,7 +1,10 @@
-import { AgentHostPluginToolCaller } from "@halonicjs/adapter-agent-host-client";
+import {
+  AgentHostPluginToolCaller,
+  type AgentHostTransport,
+} from "@halonicjs/adapter-agent-host-client";
 import type { ServiceRegistry } from "@halonicjs/app";
 import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
-import { shellKeychain, type TauriIpc, tauriAgentHostTransport } from "@halonicjs/studio-services";
+import { shellKeychain, type TauriIpc } from "@halonicjs/studio-services";
 import { type DesktopPluginsHost, desktopPluginsHost } from "./desktop-plugins-host.ts";
 
 /**
@@ -16,12 +19,18 @@ const hosts = new WeakMap<object, DesktopPluginsHost>();
  * is read again whenever the window comes to the front, so a plugin added with `halonic plugin add`
  * shows up without a restart. Without the agent host's transport there is no host to give, and
  * nothing is provided.
+ *
+ * The focus listener and the window's entry in `hosts` live as long as the window, on purpose:
+ * the host is shared by every folder, so nothing here is tied to one folder's lifetime, and the
+ * disposer `onFocus` returns is dropped.
  */
 export function providePlugins(
   services: ServiceRegistry,
   parts: {
     readonly ipc: TauriIpc;
     readonly window: object;
+    /** The agent host's transport; `undefined` where the page has no agent host. */
+    readonly transport: AgentHostTransport | undefined;
     readonly onFocus: (listener: () => void) => () => void;
     readonly onReloadFailed: (error: unknown) => void;
   },
@@ -31,7 +40,7 @@ export function providePlugins(
     services.provide(PluginsHostService, known.host);
     return;
   }
-  const transport = tauriAgentHostTransport(parts.window);
+  const { transport } = parts;
   if (transport === undefined) return;
   const plugins = desktopPluginsHost({
     ipc: parts.ipc,
