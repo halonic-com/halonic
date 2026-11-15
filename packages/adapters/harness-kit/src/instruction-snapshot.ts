@@ -156,7 +156,7 @@ export interface InstructionSnapshot {
  * When any file can't be written, the folder is removed again, so a run never
  * starts with part of its instructions.
  *
- * @param root - the run's folder in Halonic's data folder, where the new folder goes
+ * @param root - the run's folder in Halonic's data folder, where the new folder goes; it must already exist (`mkdtemp` does not create it)
  * @throws the first error, whether from the names or from the disk
  */
 export async function snapshotInstructions(
@@ -170,7 +170,7 @@ export async function snapshotInstructions(
   try {
     return { folder, pin: await copyInstructions(folder, files, disk) };
   } catch (error) {
-    // The copy's own error is the one worth reporting; a leftover folder is only noted in its message.
+    // The copy's own error is the one worth reporting; a folder that can't be removed is left behind in the run's folder.
     await disk.removeFolder(folder).catch(() => undefined);
     throw error;
   }
