@@ -48,6 +48,16 @@ verifies("studio.desktop-plugins-host", () => {
     expect(deleted).toEqual(["plugin__weather__example-key"]);
   });
 
+  it("says updates aren't wired yet instead of claiming nothing is newer", async () => {
+    const { actions } = await setup();
+    await expect(actions.checkForUpdate("weather")).rejects.toThrow(
+      "Halonic can't check for updates yet",
+    );
+    await expect(actions.applyUpdate("weather", { version: "1.1.0" })).rejects.toThrow(
+      "Halonic can't update plugins yet",
+    );
+  });
+
   it("says which secret couldn't be deleted, and keeps the plugin", async () => {
     const { actions, keychain, statusOf } = await setup();
     keychain.failing = true;

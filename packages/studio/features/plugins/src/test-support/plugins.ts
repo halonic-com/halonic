@@ -104,6 +104,8 @@ export function noActions(): { actions: PluginActions } {
       trust: async () => {},
       revoke: async () => {},
       remove: async () => ({ kind: "removed" }),
+      checkForUpdate: async () => ({ kind: "up-to-date" }),
+      applyUpdate: async () => {},
       reload: async () => {},
       openFolder: async () => {},
       usedBy: async () => [],

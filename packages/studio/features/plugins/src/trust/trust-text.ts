@@ -5,14 +5,16 @@
 import { hostFromSetting } from "../settings/settings-text.ts";
 
 /** Why the trust check opens: right after Add, or from **Review** on the plugin's page. */
-export type TrustCheckReason = "add" | "review" | "changed";
+export type TrustCheckReason = "add" | "review" | "changed" | "update";
 
 /** The dialog's title (T6). */
 export function trustTitle(
   reason: TrustCheckReason,
   name: string,
   trustedOn?: string | undefined,
+  version?: string | undefined,
 ): string {
+  if (reason === "update") return `Update ${name} to ${version}?`;
   if (reason === "changed") {
     return trustedOn === undefined
       ? `${name} changed since you trusted it`
@@ -59,7 +61,18 @@ export const NOT_NOW = "Not now";
  */
 export function trustButton(reason: TrustCheckReason): string {
   if (reason === "changed") return "Trust again and turn on";
+  if (reason === "update") return "Trust and update";
   return reason === "add" ? "Trust and turn on" : "Trust";
+}
+
+/** The update check's cancel: it leaves the plugin as it was, at the version it has (T10). */
+export function keepButton(version: string): string {
+  return `Keep ${version}`;
+}
+
+/** Why an update wasn't saved, in the dialog's error slot: the plugin stays as it was. */
+export function updateNotSavedLine(reason: string): string {
+  return `Couldn't update: ${afterColon(reason)}. The plugin stays as it was.`;
 }
 
 /** The line over the change rows (design section 6): the plugin is off until it is trusted again. */

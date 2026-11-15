@@ -3,6 +3,7 @@
 // UX acceptance checklist 6.2 and 6.5, fallbacks G4 and G8). The plugin's name, labels and
 // titles are only ever a value in these lines.
 
+import type { PluginTrustChanges } from "@halonicjs/app";
 import type { Plugin } from "@halonicjs/format";
 
 /** How removing a plugin ended: core's `PluginService.remove`. */
@@ -18,6 +19,29 @@ export interface PluginUse {
 }
 
 /**
+ * What **Check for updates** (or **Update from folder**) found. Nothing is changed on the computer
+ * yet: the older version keeps running until the person trusts the newer one.
+ */
+export type PluginUpdateCheck =
+  | { readonly kind: "up-to-date" }
+  | {
+      readonly kind: "available";
+      /** The newer version as core read and checked it. */
+      readonly manifest: Plugin;
+      /** A git plugin's newer commit; a folder plugin has none. */
+      readonly toCommit?: string | undefined;
+      /** What differs from what was trusted, as the trust check compares it; `undefined` when it can't. */
+      readonly changes?: PluginTrustChanges | undefined;
+    };
+
+/** The newer version the person saw in the dialog and trusted: what `applyUpdate` may install. */
+export interface PluginUpdateApproval {
+  readonly version: string;
+  /** A git plugin's newer commit; a folder plugin has none. */
+  readonly toCommit?: string | undefined;
+}
+
+/**
  * What a plugin's page asks the app to do. Each one throws when it can't, with a message for the
  * person; the page says it in a toast.
  */
@@ -30,6 +54,18 @@ export interface PluginActions {
   readonly remove: (plugin: string) => Promise<PluginRemoveOutcome>;
   /** The connectors, in any workspace on this computer, whose transport is this plugin. */
   readonly usedBy: (plugin: string) => Promise<readonly PluginUse[]>;
+  /**
+   * **Check for updates** on a git plugin, **Update from folder** on a folder one: looks at the
+   * source again without changing the installed version. It throws when the source can't be read.
+   */
+  readonly checkForUpdate: (plugin: string) => Promise<PluginUpdateCheck>;
+  /**
+   * **Trust and update**: puts the newer version the person approved in place of the old one and
+   * trusts it, as one step. `approved` is what the dialog showed. The app installs only the copy it
+   * saved for that version (and commit), and throws if it has none, so a later check can never
+   * install a version the person didn't see. It throws when it can't, and then the old version stays.
+   */
+  readonly applyUpdate: (plugin: string, approved: PluginUpdateApproval) => Promise<void>;
   /** **Check again**: reads the plugins folder again, so the feed has the plugin as it is now. */
   readonly reload: () => Promise<void>;
   /** **Open folder**: shows the plugin's folder in the computer's file manager. */
@@ -45,6 +81,16 @@ export function moreActionsFor(name: string): string {
 export const OPEN_FOLDER = "Open folder";
 export const REMOVE_TRUST = "Remove trust";
 export const REMOVE_PLUGIN_ELLIPSIS = "Remove plugin…";
+
+/** The status box's button and the ⋮'s item: a git plugin looks for a newer commit, a folder one copies again. */
+export const CHECK_FOR_UPDATES = "Check for updates";
+export const UPDATE_FROM_FOLDER = "Update from folder";
+export const CHECKING_FOR_UPDATES = "Checking for updates…";
+
+/** What the button turns into when there is nothing newer, and after **Keep** (T12). */
+export function upToDateLine(version: string): string {
+  return `Up to date (${version})`;
+}
 
 /** The status box's button: the trust check from **Review**, or **Review changes** for a changed plugin. */
 export const REVIEW = "Review";
@@ -193,6 +239,8 @@ function afterColon(reason: string): string {
 /** What each action is called in `actionFailedLine`. */
 export const ACTION_WORDS = {
   revoke: "remove trust",
+  checkForUpdates: "check for updates",
+  updateFromFolder: "update from folder",
   reload: "check again",
   openFolder: "open the folder",
   remove: "remove the plugin",
