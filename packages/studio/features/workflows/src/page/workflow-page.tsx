@@ -58,6 +58,7 @@ export function WorkflowPage({ item, context }: ItemViewProps) {
         openRun: (runId: string) => openItem({ kind: "run", hub: item.hub, id: runId }),
       })}
       {...(openPlace && {
+        reviewInInbox: () => openPlace("inbox"),
         seeAllRuns: () => {
           runsList.showWorkflow({ hubId: item.hub, id: item.id });
           openPlace("runs");
@@ -80,6 +81,8 @@ export interface WorkflowScreenProps {
   readonly openRun?: (runId: string) => void;
   /** Opens the Runs list; absent where the app can't open it. */
   readonly seeAllRuns?: () => void;
+  /** Opens the Inbox, for a run card's Review in Inbox; absent where the app can't open it. */
+  readonly reviewInInbox?: () => void;
 }
 
 /**
@@ -95,6 +98,7 @@ export function WorkflowScreen({
   notAnswering = engineWordsOf({}).notAnswering,
   openRun,
   seeAllRuns,
+  reviewInInbox,
 }: WorkflowScreenProps) {
   const { load, retry } = useWorkflow(host, { hubId, id });
   const name = load.kind === "ready" ? load.value.name : id;
@@ -227,6 +231,7 @@ export function WorkflowScreen({
               retry={runsRead.retry}
               workflow={{ hubId, id }}
               openRun={openRun}
+              reviewInInbox={reviewInInbox}
               seeAll={seeAllRuns}
               saveAsTest={saveAsTest}
             />

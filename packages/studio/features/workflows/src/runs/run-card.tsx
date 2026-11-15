@@ -3,6 +3,7 @@ import {
   type RunRow,
   type RunsSource,
   type SourcedRun,
+  useRunLog,
 } from "@halonicjs/studio-feature-runs/api";
 import { Button, CloseIcon, StatusChip } from "@halonicjs/studio-kit";
 import { type KeyboardEvent, useEffect, useRef } from "react";
@@ -20,20 +21,37 @@ export interface RunCardProps {
   readonly onClose: () => void;
   /** Opens the run's page, where its log is; absent where the app has no run page. */
   readonly onOpenLog?: (() => void) | undefined;
+  /** Opens another run's page, for the banner's child-run button; absent where the app has no run page. */
+  readonly openRun?: ((runId: string) => void) | undefined;
+  /** Opens the Inbox, for the banner's **Review in Inbox**; absent where the app can't. */
+  readonly reviewInInbox?: (() => void) | undefined;
   /** What **Save as test** needs; absent where the host can't write test cases. */
   readonly saveAsTest?: SaveAsTestProps | undefined;
 }
 
 /**
  * The run card (UX 10.14, W-D3), docked at the right over the Runs view: the status, who started
- * it, the run's receipt at card width, **Open the run log** and **Save as test**.
+ * it, the run's receipt at card width (its banner, summary and Every step), then **Show the run
+ * log** and **Save as test**. Where the receipt can't be read, the footer says **Open the run log**.
  */
-export function RunCard({ source, runs, row, run, onClose, onOpenLog, saveAsTest }: RunCardProps) {
+export function RunCard({
+  source,
+  runs,
+  row,
+  run,
+  onClose,
+  onOpenLog,
+  openRun,
+  reviewInInbox,
+  saveAsTest,
+}: RunCardProps) {
+  const read = useRunLog(source, run.summary.id, run.summary.lastSeq, run);
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), []);
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key === "Escape") onClose();
   };
+  const loading = read.events === undefined && read.failure === undefined;
   return (
     <aside
       aria-label={words.card(row.shortId)}
@@ -47,9 +65,11 @@ export function RunCard({ source, runs, row, run, onClose, onOpenLog, saveAsTest
             {row.shortId}
           </h2>
         </div>
-        <StatusChip tone={row.chip.tone} dot={row.chip.dot}>
-          {row.chip.word}
-        </StatusChip>
+        {loading ? null : (
+          <StatusChip tone={row.chip.tone} dot={row.chip.dot}>
+            {row.chip.word}
+          </StatusChip>
+        )}
         <Button
           variant="ghost"
           size="sm"
@@ -64,12 +84,20 @@ export function RunCard({ source, runs, row, run, onClose, onOpenLog, saveAsTest
           <dd>{row.startedBy}</dd>
         </div>
       </dl>
-      <RunCardReceipt source={source} run={run} runs={runs} />
+      <RunCardReceipt
+        source={source}
+        run={run}
+        read={read}
+        runs={runs}
+        reviewInInbox={reviewInInbox}
+        openRun={openRun}
+        onOpenStep={onOpenLog}
+      />
       {(onOpenLog || saveAsTest) && (
         <div className="flex gap-2">
           {onOpenLog && (
             <Button variant="secondary" size="sm" onClick={onOpenLog}>
-              {words.openLog}
+              {read.events === undefined ? words.openLog : words.showLog}
             </Button>
           )}
           {saveAsTest && <SaveAsTest {...saveAsTest} />}
