@@ -13,6 +13,7 @@ import type {
   ErrorLog,
   GoogleSetupPorts,
   ModelSettingsGate,
+  ProviderKeyStore,
   RequestCountStore,
   RequestLog,
   Server,
@@ -107,11 +108,15 @@ export class FakeCoordination implements Partial<Coordination> {
 
 /** The ports a test may leave out: only the ones it passed in are set. */
 function optionalPorts(
-  options: Pick<ServerPorts, "google" | "connectors" | "workspace" | "studioPage" | "requestLog">,
+  options: Pick<
+    ServerPorts,
+    "google" | "providerKeys" | "connectors" | "workspace" | "studioPage" | "requestLog"
+  >,
 ): Partial<ServerPorts> {
-  const { google, connectors, workspace, studioPage, requestLog } = options;
+  const { google, providerKeys, connectors, workspace, studioPage, requestLog } = options;
   return {
     ...(google === undefined ? {} : { google }),
+    ...(providerKeys === undefined ? {} : { providerKeys }),
     ...(connectors === undefined ? {} : { connectors }),
     ...(workspace === undefined ? {} : { workspace }),
     ...(studioPage === undefined ? {} : { studioPage }),
@@ -135,6 +140,7 @@ export function testServer(options: {
   modelSettings?: ModelSettingsGate;
   webhooks?: WebhookRoutines;
   google?: GoogleSetupPorts;
+  providerKeys?: ProviderKeyStore;
   connectors?: ConnectorCallPorts;
   requestLog?: RequestLog;
   workspace?: WorkspaceInfo;
