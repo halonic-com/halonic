@@ -232,7 +232,9 @@ verifies("workflows.runs.card-receipt", () => {
     await act(async () => page.querySelector<HTMLButtonElement>("li button")?.click());
 
     const card = page.querySelector("aside") as HTMLElement;
-    const heading = [...card.querySelectorAll("h2")].find((one) => one.textContent === "Every step");
+    const heading = [...card.querySelectorAll("h2")].find(
+      (one) => one.textContent === "Every step",
+    );
     const section = heading?.closest("section") as HTMLElement;
     expect(section).not.toBeNull();
     expect(buttonNamed(section, "Show the run log")).toBeDefined();
