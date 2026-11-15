@@ -1,7 +1,7 @@
 # Decision: the Runs list can open for one workflow
 
 - Task: HAL-10177
-- Approval: pending, Liam approves this change on the review task linked from HAL-10177. A team decision with no board card (HAL-2282 rule): it builds on the approved Runs list.
+- Approval: https://paperclip.halonic.com/HAL/issues/HAL-10209 (Liam's review of #2905; a team decision with no board card, HAL-2282 rule: it builds on the approved Runs list)
 - Kind: user-visible
 - Signature: pending
 
