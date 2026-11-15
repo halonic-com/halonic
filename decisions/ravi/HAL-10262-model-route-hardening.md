@@ -2,6 +2,7 @@
 
 - Approval: Liam reviews this on HAL-10262
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JPeKK4/Sx+IFisyIlnZuJytaekLzWklR54GTAnnm1KbbuX/uvCtLkihH0rGG1BG9ygwMHg/zpmajDLxvnsllBQ==
 
 The agent host model route refuses provider URLs that point at Halonic's own ports, runs at most two chats at
 once (a third gets `429`), and aborts the model call when the window drops the connection. The workspace root
