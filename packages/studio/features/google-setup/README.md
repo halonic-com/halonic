@@ -16,7 +16,9 @@ The same service says how the client secret is entered (`secretEntry`: the field
 computer or on the one that runs Halonic, or no field in the browser demo and for a served Studio
 without a password) and sends it to the secret store (`saveClientSecret`, on its own request). The
 secret is a kit `SecretText` from the input to that call: it is never part of an edit, the setup
-record, an error or a log line. Steps 5 and 6 show the client ID and the secret fields.
+record, an error or a log line. Steps 5 and 6 show the client ID and the secret fields. Step 7 shows what to read before the
+sign-in: for a personal account a preview of Google's warning, for a Workspace account the note to
+send the admin (`adminNote`, which never holds the secret).
 
 `GoogleConnectorBlock` (from `/api`) is the Google block of the connector page: the account's rows,
 **Sign in again** and **Replace secret** (which open the setup item) and **Disconnect Google…**,
