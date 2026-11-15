@@ -897,6 +897,10 @@ and every 6 hours it deletes the `hlt-` test resources older than 2 hours. The
 token is in the protected `cloudflare-live` environment. Until the repository
 variable `LIVE_CLOUD_ENABLED` is `true`, every job skips with a notice.
 
+The live suites cover R2, D1, Durable Objects and alarms. They do not cover
+Workers secrets yet: no adapter for them exists, so there is no contract suite
+to run. When one lands, add its suite to the live runner.
+
 `.github/workflows/cargo-lock.yml` runs only by hand. It regenerates the
 Tauri shell's `Cargo.lock` for a branch, for anyone without a Rust
 toolchain: run `gh workflow run cargo-lock.yml --ref <branch>`, download
