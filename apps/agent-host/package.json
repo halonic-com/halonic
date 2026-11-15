@@ -4,7 +4,8 @@
   "type": "module",
   "description": "Halonic's agent host as one Node program: it unpacks its files and serves on loopback with a token per launch.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./google-host": "./src/google-host.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
