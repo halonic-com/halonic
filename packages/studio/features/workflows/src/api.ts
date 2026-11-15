@@ -77,10 +77,17 @@ export interface WorkflowProblem {
   readonly stepId?: string | undefined;
 }
 
-/** What the workflow offers in the Inbox as a request: the title of its form and the input it fills. */
+/** One input of the request form, as the workflow file says it. */
+export interface WorkflowRequestField {
+  readonly name: string;
+  readonly type: "email" | "text" | "long-text";
+  readonly required: boolean;
+}
+
+/** What the workflow offers in the Inbox as a request: the title of its form and its inputs. */
 export interface WorkflowRequest {
   readonly label: string;
-  readonly field: string;
+  readonly fields: readonly WorkflowRequestField[];
 }
 
 /** One workflow as its Configuration page shows it. */

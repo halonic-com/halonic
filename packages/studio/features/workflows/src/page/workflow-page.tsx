@@ -1,4 +1,12 @@
-import { Button, EmptyState, SkeletonBar, Tabs } from "@halonicjs/studio-kit";
+import {
+  Button,
+  EmptyState,
+  SkeletonBar,
+  type Tab,
+  TabList,
+  TabPanel,
+  useTabIds,
+} from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { useState } from "react";
 import { type WorkflowsHost, WorkflowsHostService } from "../api.ts";
@@ -39,8 +47,23 @@ export function WorkflowScreen({ host, hubId, id }: WorkflowScreenProps) {
   const settings = useHostRead(host, { hubId, id }, (one, ref) => one.configuration(ref));
   const [view, setView] = useState<"flow" | "configuration">("flow");
   const [openStep, setOpenStep] = useState<string | undefined>();
+  const ids = useTabIds();
   const errors =
     settings.load.kind === "ready" ? countProblems(settings.load.value.problems).errors : 0;
+  const views: readonly Tab<"flow" | "configuration">[] = [
+    { id: "flow", label: configurationWords.flowTab },
+    {
+      id: "configuration",
+      label: configurationWords.tab,
+      ...(errors > 0 && {
+        count: {
+          value: errors,
+          tone: "danger" as const,
+          name: configurationWords.errors(errors),
+        },
+      }),
+    },
+  ];
   return (
     <div className="flex size-full min-h-0 flex-col">
       <header className="flex items-center gap-3 border-b border-border px-6 py-3">
@@ -49,30 +72,19 @@ export function WorkflowScreen({ host, hubId, id }: WorkflowScreenProps) {
           <p className="text-caption text-fg-muted">{pageWords.kind}</p>
           <h1 className="text-title">{name}</h1>
         </div>
+        <TabList
+          label={configurationWords.tabs}
+          tabs={views}
+          selected={view}
+          onSelect={(next) => {
+            // A direct tab click must not re-pick the card a problem link opened.
+            setOpenStep(undefined);
+            setView(next);
+          }}
+          ids={ids}
+        />
       </header>
-      <Tabs
-        label={configurationWords.tabs}
-        tabs={[
-          { id: "flow", label: configurationWords.flowTab },
-          {
-            id: "configuration",
-            label: configurationWords.tab,
-            ...(errors > 0 && {
-              count: {
-                value: errors,
-                tone: "danger" as const,
-                name: configurationWords.errors(errors),
-              },
-            }),
-          },
-        ]}
-        selected={view}
-        onSelect={(next) => {
-          // A direct tab click must not re-pick the card a problem link opened.
-          setOpenStep(undefined);
-          setView(next);
-        }}
-      >
+      <TabPanel ids={ids} tabs={views} selected={view}>
         {view === "configuration" ? (
           <Configuration
             name={name}
@@ -119,7 +131,7 @@ export function WorkflowScreen({ host, hubId, id }: WorkflowScreenProps) {
             )}
           </>
         )}
-      </Tabs>
+      </TabPanel>
     </div>
   );
 }

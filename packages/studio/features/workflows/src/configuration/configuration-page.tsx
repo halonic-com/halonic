@@ -1,4 +1,4 @@
-import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
+import { EmptyState, SkeletonBar, StatusChip } from "@halonicjs/studio-kit";
 import { type KeyboardEvent, useId, useState } from "react";
 import type { WorkflowConfiguration } from "../api.ts";
 import type { Load } from "../page/use-workflow.ts";
@@ -52,7 +52,7 @@ export function Configuration({ name, load, retry, onOpenStep }: ConfigurationPr
         aria-orientation="vertical"
         aria-label={words.pages}
         onKeyDown={onKeyDown}
-        className="flex w-52 shrink-0 flex-col gap-1 border-e border-border p-3"
+        className="flex w-52 shrink-0 flex-col gap-1 border-e border-border px-2 py-4"
       >
         {configurationPages.map((one) => (
           <button
@@ -64,16 +64,15 @@ export function Configuration({ name, load, retry, onOpenStep }: ConfigurationPr
             aria-controls={`${ids}-panel`}
             tabIndex={page === one ? 0 : -1}
             onClick={() => setPage(one)}
-            className={`focus-ring flex items-center justify-between rounded-sm px-3 py-2 text-start text-small ${
-              page === one ? "bg-accent-soft text-fg" : "text-fg-muted hover:text-fg"
+            className={`focus-ring flex h-control-md items-center justify-between rounded-sm px-3 text-start text-body ${
+              page === one ? "bg-accent-soft font-medium text-fg" : "text-fg-muted hover:text-fg"
             }`}
           >
             {words.pageNames[one]}
             {one === "problems" && errors > 0 && (
-              <span className="text-caption text-danger-text">
+              <StatusChip tone="danger" shape="count" name={words.errors(errors)}>
                 {errors}
-                <span className="sr-only"> {words.errors(errors)}</span>
-              </span>
+              </StatusChip>
             )}
           </button>
         ))}
@@ -119,7 +118,7 @@ function ConfigurationBody({
 }) {
   if (page === "general") {
     return (
-      <dl>
+      <dl className="max-w-[744px]">
         <Row label={words.description}>
           {configuration.description ?? (
             <span className="text-fg-muted">{words.noDescription}</span>
@@ -136,7 +135,7 @@ function ConfigurationBody({
   if (page === "request-form") {
     const { request } = configuration;
     return (
-      <dl>
+      <dl className="max-w-[744px]">
         <Row label={words.inbox}>
           {request ? words.offered : words.notOffered}
           <p className="text-small text-fg-muted">{words.inboxLater}</p>
@@ -144,16 +143,34 @@ function ConfigurationBody({
         {request && (
           <>
             <Row label={words.formTitle}>{request.label}</Row>
-            <Row label={words.fields}>{request.field}</Row>
+            <Row label={words.fields}>
+              {request.fields.length === 0 ? (
+                <span className="text-fg-muted">{words.noFields}</span>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {request.fields.map((field) => (
+                    <li key={field.name} className="flex items-center gap-3">
+                      <span>{field.name}</span>
+                      <span className="text-small text-fg-muted">
+                        {words.fieldTypes[field.type]}
+                      </span>
+                      {field.required && (
+                        <span className="ms-auto text-small text-fg-muted">{words.required}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Row>
           </>
         )}
       </dl>
     );
   }
   const rows = problemRows(configuration.problems);
-  if (rows.length === 0) return <p className="text-fg-muted">{words.noProblems}</p>;
+  if (rows.length === 0) return <p className="max-w-[744px] text-fg-muted">{words.noProblems}</p>;
   return (
-    <ul className="flex flex-col divide-y divide-border">
+    <ul className="flex max-w-[744px] flex-col divide-y divide-border">
       {rows.map((row, at) => (
         <li key={at} className="flex items-center gap-3 py-3">
           <span aria-hidden="true" className={row.severity === "error" ? "text-danger-text" : ""}>

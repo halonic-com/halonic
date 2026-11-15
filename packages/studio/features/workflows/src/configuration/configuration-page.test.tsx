@@ -105,14 +105,24 @@ verifies("workflows.configuration.pages", () => {
     expect(document.activeElement?.getAttribute("aria-pressed")).toBeNull();
   });
 
-  it("shows only what the file says about the request form's field", async () => {
+  it("shows each request field with its type and Required at the end of a required one", async () => {
     const page = await open([
-      { ...configuration, request: { label: "Ask for a reply", field: "message" } },
+      {
+        ...configuration,
+        request: {
+          label: "Ask for a reply",
+          fields: [
+            { name: "message", type: "long-text", required: true },
+            { name: "from", type: "email", required: false },
+          ],
+        },
+      },
     ]);
     await act(async () => tab(page, "Request form")?.click());
 
-    expect(page.textContent).toContain("message");
-    expect(page.textContent).not.toContain("Required");
+    const rows = [...page.querySelectorAll("li")].map((li) => li.textContent);
+    expect(rows).toContain("messageLong textRequired");
+    expect(rows).toContain("fromEmail");
   });
 
   it("says No problems. when there are none", async () => {
@@ -124,7 +134,16 @@ verifies("workflows.configuration.pages", () => {
 
   it("shows whether the workflow is offered in the Inbox", async () => {
     const page = await open([
-      { ...configuration, request: { label: "Ask for a reply", field: "message" } },
+      {
+        ...configuration,
+        request: {
+          label: "Ask for a reply",
+          fields: [
+            { name: "message", type: "long-text", required: true },
+            { name: "from", type: "email", required: false },
+          ],
+        },
+      },
     ]);
     await act(async () => tab(page, "Request form")?.click());
 
