@@ -13,7 +13,7 @@ export interface StepCardProps {
 }
 
 /**
- * One step on the canvas (`workflows.canvas.step-cards`): its kind, its id, and the agent it runs,
+ * One step on the canvas (`workflows.page.step-cards`): its kind, its id, and the agent it runs,
  * or "No agent" for a task step that has none (a step without an agent passes the data on). A
  * click selects it; the docked card that edits it lands with Configuration.
  */

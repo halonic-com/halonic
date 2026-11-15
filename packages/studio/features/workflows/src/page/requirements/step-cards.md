@@ -1,4 +1,4 @@
-# workflows.canvas.step-cards
+# workflows.page.step-cards
 
 - Status: draft
 - Since: 0.1.0

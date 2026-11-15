@@ -16,7 +16,7 @@ export type WorkflowLoad =
 /**
  * Reads one workflow from the host, and again when the host says something may have changed. A
  * read after the first keeps the workflow on screen, so a refresh never shows a skeleton (D1, D10).
- * Only the newest read's answer is used.
+ * Only the newest read's answer is used, and a failed read after the first keeps what is shown.
  */
 export function useWorkflow(
   host: WorkflowsHost,
@@ -38,8 +38,11 @@ export function useWorkflow(
         if (mine === newestRead.current) setResult({ kind: "ready", workflow });
       },
       (error: unknown) => {
+        // A failed refresh keeps the workflow on screen, so the person's zoom stays (D9).
         if (mine === newestRead.current)
-          setResult({ kind: "failed", reason: failureReason(error) });
+          setResult((was) =>
+            was?.kind === "ready" ? was : { kind: "failed", reason: failureReason(error) },
+          );
       },
     );
   }, [host, hubId, id]);

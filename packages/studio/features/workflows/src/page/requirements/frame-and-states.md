@@ -9,7 +9,7 @@ When a workflow's tab opens, the workflows feature shall show a full-width page 
 ## Examples
 
 - Given the host answers at once, then the page shows the name and the step cards, and no skeleton.
-- Given the host takes over 300 ms, then a status says "Loading Support reply" with grey bars; after 10 s it adds "Still loading" and **Try again**.
+- Given the host takes over 300 ms, then a status says "Loading reply" with grey bars; after 10 s it adds "Still loading" and **Try again**.
 - Given the host says "The engine isn't answering. It may still be starting.", then the page shows "Couldn't load this workflow", that sentence and **Try again**, which reads again.
 - Given the page is open, then it has no button for ⤢ or ✕.
 - Given the host says the workflow changed, then the canvas shows the new step and the person's zoom stays.

@@ -49,6 +49,8 @@ export function WorkflowCanvas({ workflow }: { readonly workflow: WorkflowView }
       aria-label={pageWords.canvas}
       className="relative min-h-0 flex-1 touch-none overflow-hidden bg-canvas-grid"
       onPointerDown={(event) => {
+        // A press on a card or a button is theirs: capturing it here would steal their click.
+        if ((event.target as Element).closest("button") !== null) return;
         drag.current = { x: event.clientX, y: event.clientY };
         event.currentTarget.setPointerCapture?.(event.pointerId);
       }}
@@ -59,6 +61,9 @@ export function WorkflowCanvas({ workflow }: { readonly workflow: WorkflowView }
         setView((now) => panBy(now, delta));
       }}
       onPointerUp={() => {
+        drag.current = undefined;
+      }}
+      onPointerCancel={() => {
         drag.current = undefined;
       }}
       onWheel={(event) => {

@@ -79,17 +79,54 @@ verifies("workflows.page.frame-and-states", () => {
   });
 
   it("keeps the zoom when the workflow changes under it", async () => {
-    const { host, change } = memoryHost([], [], [reply]);
-    const page = await show(<WorkflowScreen host={host} hubId="acme" id="reply" />);
+    let current = reply;
+    let tell = () => {};
+    const { host } = memoryHost([], [], [reply]);
+    const changing = {
+      ...host,
+      read: async () => current,
+      subscribe: (listener: () => void) => {
+        tell = listener;
+        return () => {};
+      },
+    };
+    const page = await show(<WorkflowScreen host={changing} hubId="acme" id="reply" />);
     await act(async () => buttonNamed(page, "Zoom in")?.click());
     const zoomed = surface(page)?.style.transform;
 
-    await act(async () => change([]));
+    current = { ...reply, steps: [...reply.steps, { id: "extra", type: "task" }] };
+    await act(async () => tell());
+    expect(page.querySelectorAll("button[aria-pressed]")).toHaveLength(4);
+    expect(surface(page)?.style.transform).toBe(zoomed);
+  });
+
+  it("keeps the canvas when a refresh fails", async () => {
+    let failing = false;
+    let tell = () => {};
+    const { host } = memoryHost([], [], [reply]);
+    const flaky = {
+      ...host,
+      read: async () => {
+        if (failing) throw new Error("The engine isn't answering. It may still be starting.");
+        return reply;
+      },
+      subscribe: (listener: () => void) => {
+        tell = listener;
+        return () => {};
+      },
+    };
+    const page = await show(<WorkflowScreen host={flaky} hubId="acme" id="reply" />);
+    await act(async () => buttonNamed(page, "Zoom in")?.click());
+    const zoomed = surface(page)?.style.transform;
+
+    failing = true;
+    await act(async () => tell());
+    expect(page.textContent).not.toContain("Couldn't load this workflow");
     expect(surface(page)?.style.transform).toBe(zoomed);
   });
 });
 
-verifies("workflows.canvas.step-cards", () => {
+verifies("workflows.page.step-cards", () => {
   it("draws a card per step with its kind, id, agent and the Start mark, and an arrow per way on", async () => {
     const { host } = memoryHost([], [], [reply]);
     const page = await show(<WorkflowScreen host={host} hubId="acme" id="reply" />);
