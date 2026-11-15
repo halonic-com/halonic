@@ -135,6 +135,7 @@ export function PluginPage({
           plugin={plugin}
           manifest={manifest}
           trust={actions.trust}
+          programsRun={actions.programsRun}
           onClose={() => setReviewing(false)}
           onTrusted={() => toastOn(plugin.name, manifest)}
         />
@@ -144,6 +145,7 @@ export function PluginPage({
           plugin={plugin}
           found={update.found}
           applyUpdate={actions.applyUpdate}
+          programsRun={actions.programsRun}
           onUpdated={() => setUpdate({ kind: "idle" })}
           onKeep={() => setUpdate({ kind: "up-to-date", version: manifest?.version ?? "" })}
         />

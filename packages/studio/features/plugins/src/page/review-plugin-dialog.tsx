@@ -3,6 +3,7 @@ import { useState } from "react";
 import { messageOf } from "../message-of.ts";
 import { changeSummary } from "../trust/change-rows.ts";
 import { PluginTrustDialog } from "../trust/plugin-trust-dialog.tsx";
+import type { ProgramsRun } from "../trust/trust-text.ts";
 import { trustedDay } from "./page-text.ts";
 import type { PluginActions } from "./plugin-actions.ts";
 import type { InstalledPlugin } from "./plugin-pages.ts";
@@ -12,6 +13,7 @@ export interface ReviewPluginDialogProps {
   readonly plugin: InstalledPlugin;
   readonly manifest: Plugin;
   readonly trust: PluginActions["trust"];
+  readonly programsRun?: ProgramsRun;
   /** After **Trust** is saved, and on **Not now** and Escape. */
   readonly onClose: () => void;
   /** After **Trust** is saved, before `onClose`: the page says "*name* is on" in a toast. */
@@ -32,6 +34,7 @@ export function ReviewPluginDialog({
   plugin,
   manifest,
   trust,
+  programsRun,
   onClose,
   onTrusted,
 }: ReviewPluginDialogProps) {
@@ -60,6 +63,7 @@ export function ReviewPluginDialog({
       reason={changes !== undefined ? "changed" : "review"}
       changes={changes !== undefined ? changeSummary(manifest, changes) : undefined}
       trustedOn={trustedDay(plugin.trustedAt, new Date())}
+      programsRun={programsRun}
       busy={busy}
       failure={failure}
       onTrust={() => void confirm()}

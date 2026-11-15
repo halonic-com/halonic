@@ -22,8 +22,9 @@ import {
   NOT_NOW,
   OUTSIDE_TEXT,
   PROGRAMS_SECTION,
+  type ProgramsRun,
   RUNS,
-  RUNS_IN_SANDBOX,
+  runsLine,
   SECRETS_SECTION,
   type SecretKind,
   secretValueLine,
@@ -61,6 +62,8 @@ export interface PluginTrustDialogProps {
    * For `reason="update"`: the version the person has now, which **Keep** names, and for a git
    * plugin the newer commit. `manifest` is the new version, `origin` where it comes from now.
    */
+  /** Whether the plugin's programs can run here; when unsaid, the Runs line holds either way. */
+  readonly programsRun?: ProgramsRun;
   readonly update?: { readonly keep: string; readonly toCommit?: string | undefined } | undefined;
   readonly onTrust: () => void;
   /** **Not now** and Escape, or **Keep** for an update: the plugin stays as it was. */
@@ -115,7 +118,12 @@ export function PluginTrustDialog(props: PluginTrustDialogProps) {
         ) : (
           <>
             {summary === "" ? null : <p className="text-body text-fg">{summary}</p>}
-            <Sections content={content} shown={shownSections(manifest)} name={manifest.name} />
+            <Sections
+              content={content}
+              shown={shownSections(manifest)}
+              name={manifest.name}
+              programsRun={props.programsRun}
+            />
           </>
         )}
       </div>
@@ -170,15 +178,23 @@ function Sections({
   content,
   shown,
   name,
+  programsRun,
 }: {
   readonly content: TrustCheckContent;
   readonly shown: readonly PluginTrustSection[];
   readonly name: string;
+  readonly programsRun: ProgramsRun;
 }) {
   return (
     <div className="flex flex-col">
       {shown.map((section) => (
-        <Section key={section} section={section} content={content} name={name} />
+        <Section
+          key={section}
+          section={section}
+          content={content}
+          name={name}
+          programsRun={programsRun}
+        />
       ))}
     </div>
   );
@@ -188,10 +204,12 @@ function Section({
   section,
   content,
   name,
+  programsRun,
 }: {
   readonly section: PluginTrustSection;
   readonly content: TrustCheckContent;
   readonly name: string;
+  readonly programsRun: ProgramsRun;
 }) {
   const { tools, programs, secrets, addresses, inStudio, counts } = content;
   switch (section) {
@@ -226,7 +244,7 @@ function Section({
             {programs.map((program) => (
               <li key={program.id} className="flex flex-col gap-1">
                 <code className="font-mono text-small wrap-anywhere">{program.command}</code>
-                <Labelled label={RUNS}>{RUNS_IN_SANDBOX}</Labelled>
+                <Labelled label={RUNS}>{runsLine(programsRun)}</Labelled>
                 {program.version === undefined ? null : (
                   <Labelled label={VERSION}>{program.version}</Labelled>
                 )}

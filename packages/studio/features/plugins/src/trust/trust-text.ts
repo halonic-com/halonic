@@ -121,8 +121,26 @@ export const RUNS = "Runs";
 export const VERSION = "Version";
 export const CAN_REACH = "Can reach";
 
-/** Where a program runs (T8). HAL-3384 makes it depend on whether the sandbox works. */
-export const RUNS_IN_SANDBOX = "In the agent sandbox, in its own empty folder";
+/**
+ * Whether a plugin's programs can run here, as the engine's `PluginLocalTools.state()` says. A
+ * program only ever starts in a working sandbox, so each case says what is true; when the host
+ * doesn't say, the line holds in every case.
+ */
+export type ProgramsRun = "ready" | "needs-desktop-app" | "sandbox-unavailable" | undefined;
+
+/** Where a program runs (T8, Mara's claims check item 2): one true line per case. */
+export function runsLine(state: ProgramsRun): string {
+  switch (state) {
+    case "ready":
+      return "In the agent sandbox, in its own empty folder";
+    case "needs-desktop-app":
+      return "Doesn't run here. Programs run only in the Halonic desktop app, in a sandbox";
+    case "sandbox-unavailable":
+      return "Doesn't run now. The sandbox can't start on this computer";
+    case undefined:
+      return "In a sandbox, in its own empty folder. Without a working sandbox it doesn't run";
+  }
+}
 
 /** The labels of a secret (design section 5). */
 export const GOES_ONLY_TO = "Goes only to";
@@ -189,7 +207,7 @@ export interface TrustCounts {
 
 /**
  * The summary, in risk order, zero counts left out (design section 5, checklist 4.1): "Adds 2
- * tools for agents, 1 of which changes things. Starts 1 program on this computer, sends 1 secret
+ * tools for agents, 1 of which changes things. Starts 1 program in a sandbox on this computer, sends 1 secret
  * to api.example.com and reaches 2 addresses." `""` when the plugin adds none of these.
  */
 export function trustSummary(counts: TrustCounts): string {
@@ -226,7 +244,7 @@ function reachSentence(counts: TrustCounts): string {
   const parts = [
     counts.programs === 0
       ? undefined
-      : `starts ${counted(counts.programs, "program", "programs")} on this computer`,
+      : `starts ${counted(counts.programs, "program", "programs")} in a sandbox on this computer`,
     secrets,
     counts.addresses === 0
       ? undefined

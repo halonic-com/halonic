@@ -64,7 +64,7 @@ verifies("plugins.plugin-trust-check", () => {
     const content = trustCheckContent(weather);
 
     expect(trustSummary(content.counts)).toBe(
-      "Adds 3 tools for agents, 1 of which changes things. Starts 1 program on this computer, sends 1 secret to api.example.com and reaches 2 addresses.",
+      "Adds 3 tools for agents, 1 of which changes things. Starts 1 program in a sandbox on this computer, sends 1 secret to api.example.com and reaches 2 addresses.",
     );
   });
 
