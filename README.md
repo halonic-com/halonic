@@ -70,6 +70,8 @@ pnpm add -g ./apps/cli
 halonic --version
 ```
 
+The last command should print `Halonic 0.1.0`.
+
 `pnpm install` downloads about 150 MB, so it can take a while on a slow
 connection.
 
@@ -158,7 +160,8 @@ one first? Run `halonic init --example acme` and follow the steps above.
 
 ## Something failed?
 
-Run `halonic doctor` and fix what it lists. Then run the command that failed
+Run `halonic doctor` and fix what it lists. A red ✕ Sandbox line is normal on
+a fresh install and doesn't stop the steps above. Then run the command that failed
 again with `--debug`. Still stuck? Open an
 [Install problem](https://github.com/halonic-com/halonic/issues/new?template=install-problem.yml)
 or [Bug report](https://github.com/halonic-com/halonic/issues/new/choose)
