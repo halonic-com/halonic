@@ -70,9 +70,6 @@ export const versionWords = {
   failed: "Couldn't create the version",
   tryAgain: "Try again",
   nothingToCreate: "Nothing has changed since your last version.",
-  /** git can't record a version before it knows who it is from. */
-  whoAreYou:
-    "Git doesn't know who versions should be from. Set your name and email in git, then try again.",
   created: (name: string) => `Created version "${name}"`,
   /** The name offered for a version of one or more items. */
   suggestedName: (items: readonly string[]) => {

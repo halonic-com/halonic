@@ -1,3 +1,7 @@
+import { execFileSync, spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { type GitAnswer, WorkspaceChanges } from "./workspace-changes.ts";
@@ -250,7 +254,15 @@ verifies("source-control.create-version", () => {
         paths: ["agents/triage.agent.yaml", "skills/tone/SKILL.md"],
       });
       expect(calls).toEqual([
-        ["add", "--all", "--", "agents/triage.agent.yaml", "skills/tone/SKILL.md"],
+        [
+          "ls-files",
+          "-z",
+          "--others",
+          "--exclude-standard",
+          "--",
+          "agents/triage.agent.yaml",
+          "skills/tone/SKILL.md",
+        ],
         [
           "commit",
           "-m",
@@ -262,16 +274,30 @@ verifies("source-control.create-version", () => {
       ]);
     });
 
+    it("adds only the files git doesn't know yet, so renames and deletions can be committed", async () => {
+      const calls: (readonly string[])[] = [];
+      const { changes } = history(async (args) => {
+        calls.push(args);
+        return args[0] === "ls-files" ? answer("new.md\0") : answer("");
+      });
+      await changes.createVersion({ message: "m", paths: ["old.md", "renamed.md", "new.md"] });
+      expect(calls.map((args) => args[0])).toEqual(["ls-files", "add", "commit"]);
+      expect(calls[1]).toEqual(["add", "--", "new.md"]);
+      expect(calls[2]?.slice(-3)).toEqual(["old.md", "renamed.md", "new.md"]);
+    });
+
     it("doesn't commit when adding failed, and gives git's first line", async () => {
       const calls: string[] = [];
       const { changes } = history(async (args) => {
         calls.push(args[0] ?? "");
-        return answer("", 128, "fatal: Unable to create index.lock\nsecond line");
+        return args[0] === "ls-files"
+          ? answer("a.md\0")
+          : answer("", 128, "fatal: Unable to create index.lock\nsecond line");
       });
       await expect(changes.createVersion({ message: "x", paths: ["a.md"] })).rejects.toThrow(
         "fatal: Unable to create index.lock",
       );
-      expect(calls).toEqual(["add"]);
+      expect(calls).toEqual(["ls-files", "add"]);
     });
 
     it("says what git said on stdout when a commit fails without a message on stderr", async () => {
@@ -301,6 +327,47 @@ verifies("source-control.create-version", () => {
       await expect(changes.createVersion({ message: "x", paths: ["a.md"] })).rejects.toThrow(
         "git isn't on this computer.",
       );
+    });
+
+    it("commits a staged rename, a staged deletion and a new file in a real repository", async () => {
+      const dir = mkdtempSync(join(tmpdir(), "version-"));
+      try {
+        const git = (...args: string[]) =>
+          execFileSync("git", ["-c", "user.name=T", "-c", "user.email=t@example.com", ...args], {
+            cwd: dir,
+            encoding: "utf8",
+          });
+        git("init", "--quiet");
+        writeFileSync(join(dir, "old.md"), "one\ntwo\nthree\nfour\n");
+        writeFileSync(join(dir, "gone.md"), "bye\n");
+        git("add", "--all");
+        git("commit", "-m", "first", "--quiet");
+        mkdirSync(join(dir, "sub"));
+        git("mv", "old.md", "sub/renamed.md");
+        git("rm", "--quiet", "gone.md");
+        writeFileSync(join(dir, "new.md"), "fresh\n");
+        const { changes } = history(async (args) => {
+          const run = spawnSync(
+            "git",
+            ["-c", "user.name=T", "-c", "user.email=t@example.com", ...args],
+            { cwd: dir, encoding: "utf8" },
+          );
+          return { code: run.status, stdout: run.stdout, stderr: run.stderr };
+        });
+        await changes.createVersion({
+          message: "second",
+          paths: ["old.md", "sub/renamed.md", "gone.md", "new.md"],
+        });
+        expect(git("status", "--porcelain")).toBe("");
+        expect(git("show", "--name-status", "--format=", "HEAD").split("\n").sort()).toEqual([
+          "",
+          "A\tnew.md",
+          "D\tgone.md",
+          "R100\told.md\tsub/renamed.md",
+        ]);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
     });
   });
 });

@@ -73,10 +73,24 @@ export class WorkspaceChanges implements ChangesSource {
   }
 
   async createVersion({ message, paths }: VersionInput): Promise<void> {
-    // Only these paths, so files staged some other way stay out of the version.
-    const add = await this.#run(["add", "--all", "--", ...paths]);
-    if (add === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
-    if (add.code !== 0) throw new KindedError("unavailable", gitReason(add));
+    // `commit -- <paths>` takes tracked, renamed and deleted files by itself; only the new files
+    // need adding, and `git add` refuses a path that is neither in the index nor on disk.
+    const others = await this.#run([
+      "ls-files",
+      "-z",
+      "--others",
+      "--exclude-standard",
+      "--",
+      ...paths,
+    ]);
+    if (others === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
+    if (others.code !== 0) throw new KindedError("unavailable", gitReason(others));
+    const untracked = others.stdout.split("\0").filter((path) => path !== "");
+    if (untracked.length > 0) {
+      const add = await this.#run(["add", "--", ...untracked]);
+      if (add === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
+      if (add.code !== 0) throw new KindedError("unavailable", gitReason(add));
+    }
     const commit = await this.#run(["commit", "-m", message, "--", ...paths]);
     if (commit === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
     if (commit.code !== 0) throw new KindedError("unavailable", gitReason(commit));

@@ -1,4 +1,5 @@
 import { type ChangeLine, type PartValue, partValueIn } from "@halonicjs/app";
+import { useId } from "react";
 import type { ChangedFile } from "../changes-list.ts";
 import { versionWords } from "../changes-words.ts";
 
@@ -7,9 +8,10 @@ import { versionWords } from "../changes-words.ts";
  * marked Important and always as before → after; the others as their sentence.
  */
 export function WhatsInIt({ files }: { readonly files: readonly ChangedFile[] }) {
+  const headingId = useId();
   return (
-    <section aria-labelledby="version-contents" className="flex flex-col gap-2">
-      <h2 id="version-contents" className="text-heading">
+    <section aria-labelledby={headingId} className="flex flex-col gap-2">
+      <h2 id={headingId} className="text-heading">
         {versionWords.whatsInIt}
       </h2>
       <ul className="flex flex-col gap-3">
