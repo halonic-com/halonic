@@ -52,6 +52,34 @@ verifies("shell.palette-groups", () => {
     expect(read(content)).toEqual(["Actions:", "Workspace settings"]);
   });
 
+  it("doesn't say nothing matches when the only match is a place its Action stands in for", () => {
+    const settings: TabLocation = { key: "workspace/local/settings", title: "Workspace settings" };
+    const content = palette({
+      words: "settings",
+      openTabs: [settings],
+      actions: [{ id: "workspace.open", title: "Workspace settings" }],
+    });
+    expect(content.nothingFound).toBe(false);
+    expect(content.couldNotSearch).toBe(false);
+    expect(palette({ words: "zzz", openTabs: [settings] }).nothingFound).toBe(true);
+  });
+
+  it("keeps a place named like a command when no command opens it", () => {
+    const named: TabLocation = { key: "workflow/acme/new-tab", title: "New tab" };
+    const content = palette({
+      words: "new tab",
+      openTabs: [named],
+      actions: [{ id: "shell.new-tab", title: "New tab" }],
+    });
+    expect(read(content)).toEqual([
+      "Agents, workflows and more:",
+      "New tab · Switch to tab",
+      "Actions:",
+      "New tab",
+    ]);
+    expect(content.nothingFound).toBe(false);
+  });
+
   it("shows Open tabs, then Recent places no tab shows, while nothing is typed", () => {
     const content = palette({
       words: " ",

@@ -75,6 +75,19 @@ export interface PaletteSources {
 }
 
 /**
+ * The places that commands open, by command id: the key of the place the command shows. The
+ * palette hides an open or recent place that one of these commands opens, because the command's
+ * Action stands in for it. It matches by place, not by title, so a place a person names like a
+ * command ("Workspace settings") stays when no command opens it. The three workspace commands all
+ * open the workspace page, `workspace/local/settings`; keep this in step with that feature.
+ */
+export const commandPlaceKeys: ReadonlyMap<string, string> = new Map([
+  ["workspace.open", "workspace/local/settings"],
+  ["workspace.open-trust", "workspace/local/settings"],
+  ["workspace.open-models", "workspace/local/settings"],
+]);
+
+/**
  * The key of the place that shows an item, as a deep link writes it: `kind/hub/id`. A window tab
  * on that item has the same key, so the palette can tell it is open.
  */
@@ -137,11 +150,15 @@ export function paletteGroups(sources: PaletteSources): PaletteContent {
       target: { kind: "item", item: result.item },
     };
   });
-  // A place named like a command ("Workspace settings") shows once, as the Action.
-  const actionTitles = new Set(sources.actions.map((action) => action.title.toLowerCase()));
-  const placeRows = [...sources.openTabs, ...sources.recent]
-    .filter((location) => !actionTitles.has(location.title.toLowerCase()))
-    .map(placeRow);
+  // A place a command opens ("Workspace settings") shows once, as the Action.
+  const standIns = new Set(
+    sources.actions.flatMap((action) => commandPlaceKeys.get(action.id) ?? []),
+  );
+  const allPlaces = [...sources.openTabs, ...sources.recent].map(placeRow);
+  const placeRows = allPlaces.filter((row) => !standIns.has(row.key));
+  const hiddenMatch = allPlaces.some(
+    (row) => standIns.has(row.key) && matchName(sources.words, row.label) !== undefined,
+  );
   const recency = new Map(sources.recent.map((location, index) => [location.key, index]));
   const items = ranked(sources.words, withoutRepeats([...foundRows, ...placeRows]), recency);
   const actions = ranked(
@@ -159,8 +176,8 @@ export function paletteGroups(sources: PaletteSources): PaletteContent {
   );
   return {
     groups: nonEmpty([group("items", items), group("actions", actions)]),
-    nothingFound: items.length === 0 && !sources.searchFailed,
-    couldNotSearch: items.length === 0 && sources.searchFailed,
+    nothingFound: items.length === 0 && !hiddenMatch && !sources.searchFailed,
+    couldNotSearch: items.length === 0 && !hiddenMatch && sources.searchFailed,
   };
 }
 
