@@ -340,10 +340,14 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     // probe reads the secret on this computer, shown by the control below.
     // The control: the same probe on this computer, outside the box, must read
     // the secret. Otherwise a failure in the box says nothing about the box.
-    const control = spawnSync(powershell, ["-NoProfile", "-NonInteractive", "-Command", credentialReadScript(credentialTarget)], {
-      encoding: "utf8",
-      timeout: 20000,
-    });
+    const control = spawnSync(
+      powershell,
+      ["-NoProfile", "-NonInteractive", "-Command", credentialReadScript(credentialTarget)],
+      {
+        encoding: "utf8",
+        timeout: 20000,
+      },
+    );
     expect(control.stdout, control.stderr).toBe(canary);
 
     const { attempts, stderr } = await attack(
