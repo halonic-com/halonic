@@ -160,15 +160,17 @@ export interface HarnessRunsOptions {
   readonly instructions?: HarnessInstructionSource;
   /**
    * Whether the instructions the run starts with are trusted. A run whose
-   * instructions aren't doesn't start (requirement
-   * `engine.harness-instructions-trust`). Without it, nothing is checked.
+   * instructions aren't, or whose check doesn't answer in time, doesn't
+   * start (requirement `engine.harness-instructions-trust`). Without it,
+   * nothing is checked.
    */
   readonly instructionTrust?: HarnessInstructionTrust;
   /** The person's home folder, so `sandbox.opened` and `sandbox.blocked` show paths in it with `~`; `null` when unknown. */
   readonly home: string | null;
   /**
-   * How long each start may take, in milliseconds: the sandbox's opening and
-   * the harness's first event. Defaults: 30 s and 60 s.
+   * How long each start may take, in milliseconds: the sandbox's opening,
+   * the instruction trust check's answer and the harness's first event.
+   * Defaults: 30 s, 10 s and 60 s.
    */
   readonly startTimeoutsMs?: Readonly<Partial<Record<StartPhase, number>>>;
   /**

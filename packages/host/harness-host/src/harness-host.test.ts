@@ -80,6 +80,18 @@ verifies("harness-host.builder", () => {
     expect(harnessHostOf(input).harnesses.startTimeoutsMs).toEqual({ sandbox: 5_000 });
   });
 
+  it("passes the instruction trust check on as it is, and gives none when the host has none", () => {
+    const instructionTrust = {
+      service: { check: async () => ({ kind: "trusted" as const }) },
+      location: "/workspaces/acme",
+    };
+
+    expect(harnessHostOf(inputOf({ instructionTrust }).input).harnesses.instructionTrust).toBe(
+      instructionTrust,
+    );
+    expect(harnessHostOf(inputOf().input).harnesses).not.toHaveProperty("instructionTrust");
+  });
+
   it("asks the person's choices where each agent runs", async () => {
     const { harnesses } = harnessHostOf(inputOf().input);
 

@@ -3,12 +3,15 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { InstructionsNotTrustedError } from "./check-instruction-trust.ts";
 import { runCallOn } from "./harness-call-test-kit.test-helper.ts";
-import { finished, harnessPorts, stillOpen } from "./harness-test-kit.test-helper.ts";
+import { finished, harnessPorts, startLimits, stillOpen } from "./harness-test-kit.test-helper.ts";
 
 const digest = (character: string) => `sha256:${character.repeat(64)}`;
 
 /** A harness run with instruction files, whose trust check answers `answer` and records what it was asked. */
-function runWith(answer: InstructionTrustCheck, files: readonly string[] = ["AGENTS.md"]) {
+function runWith(
+  answer: InstructionTrustCheck | Promise<InstructionTrustCheck>,
+  files: readonly string[] = ["AGENTS.md"],
+) {
   const ports = harnessPorts();
   ports.harness.events = [finished("ok")];
   const asked: unknown[] = [];
@@ -25,7 +28,7 @@ function runWith(answer: InstructionTrustCheck, files: readonly string[] = ["AGE
       service: {
         check: async (key, pin) => {
           asked.push({ key, pin });
-          return answer;
+          return await answer;
         },
       },
     },
@@ -114,6 +117,34 @@ verifies("engine.harness-instructions-trust", () => {
 
       expect(String(error)).toContain('"skills/s9.md" and 3 more.');
       expect(String(error)).not.toContain("s10.md");
+    });
+
+    it("refuses a start when the check doesn't answer in time, and closes what it opened", async () => {
+      const { ports } = runWith(new Promise<InstructionTrustCheck>(() => {}));
+      const start = startLimits();
+
+      const running = runCallOn(ports, start.limits);
+      await start.timeUp("trust");
+      const { error, written } = await running;
+
+      expect(error).toBeInstanceOf(InstructionsNotTrustedError);
+      expect((error as Error).message).toBe(
+        "Halonic didn't start agent \"writer\": the check of its instructions didn't answer within 10 s, so they can't be trusted.",
+      );
+      expect(written.map((event) => event.type)).toEqual(["sandbox.started", "sandbox.opened"]);
+      expect(stillOpen(ports.steps)).toBe(0);
+    });
+
+    it("refuses a start when the check fails, and closes what it opened", async () => {
+      const failing = Promise.reject(new Error("The store is gone."));
+      failing.catch(() => {});
+      const { ports } = runWith(failing);
+
+      const { error, written } = await runCallOn(ports);
+
+      expect(String(error)).toContain("The store is gone.");
+      expect(written.map((event) => event.type)).not.toContain("harness.started");
+      expect(stillOpen(ports.steps)).toBe(0);
     });
 
     it("asks nothing when the agent has no instruction files", async () => {

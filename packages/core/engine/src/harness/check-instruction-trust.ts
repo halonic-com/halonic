@@ -9,6 +9,7 @@ import type {
   HarnessInstructionsPin,
   HarnessInstructionTrust,
 } from "./harness-host.ts";
+import { type StartLimits, seconds } from "./start-limits.ts";
 
 /** How many file names of one kind a refusal lists before it says how many more there are. */
 const namesShown = 10;
@@ -21,26 +22,42 @@ export class InstructionsNotTrustedError extends Error {
   }
 }
 
+/** How long the host's trust check may take, and what enforces it. */
+export interface TrustCheckLimit {
+  readonly limits: StartLimits;
+  readonly timeoutMs: number;
+}
+
 /**
  * Asks the host's trust check about the instructions the run starts with.
  * Without a trust check on the host, or without instruction files, nothing
- * is asked.
+ * is asked. A check that doesn't answer in time, or that throws, refuses the
+ * start: a store that hangs never lets a run through, and never stalls it.
  *
- * @throws InstructionsNotTrustedError when the check answers `ask`
+ * @throws InstructionsNotTrustedError when the check answers `ask`, or doesn't answer within the limit
+ * @throws what the check throws
  */
 export async function checkInstructionTrust(
   trust: HarnessInstructionTrust | undefined,
   agent: HarnessAgent,
   pin: HarnessInstructionsPin | null,
+  { limits, timeoutMs }: TrustCheckLimit,
 ): Promise<void> {
   if (trust === undefined || pin === null) return;
-  const check = await trust.service.check(
-    { location: trust.location, agent: agent.agentId },
-    {
-      digest: pin.sha256,
-      files: Object.fromEntries(pin.files.map((file) => [file.path, file.sha256])),
-    },
-  );
+  const key = { location: trust.location, agent: agent.agentId };
+  const current = {
+    digest: pin.sha256,
+    files: Object.fromEntries(pin.files.map((file) => [file.path, file.sha256])),
+  };
+  const check = await limits.within({
+    phase: "trust",
+    timeoutMs,
+    start: () => trust.service.check(key, current),
+    timedOut: () =>
+      new InstructionsNotTrustedError(
+        `Halonic didn't start agent ${quoted(agent.agentId)}: the check of its instructions didn't answer within ${seconds(timeoutMs)}, so they can't be trusted.`,
+      ),
+  });
   if (check.kind === "trusted") return;
   throw new InstructionsNotTrustedError(refusalText(agent.agentId, check));
 }

@@ -33,7 +33,12 @@ import { SandboxNotReadyError } from "../run/sandbox-not-ready-error.ts";
 import { BlockedAccesses } from "./blocked-accesses.ts";
 import type { HarnessAgent, HarnessRunsOptions, PlacementAnswer } from "./harness-host.ts";
 import { logHarnessStart } from "./log-harness-start.ts";
-import { defaultStartTimeoutsMs, type StartLimits, type StartPhase } from "./start-limits.ts";
+import {
+  defaultStartTimeoutsMs,
+  type StartLimits,
+  type StartPhase,
+  seconds,
+} from "./start-limits.ts";
 import { unlessStopped } from "./unless-stopped.ts";
 
 /** Where a harness call writes its events: the run's log, one event after the other. */
@@ -239,7 +244,7 @@ async function runInBridge(
     const stopReports = session.onBlocked((block) => blocked.note(block));
     try {
       const timeoutMs = startTimeoutOf(options, "harness");
-      await logHarnessStart(started, timeoutMs);
+      await logHarnessStart(started, timeoutMs, startTimeoutOf(options, "trust"));
       const task = {
         runId: call.runId,
         hubId: call.hubId,
@@ -474,11 +479,6 @@ async function passOnApproval(
     approved,
     ...(comment === undefined ? {} : { comment }),
   });
-}
-
-/** A time limit as people read it, such as `30 s`. */
-function seconds(timeoutMs: number): string {
-  return `${timeoutMs / 1000} s`;
 }
 
 /** A harness event as the run log keeps it: with the workflow state, for the types that have one. */

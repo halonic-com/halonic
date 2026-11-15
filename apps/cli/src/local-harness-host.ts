@@ -14,6 +14,7 @@ import { readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import {
   FileAgentPlacementStore,
+  FileInstructionTrustStore,
   FolderDefinitionStore,
   FolderRunCopies,
   FolderTrash,
@@ -31,6 +32,7 @@ import {
 } from "@halonicjs/adapter-harness-kit";
 import { createHostSandbox, createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
+import { InstructionTrustService } from "@halonicjs/app";
 import type { HarnessAgent, HarnessRunsOptions } from "@halonicjs/engine";
 import {
   type AgentFiles,
@@ -61,6 +63,15 @@ import type { WorkspaceVersions } from "./workspace-versions.ts";
  * and short enough that a stuck program doesn't hold a terminal for a day.
  */
 export const harnessCallLimitMs = 30 * 60_000;
+
+/**
+ * The folder of the trusted instructions, `instruction-trust` in the profile
+ * folder, never inside a workspace and never reachable by a tool the model
+ * can call (fs-node's `FileInstructionTrustStore`).
+ */
+export function instructionTrustFolder(profile: ProfileFolder): string {
+  return join(profile.root, "instruction-trust");
+}
 
 /** The folder in the profile where each run's bridge serves its Unix socket, as the agent host's. */
 const bridgeSocketsFolder = "bridges";
@@ -185,6 +196,14 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
       root: join(tempRoot, "instructions"),
       skillTextOf: skillTextOf(input),
     }),
+    // A run whose instructions changed since a person trusted them is refused before it starts.
+    instructionTrust: {
+      service: new InstructionTrustService({
+        store: new FileInstructionTrustStore(instructionTrustFolder(profile)),
+        clock: input.clock,
+      }),
+      location: input.location,
+    },
     placement: {
       store: new FileAgentPlacementStore(placementFolder(profile)),
       location: input.location,

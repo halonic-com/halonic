@@ -4,11 +4,17 @@
 // enforces them with the `Scheduler` port; a harness call only says what to
 // wait for and how to fail.
 
-/** Which start of a harness call a limit is on: the sandbox opening, or the harness's first event. */
-export type StartPhase = "sandbox" | "harness";
+/**
+ * Which start of a harness call a limit is on: the sandbox opening, the
+ * instruction trust check answering, or the harness's first event.
+ */
+export type StartPhase = "sandbox" | "trust" | "harness";
 
 /** How long the sandbox has to open, in milliseconds (HAL-189 plan decision 4). */
 export const sandboxStartTimeoutMs = 30_000;
+
+/** How long the host's instruction trust check has to answer, in milliseconds. */
+export const trustCheckTimeoutMs = 10_000;
 
 /** How long the harness has to send its first event, in milliseconds (HAL-189 plan decision 4). */
 export const harnessStartTimeoutMs = 60_000;
@@ -16,6 +22,7 @@ export const harnessStartTimeoutMs = 60_000;
 /** The default limit of each start. */
 export const defaultStartTimeoutsMs: Readonly<Record<StartPhase, number>> = {
   sandbox: sandboxStartTimeoutMs,
+  trust: trustCheckTimeoutMs,
   harness: harnessStartTimeoutMs,
 };
 
@@ -64,4 +71,9 @@ export interface StartLimits {
    * @throws what `limit.start()` throws
    */
   within<T>(limit: StartLimit<T>): Promise<T>;
+}
+
+/** A time limit as people read it, such as `30 s`. */
+export function seconds(timeoutMs: number): string {
+  return `${timeoutMs / 1000} s`;
 }
