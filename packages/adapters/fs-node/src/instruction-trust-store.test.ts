@@ -71,7 +71,7 @@ verifies("fs-node.instruction-trust-store-files", () => {
       await store.remove(coder);
     });
 
-    it.skipIf(process.platform === "win32")(
+    it.runIf(process.platform !== "win32")(
       "[platform:win32] needs POSIX links, modes and signals: makes the folder and the files private to the user",
       async () => {
         const root = join(await tempFolder(), "instruction-trust");
@@ -216,7 +216,7 @@ verifies("fs-node.instruction-trust-store-files", () => {
       );
     });
 
-    it.skipIf(process.platform === "win32")(
+    it.runIf(process.platform !== "win32")(
       "[platform:win32] needs POSIX links, modes and signals: keeps a file and a folder private when they were already there",
       async () => {
         const root = await emptyRoot();

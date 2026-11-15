@@ -27,7 +27,7 @@ async function fileStore(): Promise<InstructionTrustStore> {
 
 // A pin from `pinInstructions` is what a person trusts, so each store must
 // keep it whole, and `isInstructionTrustFor` must accept the form it has.
-verifies("harness-kit.instruction-snapshot", () => {
+verifies("harness-kit.instruction-pin-trust", () => {
   describe.each([
     ["memory", async () => new MemoryInstructionTrustStore()],
     ["file", fileStore],
