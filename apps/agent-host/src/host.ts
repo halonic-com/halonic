@@ -147,7 +147,7 @@ export async function run(
     sandbox,
     socketFolder,
     connectorPlaces(given.roots, profileFolder),
-    profileGoogleSetup(profileFolder),
+    profileGoogleSetup(profileFolder, connectorPlaces(given.roots, profileFolder).workspaceRoots),
     optionalProfileOf(profileFolder),
   );
   try {
@@ -179,9 +179,12 @@ function profileTrustStore(profileFolder: string): TrustStore {
 }
 
 /** The Google setup of the profile folder, or `undefined` without one. */
-function profileGoogleSetup(profileFolder: string | undefined): GoogleSetupPorts | undefined {
+function profileGoogleSetup(
+  profileFolder: string | undefined,
+  workspaceRoots: readonly string[],
+): GoogleSetupPorts | undefined {
   if (profileFolder === undefined) return undefined;
-  return openGoogleSetup({ profile: profileOf(profileFolder), env: process.env });
+  return openGoogleSetup({ profile: profileOf(profileFolder), env: process.env, workspaceRoots });
 }
 
 /** The profile folder `--profile-folder` names, or `undefined` without one. */
