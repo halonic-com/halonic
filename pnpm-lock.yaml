@@ -582,6 +582,9 @@ importers:
       '@halonicjs/workspace':
         specifier: workspace:*
         version: link:../../packages/core/workspace
+      '@halonicjs/yaml':
+        specifier: workspace:*
+        version: link:../../packages/core/yaml
     devDependencies:
       '@halonicjs/adapter-fs-node':
         specifier: workspace:*

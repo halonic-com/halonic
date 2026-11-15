@@ -1,11 +1,11 @@
-import type { RunSummary } from "@halonicjs/events";
+import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { WorkspaceWorkflows } from "./workspace-workflows.ts";
 
 const replyFile = "id: reply\nname: Reply\ninitial: first\nstates:\n  first:\n    type: final\n";
 
-function setup(runs: Partial<RunSummary>[] = []) {
+function setup(runs: Partial<RunSummary>[] = [], logs: Record<string, RunEvent[]> = {}) {
   const store: Record<string, string> = {
     "hubs/acme/hub.yaml": "id: acme\nname: Acme\n",
     "hubs/beta/hub.yaml": "id: beta\nname: Beta\n",
@@ -39,6 +39,7 @@ function setup(runs: Partial<RunSummary>[] = []) {
         runListeners.add(listener);
         return () => runListeners.delete(listener);
       },
+      log: async (runId) => logs[runId] ?? [],
     },
   });
   return { store, changes, fileListeners, runListeners, host };
@@ -273,5 +274,89 @@ verifies("studio.workspace-workflow-read", () => {
 
     expect((await host.tests({ hubId: "acme", id: "reply" })).cases).toEqual([]);
     await expect(host.tests({ hubId: "acme", id: "gone" })).rejects.toThrow("has no workflow");
+  });
+
+  describe("saving a run as a test", () => {
+    const run = { ...reply, id: "r1", status: "completed", state: "first" } as const;
+    const logs = (input: Record<string, unknown> = { topic: "refund" }) => ({
+      r1: [{ type: "run.started", input } as unknown as RunEvent],
+    });
+
+    it("makes the test file when the workflow has none", async () => {
+      const { host, store, changes } = setup([run], logs());
+
+      await host.saveRunAsTest({ hubId: "acme", id: "reply" }, "r1", "Refund");
+
+      expect(changes).toHaveLength(1);
+      expect(store["hubs/acme/workflows/reply.test.yaml"]).toBe(
+        [
+          "version: 1",
+          "workflow: reply",
+          "cases:",
+          "  - name: Refund",
+          "    input:",
+          "      topic: refund",
+          "    expect:",
+          "      final: first",
+          "",
+        ].join("\n"),
+      );
+      expect((await host.tests({ hubId: "acme", id: "reply" })).cases).toEqual([
+        { name: "Refund", input: '{\n  "topic": "refund"\n}', endsIn: "first" },
+      ]);
+    });
+
+    it("adds the case after the ones the file has and keeps its comments", async () => {
+      const { host, store } = setup([run], logs());
+      store["hubs/acme/workflows/reply.test.yaml"] = [
+        "version: 1",
+        "workflow: reply",
+        "cases:",
+        "  # the happy path",
+        "  - name: Happy",
+        "    expect:",
+        "      final: first",
+        "",
+      ].join("\n");
+
+      await host.saveRunAsTest({ hubId: "acme", id: "reply" }, "r1", "Refund");
+
+      const text = store["hubs/acme/workflows/reply.test.yaml"] ?? "";
+      expect(text).toContain("# the happy path");
+      expect(
+        (await host.tests({ hubId: "acme", id: "reply" })).cases.map((one) => one.name),
+      ).toEqual(["Happy", "Refund"]);
+    });
+
+    it("rejects a name another case has, and changes nothing", async () => {
+      const { host, changes } = setup([run], logs());
+      await host.saveRunAsTest({ hubId: "acme", id: "reply" }, "r1", "Refund");
+
+      await expect(
+        host.saveRunAsTest({ hubId: "acme", id: "reply" }, "r1", "Refund"),
+      ).rejects.toThrow('already has a test case called "Refund"');
+      expect(changes).toHaveLength(1);
+    });
+
+    it("rejects a run it has no log for, a run of another workflow and a run with no step", async () => {
+      const { host, changes } = setup(
+        [run, { ...run, id: "r2", workflowId: "other" }, { ...run, id: "r3", state: null }],
+        { ...logs(), r2: logs().r1, r3: logs().r1 },
+      );
+      const ref = { hubId: "acme", id: "reply" };
+
+      await expect(host.saveRunAsTest(ref, "nope", "A")).rejects.toThrow("no log");
+      await expect(host.saveRunAsTest(ref, "r2", "A")).rejects.toThrow("not a run of");
+      await expect(host.saveRunAsTest(ref, "r3", "A")).rejects.toThrow("no step");
+      expect(changes).toEqual([]);
+    });
+
+    it("rejects a workflow the hub doesn't have", async () => {
+      const { host } = setup([run], logs());
+
+      await expect(host.saveRunAsTest({ hubId: "acme", id: "gone" }, "r1", "A")).rejects.toThrow(
+        'no workflow "gone"',
+      );
+    });
   });
 });

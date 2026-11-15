@@ -1,4 +1,4 @@
-import type { RunSummary } from "@halonicjs/events";
+import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { DefinitionSource } from "@halonicjs/ports";
 import { slugify, uniqueName } from "@halonicjs/std";
 import type {
@@ -12,6 +12,7 @@ import type {
   WorkflowView,
 } from "@halonicjs/studio-feature-workflows/api";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
+import { editYaml, readYaml, writeYamlFile } from "@halonicjs/yaml";
 
 /** What {@link WorkspaceWorkflows} needs of the workspace's files, events and runs. */
 export interface WorkspaceWorkflowsParts {
@@ -27,6 +28,8 @@ export interface WorkspaceWorkflowsParts {
   readonly runs: {
     list(): Promise<readonly { readonly summary: RunSummary }[]>;
     subscribe(listener: () => void): () => void;
+    /** One run's whole log, oldest event first; empty when the run has no log. */
+    log(runId: string): Promise<readonly RunEvent[]>;
   };
 }
 
@@ -34,6 +37,9 @@ export interface WorkspaceWorkflowsParts {
 const workflowFolder = (hubId: string): string => `hubs/${hubId}/workflows`;
 
 const workflowSuffix = ".workflow.yaml";
+
+/** Where the test cases of a workflow are kept: next to it, in the hub's `workflows` folder. */
+const testFile = ({ hubId, id }: WorkflowRef): string => `${workflowFolder(hubId)}/${id}.test.yaml`;
 
 /** The text of a new workflow: a step `start` that leads to the final step `done`. */
 function newWorkflowText(id: string, name: string): string {
@@ -198,6 +204,52 @@ export class WorkspaceWorkflows implements WorkflowsHost {
           })),
         ),
     };
+  }
+
+  /**
+   * Adds the run as a case to the workflow's test file: the run's input, and the step the run ended
+   * in as `expect.final`. The file is made when the workflow has none. It is one undoable change,
+   * and other cases and comments in the file stay as they are.
+   */
+  async saveRunAsTest(ref: WorkflowRef, runId: string, name: string): Promise<void> {
+    await this.read(ref);
+    const summary = (await this.#parts.runs.list()).find(
+      (one) => one.summary.id === runId,
+    )?.summary;
+    const started = (await this.#parts.runs.log(runId)).find(
+      (event) => event.type === "run.started",
+    );
+    if (summary === undefined || started === undefined) {
+      throw new Error(`The run ${runId} has no log to save as a test.`);
+    }
+    if (summary.hubId !== ref.hubId || summary.workflowId !== ref.id) {
+      throw new Error(`The run ${runId} is not a run of the workflow "${ref.id}".`);
+    }
+    if (summary.state === null) {
+      throw new Error(`The run ${runId} ended in no step, so it can't say what to expect.`);
+    }
+    const testCase = { name, input: started.input, expect: { final: summary.state } };
+    const path = testFile(ref);
+    const text = await this.#parts.files.read(path);
+    if (text === null) {
+      this.#parts.files.change(`Saved a run as the test ${name}`, {
+        [path]: writeYamlFile({ version: 1, workflow: ref.id, cases: [testCase] }),
+      });
+      return;
+    }
+    const read = readYaml(text);
+    if (!read.ok) throw new Error(`The test file ${path} can't be read: ${read.error.message}`);
+    const cases = (read.value.data as { cases?: unknown } | null)?.cases;
+    if (!Array.isArray(cases)) throw new Error(`The test file ${path} has no list of cases.`);
+    if (cases.some((one) => (one as { name?: unknown } | null)?.name === name)) {
+      throw new Error(`The workflow already has a test case called "${name}".`);
+    }
+    const edited = editYaml(text, [
+      { kind: "insert", path: ["cases", cases.length], value: testCase },
+    ]);
+    if (!edited.ok)
+      throw new Error(`The test file ${path} can't be changed: ${edited.error.message}`);
+    this.#parts.files.change(`Saved a run as the test ${name}`, { [path]: edited.value.text });
   }
 
   subscribe(listener: () => void): () => void {
