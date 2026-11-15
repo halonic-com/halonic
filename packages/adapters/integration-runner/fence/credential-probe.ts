@@ -31,11 +31,7 @@ export function credentialReadScript(target: string): string {
   $arguments = [object[]]@('${target.replaceAll("'", "''")}', 1, 0, [System.IntPtr]::Zero)
   $found = $vault.GetMethod("CredRead").Invoke($null, $arguments)
   Step ("CredRead returned " + $found)
-  if (-not $found) {
-    # Why it failed: 5 is access denied, 1168 is no such entry.
-    Step ("last error " + $vault.GetMethod("GetLastError").Invoke($null, @()))
-    exit 1
-  }
+  if (-not $found) { exit 1 }
   $pointer = $arguments[3]
   # CREDENTIALW: CredentialBlobSize follows Flags, Type, two strings and
   # LastWritten (16 bytes + 2 pointers); CredentialBlob follows it, padded

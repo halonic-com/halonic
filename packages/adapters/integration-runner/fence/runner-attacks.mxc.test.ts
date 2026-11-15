@@ -1,4 +1,4 @@
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createSocket, type Socket as UdpSocket } from "node:dgram";
 import { lookup } from "node:dns/promises";
 import { existsSync } from "node:fs";
@@ -338,6 +338,14 @@ describe.each(layers)("an integration in the runner in MXC, Node's layer %s", (n
     // and records whether the value comes out. The gap is named: if the box
     // ever stops the read, this fails, and the gap and `attack-cases.md`
     // are to be updated.
+    // The control: the same probe on this computer, outside the box, must read
+    // the secret. Otherwise a failure in the box says nothing about the box.
+    const control = spawnSync(powershell, ["-NoProfile", "-NonInteractive", "-Command", credentialReadScript(credentialTarget)], {
+      encoding: "utf8",
+      timeout: 20000,
+    });
+    expect(control.stdout, control.stderr).toBe(canary);
+
     const { attempts, stderr } = await attack(
       `
       const { spawnSync } = await import("node:child_process");
