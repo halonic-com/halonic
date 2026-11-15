@@ -1,5 +1,5 @@
 import type { RoutineTrigger } from "@halonicjs/format";
-import { workspaceSecrets } from "@halonicjs/ports";
+import { isAgentRunsNotAvailable, workspaceSecrets } from "@halonicjs/ports";
 import { type PlacedRoutine, routineStart, webhookFacts } from "@halonicjs/routines";
 import type { ServerPorts } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
@@ -143,30 +143,30 @@ export function createWebhookRoutes(ports: WebhookPorts): WebhookRoutes {
       // The same delivery always gets the same run id, so the executor itself starts nothing twice.
       const runId = `webhook-${delivery}`;
       try {
-        const summary =
-          "workflow" in start
-            ? await runs.start({
-                hubId: start.hub,
-                workflowId: start.workflow,
-                input: start.input,
-                trigger: runTrigger,
-                runId,
-              })
-            : await runs.startAgent({
-                hubId: start.hub,
-                agentId: start.agent,
-                prompt: start.prompt,
-                trigger: runTrigger,
-                runId,
-              });
+        const summary = await startRoutine(runs, start.hub, start, runTrigger, runId);
         return Response.json({ runId: summary.id }, { status: 202 });
       } catch (error) {
         // A start that failed must not use up the delivery: the sender's retry should get through.
         await coordination.release(lease);
+        // Not built yet, not broken: the same 501 the run routes give.
+        if (isAgentRunsNotAvailable(error)) return errorResponse(serverErrors.notImplemented);
         throw error;
       }
     },
   };
+}
+
+/** Starts the workflow or the agent the routine names, with the run id this delivery always gets. */
+function startRoutine(
+  runs: WebhookPorts["runs"],
+  hubId: string,
+  start: ReturnType<typeof routineStart>,
+  trigger: NonNullable<Parameters<WebhookPorts["runs"]["start"]>[0]["trigger"]>,
+  runId: string,
+) {
+  return "workflow" in start
+    ? runs.start({ hubId, workflowId: start.workflow, input: start.input, trigger, runId })
+    : runs.startAgent({ hubId, agentId: start.agent, prompt: start.prompt, trigger, runId });
 }
 
 /**

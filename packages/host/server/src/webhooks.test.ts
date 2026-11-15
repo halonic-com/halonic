@@ -1,4 +1,9 @@
-import type { Coordination, RunExecutor, RunStore } from "@halonicjs/ports";
+import {
+  AgentRunsNotAvailable,
+  type Coordination,
+  type RunExecutor,
+  type RunStore,
+} from "@halonicjs/ports";
 import type { PlacedRoutine } from "@halonicjs/routines";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -46,7 +51,7 @@ function setup(
     placed?: PlacedRoutine | null;
     secrets?: Record<string, string>;
     trust?: TrustDecision | Error;
-    startFails?: boolean;
+    startFails?: boolean | Error;
     going?: { id: string; trigger?: { routineId: string } }[];
     passwordHash?: string | null;
   } = {},
@@ -54,10 +59,12 @@ function setup(
   const clock = new TestClock();
   const started: unknown[] = [];
   let failNext = options.startFails ?? false;
+  const failure =
+    options.startFails instanceof Error ? options.startFails : new Error("executor down");
   const run = async (request: unknown) => {
     if (failNext) {
       failNext = false;
-      throw new Error("executor down");
+      throw failure;
     }
     started.push(request);
     return { id: "run_1" };
@@ -340,6 +347,13 @@ verifies("server.webhooks", () => {
     it("answers 500 and lets the sender's retry through", async () => {
       const { send, started } = setup({ startFails: true });
       expect((await send()).status).toBe(500);
+      expect((await send()).status).toBe(202);
+      expect(started).toHaveLength(1);
+    });
+
+    it("answers 501 when runs aren't available yet, and lets the sender's retry through", async () => {
+      const { send, started } = setup({ startFails: new AgentRunsNotAvailable("not built yet") });
+      expect((await send()).status).toBe(501);
       expect((await send()).status).toBe(202);
       expect(started).toHaveLength(1);
     });

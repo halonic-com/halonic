@@ -1,9 +1,11 @@
 import { createServer, type Server, type ServerPorts } from "@halonicjs/host-server";
+import type { RunExecutor } from "@halonicjs/ports";
 import { ConfigurationError, type RuntimeEnv } from "./env.ts";
 import { CoordinationRequestCountStore } from "./request-counts.ts";
 import { workerRuns } from "./runs-not-available.ts";
 import { createRuntime, type Runtime, type RuntimeOptions } from "./runtime.ts";
 import { serverConfigOf } from "./serve-config.ts";
+import { snapshotWebhooks } from "./snapshot-webhooks.ts";
 
 /**
  * The deployer uploaded the workspace this Worker runs, so it is trusted the
@@ -31,18 +33,24 @@ const workerErrorLog: ServerPorts["errorLog"] = {
   },
 };
 
-/** The ports `host/server` needs, from the adapters of one deployment. */
-export function serverPortsOf(runtime: Runtime): ServerPorts {
+/**
+ * The ports `host/server` needs, from the adapters of one deployment.
+ *
+ * @param runs - what starts a run; the Worker starts none yet, so only a test sets it
+ */
+export function serverPortsOf(
+  runtime: Runtime,
+  runs: RunExecutor = workerRuns(runtime.runEvents),
+): ServerPorts {
   return {
-    runs: workerRuns(runtime.runEvents),
+    runs,
     runStore: runtime.runStore,
     secrets: runtime.secrets,
     passwordHasher: runtime.passwords,
     coordination: runtime.coordination,
     trust: deployerTrust,
     modelSettings: noUnsavedModelSettings,
-    // No routine is found yet: a webhook answers like an unknown address until the Worker loads routines from the snapshot.
-    webhooks: { find: async () => null },
+    webhooks: snapshotWebhooks(runtime.definitions),
     requestCounts: new CoordinationRequestCountStore(runtime.coordination),
     errorLog: workerErrorLog,
     clock: runtime.clock,
@@ -72,6 +80,12 @@ function notConfigured(error: ConfigurationError): Response {
   );
 }
 
+/** How a request is served, beyond its `env`. */
+export interface ServeOptions extends RuntimeOptions {
+  /** What starts a run. The Worker starts none yet, so only a test sets it. */
+  runs?: RunExecutor;
+}
+
 /**
  * Serves the API: hands the request to `host/server` with the Cloudflare
  * adapters. Its rules apply as on any host: the `Host` and `Origin` checks, the
@@ -84,12 +98,15 @@ function notConfigured(error: ConfigurationError): Response {
 export async function serveRequest(
   request: Request,
   env: RuntimeEnv,
-  options: RuntimeOptions = {},
+  options: ServeOptions = {},
 ): Promise<Response> {
   let server: Server;
   try {
     const config = serverConfigOf(env);
-    server = createServer({ config, ports: serverPortsOf(await createRuntime(env, options)) });
+    server = createServer({
+      config,
+      ports: serverPortsOf(await createRuntime(env, options), options.runs),
+    });
   } catch (error) {
     if (error instanceof ConfigurationError) return notConfigured(error);
     throw error;
