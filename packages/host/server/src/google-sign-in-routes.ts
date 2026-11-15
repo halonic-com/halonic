@@ -2,6 +2,7 @@ import { refreshTokenName, type SetupRecord, SetupRecordError } from "@halonicjs
 import type { GoogleSetupPorts, GoogleSignInOutcome } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { isLoopbackRequest } from "./security.ts";
+import type { WrongAccountNotes } from "./wrong-account-notes.ts";
 
 /**
  * Where Google sends the browser back to. It sits outside the sign-in on
@@ -66,6 +67,15 @@ export interface GoogleSignInRoutes {
    * exists.
    */
   cancel(accountRef: string): Promise<Response>;
+  /**
+   * `GET /api/google/setups/<ref>/sign-in/wrong-account`: the address the
+   * last sign-in came back with when it wasn't the connector's, as
+   * `{ signedInAs }`, or 404 `google_wrong_account_not_found` when the note is
+   * gone (see `WrongAccountNotes`). It is its own route because the setup
+   * answer must stay safe to log and screenshot. The caller has checked the
+   * sign-in and that the setup exists.
+   */
+  wrongAccount(accountRef: string): Promise<Response>;
   /** `GET /api/google/callback`: finishes the sign-in Google's redirect belongs to, records how it ended and tells the open item. */
   callback(request: Request): Promise<Response>;
 }
@@ -73,8 +83,10 @@ export interface GoogleSignInRoutes {
 /** The sign-in start and the loopback callback of the Google setup routes. */
 export function createGoogleSignInRoutes({
   google,
+  wrongAccountNotes,
 }: {
   readonly google: GoogleSetupPorts;
+  readonly wrongAccountNotes: WrongAccountNotes;
 }): GoogleSignInRoutes {
   const { setups, source, actions, signInEvents, tokens } = google;
 
@@ -83,11 +95,17 @@ export function createGoogleSignInRoutes({
     if (outcome.kind === "linkNoLongerValid") {
       return;
     }
+    if (outcome.kind === "wrongAccount") {
+      await setups.update(outcome.accountRef, { kind: "wrong-account" });
+      wrongAccountNotes.keep(outcome.accountRef, outcome.signedInAs);
+      return;
+    }
     if (outcome.kind !== "signedIn") {
       await setups.update(outcome.accountRef, { kind: "sign-in-dropped" });
       return;
     }
     await setups.update(outcome.accountRef, { kind: "signed-in" });
+    wrongAccountNotes.clear(outcome.accountRef);
     for (const { service, result } of outcome.services) {
       await setups.update(outcome.accountRef, { kind: "service-checked", service, result });
     }
@@ -137,6 +155,7 @@ export function createGoogleSignInRoutes({
         ...(setup.projectId === null ? {} : { projectId: setup.projectId }),
       });
       await setups.update(accountRef, { kind: "sign-in-started" });
+      wrongAccountNotes.clear(accountRef);
       return Response.json({ authUrl });
     },
 
@@ -144,6 +163,14 @@ export function createGoogleSignInRoutes({
       await actions.dropSignIn(accountRef);
       await setups.update(accountRef, { kind: "sign-in-dropped" });
       return new Response(null, { status: 204 });
+    },
+
+    async wrongAccount(accountRef) {
+      const signedInAs = wrongAccountNotes.read(accountRef);
+      if (signedInAs === null) {
+        return errorResponse(serverErrors.googleWrongAccountNotFound);
+      }
+      return Response.json({ signedInAs });
     },
 
     async callback(request) {

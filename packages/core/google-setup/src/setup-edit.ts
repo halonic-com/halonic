@@ -28,6 +28,8 @@ export type SetupEdit =
   | { readonly kind: "sign-in-started" }
   /** The sign-in was cancelled, timed out or failed: nothing is waiting any more. */
   | { readonly kind: "sign-in-dropped" }
+  /** Google signed in another account than the connector's: nothing was saved and nothing is waiting any more. */
+  | { readonly kind: "wrong-account" }
   /** Google answered the sign-in. It clears a saved refresh refusal. */
   | { readonly kind: "signed-in" }
   /** The check after sign-in for one service (design 3.5, plan D5 rev. 5). */
@@ -68,13 +70,20 @@ export function editedValues(
     case "client-secret-saved":
       return { clientSecret: { clientRef: edit.clientRef, savedAt: now } };
     case "sign-in-started":
-      return { signInStartedAt: now };
+      return { signInStartedAt: now, wrongAccountAt: null };
     case "sign-in-dropped":
       return { signInStartedAt: null };
+    case "wrong-account":
+      return { signInStartedAt: null, wrongAccountAt: now };
     case "signed-in":
       // A new refresh token, so a refused refresh no longer applies to this
       // account. Other accounts on the same client sign in themselves.
-      return { signInStartedAt: null, lastSignInAt: now, refreshRefused: null };
+      return {
+        signInStartedAt: null,
+        lastSignInAt: now,
+        wrongAccountAt: null,
+        refreshRefused: null,
+      };
     case "service-checked":
       return {
         services: {
