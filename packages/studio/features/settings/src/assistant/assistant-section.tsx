@@ -1,15 +1,7 @@
 import type { HostSettings } from "@halonicjs/app";
 import type { HostSettingValue } from "@halonicjs/ports";
-import {
-  Callout,
-  EmptyState,
-  Field,
-  inlineLinkClasses,
-  Select,
-  Switch,
-  ViewOnlyLine,
-} from "@halonicjs/studio-kit";
-import type { SettingsPlace, SettingsSectionProps } from "@halonicjs/studio-shell";
+import { EmptyState, Field, Select, Switch } from "@halonicjs/studio-kit";
+import type { SettingsPlace, SettingsSectionProps, SettingsSurface } from "@halonicjs/studio-shell";
 import { useState, useSyncExternalStore } from "react";
 import {
   type AssistantNavigation,
@@ -20,6 +12,7 @@ import {
 } from "../api.ts";
 import { openModelsCommand } from "../links/workspace-links.tsx";
 import { checkModel, checkTurnLimit } from "./assistant-checks.ts";
+import { LocalOnlyWarning, SetsItsOwn, ViewOnlyNotes } from "./assistant-notes.tsx";
 import { assistantPrefs, turnLimitRange } from "./assistant-prefs.ts";
 import {
   type AssistantProvider,
@@ -40,7 +33,7 @@ const providerOptions = assistantProviders.map((provider) => ({
 }));
 
 /** Settings → Assistant as the settings container shows it. */
-export function AssistantSection({ context, closeSettings, place }: SettingsSectionProps) {
+export function AssistantSection({ context, closeSettings, place, surface }: SettingsSectionProps) {
   const settings = context.services.get(HostSettingsService);
   const loaded = useLoaded(settings);
   if (!loaded.ready) {
@@ -51,6 +44,7 @@ export function AssistantSection({ context, closeSettings, place }: SettingsSect
       settings={settings}
       announce={(line) => context.announcer.announce(line)}
       place={place}
+      surface={surface}
       workspace={workspaceOf(context)}
       navigate={navigationOf(context)}
       closeSettings={closeSettings}
@@ -118,6 +112,8 @@ export interface AssistantViewProps {
   /** Says a failed save in the dialog: the settings container's live region. */
   readonly announce: (line: string) => void;
   readonly place: SettingsPlace;
+  /** `phone` on the phone's Settings page: the view-only line says "on a phone". */
+  readonly surface?: SettingsSurface | undefined;
   /** The open workspace, when the app gives one: the key line, the warning and the "sets its own" line need it. */
   readonly workspace?: AssistantWorkspace | undefined;
   /** Where the key line's and the "sets its own" line's links lead; the window gives it. */
@@ -178,41 +174,6 @@ export function AssistantView(props: AssistantViewProps) {
   return <AssistantEditor {...props} />;
 }
 
-/** The line under the warning when the open workspace sets its own model, with its link unless served. */
-function SetsItsOwn({
-  open,
-  link,
-}: {
-  readonly open: AssistantWorkspaceFacts | null;
-  readonly link: (() => void) | null;
-}) {
-  if (open === null || open.sessionModel === null) return null;
-  return (
-    <p className="text-small text-fg-muted">
-      {text.setsItsOwn(open.name, open.sessionModel)}
-      {link === null ? null : (
-        <>
-          {" "}
-          <button type="button" className={inlineLinkClasses} onClick={link}>
-            {text.WORKSPACE_SETTINGS}
-          </button>
-        </>
-      )}
-    </p>
-  );
-}
-
-/** The warning when the open workspace is local only and the chosen cloud model isn't marked Local. */
-function LocalOnlyWarning(props: {
-  readonly open: AssistantWorkspaceFacts | null;
-  readonly provider: AssistantProvider;
-  readonly local: boolean;
-}) {
-  const { open, provider, local } = props;
-  if (provider === "not-set-up" || !open?.localOnly || local) return null;
-  return <Callout tone="warning">{text.localOnlyWarning(open.name)}</Callout>;
-}
-
 /** A tuning setting for {@link Tuning}: an empty value puts the setting back to its default. */
 function tuned<Value extends HostSettingValue>(
   shown: ShownHostSetting<Value>,
@@ -237,7 +198,7 @@ function ServedKey(props: {
 }
 
 /** The label-over-value rows of the section served to another device. */
-function AssistantViewOnly({ settings, workspace }: AssistantViewProps) {
+function AssistantViewOnly({ settings, workspace, surface }: AssistantViewProps) {
   const open = useOpenWorkspace(workspace);
   const provider = useHostSetting(settings, assistantPrefs.provider).value;
   const model = useHostSetting(settings, assistantPrefs.model).value;
@@ -275,8 +236,7 @@ function AssistantViewOnly({ settings, workspace }: AssistantViewProps) {
   return (
     <div className="mt-5 flex max-w-90 flex-col gap-4">
       <p className="text-small text-fg-muted">{text.FIRST_LINE.served}</p>
-      <ViewOnlyLine>{text.VIEW_ONLY_LINE}</ViewOnlyLine>
-      <LocalOnlyWarning open={open} provider={provider} local={local} />
+      <ViewOnlyNotes surface={surface} provider={provider} open={open} local={local} />
       <SetsItsOwn open={open} link={null} />
       <dl className="flex flex-col gap-3">
         {rows.map(([label, value]) => (
