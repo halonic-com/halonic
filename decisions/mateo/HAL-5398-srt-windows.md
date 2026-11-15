@@ -2,6 +2,7 @@
 
 - Approval: the task asks for this change (HAL-5398, from the HAL-3776 spike verdict and the HAL-5407 security review); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FVdbYpU6dycNZDTUV44Y1/2Nlz7PJVAKGVR+sBeaqiPvADLxrZA7OWp2PX2K63ifwpObZyQf5M62g9egH2fMCQ==
 
 ## What changes
 
