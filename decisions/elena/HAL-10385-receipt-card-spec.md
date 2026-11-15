@@ -3,7 +3,6 @@
 - Task: HAL-10385 (follow-up to HAL-8395 PR 6, #2958)
 - Approval: Sofia's design check on HAL-10385 (/HAL/issues/HAL-10385): the design lead's call on a small detail of an approved screen (HAL-2282 rule), no board card
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TaGKC58Mh9GOKYYsTlbvLoo21o/XYw++yQO7fcIdRLvyqZnm3bPNhLxXUS6Ax32mpD0/rQcOl6DJxtiuTMQAAg==
 - Supersedes: the sentence "Every step is the place for the steps" in `HAL-8395-06-receipt-card.md`
 
 ## What changes
