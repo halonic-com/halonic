@@ -142,6 +142,16 @@ verifies("runs.home", () => {
     expect(root.querySelector("code")?.textContent).toBe("halonic run");
   });
 
+  it("insets the command line note like the section titles, on a phone and on desktop", async () => {
+    for (const phone of [false, true]) {
+      const { root } = await show(fakeSource([]).source, { phone });
+      const note = [...root.querySelectorAll("p")].find((p) =>
+        p.textContent?.includes("halonic run"),
+      );
+      expect(note?.className).toContain("px-4");
+    }
+  });
+
   it("leaves the command line note out once there are runs", async () => {
     const { root } = await show(fakeSource([done]).source);
     expect(root.textContent).not.toContain("use the command line");
