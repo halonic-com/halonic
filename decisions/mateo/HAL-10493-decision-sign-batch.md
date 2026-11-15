@@ -4,6 +4,7 @@
 - Approval: Liam approved the code of PR #2993 on HAL-10493; it changes the guard's own paths, so Liam and Julian sign as the two guardians
 - Kind: user-visible
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ovZIjt94Sk4kWuSnLP+o+FMs1GFGdBCBtsnxT69GTBtc88hYUB7aDipYiPvxlZeGq1Uabnd+Ep1ob5eKd8aVAQ==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:wo2bcjyf/LPP6OUAJaInPHtiGCPHWkhGYmah2BCkdj5vHuEGiP3D1XBVWL0fo+6I1hnxqOinsmuCeLmewnQVAw==
 
 ## What changes
 
