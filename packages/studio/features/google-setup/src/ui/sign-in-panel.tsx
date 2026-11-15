@@ -16,6 +16,8 @@ export interface SignInPanelProps {
   readonly lastSignInAt: string | null;
   /** When the last sign-in came back for another account, from the setup record. */
   readonly wrongAccountAt: string | null;
+  /** When the last sign-in came back cancelled, refused or blocked, from the setup record. */
+  readonly signInEndedAt: string | null;
   readonly answering: boolean;
   /** Opens step 6, for "check the client ID". */
   readonly onOpenClientStep: () => void;
@@ -46,7 +48,8 @@ type SignIn =
  * window never began one means the last one didn't finish.
  */
 export function SignInPanel(props: SignInPanelProps) {
-  const { start, cancel, signInStartedAt, lastSignInAt, wrongAccountAt, answering } = props;
+  const { start, cancel, signInStartedAt, lastSignInAt, wrongAccountAt, signInEndedAt } = props;
+  const { answering } = props;
   const { onOpenClientStep, whileWaiting } = props;
   const openExternal = useOpenExternal();
   const notAnswering = useNotAnswering();
@@ -110,10 +113,12 @@ export function SignInPanel(props: SignInPanelProps) {
     if (lastSignIn(lastSignInAt) !== lastSignIn(lastSignInWhenStarted.current)) {
       setSignIn({ kind: "idle" });
     } else if (signInStartedAt === null && seenStarted.current) {
-      // A sign-in for another account ended too, but its note says so: not "didn't finish".
-      setSignIn(wrongAccountAt === null ? { kind: "dropped" } : { kind: "idle" });
+      // A sign-in that came back for another account, cancelled, refused or blocked ended too, but
+      // its note says so: not "didn't finish".
+      const noted = wrongAccountAt !== null || signInEndedAt !== null;
+      setSignIn(noted ? { kind: "idle" } : { kind: "dropped" });
     }
-  }, [signIn.kind, signInStartedAt, lastSignInAt, wrongAccountAt]);
+  }, [signIn.kind, signInStartedAt, lastSignInAt, wrongAccountAt, signInEndedAt]);
 
   // Cancel hands focus to the button that comes back in its place.
   useEffect(() => {
