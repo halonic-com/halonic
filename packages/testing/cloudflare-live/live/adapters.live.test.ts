@@ -29,6 +29,9 @@ const script = await buildTestWorker([
   storage("blob-store.workerd.test.ts"),
   storage("r2-definition-source.workerd.test.ts"),
   storage("record-store.workerd.test.ts"),
+  fileURLToPath(
+    new URL("../../../adapters/cloudflare-durable/src/test/live-alarm.spec.ts", import.meta.url),
+  ),
 ]);
 // Register the runner's token with GitHub Actions before it goes anywhere, so no log line can show it.
 const runnerToken = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) =>
@@ -43,6 +46,7 @@ const runner = await deployAdapterRunner({
   prefix,
   script,
   compatibilityDate,
+  durableObjects: [{ binding: "LIVE_RUNS", className: "LiveRunObject" }],
 });
 afterAll(() => runner.destroy());
 

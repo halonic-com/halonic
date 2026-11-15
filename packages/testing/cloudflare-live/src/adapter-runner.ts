@@ -21,6 +21,8 @@ export interface AdapterRunnerOptions {
   readonly compatibilityDate: string;
   /** Tests inject this; defaults to 32 random bytes as hex. */
   readonly randomSecret?: () => string;
+  /** Durable Object classes the script exports, bound by name and created by one migration. */
+  readonly durableObjects?: readonly { readonly binding: string; readonly className: string }[];
   /** Tests inject this: passed to the upload's self-test. */
   readonly upload?: Pick<UploadAndSwitchOptions, "fetch" | "sleep" | "attempts">;
 }
@@ -42,7 +44,7 @@ function newSecret(): string {
 
 /**
  * Deploys the test Worker, with a D1 database and two R2 buckets bound as `DB`, `BLOBS` and
- * `DEFINITIONS`, into the live test account, so the adapters' contract suites run on the real
+ * `DEFINITIONS` (and any Durable Object classes asked for), into the live test account, so the adapters' contract suites run on the real
  * services (HAL-6703). If a step fails, what was made so far is deleted and the error is thrown.
  *
  * @throws Error when the prefix doesn't start with `hlt-`, or a Cloudflare call fails
@@ -55,6 +57,7 @@ export async function deployAdapterRunner(
     throw new RangeError(`A live runner's names start with "hlt-", not "${prefix}".`);
   }
   const random = options.randomSecret ?? newSecret;
+  const durableObjects = options.durableObjects ?? [];
   const worker = fixtureWorkerName(prefix);
   const database = resourcesFor(worker)[0]?.name ?? "";
   const blobs = `${worker}-blobs`;
@@ -85,7 +88,19 @@ export async function deployAdapterRunner(
         { type: "d1", name: "DB", id: databaseId },
         { type: "r2_bucket", name: "BLOBS", bucket_name: blobs },
         { type: "r2_bucket", name: "DEFINITIONS", bucket_name: definitions },
+        ...durableObjects.map(({ binding, className }) => ({
+          type: "durable_object_namespace",
+          name: binding,
+          class_name: className,
+        })),
       ],
+      ...(durableObjects.length > 0
+        ? {
+            durableObjectMigrations: [
+              { tag: "v1", new_sqlite_classes: durableObjects.map((o) => o.className) },
+            ],
+          }
+        : {}),
       secrets: { HALONIC_TEST_RUNNER_TOKEN: token },
       message: "live adapter suites",
       ...options.upload,
