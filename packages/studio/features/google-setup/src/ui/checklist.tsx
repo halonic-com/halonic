@@ -9,6 +9,7 @@ import { credentialSaves } from "./credential-saves.ts";
 import { failureLine } from "./failure-line.ts";
 import { useNotAnswering } from "./not-answering.tsx";
 import { ProblemBanner } from "./problem-banner.tsx";
+import { currentResultLines } from "./result-lines.ts";
 import { StepBody, type StepBodyProps } from "./step-body.tsx";
 import { StepMark, type StepState, stepStateWords } from "./step-mark.tsx";
 import { foldedValue, stepWhy } from "./step-text.ts";
@@ -229,6 +230,11 @@ export function Checklist(props: ChecklistProps) {
                     lastSignInAt: account.record.lastSignInAt,
                     onOpenClientStep: () => setEditing("credentials"),
                   }}
+                  results={{
+                    email: account.email,
+                    ticked: account.services.length,
+                    lines: currentResultLines(account.services, account.record),
+                  }}
                   answering={answering}
                   busy={busy}
                   failed={failed ?? progressFailed}
@@ -303,6 +309,7 @@ interface OpenStepProps {
   readonly credentials: StepBodyProps["credentials"];
   readonly appName: string | undefined;
   readonly signIn: StepBodyProps["signIn"];
+  readonly results: StepBodyProps["results"];
   readonly answering: boolean;
   readonly busy: boolean;
   /** The reason the last save failed, as a sentence. */
@@ -342,6 +349,7 @@ function OpenStep(props: OpenStepProps) {
         appName={props.appName}
         savedProjectId={account.record.projectId}
         signIn={props.signIn}
+        results={props.results}
       />
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" onClick={close}>

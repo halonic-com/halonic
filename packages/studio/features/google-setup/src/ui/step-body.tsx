@@ -25,6 +25,7 @@ import { CopyLine } from "./copy-line.tsx";
 import { CredentialsBody, type CredentialsBodyProps } from "./credentials-body.tsx";
 import { useNotAnswering } from "./not-answering.tsx";
 import { SignInPanel, type SignInPanelProps } from "./sign-in-panel.tsx";
+import { SignInResults, type SignInResultsProps } from "./sign-in-results.tsx";
 
 /** Props for {@link StepBody}. */
 export interface StepBodyProps {
@@ -44,6 +45,8 @@ export interface StepBodyProps {
   readonly savedProjectId: string | null;
   /** What step 7's sign-in needs from the host and the record. */
   readonly signIn: Omit<SignInPanelProps, "answering">;
+  /** The last check per service, shown above the button once a sign-in has come back. */
+  readonly results: SignInResultsProps;
   /** A service's name from its id, for "Needed by …". Studio never knows the services itself. */
   readonly serviceName: (id: string) => string;
   readonly onProjectId: (text: string) => void;
@@ -82,6 +85,7 @@ export function StepBody(props: StepBodyProps) {
             clientId={props.credentials.clientId}
             serviceName={props.serviceName}
           />
+          <SignInResults {...props.results} />
           <SignInPanel {...props.signIn} answering={props.answering} />
         </div>
       );
