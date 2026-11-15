@@ -1,12 +1,12 @@
 import { defaultCurrency, spendByMonth } from "@halonicjs/app";
 import { type RunsList, RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { Button, Tooltip } from "@halonicjs/studio-kit";
-import type { StatusBarItemProps } from "@halonicjs/studio-shell";
+import type { StatusBarItemProps, WorkspaceContext } from "@halonicjs/studio-shell";
 import { isPayPerUse } from "@halonicjs/workspace";
 import { useCallback, useSyncExternalStore } from "react";
 import { useModels } from "../aliases/use-models.ts";
 import { ModelsFilesService } from "../api.ts";
-import { monthLine, SPEND_TOOLTIP } from "./spend-text.ts";
+import { monthLine, type RunSpend, SPEND_TOOLTIP } from "./spend-text.ts";
 
 /** The command that opens the workspace page, where the Models section and its Budget block are. */
 const openModelsCommand = "workspace.open-models";
@@ -20,11 +20,16 @@ export function SpendItem({ context }: StatusBarItemProps) {
   const files = context.services.get(ModelsFilesService);
   const list = context.services.find(RunsListService);
   const [state] = useModels(files);
-  const spent = useMonthSpent(list);
+  const { spent, run } = useRunsSpend(list, useActiveRunId(context));
   if (spent === undefined || state.status === "loading") return null;
   if (state.localOnly || !state.providers.some(isPayPerUse)) return null;
   const currency = state.budget?.currency ?? defaultCurrency;
-  const line = monthLine(spent, state.budget?.monthly, currency);
+  const line = monthLine(
+    spent,
+    state.budget?.monthly,
+    currency,
+    run && { spend: run, perRun: state.budget?.perRun },
+  );
   return (
     <Tooltip text={SPEND_TOOLTIP}>
       {(trigger) => (
@@ -41,21 +46,41 @@ export function SpendItem({ context }: StatusBarItemProps) {
   );
 }
 
+/** The id of the run the focused tab shows; `undefined` when it shows no run, or the window has no tabs. */
+function useActiveRunId(context: WorkspaceContext): string | undefined {
+  const source = context.activeItem;
+  const subscribe = useCallback(
+    (listener: () => void) => source?.subscribe(listener) ?? (() => undefined),
+    [source],
+  );
+  const item = useSyncExternalStore(subscribe, () => source?.get() ?? null);
+  return item?.kind === "run" ? item.id : undefined;
+}
+
 /**
- * This month's cost from the Runs feature's shared list, recomputed whenever it changes;
- * `undefined` until the list has been read.
+ * This month's cost, and the cost of the run in view, from the Runs feature's shared list,
+ * recomputed whenever it changes. `spent` is `undefined` until the list has been read, and `run`
+ * while the run isn't in it.
  */
-function useMonthSpent(list: RunsList | undefined): number | undefined {
+function useRunsSpend(
+  list: RunsList | undefined,
+  runId: string | undefined,
+): { spent: number | undefined; run: RunSpend | undefined } {
   const subscribe = useCallback(
     (listener: () => void) => list?.subscribe(listener) ?? (() => undefined),
     [list],
   );
   const state = useSyncExternalStore(subscribe, () => list?.state);
-  if (state === undefined || !state.loaded) return undefined;
+  if (state === undefined || !state.loaded) return { spent: undefined, run: undefined };
   const at = new Date().toISOString();
-  return spendByMonth(
-    state.runs.map(({ summary }) => summary),
-    at,
-    1,
-  )[0]?.spent;
+  const summaries = state.runs.map(({ summary }) => summary);
+  const found = runId === undefined ? undefined : summaries.find((summary) => summary.id === runId);
+  return {
+    spent: spendByMonth(summaries, at, 1)[0]?.spent,
+    run: found && {
+      cost: found.cost,
+      unpricedCalls: found.unpricedCalls,
+      test: found.kind === "test",
+    },
+  };
 }
