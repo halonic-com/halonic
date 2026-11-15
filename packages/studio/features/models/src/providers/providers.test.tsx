@@ -32,6 +32,8 @@ function filesWith(providers: Record<string, string>, workspace?: string): Model
       Object.entries(providers)
         .sort(([a], [b]) => (a < b ? -1 : 1))
         .map(([id, text]) => ({ path: `providers/${id}.yaml`, text })),
+    readProvider: async () => null,
+    changeProvider: () => undefined,
     readWorkspace: async () => workspace ?? null,
     changeModels: () => undefined,
     subscribe: () => () => undefined,
@@ -52,6 +54,17 @@ async function show(
   root = createRoot(element);
   await act(async () => root?.render(view(context)));
   return element;
+}
+
+async function typeAndLeave(input: HTMLInputElement, value: string) {
+  await act(async () => {
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    set?.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+  });
 }
 
 const workspace: ItemRef = { kind: "workspace", hub: "local", id: "settings" };
@@ -95,20 +108,83 @@ verifies("models.providers.list-and-show", () => {
     expect(view.querySelector("p")?.textContent).toContain("No providers yet.");
   });
 
-  it("shows the type, base URL, secret name and file on a provider's page", async () => {
+  it("shows the fields and the file on a provider's page", async () => {
     const view = await page("anthropic", filesWith({ anthropic }));
 
     expect(view.querySelector("h1")?.textContent).toBe("Provider: Anthropic");
-    expect([...view.querySelectorAll("dt, dd")].map((cell) => cell.textContent)).toEqual([
-      "Type",
-      "anthropic",
-      "Base URL",
-      "The provider's own",
-      "Secret name",
-      "anthropic",
-      "File",
-      "providers/anthropic.yaml",
+    const values = [...view.querySelectorAll<HTMLInputElement>("input:not([role=switch])")].map(
+      (input) => input.value,
+    );
+    expect(values).toEqual(["Anthropic", "anthropic", "", "anthropic"]);
+    expect(view.textContent).toContain("providers/anthropic.yaml");
+  });
+
+  it("still lists providers and shows their pages when models.yaml does not parse", async () => {
+    const broken = { ...filesWith({ anthropic }), readModels: async () => "aliases: [\n" };
+
+    const list = await section(broken);
+    expect([...list.querySelectorAll("li")].map((row) => row.textContent)).toEqual([
+      "Anthropic · anthropic · cloud",
     ]);
+    act(() => root?.unmount());
+    element?.remove();
+
+    const view = await page("anthropic", broken);
+    expect(view.querySelector("h1")?.textContent).toBe("Provider: Anthropic");
+  });
+
+  it("saves a base URL when the field is left, and shows a bad one's problem instead", async () => {
+    const saved: { label: string; text: string }[] = [];
+    const files = {
+      ...filesWith({ ollama }),
+      readProvider: async () => ollama,
+      changeProvider: (_path: string, label: string, text: string) => saved.push({ label, text }),
+    };
+    const view = await page("ollama", files);
+    const baseUrl = view.querySelectorAll("input")[2] as HTMLInputElement;
+
+    await typeAndLeave(baseUrl, "localhost:11434");
+    expect(saved).toEqual([]);
+    expect(view.textContent).toContain("Enter a full address");
+
+    await typeAndLeave(baseUrl, "http://localhost:11434/v1");
+    expect(saved.map(({ label }) => label)).toEqual(["Updated provider Ollama"]);
+    expect(saved[0]?.text).toContain("baseUrl: http://localhost:11434/v1");
+  });
+
+  it("refuses a pasted key as the secret name without writing it or showing it", async () => {
+    const key = `sk-ant-api03-${"Q7x2Lm9K".repeat(4)}`;
+    const saved: string[] = [];
+    const files = {
+      ...filesWith({ anthropic }),
+      readProvider: async () => anthropic,
+      changeProvider: (_path: string, _label: string, text: string) => saved.push(text),
+    };
+    const view = await page("anthropic", files);
+    const secret = view.querySelectorAll("input")[3] as HTMLInputElement;
+
+    await typeAndLeave(secret, key);
+
+    expect(saved).toEqual([]);
+    expect(view.textContent).toContain("looks like an API key");
+    expect(view.textContent).not.toContain(key);
+  });
+
+  it("keeps a refused field's problem showing when another field saves", async () => {
+    const saved: string[] = [];
+    const files = {
+      ...filesWith({ ollama }),
+      readProvider: async () => ollama,
+      changeProvider: (_path: string, _label: string, text: string) => saved.push(text),
+    };
+    const view = await page("ollama", files);
+    const inputs = view.querySelectorAll("input");
+
+    await typeAndLeave(inputs[2] as HTMLInputElement, "localhost:11434");
+    await typeAndLeave(inputs[0] as HTMLInputElement, "My Ollama");
+
+    expect(saved).toHaveLength(1);
+    expect(view.textContent).toContain("Enter a full address");
   });
 
   it("says a cloud provider is blocked when the workspace is local only", async () => {

@@ -43,10 +43,14 @@ export interface ModelsFiles {
   readModels(): Promise<string | null>;
   /** The files in `providers/` with unsaved changes applied, sorted by path. */
   readProviders(): Promise<ProviderFile[]>;
+  /** The text of one provider file with unsaved changes applied; `null` when it is gone. */
+  readProvider(path: string): Promise<string | null>;
   /** The text of `workspace.yaml` (for its budget currency); `null` when the workspace has none. */
   readWorkspace(): Promise<string | null>;
   /** Replaces the text of `models.yaml` as one undo step, named by `label`. */
   changeModels(label: string, text: string): void;
+  /** Replaces the text of the provider file at `path` as one undo step, named by `label`. */
+  changeProvider(path: string, label: string, text: string): void;
   /** Calls `listener` after `models.yaml` or a provider file may have changed; returns the way to stop. */
   subscribe(listener: () => void): () => void;
 }
