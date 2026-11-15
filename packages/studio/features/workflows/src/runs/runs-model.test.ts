@@ -16,7 +16,7 @@ const sourced = (changes: Parameters<typeof runSummary>[0]) => ({
 const done = (id: string) =>
   sourced({ id, status: "completed", state: null, endedAt: "2026-11-09T10:45:00.000Z" });
 
-verifies("workflows.runs", () => {
+verifies("workflows.runs.runs-view", () => {
   it("keeps only this workflow's real runs, never a test run or another workflow's", () => {
     const runs = [
       sourced({ id: "real" }),

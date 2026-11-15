@@ -303,7 +303,7 @@ verifies("workflows.page.start-command", () => {
   });
 });
 
-verifies("workflows.runs", () => {
+verifies("workflows.runs.runs-view", () => {
   it("counts the runs that need you on the Runs tab and opens the Runs view from it", async () => {
     const { host } = memoryHost([], [], [reply]);
     const waiting = runSummary({

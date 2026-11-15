@@ -22,7 +22,7 @@ export interface RunsViewProps {
 }
 
 /**
- * The workflow's Runs view (`workflows.runs`): real runs only, **Now** (running and waiting) then
+ * The workflow's Runs view (`workflows.runs.runs-view`): real runs only, **Now** (running and waiting) then
  * **Earlier** (the 20 newest), **See all** under them, and a row's simple card docked at the right.
  */
 export function RunsView({ source, load, retry, workflow, openRun, seeAll }: RunsViewProps) {

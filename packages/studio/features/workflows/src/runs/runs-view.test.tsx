@@ -34,7 +34,7 @@ const finished = runSummary({
   endedAt: "2026-11-09T10:45:00.000Z",
 });
 
-verifies("workflows.runs", () => {
+verifies("workflows.runs.runs-view", () => {
   it("lists Now and Earlier with a test run left out, and See all opens the Runs list", async () => {
     const seeAll = vi.fn();
     const { source } = memoryRuns([
