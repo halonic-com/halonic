@@ -19,9 +19,11 @@ function required(name: string): string {
 
 const storage = (file: string) =>
   fileURLToPath(new URL(`../../../adapters/cloudflare-storage/src/${file}`, import.meta.url));
+const durable = (file: string) =>
+  fileURLToPath(new URL(`../../../adapters/cloudflare-durable/src/test/${file}`, import.meta.url));
 
 // Run by `pnpm test:live`, never by `pnpm test`: the adapters' own contract suites (R2 blobs and
-// definitions, D1 records and tokens), run inside a test Worker deployed to the CI Cloudflare
+// definitions, D1 records and tokens, Durable Object coordination, runs and scheduler), run inside a test Worker deployed to the CI Cloudflare
 // account, over real R2 and D1 (HAL-6703).
 const token = required("CLOUDFLARE_LIVE_API_TOKEN");
 const prefix = `${required("HALONIC_LIVE_PREFIX")}-adapters`;
@@ -29,9 +31,11 @@ const script = await buildTestWorker([
   storage("blob-store.workerd.test.ts"),
   storage("r2-definition-source.workerd.test.ts"),
   storage("record-store.workerd.test.ts"),
-  fileURLToPath(
-    new URL("../../../adapters/cloudflare-durable/src/test/live-alarm.spec.ts", import.meta.url),
-  ),
+  durable("live-alarm.spec.ts"),
+  durable("coordination.spec.ts"),
+  durable("run-store.spec.ts"),
+  durable("run-watch.spec.ts"),
+  durable("scheduler.spec.ts"),
 ]);
 // Register the runner's token with GitHub Actions before it goes anywhere, so no log line can show it.
 const runnerToken = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) =>
@@ -46,7 +50,12 @@ const runner = await deployAdapterRunner({
   prefix,
   script,
   compatibilityDate,
-  durableObjects: [{ binding: "LIVE_RUNS", className: "LiveRunObject" }],
+  durableObjects: [
+    { binding: "LIVE_RUNS", className: "LiveRunObject" },
+    { binding: "COORDINATION", className: "TestCoordinationObject" },
+    { binding: "RUNS", className: "TestRunObject" },
+    { binding: "ROUTINES", className: "TestRoutinesObject" },
+  ],
 });
 afterAll(() => runner.destroy());
 
