@@ -1,7 +1,8 @@
 import { win32 } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import type { SandboxBlock, SandboxProfile, SandboxSession } from "@halonicjs/ports";
 import { readText, sandboxFenceContract } from "@halonicjs/testing-contracts";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import {
   type Behavior,
@@ -386,7 +387,10 @@ verifies("sandbox-mxc.session", () => {
       fake.behave(() => ({ hang: true }));
       const started = await session.start(program);
       expect(await started.exited).toMatchObject({ reason: "timeout" });
-      await vi.waitFor(() => expect(session.fence).toEqual({ state: "stopped" }));
+      await waitUntil(`session.fence to equal { state: "stopped" }`, () =>
+        isDeepStrictEqual(session.fence, { state: "stopped" }),
+      );
+      expect(session.fence).toEqual({ state: "stopped" });
     });
 
     it("hands every program the time that is left, not the whole limit", async () => {
@@ -405,13 +409,19 @@ verifies("sandbox-mxc.session", () => {
       const started = await session.start(program);
       abort.abort();
       expect(await started.exited).toMatchObject({ reason: "stopped" });
-      await vi.waitFor(() => expect(session.fence).toEqual({ state: "stopped" }));
+      await waitUntil(`session.fence to equal { state: "stopped" }`, () =>
+        isDeepStrictEqual(session.fence, { state: "stopped" }),
+      );
+      expect(session.fence).toEqual({ state: "stopped" });
     });
 
     it("closes at once when the signal was already aborted", async () => {
       const { sandbox } = setup();
       const session = await open(sandbox, {}, AbortSignal.abort());
-      await vi.waitFor(() => expect(session.fence).toEqual({ state: "stopped" }));
+      await waitUntil(`session.fence to equal { state: "stopped" }`, () =>
+        isDeepStrictEqual(session.fence, { state: "stopped" }),
+      );
+      expect(session.fence).toEqual({ state: "stopped" });
     });
   });
 
@@ -431,7 +441,8 @@ verifies("sandbox-mxc.session", () => {
       const started = await session.start(program);
       const errors = await readText(started.stderr);
       expect(errors).toContain("plain text");
-      await vi.waitFor(() => expect(blocks).toHaveLength(2));
+      await waitUntil("blocks to have length 2", () => blocks.length === 2);
+      expect(blocks).toHaveLength(2);
       expect(blocks).toEqual([
         { kind: "file", path: "C:\\acme\\keys\\id.txt", access: "read" }, // leak-guard: allow absolute-path made-up Windows path for a test
         { kind: "network", host: "127.0.0.1", port: 5000 },
