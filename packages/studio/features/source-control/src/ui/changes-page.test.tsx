@@ -52,6 +52,17 @@ verifies("source-control.changes-page", () => {
       expect(root.textContent).toContain("Nothing has changed since your last version.");
     });
 
+    it("lists the changed file by its path once the read answers", async () => {
+      const fake = fakeSource({
+        kind: "ready",
+        changes: [{ path: "models.yaml", status: "modified", staged: false }],
+      });
+      fake.setTexts("models.yaml", { before: "a: 1\n", after: "a: 2\n" });
+      const { root } = await openPage(fake);
+      expect(root.textContent).toContain("models.yaml");
+      expect(root.textContent).not.toContain("Nothing has changed");
+    });
+
     it("offers Turn on history for a folder without git history, and then shows the page", async () => {
       const fake = fakeSource({ kind: "not-a-repository" });
       const { root } = await openPage(fake);
