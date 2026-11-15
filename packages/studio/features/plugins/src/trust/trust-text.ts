@@ -115,7 +115,7 @@ export const TOOLS_INTRO =
   "Agents can use these through a connector. Each one asks a person first unless you change that.";
 
 /** After a tool whose answers the plugin marks as untrusted (T8). */
-export const OUTSIDE_TEXT = "its answers are treated as outside text";
+export const OUTSIDE_TEXT = "its answers aren't trusted as instructions";
 
 /** The labels of an open program (design section 5). A label shows only when it has a value. */
 export const RUNS = "Runs";
@@ -166,7 +166,7 @@ export const THE_PROGRAM = "(the program)";
 
 /** The first line in In Studio (T8). */
 export const IN_STUDIO_LINE =
-  "Halonic draws these itself. Text from the plugin is shown as plain text.";
+  "Halonic draws these itself. Text from the plugin never becomes page code; at most it shows basic formatting and web links, each with its address.";
 
 // British English: no comma before "and", as in every Halonic text.
 const list = new Intl.ListFormat("en-GB", { type: "conjunction" });

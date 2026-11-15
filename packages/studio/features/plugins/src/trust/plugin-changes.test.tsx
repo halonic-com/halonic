@@ -89,11 +89,11 @@ verifies("plugins.plugin-changes", () => {
     expect(summary.rows).toContainEqual({
       tag: "Changed",
       what: "Tool forecast",
-      from: "Reads, outside text",
-      to: "Changes things, outside text",
+      from: "Reads, untrusted answers",
+      to: "Changes things, untrusted answers",
     });
     open(escalated, changesFrom(trusted, escalated));
-    expect(dialogText()).toContain("Reads, outside text → Changes things, outside text");
+    expect(dialogText()).toContain("Reads, untrusted answers → Changes things, untrusted answers");
   });
 
   it("has Not now focused and Trust again and turn on trusts the plugin", async () => {

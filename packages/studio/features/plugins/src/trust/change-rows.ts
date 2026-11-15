@@ -47,7 +47,7 @@ const FIELD_NOUNS: Readonly<Record<string, string>> = {
   placement: "how it is sent",
   description: "its description",
   risk: "what it may do",
-  untrusted: "whether it reads outside text",
+  untrusted: "whether its answers are trusted as instructions",
   start: "how it starts",
   args: "its arguments",
   env: "its settings",
@@ -72,9 +72,9 @@ function changedRow<Item>(
   return { tag: "Changed", what, to: `${named} changed` };
 }
 
-/** A tool's one-line state: "Reads", "Changes things, outside text". */
+/** A tool's one-line state: "Reads", "Changes things, untrusted answers". */
 function toolState(tool: PluginToolContent): string {
-  return [riskWords(tool.risk), tool.untrusted ? "outside text" : undefined]
+  return [riskWords(tool.risk), tool.untrusted ? "untrusted answers" : undefined]
     .filter((part) => part !== undefined)
     .join(", ");
 }

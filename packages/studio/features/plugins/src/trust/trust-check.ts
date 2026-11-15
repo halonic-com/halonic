@@ -7,7 +7,7 @@ export interface TrustTool {
   readonly name: string;
   readonly description: string;
   readonly risk: PluginToolRisk;
-  /** The plugin marks its answers as untrusted: "its answers are treated as outside text". */
+  /** The plugin marks its answers as untrusted: "its answers aren't trusted as instructions". */
   readonly untrusted: boolean;
 }
 
