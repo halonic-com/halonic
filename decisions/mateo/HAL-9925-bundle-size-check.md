@@ -3,6 +3,7 @@
 - Task: HAL-9925
 - Approval: Liam decided the scope on HAL-9927 (option 1: the checks go into `buildWorkerBundle`, no second copy in `deploy`) and approved PR #2850 on HAL-9929; Liam signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vec4UQ4ZQnOJ3A8FJxvCLA9I5K7CxskE6Nlsyfj3f+lH9E+6qoqyqBX/MfPLGoqJAfAZV0PddJSrbereuwoRAw==
 
 ## What changes
 
