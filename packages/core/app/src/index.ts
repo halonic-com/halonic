@@ -133,6 +133,11 @@ export {
 } from "./hub-workflows.ts";
 export { type InstructionTrust, instructionTrust } from "./instruction-trust.ts";
 export {
+  type InstructionTrustCheck,
+  InstructionTrustService,
+  type InstructionTrustServiceOptions,
+} from "./instruction-trust-service.ts";
+export {
   type IntegrationFolder,
   type IntegrationFolderProblem,
   MAX_INTEGRATION_BYTES,
