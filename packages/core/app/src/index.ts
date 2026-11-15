@@ -482,6 +482,8 @@ export {
   type StartRunOptions,
   WorkflowRuns,
 } from "./workflow-runs.ts";
+// biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
+export * from "./workspace-compare.ts";
 export { type ChangeOptions, type PendingChanges, WorkspaceFiles } from "./workspace-files.ts";
 export {
   placedRoutines,
