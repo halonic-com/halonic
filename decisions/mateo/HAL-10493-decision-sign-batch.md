@@ -9,7 +9,7 @@
 `pnpm decision sign` and the guard's signature check read the test files at a commit with one
 `git cat-file --batch` call instead of one `git` process per file. Reading about 1,700 files
 goes from 80-90 seconds to about 0.13 seconds. It prints one progress line on stderr, for
-example `reading 1,727 files at 0123456789ab`. The signed content (the paths plus their object
+example `reading 1727 files at 0123456789ab`. The signed content (the paths plus their object
 IDs) is the same bytes as before, so every existing signature still verifies. No rule or
 requirement changes.
 
