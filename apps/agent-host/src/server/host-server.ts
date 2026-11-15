@@ -11,6 +11,15 @@ export interface HostRoute {
   /** The path without a query, such as "/v1/health". */
   path: string;
   handle(request: IncomingMessage, response: ServerResponse): void | Promise<void>;
+  /**
+   * For a page a browser opens by following a redirect, which can't send the
+   * launch token: the route is served without it. The `Host` and `Origin`
+   * checks still apply, and the route's own handler must prove the request
+   * (a sign-in's callback does, by the `state` only the started sign-in knows).
+   * Only a GET route is served without the token, since a redirect is always
+   * a GET: the server ignores the setting on a POST route.
+   */
+  tokenFree?: true;
 }
 
 /** The host's server, listening on a free loopback port. */
@@ -72,10 +81,12 @@ const refusalMessage: Record<Refusal, string> = {
  *    that points its own domain at 127.0.0.1 (DNS rebinding) gets nothing;
  * 2. it has no `Origin` header: the program that started the host isn't a
  *    browser, so a request from a web page is refused, and there is no CORS;
- * 3. its `Authorization` header is `Bearer <token>`.
+ * 3. its `Authorization` header is `Bearer <token>`, unless the route it asks
+ *    for is `tokenFree`.
  *
  * Without all three the answer is an error, whatever the path, so a caller
- * can't even learn which paths exist. A caller that is slow to send its
+ * can't even learn which paths exist, except that a `tokenFree` GET route
+ * answers a request that passes the first two checks. A caller that is slow to send its
  * request, or holds too many connections, is cut off by `limits`.
  */
 export async function startHostServer(
@@ -140,8 +151,9 @@ function createHostServer(
     connectionsCheckingInterval: limits.checkEveryMs,
   };
   return createServer(options, (request, response) => {
-    const refusal = refusalOf(request, port(), token);
-    const route = refusal === undefined ? findRoute(routes, request) : undefined;
+    const found = findRoute(routes, request);
+    const refusal = refusalOf(request, port(), isTokenFree(found) ? undefined : token);
+    const route = refusal === undefined ? found : undefined;
     if (route === undefined) {
       sendRefusal(request, response, refusal ?? "not_found");
       return;
@@ -158,13 +170,24 @@ function createHostServer(
   });
 }
 
-/** Why a request may not reach any route, or `undefined` when it may. */
-function refusalOf(request: IncomingMessage, port: number, token: string): Refusal | undefined {
+/** Why a request may not reach any route, or `undefined` when it may. `token` is `undefined` for a route that is served without one. */
+function refusalOf(
+  request: IncomingMessage,
+  port: number,
+  token: string | undefined,
+): Refusal | undefined {
   const host = request.headers.host?.toLowerCase();
   if (host !== `${loopbackHost}:${port}` && host !== `localhost:${port}`) return "wrong_host";
   if (request.headers.origin !== undefined) return "browser_origin";
-  if (!bearerMatches(request.headers.authorization, token)) return "unauthenticated";
+  if (token !== undefined && !bearerMatches(request.headers.authorization, token)) {
+    return "unauthenticated";
+  }
   return undefined;
+}
+
+/** Whether `route` is served without the launch token: only a GET route can be. */
+function isTokenFree(route: HostRoute | undefined): boolean {
+  return route?.tokenFree === true && route.method === "GET";
 }
 
 function findRoute(routes: readonly HostRoute[], request: IncomingMessage): HostRoute | undefined {

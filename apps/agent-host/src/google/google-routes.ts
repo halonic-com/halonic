@@ -14,6 +14,13 @@ export interface GoogleRouteDeps {
   log?: (text: string) => void;
 }
 
+/**
+ * Where Google sends the browser back to: the path `host-server` puts in the
+ * sign-in's redirect address. It isn't exported from there, so the test that
+ * follows a started sign-in's redirect address is what keeps the two equal.
+ */
+const googleCallbackPath = "/api/google/callback";
+
 const googleFailedMessage =
   "The agent host couldn't finish this Google request. Its log has the detail.";
 
@@ -38,9 +45,20 @@ const googleFailedMessage =
  *   redirect comes back to this host's own port.
  * - `POST /v1/google/sign-in/cancel` with `{ accountRef }`: drops the pending
  *   sign-in and answers 204, whether or not one was pending.
+ * - `GET /api/google/callback`: where Google sends the browser back. The
+ *   browser has no launch token, so this one route is `tokenFree`; the
+ *   sign-in's own `state` is the proof, and the page it answers with is fixed
+ *   text. The same-host check of the server still applies.
  */
 export function googleRoutes(deps: GoogleRouteDeps): HostRoute[] {
   const handler = createGoogleRoutes({ google: deps.google, clock: deps.clock ?? systemClock });
+
+  /** Keeps what failed in the host's log only: the error's text can hold paths. */
+  function logFailure(error: unknown): void {
+    const name = error instanceof Error ? error.name : "Error";
+    const detail = error instanceof Error ? error.message : String(error);
+    deps.log?.(`A Google request failed (${name}): ${detail}\n`);
+  }
 
   /** A route that sends `method` to the setup's `suffix` path and relays the handler's answer. */
   function setupRoute(path: string, method: "POST" | "DELETE", suffix: string): HostRoute {
@@ -63,23 +81,50 @@ export function googleRoutes(deps: GoogleRouteDeps): HostRoute[] {
           );
           await relay(response, answer);
         } catch (error) {
-          const name = error instanceof Error ? error.name : "Error";
-          const detail = error instanceof Error ? error.message : String(error);
-          deps.log?.(`A Google request failed (${name}): ${detail}\n`);
+          logFailure(error);
           sendError(response, 502, "google_failed", googleFailedMessage);
         }
       },
     };
   }
 
+  /** Google's redirect, as the handler's own callback answers it, page and all. */
+  const callbackRoute: HostRoute = {
+    method: "GET",
+    path: googleCallbackPath,
+    tokenFree: true,
+    handle: async (request, response) => {
+      try {
+        const answer = await handler.callback(
+          new Request(`http://127.0.0.1:${portOf(request)}${request.url ?? ""}`, {
+            headers: { host: `127.0.0.1:${portOf(request)}` },
+          }),
+        );
+        response.writeHead(answer.status, {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store",
+        });
+        response.end(await answer.text());
+      } catch (error) {
+        logFailure(error);
+        sendError(response, 502, "google_failed", googleFailedMessage);
+      }
+    },
+  };
+
   return [
+    callbackRoute,
     setupRoute("/v1/google/disconnect", "POST", "disconnect"),
     setupRoute("/v1/google/sign-in", "POST", "sign-in"),
     setupRoute("/v1/google/sign-in/cancel", "DELETE", "sign-in"),
   ];
 }
 
-/** The port this host serves on, which Google must send the browser back to. */
+/**
+ * The port this host serves on, which Google must send the browser back to.
+ * `?? 80` only matters on a socket that has already closed, where no
+ * request is being answered anyway.
+ */
 function portOf(request: IncomingMessage): number {
   return request.socket.localPort ?? 80;
 }

@@ -109,6 +109,22 @@ describe("startHostServer", () => {
     expect(answer.status).toBe(404);
   });
 
+  it("still needs the token for a POST route marked tokenFree", async () => {
+    const route: HostRoute = {
+      method: "POST",
+      path: "/v1/change",
+      tokenFree: true,
+      handle: (_request, response) => {
+        response.writeHead(204).end();
+      },
+    };
+    server = await startHostServer(token, [route]);
+
+    const answer = await fetch(`${server.url}/v1/change`, { method: "POST" });
+
+    expect(answer.status).toBe(401);
+  });
+
   it("answers 500 when a route rejects before it answers", async () => {
     server = await startHostServer(token, [
       { method: "GET", path: "/v1/broken", handle: () => Promise.reject(new Error("broken")) },

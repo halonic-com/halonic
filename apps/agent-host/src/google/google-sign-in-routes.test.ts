@@ -138,6 +138,19 @@ verifies("agent-host.google-sign-in-routes", () => {
       expect(response.status).toBe(404);
     });
 
+    it("answers 404 when the connector isn't a Google one", async () => {
+      await writeFile(
+        join(acme, "library", "connectors", "files.connector.yaml"),
+        "name: Files\ntransport:\n  http:\n    url: http://localhost:8700/mcp\n",
+      );
+      const { url, google } = await started();
+      const accountRef = await readyAccount(google, "files");
+
+      const response = await post(url, "/v1/google/sign-in", { accountRef });
+
+      expect(response.status).toBe(404);
+    });
+
     it("cancels a started sign-in, so a callback with its state finishes nothing", async () => {
       const { url, google } = await started();
       const accountRef = await readyAccount(google, "mailbox");
@@ -171,6 +184,28 @@ verifies("agent-host.google-sign-in-routes", () => {
       const response = await post(url, "/v1/google/sign-in", { accountRef: "../Etc" });
 
       expect(response.status).toBe(400);
+    });
+  });
+});
+
+verifies("agent-host.google-sign-in-callback", () => {
+  describe("the redirect address of a started sign-in", () => {
+    it("opens without the launch token and answers a page that is not an error", async () => {
+      const { url, google } = await started();
+      const accountRef = await readyAccount(google, "mailbox");
+      const pending = (await (await post(url, "/v1/google/sign-in", { accountRef })).json()) as {
+        authUrl: string;
+      };
+      const params = new URL(pending.authUrl).searchParams;
+      const redirect = new URL(params.get("redirect_uri") ?? "");
+      redirect.searchParams.set("state", params.get("state") ?? "");
+      // Google sends this when the person declines, so the test needs no call to Google.
+      redirect.searchParams.set("error", "access_denied");
+
+      const response = await fetch(redirect);
+
+      expect(response.status).toBe(200);
+      expect(await response.text()).toContain("You cancelled the sign-in");
     });
   });
 });
