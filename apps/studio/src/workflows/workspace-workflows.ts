@@ -7,6 +7,7 @@ import type {
   WorkflowListing,
   WorkflowRef,
   WorkflowsHost,
+  WorkflowView,
 } from "@halonicjs/studio-feature-workflows/api";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 
@@ -98,6 +99,31 @@ export class WorkspaceWorkflows implements WorkflowsHost {
         },
       ];
     });
+  }
+
+  /** Reads one workflow from its file, with unsaved changes applied; throws when the hub has no such workflow. */
+  async read({ hubId, id }: WorkflowRef): Promise<WorkflowView> {
+    const workspace = await this.#load();
+    const file = filesOf(workspace, "workflow").find(
+      (one) => one.hub === hubId && one.value.id === id,
+    );
+    if (file === undefined) throw new Error(`The hub "${hubId}" has no workflow "${id}".`);
+    const { value } = file;
+    return {
+      hubId,
+      id,
+      name: value.name,
+      initial: value.initial,
+      steps: Object.entries(value.states).map(([stepId, state]) => ({
+        id: stepId,
+        type: state.type,
+        agent: state.agent,
+      })),
+      arrows: Object.entries(value.states).flatMap(([from, state]) =>
+        state.on.map((arrow) => ({ from, to: arrow.to, label: arrow.label })),
+      ),
+      layout: value.layout,
+    };
   }
 
   subscribe(listener: () => void): () => void {
