@@ -108,7 +108,7 @@ function DesktopRun({
   const run = state.runs.find((candidate) => candidate.summary.id === runId);
   const logRead = useRunLog(list.source, runId, run?.summary.lastSeq ?? 0, state);
   const log = logRead.events;
-  const [openEntry, setOpenEntry] = useOpenEntry(step, log, run?.summary);
+  const [openEntry, setOpenEntry] = useOpenEntry(runId, step, log, run?.summary);
   const title = runPageWords.title(shortRunId(runId));
   const retry = () => void list.refresh();
 
@@ -212,17 +212,20 @@ function DesktopRun({
 
 /**
  * The entry the step panel shows, and how to change it. The step the page was asked to open on
- * (`step`) opens its entry once, when the log is read; closing it doesn't open it again.
+ * (`step`) opens its entry once per run, when the log is first read; closing it doesn't open it
+ * again. A live run that hadn't reached the step by then opens at the top.
  */
 function useOpenEntry(
+  runId: string,
   step: string | undefined,
   log: readonly RunEvent[] | undefined,
   summary: RunSummary | undefined,
 ) {
   const [openEntry, setOpenEntry] = useState<string>();
-  const [openedStep, setOpenedStep] = useState<string>();
-  if (step !== undefined && step !== openedStep && log !== undefined && summary !== undefined) {
-    setOpenedStep(step);
+  const [opened, setOpened] = useState<string>();
+  const request = step === undefined ? undefined : `${runId}/${step}`;
+  if (step !== undefined && request !== opened && log !== undefined && summary !== undefined) {
+    setOpened(request);
     setOpenEntry(entryIdOfStep(log, summarize(log) ?? summary, step));
   }
   return [openEntry, setOpenEntry] as const;
