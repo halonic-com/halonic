@@ -314,6 +314,12 @@ export interface GoogleSetupPorts {
   readonly source: GoogleSetupSource;
   /** Where a finished sign-in is announced to the open setup item. */
   readonly signInEvents: GoogleSignInEvents;
+  /**
+   * The link the callback page ends with. Without it the page has no link:
+   * a host that serves no page of its own has nowhere to send the person.
+   * The host sets both fields, so they are fixed text and never from a request.
+   */
+  readonly callbackPageLink?: { readonly href: string; readonly label: string };
 }
 
 /**

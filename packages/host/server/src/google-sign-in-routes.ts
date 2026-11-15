@@ -36,9 +36,25 @@ const pageTexts: Readonly<Record<GoogleSignInOutcome["kind"], string>> = {
     "Google answered in a way Halonic doesn't know. Go back to Halonic and sign in again.",
 };
 
+/** Makes a host-set text safe inside an HTML text or a quoted attribute. */
+function escapeHtml(text: string): string {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
 /** The callback page: plain HTML with no script and no query-dependent text, so nothing Google or an attacker sent is shown. */
-function callbackPage(outcome: GoogleSignInOutcome): Response {
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Halonic</title></head><body><p>${pageTexts[outcome.kind]}</p><p><a href="/">Back to Halonic</a></p></body></html>`;
+function callbackPage(
+  outcome: GoogleSignInOutcome,
+  link: GoogleSetupPorts["callbackPageLink"],
+): Response {
+  const linkHtml =
+    link === undefined
+      ? ""
+      : `<p><a href="${escapeHtml(link.href)}">${escapeHtml(link.label)}</a></p>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Halonic</title></head><body><p>${pageTexts[outcome.kind]}</p>${linkHtml}</body></html>`;
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8" } });
 }
 
@@ -88,7 +104,7 @@ export function createGoogleSignInRoutes({
   readonly google: GoogleSetupPorts;
   readonly wrongAccountNotes: WrongAccountNotes;
 }): GoogleSignInRoutes {
-  const { setups, source, actions, signInEvents, tokens } = google;
+  const { setups, source, actions, signInEvents, tokens, callbackPageLink } = google;
 
   /** Keeps how the sign-in ended on the record: the token's account and the checks, or that the sign-in is over. */
   async function record(outcome: GoogleSignInOutcome): Promise<void> {
@@ -182,7 +198,7 @@ export function createGoogleSignInRoutes({
       }
       const recorded = await recordOrRemoveToken(outcome);
       // A sign-in whose setup is gone saved nothing, so the page must not say "signed in".
-      return callbackPage(recorded ? outcome : { kind: "linkNoLongerValid" });
+      return callbackPage(recorded ? outcome : { kind: "linkNoLongerValid" }, callbackPageLink);
     },
   };
 }

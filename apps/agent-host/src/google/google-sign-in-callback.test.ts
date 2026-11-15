@@ -112,3 +112,33 @@ verifies("agent-host.google-sign-in-callback", () => {
     });
   });
 });
+
+verifies("agent-host.google-sign-in-callback-failure", () => {
+  describe("a callback that can't be finished", () => {
+    it("answers a fixed HTML page and logs the detail", async () => {
+      const google = openGoogleSetup({
+        profile: {
+          platform: process.platform === "win32" ? "windows" : "linux",
+          root: join(folder, "profile"),
+        },
+        env: { HALONIC_SECRET_TOKEN_KEY: tokenKey },
+        workspaceRoots: [join(folder, "acme")],
+      });
+      google.actions.finishSignIn = async () => {
+        throw new Error("the token store failed at /secret/place");
+      };
+      server = await startHostServer(
+        token,
+        googleRoutes({ google, log: (text) => logged.push(text) }),
+      );
+
+      const answer = await get(server.url, callback, { host: new URL(server.url).host });
+
+      expect(answer.status).toBe(502);
+      expect(answer.type).toContain("text/html");
+      expect(answer.text).not.toContain("/secret/place");
+      expect(answer.text).not.toContain("nobody-started-this");
+      expect(logged.join("")).toContain("the token store failed");
+    });
+  });
+});
