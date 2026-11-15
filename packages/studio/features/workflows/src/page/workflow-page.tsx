@@ -53,11 +53,17 @@ export function WorkflowScreen({ host, hubId, id, openRun }: WorkflowScreenProps
   const { load, retry } = useWorkflow(host, { hubId, id });
   const name = load.kind === "ready" ? load.value.name : id;
   const settings = useHostRead(host, { hubId, id }, (one, ref) => one.configuration(ref));
+  const everyWorkflow = useHostRead(host, { hubId, id }, (one) => one.list());
   const [view, setView] = useState<"flow" | "configuration">("flow");
   const [openStep, setOpenStep] = useState<string | undefined>();
   const ids = useTabIds();
   const errors =
     settings.load.kind === "ready" ? countProblems(settings.load.value.problems).errors : 0;
+  // `halonic run reply` stops when two hubs have a `reply`, so the command then names the hub.
+  const inSeveralHubs =
+    everyWorkflow.load.kind === "ready" &&
+    everyWorkflow.load.value.some((one) => one.id === id && one.hubId !== hubId);
+  const startCommand = inSeveralHubs ? `halonic run ${hubId}/${id}` : `halonic run ${id}`;
   const views: readonly Tab<"flow" | "configuration">[] = [
     { id: "flow", label: configurationWords.flowTab },
     {
@@ -93,9 +99,12 @@ export function WorkflowScreen({ host, hubId, id, openRun }: WorkflowScreenProps
         />
       </header>
       {settings.load.kind === "ready" && errors === 0 && (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-6 py-2 text-small text-fg-muted">
+        <div
+          data-testid="start-command"
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-6 py-2 text-small text-fg-muted"
+        >
           <p>{pageWords.startIt}</p>
-          <CommandBox command={`halonic run ${id}`} />
+          <CommandBox command={startCommand} />
         </div>
       )}
       <TabPanel ids={ids} tabs={views} selected={view}>

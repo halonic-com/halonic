@@ -4,7 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { WorkflowView } from "../api.ts";
-import { buttonNamed, memoryHost, show, unmount } from "../test-support.tsx";
+import { buttonNamed, listing, memoryHost, show, unmount } from "../test-support.tsx";
 import { WorkflowScreen } from "./workflow-page.tsx";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
@@ -180,6 +180,9 @@ const settings = {
   problems: [],
 } as const;
 
+const startCommand = (page: HTMLElement) =>
+  page.querySelector("[data-testid=start-command] code")?.textContent;
+
 verifies("workflows.page.start-command", () => {
   it("shows how to start the workflow, with Copy command, on both tabs", async () => {
     const { host } = memoryHost([], [], [reply], [settings]);
@@ -191,7 +194,7 @@ verifies("workflows.page.start-command", () => {
           ?.click(),
       );
       expect(page.textContent).toContain("Start it from a terminal:");
-      expect(page.querySelector("code")?.textContent).toBe("halonic run reply");
+      expect(startCommand(page)).toBe("halonic run reply");
       expect(page.querySelector("button[aria-label='Copy command']")).not.toBeNull();
     }
   });
@@ -204,6 +207,17 @@ verifies("workflows.page.start-command", () => {
     const { host } = memoryHost([], [], [reply], [broken]);
     const page = await show(<WorkflowScreen host={host} hubId="acme" id="reply" />);
     expect(page.textContent).not.toContain("Start it from a terminal");
-    expect(page.querySelector("code")).toBeNull();
+    expect(startCommand(page)).toBeUndefined();
+  });
+
+  it("names the hub when another hub has a workflow with the same id", async () => {
+    const { host } = memoryHost(
+      [],
+      [listing("acme", "reply", "Support reply"), listing("beta", "reply", "Reply")],
+      [reply],
+      [settings],
+    );
+    const page = await show(<WorkflowScreen host={host} hubId="acme" id="reply" />);
+    expect(startCommand(page)).toBe("halonic run acme/reply");
   });
 });
