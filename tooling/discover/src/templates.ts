@@ -99,6 +99,7 @@ function packageJson(spec: PackageSpec): string {
       lint: "biome check .",
       test: "vitest run",
     },
+    ...(spec.isFeature ? { dependencies: { "@halonicjs/studio-shell": "workspace:*" } } : {}),
     devDependencies: {
       "@halonicjs/tooling-config": "workspace:*",
       "@types/node": "catalog:",
@@ -139,14 +140,16 @@ function featureSources(spec: PackageSpec): Record<string, string> {
   const exportName = featureExportName(spec.folder);
   return {
     "src/feature.ts": [
+      'import { defineFeature } from "@halonicjs/studio-shell";',
+      "",
       "/**",
-      ` * The ${titleOf(spec.folder)} feature as the Studio shell sees it. Becomes`,
-      " * defineFeature() from @halonicjs/studio-shell once the shell exists.",
+      ` * The ${titleOf(spec.folder)} feature. The Studio shell loads it by this declaration:`,
+      " * add what it needs, provides and registers here as the feature grows.",
       " */",
-      `export const ${exportName} = {`,
+      `export const ${exportName} = defineFeature({`,
       `  id: "${spec.folder}",`,
       `  title: "${titleOf(spec.folder)}",`,
-      "} as const;",
+      "});",
       "",
     ].join("\n"),
     "src/index.ts": [`export { ${exportName} } from "./feature.ts";`, ""].join("\n"),
