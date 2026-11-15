@@ -13,8 +13,12 @@
     "test:live": "vitest run --config vitest.live.config.ts"
   },
   "devDependencies": {
+    "@halonicjs/adapter-cloudflare-storage": "workspace:*",
+    "@halonicjs/target-cloudflare-deploy": "workspace:*",
+    "@halonicjs/target-cloudflare-runtime": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
+    "@halonicjs/tooling-publish": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
