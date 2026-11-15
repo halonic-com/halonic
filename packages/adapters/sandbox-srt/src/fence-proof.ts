@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import { createServer, type Server } from "node:net";
+import { createServer, type Server, type Socket } from "node:net";
 import { join } from "node:path";
 import type { SandboxFence } from "@halonicjs/ports";
 import type { Runner } from "./srt-runner.ts";
@@ -58,24 +58,49 @@ async function readAll(stream: ReadableStream<Uint8Array>): Promise<string> {
   return text + decoder.decode();
 }
 
+/**
+ * The loopback ports srt lets through its proxy. A canary on one of them is
+ * reached from inside the fence by design, so it proves nothing.
+ */
+const proxyRange = { first: 60080, last: 60089 };
+
 /** A server on a loopback port that the fence must block, and whether anything reached it. */
-async function listenOnCanaryPort(): Promise<{
+export async function listenOnCanaryPort(
+  create: (onConnection: (socket: Socket) => void) => Server = createServer,
+): Promise<{
   server: Server;
   port: number;
   reached: () => boolean;
 }> {
   let reached = false;
-  const server = createServer((socket) => {
+  const onConnection = (socket: Socket): void => {
     reached = true;
     socket.destroy();
-  });
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", resolve);
-  });
-  const address = server.address();
-  if (address === null || typeof address === "string") throw new Error("no canary port");
-  return { server, port: address.port, reached: () => reached };
+  };
+  // Windows hands out ports in sequence, so a pick in the proxy range is followed by more of them.
+  // The listeners stay open until a port outside the range comes, so no port comes twice: one pick
+  // more than the range has ports always finds one.
+  const held: Server[] = [];
+  const attempts = proxyRange.last - proxyRange.first + 2;
+  try {
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      const server = create(onConnection);
+      held.push(server);
+      await new Promise<void>((resolve, reject) => {
+        server.once("error", reject);
+        server.listen(0, "127.0.0.1", resolve);
+      });
+      const address = server.address();
+      if (address === null || typeof address === "string") throw new Error("no canary port");
+      if (address.port < proxyRange.first || address.port > proxyRange.last) {
+        held.pop();
+        return { server, port: address.port, reached: () => reached };
+      }
+    }
+    throw new Error("every canary port the system gave was inside the proxy range");
+  } finally {
+    for (const server of held) server.close();
+  }
 }
 
 /**
@@ -154,7 +179,7 @@ async function runProbe(
     if (canaryPort.reached()) {
       return {
         state: "not-fenced",
-        reason: "a program inside the fence reached a loopback port it should not reach",
+        reason: `a program inside the fence reached a loopback port it should not reach (port ${canaryPort.port})`,
       };
     }
     let result: { control?: string; canary?: string; port?: string };
