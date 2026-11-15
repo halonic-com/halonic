@@ -34,6 +34,6 @@ export type {
 export { createServer } from "./create-server.ts";
 export { createGoogleRoutes, type GoogleRoutes } from "./google-routes.ts";
 export { MemoryRequestCountStore } from "./memory-request-count-store.ts";
-export { providerKeysOf } from "./provider-key-routes.ts";
+export { ProviderKeysReadOnlyError, providerKeysOf } from "./provider-key-routes.ts";
 export { passwordSecretName } from "./sign-in.ts";
 export { WEBHOOK_TOLERANCE_SECONDS } from "./webhooks.ts";

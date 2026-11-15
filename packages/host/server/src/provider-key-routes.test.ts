@@ -2,7 +2,7 @@ import type { Coordination } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { ProviderKeyStore, RequestLogEntry, Server } from "./api.ts";
-import { providerKeysOf } from "./provider-key-routes.ts";
+import { ProviderKeysReadOnlyError, providerKeysOf } from "./provider-key-routes.ts";
 import { FakeCoordination, FakePasswordHasher, TestClock, testServer } from "./test-server.ts";
 
 const canaryValue = "sk-canary-value-1234";
@@ -248,6 +248,47 @@ describe("provider key remove", () => {
 
 describe("provider key refusals", () => {
   verifies("server.secrets-refusals", () => {
+    describe("a store whose keys can't change", () => {
+      const readOnly: ProviderKeyStore = {
+        has: async () => true,
+        set: async () => {
+          throw new ProviderKeysReadOnlyError();
+        },
+        remove: async () => {
+          throw new ProviderKeysReadOnlyError();
+        },
+      };
+
+      it("answers 409 keys_read_only to a PUT and a DELETE, and logs nothing", async () => {
+        const { server, errors } = setup({ keys: readOnly });
+        const saved = await put(server, canaryName, valueBody(canaryValue));
+        const removed = await send(server, "DELETE", `/api/secrets/${canaryName}`, {
+          headers: jsonHeaders,
+        });
+        for (const response of [saved, removed]) {
+          expect(response.status).toBe(409);
+          expect(response.headers.get("cache-control")).toBe("no-store");
+          const text = await response.text();
+          expect(JSON.parse(text)).toMatchObject({ code: "keys_read_only" });
+          expect(text).not.toContain(canaryName);
+          expect(text).not.toContain(canaryValue);
+        }
+        expect(errors).toEqual([]);
+      });
+
+      it("still runs the connection check first", async () => {
+        const { server } = setup({ keys: readOnly, password: true });
+        const lan = await lanSession(server);
+        const response = await put(server, "openai-key", valueBody(canaryValue), {
+          ...jsonHeaders,
+          ...lan,
+          host: lanHost,
+        });
+        expect(response.status).toBe(403);
+        expect(await response.json()).toMatchObject({ code: "secure_connection_required" });
+      });
+    });
+
     it("refuses a request from another site on every verb", async () => {
       const { server } = setup();
       for (const method of ["GET", "PUT", "DELETE"]) {

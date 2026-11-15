@@ -30,6 +30,18 @@ export function providerKeysOf(store: SecretStore): ProviderKeyStore {
   };
 }
 
+/**
+ * What a {@link ProviderKeyStore} throws from `set` or `remove` when its keys
+ * are fixed where the server runs, such as a Worker's secrets. The routes
+ * answer 409 `keys_read_only` and log nothing: it is not a failure.
+ */
+export class ProviderKeysReadOnlyError extends Error {
+  constructor() {
+    super("The provider keys of this server can't be changed.");
+    this.name = "ProviderKeysReadOnlyError";
+  }
+}
+
 /** The headers of every answer, refusals included: a key's state is not for a cache. */
 const noStore = { "cache-control": "no-store" };
 
@@ -185,11 +197,17 @@ export function createProviderKeyRoutes({
     return attempt(async () => ({ stored: await store.has(name) }));
   }
 
-  /** Runs a store call. A failure reaches the error log as it is, with no URL or name around it, and the caller gets a fixed 500. */
+  /**
+   * Runs a store call. A read-only store gets its fixed 409. Any other failure reaches the error
+   * log as it is, with no URL or name around it, and the caller gets a fixed 500.
+   */
   async function attempt(run: () => Promise<Record<string, boolean>>): Promise<Response> {
     try {
       return answer(await run());
     } catch (cause) {
+      if (cause instanceof ProviderKeysReadOnlyError) {
+        return refuse(serverErrors.keysReadOnly);
+      }
       errorLog.record(cause);
       return refuse(serverErrors.internal);
     }

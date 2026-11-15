@@ -6,6 +6,7 @@ import { workerRuns } from "./runs-not-available.ts";
 import { createRuntime, type Runtime, type RuntimeOptions } from "./runtime.ts";
 import { serverConfigOf } from "./serve-config.ts";
 import { snapshotWebhooks } from "./snapshot-webhooks.ts";
+import { workerProviderKeys } from "./worker-provider-keys.ts";
 
 /**
  * The deployer uploaded the workspace this Worker runs, so it is trusted the
@@ -46,6 +47,7 @@ export function serverPortsOf(
     runs,
     runStore: runtime.runStore,
     secrets: runtime.secrets,
+    providerKeys: workerProviderKeys(runtime.secrets),
     passwordHasher: runtime.passwords,
     coordination: runtime.coordination,
     trust: deployerTrust,
