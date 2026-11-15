@@ -1,4 +1,4 @@
-import type { ServiceCheckOutcome } from "@halonicjs/google-setup";
+import type { ServiceCheckOutcome, SetupRecord, SetupService } from "@halonicjs/google-setup";
 import { listNames } from "./account-labels.ts";
 
 /** One service's result as step 7 reads it, from the record's last check. */
@@ -7,6 +7,24 @@ export interface ServiceResultLine {
   /** The service's name, such as "Drive". */
   readonly label: string;
   readonly result: ServiceCheckOutcome;
+}
+
+/**
+ * The ticked services whose check ran after the last sign-in. A result from an earlier sign-in
+ * says nothing about the grant the user just made, so it is left out, and so is a service that
+ * was never checked.
+ */
+export function currentResultLines(
+  services: readonly SetupService[],
+  record: Pick<SetupRecord, "lastSignInAt" | "services">,
+): ServiceResultLine[] {
+  if (record.lastSignInAt === null) return [];
+  const signedInAt = Date.parse(record.lastSignInAt);
+  return services.flatMap((service) => {
+    const checked = record.services[service.id];
+    if (checked === undefined || Date.parse(checked.checkedAt) < signedInAt) return [];
+    return [{ service: service.id, label: service.label, result: checked.result }];
+  });
 }
 
 /** What one line says and whether it passed. `enableUrl` is the API's page in the Console, for apiOff. */

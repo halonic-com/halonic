@@ -4,7 +4,7 @@ import { type ExternalAddress, OpenExternalProvider } from "@halonicjs/studio-ki
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { account, fakeAccounts, record } from "../accounts.test-helper.ts";
+import { account, atlas, fakeAccounts, ledger, record } from "../accounts.test-helper.ts";
 import type { GoogleSetupAccount } from "../api.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { GoogleSetupView } from "./google-setup-view.tsx";
@@ -254,6 +254,27 @@ verifies("google-setup.sign-in-results", () => {
     );
     expect(link?.getAttribute("href")).toBe("https://console.example.com/enable");
     expect(container.textContent).not.toContain("Google is set up for");
+  });
+
+  it("doesn't say Google is set up while a ticked service was never checked", async () => {
+    const setup = record(upToSignIn, {
+      ...ready,
+      lastSignInAt: checkedAt,
+      services: { ledger: { result: { kind: "works" }, checkedAt } },
+    });
+    const { container } = await open(account(setup, { services: [ledger, atlas] }));
+    expect(container.textContent).not.toContain("Google is set up for");
+  });
+
+  it("doesn't count a result from an earlier sign-in", async () => {
+    const setup = record(upToSignIn, {
+      ...ready,
+      lastSignInAt: "2026-11-12T03:00:00.000Z",
+      services: { ledger: { result: { kind: "works" }, checkedAt } },
+    });
+    const { container } = await open(account(setup));
+    expect(container.textContent).not.toContain("Google is set up for");
+    expect(container.textContent).not.toContain("Ledger works");
   });
 
   it("shows no results before a service was checked", async () => {

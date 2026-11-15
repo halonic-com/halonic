@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allPassedText, resultText } from "./result-lines.ts";
+import { allPassedText, currentResultLines, resultText } from "./result-lines.ts";
 
 const gmail = { service: "gmail", label: "Gmail", result: { kind: "works" } } as const;
 const drive = { service: "drive", label: "Drive", result: { kind: "allowed" } } as const;
@@ -58,5 +58,34 @@ describe("allPassedText", () => {
     expect(allPassedText("x@example.com", [gmail, drive])).toBe(
       "Google is set up for x@example.com. Gmail works. Drive is allowed.",
     );
+  });
+});
+
+describe("currentResultLines", () => {
+  const services = [
+    { id: "gmail", label: "Gmail", googleApis: [], googleScopes: [] },
+    { id: "drive", label: "Drive", googleApis: [], googleScopes: [] },
+  ];
+  const result = { kind: "works" } as const;
+
+  it("keeps results checked at or after the last sign-in", () => {
+    const lines = currentResultLines(services, {
+      lastSignInAt: "2026-11-12T02:00:00.000Z",
+      services: {
+        gmail: { result, checkedAt: "2026-11-12T02:00:00.000Z" },
+        drive: { result, checkedAt: "2026-11-12T01:59:59.000Z" },
+      },
+    });
+    expect(lines.map((line) => line.service)).toEqual(["gmail"]);
+  });
+
+  it("has none before any sign-in", () => {
+    const checkedAt = "2026-11-12T02:00:00.000Z";
+    expect(
+      currentResultLines(services, {
+        lastSignInAt: null,
+        services: { gmail: { result, checkedAt } },
+      }),
+    ).toEqual([]);
   });
 });

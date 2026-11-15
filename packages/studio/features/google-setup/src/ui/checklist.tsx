@@ -9,6 +9,7 @@ import { credentialSaves } from "./credential-saves.ts";
 import { failureLine } from "./failure-line.ts";
 import { useNotAnswering } from "./not-answering.tsx";
 import { ProblemBanner } from "./problem-banner.tsx";
+import { currentResultLines } from "./result-lines.ts";
 import { StepBody, type StepBodyProps } from "./step-body.tsx";
 import { StepMark, type StepState, stepStateWords } from "./step-mark.tsx";
 import { foldedValue, stepWhy } from "./step-text.ts";
@@ -231,12 +232,8 @@ export function Checklist(props: ChecklistProps) {
                   }}
                   results={{
                     email: account.email,
-                    lines: account.services.flatMap((service) => {
-                      const checked = account.record.services[service.id];
-                      return checked === undefined
-                        ? []
-                        : [{ service: service.id, label: service.label, result: checked.result }];
-                    }),
+                    ticked: account.services.length,
+                    lines: currentResultLines(account.services, account.record),
                   }}
                   answering={answering}
                   busy={busy}
