@@ -188,7 +188,7 @@ export interface WorkflowsHost {
    * Saves the real run `runId` as a test case called `name` in the workflow's test file: the run's
    * input, and the step it ended in as the step the case expects. Absent while the app can't write
    * test cases, so the run card shows no **Save as test**. Rejects with the reason it couldn't be
-   * written.
+   * written, and rejects a name another test case already has.
    */
   saveRunAsTest?(ref: WorkflowRef, runId: string, name: string): Promise<void>;
   /**

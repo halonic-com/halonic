@@ -173,4 +173,37 @@ verifies("workflows.runs.save-as-test", () => {
     expect(document.body.textContent).toContain("Couldn't create the test: The disk is full.");
     expect(dialogInput()).not.toBeNull();
   });
+
+  it("shows the new case when the run is saved from the dock while on Configuration", async () => {
+    let cases: WorkflowTests["cases"] = [happyPath];
+    const { host } = memoryHost([], [], [reply], [configuration], {
+      tests: async () => ({ cases }),
+      startRun: async () => ({ runId: "run_mfx3k2a1_01jd8q" }),
+      saveRunAsTest: async (_ref: unknown, _runId: string, name: string) => {
+        cases = [...cases, { name, input: "{}" }];
+      },
+    });
+    const runs = memoryRuns([finished]);
+    const page = await show(
+      <WorkflowScreen host={host} runs={runs.source} hubId="acme" id="reply" />,
+    );
+    const tab = (label: string) =>
+      [...page.querySelectorAll<HTMLElement>("[role=tab]")].find((one) =>
+        one.textContent?.startsWith(label),
+      );
+    await click(tab("Configuration"));
+    await click(
+      [...page.querySelectorAll("button")].find((button) => button.textContent?.trim() === "Run"),
+    );
+    await click(buttonNamed(page, "Start run"));
+    await click(buttonNamed(page, "Save as test"));
+
+    await typeInto(dialogInput() as HTMLInputElement, "Quick reply");
+    await click(buttonNamed(document.body, "Create test"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(page.querySelector("aside[aria-label='Test Quick reply']")).not.toBeNull();
+  });
 });

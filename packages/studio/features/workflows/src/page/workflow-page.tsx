@@ -13,7 +13,7 @@ import {
   useTabIds,
 } from "@halonicjs/studio-kit";
 import { engineWordsOf, type ItemViewProps } from "@halonicjs/studio-shell";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { type WorkflowRef, type WorkflowsHost, WorkflowsHostService } from "../api.ts";
 import type { View } from "../canvas/geometry.ts";
 import { Configuration } from "../configuration/configuration-page.tsx";
@@ -104,7 +104,11 @@ export function WorkflowScreen({
   // The step picked on the canvas, which says what happened to it while a run is shown (4.5).
   const [pickedStep, setPickedStep] = useState<string | undefined>();
   // The test just made from a run: Configuration opens on Tests with it picked.
-  const [madeTest, setMadeTest] = useState<string | undefined>();
+  // `n` counts the tests made, so each one remounts Configuration and the Tests page reads again.
+  const [madeTest, setMadeTest] = useState<
+    { readonly name: string; readonly n: number } | undefined
+  >();
+  const testsMade = useRef(0);
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
   const errors =
@@ -120,7 +124,8 @@ export function WorkflowScreen({
   const strip = shown?.line;
   const { startRun } = host;
   const saveAsTest = useSaveAsTest(host, { hubId, id }, (testName) => {
-    setMadeTest(testName);
+    testsMade.current += 1;
+    setMadeTest({ name: testName, n: testsMade.current });
     setDock(undefined);
     setView("configuration");
   });
@@ -148,6 +153,8 @@ export function WorkflowScreen({
           onSelect={(next) => {
             // A direct tab click must not re-pick the card a problem link opened.
             setOpenStep(undefined);
+            // The test just made was shown once; coming back opens Configuration on General.
+            if (next !== view) setMadeTest(undefined);
             setView(next);
           }}
           ids={ids}
@@ -182,6 +189,7 @@ export function WorkflowScreen({
         >
           {view === "configuration" && (
             <Configuration
+              key={madeTest?.n ?? 0}
               name={name}
               load={settings.load}
               retry={settings.retry}
@@ -191,12 +199,13 @@ export function WorkflowScreen({
                   workflow={{ hubId, id }}
                   name={name}
                   openRun={openRun}
-                  pickName={madeTest}
+                  pickName={madeTest?.name}
                 />
               }
               startOn={madeTest === undefined ? undefined : "tests"}
               onOpenStep={(stepId) => {
                 setOpenStep(stepId);
+                setMadeTest(undefined);
                 setView("flow");
               }}
             />
@@ -240,7 +249,11 @@ export function WorkflowScreen({
           notAnswering={notAnswering}
           shown={shown}
           onDock={setDock}
-          onStarted={setShownId}
+          onStarted={(runId) => {
+            setShownId(runId);
+            // A step picked before the run isn't about this run: its card would hide the run's.
+            setPickedStep(undefined);
+          }}
           openRun={openRun}
           saveAsTest={saveAsTest}
           pickedStep={view === "flow" ? pickedStep : undefined}

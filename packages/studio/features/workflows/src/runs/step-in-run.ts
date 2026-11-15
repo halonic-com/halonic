@@ -28,6 +28,8 @@ export function stepInRun(stepId: string, row: RunRow, run: SourcedRun): StepInR
           budget: words.stepStopped(shortId),
           cancelled: words.stepCancelled(shortId),
           running: words.stepRunning(shortId),
+          // A run that couldn't be tried has no step of its own to blame; the run strip reads it the
+          // same way (`start/run-strip.ts`), so the step says the same as the strip.
           "cant-try": words.stepRunning(shortId),
           waiting: words.stepNeedsYou(shortId),
           "needs-you": words.stepNeedsYou(shortId),

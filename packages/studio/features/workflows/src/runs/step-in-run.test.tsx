@@ -188,4 +188,27 @@ verifies("workflows.runs.step-in-run", () => {
 
     expect(stepCard(page)).toBeNull();
   });
+
+  it("docks the new run's card, not a step picked before the run started", async () => {
+    const runs = memoryRuns([runSummary({ statesVisited: ["read", "draft"] })]);
+    const { host } = memoryHost([], [], [reply], [], {
+      startRun: async () => ({ runId: "run_mfx3k2a1_01jd8q" }),
+    });
+    const page = await show(
+      <WorkflowScreen host={host} runs={runs.source} hubId="acme" id="reply" />,
+    );
+    await click(
+      [...page.querySelectorAll<HTMLButtonElement>("button[aria-pressed]")].find((card) =>
+        card.textContent?.includes("draft"),
+      ),
+    );
+
+    await click(
+      [...page.querySelectorAll("button")].find((button) => button.textContent?.trim() === "Run"),
+    );
+    await click(buttonNamed(page, "Start run"));
+
+    expect(stepCard(page)).toBeNull();
+    expect(page.textContent).toContain("01jd8q");
+  });
 });
