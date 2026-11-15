@@ -1,7 +1,7 @@
 # Decision: the run card shows the receipt instead of the line and the steps so far
 
 - Task: HAL-8395 (T8 PR 6)
-- Approval: Liam, in review of the pull request (his signature is added there)
+- Approval: Liam, in the review on HAL-10361 (/HAL/issues/HAL-10361)
 - Kind: user-visible
 
 ## What changes
