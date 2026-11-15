@@ -7,6 +7,10 @@ import {
 import { type ServiceRegistry, type WorkspaceScope, workspaceFilesKey } from "@halonicjs/app";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
+import {
+  LibraryItemsHostService,
+  LibraryTabMemoryService,
+} from "@halonicjs/studio-feature-library/api";
 import { ModelKeysService, ModelsFilesService } from "@halonicjs/studio-feature-models/api";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import { ChangesSourceService } from "@halonicjs/studio-feature-source-control/api";
@@ -15,6 +19,8 @@ import { shellKeychain, type TauriIpc, tauriAgentHostTransport } from "@halonicj
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
 import { provideLibraryServices } from "../library/provide-library-services.ts";
+import { WorkspaceLibraryItems } from "../library/workspace-library-items.ts";
+import { WorkspaceLibraryTab } from "../library/workspace-library-tab.ts";
 import { WorkspaceModelKeys } from "../models/workspace-model-keys.ts";
 import { WorkspaceModelsFiles } from "../models/workspace-models-files.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
@@ -66,6 +72,14 @@ export function provideFolderServices(
     }),
   );
   const transport = tauriAgentHostTransport(window);
+  services.provide(
+    LibraryItemsHostService,
+    new WorkspaceLibraryItems({
+      files: services.get(workspaceFilesKey),
+      onChange: (listener) => scope.events.on("files.changed", listener),
+    }),
+  );
+  services.provide(LibraryTabMemoryService, new WorkspaceLibraryTab(storageOf(window), location));
   provideGoogleSetup(services, {
     ipc,
     files,
@@ -107,4 +121,13 @@ function focusOf(window: object, listener: () => void): () => void {
   if (!(window instanceof EventTarget)) return () => {};
   window.addEventListener("focus", listener);
   return () => window.removeEventListener("focus", listener);
+}
+
+/** The window's local storage, or `undefined` when it has none or won't give it. */
+function storageOf(window: object): Storage | undefined {
+  try {
+    return "localStorage" in window ? (window.localStorage as Storage) : undefined;
+  } catch {
+    return undefined;
+  }
 }

@@ -1,9 +1,9 @@
 import type { LibraryItemKind } from "@halonicjs/app";
-import { TabList, TabPanel, useTabIds } from "@halonicjs/studio-kit";
+import { TabList, TabPanel, usePresentation, useTabIds } from "@halonicjs/studio-kit";
 import { OverviewPage } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { LibraryItemsHost, LibraryListing } from "../library-items-host.ts";
-import { libraryOverview } from "../library-overview.ts";
+import { entryOfRow, type LibraryEntryPlace, libraryOverview } from "../library-overview.ts";
 import {
   couldntLoad,
   libraryKinds,
@@ -20,8 +20,8 @@ export interface LibraryPageProps {
   /** The tab that shows. The app keeps it for each workspace. */
   readonly kind: LibraryItemKind;
   readonly onKindChange: (kind: LibraryItemKind) => void;
-  readonly onOpen: (kind: LibraryItemKind, id: string) => void;
-  readonly onOpenInNewTab: (kind: LibraryItemKind, id: string) => void;
+  readonly onOpen: (kind: LibraryItemKind, entry: LibraryEntryPlace) => void;
+  readonly onOpenInNewTab: (kind: LibraryItemKind, entry: LibraryEntryPlace) => void;
   /** The New button of a tab that has one. Without it, no tab shows the button. */
   readonly onNew?: (kind: LibraryItemKind) => void;
   /** The Knowledge empty state's button. Without it, the empty state has no button. */
@@ -75,8 +75,8 @@ function useListing(
 
 /**
  * The Library: one sentence, four tabs (Skills, Knowledge, Collections, Connectors) and, under
- * them, the shell's overview page with that tab's items and their "Used by". It owns no
- * place yet: the app registers it (HAL-1303 P4b).
+ * them, the shell's overview page with that tab's items and their "Used by". The Library
+ * place shows it ({@link LibraryPlace}).
  */
 export function LibraryPage({
   host,
@@ -87,6 +87,7 @@ export function LibraryPage({
   onNew,
   onOpenDocsFolder,
 }: LibraryPageProps) {
+  const phone = usePresentation() === "phone";
   const ids = useTabIds();
   const tabs = useMemo(() => libraryKinds.map((each) => ({ id: each, label: tabLabel(each) })), []);
   const { load, retry } = useListing(host, kind);
@@ -98,6 +99,7 @@ export function LibraryPage({
 
   return (
     <div>
+      <h1 className={phone ? "sr-only" : "px-4 pt-4 text-title"}>Library</h1>
       <p className="px-4 pt-2 text-small text-fg-muted">{tabSentence(kind)}</p>
       <div className="px-4 py-2">
         <TabList label="Library" tabs={tabs} selected={kind} onSelect={onKindChange} ids={ids} />
@@ -117,8 +119,8 @@ export function LibraryPage({
                 },
               }
             : {})}
-          onOpen={(id) => onOpen(kind, id)}
-          onOpenInNewTab={(id) => onOpenInNewTab(kind, id)}
+          onOpen={(row) => onOpen(kind, entryOfRow(row))}
+          onOpenInNewTab={(row) => onOpenInNewTab(kind, entryOfRow(row))}
           {...(onNew !== undefined && label !== undefined
             ? { newButton: { label, onClick: () => onNew(kind) } }
             : {})}

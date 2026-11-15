@@ -16,6 +16,15 @@ export {
   type RecordedRefusal,
 } from "./connector-status-host.ts";
 export {
+  type LibraryEntry,
+  type LibraryHubEntries,
+  type LibraryItemsHost,
+  LibraryItemsHostService,
+  type LibraryListing,
+} from "./library-items-host.ts";
+export { type LibraryTabMemory, LibraryTabMemoryService } from "./library-tab-memory.ts";
+export { libraryKinds } from "./library-words.ts";
+export {
   type ListedToolsHost,
   ListedToolsHostService,
   type ListedToolsSnapshot,

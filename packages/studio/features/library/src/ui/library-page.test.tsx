@@ -126,7 +126,7 @@ verifies("library.library-page", () => {
       each.textContent?.includes("Acme refunds"),
     );
     act(() => cell?.click());
-    expect(onOpen).toHaveBeenCalledWith("skill", "refunds");
+    expect(onOpen).toHaveBeenCalledWith("skill", { hub: "acme", id: "refunds" });
   });
 
   it("offers Open the docs folder in the empty Knowledge tab, and only there", async () => {
