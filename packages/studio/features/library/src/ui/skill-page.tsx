@@ -29,7 +29,14 @@ export function SkillPage({ item, context }: ItemViewProps) {
   if (model === undefined) {
     return <Gone context={context} />;
   }
-  return <LoadedSkillPage item={item} context={context} model={model} />;
+  return (
+    <LoadedSkillPage
+      key={`${item.hub ?? ""}/${item.id}`}
+      item={item}
+      context={context}
+      model={model}
+    />
+  );
 }
 
 function Gone({ context }: Pick<ItemViewProps, "context">) {

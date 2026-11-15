@@ -97,5 +97,28 @@ verifies("library.skill-page", () => {
       const { model } = await opened({ text: "no header", files: [] });
       expect(model.state).toMatchObject({ loaded: true, unreadable: true });
     });
+
+    it("keeps a save when the refresh after it fails, so the next save builds on it", async () => {
+      let text = skillText;
+      let reads = 0;
+      const host: SkillHost = {
+        read: async () => {
+          if (++reads > 1) throw new Error("offline");
+          return { text, files: [] };
+        },
+        write: async (_skill, next) => {
+          text = next;
+        },
+        usage: async () => noUsage,
+        subscribe: () => () => {},
+      };
+      const model = new SkillModel(host, { hub: null, id: "refunds" });
+      await model.refresh();
+      await model.leave({ name: "Acme refunds" });
+      await model.leave({ description: "Use for Acme refunds" });
+      expect(text).toContain("name: Acme refunds");
+      expect(text).toContain("description: Use for Acme refunds");
+      expect(model.state.parts?.name).toBe("Acme refunds");
+    });
   });
 });

@@ -118,6 +118,16 @@ export class SkillModel {
     } catch {
       return false;
     }
+    // What was written is the text now, even if the refresh below fails or is late: the next
+    // leave edits on top of it. An older read still in flight no longer counts.
+    this.latest++;
+    this.text = edited.value;
+    const read = readSkillText(edited.value);
+    this.set({
+      ...this.state,
+      unreadable: !read.ok,
+      ...(read.ok ? { parts: read.value } : {}),
+    });
     await this.refresh();
     return true;
   }
