@@ -77,11 +77,14 @@ export interface WorkflowProblem {
   readonly stepId?: string | undefined;
 }
 
-/** One input of the request form, as the workflow file says it. */
+/**
+ * One input of the request form, as the workflow file says it. The file does not carry a type or a
+ * required flag yet, so both are absent until the format does.
+ */
 export interface WorkflowRequestField {
   readonly name: string;
-  readonly type: "email" | "text" | "long-text";
-  readonly required: boolean;
+  readonly type?: "email" | "text" | "long-text" | undefined;
+  readonly required?: boolean | undefined;
 }
 
 /** What the workflow offers in the Inbox as a request: the title of its form and its inputs. */

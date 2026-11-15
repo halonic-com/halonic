@@ -161,7 +161,10 @@ export class WorkspaceWorkflows implements WorkflowsHost {
       initial: value.initial,
       stepIds: Object.keys(value.states),
       file: file.path,
-      request: value.start,
+      request: value.start && {
+        label: value.start.label,
+        fields: [{ name: value.start.field }],
+      },
       problems: workspace.issues
         .filter((issue) => issue.file === file.path)
         .map((issue) => ({

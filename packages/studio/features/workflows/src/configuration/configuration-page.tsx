@@ -151,10 +151,12 @@ function ConfigurationBody({
                   {request.fields.map((field) => (
                     <li key={field.name} className="flex items-center gap-3">
                       <span>{field.name}</span>
-                      <span className="text-small text-fg-muted">
-                        {words.fieldTypes[field.type]}
-                      </span>
-                      {field.required && (
+                      {field.type !== undefined && (
+                        <span className="text-small text-fg-muted">
+                          {words.fieldTypes[field.type]}
+                        </span>
+                      )}
+                      {field.required === true && (
                         <span className="ms-auto text-small text-fg-muted">{words.required}</span>
                       )}
                     </li>

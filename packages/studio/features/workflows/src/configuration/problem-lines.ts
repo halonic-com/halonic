@@ -4,8 +4,9 @@ import type { WorkflowProblem } from "../api.ts";
 export const problemGlyph = { error: "✕", warning: "△" } as const;
 
 /**
- * The short line of each check, for a step card (HAL-413); its tooltip and Configuration › Problems carry the core's full message. It starts
- * with a capital, leaves out the step's name (the card shows it) and is about 25 characters.
+ * The short line of each check, for a step card (HAL-413); its tooltip and Configuration › Problems
+ * carry the core's full message. It starts with a capital, leaves out the step's name (the card
+ * shows it) and is about 25 characters.
  */
 const stepLines: Readonly<Record<string, string>> = {
   "unknown-target": "Goes to a missing step",

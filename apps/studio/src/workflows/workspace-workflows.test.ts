@@ -237,6 +237,16 @@ verifies("studio.workspace-workflow-read", () => {
     });
   });
 
+  it("gives the request form's one field by name only, without a made-up type or flag", async () => {
+    const { host, store } = setup();
+    store["hubs/acme/workflows/reply.workflow.yaml"] =
+      "id: reply\nname: Reply\ninitial: first\nstart:\n  label: Ask a question\n  field: question\nstates:\n  first:\n    type: final\n";
+
+    const settings = await host.configuration({ hubId: "acme", id: "reply" });
+
+    expect(settings.request).toEqual({ label: "Ask a question", fields: [{ name: "question" }] });
+  });
+
   it("rejects the settings of a workflow the hub doesn't have", async () => {
     await expect(setup().host.configuration({ hubId: "acme", id: "gone" })).rejects.toThrow(
       'The hub "acme" has no workflow "gone".',
