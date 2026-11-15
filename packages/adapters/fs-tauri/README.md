@@ -6,6 +6,12 @@ The `TrustStore`, `RunStore`, `BlobStore`, `RecordStore`, `DefinitionStore`, `Fo
   `trust_revoke` command. The shell keeps the records in the `trust` folder of the profile, laid out
   as `FileTrustStore` in `fs-node` lays it out, so the CLI and the desktop app read and write the
   same records.
+- `TauriInstructionTrustStore`: every call goes to the shell's `instruction_trust_get`,
+  `instruction_trust_save` or `instruction_trust_remove` command. The shell keeps the pins a person
+  trusted for each agent in the profile, as `FileInstructionTrustStore` in `fs-node` keeps them. A save
+  only asks: the shell shows its own dialog and writes the record when the person says yes; a no
+  rejects as `denied`. What the shell answers is checked again, so another agent's record is never
+  trust.
 - `TauriRunStore`: every call goes to the shell's `run_append`, `run_events`, `run_snapshot` or
   `run_logs` command. The shell keeps the runs in the profile's run folder for the workspace, laid
   out as `FolderRunStore` in `fs-node` lays it out, and holds the run's lock file while it appends,
