@@ -17,6 +17,7 @@ afterEach(() => {
 function setup(hubIds: readonly string[] = ["acme"], create?: NewSkillHost["create"]) {
   const made = vi.fn(async () => ({ hub: "acme", id: "refunds" }));
   const host: NewSkillHost = {
+    prepare: async () => {},
     hubs: () => hubIds.map((id) => ({ id, name: id })),
     folder: ({ name }) =>
       `hubs/acme/library/skills/${name.trim() === "" ? "" : `${name.trim().toLowerCase()}/`}`,

@@ -53,7 +53,7 @@ export function LibraryPlace({ context }: PlaceViewProps) {
         // Only Skills has a New dialog so far; the other tabs show no button until theirs lands.
         {...(newSkillHost === undefined || kind !== "skill"
           ? {}
-          : { onNew: () => setMakingSkill(true) })}
+          : { onNew: () => void newSkillHost.prepare().then(() => setMakingSkill(true)) })}
       />
       {makingSkill && newSkillHost !== undefined && (
         <NewSkillDialog
