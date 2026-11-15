@@ -7,6 +7,7 @@
 @import "@halonicjs/studio-kit";
 
 @source "../../src";
-@source "../../../kit/src";
+@source "../../../../kit/src";
+@source "../../../runs/src";
 @source ".";
-@source not "../../../**/*.md";
+@source not "../../../../**/*.md";
