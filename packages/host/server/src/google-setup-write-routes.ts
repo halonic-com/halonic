@@ -123,12 +123,26 @@ export function createGoogleSetupWriteRoutes({
   const { setups } = google;
 
   /**
+   * The write that runs last. Each write waits for it, so a start never reads
+   * "no record" while another start or a start over is still writing.
+   */
+  let lastWrite: Promise<unknown> = Promise.resolve();
+
+  /** Runs `write` after every write before it has finished, whether it failed or not. */
+  function oneAtATime<Result>(write: () => Promise<Result>): Promise<Result> {
+    const result = lastWrite.then(write, write);
+    lastWrite = result.catch(() => undefined);
+    return result;
+  }
+
+  /**
    * `POST /api/google/setups` with `{ accountType, connector: { workspace, id } }`:
    * starts a record for that connector and answers 201 with its `accountRef`.
    * A connector that already has a record keeps it: the answer is 200 with
    * that record's `accountRef` and nothing is written, so two quick starts
-   * make one record. The connector link is how a record finds its Inbox item, so a link that
-   * breaks the name rules is a 400 and nothing is written.
+   * make one record, even when they arrive together: writes run one at a
+   * time. The connector link is how a record finds its Inbox item, so a link
+   * that breaks the name rules is a 400 and nothing is written.
    */
   async function start(request: Request, body: Uint8Array): Promise<Response> {
     const refusal = refuseOtherSite(request);
@@ -140,17 +154,20 @@ export function createGoogleSetupWriteRoutes({
     if (fields === null || connector === null || !isAccountType(fields["accountType"])) {
       return errorResponse(serverErrors.badRequest);
     }
+    const accountType = fields["accountType"];
     try {
-      const existing = await setups.forConnector(connector.workspace, connector.id);
-      if (existing !== null) {
-        return Response.json({ accountRef: existing.accountRef });
-      }
-      const record = await setups.start({
-        route: { app: "own", runsOn: "this-computer" },
-        accountType: fields["accountType"],
-        connector,
+      return await oneAtATime(async () => {
+        const existing = await setups.forConnector(connector.workspace, connector.id);
+        if (existing !== null) {
+          return Response.json({ accountRef: existing.accountRef });
+        }
+        const record = await setups.start({
+          route: { app: "own", runsOn: "this-computer" },
+          accountType,
+          connector,
+        });
+        return Response.json({ accountRef: record.accountRef }, { status: 201 });
       });
-      return Response.json({ accountRef: record.accountRef }, { status: 201 });
     } catch (error) {
       if (error instanceof SetupRecordError && error.reason === "refused") {
         return errorResponse(serverErrors.badRequest);
@@ -201,8 +218,10 @@ export function createGoogleSetupWriteRoutes({
    * `POST /api/google/setups/<ref>/start-over`: removes the record, the
    * refresh token and the client secret (not while another account uses the
    * client), without asking Google, and starts a fresh record for the same
-   * connector and account type in the same step, so there is no moment
-   * with no record. Answers `{ clientSecret, accountRef }` with what happened
+   * connector and account type in the same step. It runs between other
+   * writes, so a start can't add a second record in the middle. If the fresh
+   * record can't be started after the removal, the connector is left with no
+   * record and the error goes to the caller. Answers `{ clientSecret, accountRef }` with what happened
    * to the secret and the fresh record's ref. `disconnect` is the route that
    * also revokes.
    */
@@ -211,20 +230,22 @@ export function createGoogleSetupWriteRoutes({
     if (refusal !== null) {
       return errorResponse(refusal);
     }
-    const old = await readSetup(setups, accountRef);
-    if (old === null) {
-      return errorResponse(serverErrors.googleSetupNotFound);
-    }
-    const secret = await startOver(
-      { setups, secrets: google.clientSecrets, tokens: google.tokens },
-      accountRef,
-    );
-    const fresh = await setups.start({
-      route: old.route,
-      accountType: old.accountType,
-      connector: old.connector,
+    return oneAtATime(async () => {
+      const old = await readSetup(setups, accountRef);
+      if (old === null) {
+        return errorResponse(serverErrors.googleSetupNotFound);
+      }
+      const secret = await startOver(
+        { setups, secrets: google.clientSecrets, tokens: google.tokens },
+        accountRef,
+      );
+      const fresh = await setups.start({
+        route: old.route,
+        accountType: old.accountType,
+        connector: old.connector,
+      });
+      return Response.json({ clientSecret: secret, accountRef: fresh.accountRef });
     });
-    return Response.json({ clientSecret: secret, accountRef: fresh.accountRef });
   }
 
   return { start, edit, startOver: startOverRoute };

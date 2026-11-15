@@ -26,7 +26,9 @@ export interface GoogleSetupHost {
    * Removes the record, the sign-in and the client secret (unless another account uses it),
    * without asking Google, and starts a fresh record for the same connector, all in one step.
    */
-  startOver(accountRef: string): Promise<unknown>;
+  startOver(
+    accountRef: string,
+  ): Promise<{ readonly clientSecret: string; readonly accountRef: string }>;
   /** Starts the sign-in and answers the address to open in the browser. */
   startSignIn(accountRef: string): Promise<string>;
   /** Drops the pending sign-in. */
