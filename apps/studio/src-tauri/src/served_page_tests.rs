@@ -105,6 +105,7 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "secret_delete",
         "pick_folder",
         "documents_folder",
+        "system_region",
         "pick_parent_folder",
         "create_workspace_folder",
         "probe_workspace_folder",

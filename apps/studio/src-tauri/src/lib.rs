@@ -32,6 +32,7 @@ mod files;
 mod git;
 mod google_setups;
 mod host_settings;
+mod system_region;
 mod native_dialogs;
 mod navigation;
 mod plugin_folder;
@@ -137,6 +138,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             secrets::secret_delete,
             trust::pick_folder,
             trust::documents_folder,
+            system_region::system_region,
             trust::pick_parent_folder,
             trust::create_workspace_folder,
             trust::probe_workspace_folder,

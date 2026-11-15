@@ -48,6 +48,7 @@ halonic-trust-store = { path = "crates/trust-store" }
 halonic-update-state = { path = "crates/update-state" }
 halonic-workspace-files = { path = "crates/workspace-files" }
 serde = { version = "1", features = ["derive"] }
+sys-locale = "0.3"
 serde_json = "1"
 tauri = { version = "=2.12.5", features = [] }
 # The plugins are pinned with tauri, for the same reason. The http plugin

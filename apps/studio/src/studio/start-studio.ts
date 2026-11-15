@@ -242,12 +242,18 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     recent: new RecentWorkspaces(page.storage ?? noStorage),
     toasts: shell.toasts,
   });
-  const window = mountWorkspaceWindow(page.element, {
+  const parts = {
     shell,
     switcher,
     platform,
     language: studioLanguage,
     ...newWorkspaceOf(page.window, platform),
+  };
+  const window = mountWorkspaceWindow(page.element, parts);
+  // Formats follows the system's region once the shell has read it; until then, the browser's.
+  let stoppedAlready = false;
+  void systemRegion(ipc).then((regionFormat) => {
+    if (regionFormat !== undefined && !stoppedAlready) window.update({ ...parts, regionFormat });
   });
   const stopListening = onWindowCloseRequested(page.window, async () => {
     // A save that fails keeps the window open on "Close Acme?" (HAL-9370); a hung one doesn't.
@@ -257,6 +263,7 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     return true;
   });
   const stopped = once(async () => {
+    stoppedAlready = true;
     await stopListening();
     window.unmount();
     stopAppearance();
@@ -469,6 +476,16 @@ export function displaySettingsOf(page: Pick<StudioPage, "window" | "storage">):
 /** The page's `<html>`, where the Appearance settings show, so the whole window follows them. */
 function rootOf(element: Element): HTMLElement {
   return element.ownerDocument.documentElement;
+}
+
+/** The region and language the computer is set to, as a BCP 47 tag, or `undefined` when it names none or can't be read. */
+async function systemRegion(ipc: TauriIpc): Promise<string | undefined> {
+  try {
+    const region = await ipc.invoke("system_region");
+    return typeof region === "string" ? region : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** The shell's folder picker: the picked folder's location, or `undefined` when cancelled. */

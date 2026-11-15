@@ -6,6 +6,8 @@ import { WorkspaceWindow, type WorkspaceWindowProps } from "./workspace-window.t
 export interface MountedWorkspaceWindow {
   /** Removes the window from its element. Call it once, when the page goes. */
   unmount(): void;
+  /** Draws the window again with other props, keeping what it holds (tabs, open dialogs). */
+  update(props: WorkspaceWindowProps): void;
 }
 
 /**
@@ -23,10 +25,12 @@ export function mountWorkspaceWindow(
   props: WorkspaceWindowProps,
 ): MountedWorkspaceWindow {
   const root = createRoot(element);
-  root.render(
-    <StrictMode>
-      <WorkspaceWindow {...props} />
-    </StrictMode>,
-  );
-  return { unmount: () => root.unmount() };
+  const render = (shown: WorkspaceWindowProps) =>
+    root.render(
+      <StrictMode>
+        <WorkspaceWindow {...shown} />
+      </StrictMode>,
+    );
+  render(props);
+  return { unmount: () => root.unmount(), update: render };
 }

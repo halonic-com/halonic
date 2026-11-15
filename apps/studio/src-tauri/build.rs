@@ -14,6 +14,7 @@ fn main() {
         "secret_delete",
         "pick_folder",
         "documents_folder",
+        "system_region",
         "pick_parent_folder",
         "create_workspace_folder",
         "probe_workspace_folder",
