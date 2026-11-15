@@ -5,10 +5,6 @@
 - Approval: HAL-9827, Liam's task; Liam reviews and signs this note
 - Kind: internal
 
-## Covers
-
-- `server.google-sign-in`
-
 ## What changes
 
 The requirement grows; nothing it allowed before is refused and no test was weakened.
@@ -21,3 +17,7 @@ like the other setup routes.
 
 The build plan (D7) says Cancel drops the pending sign-in on the host. Without a route, a callback
 that arrives after Cancel would still be accepted.
+
+## Covers
+
+- `server.google-sign-in`
