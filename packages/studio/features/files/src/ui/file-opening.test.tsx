@@ -12,7 +12,6 @@ afterEach(unmountAll);
 const host: FilesHost = {
   list: async () => ({ paths: ["hubs/p/hub.yaml", "models.yaml"], marks: new Map() }),
   subscribe: () => () => {},
-  onReloaded: () => () => {},
   read: async () => null,
   edit: () => {},
   problems: async () => [],

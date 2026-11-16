@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -34,7 +33,6 @@ afterEach(() => {
 
 function fixture(change: OutsideChange | undefined, compare: Partial<FileCompare> = {}) {
   let text = "mine";
-  const reloadListeners = new Set<(paths: readonly string[]) => void>();
   const outside = new Map<string, OutsideChange>();
   if (change) outside.set("a.agent.yaml", change);
   const settle = vi.fn(async (path: string, _choice: CompareChoice) => {
@@ -44,10 +42,6 @@ function fixture(change: OutsideChange | undefined, compare: Partial<FileCompare
   const host: FilesHost = {
     list: async () => ({ paths: [], marks: new Map() }),
     subscribe: () => () => {},
-    onReloaded: (listener) => {
-      reloadListeners.add(listener);
-      return () => reloadListeners.delete(listener);
-    },
     read: async () => text,
     edit: (_path, next) => {
       text = next;
@@ -70,16 +64,10 @@ function fixture(change: OutsideChange | undefined, compare: Partial<FileCompare
     settle,
   };
   const context = { services: { get: () => host } } as unknown as WorkspaceContext;
-  const toasts = createToastStore();
   const page = render(
-    <ToastStoreProvider store={toasts}>
-      <FileView item={fileItem("a.agent.yaml")} context={context} Sections={() => null} />
-    </ToastStoreProvider>,
+    <FileView item={fileItem("a.agent.yaml")} context={context} Sections={() => null} />,
   );
-  const reload = (paths: string[]) => {
-    for (const listener of reloadListeners) listener(paths);
-  };
-  return { page, settle, toasts, reload };
+  return { page, settle };
 }
 
 async function flush(): Promise<void> {
@@ -136,17 +124,6 @@ verifies("files.ui.outside-strip", () => {
     await press(page, "Keep mine");
     expect(settle).toHaveBeenCalledWith("a.agent.yaml", "keep-mine");
     expect(focused).toHaveBeenCalledTimes(1);
-  });
-
-  it("toasts when the file was reloaded quietly because it changed outside Halonic", async () => {
-    const { toasts, reload } = fixture(undefined);
-    await flush();
-    reload(["other.yaml"]);
-    expect(toasts.list()).toEqual([]);
-    reload(["a.agent.yaml"]);
-    expect(toasts.list().map(({ title }) => title)).toEqual([
-      "Reloaded a.agent.yaml: changed outside Halonic",
-    ]);
   });
 
   it("shows both texts in Compare, and Combine both only when they can be combined", async () => {

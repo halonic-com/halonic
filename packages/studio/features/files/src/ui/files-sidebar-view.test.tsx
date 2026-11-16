@@ -49,7 +49,6 @@ verifies("files.ui.tree-view", () => {
   const hostOf = (value: FilesListing): FilesHost => ({
     list: async () => value,
     subscribe: () => () => {},
-    onReloaded: () => () => {},
     read: async () => null,
     edit: () => {},
     problems: async () => [],
@@ -183,7 +182,6 @@ verifies("files.ui.new-file", () => {
   const hostOf = (create: FilesHost["create"]): FilesHost => ({
     list: async () => listing(["agents/a.agent.yaml", "models.yaml"]),
     subscribe: () => () => {},
-    onReloaded: () => () => {},
     read: async () => null,
     edit: () => {},
     create,
@@ -313,7 +311,6 @@ function contextHost(): FilesHost {
   return {
     list: async () => listing(["agents/a.agent.yaml", "models.yaml"]),
     subscribe: () => () => {},
-    onReloaded: () => () => {},
     read: async () => null,
     edit: () => {},
     create: async () => {},

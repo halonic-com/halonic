@@ -44,7 +44,6 @@ function hostOf(read: FilesHost["read"], edit: FilesHost["edit"] = () => {}): Fi
   return {
     list: async () => ({ paths: [], marks: new Map() }),
     subscribe: () => () => {},
-    onReloaded: () => () => {},
     read,
     edit,
     problems: async () => [],

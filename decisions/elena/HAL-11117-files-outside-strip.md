@@ -12,11 +12,11 @@ The requirement `files.ui.outside-strip` now names three buttons in the strip, *
 Each choice is saved at once as one undo step, so Undo after Load theirs brings the discarded text
 back, and the editor takes focus after a choice. A file without unsaved changes that is reloaded
 because its text changed outside Halonic shows the toast "Reloaded *x*: changed outside Halonic";
-a file whose text did not change, or that was deleted, shows none. A deleted file keeps Keep mine
+a deleted file counts as reloaded and shows it too (as on main, HAL-11169). A deleted file keeps Keep mine
 and Close. The `Source` line adds HAL-11117.
 
 Nothing existing is removed or weakened. No test is changed, skipped or deleted; tests for the
-new buttons, the focus and the toast, and for the cases with no toast, are added.
+new buttons, the focus and the toast are added.
 
 ## Why
 

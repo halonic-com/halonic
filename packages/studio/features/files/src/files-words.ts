@@ -29,8 +29,6 @@ export const filesWords = {
   changedOutside: " changed outside Halonic.",
   deletedOutside: " was deleted outside Halonic.",
   loadTheirs: "Load theirs",
-  /** The toast for a file without unsaved changes that was reloaded because it changed outside Halonic. */
-  reloadedOutside: (name: string): string => `Reloaded ${name}: changed outside Halonic`,
   compare: "Compare",
   keepMine: "Keep mine",
   useOther: "Use the other one",
