@@ -87,17 +87,19 @@ fn distro_host_command_for_real_wsl() -> Result<DistroCommand, HostRefusal> {
     Ok(Box::new(move |port| distro_host_command(&wsl, port)))
 }
 
-/// Whether the host binary sits beside the shell's executable.
-pub(super) fn local_host_installed() -> bool {
-    std::env::current_exe()
-        .ok()
-        .is_some_and(|shell| host_file_beside(&shell))
-}
-
-/// Whether the host file exists in the shell's folder (`executable_beside`
-/// only builds the path).
-fn host_file_beside(shell: &Path) -> bool {
-    executable_beside(shell).is_ok_and(|host| host.is_file())
+/// Starts the host beside the shell and drops it again: the proof that this
+/// install's host file runs and answers its handshake, for a PC where the
+/// distro host can't start (no WSL, no distro yet).
+pub(super) async fn local_host_starts<R: Runtime>(app: &AppHandle<R>) -> bool {
+    let app = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        real_host_command(&app)
+            .and_then(start_local)
+            .map(drop)
+            .is_ok()
+    })
+    .await
+    .unwrap_or(false)
 }
 
 /// The host next to the shell's executable, for the CLI's profile, with
