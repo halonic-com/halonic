@@ -72,6 +72,103 @@ verifies("runs.run-view.failure-banners", () => {
     });
   });
 
+  describe("a local model that is missing, slow or can't use tools", () => {
+    const fixes = (banner: ReturnType<typeof causeBanner>) =>
+      banner?.kind === "callout" ? banner.fixes : undefined;
+    const alias = (provider: string, model: string, name: string) =>
+      event(
+        { type: "llm.request", agent: "reporter", provider, model, alias: name, messages: 1 },
+        2,
+      );
+
+    it("tells Ollama's missing model, with the pull command to copy and Open Models", () => {
+      const banner = causeBanner(
+        failed("model-missing"),
+        [call("ollama", "llama3.2"), failedEvent()],
+        context,
+        false,
+      );
+      expect(lines(banner)).toEqual([
+        "Ollama is answering, but it doesn't have llama3.2 yet. Run ollama pull llama3.2 in a terminal, or pick another model in Models.",
+      ]);
+      expect(fixes(banner)).toEqual([
+        { kind: "copy-command", command: "ollama pull llama3.2" },
+        { kind: "open-models" },
+      ]);
+    });
+
+    it("sends another local provider to download the model there, with no command", () => {
+      const kindsWithStudio: Record<string, ProviderKind> = { ...kinds, lmstudio: "local" };
+      const banner = causeBanner(
+        failed("model-missing"),
+        [call("lmstudio", "qwen"), failedEvent()],
+        { ...context, providerKind: (id) => kindsWithStudio[id] },
+        false,
+      );
+      expect(lines(banner)).toEqual([
+        "Lmstudio is answering, but it doesn't have qwen yet. Download it in Lmstudio, or pick another model in Models.",
+      ]);
+      expect(fixes(banner)).toEqual([{ kind: "open-models" }]);
+    });
+
+    it("keeps the general banner for a cloud provider's missing model, and waits for the log", () => {
+      const log = [call("claude", "claude-sonnet"), failedEvent()];
+      expect(causeBanner(failed("model-missing"), log, context, false)).toBeUndefined();
+    });
+
+    it("keeps the general banner for a provider that is no longer in the workspace", () => {
+      const log = [call("gone", "llama3.2"), failedEvent()];
+      expect(causeBanner(failed("model-missing"), log, context, false)).toBeUndefined();
+      expect(causeBanner(failed("model-missing"), undefined, context, false)).toBeUndefined();
+    });
+
+    it("says to fix a missing model on the computer, with no buttons, on a phone", () => {
+      const banner = causeBanner(
+        failed("model-missing"),
+        [call("ollama", "llama3.2"), failedEvent()],
+        context,
+        true,
+      );
+      expect(lines(banner)?.at(-1)).toBe("Fix this on your computer: Models");
+      expect(fixes(banner)).toBeUndefined();
+    });
+
+    it("tells a local timeout by its address and a cloud one by the step", () => {
+      const local = [call("ollama", "llama3.2"), failedEvent("localhost:11434")];
+      expect(lines(causeBanner(failed("model-timeout"), local, context, false))).toEqual([
+        "Ollama didn't start answering at localhost:11434 within 5 minutes. It may still be loading the model.",
+      ]);
+      const cloud = [call("claude", "claude-sonnet"), failedEvent("api.anthropic.com")];
+      expect(lines(causeBanner(failed("model-timeout"), cloud, context, false))).toEqual([
+        "Claude didn't start answering within 5 minutes, so the step Draft stopped. Nothing you set caused this.",
+      ]);
+      expect(fixes(causeBanner(failed("model-timeout"), local, context, false))).toBeUndefined();
+    });
+
+    it("names the alias for a model that can't use tools, and offers Open Models", () => {
+      const banner = causeBanner(
+        failed("model-no-tools"),
+        [alias("ollama", "llama3.2", "fast"), failedEvent()],
+        context,
+        false,
+      );
+      expect(lines(banner)).toEqual([
+        "llama3.2, used by the model alias fast, can't use tools, and the step Draft offers tools. Point the model alias fast at a model that can use tools.",
+      ]);
+      expect(fixes(banner)).toEqual([{ kind: "open-models" }]);
+    });
+
+    it("reads a log without the alias, and points a phone to the computer", () => {
+      const log = [call("ollama", "llama3.2"), failedEvent()];
+      expect(lines(causeBanner(failed("model-no-tools"), log, context, false))).toEqual([
+        "llama3.2 can't use tools, and the step Draft offers tools. Pick a model that can in Models, then run again.",
+      ]);
+      const phone = causeBanner(failed("model-no-tools"), log, context, true);
+      expect(lines(phone)?.at(-1)).toBe("Fix this on your computer: Models");
+      expect(fixes(phone)).toBeUndefined();
+    });
+  });
+
   describe("a model that doesn't fit in memory", () => {
     const log = [call("ollama", "llama3.1:70b")];
 

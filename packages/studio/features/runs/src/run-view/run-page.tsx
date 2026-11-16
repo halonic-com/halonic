@@ -38,6 +38,9 @@ import { type RunPageContext, runHeader } from "./run-page-model.ts";
 import { slowStepDueAt } from "./slow-step.ts";
 import { StepPanel } from "./step-panel.tsx";
 
+/** The command that opens the workspace page at Models (`features/workspace`). */
+const openModelsCommand = "workspace.open-models";
+
 /** The `run` item kind's page: one run of the open workspace, from `RunsListService`. */
 export function RunPage({ item, context, step }: ItemViewProps) {
   const { openPlace, openItem } = context;
@@ -52,6 +55,9 @@ export function RunPage({ item, context, step }: ItemViewProps) {
       {...(instructionTrust === undefined ? {} : { instructionTrust })}
       {...(sandboxStartCheck === undefined ? {} : { sandboxStartCheck })}
       announce={(line) => context.announcer.announce(line)}
+      {...(context.runCommand === undefined
+        ? {}
+        : { openModels: () => void context.runCommand?.(openModelsCommand) })}
       {...(runStart === undefined ? {} : { runStart })}
       {...(openPlace === undefined
         ? {}
@@ -82,6 +88,8 @@ export interface RunViewProps {
   readonly announce?: (line: string) => void;
   /** Starts a run, for Run again; absent where there is no engine, and the button isn't there. */
   readonly runStart?: RunStartHost;
+  /** Opens the workspace page at Models, for **Open Models** on a failed banner; without it the button isn't there. */
+  readonly openModels?: () => void;
   /** Opens the Runs list, for a run that isn't there any more. */
   readonly goToRuns?: () => void;
   /** Opens the Inbox, for Review in Inbox; without it the button isn't there. */
@@ -120,6 +128,7 @@ export function RunView({
   sandboxStartCheck,
   announce,
   runStart,
+  openModels,
   goToRuns,
   reviewInInbox,
   openRun,
@@ -166,6 +175,7 @@ export function RunView({
             sandboxStartCheck={sandboxStartCheck}
             announce={announce}
             runAgain={runAgain}
+            openModels={openModels}
             phone={phone}
             onSeeStep={setOpenEntry}
           />
