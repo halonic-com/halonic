@@ -47,4 +47,5 @@ export {
   type WslSetupState,
   type WslSetupStep,
   type WslSetupStore,
+  wslSetupSteps,
 } from "./wsl-setup/index.ts";

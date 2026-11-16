@@ -2,7 +2,31 @@ import { parse, type Schema, s } from "@halonicjs/schema-kit";
 import { type AgentHostAnswer, type AgentHostTransport, readAnswer } from "./transport.ts";
 
 /** What the host was asked to do with the sandbox. */
-export type SandboxSetupVerb = "setup" | "remove";
+export type SandboxSetupVerb = "setup" | "remove" | "remove-wsl";
+
+/** What the user chose for the files of Halonic's WSL distro (HAL-10974). There is no default. */
+export type WslRemoveChoice =
+  | { readonly choice: "export-then-remove"; readonly file: string }
+  | { readonly choice: "remove-only" };
+
+/**
+ * How removing the WSL setup ended. `kept`: nothing changed. `removed`: the distro is
+ * gone (and the backup is at `exportedTo`, if one was made). `refused`: nothing
+ * changed, for `reason`. `failed`: a step ended with an error; after `export-failed`
+ * nothing was removed.
+ */
+export type WslRemoveOutcome =
+  | { readonly outcome: "kept" }
+  | { readonly outcome: "removed"; readonly exportedTo?: string | undefined }
+  | {
+      readonly outcome: "refused";
+      readonly reason: "distro-not-ours" | "distro-missing" | "bad-export-file";
+    }
+  | {
+      readonly outcome: "failed";
+      readonly reason: "export-failed" | "unregister-failed";
+      readonly detail: string;
+    };
 
 /**
  * How a setup or removal ended: done, or `cancelled` (the administrator
@@ -19,11 +43,23 @@ export type SandboxSetupResult =
     };
 
 /** A setup or removal that has ended, and when (ISO time). */
-export interface FinishedSandboxSetup {
-  readonly verb: SandboxSetupVerb;
-  readonly result: SandboxSetupResult;
-  readonly finishedAt: string;
-}
+export type FinishedSandboxSetup =
+  | {
+      readonly verb: "setup";
+      readonly result: SandboxSetupResult;
+      readonly finishedAt: string;
+    }
+  | {
+      readonly verb: "remove";
+      readonly result: SandboxSetupResult;
+      readonly finishedAt: string;
+    }
+  | {
+      readonly verb: "remove-wsl";
+      /** A host that threw answers the generic failure instead of an outcome. */
+      readonly result: WslRemoveOutcome | Extract<SandboxSetupResult, { ok: false }>;
+      readonly finishedAt: string;
+    };
 
 /** Which one runs in the host now, if any, and the last one that ended there. */
 export interface SandboxSetupStatus {
@@ -31,7 +67,7 @@ export interface SandboxSetupStatus {
   readonly last: FinishedSandboxSetup | null;
 }
 
-const verbSchema = s.enum(["setup", "remove"]);
+const verbSchema = s.enum(["setup", "remove", "remove-wsl"]);
 
 const resultSchema = s.discriminatedUnion("ok", [
   s.object({ ok: s.literal(true) }).strict(),
@@ -45,9 +81,40 @@ const resultSchema = s.discriminatedUnion("ok", [
     .strict(),
 ]) satisfies Schema<SandboxSetupResult>;
 
-const finishedSchema = s
-  .object({ verb: verbSchema, result: resultSchema, finishedAt: s.string() })
-  .strict() satisfies Schema<FinishedSandboxSetup>;
+const wslResultSchema = s.union([
+  s.object({ outcome: s.literal("kept") }).strict(),
+  s.object({ outcome: s.literal("removed"), exportedTo: s.string().optional() }).strict(),
+  s
+    .object({
+      outcome: s.literal("refused"),
+      reason: s.enum(["distro-not-ours", "distro-missing", "bad-export-file"]),
+    })
+    .strict(),
+  s
+    .object({
+      outcome: s.literal("failed"),
+      reason: s.enum(["export-failed", "unregister-failed"]),
+      detail: s.string(),
+    })
+    .strict(),
+]);
+
+const finishedSchema = s.union([
+  s
+    .object({
+      verb: s.enum(["setup", "remove"]),
+      result: resultSchema,
+      finishedAt: s.string(),
+    })
+    .strict(),
+  s
+    .object({
+      verb: s.literal("remove-wsl"),
+      result: s.union([wslResultSchema, resultSchema]),
+      finishedAt: s.string(),
+    })
+    .strict(),
+]) as Schema<FinishedSandboxSetup>;
 
 const statusSchema = s
   .object({ running: verbSchema.nullable(), last: finishedSchema.nullable() })
@@ -116,20 +183,42 @@ export class AgentHostSandboxSetup {
   }
 
   /**
+   * Starts removing Halonic's WSL distro after the user's explicit choice, or
+   * joins the removal that runs. With `export-then-remove` a failed backup
+   * removes nothing.
+   *
+   * @throws {@link AgentHostError} `sandbox_busy` while a setup or another removal runs, or when the host can't be reached
+   */
+  async startRemoveWsl(
+    choice: WslRemoveChoice,
+  ): Promise<SandboxSetupStatus | { readonly inUse: number }> {
+    const route = "POST /v1/sandbox/remove-wsl";
+    const answer = await this.#transport.request(route, choice);
+    if (answer.status === 409) {
+      const inUse = parse(inUseSchema, answer.body);
+      if (inUse.ok) return { inUse: inUse.value.runs };
+    }
+    return readAnswer(route, accepted(answer), statusSchema);
+  }
+
+  /**
    * Asks the host every `intervalMs` until no `verb` runs, and answers how
    * it ended. Undefined when `signal` aborted first, or when the host no
    * longer knows (it was restarted).
    *
    * @throws {@link AgentHostError} when the host refuses, or can't be reached
    */
-  async ended(
-    verb: SandboxSetupVerb,
+  async ended<V extends SandboxSetupVerb>(
+    verb: V,
     options: { readonly intervalMs?: number; readonly signal?: AbortSignal } = {},
-  ): Promise<FinishedSandboxSetup | undefined> {
+  ): Promise<Extract<FinishedSandboxSetup, { verb: V }> | undefined> {
     for (;;) {
       if (options.signal?.aborted) return undefined;
       const now = await this.status();
-      if (now.running !== verb) return now.last?.verb === verb ? now.last : undefined;
+      if (now.running !== verb)
+        return now.last?.verb === verb
+          ? (now.last as Extract<FinishedSandboxSetup, { verb: V }>)
+          : undefined;
       await this.#pause(options.intervalMs ?? 1000, options.signal);
     }
   }

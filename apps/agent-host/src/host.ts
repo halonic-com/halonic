@@ -37,6 +37,7 @@ import { sandboxRoutes } from "./sandbox/sandbox-routes.ts";
 import { SessionTable } from "./sandbox/session-table.ts";
 import { SetupJobs, setupRoutes } from "./sandbox/setup-routes.ts";
 import { sweepRoots, takeHostLock } from "./sandbox/sweep-lock.ts";
+import { hostWslRemover, type WslRemover } from "./sandbox/wsl-remove-host.ts";
 import { healthRoute } from "./server/health-route.ts";
 import { type HostRoute, serveHostOverFrames, startHostServer } from "./server/host-server.ts";
 import { randomLaunchToken } from "./server/launch-token.ts";
@@ -165,6 +166,7 @@ export async function run(
           { id: sharedFolders.length > 0 ? "srt-wsl" : "srt", sandbox },
           profileFolder,
         ),
+    wslRemoverOf(profileFolder, sharedFolders),
   );
   try {
     if (args.includes("--stdio")) return await serveOverFrames(args, io, host);
@@ -176,6 +178,15 @@ export async function run(
       io.writeError(`The host lock couldn't be released: ${String(error)}\n`);
     });
   }
+}
+
+/** Removes the WSL setup; not served without a profile, nor inside the distro, which has no `wsl.exe`. */
+function wslRemoverOf(
+  profileFolder: string | undefined,
+  sharedFolders: readonly string[],
+): WslRemover | undefined {
+  if (profileFolder === undefined || sharedFolders.length > 0) return undefined;
+  return hostWslRemover(profileFolder);
 }
 
 /** The folders every session denies: the WSL distro's shared ones when the launcher says the host runs there. */
@@ -349,6 +360,7 @@ interface HostServices {
  * @param profile - the profile folder plugins and their trust are read from; `undefined` without one, and then no plugin call is served
  * @param relayPort - the relay's port in `--stdio` mode, which the Google sign-in's redirect names; `undefined` when the host listens on its own port
  * @param choice - the choice service of this host's backend, `undefined` without a profile folder (no choice route is served)
+ * @param wslRemover - removes Halonic's WSL distro, `undefined` without a profile folder (no `remove-wsl` route is served)
  */
 function hostServices(
   version: string,
@@ -359,6 +371,7 @@ function hostServices(
   profile: ProfileFolder | undefined,
   relayPort: number | undefined,
   choice: SandboxChoiceService | undefined,
+  wslRemover: WslRemover | undefined,
 ): HostServices {
   const sessions = new SessionTable();
   const listeningPorts = new Set<number>();
@@ -377,7 +390,7 @@ function hostServices(
     healthRoute(version),
     ...sandboxRoutes(sandbox, sessions),
     ...(choice === undefined ? [] : sandboxChoiceRoutes(choice)),
-    ...setupRoutes(new SetupJobs(sandbox), sessions),
+    ...setupRoutes(new SetupJobs(sandbox, undefined, wslRemover), sessions),
     ...bridgeRoutes(
       (secrets) =>
         new NodeHarnessBridgeServer({

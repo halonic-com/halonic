@@ -75,6 +75,10 @@ const ROUTES: &[(&str, Route)] = &[
         route(Method::Post, "/v1/sandbox/remove", Answer::Json),
     ),
     (
+        "POST /v1/sandbox/remove-wsl",
+        route(Method::Post, "/v1/sandbox/remove-wsl", Answer::Json),
+    ),
+    (
         "POST /v1/bridge/open",
         route(Method::Post, "/v1/bridge/open", Answer::Stream),
     ),

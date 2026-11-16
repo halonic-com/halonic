@@ -148,6 +148,8 @@ verifies("studio.agent-sandbox-host", () => {
       host({ "GET /v1/sandbox/setup": { status: 200, body: { running, last: null } } });
     expect(await new AgentHostSandboxFacts(status("setup").transport).running()).toBe("setup");
     expect(await new AgentHostSandboxFacts(status(null).transport).running()).toBeNull();
+    // The WSL removal has its own dialog, so the srt section does not follow it.
+    expect(await new AgentHostSandboxFacts(status("remove-wsl").transport).running()).toBeNull();
   });
 
   it("stops following a setup when the signal aborts", async () => {
