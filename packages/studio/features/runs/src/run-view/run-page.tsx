@@ -1,9 +1,22 @@
 import { type SandboxStartCheck, sandboxStartCheckKey, shortRunId } from "@halonicjs/app";
 import { type RunEvent, type RunSummary, type RunVersion, summarize } from "@halonicjs/events";
-import { Callout, EmptyState, List, StatusChip, usePresentation } from "@halonicjs/studio-kit";
+import {
+  Button,
+  Callout,
+  EmptyState,
+  List,
+  StatusChip,
+  usePresentation,
+} from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
 import { type ReactNode, useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { type InstructionTrustHost, InstructionTrustHostService, type SourcedRun } from "../api.ts";
+import {
+  type InstructionTrustHost,
+  InstructionTrustHostService,
+  type RunStartHost,
+  RunStartHostService,
+  type SourcedRun,
+} from "../api.ts";
 import { loadFailureReason } from "../load-failure.ts";
 import { emptyListWords, runPageWords } from "../run-words.ts";
 import { type RunsList, RunsListService } from "../runs-list.ts";
@@ -20,6 +33,7 @@ import {
   readLines,
   summaryLine,
 } from "./receipt-model.ts";
+import { type RunAgain, useRunAgain } from "./run-again.ts";
 import { type RunPageContext, runHeader } from "./run-page-model.ts";
 import { slowStepDueAt } from "./slow-step.ts";
 import { StepPanel } from "./step-panel.tsx";
@@ -29,6 +43,7 @@ export function RunPage({ item, context, step }: ItemViewProps) {
   const { openPlace, openItem } = context;
   const instructionTrust = context.services.find(InstructionTrustHostService);
   const sandboxStartCheck = context.services.find(sandboxStartCheckKey);
+  const runStart = context.services.find(RunStartHostService);
   return (
     <RunView
       list={context.services.get(RunsListService)}
@@ -37,6 +52,7 @@ export function RunPage({ item, context, step }: ItemViewProps) {
       {...(instructionTrust === undefined ? {} : { instructionTrust })}
       {...(sandboxStartCheck === undefined ? {} : { sandboxStartCheck })}
       announce={(line) => context.announcer.announce(line)}
+      {...(runStart === undefined ? {} : { runStart })}
       {...(openPlace === undefined
         ? {}
         : { goToRuns: () => openPlace("runs"), reviewInInbox: () => openPlace("inbox") })}
@@ -64,6 +80,8 @@ export interface RunViewProps {
   readonly sandboxStartCheck?: SandboxStartCheck;
   /** Says a line to a screen reader, for the answer to a press in a banner; absent in tests that don't listen. */
   readonly announce?: (line: string) => void;
+  /** Starts a run, for Run again; absent where there is no engine, and the button isn't there. */
+  readonly runStart?: RunStartHost;
   /** Opens the Runs list, for a run that isn't there any more. */
   readonly goToRuns?: () => void;
   /** Opens the Inbox, for Review in Inbox; without it the button isn't there. */
@@ -84,7 +102,10 @@ export interface RunViewProps {
  *
  * Above them, the receipt's summary line; its sections come in the next pull requests.
  *
- * Not here yet: the header's ⋮, Run again (T7) and the failed banners by cause (HAL-1845).
+ * **Run again** starts a new run of the same workflow with the same input and opens it. It is in
+ * the header of an ended real run, and on the failed banner that has no button of its own.
+ *
+ * Not here yet: the header's ⋮.
  *
  * On a phone (1.15) it is one column: the heading is for screen readers (the top bar says "Run
  * #42"), Details is one row that opens a sheet, and a step's events fill the screen with Back.
@@ -98,6 +119,7 @@ export function RunView({
   instructionTrust,
   sandboxStartCheck,
   announce,
+  runStart,
   goToRuns,
   reviewInInbox,
   openRun,
@@ -114,6 +136,7 @@ export function RunView({
   useEffect(() => list.noteOpened(runId), [list, runId]);
   const title = runPageWords.title(shortRunId(runId));
   const retry = () => void list.refresh();
+  const runAgain = useRunAgain(runStart, run, log, openRun);
 
   if (run !== undefined) {
     const context = pageContext(list, state.runs, run, now());
@@ -130,6 +153,7 @@ export function RunView({
           context={context}
           showingLast={state.error !== undefined}
           phone={phone}
+          runAgain={runAgain}
         >
           <PageBanner
             run={run}
@@ -141,6 +165,7 @@ export function RunView({
             instructionTrust={{ host: instructionTrust }}
             sandboxStartCheck={sandboxStartCheck}
             announce={announce}
+            runAgain={runAgain}
             phone={phone}
             onSeeStep={setOpenEntry}
           />
@@ -347,12 +372,14 @@ function RunLayout({
   context,
   showingLast,
   phone,
+  runAgain,
   children,
 }: {
   readonly run: SourcedRun;
   readonly context: RunPageContext;
   readonly showingLast: boolean;
   readonly phone: boolean;
+  readonly runAgain: RunAgain | undefined;
   readonly children: ReactNode;
 }) {
   const header = runHeader(run, context);
@@ -366,12 +393,22 @@ function RunLayout({
           <StatusChip tone={header.chip.tone} dot={header.chip.dot}>
             {header.chip.word}
           </StatusChip>
+          {runAgain === undefined ? null : (
+            <Button variant="secondary" size="sm" onClick={runAgain.start}>
+              {runPageWords.runAgain}
+            </Button>
+          )}
         </div>
         <p className="text-small text-fg-muted">{header.line}</p>
         {header.catchUpLine === undefined ? null : (
           <p className="text-small text-fg-muted">{header.catchUpLine}</p>
         )}
       </header>
+      {runAgain?.problem === undefined ? null : (
+        <section aria-label={runPageWords.runAgainFailedName}>
+          <Callout tone="danger">{runPageWords.runAgainFailed(runAgain.problem)}</Callout>
+        </section>
+      )}
       {showingLast ? (
         <p className="text-small text-fg-muted">{emptyListWords.showingLast}</p>
       ) : null}

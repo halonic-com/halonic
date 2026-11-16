@@ -37,7 +37,11 @@ import {
   ModelsFilesService,
   NoLimitMemoryService,
 } from "@halonicjs/studio-feature-models/api";
-import { InstructionTrustHostService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
+import {
+  InstructionTrustHostService,
+  RunStartHostService,
+  RunsSourceService,
+} from "@halonicjs/studio-feature-runs/api";
 import { ChangesSourceService } from "@halonicjs/studio-feature-source-control/api";
 import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
 import {
@@ -159,7 +163,7 @@ export function provideFolderServices(
       reportError: (error) => console.error("The engine", error),
     }),
   );
-  services.provide(
+  const workflows = services.provide(
     WorkflowsHostService,
     new WorkspaceWorkflows({
       files: services.get(workspaceFilesKey),
@@ -169,6 +173,14 @@ export function provideFolderServices(
       engine,
     }),
   );
+  // Run again on the run page starts a run the way the workflow page's Run does.
+  const { startRun } = workflows;
+  if (startRun !== undefined) {
+    services.provide(RunStartHostService, {
+      startRun: ({ hubId, workflowId }, input) =>
+        startRun.call(workflows, { hubId, id: workflowId }, input),
+    });
+  }
   services.provide(
     InboxRequestsService,
     new WorkspaceRequests({
