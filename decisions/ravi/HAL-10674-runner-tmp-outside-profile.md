@@ -4,6 +4,7 @@
 - Task: HAL-10674 (closes A17)
 - Approval: HAL-10674, whose description asks for the run's temp folder to move outside the profile folder on Windows; Liam reviews and signs
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:H8sFnornx+QeXJGmEbOwRMyIky8Q3rJ46xlvo7+v8VxvNILtlqs2UTWvn+uziqQ/FixC8d7fy+v71dQcErskCg==
 
 ## What changes
 
