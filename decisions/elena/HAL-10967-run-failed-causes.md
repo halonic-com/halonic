@@ -2,6 +2,7 @@
 
 - Approval: [HAL-10967](/HAL/issues/HAL-10967); a team decision, engine and events only, no user-visible change
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:f3Udq+ze0aKqhDFXORqprmsCnpk6uqHe/M6GE7kq2nrE9rORX50KLH0TGtPqzo3huT50XZZLSRTJkevyEDAlAw==
 - Task: HAL-10967
 
 ## What changes
