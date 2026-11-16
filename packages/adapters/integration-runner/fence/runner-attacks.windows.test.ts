@@ -269,17 +269,24 @@ describe("an integration in the runner on native Windows, Node's layer only", ()
     // inside the profile folder, so its path still shows the account name.
     // The user's own values must not appear in the others.
     const folders = await attackFolders(base, "a17");
+    const expected: Record<string, string> = {
+      TMPDIR: folders.tempFolder,
+      ...windowsEnvironment(folders.tempFolder, windowsFolder),
+    };
+    // An attempt's detail is cut at 200 characters, so each variable gets its own.
+    const readEach = Object.keys(expected)
+      .map((name) => `await attempt("${name}", () => process.env["${name}"]);`)
+      .join("\n");
     const { attempts } = await attack(
-      `await attempt("environment", () => JSON.stringify(process.env));`,
+      `await attempt("names", () => Object.keys(process.env).sort().join(","));\n${readEach}`,
       "on",
       folders,
     );
-    expect(attempts["environment"]?.outcome).toBe("allowed");
-    const seen: Record<string, string> = JSON.parse(attempts["environment"]?.detail ?? "{}");
-    expect(seen).toEqual({
-      TMPDIR: folders.tempFolder,
-      ...windowsEnvironment(folders.tempFolder, windowsFolder),
-    });
+    expect(attempts["names"]?.detail).toBe(Object.keys(expected).sort().join(","));
+    const seen = Object.fromEntries(
+      Object.keys(expected).map((name) => [name, attempts[name]?.detail ?? ""]),
+    );
+    expect(seen).toEqual(expected);
     const fromTempFolder = ["TMPDIR", "TEMP", "USERPROFILE"];
     const others = Object.entries(seen).filter(([name]) => !fromTempFolder.includes(name));
     for (const own of [
