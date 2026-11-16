@@ -135,6 +135,7 @@ export {
   type NewRow,
   newRow,
 } from "./tools/records/collection-grid.ts";
+export { CollectionRecords } from "./tools/records/collection-records.ts";
 export type { CollectionRecord } from "./tools/records/record-query.ts";
 export { fieldSchema, type RecordToolsOptions, recordTools } from "./tools/records/record-tools.ts";
 export {
