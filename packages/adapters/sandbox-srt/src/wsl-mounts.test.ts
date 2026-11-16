@@ -88,6 +88,10 @@ verifies("sandbox-srt.wsl-mounts", () => {
       "relative\\path",
       "\\\\server\\share",
       "C:",
+      "C:\\", // leak-guard: allow absolute-path a made-up Windows folder for a test
+      "C:\\.", // leak-guard: allow absolute-path a made-up Windows folder for a test
+      "C:\\a\\.", // leak-guard: allow absolute-path a made-up Windows folder for a test
+      "C:\\a\\\\b", // leak-guard: allow absolute-path a made-up Windows folder for a test
       "C:\\a\\..\\b", // leak-guard: allow absolute-path a made-up Windows folder for a test
       "C:\\a\\", // leak-guard: allow absolute-path a made-up Windows folder for a test
       "C:\\a\u0000b", // leak-guard: allow absolute-path a made-up Windows folder for a test

@@ -16,14 +16,17 @@ const drivePath = /^[A-Za-z]:\\/;
 
 /**
  * Checks the Windows folder to mount: a drive letter and an absolute path
- * without `..`, a control character or a trailing separator.
+ * with at least one folder, and no empty, `.` or `..` segment and no control
+ * character. A whole drive is refused.
  *
  * @throws when the path isn't one
  */
 export function assertWindowsFolder(path: string): void {
+  // A drive root has no segment, so it comes out as one empty segment and is refused too.
+  const segments = path.slice(3).split(/[\\/]/);
   // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what this rejects
-  const bad = !drivePath.test(path) || /[\u0000-\u001f]/.test(path) || /[\\/]$/.test(path.slice(3));
-  if (bad || path.slice(3).split(/[\\/]/).includes(".."))
+  const bad = !drivePath.test(path) || /[\u0000-\u001f]/.test(path);
+  if (bad || segments.some((segment) => segment === "" || segment === "." || segment === ".."))
     throw new Error(`the folder ${JSON.stringify(path)} isn't an absolute Windows drive path`);
 }
 
