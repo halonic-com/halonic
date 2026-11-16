@@ -152,6 +152,17 @@ verifies("inbox.notices-section", () => {
     }
   });
 
+  it("shows no Notices section while Needs you failed to load", async () => {
+    const { source } = fakeNotices(async () => [a]);
+    const fake = fakeRuns([]);
+    fake.fail(new Error("fetch failed"));
+    const root = render(<InboxView inbox={new Inbox(fake.runs)} notices={source} openRun={vi.fn()} />);
+    await settled();
+    expect(root.textContent).toContain("Couldn't load the Inbox");
+    expect(root.querySelector("#inbox-notices")).toBeNull();
+    expect(root.textContent).not.toContain("Daily summary failed at 06:00");
+  });
+
   describe("when they can't be read", () => {
     it("says so under the heading, keeps Needs you and retries", async () => {
       let fail = true;
