@@ -3,6 +3,7 @@
 - Task: HAL-10961
 - Approval: Liam approved the words and the logic in his review of halonic#3145 and on HAL-10966 (https://paperclip.halonic.com/HAL/issues/HAL-10966). A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5a64y8lL45VTuBbmZR/0qgScJU5lAXjo/Hjhk5m/NbcAvBUkn9G2zBvPuuRPosIxqlITEP7II1QVPM5ACfwXDQ==
 
 `halonic run` printed the general lines for `model-out-of-memory`, `sandbox-start-failed` and
 `harness-start-failed`, because their words were not approved yet. They now print the approved
