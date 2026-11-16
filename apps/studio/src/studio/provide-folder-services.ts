@@ -13,8 +13,8 @@ import {
   workspaceFilesKey,
 } from "@halonicjs/app";
 import { randomIds, systemClock } from "@halonicjs/std";
-import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
+import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import {
   KnowledgeHostService,
