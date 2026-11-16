@@ -1,0 +1,23 @@
+# Decision: the watchdog checks 20 runs per sweep by default, and the requirement says so
+
+- Task: HAL-11256
+- Approval: Liam's decision on HAL-11256; Liam signs this note as the CTO
+- Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:HoCykEWFcJj09sKoLOX2f6I6B1zee6NuqDBGSH4QuanxHANvlxhCvjoDIa9ik/diwIroaJhN4SicMqO+G4ztAQ==
+
+## What changes
+
+`packages/adapters/cloudflare-durable/requirements/watchdog-limits.md` said a sweep checks 40 runs by default. It now says 20, which is what `defaultMaxRunsPerSweep` in `src/watchdog.ts` and the README already say, and gives the reason in its Rationale. No code changes.
+
+## Why
+
+The free plan allows 50 calls per Worker invocation. A sweep also reads the run list and the routines, and checks each run and wakes each stuck one, so 20 runs make at most 2 + 20 * 2 = 42 calls. 40 runs would pass the limit. The code and README were right and the requirement was wrong.
+
+## Tests
+
+No test was skipped or weakened. A new test in `watchdog.test.ts` builds a watchdog without a limit and checks that it wakes exactly 20 of 100 stuck runs and defers 80. The older test compares against `defaultMaxRunsPerSweep`, so it would pass for any value.
+
+## Covers
+
+- packages/adapters/cloudflare-durable/requirements/
+- cloudflare-durable.watchdog-limits
