@@ -298,13 +298,14 @@ is plan section 4.5. The sandbox is `adapters/sandbox-srt`, built on
 [sandbox-runtime](https://github.com/anthropics/sandbox-runtime) (srt). Its
 launcher, `adapters/sandbox-host`, finds and starts programs.
 
-The host can also serve the **remote gateway** (HAL-10827), off unless the
-launcher passes `--remote-gateway` and never over `--stdio`. Its listener binds
+The host can also serve the **remote gateway** (HAL-10827), never started by
+the shipped executable (no launch argument or setting turns it on) and never
+over `--stdio`. Its listener binds
 `127.0.0.1` only, so only a tunnel on this computer can forward to it. It is
 a second port next to the host's own, with its own checks (`Host`, no `Origin`,
 a WebSocket upgrade, one parser for every frame), and it takes no launch token
-yet: pairing is phase B, so the switch stays off in every shipped launch until
-then. It can list the host's runs, watch their events, answer an approval and
+yet, so anything on this computer could use it. That is why only tests start
+it until pairing (phase B) gives the person a switch. It can list the host's runs, watch their events, answer an approval and
 send a prompt, and nothing else: no command, file or secret. The host, not the
 phone, judges an approval `risky` (anything but a known read-only tool), and a
 phone may not answer a `risky` one until the person allows it on the desktop,

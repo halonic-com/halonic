@@ -21,7 +21,7 @@ import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
 import { bridgeSocketFolder, sweepLeftOverBridges } from "./bridge/socket-folder.ts";
 import { hostConnectorRoutes } from "./connector/connector-factory.ts";
 import { connectorRoutes } from "./connector/connector-routes.ts";
-import { type GatewaySettings, gatewaySettings } from "./gateway/gateway-settings.ts";
+import { type GatewaySettings, gatewayOff } from "./gateway/gateway-settings.ts";
 import { hostGatewaySource } from "./gateway/host-gateway-source.ts";
 import { RunLedger } from "./gateway/run-ledger.ts";
 import { googleRoutes } from "./google/google-routes.ts";
@@ -108,6 +108,7 @@ const relayHostPattern = /^127\.0\.0\.1:([1-9][0-9]{0,4})$/;
  * crashed host left in the profile (see {@link sweepLeftOverBridges}).
  *
  * @param makeSandbox - makes the sandbox on this machine with the sweep roots it may sweep and the shared folders its sessions deny; tests make one on a fake machine
+ * @param gateway - whether the remote gateway listens; only tests turn it on, because it takes no pairing yet (requirement `agent-host.remote-gateway`). The executable's `main.ts` never passes it.
  * @returns the exit code
  */
 export async function run(
@@ -124,6 +125,7 @@ export async function run(
       sharedFolders,
       ...(recordFolder === undefined ? {} : { recordFolder }),
     }),
+  gateway: GatewaySettings = gatewayOff,
 ): Promise<number> {
   if (args.includes("--version")) {
     io.write(`halonic-agent-host ${version}\n`);
@@ -134,11 +136,6 @@ export async function run(
   const given = sweepRoots(args);
   if ("error" in given) {
     io.writeError(given.error);
-    return 2;
-  }
-  const gateway = gatewaySettings(args);
-  if ("error" in gateway) {
-    io.writeError(gateway.error);
     return 2;
   }
   const profileFolder = argumentAfter(args, "--profile-folder");
@@ -176,7 +173,7 @@ export async function run(
           profileFolder,
         ),
     wslRemoverOf(profileFolder, sharedFolders),
-    args.includes("--stdio") ? disabledGateway : gateway,
+    args.includes("--stdio") ? gatewayOff : gateway,
   );
   if (gateway.enabled && args.includes("--stdio")) {
     io.writeError(
@@ -373,9 +370,6 @@ interface HostServices {
    */
   startGateway(log: (text: string) => void): Promise<void>;
 }
-
-/** The gateway setting of a host that starts no gateway. */
-const disabledGateway: GatewaySettings = { enabled: false };
 
 /**
  * @param socketFolder - where each bridge serves a Unix socket (see {@link bridgeSocketFolder});

@@ -4,6 +4,7 @@ import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { type HostIo, run } from "../host.ts";
+import type { GatewaySettings } from "./gateway-settings.ts";
 
 /** A port nothing listens on now. */
 function freePort(): Promise<number> {
@@ -16,7 +17,7 @@ function freePort(): Promise<number> {
   });
 }
 
-function startHost(args: readonly string[]) {
+function startHost(args: readonly string[], gateway?: GatewaySettings) {
   const input = new PassThrough();
   const errors: string[] = [];
   let served: () => void = () => {};
@@ -37,7 +38,10 @@ function startHost(args: readonly string[]) {
     vi.spyOn(sandbox, "sweepOnce").mockResolvedValue();
     return sandbox;
   };
-  const running = run(args, "1.2.3", io, makeSandbox);
+  const running =
+    gateway === undefined
+      ? run(args, "1.2.3", io, makeSandbox)
+      : run(args, "1.2.3", io, makeSandbox, gateway);
   return { input, errors, handshake, running };
 }
 
@@ -66,9 +70,18 @@ verifies("agent-host.remote-gateway", () => {
       expect(await host.running).toBe(0);
     });
 
-    it("listens on the named port with --remote-gateway, and closes it at the end", async () => {
+    it("ignores --remote-gateway on the command line: the launch arguments can't turn it on", async () => {
       const port = await freePort();
       const host = startHost(["--remote-gateway", "--remote-gateway-port", String(port)]);
+      await host.handshake;
+      expect(await requestTo(port)).toBe("refused");
+      host.input.end();
+      expect(await host.running).toBe(0);
+    });
+
+    it("listens on the named port when the caller of run turns it on, and closes it at the end", async () => {
+      const port = await freePort();
+      const host = startHost([], { enabled: true, port });
       await host.handshake;
       expect(await requestTo(port)).toMatch(/^HTTP\/1\.1 /);
       host.input.end();
@@ -81,7 +94,7 @@ verifies("agent-host.remote-gateway", () => {
       const holder = createServer();
       await new Promise<void>((resolve) => holder.listen(0, "127.0.0.1", resolve));
       const { port } = holder.address() as { port: number };
-      const host = startHost(["--remote-gateway", "--remote-gateway-port", String(port)]);
+      const host = startHost([], { enabled: true, port });
       await host.handshake;
       expect(host.errors.join("")).toContain("The remote gateway didn't start");
       host.input.end();
@@ -89,22 +102,12 @@ verifies("agent-host.remote-gateway", () => {
       holder.close();
     });
 
-    it("refuses to start with a port that isn't one", async () => {
-      const host = startHost(["--remote-gateway", "--remote-gateway-port", "70000"]);
-      expect(await host.running).toBe(2);
-      expect(host.errors.join("")).toContain("--remote-gateway-port");
-    });
-
     it("stays off over --stdio, and says why", async () => {
       const port = await freePort();
-      const host = startHost([
-        "--stdio",
-        "--relay-host",
-        "127.0.0.1:4999",
-        "--remote-gateway",
-        "--remote-gateway-port",
-        String(port),
-      ]);
+      const host = startHost(["--stdio", "--relay-host", "127.0.0.1:4999"], {
+        enabled: true,
+        port,
+      });
       await host.handshake;
       expect(await requestTo(port)).toBe("refused");
       expect(host.errors.join("")).toContain("stays off");

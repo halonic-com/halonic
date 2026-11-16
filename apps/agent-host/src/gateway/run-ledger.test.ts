@@ -48,6 +48,39 @@ verifies("agent-host.gateway-run-ledger", () => {
       ]);
     });
 
+    it("shortens a title and an approval summary to fixed lengths", async () => {
+      const ledger = new RunLedger();
+      ledger.started("run", { ...task, prompt: "t".repeat(5_000) });
+      ledger.event("run", {
+        type: "approval.requested",
+        agent: "writer",
+        tool: "Bash",
+        args: { command: "c".repeat(5_000) },
+        callId: "call_1",
+      });
+      expect(ledger.list()[0]?.title).toHaveLength(80);
+      const seen = await eventsFrom(ledger, 1);
+      const body = seen[0]?.body;
+      expect(body?.type === "approval-requested" && body.approval.summary.length).toBe(300);
+    });
+
+    it("lists only the newest sessions that fit in one sessions reply", () => {
+      const ledger = new RunLedger({ maxFinished: 1_000 });
+      // A control character takes six bytes in JSON, the worst case for a title.
+      const prompt = "\u0001".repeat(200);
+      for (let n = 0; n < 500; n++) ledger.started(`run_${n}`, { ...task, prompt });
+      const listed = ledger.list();
+      const reply = JSON.stringify({
+        type: "sessions",
+        replyTo: "r".repeat(128),
+        sessions: listed,
+      });
+      expect(new TextEncoder().encode(reply).byteLength).toBeLessThanOrEqual(64 * 1024);
+      expect(listed.length).toBeGreaterThan(0);
+      expect(listed.length).toBeLessThan(500);
+      expect(listed.at(-1)?.id).toBe("run_499");
+    });
+
     it("numbers events from 1 and replays them in order", async () => {
       const ledger = startedLedger();
       ledger.event("run", finishedEvent("All fixed."));
