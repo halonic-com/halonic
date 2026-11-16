@@ -170,9 +170,11 @@ export function unfencedRunsFolder(profile: ProfileFolder): string {
  * On Windows it is `halonic\runner-temp` in `%ProgramData%` instead, because
  * the profile folder is inside the user's own profile. The runner sees the
  * path of its temp folder (its working folder, `TEMP`, `USERPROFILE`), and a
- * path inside the user's profile folder would give it the account name. Windows keeps
- * what an account makes in `%ProgramData%` from the other accounts: they can
- * make folders there but not list another's.
+ * path inside the user's profile folder would give it the account name.
+ * `%ProgramData%` is readable by every account by default, so this is only
+ * the shared parent: whoever makes the runner's folder there gives it a
+ * private folder of its own (`makeRunnerTempFolder` in
+ * `@halonicjs/adapter-sandbox-srt`).
  *
  * @throws RangeError on Windows when the profile has no `sharedDataFolder`
  *

@@ -1,10 +1,11 @@
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { createSocket, type Socket as UdpSocket } from "node:dgram";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:net";
 import { join } from "node:path";
 import { createHostSandbox } from "@halonicjs/adapter-sandbox-host";
+import { makeRunnerTempFolder } from "@halonicjs/adapter-sandbox-srt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { windowsEnvironment } from "../src/halonic/runner-profile.ts";
 import {
@@ -98,15 +99,15 @@ afterAll(async () => {
 });
 
 /**
- * Like {@link attackFolders}, but the temp folder is made where Halonic makes
- * the runner's on Windows: `halonic\runner-temp` in `%ProgramData%`, outside
- * the user's profile (`runnerTempFolder` in `@halonicjs/profile`).
+ * Like {@link attackFolders}, but the temp folder is made the way Halonic makes
+ * the runner's on Windows: in the account's own private folder in
+ * `halonic\runner-temp` in `%ProgramData%`, outside the user's profile
+ * (`runnerTempFolder` in `@halonicjs/profile`, `makeRunnerTempFolder`).
  */
 async function attackFoldersOutsideProfile(base: string, name: string): Promise<AttackFolders> {
   const inBase = await attackFolders(base, name);
   const parent = join(process.env["ProgramData"] ?? "", "halonic", "runner-temp");
-  await mkdir(parent, { recursive: true });
-  const tempFolder = await realpath(await mkdtemp(join(parent, "r-")));
+  const tempFolder = await makeRunnerTempFolder(parent);
   outsideProfileFolders.push(tempFolder);
   return { integrationFolder: inBase.integrationFolder, tempFolder };
 }
@@ -284,7 +285,7 @@ describe("an integration in the runner on native Windows, Node's layer only", ()
     // libuv would fill in with the user's account name, profile folder and
     // domain. Three of them, and the working folder, are the runner's temp
     // folder, which Halonic makes in %ProgramData%, outside the profile
-    // folder (`runnerTempFolder`, HAL-10674), so its path holds no account
+    // folder (`runnerTempFolder`, HAL-10674), in a folder private to the user, so its path holds no account
     // name either. The test makes its temp folder in the same place.
     const folders = await attackFoldersOutsideProfile(base, "a17");
     const expected: Record<string, string> = {

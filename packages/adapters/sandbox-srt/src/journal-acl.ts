@@ -69,21 +69,32 @@ export const runFixed: RunProgram = (file, args, limitMs = runLimitMs) =>
   });
 
 /**
- * Windows has no mode bits, so the journal folder gets its own access list
- * (HAL-3896): inheritance off, and only the current user (by SID, so a
+ * The SID of the user this process runs as, from the fixed `whoami` of the
+ * system folder.
+ *
+ * @throws Error when the SID can't be read
+ */
+export async function currentUserSid(start: RunProgram = runFixed): Promise<string> {
+  const { stdout } = await start("whoami.exe", ["/user", "/fo", "csv", "/nh"]);
+  const sid = /"(S-1-[0-9-]+)"/.exec(stdout)?.[1];
+  if (sid === undefined) throw new Error("the current user's SID could not be read");
+  return sid;
+}
+
+/**
+ * Windows has no mode bits, so a folder gets its own access list
+ * (HAL-3896 for the journals, HAL-10674 for the runner's temp folders): inheritance off, and only the current user (by SID, so a
  * name with a domain or a space can't be misread) may do anything in it. The
  * programs are the fixed `whoami` and `icacls` of the system folder, never
  * from the PATH. The folder's owner is set to this user too (a folder owned by someone else
- * could be opened up again by them). Throws when either fails, so a session never keeps a journal
- * in a folder another user might reach.
+ * could be opened up again by them). Throws when either fails, so nothing is kept in a folder
+ * another user might reach.
  */
 export async function restrictToThisUser(
   folder: string,
   start: RunProgram = runFixed,
 ): Promise<void> {
-  const { stdout } = await start("whoami.exe", ["/user", "/fo", "csv", "/nh"]);
-  const sid = /"(S-1-[0-9-]+)"/.exec(stdout)?.[1];
-  if (sid === undefined) throw new Error("the current user's SID could not be read");
+  const sid = await currentUserSid(start);
   // The owner can always change the access list again, so take the ownership first: this fails
   // (and the session keeps no journal) when the folder belongs to someone who won't hand it over.
   await start("icacls.exe", [folder, "/setowner", `*${sid}`]);

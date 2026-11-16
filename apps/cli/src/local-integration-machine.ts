@@ -4,9 +4,9 @@
 // built runner, and a fresh private temp folder for every start. The trust
 // check is read again from the workspace's files at every start.
 
-import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
 import { FileSystemFolderReader, FileUnfencedRunConsentStore } from "@halonicjs/adapter-fs-node";
 import type { AddressCheckingHttpClient } from "@halonicjs/adapter-http-kit";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
@@ -17,7 +17,11 @@ import {
   systemFiles,
 } from "@halonicjs/adapter-integration-runner";
 import { createHostSandbox } from "@halonicjs/adapter-sandbox-host";
-import { SrtSandbox, sandboxRuntimeFolder } from "@halonicjs/adapter-sandbox-srt";
+import {
+  makeRunnerTempFolder,
+  SrtSandbox,
+  sandboxRuntimeFolder,
+} from "@halonicjs/adapter-sandbox-srt";
 import { RunnerStartGate, UnfencedRuns } from "@halonicjs/app";
 import {
   type ProfileEnvironment,
@@ -98,9 +102,7 @@ export function computerIntegrationMachine(
       return await trust.check(read.subject);
     },
     runnerMachine: async (): Promise<RunnerMachine> => {
-      const parent = runnerTempFolder(profile);
-      await mkdir(parent, { recursive: true, mode: 0o700 });
-      const tempFolder = await realpath(await mkdtemp(join(parent, "r-")));
+      const tempFolder = await makeRunnerTempFolder(runnerTempFolder(profile));
       made.push(tempFolder);
       return {
         homeFolder: homedir(),

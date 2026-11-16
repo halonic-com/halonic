@@ -1,6 +1,5 @@
-import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
 import {
   FileRecordStore,
   FileSystemFolderReader,
@@ -16,7 +15,7 @@ import {
   systemFiles,
 } from "@halonicjs/adapter-integration-runner";
 import { createHostSandbox } from "@halonicjs/adapter-sandbox-host";
-import { sandboxRuntimeFolder } from "@halonicjs/adapter-sandbox-srt";
+import { makeRunnerTempFolder, sandboxRuntimeFolder } from "@halonicjs/adapter-sandbox-srt";
 import { PluginSettings, RunnerStartGate, TrustService, UnfencedRuns } from "@halonicjs/app";
 import type { Sandbox, UnfencedRunConsentStore } from "@halonicjs/ports";
 import {
@@ -130,9 +129,7 @@ export function hostPluginMachine(options: HostPluginMachineOptions): HostPlugin
       return runner;
     },
     runnerMachine: async () => {
-      const parent = runnerTempFolder(profile);
-      await mkdir(parent, { recursive: true, mode: 0o700 });
-      const tempFolder = await realpath(await mkdtemp(join(parent, "r-")));
+      const tempFolder = await makeRunnerTempFolder(runnerTempFolder(profile));
       made.push(tempFolder);
       return {
         homeFolder: homedir(),
