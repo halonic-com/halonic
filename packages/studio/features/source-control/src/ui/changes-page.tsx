@@ -8,8 +8,8 @@ import { loadFailureReason } from "../load-failure.ts";
 import { ChangeList } from "./change-list.tsx";
 import { CreateVersionDialog } from "./create-version-dialog.tsx";
 import { GetUpdates } from "./get-updates.tsx";
-import { IdentityDialog } from "./identity-dialog.tsx";
 import { History } from "./history.tsx";
+import { IdentityDialog } from "./identity-dialog.tsx";
 
 /** The Changes place's page: the open workspace's changes, from `ChangesListService`. */
 export function ChangesPage({ context }: PlaceViewProps) {
