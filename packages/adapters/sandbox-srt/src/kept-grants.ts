@@ -175,21 +175,23 @@ export class KeptGrants {
   }
 
   /**
-   * The record files of host processes that are gone, and why a file can't
-   * be read: a file of a live process is never swept, as its sessions use
-   * the folders in it.
+   * The record files of host processes that are gone, the folders in the
+   * files of live ones (their sessions use them, so they are never swept),
+   * and why a file can't be read.
    */
-  #deadRecords(): { found: ForeignRecord[]; unreadable: ForgetFailure[] } {
+  #deadRecords(): { found: ForeignRecord[]; live: string[]; unreadable: ForgetFailure[] } {
     const found: ForeignRecord[] = [];
+    const live: string[] = [];
     const unreadable: ForgetFailure[] = [];
-    if (this.#recordFolder === null) return { found, unreadable };
+    if (this.#recordFolder === null) return { found, live, unreadable };
     let names: string[];
     try {
       names = readdirSync(this.#recordFolder);
     } catch (error) {
-      if ((error as { code?: unknown }).code === "ENOENT") return { found, unreadable };
+      if ((error as { code?: unknown }).code === "ENOENT") return { found, live, unreadable };
       return {
         found,
+        live,
         unreadable: [
           { folder: this.#recordFolder, reason: `the record can't be listed: ${errorText(error)}` },
         ],
@@ -198,17 +200,20 @@ export class KeptGrants {
     for (const name of names) {
       const owner = /^(\d+)-.+\.json$/.exec(name);
       const file = join(this.#recordFolder, name);
-      if (owner === null || file === this.#recordFile || processIsAlive(Number(owner[1]))) continue;
+      if (owner === null || file === this.#recordFile) continue;
+      const alive = processIsAlive(Number(owner[1]));
       try {
         const parsed: unknown = JSON.parse(readFileSync(file, "utf8"));
         if (!Array.isArray(parsed)) throw new Error("not a list of folders");
-        found.push({ file, folders: parsed.filter((f): f is string => typeof f === "string") });
+        const folders = parsed.filter((f): f is string => typeof f === "string");
+        if (alive) live.push(...folders);
+        else found.push({ file, folders });
       } catch (error) {
         // Nothing may be ruled out, so it stays and is reported at each start.
         unreadable.push({ folder: file, reason: `the record can't be read: ${errorText(error)}` });
       }
     }
-    return { found, unreadable };
+    return { found, live, unreadable };
   }
 
   /** @throws when sandbox-runtime is a version `acl forget` was not tried against: fail closed, as grants it can't take back would stay. */
@@ -322,7 +327,7 @@ export class KeptGrants {
    */
   async sweep(roots: readonly string[]): Promise<ForgetResult> {
     if (roots.length === 0) return { heldByOthers: [], failed: [] };
-    const { found, unreadable } = this.#deadRecords();
+    const { found, live, unreadable } = this.#deadRecords();
     let kept: string[];
     try {
       kept = await this.#listKept();
@@ -338,10 +343,15 @@ export class KeptGrants {
       };
     }
     const listed = new Set(kept.map(windowsKey));
-    const toForget = kept.filter((folder) => roots.some((root) => isInsideWindows(root, folder)));
+    const inLive = (folder: string): boolean =>
+      live.some((used) => isInsideWindows(used, folder) || isInsideWindows(folder, used));
+    const toForget = kept.filter(
+      (folder) => roots.some((root) => isInsideWindows(root, folder)) && !inLive(folder),
+    );
     const recorded = [...this.#recorded.values(), ...found.flatMap((record) => record.folders)];
     const dropped: string[] = [];
     for (const folder of recorded) {
+      if (inLive(folder)) continue;
       if (this.#held.has(windowsKey(folder)) || listed.has(windowsKey(folder)))
         toForget.push(folder);
       else dropped.push(folder);

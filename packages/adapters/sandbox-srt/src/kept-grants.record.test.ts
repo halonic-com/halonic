@@ -112,6 +112,15 @@ verifies("sandbox-srt.kept-grants", () => {
       expect(recordedFolders(recordFolder)).toEqual([outside]);
     });
 
+    it("does not forget a kept grant inside a sweep root that another live process records", async () => {
+      const { recordFolder, calls, grants, another } = setup(0, [folderA, folderB]);
+      another().record([folderA]);
+      const result = await grants.sweep([sweepRoot]);
+      expect(result).toEqual({ heldByOthers: [], failed: [] });
+      expect(calls.filter((call) => call[1] === "forget")).toEqual([["acl", "forget", folderB]]);
+      expect(recordedFolders(recordFolder)).toEqual([folderA]);
+    });
+
     it("does not sweep a recorded folder a live session holds, even before srt lists it", async () => {
       const { recordFolder, calls, grants } = setup();
       grants.record([folderA]);
