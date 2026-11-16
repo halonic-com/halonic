@@ -50,6 +50,7 @@ function hostOf(read: FilesHost["read"], edit: FilesHost["edit"] = () => {}): Fi
     outside: () => new Map(),
     compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
     settle: async () => {},
+    create: async () => {},
   };
 }
 

@@ -4,6 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { FilesHost, FilesListing } from "../files-host.ts";
+import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { FilesSidebarView } from "./files-sidebar-view.tsx";
 
@@ -54,6 +55,7 @@ verifies("files.ui.tree-view", () => {
     outside: () => new Map(),
     compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
     settle: async () => {},
+    create: async () => {},
   });
 
   it("shows an ARIA tree with one Tab stop and the folders closed", async () => {
@@ -168,5 +170,72 @@ verifies("files.ui.tree-view", () => {
     });
     expect(page.querySelector('[data-path="new.yaml"]')).not.toBeNull();
     expect(page.querySelector('[data-path="old.yaml"]')).toBeNull();
+  });
+});
+
+verifies("files.ui.new-file", () => {
+  const hostOf = (create: FilesHost["create"]): FilesHost => ({
+    list: async () => listing(["agents/a.agent.yaml", "models.yaml"]),
+    subscribe: () => () => {},
+    read: async () => null,
+    edit: () => {},
+    create,
+    problems: async () => [],
+    outside: () => new Map(),
+    compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
+    settle: async () => {},
+  });
+
+  async function open(create: FilesHost["create"] = async () => {}) {
+    fakeModal();
+    const openItem = vi.fn();
+    const context = { ...contextOf(hostOf(create)), openItem } as unknown as WorkspaceContext;
+    const page = render(<FilesSidebarView context={context} />);
+    await settled();
+    return { page, openItem };
+  }
+
+  const press = async (label: string) => {
+    const button = [...document.querySelectorAll("button")].find(
+      (each) => each.getAttribute("aria-label") === label || each.textContent?.startsWith(label),
+    );
+    await act(async () => {
+      button?.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  };
+
+  afterEach(() => {
+    unmountAll();
+    restoreModal();
+  });
+
+  it("has a New file button that opens the dialog at hubs/", async () => {
+    await open();
+    await press("New file");
+    expect(document.querySelector<HTMLInputElement>("input")?.value).toBe("hubs/");
+  });
+
+  it("starts at the focused folder", async () => {
+    const { page } = await open();
+    act(() => rowNamed(page, "agents").click());
+    await press("New file");
+    expect(document.querySelector<HTMLInputElement>("input")?.value).toBe("agents/");
+  });
+
+  it("opens the file it made and closes the dialog", async () => {
+    const create = vi.fn(async () => {});
+    const { openItem } = await open(create);
+    await press("New file");
+    const input = document.querySelector<HTMLInputElement>("input");
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    await act(async () => {
+      set?.call(input, "hubs/b.yaml");
+      input?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await press("Create");
+    expect(create).toHaveBeenCalledWith("hubs/b.yaml");
+    expect(openItem).toHaveBeenCalledWith({ kind: "file", hub: "workspace", id: "hubs/b.yaml" });
+    expect(document.querySelector("input")).toBeNull();
   });
 });

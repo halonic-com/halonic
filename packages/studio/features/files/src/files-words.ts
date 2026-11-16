@@ -35,4 +35,15 @@ export const filesWords = {
   compareLoading: "Loading both texts",
   /** What shows when a choice in Compare can't be saved. */
   compareFailed: (reason: string): string => `Couldn't apply your choice: ${reason}`,
+  newFile: "New file",
+  newFileTitle: "New file",
+  path: "Path",
+  pathHint: "Folders that don't exist yet are created.",
+  create: "Create",
+  creating: "Creating…",
+  pathMissing: "Give the file a name, like hubs/support/agents/new.agent.yaml.",
+  pathOutside: "Files must stay inside the workspace.",
+  pathPrivate: (path: string): string => `"${path}" is not part of the workspace definitions`,
+  /** The toast after a new file is made, with its full path. */
+  created: (path: string): string => `New file ${path}`,
 } as const;

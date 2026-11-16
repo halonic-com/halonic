@@ -178,3 +178,19 @@ verifies("studio.workspace-files-host", () => {
     expect(watching.closed).toBe(1);
   });
 });
+
+verifies("studio.workspace-files-create", () => {
+  it("creates an empty file as one undo step and refuses a path that has a file", async () => {
+    const { host, changes } = setup(["workspace.yaml"]);
+
+    await host.create("hubs/p/agents/b.agent.yaml");
+    await expect(host.create("workspace.yaml")).rejects.toThrow("workspace.yaml already exists.");
+
+    expect(changes).toEqual([
+      {
+        label: "New file hubs/p/agents/b.agent.yaml",
+        changes: { "hubs/p/agents/b.agent.yaml": "" },
+      },
+    ]);
+  });
+});

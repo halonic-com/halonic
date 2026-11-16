@@ -159,6 +159,11 @@ export class WorkspaceFilesHost implements FilesHost {
     return this.#parts.files.read(path);
   }
 
+  async create(path: string): Promise<void> {
+    if ((await this.#parts.files.read(path)) !== null) throw new Error(`${path} already exists.`);
+    this.#parts.files.change(`New file ${path}`, { [path]: "" });
+  }
+
   edit(path: string, text: string): void {
     this.#parts.files.change(`Edited ${path}`, { [path]: text }, { coalesceKey: path });
   }
