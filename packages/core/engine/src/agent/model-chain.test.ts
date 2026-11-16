@@ -58,6 +58,29 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+verifies("engine.llm-request-alias", () => {
+  const local = () => new ScriptedModel([textAnswer("Found it")], "acme-local");
+
+  it("logs the alias the call went to", async () => {
+    const log = new MemoryTurnLog();
+
+    await runTurnOn(alias("fast", local()), { log });
+
+    expect(log.events.find((event) => event.type === "llm.request")).toMatchObject({
+      alias: "fast",
+    });
+  });
+
+  it("leaves the alias out when the model has none", async () => {
+    const log = new MemoryTurnLog();
+    const { alias: _none, ...unnamed } = alias("fast", local());
+
+    await runTurnOn(unnamed, { log });
+
+    expect(log.events.find((event) => event.type === "llm.request")).not.toHaveProperty("alias");
+  });
+});
+
 verifies("engine.skip-model-without-key", () => {
   const cloud = () => new ScriptedModel([textAnswer("From the cloud")], "acme-cloud");
   const local = () => new ScriptedModel([textAnswer("From this machine")], "acme-local");

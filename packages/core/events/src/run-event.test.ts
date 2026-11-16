@@ -186,6 +186,8 @@ verifies("events.run-log-contract", () => {
       agent: string;
       provider: string;
       model: string;
+      // Added after the reference by engine.llm-request-alias (HAL-1308).
+      alias?: string;
       messages: number;
     }>();
     expectTypeOf<EventOf<"llm.response">>().toEqualTypeOf<{
