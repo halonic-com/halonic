@@ -13,6 +13,18 @@ export const collectionWords = {
   yes: "yes",
   no: "no",
   volatileLine: "Records are kept only while this Studio is open.",
+  defaultTag: "default",
+  newRowLabel: "New record",
+  newRowHint: (needed: readonly string[]) =>
+    `Fill the last row to add a record: still needed ${needed.join(", ")}.`,
+  rowRemoved: "Row removed by another change.",
+  saveFailed: "Couldn't save the change.",
+  addFailed: "Couldn't add the record.",
+  rowMenuLabel: (row: string) => `More actions for ${row}`,
+  remove: "Remove",
+  removing: "Removing…",
+  removeTitle: (row: string) => `Remove ${row}?`,
+  removeFailed: "Couldn't remove the record.",
   usedBy: "Used by",
   notUsed: "No agent uses this collection yet.",
 } as const;

@@ -1,98 +1,23 @@
 // @vitest-environment jsdom
-import type { ItemUsage } from "@halonicjs/app";
-import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cellText } from "../collection-format.ts";
+import type { CollectionColumn } from "../collection-host.ts";
 import {
-  type CollectionColumn,
-  type CollectionHost,
-  CollectionHostService,
-  type CollectionRow,
-  type CollectionSource,
-} from "../collection-host.ts";
-import { render, unmountAll } from "../test-support/render.tsx";
-import { CollectionPage } from "./collection-page.tsx";
+  cell,
+  chips,
+  cleanUp,
+  nobody,
+  opened,
+  rich,
+  sourceOf,
+  swim,
+  trip,
+  typeInto,
+} from "../test-support/collection-page.tsx";
 
-afterEach(unmountAll);
-
-const nobody: ItemUsage = { agents: [], hubs: [], routines: [], collections: [] };
-
-const fields: CollectionColumn[] = [
-  { name: "what", type: "text", required: true, computed: false, choices: [] },
-  { name: "amount", type: "money", required: true, computed: false, choices: [] },
-  { name: "share", type: "money", required: false, computed: true, choices: [] },
-];
-
-const swim: CollectionRow = {
-  id: "swim-oct",
-  values: { what: "Swim lesson", amount: 60, share: 45 },
-};
-const trip: CollectionRow = { id: "trip", values: { what: "Trip", amount: 20, share: null } };
-
-function sourceOf(rows: readonly CollectionRow[], volatile = false): CollectionSource {
-  return {
-    name: "Claims",
-    volatile,
-    grid: (view) => ({
-      fields,
-      views: [
-        { view: null, count: rows.length },
-        { view: "open", count: 1, total: 45 },
-      ],
-      rows: view === "open" ? rows.slice(0, 1) : rows,
-    }),
-    editCell: () => ({ ok: true, values: {} }),
-    newRow: (typed) => ({ draft: typed, stillNeeded: [] }),
-  };
-}
-
-function setup(source: CollectionSource | undefined, usage: ItemUsage = nobody) {
-  const host: CollectionHost = {
-    read: async () => source,
-    change: async () => "saved",
-    add: async () => {},
-    remove: async () => {},
-    usage: async () => usage,
-    subscribe: () => () => {},
-  };
-  const openItem = vi.fn();
-  const openPlace = vi.fn();
-  const props = {
-    item: { kind: "collection", hub: "~workspace", id: "claims" },
-    context: {
-      services: {
-        get: (key: unknown) => (key === CollectionHostService ? host : undefined),
-        find: (key: unknown) => (key === CollectionHostService ? host : undefined),
-      },
-      announcer: { announceState: vi.fn() },
-      openItem,
-      openPlace,
-    },
-    Sections: () => null,
-  } as unknown as ItemViewProps;
-  return { props, openItem, openPlace };
-}
-
-async function settled(): Promise<void> {
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
-}
-
-async function opened(source: CollectionSource | undefined, usage?: ItemUsage) {
-  const { props, ...rest } = setup(source, usage);
-  const root = render(<CollectionPage {...props} />);
-  await settled();
-  return { root, ...rest };
-}
-
-function chips(root: HTMLElement): string[] {
-  return [...root.querySelectorAll('[role="radiogroup"] label')].map(
-    (label) => label.textContent ?? "",
-  );
-}
+afterEach(cleanUp);
 
 verifies("library.collection-page", () => {
   describe("CollectionPage", () => {
@@ -107,7 +32,7 @@ verifies("library.collection-page", () => {
     it("shows a column per field with * for required and ƒ for computed", async () => {
       const { root } = await opened(sourceOf([swim]));
       const headers = [...root.querySelectorAll("th")].map((header) => header.textContent);
-      expect(headers).toEqual(["what *required", "amount *required", "share ƒcomputed"]);
+      expect(headers).toEqual(["what *required", "amount *required", "share ƒcomputed", ""]);
       // The marks are hidden from a screen reader, which hears the words instead.
       const spoken = [...root.querySelectorAll("th")].map((header) =>
         [...header.childNodes]
@@ -117,7 +42,7 @@ verifies("library.collection-page", () => {
           .replace(/\s+/g, " ")
           .trim(),
       );
-      expect(spoken).toEqual(["what required", "amount required", "share computed"]);
+      expect(spoken).toEqual(["what required", "amount required", "share computed", ""]);
       expect(root.querySelector('[role="grid"]')?.getAttribute("aria-label")).toBe(
         "Claims records",
       );
@@ -126,11 +51,13 @@ verifies("library.collection-page", () => {
     it("shows the records with money in the nl-NL format and empty values as nothing", async () => {
       const { root } = await opened(sourceOf([swim, trip]));
       const rows = [...root.querySelectorAll("tbody tr")].map((row) =>
-        [...row.querySelectorAll("td")].map((cell) => cell.textContent),
+        [...row.querySelectorAll("td")].slice(0, 3).map((cell) => cell.textContent),
       );
+      // The last row is the new one, empty.
       expect(rows).toEqual([
         ["Swim lesson", "60,00", "45,00"],
         ["Trip", "20,00", ""],
+        ["", "", ""],
       ]);
     });
 
@@ -152,8 +79,10 @@ verifies("library.collection-page", () => {
       const { root } = await opened(sourceOf([swim, trip]));
       const open = root.querySelector<HTMLInputElement>('input[value="view:open"]');
       await act(async () => open?.click());
-      expect(root.querySelectorAll("tbody tr")).toHaveLength(1);
+      // The record and the new row.
+      expect(root.querySelectorAll("tbody tr")).toHaveLength(2);
       expect(root.querySelector("tbody")?.textContent).toContain("Swim lesson");
+      expect(root.querySelector("tbody")?.textContent).not.toContain("Trip");
     });
 
     it("is one Tab stop in the grid", async () => {
@@ -182,13 +111,59 @@ verifies("library.collection-page", () => {
     });
 
     it("says the collection isn't in the workspace any more, with Go to Library", async () => {
-      const { root, openPlace } = await opened(undefined);
+      const { root, placesOpened } = await opened(undefined);
       expect(root.textContent).toContain("This collection isn't in this workspace any more.");
       const go = [...root.querySelectorAll("button")].find(
         (button) => button.textContent === "Go to Library",
       );
       await act(async () => go?.click());
-      expect(openPlace).toHaveBeenCalledWith("library");
+      expect(placesOpened).toEqual(["library"]);
+    });
+  });
+  describe("CollectionPage new row", () => {
+    it("says what is still needed under the grid and adds nothing yet", async () => {
+      const add = vi.fn(async () => {});
+      const source = sourceOf([swim], false, {
+        newRow: (typed) => ({ draft: typed, stillNeeded: ["amount"] }),
+      });
+      const { root } = await opened(source, undefined, { add });
+      expect(root.textContent).toContain("Fill the last row to add a record: still needed amount.");
+      await typeInto(root, 1, 0, "Taxi");
+      expect(add).not.toHaveBeenCalled();
+    });
+
+    it("shows a default as a default tag in the new row", async () => {
+      const source = sourceOf([swim], false, {
+        newRow: (typed) => ({ draft: { ...typed, amount: "100" }, stillNeeded: [] }),
+      });
+      const { root } = await opened(source);
+      expect(cell(root, 1, 1).textContent).toBe("100 default");
+    });
+
+    it("adds the record once every required field is filled", async () => {
+      const add = vi.fn(async () => {});
+      const source = sourceOf([swim], false, {
+        newRow: (typed) =>
+          typed["what"] === undefined
+            ? { draft: typed, stillNeeded: ["what"] }
+            : { draft: typed, stillNeeded: [], record: { what: typed["what"] } },
+      });
+      const { root } = await opened(source, undefined, { add });
+      await typeInto(root, 1, 0, "Taxi");
+      expect(add).toHaveBeenCalledWith({ hub: null, id: "claims" }, { what: "Taxi" });
+      expect(cell(root, 1, 0).textContent).toBe("");
+    });
+    it("says the record couldn't be added when the write fails", async () => {
+      const source = rich({
+        newRow: (typed) => ({ draft: typed, stillNeeded: [], record: { what: typed["what"] } }),
+      });
+      const { root } = await opened(source, undefined, {
+        add: async () => {
+          throw new Error("disk");
+        },
+      });
+      await typeInto(root, 1, 0, "Taxi");
+      expect(root.textContent).toContain("Couldn't add the record.");
     });
   });
 });
