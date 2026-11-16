@@ -4,7 +4,12 @@
 
 import { connectorConfigOf } from "@halonicjs/app";
 import type { Connector } from "@halonicjs/format";
-import type { ConnectorTool, Secrets, TrustGrant } from "@halonicjs/ports";
+import {
+  type ConnectorTool,
+  type Secrets,
+  type TrustGrant,
+  workspaceSecrets,
+} from "@halonicjs/ports";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { ConnectorMachine } from "./connector-machine.ts";
 import type { Message } from "./messages/define.ts";
@@ -61,7 +66,7 @@ export async function readSourceListing(
     target.workspace,
   );
   const tools = await machine.factories.listTools(connectorConfigOf(target.connector), {
-    secrets,
+    secrets: workspaceSecrets(secrets),
     tokens: machine.tokens,
     http: machine.http,
     workspaceRoot: target.dir.root,
