@@ -37,6 +37,28 @@ export interface SecurityUpdatesFacts {
   readonly last: string | null;
 }
 
+/** What the person chose for the sandbox's files before it is removed (HAL-10974). There is no default. */
+export type WslRemoveRequest =
+  | { readonly choice: "export-then-remove"; readonly file: string }
+  | { readonly choice: "remove-only" };
+
+/**
+ * How removing the WSL setup ended, as the host says it. After `export-failed` nothing was
+ * removed; `exportedTo` is where the backup went.
+ */
+export type WslRemoveResult =
+  | { readonly outcome: "kept" }
+  | { readonly outcome: "removed"; readonly exportedTo?: string | undefined }
+  | {
+      readonly outcome: "refused";
+      readonly reason: "distro-not-ours" | "distro-missing" | "bad-export-file";
+    }
+  | {
+      readonly outcome: "failed";
+      readonly reason: "export-failed" | "unregister-failed";
+      readonly detail: string;
+    };
+
 /**
  * What Settings › Agent sandbox needs of the agent host. The app gives it where a host runs (the
  * desktop app); without it the section reads Not available. Nothing here starts by itself: the
@@ -71,6 +93,23 @@ export interface AgentSandboxHost {
     verb: "setup" | "remove",
     options?: { readonly signal?: AbortSignal },
   ): Promise<SandboxOutcome | null | undefined>;
+  /**
+   * Removes the WSL setup after the person's choice about its files. Present only on a host that
+   * can do it while the WSL sandbox is not the one in use; the section then offers **Remove
+   * sandbox setup**. Resolves when the host says how it ended; the command isn't stopped when
+   * `signal` aborts.
+   */
+  removeWslSetup?(
+    request: WslRemoveRequest,
+    options?: { readonly signal?: AbortSignal },
+  ): Promise<WslRemoveResult>;
+  /**
+   * Asks for the backup file with the system's save dialog; `null` when the person closes it.
+   * Without it the backup choice isn't offered.
+   */
+  chooseBackupFile?(suggestedName: string): Promise<string | null>;
+  /** Shows a saved backup in the system's file manager. */
+  showInFolder?(path: string): Promise<void>;
 }
 
 /** The agent sandbox the host runs, when the app has one. */

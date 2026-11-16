@@ -19,6 +19,7 @@ import {
 } from "./sandbox-state.ts";
 import * as text from "./sandbox-text.ts";
 import { useAgentSandbox } from "./use-agent-sandbox.ts";
+import { WslRemoveDialog } from "./wsl-remove-dialog.tsx";
 
 /** Settings › Agent sandbox as the settings container shows it. Without a host it reads Not available. */
 export function AgentSandboxSection({ context, place }: SettingsSectionProps) {
@@ -52,6 +53,7 @@ export function AgentSandboxHostView({
 }: AgentSandboxHostViewProps) {
   const sandbox = useAgentSandbox(host, place, announce);
   const [removing, setRemoving] = useState(false);
+  const [removingWsl, setRemovingWsl] = useState(false);
   const [reloading, setReloading] = useState(false);
   const tryLoadAgain = () => {
     if (!settings) return;
@@ -78,6 +80,15 @@ export function AgentSandboxHostView({
       </div>
     );
   }
+  const wslRemoval =
+    host?.removeWslSetup && place === "app" ? (
+      <div className="flex max-w-90 flex-col items-start gap-2">
+        <p className="text-small text-fg-muted">{text.WSL_REMOVE_LINE}</p>
+        <Button variant="ghost" size="sm" onClick={() => setRemovingWsl(true)}>
+          {text.WSL_REMOVE_BUTTON}
+        </Button>
+      </div>
+    ) : null;
   return (
     <>
       <AgentSandboxView
@@ -85,8 +96,22 @@ export function AgentSandboxHostView({
         onSetUp={sandbox.setUp}
         onRemove={() => setRemoving(true)}
         onCheckAgain={sandbox.checkAgain}
-        newAgents={newAgents}
+        newAgents={
+          <>
+            {wslRemoval}
+            {newAgents}
+          </>
+        }
       />
+      {removingWsl && host ? (
+        <WslRemoveDialog
+          host={host}
+          onClose={(removed) => {
+            setRemovingWsl(false);
+            if (removed) sandbox.checkAgain();
+          }}
+        />
+      ) : null}
       {removing ? (
         <Dialog
           title={text.REMOVE_TITLE}
