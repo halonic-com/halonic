@@ -9,6 +9,7 @@ import { ChangeList } from "./change-list.tsx";
 import { CreateVersionDialog } from "./create-version-dialog.tsx";
 import { GetUpdates } from "./get-updates.tsx";
 import { IdentityDialog } from "./identity-dialog.tsx";
+import { History } from "./history.tsx";
 
 /** The Changes place's page: the open workspace's changes, from `ChangesListService`. */
 export function ChangesPage({ context }: PlaceViewProps) {
@@ -33,7 +34,7 @@ export interface ChangesViewProps {
  * work", "Halonic needs git to keep versions.", or "Nothing has changed since your last version.".
  * A later read that fails keeps what the page showed (states D1).
  *
- * Not here yet: History and the sharing strip.
+ * Not here yet: the sharing strip.
  */
 export function ChangesView({ list, developerView }: ChangesViewProps) {
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
@@ -129,10 +130,16 @@ function ReadBody({
       />
     );
   }
-  if (read.changes.length === 0) {
-    return <p className="text-body text-fg-muted">{stateWords.nothingChanged}</p>;
-  }
-  return <ChangeList list={list} files={state.files} developer={developer} />;
+  return (
+    <>
+      {read.changes.length === 0 ? (
+        <p className="text-body text-fg-muted">{stateWords.nothingChanged}</p>
+      ) : (
+        <ChangeList list={list} files={state.files} developer={developer} />
+      )}
+      <History list={list} history={state.history} />
+    </>
+  );
 }
 
 /** Whether the developer view is on, read again when it is turned on or off. */
@@ -230,6 +237,7 @@ function TurnOnHistory({
           ...(state.turningOn ? { busy: true } : {}),
         }}
       />
+      <p className="text-small text-fg-muted">{stateWords.historyIsOff}</p>
       {state.turnOnError === undefined ? null : (
         <p role="alert" className="text-small text-danger">
           {stateWords.turnOnFailed}. {loadFailureReason(state.turnOnError)}

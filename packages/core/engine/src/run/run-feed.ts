@@ -8,7 +8,7 @@ interface Follower {
   lastSeq: number;
   open: boolean;
   /** The delivery under way, so deliveries to one follower never overlap. */
-  delivering: Promise<void>;
+  delivering: Promise<unknown>;
 }
 
 /**
@@ -35,7 +35,7 @@ export class RunFeed {
     runId: string,
     afterSeq: number,
     listener: RunEventListener,
-    ready: Promise<void>,
+    ready: Promise<unknown>,
   ): RunSubscription {
     const follower: Follower = {
       runId,

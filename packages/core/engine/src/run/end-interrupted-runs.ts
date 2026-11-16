@@ -33,15 +33,34 @@ export const parentEndedError = "The run that started this one ended, so this on
  * @returns the ids of the runs it ended
  */
 export async function endInterruptedRuns(store: RunStore, clock: Clock): Promise<string[]> {
+  const { interrupted, cancelled } = await endLostRuns(store, clock);
+  return [...interrupted, ...cancelled];
+}
+
+/** The runs {@link endLostRuns} ended, by the reason it gave. */
+export interface EndedLostRuns {
+  /** The runs that were going when the engine stopped, ended with `reason: "interrupted"`. */
+  readonly interrupted: string[];
+  /** The waiting child runs of an ended parent, ended with `reason: "cancelled"`. */
+  readonly cancelled: string[];
+}
+
+/**
+ * Does what {@link endInterruptedRuns} does and tells the two kinds of run
+ * apart (requirement `engine.report-interrupted-runs`): the Studio tells the
+ * user how many of their runs the restart cut off, and a child cancelled
+ * because its parent ended isn't one of them.
+ */
+export async function endLostRuns(store: RunStore, clock: Clock): Promise<EndedLostRuns> {
   // The list may lag the log, so each run is checked again against its log.
   const listed = await store.list({ status: "running" });
-  const ended: string[] = [];
+  const interrupted: string[] = [];
   for (const run of listed) {
     if (await endRun(store, clock, run.id, "running", interruptedError, "interrupted")) {
-      ended.push(run.id);
+      interrupted.push(run.id);
     }
   }
-  return [...ended, ...(await endOrphanedChildren(store, clock))];
+  return { interrupted, cancelled: await endOrphanedChildren(store, clock) };
 }
 
 /**

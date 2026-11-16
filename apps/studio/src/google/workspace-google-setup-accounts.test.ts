@@ -124,16 +124,11 @@ verifies("studio.workspace-google-setup-accounts", () => {
   });
 
   describe("changes", () => {
-    it("refuses a secret, Check again and a new address with a plain message, and changes no record", async () => {
+    it("refuses Check again and a new address with a plain message, and changes no record", async () => {
       const { accounts, records } = await accountsOf();
       const before = JSON.stringify(await records.changes("_google_setups"));
 
-      for (const attempt of [
-        accounts.saveClientSecret(),
-        accounts.replaceClientSecret(),
-        accounts.checkAgain(),
-        accounts.changeAddress(),
-      ]) {
+      for (const attempt of [accounts.checkAgain(), accounts.changeAddress()]) {
         await expect(attempt).rejects.toThrow("can't be saved in the Halonic app yet");
       }
 

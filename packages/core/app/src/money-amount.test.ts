@@ -13,17 +13,17 @@ verifies("app.money-amount", () => {
     it("writes three decimals below one cent, so a cheap run never reads as free", () => {
       expect(moneyAmount(0.004)).toBe("€0.004");
       expect(moneyAmount(0.009)).toBe("€0.009");
+      expect(moneyAmount(0.0094)).toBe("€0.009");
+    });
+
+    it("writes an amount that rounds to a cent as one cent, not €0.010", () => {
+      expect(moneyAmount(0.0095)).toBe("€0.01");
+      expect(moneyAmount(0.00999)).toBe("€0.01");
     });
 
     it("rounds a half at the last decimal up, as a person typed it", () => {
       expect(moneyAmount(0.0045)).toBe("€0.005");
       expect(moneyAmount(1.005)).toBe("€1.01");
-    });
-
-    it("writes an amount from 0.0095 to just under a cent with three decimals (known gap, HAL-6254 follow-up)", () => {
-      // Reads "€0.010", not "€0.01". A follow-up task changes this on purpose.
-      expect(moneyAmount(0.0095)).toBe("€0.010");
-      expect(moneyAmount(0.00999)).toBe("€0.010");
     });
 
     it("separates thousands", () => {
