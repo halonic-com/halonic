@@ -31,8 +31,10 @@ export function useRequestPane(options: {
   readonly words: EngineWords;
   /** Opens a run's page, for **Open run** on the toast; without it the toast has no button. */
   readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
+  /** Hears the run a sent request started, so its card can open by itself. */
+  readonly onStarted?: ((runId: string) => void) | undefined;
 }): RequestPane {
-  const { requests, phone, list, closeItem, words, openRun } = options;
+  const { requests, phone, list, closeItem, words, openRun, onStarted } = options;
   const offered = useOffered(phone ? undefined : requests);
   const [draft, setDraft] = useState(emptyDraft);
   const [busy, setBusy] = useState(false);
@@ -47,6 +49,7 @@ export function useRequestPane(options: {
     try {
       const started = await requests.start(workflow.key, text);
       setDraft((d) => ({ ...d, message: "" }));
+      onStarted?.(started.runId);
       toasts?.show({
         tone: "success",
         title: `${workflow.label} started`,

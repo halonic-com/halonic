@@ -27,6 +27,7 @@ import { countDetail, itemTitle, lateCount, rowFor } from "./inbox-row.tsx";
 import { SetupPane } from "./setup-pane.tsx";
 import { useOpenItem } from "./use-open-item.ts";
 import { useRequestPane } from "./use-request-pane.tsx";
+import { useSentRequestCard } from "./use-sent-request-card.ts";
 import { WaitCard } from "./wait-card.tsx";
 
 const loadFailed = "Couldn't load the Inbox";
@@ -48,6 +49,7 @@ export function InboxPage({ context }: PlaceViewProps) {
     <InboxView
       inbox={context.services.get(InboxService)}
       words={engineWordsOf(context)}
+      announce={(line) => context.announcer.announce(line)}
       requests={context.services.find(InboxRequestsService)}
       {...(context.openPlace === undefined ? {} : { openPlace: context.openPlace })}
       {...(openItem && {
@@ -73,6 +75,8 @@ export interface InboxViewProps {
   readonly openPlace?: (place: SidebarPlace) => void;
   /** Opens a run's page, for **Open run** on the toast that says a request started. */
   readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
+  /** Says a line where a screen reader hears it: "New in Needs you: …" for a sent request's card that didn't open. */
+  readonly announce?: ((line: string) => void) | undefined;
 }
 
 /**
@@ -101,6 +105,7 @@ export function InboxView({
   requests,
   openPlace,
   openRun,
+  announce,
 }: InboxViewProps) {
   const subscribe = useCallback((listener: () => void) => inbox.subscribe(listener), [inbox]);
   const state = useSyncExternalStore(subscribe, () => inbox.state);
@@ -119,6 +124,7 @@ export function InboxView({
   const failedFirst = !state.loaded && state.error !== undefined;
   const phone = usePresentation() === "phone";
   const itemPage = phone && open !== null;
+  const sentCard = useSentRequestCard({ items: state.items, openItem, announce });
   const request = useRequestPane({
     requests,
     phone,
@@ -126,6 +132,7 @@ export function InboxView({
     closeItem: () => openItem(null),
     words,
     openRun,
+    onStarted: sentCard.watch,
   });
 
   return (

@@ -67,7 +67,7 @@ export function RequestForm({
   };
 
   return (
-    <form onSubmit={send} className="flex w-full flex-col gap-4 p-6" noValidate>
+    <form data-request-form onSubmit={send} className="flex w-full flex-col gap-4 p-6" noValidate>
       {offered.length === 1 ? (
         <h2 className="text-section">{picked.label}</h2>
       ) : (
