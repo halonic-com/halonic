@@ -291,6 +291,7 @@ export function buildSrtConfig(
           withResolved([...hidden, ...sharedFolders, ...writableFolders]),
         )
       : [];
+  if (platform === "win32") console.log("DEBUG tools", JSON.stringify({ given: toolFolders, kept: tools, hidden, sharedFolders, writableFolders }));
   const readable = [
     ...(platform === "win32" ? [...profile.readOnlyPaths, ...tools] : []),
     ...(profile.reopenedPaths ?? []),
