@@ -1,0 +1,58 @@
+# Report-only check: follows the docs install steps (checklist steps 1 to 9 on
+# HAL-11100) word for word on a macOS runner and prints how long each step
+# takes. A failing step is recorded and the run goes on, so one run shows every
+# place the docs break. It runs by hand only. The repo is public, so macOS
+# minutes are free.
+name: Docs install check (macOS)
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  docs-install:
+    name: Docs install steps (macos-latest)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Follow the docs steps and time them
+        shell: bash
+        run: |
+          cd "$HOME"
+          : > "$RUNNER_TEMP/results.tsv"
+          T0=$SECONDS
+          step() { # step <number> <command>
+            local n="$1" cmd="$2" s=$SECONDS rc
+            echo "::group::Step $n: $cmd"
+            bash -c "$cmd" && rc=0 || rc=$?
+            echo "::endgroup::"
+            printf '%s\t%s\t%ss\t%s\n' "$n" "$([ $rc -eq 0 ] && echo ok || echo "FAILED (exit $rc)")" "$((SECONDS - s))" "$cmd" >> "$RUNNER_TEMP/results.tsv"
+            return 0
+          }
+          export PATH="$HOME/Library/pnpm:$PATH"
+          step 1 'git --version'
+          step 2 'node --version'
+          step 3 'pnpm --version'
+          step 4 'git clone https://github.com/halonic-com/halonic.git && cd halonic && pnpm install'
+          step 5 'cd halonic && pnpm add -g ./apps/cli'
+          step 6 'halonic --version && halonic --help'
+          step 7 'halonic doctor'
+          step 8 'mkdir halonic-start && cd halonic-start && halonic init --example acme && cd acme && halonic validate && halonic test && halonic run support-reply --input examples/refund-question.json'
+          step 9 'cd halonic-start/acme && halonic routines && halonic trust && halonic run reports/weekly-report && (perl -e "alarm 15; exec @ARGV" halonic routines watch || true)'
+          {
+            echo "## Docs install check (macOS)"
+            echo
+            echo "OS: $(sw_vers -productName) $(sw_vers -productVersion), CPU: $(sysctl -n machdep.cpu.brand_string), $(uname -m)"
+            echo "Runner image: ${ImageOS:-unknown} ${ImageVersion:-}"
+            echo "Node before: $(node --version 2>&1), pnpm before: $(pnpm --version 2>&1 | head -1)"
+            echo
+            echo "| Step | Result | Time | Command |"
+            echo "|---|---|---|---|"
+            awk -F'\t' '{gsub(/\|/, "\\|", $4); printf "| %s | %s | %s | `%s` |\n", $1, $2, $3, $4}' "$RUNNER_TEMP/results.tsv"
+            echo
+            echo "Total, steps 1 to 9: $((SECONDS - T0))s (target: under 600s)"
+            echo
+            echo "Steps 5 to 9 cd into the folders the steps before them created. Step 5 runs in the clone and step 9 runs in the project from step 8; the docs say to leave them with \`cd ..\`."
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          ! grep -q FAILED "$RUNNER_TEMP/results.tsv" || echo "::warning::At least one docs step failed (step 7 failing is expected on a fresh machine). See the summary."
