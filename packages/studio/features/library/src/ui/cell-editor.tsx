@@ -42,17 +42,36 @@ export function CellEditor({
 
   if (field.type === "choice") {
     return (
-      <Select
-        aria-label={label}
-        size="sm"
-        value={initial}
-        options={[
-          ...(field.required ? [] : [{ value: "", label: "" }]),
-          ...field.choices.map((choice) => ({ value: choice, label: choice })),
-        ]}
-        onChange={(value) => finish(value, true)}
-        ref={list}
-      />
+      // The kit's Select has no key or blur props: they come up to this wrapper.
+      // biome-ignore lint/a11y/noStaticElementInteractions: it only listens; the select inside is the control
+      <span
+        className="block"
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            finish(undefined, true);
+          } else if (event.key === "Enter") {
+            event.preventDefault();
+            finish(initial, true);
+          }
+        }}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) finish(initial, false);
+        }}
+      >
+        <Select
+          aria-label={label}
+          size="sm"
+          value={initial}
+          options={[
+            ...(field.required ? [] : [{ value: "", label: "" }]),
+            ...field.choices.map((choice) => ({ value: choice, label: choice })),
+          ]}
+          onChange={(value) => finish(value, true)}
+          ref={list}
+        />
+      </span>
     );
   }
   return (

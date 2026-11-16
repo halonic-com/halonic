@@ -87,8 +87,7 @@ function LoadedCollectionPage({
         label={collectionWords.gridLabel(name || item.id)}
         model={model}
         state={state}
-        fields={grid.fields}
-        rows={grid.rows}
+        grid={grid}
       />
       <FormRows>
         <UsedByField usage={usage} notUsed={collectionWords.notUsed} context={context} />

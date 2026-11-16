@@ -47,12 +47,13 @@ function sourceOf(
   rows: readonly CollectionRow[],
   volatile = false,
   rules: Partial<Pick<CollectionSource, "editCell" | "newRow">> = {},
+  columns: readonly CollectionColumn[] = fields,
 ): CollectionSource {
   return {
     name: "Claims",
     volatile,
     grid: (view) => ({
-      fields,
+      fields: columns,
       views: [
         { view: null, count: rows.length },
         { view: "open", count: 1, total: 45 },
@@ -141,6 +142,17 @@ async function typeInto(root: HTMLElement, row: number, column: number, text: st
   });
 }
 
+/** The dialog's Remove: the menu's comes first, so it is the last one. */
+async function pressConfirm(root: HTMLElement) {
+  const confirm = [...root.ownerDocument.querySelectorAll("button")]
+    .filter((each) => each.textContent?.startsWith("Remove"))
+    .at(-1);
+  await act(async () => {
+    confirm?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
 async function pressButton(root: HTMLElement, label: string) {
   const button = [...root.ownerDocument.querySelectorAll("button")].find((each) =>
     each.textContent?.startsWith(label),
@@ -155,6 +167,54 @@ const amountEdit: CollectionSource["editCell"] = (field, text) =>
   Number.isNaN(Number(text))
     ? { ok: false, message: `${field} needs a number.` }
     : { ok: true, values: { [field]: text === "" ? null : Number(text) } };
+
+/** A choice and a yes/no column next to the text and money ones. */
+const richFields: CollectionColumn[] = [
+  { name: "what", type: "text", required: true, computed: false, choices: [] },
+  { name: "amount", type: "money", required: true, computed: false, choices: [] },
+  { name: "kind", type: "choice", required: false, computed: false, choices: ["food", "travel"] },
+  { name: "done", type: "boolean", required: false, computed: false, choices: [] },
+];
+const meal: CollectionRow = {
+  id: "meal",
+  values: { what: "Meal", amount: 12, kind: "food", done: false },
+};
+const richEdit: CollectionSource["editCell"] = (field, text) => {
+  if (field === "amount") return amountEdit(field, text);
+  if (field === "done") return { ok: true, values: { done: text === "true" } };
+  return { ok: true, values: { [field]: text === "" ? null : text } };
+};
+const rich = (rules: Partial<Pick<CollectionSource, "editCell" | "newRow">> = {}) =>
+  sourceOf([meal], false, { editCell: richEdit, ...rules }, richFields);
+
+/** Presses a key on a cell, or on the editor inside it when `inside` is set. */
+async function press(root: HTMLElement, row: number, column: number, key: string, inside = false) {
+  const target = inside
+    ? (cell(root, row, column).querySelector("input, select") as Element)
+    : cell(root, row, column);
+  await act(async () => {
+    target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
+/** Picks a value in a cell's open list. */
+async function pick(root: HTMLElement, row: number, column: number, value: string) {
+  const select = cell(root, row, column).querySelector("select") as HTMLSelectElement;
+  await act(async () => {
+    select.value = value;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
+async function leave(root: HTMLElement, row: number, column: number, tag: string) {
+  const control = cell(root, row, column).querySelector(tag) as Element;
+  await act(async () => {
+    control.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
 
 verifies("library.collection-page", () => {
   describe("CollectionPage", () => {
@@ -374,6 +434,159 @@ verifies("library.collection-page", () => {
         await new Promise((resolve) => setTimeout(resolve, 0));
       });
       expect(remove).toHaveBeenCalledWith({ hub: null, id: "claims" }, "swim-oct");
+    });
+
+    it("drops what was typed on Escape and writes nothing", async () => {
+      const change = vi.fn(async () => "saved" as const);
+      const { root } = await opened(sourceOf([swim], false, { editCell: amountEdit }), undefined, {
+        change,
+      });
+      await press(root, 0, 1, "Enter");
+      const input = cell(root, 0, 1).querySelector("input") as HTMLInputElement;
+      input.value = "99";
+      await press(root, 0, 1, "Escape", true);
+      expect(change).not.toHaveBeenCalled();
+      expect(cell(root, 0, 1).querySelector("input")).toBeNull();
+      expect(cell(root, 0, 1).textContent).toBe("60,00");
+    });
+
+    it("saves a picked choice and closes the list", async () => {
+      const change = vi.fn(async () => "saved" as const);
+      const { root } = await opened(rich(), undefined, { change });
+      await press(root, 0, 2, "Enter");
+      await pick(root, 0, 2, "travel");
+      expect(change).toHaveBeenCalledWith(expect.anything(), "meal", { kind: "travel" });
+      expect(cell(root, 0, 2).querySelector("select")).toBeNull();
+    });
+
+    it("closes a choice's list on Escape without a write", async () => {
+      const change = vi.fn(async () => "saved" as const);
+      const { root } = await opened(rich(), undefined, { change });
+      await press(root, 0, 2, "Enter");
+      expect(cell(root, 0, 2).querySelector("select")).not.toBeNull();
+      await press(root, 0, 2, "Escape", true);
+      expect(cell(root, 0, 2).querySelector("select")).toBeNull();
+      expect(change).not.toHaveBeenCalled();
+    });
+
+    it("closes a choice's list when the cell is left, keeping the value", async () => {
+      const change = vi.fn(async () => "saved" as const);
+      const { root } = await opened(rich(), undefined, { change });
+      await press(root, 0, 2, "Enter");
+      await leave(root, 0, 2, "select");
+      expect(cell(root, 0, 2).querySelector("select")).toBeNull();
+      expect(change).not.toHaveBeenCalled();
+      expect(cell(root, 0, 2).textContent).toBe("food");
+    });
+
+    it("flips a yes/no cell with Enter, with no editor", async () => {
+      const change = vi.fn(async () => "saved" as const);
+      const { root } = await opened(rich(), undefined, { change });
+      await press(root, 0, 3, "Enter");
+      expect(change).toHaveBeenCalledWith(expect.anything(), "meal", { done: true });
+      expect(cell(root, 0, 3).querySelector("input")).toBeNull();
+    });
+
+    it("flips a yes/no cell of the new row on and back off, showing yes and no", async () => {
+      const { root } = await opened(rich());
+      await press(root, 1, 3, "Enter");
+      expect(cell(root, 1, 3).textContent).toBe("yes");
+      await press(root, 1, 3, "Enter");
+      expect(cell(root, 1, 3).textContent).toBe("no");
+    });
+
+    it("says the change couldn't be saved when the write fails", async () => {
+      const { root } = await opened(rich(), undefined, {
+        change: async () => {
+          throw new Error("disk");
+        },
+      });
+      await typeInto(root, 0, 0, "Lunch");
+      expect(cell(root, 0, 0).textContent).toContain("Couldn't save the change.");
+    });
+
+    it("still says it when another cell holds a refused value", async () => {
+      const { root } = await opened(
+        sourceOf([meal], false, { editCell: richEdit }, richFields),
+        undefined,
+        {
+          change: async () => {
+            throw new Error("disk");
+          },
+        },
+      );
+      await typeInto(root, 0, 1, "lots");
+      expect(cell(root, 0, 1).textContent).toContain("amount needs a number.");
+      await typeInto(root, 0, 0, "Lunch");
+      expect(cell(root, 0, 0).textContent).toContain("Couldn't save the change.");
+    });
+
+    it("says a yes/no flip couldn't be saved after an earlier removed row", async () => {
+      let removed = true;
+      const { root } = await opened(rich(), undefined, {
+        change: async () => {
+          if (removed) return "removed";
+          throw new Error("disk");
+        },
+      });
+      await press(root, 0, 3, "Enter");
+      expect(root.textContent).toContain("Row removed by another change.");
+      removed = false;
+      await press(root, 0, 3, "Enter");
+      expect(cell(root, 0, 3).textContent).toContain("Couldn't save the change.");
+      expect(root.textContent).not.toContain("Row removed by another change.");
+    });
+
+    it("says the record couldn't be added when the write fails", async () => {
+      const source = rich({
+        newRow: (typed) => ({ draft: typed, stillNeeded: [], record: { what: typed["what"] } }),
+      });
+      const { root } = await opened(source, undefined, {
+        add: async () => {
+          throw new Error("disk");
+        },
+      });
+      await typeInto(root, 1, 0, "Taxi");
+      expect(root.textContent).toContain("Couldn't add the record.");
+    });
+
+    it("keeps Remove's dialog open and says why when the write fails", async () => {
+      const { root } = await opened(sourceOf([swim]), undefined, {
+        remove: async () => {
+          throw new Error("disk");
+        },
+      });
+      await pressButton(root, "Remove");
+      await pressConfirm(root);
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+      expect(root.ownerDocument.body.textContent).toContain("Couldn't remove the record.");
+      expect(root.ownerDocument.body.textContent).toContain("Remove swim-oct?");
+    });
+
+    it("closes Remove's dialog on Cancel without removing", async () => {
+      const remove = vi.fn(async () => {});
+      const { root } = await opened(sourceOf([swim]), undefined, { remove });
+      await pressButton(root, "Remove");
+      await pressButton(root, "Cancel");
+      expect(remove).not.toHaveBeenCalled();
+      expect(root.ownerDocument.body.textContent).not.toContain("Remove swim-oct?");
+    });
+
+    it("shows Removing… and sends one remove however often Remove is pressed", async () => {
+      let finish: () => void = () => {};
+      const remove = vi.fn(() => new Promise<void>((resolve) => (finish = resolve)));
+      const { root } = await opened(sourceOf([swim]), undefined, { remove });
+      await pressButton(root, "Remove");
+      await pressConfirm(root);
+      await pressConfirm(root);
+      expect(remove).toHaveBeenCalledTimes(1);
+      const confirm = [...root.ownerDocument.querySelectorAll("button")]
+        .filter((each) => each.textContent?.startsWith("Remove"))
+        .at(-1);
+      expect(confirm?.getAttribute("aria-busy")).toBe("true");
+      await act(async () => finish());
     });
   });
 });
