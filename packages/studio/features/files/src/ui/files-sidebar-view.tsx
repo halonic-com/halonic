@@ -9,6 +9,7 @@ import { emptyTreeState, type TreeIntent, type TreeState } from "../tree/tree-ke
 import { buildTree } from "../tree/tree-model.ts";
 import { FilesTree } from "./files-tree.tsx";
 import { NewFileDialog } from "./new-file-dialog.tsx";
+import { RenameFileDialog } from "./rename-file-dialog.tsx";
 
 /** What the sidebar's Files view gets: the context of the feature that added it. */
 export interface FilesSidebarViewProps {
@@ -33,6 +34,7 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   const [state, setState] = useState<TreeState>(emptyTreeState);
   const [retrying, setRetrying] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [renaming, setRenaming] = useState<string>();
   const toasts = useToastStore();
   const addButton = useRef<HTMLButtonElement>(null);
 
@@ -82,6 +84,7 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   const onIntent = useCallback(
     (intent: TreeIntent) => {
       if (intent.kind === "open") context.openItem?.(fileItem(intent.path));
+      if (intent.kind === "rename") setRenaming(intent.path);
     },
     [context],
   );
@@ -157,6 +160,19 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
           onCreated={(path) => {
             setAdding(false);
             toasts?.show({ tone: "success", title: filesWords.created(path) });
+            context.openItem?.(fileItem(path));
+          }}
+        />
+      )}
+      {renaming !== undefined && (
+        <RenameFileDialog
+          host={host}
+          path={renaming}
+          returnFocus={() => document.querySelector<HTMLElement>("[data-path][tabindex='0']")}
+          onCancel={() => setRenaming(undefined)}
+          onRenamed={(path) => {
+            setRenaming(undefined);
+            toasts?.show({ tone: "success", title: filesWords.renamed(path) });
             context.openItem?.(fileItem(path));
           }}
         />

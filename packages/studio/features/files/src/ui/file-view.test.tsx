@@ -51,6 +51,8 @@ function hostOf(read: FilesHost["read"], edit: FilesHost["edit"] = () => {}): Fi
     compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
     settle: async () => {},
     create: async () => {},
+    renameImpact: async () => 0,
+    rename: async () => {},
   };
 }
 

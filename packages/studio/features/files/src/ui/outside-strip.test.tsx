@@ -45,6 +45,8 @@ function fixture(change: OutsideChange | undefined, compare: Partial<FileCompare
     },
     problems: async () => [],
     create: async () => {},
+    renameImpact: async () => 0,
+    rename: async () => {},
     outside: () => outside,
     compare: async (path) => ({
       path,

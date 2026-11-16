@@ -44,6 +44,19 @@ export const filesWords = {
   pathMissing: "Give the file a name, like hubs/support/agents/new.agent.yaml.",
   pathOutside: "Files must stay inside the workspace.",
   pathPrivate: (path: string): string => `"${path}" is not part of the workspace definitions`,
+  renameTitle: "Rename file",
+  renamePath: "New path",
+  renameConfirm: "Rename",
+  renaming: "Renaming…",
+  /** Under the Rename field when the path is the file's own. */
+  renameSame: "That is the file's own path.",
+  /** Under the Rename field when another file has the path. */
+  renameTaken: (path: string): string => `${path} already exists.`,
+  /** The line of the Rename dialog about files that name this one. */
+  alsoUpdates: (count: number): string =>
+    `Also updates ${count} ${count === 1 ? "place" : "places"}`,
+  /** The toast after a rename, with the new path. */
+  renamed: (path: string): string => `Renamed to ${path}`,
   /** The toast after a new file is made, with its full path. */
   created: (path: string): string => `New file ${path}`,
 } as const;

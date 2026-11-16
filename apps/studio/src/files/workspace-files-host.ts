@@ -1,3 +1,4 @@
+import { type LibraryItemKind, type Reference, referencesTo } from "@halonicjs/app";
 import {
   checkWorkspacePath,
   type DefinitionWatch,
@@ -12,7 +13,8 @@ import type {
   FilesListing,
   OutsideChange,
 } from "@halonicjs/studio-feature-files/api";
-import { loadWorkspace } from "@halonicjs/workspace";
+import { loadWorkspace, placeOf } from "@halonicjs/workspace";
+import { editYaml, readYaml } from "@halonicjs/yaml";
 import { unsavedSource } from "../library/workspace-library-items.ts";
 
 /** What {@link WorkspaceFilesHost} needs of the workspace's files and events. */
@@ -38,12 +40,21 @@ export interface FilesHostParts {
     ): void;
     /** Takes in outside changes of files with no unsaved changes as one undo step; the rest come back as `held`. */
     reloadFromOutside(paths: readonly string[]): Promise<{ held: string[] }>;
+    /** Moves a file as one undo step; `rewrites` is the new text of the files that name it. Rejects with an `Error` when it can't. */
+    rename(from: string, to: string, rewrites?: Record<string, string>): Promise<void>;
     compare(path: string): Promise<FileCompare>;
     settle(path: string, choice: CompareChoice): Promise<unknown>;
   };
   /** Calls `listener` after every change of the workspace's files and every save; returns the way to stop. */
   readonly onChange: (listener: () => void) => () => void;
 }
+
+const libraryKinds: ReadonlySet<string> = new Set([
+  "skill",
+  "knowledge",
+  "collection",
+  "connector",
+]);
 
 /**
  * The Files feature's view of the workspace (`studio.workspace-files-host`): saved and unsaved
@@ -165,6 +176,12 @@ export class WorkspaceFilesHost implements FilesHost {
   }
 
   async create(path: string): Promise<void> {
+    await this.#checkFreePath(path);
+    this.#parts.files.change(`New file ${path}`, { [path]: "" });
+  }
+
+  /** Throws a one-sentence reason unless `path` is a path the workspace serves that has no file or folder yet. */
+  async #checkFreePath(path: string): Promise<void> {
     try {
       checkWorkspacePath(path);
     } catch {
@@ -182,7 +199,94 @@ export class WorkspaceFilesHost implements FilesHost {
     }
     if ((await files.list(path)).length > 0) throw new Error(`${path} is a folder.`);
     if ((await files.read(path)) !== null) throw new Error(`${path} already exists.`);
-    files.change(`New file ${path}`, { [path]: "" });
+  }
+
+  async renameImpact(from: string, to: string): Promise<number> {
+    return (await this.#renamePlan(from, to)).places;
+  }
+
+  async rename(from: string, to: string): Promise<void> {
+    if (from === to) throw new Error(`${to} already has that name.`);
+    await this.#checkFreePath(to);
+    await this.#refuseSkillSplit(from, to);
+    const { rewrites } = await this.#renamePlan(from, to);
+    await this.#parts.files.rename(from, to, rewrites);
+  }
+
+  /** A skill is its whole folder: moving only `SKILL.md` to another folder would leave the rest behind. */
+  async #refuseSkillSplit(from: string, to: string): Promise<void> {
+    const folder = from.slice(0, from.lastIndexOf("/"));
+    if (placeOf(from)?.kind !== "skill" || folder === to.slice(0, to.lastIndexOf("/"))) return;
+    const others = (await this.#parts.files.list(folder)).filter((path) => path !== from);
+    if (others.length > 0) {
+      throw new Error("This skill has other files in its folder, so it can't be renamed here yet.");
+    }
+  }
+
+  /**
+   * What a rename does to other files. A Library item's id is the `<id>` of its file name, so
+   * a new name is a new id, and every place that names the old one gets the new one. A file
+   * with an `id:` of its own keeps it over its name: it gets the new id too, and a file whose
+   * `id:` isn't its name keeps its id. A move that keeps the id, or a file that isn't a
+   * Library item, changes nothing else.
+   */
+  async #renamePlan(
+    from: string,
+    to: string,
+  ): Promise<{ rewrites: Record<string, string>; places: number }> {
+    const none = { rewrites: {}, places: 0 };
+    const old = placeOf(from);
+    const next = placeOf(to);
+    if (old?.placeId === undefined || next?.placeId === undefined) return none;
+    if (old.kind !== next.kind || old.hub !== next.hub || old.placeId === next.placeId) return none;
+    if (!libraryKinds.has(old.kind)) return none;
+    const kind = old.kind as LibraryItemKind;
+    const places = await this.#placesNaming(from, kind, old.hub, old.placeId);
+    if (places === undefined) return none;
+    const rewrites: Record<string, string> = {};
+    const own = await this.#withNewOwnId(from, kind, next.placeId);
+    if (own !== undefined) rewrites[from] = own;
+    for (const place of places) {
+      const text = rewrites[place.file] ?? (await this.#parts.files.read(place.file));
+      if (text === null) continue;
+      const edited = editYaml(text, [{ kind: "set", path: place.path, value: next.placeId }]);
+      if (!edited.ok) throw new Error(`Couldn't update ${place.file}.`);
+      rewrites[place.file] = edited.value.text;
+    }
+    return { rewrites, places: places.length };
+  }
+
+  /** The places that name the item in `from` by its id, or `undefined` when the rename gives it no new id. */
+  async #placesNaming(
+    from: string,
+    kind: LibraryItemKind,
+    hub: string | null,
+    placeId: string,
+  ): Promise<Reference[] | undefined> {
+    try {
+      const workspace = await loadWorkspace(unsavedSource(this.#parts.files));
+      const loaded = workspace.files.find((file) => file.path === from);
+      // A file that didn't parse names nothing yet, so its name stands for its id.
+      const id = loaded !== undefined && "id" in loaded.value ? loaded.value.id : placeId;
+      if (id !== placeId) return undefined;
+      return referencesTo(workspace, { kind, id, hub: kind === "collection" ? null : hub });
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** The file's text with its own `id:` set to `id`, or `undefined` when it has none (a skill never has). */
+  async #withNewOwnId(path: string, kind: string, id: string): Promise<string | undefined> {
+    if (kind === "skill") return undefined;
+    const text = await this.#parts.files.read(path);
+    if (text === null) return undefined;
+    const read = readYaml(text);
+    if (!read.ok) return undefined;
+    const data = read.value.data;
+    if (typeof data !== "object" || data === null || !Object.hasOwn(data, "id")) return undefined;
+    const edited = editYaml(text, [{ kind: "set", path: ["id"], value: id }]);
+    if (!edited.ok) throw new Error(`Couldn't update ${path}.`);
+    return edited.value.text;
   }
 
   edit(path: string, text: string): void {

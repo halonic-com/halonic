@@ -56,6 +56,16 @@ export interface FilesHost {
    */
   create(path: string): Promise<void>;
   /**
+   * How many places in other files name the file by its id and would change if it were renamed to
+   * `to`: the "Also updates 3 places" of the Rename dialog. Zero for a file nothing names.
+   */
+  renameImpact(from: string, to: string): Promise<number>;
+  /**
+   * Moves a file to `to`, and the places that name it, as one undo step. Rejects with an `Error`
+   * whose message is one sentence, such as "workspace.yaml already exists.", when it can't.
+   */
+  rename(from: string, to: string): Promise<void>;
+  /**
    * Every error and warning in the workspace's files, with the unsaved changes applied, errors
    * and warnings of one file in the order of the text. Resolves to none when the files can't be checked.
    */

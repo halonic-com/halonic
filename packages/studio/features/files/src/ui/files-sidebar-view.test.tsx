@@ -56,6 +56,8 @@ verifies("files.ui.tree-view", () => {
     compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
     settle: async () => {},
     create: async () => {},
+    renameImpact: async () => 0,
+    rename: async () => {},
   });
 
   it("shows an ARIA tree with one Tab stop and the folders closed", async () => {
@@ -180,6 +182,8 @@ verifies("files.ui.new-file", () => {
     read: async () => null,
     edit: () => {},
     create,
+    renameImpact: async () => 0,
+    rename: async () => {},
     problems: async () => [],
     outside: () => new Map(),
     compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
@@ -239,3 +243,61 @@ verifies("files.ui.new-file", () => {
     expect(document.querySelector("input")).toBeNull();
   });
 });
+
+verifies("files.ui.rename-file", () => {
+  afterEach(() => {
+    unmountAll();
+    restoreModal();
+  });
+
+  it("opens Rename on F2 for the focused file and opens the new path after it", async () => {
+    fakeModal();
+    const rename = vi.fn(async () => {});
+    const host: FilesHost = {
+      ...contextHost(),
+      rename,
+    };
+    const openItem = vi.fn();
+    const context = { ...contextOf(host), openItem } as unknown as WorkspaceContext;
+    const page = render(<FilesSidebarView context={context} />);
+    await settled();
+    const row = rowNamed(page, "models.yaml");
+    act(() => row.click());
+    await act(async () => {
+      row.dispatchEvent(new KeyboardEvent("keydown", { key: "F2", bubbles: true }));
+    });
+    const input = document.querySelector<HTMLInputElement>("input");
+    expect(input?.value).toBe("models.yaml");
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    await act(async () => {
+      set?.call(input, "providers.yaml");
+      input?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const button = [...document.querySelectorAll("button")].find((each) =>
+      each.textContent?.startsWith("Rename"),
+    );
+    await act(async () => {
+      button?.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(rename).toHaveBeenCalledWith("models.yaml", "providers.yaml");
+    expect(openItem).toHaveBeenCalledWith({ kind: "file", hub: "workspace", id: "providers.yaml" });
+    expect(document.querySelector("input")).toBeNull();
+  });
+});
+
+function contextHost(): FilesHost {
+  return {
+    list: async () => listing(["agents/a.agent.yaml", "models.yaml"]),
+    subscribe: () => () => {},
+    read: async () => null,
+    edit: () => {},
+    create: async () => {},
+    renameImpact: async () => 0,
+    rename: async () => {},
+    problems: async () => [],
+    outside: () => new Map(),
+    compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
+    settle: async () => {},
+  };
+}
