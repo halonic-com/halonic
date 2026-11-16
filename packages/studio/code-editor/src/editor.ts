@@ -2,7 +2,13 @@ import { defaultKeymap, indentLess, indentMore } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { yaml } from "@codemirror/lang-yaml";
 import { bracketMatching, indentUnit } from "@codemirror/language";
-import { Compartment, EditorSelection, EditorState, type Extension } from "@codemirror/state";
+import {
+  Annotation,
+  Compartment,
+  EditorSelection,
+  EditorState,
+  type Extension,
+} from "@codemirror/state";
 import {
   drawSelection,
   EditorView,
@@ -14,7 +20,7 @@ import {
 } from "@codemirror/view";
 import type { EditorLanguage } from "./language.ts";
 import { theme } from "./theme.ts";
-import { canRedo, canUndo, forgetHistory, redo, undo, undoHistory } from "./undo-history.ts";
+import { canRedo, canUndo, forgetHistoryEffect, redo, undo, undoHistory } from "./undo-history.ts";
 
 export type CodeEditorOptions = {
   /** Where the editor is drawn. */
@@ -45,6 +51,9 @@ export type CodeEditor = {
 };
 
 const indentSize = 2;
+
+/** Marks the change `load` makes, which is not an edit by the user, so `onChange` is not called. */
+const loaded = Annotation.define<true>();
 
 function languageExtension(language: EditorLanguage): Extension {
   if (language === "yaml") return yaml();
@@ -111,7 +120,7 @@ export function createCodeEditor(options: CodeEditorOptions): CodeEditor {
       },
     },
     { key: "Mod-z", run: undo, preventDefault: true },
-    { key: "Mod-Shift-z", mac: "Mod-Shift-z", run: redo, preventDefault: true },
+    { key: "Mod-Shift-z", run: redo, preventDefault: true },
     { key: "Mod-y", run: redo, preventDefault: true },
   ];
 
@@ -136,7 +145,8 @@ export function createCodeEditor(options: CodeEditorOptions): CodeEditor {
         EditorView.updateListener.of((update) => {
           // Any edit or cursor move after Esc means the user is writing again, so Tab indents.
           if (update.docChanged || update.selectionSet) escaped = false;
-          if (update.docChanged) options.onChange?.(update.state.doc.toString());
+          if (update.docChanged && !update.transactions.some((t) => t.annotation(loaded)))
+            options.onChange?.(update.state.doc.toString());
         }),
       ],
     }),
@@ -147,9 +157,12 @@ export function createCodeEditor(options: CodeEditorOptions): CodeEditor {
     load: (text, language) => {
       view.dispatch({
         changes: { from: 0, to: view.state.doc.length, insert: text },
-        effects: language ? languageSlot.reconfigure(languageExtension(language)) : [],
+        effects: [
+          forgetHistoryEffect,
+          ...(language ? [languageSlot.reconfigure(languageExtension(language))] : []),
+        ],
+        annotations: loaded.of(true),
       });
-      forgetHistory(view);
     },
     setReadOnly: (readOnly) =>
       view.dispatch({ effects: readOnlySlot.reconfigure(EditorState.readOnly.of(readOnly)) }),

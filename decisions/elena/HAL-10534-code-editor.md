@@ -6,7 +6,7 @@
 
 ## What changes
 
-`tooling/check/dependencies.json` gains seven entries: `@codemirror/state`, `@codemirror/view`, `@codemirror/commands`, `@codemirror/language`, `@codemirror/lang-yaml`, `@codemirror/lang-markdown` and `@lezer/highlight` (CodeMirror's own highlight-tag package, needed to colour code; it is part of the same project). Each is allowed only in `@halonicjs/studio-code-editor`, and the same versions are added to the catalog in `pnpm-workspace.yaml`. No existing rule is loosened and no test is changed.
+`tooling/check/dependencies.json` gains seven entries: `@codemirror/state`, `@codemirror/view`, `@codemirror/commands`, `@codemirror/language`, `@codemirror/lang-yaml`, `@codemirror/lang-markdown` and `@lezer/highlight` (CodeMirror's own highlight-tag package, needed to colour code; it is part of the same project). Each is allowed only in `@halonicjs/studio-code-editor`, and the same versions are added to the catalog in `pnpm-workspace.yaml`. One existing rule is widened: `jsdom` may also be used in `@halonicjs/studio-code-editor`, because the editor's tests need a DOM (Liam approved this on HAL-10702). No test is changed.
 
 ## Why
 

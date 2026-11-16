@@ -48,6 +48,30 @@ describe("undo history", () => {
       expect(editor.canRedo()).toBe(false);
     });
 
+    it("does not undo or redo while read-only", () => {
+      editor.type("abc");
+      editor.setReadOnly(true);
+      expect(editor.undo()).toBe(false);
+      expect(editor.text()).toBe("abc");
+      editor.setReadOnly(false);
+      editor.undo();
+      editor.setReadOnly(true);
+      expect(editor.redo()).toBe(false);
+      expect(editor.text()).toBe("");
+    });
+
+    it("does not call onChange when text is loaded", () => {
+      const onChange = vi.fn();
+      const own = createCodeEditorForTest("x", { onChange });
+      own.load("from disk");
+      expect(own.text()).toBe("from disk");
+      expect(onChange).not.toHaveBeenCalled();
+      expect(own.canUndo()).toBe(false);
+      own.type("!");
+      expect(onChange).toHaveBeenCalledWith("!from disk");
+      own.destroy();
+    });
+
     it("has nothing to undo after another text is loaded", () => {
       editor.type("a");
       editor.load("other");

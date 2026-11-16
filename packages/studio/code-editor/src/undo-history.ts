@@ -64,6 +64,7 @@ const historyField = StateField.define<History>({
 export const undoHistory: Extension = historyField;
 
 function move(view: EditorView, direction: "undo" | "redo"): boolean {
+  if (view.state.readOnly) return false;
   const history = view.state.field(historyField);
   const list = direction === "undo" ? history.done : history.undone;
   const step = list[list.length - 1];
@@ -79,9 +80,8 @@ function move(view: EditorView, direction: "undo" | "redo"): boolean {
 export const undo = (view: EditorView): boolean => move(view, "undo");
 export const redo = (view: EditorView): boolean => move(view, "redo");
 
-/** Starts a new history; called when a different file's text is loaded. */
-export const forgetHistory = (view: EditorView): void =>
-  view.dispatch({ effects: forget.of(null) });
+/** The effect that starts a new history; put it in the transaction that loads a different file's text. */
+export const forgetHistoryEffect: StateEffect<null> = forget.of(null);
 
 export function canUndo(view: EditorView): boolean {
   return view.state.field(historyField).done.length > 0;
