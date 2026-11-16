@@ -20,6 +20,11 @@ async function settled(): Promise<void> {
   });
 }
 
+/** Wait until `done` holds, a tick at a time, instead of guessing how many ticks the page needs. */
+async function until(done: () => unknown): Promise<void> {
+  for (let tries = 0; tries < 100 && !done(); tries++) await settled();
+}
+
 const now = () => new Date("2026-11-10T12:30:00.000Z");
 const twoRoutines = [
   refusedRun("a", "daily", "2026-11-10T06:00:00.000Z"),
@@ -34,8 +39,7 @@ async function openCard(
   await settled();
   t.inbox.openSetup("sandbox", "this-computer");
   const root = render(<InboxView inbox={t.inbox} now={now} openRun={openRun} />);
-  await settled();
-  await settled();
+  await until(() => root.querySelector("section h2"));
   return root;
 }
 
@@ -45,6 +49,7 @@ const button = (root: HTMLElement, name: string) =>
 verifies("inbox.sandbox-row", () => {
   it("shows the reason, then the fix, the guide and the runs that didn't run", async () => {
     const root = await openCard(sandboxInbox(twoRoutines));
+    await until(() => root.textContent?.includes("acme/daily"));
     const card = root.querySelector("section") as HTMLElement;
     expect(card.querySelector("h2")?.textContent).toBe("2 routines didn't run");
     expect(card.textContent).toContain("bubblewrap isn't installed, and the sandbox needs it.");
@@ -60,8 +65,8 @@ verifies("inbox.sandbox-row", () => {
   it("opens a run from its line", async () => {
     const openRun = vi.fn();
     const root = await openCard(sandboxInbox(twoRoutines), openRun);
-    // The run lines load after the card opens; wait for them instead of counting ticks.
-    for (let tries = 0; tries < 50 && !button(root, "Open run"); tries++) await settled();
+    // The run lines load after the card opens.
+    await until(() => button(root, "Open run"));
     act(() => button(root, "Open run")?.click());
     expect(openRun).toHaveBeenCalledWith("acme", "c");
   });
@@ -70,7 +75,7 @@ verifies("inbox.sandbox-row", () => {
     const t = sandboxInbox(twoRoutines);
     const root = await openCard(t);
     await act(async () => button(root, "Check again")?.click());
-    await settled();
+    await until(() => root.querySelector("section h2")?.textContent === "The sandbox is ready");
     expect(t.inbox.signal().value).toBe(0);
     const card = root.querySelector("section") as HTMLElement;
     expect(card.querySelector("h2")?.textContent).toBe("The sandbox is ready");
@@ -107,7 +112,7 @@ verifies("inbox.sandbox-row", () => {
     const t = sandboxInbox(twoRoutines);
     const root = await openCard(t);
     await act(async () => button(root, "Check again")?.click());
-    await settled();
+    await until(() => root.querySelector("section h2")?.textContent === "The sandbox is ready");
     expect(t.inbox.state.items).toHaveLength(1);
     act(() => root.querySelector<HTMLElement>('[role="gridcell"]')?.focus());
     // Closing the card (Escape) leaves the item.
@@ -116,7 +121,7 @@ verifies("inbox.sandbox-row", () => {
         .querySelector("section")
         ?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
-    await settled();
+    await until(() => t.inbox.state.items.length === 0);
     expect(t.inbox.state.items).toEqual([]);
   });
 
