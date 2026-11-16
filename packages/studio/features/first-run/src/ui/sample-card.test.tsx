@@ -1,0 +1,153 @@
+// @vitest-environment jsdom
+import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import { verifies } from "@halonicjs/testing-spec";
+import { act, type ReactNode } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, expect, it, vi } from "vitest";
+import type { SampleStepId } from "../api.ts";
+import type { SampleProgress, SampleProgressState } from "../sample-progress.ts";
+import { SampleCard, SampleSteps } from "./sample-card.tsx";
+import { stepOpeners } from "./step-openers.ts";
+
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+const mounted: { root: Root; container: HTMLElement }[] = [];
+
+afterEach(() => {
+  for (const { root, container } of mounted.splice(0)) {
+    act(() => root.unmount());
+    container.remove();
+  }
+});
+
+function render(element: ReactNode): HTMLElement {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  mounted.push({ root, container });
+  act(() => root.render(element));
+  return container;
+}
+
+/** A progress with the steps done a test sets; only what the card reads is there. */
+function progressWith(
+  done: readonly SampleStepId[],
+  finishedRun?: SampleProgressState["finishedRun"],
+) {
+  const state: SampleProgressState = { done: new Set(done), finishedRun };
+  return { state, subscribe: () => () => {} } as unknown as SampleProgress;
+}
+
+const never = () => {
+  throw new Error("not opened");
+};
+const noOpeners = { start: never, decide: never, see: never };
+
+verifies("first-run.sample-card", () => {
+  it("lists the three steps, numbered, under '0 of 3 done'", () => {
+    const root = render(<SampleSteps progress={progressWith([])} openers={noOpeners} />);
+    expect(root.querySelector("p")?.textContent).toBe("0 of 3 done");
+    const text = root.textContent ?? "";
+    for (const title of [
+      "Start a support request",
+      "Approve or reject the reply",
+      "See what it did",
+    ]) {
+      expect(text).toContain(title);
+    }
+    expect(text).toContain("An invented customer asks for a refund.");
+  });
+
+  it("counts the done steps, marks them for a screen reader, and opens a step by its row", () => {
+    const start = vi.fn();
+    const root = render(
+      <SampleSteps progress={progressWith(["start"])} openers={{ ...noOpeners, start }} />,
+    );
+    expect(root.querySelector("p")?.textContent).toBe("1 of 3 done");
+    expect(root.querySelector(".sr-only")?.textContent).toBe("done");
+    const first = root.querySelector<HTMLElement>('[role="gridcell"]');
+    act(() => first?.click());
+    expect(start).toHaveBeenCalledOnce();
+  });
+
+  it("says 'You've seen it work.' once all three are done", () => {
+    const root = render(
+      <SampleSteps progress={progressWith(["start", "decide", "see"])} openers={noOpeners} />,
+    );
+    expect(root.textContent).toBe("You've seen it work.");
+  });
+});
+
+/** The Inbox as the openers use it: a waiting wait item or none. */
+function contextWith(waiting: boolean) {
+  const inbox = {
+    state: { items: waiting ? [{ kind: "wait", key: "r2:review" }] : [] },
+    requestNewRequest: vi.fn(),
+    requestOpen: vi.fn(),
+  };
+  const openPlace = vi.fn();
+  const openItem = vi.fn();
+  const context = {
+    services: { get: () => inbox },
+    openPlace,
+    openItem,
+  } as unknown as WorkspaceContext;
+  return { context, inbox, openPlace, openItem };
+}
+
+verifies("first-run.sample-card", () => {
+  it("opens the request form for step 1", () => {
+    const { context, inbox, openPlace } = contextWith(false);
+    stepOpeners(context, progressWith([])).start();
+    expect(inbox.requestNewRequest).toHaveBeenCalledOnce();
+    expect(openPlace).toHaveBeenCalledWith("inbox");
+  });
+
+  it("opens the waiting card for step 2, and the form when none waits", () => {
+    const waiting = contextWith(true);
+    stepOpeners(waiting.context, progressWith(["start"])).decide();
+    expect(waiting.inbox.requestOpen).toHaveBeenCalledWith("r2:review");
+    expect(waiting.openPlace).toHaveBeenCalledWith("inbox");
+
+    const none = contextWith(false);
+    stepOpeners(none.context, progressWith([])).decide();
+    expect(none.inbox.requestNewRequest).toHaveBeenCalledOnce();
+  });
+
+  it("opens the finished run for step 3, and else what the next open step does", () => {
+    const finished = { kind: "run", hub: "support", id: "r1" };
+    const withRun = contextWith(false);
+    stepOpeners(withRun.context, progressWith(["start", "decide"], finished)).see();
+    expect(withRun.openItem).toHaveBeenCalledWith(finished);
+
+    const fresh = contextWith(false);
+    stepOpeners(fresh.context, progressWith([])).see();
+    expect(fresh.inbox.requestNewRequest).toHaveBeenCalledOnce();
+
+    const started = contextWith(true);
+    stepOpeners(started.context, progressWith(["start"])).see();
+    expect(started.inbox.requestOpen).toHaveBeenCalledWith("r2:review");
+  });
+});
+
+verifies("first-run.sample-card", () => {
+  it("shows nothing in a workspace that isn't the sample", () => {
+    const firstRun = { progress: () => undefined };
+    const context = { services: { get: () => firstRun } } as unknown as WorkspaceContext;
+    const root = render(<SampleCard context={context} />);
+    expect(root.textContent).toBe("");
+  });
+
+  it("shows the steps in the sample", () => {
+    const { context } = contextWith(false);
+    const firstRun = { progress: () => progressWith(["start"]) };
+    const services = {
+      get: (key: { name: string }) =>
+        key.name === "first-run" ? firstRun : context.services.get(key as never),
+    };
+    const root = render(
+      <SampleCard context={{ ...context, services } as unknown as WorkspaceContext} />,
+    );
+    expect(root.querySelector("p")?.textContent).toBe("1 of 3 done");
+  });
+});

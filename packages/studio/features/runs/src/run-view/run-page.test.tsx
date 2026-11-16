@@ -54,6 +54,13 @@ verifies("runs.run-page", () => {
     expect(root.querySelector("section[aria-label]")).toBeNull();
   });
 
+  it("tells the runs list the run's page was shown, once", async () => {
+    const { list } = await openRun(fakeSource([running]).source, running.id);
+
+    expect(list.hasOpened(running.id)).toBe(true);
+    expect(list.hasOpened(needsYou.id)).toBe(false);
+  });
+
   it("names the banner's region and sends Review in Inbox to the Inbox", async () => {
     const reviewInInbox = vi.fn();
     const { root } = await openRun(fakeSource([needsYou]).source, needsYou.id, {

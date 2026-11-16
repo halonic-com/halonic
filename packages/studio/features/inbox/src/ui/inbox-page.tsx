@@ -135,6 +135,7 @@ export function InboxView({
   const itemPage = phone && open !== null;
   const sentCard = useSentRequestCard({ items: state.items, openItem, announce });
   const request = useRequestPane({
+    inbox,
     requests,
     phone,
     list,

@@ -76,6 +76,17 @@ verifies("shell.home-sections", () => {
     expect(sections.map((section) => section.querySelector("h2")?.textContent)).toEqual(names);
   });
 
+  it("shows the heading a card gives in place of its section's own", async () => {
+    const container = await renderHome([
+      { ...card("setup", "Steps"), title: () => "Try the sample" },
+    ]);
+    const section = container.querySelector("section");
+    expect(section?.querySelector("h2")?.textContent).toBe("Try the sample");
+    expect(
+      document.getElementById(section?.getAttribute("aria-labelledby") ?? "")?.textContent,
+    ).toBe("Try the sample");
+  });
+
   it("shows a card's count after its heading, follows it, and shows none at zero", async () => {
     let waiting = 1;
     const listeners = new Set<() => void>();

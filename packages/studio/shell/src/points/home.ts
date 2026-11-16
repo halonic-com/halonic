@@ -31,6 +31,11 @@ export const homeSectionTitles: Readonly<Record<HomeSection, string>> = {
 export interface HomeCardContribution extends ViewRef {
   readonly id: HomeSection;
   /**
+   * The heading to show in place of the section's own, such as "Try the sample" for Get set up in
+   * the Acme sample, or `undefined` for the section's own. Read each time Home draws.
+   */
+  title?(context: WorkspaceContext): string | undefined;
+  /**
    * The section's count now, shown after its heading as a place's is after its name ("Needs you,
    * 1 waiting"), or `undefined` for none. Nothing shows at zero.
    */

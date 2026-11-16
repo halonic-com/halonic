@@ -135,6 +135,7 @@ export class Inbox {
   #disposed = false;
   #toOpen: string | undefined;
   #toFocus: SetupFocus | undefined;
+  #newRequestAsked = false;
   /** Notes set aside by item key while their writer goes elsewhere. They are in memory only. */
   readonly #setAside = new Map<string, string>();
 
@@ -232,6 +233,23 @@ export class Inbox {
     this.#toOpen = key;
     this.#toFocus = focus;
     for (const listener of [...this.#listeners]) listener();
+  }
+
+  /**
+   * Asks the Inbox page to show the request form with focus in Message, as **New request** does,
+   * such as the Try the sample card's first step. The page takes the request when it shows, or at
+   * once if it's showing.
+   */
+  requestNewRequest(): void {
+    this.#newRequestAsked = true;
+    for (const listener of [...this.#listeners]) listener();
+  }
+
+  /** Whether the page was asked for the request form, once: the request is cleared as it's taken. */
+  takeNewRequest(): boolean {
+    const asked = this.#newRequestAsked;
+    this.#newRequestAsked = false;
+    return asked;
   }
 
   /**

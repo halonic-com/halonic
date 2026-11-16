@@ -1,3 +1,5 @@
+import { firstRunFeature } from "@halonicjs/studio-feature-first-run";
+import { SampleWorkspaceService } from "@halonicjs/studio-feature-first-run/api";
 import { googleSetupFeature } from "@halonicjs/studio-feature-google-setup";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
@@ -47,6 +49,7 @@ import type { ShellOptions } from "@halonicjs/studio-shell";
  */
 export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = {
   features: [
+    firstRunFeature,
     googleSetupFeature,
     inboxFeature,
     libraryFeature,
@@ -83,6 +86,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     HostSettingsService,
     AssistantWorkspaceService,
     WorkspacePageService,
+    SampleWorkspaceService,
     TrustedSourcesService,
   ],
 };

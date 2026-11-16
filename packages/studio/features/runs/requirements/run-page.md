@@ -7,6 +7,7 @@
 When a run is opened from the Runs list or from another run, the Studio shall show the run page in the active tab, one run per tab, with the run's kind and workflow, the `h1` "Run" and its short id, its status chip, and when it started, then how long it took, or "updates live" while the run is live. When the run is a routine's catch-up (`trigger.catchUp`), a line under it shall say "Started at 08:12 to catch up. It was planned for 07:30 while Halonic was closed or asleep.", giving each time as a clock time for today and as the date with the clock time for another day, and adding "61 earlier times were skipped." when the catch-up rule dropped some. The run page shall show one banner only when the run needs attention: violet (the warning token, "your turn") with Review in Inbox when it waits for the user's approval or at a wait step, neutral when it waits for a time or a child run, with Open run for a child run, R24's general banner when it failed, the budget banner when it stopped at its budget, and a plain note, not a banner, when it was cancelled. While the run is loading the page shall show its `h1` and skeleton bars; when the run can't load, "Couldn't load run" with the reason and Try again; when the run isn't in the workspace, "This run isn't in this workspace any more." with Go to Runs; and when a later load fails, the engine's line under the header, keeping what the page showed. While the run's log is read, the receipt's place shall hold a skeleton named "Loading the run"; when the log can't be read, "Couldn't read this run's log" with the reason and Try again; and when part of it is damaged, a red banner "Part of this run's log can't be read. Line 212 is damaged. Everything before it is shown, so the receipt may be incomplete." above what could be read.
 
 On a phone, the run page shall be one column: the heading for screen readers only (the top bar says "Run #42"), the header and banner as on the desktop, the receipt and Every step under them, **Details** as one row that opens a sheet with Close, and a step's events as a screen of their own with Back (HAL-10580, checklist 1.15). The header's ⋮ and 48px link rows and the receipt's Show each call sheet come later.
+When the page is shown, the runs list shall note that this run's page has been opened in this window and tell its listeners once per run, so another feature can tell a run was looked at.
 
 ## Examples
 
@@ -31,3 +32,6 @@ On a phone, the run page shall be one column: the heading for screen readers onl
 - Given a run id that isn't in the workspace,
   when its page is shown,
   then it reads "This run isn't in this workspace any more." with Go to Runs.
+- Given a run whose page was shown,
+  when another feature asks the runs list whether it was opened,
+  then it was, and a run whose page was not shown was not.

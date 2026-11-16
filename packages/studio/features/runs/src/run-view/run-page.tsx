@@ -107,6 +107,7 @@ export function RunView({
   const log = logRead.events;
   const [openEntry, setOpenEntry] = useOpenEntry(runId, step, log, run?.summary);
   useRedrawWhenSlow(log, run?.summary.status === "running", now);
+  useEffect(() => list.noteOpened(runId), [list, runId]);
   const title = runPageWords.title(shortRunId(runId));
   const retry = () => void list.refresh();
 

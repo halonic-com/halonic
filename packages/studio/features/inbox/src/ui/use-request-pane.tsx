@@ -1,7 +1,8 @@
 import { Button, PlusIcon, useToastStore } from "@halonicjs/studio-kit";
 import type { EngineWords } from "@halonicjs/studio-shell";
-import { type ReactNode, type RefObject, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import type { Inbox } from "../inbox.ts";
 import type { InboxRequests, RequestWorkflow } from "../request/inbox-requests.ts";
 import { notStartedLine } from "../request/not-started.ts";
 import { useOffered } from "../request/use-offered.ts";
@@ -24,6 +25,8 @@ export interface RequestPane {
  * @param closeItem Closes the open card, so the form shows.
  */
 export function useRequestPane(options: {
+  /** The workspace's Inbox, which can ask for the form (`Inbox.requestNewRequest`). */
+  readonly inbox: Inbox;
   readonly requests: InboxRequests | undefined;
   readonly phone: boolean;
   readonly list: RefObject<HTMLElement | null>;
@@ -34,13 +37,35 @@ export function useRequestPane(options: {
   /** Hears the run a sent request started, so its card can open by itself. */
   readonly onStarted?: ((runId: string) => void) | undefined;
 }): RequestPane {
-  const { requests, phone, list, closeItem, words, openRun, onStarted } = options;
+  const { inbox, requests, phone, list, closeItem, words, openRun, onStarted } = options;
   const offered = useOffered(phone ? undefined : requests);
   const [draft, setDraft] = useState(emptyDraft);
   const [busy, setBusy] = useState(false);
   const [notStarted, setNotStarted] = useState("");
   const toasts = useToastStore();
   const message = useRef<HTMLTextAreaElement>(null);
+  const formAsked = useRef(false);
+  const [asks, setAsks] = useState(0);
+  const closeLatest = useRef(closeItem);
+  closeLatest.current = closeItem;
+  useEffect(() => {
+    const take = () => {
+      if (!inbox.takeNewRequest()) return;
+      formAsked.current = true;
+      closeLatest.current();
+      setAsks((count) => count + 1);
+    };
+    take();
+    return inbox.subscribe(take);
+  }, [inbox]);
+  // Focus goes to Message once the form is in the pane, which may be after the offered list loads.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `asks` and `offered` say the form may have appeared.
+  useEffect(() => {
+    if (formAsked.current && message.current !== null) {
+      message.current.focus();
+      formAsked.current = false;
+    }
+  }, [asks, offered.length]);
   if (requests === undefined || offered.length === 0) return { newRequest: null, form: null };
   const send = async (workflow: RequestWorkflow, text: string) => {
     if (busy) return;
