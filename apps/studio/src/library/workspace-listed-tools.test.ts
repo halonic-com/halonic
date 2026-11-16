@@ -103,7 +103,11 @@ verifies("studio.workspace-listed-tools", () => {
     it("starts nothing in a workspace that isn't trusted as it is now", async () => {
       const { host, started } = hostOf({ trusted: false });
 
-      await expect(host.review("notes")).rejects.toThrow("isn't trusted");
+      // A kinded error, so the page shows this sentence rather than "can't explain yet".
+      await expect(host.review("notes")).rejects.toMatchObject({
+        kind: "denied",
+        message: expect.stringContaining("isn't trusted"),
+      });
 
       expect(started).toEqual([]);
     });
@@ -146,15 +150,16 @@ verifies("studio.workspace-listed-tools", () => {
       expect(started).toEqual([]);
     });
 
-    it("can't check an http server yet, and starts nothing", async () => {
+    it("opens an http server's page with nothing to review, and starts nothing", async () => {
       const files = acmeFiles({
         "library/connectors/search.connector.yaml":
           "transport: { http: { url: https://search.acme.example/mcp } }\n",
       });
       const { host, started } = hostOf({ files });
 
-      await expect(host.review("search")).rejects.toThrow("http server");
+      const snapshot = await host.review("search");
 
+      expect(snapshot.toReview).toEqual([]);
       expect(started).toEqual([]);
     });
   });
