@@ -34,7 +34,7 @@ export function History({ list, history, now = new Date() }: HistoryProps) {
       <div
         data-part="history-layout"
         className={
-          picked === undefined ? "flex flex-col" : "grid gap-4 lg:grid-cols-2 lg:items-start"
+          picked === undefined ? "flex flex-col" : "grid gap-4 wide:grid-cols-2 wide:items-start"
         }
       >
         <div data-part="history-list" className="flex min-w-0 flex-col gap-3">
@@ -133,7 +133,7 @@ function Details({ version }: { readonly version: Version }) {
   return (
     <section
       aria-label={historyWords.detailsLabel(version.name)}
-      className="flex min-w-0 flex-col gap-2 rounded-md border border-border p-4 lg:sticky lg:top-4"
+      className="flex min-w-0 flex-col gap-2 rounded-md border border-border p-4 wide:sticky wide:top-4"
     >
       <h3 className="text-heading">{version.name}</h3>
       <p className="text-small text-fg-muted">

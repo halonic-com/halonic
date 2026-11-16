@@ -39,7 +39,7 @@ const rowOf = (root: HTMLElement, name: string): HTMLElement => {
 
 const history = (root: HTMLElement) => root.querySelector<HTMLElement>("section[aria-labelledby]");
 
-verifies("source-control.history", () => {
+verifies("source-control.history-page", () => {
   describe("History on the Changes page", () => {
     it("lists the newest 20 versions under Today with author and time, and Show more", async () => {
       const fake = fakeSource({ kind: "ready", changes: [] });

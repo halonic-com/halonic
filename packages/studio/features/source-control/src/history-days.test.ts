@@ -15,7 +15,7 @@ const version = (id: string, time: number): Version => ({
 });
 const now = new Date(2026, 10, 12, 15, 0);
 
-verifies("source-control.history", () => {
+verifies("source-control.history-page", () => {
   describe("groupByDay", () => {
     it("names today, yesterday, a day this year and a day in an earlier year", () => {
       const days = groupByDay(
