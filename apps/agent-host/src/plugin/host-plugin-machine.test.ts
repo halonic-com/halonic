@@ -1,9 +1,8 @@
-import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { runnerNodeFolder, runnerProfile } from "@halonicjs/adapter-integration-runner";
 import type { Sandbox } from "@halonicjs/ports";
-import { runnerTempFolder } from "@halonicjs/profile";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type HostPluginMachineOptions, hostPluginMachine } from "./host-plugin-machine.ts";
@@ -12,6 +11,7 @@ let root: string;
 
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), "halonic-host-machine-"));
+  await mkdir(join(root, "shared"));
 });
 
 afterEach(async () => {
@@ -30,7 +30,12 @@ function machineOf(extra: Partial<HostPluginMachineOptions> = {}) {
   return hostPluginMachine({
     ...extra,
     fenced: unusedSandbox,
-    profile: { platform: process.platform === "win32" ? "windows" : "linux", root },
+    // On Windows the runner's temp folder goes in the profile's shared data folder: a folder of this test's own, not the machine's %ProgramData%.
+    profile: {
+      platform: process.platform === "win32" ? "windows" : "linux",
+      root,
+      sharedDataFolder: join(root, "shared"),
+    },
     version: "0.0.0",
   });
 }
@@ -66,7 +71,8 @@ verifies("agent-host.plugin-routes", () => {
       const { machine, dispose } = machineOf();
       try {
         const runnerMachine = await machine.runnerMachine();
-        expect(await readdir(runnerTempFolder({ platform: "linux", root }))).toHaveLength(1);
+        const tempParent = dirname(runnerMachine.tempFolder);
+        expect(await readdir(tempParent)).toHaveLength(1);
         const start = machine.startRunner;
         if (start === undefined) throw new Error("the host machine must start runners itself");
         await expect(
@@ -75,7 +81,7 @@ verifies("agent-host.plugin-routes", () => {
             machine: runnerMachine,
           } as never),
         ).rejects.toThrow();
-        expect(await readdir(runnerTempFolder({ platform: "linux", root }))).toHaveLength(0);
+        expect(await readdir(tempParent)).toHaveLength(0);
       } finally {
         await dispose();
       }
@@ -101,7 +107,7 @@ verifies("agent-host.plugin-routes", () => {
         await expect(machine.startRunner?.({ machine: runnerMachine } as never)).rejects.toThrow(
           "the runner did not start",
         );
-        expect(logged).toHaveLength(1);
+        expect(logged, JSON.stringify(logged)).toHaveLength(1);
         expect(logged[0]).toContain("EACCES");
         expect(logged[0]).not.toContain("/secret/folder");
       } finally {
