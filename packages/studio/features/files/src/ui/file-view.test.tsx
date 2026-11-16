@@ -53,6 +53,7 @@ function hostOf(read: FilesHost["read"], edit: FilesHost["edit"] = () => {}): Fi
     create: async () => {},
     renameImpact: async () => 0,
     rename: async () => {},
+    remove: async () => ({ places: 0, undo: async () => {} }),
   };
 }
 

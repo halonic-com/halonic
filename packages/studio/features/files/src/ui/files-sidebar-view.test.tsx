@@ -58,6 +58,7 @@ verifies("files.ui.tree-view", () => {
     create: async () => {},
     renameImpact: async () => 0,
     rename: async () => {},
+    remove: async () => ({ places: 0, undo: async () => {} }),
   });
 
   it("shows an ARIA tree with one Tab stop and the folders closed", async () => {
@@ -184,6 +185,7 @@ verifies("files.ui.new-file", () => {
     create,
     renameImpact: async () => 0,
     rename: async () => {},
+    remove: async () => ({ places: 0, undo: async () => {} }),
     problems: async () => [],
     outside: () => new Map(),
     compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
@@ -286,6 +288,21 @@ verifies("files.ui.rename-file", () => {
   });
 });
 
+verifies("files.ui.delete-file", () => {
+  it("deletes the focused file on Delete without a dialog", async () => {
+    const remove = vi.fn(async () => ({ places: 0, undo: async () => {} }));
+    const host: FilesHost = { ...contextHost(), remove };
+    const page = await show(host);
+    const row = rowNamed(page, "models.yaml");
+    act(() => row.click());
+    await act(async () => {
+      row.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true }));
+    });
+    expect(remove).toHaveBeenCalledWith("models.yaml");
+    expect(document.querySelector("input")).toBeNull();
+  });
+});
+
 function contextHost(): FilesHost {
   return {
     list: async () => listing(["agents/a.agent.yaml", "models.yaml"]),
@@ -295,6 +312,7 @@ function contextHost(): FilesHost {
     create: async () => {},
     renameImpact: async () => 0,
     rename: async () => {},
+    remove: async () => ({ places: 0, undo: async () => {} }),
     problems: async () => [],
     outside: () => new Map(),
     compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),

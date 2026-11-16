@@ -12,6 +12,7 @@ import type {
   FilesHost,
   FilesListing,
   OutsideChange,
+  RemovedFile,
 } from "@halonicjs/studio-feature-files/api";
 import { loadWorkspace, placeOf } from "@halonicjs/workspace";
 import { editYaml, readYaml } from "@halonicjs/yaml";
@@ -42,6 +43,8 @@ export interface FilesHostParts {
     reloadFromOutside(paths: readonly string[]): Promise<{ held: string[] }>;
     /** Moves a file as one undo step; `rewrites` is the new text of the files that name it. Rejects with an `Error` when it can't. */
     rename(from: string, to: string, rewrites?: Record<string, string>): Promise<void>;
+    /** Takes back the newest undo step; `false` when there is none. */
+    undo(): boolean;
     compare(path: string): Promise<FileCompare>;
     settle(path: string, choice: CompareChoice): Promise<unknown>;
   };
@@ -213,13 +216,43 @@ export class WorkspaceFilesHost implements FilesHost {
     await this.#parts.files.rename(from, to, rewrites);
   }
 
+  async remove(path: string): Promise<RemovedFile> {
+    const files = this.#parts.files;
+    if ((await files.read(path)) === null) throw new Error(`${path} isn't here any more.`);
+    await this.#refuseSkillSplit(path, undefined);
+    const old = placeOf(path);
+    const places =
+      old?.placeId === undefined || !libraryKinds.has(old.kind)
+        ? []
+        : ((await this.#placesNaming(path, old.kind as LibraryItemKind, old.hub, old.placeId)) ??
+          []);
+    files.change(`Deleted ${path}`, { [path]: null });
+    const afterDelete = files.pending;
+    return {
+      places: places.length,
+      undo: async () => {
+        if (files.pending !== afterDelete || !files.undo()) {
+          throw new Error(
+            `${path} can't be put back, because the workspace changed after it was deleted.`,
+          );
+        }
+      },
+    };
+  }
+
   /** A skill is its whole folder: moving only `SKILL.md` to another folder would leave the rest behind. */
-  async #refuseSkillSplit(from: string, to: string): Promise<void> {
+  async #refuseSkillSplit(from: string, to: string | undefined): Promise<void> {
     const folder = from.slice(0, from.lastIndexOf("/"));
-    if (placeOf(from)?.kind !== "skill" || folder === to.slice(0, to.lastIndexOf("/"))) return;
+    if (
+      placeOf(from)?.kind !== "skill" ||
+      (to !== undefined && folder === to.slice(0, to.lastIndexOf("/")))
+    ) {
+      return;
+    }
     const others = (await this.#parts.files.list(folder)).filter((path) => path !== from);
     if (others.length > 0) {
-      throw new Error("This skill has other files in its folder, so it can't be renamed here yet.");
+      const verb = to === undefined ? "deleted" : "renamed";
+      throw new Error(`This skill has other files in its folder, so it can't be ${verb} here yet.`);
     }
   }
 

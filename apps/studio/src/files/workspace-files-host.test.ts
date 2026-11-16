@@ -17,6 +17,8 @@ function setup(
   const texts: Record<string, string> = { "workspace.yaml": "id: acme\nname: Acme\n", ...more };
   const listeners = new Set<() => void>();
   const changes: { label: string; changes: Record<string, string | null>; key?: string }[] = [];
+  let current = pending;
+  const undone: number[] = [];
   const host = new WorkspaceFilesHost({
     store: {
       list: async () => {
@@ -33,7 +35,13 @@ function setup(
       },
     },
     files: {
-      pending,
+      get pending() {
+        return current;
+      },
+      undo: () => {
+        undone.push(1);
+        return true;
+      },
       reloadFromOutside: async () => ({ held: outside.held ?? [] }),
       compare: async (path) => ({
         path,
@@ -50,6 +58,7 @@ function setup(
       read: async (path) => (path in pending ? (pending[path] ?? null) : (texts[path] ?? null)),
       list: async (dir) => Object.keys(texts).filter((path) => path.startsWith(`${dir}/`)),
       change: (label, made, options) => {
+        current = { ...current };
         changes.push({
           label,
           changes: made,
@@ -62,7 +71,7 @@ function setup(
       return () => listeners.delete(listener);
     },
   });
-  return { host, listeners, changes, watching, settled, renames };
+  return { host, listeners, changes, watching, settled, renames, undone };
 }
 
 verifies("studio.workspace-files-host", () => {
@@ -347,5 +356,58 @@ verifies("studio.workspace-files-rename", () => {
       "notes.md is a file, not a folder.",
     );
     expect(renames).toEqual([]);
+  });
+});
+
+verifies("studio.workspace-files-delete", () => {
+  const skill = "hubs/support/library/skills/refunds/SKILL.md";
+  const agent = "hubs/support/agents/helper.agent.yaml";
+  const workspace = {
+    "hubs/support/hub.yaml": "id: support\nname: Support\n",
+    [skill]: "---\nname: Refunds\ndescription: Use for refunds\n---\nBe kind.\n",
+    [agent]: "id: helper\nname: Helper\nskills: [refunds]\nmodel: test\n",
+    "notes.md": "hi",
+  };
+
+  it("deletes a file as one change and counts the places that name a deleted Library item", async () => {
+    const { host, changes } = setup([], {}, workspace);
+
+    const removed = await host.remove(skill);
+
+    expect(removed.places).toBe(1);
+    expect(changes).toEqual([{ label: `Deleted ${skill}`, changes: { [skill]: null } }]);
+  });
+
+  it("says 0 places for a file nothing names, and undoes the delete while it is the newest step", async () => {
+    const { host, undone } = setup([], {}, workspace);
+
+    const removed = await host.remove("notes.md");
+    await removed.undo();
+
+    expect(removed.places).toBe(0);
+    expect(undone).toHaveLength(1);
+  });
+
+  it("rejects the way back, and undoes nothing, after another change", async () => {
+    const { host, undone } = setup([], {}, workspace);
+
+    const removed = await host.remove("notes.md");
+    host.edit("workspace.yaml", "id: acme\nname: Acme 2\n");
+
+    await expect(removed.undo()).rejects.toThrow(
+      "notes.md can't be put back, because the workspace changed after it was deleted.",
+    );
+    expect(undone).toEqual([]);
+  });
+
+  it("refuses a file that isn't there, and a skill whose folder has other files", async () => {
+    const other = "hubs/support/library/skills/refunds/script.sh";
+    const { host, changes } = setup([], {}, { ...workspace, [other]: "echo" });
+
+    await expect(host.remove("gone.md")).rejects.toThrow("gone.md isn't here any more.");
+    await expect(host.remove(skill)).rejects.toThrow(
+      "This skill has other files in its folder, so it can't be deleted here yet.",
+    );
+    expect(changes).toEqual([]);
   });
 });

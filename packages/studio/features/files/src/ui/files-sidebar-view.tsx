@@ -5,6 +5,7 @@ import { FILE_KIND, fileItem } from "../file-item.ts";
 import { FilesHostService, type FilesListing } from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
 import { startingPath } from "../new-file.ts";
+import { removeFile } from "../remove-file.ts";
 import { emptyTreeState, type TreeIntent, type TreeState } from "../tree/tree-keyboard.ts";
 import { buildTree } from "../tree/tree-model.ts";
 import { FilesTree } from "./files-tree.tsx";
@@ -85,8 +86,9 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
     (intent: TreeIntent) => {
       if (intent.kind === "open") context.openItem?.(fileItem(intent.path));
       if (intent.kind === "rename") setRenaming(intent.path);
+      if (intent.kind === "trash") void removeFile(host, toasts, intent.path);
     },
-    [context],
+    [context, host, toasts],
   );
 
   const roots = useMemo(
