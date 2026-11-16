@@ -190,6 +190,49 @@ verifies("inbox.request", () => {
       expect(alert?.textContent).toBe("Not started: fin@acme.example is signed out.");
       expect(message(root).value).toBe("Hello");
     });
+    it("keeps a capitalised name in the reason as written", async () => {
+      const { requests } = fakeRequests([support], async () => {
+        throw new KindedError("denied", "Gmail is signed out.");
+      });
+      const { root } = await open(requests);
+      await type(message(root), "Hello");
+      await send(root);
+      expect(root.querySelector('[role="alert"]')?.textContent).toBe(
+        "Not started: Gmail is signed out.",
+      );
+    });
+
+    it("sends once and keeps working state and refusal when a card is opened meanwhile", async () => {
+      let settle: (error?: Error) => void = () => {};
+      const { requests, started } = fakeRequests([support], () => {
+        return new Promise((resolve, reject) => {
+          settle = (error) => (error ? reject(error) : resolve({ runId: "r9" }));
+        });
+      });
+      const { root } = await open(requests);
+      await type(message(root), "Hello");
+      await act(async () => {
+        button(root, "Send").click();
+      });
+      const row = root.querySelector<HTMLElement>('[role="grid"] tr [role="gridcell"]');
+      await act(async () => {
+        row?.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+        row?.click();
+      });
+      await act(async () => {
+        button(root, "New request").click();
+      });
+      expect(button(root, "Send").getAttribute("aria-busy")).toBe("true");
+      await send(root);
+      expect(started).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        settle(new KindedError("denied", "Gmail is signed out."));
+      });
+      await settled();
+      expect(root.querySelector('[role="alert"]')?.textContent).toBe(
+        "Not started: Gmail is signed out.",
+      );
+    });
   });
 
   describe("keeping the text", () => {

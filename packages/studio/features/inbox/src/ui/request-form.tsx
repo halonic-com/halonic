@@ -1,8 +1,6 @@
-import { Button, Field, Select, TextArea, useToastStore } from "@halonicjs/studio-kit";
-import type { EngineWords } from "@halonicjs/studio-shell";
+import { Button, Field, Select, TextArea } from "@halonicjs/studio-kit";
 import { type FormEvent, type Ref, useState } from "react";
-import type { InboxRequests, RequestWorkflow } from "../request/inbox-requests.ts";
-import { notStartedLine } from "../request/not-started.ts";
+import type { RequestWorkflow } from "../request/inbox-requests.ts";
 
 /** What you have typed in the form. It lives above the form, so it stays while a card is open. */
 export interface RequestDraft {
@@ -16,12 +14,16 @@ export const emptyDraft: RequestDraft = { workflow: "", message: "" };
 
 /** Props for {@link RequestForm}. */
 export interface RequestFormProps {
-  readonly requests: InboxRequests;
   /** What the workspace offers; never empty. */
   readonly offered: readonly RequestWorkflow[];
   readonly draft: RequestDraft;
-  readonly onDraft: (draft: RequestDraft) => void;
-  readonly words: EngineWords;
+  readonly onDraft: (update: (draft: RequestDraft) => RequestDraft) => void;
+  /** A request is starting. It lives above the form too, so a second Send can't follow a card. */
+  readonly busy: boolean;
+  /** The "Not started: …" line, or empty. */
+  readonly notStarted: string;
+  /** Starts the run; clears the message once it has started. Never rejects. */
+  readonly onSend: (workflow: RequestWorkflow, message: string) => Promise<void>;
   /** Esc: goes back to the list. The text stays. */
   readonly onEscape: () => void;
   readonly messageRef: Ref<HTMLTextAreaElement>;
@@ -38,18 +40,16 @@ const emptyMessage = "Write a message first.";
  * form. The text is cleared only once the run has started.
  */
 export function RequestForm({
-  requests,
   offered,
   draft,
   onDraft,
-  words,
+  busy,
+  notStarted,
+  onSend,
   onEscape,
   messageRef,
 }: RequestFormProps) {
-  const toasts = useToastStore();
-  const [busy, setBusy] = useState(false);
   const [fieldError, setFieldError] = useState("");
-  const [notStarted, setNotStarted] = useState("");
   const picked = offered.find((workflow) => workflow.key === draft.workflow) ?? offered[0];
   if (picked === undefined) return null;
 
@@ -63,17 +63,7 @@ export function RequestForm({
       return;
     }
     setFieldError("");
-    setNotStarted("");
-    setBusy(true);
-    try {
-      await requests.start(picked.key, message);
-      onDraft({ ...draft, message: "" });
-      toasts?.show({ tone: "success", title: `${picked.label} started` });
-    } catch (error) {
-      setNotStarted(notStartedLine(error, words));
-    } finally {
-      setBusy(false);
-    }
+    await onSend(picked, message);
   };
 
   return (
@@ -85,7 +75,7 @@ export function RequestForm({
           <Select
             options={offered.map(({ key, label }) => ({ value: key, label }))}
             value={picked.key}
-            onChange={(workflow) => onDraft({ ...draft, workflow })}
+            onChange={(workflow) => onDraft((d) => ({ ...d, workflow }))}
           />
         </Field>
       )}
@@ -96,8 +86,9 @@ export function RequestForm({
           placeholder={picked.description ?? "What do you need?"}
           submitOnCtrlEnter
           onChange={(event) => {
+            const value = event.target.value;
             setFieldError("");
-            onDraft({ ...draft, message: event.target.value });
+            onDraft((d) => ({ ...d, message: value }));
           }}
           onKeyDown={(event) => {
             if (event.key === "Escape") onEscape();

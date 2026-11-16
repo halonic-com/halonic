@@ -14,13 +14,16 @@ export function useOffered(requests: InboxRequests | undefined): readonly Reques
       return;
     }
     let current = true;
+    let latest = 0;
+    // Only the newest read counts: an older one that answers last must not overwrite it.
     const read = () => {
+      const mine = ++latest;
       requests.offered().then(
         (list) => {
-          if (current) setOffered(list);
+          if (current && mine === latest) setOffered(list);
         },
         () => {
-          if (current) setOffered([]);
+          if (current && mine === latest) setOffered([]);
         },
       );
     };

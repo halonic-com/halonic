@@ -1,8 +1,9 @@
-import { Button, PlusIcon } from "@halonicjs/studio-kit";
+import { Button, PlusIcon, useToastStore } from "@halonicjs/studio-kit";
 import type { EngineWords } from "@halonicjs/studio-shell";
 import { type ReactNode, type RefObject, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import type { InboxRequests } from "../request/inbox-requests.ts";
+import type { InboxRequests, RequestWorkflow } from "../request/inbox-requests.ts";
+import { notStartedLine } from "../request/not-started.ts";
 import { useOffered } from "../request/use-offered.ts";
 import { emptyDraft, RequestForm } from "./request-form.tsx";
 
@@ -32,8 +33,25 @@ export function useRequestPane(options: {
   const { requests, phone, list, closeItem, words } = options;
   const offered = useOffered(phone ? undefined : requests);
   const [draft, setDraft] = useState(emptyDraft);
+  const [busy, setBusy] = useState(false);
+  const [notStarted, setNotStarted] = useState("");
+  const toasts = useToastStore();
   const message = useRef<HTMLTextAreaElement>(null);
   if (requests === undefined || offered.length === 0) return { newRequest: null, form: null };
+  const send = async (workflow: RequestWorkflow, text: string) => {
+    if (busy) return;
+    setNotStarted("");
+    setBusy(true);
+    try {
+      await requests.start(workflow.key, text);
+      setDraft((d) => ({ ...d, message: "" }));
+      toasts?.show({ tone: "success", title: `${workflow.label} started` });
+    } catch (error) {
+      setNotStarted(notStartedLine(error, words));
+    } finally {
+      setBusy(false);
+    }
+  };
   const showForm = () => {
     // The form is in the pane once the card has closed, so Message can take focus.
     flushSync(closeItem);
@@ -47,11 +65,12 @@ export function useRequestPane(options: {
     ),
     form: (
       <RequestForm
-        requests={requests}
         offered={offered}
         draft={draft}
         onDraft={setDraft}
-        words={words}
+        busy={busy}
+        notStarted={notStarted}
+        onSend={send}
         onEscape={() => list.current?.querySelector<HTMLElement>('[role="gridcell"]')?.focus()}
         messageRef={message}
       />
