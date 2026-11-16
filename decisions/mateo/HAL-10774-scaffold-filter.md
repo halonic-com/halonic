@@ -3,6 +3,7 @@
 - Approval: HAL-10774
 - Kind: user-visible
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:pa5Y9uk3NNp+GhLvVDqsToq59LSb7dOSnbdjWBNhRD2cGBIyotadH302WmQGxo3CTOepXy5PvxPFcR4OV4kACg==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:ZVLz1Jm733qo51+knRYp7qjgTREw96yI1dmIx2yV1LSpd/zu77p1HgFFvvD12sHy6Q1NXi6Z6fbdZAecWyBJBw==
 
 The CI job "Empty package and feature pass every check" scaffolds five `ci-example` packages and ran
 `pnpm verify --full` over all 97 packages with no Turbo cache, which took 14-19 minutes. The `turbo`
