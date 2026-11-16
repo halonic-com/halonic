@@ -15,6 +15,27 @@ verifies("app.money-amount", () => {
       expect(moneyAmount(0.009)).toBe("€0.009");
     });
 
+    it("rounds a half at the last decimal up, as a person typed it", () => {
+      expect(moneyAmount(0.0045)).toBe("€0.005");
+      expect(moneyAmount(1.005)).toBe("€1.01");
+    });
+
+    it("writes an amount from 0.0095 to just under a cent with three decimals (known gap, HAL-6254 follow-up)", () => {
+      // Reads "€0.010", not "€0.01". A follow-up task changes this on purpose.
+      expect(moneyAmount(0.0095)).toBe("€0.010");
+      expect(moneyAmount(0.00999)).toBe("€0.010");
+    });
+
+    it("separates thousands", () => {
+      expect(moneyAmount(999.99)).toBe("€999.99");
+      expect(moneyAmount(1234.5)).toBe("€1,234.50");
+    });
+
+    it("writes the smallest amounts either side of half a thousandth", () => {
+      expect(moneyAmount(0.00049)).toBe("under €0.001");
+      expect(moneyAmount(0.0005)).toBe("€0.001");
+    });
+
     it("writes an amount that would read as zero as under the smallest amount", () => {
       expect(moneyAmount(0.0004)).toBe("under €0.001");
     });
