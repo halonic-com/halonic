@@ -97,9 +97,10 @@ export class WorkspaceFiles {
 
   /**
    * A marker of the newest undo step: it moves on `change`, `rename`, `undo`, `redo`, a reload from
-   * outside that took files in and `discard`, and stays put on a save. `pending` is a new object after
-   * a save too, so only this tells that nothing was done since a step, such as a delete behind an
-   * Undo toast, even when autosave has run.
+   * outside that took files in, a Compare choice that changed a file (`use-other`, `combine-both`)
+   * and `discard`, and stays put on a save. `pending` is a new object after a save too, so only this
+   * tells that nothing was done since a step, such as a delete behind an Undo toast, even when
+   * autosave has run.
    *
    * @example
    * files.change("Deleted a", { "a.yaml": null });
@@ -354,6 +355,7 @@ export class WorkspaceFiles {
     if (choice === "keep-mine") return view;
     const text = choice === "use-other" ? view.theirs : view.combined;
     const { [path]: _settled, ...others } = this.changes;
+    this.steps++;
     this.history.record(this.changes);
     // A file that now reads what the store holds has nothing left to save.
     const settled = text === view.theirs ? others : { ...others, [path]: text };

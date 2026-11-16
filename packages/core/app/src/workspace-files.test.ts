@@ -420,6 +420,22 @@ verifies("app.workspace-compare", () => {
     expect(await files.read("a.yaml")).toBe("a: 1\nb: 2\nc: mine\n");
   });
 
+  it("moves `step` when a Compare choice changes a file, and not on keep-mine", async () => {
+    const { files } = await changedBothWays("a: mine\n", "a: outside\n");
+    const step = files.step;
+    await files.settle("a.yaml", "keep-mine");
+    expect(files.step).toBe(step);
+    await files.settle("a.yaml", "use-other");
+    expect(files.step).not.toBe(step);
+    const { files: both } = await changedBothWays(
+      "a: 1\nb: 2\nc: mine\n",
+      "a: outside\nb: 2\nc: 3\n",
+    );
+    const before = both.step;
+    await both.settle("a.yaml", "combine-both");
+    expect(both.step).not.toBe(before);
+  });
+
   it("keeps mine: the next save overwrites the outside text", async () => {
     const { store, files } = await changedBothWays("a: mine\n", "a: outside\n");
     await files.settle("a.yaml", "keep-mine");
