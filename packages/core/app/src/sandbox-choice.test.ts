@@ -13,6 +13,7 @@ import {
   type LimitCode,
   type SandboxBackend,
   type SandboxBackendState,
+  type SandboxBackendStatus,
   SandboxChoiceService,
   type SecurityUpdatesState,
   sandboxBackendStates,
@@ -267,7 +268,9 @@ verifies("app.sandbox-choice", () => {
         platform: "win32",
         backends: { "srt-wsl": { check: ok, securityUpdates } },
       });
-      return statusOf(await choice.start(), "srt-wsl");
+      const status = statusOf(await choice.start(), "srt-wsl");
+      if (status === undefined) throw new Error("srt-wsl has no status");
+      return status as SandboxBackendStatus;
     };
     expect(await overdue({ overdue: true, last: "2026-11-01T03:00:00Z" })).toMatchObject({
       state: "in-use",
