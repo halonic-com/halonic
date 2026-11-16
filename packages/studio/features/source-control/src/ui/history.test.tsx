@@ -83,6 +83,18 @@ verifies("source-control.history", () => {
       expect(rowOf(root, "Version 3").closest("tr")?.getAttribute("aria-current")).toBe("true");
     });
 
+    it("puts the details in a column beside the list and Show more, not after them", async () => {
+      const fake = fakeSource({ kind: "ready", changes: [] });
+      fake.setHistory(versions(25));
+      const { root } = await openPage(fake);
+      act(() => rowOf(root, "Version 25").click());
+      const list = root.querySelector('[data-part="history-list"]');
+      const details = root.querySelector('section[aria-label="Version \\"Version 25\\""]');
+      expect(list?.textContent).toContain("Show more");
+      expect(list?.contains(details ?? null)).toBe(false);
+      expect(details?.parentElement).toBe(list?.parentElement);
+    });
+
     it("says No versions yet. for a repository without a version", async () => {
       const { root } = await openPage(fakeSource({ kind: "ready", changes: [] }));
       expect(history(root)?.textContent).toContain("No versions yet.");

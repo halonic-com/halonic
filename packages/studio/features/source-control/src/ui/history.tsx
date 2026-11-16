@@ -31,14 +31,23 @@ export function History({ list, history, now = new Date() }: HistoryProps) {
       <h2 id={headingId} className="text-heading">
         {historyWords.title}
       </h2>
-      <HistoryBody
-        list={list}
-        history={history}
-        now={now}
-        pickedId={picked?.id}
-        onPick={setPickedId}
-      />
-      {picked === undefined ? null : <Details version={picked} />}
+      <div
+        data-part="history-layout"
+        className={
+          picked === undefined ? "flex flex-col" : "grid gap-4 lg:grid-cols-2 lg:items-start"
+        }
+      >
+        <div data-part="history-list" className="flex min-w-0 flex-col gap-3">
+          <HistoryBody
+            list={list}
+            history={history}
+            now={now}
+            pickedId={picked?.id}
+            onPick={setPickedId}
+          />
+        </div>
+        {picked === undefined ? null : <Details version={picked} />}
+      </div>
     </section>
   );
 }
@@ -124,7 +133,7 @@ function Details({ version }: { readonly version: Version }) {
   return (
     <section
       aria-label={historyWords.detailsLabel(version.name)}
-      className="flex flex-col gap-2 rounded-md border border-border p-4"
+      className="flex min-w-0 flex-col gap-2 rounded-md border border-border p-4 lg:sticky lg:top-4"
     >
       <h3 className="text-heading">{version.name}</h3>
       <p className="text-small text-fg-muted">
