@@ -85,6 +85,42 @@ verifies("agent-host.sandbox-choice-routes", () => {
     expect(choice.starts).toBe(1);
   });
 
+  it("runs one start when two first GETs arrive together", async () => {
+    const choice = new FakeChoice();
+    // Open the gate only once both requests are in the handler, so the second one
+    // really arrives while the first start is still running.
+    let asked = 0;
+    let bothAsked: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      bothAsked = resolve;
+    });
+    const current = choice.current.bind(choice);
+    choice.current = () => {
+      asked += 1;
+      if (asked === 2) bothAsked();
+      return current();
+    };
+    const start = choice.start.bind(choice);
+    choice.start = async () => {
+      await gate;
+      return start();
+    };
+    const url = await started(choice);
+    const asks = [1, 2].map(() => fetch(`${url}/v1/sandbox/choice`, { headers: authorization }));
+    for (const response of await Promise.all(asks)) expect(response.status).toBe(200);
+    expect(choice.starts).toBe(1);
+  });
+
+  it("asks the start again after it failed", async () => {
+    const choice = new FakeChoice();
+    choice.failWith = new Error("The saved sandbox choice can't be read.");
+    const url = await started(choice);
+    expect((await fetch(`${url}/v1/sandbox/choice`, { headers: authorization })).status).toBe(500);
+    choice.failWith = undefined;
+    expect((await fetch(`${url}/v1/sandbox/choice`, { headers: authorization })).status).toBe(200);
+    expect(choice.starts).toBe(2);
+  });
+
   it("chooses again when told the setting changed", async () => {
     const choice = new FakeChoice();
     const url = await started(choice);

@@ -38,12 +38,24 @@ async function answerWith(
  * shell saves, and only from a person's press.
  */
 export function sandboxChoiceRoutes(choice: SandboxChoiceSource): HostRoute[] {
+  // Two first asks at once share one start, so the trust check runs once.
+  let firstStart: Promise<SandboxChoice> | undefined;
+  const latest = async () => {
+    const known = choice.current();
+    if (known !== null) return known;
+    firstStart ??= choice.start();
+    try {
+      return await firstStart;
+    } catch (error) {
+      firstStart = undefined; // a failed start is asked again, not remembered
+      throw error;
+    }
+  };
   return [
     {
       method: "GET",
       path: "/v1/sandbox/choice",
-      handle: (_request, response) =>
-        answerWith(response, async () => choice.current() ?? (await choice.start())),
+      handle: (_request, response) => answerWith(response, latest),
     },
     {
       method: "POST",
