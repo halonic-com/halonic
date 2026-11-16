@@ -19,11 +19,11 @@ async function mustRun(root: WslRoot, argv: readonly string[]): Promise<string> 
 
 /**
  * Git as root on the read-only source, for questions that never run anything
- * from the source's own config: its folder is owned by Windows, so git must be
- * told to trust it.
+ * from the source's own config. The import mount has no `uid=`, so its files
+ * show as root's and git, running as root, needs no `safe.directory`.
  */
 function sourceGit(source: string, args: readonly string[]): string[] {
-  return ["git", "-c", `safe.directory=${source}`, "-C", source, ...args];
+  return ["git", "-C", source, ...args];
 }
 
 /**

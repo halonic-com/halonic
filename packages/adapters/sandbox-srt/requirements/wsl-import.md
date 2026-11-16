@@ -14,3 +14,8 @@ The sandbox-srt adapter shall import a Windows folder that is a git repository a
 - Given a folder that isn't a git repository,
   when it is imported,
   then the import fails, nothing is left in the distro and the folder is unmounted.
+
+## Notes
+
+- Checked on a real WSL 2 distro on a `windows-2025` runner (HAL-10927, 16 Nov 2026): on the import mount (`umask=077`, no `uid=`) the files are owned by root with mode 700, so `git clone` and `git fetch` as root run without `safe.directory` and don't report "dubious ownership". This holds only while the mount has no `uid=` and the import runs as root.
+- The distro needs GNU coreutils: busybox `realpath` has no `-m`, and the import fails at the copy of uncommitted changes without it.
