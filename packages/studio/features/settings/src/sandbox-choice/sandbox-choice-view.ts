@@ -10,8 +10,8 @@ export interface SandboxCard {
   id: SandboxBackendId;
   name: string;
   subtitle: string;
-  /** What will happen on this computer, or `null` for a backend with nothing to say yet. */
-  whatHappens: string | null;
+  /** The icon lines of what will happen on this computer (permission, restart, speed); empty when there is nothing to say yet. */
+  whatHappens: string[];
   /** The one caveat that matters on this computer, or `null`. */
   caveat: string | null;
   /** A warning that is always visible, never under More info, or `null`. */
@@ -22,6 +22,8 @@ export interface SandboxCard {
   disabledReason: string | null;
   /** Cloud needs an explicit checkbox before its button enables. */
   needsConfirmation: boolean;
+  /** The checkbox label for `needsConfirmation`, or `null`. */
+  confirmation: string | null;
   /** The primary button's label. */
   action: string;
 }
@@ -36,14 +38,14 @@ export interface SandboxChoiceView {
 
 /**
  * Turns the engine's {@link SandboxChoice} into the cards of S1 and S2 for this platform
- * (`settings.sandbox-choice-view`). The recommended backend is srt inside WSL on Windows and srt
- * elsewhere; native srt on Windows is Experimental. A backend the computer doesn't offer is left
+ * (`settings.sandbox-choice-view`). The recommended backend is Sandbox in WSL on Windows and the plain
+ * sandbox elsewhere; the native one on Windows is Experimental. A backend the computer doesn't offer is left
  * out, and one that can't run is shown disabled with the reason.
  *
  * @param platform the operating system, as Node's `process.platform` names it
  *
  * @example
- * sandboxChoiceView(choice, "win32").recommended?.name; // "Sandbox on this computer"
+ * sandboxChoiceView(choice, "win32").recommended?.name; // "Sandbox for Windows"
  */
 export function sandboxChoiceView(choice: SandboxChoice, platform: string): SandboxChoiceView {
   const windows = platform === "win32";
@@ -77,6 +79,7 @@ function cardOf(backend: SandboxBackendStatus, where: Where): SandboxCard {
     use,
     disabledReason: disabled,
     needsConfirmation: backend.id === "cloud",
+    confirmation: backend.id === "cloud" ? text.CLOUD_CONFIRMATION : null,
     action: text.SET_UP,
   };
 }
@@ -111,14 +114,16 @@ type Described = Pick<
   "name" | "subtitle" | "whatHappens" | "caveat" | "warning" | "badge"
 >;
 
+const nativeLines = (permission: string) => [permission, text.RESTART_NO, text.SPEED_NATIVE];
+
 function describe(id: SandboxBackendId, where: Where): Described {
   const badge = where.recommended ? text.BADGE_RECOMMENDED : null;
   switch (id) {
     case "srt-wsl":
       return {
-        name: text.NAME_SRT_WSL,
-        subtitle: where.recommended ? text.SRT_WSL_RECOMMENDED_SUBTITLE : text.SRT_WSL_SUBTITLE,
-        whatHappens: text.WHAT_HAPPENS_WSL,
+        name: text.NAME_SANDBOX_WSL,
+        subtitle: where.recommended ? text.WSL_RECOMMENDED_SUBTITLE : text.WSL_SUBTITLE,
+        whatHappens: [text.PERMISSION_WINDOWS, text.RESTART_YES, text.SPEED_WSL],
         caveat: null,
         warning: null,
         badge,
@@ -126,18 +131,19 @@ function describe(id: SandboxBackendId, where: Where): Described {
     case "srt":
       return where.windows
         ? {
-            name: text.NAME_SRT,
-            subtitle: text.SRT_WINDOWS_SUBTITLE,
-            whatHappens: text.WHAT_HAPPENS_WINDOWS,
+            name: text.NAME_SANDBOX_WINDOWS,
+            subtitle: text.WINDOWS_SUBTITLE,
+            whatHappens: nativeLines(text.PERMISSION_WINDOWS),
             caveat: text.WINDOWS_NETWORK_CAVEAT,
             warning: null,
             badge: text.BADGE_EXPERIMENTAL,
           }
         : {
-            name: text.NAME_SRT,
-            subtitle: text.SRT_SUBTITLE,
-            whatHappens:
-              where.platform === "darwin" ? text.WHAT_HAPPENS_MACOS : text.WHAT_HAPPENS_LINUX,
+            name: text.NAME_SANDBOX,
+            subtitle: text.SANDBOX_SUBTITLE,
+            whatHappens: nativeLines(
+              where.platform === "darwin" ? text.PERMISSION_MACOS : text.PERMISSION_LINUX,
+            ),
             caveat: null,
             warning: null,
             badge,
@@ -146,7 +152,7 @@ function describe(id: SandboxBackendId, where: Where): Described {
       return {
         name: text.NAME_MXC,
         subtitle: text.MXC_SUBTITLE,
-        whatHappens: null,
+        whatHappens: [],
         caveat: null,
         warning: null,
         badge: text.BADGE_EXPERIMENTAL,
@@ -155,7 +161,7 @@ function describe(id: SandboxBackendId, where: Where): Described {
       return {
         name: text.NAME_DOCKER,
         subtitle: text.DOCKER_SUBTITLE,
-        whatHappens: null,
+        whatHappens: [],
         caveat: null,
         warning: null,
         badge: text.BADGE_NEEDS_DOCKER,
@@ -164,7 +170,7 @@ function describe(id: SandboxBackendId, where: Where): Described {
       return {
         name: text.NAME_CLOUD,
         subtitle: text.CLOUD_SUBTITLE,
-        whatHappens: null,
+        whatHappens: [],
         caveat: null,
         warning: text.CLOUD_WARNING,
         badge: text.BADGE_FILES_LEAVE,

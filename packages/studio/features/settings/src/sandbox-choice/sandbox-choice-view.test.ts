@@ -30,9 +30,16 @@ verifies("settings.sandbox-choice-view", () => {
     expect(view.options.map((card) => card.id)).toEqual(["srt-wsl", "srt"]);
     expect(view.options[1]).toMatchObject({
       badge: "Experimental",
-      whatHappens: "Windows will ask for administrator permission once. No restart needed.",
+      name: "Sandbox for Windows",
+      whatHappens: [
+        "Windows asks for permission once",
+        "No restart",
+        "Files stay fast on your drive",
+      ],
     });
-    expect(view.options[1]?.caveat).toContain("weaker than for files");
+    expect(view.recommended?.name).toBe("Sandbox in WSL");
+    expect(view.recommended?.whatHappens[1]).toBe("One restart");
+    expect(view.options[1]?.caveat).toBe("Network limits are weaker on Windows.");
   });
 
   it("recommends srt on macOS and on Linux, each with its own line", () => {
@@ -40,11 +47,11 @@ verifies("settings.sandbox-choice-view", () => {
     const linux = sandboxChoiceView(choice([backend("srt")]), "linux").recommended;
     expect(mac).toMatchObject({
       id: "srt",
-      name: "Sandbox on this computer",
+      name: "Sandbox",
       badge: "Recommended",
     });
-    expect(mac?.whatHappens).toBe("Nothing to install. We'll check that it works.");
-    expect(linux?.whatHappens).toBe("We'll check that everything it needs is installed.");
+    expect(mac?.whatHappens[0]).toBe("No permission prompt");
+    expect(linux?.whatHappens[0]).toBe("You may need to run one command");
   });
 
   it("leaves out a backend the computer doesn't offer, and has no recommendation when srt-wsl is out", () => {
@@ -66,7 +73,7 @@ verifies("settings.sandbox-choice-view", () => {
     );
     expect(view.options[1]).toMatchObject({
       use: "disabled",
-      disabledReason: "Hardware virtualisation is turned off on this computer.",
+      disabledReason: "Virtualisation is turned off on this computer.",
       badge: "Needs Docker",
     });
   });
@@ -107,9 +114,10 @@ verifies("settings.sandbox-choice-view", () => {
     expect(view.options[1]).toMatchObject({
       id: "cloud",
       needsConfirmation: true,
-      badge: "Files leave your machine",
+      badge: "Files leave your computer",
+      confirmation: "I understand my project files leave this computer.",
     });
-    expect(view.options[1]?.warning).toContain("project files are uploaded");
+    expect(view.options[1]?.warning).toContain("project files are sent to a cloud service");
     expect(view.recommended?.needsConfirmation).toBe(false);
   });
 });

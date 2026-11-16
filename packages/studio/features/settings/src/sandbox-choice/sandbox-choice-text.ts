@@ -1,5 +1,5 @@
 /**
- * The words of the sandbox onboarding's choice screens: HAL-3778 (wording) as HAL-3777 (plan)
+ * The words of the sandbox onboarding's choice screens: the final wording in HAL-3777 (`wording`), as its plan
  * places them. Reasons a backend can't run are short sentences written here from the engine's
  * codes; the code never reaches a person.
  */
@@ -7,63 +7,65 @@ import type { SandboxUnavailableReason } from "@halonicjs/ports";
 
 export const TITLE = "Keep agents inside your project";
 export const INTRO =
-  "A sandbox is a fenced area. Agents can work freely inside your project, but they can't reach the rest of your computer.";
+  "A sandbox lets agents work on your project and keeps the rest of your computer out of reach.";
 export const OTHER_OPTIONS_INTRO =
-  "Prefer something else? Pick one. You can change this later in Settings.";
+  "Pick the one that fits this computer. You can change it later in Settings.";
 
 export const SET_UP = "Set up";
 export const OTHER_OPTIONS = "Other options";
 export const MORE_INFO = "More info";
-export const CONTINUE_WITHOUT = "Continue without a sandbox";
+export const CONTINUE_WITHOUT = "Continue without sandbox";
 export const setUpWith = (name: string) => `Set up ${name}`;
 
 export const BADGE_RECOMMENDED = "Recommended";
 export const BADGE_EXPERIMENTAL = "Experimental";
 export const BADGE_NEEDS_DOCKER = "Needs Docker";
-export const BADGE_FILES_LEAVE = "Files leave your machine";
+export const BADGE_FILES_LEAVE = "Files leave your computer";
 export const BADGE_IN_USE = "In use";
 
-export const NAME_SRT = "Sandbox on this computer";
-export const NAME_SRT_WSL = "srt inside WSL";
+export const NAME_SANDBOX = "Sandbox";
+export const NAME_SANDBOX_WINDOWS = "Sandbox for Windows";
+export const NAME_SANDBOX_WSL = "Sandbox in WSL";
 export const NAME_MXC = "MXC";
 export const NAME_DOCKER = "Docker Sandboxes";
 export const NAME_CLOUD = "Cloud sandbox";
 
-export const SRT_SUBTITLE = "Uses srt, a small sandbox tool we install for you.";
-export const SRT_WSL_RECOMMENDED_SUBTITLE =
-  "Uses srt inside WSL, a small Linux system next to Windows.";
-export const SRT_WSL_SUBTITLE =
-  "The strongest protection on Windows. Runs the sandbox in a small Linux system next to Windows.";
-export const SRT_WINDOWS_SUBTITLE =
-  "Runs srt directly on Windows. Network protection is weaker than with WSL.";
-export const MXC_SUBTITLE = "Windows' own app isolation.";
-export const DOCKER_SUBTITLE = "Runs agents in containers. Needs Docker on this computer.";
-export const CLOUD_SUBTITLE = "Runs agents on a server instead of this computer.";
+export const SANDBOX_SUBTITLE = "Limits files and network access.";
+export const WSL_RECOMMENDED_SUBTITLE =
+  "Limits files and network access. Runs in WSL, a Microsoft part of Windows that runs Linux next to it.";
+export const WSL_SUBTITLE =
+  "Stronger network limits. Needs admin rights, one restart and virtualisation. Files on your Windows drive are slower.";
+export const WINDOWS_SUBTITLE = "Limits files, and network access only in part. Quick to set up.";
+export const MXC_SUBTITLE = "Microsoft's sandbox. Needs Windows 11.";
+export const DOCKER_SUBTITLE = "Runs agents in containers. Needs Docker installed.";
+export const CLOUD_SUBTITLE = "Runs agents on a cloud service. Your project files are sent to it.";
 export const CLOUD_WARNING =
-  "Your project files are uploaded to the provider. Off by default. Only pick this if you're comfortable with that.";
+  "Your project files are sent to a cloud service. Only choose this if you are fine with that.";
+export const CLOUD_CONFIRMATION = "I understand my project files leave this computer.";
 
-export const WHAT_HAPPENS_WINDOWS =
-  "Windows will ask for administrator permission once. No restart needed.";
-export const WHAT_HAPPENS_MACOS = "Nothing to install. We'll check that it works.";
-export const WHAT_HAPPENS_LINUX = "We'll check that everything it needs is installed.";
-export const WHAT_HAPPENS_WSL =
-  "Needs administrator permission, a restart, and hardware virtualisation turned on. Files on your Windows drive open more slowly from inside WSL.";
+/** The three icon lines of a card: permission, restart, speed. */
+export const PERMISSION_WINDOWS = "Windows asks for permission once";
+export const PERMISSION_MACOS = "No permission prompt";
+export const PERMISSION_LINUX = "You may need to run one command";
+export const RESTART_NO = "No restart";
+export const RESTART_YES = "One restart";
+export const SPEED_NATIVE = "Files stay fast on your drive";
+export const SPEED_WSL = "Files on your Windows drive are slower";
 
-export const WINDOWS_NETWORK_CAVEAT =
-  "On Windows, the protection for network traffic is weaker than for files. Files and folders outside your project stay protected.";
+export const WINDOWS_NETWORK_CAVEAT = "Network limits are weaker on Windows.";
 
 export const STATE_FAILED = "Its safety test didn't pass, so it's off until Halonic starts again.";
 
 const reasonSentences: Record<SandboxUnavailableReason, string> = {
-  windows: "It doesn't run on Windows.",
-  container: "Halonic is running inside a container.",
-  "not-supported": "This version of the operating system can't run it.",
-  "blocked-by-policy": "A policy on this computer blocks it.",
-  "virtualisation-off": "Hardware virtualisation is turned off on this computer.",
+  windows: "Not available on Windows.",
+  container: "Not available when Halonic runs inside a container.",
+  "not-supported": "This version of your operating system doesn't support it.",
+  "blocked-by-policy": "Your organisation doesn't allow this.",
+  "virtualisation-off": "Virtualisation is turned off on this computer.",
   "wsl-missing": "WSL isn't installed yet.",
-  "restart-needed": "Windows needs to restart first.",
-  "distro-missing": "Its small Linux system isn't installed yet.",
-  "setup-conflict": "Another program already set this up on this computer.",
+  "restart-needed": "Windows needs to restart to finish setup.",
+  "distro-missing": "The Linux part of this sandbox isn't installed yet.",
+  "setup-conflict": "Another program has already set this up on this computer.",
   "setup-needed": "It needs a one-time setup.",
   "user-namespaces-restricted": "This system blocks sandboxes by default.",
   "bubblewrap-missing": "bubblewrap isn't installed.",
