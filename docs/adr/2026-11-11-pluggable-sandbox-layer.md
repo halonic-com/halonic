@@ -147,6 +147,7 @@ list:
 | `schannel-tls-fails` | Tools on Windows' own TLS stack fail (`curl.exe`, PowerShell web calls, `dotnet restore`) | `srt` (Windows) |
 | `files-leave-machine` | Project files are copied to another machine | `cloud` |
 | `no-file-fence`, `no-network-fence` | Nothing is fenced | `none` |
+| `security-updates-overdue` | The distro's security updates haven't run for more than 7 days (residual, W2 of HAL-5407, never a failure) | `srt-wsl` |
 
 Residuals the Windows trust check can add, from `srt-win wfp verify`:
 `anonymous-loopback`, `deny-only-user-sid`, `lowered-integrity-unprobed`.
