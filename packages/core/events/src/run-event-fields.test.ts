@@ -103,11 +103,17 @@ verifies("events.agent-finished-error", () => {
 });
 
 verifies("events.approval-resolved-by", () => {
-  typeTest("says who resolved an approval: a person or a rule", () => {
-    expectTypeOf<ApprovalResolver>().toEqualTypeOf<"person" | "rule">();
+  typeTest("says who resolved an approval: a person, a person on a remote device or a rule", () => {
+    expectTypeOf<ApprovalResolver>().toEqualTypeOf<"person" | "remote-device" | "rule">();
     expectTypeOf<EventOf<"approval.resolved">["by"]>().toEqualTypeOf<
       ApprovalResolver | undefined
     >();
+  });
+});
+
+verifies("events.approval-resolved-remote", () => {
+  typeTest("lets an approval be resolved from a remote device", () => {
+    expectTypeOf<"remote-device">().toExtend<NonNullable<EventOf<"approval.resolved">["by"]>>();
   });
 });
 

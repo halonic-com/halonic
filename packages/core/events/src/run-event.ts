@@ -310,7 +310,7 @@ export type RunEventBody =
       callId: string;
       approved: boolean;
       comment?: string;
-      /** Who resolved it (requirement `events.approval-resolved-by`); absent in older logs. */
+      /** Who resolved it (requirements `events.approval-resolved-by` and `events.approval-resolved-remote`); absent in older logs. */
       by?: ApprovalResolver;
     }
   /**

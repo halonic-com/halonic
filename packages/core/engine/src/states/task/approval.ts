@@ -114,7 +114,7 @@ export function answerApproval(
       callId,
       approved,
       ...(comment === undefined ? {} : { comment }),
-      by: "person",
+      by: input.by ?? "person",
     },
   ];
   const answer = { approved, ...(comment === undefined ? {} : { comment }) };

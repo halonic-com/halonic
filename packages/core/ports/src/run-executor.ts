@@ -1,4 +1,5 @@
 import type {
+  ApprovalResolver,
   CantTryStep,
   ModelSkipReason,
   RunEvent,
@@ -85,6 +86,12 @@ export interface SendOptions {
    * next one by accident. Absent: no check.
    */
   readonly callId?: string;
+  /**
+   * Where a person's answer to an approval came from, so the run log can say
+   * so: `person` at the screen, `remote-device` from a phone. The host sets
+   * it from who is signed in, never from what a phone sends. Absent: `person`.
+   */
+  readonly by?: Extract<ApprovalResolver, "person" | "remote-device">;
 }
 
 /** An agent's model settings for a chat turn that aren't saved in a file yet. */
