@@ -227,3 +227,21 @@ verifies("shell.engine-start", () => {
     expect(() => shell.engine.supervise(launcher)).not.toThrow();
   });
 });
+
+verifies("shell.engine-report-interrupted-runs", () => {
+  it("sends the number of interrupted runs the engine reports with ready", () => {
+    const { shell, events, launcher } = setUp();
+    shell.engine.supervise(launcher);
+    launcher.latest.ready(2);
+    expect(events.at(-1)).toEqual({ state: "connected", interruptedRuns: 2 });
+    expect(shell.engine.status).toEqual({ state: "connected", interruptedRuns: 2 });
+  });
+
+  it("sends connected without the field when the engine doesn't say", () => {
+    const { shell, events, launcher } = setUp();
+    shell.engine.supervise(launcher);
+    launcher.latest.ready();
+    expect(events.at(-1)).toEqual({ state: "connected" });
+    expect(events.at(-1)).not.toHaveProperty("interruptedRuns");
+  });
+});
