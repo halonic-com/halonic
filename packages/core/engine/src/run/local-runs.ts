@@ -26,7 +26,6 @@ import { callOf, hasEnded, type PendingCall, type RunState } from "../kernel/run
 import { readRun, step } from "../kernel/step.ts";
 import { appendFailed } from "./append-failed.ts";
 import { childNow, childStart, endChildrenOf, parentEndedError, receiverOf } from "./child-runs.ts";
-import { endInterruptedRuns } from "./end-interrupted-runs.ts";
 import { failedCallInput } from "./failed-call-input.ts";
 import { LocalHarnessCalls } from "./local-harness-calls.ts";
 import { type CallModel, LocalModelCalls } from "./local-model-calls.ts";
@@ -43,6 +42,7 @@ import { RunFeed } from "./run-feed.ts";
 import { callTimer, childTimer, harnessTimer, stateTimer, toolTimer } from "./run-timer-ids.ts";
 import { StartDeadlines } from "./start-deadlines.ts";
 import { checkStartRequest } from "./start-request.ts";
+import { sweepLostRuns } from "./sweep-lost-runs.ts";
 import { UnfinishedEffects } from "./unfinished-effects.ts";
 import { UnrecordedResults } from "./unrecorded-results.ts";
 import { WatchedRuns } from "./watched-runs.ts";
@@ -79,7 +79,7 @@ export class LocalRuns {
   readonly #modelCalls: LocalModelCalls;
   readonly #folders: RunsProposalFolders;
   readonly #connectors: Pick<RunsConnectors, "ended" | "notStarted"> | undefined;
-  #started: Promise<void> | undefined;
+  #started: Promise<number> | undefined;
   /** Set by {@link LocalRuns.close}: timers change nothing and calls record nothing from then on. */
   #closed = false;
 
@@ -142,7 +142,7 @@ export class LocalRuns {
    */
   async start(request: StartRunRequest): Promise<RunSummary> {
     checkStartRequest(request);
-    await this.#ready();
+    await this.ready();
     const runId = request.runId ?? this.#options.ids.next("run");
     const existing = await this.store.get(runId);
     if (existing !== null) return existing;
@@ -171,7 +171,7 @@ export class LocalRuns {
     payload?: unknown,
     options?: SendOptions,
   ): Promise<RunSummary> {
-    await this.#ready();
+    await this.ready();
     await this.#record(await receiverOf(this.store, runId), {
       type: "send",
       at: this.#now(),
@@ -192,7 +192,7 @@ export class LocalRuns {
    * @throws InputRefused when the run doesn't exist
    */
   async cancel(runId: string): Promise<RunSummary> {
-    await this.#ready();
+    await this.ready();
     if ((await this.store.get(runId)) === null)
       throw new InputRefused("engine.run-unknown", `There's no run "${runId}".`);
     await this.#cancelDown(runId);
@@ -206,7 +206,7 @@ export class LocalRuns {
   }
 
   subscribe(runId: string, afterSeq: number, listener: RunEventListener): RunSubscription {
-    return this.#feed.subscribe(runId, afterSeq, listener, this.#ready());
+    return this.#feed.subscribe(runId, afterSeq, listener, this.ready());
   }
 
   /**
@@ -218,7 +218,7 @@ export class LocalRuns {
    */
   async onTimer(timer: ScheduledTimer): Promise<void> {
     if (this.#closed) return;
-    await this.#ready();
+    await this.ready();
     if (StartDeadlines.owns(timer)) return this.#startDeadlines.expire(timer);
     await this.#effects.resume(timer.key);
     if (timer.timerId.startsWith(callTimer)) {
@@ -248,10 +248,10 @@ export class LocalRuns {
   }
 
   /**
-   * Before the first run starts or resumes, end the runs the engine lost
-   * when it last stopped. A failure is tried again on the next call.
+   * Before the first run starts or resumes, end the runs the engine lost when it last stopped
+   * (a failure is tried again on the next call). Resolves to how many ended as `interrupted`.
    */
-  #ready(): Promise<void> {
+  ready(): Promise<number> {
     this.#started ??= this.#endInterruptedRuns().catch((error: unknown) => {
       this.#started = undefined;
       throw error;
@@ -265,15 +265,11 @@ export class LocalRuns {
    * finds the runs it ended. Their folders end last for the same reason: a
    * folder adapter that throws must not keep a parent from hearing.
    */
-  async #endInterruptedRuns(): Promise<void> {
+  async #endInterruptedRuns(): Promise<number> {
     await this.#connectorCalls.markCutShort();
-    const ended = await endInterruptedRuns(this.store, this.#clock);
-    for (const runId of ended) {
-      const parent = (await readRun(this.store, runId))?.parent;
-      if (parent == null) continue;
-      await this.#options.scheduler.schedule(parent.runId, `${childTimer}${runId}`, this.#now());
-    }
-    for (const runId of ended) await this.#ended(runId);
+    return sweepLostRuns(this.store, this.#clock, this.#options.scheduler, (runId) =>
+      this.#ended(runId),
+    );
   }
 
   async #carryOutCall(runId: string, callId: string, kind: CallKind): Promise<void> {

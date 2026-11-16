@@ -203,6 +203,17 @@ export class LocalExecutor implements RunExecutor {
   }
 
   /**
+   * Ends the runs the engine lost when it last stopped, if that hasn't
+   * happened yet, so the shell can tell the user how many it cut off. Starting a
+   * run does it too, so calling this is only for an engine that reports ready first.
+   *
+   * @returns how many runs it ended as `interrupted`; 0 when the executor has no runs
+   */
+  async endLostRuns(): Promise<number> {
+    return (await this.runs?.ready()) ?? 0;
+  }
+
+  /**
    * Stops the engine's work in this process. It stops every harness run,
    * then its sandbox session, then its bridge, and resolves once all three
    * have stopped; a session that opens after that is closed as it opens.
