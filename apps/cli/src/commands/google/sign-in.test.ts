@@ -228,7 +228,7 @@ verifies("cli.commands.google.sign-in", () => {
     expect(await profileText()).not.toContain(fakeRefreshToken);
   });
 
-  it("prints the address when no browser opens, and still signs in", async () => {
+  it("prints the sign-in address without the connector's address when no browser opens, and still signs in", async () => {
     const accountRef = await readyAccount();
     const browser = fakeBrowser(goodAnswer, { opens: false });
 
@@ -237,8 +237,12 @@ verifies("cli.commands.google.sign-in", () => {
       http: fakeGoogle(),
     });
 
+    const printedUrl = new URL(browser.opened[0] ?? "");
+    printedUrl.searchParams.delete("login_hint");
     expect(code).toBe(exitCode.ok);
-    expect(io.stdout.join("\n")).toContain(browser.opened[0]);
+    expect(io.stdout.join("\n")).toContain(printedUrl.toString());
+    expect(io.stdout.join("\n")).not.toContain("login_hint");
+    expect(io.stdout.join("\n")).not.toContain(encodeURIComponent(address));
   });
 
   it("saves nothing when another Google account signs in", async () => {

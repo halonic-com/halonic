@@ -155,6 +155,20 @@ verifies("agent-host.google-callback-over-frames", () => {
       expect(answer.headers["connection"]).toBe("close");
     });
 
+    it("sends the page with a policy that forbids framing and sniffing", async () => {
+      const { relay } = served();
+
+      const answer = await relay.request(`${relayCallbackPath}?state=nobody&code=fake-code`, {
+        headers: { host: relayHost },
+      });
+
+      expect(answer.headers["content-security-policy"]).toBe(
+        "default-src 'none'; frame-ancestors 'none'",
+      );
+      expect(answer.headers["x-frame-options"]).toBe("DENY");
+      expect(answer.headers["x-content-type-options"]).toBe("nosniff");
+    });
+
     it("closes the connection at once, without waiting for the keep-alive timeout", async () => {
       const { relay } = served();
 
