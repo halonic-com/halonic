@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-5397 (security conditions N1a, N6, N7, N8); HAL-3779 design (section 7)
 
-In ask mode the app shall pass every tool call of the harness through the ask policy. A call the policy allows shall run without asking, one it refuses shall be rejected without asking, and every other call shall go to a person. The card for a shell command shall show the whole command with every control and bidirectional character written out as `\u{…}`, never cut it off, say that the command can run other programs and that the answer covers this call only, and warn when the command is longer than 2,000 characters. No answer within the time limit (five minutes unless set) shall be a no, and the pending question shall be withdrawn. Nothing shall be remembered between calls, so every call asks again. A run that has no way to ask a person shall not start in ask mode.
+While a run is in ask mode, the app shall pass every tool call of the harness through the ask policy. A call the policy allows shall run without asking, one it refuses shall be rejected without asking, and every other call shall go to a person. The card for a shell command shall show the whole command with every control and bidirectional character written out as `\u{…}`, never cut it off, say that the command can run other programs and that the answer covers this call only, and warn when the command is longer than 2,000 characters. No answer within the time limit (five minutes unless set) shall be a no, and the pending question shall be withdrawn. Nothing shall be remembered between calls, so every call asks again. A run that has no way to ask a person shall not start in ask mode.
 
 ## Examples
 
