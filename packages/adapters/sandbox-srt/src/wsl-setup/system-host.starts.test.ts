@@ -26,7 +26,6 @@ verifies("sandbox-srt.wsl-setup", () => {
       await host.bootedAt();
       await host.policy();
       await host.status();
-      await host.version();
       await host.distros();
       await host.installWsl();
       await host.updateWsl();

@@ -175,6 +175,23 @@ verifies("sandbox-srt.wsl-setup", () => {
       });
     });
 
+    it("W11: reads the kernel inside the distro, whatever language wsl.exe speaks", async () => {
+      const fake = fakeWsl();
+      fake.machine.installed = true;
+
+      expect(await setupOn(fake).setup.run()).toMatchObject({ outcome: "done" });
+      expect(fake.calls).toContain("in distro: uname -r");
+      expect(fake.calls.some((call) => call.includes("--version") && !call.includes("--import"))).toBe(false);
+    });
+
+    it("carries on after the restart when Windows' start time can't be read", async () => {
+      const fake = fakeWsl();
+      fake.machine.bootedAt = "";
+
+      expect(await setupOn(fake).setup.run()).toMatchObject({ outcome: "done" });
+      expect(installs(fake)).toHaveLength(1);
+    });
+
     it("W6: reports the default distro and Docker Desktop's socket and folders", async () => {
       const fake = fakeWsl();
       fake.machine.installed = true;

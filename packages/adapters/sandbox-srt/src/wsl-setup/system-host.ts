@@ -98,14 +98,13 @@ export function systemWslHost(run: Run = systemRun): WslHost {
         ...psArgs,
         "(Get-CimInstance Win32_OperatingSystem).LastBootUpTime.ToUniversalTime().ToString('o')",
       ]);
-      return result.output.trim();
+      return result.code === 0 ? result.output.trim() : "";
     },
     async policy(): Promise<WslPolicy> {
       const result = await run(reg, ["query", POLICY_KEY, "/v", "AllowWSL"]);
       return { allowWsl: result.code === 0 ? parseRegDword(result.output) : undefined };
     },
     status: () => run(wsl, ["--status"]),
-    version: () => run(wsl, ["--version"]),
     async distros() {
       const result = await run(wsl, ["--list", "--verbose"]);
       return result.code === 0 ? parseDistroList(result.output) : [];

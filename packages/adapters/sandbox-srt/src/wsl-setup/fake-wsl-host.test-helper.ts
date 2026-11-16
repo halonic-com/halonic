@@ -63,7 +63,6 @@ export function fakeWsl(): FakeWsl {
         };
       return ok("Default Version: 2");
     },
-    version: async () => ok(`WSL version: 2.4.8.0\nKernel version: ${machine.kernel}\n`),
     distros: async () => fake.distros,
     installWsl: async () => {
       fake.calls.push("wsl --install --no-distribution --web-download");
@@ -93,6 +92,7 @@ export function fakeWsl(): FakeWsl {
       fake.calls.push(`in distro: ${program.join(" ")}`);
       if (!machine.distroStarts) return { code: 1, output: "cannot start" };
       if (program[0] === "true") return ok();
+      if (program[0] === "uname") return ok(`${machine.kernel}\n`);
       if (program[0] === "test") return { code: machine.dockerSocket ? 0 : 1, output: "" };
       if (program[0] === "ls") return ok(machine.wslFolder);
       return { code: 127, output: "" };

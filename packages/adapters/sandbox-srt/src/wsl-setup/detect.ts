@@ -71,11 +71,12 @@ export function kernelAtLeast(found: number[], floor: number[]): boolean {
   return true;
 }
 
-/** Pulls the kernel version out of `wsl --version`'s output, or `null`. */
-export function kernelOf(version: ProgramResult): number[] | null {
-  if (version.code !== 0) return null;
-  const line = /kernel version\s*:?\s*(\S+)/i.exec(version.output);
-  return line?.[1] === undefined ? null : parseKernelVersion(line[1]);
+/**
+ * Reads the kernel version from `uname -r` run inside the distro, or `null`.
+ * Not from `wsl --version`: the Store build of WSL translates its labels.
+ */
+export function kernelOf(uname: ProgramResult): number[] | null {
+  return uname.code === 0 ? parseKernelVersion(uname.output) : null;
 }
 
 /**

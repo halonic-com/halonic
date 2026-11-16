@@ -32,7 +32,7 @@ export type WslResidual = "default-distro" | "docker-desktop-visible";
  * - `distro-not-ours` (W8): a distro called `halonic` is there that Halonic didn't import. Nothing is overwritten.
  * - `distro-wont-start`: the distro is imported but a program doesn't start in it.
  * - `kernel-too-old` (W11): the WSL kernel is below the floor; `wsl --update` fixes it.
- * - `kernel-unreadable` (W11): `wsl --version` gave no kernel version, so the floor can't be checked.
+ * - `kernel-unreadable` (W11): `uname -r` in the distro gave no kernel version, so the floor can't be checked.
  */
 export type WslSetupFailureCode =
   | "wsl-install-failed"
@@ -194,7 +194,9 @@ export class WslSetup {
   }
 
   async #afterRestart(state: WslSetupState) {
-    if (state.bootedAt !== undefined && state.bootedAt === (await this.#host.bootedAt())) {
+    // An empty start time means it couldn't be read: unknown, so carry on (the next step asks `wsl --status` again).
+    const now = await this.#host.bootedAt();
+    if (state.bootedAt !== undefined && state.bootedAt !== "" && state.bootedAt === now) {
       return { result: { outcome: "restart-needed" } as const };
     }
     await this.#host.clearRunOnce();
@@ -272,12 +274,12 @@ export class WslSetup {
         `exit ${started.code}: ${firstLine(started.output)}`,
       );
     }
-    const kernel = kernelOf(await this.#host.version());
+    const kernel = kernelOf(await this.#host.runInDistro(this.#distro, ["uname", "-r"]));
     if (kernel === null) {
       return failed(
         "kernel-unreadable",
         "other",
-        "wsl --version gave no kernel version",
+        "uname -r in the distro gave no kernel version",
         "update-wsl",
       );
     }

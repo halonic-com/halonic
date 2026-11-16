@@ -29,14 +29,12 @@ export interface WslPolicy {
 export interface WslHost {
   /** The Windows build number (19041 is Windows 10 2004, the first with WSL 2). `null` when not Windows. */
   windowsBuild(): Promise<number | null>;
-  /** When Windows last started, as text. Equal texts mean no restart in between. */
+  /** When Windows last started, as text, or `""` when it can't be read. Equal texts that aren't empty mean no restart in between. */
   bootedAt(): Promise<string>;
   /** The WSL group policy values. */
   policy(): Promise<WslPolicy>;
   /** `wsl --status`. */
   status(): Promise<ProgramResult>;
-  /** `wsl --version`: its output carries the kernel's version. */
-  version(): Promise<ProgramResult>;
   /** The registered distros, or an empty list when WSL can't list them. */
   distros(): Promise<WslDistro[]>;
   /**

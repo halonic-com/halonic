@@ -11,7 +11,10 @@ verifies("sandbox-srt.wsl-setup", () => {
       expect(kernelAtLeast([5, 15, 153, 1], [5, 15, 153, 1])).toBe(true);
       expect(kernelAtLeast([5, 15, 90], [5, 15, 153, 1])).toBe(false);
       expect(kernelAtLeast([6, 0, 0], [5, 15, 153, 1])).toBe(true);
-      expect(kernelOf({ code: 1, output: "Kernel version: 6.6.1" })).toBeNull();
+      expect(kernelOf({ code: 1, output: "6.6.1" })).toBeNull();
+      expect(kernelOf({ code: 0, output: "5.15.153.1-microsoft-standard-WSL2\n" })).toEqual([
+        5, 15, 153, 1,
+      ]);
     });
 
     it("decodes UTF-16 output with NULs", () => {
