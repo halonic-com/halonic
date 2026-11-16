@@ -16,16 +16,18 @@ The desktop app registers the Inbox and Runs features. For each folder it
 opens, `WorkspaceRuns` (`src/runs/`) gives both the folder's run logs, the
 ones the CLI writes, through the shell's `run_*` and `fs_*` commands. While a
 page listens, it reads the runs again every 10 seconds and when the window
-comes to the front, and tells the page only when a run changed. The window has
-no engine of its own yet, so answering a run in the Inbox fails as
-`unavailable` until it does (HAL-6602; `studio.workspace-runs`).
+comes to the front, and tells the page only when a run changed. The window
+runs an engine of its own in the page (`src/engine/engine-service.ts`) with
+models and secrets only: a workflow that needs a connector or an agent in a
+harness is refused as `unavailable`, and so is answering such a run in the Inbox
+(`studio.workspace-runs`).
 
 ## Library in the desktop app
 
 The desktop app registers the Library feature. For each open folder it gives the feature the
 folder's connector files, each shown as connected, and a list of what the engine refused from
-them. The window has no chat or engine yet, so nothing records a refusal and that list stays empty
-until it does, the way the Inbox fails as `unavailable`. It reads the files again when one changes
+them. The page's engine can't start a connector yet, so nothing records a refusal and that list stays
+empty until it can, the way the Inbox fails as `unavailable`. It reads the files again when one changes
 or the window comes to the front. Google connectors are left out until the app reads the account's
 sign-in (`studio.workspace-connector-status`).
 

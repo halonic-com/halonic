@@ -10,8 +10,10 @@ Halonic's own harness starts no program, so it has none.
 
 Today neither `halonic run` nor Studio runs an agent in Claude Code or Codex.
 `halonic run` checks the sandbox and then stops with exit 9, because it can't
-run those agents yet (requirement `cli.run-sandbox-gate`), and Studio doesn't
-start the agent host. This page describes the fence those runs will use.
+run those agents yet (requirement `cli.run-sandbox-gate`). Studio's shell does
+start the agent host, on the first call to it, but the page's engine refuses an
+agent in a harness as `unavailable`. This page describes the fence those runs
+will use.
 
 ## What it is
 
