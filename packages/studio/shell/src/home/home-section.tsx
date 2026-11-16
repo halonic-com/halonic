@@ -100,7 +100,7 @@ export function HomeSectionRegion({ card, context }: HomeSectionRegionProps) {
       <ListHeading
         id={headingId}
         headingRef={headingRef}
-        name={homeSectionTitles[card.id]}
+        name={card.title?.(context) ?? homeSectionTitles[card.id]}
         {...(signal === undefined ? {} : { detail: signal })}
       />
       <ViewErrorBoundary

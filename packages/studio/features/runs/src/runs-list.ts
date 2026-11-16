@@ -36,6 +36,7 @@ export class RunsList {
   readonly #stopWatching: () => void;
   #loads = 0;
   #requested: WorkflowRef | undefined;
+  readonly #opened = new Set<string>();
   #disposed = false;
 
   constructor(source: RunsSource) {
@@ -69,6 +70,22 @@ export class RunsList {
   /** Forgets the request once the page has read it, so a later plain open shows every workflow. */
   clearRequest(): void {
     this.#requested = undefined;
+  }
+
+  /**
+   * Notes that the run's page was shown in this window, and tells the listeners the first time
+   * for each run, so a feature such as the first run's Try the sample card can tell a run was
+   * looked at. Kept until the workspace closes.
+   */
+  noteOpened(runId: string): void {
+    if (this.#opened.has(runId)) return;
+    this.#opened.add(runId);
+    for (const listener of [...this.#listeners]) listener();
+  }
+
+  /** Whether the run's page has been shown in this window since the workspace opened. */
+  hasOpened(runId: string): boolean {
+    return this.#opened.has(runId);
   }
 
   /**

@@ -79,8 +79,8 @@ export function WorkspaceWindow({
       made.name,
       made.trust.kind === "not-saved" ? made.trust.reason : undefined,
     );
-    await switcher.fromMenu(() => switcher.openLocation(made.folder, toast));
-    switcher.recent.markSample(made.folder);
+    // Marked as the sample while it opens, so Home's first frame already knows it is one.
+    await switcher.fromMenu(() => switcher.openLocation(made.folder, toast, true));
   };
   const knownSamples = () =>
     switcher.recent.list().flatMap((each) => (each.sample === true ? [each.location] : []));

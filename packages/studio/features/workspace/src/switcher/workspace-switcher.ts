@@ -124,9 +124,15 @@ export class WorkspaceSwitcher {
   /**
    * Shows the workspace in a folder, opening it first when it isn't open, as a Recent row does:
    * the app reopens the folder the user picked before, then opens the workspace in it. A
-   * `toast` replaces "Opened Acme", as "Created Acme" does after the New workspace dialog.
+   * `toast` replaces "Opened Acme", as "Created Acme" does after the New workspace dialog. With
+   * `asSample` the folder is remembered as the Acme sample at the moment it opens, before the
+   * workspace is first drawn, so Home knows it is the sample from its first frame.
    */
-  async openLocation(location: string, toast?: string): Promise<WelcomeOpenProblem | undefined> {
+  async openLocation(
+    location: string,
+    toast?: string,
+    asSample = false,
+  ): Promise<WelcomeOpenProblem | undefined> {
     if (this.#busy) {
       return undefined;
     }
@@ -140,7 +146,7 @@ export class WorkspaceSwitcher {
           return cantReopenProblem(location, error);
         }
       }
-      return await this.#open(location, toast);
+      return await this.#open(location, toast, asSample);
     } catch (error) {
       return cantOpenProblem(location, error);
     } finally {
@@ -330,8 +336,13 @@ export class WorkspaceSwitcher {
     }
   }
 
-  async #open(location: string, toast?: string): Promise<WelcomeOpenProblem | undefined> {
+  async #open(
+    location: string,
+    toast?: string,
+    asSample = false,
+  ): Promise<WelcomeOpenProblem | undefined> {
     if (this.open.find(location) !== undefined) {
+      if (asSample) this.recent.markSample(location);
       this.open.show(location);
       this.#remember();
       return undefined;
@@ -342,6 +353,8 @@ export class WorkspaceSwitcher {
     } catch (error) {
       return cantOpenProblem(location, error);
     }
+    // Before the workspace is added, which tells whoever draws it.
+    if (asSample) this.recent.remember({ location, name: opened.name, sample: true });
     this.open.add(location, opened);
     this.#remember();
     this.#options.toasts.show({ tone: "success", title: toast ?? `Opened ${opened.name}` });

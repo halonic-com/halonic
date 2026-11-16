@@ -1,5 +1,6 @@
 import { TauriPickedFolders, TauriTrustStore } from "@halonicjs/adapter-fs-tauri";
 import { ServiceRegistry } from "@halonicjs/app";
+import { SampleWorkspaceService } from "@halonicjs/studio-feature-first-run/api";
 import {
   BrowserDisplayPrefs,
   DisplaySettings,
@@ -52,6 +53,7 @@ import { openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
 import { provideFolderServices } from "./provide-folder-services.ts";
 import { restartRunsOfWindow } from "./restart-runs.ts";
 import { sampleHostOf } from "./sample-host.ts";
+import { sampleWorkspaceOf } from "./sample-workspace.ts";
 import { startServedStudio } from "./served-studio.ts";
 
 export { servedServices } from "./served-studio.ts";
@@ -153,12 +155,16 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
   const display = displaySettingsOf(page);
   const stopAppearance = watchAppearance(display, rootOf(page.element));
   const picked = new TauriPickedFolders(ipc);
+  const device = {
+    recent: new RecentWorkspaces(page.storage ?? noStorage),
+    storage: page.storage ?? noStorage,
+  };
   const switcher = new WorkspaceSwitcher({
     pickFolder: () => pickFolder(ipc),
-    openFolder: (location) => openFolder(shell, page.window, location, display),
+    openFolder: (location) => openFolder(shell, page.window, location, display, device),
     reopenFolder: (location) => picked.reopen(location),
     forgetFolder: (location) => picked.forget(location),
-    recent: new RecentWorkspaces(page.storage ?? noStorage),
+    recent: device.recent,
     toasts: shell.toasts,
   });
   const parts = {
@@ -240,6 +246,12 @@ function newWorkspaceOf(window: object, platform: KeyboardPlatform) {
   return { newWorkspace: newWorkspaceHostOf(parts), sample: sampleHostOf(parts) };
 }
 
+/** What this device remembers across folders: Recent, and the page's storage behind it. */
+export interface DeviceMemory {
+  readonly recent: RecentWorkspaces;
+  readonly storage: RecentStorage;
+}
+
 /**
  * Opens the workspace in a folder with a scope of its own (`openWorkspace`): the folder's files
  * through the shell's file commands, the assistant's changes to review kept in the profile, and
@@ -259,6 +271,7 @@ export async function openFolder(
   window: object,
   location: string,
   display: DisplaySettings,
+  device: DeviceMemory = { recent: new RecentWorkspaces(noStorage), storage: noStorage },
 ): Promise<OpenedWorkspace> {
   const ipc = tauriChannelIpc(window);
   const files = ipc === undefined ? undefined : shellFiles(ipc);
@@ -275,6 +288,10 @@ export async function openFolder(
   const trustView = trust === undefined ? undefined : new WorkspaceTrustView(trust, location);
   services.provide(DisplaySettingsService, display);
   services.provide(WorkspacePageService, { name, trust: trustView });
+  services.provide(
+    SampleWorkspaceService,
+    sampleWorkspaceOf(location, device.recent, device.storage),
+  );
   const trustStore = ipc === undefined ? undefined : new TauriTrustStore(ipc);
   services.provide(
     TrustedSourcesService,

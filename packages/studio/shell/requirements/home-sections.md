@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1290 (T2, PR 8); design direction 3 (HAL-49); UX checklist part 1, 1.9 (HAL-1323)
 
-The shell shall let a feature add a section to Home only through the point `home.addCard`, naming one of Home's sections: Get set up, Needs you, Recent runs, Spend. The shell shall show Home with the `h1` "Home", then the sections features added in that order, whatever order the features registered in, and shall leave out a section no feature added. The shell shall give each section its heading from its own table, not from the feature, and shall show each section as a region named by its heading, drawn by the card's view with the context of the feature that added it. When a card gives a signal, the section's heading shall show its words after the name as a place's count is shown, so a screen reader hears "Needs you, 1 waiting", and shall read it again whenever the card says it changed; at zero the heading shall show the name alone. If a feature adds a section that isn't one of these, or two features add the same section, then the shell shall throw a `ShellError` that names the feature or features.
+The shell shall let a feature add a section to Home only through the point `home.addCard`, naming one of Home's sections: Get set up, Needs you, Recent runs, Spend. The shell shall show Home with the `h1` "Home", then the sections features added in that order, whatever order the features registered in, and shall leave out a section no feature added. The shell shall give each section its heading from its own table, not from the feature, unless the card gives a heading of its own for the open workspace (`title`, such as "Try the sample" for Get set up in the Acme sample), and shall show each section as a region named by its heading, drawn by the card's view with the context of the feature that added it. When a card gives a signal, the section's heading shall show its words after the name as a place's count is shown, so a screen reader hears "Needs you, 1 waiting", and shall read it again whenever the card says it changed; at zero the heading shall show the name alone. If a feature adds a section that isn't one of these, or two features add the same section, then the shell shall throw a `ShellError` that names the feature or features.
 
 ## Examples
 
@@ -23,3 +23,6 @@ The shell shall let a feature add a section to Home only through the point `home
 - Given _inbox_ and _approvals_ both add Needs you,
   when the shell is created,
   then a `ShellError` names both and says each section belongs to one feature.
+- Given the card for Get set up gives the heading "Try the sample",
+  when Home is shown,
+  then the section's region and `h2` read "Try the sample".

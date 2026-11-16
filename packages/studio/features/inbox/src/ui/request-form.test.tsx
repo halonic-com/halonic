@@ -275,6 +275,19 @@ verifies("inbox.request", () => {
       expect(document.activeElement).toBe(message(root));
     });
 
+    it("shows the form with focus in Message when another page asks for it, even before the Inbox shows", async () => {
+      const inbox = new Inbox(fakeRuns([waitingRun("r1", {})]).runs);
+      inbox.requestNewRequest();
+      const root = render(
+        <ToastStoreProvider store={createToastStore()}>
+          <InboxView inbox={inbox} requests={fakeRequests([support]).requests} />
+        </ToastStoreProvider>,
+      );
+      await settled();
+      expect(document.activeElement).toBe(message(root));
+      expect(inbox.takeNewRequest()).toBe(false);
+    });
+
     it("goes back to the list on Esc and keeps the text", async () => {
       const { root } = await open(fakeRequests([support]).requests);
       await type(message(root), "Keep me");
