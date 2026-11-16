@@ -106,6 +106,28 @@ verifies("harness-kit.harness-profile", () => {
       ]);
     });
 
+    it("denies package registry tokens and shell histories in the home folder", async () => {
+      const { home } = computer;
+      await writeFile(join(home, ".npmrc"), "");
+      await writeFile(join(home, ".bash_history"), "");
+      await mkdir(join(home, ".config", "op"), { recursive: true });
+      await mkdir(join(home, ".local", "share", "fish"), { recursive: true });
+      await writeFile(join(home, ".local", "share", "fish", "fish_history"), "");
+
+      const { profile, deniedGroups } = await profilesWith().profileOf(writerAgent(null), bridge);
+
+      expect(deniedGroups.find(({ code }) => code === "registry-tokens")?.paths).toEqual([
+        join(home, ".npmrc"),
+        join(home, ".config", "op"),
+      ]);
+      expect(deniedGroups.find(({ code }) => code === "shell-history")?.paths).toEqual([
+        join(home, ".bash_history"),
+        join(home, ".local", "share", "fish", "fish_history"),
+      ]);
+      expect(profile.deniedPaths).toContain(join(home, ".npmrc"));
+      expect(profile.deniedPaths).toContain(join(home, ".bash_history"));
+    });
+
     it("allows a bridge on a Unix socket by its name and path, and only on port 80", async () => {
       const socketPath = join(computer.data, "bridges", "r1", "bridge.sock");
       const onSocket = { url: "http://bridge.halonic.invalid", token: "run-token", socketPath };

@@ -77,8 +77,8 @@ with `.` or Halonic's data is refused. A missing working folder is made one
 part at a time, and each part's real place is checked before the next is
 made, so a link on the way makes nothing in `.git` or a definition folder. The definition
 files at the top are read-only. The profile denies the person's SSH keys,
-cloud sign-ins, browser data, password stores and own Claude Code and Codex
-settings, and all of Halonic's data folder except the run's own folders
+cloud sign-ins, browser data, password stores, package registry tokens, shell
+histories and own Claude Code and Codex settings, and all of Halonic's data folder except the run's own folders
 (requirement `harness-kit.harness-profile`). The host gives the agent's file
 (`HarnessAgentFile`), the temp folder and the settings folder through
 `HarnessProfileHost`. `profileDiskOnThisComputer` is the `ProfileDisk` it uses
