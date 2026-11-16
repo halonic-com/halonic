@@ -65,7 +65,9 @@ export function LibraryPlace({ context }: PlaceViewProps) {
   const [makingSkill, setMakingSkill] = useState(false);
   const newCollectionHost = context.services.find(NewCollectionHostService);
   const [makingCollection, setMakingCollection] = useState(false);
-  const newConnectorHost = context.services.find(NewConnectorHostService);
+  // A phone only looks at connectors: New connector (a three-way setup dialog) is desktop only.
+  const desktop = usePresentation() === "desktop";
+  const newConnectorHost = desktop ? context.services.find(NewConnectorHostService) : undefined;
   const [makingConnector, setMakingConnector] = useState<NewConnectorRequest>();
   // Each request gets its own dialog, so a second request while one is open shows its own name and way.
   const [connectorRequests, setConnectorRequests] = useState(0);
@@ -90,7 +92,6 @@ export function LibraryPlace({ context }: PlaceViewProps) {
   }, [newConnectorHost, show]);
   const { openItem, openItemInNewTab } = context;
   // A phone has no tabs: its openItem opens the page, so Open as file is desktop only.
-  const desktop = usePresentation() === "desktop";
   const openSkill = ({ hub, id }: SkillRef) =>
     openItem?.({ kind: "skill", hub: hub ?? sharedHubKey, id });
   const openCollection = ({ hub, id }: CollectionRef) =>
