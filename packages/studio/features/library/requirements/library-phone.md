@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1303 (P9c); flow-library 8
 
-On a phone the Library shall not offer New connector, on the Connectors tab or from a run banner's request: connectors are looked at there, and set up on a larger screen.
+While the app is a phone, the Library feature shall not offer New connector, on the Connectors tab or from a run banner's request: connectors are looked at there, and set up on a larger screen.
 
 ## Examples
 
