@@ -13,6 +13,8 @@ export const sandboxInboxWords = {
   fixedLine: "Nothing ran again by itself. Run each one again from its page.",
   /** `sandbox-inbox.check-again` */
   checkAgain: "Check again",
+  /** `sandbox-inbox.fixed-notice`: the Notices row after the row was seen as Fixed. */
+  fixedNotice: "The sandbox is ready. Run each routine that didn't run again from its page.",
   /** `sandbox-inbox.checking` */
   checking: "Checking…",
   /** `sandbox-inbox.check-failed` */

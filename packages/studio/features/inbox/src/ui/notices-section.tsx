@@ -1,8 +1,7 @@
 import { Button, CloseIcon, EmptyState, ListHeading } from "@halonicjs/studio-kit";
 import { type EngineWords, errorMessageFor } from "@halonicjs/studio-shell";
 import { useId, useRef } from "react";
-import type { FailedRunNotice } from "../notices/failed-run-notices.ts";
-import type { InboxNotices } from "../notices/inbox-notices.ts";
+import type { InboxNotice, InboxNotices } from "../notices/inbox-notices.ts";
 import { type NoticesState, useNotices } from "../notices/use-notices.ts";
 import { markedName } from "../plain/hidden-characters.ts";
 
@@ -69,19 +68,20 @@ function NoticeRow({
   openRun,
   dismiss,
 }: {
-  readonly notice: FailedRunNotice;
+  readonly notice: InboxNotice;
   readonly openRun: ((hubId: string, runId: string) => void) | undefined;
   readonly dismiss: () => void;
 }) {
   const title = markedName(notice.title);
   const titleId = useId();
+  const failed = notice.kind === "failed-run" ? notice : undefined;
   const link =
-    openRun === undefined ? null : (
+    openRun === undefined || failed === undefined ? null : (
       <Button
         variant="ghost"
         size="sm"
         aria-describedby={titleId}
-        onClick={() => openRun(notice.hubId, notice.runId)}
+        onClick={() => openRun(failed.hubId, failed.runId)}
       >
         Open run
       </Button>
@@ -91,7 +91,11 @@ function NoticeRow({
       <p id={titleId} className="min-w-0 flex-1 text-body">
         {title}
       </p>
-      {notice.fixed ? <span className="text-small text-success">Fixed</span> : link}
+      {failed === undefined || failed.fixed ? (
+        <span className="text-small text-success">Fixed</span>
+      ) : (
+        link
+      )}
       <Button
         variant="ghost"
         size="sm"

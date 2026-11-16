@@ -134,6 +134,48 @@ verifies("inbox.sandbox-row", () => {
     await settled();
     expect(restarted.inbox.state.items).toEqual([]);
   });
+
+  it("leaves one notice when the fixed row is released, with its own dismissal", async () => {
+    const t = sandboxInbox([refusedRun("a", "daily", "2026-11-10T06:00:00.000Z")]);
+    await settled();
+    await (await controlOf(t)).check();
+    await settled();
+    expect(await t.notices.list()).toEqual([]);
+    const [item] = t.inbox.state.items;
+    if (item?.kind !== "setup") throw new Error("expected the fixed item");
+    t.inbox.releaseSetup(item);
+    const [notice] = await t.notices.list();
+    expect(notice).toMatchObject({ kind: "sandbox-fixed", at: "2026-11-10T12:00:00.000Z" });
+    t.notices.dismiss("sandbox-fixed:other");
+    expect(await t.notices.list()).toHaveLength(1);
+    t.notices.dismiss(notice?.key ?? "");
+    expect(await t.notices.list()).toEqual([]);
+  });
+
+  it("goes straight to a notice when a check passed elsewhere, with no fixed row", async () => {
+    const t = sandboxInbox([refusedRun("a", "daily", "2026-11-10T06:00:00.000Z")]);
+    await settled();
+    t.pass();
+    await settled();
+    expect(t.inbox.state.items).toEqual([]);
+    expect(await t.notices.list()).toMatchObject([{ kind: "sandbox-fixed" }]);
+  });
+
+  it("makes no notice for a pass elsewhere when nothing was refused, or for the card's own check", async () => {
+    const none = sandboxInbox([]);
+    await settled();
+    none.pass();
+    await settled();
+    expect(await none.notices.list()).toEqual([]);
+
+    const t = sandboxInbox([refusedRun("a", "daily", "2026-11-10T06:00:00.000Z")]);
+    await settled();
+    await (await controlOf(t)).check();
+    t.pass();
+    await settled();
+    expect(t.inbox.state.items).toMatchObject([{ fixed: true }]);
+    expect(await t.notices.list()).toEqual([]);
+  });
 });
 
 /** The card's control, as the loaded view builds it: its `check` and `runs`. */

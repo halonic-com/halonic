@@ -10,6 +10,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -20,6 +21,7 @@ import type { Inbox, SetupFocus } from "../inbox.ts";
 import { waitingCount } from "../inbox-count.ts";
 import type { InboxItem } from "../inbox-items.ts";
 import type { InboxNotices } from "../notices/inbox-notices.ts";
+import { mergeNotices } from "../notices/merge-notices.ts";
 import { secretTarget } from "../plain/secret-target.ts";
 import type { InboxRequests } from "../request/inbox-requests.ts";
 import { ApprovalCard } from "./approval-card.tsx";
@@ -50,13 +52,20 @@ const nothingWaiting = {
 /** The Inbox place's page: the open workspace's Inbox, from `InboxService`. */
 export function InboxPage({ context }: PlaceViewProps) {
   const { openItem } = context;
+  const inbox = context.services.get(InboxService);
+  const appNotices = context.services.find(InboxNoticesService);
+  // The merge keeps one identity per source pair, so the section doesn't reload on every render.
+  const notices = useMemo(
+    () => mergeNotices(appNotices, inbox.extraNotices),
+    [appNotices, inbox.extraNotices],
+  );
   return (
     <InboxView
-      inbox={context.services.get(InboxService)}
+      inbox={inbox}
       words={engineWordsOf(context)}
       announce={(line) => context.announcer.announce(line)}
       requests={context.services.find(InboxRequestsService)}
-      notices={context.services.find(InboxNoticesService)}
+      notices={notices}
       {...(context.runCommand === undefined
         ? {}
         : { openNewConnector: () => context.runCommand?.(newConnectorCommand) })}

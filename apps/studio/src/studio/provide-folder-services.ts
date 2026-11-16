@@ -20,6 +20,7 @@ import {
   InboxNoticesService,
   InboxRequestsService,
   InboxRunsService,
+  SandboxRefusalsService,
 } from "@halonicjs/studio-feature-inbox/api";
 import {
   CollectionHostService,
@@ -51,6 +52,7 @@ import { WorkspaceFilesHost } from "../files/workspace-files-host.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
 import { WorkspaceNotices } from "../inbox/workspace-notices.ts";
 import { WorkspaceRequests } from "../inbox/workspace-requests.ts";
+import { WorkspaceSandboxRefusals } from "../inbox/workspace-sandbox-refusals.ts";
 import { provideLibraryServices } from "../library/provide-library-services.ts";
 import { WorkspaceCollections } from "../library/workspace-collections.ts";
 import { WorkspaceKnowledge } from "../library/workspace-knowledge.ts";
@@ -274,6 +276,7 @@ function provideWorkspaceRuns(
   });
   services.provide(RunsSourceService, runs);
   services.provide(InboxRunsService, runs);
+  services.provide(SandboxRefusalsService, new WorkspaceSandboxRefusals(runs));
   services.provide(
     InboxNoticesService,
     new WorkspaceNotices({
