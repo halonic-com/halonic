@@ -39,7 +39,7 @@ const orders: IndexedRoutine = {
 const files = { "hubs/acme/workflows/routines/orders.routine.yaml": "id: orders\n" };
 
 describe("the routine index", () => {
-  verifies("cloudflare-storage.r2-definition-source", () => {
+  verifies("cloudflare-storage.routine-index", () => {
     it("reads back the routines the snapshot was written with", async () => {
       const bucket = new MapBucket();
       await writeDefinitionSnapshot(bucket, files, [
@@ -70,6 +70,16 @@ describe("the routine index", () => {
       );
       expect(JSON.parse(index?.[1] ?? "null")).toEqual([orders]);
       expect(index?.[1]).toContain('"secret":"acme-hook"');
+    });
+
+    it("refuses a snapshot in format 1 and tells the user to deploy again", async () => {
+      const bucket = new MapBucket();
+      const version = await writeDefinitionSnapshot(bucket, files, [orders]);
+      const key = [...bucket.objects.keys()].find((name) => name.endsWith("manifest.json")) ?? "";
+      const manifest = JSON.parse(bucket.objects.get(key) ?? "{}");
+      await bucket.put(key, JSON.stringify({ ...manifest, formatVersion: 1 }));
+      const source = new R2DefinitionSource(bucket, { version });
+      await expect(readRoutineIndex(source)).rejects.toThrow("halonic deploy");
     });
 
     it("refuses a workspace file at the index's own path", async () => {
