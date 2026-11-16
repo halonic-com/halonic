@@ -6,7 +6,7 @@ import { StartFailedError } from "./start-failed-error.ts";
 
 /**
  * Why a run failed, as `run.failed` records it: the reason, the host for
- * `model-unreachable`, the sandbox's reason code for `sandbox-not-ready` and
+ * `model-unreachable` and `model-timeout`, the sandbox's reason code for `sandbox-not-ready` and
  * for a `sandbox-start-failed` that has one, the harness cause for a
  * `harness-start-failed` that has one, and the agent and what the check saw for `instructions-not-trusted`.
  */
@@ -29,6 +29,7 @@ const reasonOfModelCall = {
   "model-missing": "model-missing",
   "model-no-tools": "model-no-tools",
   "out-of-memory": "model-out-of-memory",
+  timeout: "model-timeout",
   "key-refused": "key-refused",
   "out-of-credit": "out-of-credit",
   "provider-busy": "provider-busy",
@@ -42,7 +43,7 @@ const reasonOfModelCall = {
  * `engine.run-failure-reason-of`):
  *
  * - a `ModelCallError` gives the reason of its model call failure, and the
- *   host for `offline`. `no-key` is `key-refused`, and `refused` is
+ *   host for `offline` and `timeout`. `no-key` is `key-refused`, and `refused` is
  *   `error`: the message says what went wrong.
  * - a `RunFailureError` from an adapter gives its own failure;
  * - the engine's own `StartFailedError` gives its failure with the

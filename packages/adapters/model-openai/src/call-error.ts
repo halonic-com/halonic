@@ -156,7 +156,8 @@ export function errorForNetwork(cause: unknown, call: FailedCall): ModelCallErro
 
 /**
  * The {@link ModelCallError} for a call that passed one of its time limits.
- * The port counts a timeout as `offline`, so the turn moves on to its next model.
+ * A reply that never started is `timeout`; one that went silent is `offline`.
+ * Either way the turn moves on to its next model.
  */
 export function errorForTimeout(cause: CallTimeoutError, call: FailedCall): ModelCallError {
   const where = call.host === undefined ? "" : ` at ${call.host}`;
@@ -165,7 +166,8 @@ export function errorForTimeout(cause: CallTimeoutError, call: FailedCall): Mode
     cause.limit === "response"
       ? `didn't answer within ${seconds} seconds`
       : `sent nothing for ${seconds} seconds`;
-  return new ModelCallError("offline", `${call.providerId}${where} ${what}`, {
+  const reason = cause.limit === "response" ? "timeout" : "offline";
+  return new ModelCallError(reason, `${call.providerId}${where} ${what}`, {
     cause,
     ...(call.host === undefined ? {} : { host: call.host }),
   });

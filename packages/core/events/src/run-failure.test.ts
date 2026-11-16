@@ -22,6 +22,7 @@ verifies("events.run-failed-reason", () => {
       | "error"
       | "model-unreachable"
       | "model-out-of-memory"
+      | "model-timeout"
       | "disk-full"
       | "interrupted"
       | "sandbox-not-ready"
@@ -64,6 +65,18 @@ verifies("events.run-failed-model-unreachable", () => {
 verifies("events.run-failed-model-out-of-memory", () => {
   typeTest("has a reason for a model that ran out of memory", () => {
     expectTypeOf<IsReason<"model-out-of-memory">>().toEqualTypeOf<true>();
+  });
+});
+
+verifies("events.run-failed-model-timeout", () => {
+  typeTest("has a reason for a local model that gave no first answer", () => {
+    expectTypeOf<IsReason<"model-timeout">>().toEqualTypeOf<true>();
+    expectTypeOf<{
+      type: "run.failed";
+      state: string;
+      error: string;
+      reason: "model-timeout";
+    }>().toExtend<EventOf<"run.failed">>();
   });
 });
 

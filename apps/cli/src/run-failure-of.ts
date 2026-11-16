@@ -201,6 +201,8 @@ export function runFailureOf(
         : { reason, model: model.model, alias: model.alias };
     case "model-unreachable":
       return unreachableFailure(failed, model);
+    case "model-timeout":
+      return timeoutFailure(failed, model);
     // Worded from its code, as a run the sandbox check refused; a log without one reads as `other`.
     case "sandbox-not-ready":
       return { reason, code: failed.sandboxReason ?? "other" };
@@ -309,6 +311,21 @@ function unreachableFailure(failed: RunFailedEvent, model: FailedModel | undefin
     address,
     alias: model.alias,
     local: model.provider?.local ?? false,
+  };
+}
+
+/** `model-timeout`: a model on this computer also gets the address, as it may still be loading. */
+function timeoutFailure(failed: RunFailedEvent, model: FailedModel | undefined): RunFailure {
+  if (model === undefined) {
+    return generalFailure(failed);
+  }
+  const address =
+    failed.host ?? (model.provider === undefined ? undefined : providerAddress(model.provider));
+  return {
+    reason: "model-timeout",
+    provider: providerName(model),
+    within: "10 minutes",
+    ...(model.provider?.local === true && address !== undefined ? { localAddress: address } : {}),
   };
 }
 

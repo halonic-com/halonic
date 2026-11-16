@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1061 "Providers and fallback" (HAL-1444 §4); plan approved with changes on HAL-1880; a busy provider moves on the same way since HAL-3178 (requirement `engine.busy-falls-back`)
+- Source: HAL-1061 "Providers and fallback" (HAL-1444 §4); plan approved with changes on HAL-1880; a timeout (HAL-1308, HAL-902) and a busy provider move on the same way since HAL-3178 (requirement `engine.busy-falls-back`)
 
-When a model call fails because the provider is offline, the engine shall hand the call to the next model of the turn at once, with no wait and no retry, write an `llm.fallback` naming both models, and send the turn's later calls to that model too. A turn's models shall be the one its request resolved to, then that alias's own `fallback` entries in order, one level deep, each alias once. When no model is left, the turn shall fail with a `ModelCallError` whose reason is the last cause, `offline`, `no-key` or `provider-busy`, and whose message says so; a run that fails this way has the reason `runFailureReasonOf` gives (requirement `engine.run-failure-reason-of`).
+When a model call fails because the provider is offline or gave no first answer in time (`timeout`), the engine shall hand the call to the next model of the turn at once, with no wait and no retry, write an `llm.fallback` naming both models, and send the turn's later calls to that model too. A turn's models shall be the one its request resolved to, then that alias's own `fallback` entries in order, one level deep, each alias once. When no model is left, the turn shall fail with a `ModelCallError` whose reason is the last cause, `offline`, `timeout`, `no-key` or `provider-busy`, and whose message says so; a run that fails this way has the reason `runFailureReasonOf` gives (requirement `engine.run-failure-reason-of`).
 
 ## Examples
 
@@ -17,3 +17,9 @@ When a model call fails because the provider is offline, the engine shall hand t
 - Given that failure,
   when a run asks for its failure reason,
   then it is `model-unreachable`.
+- Given the alias `local` at `localhost:11434` that gave no first answer in time, with no fallback,
+  when a chat turn runs,
+  then it fails with a `ModelCallError` whose reason is `timeout` and whose host is `localhost:11434`, and the run's failure reason is `model-timeout` with that host.
+- Given `smart` that gave no first answer in time, falling back to `local`,
+  when a chat turn runs,
+  then `local` answers and the log holds an `llm.fallback` from `smart` to `local`.
