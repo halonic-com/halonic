@@ -98,7 +98,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     if (engine !== undefined) {
       this.startRun = async ({ hubId, id }, input) => {
         // The engine reads the files on disk: wait for a pending save, so a new workflow has its file.
-        await this.#saved({ hubId, id });
+        await this.#saved();
         const { id: runId } = await engine.startRun({ hubId, workflowId: id }, input);
         return { runId };
       };
@@ -106,14 +106,15 @@ export class WorkspaceWorkflows implements WorkflowsHost {
   }
 
   /** Waits for the pending save; a failed one is why the run doesn't start (R1, HAL-10622). */
-  async #saved({ hubId, id }: WorkflowRef): Promise<void> {
+  async #saved(): Promise<void> {
     const { settle } = this.#parts;
     if (settle === undefined) return;
     try {
       await settle();
     } catch {
       // The reason of the failure is on the save's own toast; the run says only what didn't happen.
-      throw new Error(`${this.nameOf({ hubId, id }) ?? id} couldn't be saved.`);
+      // The save covers the whole workspace, so any file can be the one that failed.
+      throw new Error("The workspace couldn't be saved.");
     }
   }
 

@@ -380,14 +380,27 @@ export async function openFolder(
   }
   const assistant = provideAssistant(services, files, location, name, scope);
   if (ipc !== undefined && files !== undefined && trust !== undefined && scope !== undefined) {
-    provideFolderServices(services, { ipc, files, window, trust, location, scope });
+    provideFolderServices(services, {
+      ipc,
+      files,
+      window,
+      trust,
+      location,
+      scope,
+      // Run waits through the workspace's own save, which is made below, once the workspace is.
+      settle: async () => {
+        if (!((await saving?.saveNow()) ?? true))
+          throw new Error("The workspace is still unsaved.");
+      },
+    });
   }
   shell.services.instantiate(services);
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name });
+  const saving = scope === undefined ? undefined : savingOf(scope, workspace, name);
   return {
     name,
     workspace,
-    saving: scope === undefined ? undefined : savingOf(scope, workspace, name),
+    saving,
     trust: trustView,
     dispose: () => {
       if (trust !== undefined) open.delete(trust);

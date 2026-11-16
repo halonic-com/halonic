@@ -420,7 +420,7 @@ verifies("studio.workspace-workflow-read", () => {
     expect(order).toEqual(["saved", "started"]);
   });
 
-  it("doesn't start the run when the save fails, and names the workflow (R1)", async () => {
+  it("doesn't start the run when the save fails, and says the workspace wasn't saved (R1)", async () => {
     let started = false;
     const { host } = setup(
       [],
@@ -437,7 +437,7 @@ verifies("studio.workspace-workflow-read", () => {
     );
     await host.list();
     await expect(host.startRun?.({ hubId: "acme", id: "reply" }, {})).rejects.toThrow(
-      "Reply couldn't be saved.",
+      "The workspace couldn't be saved.",
     );
     expect(started).toBe(false);
   });
