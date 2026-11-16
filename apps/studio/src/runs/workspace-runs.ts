@@ -52,7 +52,8 @@ interface WorkspaceFacts {
   readonly monthly: number | undefined;
 }
 
-const systemTimer: PollTimer = {
+/** The real clock: `setInterval`. */
+export const systemTimer: PollTimer = {
   every: (ms, tick) => {
     const id = setInterval(tick, ms);
     return () => clearInterval(id);
