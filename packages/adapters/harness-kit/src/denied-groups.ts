@@ -1,7 +1,7 @@
 // What a harness run's sandbox denies, by group (threat model 4.6): the
-// person's SSH keys, cloud sign-ins, browser data, password stores and their
-// own Claude Code and Codex settings, all in the home folder, and Halonic's
-// own data folder. The groups are the `sandbox.opened` event's
+// person's SSH keys, cloud sign-ins, browser data, password stores, package
+// registry tokens, shell histories and their own Claude Code and Codex
+// settings, all in the home folder, and Halonic's own data folder. The groups are the `sandbox.opened` event's
 // `deniedPathGroupCodes`, so the run log and the screens name what the
 // profile denies.
 
@@ -68,6 +68,44 @@ const homeGroups: Readonly<Record<Exclude<DeniedPathGroupCode, "halonic-data">, 
         "AppData/Roaming/Microsoft/Protect",
       ],
     },
+  },
+  "registry-tokens": {
+    everywhere: [
+      ".npmrc",
+      ".yarnrc",
+      ".yarnrc.yml",
+      ".config/pnpm/rc",
+      ".pypirc",
+      ".cargo/credentials",
+      ".cargo/credentials.toml",
+      ".gem/credentials",
+      ".composer/auth.json",
+      ".m2/settings.xml",
+      ".gradle/gradle.properties",
+      ".terraform.d/credentials.tfrc.json",
+      ".vault-token",
+      ".config/op",
+      ".config/doctl",
+    ],
+    only: {
+      win32: [
+        "AppData/Roaming/pnpm/config/rc",
+        "AppData/Roaming/terraform.d/credentials.tfrc.json",
+      ],
+    },
+  },
+  "shell-history": {
+    everywhere: [
+      ".bash_history",
+      ".zsh_history",
+      ".zsh_sessions",
+      ".local/share/fish/fish_history",
+      ".python_history",
+      ".node_repl_history",
+      ".psql_history",
+      ".mysql_history",
+    ],
+    only: { win32: ["AppData/Roaming/Microsoft/Windows/PowerShell/PSReadLine"] },
   },
   "agent-settings": { everywhere: [".claude", ".claude.json", ".codex"] },
 };

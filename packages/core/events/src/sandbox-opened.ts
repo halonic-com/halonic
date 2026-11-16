@@ -9,8 +9,8 @@ export type SandboxStrength = "os" | "vm" | "remote";
 
 /**
  * The codes of the groups of paths a sandbox denies: the person's SSH keys,
- * their cloud sign-ins, browser data, password stores, Halonic's own data and
- * other agents' settings (such as `~/.claude`). One list, so the profile
+ * their cloud sign-ins, browser data, password stores, package registry tokens,
+ * shell histories, Halonic's own data and other agents' settings (such as `~/.claude`). One list, so the profile
  * builder, the run log and the screens name the same groups. Screens word
  * each code through the message catalogue.
  */
@@ -19,6 +19,8 @@ export const deniedPathGroupCodes = [
   "cloud-sign-ins",
   "browser-data",
   "password-stores",
+  "registry-tokens",
+  "shell-history",
   "halonic-data",
   "agent-settings",
 ] as const;

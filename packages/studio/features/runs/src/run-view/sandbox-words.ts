@@ -57,6 +57,8 @@ export const sandboxWords = {
   "sandbox.group.cloud-sign-ins": "Cloud and package sign-ins",
   "sandbox.group.browser-data": "Browser data",
   "sandbox.group.password-stores": "Password stores",
+  "sandbox.group.registry-tokens": "Package registry tokens",
+  "sandbox.group.shell-history": "Shell histories",
   "sandbox.group.halonic-data": "Halonic's own data",
   "sandbox.group.agent-settings": "Other agents' settings",
 } as const satisfies Readonly<Record<string, string>>;

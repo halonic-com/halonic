@@ -140,6 +140,8 @@ verifies("events.sandbox-opened", () => {
       | "cloud-sign-ins"
       | "browser-data"
       | "password-stores"
+      | "registry-tokens"
+      | "shell-history"
       | "halonic-data"
       | "agent-settings"
     >();

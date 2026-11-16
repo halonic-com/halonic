@@ -413,8 +413,9 @@ needs sibling libraries outside that folder fails closed at start.
 An agent tricked by a mail, a web page or a file (B2), or a careless command,
 from doing any of these:
 
-- reading your keys and personal files: SSH and cloud credentials, browser
-  profiles, keychain files, your own Claude Code and Codex settings, Halonic's
+- reading your keys and personal files: SSH and cloud credentials, package
+  registry tokens (such as `~/.npmrc`), shell histories, browser profiles,
+  keychain files, your own Claude Code and Codex settings, Halonic's
   data and trust records
 - changing files outside its working folder, temp folder and its own settings
   folder, including the workspace's definition files, so it can't edit its own

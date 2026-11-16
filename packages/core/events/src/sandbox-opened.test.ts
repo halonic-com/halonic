@@ -163,12 +163,14 @@ verifies("events.sandbox-opened", () => {
     expect(event.sandbox.strength).toBe("os");
   });
 
-  it("names the six groups of denied paths in one list", () => {
+  it("names the eight groups of denied paths in one list", () => {
     expect(deniedPathGroupCodes).toEqual([
       "ssh-keys",
       "cloud-sign-ins",
       "browser-data",
       "password-stores",
+      "registry-tokens",
+      "shell-history",
       "halonic-data",
       "agent-settings",
     ]);
