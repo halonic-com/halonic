@@ -144,8 +144,17 @@ function remoteCases(make: MakeVcs, test: HardenedTest): void {
     await ours.vcs.commit("Change a");
     await ours.vcs.push();
     await theirs.vcs.pull();
+    // Both moved: fetching and comparing run nothing planted either.
+    await ours.files.write("a.yaml", "3\n");
+    await ours.vcs.stage(["a.yaml"]);
+    await ours.vcs.commit("Change a again");
+    await ours.vcs.push();
+    await theirs.files.write("a.yaml", "mine\n");
+    await theirs.vcs.stage(["a.yaml"]);
+    await theirs.vcs.commit("Change a elsewhere");
+    expect((await theirs.vcs.diverged())?.items).toEqual(["a.yaml"]);
 
-    expect(await theirs.files.read("a.yaml")).toBe("2\n");
+    expect(await theirs.files.read("a.yaml")).toBe("mine\n");
     expect(await plantOf(ours).ran()).toBe(false);
     expect(await plantOf(theirs).ran()).toBe(false);
   });
@@ -162,6 +171,8 @@ function remoteCases(make: MakeVcs, test: HardenedTest): void {
     await ours.vcs.push().catch(() => undefined);
     await theirs.vcs.pull().catch(() => undefined);
     await theirs.vcs.push().catch(() => undefined);
+    await ours.vcs.diverged().catch(() => undefined);
+    await theirs.vcs.diverged().catch(() => undefined);
 
     expect(await plantOf(ours).ran()).toBe(false);
     expect(await plantOf(theirs).ran()).toBe(false);
@@ -179,6 +190,7 @@ function localRemoteCases(make: MakeVcs, test: HardenedTest): void {
     // The port refuses a local remote; all that matters is that nothing planted ran.
     await ours.vcs.push().catch(() => undefined);
     await ours.vcs.pull().catch(() => undefined);
+    await ours.vcs.diverged().catch(() => undefined);
 
     expect(await plantOf(ours).ran()).toBe(false);
   });

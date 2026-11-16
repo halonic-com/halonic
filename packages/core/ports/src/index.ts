@@ -394,6 +394,7 @@ export {
   type VcsCommitVersionOptions,
   type VcsCommitWorktreeOptions,
   type VcsDiffStatus,
+  type VcsDivergence,
   type VcsFileDiff,
   type VcsFileStatus,
   type VcsStatus,

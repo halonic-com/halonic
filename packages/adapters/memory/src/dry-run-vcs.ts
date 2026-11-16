@@ -6,6 +6,7 @@ import {
   type VcsCommit,
   type VcsCommitVersionOptions,
   type VcsCommitWorktreeOptions,
+  type VcsDivergence,
   type VcsFileDiff,
   type VcsStatus,
   type VcsWorktree,
@@ -49,7 +50,7 @@ export type PlannedVcsChange =
  *
  * Unlike the dry-run definition store, reads don't show the recorded changes:
  * `status`, `diff`, `log`, `branches`, `readAt` and `listAt` describe the
- * real repository, and so do `listWorktrees`, `diffBetween` and `readRef`. `snapshot`
+ * real repository, and so do `listWorktrees`, `diffBetween`, `readRef` and `diverged`, which only fetches. `snapshot`
  * is read through too: it adds a commit on no branch and changes neither the
  * working tree, the index nor a branch. A recorded worktree gets an id and a
  * folder starting `dry-run:`, which no real worktree has. Git's
@@ -92,6 +93,10 @@ export class DryRunVcs implements Vcs {
 
   remotes(): Promise<string[]> {
     return this.#source.remotes();
+  }
+
+  diverged(): Promise<VcsDivergence | null> {
+    return this.#source.diverged();
   }
 
   snapshot(): Promise<string> {
