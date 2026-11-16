@@ -62,7 +62,7 @@ fn git_hardening_never_reads_a_bundle_the_config_names() {
     // The remote can't be reached; all that matters is what was read
     // before git tried it.
     let pull = sandbox
-        .git("pull origin main")
+        .git("pull --ff-only origin main")
         .expect("pull runs and fails");
     assert_ne!(pull.code, Some(0));
     let refs = || {
@@ -178,10 +178,7 @@ fn repo_config_refuses_a_repository_that_sets_merge_options() {
     let refused = Err(GitError::ConfigNotAllowed {
         key: "branch.main.mergeoptions".to_owned(),
     });
-    assert_eq!(
-        sandbox.git("pull --no-rebase --no-edit origin main"),
-        refused
-    );
+    assert_eq!(sandbox.git("pull --ff-only origin main"), refused);
     assert_eq!(sandbox.git("status"), refused);
     // Without the runner, the pull's merge takes the file outside as its
     // message.

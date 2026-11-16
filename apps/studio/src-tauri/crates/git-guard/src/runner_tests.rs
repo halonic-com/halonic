@@ -87,7 +87,7 @@ fn git_hardening_gives_its_config_in_the_environment_not_as_arguments() {
 
 #[test]
 fn git_hardening_never_goes_into_submodules() {
-    let command = command("pull origin main");
+    let command = command("pull --ff-only origin main");
     for (key, value) in [
         ("submodule.recurse", "false"),
         ("fetch.recurseSubmodules", "false"),
@@ -140,10 +140,18 @@ fn git_hardening_turns_off_external_diffs_for_diff_and_log() {
 
 #[test]
 fn git_hardening_names_upload_pack_and_receive_pack_itself() {
-    let pull = arguments(&command("pull origin main"));
+    let pull = arguments(&command("pull --ff-only origin main"));
     assert_eq!(
-        pull[pull.len() - 4..],
-        ["pull", "--upload-pack=git-upload-pack", "origin", "main"]
+        pull[pull.len() - 7..],
+        [
+            "pull",
+            "--upload-pack=git-upload-pack",
+            "--no-rebase",
+            "--no-autostash",
+            "--ff-only",
+            "origin",
+            "main"
+        ]
     );
     let push = arguments(&command("push origin main"));
     assert_eq!(

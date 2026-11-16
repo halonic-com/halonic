@@ -42,7 +42,7 @@ impl CheckedCall {
 /// options (`--upload-pac` for `--upload-pack`), so anything else is
 /// refused. After `--`, every argument is a path. Revisions and paths, on
 /// either side of `--`, must stay inside the repository. `commit` must say
-/// where its message comes from.
+/// where its message comes from, and `pull` must be `--ff-only`.
 pub fn check_args(args: &[String]) -> Result<CheckedCall, GitError> {
     let Some((first, rest)) = args.split_first() else {
         return Err(GitError::NoSubcommand);
@@ -77,6 +77,7 @@ pub fn check_args(args: &[String]) -> Result<CheckedCall, GitError> {
     check_arguments(subcommand, &options, &arguments)?;
     check_message(subcommand, &options)?;
     check_merge(subcommand, &options, &arguments)?;
+    check_fast_forward(subcommand, &options)?;
     Ok(CheckedCall {
         subcommand,
         args: args.to_vec(),
@@ -183,6 +184,16 @@ fn check_merge(
         return Ok(());
     }
     Err(GitError::MergeNotOurs)
+}
+
+/// `pull` must say `--ff-only`. Otherwise git merges, and the merge runs any
+/// merge driver the repository's config names (`merge.<name>.driver`, with a
+/// `.gitattributes` line) and writes conflict markers into the files.
+fn check_fast_forward(subcommand: &AllowedSubcommand, options: &[&str]) -> Result<(), GitError> {
+    if subcommand.name != "pull" || options.contains(&"--ff-only") {
+        return Ok(());
+    }
+    Err(GitError::FastForwardRequired)
 }
 
 fn check_arguments(

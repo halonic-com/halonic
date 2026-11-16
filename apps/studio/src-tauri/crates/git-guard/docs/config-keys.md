@@ -83,3 +83,7 @@ How a key is handled:
 ## On a git upgrade or a new allowed call
 
 Compare `git help config` of the new release with this list, and check every new key that runs a program or reads a file. Do the same when a subcommand or option goes onto the allow-list: a key marked "Not reachable" may become reachable.
+
+## Pull settings that change how `pull` joins
+
+`merge.autoStash`, `pull.rebase` and `branch.<name>.rebase` could turn a fast-forward-only pull into a rebase or a real merge. Before git 2.34, `--ff-only` did not beat a rebase setting, and an autostash re-applies local changes with a real merge that can write conflict markers. The runner passes `--no-rebase --no-autostash` on every `pull`, so git refuses the pull and leaves the files untouched (HAL-10737).

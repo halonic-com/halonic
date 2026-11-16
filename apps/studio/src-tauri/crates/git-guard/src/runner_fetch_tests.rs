@@ -133,7 +133,12 @@ fn git_hardening_never_runs_an_alternate_refs_command_on_pull() {
     };
     std::fs::create_dir_all(&runner.empty_hooks_folder).expect("the folder is created");
     let acme = user_repository(root, "acme", &remote, &mark);
-    let args = ["pull".to_owned(), "origin".to_owned(), "main".to_owned()];
+    let args = [
+        "pull".to_owned(),
+        "--ff-only".to_owned(),
+        "origin".to_owned(),
+        "main".to_owned(),
+    ];
     let call = check_args(&args).expect("the call is allowed");
     let output = runner
         .hardened_command(&acme.top, Some(&acme), &call, &[])
@@ -215,7 +220,12 @@ fn git_allow_list_gets_the_other_side_and_merges_without_conflict_markers() {
     std::fs::create_dir_all(&runner.empty_hooks_folder).expect("the folder is created");
     let acme = user_repository(root, "acme", &remote, &root.join("alternate-refs.ran"));
     // Both sides start from the same commit, then each changes the file.
-    stdout_of(&run_checked(&runner, &acme, &ssh, "pull origin main"));
+    stdout_of(&run_checked(
+        &runner,
+        &acme,
+        &ssh,
+        "pull --ff-only origin main",
+    ));
     std::fs::write(server.join("notes.md"), "one\nsam\n").expect("the file writes");
     plain_git_ok(&server, &["commit", "-q", "-a", "-m", "sam-note"]);
     std::fs::write(acme.top.join("notes.md"), "one\nmine\n").expect("the file writes");
@@ -334,4 +344,58 @@ fn git_hardening_merges_only_with_ours_whatever_a_branchs_merge_options_say() {
     assert!(!mark.exists(), "the planted merge driver ran");
     let file = std::fs::read_to_string(top.join("notes.md")).expect("the file reads");
     assert_eq!(file, "one\nmine\n");
+}
+
+#[test]
+fn git_hardening_pull_never_autostashes_into_a_merge() {
+    let scratch = Scratch::new("autostash");
+    let root = &scratch.0;
+    let server = root.join("server");
+    std::fs::create_dir_all(&server).expect("the folder is created");
+    plain_git_ok(&server, &["init", "-q"]);
+    std::fs::write(server.join("notes.md"), "acme notes\n").expect("the file writes");
+    plain_git_ok(&server, &["add", "notes.md"]);
+    plain_git_ok(&server, &["commit", "-q", "-m", "first-note"]);
+    plain_git_ok(root, &["clone", "-q", "server", "acme"]);
+    let acme = root.join("acme");
+    let remote = format!("ssh://git.acme.invalid{}", server.display());
+    plain_git_ok(&acme, &["config", "remote.origin.url", &remote]);
+    plain_git_ok(&acme, &["config", "merge.autoStash", "true"]);
+    plain_git_ok(&acme, &["config", "pull.rebase", "true"]);
+    // The server moves on, and the folder has an edit of the same line.
+    std::fs::write(server.join("notes.md"), "acme notes, second\n").expect("the file writes");
+    plain_git_ok(&server, &["commit", "-q", "-a", "-m", "second-note"]);
+    std::fs::write(acme.join("notes.md"), "acme notes, mine\n").expect("the file writes");
+    let ssh = local_ssh(root);
+    let runner = GitRunner {
+        git: git_program(),
+        empty_hooks_folder: root.join("empty-hooks"),
+        limits: Limits::default(),
+    };
+    std::fs::create_dir_all(&runner.empty_hooks_folder).expect("the folder is created");
+    let git_dir = acme.join(".git");
+    let repository = Repository {
+        top: acme.clone(),
+        git_dir: git_dir.clone(),
+        common_dir: git_dir,
+    };
+    let args = [
+        "pull".to_owned(),
+        "--ff-only".to_owned(),
+        "origin".to_owned(),
+        "main".to_owned(),
+    ];
+    let call = check_args(&args).expect("the call is allowed");
+    let output = runner
+        .hardened_command(&acme, Some(&repository), &call, &[])
+        .env("GIT_SSH_COMMAND", &ssh)
+        .env("GIT_SSH_VARIANT", "simple")
+        .output()
+        .expect("git runs");
+    assert!(!output.status.success(), "git pulled over local changes");
+    assert_eq!(
+        std::fs::read_to_string(acme.join("notes.md")).expect("the file reads"),
+        "acme notes, mine\n",
+        "the local edit was changed"
+    );
 }

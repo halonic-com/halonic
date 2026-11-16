@@ -200,6 +200,28 @@ fn git_allow_list_makes_commit_say_where_its_message_comes_from() {
 }
 
 #[test]
+fn git_allow_list_allows_pull_only_with_ff_only() {
+    for call in [
+        "pull origin main",
+        "pull",
+        "pull --quiet origin main",
+        "pull --no-rebase origin main",
+        "pull --no-rebase --no-edit origin main",
+    ] {
+        assert_eq!(check(call), Err(GitError::FastForwardRequired), "{call}");
+    }
+    assert!(refused_option("pull --rebase origin main"));
+    assert!(refused_option("pull --ff-only --rebase origin main"));
+    for call in [
+        "pull --ff-only",
+        "pull --ff-only --quiet",
+        "pull -q --ff-only origin main",
+    ] {
+        assert_eq!(check(call), Ok(()), "{call}");
+    }
+}
+
+#[test]
 fn git_allow_list_takes_urls_only_through_remote() {
     let refused = [
         "push https://git.acme.example/acme/notes.git main",
