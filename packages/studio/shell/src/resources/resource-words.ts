@@ -5,21 +5,24 @@ const bytesPerGigabyte = 1024 ** 3;
 
 /**
  * Halonic's memory as the status bar item says it: the engine and the processes it started (HAL-1668
- * FS7). Whole megabytes below 1 GB, then one decimal in gigabytes.
+ * FS7). Whole megabytes below 1 GB, then one decimal in gigabytes (1023.7 MB reads
+ * "1.0 GB", never "1024 MB").
  *
  * @example
  * memoryText(230 * 1024 ** 2); // "230 MB"
  * memoryText(1.2 * 1024 ** 3); // "1.2 GB"
  */
 export function memoryText(bytes: number): string {
-  if (bytes < bytesPerGigabyte) {
-    return `${Math.round(bytes / bytesPerMegabyte)} MB`;
+  const megabytes = Math.round(bytes / bytesPerMegabyte);
+  if (megabytes < 1024) {
+    return `${megabytes} MB`;
   }
   return `${(bytes / bytesPerGigabyte).toFixed(1)} GB`;
 }
 
 /**
- * Free disk space in whole gigabytes, with one decimal below 10 GB. Below 0.1 GB the number would
+ * Free disk space in whole gigabytes, with one decimal below 10 GB. It rounds down, so it never
+ * claims more room than there is (0.96 GB reads "0.9 GB", under the 1 GB warning line). Below 0.1 GB the number would
  * read "0.0 GB", which looks broken, so it says "less than 0.1 GB" (microcopy 22 F12, F19).
  *
  * @example
@@ -32,7 +35,7 @@ export function freeSpaceText(bytes: number): string {
   if (gigabytes < 0.1) {
     return "less than 0.1 GB";
   }
-  return `${gigabytes < 10 ? gigabytes.toFixed(1) : Math.round(gigabytes)} GB`;
+  return `${gigabytes < 10 ? (Math.floor(gigabytes * 10) / 10).toFixed(1) : Math.floor(gigabytes)} GB`;
 }
 
 /** The memory Halonic uses: the engine's and that of each process it started. */

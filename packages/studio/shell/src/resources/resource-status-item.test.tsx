@@ -135,9 +135,20 @@ verifies("shell.resource-status-item", () => {
     expect(memoryText(1.2 * gigabyte)).toBe("1.2 GB");
   });
 
+  it("never words memory as 1024 MB", () => {
+    expect(memoryText(1023.7 * megabyte)).toBe("1.0 GB");
+    expect(memoryText(1023.4 * megabyte)).toBe("1023 MB");
+  });
+
   it("words free space in whole GB, with one decimal below 10 GB", () => {
     expect(freeSpaceText(48.3 * gigabyte)).toBe("48 GB");
     expect(freeSpaceText(7.44 * gigabyte)).toBe("7.4 GB");
     expect(freeSpaceText(0.04 * gigabyte)).toBe("less than 0.1 GB");
+  });
+
+  it("rounds free space down so it never contradicts the thresholds", () => {
+    expect(freeSpaceText(0.96 * gigabyte)).toBe("0.9 GB");
+    expect(freeSpaceText(9.96 * gigabyte)).toBe("9.9 GB");
+    expect(freeSpaceText(10.9 * gigabyte)).toBe("10 GB");
   });
 });
