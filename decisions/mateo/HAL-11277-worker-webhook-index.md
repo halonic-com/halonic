@@ -3,6 +3,7 @@
 - Task: HAL-11277
 - Approval: Liam approves the plan and its open point 5 on HAL-11277 (https://paperclip.halonic.com/HAL/issues/HAL-11277#comment-1639c2fc-9e95-48cf-86f5-9075340ce44a). A team decision with no board card (HAL-2282 rule).
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:cXd0NJk7O78iVKWgD6x4zjz0gKUBh++gOTu1myFtArbTJI8OnGLvR9JmYjj11j6i+FnesPnujaTnHuufkpEcCg==
 
 The Worker bundled `yaml` because `snapshot-webhooks.ts` loaded the whole workspace at every
 delivery, and because `@halonicjs/host-server` imported `@halonicjs/app` and `@halonicjs/format`

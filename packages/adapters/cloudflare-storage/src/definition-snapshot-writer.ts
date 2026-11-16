@@ -15,10 +15,11 @@ export interface SnapshotWriteBucket {
  * Worker reads webhooks from, then the manifest, then `current`, so a
  * half-finished upload is never the one served. Private files are left out.
  * This is the low-level call: it trusts that `routines` are those of `files`.
- * A deploy calls `writeWorkspaceSnapshot` of `@halonicjs/target-cloudflare-deploy`,
- * which builds them from the files, so the two never differ. The index holds only what the routine files hold,
- * and it is listed in the manifest with its hash like any file. This is the write side `halonic
- * deploy` uses; the Worker only reads.
+ * A deploy calls `writeWorkspaceSnapshot` of
+ * `@halonicjs/target-cloudflare-deploy`, which builds them from the files, so
+ * the two never differ. The index holds only what the routine files hold, and
+ * it is listed in the manifest with its hash like any file. This is the write
+ * side `halonic deploy` uses; the Worker only reads.
  *
  * @returns the version that `current` now names
  * @throws RangeError for a path the port forbids, or a file at the index's own path
