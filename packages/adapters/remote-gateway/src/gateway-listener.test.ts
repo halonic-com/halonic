@@ -66,6 +66,9 @@ verifies("remote-gateway.listener", () => {
       expect(await statusOf({ host: "Host.Example.TS.net" }, ["host.example.ts.net"])).toContain(
         "101",
       );
+      expect(await statusOf({ host: "host.example.ts.net" }, ["Host.Example.TS.net"])).toContain(
+        "101",
+      );
     });
 
     it("refuses any request with an Origin with 403, as a web page sends", async () => {
@@ -257,6 +260,32 @@ verifies("remote-gateway.listener", () => {
         await client.until((text) => text.includes("\u0089\u0000"));
         await client.ended;
         expect(client.socket.destroyed).toBe(true);
+      } finally {
+        await t.stop();
+      }
+    });
+
+    it("drops a connection that answers pings but never says hello", async () => {
+      const t = await openListener({ heartbeatMs: 20, helloTimeoutMs: 100 });
+      try {
+        const client = t.client();
+        await client.open(t.listener.port);
+        await client.ended;
+        expect(client.socket.destroyed).toBe(true);
+      } finally {
+        await t.stop();
+      }
+    });
+
+    it("keeps a connection that said hello past the hello time", async () => {
+      const t = await openListener({ helloTimeoutMs: 50 });
+      try {
+        const client = t.client();
+        await client.open(t.listener.port);
+        await client.sendJson({ type: "hello", id: "h1", version: 1 });
+        await client.frames(1);
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        expect(client.socket.destroyed).toBe(false);
       } finally {
         await t.stop();
       }

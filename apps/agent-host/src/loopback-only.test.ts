@@ -32,9 +32,21 @@ const sealedFolders = [
   "packages/adapters/remote-gateway/src",
 ];
 
-/** What a `listen` call may name: a loopback constant or literal, or a socket's path. */
-const allowedListen =
-  /\.listen\(\s*(?:0|port|(?:run\.)?socketPath)\s*(?:,\s*(?:loopbackHost|gatewayLoopbackHost|"127\.0\.0\.1")\s*)?[,)]/;
+/** The host argument of a `listen` call that stays on this computer. */
+const loopbackHostArgument = /(?:loopbackHost|gatewayLoopbackHost|"127\.0\.0\.1")/;
+
+/**
+ * Whether a `listen` call stays on this computer: a port (`0`, `port`) with a
+ * loopback host after it, or a socket's path alone. A port without a host
+ * listens on every address, so it never passes, whatever follows it.
+ */
+export function isLoopbackListen(call: string): boolean {
+  const onPort = new RegExp(
+    `\\.listen\\(\\s*(?:0|port)\\s*,\\s*${loopbackHostArgument.source}\\s*[,)]`,
+  );
+  const onSocketPath = /\.listen\(\s*(?:run\.)?socketPath\s*[,)]/;
+  return onPort.test(call) || onSocketPath.test(call);
+}
 
 function sourceFiles(folder: string): string[] {
   return readdirSync(join(repoRoot, folder), { recursive: true, withFileTypes: true })
@@ -52,7 +64,7 @@ function listenCalls(file: string): string[] {
 function problemsIn(file: string): string[] {
   const wildcard = /["'`](?:0\.0\.0\.0|::|::0|\[::\])["'`]/.test(readFileSync(file, "utf8"));
   const wildcardProblems = wildcard ? [`${file}: names a wildcard address`] : [];
-  const badCalls = listenCalls(file).filter((call) => !allowedListen.test(call));
+  const badCalls = listenCalls(file).filter((call) => !isLoopbackListen(call));
   return [...wildcardProblems, ...badCalls.map((call) => `${file}: ${call.slice(0, 60)}`)];
 }
 
@@ -93,6 +105,34 @@ verifies("agent-host.loopback-only", () => {
         "packages/adapters/harness-bridge/src",
         "packages/adapters/remote-gateway/src",
       ]);
+    });
+  });
+
+  describe("the check on what is written", () => {
+    it("accepts a loopback host after a port, and a socket's path", () => {
+      const good = [
+        "server.listen(0, loopbackHost, done)",
+        "server.listen(port, gatewayLoopbackHost, () => {",
+        'server.listen(0, "127.0.0.1", resolve)',
+        "server.listen(run.socketPath, done)",
+        "server.listen(socketPath)",
+      ];
+      expect(good.filter((call) => !isLoopbackListen(call))).toEqual([]);
+    });
+
+    it("refuses a listen with no host, a wildcard or another host, so a regression is seen", () => {
+      const bad = [
+        "server.listen(port)",
+        "server.listen(0)",
+        "server.listen(0, callback)",
+        "server.listen(port, () => {",
+        "server.listen(0, host, resolve)",
+        'server.listen(0, "192.168.1.5", resolve)',
+        "server.listen({ port: 0 })",
+        "server.listen(port, hostname, loopbackHost)",
+        "server.listen(options.port, loopbackHost)",
+      ];
+      expect(bad.filter(isLoopbackListen)).toEqual([]);
     });
   });
 

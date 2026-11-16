@@ -24,7 +24,11 @@ const maxControlPayload = 125;
  * After `too-large` or `protocol-error` it reads nothing more.
  */
 export class FrameReader {
-  private pending = Buffer.alloc(0);
+  /** Chunks received and not yet read, kept apart until a whole frame can be made of them. */
+  private chunks: Buffer[] = [];
+  private pendingBytes = 0;
+  /** How many bytes `chunks` must hold before reading is worth trying again. */
+  private neededBytes = 0;
   private stopped = false;
   private readonly maxPayload: number;
 
@@ -35,7 +39,9 @@ export class FrameReader {
   /** Adds `chunk` and returns the events its complete frames make, in order. */
   push(chunk: Uint8Array): FrameEvent[] {
     if (this.stopped) return [];
-    this.pending = Buffer.concat([this.pending, chunk]);
+    this.chunks.push(Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength));
+    this.pendingBytes += chunk.length;
+    if (this.pendingBytes < this.neededBytes) return [];
     const events: FrameEvent[] = [];
     while (!this.stopped) {
       const event = this.readFrame();
@@ -48,17 +54,38 @@ export class FrameReader {
 
   /** The next frame's event, or `undefined` when the bytes so far don't hold a whole frame. */
   private readFrame(): FrameEvent | undefined {
-    const header = readHeader(this.pending);
-    if (header === undefined) return undefined;
+    const pending = this.joinedChunks();
+    const header = readHeader(pending);
+    if (header === undefined) {
+      // The header's length bytes are not all here; the next byte may complete them.
+      this.neededBytes = pending.length + 1;
+      return undefined;
+    }
     if (header.problem !== undefined) return { kind: header.problem };
     if (header.length > this.maxPayload) return { kind: "too-large" };
     const end = header.dataStart + 4 + header.length;
-    if (this.pending.length < end) return undefined;
-    const mask = this.pending.subarray(header.dataStart, header.dataStart + 4);
-    const bytes = Buffer.from(this.pending.subarray(header.dataStart + 4, end));
+    if (pending.length < end) {
+      this.neededBytes = end;
+      return undefined;
+    }
+    const mask = pending.subarray(header.dataStart, header.dataStart + 4);
+    const bytes = Buffer.from(pending.subarray(header.dataStart + 4, end));
     for (let at = 0; at < bytes.length; at++) bytes[at] = (bytes[at] ?? 0) ^ (mask[at % 4] ?? 0);
-    this.pending = this.pending.subarray(end);
+    this.keep(pending.subarray(end));
     return eventOf(header.opcode, bytes);
+  }
+
+  /** All the unread bytes as one buffer; the copy happens only when there is more than one chunk. */
+  private joinedChunks(): Buffer {
+    if (this.chunks.length > 1) this.keep(Buffer.concat(this.chunks));
+    return this.chunks[0] ?? Buffer.alloc(0);
+  }
+
+  /** Makes `rest` the unread bytes. */
+  private keep(rest: Buffer): void {
+    this.chunks = rest.length > 0 ? [rest] : [];
+    this.pendingBytes = rest.length;
+    this.neededBytes = 0;
   }
 }
 

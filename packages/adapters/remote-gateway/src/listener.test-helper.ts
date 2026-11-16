@@ -149,6 +149,7 @@ export async function openListener(
     extraHosts?: string[];
     maxConnections?: number;
     heartbeatMs?: number;
+    helloTimeoutMs?: number;
   } = {},
 ) {
   const source = new FakeSource();
@@ -159,6 +160,7 @@ export async function openListener(
     ...(options.extraHosts === undefined ? {} : { extraHosts: options.extraHosts }),
     ...(options.maxConnections === undefined ? {} : { maxConnections: options.maxConnections }),
     ...(options.heartbeatMs === undefined ? {} : { heartbeatMs: options.heartbeatMs }),
+    ...(options.helloTimeoutMs === undefined ? {} : { helloTimeoutMs: options.helloTimeoutMs }),
   });
   return {
     source,

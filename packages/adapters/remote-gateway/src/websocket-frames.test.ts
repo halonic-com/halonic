@@ -17,6 +17,16 @@ verifies("remote-gateway.websocket-frames", () => {
       expect(Buffer.from((events[0] as { bytes: Uint8Array }).bytes)).toEqual(hello);
     });
 
+    it("reads a large frame that arrives in many chunks", () => {
+      const payload = Buffer.alloc(900, 7);
+      const frame = clientFrame(op.binary, payload);
+      const reader = new FrameReader(1000);
+      const events = [];
+      for (let at = 0; at < frame.length; at += 50)
+        events.push(...reader.push(frame.subarray(at, at + 50)));
+      expect(events).toEqual([{ kind: "message", binary: true, bytes: payload }]);
+    });
+
     it("reads several frames from one chunk, with 16-bit and 64-bit lengths", () => {
       const reader = new FrameReader(200_000);
       const medium = Buffer.alloc(300, 0x61);

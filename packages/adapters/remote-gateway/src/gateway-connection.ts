@@ -78,11 +78,6 @@ export class GatewayConnection {
       });
   }
 
-  /** The transport saw a frame declare more than 64 KiB, and kept none of it. */
-  receiveTooLarge(): void {
-    this.chain = this.chain.then(() => this.closeWith("too-large")).catch(() => this.close());
-  }
-
   /** The transport's connection ended: stops every watch. */
   close(): void {
     if (this.closed) return;

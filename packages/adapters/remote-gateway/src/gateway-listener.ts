@@ -29,6 +29,8 @@ export interface GatewayListenerOptions {
   maxConnections?: number;
   /** How often the host pings each connection. A connection that sends nothing for 2.5 times this is dropped. */
   heartbeatMs?: number;
+  /** How long a connection may stay without saying hello before it is dropped. */
+  helloTimeoutMs?: number;
 }
 
 /** A running gateway listener. */
@@ -40,6 +42,9 @@ export interface GatewayListener {
 
 const defaultMaxConnections = 8;
 const defaultHeartbeatMs = 30_000;
+const defaultHelloTimeoutMs = 10_000;
+/** How long a closing connection may take to end before its socket is destroyed. */
+const closeGraceMs = 2_000;
 const handshakeGuid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
 /** Why the gateway turned a request away. */
@@ -63,6 +68,7 @@ export async function startGatewayListener(
   options: GatewayListenerOptions,
 ): Promise<GatewayListener> {
   const sockets = new Set<Duplex>();
+  const extraHosts = (options.extraHosts ?? []).map((host) => host.toLowerCase());
   let port = 0;
   const server = createServer((_request, response) => {
     response.writeHead(404, { Connection: "close", "Content-Length": 0 }).end();
@@ -71,7 +77,7 @@ export async function startGatewayListener(
   server.headersTimeout = 10_000;
   server.requestTimeout = 10_000;
   server.on("upgrade", (request: IncomingMessage, socket: Duplex, head: Buffer) => {
-    const refusal = refusalOf(request, port, options.extraHosts ?? []);
+    const refusal = refusalOf(request, port, extraHosts);
     if (refusal !== undefined) {
       socket.end(
         `HTTP/1.1 ${refusal.status} ${refusal.reason}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`,
@@ -147,6 +153,8 @@ function serveSocket(socket: Duplex, options: GatewayListenerOptions, head: Buff
         send(frameType.close, Buffer.alloc(0));
         closing = true;
         socket.end();
+        // A peer that never ends its side must not keep this connection's slot.
+        setTimeout(() => socket.destroy(), closeGraceMs).unref();
       },
     },
   });
@@ -157,6 +165,11 @@ function serveSocket(socket: Duplex, options: GatewayListenerOptions, head: Buff
     else send(frameType.ping, Buffer.alloc(0));
   }, heartbeatMs);
   heartbeat.unref();
+  // A phone that answers pings but never says hello would otherwise hold its slot for ever.
+  const helloDeadline = setTimeout(() => {
+    if (!connection.hasGreeted()) socket.destroy();
+  }, options.helloTimeoutMs ?? defaultHelloTimeoutMs);
+  helloDeadline.unref();
   const onBytes = (chunk: Buffer) => {
     heardAt = Date.now();
     for (const event of reader.push(chunk)) {
@@ -186,6 +199,7 @@ function serveSocket(socket: Duplex, options: GatewayListenerOptions, head: Buff
   socket.once("end", () => connection.close());
   socket.once("close", () => {
     clearInterval(heartbeat);
+    clearTimeout(helloDeadline);
     connection.close();
   });
   socket.on("error", () => socket.destroy());
