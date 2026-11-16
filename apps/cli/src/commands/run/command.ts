@@ -34,7 +34,7 @@ export const computerRunSetup: RunSetup = {
 export function runCommandWith(setup: RunSetup): CliCommand {
   return {
     name: "run",
-    usage: `<workflow> [--dir <folder>] [--input <${inputValueName}>] [--event <event>]... [--harness <harness>]`,
+    usage: `<workflow> [--dir <folder>] [--input <${inputValueName}>] [--event <event>]... [--harness <harness>] [--follow]`,
     summary: runMessages.summary(),
     action: (input) => runMessages.action(input.positionals[0] ?? ""),
     options: {
@@ -51,7 +51,9 @@ export function runCommandWith(setup: RunSetup): CliCommand {
         valueName: "harness",
         description: runMessages.harnessOption(),
       },
+      follow: { type: "boolean", description: runMessages.followOption() },
     },
+    jsonLinesOption: "follow",
     run: (input, context) => runWorkflow(input, context, setup),
   };
 }

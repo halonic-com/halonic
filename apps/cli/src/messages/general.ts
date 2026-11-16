@@ -44,6 +44,8 @@ export const usageMessages = defineMessages("usage", {
   /** A real subcommand after the command's options: "show goes right after runs, before any options." */
   subcommandPlacement: (subcommand: string, command: string) =>
     phrase`${subcommand} goes right after ${command}, before any options.`,
+  /** A switch that only works with `--json`, such as `run`'s `--follow`: "--follow only works with --json." */
+  needsJson: (option: string) => phrase`${option} only works with --json.`,
   unknownOption: (option: string) => phrase`There's no option ${option}.`,
   unknownOptionNear: (option: string, near: string) =>
     phrase`There's no option ${option}. Did you mean ${near}?`,

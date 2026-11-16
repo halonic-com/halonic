@@ -198,6 +198,7 @@ async function runCommandLine(
       warn: (line) => printer.warn(line),
       debugging: options.debug,
       printAhead: (line) => printer.ahead(line),
+      printJsonLine: (fields) => printer.jsonLine(fields),
       ask: (question) => printer.ask(question, watch.signal),
       askSecret: async (prompt, refusal) => {
         const value = await printer.askSecret(prompt, refusal, watch.signal);
@@ -304,7 +305,14 @@ async function runCommand(
   const command = lastOf(path);
   let input: CommandInput | undefined;
   try {
+    if (options.json && givesJsonLinesOption(command, args)) {
+      // Before anything is read, so a wrong command line is a line too.
+      printer.useJsonLines();
+    }
     input = readInput(command, args);
+    if (!options.json && input.options[command.jsonLinesOption ?? ""] === true) {
+      throw new UsageError(usageMessages.needsJson(`--${command.jsonLinesOption}`));
+    }
     const [word] = input.positionals;
     // A command with subcommands takes no arguments, so a word after its options names a subcommand.
     if (command.subcommands !== undefined && word !== undefined) {
@@ -334,6 +342,15 @@ async function runCommand(
     });
     return exitCodeOfError(error);
   }
+}
+
+/** Whether the arguments before a `--` have the command's JSON Lines switch. */
+function givesJsonLinesOption(command: CliCommand, args: readonly string[]): boolean {
+  if (command.jsonLinesOption === undefined) {
+    return false;
+  }
+  const end = args.indexOf("--");
+  return (end === -1 ? args : args.slice(0, end)).includes(`--${command.jsonLinesOption}`);
 }
 
 /** The live line on stderr, when stderr has live lines and a way to draw them. */
