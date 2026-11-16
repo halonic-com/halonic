@@ -87,6 +87,12 @@ verifies("studio.inbox-requests", () => {
     expect(await requests.offered()).toEqual([]);
   });
 
+  it("still offers the other workflows when one workflow's file doesn't parse", async () => {
+    const { requests, store } = setup();
+    store["hubs/support/workflows/broken.workflow.yaml"] = "id: [unclosed\n";
+    expect((await requests.offered()).map((one) => one.key)).toEqual(["support/support-reply"]);
+  });
+
   describe("without an engine", () => {
     it("offers nothing and starts nothing", async () => {
       const { requests } = setup({ engine: false });

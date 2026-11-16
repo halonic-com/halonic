@@ -1,7 +1,7 @@
 # studio.inbox-requests
 
 - Status: active
-- Since: 0.1.0
+- Since: 0.2.0
 - Source: HAL-1305; inbox.request
 
 The Studio shall offer the Inbox's request form every workflow of the open workspace that has a `start:` block, by its `start.label`, with the workflow's description for the placeholder, and a request shall start that workflow through the engine with the message as the input named by `start.field`. When the window has no engine to start a run, no workflow shall be offered.

@@ -79,6 +79,7 @@ import {
 } from "@halonicjs/studio-shell";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
+import { desktopFeatures } from "./desktop-features.ts";
 import { newWorkspaceHostOf } from "./new-workspace-host.ts";
 import { openFolderScope, savingOf } from "./open-folder-scope.ts";
 import { openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
@@ -166,51 +167,6 @@ export function startStudio(page: StudioPage, desktop = desktopFeatures): Starte
   }
   return startServedStudio(page, { host, platform, language: studioLanguage });
 }
-
-/**
- * The features of the desktop app, and the services the app gives them for each open folder
- * ({@link openFolder}).
- */
-export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = {
-  features: [
-    googleSetupFeature,
-    inboxFeature,
-    libraryFeature,
-    modelsFeature,
-    pluginsFeature,
-    runsFeature,
-    settingsFeature,
-    sourceControlFeature,
-    workflowsFeature,
-    workspaceFeature,
-  ],
-  hostServices: [
-    CollectionHostService,
-    ConnectorStatusHostService,
-    KnowledgeHostService,
-    LibraryItemsHostService,
-    LibraryTabMemoryService,
-    NewCollectionHostService,
-    NewSkillHostService,
-    SkillHostService,
-    GoogleSetupAccountsService,
-    ListedToolsHostService,
-    InboxRunsService,
-    InboxRequestsService,
-    RunsSourceService,
-    ChangesSourceService,
-    WorkflowsHostService,
-    ModelsFilesService,
-    ModelKeysService,
-    NoLimitMemoryService,
-    PluginsHostService,
-    DisplaySettingsService,
-    HostSettingsService,
-    AssistantWorkspaceService,
-    WorkspacePageService,
-    TrustedSourcesService,
-  ],
-};
 
 /** What the desktop app's window is made of. */
 interface DesktopParts {

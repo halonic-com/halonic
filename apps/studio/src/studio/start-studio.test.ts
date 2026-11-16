@@ -16,8 +16,8 @@ import { hostSettingsStoreKey, secretsKey, tokenStoreKey } from "@halonicjs/stud
 import { createShell } from "@halonicjs/studio-shell";
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { desktopFeatures } from "./desktop-features.ts";
 import {
-  desktopFeatures,
   displaySettingsOf,
   keyboardPlatform,
   openFolder,
