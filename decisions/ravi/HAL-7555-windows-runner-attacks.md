@@ -33,15 +33,17 @@ variables to the environment that the design hadn't counted.
 
 - **A16, A39 signals:** `process.kill` ends another process, and a stand-in for Halonic's own
   process. Node's layer doesn't cover signals.
+- **A17 the environment:** the launcher passes only `TMPDIR`, but libuv adds the variables a
+  Windows program needs when they are missing, with the user's own values: `HOMEDRIVE`,
+  `HOMEPATH`, `LOGONSERVER`, `PATH`, `SYSTEMDRIVE`, `SYSTEMROOT`, `TEMP`, `USERDOMAIN`,
+  `USERNAME`, `USERPROFILE`, `WINDIR`. So the integration learns the account name and profile
+  folder. No key or Halonic variable gets in. The launcher could close it by passing its own
+  values for these; that is a follow-up.
 - **A36 the Credential Manager:** with Node's layer on, the runner can't start `cmdkey`, so the
   attempt is refused. With the layer off, `cmdkey` lists the test's generic credential. Nothing
   but Node's layer stands in front of it.
 
 No longer gaps, now expected `refused`:
-
-- **A17 the environment:** closed in HAL-7673. The launcher passes fixed values for the variables
-  libuv would fill in with the user's own (`USERNAME`, `USERPROFILE`, `USERDOMAIN`, `HOMEPATH` and
-  the system ones), so the runner learns nothing about the account.
 
 - **A4, A6 DNS:** a name lookup through `node:dns` is refused, and a query to a DNS server the
   integration names itself never reaches it.
