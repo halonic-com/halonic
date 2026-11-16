@@ -178,6 +178,8 @@ export function InboxView({
                   ? { title: nothingWaiting.title, description: nothingWaiting.description }
                   : { title: "Nothing is waiting for you.", plain: true }
               }
+              // The loading skeleton's heading takes no headingRef, so a last-notice dismiss during a
+              // refresh can't move focus to it. Known and accepted.
               loading={!state.loaded}
               loadingLabel="Loading the Inbox"
               onRetry={retry}

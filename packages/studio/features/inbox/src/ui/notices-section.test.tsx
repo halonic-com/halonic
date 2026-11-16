@@ -156,7 +156,9 @@ verifies("inbox.notices-section", () => {
     const { source } = fakeNotices(async () => [a]);
     const fake = fakeRuns([]);
     fake.fail(new Error("fetch failed"));
-    const root = render(<InboxView inbox={new Inbox(fake.runs)} notices={source} openRun={vi.fn()} />);
+    const root = render(
+      <InboxView inbox={new Inbox(fake.runs)} notices={source} openRun={vi.fn()} />,
+    );
     await settled();
     expect(root.textContent).toContain("Couldn't load the Inbox");
     expect(root.querySelector("#inbox-notices")).toBeNull();
