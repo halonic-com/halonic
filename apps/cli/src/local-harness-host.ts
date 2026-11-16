@@ -31,7 +31,7 @@ import {
   WorkspaceHarnessHost,
 } from "@halonicjs/adapter-harness-kit";
 import { createHostSandbox, createProgramProbe } from "@halonicjs/adapter-sandbox-host";
-import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
+import { keptGrantsRecordFolder, SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import { InstructionTrustService } from "@halonicjs/app";
 import type { HarnessAgent, HarnessRunsOptions } from "@halonicjs/engine";
 import {
@@ -175,6 +175,7 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
     parts.fenced ??
     new SrtSandbox(undefined, undefined, privateJournalFolder(profile), {
       sweepRoots: [tempRoot, folders.proposalWorktreesFolder(), folders.runCopiesFolder()],
+      recordFolder: keptGrantsRecordFolder(profile.root),
     });
   const git = lazyProposalGit({
     location: input.location,

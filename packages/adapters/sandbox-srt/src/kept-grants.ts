@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
-import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { dirname, win32 } from "node:path";
+import { randomUUID } from "node:crypto";
+import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { join, win32 } from "node:path";
 import { installedSrtVersion } from "./srt-runner.ts";
 
 /** The versions of sandbox-runtime whose `srt-win acl forget` this module was tried against. */
@@ -36,9 +36,25 @@ export function describeForgetFailures(failed: readonly ForgetFailure[]): string
     .join(", ")}`;
 }
 
-/** Where the host records the folders it is about to let srt grant, on Windows. */
-export function keptGrantsRecordFile(): string {
-  return win32.join(process.env["LOCALAPPDATA"] ?? homedir(), "Halonic", "srt-kept-grants.json");
+/** Where a host keeps its record of kept grants inside the profile, next to the host lock that decides who sweeps. */
+export function keptGrantsRecordFolder(profileFolder: string): string {
+  return join(profileFolder, "agent-host", "kept-grants");
+}
+
+/** Whether a process with this id is running (one we may not signal still is). */
+function processIsAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as { code?: unknown }).code === "EPERM";
+  }
+}
+
+/** A record file another host process left: its owner's id, and the folders it lists. */
+interface ForeignRecord {
+  file: string;
+  folders: string[];
 }
 
 /** `srt-win` through the vendored binary of sandbox-runtime (it is what srt itself starts). */
@@ -87,99 +103,112 @@ export class KeptGrants {
   /** How many live sessions of this host use each folder, by {@link windowsKey}. */
   readonly #held = new Map<string, number>();
 
-  /** The write-ahead record of folders srt may hold a kept grant on, or null for none. */
-  readonly #recordFile: string | null;
+  /** The folder that holds one record file per host process, or null for no record. */
+  readonly #recordFolder: string | null;
+  /** This instance's own record file: only it writes there, so no two processes rewrite one file. */
+  readonly #recordFile: string;
+  /** The folders this instance recorded, by {@link windowsKey}. */
+  readonly #recorded = new Map<string, string>();
 
   /**
-   * A test hands in a fake `srt-win` and version. With a `recordFile`,
-   * {@link record} writes each folder there before srt grants it, so a crash
-   * between the grant and its bookkeeping can't leave a grant nobody knows of.
+   * A test hands in a fake `srt-win` and version. With a `recordFolder` (in
+   * the profile, see {@link keptGrantsRecordFolder}), {@link record} writes
+   * each folder there before srt grants it, so a crash between the grant and
+   * its bookkeeping can't leave a grant nobody knows of.
    */
   constructor(
     run: RunSrtWin = runVendoredSrtWin,
     version: () => string = installedSrtVersion,
-    recordFile: string | null = null,
+    recordFolder: string | null = null,
   ) {
     this.#run = run;
     this.#version = version;
-    this.#recordFile = recordFile;
+    this.#recordFolder = recordFolder;
+    this.#recordFile = join(recordFolder ?? "", `${process.pid}-${randomUUID()}.json`);
   }
 
   /**
-   * Writes these folders to the record, before srt runs anything that may
-   * grant them (write-ahead, HAL-5398 S2). Only a successful `acl forget`
-   * takes a folder out again. Fails closed: when the record can't be
-   * written, no session opens.
+   * Writes these folders to this process's record, before srt runs anything
+   * that may grant them (write-ahead, HAL-5398 S2). Only a successful
+   * `acl forget` takes a folder out again. Fails closed: when the record
+   * can't be written, no session opens.
    *
    * @throws when the record can't be written
    */
   record(folders: readonly string[]): void {
-    if (this.#recordFile === null) return;
-    const recorded = this.#readRecord();
-    for (const folder of folders) recorded.set(windowsKey(folder), win32.resolve(folder));
-    this.#writeRecord(recorded);
-  }
-
-  /** The recorded folders by {@link windowsKey}; empty when there is no record, and throws on one it can't read, as nothing may be ruled out. */
-  #readRecord(): Map<string, string> {
-    const recorded = new Map<string, string>();
-    let text: string;
+    if (this.#recordFolder === null) return;
+    const before = new Map(this.#recorded);
+    for (const folder of folders) this.#recorded.set(windowsKey(folder), win32.resolve(folder));
     try {
-      text = readFileSync(this.#recordFile as string, "utf8");
+      this.#writeRecord(this.#recordFile, this.#recorded.values());
     } catch (error) {
-      if ((error as { code?: unknown }).code === "ENOENT") return recorded;
-      throw error;
+      this.#recorded.clear();
+      for (const [key, folder] of before) this.#recorded.set(key, folder);
+      throw new Error(
+        `can't write the kept-grant record at ${this.#recordFile}: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
-    const parsed: unknown = JSON.parse(text);
-    if (!Array.isArray(parsed)) throw new Error("the kept-grant record is not a list");
-    for (const folder of parsed) {
-      if (typeof folder === "string") recorded.set(windowsKey(folder), folder);
-    }
-    return recorded;
   }
 
-  #writeRecord(recorded: ReadonlyMap<string, string>): void {
-    const file = this.#recordFile as string;
-    if (recorded.size === 0) {
+  /** Replaces the record file with these folders, or removes it when there are none. */
+  #writeRecord(file: string, folders: Iterable<string>): void {
+    const list = [...folders];
+    if (list.length === 0) {
       rmSync(file, { force: true });
       return;
     }
-    mkdirSync(dirname(file), { recursive: true });
-    const temp = `${file}.${process.pid}.tmp`;
-    writeFileSync(temp, JSON.stringify([...recorded.values()]), { mode: 0o600 });
+    mkdirSync(join(file, ".."), { recursive: true });
+    const temp = `${file}.tmp`;
+    writeFileSync(temp, JSON.stringify(list), { mode: 0o600 });
     renameSync(temp, file);
   }
 
-  /** Takes these folders out of the record once their grants are forgotten. Never throws: a leftover entry only costs a repeat forget. */
+  /** Takes these folders out of this process's record once their grants are forgotten. Never throws: a leftover entry only costs a repeat forget. */
   #unrecord(folders: readonly string[]): void {
-    if (this.#recordFile === null || folders.length === 0) return;
+    if (this.#recordFolder === null || folders.length === 0) return;
+    for (const folder of folders) this.#recorded.delete(windowsKey(folder));
     try {
-      const recorded = this.#readRecord();
-      for (const folder of folders) recorded.delete(windowsKey(folder));
-      this.#writeRecord(recorded);
+      this.#writeRecord(this.#recordFile, this.#recorded.values());
     } catch {
-      // Left in the record; the next sweep forgets it again.
+      // Left in the file; the next sweep forgets it again.
     }
   }
 
-  /** Deletes the record file. Never throws: a stale record only costs a repeat forget. */
-  #dropRecord(): void {
-    if (this.#recordFile === null) return;
+  /**
+   * The record files of host processes that are gone, and why a file can't
+   * be read: a file of a live process is never swept, as its sessions use
+   * the folders in it.
+   */
+  #deadRecords(): { found: ForeignRecord[]; unreadable: ForgetFailure[] } {
+    const found: ForeignRecord[] = [];
+    const unreadable: ForgetFailure[] = [];
+    if (this.#recordFolder === null) return { found, unreadable };
+    let names: string[];
     try {
-      rmSync(this.#recordFile, { force: true });
-    } catch {
-      // Left in place.
+      names = readdirSync(this.#recordFolder);
+    } catch (error) {
+      if ((error as { code?: unknown }).code === "ENOENT") return { found, unreadable };
+      return {
+        found,
+        unreadable: [
+          { folder: this.#recordFolder, reason: `the record can't be listed: ${errorText(error)}` },
+        ],
+      };
     }
-  }
-
-  /** The recorded folders; none when the record can't be read. */
-  #recorded(): string[] {
-    if (this.#recordFile === null) return [];
-    try {
-      return [...this.#readRecord().values()];
-    } catch {
-      return [];
+    for (const name of names) {
+      const owner = /^(\d+)-.+\.json$/.exec(name);
+      const file = join(this.#recordFolder, name);
+      if (owner === null || file === this.#recordFile || processIsAlive(Number(owner[1]))) continue;
+      try {
+        const parsed: unknown = JSON.parse(readFileSync(file, "utf8"));
+        if (!Array.isArray(parsed)) throw new Error("not a list of folders");
+        found.push({ file, folders: parsed.filter((f): f is string => typeof f === "string") });
+      } catch (error) {
+        // Nothing may be ruled out, so it stays and is reported at each start.
+        unreadable.push({ folder: file, reason: `the record can't be read: ${errorText(error)}` });
+      }
     }
+    return { found, unreadable };
   }
 
   /** @throws when sandbox-runtime is a version `acl forget` was not tried against: fail closed, as grants it can't take back would stay. */
@@ -277,23 +306,23 @@ export class KeptGrants {
         failed.push(`${what}: ${oneLine(error instanceof Error ? error.message : String(error))}`);
       }
     }
-    // `--all` took back every grant, recorded ones included.
-    if (failed.length === 0) this.#dropRecord();
     return failed;
   }
 
   /**
-   * Forgets the kept grants of this user inside any of `roots` that no live
-   * session of this host holds: those of sessions that crashed before they
-   * closed. A live session of another host process inside a root would lose
-   * its grant, so only the one host that holds the profile's lock sweeps.
-   * Lists the grants once, and starts nothing without a root.
-   * Never rejects.
+   * Forgets the kept grants of this user that no live session of this host
+   * holds, and that are inside any of `roots` or in the record of a host
+   * process that is gone: those of sessions that crashed before they closed.
+   * A live session of another host process would lose its grant, so only the
+   * one host that holds the profile's lock sweeps, and it never touches the
+   * record of a process that still runs. A recorded folder srt doesn't list
+   * holds no kept grant (the crash came before srt made it), so it is only
+   * taken out of the record. Lists the grants once, and starts nothing
+   * without a root. Never rejects.
    */
   async sweep(roots: readonly string[]): Promise<ForgetResult> {
-    if (roots.length === 0) {
-      return { heldByOthers: [], failed: [] };
-    }
+    if (roots.length === 0) return { heldByOthers: [], failed: [] };
+    const { found, unreadable } = this.#deadRecords();
     let kept: string[];
     try {
       kept = await this.#listKept();
@@ -308,13 +337,35 @@ export class KeptGrants {
         ],
       };
     }
-    // The recorded folders too (a grant srt made but a crash left out of its status). Only the host that
-    // holds the profile lock has roots, and it alone may sweep them: the record is shared by every process,
-    // and another process's live session holds its folders where this one can't see.
-    return this.#forgetUnheld([
-      ...kept.filter((folder) => roots.some((root) => isInsideWindows(root, folder))),
-      ...this.#recorded(),
-    ]);
+    const listed = new Set(kept.map(windowsKey));
+    const toForget = kept.filter((folder) => roots.some((root) => isInsideWindows(root, folder)));
+    const recorded = [...this.#recorded.values(), ...found.flatMap((record) => record.folders)];
+    const dropped: string[] = [];
+    for (const folder of recorded) {
+      if (this.#held.has(windowsKey(folder)) || listed.has(windowsKey(folder)))
+        toForget.push(folder);
+      else dropped.push(folder);
+    }
+    const result = await this.#forgetUnheld(toForget);
+    this.#unrecord(dropped);
+    this.#settleDead(found, result);
+    result.failed.push(...unreadable);
+    return result;
+  }
+
+  /** Takes the folders that are forgotten, or never granted, out of the files of gone processes; a file with nothing left goes. */
+  #settleDead(records: readonly ForeignRecord[], result: ForgetResult): void {
+    const left = new Set(
+      [...result.heldByOthers, ...result.failed.map((failure) => failure.folder)].map(windowsKey),
+    );
+    for (const record of records) {
+      const remaining = record.folders.filter((folder) => left.has(windowsKey(folder)));
+      try {
+        this.#writeRecord(record.file, remaining);
+      } catch {
+        // Left in place; the next sweep goes over it again.
+      }
+    }
   }
 
   /**
@@ -350,6 +401,10 @@ export class KeptGrants {
     }
     return listed.filter((root): root is string => typeof root === "string");
   }
+}
+
+function errorText(error: unknown): string {
+  return oneLine(error instanceof Error ? error.message : String(error));
 }
 
 /** A folder as Windows compares it: resolved, letter case doesn't count. */

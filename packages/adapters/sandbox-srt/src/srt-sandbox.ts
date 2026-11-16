@@ -13,12 +13,7 @@ import type {
   SandboxUnavailableReason,
 } from "@halonicjs/ports";
 import { HelperError } from "./elevate-helper.ts";
-import {
-  describeForgetFailures,
-  type ForgetResult,
-  KeptGrants,
-  keptGrantsRecordFile,
-} from "./kept-grants.ts";
+import { describeForgetFailures, type ForgetResult, KeptGrants } from "./kept-grants.ts";
 import { type Machine, systemMachine } from "./machine.ts";
 import { appArmorFix, installFix } from "./package-manager.ts";
 import { startSmallestSandbox } from "./ready-check.ts";
@@ -93,6 +88,10 @@ export class SrtSandbox implements Sandbox {
    *   working and temp folders: the sweep takes back the kept grants inside
    *   them that no live session holds (sessions that crashed before they
    *   closed). Give them only to the one host that holds the profile's lock.
+   * @param options.recordFolder on Windows, the folder in the profile where this
+   *   host records the folders srt may grant before it grants them (see
+   *   {@link keptGrantsRecordFolder}); the sweep reads the records of host
+   *   processes that are gone. Without one, nothing is recorded.
    * @param options.grants takes back srt's kept Windows grants; a test passes a fake
    * @param options.warn where a failure that no caller can get is logged; stderr by default
    * @param options.sharedFolders folders other sessions work in too, such as
@@ -106,6 +105,7 @@ export class SrtSandbox implements Sandbox {
     journalFolder: string | null = null,
     options: {
       sweepRoots?: readonly string[];
+      recordFolder?: string;
       grants?: KeptGrants;
       warn?: (message: string) => void;
       sharedFolders?: readonly string[];
@@ -119,7 +119,7 @@ export class SrtSandbox implements Sandbox {
       new KeptGrants(
         undefined,
         undefined,
-        machine.platform === "win32" ? keptGrantsRecordFile() : null,
+        machine.platform === "win32" ? (options.recordFolder ?? null) : null,
       );
     this.#sweepRoots = options.sweepRoots ?? [];
     this.#warn = options.warn ?? ((message) => void process.stderr.write(`${message}\n`));
