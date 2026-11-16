@@ -85,7 +85,15 @@ export type RunEventBody =
   | { type: "state.entered"; state: string }
   /** `parent`: the agent that delegated this one (subagents); absent for the state's own agent. */
   | { type: "agent.started"; state: string; agent: string; prompt: string; parent?: string }
-  | { type: "llm.request"; agent: string; provider: string; model: string; messages: number }
+  /** `alias`: the model alias the call went to, such as `fast`; absent in older logs and when the model has none (requirement `engine.llm-request-alias`). */
+  | {
+      type: "llm.request";
+      agent: string;
+      provider: string;
+      model: string;
+      alias?: string;
+      messages: number;
+    }
   | {
       type: "llm.response";
       agent: string;

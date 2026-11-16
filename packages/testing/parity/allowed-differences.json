@@ -937,5 +937,20 @@
     "cliRules": [
       "run-started-version"
     ]
+  },
+  {
+    "id": "llm-request-names-the-alias",
+    "requirement": "engine.llm-request-alias",
+    "area": "run logs and CLI calls: llm.request",
+    "old": "784f78d wrote llm.request with the provider and model, but not the model alias the call went to.",
+    "new": "The engine adds an optional alias to llm.request when the model has one, such as default in the base fixture: the alias of the model actually called, so a fallback logs its own. The compare leaves it out of the new events.",
+    "why": "The Failed banner for a model that can't use tools names the alias it came from (HAL-1308). It is an added, optional field that holds a name, never a key: logs without it read as before. Signed off by Liam (CTO) on HAL-11222.",
+    "status": "signed-off",
+    "runRules": [
+      "llm-request-alias"
+    ],
+    "cliRules": [
+      "llm-request-alias"
+    ]
   }
 ]

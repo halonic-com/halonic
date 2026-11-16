@@ -261,6 +261,7 @@ async function askModel(
     agent,
     provider: asked.provider.id,
     model: asked.model,
+    ...(asked.alias === undefined ? {} : { alias: asked.alias }),
     messages: sent.length,
   });
   const started = input.clock.now().getTime();
