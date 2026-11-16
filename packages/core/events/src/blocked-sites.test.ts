@@ -67,10 +67,10 @@ verifies("events.blocked-sites", () => {
   });
 
   it("lowercases only A to Z, so a look-alike stays its own site", () => {
-    const events = log(site("korse.com", 1), site("\u212Aorse.com", 2));
+    const events = log(site("kite.example", 1), site("\u212Aite.example", 2));
     expect(blockedSites(events, { limit: 5 })[0]?.sites).toEqual([
-      { host: "\u212Aorse.com", tries: 2 },
-      { host: "korse.com", tries: 1 },
+      { host: "\u212Aite.example", tries: 2 },
+      { host: "kite.example", tries: 1 },
     ]);
   });
 

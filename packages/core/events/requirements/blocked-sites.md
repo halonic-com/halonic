@@ -14,7 +14,7 @@ The events package shall work out, from a run's `sandbox.blocked` events, the si
 - Given the same site blocked on ports 443 and 80, 3 and 2 times,
   when the blocked sites are worked out,
   then it is one site with 5 tries.
-- Given `korse.com` and `\u212Aorse.com` (Kelvin sign) blocked,
+- Given `kite.example` and `\u212Aite.example` (Kelvin sign) blocked,
   when the blocked sites are worked out,
   then they are two sites, the second kept as it was written.
 - Given sites with 2, 9 and 2 tries named `b.example`, `c.example` and `a.example`,

@@ -16,6 +16,7 @@ import { checkMarkdownTables } from "./markdown-tables.ts";
 import { checkMigrationsAdditive } from "./migrations-additive.ts";
 import { checkNames } from "./names.ts";
 import { checkNativeDisabled } from "./native-disabled.ts";
+import { checkNotesSigned } from "./notes-signed.ts";
 import { checkPackages } from "./packages.ts";
 import { checkProcessStarts } from "./process-starts.ts";
 import { checkReadmeExamples } from "./readme-examples.ts";
@@ -41,6 +42,9 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   "invisible-characters": checkInvisibleCharacters,
   "markdown-tables": checkMarkdownTables,
   "tracker-links": checkTrackerLinks,
+  // On a pull request, GitHub sets GITHUB_HEAD_REF to its branch; the note
+  // check is the gate for that branch's own note.
+  "notes-signed": (context) => checkNotesSigned(context, process.env["GITHUB_HEAD_REF"]),
   "native-disabled": checkNativeDisabled,
   "readme-examples": checkReadmeExamples,
   versions: checkVersions,
