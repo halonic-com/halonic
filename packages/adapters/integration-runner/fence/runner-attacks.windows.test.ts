@@ -6,6 +6,7 @@ import { createServer, type Server } from "node:net";
 import { join } from "node:path";
 import { createHostSandbox } from "@halonicjs/adapter-sandbox-host";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { windowsEnvironment } from "../src/halonic/runner-profile.ts";
 import {
   type AttackFolders,
   attackFolders,
@@ -21,10 +22,11 @@ import {
 // (`vitest.fence-windows.config.ts`), with Node's layer on as in production.
 //
 // The cases Node's layer doesn't stop are the known gaps: A16 and A39 signals,
-// A17 the variables Windows adds to every environment, A36 the Credential
-// Manager once past Node's layer. They expect what gets through, so a gap that
-// closes fails too and the list stays true. Every other case expects
-// `refused`, so a gap that opens fails. Node 26's network permission also
+// A17 the temp folder's path (narrowed: the launcher gives fixed values for the
+// variables Windows adds, but the temp folder sits in the profile folder), A36
+// the Credential Manager once past Node's layer. They expect what gets
+// through, so a gap that closes fails too and the list stays true. Every other
+// case expects `refused`, so a gap that opens fails. Node 26's network permission also
 // covers DNS (A4, A6) and named pipes (A35), which the design had counted as
 // gaps: the first Windows run showed them refused.
 
@@ -260,30 +262,40 @@ describe("an integration in the runner on native Windows, Node's layer only", ()
     expect(await hasEnded(pid)).toBe(true);
   });
 
-  it("A17: sees TMPDIR and the variables Windows adds to every program (known gap)", async () => {
-    // The launcher passes only the profile's TMPDIR, so no Halonic variable and
-    // no key gets in. But libuv, under Node, adds the variables a Windows
-    // program needs when the environment it is given lacks them, with the
-    // user's own values: their account name, profile folder and domain among
-    // them. Overriding them in the launcher would close this gap.
+  it("A17: sees fixed values for the variables Windows adds, and the temp folder's path (narrowed gap)", async () => {
+    // The launcher passes TMPDIR and its own fixed values for the variables
+    // libuv would fill in with the user's account name, profile folder and
+    // domain. Three of them are the runner's temp folder, and that folder is
+    // inside the profile folder, so its path still shows the account name.
+    // The user's own values must not appear in the others.
+    const folders = await attackFolders(base, "a17");
+    const expected: Record<string, string> = {
+      TMPDIR: folders.tempFolder,
+      ...windowsEnvironment(folders.tempFolder, windowsFolder),
+    };
+    // An attempt's detail is cut at 200 characters, so each variable gets its own.
+    const readEach = Object.keys(expected)
+      .map((name) => `await attempt("${name}", () => process.env["${name}"]);`)
+      .join("\n");
     const { attempts } = await attack(
-      `await attempt("environment", () => Object.keys(process.env).sort().join(","));`,
+      `await attempt("names", () => Object.keys(process.env).sort().join(","));\n${readEach}`,
+      "on",
+      folders,
     );
-    const names = [
-      "HOMEDRIVE",
-      "HOMEPATH",
-      "LOGONSERVER",
-      "PATH",
-      "SYSTEMDRIVE",
-      "SYSTEMROOT",
-      "TEMP",
-      "TMPDIR",
-      "USERDOMAIN",
-      "USERNAME",
-      "USERPROFILE",
-      "WINDIR",
-    ];
-    expect(attempts["environment"]).toEqual({ outcome: "allowed", detail: names.join(",") });
+    expect(attempts["names"]?.detail).toBe(Object.keys(expected).sort().join(","));
+    const seen = Object.fromEntries(
+      Object.keys(expected).map((name) => [name, attempts[name]?.detail ?? ""]),
+    );
+    expect(seen).toEqual(expected);
+    const fromTempFolder = ["TMPDIR", "TEMP", "USERPROFILE"];
+    const others = Object.entries(seen).filter(([name]) => !fromTempFolder.includes(name));
+    for (const own of [
+      process.env["USERNAME"],
+      process.env["USERPROFILE"],
+      process.env["USERDOMAIN"],
+    ]) {
+      expect(JSON.stringify(others), "the user's own value").not.toContain(own ?? "\0");
+    }
   });
 
   it("A35: connects to no named pipe on this computer", async () => {

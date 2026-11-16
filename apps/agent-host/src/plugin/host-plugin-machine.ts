@@ -141,6 +141,7 @@ export function hostPluginMachine(options: HostPluginMachineOptions): HostPlugin
         sandboxFolders: [sandboxRuntimeFolder()],
         tempFolder,
         timeLimitMs: runnerTimeLimitMs,
+        windowsFolder: process.env["SystemRoot"],
       };
     },
     plugins: new FileSystemFolderReader(pluginsFolder(profile)),
