@@ -2,6 +2,7 @@
 
 - Approval: HAL-11238
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yNw+KJZ1LYH8R468369VTLqz5CjhAqDal0QmcvtzCD2vfqlj6QsUNtBg7E2hwwgXFgZ/TrHmy+l0W9NfX8MbBw==
 
 The harness profile denied SSH keys, cloud sign-ins, browser data, password
 stores and agent settings, but left package registry token files (such as
