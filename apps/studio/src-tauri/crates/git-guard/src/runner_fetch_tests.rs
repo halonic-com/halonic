@@ -176,6 +176,11 @@ fn run_checked(runner: &GitRunner, repository: &Repository, ssh: &Path, text: &s
         .hardened_command(&repository.top, Some(repository), &call, &[])
         .env("GIT_SSH_COMMAND", ssh)
         .env("GIT_SSH_VARIANT", "simple")
+        // A merge wants an identity even without a commit, and a CI runner has no global one.
+        .env("GIT_AUTHOR_NAME", "Acme Tester")
+        .env("GIT_AUTHOR_EMAIL", "tester@acme.example")
+        .env("GIT_COMMITTER_NAME", "Acme Tester")
+        .env("GIT_COMMITTER_EMAIL", "tester@acme.example")
         .output()
         .expect("git runs")
 }
