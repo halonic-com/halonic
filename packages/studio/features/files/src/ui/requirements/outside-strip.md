@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-329 files flow 4.6; microcopy rev 78 section 7; HAL-10534
 
-The file tab shall show, above the editor, a strip when the file has unsaved changes and changed or was deleted outside Halonic,, and **Keep mine**, **Load theirs** and Compare, where the user keeps theirs, takes the one in the folder or, when the two don't change the same lines, combines both, which is saved at once as one undo step.
+The file tab shall show, above the editor, a strip when the file has unsaved changes and changed or was deleted outside Halonic, and Compare, where the user keeps theirs, takes the one in the folder or, when the two don't change the same lines, combines both, which is saved at once as one undo step.
 
 ## Examples
 
