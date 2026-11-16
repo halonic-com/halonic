@@ -31,7 +31,7 @@ verifies("files.ui.file-tab", () => {
   it("opens a file in a tab when its row is activated, and marks the open file", async () => {
     const openItem = vi.fn<(item: ItemRef) => void>();
     const context = {
-      services: { get: () => host },
+      services: limitedLookup(filesFeature, { get: () => host }),
       openItem,
       activeItem: {
         get: () => ({ kind: "file", hub: "workspace", id: "models.yaml" }),
