@@ -8,7 +8,7 @@ import {
   useToastStore,
 } from "@halonicjs/studio-kit";
 import { errorMessageFor, OverviewPage } from "@halonicjs/studio-shell";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { deleteWords, phoneCanDelete } from "../delete-words.ts";
 import type { LibraryEntry, LibraryItemsHost, LibraryListing } from "../library-items-host.ts";
 import { entryOfRow, type LibraryEntryPlace, libraryOverview } from "../library-overview.ts";
@@ -191,86 +191,102 @@ export function LibraryPage({
     );
   };
 
+  // A phone shows one kind's list on its own page, with no tabs to be a panel of.
+  const content = (
+    <>
+      {load.state === "loaded" && load.stale !== undefined && (
+        <p className="flex flex-wrap items-center gap-2 px-4 py-2 text-small text-fg-muted">
+          {showingLastList(kind, load.stale.reason)}
+          <Button
+            variant="ghost"
+            busy={load.refreshing === true}
+            busyLabel={tryingAgain}
+            onClick={retry}
+          >
+            Try again
+          </Button>
+        </p>
+      )}
+      <OverviewPage
+        key={kind}
+        {...overview}
+        words={overviewWords(
+          kind,
+          onOpenDocsFolder,
+          onNew !== undefined && label !== undefined ? () => onNew(kind) : undefined,
+        )}
+        quietWhenEmpty
+        emptyTitleRef={emptyTitle}
+        loading={load.state === "loading"}
+        {...(load.state === "failed"
+          ? {
+              failure: {
+                title: couldntLoad(kind),
+                ...(load.reason === undefined ? {} : { reason: load.reason }),
+                onTryAgain: retry,
+              },
+            }
+          : {})}
+        itemMenu={(row) => [
+          {
+            id: "open",
+            label: deleteWords.open,
+            onSelect: () => onOpen(kind, entryOfRow(row.id)),
+          },
+          {
+            id: "open-in-new-tab",
+            label: deleteWords.openInNewTab,
+            onSelect: () => onOpenInNewTab(kind, entryOfRow(row.id)),
+          },
+          ...(onOpenAsFile === undefined
+            ? []
+            : [
+                {
+                  id: "open-as-file",
+                  label: deleteWords.openAsFile,
+                  onSelect: () => onOpenAsFile(kind, entryOfRow(row.id)),
+                },
+              ]),
+          // A phone can't remove what it can't make again, so only some kinds keep Delete.
+          ...(phone && !phoneCanDelete(kind)
+            ? []
+            : [
+                {
+                  id: "delete",
+                  label: deleteWords.delete,
+                  danger: true,
+                  onSelect: () => remove(row.id),
+                },
+              ]),
+        ]}
+        onOpen={(row) => onOpen(kind, entryOfRow(row))}
+        onOpenInNewTab={(row) => onOpenInNewTab(kind, entryOfRow(row))}
+        {...(onNew !== undefined && label !== undefined
+          ? { newButton: { label, onClick: () => onNew(kind) } }
+          : {})}
+      />
+    </>
+  );
+
   return (
     <div ref={page}>
-      <h1 className={phone ? "sr-only" : "px-4 pt-4 text-title"}>Library</h1>
+      {/* On a phone the top bar names the kind's list, so the heading says the same. */}
+      <h1 className={phone ? "sr-only" : "px-4 pt-4 text-title"}>
+        {phone ? tabLabel(kind) : "Library"}
+      </h1>
       <p className="px-4 pt-2 text-small text-fg-muted">{tabSentence(kind)}</p>
-      <div className="px-4 py-2">
-        <TabList label="Library" tabs={tabs} selected={kind} onSelect={onKindChange} ids={ids} />
-      </div>
-      <TabPanel ids={ids} tabs={tabs} selected={kind}>
-        {load.state === "loaded" && load.stale !== undefined && (
-          <p className="flex flex-wrap items-center gap-2 px-4 py-2 text-small text-fg-muted">
-            {showingLastList(kind, load.stale.reason)}
-            <Button
-              variant="ghost"
-              busy={load.refreshing === true}
-              busyLabel={tryingAgain}
-              onClick={retry}
-            >
-              Try again
-            </Button>
-          </p>
-        )}
-        <OverviewPage
-          key={kind}
-          {...overview}
-          words={overviewWords(
-            kind,
-            onOpenDocsFolder,
-            onNew !== undefined && label !== undefined ? () => onNew(kind) : undefined,
-          )}
-          quietWhenEmpty
-          emptyTitleRef={emptyTitle}
-          loading={load.state === "loading"}
-          {...(load.state === "failed"
-            ? {
-                failure: {
-                  title: couldntLoad(kind),
-                  ...(load.reason === undefined ? {} : { reason: load.reason }),
-                  onTryAgain: retry,
-                },
-              }
-            : {})}
-          itemMenu={(row) => [
-            {
-              id: "open",
-              label: deleteWords.open,
-              onSelect: () => onOpen(kind, entryOfRow(row.id)),
-            },
-            {
-              id: "open-in-new-tab",
-              label: deleteWords.openInNewTab,
-              onSelect: () => onOpenInNewTab(kind, entryOfRow(row.id)),
-            },
-            ...(onOpenAsFile === undefined
-              ? []
-              : [
-                  {
-                    id: "open-as-file",
-                    label: deleteWords.openAsFile,
-                    onSelect: () => onOpenAsFile(kind, entryOfRow(row.id)),
-                  },
-                ]),
-            // A phone can't remove what it can't make again, so only some kinds keep Delete.
-            ...(phone && !phoneCanDelete(kind)
-              ? []
-              : [
-                  {
-                    id: "delete",
-                    label: deleteWords.delete,
-                    danger: true,
-                    onSelect: () => remove(row.id),
-                  },
-                ]),
-          ]}
-          onOpen={(row) => onOpen(kind, entryOfRow(row))}
-          onOpenInNewTab={(row) => onOpenInNewTab(kind, entryOfRow(row))}
-          {...(onNew !== undefined && label !== undefined
-            ? { newButton: { label, onClick: () => onNew(kind) } }
-            : {})}
-        />
-      </TabPanel>
+      {!phone && (
+        <div className="px-4 py-2">
+          <TabList label="Library" tabs={tabs} selected={kind} onSelect={onKindChange} ids={ids} />
+        </div>
+      )}
+      {phone ? (
+        content
+      ) : (
+        <TabPanel ids={ids} tabs={tabs} selected={kind}>
+          {content}
+        </TabPanel>
+      )}
     </div>
   );
 }

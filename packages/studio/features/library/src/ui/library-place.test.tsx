@@ -78,10 +78,11 @@ async function settled(): Promise<void> {
 async function show(
   context: WorkspaceContext,
   presentation: "desktop" | "phone" = "desktop",
+  sub?: string,
 ): Promise<HTMLElement> {
   const page = render(
     <PresentationProvider presentation={presentation}>
-      <LibraryPlace context={context} />
+      <LibraryPlace context={context} {...(sub === undefined ? {} : { sub })} />
     </PresentationProvider>,
   );
   await settled();
@@ -343,7 +344,7 @@ verifies("library.library-phone", () => {
     const find = context.services.find;
     context.services.find = ((key: unknown) =>
       key === NewConnectorHostService ? host : find(key as never)) as typeof find;
-    const page = await show(context, "phone");
+    const page = await show(context, "phone", "connector");
     expect(
       [...page.querySelectorAll("button")].some((each) =>
         each.textContent?.includes("New connector"),
@@ -352,13 +353,62 @@ verifies("library.library-phone", () => {
   });
 
   it("shows the Connectors tab, and no dialog, for a request on a phone", async () => {
-    const { context } = contextOf("skill");
-    const page = await show(context, "phone");
+    const openPlaceList = vi.fn();
+    const { context } = contextOf("skill", { openPlaceList });
+    const page = await show(context, "phone", "skill");
     await act(async () => {
       requestNewConnector({ name: "notes" });
     });
     await settled();
-    expect(selectedTab(page)).toContain("Connectors");
+    expect(openPlaceList).toHaveBeenCalledWith("library", "connector", "Connectors");
     expect(page.ownerDocument.querySelector("dialog[open]")).toBeNull();
+  });
+});
+
+verifies("library.library-phone-kinds", () => {
+  it("lists the four kinds on a phone, and pushes the kind's list from a row", async () => {
+    const openPlaceList = vi.fn();
+    const { context, memory } = contextOf(undefined, { openPlaceList });
+    const page = await show(context, "phone");
+    const rows = [...page.querySelectorAll("li button")].map((each) => each.textContent);
+    expect(rows).toHaveLength(4);
+    expect(page.querySelector('[role="tab"]')).toBeNull();
+    act(() => (page.querySelectorAll("li button")[1] as HTMLElement).click());
+    expect(openPlaceList).toHaveBeenCalledWith("library", "knowledge", "Knowledge");
+    expect(memory.set).not.toHaveBeenCalled();
+  });
+
+  it("shows a kind's items under its own heading, with no tabs, when the page is pushed", async () => {
+    const { context, list } = contextOf(undefined);
+    const page = await show(context, "phone", "skill");
+    expect(list).toHaveBeenCalledWith("skill");
+    expect(page.querySelector('[role="tab"]')).toBeNull();
+    expect(page.querySelector("h1")?.textContent).toBe("Skills");
+    expect(page.textContent).toContain("Tone");
+  });
+
+  it("shows a Plugins row only where Settings has a plugins section", async () => {
+    const without = await show(contextOf(undefined).context, "phone");
+    expect(without.textContent).not.toContain("Plugins");
+    unmountAll();
+    const openSettings = vi.fn();
+    const { context } = contextOf(undefined, {
+      openSettings,
+      settingsSections: [{ id: "plugins", title: "Plugins" }],
+    });
+    const page = await show(context, "phone");
+    const row = [...page.querySelectorAll("li button")].find((each) =>
+      each.textContent?.includes("Plugins"),
+    );
+    act(() => (row as HTMLElement).click());
+    expect(openSettings).toHaveBeenCalledWith("plugins");
+  });
+
+  it("shows the kind's page for a tab request made while the list of kinds shows", async () => {
+    const openPlaceList = vi.fn();
+    const { context } = contextOf(undefined, { openPlaceList });
+    await show(context, "phone");
+    await act(async () => requestLibraryTab("collection"));
+    expect(openPlaceList).toHaveBeenCalledWith("library", "collection", "Collections");
   });
 });
