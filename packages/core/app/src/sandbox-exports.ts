@@ -1,11 +1,7 @@
 // The sandbox part of the public API of @halonicjs/app, re-exported by
 // `index.ts` to keep that file under the size limit.
 export { type NoSandboxLine, noSandboxLine } from "./doctor-no-sandbox-line.ts";
-export {
-  type NoSandboxFlagDecision,
-  type NoSandboxOptions,
-  NoSandboxService,
-} from "./no-sandbox.ts";
+export { type NoSandboxOptions, NoSandboxService } from "./no-sandbox.ts";
 export {
   mxcFencesLocalTools,
   mxcFencesRunner,
