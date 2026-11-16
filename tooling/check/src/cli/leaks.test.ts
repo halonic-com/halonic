@@ -108,7 +108,7 @@ describe("leak guard command", () => {
     expect(run({}).code).toBe(1);
 
     const lenient = join(repo, "lenient.txt");
-    writeFileSync(lenient, "absolute-path setup.md example path in a how-to\n");
+    writeFileSync(lenient, "absolute-path setup.md root:/Users/ example path in a how-to\n");
     expect(run({}, "--allow-file", lenient).code).toBe(0);
 
     const trusted = join(repo, "trusted.txt");
