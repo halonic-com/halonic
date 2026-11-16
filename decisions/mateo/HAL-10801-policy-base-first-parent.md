@@ -3,6 +3,7 @@
 - Task: HAL-10801
 - Approval: Liam reviews and signs this note on the review task for the pull request
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JQ07jRkBmG+CzOgCT0sJ6rHEsNW2l8UX7qkYI9snPNHUA9PALv7zHfPLjDS10Y0hk32BPxoWJ9gf1eC1DvXTAw==
 
 ## What changes
 
