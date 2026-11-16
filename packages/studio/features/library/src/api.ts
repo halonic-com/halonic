@@ -56,6 +56,14 @@ export {
   NewCollectionHostService,
 } from "./new-collection-host.ts";
 export {
+  type ConnectorRef,
+  type NewConnectorDraft,
+  type NewConnectorHost,
+  NewConnectorHostService,
+  type NewConnectorHub,
+  type NewConnectorWay,
+} from "./new-connector-host.ts";
+export {
   type NewSkillDraft,
   type NewSkillHost,
   NewSkillHostService,

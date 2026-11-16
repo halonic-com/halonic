@@ -8,6 +8,7 @@ import { type LibraryItemsHost, LibraryItemsHostService } from "../library-items
 import { type LibraryTabMemory, LibraryTabMemoryService } from "../library-tab-memory.ts";
 import { requestLibraryTab } from "../library-tab-request.ts";
 import { type NewCollectionHost, NewCollectionHostService } from "../new-collection-host.ts";
+import { type NewConnectorHost, NewConnectorHostService } from "../new-connector-host.ts";
 import { type NewSkillHost, NewSkillHostService } from "../new-skill-host.ts";
 import { fakeModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -183,5 +184,31 @@ verifies("library.library-place", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(openItem).toHaveBeenCalledWith({ kind: "collection", hub: "~workspace", id: "claims" });
+  });
+
+  it("opens the New connector dialog on Connectors and opens the new connector's page", async () => {
+    fakeModal();
+    const openItem = vi.fn();
+    const { context } = contextOf("connector", { openItem });
+    const host: NewConnectorHost = {
+      prepare: async () => {},
+      hubs: () => [{ id: "acme", name: "acme" }],
+      ways: () => ["http"],
+      file: () => "hubs/acme/library/connectors/",
+      create: async () => ({ hub: "acme", id: "notes" }),
+    };
+    const find = context.services.find;
+    context.services.find = ((key: unknown) =>
+      key === NewConnectorHostService ? host : find(key as never)) as typeof find;
+    const page = await show(context);
+    const button = [...page.querySelectorAll("button")].find((each) =>
+      each.textContent?.includes("New connector"),
+    );
+    await act(async () => {
+      button?.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const dialog = page.ownerDocument.querySelector("dialog[open]");
+    expect(dialog?.textContent).toContain("How it connects");
   });
 });
