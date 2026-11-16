@@ -14,13 +14,13 @@ verifies("google-setup.connector-badges", () => {
     expect(connectorBadge(account(record([])), vi.fn())).toBeUndefined();
   });
 
-  it("says Needs sign-in for a refused sign-in, with the library's words and tone", () => {
+  it("says Needs sign-in again for a refused sign-in, with the library's words and tone", () => {
     const refused = record([], {
       lastSignInAt: signedIn,
       refreshRefused: { reason: "sign-in", at: signedIn },
     });
     const badge = connectorBadge(account(refused), vi.fn());
-    expect(badge).toMatchObject({ label: "Needs sign-in", tone: "attention", action: "Fix" });
+    expect(badge).toMatchObject({ label: "Needs sign-in again", tone: "attention", action: "Fix" });
     expect(badge?.priority).toBeLessThan(trustBadgePriority);
   });
 

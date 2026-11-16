@@ -12,5 +12,5 @@ The Library feature of the Studio. It shows how each connector stands and what t
 import { connectionStateOf, connectionStateTable } from "@halonicjs/studio-feature-library/api";
 
 const state = connectionStateOf({ configured: true, signedIn: false, secretValid: true, apiOn: true });
-connectionStateTable[state].label; // "Needs sign-in"
+connectionStateTable[state].label; // "Needs sign-in again"
 ```

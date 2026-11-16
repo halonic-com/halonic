@@ -2,7 +2,7 @@ import type { StatusChipTone } from "@halonicjs/studio-kit";
 import { ShellError } from "../shell-error.ts";
 
 /**
- * A state the window's header badges show, such as "Not trusted yet" or "Needs sign-in". A feature
+ * A state the window's header badges show, such as "Not trusted yet" or "Needs sign-in again". A feature
  * adds it while the state holds and removes it when the state is over.
  */
 export interface BadgeState {

@@ -45,7 +45,7 @@ export const connectionStateTable: Readonly<
   Record<ConnectionState, { readonly label: string; readonly tone: ConnectionTone }>
 > = {
   connected: { label: "Connected", tone: "success" },
-  "needs-sign-in": { label: "Needs sign-in", tone: "attention" },
+  "needs-sign-in": { label: "Needs sign-in again", tone: "attention" },
   "needs-new-secret": { label: "Needs new secret", tone: "attention" },
   "api-off": { label: "API off", tone: "attention" },
   "not-connected": { label: "Not connected", tone: "attention" },
