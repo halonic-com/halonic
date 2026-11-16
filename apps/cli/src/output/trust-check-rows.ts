@@ -18,6 +18,7 @@ import { columnGap } from "../messages/columns.ts";
 import type { Message } from "../messages/define.ts";
 import { dim, markPart, type Phrase, phrase, visibleLength } from "../messages/phrase.ts";
 import { type PackageRegistry, trustMessages } from "../messages/trust.ts";
+import { printable } from "./printable.ts";
 
 /**
  * The first column: a row's id, at least as wide as cli-output 3.5's example,
@@ -44,10 +45,10 @@ export function programRow(
 ): Phrase[] {
   const command = [text(connector.settings["command"]), ...strings(connector.settings["args"])];
   const withNames = withInherited(
-    withSecrets(phrase`${command.join(" ")}`, secretNames(connector)),
-    strings(connector.settings["inheritEnv"]),
+    withSecrets(phrase`${printable(command.join(" "))}`, secretNames(connector)),
+    strings(connector.settings["inheritEnv"]).map(printable),
   );
-  const lines = [row(connector.id, withNames)];
+  const lines = [row(printable(connector.id), withNames)];
   if (unpinned.has(connector.id)) {
     const warning = trustMessages.notPinned(
       registryOf(text(connector.settings["command"]), command),
@@ -67,7 +68,10 @@ export function programSites(connector: ConnectorTrustContent): string[] {
 export function addressRow(connector: ConnectorTrustContent): Phrase {
   const address =
     connector.transport === "http" ? text(connector.settings["url"]) : connector.transport;
-  return row(connector.id, withSecrets(phrase`${address}`, secretNames(connector)));
+  return row(
+    printable(connector.id),
+    withSecrets(phrase`${printable(address)}`, secretNames(connector)),
+  );
 }
 
 /**
@@ -77,7 +81,10 @@ export function addressRow(connector: ConnectorTrustContent): Phrase {
  */
 export function providerRow(provider: ProviderTrustContent): Phrase {
   const address = provider.baseUrl ?? provider.type;
-  return row(provider.id, withSecrets(phrase`${address}`, providerSecretNames(provider)));
+  return row(
+    printable(provider.id),
+    withSecrets(phrase`${printable(address)}`, providerSecretNames(provider)),
+  );
 }
 
 /**
@@ -85,11 +92,13 @@ export function providerRow(provider: ProviderTrustContent): Phrase {
  * per further setting, the names padded to the longest (team, HAL-3498).
  */
 export function integrationRows(integration: IntegrationTrustContent): Phrase[] {
-  const settings = Object.entries(integration.addresses);
+  const settings = Object.entries(integration.addresses).map(
+    ([name, address]) => [printable(name), address] as const,
+  );
   const width = Math.max(0, ...settings.map(([name]) => name.length));
   return settings.map(([name, address], index) => {
     const detail = phrase`${name.padEnd(width + columnGap)}${settingAddress(address)}`;
-    return index === 0 ? row(integration.id, detail) : phrase`${underRow}${detail}`;
+    return index === 0 ? row(printable(integration.id), detail) : phrase`${underRow}${detail}`;
   });
 }
 
@@ -107,13 +116,19 @@ export function integrationChanges(integration: ChangedIntegration): Phrase[] {
     ...(fields.includes("folder")
       ? [
           withTag(
-            row(id, trustMessages.integrationFolderChanged(before.folder, after.folder).phrase),
+            row(
+              printable(id),
+              trustMessages.integrationFolderChanged(
+                printable(before.folder),
+                printable(after.folder),
+              ).phrase,
+            ),
             changedRow,
           ),
         ]
       : []),
     ...(fields.includes("code")
-      ? [withTag(row(id, trustMessages.integrationCodeChanged().phrase), changedRow)]
+      ? [withTag(row(printable(id), trustMessages.integrationCodeChanged().phrase), changedRow)]
       : []),
   ];
 }
@@ -124,7 +139,9 @@ function settingAddress(address: string | null): Phrase {
     return trustMessages.settingNotSet().phrase;
   }
   const refused = /^‹refused: (.+)›$/u.exec(address)?.[1];
-  return refused === undefined ? phrase`${address}` : trustMessages.settingRefused(refused).phrase;
+  return refused === undefined
+    ? phrase`${printable(address)}`
+    : trustMessages.settingRefused(printable(refused)).phrase;
 }
 
 /** The detail, then "· gets the secret GMAIL_TOKEN" when there are any. */
@@ -147,9 +164,17 @@ export function agentRow(agent: AgentTrustContent): Phrase[] {
     ...siteLines(agent.allowedSites),
     ...(agent.workingFolder === undefined
       ? []
-      : [[trustMessages.workingFolder().phrase, phrase`${dim(agent.workingFolder)}`] as const]),
+      : [
+          [
+            trustMessages.workingFolder().phrase,
+            phrase`${dim(printable(agent.workingFolder))}`,
+          ] as const,
+        ]),
   ];
-  return [row(agent.id, trustMessages.harnessName(agent.harness).phrase), ...labelledLines(lines)];
+  return [
+    row(printable(agent.id), trustMessages.harnessName(printable(agent.harness)).phrase),
+    ...labelledLines(lines),
+  ];
 }
 
 /** A line under a row: its label, empty to continue the one above, and its value. */
@@ -177,18 +202,21 @@ export function agentFieldChanges(agent: ChangedAgent): Phrase[] {
   const { before, after } = agent;
   const changes: Phrase[] = [];
   if (before.harness !== after.harness) {
-    const name = (harness: string) => trustMessages.harnessName(harness).phrase;
+    const name = (harness: string) => trustMessages.harnessName(printable(harness)).phrase;
     changes.push(trustMessages.harnessChanged(name(before.harness), name(after.harness)).phrase);
   }
   const added = after.allowedSites.filter((site) => !before.allowedSites.includes(site));
   const removed = before.allowedSites.filter((site) => !after.allowedSites.includes(site));
   if (added.length + removed.length > 0) {
-    changes.push(trustMessages.sitesChanged(added, removed).phrase);
+    changes.push(trustMessages.sitesChanged(added.map(printable), removed.map(printable)).phrase);
   }
   const folder = (content: AgentTrustContent) =>
     content.workingFolder ?? defaultWorkingFolder(content.id);
   if (folder(before) !== folder(after)) {
-    changes.push(trustMessages.workingFolderChanged(folder(before), folder(after)).phrase);
+    changes.push(
+      trustMessages.workingFolderChanged(printable(folder(before)), printable(folder(after)))
+        .phrase,
+    );
   }
   return changes;
 }
@@ -196,14 +224,16 @@ export function agentFieldChanges(agent: ChangedAgent): Phrase[] {
 /** A site in its stored form, with its note: a wildcard names its domain, Punycode is flagged. */
 function shownSite(site: string): Phrase {
   const notes = [
-    ...(site.startsWith("*.") ? [trustMessages.everySiteUnder(site.slice(2)).phrase] : []),
+    ...(site.startsWith("*.")
+      ? [trustMessages.everySiteUnder(printable(site.slice(2))).phrase]
+      : []),
     ...(site.split(".").some((label) => label.startsWith("xn--"))
       ? [trustMessages.nonLatin().phrase]
       : []),
   ];
   return notes.reduce(
     (shown, note) => phrase`${shown} ${markPart("separator")} ${note}`,
-    phrase`${site}`,
+    phrase`${printable(site)}`,
   );
 }
 
@@ -237,7 +267,8 @@ export function providerSecretNames(provider: ProviderTrustContent): string[] {
 function namesOf(references: readonly unknown[]): string[] {
   const names = references
     .filter((value) => typeof value === "string")
-    .map((reference) => /^‹secret (.+)›$/u.exec(reference)?.[1]);
+    .map((reference) => /^‹secret (.+)›$/u.exec(reference)?.[1])
+    .map((name) => (name === undefined ? undefined : printable(name)));
   return [...new Set(names.filter((name) => name !== undefined))].sort();
 }
 
