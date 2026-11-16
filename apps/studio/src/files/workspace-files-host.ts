@@ -5,7 +5,15 @@ export interface FilesHostParts {
   /** The folder's saved files, from its root, recursively. Local data and private entries are already left out. */
   readonly store: { list(): Promise<string[]> };
   /** The kernel's `WorkspaceFiles`: its unsaved changes by path, `null` for an unsaved delete. */
-  readonly files: { readonly pending: Readonly<Record<string, string | null>> };
+  readonly files: {
+    readonly pending: Readonly<Record<string, string | null>>;
+    read(path: string): Promise<string | null>;
+    change(
+      label: string,
+      changes: Record<string, string | null>,
+      options?: { coalesceKey?: string },
+    ): void;
+  };
   /** Calls `listener` after every change of the workspace's files and every save; returns the way to stop. */
   readonly onChange: (listener: () => void) => () => void;
 }
@@ -38,6 +46,14 @@ export class WorkspaceFilesHost implements FilesHost {
       else paths.add(path);
     }
     return { paths: [...paths].sort(), marks: new Map() };
+  }
+
+  read(path: string): Promise<string | null> {
+    return this.#parts.files.read(path);
+  }
+
+  edit(path: string, text: string): void {
+    this.#parts.files.change(`Edited ${path}`, { [path]: text }, { coalesceKey: path });
   }
 
   subscribe(listener: () => void): () => void {

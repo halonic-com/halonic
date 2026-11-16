@@ -1,9 +1,10 @@
 import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { FILE_KIND, fileItem } from "../file-item.ts";
 import { FilesHostService, type FilesListing } from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
-import { emptyTreeState, type TreeState } from "../tree/tree-keyboard.ts";
+import { emptyTreeState, type TreeIntent, type TreeState } from "../tree/tree-keyboard.ts";
 import { buildTree } from "../tree/tree-model.ts";
 import { FilesTree } from "./files-tree.tsx";
 
@@ -62,6 +63,24 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
     };
   }, [host, load]);
 
+  const activeItem = context.activeItem;
+  // A string, so a source that builds a new item on each read doesn't make React draw again and again.
+  const activeFile = useSyncExternalStore(
+    (listener) => activeItem?.subscribe(listener) ?? (() => {}),
+    () => {
+      const active = activeItem?.get();
+      return active?.kind === FILE_KIND ? active.id : "";
+    },
+  );
+  const activePath = activeFile === "" ? undefined : activeFile;
+
+  const onIntent = useCallback(
+    (intent: TreeIntent) => {
+      if (intent.kind === "open") context.openItem?.(fileItem(intent.path));
+    },
+    [context],
+  );
+
   const roots = useMemo(
     () => (loaded.kind === "ready" ? buildTree(loaded.listing.paths, loaded.listing.marks) : []),
     [loaded],
@@ -100,5 +119,13 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
       <EmptyState plain title={filesWords.emptyTitle} description={filesWords.emptyDescription} />
     );
   }
-  return <FilesTree roots={roots} state={state} onStateChange={setState} />;
+  return (
+    <FilesTree
+      roots={roots}
+      state={state}
+      onStateChange={setState}
+      onIntent={onIntent}
+      {...(activePath === undefined ? {} : { activePath })}
+    />
+  );
 }

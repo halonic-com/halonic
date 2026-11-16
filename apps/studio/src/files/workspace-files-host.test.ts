@@ -4,6 +4,7 @@ import { WorkspaceFilesHost } from "./workspace-files-host.ts";
 
 function setup(saved: string[] | Error, pending: Record<string, string | null> = {}) {
   const listeners = new Set<() => void>();
+  const changes: { label: string; changes: Record<string, string | null>; key?: string }[] = [];
   const host = new WorkspaceFilesHost({
     store: {
       list: async () => {
@@ -11,13 +12,23 @@ function setup(saved: string[] | Error, pending: Record<string, string | null> =
         return saved;
       },
     },
-    files: { pending },
+    files: {
+      pending,
+      read: async (path) => (path in pending ? (pending[path] ?? null) : null),
+      change: (label, made, options) => {
+        changes.push({
+          label,
+          changes: made,
+          ...(options?.coalesceKey ? { key: options.coalesceKey } : {}),
+        });
+      },
+    },
     onChange: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
   });
-  return { host, listeners };
+  return { host, listeners, changes };
 }
 
 verifies("studio.workspace-files-host", () => {
@@ -52,5 +63,20 @@ verifies("studio.workspace-files-host", () => {
     const { host } = setup(new Error("The folder hubs can't be read"));
 
     await expect(host.list()).rejects.toThrow("The folder hubs can't be read.");
+  });
+
+  it("reads a file with its unsaved text, and null when it has none", async () => {
+    const { host } = setup([], { "a.md": "unsaved" });
+
+    expect(await host.read("a.md")).toBe("unsaved");
+    expect(await host.read("b.md")).toBeNull();
+  });
+
+  it("records an edit as one undo step per file", () => {
+    const { host, changes } = setup([]);
+
+    host.edit("a.md", "hello");
+
+    expect(changes).toEqual([{ label: "Edited a.md", changes: { "a.md": "hello" }, key: "a.md" }]);
   });
 });

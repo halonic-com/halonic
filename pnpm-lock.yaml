@@ -2540,6 +2540,9 @@ importers:
 
   packages/studio/features/files:
     dependencies:
+      '@halonicjs/studio-code-editor':
+        specifier: workspace:*
+        version: link:../../code-editor
       '@halonicjs/studio-kit':
         specifier: workspace:*
         version: link:../../kit
