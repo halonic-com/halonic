@@ -3,10 +3,11 @@ import { Button, List, type ListRow, StatusChip, usePresentation } from "@haloni
 import type { HomeCardProps } from "@halonicjs/studio-shell";
 import { use, useCallback, useSyncExternalStore } from "react";
 import { SampleHintService } from "../api.ts";
+import { homeWords } from "../home-words.ts";
 import { listRows } from "../list/list-rows.ts";
 import { recentRuns } from "../list/recent-runs.ts";
 import type { RunRow } from "../list/run-row.ts";
-import { homeWords, runCommand } from "../run-words.ts";
+import { runCommand } from "../run-words.ts";
 import { type RunsList, RunsListService } from "../runs-list.ts";
 import { firstLoad } from "./first-load.ts";
 

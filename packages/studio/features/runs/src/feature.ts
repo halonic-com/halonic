@@ -1,9 +1,15 @@
 import { sandboxStartCheckKey, shortRunId } from "@halonicjs/app";
 import { defineFeature } from "@halonicjs/studio-shell";
-import { InstructionTrustHostService, RunsSourceService, SampleHintService } from "./api.ts";
+import {
+  InstructionTrustHostService,
+  RunStartHostService,
+  RunsSourceService,
+  SampleHintService,
+} from "./api.ts";
+import { searchWords } from "./home-words.ts";
 import { listRows } from "./list/list-rows.ts";
 import { findRuns } from "./list/run-search.ts";
-import { runPageWords, searchWords } from "./run-words.ts";
+import { runPageWords } from "./run-words.ts";
 import { RunsList, RunsListService } from "./runs-list.ts";
 
 /**
@@ -17,7 +23,12 @@ export const runsFeature = defineFeature({
   id: "runs",
   title: "Runs",
   needs: [RunsSourceService],
-  wants: [InstructionTrustHostService, SampleHintService, sandboxStartCheckKey],
+  wants: [
+    InstructionTrustHostService,
+    RunStartHostService,
+    SampleHintService,
+    sandboxStartCheckKey,
+  ],
   provides: [RunsListService],
   register(studio) {
     studio.services.provide(

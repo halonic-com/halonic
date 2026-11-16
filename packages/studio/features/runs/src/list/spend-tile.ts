@@ -1,7 +1,7 @@
 import { type MonthSpend, spendByMonth } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
 import type { MonthBarsProps } from "@halonicjs/studio-kit";
-import { spendWords } from "../run-words.ts";
+import { spendWords } from "../home-words.ts";
 
 /** How many months Home's Spend tile shows. */
 const monthCount = 6;

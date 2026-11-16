@@ -8,6 +8,7 @@ import type { StepEntry } from "./every-step-model.ts";
 import { causeBanner } from "./failure-banner.ts";
 import { refusedInstructions } from "./instructions-refusal.ts";
 import { InstructionsRefusalBanner } from "./instructions-refusal-banner.tsx";
+import type { RunAgain } from "./run-again.ts";
 import {
   type BannerAction,
   type RunBanner,
@@ -27,6 +28,7 @@ export function PageBanner({
   instructionTrust,
   sandboxStartCheck,
   announce,
+  runAgain,
   phone = false,
   onSeeStep,
 }: {
@@ -46,6 +48,8 @@ export function PageBanner({
   readonly sandboxStartCheck?: SandboxStartCheck | undefined;
   /** Says a line to a screen reader, for the answer to a press in a banner. */
   readonly announce?: ((line: string) => void) | undefined;
+  /** Run again, offered on a failed banner that has no button of its own; absent when it can't be done. */
+  readonly runAgain?: RunAgain | undefined;
   /** Whether the page is a phone's: a fix it can't do is said as a line (microcopy 15.3). */
   readonly phone?: boolean;
   readonly onSeeStep: (entryId: string) => void;
@@ -80,14 +84,21 @@ export function PageBanner({
   }
   const cause = causeBanner(run.summary, log, context, phone);
   if (cause !== undefined) {
-    return <Banner banner={cause} reviewInInbox={reviewInInbox} openRun={openRun} />;
+    return (
+      <Banner banner={cause} reviewInInbox={reviewInInbox} openRun={openRun} runAgain={runAgain} />
+    );
   }
   const blocked = log === undefined ? undefined : blockedFailure(run.summary, log, entries);
   if (blocked !== undefined) {
     return <BlockedFailureBanner failure={blocked} onSeeStep={onSeeStep} />;
   }
   return (
-    <Banner banner={runBanner(run, context)} reviewInInbox={reviewInInbox} openRun={openRun} />
+    <Banner
+      banner={runBanner(run, context)}
+      reviewInInbox={reviewInInbox}
+      openRun={openRun}
+      runAgain={runAgain}
+    />
   );
 }
 
@@ -99,10 +110,12 @@ function Banner({
   banner,
   reviewInInbox,
   openRun,
+  runAgain,
 }: {
   readonly banner: RunBanner | undefined;
   readonly reviewInInbox: (() => void) | undefined;
   readonly openRun: ((runId: string) => void) | undefined;
+  readonly runAgain: RunAgain | undefined;
 }) {
   if (banner === undefined) {
     return null;
@@ -110,7 +123,11 @@ function Banner({
   if (banner.kind === "note") {
     return <p className="text-body">{banner.text}</p>;
   }
-  const action = bannerAction(banner.action, reviewInInbox, openRun);
+  const action =
+    bannerAction(banner.action, reviewInInbox, openRun) ??
+    (banner.tone === "danger" && runAgain !== undefined
+      ? { label: runPageWords.runAgain, onClick: runAgain.start }
+      : undefined);
   return (
     <section aria-label={banner.name}>
       <Callout

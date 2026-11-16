@@ -137,3 +137,22 @@ export interface InstructionTrustHost {
 /** The open workspace's way to trust an agent's instructions. Absent where the shell can't ask. */
 export const InstructionTrustHostService: ServiceKey<InstructionTrustHost> =
   serviceKey<InstructionTrustHost>("runs.instruction-trust-host");
+
+/**
+ * The way to start a run of a workflow, for **Run again** on the run page. The app provides it
+ * where it has an engine; a served page has none, and the page then shows no **Run again**.
+ */
+export interface RunStartHost {
+  /**
+   * Starts a run of the workflow with `input` on what is saved in the workspace, and returns the
+   * new run's id once it has started. Rejects with the reason it didn't start.
+   */
+  readonly startRun: (
+    workflow: { readonly hubId: string; readonly workflowId: string },
+    input: Record<string, unknown>,
+  ) => Promise<{ readonly runId: string }>;
+}
+
+/** The open workspace's way to start a run. Absent where there is no engine to start it. */
+export const RunStartHostService: ServiceKey<RunStartHost> =
+  serviceKey<RunStartHost>("runs.start-host");
