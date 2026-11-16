@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
-import type { ItemPageSectionViewProps } from "@halonicjs/studio-shell";
+import { type ItemPageSectionViewProps, limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { account, fakeAccounts, record } from "../accounts.test-helper.ts";
 import { GoogleSetupAccountsService } from "../api.ts";
+import { googleSetupFeature } from "../feature.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ConnectorSection } from "./connector-section.tsx";
@@ -39,7 +40,10 @@ function setup(connectorId: string, initial = [signedIn]) {
   ]);
   const props = {
     item: { kind: "connector", hub: "local", id: connectorId },
-    context: { services: { get: (key: unknown) => services.get(key) }, openPlace },
+    context: {
+      services: limitedLookup(googleSetupFeature, { get: (key) => services.get(key) }),
+      openPlace,
+    },
   } as unknown as ItemPageSectionViewProps;
   return { accounts, openSetup, openPlace, props };
 }

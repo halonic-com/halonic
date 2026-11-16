@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 
-import type { ItemRef, WorkspaceContext } from "@halonicjs/studio-shell";
+import { type ItemRef, limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import type { ModelsFiles, ProviderFile } from "../api.ts";
+import { modelsFeature } from "../feature.ts";
 import { AliasTab } from "./alias-tab.tsx";
 import { ModelsSection } from "./models-section.tsx";
 
@@ -75,7 +76,7 @@ async function showSection(files: ModelsFiles, opened: ItemRef[] = []): Promise<
   element = document.createElement("div");
   document.body.append(element);
   const context = {
-    services: { get: () => files },
+    services: limitedLookup(modelsFeature, { get: () => files }),
     openItem: (item: ItemRef) => opened.push(item),
   } as unknown as WorkspaceContext;
   root = createRoot(element);
@@ -342,7 +343,9 @@ it("titles an alias tab with the alias and says what pointing it does", async ()
   root = createRoot(element);
   const item = { kind: "model-alias", hub: "local", id: "smart" };
   const files = filesWith(twoAliases);
-  const context = { services: { get: () => files } } as unknown as WorkspaceContext;
+  const context = {
+    services: limitedLookup(modelsFeature, { get: () => files }),
+  } as unknown as WorkspaceContext;
   await act(async () =>
     root?.render(<AliasTab item={item} context={context} Sections={() => null} />),
   );

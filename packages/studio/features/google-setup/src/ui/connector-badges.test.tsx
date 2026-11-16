@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { InboxService } from "@halonicjs/studio-feature-inbox/api";
-import { createBadgeRegistry, type WorkspaceContext } from "@halonicjs/studio-shell";
+import { createBadgeRegistry, limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { account, fakeAccounts, record } from "../accounts.test-helper.ts";
 import { GoogleSetupAccountsService } from "../api.ts";
+import { googleSetupFeature } from "../feature.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ConnectorBadges } from "./connector-badges.tsx";
 
@@ -27,7 +28,7 @@ function setup(initial = [refused]) {
     [InboxService, { openSetup }],
   ]);
   const context = {
-    services: { get: (key: unknown) => services.get(key) },
+    services: limitedLookup(googleSetupFeature, { get: (key) => services.get(key) }),
     announcer: {},
     badges,
     openPlace,

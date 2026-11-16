@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 
-import type { ItemRef, WorkspaceContext } from "@halonicjs/studio-shell";
+import { type ItemRef, limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import type { ReactElement } from "react";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it } from "vitest";
 import type { ModelsFiles } from "../api.ts";
+import { modelsFeature } from "../feature.ts";
 import { ProviderPage } from "./provider-page.tsx";
 import { ProvidersSection } from "./providers-section.tsx";
 
@@ -49,7 +50,7 @@ async function show(
   element = document.createElement("div");
   document.body.append(element);
   const context = {
-    services: { get: () => files, find: () => undefined },
+    services: limitedLookup(modelsFeature, { get: () => files, find: () => undefined }),
     openItem: (item: ItemRef) => opened.push(item),
   } as unknown as WorkspaceContext;
   root = createRoot(element);

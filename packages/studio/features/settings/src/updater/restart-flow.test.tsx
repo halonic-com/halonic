@@ -6,11 +6,12 @@ import {
   type ToastStore,
   ToastStoreProvider,
 } from "@halonicjs/studio-kit";
-import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, type ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { RestartRunsService, type UpdaterHost, UpdaterService } from "../api.ts";
+import { settingsFeature } from "../feature.ts";
 import { click } from "../test-support/controls.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -82,7 +83,10 @@ function setup(
     [RestartRunsService.name, { count }],
   ]);
   const context = {
-    services: { find: (key: { name: string }) => services.get(key.name) },
+    services: limitedLookup(settingsFeature, {
+      get: (key) => services.get(key.name),
+      find: (key) => services.get(key.name),
+    }),
     announcer: { announce },
     openSettings,
   } as unknown as WorkspaceContext;
