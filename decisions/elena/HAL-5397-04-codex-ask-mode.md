@@ -2,7 +2,6 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-5397 (security condition N2, approved with the plan); Liam reviews this pull request and signs this note
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ENbTTTjCE/xPMHMACExOx/QBYUVlIWvJS5bLzNJLqVlLQoVf8W+pIm6MviZ2hkXeYFs/HKrV/aB2NPZlogg3AA==
 
 ## What changes
 
