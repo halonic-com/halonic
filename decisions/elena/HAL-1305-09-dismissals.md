@@ -2,6 +2,7 @@
 
 - Approval: a team decision by Liam (CTO) on HAL-10890, the review of this pull request; it fixes how the approved Dismiss is stored, with no new flow, screen or wording; Liam signs this note with the pull request
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:m07xxAx2fZcyjN+7HUWoGuDgEJzSmiQaz+wn+jovkVEuXWHoUMBQRpjUhznSB+1JAcdjmcRbSb4fbRuy7VV6Dw==
 - Task: HAL-1305 (part 9)
 
 ## What changes
