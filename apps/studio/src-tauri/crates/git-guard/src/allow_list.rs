@@ -342,7 +342,6 @@ pub(crate) const ALLOWED_SUBCOMMANDS: &[AllowedSubcommand] = &[
         name: "pull",
         options: &[
             Flag("--ff-only"),
-            Flag("--rebase"),
             Flag("--no-rebase"),
             Flag("--no-edit"),
             Flag("-q"),

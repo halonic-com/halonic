@@ -226,7 +226,7 @@ fn git_hardening_refuses_an_ext_remote_already_in_the_config() {
         config_value(&url)
     ));
     let pull = sandbox
-        .git("pull origin main")
+        .git("pull --ff-only origin main")
         .expect("pull runs and fails");
     assert_ne!(pull.code, Some(0));
     let stderr = String::from_utf8_lossy(&pull.stderr);

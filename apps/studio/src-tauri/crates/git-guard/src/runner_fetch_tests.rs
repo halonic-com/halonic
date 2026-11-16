@@ -133,7 +133,12 @@ fn git_hardening_never_runs_an_alternate_refs_command_on_pull() {
     };
     std::fs::create_dir_all(&runner.empty_hooks_folder).expect("the folder is created");
     let acme = user_repository(root, "acme", &remote, &mark);
-    let args = ["pull".to_owned(), "origin".to_owned(), "main".to_owned()];
+    let args = [
+        "pull".to_owned(),
+        "--ff-only".to_owned(),
+        "origin".to_owned(),
+        "main".to_owned(),
+    ];
     let call = check_args(&args).expect("the call is allowed");
     let output = runner
         .hardened_command(&acme.top, Some(&acme), &call, &[])

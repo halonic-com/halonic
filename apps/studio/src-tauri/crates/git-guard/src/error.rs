@@ -23,6 +23,9 @@ pub enum GitError {
         subcommand: String,
         argument: String,
     },
+    /// A `pull` without `--ff-only`. A real merge or rebase would run the
+    /// merge drivers the repository's config names.
+    FastForwardRequired,
     /// A `commit` without `-m` or `--message`, and not `--amend --no-edit`.
     MessageRequired,
     /// A `merge` that is not `--no-ff --no-commit -s ours` with one revision,
@@ -71,6 +74,7 @@ impl GitError {
             GitError::ValueNotAllowed { .. } => "value_not_allowed",
             GitError::MissingValue { .. } => "missing_value",
             GitError::ArgumentNotAllowed { .. } => "argument_not_allowed",
+            GitError::FastForwardRequired => "fast_forward_required",
             GitError::MessageRequired => "message_required",
             GitError::MergeNotOurs => "merge_not_ours",
             GitError::FolderNotOpened => "folder_not_opened",
@@ -121,6 +125,7 @@ impl fmt::Display for GitError {
                     "git {subcommand}: argument {argument} is not allowed"
                 )
             }
+            GitError::FastForwardRequired => write!(formatter, "git pull needs --ff-only"),
             GitError::MessageRequired => write!(
                 formatter,
                 "git commit needs -m or --message, or --amend --no-edit"
