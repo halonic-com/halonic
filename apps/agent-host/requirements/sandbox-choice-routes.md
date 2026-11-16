@@ -11,6 +11,12 @@ When Studio asks which sandbox runs, the agent host shall answer the `SandboxCho
 - Given a host that has not chosen yet,
   when Studio asks twice,
   then the choice is started once and both answers are the same.
+- Given a host that has not chosen yet,
+  when two asks arrive together,
+  then the choice is started once.
+- Given a first ask that failed,
+  when Studio asks again,
+  then the start is tried again.
 - Given the shell saved a new setting,
   when it posts `{}` to `settings-changed`,
   then the host chooses again and answers the new choice.

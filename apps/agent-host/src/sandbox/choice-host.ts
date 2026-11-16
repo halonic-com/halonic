@@ -16,8 +16,8 @@ const settingFolderName = "sandbox";
 
 /**
  * The trust canary until the real one exists (HAL-10552). It starts nothing and
- * says the probe program didn't start, so the trust check fails closed:
- * the choice reports `check-failed` with `did-not-start`, never `in-use`. A canary that
+ * has no profile to probe with, so the trust check fails closed: the choice
+ * reports `check-failed` with `other`, never `in-use`. A canary that
  * passed without probing would say the fence was proven when it wasn't.
  */
 export const unbuiltCanary: TrustCanary = {
