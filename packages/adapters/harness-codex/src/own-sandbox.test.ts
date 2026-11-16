@@ -8,7 +8,13 @@ import type {
 import { FakeSandboxSession } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { codexFinishing, MemorySettingsFolder } from "./fake-codex.test-helper.ts";
+import {
+  answer,
+  CodexLog,
+  codexFinishing,
+  fakeCodex,
+  MemorySettingsFolder,
+} from "./fake-codex.test-helper.ts";
 import { codexHarness } from "./harness.ts";
 
 // Codex's own sandbox, by where the run is: on outside Halonic's fence where
@@ -63,6 +69,34 @@ async function readAll(run: HarnessRun): Promise<{ events: HarnessEvent[]; error
     return { events, error };
   }
 }
+
+verifies("harness-codex.start", () => {
+  describe("codexHarness: ask mode", () => {
+    it("asks before every command in a session with no fence, and sets no policy inside the fence", async () => {
+      const log = new CodexLog();
+      const program = fakeCodex((codex) => answer(codex, "Teal."), log);
+      const policyOf = () =>
+        (
+          log.requests.find(({ method }) => method === "thread/start")?.params as Record<
+            string,
+            unknown
+          >
+        )["approvalPolicy"];
+
+      const noFence = new FakeSandboxSession({
+        profile: engineProfile,
+        program,
+        fence: { state: "off" },
+      });
+      await readAll(newHarness().start(task, noFence, bridge));
+      expect(policyOf()).toBe("untrusted");
+
+      log.requests.length = 0;
+      await readAll(newHarness().start(task, openSession(program), bridge));
+      expect(policyOf()).toBeUndefined();
+    });
+  });
+});
 
 verifies("harness-codex.config", () => {
   describe("codexHarness: its own sandbox", () => {
