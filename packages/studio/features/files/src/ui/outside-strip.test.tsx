@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
+import { filesFeature } from "../feature.ts";
 import { fileItem } from "../file-item.ts";
 import type { CompareChoice, FileCompare, FilesHost, OutsideChange } from "../files-host.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -63,7 +64,9 @@ function fixture(change: OutsideChange | undefined, compare: Partial<FileCompare
     }),
     settle,
   };
-  const context = { services: { get: () => host } } as unknown as WorkspaceContext;
+  const context = {
+    services: limitedLookup(filesFeature, { get: () => host }),
+  } as unknown as WorkspaceContext;
   const page = render(
     <FileView item={fileItem("a.agent.yaml")} context={context} Sections={() => null} />,
   );

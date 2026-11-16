@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import type { ItemRef, WorkspaceContext } from "@halonicjs/studio-shell";
+import { type ItemRef, limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
+import { filesFeature } from "../feature.ts";
 import type { FilesHost } from "../files-host.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { FilesSidebarView } from "./files-sidebar-view.tsx";

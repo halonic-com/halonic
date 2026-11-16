@@ -1,5 +1,5 @@
 import type { ItemUsage } from "@halonicjs/app";
-import type { ItemViewProps } from "@halonicjs/studio-shell";
+import { type ItemViewProps, limitedLookup } from "@halonicjs/studio-shell";
 import { act } from "react";
 import {
   type CollectionColumn,
@@ -8,6 +8,7 @@ import {
   type CollectionRow,
   type CollectionSource,
 } from "../collection-host.ts";
+import { libraryFeature } from "../feature.ts";
 import { CollectionPage } from "../ui/collection-page.tsx";
 import { fakeModal, restoreModal } from "./modal.ts";
 import { render, unmountAll } from "./render.tsx";
@@ -85,10 +86,10 @@ export function setup(
   const props = {
     item: { kind: "collection", hub: "~workspace", id: "claims" },
     context: {
-      services: {
+      services: limitedLookup(libraryFeature, {
         get: (key: unknown) => (key === CollectionHostService ? host : undefined),
         find: (key: unknown) => (key === CollectionHostService ? host : undefined),
-      },
+      }),
       announcer: { announceState: () => {} },
       openItem: () => {},
       openPlace: (place: string) => placesOpened.push(place),

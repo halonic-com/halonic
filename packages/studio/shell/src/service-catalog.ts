@@ -157,6 +157,43 @@ export function lookupFor(
   target: ServiceTarget,
   beforeGet?: (key: ServiceKey<unknown>) => void,
 ): ServiceLookup {
+  return limitedLookup(
+    feature,
+    {
+      get: (key) => {
+        if (!target.has(key)) {
+          throw new ShellError(
+            `The feature "${feature.id}" asked for the wanted service "${key.name}", but nothing provides it here. Use find, which returns undefined.`,
+          );
+        }
+        return target.get(key);
+      },
+      find: (key) => (target.has(key) ? target.get(key) : undefined),
+    },
+    beforeGet,
+  );
+}
+
+/** A lookup that finds services however the caller likes, before the feature's lists limit it. */
+export interface OpenLookup {
+  get(key: ServiceKey<unknown>): unknown;
+  /** Defaults to `get`. */
+  find?(key: ServiceKey<unknown>): unknown;
+}
+
+/**
+ * Limits a lookup to what the feature lists in `needs`, `wants` and `provides`, and throws the
+ * shell's error for any other key, as the real app does. A package's page test wraps its fake
+ * lookup in this with the feature under test, so a key the feature forgot to list fails the test
+ * and not only the app. `beforeGet` runs before each allowed lookup.
+ *
+ * @throws ShellError from `get` or `find` when the feature doesn't list the key
+ */
+export function limitedLookup(
+  feature: Feature,
+  open: OpenLookup,
+  beforeGet?: (key: ServiceKey<unknown>) => void,
+): ServiceLookup {
   const checkListed = (key: ServiceKey<unknown>): void => {
     const listed = [feature.needs, feature.wants, feature.provides].some((keys) =>
       keys.some((listedKey) => listedKey.name === key.name),
@@ -171,16 +208,11 @@ export function lookupFor(
   return {
     get: <Service>(key: ServiceKey<Service>): Service => {
       checkListed(key);
-      if (!target.has(key)) {
-        throw new ShellError(
-          `The feature "${feature.id}" asked for the wanted service "${key.name}", but nothing provides it here. Use find, which returns undefined.`,
-        );
-      }
-      return target.get(key);
+      return open.get(key) as Service;
     },
     find: <Service>(key: ServiceKey<Service>): Service | undefined => {
       checkListed(key);
-      return target.has(key) ? target.get(key) : undefined;
+      return (open.find ?? open.get)(key) as Service | undefined;
     },
   };
 }
