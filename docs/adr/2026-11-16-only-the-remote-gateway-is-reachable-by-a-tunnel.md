@@ -20,7 +20,11 @@ general remote API. Both would make every future endpoint remote by default.
 
 - **One target.** A tunnel reaches only the **remote gateway**, a separate
   listener in the desktop host. `TunnelConfig` names it by a literal loopback
-  address and a port, and has no other field. The bridge, the model gateway, MCP
+  address and a port, and has no other field. The host checks this at
+  runtime too (`assertGatewayTunnelConfig`): a config whose port isn't the
+  one the gateway listener is bound to is refused before any provider is
+  called, so a tunnel aimed at the bridge port fails a test, not just a
+  review. The bridge, the model gateway, MCP
   servers and secrets stay loopback-only and never get a `TunnelConfig`.
 - **A narrow protocol.** The gateway speaks the remote gateway protocol
   (`remote-gateway-protocol.ts` in `@halonicjs/ports`, version 1): sessions,
@@ -42,9 +46,9 @@ general remote API. Both would make every future endpoint remote by default.
   foreground-only: `pause` closes the connection and stops every timer, and
   `resume` connects at once. Endpoints use `https:`, `wss:` or `tcp:`, never
   plain `http:` or `ws:`, so iOS needs no exception.
-- **One backoff.** A transport reconnects after 0.5 s, doubling to at most
-  30 s, with ±20 % jitter (`tunnelReconnectDelayMs`), without a limit on tries
-  while in the foreground. It never queues or resends a frame across a
+- **One backoff.** A transport reconnects after 0.5 s, doubling to a base of
+  at most 30 s, with ±20 % jitter (so at most 36 s; `tunnelReconnectDelayMs`),
+  without a limit on tries while in the foreground. It never queues or resends a frame across a
   reconnect.
 
 Nothing that lets a phone or another non-loopback client reach a host merges
@@ -52,8 +56,9 @@ before HAL-5199 is merged. The types in this record open nothing.
 
 ## Consequences
 
-- A reviewer can check one rule: no code outside the remote gateway passes a
-  port to a `TunnelProvider`, and the gateway imports nothing that reads
+- A test can check the one-target rule: a config aimed at any port other
+  than the gateway's is refused with a `RangeError` before the provider is
+  called. A reviewer still checks that the gateway imports nothing that reads
   secrets or calls the bridge.
 - Phone features are limited to what the protocol lists. Adding one (say,
   reading a file) needs a protocol version and a decision on whether it is

@@ -340,6 +340,8 @@ export {
   trustStoreVersion,
 } from "./trust-store.ts";
 export {
+  assertGatewayTunnelConfig,
+  assertTunnelConfig,
   type TunnelCapabilities,
   type TunnelConfig,
   type TunnelEndpoint,

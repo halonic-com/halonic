@@ -115,7 +115,8 @@ next to the ports:
 | `sandboxPackageManagers` | the package managers a `SandboxFix` can name, behind `SandboxPackageManager` | `sandbox-check-fix` |
 | `sandboxUnavailableReasons`, `adapterFailures`, `modelCallErrorReasons` | the lists behind `SandboxUnavailableReason`, `AdapterFailure` and `ModelCallErrorReason` | `sandbox-check-reason`, `run-failure-error`, `model-call-error` |
 | `tunnelStates`, `tunnelReasons` | the lists behind `TunnelState` and `TunnelReason` | `tunnel-provider` |
-| `tunnelReconnectDelayMs`, `tunnelBackoff` | how long a `TunnelTransport` waits before each reconnect: 0.5 s, doubling, at most 30 s, ±20 % jitter | `tunnel-resolver` |
+| `assertTunnelConfig`, `assertGatewayTunnelConfig` | the runtime check of a `TunnelConfig`, and the host's check that it points at its own gateway port | `tunnel-provider` |
+| `tunnelReconnectDelayMs`, `tunnelBackoff` | how long a `TunnelTransport` waits before each reconnect: 0.5 s, doubling to a base of at most 30 s, ±20 % jitter | `tunnel-resolver` |
 
 The types these use (`RunFilter`, `RecordChange`, `ToolCall` and the rest) are exported from
 `src/index.ts` and documented where they are declared.

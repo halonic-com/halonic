@@ -15,7 +15,7 @@ verifies("ports.tunnel-resolver", () => {
     ]);
   });
 
-  it("waits at most 30 s, moved by up to 20 % either way", () => {
+  it("waits a base of at most 30 s, moved by up to 20 % either way, so at most 36 s", () => {
     expect(tunnelReconnectDelayMs(20, 0.5)).toBe(30_000);
     expect(tunnelReconnectDelayMs(20, 0)).toBe(24_000);
     expect(tunnelReconnectDelayMs(20, 0.999_999)).toBeLessThanOrEqual(36_000);
@@ -25,6 +25,12 @@ verifies("ports.tunnel-resolver", () => {
   it("refuses a try that isn't a whole number from 1", () => {
     expect(() => tunnelReconnectDelayMs(0, 0.5)).toThrow(RangeError);
     expect(() => tunnelReconnectDelayMs(1.5, 0.5)).toThrow(RangeError);
+  });
+
+  it("refuses a random number outside 0 up to (not including) 1", () => {
+    for (const random of [Number.NaN, -0.1, 1, 2]) {
+      expect(() => tunnelReconnectDelayMs(1, random)).toThrow(RangeError);
+    }
   });
 
   it("starts the backoff again after 30 s open", () => {

@@ -5,8 +5,9 @@ export const tunnelResolverVersion = 1;
 
 /**
  * How a transport waits between tries to reconnect: `firstDelayMs` after the
- * first drop, times `factor` after each failed try, at most `maxDelayMs`, each
- * delay moved by up to `jitter` of itself either way. A connection that stays
+ * first drop, times `factor` after each failed try, a base of at most
+ * `maxDelayMs`, each delay moved by up to `jitter` of itself either way (so
+ * up to 36 s). A connection that stays
  * open for `resetAfterMs` starts again from `firstDelayMs`.
  */
 export const tunnelBackoff = {
@@ -19,13 +20,19 @@ export const tunnelBackoff = {
 
 /**
  * The delay before reconnect try `attempt` (1 for the first try after a
- * drop), by {@link tunnelBackoff}. `random` is a number from 0 up to 1, such
- * as `Math.random()`; 0.5 gives the delay without jitter. Every transport
- * uses this one rule, so phones and the fake provider back off alike.
+ * drop), by {@link tunnelBackoff}. `random` is a number from 0 up to (not
+ * including) 1, such as `Math.random()`; 0.5 gives the delay without jitter.
+ * Any other `random` (NaN, negative, 1 or more) throws a `RangeError`, since
+ * a timer would read the NaN or negative delay as 0 and reconnect in a tight
+ * loop. Every transport uses this one rule, so phones and the fake provider
+ * back off alike.
  */
 export function tunnelReconnectDelayMs(attempt: number, random: number): number {
   if (!Number.isInteger(attempt) || attempt < 1) {
     throw new RangeError(`attempt must be a whole number from 1: ${attempt}`);
+  }
+  if (!(random >= 0 && random < 1)) {
+    throw new RangeError(`random must be from 0 up to (not including) 1: ${random}`);
   }
   const { firstDelayMs, factor, maxDelayMs, jitter } = tunnelBackoff;
   const base = Math.min(maxDelayMs, firstDelayMs * factor ** (attempt - 1));

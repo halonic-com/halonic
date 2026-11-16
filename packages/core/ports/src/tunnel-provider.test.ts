@@ -1,6 +1,8 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
 import {
+  assertGatewayTunnelConfig,
+  assertTunnelConfig,
   type TunnelConfig,
   type TunnelEndpoint,
   type TunnelProvider,
@@ -28,6 +30,43 @@ verifies("ports.tunnel-provider", () => {
     // @ts-expect-error: a LAN address is not loopback either
     const lan: TunnelConfig = { gateway: { host: "192.168.1.20", port: 4100 } };
     expectTypeOf([config, everywhere, lan]).toEqualTypeOf<TunnelConfig[]>();
+  });
+
+  it("checks a config at runtime, for one read from JSON", () => {
+    const gateway = (host: unknown, port: unknown) => ({ gateway: { host, port } });
+    expect(() => assertTunnelConfig(gateway("127.0.0.1", 4100))).not.toThrow();
+    expect(() => assertTunnelConfig(gateway("::1", 4100))).not.toThrow();
+    for (const bad of [
+      gateway("0.0.0.0", 4100),
+      gateway("192.168.1.20", 4100),
+      gateway("localhost", 4100),
+      gateway("127.0.0.1", 0),
+      gateway("127.0.0.1", 65_536),
+      gateway("127.0.0.1", 4100.5),
+      gateway("127.0.0.1", "4100"),
+      gateway("127.0.0.1", Number.NaN),
+      { ...gateway("127.0.0.1", 4100), bridge: { port: 4200 } },
+      { gateway: { host: "127.0.0.1", port: 4100, path: "/bridge" } },
+      { gateway: { host: "127.0.0.1" } },
+      { gateway: null },
+      null,
+      "127.0.0.1:4100",
+    ]) {
+      expect(() => assertTunnelConfig(bad)).toThrow(RangeError);
+    }
+  });
+
+  it("lets the host point a tunnel only at its own gateway port", () => {
+    const at = (port: number) => ({ gateway: { host: "127.0.0.1", port } });
+    expect(() => assertGatewayTunnelConfig(at(4100), 4100)).not.toThrow();
+    expect(() =>
+      assertGatewayTunnelConfig({ gateway: { host: "::1", port: 4100 } }, 4100),
+    ).not.toThrow();
+    expect(() => assertGatewayTunnelConfig(at(4200), 4100)).toThrow(RangeError);
+    expect(() => assertGatewayTunnelConfig(at(4100), 0)).toThrow(RangeError);
+    expect(() =>
+      assertGatewayTunnelConfig({ gateway: { host: "0.0.0.0", port: 4100 } }, 4100),
+    ).toThrow(RangeError);
   });
 
   typeTest("gives a reason exactly when the tunnel is degraded or down", () => {
