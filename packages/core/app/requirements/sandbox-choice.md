@@ -42,5 +42,7 @@ The sandbox choice shall read the person's saved sandbox setting and report whic
   then the trust check runs again, and the backend is off for this start if it fails.
 - Given MXC in use,
   then its limits are listed and `name-lookups-leave` is a residual when the trust check saw it.
+- Given `srt-wsl` in use and a backend that says its security updates are overdue,
+  then `security-updates-overdue` is a residual and the backend stays in use; its last date is `securityUpdatesLast`, or `null` when there is none (never ran, unknown, or the call failed).
 - Given a store that gives back `{ backend: "docker" }`,
   then the choice throws and `current()` stays as it was.

@@ -32,6 +32,10 @@ mod choice;
 mod start;
 use start::running_host;
 
+#[path = "agent_host_updates.rs"]
+mod updates;
+pub use updates::{SecurityUpdatesAnswer, agent_host_security_updates};
+
 #[path = "agent_host_life.rs"]
 mod life;
 pub use life::{end_page_streams, host_answers, stop_host};
@@ -87,6 +91,9 @@ pub struct AgentHostState {
     /// Tells a stream from an earlier one the page gave the same id.
     next_serial: AtomicU64,
     client: Mutex<Option<reqwest::Client>>,
+    /// The distro's security updates as read when the host there started, or
+    /// `None` for a host beside the shell.
+    security_updates: Mutex<Option<SecurityUpdatesAnswer>>,
     launch: Launch,
 }
 

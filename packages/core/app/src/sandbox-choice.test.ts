@@ -14,6 +14,7 @@ import {
   type SandboxBackend,
   type SandboxBackendState,
   SandboxChoiceService,
+  type SecurityUpdatesState,
   sandboxBackendStates,
 } from "./sandbox-choice.ts";
 import type { CanaryFindings } from "./sandbox-trust-check.ts";
@@ -54,6 +55,8 @@ interface FakeBackend {
   check?: SandboxCheck;
   offered?: boolean;
   limits?: LimitCode[];
+  /** Where its security updates stand; the call throws when it is an Error. */
+  securityUpdates?: SecurityUpdatesState | Error;
   /** What each canary run finds, in turn; the last one repeats. Without it every run finds nothing. */
   canary?: CanaryFindings[];
   /** Each canary probe waits for this before it reports. */
@@ -87,6 +90,14 @@ function machine(setup: Machine = {}) {
       id,
       offered: async () => fake.offered ?? true,
       limits: fake.limits ?? [],
+      ...(fake.securityUpdates === undefined
+        ? {}
+        : {
+            securityUpdates: async () => {
+              if (fake.securityUpdates instanceof Error) throw fake.securityUpdates;
+              return fake.securityUpdates ?? { overdue: false };
+            },
+          }),
       sandbox: {
         check: async () => {
           sandboxChecks[id] = (sandboxChecks[id] ?? 0) + 1;
@@ -248,6 +259,30 @@ verifies("app.sandbox-choice", () => {
       limits: ["name-lookups-leave", "project-folder-writable"],
       residuals: ["name-lookups-leave"],
     });
+  });
+
+  it("adds security-updates-overdue as a residual, with the last date or none", async () => {
+    const overdue = async (securityUpdates: SecurityUpdatesState | Error) => {
+      const { choice } = machine({
+        platform: "win32",
+        backends: { "srt-wsl": { check: ok, securityUpdates } },
+      });
+      return statusOf(await choice.start(), "srt-wsl");
+    };
+    expect(await overdue({ overdue: true, last: "2026-11-01T03:00:00Z" })).toMatchObject({
+      state: "in-use",
+      residuals: ["name-lookups-leave", "security-updates-overdue"],
+      securityUpdatesLast: "2026-11-01T03:00:00Z",
+    });
+    // Never ran or unknown: no date, not an empty string. The same for a call that fails.
+    for (const state of [{ overdue: true, last: null } as const, new Error("wsl.exe failed")]) {
+      const status = await overdue(state);
+      expect(status).toMatchObject({ state: "in-use", securityUpdatesLast: null });
+      expect(status.residuals).toContain("security-updates-overdue");
+    }
+    const current = await overdue({ overdue: false });
+    expect(current.residuals).not.toContain("security-updates-overdue");
+    expect(current).not.toHaveProperty("securityUpdatesLast");
   });
 
   it("runs nothing when the check fails, without falling through or changing the setting", async () => {

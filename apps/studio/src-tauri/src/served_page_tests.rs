@@ -140,6 +140,7 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "agent_host_request",
         "agent_host_stream",
         "agent_host_stream_end",
+        "agent_host_security_updates",
         "http_fetch",
         "http_fetch_abort",
         "fs_list",
@@ -438,7 +439,8 @@ fn served_page_test_sees_the_agent_host_granted_to_the_local_main_window_only() 
         json!([
             "allow-agent-host-request",
             "allow-agent-host-stream",
-            "allow-agent-host-stream-end"
+            "allow-agent-host-stream-end",
+            "allow-agent-host-security-updates"
         ])
     );
 }
