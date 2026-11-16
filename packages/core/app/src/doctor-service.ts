@@ -32,6 +32,7 @@ import {
   modelsLine,
 } from "./doctor-models-line.ts";
 import { type MxcLine, mxcLine } from "./doctor-mxc-line.ts";
+import { type NoSandboxLine, noSandboxLine } from "./doctor-no-sandbox-line.ts";
 import {
   type AgentSettingsFolder,
   type DoctorHarness,
@@ -134,6 +135,8 @@ export interface DoctorReport {
   sandbox: SandboxLine;
   /** Only where MXC is offered and the sandbox choice has started. */
   mxc?: MxcLine;
+  /** Only while the person's choice is no sandbox. */
+  noSandbox?: NoSandboxLine;
   /** Only when a harness is ready or an agent uses one. */
   harnesses?: HarnessesLine;
   /** Only when the host found a problem with the Node.js that runs Halonic. */
@@ -201,6 +204,8 @@ export class DoctorService {
     const choice = this.options.sandboxChoice?.current() ?? null;
     const mxc = choice === null ? undefined : mxcLine(choice);
     if (mxc !== undefined) report.mxc = mxc;
+    const noSandbox = choice === null ? undefined : noSandboxLine(choice);
+    if (noSandbox !== undefined) report.noSandbox = noSandbox;
     const harnessLine = harnessesLine(
       harnesses.detected,
       harnessAgents(workspace),
@@ -304,8 +309,8 @@ function agentSettingsFolders(workspace: DoctorWorkspace | null): AgentSettingsF
 }
 
 function linesOf(report: Omit<DoctorReport, "summary">): DoctorLine[] {
-  const { workspace, models, sandbox, mxc, harnesses, node, disk } = report;
-  return [workspace, models, sandbox, mxc, harnesses, node, disk].filter(
+  const { workspace, models, sandbox, mxc, noSandbox, harnesses, node, disk } = report;
+  return [workspace, models, sandbox, mxc, noSandbox, harnesses, node, disk].filter(
     (line) => line !== undefined,
   );
 }

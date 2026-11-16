@@ -344,49 +344,8 @@ export {
 } from "./run-source.ts";
 export { type RunStanding, type RunWait, runStanding, runWait } from "./run-standing.ts";
 export { type RunStep, runSteps, type StepEnd } from "./run-steps.ts";
-export {
-  mxcFencesLocalTools,
-  mxcFencesRunner,
-  type RunnerBackend,
-  type RunnerFence,
-  type RunnerFenceInputs,
-  type RunnerUnfencedReason,
-  runnerFence,
-  runnerUnfencedReasons,
-} from "./runner-fence.ts";
-export {
-  type GatedRunner,
-  type GatedStart,
-  type MxcFence,
-  RunnerStartGate,
-  type RunnerStartGateOptions,
-  type StartInSandbox,
-} from "./runner-start-gate.ts";
-export {
-  type BackendSetup,
-  defaultBackendOrder,
-  type LimitCode,
-  limitCodes,
-  type SandboxBackend,
-  type SandboxBackendId,
-  type SandboxBackendState,
-  type SandboxBackendStatus,
-  type SandboxChoice,
-  type SandboxChoiceOptions,
-  SandboxChoiceService,
-  sandboxBackendIds,
-  sandboxBackendStates,
-} from "./sandbox-choice.ts";
-export {
-  type CanaryFindings,
-  runTrustCheck,
-  type TrustCanary,
-  type TrustCheckFailure,
-  type TrustCheckLeak,
-  type TrustCheckResult,
-  trustCheckFailures,
-  trustCheckLeaks,
-} from "./sandbox-trust-check.ts";
+// biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
+export * from "./sandbox-exports.ts";
 export {
   SaveScheduler,
   type SaveSchedulerOptions,
@@ -452,12 +411,6 @@ export {
   type TrustedRunnerSubject,
 } from "./trusted-runner-start.ts";
 export { UndoHistory, undoLimit } from "./undo-history.ts";
-export {
-  type StopUnfencedRun,
-  type UnfencedRunDecision,
-  UnfencedRuns,
-  type UnfencedRunsOptions,
-} from "./unfenced-runs.ts";
 export { fenceEnd, fenceStart, fenceUntrusted } from "./untrusted-fence.ts";
 export { type ActiveRun, type Wait, waitsInProgress } from "./waits-in-progress.ts";
 export {

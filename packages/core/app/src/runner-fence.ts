@@ -14,6 +14,7 @@ import type { SandboxCheck, SandboxFence } from "@halonicjs/ports";
  * here, and Studio words it in one place.
  */
 export const runnerUnfencedReasons = [
+  "no-sandbox",
   "windows",
   "container",
   "not-supported",
@@ -82,11 +83,17 @@ export interface RunnerFenceInputs {
   readonly backend?: RunnerBackend;
   /** Whether MXC counts as a fence for the runner; {@link mxcFencesRunner} when left out. */
   readonly mxcFences?: boolean;
+  /** Whether the person chose to continue without a sandbox. It beats every other reason. */
+  readonly noSandbox?: boolean;
 }
 
 /**
  * The fence status of plugin and integration code, from this computer's
  * sandbox check and, once started, the session's fence proof.
+ *
+ * When the person chose to continue without a sandbox (`noSandbox`), it is
+ * always `not-fenced` with `no-sandbox`, whatever the platform and the check
+ * say, so the cause shows as the setting and not as `windows`.
  *
  * On Windows 11 with MXC chosen, and {@link mxcFencesRunner} on, the status
  * follows MXC's own check and fence proof like any other sandbox. Otherwise,
@@ -112,7 +119,9 @@ export function runnerFence({
   proof,
   backend = "srt",
   mxcFences = mxcFencesRunner,
+  noSandbox = false,
 }: RunnerFenceInputs): RunnerFence {
+  if (noSandbox) return { state: "not-fenced", reason: "no-sandbox" };
   const mxc = backend === "mxc" && mxcFences;
   if (platform === "win32" && !mxc) {
     return { state: "not-fenced", reason: "windows" };
