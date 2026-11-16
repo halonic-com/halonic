@@ -103,10 +103,10 @@ verifies("agent-host.gateway-run-ledger", () => {
       expect(bodies[1]).toEqual({ type: "state", state: "waiting" });
     });
 
-    it("judges a read normal", () => {
+    it("judges a read risky too", () => {
       const ledger = startedLedger();
       ledger.event("run", approvalRequested("Read", "call-1"));
-      expect(ledger.approvalRisk("run", "approval-1")).toBe("normal");
+      expect(ledger.approvalRisk("run", "approval-1")).toBe("risky");
     });
 
     it("settles an approval when a decision is passed on, and runs again", async () => {
@@ -180,6 +180,40 @@ verifies("agent-host.gateway-run-ledger", () => {
       ledger.event("nobody", finishedEvent("x"));
       ledger.event("run", { ...finishedEvent("sub"), parent: "writer" } as HarnessEvent);
       expect(ledger.list()[0]?.lastSeq).toBe(1);
+    });
+
+    it("answers a watch from past the last event with history-gone", () => {
+      const ledger = startedLedger();
+      expect(ledger.watch("run", 9, () => {}).kind).toBe("history-gone");
+    });
+
+    it("ends a watch whose unseen events were trimmed, and says so", async () => {
+      const ledger = startedLedger({ maxEvents: 3 });
+      const seen: number[] = [];
+      let gone = false;
+      ledger.watch(
+        "run",
+        1,
+        (event) => seen.push(event.seq),
+        () => {
+          gone = true;
+        },
+      );
+      for (let i = 0; i < 6; i += 1) ledger.event("run", finishedEvent(`out ${i}`));
+      await Promise.resolve();
+      expect(gone).toBe(true);
+      expect(seen).toEqual([]);
+    });
+
+    it("logs and drops an error a watcher throws", async () => {
+      const logs: string[] = [];
+      const ledger = startedLedger({ log: (text: string) => logs.push(text) });
+      ledger.watch("run", 0, () => {
+        throw new Error("socket closed");
+      });
+      await Promise.resolve();
+      expect(() => ledger.event("run", finishedEvent("done"))).not.toThrow();
+      expect(logs.join("")).toContain("socket closed");
     });
   });
 });

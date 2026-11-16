@@ -18,10 +18,31 @@ export class RunTable {
   private readonly runs = new Map<string, HarnessRun>();
   private stopping = false;
   private readonly observer: RunObserver | undefined;
+  private readonly log: (text: string) => void;
 
-  /** @param observer - told about each run's start, events, answers and end */
-  constructor(observer?: RunObserver) {
+  /**
+   * @param observer - told about each run's start, events, answers and end;
+   *   an error it throws is logged and dropped, never failing the run
+   * @param log - where such an error is written
+   */
+  constructor(
+    observer?: RunObserver,
+    log: (text: string) => void = (text) => process.stderr.write(text),
+  ) {
     this.observer = observer;
+    this.log = log;
+  }
+
+  /** Tells the observer, so that a fault in it never breaks a local run. */
+  private tell(tell: (observer: RunObserver) => void): void {
+    if (this.observer === undefined) return;
+    try {
+      tell(this.observer);
+    } catch (error) {
+      this.log(
+        `A run observer failed: ${error instanceof Error ? error.message : String(error)}\n`,
+      );
+    }
   }
 
   /** True once {@link RunTable.cancelAll} has started: the host starts no more runs. */
@@ -32,13 +53,13 @@ export class RunTable {
   add(run: HarnessRun, task: HarnessTask): string {
     const id = randomUUID();
     this.runs.set(id, run);
-    this.observer?.started(id, task);
+    this.tell((observer) => observer.started(id, task));
     return id;
   }
 
   /** The run reported an event. */
   record(id: string, event: HarnessEvent): void {
-    this.observer?.event(id, event);
+    this.tell((observer) => observer.event(id, event));
   }
 
   /**
@@ -51,7 +72,7 @@ export class RunTable {
     const run = this.runs.get(id);
     if (run === undefined) throw new Error("The agent host has no harness run with this id.");
     await run.send(input);
-    this.observer?.answered(id, input);
+    this.tell((observer) => observer.answered(id, input));
   }
 
   get(id: string): HarnessRun | undefined {
@@ -61,7 +82,7 @@ export class RunTable {
   /** Forgets a run whose stream has ended, `failed` or not. */
   remove(id: string, outcome: "done" | "failed"): void {
     this.runs.delete(id);
-    this.observer?.ended(id, outcome);
+    this.tell((observer) => observer.ended(id, outcome));
   }
 
   /** Cancels every run, when the host stops. One that fails to stop doesn't stop the others. */

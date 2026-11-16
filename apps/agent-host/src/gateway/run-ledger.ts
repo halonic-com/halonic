@@ -30,6 +30,8 @@ export interface RunLedgerOptions {
   /** The most finished sessions kept; the one that started longest ago goes first. */
   maxFinished?: number;
   now?: () => Date;
+  /** Where a fault in a watcher's callback is written. */
+  log?: (text: string) => void;
 }
 
 const defaultMaxEvents = 500;
@@ -46,6 +48,8 @@ interface PendingApproval {
 
 interface Watcher {
   readonly onEvent: (event: LedgerEvent) => void;
+  /** Told once when events the watcher hadn't seen were trimmed; it is stopped after. */
+  readonly onHistoryGone: (() => void) | undefined;
   /** The `seq` of the last event handed over. */
   delivered: number;
   /** False until the replay may start, which is after `watch` has returned. */
@@ -91,11 +95,13 @@ export class RunLedger {
   readonly #maxEvents: number;
   readonly #maxFinished: number;
   readonly #now: () => Date;
+  readonly #log: (text: string) => void;
 
   constructor(options: RunLedgerOptions = {}) {
     this.#maxEvents = options.maxEvents ?? defaultMaxEvents;
     this.#maxFinished = options.maxFinished ?? defaultMaxFinished;
     this.#now = options.now ?? (() => new Date());
+    this.#log = options.log ?? ((text) => process.stderr.write(text));
   }
 
   /** A run has started: its prompt is the first message. */
@@ -159,14 +165,30 @@ export class RunLedger {
 
   /**
    * Streams the events after `afterSeq` and then each new one, never calling
-   * `onEvent` before this has returned.
+   * `onEvent` before this has returned. An error `onEvent` throws is logged and
+   * dropped. A `afterSeq` past the last event is `history-gone`, as the phone
+   * knows a session this host doesn't. When events the watcher hadn't seen are
+   * trimmed, `onHistoryGone` is called and the watch ends.
    */
-  watch(id: string, afterSeq: number, onEvent: (event: LedgerEvent) => void): LedgerWatch {
+  watch(
+    id: string,
+    afterSeq: number,
+    onEvent: (event: LedgerEvent) => void,
+    onHistoryGone?: () => void,
+  ): LedgerWatch {
     const session = this.#sessions.get(id);
     if (session === undefined) return { kind: "unknown-session" };
     const oldest = session.events[0]?.seq ?? session.nextSeq;
+    if (afterSeq > session.lastSeq) return { kind: "history-gone" };
     if (afterSeq > 0 && afterSeq < oldest - 1) return { kind: "history-gone" };
-    const watcher: Watcher = { onEvent, delivered: afterSeq, live: false, stopped: false };
+    const watcher: Watcher = {
+      onEvent,
+      onHistoryGone,
+      // From 0 the replay starts at the oldest event kept.
+      delivered: afterSeq === 0 ? Math.max(0, oldest - 1) : afterSeq,
+      live: false,
+      stopped: false,
+    };
     session.watchers.add(watcher);
     queueMicrotask(() => {
       watcher.live = true;
@@ -239,11 +261,29 @@ export class RunLedger {
 
   #deliver(session: LedgerSession, watcher: Watcher): void {
     if (!watcher.live) return;
+    const oldest = session.events[0]?.seq ?? session.nextSeq;
+    if (watcher.delivered < oldest - 1) {
+      watcher.stopped = true;
+      session.watchers.delete(watcher);
+      this.#guarded(() => watcher.onHistoryGone?.());
+      return;
+    }
     for (const event of session.events) {
       if (watcher.stopped) return;
       if (event.seq <= watcher.delivered) continue;
       watcher.delivered = event.seq;
-      watcher.onEvent(event);
+      this.#guarded(() => watcher.onEvent(event));
+    }
+  }
+
+  /** Runs a watcher's callback so that its fault never breaks the run that is recorded. */
+  #guarded(call: () => void): void {
+    try {
+      call();
+    } catch (error) {
+      this.#log(
+        `A gateway watcher failed: ${error instanceof Error ? error.message : String(error)}\n`,
+      );
     }
   }
 

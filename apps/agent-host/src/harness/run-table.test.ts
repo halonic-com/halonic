@@ -65,5 +65,23 @@ verifies("agent-host.gateway-run-ledger", () => {
         "no harness run",
       );
     });
+
+    it("logs and drops an error the observer throws, so the run is unharmed", async () => {
+      const logs: string[] = [];
+      const broken = () => {
+        throw new Error("socket closed");
+      };
+      const table = new RunTable(
+        { started: broken, event: broken, answered: broken, ended: broken },
+        (text) => logs.push(text),
+      );
+      const run = new FakeRun();
+      const id = table.add(run, task);
+      table.record(id, { type: "agent.started", agent: "writer" } as HarnessEvent);
+      await expect(table.send(id, { type: "answer", text: "yes" })).resolves.toBeUndefined();
+      expect(() => table.remove(id, "done")).not.toThrow();
+      expect(table.get(id)).toBeUndefined();
+      expect(logs).toHaveLength(4);
+    });
   });
 });

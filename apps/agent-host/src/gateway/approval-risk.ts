@@ -1,19 +1,14 @@
 /**
- * The tools whose approval is `normal`: they only read what is already inside
- * the sandbox. The names are those the harnesses report in `approval.requested`.
- */
-const readOnlyTools: ReadonlySet<string> = new Set(["Read", "Glob", "Grep", "LS", "NotebookRead"]);
-
-/**
  * How risky an approval is, as the host judges it from the tool the agent
  * wants to call, never from anything the phone or the tool's server says.
  *
- * Fails closed: a tool counts as `normal` only when it is known to only read
- * inside the sandbox. A shell command, a file write, anything that reads a
- * secret or leaves the sandbox, and any tool the host doesn't know, is
- * `risky`, and a phone may answer it only when the person allowed that on
- * this host's desktop.
+ * Fails closed: every tool is `risky` for now. Even a read can leave the
+ * working folder (Claude Code asks about `Read` exactly when the path is
+ * outside it), and for a run outside Halonic's fence nothing keeps that read
+ * from a secret. A tool becomes `normal` only once the host knows the run is
+ * inside the fence and the tool only reads inside it. A phone may answer a
+ * `risky` approval only when the person allowed that on this host's desktop.
  */
-export function judgeApprovalRisk(tool: string): "normal" | "risky" {
-  return readOnlyTools.has(tool) ? "normal" : "risky";
+export function judgeApprovalRisk(_tool: string): "normal" | "risky" {
+  return "risky";
 }
