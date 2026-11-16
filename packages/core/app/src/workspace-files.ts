@@ -168,7 +168,9 @@ export class WorkspaceFiles {
    * Renames a file as one undo step: its text moves to the new path, the old
    * path is deleted when saved and `rewrites` change the files that name it.
    * The old file does not go to the trash, because its text lives on at the
-   * new path; Git sees the rename from the identical text.
+   * new path; Git sees the rename from the identical text. When the new file's
+   * write is held, because it changed outside Halonic, the old file does go to
+   * the trash, as the save writes the new file first.
    *
    * @param rewrites - new text by path for other files that name the old path; one for `from` is the text the new file gets
    * A rename that only changes the case of the name, such as `a.yaml` to `A.yaml`, is allowed on a disk that
@@ -273,7 +275,7 @@ export class WorkspaceFiles {
   }
 
   private async saveOnce(): Promise<number> {
-    const saving = deletesFirstOnSameName(Object.entries(this.changes));
+    const saving = this.renameDeletesLast(deletesFirstOnSameName(Object.entries(this.changes)));
     if (saving.length === 0) {
       return 0;
     }
@@ -286,7 +288,7 @@ export class WorkspaceFiles {
         const expected = await this.expectedFor(path, before);
         const result =
           text === null
-            ? await this.delete(path, before, expected, this.isMoved(path, saving))
+            ? await this.delete(path, before, expected, this.isMoved(path, saving, held))
             : await this.store.write(path, text, { expected });
         if (result.status === "changed-on-disk") {
           // `known` stays: another save must not overwrite the outside text. Only a fresh read moves it.
@@ -450,11 +452,34 @@ export class WorkspaceFiles {
     }
   }
 
-  /** Whether the delete of this path is half of a rename whose new file is saved in the same go with the text the rename gave it. */
-  private isMoved(path: string, saving: readonly [string, string | null][]): boolean {
+  /**
+   * Moves the delete of a renamed file behind the write of its new file, so the
+   * delete knows whether that write was held. A rename that only changes the case
+   * keeps its order: both names are one file, so the delete must come first.
+   */
+  private renameDeletesLast(entries: [string, string | null][]): [string, string | null][] {
+    const last = ([path, text]: [string, string | null]) => {
+      const move = this.moves.get(path);
+      return text === null && move !== undefined && move.to.toLowerCase() !== path.toLowerCase();
+    };
+    return [...entries.filter((entry) => !last(entry)), ...entries.filter(last)];
+  }
+
+  /**
+   * Whether the delete of this path is half of a rename whose new file is saved in the same go with the
+   * text the rename gave it. A new file that was held is not saved, so the old file goes to the trash:
+   * its text would otherwise live only as an unsaved change.
+   */
+  private isMoved(
+    path: string,
+    saving: readonly [string, string | null][],
+    held: readonly HeldFile[],
+  ): boolean {
     const move = this.moves.get(path);
     return (
-      move !== undefined && saving.some(([each, text]) => each === move.to && text === move.text)
+      move !== undefined &&
+      !held.some((file) => file.path === move.to) &&
+      saving.some(([each, text]) => each === move.to && text === move.text)
     );
   }
 
