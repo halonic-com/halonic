@@ -1,5 +1,13 @@
 // @vitest-environment jsdom
-import { ClipboardProvider, PresentationProvider } from "@halonicjs/studio-kit";
+import {
+  ClipboardProvider,
+  COMMAND_COPIED,
+  COMMAND_NOT_COPIED,
+  createToastStore,
+  PresentationProvider,
+  type ToastStore,
+  ToastStoreProvider,
+} from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it } from "vitest";
@@ -29,7 +37,12 @@ async function settled(milliseconds = 0): Promise<void> {
 async function openOn(
   presentation: "desktop" | "phone",
   run: ReturnType<typeof summaryWith>,
-  hooks: { copied?: string[]; openModels?: () => void } = {},
+  hooks: {
+    copied?: string[];
+    refuseCopy?: boolean;
+    toasts?: ToastStore;
+    openModels?: () => void;
+  } = {},
 ) {
   const log = logOf(run.id, [
     [0, entered("draft")],
@@ -40,17 +53,19 @@ async function openOn(
     <ClipboardProvider
       writeClipboard={async (text) => {
         hooks.copied?.push(text);
-        return true;
+        return hooks.refuseCopy !== true;
       }}
     >
-      <PresentationProvider presentation={presentation}>
-        <RunView
-          list={list}
-          runId={run.id}
-          now={() => mondayMorning}
-          {...(hooks.openModels === undefined ? {} : { openModels: hooks.openModels })}
-        />
-      </PresentationProvider>
+      <ToastStoreProvider store={hooks.toasts ?? createToastStore()}>
+        <PresentationProvider presentation={presentation}>
+          <RunView
+            list={list}
+            runId={run.id}
+            now={() => mondayMorning}
+            {...(hooks.openModels === undefined ? {} : { openModels: hooks.openModels })}
+          />
+        </PresentationProvider>
+      </ToastStoreProvider>
     </ClipboardProvider>,
   );
   await settled();
@@ -98,6 +113,20 @@ verifies("runs.run-view.failure-banners", () => {
     await act(async () => button(root, "Open Models")?.click());
     expect(copied).toEqual(["ollama pull llama3.1:70b"]);
     expect(opened).toBe(1);
+  });
+
+  it("confirms the copy with a Copied toast", async () => {
+    const toasts = createToastStore();
+    const root = await openOn("desktop", missing, { toasts });
+    await act(async () => button(root, "Copy command")?.click());
+    expect(toasts.list()).toMatchObject([{ tone: "success", title: COMMAND_COPIED }]);
+  });
+
+  it("says to copy it by hand when the clipboard refuses", async () => {
+    const toasts = createToastStore();
+    const root = await openOn("desktop", missing, { toasts, refuseCopy: true });
+    await act(async () => button(root, "Copy command")?.click());
+    expect(toasts.list()).toMatchObject([{ tone: "warning", title: COMMAND_NOT_COPIED }]);
   });
 
   it("leaves out Open Models where the page can't open it", async () => {

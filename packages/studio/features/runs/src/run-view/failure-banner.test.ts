@@ -89,7 +89,7 @@ verifies("runs.run-view.failure-banners", () => {
         false,
       );
       expect(lines(banner)).toEqual([
-        "Ollama is answering, but it doesn't have llama3.2 yet. Run `ollama pull llama3.2` in a terminal, or pick another model in Models.",
+        "Ollama is answering, but it doesn't have llama3.2 yet. Run ollama pull llama3.2 in a terminal, or pick another model in Models.",
       ]);
       expect(fixes(banner)).toEqual([
         { kind: "copy-command", command: "ollama pull llama3.2" },
@@ -113,6 +113,11 @@ verifies("runs.run-view.failure-banners", () => {
 
     it("keeps the general banner for a cloud provider's missing model, and waits for the log", () => {
       const log = [call("claude", "claude-sonnet"), failedEvent()];
+      expect(causeBanner(failed("model-missing"), log, context, false)).toBeUndefined();
+    });
+
+    it("keeps the general banner for a provider that is no longer in the workspace", () => {
+      const log = [call("gone", "llama3.2"), failedEvent()];
       expect(causeBanner(failed("model-missing"), log, context, false)).toBeUndefined();
       expect(causeBanner(failed("model-missing"), undefined, context, false)).toBeUndefined();
     });

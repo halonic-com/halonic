@@ -112,7 +112,8 @@ function modelOutOfMemory(
 }
 
 /**
- * `model-missing`: only a local provider can lack a model it was asked for. Ollama's line tells
+ * `model-missing`: only a local provider can lack a model it was asked for; a provider that is
+ * cloud or no longer in the workspace keeps the general banner. Ollama's line tells
  * how to pull it and offers the command; another local provider says to download it there.
  */
 function modelMissing(
@@ -121,7 +122,7 @@ function modelMissing(
   phone: boolean,
 ): RunBanner | undefined {
   const { provider, model } = facts;
-  if (provider === undefined || model === undefined || context.providerKind(provider) === "cloud") {
+  if (provider === undefined || model === undefined || context.providerKind(provider) !== "local") {
     return undefined;
   }
   const ollama = provider === "ollama";

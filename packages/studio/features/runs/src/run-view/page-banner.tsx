@@ -1,6 +1,14 @@
 import type { SandboxStartCheck } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
-import { Callout, type CalloutAction, useWriteClipboard } from "@halonicjs/studio-kit";
+import {
+  Callout,
+  type CalloutAction,
+  COMMAND_COPIED,
+  COMMAND_NOT_COPIED,
+  type ToastStore,
+  useToastStore,
+  useWriteClipboard,
+} from "@halonicjs/studio-kit";
 import type { InstructionTrustHost, SourcedRun } from "../api.ts";
 import { failureWords } from "../failure-words.ts";
 import { runPageWords } from "../run-words.ts";
@@ -131,6 +139,7 @@ function Banner({
   readonly openModels?: (() => void) | undefined;
 }) {
   const writeClipboard = useWriteClipboard();
+  const toasts = useToastStore();
   if (banner === undefined) {
     return null;
   }
@@ -138,7 +147,9 @@ function Banner({
     return <p className="text-body">{banner.text}</p>;
   }
   const own = bannerAction(banner.action, reviewInInbox, openRun);
-  const fixes = (banner.fixes ?? []).flatMap((fix) => fixAction(fix, writeClipboard, openModels));
+  const fixes = (banner.fixes ?? []).flatMap((fix) =>
+    fixAction(fix, writeClipboard, toasts, openModels),
+  );
   const again =
     own === undefined && banner.tone === "danger" && runAgain !== undefined
       ? [{ label: runPageWords.runAgain, onClick: runAgain.start }]
@@ -181,11 +192,20 @@ function bannerAction(
 function fixAction(
   fix: BannerFix,
   writeClipboard: (text: string) => Promise<boolean>,
+  toasts: ToastStore | null,
   openModels: (() => void) | undefined,
 ): CalloutAction[] {
   if (fix.kind === "copy-command") {
     const { command } = fix;
-    return [{ label: failureWords.copyCommand, onClick: () => void writeClipboard(command) }];
+    // Confirmed like the CommandBox; the promise keeps the button busy until the copy settles.
+    const copy = async () => {
+      const copied = await writeClipboard(command);
+      toasts?.show({
+        tone: copied ? "success" : "warning",
+        title: copied ? COMMAND_COPIED : COMMAND_NOT_COPIED,
+      });
+    };
+    return [{ label: failureWords.copyCommand, onClick: copy }];
   }
   return openModels === undefined
     ? []

@@ -15,7 +15,7 @@ export const failureWords = {
     `Halonic couldn't reach ${capitalised(provider)}${host === undefined ? "" : ` at ${host}`} for the model ${model}. ${capitalised(provider)} may not be running on this computer. Start ${capitalised(provider)}, then run again.`,
   /** F6 (microcopy 15.3, `model-missing`): the server answers, but the model isn't in its list. */
   modelMissingOllama: (model: string) =>
-    `Ollama is answering, but it doesn't have ${model} yet. Run \`ollama pull ${model}\` in a terminal, or pick another model in Models.`,
+    `Ollama is answering, but it doesn't have ${model} yet. Run ollama pull ${model} in a terminal, or pick another model in Models.`,
   modelMissingOther: (provider: string, model: string) =>
     `${capitalised(provider)} is answering, but it doesn't have ${model} yet. Download it in ${capitalised(provider)}, or pick another model in Models.`,
   ollamaPullCommand: (model: string) => `ollama pull ${model}`,
