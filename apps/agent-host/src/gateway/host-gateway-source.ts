@@ -12,7 +12,8 @@ import type { RunLedger } from "./run-ledger.ts";
 export function hostGatewaySource(ledger: RunLedger, runs: RunTable): GatewaySessionSource {
   return {
     list: () => ledger.list(),
-    watch: (sessionId, afterSeq, onEvent) => ledger.watch(sessionId, afterSeq, onEvent),
+    watch: (sessionId, afterSeq, onEvent, onHistoryGone) =>
+      ledger.watch(sessionId, afterSeq, onEvent, onHistoryGone),
     approvalRisk: (sessionId, approvalId) => ledger.approvalRisk(sessionId, approvalId),
     answerApproval: async (sessionId, approvalId, decision) => {
       const callId = ledger.callIdOf(sessionId, approvalId);

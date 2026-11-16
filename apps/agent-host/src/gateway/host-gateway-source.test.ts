@@ -74,9 +74,34 @@ verifies("agent-host.remote-gateway", () => {
     it("watches a session's events in order", async () => {
       const { source, id } = waitingRun();
       const seen: number[] = [];
-      source.watch(id, 0, (event) => seen.push(event.seq));
+      source.watch(
+        id,
+        0,
+        (event) => seen.push(event.seq),
+        () => undefined,
+      );
       await Promise.resolve();
       expect(seen).toEqual([1, 2, 3]);
+    });
+
+    it("tells the gateway when events a watch hadn't been given are dropped", async () => {
+      const ledger = new RunLedger({ maxEvents: 2 });
+      const runs = new RunTable(ledger);
+      const id = runs.add(new FakeRun(), task);
+      const source = hostGatewaySource(ledger, runs);
+      let gone = 0;
+      source.watch(
+        id,
+        0,
+        () => undefined,
+        () => {
+          gone += 1;
+        },
+      );
+      // The watch isn't live until the next microtask, so these push the first event out of what is kept.
+      for (const text of ["a", "b", "c"]) ledger.answered(id, { type: "answer", text });
+      await Promise.resolve();
+      expect(gone).toBe(1);
     });
   });
 });
