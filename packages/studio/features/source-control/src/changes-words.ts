@@ -14,6 +14,8 @@ export const stateWords = {
   notARepositoryBody:
     "Halonic saves versions of this workspace so you can see what changed and go back.",
   turnOnHistory: "Turn on history",
+  /** Under "Keep a history of your work": what a folder without history means for saving (save model 2.8). */
+  historyIsOff: "History is off. Everything you save is used right away.",
   turnOnFailed: "Couldn't turn on history",
   noGitTitle: "Halonic needs git to keep versions.",
   installGit: "How to install git",
@@ -127,4 +129,21 @@ export const updatesWords = {
     "The shared copy and this workspace both have new versions, so they can't be combined here yet.",
   tryAgain: "Try again",
   alreadyWorking: "Halonic is already getting updates.",
+};
+
+/** History (checklist part 2, 2.9 and 2.10; microcopy revision 94, 16). */
+export const historyWords = {
+  title: "History",
+  loading: "Loading history",
+  loadFailed: "Couldn't load history",
+  tryAgain: "Try again",
+  noVersions: "No versions yet.",
+  showMore: "Show more",
+  today: "Today",
+  yesterday: "Yesterday",
+  /** The name of the box that shows the picked version. */
+  detailsLabel: (name: string) => `Version "${name}"`,
+  whatsInIt: "What's in it",
+  noFiles: "No workspace files changed.",
+  fileCount: (count: number) => (count === 1 ? "1 file" : `${count} files`),
 };
