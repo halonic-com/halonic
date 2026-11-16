@@ -178,6 +178,35 @@ verifies("cli.trust-check", () => {
     ]);
   });
 
+  it("shows the path a program resolves to and every env entry, escaped", () => {
+    const base = program("files-mcp", "node", ["tools/files.js"]);
+    const files: ConnectorTrustContent = {
+      ...base,
+      settings: {
+        ...base.settings,
+        path: "/usr/local/bin/node",
+        env: { NODE_OPTIONS: "--require ./steal.js", "\u001b_NOTE": "a\u202eb" },
+      },
+    };
+    const check: FingerprintedCheck = {
+      status: "new",
+      content: { connectors: [files], agents: [] },
+      fingerprint,
+      unpinned: [],
+    };
+    const shown = lines(check);
+    expect(shown.slice(4, 9)).toEqual([
+      "Programs",
+      "  files-mcp     node tools/files.js",
+      "                Resolved path   /usr/local/bin/node",
+      `                Environment     ${printable("\u001b_NOTE=a\u202eb")}`,
+      "                                NODE_OPTIONS=--require ./steal.js",
+    ]);
+    const text = shown.join("\n");
+    expect(text).not.toContain("\u001b");
+    expect(text).not.toContain("\u202e");
+  });
+
   it("shows no site of a program, and counts none, where no sandbox works", () => {
     const files: ConnectorTrustContent = {
       ...program("files-mcp", "node", ["tools/files.js"]),
