@@ -285,6 +285,67 @@ verifies("agent-host-client.bridges", () => {
     });
   });
 
+  describe("a decision from a remote device", () => {
+    const decision = { callId: "c1", approved: true, source: "remote-device" };
+    const call = { type: "call", call: "1", method: "approvals.remote-decision" } as const;
+
+    it("gives the decision to Studio's approval path and answers with its status", async () => {
+      const host = hostAnswering();
+      const taken: unknown[] = [];
+      const remoteDecisions = {
+        decide: async (made: unknown) => {
+          taken.push(made);
+          return "decided" as const;
+        },
+      };
+      const { stream } = await openOn(host, services({ remoteDecisions }));
+      stream.send({ ...call, params: decision });
+      expect(await answers(host, 1)).toEqual([
+        { bridge: "b1", call: "1", result: { status: "decided" } },
+      ]);
+      expect(taken).toEqual([decision]);
+    });
+
+    it("answers with the status Studio gives when the approval is unknown or already decided", async () => {
+      for (const status of ["unknown", "already-decided"] as const) {
+        const host = hostAnswering();
+        const remoteDecisions = { decide: async () => status };
+        const { stream } = await openOn(host, services({ remoteDecisions }));
+        stream.send({ ...call, params: decision });
+        expect(await answers(host, 1)).toEqual([{ bridge: "b1", call: "1", result: { status } }]);
+      }
+    });
+
+    it("refuses with an error while Studio has no path for it, and never allows", async () => {
+      const host = hostAnswering();
+      const { stream } = await openOn(host, services());
+      stream.send({ ...call, params: decision });
+      expect(await answers(host, 1)).toEqual([
+        {
+          bridge: "b1",
+          call: "1",
+          error: "Studio can't take a decision from a remote device yet.",
+        },
+      ]);
+    });
+
+    it("refuses a decision that names another source or carries more than the contract", async () => {
+      const host = hostAnswering();
+      const taken: unknown[] = [];
+      const remoteDecisions = {
+        decide: async (made: unknown) => {
+          taken.push(made);
+          return "decided" as const;
+        },
+      };
+      const { stream } = await openOn(host, services({ remoteDecisions }));
+      stream.send({ ...call, params: { ...decision, source: "studio" } });
+      stream.send({ ...call, call: "2", params: { ...decision, comment: "extra" } });
+      await answers(host, 2);
+      expect(taken).toEqual([]);
+    });
+  });
+
   describe("closing", () => {
     it("closes the bridge in the host and waits until its stream ends", async () => {
       const host = hostAnswering();

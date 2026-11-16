@@ -9,6 +9,7 @@ import type {
   HarnessTask,
 } from "@halonicjs/ports";
 import { gatewayMaxMessageBytes } from "@halonicjs/ports";
+import type { DecideRemotely } from "../bridge/studio-services.ts";
 import { judgeApprovalRisk } from "./approval-risk.ts";
 
 /** One event of a session, numbered in it. */
@@ -49,6 +50,8 @@ interface PendingApproval {
   readonly via: "run" | "bridge";
   readonly callId: string;
   readonly approval: GatewayApproval;
+  /** How a remote device's decision reaches Studio; only an approval at the bridge has it. */
+  readonly decide?: DecideRemotely;
   /** The `seq` of its `approval-requested` event. */
   readonly seq: number;
 }
@@ -140,10 +143,15 @@ export class RunLedger {
    * run and the agent, not the host's run id, so the session is the one that
    * run started for that agent.
    */
-  bridgeApprovalAsked(runId: string, agentId: string, request: BridgeApprovalRequest): void {
+  bridgeApprovalAsked(
+    runId: string,
+    agentId: string,
+    request: BridgeApprovalRequest,
+    decide: DecideRemotely,
+  ): void {
     const session = this.#runningSessionOf(runId, agentId);
     if (session === undefined) return;
-    this.#ask(session, "bridge", request.callId, request.tool, request.args);
+    this.#ask(session, "bridge", request.callId, request.tool, request.args, decide);
   }
 
   /**
@@ -259,6 +267,11 @@ export class RunLedger {
     return this.#pendingApproval(id, approvalId)?.via;
   }
 
+  /** How to tell Studio of a remote decision, for an approval at the bridge that still waits. */
+  remoteDeciderOf(id: string, approvalId: string): DecideRemotely | undefined {
+    return this.#pendingApproval(id, approvalId)?.decide;
+  }
+
   /** The risk of the approval that waits in the session, or `undefined` when none does. */
   approvalRisk(id: string, approvalId: string): "normal" | "risky" | undefined {
     return this.#pendingApproval(id, approvalId)?.approval.risk;
@@ -291,6 +304,7 @@ export class RunLedger {
     callId: string,
     tool: string,
     args: unknown,
+    decide?: DecideRemotely,
   ): void {
     const approval: GatewayApproval = {
       id: `approval-${session.nextApproval++}`,
@@ -298,7 +312,13 @@ export class RunLedger {
       risk: judgeApprovalRisk(tool),
     };
     const seq = this.#append(session, { type: "approval-requested", approval });
-    session.pending.push({ via, callId, approval, seq });
+    session.pending.push({
+      via,
+      callId,
+      approval,
+      seq,
+      ...(decide === undefined ? {} : { decide }),
+    });
     this.#setState(session, "waiting");
   }
 

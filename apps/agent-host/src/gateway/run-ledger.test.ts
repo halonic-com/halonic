@@ -34,12 +34,14 @@ function startedLedger(options = {}): RunLedger {
   return ledger;
 }
 
+const decided = async () => "decided" as const;
+
 verifies("agent-host.gateway-run-ledger", () => {
   describe("RunLedger", () => {
     it("records an approval the bridge asks for, and settles it with the decision", () => {
       const ledger = startedLedger();
       const request = { callId: "bridge_1", tool: "send_mail", args: { to: "a" } };
-      ledger.bridgeApprovalAsked("run_1", "writer", request);
+      ledger.bridgeApprovalAsked("run_1", "writer", request, decided);
       expect(ledger.list()[0]?.state).toBe("waiting");
       expect(ledger.approvalVia("run", "approval-1")).toBe("bridge");
       expect(ledger.approvalRisk("run", "approval-1")).toBe("risky");
@@ -50,7 +52,12 @@ verifies("agent-host.gateway-run-ledger", () => {
 
     it("settles a bridge approval whose call ended without a decision as denied", async () => {
       const ledger = startedLedger();
-      ledger.bridgeApprovalAsked("run_1", "writer", { callId: "b", tool: "Bash", args: {} });
+      ledger.bridgeApprovalAsked(
+        "run_1",
+        "writer",
+        { callId: "b", tool: "Bash", args: {} },
+        decided,
+      );
       ledger.bridgeApprovalEnded("run_1", "writer", "b", undefined);
       const bodies = (await eventsFrom(ledger, 0)).map(({ body }) => body);
       expect(bodies).toContainEqual({
@@ -62,18 +69,63 @@ verifies("agent-host.gateway-run-ledger", () => {
 
     it("ignores a bridge approval of a run or agent it doesn't know, or of a run that ended", () => {
       const ledger = startedLedger();
-      ledger.bridgeApprovalAsked("other", "writer", { callId: "b", tool: "Bash", args: {} });
-      ledger.bridgeApprovalAsked("run_1", "reviewer", { callId: "b", tool: "Bash", args: {} });
+      ledger.bridgeApprovalAsked(
+        "other",
+        "writer",
+        { callId: "b", tool: "Bash", args: {} },
+        decided,
+      );
+      ledger.bridgeApprovalAsked(
+        "run_1",
+        "reviewer",
+        { callId: "b", tool: "Bash", args: {} },
+        decided,
+      );
       ledger.ended("run", "done");
-      ledger.bridgeApprovalAsked("run_1", "writer", { callId: "b", tool: "Bash", args: {} });
+      ledger.bridgeApprovalAsked(
+        "run_1",
+        "writer",
+        { callId: "b", tool: "Bash", args: {} },
+        decided,
+      );
       expect(ledger.list()[0]).toMatchObject({ state: "done", lastSeq: 2 });
     });
 
     it("doesn't settle a bridge approval with an answer sent to the run under the same call id", () => {
       const ledger = startedLedger();
-      ledger.bridgeApprovalAsked("run_1", "writer", { callId: "same", tool: "Bash", args: {} });
+      ledger.bridgeApprovalAsked(
+        "run_1",
+        "writer",
+        { callId: "same", tool: "Bash", args: {} },
+        decided,
+      );
       ledger.answered("run", { type: "approval", callId: "same", approved: true });
       expect(ledger.approvalVia("run", "approval-1")).toBe("bridge");
+    });
+
+    it("keeps the way to tell Studio of a phone's decision only while a bridge approval waits", () => {
+      const ledger = startedLedger();
+      ledger.bridgeApprovalAsked(
+        "run_1",
+        "writer",
+        { callId: "b", tool: "Bash", args: {} },
+        decided,
+      );
+      expect(ledger.remoteDeciderOf("run", "approval-1")).toBe(decided);
+      ledger.bridgeApprovalEnded("run_1", "writer", "b", { approved: false });
+      expect(ledger.remoteDeciderOf("run", "approval-1")).toBeUndefined();
+    });
+
+    it("has no way to tell Studio for an approval the run itself waits on", () => {
+      const ledger = startedLedger();
+      ledger.event("run", {
+        type: "approval.requested",
+        agent: "writer",
+        tool: "shell",
+        args: {},
+        callId: "call-1",
+      });
+      expect(ledger.remoteDeciderOf("run", "approval-1")).toBeUndefined();
     });
 
     it("lists a started run with its first line as the title", () => {

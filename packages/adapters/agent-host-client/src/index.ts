@@ -1,4 +1,9 @@
-export type { BridgeCallServices } from "./bridge-calls.ts";
+export type {
+  BridgeCallServices,
+  RemoteDecision,
+  RemoteDecisionStatus,
+  RemoteDecisions,
+} from "./bridge-calls.ts";
 export {
   AgentHostBridges,
   type AgentHostBridgesOptions,
