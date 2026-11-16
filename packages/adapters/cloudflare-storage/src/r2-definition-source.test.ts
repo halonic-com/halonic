@@ -31,7 +31,7 @@ describe("R2DefinitionSource", () => {
   verifies("cloudflare-storage.r2-definition-source", () => {
     it("serves the version current names, and leaves private files out of the bucket", async () => {
       const bucket = new MapBucket();
-      const version = await writeDefinitionSnapshot(bucket, { ...files, ".env": "KEY=1" });
+      const version = await writeDefinitionSnapshot(bucket, { ...files, ".env": "KEY=1" }, []);
       const source = new R2DefinitionSource(bucket);
       expect(await source.version()).toBe(version);
       expect(await source.list()).toEqual(["hubs/a/hub.yaml", "workspace.yaml"]);
@@ -40,16 +40,16 @@ describe("R2DefinitionSource", () => {
 
     it("keeps serving the version it started with after a deploy", async () => {
       const bucket = new MapBucket();
-      const first = await writeDefinitionSnapshot(bucket, files);
+      const first = await writeDefinitionSnapshot(bucket, files, []);
       const source = new R2DefinitionSource(bucket);
       expect(await source.version()).toBe(first);
-      await writeDefinitionSnapshot(bucket, { "workspace.yaml": "id: other\n" });
+      await writeDefinitionSnapshot(bucket, { "workspace.yaml": "id: other\n" }, []);
       expect(await source.read("workspace.yaml")).toBe("id: acme\n");
     });
 
     it("serves a fixed version without looking at current", async () => {
       const bucket = new MapBucket();
-      const version = await writeDefinitionSnapshot(bucket, files);
+      const version = await writeDefinitionSnapshot(bucket, files, []);
       bucket.objects.delete(keys.current);
       const source = new R2DefinitionSource(bucket, { version });
       expect(await source.read("workspace.yaml")).toBe("id: acme\n");
@@ -57,7 +57,7 @@ describe("R2DefinitionSource", () => {
 
     it("answers a path outside the manifest without asking R2", async () => {
       const bucket = new MapBucket();
-      await writeDefinitionSnapshot(bucket, files);
+      await writeDefinitionSnapshot(bucket, files, []);
       const source = new R2DefinitionSource(bucket);
       await source.version();
       const before = bucket.reads.length;
@@ -67,36 +67,38 @@ describe("R2DefinitionSource", () => {
 
     it("refuses a file whose bytes differ from the manifest", async () => {
       const bucket = new MapBucket();
-      const version = await writeDefinitionSnapshot(bucket, files);
+      const version = await writeDefinitionSnapshot(bucket, files, []);
       await bucket.put(keys.file(version, "workspace.yaml"), "id: evil\n");
       await expect(new R2DefinitionSource(bucket).read("workspace.yaml")).rejects.toThrow(
         DefinitionSnapshotError,
       );
     });
 
-    it("fails when nothing was deployed, a file is missing or the format is newer", async () => {
+    it("fails when nothing was deployed, a file is missing or the format is newer or older", async () => {
       const bucket = new MapBucket();
       await expect(new R2DefinitionSource(bucket).list()).rejects.toThrow("No workspace snapshot");
-      const version = await writeDefinitionSnapshot(bucket, files);
+      const version = await writeDefinitionSnapshot(bucket, files, []);
       bucket.objects.delete(keys.file(version, "workspace.yaml"));
       await expect(new R2DefinitionSource(bucket).read("workspace.yaml")).rejects.toThrow("lacks");
       const manifest = JSON.parse(
         new TextDecoder().decode(bucket.objects.get(keys.manifest(version))),
       );
-      await bucket.put(keys.manifest(version), JSON.stringify({ ...manifest, formatVersion: 2 }));
+      await bucket.put(keys.manifest(version), JSON.stringify({ ...manifest, formatVersion: 3 }));
       await expect(new R2DefinitionSource(bucket).list()).rejects.toThrow("Update Halonic");
+      await bucket.put(keys.manifest(version), JSON.stringify({ ...manifest, formatVersion: 1 }));
+      await expect(new R2DefinitionSource(bucket).list()).rejects.toThrow("halonic deploy");
     });
 
     it("gives two workspaces that differ only by a newline in a path two versions", async () => {
       const bucket = new MapBucket();
-      const a = await writeDefinitionSnapshot(bucket, { "a\nb": "x" });
-      const b = await writeDefinitionSnapshot(bucket, { a: "b", b: "x" });
+      const a = await writeDefinitionSnapshot(bucket, { "a\nb": "x" }, []);
+      const b = await writeDefinitionSnapshot(bucket, { a: "b", b: "x" }, []);
       expect(a).not.toBe(b);
     });
 
     it("refuses to upload a path the port forbids", async () => {
       for (const path of ["../x", "a//b", "/abs"]) {
-        await expect(writeDefinitionSnapshot(new MapBucket(), { [path]: "x" })).rejects.toThrow(
+        await expect(writeDefinitionSnapshot(new MapBucket(), { [path]: "x" }, [])).rejects.toThrow(
           RangeError,
         );
       }
@@ -118,7 +120,7 @@ describe("R2DefinitionSource", () => {
         await bucket.put(keys.current, version);
         await bucket.put(
           keys.manifest(version),
-          JSON.stringify({ formatVersion: 1, version, files: entries }),
+          JSON.stringify({ formatVersion: 2, version, files: entries }),
         );
         await expect(new R2DefinitionSource(bucket).list(), name).rejects.toThrow(
           DefinitionSnapshotError,
@@ -128,7 +130,7 @@ describe("R2DefinitionSource", () => {
 
     it("refuses broken JSON, a bad current and a bad version option", async () => {
       const bucket = new MapBucket();
-      const version = await writeDefinitionSnapshot(bucket, files);
+      const version = await writeDefinitionSnapshot(bucket, files, []);
       await bucket.put(keys.manifest(version), "{");
       await expect(new R2DefinitionSource(bucket).list()).rejects.toThrow(DefinitionSnapshotError);
       await bucket.put(keys.current, "../evil");
@@ -142,7 +144,7 @@ describe("R2DefinitionSource", () => {
       const bucket = new MapBucket();
       const source = new R2DefinitionSource(bucket);
       await expect(source.list()).rejects.toThrow("No workspace snapshot");
-      await writeDefinitionSnapshot(bucket, files);
+      await writeDefinitionSnapshot(bucket, files, []);
       expect(await source.list()).toHaveLength(2);
     });
 

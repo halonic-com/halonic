@@ -64,6 +64,7 @@
     "@halonicjs/format": [
       "./integration",
       "./recording",
+      "./routine",
       "./runtime-export"
     ],
     "@halonicjs/std": [

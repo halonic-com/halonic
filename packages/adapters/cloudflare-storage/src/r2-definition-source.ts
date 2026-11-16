@@ -13,6 +13,7 @@ import {
   sha256Hex,
   snapshotKeys,
 } from "./definition-snapshot.ts";
+import { routineIndexPath } from "./webhook-routines.ts";
 
 /** The one R2 call the source makes. A Worker's `R2Bucket` binding fits it, and so does a stand-in in a Node test. */
 export interface SnapshotBucket {
@@ -34,7 +35,7 @@ export interface R2DefinitionSourceOptions {
  * The workspace files `halonic deploy` uploaded, read from R2. It has no write
  * side: a deployed workspace changes only by deploying again.
  *
- * `list` and `read` answer from the snapshot's manifest, so R2 is never listed
+ * `list` leaves out the routine index, which isn't a workspace file. `list` and `read` answer from the snapshot's manifest, so R2 is never listed
  * and a path that isn't in the manifest never becomes a key. Each file is
  * checked against the manifest's hash as it is read, so a damaged snapshot
  * fails loudly instead of serving other text.
@@ -68,7 +69,7 @@ export class R2DefinitionSource implements DefinitionSource {
     const { files } = await this.#loadManifest();
     return files
       .map((entry) => entry.path)
-      .filter((path) => !isPrivateWorkspacePath(path))
+      .filter((path) => !isPrivateWorkspacePath(path) && path !== routineIndexPath)
       .filter((path) => dir === undefined || path.startsWith(`${dir}/`));
   }
 

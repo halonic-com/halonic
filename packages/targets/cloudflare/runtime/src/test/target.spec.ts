@@ -92,7 +92,7 @@ targetPortContracts("cloudflare", {
 
   definitions: async (files) => {
     const { runtime, scope } = await freshRuntime();
-    await writeDefinitionSnapshot(configured.DEFINITIONS, files, scopedKeyPrefix(scope));
+    await writeDefinitionSnapshot(configured.DEFINITIONS, files, [], scopedKeyPrefix(scope));
     return runtime.definitions;
   },
 

@@ -1,4 +1,7 @@
-import { writeDefinitionSnapshot } from "@halonicjs/adapter-cloudflare-storage";
+import {
+  type IndexedRoutine,
+  writeDefinitionSnapshot,
+} from "@halonicjs/adapter-cloudflare-storage";
 import {
   type CloudflareApi,
   provision,
@@ -19,6 +22,21 @@ const routineFile = [
   "trigger: { webhook: { secret: live-hook } }",
   "run: { workflow: handle-order, input: { order: '{{trigger.body.id}}' } }",
 ].join("\n");
+
+/** `routineFile` as the routine index of the snapshot lists it. */
+const indexedRoutine: IndexedRoutine = {
+  hub: "acme",
+  routine: {
+    version: 1,
+    id: "orders",
+    name: "Orders",
+    enabled: true,
+    trigger: { webhook: { secret: "live-hook", headers: [] } },
+    run: { workflow: "handle-order", input: { order: "{{trigger.body.id}}" } },
+    overlap: "skip",
+    catchUp: "last",
+  },
+};
 
 /** The Durable Object classes of the Worker, as `wrangler.toml` lists them (migration `v1`). */
 const durableObjects = [
@@ -108,6 +126,7 @@ export async function deployWebhookFixture(options: FixtureOptions): Promise<Dep
         },
       },
       { "hubs/acme/workflows/routines/orders.routine.yaml": routineFile },
+      [indexedRoutine],
     );
 
     const webhookSecret = random();

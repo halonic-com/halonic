@@ -4,7 +4,10 @@
  */
 
 import { env } from "cloudflare:workers";
-import { writeDefinitionSnapshot } from "@halonicjs/adapter-cloudflare-storage";
+import {
+  type IndexedRoutine,
+  writeDefinitionSnapshot,
+} from "@halonicjs/adapter-cloudflare-storage";
 import { createPbkdf2ChainHasher } from "@halonicjs/adapter-password-pbkdf2";
 import type { RunExecutor } from "@halonicjs/ports";
 import { describe, expect, it } from "vitest";
@@ -110,24 +113,28 @@ describe("the API in workerd", () => {
 
   describe("webhooks from the routines in the snapshot", () => {
     const hookSecret = "a webhook secret made up for this test";
-    const routineFile = [
-      "id: orders",
-      "name: Orders",
-      "trigger: { webhook: { secret: acme-hook } }",
-      "run: { workflow: handle-order, input: { order: '{{trigger.body.id}}' } }",
-    ].join("\n");
+    /** The routine `orders.routine.yaml` of the `acme` hub holds, as the deployer's index lists it. */
+    const orders: IndexedRoutine = {
+      hub: "acme",
+      routine: {
+        version: 1,
+        id: "orders",
+        name: "Orders",
+        enabled: true,
+        trigger: { webhook: { secret: "acme-hook", headers: [] } },
+        run: { workflow: "handle-order", input: { order: "{{trigger.body.id}}" } },
+        overlap: "skip",
+        catchUp: "last",
+      },
+    };
 
     /** A scope whose snapshot holds one webhook routine, and a executor that records what it is asked to start. */
-    async function withRoutine(files: Record<string, string> = {}) {
+    async function withRoutine(routine: IndexedRoutine = orders) {
       const scope = nextScope();
       const bucket = (await deployment()).DEFINITIONS as unknown as Parameters<
         typeof writeDefinitionSnapshot
       >[0];
-      await writeDefinitionSnapshot(
-        bucket,
-        { "hubs/acme/workflows/routines/orders.routine.yaml": routineFile, ...files },
-        scopedKeyPrefix(scope),
-      );
+      await writeDefinitionSnapshot(bucket, {}, [routine], scopedKeyPrefix(scope));
       const started: unknown[] = [];
       const start = async (request: unknown) => {
         started.push(request);
@@ -228,7 +235,8 @@ describe("the API in workerd", () => {
 
     it("answers a routine that is switched off as an unknown address", async () => {
       const setup = await withRoutine({
-        "hubs/acme/workflows/routines/orders.routine.yaml": `${routineFile}\nenabled: false`,
+        ...orders,
+        routine: { ...orders.routine, enabled: false },
       });
       const response = await deliver(setup);
       expect(response.status).toBe(401);

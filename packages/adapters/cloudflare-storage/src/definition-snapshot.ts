@@ -5,7 +5,7 @@ import { bytesToHex } from "@halonicjs/std";
 export const defaultSnapshotPrefix = "definitions/";
 
 /** The format of the manifest. A snapshot in another format is refused, not guessed at. */
-export const snapshotFormatVersion = 1;
+export const snapshotFormatVersion = 2;
 
 /** One workspace file as the manifest lists it. */
 export interface SnapshotFileEntry {
@@ -89,9 +89,7 @@ export function parseSnapshotManifest(text: string): SnapshotManifest {
     throw new DefinitionSnapshotError("The snapshot's manifest isn't in the expected shape.");
   }
   if (manifest.formatVersion !== snapshotFormatVersion) {
-    throw new DefinitionSnapshotError(
-      `This snapshot is in format ${String(manifest.formatVersion)}, and this Halonic reads format ${snapshotFormatVersion}. Update Halonic.`,
-    );
+    throw new DefinitionSnapshotError(formatVersionMessage(manifest.formatVersion));
   }
   checkSnapshotVersion(manifest.version);
   const files = manifest.files.map(parseFileEntry);
@@ -104,6 +102,15 @@ export function parseSnapshotManifest(text: string): SnapshotManifest {
     }
   });
   return { formatVersion: snapshotFormatVersion, version: manifest.version, files };
+}
+
+/** What to do about a snapshot in another format: an older one needs a new deploy, a newer one needs a newer Halonic. */
+function formatVersionMessage(found: unknown): string {
+  const known = `this Halonic reads format ${snapshotFormatVersion}`;
+  if (typeof found === "number" && found < snapshotFormatVersion) {
+    return `This snapshot is in format ${found}, and ${known}. Run \`halonic deploy\` again.`;
+  }
+  return `This snapshot is in format ${String(found)}, and ${known}. Update Halonic.`;
 }
 
 function parseFileEntry(entry: unknown): SnapshotFileEntry {

@@ -15,3 +15,4 @@ export {
   type R2DefinitionSourceOptions,
   type SnapshotBucket,
 } from "./r2-definition-source.ts";
+export { type IndexedRoutine, readRoutineIndex } from "./webhook-routines.ts";

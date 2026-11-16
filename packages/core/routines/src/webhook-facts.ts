@@ -1,4 +1,4 @@
-import { type RoutineTrigger, WEBHOOK_REFUSED_HEADERS } from "@halonicjs/format";
+import { type RoutineTrigger, WEBHOOK_REFUSED_HEADERS } from "@halonicjs/format/routine";
 import type { TriggerFacts } from "./routine-start.ts";
 
 /** A body longer than this stays text: nothing is parsed from a body this size. */

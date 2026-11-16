@@ -17,6 +17,6 @@ declare global {
 // Every source gets a prefix of its own, so a case never finds what another left in the bucket.
 definitionSourceContract("R2", async (files) => {
   const keyPrefix = `case-${crypto.randomUUID()}/`;
-  await writeDefinitionSnapshot(env.DEFINITIONS, files, keyPrefix);
+  await writeDefinitionSnapshot(env.DEFINITIONS, files, [], keyPrefix);
   return new R2DefinitionSource(env.DEFINITIONS, { keyPrefix });
 });

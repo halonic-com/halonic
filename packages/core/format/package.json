@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./integration": "./src/integration/index.ts",
     "./recording": "./src/recording/index.ts",
+    "./routine": "./src/routine/index.ts",
     "./runtime-export": "./src/runtime-export/index.ts"
   },
   "scripts": {
