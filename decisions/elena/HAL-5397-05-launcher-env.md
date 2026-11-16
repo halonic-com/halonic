@@ -3,6 +3,7 @@
 - Task: HAL-5397
 - Approval: Elena, owner of the CLI requirements, approves this edit on HAL-10766 (2026-11-16); Liam signs this note with the pull request
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:pAUrXiZRb3xXiWqcCvpc+f5sMDlWfY7AwVKr1dFH2OESdDn09EpbcTc0jDMGSPVS+DqDdCfagdumpx3F6h23AA==
 
 ## What changes
 
