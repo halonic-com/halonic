@@ -2,6 +2,7 @@
 
 - Approval: HAL-11232, from the 0.1.1 release review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xp98oJ27NWt7Jw0uuV8OAOUz2F2I6U2DJ3gP6pt+I4Spi7ewmOCnRm05HT4RgUwe7XnYr2Mj5ArSJlVak9VqDA==
 
 The personal-terms list and the release bot token move from repository
 secrets into environments that only `main` (and, for the terms, the merge
