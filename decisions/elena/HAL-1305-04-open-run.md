@@ -2,6 +2,7 @@
 
 - Approval: Open run on the toast is in the board-approved flow-inbox, section 2 (Toasts: "Support reply started · Open run", microcopy 10.3, HAL-877); Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kLpQoDAsQLbbNdrefo2TEN3pVtmAyR8eCOBNKb22aoTepKlDusWYsQoJwQ/SRG2z7iXgU9d62Zi78grNfsV2Bw==
 - Task: HAL-1305 (part 4)
 
 ## What changes
