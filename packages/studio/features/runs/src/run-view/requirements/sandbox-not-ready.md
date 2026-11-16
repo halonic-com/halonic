@@ -14,9 +14,9 @@ Until the log is read the page keeps its general banner. The check's own sentenc
 
 Where the open workspace provides `sandboxStartCheckKey`, the banner shall have one button, **Check again**, which asks the check now and never runs anything:
 
-- passed: the banner turns calm and adds "The sandbox is ready. Run again to start it.", and the button goes;
-- still refused: the lines change to the reason and fix of the new code, and the button stays;
-- the check itself failed: the banner adds "Halonic couldn't check the sandbox. Try again.", and the button stays.
+- when the check passes, the banner turns calm and adds "The sandbox is ready. Run again to start it.", and the button goes;
+- when it is still refused, the lines change to the reason and fix of the new code, and the button stays;
+- when the check itself fails, the banner adds "Halonic couldn't check the sandbox. Try again.", and the button stays.
 
 Where nothing provides it, there is no button. The banner has no way to run anyway.
 
