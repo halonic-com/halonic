@@ -1,5 +1,5 @@
 import { PassThrough } from "node:stream";
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { LineReader } from "./line-reader.ts";
 import { SecretReader, type TerminalInput } from "./secret-reader.ts";
@@ -81,7 +81,8 @@ verifies("cli.secret-prompt", () => {
       return v;
     });
     stdin.write("pass\u0003more\r");
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    // The same chunk holds the text after Ctrl C, so the reader has seen it all by then.
+    await waitUntil("Ctrl C", () => interrupted === 1);
     expect(interrupted).toBe(1);
     expect(settled).toBe(false);
     expect(stdin.rawModes).toEqual([true]);

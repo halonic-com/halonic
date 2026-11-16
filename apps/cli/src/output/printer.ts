@@ -154,7 +154,8 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
     };
   const writeOut = aroundLine(io.out);
   const writeErr = aroundLine(io.err);
-  const out = writerFor(writeOut, paintFor(options.out));
+  // A result line may quote outside text, such as an engine's error, so stdout is scrubbed like stderr.
+  const out = scrubbed(writerFor(writeOut, paintFor(options.out)), options.scrubber);
   const errPaint = paintFor(options.err);
   const err = writerFor(writeErr, errPaint);
   const asking: Asking = {

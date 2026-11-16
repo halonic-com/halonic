@@ -158,16 +158,20 @@ function modelsCheck(line: ModelsLine): CheckLines {
 }
 
 function readyProvider(provider: ProviderReport): Phrase {
-  if ("keyStored" in provider) return doctorMessages.keyStored(provider.name).phrase;
+  // Provider names and addresses come from workspace files, model names from the server's reply.
+  if ("keyStored" in provider) return doctorMessages.keyStored(printable(provider.name)).phrase;
   const loaded =
     provider.models.length === 0
       ? undefined
       : doctorMessages.loaded(
           provider.models.map(({ name, memoryBytes }) =>
-            memoryBytes === undefined ? { name } : { name, size: shownSize(memoryBytes) },
+            memoryBytes === undefined
+              ? { name: printable(name) }
+              : { name: printable(name), size: shownSize(memoryBytes) },
           ),
         ).phrase;
-  return doctorMessages.answering(provider.name, provider.address, loaded).phrase;
+  return doctorMessages.answering(printable(provider.name), printable(provider.address), loaded)
+    .phrase;
 }
 
 /** One line per unreachable server, then one line per provider naming its aliases without a key. */
@@ -176,7 +180,9 @@ function modelProblems(problems: readonly ModelProblem[]): Phrase[] {
   const aliasesByProvider = new Map<string, { name: string; aliases: string[] }>();
   for (const problem of problems) {
     if (problem.problem === "unreachable") {
-      lines.push(doctorMessages.notAnswering(problem.name, problem.address).phrase);
+      lines.push(
+        doctorMessages.notAnswering(printable(problem.name), printable(problem.address)).phrase,
+      );
       continue;
     }
     const entry = aliasesByProvider.get(problem.provider) ?? { name: problem.name, aliases: [] };
@@ -184,7 +190,7 @@ function modelProblems(problems: readonly ModelProblem[]): Phrase[] {
     aliasesByProvider.set(problem.provider, entry);
   }
   for (const { name, aliases } of aliasesByProvider.values()) {
-    lines.push(doctorMessages.needKey(aliases, name).phrase);
+    lines.push(doctorMessages.needKey(aliases.map(printable), printable(name)).phrase);
   }
   return lines;
 }

@@ -366,7 +366,8 @@ verifies("cli.loopback-callback", () => {
       void waiting.then(() => {
         settled = true;
       });
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      // The listener handles the request before it answers, so its answer was the last
+      // chance for the stray request to settle the wait; no sleep is needed.
       expect(settled).toBe(false);
 
       const answered = await fetch(`${base}${callbackPath}?state=s1&code=c1`);

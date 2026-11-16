@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { closeAfterStop } from "./close-after-stop.ts";
 
 /** An engine whose close ends after `closeMs`, or never with `"never"`, and what happened to it. */
@@ -21,6 +21,10 @@ function engineClosingIn(closeMs: number | "never", closeError?: Error) {
     },
   };
 }
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 function stopped(): AbortSignal {
   const controller = new AbortController();
@@ -52,13 +56,15 @@ verifies("cli.local-engine-lock", () => {
   });
 
   it("starts the limit when the stop comes during the close", async () => {
+    vi.useFakeTimers();
     const engine = engineClosingIn("never");
     const stop = new AbortController();
 
     const closing = closeAfterStop(engine, stop.signal, 20, () => {});
-    await new Promise((resolve) => setTimeout(resolve, 40));
+    await vi.advanceTimersByTimeAsync(40);
     expect(engine.seen.abandoned).toBe(false);
     stop.abort();
+    await vi.advanceTimersByTimeAsync(20);
     await closing;
 
     expect(engine.seen.abandoned).toBe(true);

@@ -69,8 +69,11 @@ async function status(url: string): Promise<unknown> {
   return (await fetch(`${url}/v1/sandbox/setup`, { headers: authorization })).json();
 }
 
-/** Lets the job's end settle. */
-const settle = () => new Promise((resolve) => setTimeout(resolve, 10));
+/**
+ * Lets the job's end settle: it only waits on promises, so once the next
+ * macrotask runs, every one of them has finished. No timing is involved.
+ */
+const settle = () => new Promise((resolve) => setImmediate(resolve));
 
 describe("setupRoutes", () => {
   it("starts the setup, answers at once, and keeps how it ended", async () => {
