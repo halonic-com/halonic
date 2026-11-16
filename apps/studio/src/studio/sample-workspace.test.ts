@@ -55,4 +55,27 @@ verifies("studio.try-sample", () => {
     const sample = sampleWorkspaceOf("/docs/Acme sample", recent, full);
     expect(() => sample.recordDone("start")).not.toThrow();
   });
+
+  it("remembers that the finished card was shown, per folder, and survives a full storage", () => {
+    const pages = storage();
+    const recent = new RecentWorkspaces(pages);
+    const sample = sampleWorkspaceOf("/docs/Acme sample", recent, pages);
+    expect(sample.finishedShown()).toBe(false);
+    sample.recordFinishedShown();
+    expect(sampleWorkspaceOf("/docs/Acme sample", recent, pages).finishedShown()).toBe(true);
+    expect(sampleWorkspaceOf("/docs/Acme sample 2", recent, pages).finishedShown()).toBe(false);
+
+    const full = sampleWorkspaceOf("/docs/Acme sample", recent, storage(true));
+    expect(() => full.recordFinishedShown()).not.toThrow();
+  });
+
+  it("opens the New workspace dialog only when the app has one", () => {
+    const pages = storage();
+    const recent = new RecentWorkspaces(pages);
+    expect(sampleWorkspaceOf("/docs/Acme", recent, pages).startOwnWorkspace).toBeUndefined();
+    let opened = 0;
+    const sample = sampleWorkspaceOf("/docs/Acme", recent, pages, () => opened++);
+    sample.startOwnWorkspace?.();
+    expect(opened).toBe(1);
+  });
 });

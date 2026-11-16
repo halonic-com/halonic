@@ -1,4 +1,5 @@
 export { workspaceFeature } from "./feature.ts";
+export { NewWorkspaceAsks } from "./new-workspace/new-workspace-asks.ts";
 export {
   type CreatedTrust,
   type FolderState,

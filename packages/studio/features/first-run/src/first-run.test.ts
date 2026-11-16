@@ -12,7 +12,13 @@ const runs: SampleRuns = {
 };
 
 function workspaceThatIs(sample: () => boolean): SampleWorkspace {
-  return { isSample: sample, doneSteps: () => [], recordDone: vi.fn() };
+  return {
+    isSample: sample,
+    doneSteps: () => [],
+    recordDone: vi.fn(),
+    finishedShown: () => false,
+    recordFinishedShown: vi.fn(),
+  };
 }
 
 verifies("first-run.sample-card", () => {
@@ -30,6 +36,25 @@ verifies("first-run.sample-card", () => {
     const progress = firstRun.progress();
     expect(progress).toBeDefined();
     expect(firstRun.progress()).toBe(progress);
+  });
+
+  it("shows the card in the sample until a visit has shown it finished", () => {
+    let shown = false;
+    const firstRun = new FirstRun(runs, {
+      ...workspaceThatIs(() => true),
+      finishedShown: () => shown,
+    });
+    expect(firstRun.showsCard).toBe(true);
+    shown = true;
+    expect(
+      new FirstRun(runs, { ...workspaceThatIs(() => true), finishedShown: () => shown }).showsCard,
+    ).toBe(false);
+    expect(
+      new FirstRun(
+        runs,
+        workspaceThatIs(() => false),
+      ).showsCard,
+    ).toBe(false);
   });
 
   it("stops following the runs on dispose", () => {

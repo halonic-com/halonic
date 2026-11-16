@@ -21,6 +21,7 @@ import {
 import {
   folderName,
   mountWorkspaceWindow,
+  NewWorkspaceAsks,
   type OpenedWorkspace,
   type RecentStorage,
   RecentWorkspaces,
@@ -160,9 +161,14 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
   const display = displaySettingsOf(page);
   const stopAppearance = watchAppearance(display, rootOf(page.element));
   const picked = new TauriPickedFolders(ipc);
-  const device = {
+  const newWorkspaceAsks = new NewWorkspaceAsks();
+  const newWorkspace = newWorkspaceOf(page.window, platform);
+  const device: DeviceMemory = {
     recent: new RecentWorkspaces(page.storage ?? noStorage),
     storage: page.storage ?? noStorage,
+    ...(newWorkspace.newWorkspace === undefined
+      ? {}
+      : { startOwnWorkspace: () => newWorkspaceAsks.ask() }),
   };
   const switcher = new WorkspaceSwitcher({
     pickFolder: () => pickFolder(ipc),
@@ -179,7 +185,8 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     platform,
     language: studioLanguage,
     resources,
-    ...newWorkspaceOf(page.window, platform),
+    ...newWorkspace,
+    newWorkspaceAsks,
   };
   const window = mountWorkspaceWindow(page.element, parts);
   // Formats follows the system's region once the shell has read it; until then, the browser's.
@@ -258,6 +265,8 @@ function newWorkspaceOf(window: object, platform: KeyboardPlatform) {
 export interface DeviceMemory {
   readonly recent: RecentWorkspaces;
   readonly storage: RecentStorage;
+  /** Opens the New workspace dialog; `undefined` when the window has none. */
+  readonly startOwnWorkspace?: () => void;
 }
 
 /**
@@ -296,7 +305,7 @@ export async function openFolder(
   const trustView = trust === undefined ? undefined : new WorkspaceTrustView(trust, location);
   services.provide(DisplaySettingsService, display);
   services.provide(WorkspacePageService, { name, trust: trustView });
-  const sample = sampleWorkspaceOf(location, device.recent, device.storage);
+  const sample = sampleWorkspaceOf(location, device.recent, device.storage, device.startOwnWorkspace);
   services.provide(SampleWorkspaceService, sample);
   services.provide(SampleHintService, sample);
   const trustStore = ipc === undefined ? undefined : new TauriTrustStore(ipc);

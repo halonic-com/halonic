@@ -33,9 +33,15 @@ function render(element: ReactNode): HTMLElement {
 function progressWith(
   done: readonly SampleStepId[],
   finishedRun?: SampleProgressState["finishedRun"],
+  extra: { startOwnWorkspace?: () => void; recordFinishedShown?: () => void } = {},
 ) {
   const state: SampleProgressState = { done: new Set(done), finishedRun };
-  return { state, subscribe: () => () => {} } as unknown as SampleProgress;
+  return {
+    state,
+    subscribe: () => () => {},
+    recordFinishedShown: () => {},
+    ...extra,
+  } as unknown as SampleProgress;
 }
 
 const never = () => {
@@ -70,11 +76,50 @@ verifies("first-run.sample-card", () => {
     expect(start).toHaveBeenCalledOnce();
   });
 
-  it("says 'You've seen it work.' once all three are done", () => {
+  it("says 'You've seen it work.' once all three are done, with the count", () => {
     const root = render(
       <SampleSteps progress={progressWith(["start", "decide", "see"])} openers={noOpeners} />,
     );
-    expect(root.textContent).toBe("You've seen it work.");
+    expect(root.textContent).toContain("You've seen it work.");
+    expect(root.textContent).toContain("3 of 3 done");
+  });
+
+  it("offers Start your own workspace when finished, and saves that the card was shown", () => {
+    const startOwnWorkspace = vi.fn();
+    const recordFinishedShown = vi.fn();
+    const root = render(
+      <SampleSteps
+        progress={progressWith(["start", "decide", "see"], undefined, {
+          startOwnWorkspace,
+          recordFinishedShown,
+        })}
+        openers={noOpeners}
+      />,
+    );
+    expect(recordFinishedShown).toHaveBeenCalled();
+    const button = root.querySelector("button");
+    expect(button?.textContent).toBe("Start your own workspace");
+    act(() => button?.click());
+    expect(startOwnWorkspace).toHaveBeenCalledOnce();
+  });
+
+  it("offers no button when the app has no New workspace dialog, and doesn't save an unfinished card", () => {
+    const recordFinishedShown = vi.fn();
+    const finished = render(
+      <SampleSteps
+        progress={progressWith(["start", "decide", "see"], undefined, { recordFinishedShown })}
+        openers={noOpeners}
+      />,
+    );
+    expect(finished.querySelector("button")).toBeNull();
+    recordFinishedShown.mockClear();
+    render(
+      <SampleSteps
+        progress={progressWith(["start"], undefined, { recordFinishedShown })}
+        openers={noOpeners}
+      />,
+    );
+    expect(recordFinishedShown).not.toHaveBeenCalled();
   });
 });
 

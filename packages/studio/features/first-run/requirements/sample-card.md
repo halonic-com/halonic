@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1308 (T15); flow-first-run 3.3 (revision 15); microcopy 5
 
-While the open workspace is remembered on this device as the Acme sample, the First Run feature shall fill Home's Get set up slot with the card **Try the sample**: the line "*N* of 3 done" above three steps, **Start a support request**, **Approve or reject the reply** and **See what it did**, each with its hint under it, a number before it and a tick in its place once done, and read after its title as "done". In any other workspace the slot shall stay empty. A step shall be done once a real run of the `support-reply` workflow has started in the workspace (step 1), once one of those runs has had an answer sent to a wait step (step 2), and once the page of one that finished has been shown (step 3); the steps can be done in any order and by any route, and a step shall stay done, also after a restart, because the card saves each as soon as it is seen on this device. Step 1 shall open the Inbox with the request form shown and focus in Message; step 2 shall open the newest wait card in the Inbox, and the request form when none waits; step 3 shall open the latest finished run's page, and before one exists do what the next open step does. When all three are done, the card shall say "You've seen it work." in place of the steps.
+While the open workspace is remembered on this device as the Acme sample, the First Run feature shall fill Home's Get set up slot with the card **Try the sample**: the line "*N* of 3 done" above three steps, **Start a support request**, **Approve or reject the reply** and **See what it did**, each with its hint under it, a number before it and a tick in its place once done, and read after its title as "done". In any other workspace the slot shall stay empty. A step shall be done once a real run of the `support-reply` workflow has started in the workspace (step 1), once one of those runs has had an answer sent to a wait step (step 2), and once the page of one that finished has been shown (step 3); the steps can be done in any order and by any route, and a step shall stay done, also after a restart, because the card saves each as soon as it is seen on this device. Step 1 shall open the Inbox with the request form shown and focus in Message; step 2 shall open the newest wait card in the Inbox, and the request form when none waits; step 3 shall open the latest finished run's page, and before one exists do what the next open step does. When all three are done, the card shall say "You've seen it work." with "3 of 3 done" and the button **Start your own workspace**, which opens New workspace, in place of the steps, and in the next visit to Home the card shall be gone, which the card saves on this device once it has shown the finished state.
 
 ## Examples
 
@@ -29,6 +29,9 @@ While the open workspace is remembered on this device as the Acme sample, the Fi
 - Given step 1 was done in an earlier session,
   when the workspace opens and no run is listed yet,
   then step 1 is still done.
+- Given the card showed "You've seen it work." in an earlier visit,
+  when Home opens,
+  then Get set up's slot shows nothing.
 - Given no request is waiting,
   when you open step 2,
   then the Inbox opens on the request form.

@@ -7,7 +7,8 @@ import { sampleCardWords } from "./sample-text.ts";
 
 /**
  * The First Run feature (`first-run.sample-card`). In the Acme sample it fills Home's Get set up
- * slot with the Try the sample card; in any other workspace the slot stays empty.
+ * slot with the Try the sample card, until the visit after it finished; in any other workspace the
+ * slot stays empty.
  */
 export const firstRunFeature = defineFeature({
   id: "first-run",
@@ -25,7 +26,7 @@ export const firstRunFeature = defineFeature({
       view: "SampleCard",
       load: () => import("./ui/sample-card.tsx"),
       title: (context) =>
-        context.services.get(FirstRunService).isSample ? sampleCardWords.heading : undefined,
+        context.services.get(FirstRunService).showsCard ? sampleCardWords.heading : undefined,
     });
   },
 });

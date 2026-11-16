@@ -10,6 +10,11 @@ function stepsKey(location: string): string {
   return `halonic.first-run.steps.${location}`;
 }
 
+/** The storage key for "the finished card was shown" in one folder. */
+function finishedKey(location: string): string {
+  return `halonic.first-run.finished.${location}`;
+}
+
 /** The steps saved in `text`; text that isn't a list of steps counts as none. */
 function parseSteps(text: string | null): readonly SampleStepId[] {
   if (text === null) return [];
@@ -25,7 +30,8 @@ function parseSteps(text: string | null): readonly SampleStepId[] {
 /**
  * What the first run knows of the folder open in the window (`studio.sample-workspace`): whether
  * Recent remembers it as the Acme sample, and which steps of the Try the sample card are done in
- * it on this device. Like Recent, a list that can't be read counts as empty and one that can't be
+ * it on this device, and whether the finished card was already shown. `startOwnWorkspace` opens the
+ * New workspace dialog; leave it out when the app has none. Like Recent, a list that can't be read counts as empty and one that can't be
  * written stays as it was, so the card never stops Home from opening.
  *
  * @example
@@ -36,6 +42,7 @@ export function sampleWorkspaceOf(
   location: string,
   recent: RecentWorkspaces,
   storage: RecentStorage,
+  startOwnWorkspace?: () => void,
 ): SampleWorkspace {
   const read = (): readonly SampleStepId[] => {
     try {
@@ -47,6 +54,21 @@ export function sampleWorkspaceOf(
   return {
     isSample: () => recent.isSample(location),
     doneSteps: read,
+    finishedShown: () => {
+      try {
+        return storage.getItem(finishedKey(location)) !== null;
+      } catch {
+        return false;
+      }
+    },
+    recordFinishedShown: () => {
+      try {
+        storage.setItem(finishedKey(location), "shown");
+      } catch {
+        // Storage is full or blocked: the card shows once more next time, which is harmless.
+      }
+    },
+    ...(startOwnWorkspace === undefined ? {} : { startOwnWorkspace }),
     recordDone: (step) => {
       const done = new Set([...read(), step]);
       try {

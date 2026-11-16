@@ -21,6 +21,11 @@ export class FirstRun {
     return this.#workspace.isSample();
   }
 
+  /** Whether Home shows the Try the sample card: in the sample, until the visit after it finished. */
+  get showsCard(): boolean {
+    return this.progress()?.hidden === false;
+  }
+
   /** The sample's progress, or `undefined` when the folder isn't the sample. */
   progress(): SampleProgress | undefined {
     if (!this.isSample) return undefined;

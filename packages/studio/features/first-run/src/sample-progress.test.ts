@@ -52,10 +52,17 @@ function fakeRuns(initial: readonly RunSummary[], logs: Record<string, RunEvent[
   };
 }
 
-function workspace(saved: readonly SampleStepId[] = []) {
+function workspace(saved: readonly SampleStepId[] = [], finishedShown = false) {
   const recordDone = vi.fn();
-  const value: SampleWorkspace = { isSample: () => true, doneSteps: () => saved, recordDone };
-  return { value, recordDone };
+  const recordFinishedShown = vi.fn();
+  const value: SampleWorkspace = {
+    isSample: () => true,
+    doneSteps: () => saved,
+    recordDone,
+    finishedShown: () => finishedShown,
+    recordFinishedShown,
+  };
+  return { value, recordDone, recordFinishedShown };
 }
 
 async function settled(): Promise<void> {
@@ -65,6 +72,25 @@ async function settled(): Promise<void> {
 const answered: RunEvent = { type: "event.received", event: "approve" } as RunEvent;
 
 verifies("first-run.sample-card", () => {
+  describe("the finished card going away", () => {
+    it("shows the card in the visit where it finished, and saves that it was shown", () => {
+      const sample = workspace(["start", "decide", "see"]);
+      const progress = new SampleProgress(fakeRuns([]).runs, sample.value);
+      expect(progress.hidden).toBe(false);
+      progress.recordFinishedShown();
+      expect(sample.recordFinishedShown).toHaveBeenCalledOnce();
+      expect(progress.hidden).toBe(false);
+    });
+
+    it("hides the card in the next visit, once an earlier one showed it finished", () => {
+      const progress = new SampleProgress(
+        fakeRuns([]).runs,
+        workspace(["start", "decide", "see"], true).value,
+      );
+      expect(progress.hidden).toBe(true);
+    });
+  });
+
   describe("the steps' done rules", () => {
     it("starts with the steps saved on this device, before any run is listed", () => {
       const progress = new SampleProgress(fakeRuns([]).runs, workspace(["start"]).value);
