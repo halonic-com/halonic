@@ -41,6 +41,18 @@ export {
   sandboxBackendStates,
 } from "./sandbox-choice.ts";
 export {
+  type RawSandboxCheck,
+  type SandboxStartCheck,
+  type SandboxStartResult,
+  sandboxStartCheck,
+  sandboxStartCheckKey,
+} from "./sandbox-start-check.ts";
+export {
+  isSandboxStartReason,
+  type SandboxStartWords,
+  sandboxStartWords,
+} from "./sandbox-start-words.ts";
+export {
   type CanaryFindings,
   runTrustCheck,
   type TrustCanary,
