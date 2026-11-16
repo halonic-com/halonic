@@ -1,6 +1,6 @@
 # Decision: the sign-in command names the setup's ref, and the CLI says what it takes
 
-- Approval: https://paperclip.halonic.com/HAL/issues/HAL-10696 (code, Liam) and https://paperclip.halonic.com/HAL/issues/HAL-10695 (UX, Sofia); scope decided on HAL-10682
+- Approval: Liam approved the code on HAL-10696 and Sofia the UX on HAL-10695; the scope was decided on HAL-10682; Liam signs this note with the pull request
 - Kind: user-visible
 - Task: HAL-10597
 
