@@ -49,3 +49,24 @@ export function providerTabLabel(id: string): string {
 export function providerUpdatedLine(name: string): string {
   return `Updated provider ${name}`;
 }
+
+/** Check on a local provider's page (flow-first-run 6.3; microcopy 5). */
+export const CHECK = "Check";
+export const CHECKING = "Checking…";
+export const CHECK_HINT =
+  "Small local models can miss tool calls. Run a workflow's tests to see whether yours keeps up.";
+
+/** The status line after a check, as it is read on the page: "Answering at localhost:11434 · checked 10:42". */
+export function checkResultLine(answering: boolean, address: string, checkedAt: string): string {
+  return `${answering ? "Answering" : "Not answering"} at ${address} · checked ${checkedAt}`;
+}
+
+/** What a screen reader hears when a check ends, also when the result is the same as before. */
+export function checkAnnouncement(
+  providerName: string,
+  answering: boolean,
+  address: string,
+  checkedAt: string,
+): string {
+  return `${providerName} is ${answering ? "answering" : "not answering"} at ${address}, checked ${checkedAt}.`;
+}

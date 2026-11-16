@@ -36,6 +36,7 @@ import {
   ModelKeysService,
   ModelsFilesService,
   NoLimitMemoryService,
+  ProviderCheckService,
 } from "@halonicjs/studio-feature-models/api";
 import {
   InstructionTrustHostService,
@@ -69,6 +70,7 @@ import { WorkspaceSkills } from "../library/workspace-skills.ts";
 import { WorkspaceModelKeys } from "../models/workspace-model-keys.ts";
 import { WorkspaceModelsFiles } from "../models/workspace-models-files.ts";
 import { WorkspaceNoLimit } from "../models/workspace-no-limit.ts";
+import { WorkspaceProviderCheck } from "../models/workspace-provider-check.ts";
 import { providePlugins } from "../plugins/provide-plugins.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
@@ -121,6 +123,7 @@ export function provideFolderServices(
   );
   services.provide(ModelKeysService, new WorkspaceModelKeys(shellKeychain(ipc)));
   services.provide(NoLimitMemoryService, new WorkspaceNoLimit(storageOf(window), location));
+  services.provide(ProviderCheckService, new WorkspaceProviderCheck(new ShellHttpClient(ipc)));
   provideWorkspaceRuns(services, { ipc, files, window }, location);
   services.provide(
     InstructionTrustHostService,
