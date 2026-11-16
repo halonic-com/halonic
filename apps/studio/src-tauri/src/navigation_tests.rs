@@ -340,13 +340,11 @@ fn back_to_connect_forgets_the_confirmed_address() {
         .build(tauri::generate_context!())
         .expect("the shell builds on the mock runtime");
     let window = crate::window::open(&app).expect("the main window opens");
-    let webview = app
-        .get_webview(window.label())
-        .expect("the window's webview");
+    let webview: &tauri::Webview<_> = window.as_ref();
     let state = app.state::<ConfirmedAddress>();
     state.set(Some(confirmed("192.168.1.20:4280")));
 
-    back_to_connect(&webview);
+    back_to_connect(webview);
 
     assert_eq!(state.get(), None);
 }
