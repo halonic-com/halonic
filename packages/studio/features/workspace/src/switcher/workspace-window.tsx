@@ -1,4 +1,5 @@
 import {
+  cantCreateSampleLine,
   isInWorkspaceContent,
   type KeyboardPlatform,
   type Shell,
@@ -14,7 +15,9 @@ import {
   type NewWorkspaceHost,
 } from "../new-workspace/new-workspace-dialog.tsx";
 import { createdLine } from "../new-workspace/new-workspace-text.ts";
-import type { SampleHost } from "../sample/sample-host.ts";
+import { SampleChip } from "../sample/sample-chip.tsx";
+import type { CreatedSample, SampleHost } from "../sample/sample-host.ts";
+import { freshCopyLine } from "../sample/sample-text.ts";
 import { WorkspaceTrustBadge } from "../trust/workspace-trust-badge.tsx";
 import { CloseWorkspaceDialog } from "./close-workspace-dialog.tsx";
 import { workspaceMenu } from "./workspace-menu.ts";
@@ -63,18 +66,43 @@ export function WorkspaceWindow({
   const { open } = switcher;
   const [creating, setCreating] = useState(false);
   const askNewWorkspace = newWorkspace === undefined ? undefined : () => setCreating(true);
+  // What Try the Acme sample and Fresh copy do with the host's answer: a copy or a known sample opens.
+  const openSample = async (
+    made: Exclude<CreatedSample, { kind: "cant" }>,
+    toastOf: (name: string, trustFailure?: string) => string,
+  ): Promise<void> => {
+    if (made.kind === "existing") {
+      await switcher.fromMenu(() => switcher.openLocation(made.folder));
+      return;
+    }
+    const toast = toastOf(
+      made.name,
+      made.trust.kind === "not-saved" ? made.trust.reason : undefined,
+    );
+    await switcher.fromMenu(() => switcher.openLocation(made.folder, toast));
+    switcher.recent.markSample(made.folder);
+  };
+  const knownSamples = () =>
+    switcher.recent.list().flatMap((each) => (each.sample === true ? [each.location] : []));
   const trySample =
     sample === undefined
       ? undefined
       : async (): Promise<WelcomeSampleProblem | undefined> => {
-          const made = await sample.create();
+          const made = await sample.create(knownSamples());
           if (made.kind === "cant") return { folder: made.folder, reason: made.reason };
-          const toast = createdLine(
-            made.name,
-            made.trust.kind === "not-saved" ? made.trust.reason : undefined,
-          );
-          await switcher.fromMenu(() => switcher.openLocation(made.folder, toast));
+          await openSample(made, createdLine);
           return undefined;
+        };
+  const freshCopy =
+    sample === undefined
+      ? undefined
+      : async (): Promise<void> => {
+          const made = await sample.create([]);
+          if (made.kind === "cant") {
+            shell.toasts.show({ tone: "danger", title: cantCreateSampleLine(made) });
+            return;
+          }
+          await openSample(made, freshCopyLine);
         };
   const shown = useSyncExternalStore(
     (onChange) => open.subscribe(onChange),
@@ -179,14 +207,23 @@ export function WorkspaceWindow({
         regionFormat={regionFormat}
         switcher={{ workspace: { name: shown.value.name, folder: shown.location }, menu, busy }}
         badges={
-          shown.value.trust === undefined ? undefined : (
-            <WorkspaceTrustBadge
-              trust={shown.value.trust}
-              name={shown.value.name}
-              toasts={shell.toasts}
-              badges={shell.badges}
-            />
-          )
+          <>
+            {shown.value.trust === undefined ? null : (
+              <WorkspaceTrustBadge
+                trust={shown.value.trust}
+                name={shown.value.name}
+                toasts={shell.toasts}
+                badges={shell.badges}
+              />
+            )}
+            {freshCopy === undefined || !switcher.recent.isSample(shown.location) ? null : (
+              <SampleChip
+                trust={shown.value.trust}
+                onNewWorkspace={askNewWorkspace}
+                onFreshCopy={() => void freshCopy()}
+              />
+            )}
+          </>
         }
       />
       {dialog}

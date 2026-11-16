@@ -117,4 +117,36 @@ verifies("workspace.recent-workspaces", () => {
     recent.remember(beta);
     expect(listener).toHaveBeenCalledTimes(2);
   });
+
+  it("remembers a sample across later shows of the folder", () => {
+    const storage = memoryStorage();
+    const recent = new RecentWorkspaces(storage);
+    recent.remember(acme);
+    recent.markSample(acme.location);
+    recent.remember(beta);
+    recent.remember({ location: acme.location, name: "Acme" });
+
+    const again = new RecentWorkspaces(storage);
+    expect(again.list()[0]).toEqual({ ...acme, sample: true });
+    expect(again.isSample(acme.location)).toBe(true);
+    expect(again.isSample(beta.location)).toBe(false);
+  });
+
+  it("marks only a folder that is in the list, and forgets the mark with the entry", () => {
+    const recent = new RecentWorkspaces(memoryStorage());
+    recent.markSample(acme.location);
+    expect(recent.list()).toEqual([]);
+
+    recent.remember(acme);
+    recent.markSample(acme.location);
+    recent.forget(acme.location);
+    recent.remember(acme);
+    expect(recent.isSample(acme.location)).toBe(false);
+  });
+
+  it("ignores a stored sample mark that isn't true", () => {
+    const text = JSON.stringify([{ ...acme, sample: "yes" }]);
+    const recent = new RecentWorkspaces(memoryStorage({ "halonic.workspace.recent": text }));
+    expect(recent.list()).toEqual([acme]);
+  });
 });
