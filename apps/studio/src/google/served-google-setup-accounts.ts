@@ -73,12 +73,21 @@ function listed(answer: unknown) {
  */
 export class ServedGoogleSetupAccounts implements GoogleSetupAccounts {
   readonly secretEntry = noSecretField;
+  readonly readOnly = true as const;
   signInEntry: SignInEntry = { kind: "elsewhere", commandExists: true };
   readonly #fetch: (path: string) => Promise<Response>;
-  readonly #listeners = new Set<() => void>();
+  readonly #onFocus: (listener: () => void) => () => void;
 
-  constructor(fetchPage: (path: string) => Promise<Response>) {
+  /**
+   * @param fetchPage reads a path on the page's own address
+   * @param onFocus calls the listener whenever the window comes to the front; returns a function that stops it
+   */
+  constructor(
+    fetchPage: (path: string) => Promise<Response>,
+    onFocus: (listener: () => void) => () => void = () => () => {},
+  ) {
     this.#fetch = fetchPage;
+    this.#onFocus = onFocus;
   }
 
   async list(): Promise<readonly GoogleSetupAccount[]> {
@@ -132,8 +141,7 @@ export class ServedGoogleSetupAccounts implements GoogleSetupAccounts {
   }
 
   subscribe(listener: () => void): () => void {
-    this.#listeners.add(listener);
-    return () => this.#listeners.delete(listener);
+    return this.#onFocus(listener);
   }
 }
 

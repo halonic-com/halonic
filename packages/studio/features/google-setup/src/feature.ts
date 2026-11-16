@@ -36,3 +36,22 @@ export const googleSetupFeature = defineFeature({
     });
   },
 });
+
+/**
+ * The Google setup feature of a served window (`google-setup.served`). It adds only the Inbox's
+ * setup source: the badges and the connector block need the Library's connector page, which a
+ * served window doesn't have. Register it in place of {@link googleSetupFeature}, never with it.
+ */
+export const servedGoogleSetupFeature = defineFeature({
+  id: "google-setup",
+  title: "Google setup",
+  needs: [GoogleSetupAccountsService, InboxService],
+  provides: [GoogleSetupSourceService],
+  register(studio) {
+    studio.services.provide(GoogleSetupSourceService, (services) => {
+      const source = googleSetupSource(services.get(GoogleSetupAccountsService));
+      services.get(InboxService).addSetupSource(source);
+      return source;
+    });
+  },
+});

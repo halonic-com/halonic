@@ -140,8 +140,8 @@ export function keyboardPlatform(userAgent: string): KeyboardPlatform {
  * starts it, as AGENTS.md asks of screens.
  *
  * The desktop app registers the Inbox, Google setup, Workflows and Runs, over the runs in each open folder, Settings
- * (`studio.settings`) and the workspace page (`workspace.page`). The served Studio registers no feature yet: nothing serves it runs until
- * `halonic serve` is built, so it shows Home and the Search box.
+ * (`studio.settings`) and the workspace page (`workspace.page`). The served Studio registers the Inbox over the served workspace's
+ * runs, Settings and the Google setup, read-only (`studio.served-google-setup-accounts`).
  *
  * @param desktop the desktop app's features and the services it gives them, `desktopFeatures`
  *
