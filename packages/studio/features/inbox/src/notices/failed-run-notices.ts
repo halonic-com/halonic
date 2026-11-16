@@ -7,8 +7,9 @@ export interface FailedRunNotice {
   /** `failed-run:<routine>:<day>`. Holds no account, error text or amount (what a dismissal keeps). */
   readonly key: string;
   readonly routineId: string;
-  /** The newest failed run of the day: **Open run** opens it. */
+  /** The newest failed run of the day: **Open run** opens it, in its hub. */
   readonly runId: string;
+  readonly hubId: string;
   /** ISO time the newest failed run ended. */
   readonly at: string;
   /** How many of the routine's runs failed that day. */
@@ -79,6 +80,7 @@ function notice(
     key,
     routineId,
     runId: newest.id,
+    hubId: newest.hubId,
     at,
     count,
     fixed: fixedAt !== undefined && fixedAt > at,

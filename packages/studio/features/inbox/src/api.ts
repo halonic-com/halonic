@@ -5,6 +5,7 @@
  */
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { Inbox, InboxRuns } from "./inbox.ts";
+import type { InboxNotices } from "./notices/inbox-notices.ts";
 import type { InboxRequests } from "./request/inbox-requests.ts";
 
 export { type InboxDecisions, inboxDecisions } from "./decide.ts";
@@ -28,6 +29,8 @@ export {
   setupKey,
   type WaitItem,
 } from "./inbox-items.ts";
+export { type FailedRunNotice, failedRunNotices } from "./notices/failed-run-notices.ts";
+export type { InboxNotices } from "./notices/inbox-notices.ts";
 export { clockTime } from "./plain/waiting-time.ts";
 export type { InboxRequests, RequestWorkflow, StartedRun } from "./request/inbox-requests.ts";
 
@@ -43,3 +46,10 @@ export const InboxService: ServiceKey<Inbox> = serviceKey<Inbox>("inbox");
  */
 export const InboxRequestsService: ServiceKey<InboxRequests> =
   serviceKey<InboxRequests>("inbox.requests");
+
+/**
+ * The notices the Inbox shows under Needs you. The app provides it for each open workspace; without
+ * it the Inbox has no Notices section.
+ */
+export const InboxNoticesService: ServiceKey<InboxNotices> =
+  serviceKey<InboxNotices>("inbox.notices");
