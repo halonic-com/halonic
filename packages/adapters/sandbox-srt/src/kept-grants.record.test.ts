@@ -121,6 +121,17 @@ verifies("sandbox-srt.kept-grants", () => {
       expect(recordedFolders(recordFolder)).toEqual([folderA]);
     });
 
+    it("keeps a gone process's folder in its file while a live record covers it", async () => {
+      const nested = `${folderA}\\sub`;
+      const { recordFolder, calls, grants, another } = setup(0, [folderA, nested]);
+      another().record([folderA]);
+      deadRecord(recordFolder, JSON.stringify([nested]));
+      const result = await grants.sweep([sweepRoot]);
+      expect(result.heldByOthers).toEqual([nested]);
+      expect(calls.filter((call) => call[1] === "forget")).toEqual([]);
+      expect(recordedFolders(recordFolder)).toEqual(expect.arrayContaining([folderA, nested]));
+    });
+
     it("does not sweep a recorded folder a live session holds, even before srt lists it", async () => {
       const { recordFolder, calls, grants } = setup();
       grants.record([folderA]);

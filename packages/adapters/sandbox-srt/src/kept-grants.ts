@@ -350,13 +350,22 @@ export class KeptGrants {
     );
     const recorded = [...this.#recorded.values(), ...found.flatMap((record) => record.folders)];
     const dropped: string[] = [];
+    const heldByLive: string[] = [];
     for (const folder of recorded) {
-      if (inLive(folder)) continue;
+      if (inLive(folder)) {
+        heldByLive.push(folder);
+        continue;
+      }
       if (this.#held.has(windowsKey(folder)) || listed.has(windowsKey(folder)))
         toForget.push(folder);
       else dropped.push(folder);
     }
     const result = await this.#forgetUnheld(toForget);
+    // Left in the dead file for the next sweep, once the live process is gone.
+    for (const folder of heldByLive) {
+      if (!result.heldByOthers.some((held) => windowsKey(held) === windowsKey(folder)))
+        result.heldByOthers.push(folder);
+    }
     this.#unrecord(dropped);
     this.#settleDead(found, result);
     result.failed.push(...unreadable);
