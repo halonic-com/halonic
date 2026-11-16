@@ -8,6 +8,7 @@ import type {
   KeptFile,
   ReplaceResult,
   Version,
+  UpdatesResult,
   VersionInput,
 } from "@halonicjs/studio-feature-source-control/api";
 import { historyArgs, versionsFromLog } from "./history-log.ts";
@@ -144,6 +145,35 @@ export class WorkspaceChanges implements ChangesSource {
     if (init.code !== 0) throw new KindedError("unavailable", readableProblem(init));
   }
 
+  async hasRemote(): Promise<boolean> {
+    const remotes = await this.#run(["remote"]);
+    return remotes !== "no-git" && remotes.code === 0 && remotes.stdout.trim() !== "";
+  }
+
+  async getUpdates(): Promise<UpdatesResult> {
+    const before = await this.#head();
+    const pull = await this.#run(["pull", "--ff-only", "--quiet"]);
+    if (pull === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
+    if (pull.code !== 0) {
+      if (
+        /not possible to fast-forward|divergent branches/i.test(`${pull.stderr}\n${pull.stdout}`)
+      ) {
+        return { kind: "both-moved" };
+      }
+      throw new KindedError("unavailable", updatesReason(pull));
+    }
+    const after = await this.#head();
+    if (after === before) return { kind: "up-to-date" };
+    const range = before === null ? "HEAD" : `${before}..HEAD`;
+    const log = await this.#run(["log", "--oneline", range]);
+    if (log === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
+    if (log.code !== 0) throw new KindedError("unavailable", readableProblem(log));
+    return {
+      kind: "got",
+      count: log.stdout.split("\n").filter((line) => line.trim() !== "").length,
+    };
+  }
+
   subscribe(listener: () => void): () => void {
     const stops = [this.#options.onFocus(listener), this.#options.onFilesChanged(listener)];
     return () => {
@@ -165,6 +195,13 @@ export class WorkspaceChanges implements ChangesSource {
       throw new KindedError("unavailable", readableProblem(diff));
     }
     return lastVersionFromDiff(diff.stdout, after);
+  }
+
+  /** The commit the folder is on, `null` before its first version. */
+  async #head(): Promise<string | null> {
+    const head = await this.#run(["rev-parse", "--verify", "--quiet", "HEAD"]);
+    if (head === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
+    return head.code === 0 ? head.stdout.trim() : null;
   }
 
   /** Runs git; `"no-git"` when the shell says the git program isn't found. */
@@ -240,6 +277,32 @@ function gitReason(answer: GitAnswer): string {
     return "Git refused to record the version. A check on this workspace or a permission stopped it.";
   }
   return knownGitProblem(answer) ?? "Git didn't accept the version.";
+}
+
+/** Why getting updates failed, as one plain sentence: git's own output is never shown. */
+function updatesReason(answer: GitAnswer): string {
+  const said = `${answer.stderr}\n${answer.stdout}`;
+  if (
+    /no tracking information|no upstream|no such remote|does not appear to be a git repository/i.test(
+      said,
+    )
+  ) {
+    return "This workspace isn't set up to get updates yet.";
+  }
+  if (
+    /could not resolve host|unable to access|could not read from remote|connection (refused|timed out)|network is unreachable/i.test(
+      said,
+    )
+  ) {
+    return "you can't reach the shared copy right now.";
+  }
+  if (/authentication failed|permission denied \(publickey\)|could not read username/i.test(said)) {
+    return "the shared copy didn't accept your sign-in.";
+  }
+  if (/would be overwritten/i.test(said)) {
+    return "updates would overwrite changes you haven't put in a version. Create a version first.";
+  }
+  return knownGitProblem(answer) ?? "Git didn't get the updates.";
 }
 
 /** Whether the shell refused because it found no git program (`GitRefusal.kind`). */

@@ -493,3 +493,103 @@ verifies("source-control.create-version", () => {
     });
   });
 });
+
+verifies("source-control.get-updates", () => {
+  describe("WorkspaceChanges.getUpdates", () => {
+    const real = (dir: string) =>
+      history(async (args) => {
+        const run = spawnSync(
+          "git",
+          ["-c", "user.name=T", "-c", "user.email=t@example.com", ...args],
+          { cwd: dir, encoding: "utf8" },
+        );
+        return { code: run.status, stdout: run.stdout, stderr: run.stderr };
+      }).changes;
+
+    /** A shared repository and a clone of it; `sam` is a second clone that can publish versions. */
+    function shared() {
+      const root = mkdtempSync(join(tmpdir(), "updates-"));
+      const run = (cwd: string, ...args: string[]) =>
+        execFileSync("git", ["-c", "user.name=T", "-c", "user.email=t@example.com", ...args], {
+          cwd,
+          encoding: "utf8",
+        });
+      run(root, "init", "--quiet", "--bare", "origin.git");
+      run(root, "clone", "--quiet", "origin.git", "mine");
+      const mine = join(root, "mine");
+      writeFileSync(join(mine, "a.md"), "one\n");
+      run(mine, "add", "--all");
+      run(mine, "commit", "-m", "first", "--quiet");
+      run(mine, "push", "--quiet", "origin", "HEAD");
+      run(root, "clone", "--quiet", "origin.git", "sam");
+      const sam = join(root, "sam");
+      const publish = (file: string, text: string) => {
+        writeFileSync(join(sam, file), text);
+        run(sam, "add", "--all");
+        run(sam, "commit", "-m", `Sam: ${file}`, "--quiet");
+        run(sam, "push", "--quiet", "origin", "HEAD");
+      };
+      return { root, mine, run, publish };
+    }
+
+    it("counts the versions it got and puts the files in the folder", async () => {
+      const { root, mine, publish } = shared();
+      try {
+        publish("b.md", "two\n");
+        publish("c.md", "three\n");
+        const changes = real(mine);
+        expect(await changes.getUpdates()).toEqual({ kind: "got", count: 2 });
+        expect(readFileSync(join(mine, "c.md"), "utf8")).toBe("three\n");
+        expect(await changes.getUpdates()).toEqual({ kind: "up-to-date" });
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    it("changes nothing when both sides have new versions", async () => {
+      const { root, mine, run, publish } = shared();
+      try {
+        publish("b.md", "two\n");
+        writeFileSync(join(mine, "c.md"), "mine\n");
+        run(mine, "add", "--all");
+        run(mine, "commit", "-m", "mine", "--quiet");
+        const head = run(mine, "rev-parse", "HEAD");
+        expect(await real(mine).getUpdates()).toEqual({ kind: "both-moved" });
+        expect(run(mine, "rev-parse", "HEAD")).toBe(head);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    it("says that updates would overwrite changes that aren't in a version", async () => {
+      const { root, mine, publish } = shared();
+      try {
+        publish("b.md", "two\n");
+        writeFileSync(join(mine, "b.md"), "mine\n");
+        await expect(real(mine).getUpdates()).rejects.toThrow("Create a version first");
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    it("says the shared copy can't be reached, never showing git's words", async () => {
+      const { changes } = history(async () =>
+        answer("", 1, "fatal: unable to access 'https://example.invalid/': Could not resolve host"),
+      );
+      await expect(changes.getUpdates()).rejects.toThrow("you can't reach the shared copy");
+    });
+
+    it("says git is missing when the shell found no git program", async () => {
+      const { changes } = history(async () => {
+        throw { kind: "git_not_found" };
+      });
+      await expect(changes.getUpdates()).rejects.toThrow("git isn't on this computer");
+    });
+
+    it("has a remote only when git lists one", async () => {
+      const lists = (out: string) => history(async () => answer(out)).changes.hasRemote();
+      expect(await lists("origin\n")).toBe(true);
+      expect(await lists("")).toBe(false);
+    });
+  });
+});
