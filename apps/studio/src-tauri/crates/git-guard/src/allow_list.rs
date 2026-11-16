@@ -44,6 +44,8 @@ pub(crate) enum Arguments {
     RemoteAndRefs,
     /// `remote`'s own forms, checked by `check_remote`.
     RemoteCommand,
+    /// `config`'s two forms, checked by `check_config`.
+    ConfigCommand,
 }
 
 /// One allowed subcommand.
@@ -326,6 +328,13 @@ pub(crate) const ALLOWED_SUBCOMMANDS: &[AllowedSubcommand] = &[
         name: "remote",
         options: &[Flag("-v"), Flag("--verbose")],
         arguments: Arguments::RemoteCommand,
+        uses_network: false,
+        shows_diffs: false,
+    },
+    AllowedSubcommand {
+        name: "config",
+        options: &[Flag("--get")],
+        arguments: Arguments::ConfigCommand,
         uses_network: false,
         shows_diffs: false,
     },

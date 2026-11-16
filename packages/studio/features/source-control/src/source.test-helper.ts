@@ -2,6 +2,7 @@ import type {
   ChangesRead,
   ChangesSource,
   FileTexts,
+  Identity,
   KeptFile,
   UpdatesResult,
   Version,
@@ -19,6 +20,11 @@ export function fakeSource(initial: ChangesRead) {
   let versionFailure: unknown;
   let historyFailure: unknown;
   let turnedOn = 0;
+  // Set, so the tests of Create version don't ask who versions are from.
+  let identity: Identity = { name: "Sam Smith", email: "sam@acme.example" };
+  let identityFailure: unknown;
+  const identities: Identity[] = [];
+  let identityReads = 0;
   let recorded: readonly Version[] = [];
   const historyLimits: number[] = [];
   let remote = false;
@@ -74,6 +80,15 @@ export function fakeSource(initial: ChangesRead) {
       if (answer.kind === "ready") {
         answer = { kind: "ready", changes: answer.changes.filter((c) => !recorded.has(c.path)) };
       }
+    },
+    readIdentity: async () => {
+      identityReads += 1;
+      return identity;
+    },
+    setIdentity: async (next) => {
+      if (identityFailure !== undefined) throw identityFailure;
+      identities.push(next);
+      identity = next;
     },
     turnOnHistory: async () => {
       turnedOn += 1;
@@ -139,6 +154,18 @@ export function fakeSource(initial: ChangesRead) {
     /** Makes Turn on history fail with `error`. */
     failTurnOn: (error: unknown) => {
       turnOnFailure = error;
+    },
+    /** Who versions are from now; empty texts for a part that isn't set. */
+    setIdentity: (next: Identity) => {
+      identity = next;
+    },
+    /** How many times who versions are from was read. */
+    identityReads: () => identityReads,
+    /** Every identity `setIdentity` was given, in order. */
+    identities,
+    /** Makes saving who versions are from fail with `error`. */
+    failIdentity: (error: unknown) => {
+      identityFailure = error;
     },
     /** Every address `addRemote` was given, in order. */
     remotes,

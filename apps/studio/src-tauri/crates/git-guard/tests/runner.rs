@@ -358,3 +358,23 @@ fn git_hardening_refuses_a_merge_in_a_repository_that_plants_merge_options() {
     let file = std::fs::read_to_string(sandbox.acme.join("notes.md")).expect("the file reads");
     assert_eq!(file, "one\nmine\n");
 }
+
+#[test]
+fn git_hardening_sets_and_reads_the_identity_in_the_repository_config() {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    sandbox.git_ok("config user.name Sam");
+    sandbox.git_ok("config user.email sam@acme.example");
+    assert_eq!(sandbox.git_ok("config --get user.name"), "Sam\n");
+    assert_eq!(
+        sandbox.git_ok("config --get user.email"),
+        "sam@acme.example\n"
+    );
+    sandbox.write("notes.md", "acme notes\n");
+    sandbox.git_ok("add -A");
+    sandbox.git_ok("commit -m first-note");
+    assert_eq!(
+        sandbox.git_ok("log --format=%an,%ae"),
+        "Sam,sam@acme.example\n"
+    );
+}

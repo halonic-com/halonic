@@ -111,6 +111,23 @@ export const versionWords = {
   },
 };
 
+/** Who should versions be from? (checklist part 2, 2.6, T9-F21; microcopy 16, HAL-1566). */
+export const identityWords = {
+  title: "Who should versions be from?",
+  intro: "Your name shows next to each version you create, for you and your team.",
+  name: "Name",
+  email: "Email",
+  emailHint: "Shown in the history. Use a no-reply address if you prefer.",
+  saveAndContinue: "Save and continue",
+  saving: "Saving…",
+  /** Under Name, for an empty field. */
+  emptyName: "Enter your name.",
+  /** Under Email, for an empty field and for one that isn't an address. */
+  badEmail: "Enter an email address, like sam@acme.example.",
+  failed: "Couldn't save this",
+  tryAgain: "Try again",
+};
+
 /** Get updates (checklist part 2, 2.8; microcopy revision 94, 16). */
 export const updatesWords = {
   getUpdates: "Get updates",

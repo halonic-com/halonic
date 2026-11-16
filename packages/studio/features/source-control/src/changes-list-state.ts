@@ -1,5 +1,5 @@
-import type { ChangeLine, FileChange } from "@halonicjs/app";
-import type { ChangesRead, FileTexts, UpdatesResult, Version } from "./api.ts";
+import type { FileChange } from "@halonicjs/app";
+import type { ChangesRead, FileTexts, Identity, UpdatesResult, Version } from "./api.ts";
 
 /** How many versions History shows first, and how many more Show more adds. */
 export const historyPageSize = 20;
@@ -52,6 +52,11 @@ export interface ChangesListState {
   readonly hasRemote: boolean;
   /** Whether Get updates is working. */
   readonly gettingUpdates: boolean;
+  /**
+   * Who versions are from, as of the last read that worked; `undefined` before one. Create version
+   * asks first while a part of it is not set.
+   */
+  readonly identity: Identity | undefined;
   /**
    * Set while Create version is open: the paths it opened with, or `undefined` inside for every
    * changed file. `undefined` when it is closed.

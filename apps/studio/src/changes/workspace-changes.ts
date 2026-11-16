@@ -5,6 +5,7 @@ import type {
   ChangesRead,
   ChangesSource,
   FileTexts,
+  Identity,
   KeptFile,
   ReplaceResult,
   UpdatesResult,
@@ -148,6 +149,24 @@ export class WorkspaceChanges implements ChangesSource {
     if (init.code !== 0) throw new KindedError("unavailable", readableProblem(init));
   }
 
+  async readIdentity(): Promise<Identity> {
+    return {
+      name: await this.#readSetting("user.name"),
+      email: await this.#readSetting("user.email"),
+    };
+  }
+
+  async setIdentity({ name, email }: Identity): Promise<void> {
+    for (const [key, value] of [
+      ["user.name", name],
+      ["user.email", email],
+    ] as const) {
+      const set = await this.#run(["config", key, value]);
+      if (set === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
+      if (set.code !== 0) throw new KindedError("unavailable", identityReason(set));
+    }
+  }
+
   async hasRemote(): Promise<boolean> {
     const remotes = await this.#run(["remote"]);
     return remotes !== "no-git" && remotes.code === 0 && remotes.stdout.trim() !== "";
@@ -204,6 +223,13 @@ export class WorkspaceChanges implements ChangesSource {
       throw new KindedError("unavailable", readableProblem(diff));
     }
     return lastVersionFromDiff(diff.stdout, after);
+  }
+
+  /** One setting as git would use it; empty when it isn't set (git answers 1 for that). */
+  async #readSetting(key: "user.name" | "user.email"): Promise<string> {
+    const found = await this.#run(["config", "--get", key]);
+    if (found === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
+    return found.code === 0 ? found.stdout.trim() : "";
   }
 
   /** The commit the folder is on, `null` before its first version. */
@@ -286,6 +312,11 @@ function gitReason(answer: GitAnswer): string {
     return "Git refused to record the version. A check on this workspace or a permission stopped it.";
   }
   return knownGitProblem(answer) ?? "Git didn't accept the version.";
+}
+
+/** Why who versions are from couldn't be saved, as one plain sentence: git's own output is never shown. */
+function identityReason(answer: GitAnswer): string {
+  return knownGitProblem(answer) ?? "Git didn't accept this name and email.";
 }
 
 /** Why a share address couldn't be added, as one plain sentence: git's own output is never shown. */

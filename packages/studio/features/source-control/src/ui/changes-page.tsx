@@ -10,6 +10,7 @@ import { ChangeList } from "./change-list.tsx";
 import { CreateVersionDialog } from "./create-version-dialog.tsx";
 import { GetUpdates } from "./get-updates.tsx";
 import { History } from "./history.tsx";
+import { IdentityDialog } from "./identity-dialog.tsx";
 import { SharingStrip } from "./sharing-strip.tsx";
 
 /** The Changes place's page: the open workspace's changes, from `ChangesListService`. */
@@ -67,7 +68,10 @@ export function ChangesView({ list, developerView }: ChangesViewProps) {
           returnFocus={() => heading.current}
         />
       ) : null}
-      {state.version === undefined ? null : (
+      {list.needsIdentity && state.identity !== undefined ? (
+        <IdentityDialog list={list} initial={state.identity} returnFocus={() => heading.current} />
+      ) : null}
+      {state.version === undefined || list.needsIdentity ? null : (
         <CreateVersionDialog
           list={list}
           files={list.versionFiles}

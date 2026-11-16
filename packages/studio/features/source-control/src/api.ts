@@ -43,6 +43,12 @@ export interface VersionInput {
   readonly paths: readonly string[];
 }
 
+/** Who versions are from: the name and email git writes on each one. An empty text is not set. */
+export interface Identity {
+  readonly name: string;
+  readonly email: string;
+}
+
 /** One version in the history: a recorded set of changes. */
 export interface Version {
   /** The version's full id. */
@@ -100,6 +106,16 @@ export interface ChangesSource {
   readonly readHistory: (limit: number) => Promise<readonly Version[]>;
   /** Records a version of exactly `paths`; other files stay as changes. Throws when git refuses. */
   readonly createVersion: (input: VersionInput) => Promise<void>;
+  /**
+   * Who versions of this workspace are from, as git would write it (this workspace's own setting,
+   * else the person's own on this computer). A part that isn't set is an empty text.
+   */
+  readonly readIdentity: () => Promise<Identity>;
+  /**
+   * Sets who versions of this workspace are from, in this workspace's own history settings.
+   * Throws, with a reason a person can read, when git refuses.
+   */
+  readonly setIdentity: (identity: Identity) => Promise<void>;
   /**
    * Turns the folder into a repository and keeps `.studio/` out of it (`.gitignore`),
    * so Halonic can save versions of it.

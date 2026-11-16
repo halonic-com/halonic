@@ -1,21 +1,13 @@
-import { type ChangeLine, describeFileChange, type FileChange, revertParts } from "@halonicjs/app";
+import { type ChangeLine, revertParts } from "@halonicjs/app";
 import type { VcsChange } from "@halonicjs/ports";
 import { applyLineChanges, diffLines, type LineChange } from "@halonicjs/std";
 import type { PlaceSignal, ServiceKey } from "@halonicjs/studio-shell";
 import { serviceKey } from "@halonicjs/studio-shell";
-import type {
-  ChangesRead,
-  ChangesSource,
-  FileTexts,
-  KeptFile,
-  UpdatesResult,
-  Version,
-} from "./api.ts";
+import type { ChangesSource, Identity, KeptFile } from "./api.ts";
 import {
   type ChangedFile,
   type ChangesListState,
   type DiscardOutcome,
-  type HistoryState,
   historyPageSize,
   type UndoOutcome,
   type UpdatesOutcome,
@@ -28,6 +20,9 @@ import {
   updatesWords,
   versionWords,
 } from "./changes-words.ts";
+import { describeChanges } from "./describe-changes.ts";
+import { isIdentityComplete } from "./identity.ts";
+import { type IdentityOutcome, saveIdentity } from "./identity-save.ts";
 import { loadFailureReason } from "./load-failure.ts";
 import { isShareAddress } from "./share-address.ts";
 import { versionMessage } from "./version-name.ts";
@@ -41,9 +36,6 @@ export type {
   UpdatesOutcome,
 } from "./changes-list-state.ts";
 export { historyPageSize } from "./changes-list-state.ts";
-
-/** How many changed files' texts are read at the same time. */
-const readsAtOnce = 4;
 
 /**
  * The changes of one open workspace, kept current from its `ChangesSource`. The sidebar's count
@@ -62,6 +54,7 @@ export class ChangesList {
     error: undefined,
     turnOnError: undefined,
     turningOn: false,
+    identity: undefined,
     hasRemote: false,
     gettingUpdates: false,
     version: undefined,
@@ -105,10 +98,13 @@ export class ChangesList {
     const read = ++this.#reads;
     try {
       const answer = await this.source.read();
-      const files = answer.kind === "ready" ? await this.#describe(answer.changes) : [];
+      const files =
+        answer.kind === "ready" ? await describeChanges(this.source, answer.changes) : [];
       const hasRemote = answer.kind === "ready" && (await this.source.hasRemote());
       if (read !== this.#reads || this.#disposed) return;
-      this.#set({ ...this.#state, read: answer, files, hasRemote, error: undefined });
+      const identity = answer.kind === "ready" ? await this.#identity() : undefined;
+      if (read !== this.#reads || this.#disposed) return;
+      this.#set({ ...this.#state, read: answer, files, hasRemote, identity, error: undefined });
       if (answer.kind === "ready") await this.#readHistory(this.#state.history.versions.length);
     } catch (error) {
       if (read !== this.#reads || this.#disposed) return;
@@ -255,6 +251,29 @@ export class ChangesList {
     this.#set({ ...this.#state, version: { paths } });
   }
 
+  /** Who versions are from; once both parts are set they are kept, so a refresh doesn't ask git. */
+  async #identity(): Promise<Identity> {
+    const known = this.#state.identity;
+    return known !== undefined && isIdentityComplete(known)
+      ? known
+      : await this.source.readIdentity();
+  }
+
+  /** Whether Create version must first ask who versions are from. */
+  get needsIdentity(): boolean {
+    const { identity, version } = this.#state;
+    return version !== undefined && identity !== undefined && !isIdentityComplete(identity);
+  }
+
+  /** Saves who versions are from, so Create version can go on. */
+  async saveIdentity(identity: Identity): Promise<IdentityOutcome> {
+    const outcome = await saveIdentity(this.source, identity);
+    if (outcome.kind === "saved" && !this.#disposed) {
+      this.#set({ ...this.#state, identity: outcome.identity });
+    }
+    return outcome;
+  }
+
   /** Closes Create version without creating anything. */
   cancelVersion(): void {
     if (this.#state.version !== undefined) this.#set({ ...this.#state, version: undefined });
@@ -360,28 +379,6 @@ export class ChangesList {
     return first.status;
   }
 
-  /** What changed in each file, one entry for each path. A file that can't be read is just "Changed". */
-  async #describe(changes: readonly VcsChange[]): Promise<ChangedFile[]> {
-    const firstOfEachPath = [...new Map(changes.map((change) => [change.path, change])).values()];
-    const files: ChangedFile[] = [];
-    // A few files at a time: every read starts a git process.
-    for (let start = 0; start < firstOfEachPath.length; start += readsAtOnce) {
-      const batch = firstOfEachPath.slice(start, start + readsAtOnce);
-      files.push(...(await Promise.all(batch.map((change) => this.#describeFile(change)))));
-    }
-    return files;
-  }
-
-  async #describeFile(change: VcsChange): Promise<ChangedFile> {
-    try {
-      const texts = await this.source.readTexts(change);
-      const description = describeFileChange(change.path, texts.before, texts.after);
-      return { path: change.path, description, texts };
-    } catch {
-      return { path: change.path, description: unreadable(change), texts: undefined };
-    }
-  }
-
   /** Turns history on, then reads again. A failure stays in `turnOnError` for the page to say. */
   async turnOnHistory(): Promise<void> {
     if (this.#disposed || this.#state.turningOn) return;
@@ -454,19 +451,6 @@ export class ChangesList {
     this.#state = state;
     for (const listener of [...this.#listeners]) listener();
   }
-}
-
-/** The one line for a file that couldn't be read as text: only that it is new, deleted or changed. */
-function unreadable(change: VcsChange): FileChange {
-  let sentence = "Changed";
-  if (change.status === "added" || change.status === "untracked") sentence = "New";
-  if (change.status === "deleted") sentence = "Deleted";
-  return {
-    path: change.path,
-    kind: undefined,
-    lines: [{ id: "item", sentence, parts: [] }],
-    described: false,
-  };
 }
 
 /** The open workspace's {@link ChangesList}; the feature provides it from `ChangesSourceService`. */
