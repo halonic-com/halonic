@@ -20,6 +20,7 @@ const item = {
   accepts: ["approve", "reject"],
   answerLabels: {},
   since: asked.toISOString(),
+  waitingAt: asked.toISOString(),
   movesOnAt: null,
 } as const;
 
