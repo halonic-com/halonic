@@ -56,6 +56,8 @@ const remoteDecisionAnswer = s.object({
 /**
  * What Studio says to a decision from a remote device: it was taken, no such
  * approval waits (it is unknown, or ended), or someone decided first.
+ * The client package declares the same type for the wire contract
+ * (`RemoteDecisionStatus` in agent-host-client's bridge-calls.ts); keep the two equal.
  */
 export type RemoteDecisionStatus = "decided" | "unknown" | "already-decided";
 

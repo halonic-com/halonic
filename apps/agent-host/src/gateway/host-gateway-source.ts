@@ -39,8 +39,8 @@ async function decideAtStudio(decide: DecideRemotely, approved: boolean): Promis
   let status: RemoteDecisionStatus;
   try {
     status = await decide(approved);
-  } catch {
-    throw new Error("Studio didn't take the decision. The approval still waits.");
+  } catch (cause) {
+    throw new Error("Studio didn't take the decision. The approval still waits.", { cause });
   }
   if (status === "unknown") throw new Error("Studio has no approval waiting with this id.");
   if (status === "already-decided") throw new Error("This approval has already been decided.");
