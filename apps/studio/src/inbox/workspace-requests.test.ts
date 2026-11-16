@@ -1,42 +1,52 @@
-import type { WorkflowsHost } from "@halonicjs/studio-feature-workflows/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
-import { WorkspaceRequests } from "./workspace-requests.ts";
+import { WorkspaceRequests, type WorkspaceRequestsParts } from "./workspace-requests.ts";
 
-const support = {
-  hubId: "support",
-  id: "support-reply",
-  name: "Support reply",
-  description: "A customer's email",
-  request: { label: "Answer a customer's email", fields: [{ name: "mail" }] },
-};
-const triage = { hubId: "support", id: "triage", name: "Triage", request: undefined };
+const supportReply = [
+  "id: support-reply",
+  "name: Support reply",
+  "description: A customer's email",
+  "start:",
+  "  label: Answer a customer's email",
+  "  field: mail",
+  "initial: first",
+  "states:",
+  "  first:",
+  "    type: final",
+  "",
+].join("\n");
+const triage = "id: triage\nname: Triage\ninitial: first\nstates:\n  first:\n    type: final\n";
 
-/** A workflows host that knows only what the requests read: the list, each one's settings, and the engine. */
-function host(options: { engine?: boolean } = {}) {
-  const startRun = vi.fn(async () => ({ runId: "r9" }));
+/** The workspace's files and engine as the requests read them; `reads` counts every file read. */
+function setup(options: { engine?: boolean } = {}) {
+  const store: Record<string, string> = {
+    "hubs/support/hub.yaml": "id: support\nname: Support\n",
+    "hubs/support/workflows/support-reply.workflow.yaml": supportReply,
+    "hubs/support/workflows/triage.workflow.yaml": triage,
+  };
+  const startRun = vi.fn(async () => ({ id: "r9" }));
   const listeners = new Set<() => void>();
-  const workflows = [support, triage];
-  const fake = {
-    list: async () => workflows,
-    configuration: async ({ hubId, id }: { hubId: string; id: string }) => {
-      const found = workflows.find((one) => one.hubId === hubId && one.id === id);
-      if (found === undefined) throw new Error("not there");
-      return found;
+  const read = vi.fn(async (path: string) => store[path] ?? null);
+  const parts: WorkspaceRequestsParts = {
+    files: {
+      read,
+      list: async (dir) =>
+        Object.keys(store)
+          .filter((path) => path.startsWith(`${dir}/`))
+          .sort(),
     },
-    subscribe: (listener: () => void) => {
+    onChange: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    ...(options.engine === false ? {} : { startRun }),
-  } as unknown as WorkflowsHost;
-  return { fake, startRun, listeners };
+    ...(options.engine === false ? {} : { engine: { startRun } }),
+  };
+  return { requests: new WorkspaceRequests(parts), store, startRun, listeners, read };
 }
 
 verifies("studio.inbox-requests", () => {
   it("offers the workflows that have a start block, by label, with the description", async () => {
-    const requests = new WorkspaceRequests(host().fake);
-    expect(await requests.offered()).toEqual([
+    expect(await setup().requests.offered()).toEqual([
       {
         key: "support/support-reply",
         label: "Answer a customer's email",
@@ -45,41 +55,60 @@ verifies("studio.inbox-requests", () => {
     ]);
   });
 
+  it("reads each file once for one offer, however many workflows there are", async () => {
+    const { requests, read } = setup();
+    await requests.offered();
+    expect(read).toHaveBeenCalledTimes(3);
+  });
+
   it("starts the workflow with the message as the start field's input", async () => {
-    const { fake, startRun } = host();
-    const run = await new WorkspaceRequests(fake).start("support/support-reply", "Hi, Sam here.");
+    const { requests, startRun } = setup();
+    const run = await requests.start("support/support-reply", "Hi, Sam here.");
     expect(startRun).toHaveBeenCalledWith(
-      { hubId: "support", id: "support-reply" },
+      { hubId: "support", workflowId: "support-reply" },
       { mail: "Hi, Sam here." },
     );
     expect(run).toEqual({ runId: "r9" });
   });
 
-  it("refuses a workflow that isn't offered any more", async () => {
-    const { fake, startRun } = host();
-    await expect(new WorkspaceRequests(fake).start("support/triage", "Hello")).rejects.toThrow(
-      "isn't offered as a request any more",
-    );
+  it("refuses a workflow that isn't offered any more, or a key it never offered", async () => {
+    const { requests, startRun } = setup();
+    for (const key of ["support/triage", "no-slash"]) {
+      await expect(requests.start(key, "Hello")).rejects.toThrow(
+        "isn't offered as a request any more",
+      );
+    }
     expect(startRun).not.toHaveBeenCalled();
+  });
+
+  it("offers what is in the files now, so an edit or a deleted workflow can't leave a stale list", async () => {
+    const { requests, store } = setup();
+    delete store["hubs/support/workflows/support-reply.workflow.yaml"];
+    expect(await requests.offered()).toEqual([]);
   });
 
   describe("without an engine", () => {
     it("offers nothing and starts nothing", async () => {
-      const requests = new WorkspaceRequests(host({ engine: false }).fake);
+      const { requests } = setup({ engine: false });
       expect(await requests.offered()).toEqual([]);
       await expect(requests.start("support/support-reply", "Hello")).rejects.toThrow("engine");
     });
   });
 
   describe("changes", () => {
-    it("tells the Inbox when the workflows change, until it stops listening", () => {
-      const { fake, listeners } = host();
+    it("tells the Inbox when the files change, until it stops listening", () => {
+      const { requests, listeners } = setup();
       const heard = vi.fn();
-      const stop = new WorkspaceRequests(fake).subscribe(heard);
+      const stop = requests.subscribe(heard);
       for (const listener of listeners) listener();
       expect(heard).toHaveBeenCalledTimes(1);
       stop();
       expect(listeners.size).toBe(0);
+    });
+
+    it("reads nothing until asked, so a run event costs no read", () => {
+      const { read } = setup();
+      expect(read).not.toHaveBeenCalled();
     });
   });
 });

@@ -150,7 +150,7 @@ export function provideFolderServices(
       reportError: (error) => console.error("The engine", error),
     }),
   );
-  const workflows = services.provide(
+  services.provide(
     WorkflowsHostService,
     new WorkspaceWorkflows({
       files: services.get(workspaceFilesKey),
@@ -160,7 +160,14 @@ export function provideFolderServices(
       engine,
     }),
   );
-  services.provide(InboxRequestsService, new WorkspaceRequests(workflows));
+  services.provide(
+    InboxRequestsService,
+    new WorkspaceRequests({
+      files: services.get(workspaceFilesKey),
+      onChange: (listener) => scope.events.on("files.changed", listener),
+      engine,
+    }),
+  );
   const transport = tauriAgentHostTransport(window);
   services.provide(
     LibraryItemsHostService,
