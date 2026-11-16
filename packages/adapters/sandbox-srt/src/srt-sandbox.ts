@@ -13,7 +13,7 @@ import type {
   SandboxUnavailableReason,
 } from "@halonicjs/ports";
 import { HelperError } from "./elevate-helper.ts";
-import { describeForgetFailures, type ForgetResult, KeptGrants } from "./kept-grants.ts";
+import { describeForgetFailures, type ForgetResult, KeptGrants, keptGrantsRecordFile } from "./kept-grants.ts";
 import { type Machine, systemMachine } from "./machine.ts";
 import { appArmorFix, installFix } from "./package-manager.ts";
 import { startSmallestSandbox } from "./ready-check.ts";
@@ -109,7 +109,9 @@ export class SrtSandbox implements Sandbox {
     this.#machine = machine;
     this.#runner = runner;
     this.#journalFolder = journalFolder;
-    this.#grants = options.grants ?? new KeptGrants();
+    this.#grants =
+      options.grants ??
+      new KeptGrants(undefined, undefined, machine.platform === "win32" ? keptGrantsRecordFile() : null);
     this.#sweepRoots = options.sweepRoots ?? [];
     this.#warn = options.warn ?? ((message) => void process.stderr.write(`${message}\n`));
     this.#sharedFolders = options.sharedFolders ?? [];

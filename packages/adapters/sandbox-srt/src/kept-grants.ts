@@ -1,5 +1,7 @@
 import { execFile } from "node:child_process";
-import { win32 } from "node:path";
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, win32 } from "node:path";
 import { installedSrtVersion } from "./srt-runner.ts";
 
 /** The versions of sandbox-runtime whose `srt-win acl forget` this module was tried against. */
@@ -32,6 +34,11 @@ export function describeForgetFailures(failed: readonly ForgetFailure[]): string
   return `Could not forget the kept Windows access grant on: ${failed
     .map((failure) => `${failure.folder} (${failure.reason})`)
     .join(", ")}`;
+}
+
+/** Where the host records the folders it is about to let srt grant, on Windows. */
+export function keptGrantsRecordFile(): string {
+  return win32.join(process.env["LOCALAPPDATA"] ?? homedir(), "Halonic", "srt-kept-grants.json");
 }
 
 /** `srt-win` through the vendored binary of sandbox-runtime (it is what srt itself starts). */
@@ -80,10 +87,89 @@ export class KeptGrants {
   /** How many live sessions of this host use each folder, by {@link windowsKey}. */
   readonly #held = new Map<string, number>();
 
-  /** A test hands in a fake `srt-win` and version. */
-  constructor(run: RunSrtWin = runVendoredSrtWin, version: () => string = installedSrtVersion) {
+  /** The write-ahead record of folders srt may hold a kept grant on, or null for none. */
+  readonly #recordFile: string | null;
+
+  /**
+   * A test hands in a fake `srt-win` and version. With a `recordFile`,
+   * {@link record} writes each folder there before srt grants it, so a crash
+   * between the grant and its bookkeeping can't leave a grant nobody knows of.
+   */
+  constructor(
+    run: RunSrtWin = runVendoredSrtWin,
+    version: () => string = installedSrtVersion,
+    recordFile: string | null = null,
+  ) {
     this.#run = run;
     this.#version = version;
+    this.#recordFile = recordFile;
+  }
+
+  /**
+   * Writes these folders to the record, before srt runs anything that may
+   * grant them (write-ahead, HAL-5398 S2). Only a successful `acl forget`
+   * takes a folder out again. Fails closed: when the record can't be
+   * written, no session opens.
+   *
+   * @throws when the record can't be written
+   */
+  record(folders: readonly string[]): void {
+    if (this.#recordFile === null) return;
+    const recorded = this.#readRecord();
+    for (const folder of folders) recorded.set(windowsKey(folder), win32.resolve(folder));
+    this.#writeRecord(recorded);
+  }
+
+  /** The recorded folders by {@link windowsKey}; empty when there is no record, and throws on one it can't read, as nothing may be ruled out. */
+  #readRecord(): Map<string, string> {
+    const recorded = new Map<string, string>();
+    let text: string;
+    try {
+      text = readFileSync(this.#recordFile as string, "utf8");
+    } catch (error) {
+      if ((error as { code?: unknown }).code === "ENOENT") return recorded;
+      throw error;
+    }
+    const parsed: unknown = JSON.parse(text);
+    if (!Array.isArray(parsed)) throw new Error("the kept-grant record is not a list");
+    for (const folder of parsed) {
+      if (typeof folder === "string") recorded.set(windowsKey(folder), folder);
+    }
+    return recorded;
+  }
+
+  #writeRecord(recorded: ReadonlyMap<string, string>): void {
+    const file = this.#recordFile as string;
+    if (recorded.size === 0) {
+      rmSync(file, { force: true });
+      return;
+    }
+    mkdirSync(dirname(file), { recursive: true });
+    const temp = `${file}.${process.pid}.tmp`;
+    writeFileSync(temp, JSON.stringify([...recorded.values()]), { mode: 0o600 });
+    renameSync(temp, file);
+  }
+
+  /** Takes these folders out of the record once their grants are forgotten. Never throws: a leftover entry only costs a repeat forget. */
+  #unrecord(folders: readonly string[]): void {
+    if (this.#recordFile === null || folders.length === 0) return;
+    try {
+      const recorded = this.#readRecord();
+      for (const folder of folders) recorded.delete(windowsKey(folder));
+      this.#writeRecord(recorded);
+    } catch {
+      // Left in the record; the next sweep forgets it again.
+    }
+  }
+
+  /** The recorded folders; none when the record can't be read. */
+  #recorded(): string[] {
+    if (this.#recordFile === null) return [];
+    try {
+      return [...this.#readRecord().values()];
+    } catch {
+      return [];
+    }
   }
 
   /** @throws when sandbox-runtime is a version `acl forget` was not tried against: fail closed, as grants it can't take back would stay. */
@@ -129,6 +215,7 @@ export class KeptGrants {
       }
       const failure = await this.#forgetOne(folder);
       if (failure !== null) result.failed.push(failure);
+      else this.#unrecord([folder]);
     }
     return result;
   }
@@ -180,6 +267,14 @@ export class KeptGrants {
         failed.push(`${what}: ${oneLine(error instanceof Error ? error.message : String(error))}`);
       }
     }
+    // `--all` took back every grant, recorded ones included.
+    if (failed.length === 0 && this.#recordFile !== null) {
+      try {
+        rmSync(this.#recordFile, { force: true });
+      } catch {
+        // A stale record only costs a repeat forget.
+      }
+    }
     return failed;
   }
 
@@ -192,7 +287,9 @@ export class KeptGrants {
    * Never rejects.
    */
   async sweep(roots: readonly string[]): Promise<ForgetResult> {
-    if (roots.length === 0) return { heldByOthers: [], failed: [] };
+    if (roots.length === 0 && this.#recorded().length === 0) {
+      return { heldByOthers: [], failed: [] };
+    }
     let kept: string[];
     try {
       kept = await this.#listKept();
@@ -207,9 +304,11 @@ export class KeptGrants {
         ],
       };
     }
-    return this.#forgetUnheld(
-      kept.filter((folder) => roots.some((root) => isInsideWindows(root, folder))),
-    );
+    // The recorded folders too: a grant srt made but a crash left out of its status.
+    return this.#forgetUnheld([
+      ...kept.filter((folder) => roots.some((root) => isInsideWindows(root, folder))),
+      ...this.#recorded(),
+    ]);
   }
 
   /**

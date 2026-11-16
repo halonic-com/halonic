@@ -12,7 +12,7 @@ import {
   type Spawn,
   throughHelper,
 } from "./elevate-helper.ts";
-import { KeptGrants } from "./kept-grants.ts";
+import { KeptGrants, keptGrantsRecordFile } from "./kept-grants.ts";
 import { findPackageManager } from "./package-manager.ts";
 import {
   forgetSandboxParents,
@@ -244,7 +244,7 @@ const whoamiGroups = (): Promise<string | null> =>
 /** What a removal through the helper asks of this process (HAL-7544, HAL-7585). */
 const removalSteps: RemovalSteps = {
   elevated: async () => listsElevated(await whoamiGroups()),
-  forgetAll: () => new KeptGrants().forgetAll(),
+  forgetAll: () => new KeptGrants(undefined, undefined, keptGrantsRecordFile()).forgetAll(),
 };
 
 /** The machine this process runs on. */
