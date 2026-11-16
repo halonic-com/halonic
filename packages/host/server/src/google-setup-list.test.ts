@@ -86,6 +86,17 @@ describe("google setup list", () => {
       expect(body.setups).toEqual([one]);
     });
 
+    it("gives each entry the address and services a window needs to draw it", async () => {
+      const { server, google } = setup();
+      await started(google);
+      const body = (await (await list(server)).json()) as {
+        setups: { account: string; available: { id: string }[]; route: unknown }[];
+      };
+      expect(body.setups[0]?.account).toBe("someone@example.com");
+      expect(body.setups[0]?.available.map(({ id }) => id)).toEqual(["ledger"]);
+      expect(body.setups[0]?.route).toEqual(route);
+    });
+
     it("leaves out a setup no connector uses any more", async () => {
       const { server, google } = setup();
       await started(google);

@@ -15,6 +15,11 @@ async function setupView(
   }
   return {
     accountRef: record.accountRef,
+    // What a window needs to draw the setup as the computer does: the connector's address, the
+    // services its sheets offer and the route. None of them is secret.
+    account: subject.account,
+    available: subject.services,
+    route: record.route,
     accountType: record.accountType,
     startedAt: record.startedAt,
     projectId: record.projectId,
@@ -23,6 +28,7 @@ async function setupView(
     clientId: record.clientId,
     clientSecretSavedAt: record.clientSecret?.savedAt ?? null,
     signInStartedAt: record.signInStartedAt,
+    refreshRefused: record.refreshRefused,
     lastSignInAt: record.lastSignInAt,
     wrongAccountAt: record.wrongAccountAt,
     lastSignInEnded: record.lastSignInEnded,
