@@ -1,31 +1,5 @@
 import { TauriPickedFolders, TauriTrustStore } from "@halonicjs/adapter-fs-tauri";
 import { ServiceRegistry } from "@halonicjs/app";
-import { googleSetupFeature } from "@halonicjs/studio-feature-google-setup";
-import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
-import { inboxFeature } from "@halonicjs/studio-feature-inbox";
-import { InboxRequestsService, InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
-import { libraryFeature } from "@halonicjs/studio-feature-library";
-import {
-  CollectionHostService,
-  ConnectorStatusHostService,
-  KnowledgeHostService,
-  LibraryItemsHostService,
-  LibraryTabMemoryService,
-  ListedToolsHostService,
-  NewCollectionHostService,
-  NewSkillHostService,
-  SkillHostService,
-} from "@halonicjs/studio-feature-library/api";
-import { modelsFeature } from "@halonicjs/studio-feature-models";
-import {
-  ModelKeysService,
-  ModelsFilesService,
-  NoLimitMemoryService,
-} from "@halonicjs/studio-feature-models/api";
-import { pluginsFeature } from "@halonicjs/studio-feature-plugins";
-import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
-import { runsFeature } from "@halonicjs/studio-feature-runs";
-import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import {
   BrowserDisplayPrefs,
   DisplaySettings,
