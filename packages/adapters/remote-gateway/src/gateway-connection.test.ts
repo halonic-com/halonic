@@ -312,6 +312,37 @@ verifies("remote-gateway.connection", () => {
     });
   });
 
+  it("closes the connection when the transport throws on an event, and passes no error to the source", async () => {
+    const t = openConnection();
+    t.source.addSession("s1");
+    await t.hello();
+    await t.say({ type: "watch", id: "w1", sessionId: "s1", afterSeq: 0 });
+    t.transport.failSends = true;
+    t.source.emit("s1", normal);
+    await settle();
+    expect(t.transport.closed).toBe(true);
+  });
+
+  it("closes the connection when more frames wait than it allows, behind a slow answer", async () => {
+    const t = openConnection();
+    t.source.addSession("s1");
+    t.source.emit("s1", normal);
+    t.source.answerApproval = () => new Promise<void>(() => undefined);
+    await t.hello();
+    const answer = (id: string) =>
+      t.say({
+        type: "answer-approval",
+        id,
+        sessionId: "s1",
+        approvalId: "p2",
+        decision: "approve",
+      });
+    for (let n = 0; n < 32; n++) await answer(`a${n}`);
+    expect(t.transport.closed).toBe(false);
+    await answer("a32");
+    expect(t.transport.closed).toBe(true);
+  });
+
   it("closes the connection when the source throws", async () => {
     const t = openConnection();
     t.source.list = () => {

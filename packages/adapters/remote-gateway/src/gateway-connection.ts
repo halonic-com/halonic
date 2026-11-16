@@ -27,6 +27,9 @@ export interface GatewayConnectionDeps {
   transport: GatewayTransport;
 }
 
+/** How many frames may wait to be handled (the one being handled included) before the phone is cut off. */
+const maxPendingFrames = 32;
+
 type ClosingCode = "malformed" | "too-large" | "unsupported-version";
 type RefusalCode = (typeof gatewayRefusalCodes)[number];
 
@@ -49,15 +52,30 @@ export class GatewayConnection {
   private readonly watches = new Map<string, Watch>();
   private greeted = false;
   private closed = false;
+  private pendingFrames = 0;
   private chain: Promise<void> = Promise.resolve();
 
   constructor(deps: GatewayConnectionDeps) {
     this.deps = deps;
   }
 
-  /** Handles one frame the phone sent. Frames that arrive after the connection closed are dropped. */
+  /**
+   * Handles one frame the phone sent. Frames that arrive after the connection closed are dropped.
+   * A phone that sends faster than the host answers is closed once too many frames wait.
+   */
   receive(frame: GatewayFrame): void {
-    this.chain = this.chain.then(() => this.handleFrame(frame)).catch(() => this.close());
+    if (this.closed) return;
+    if (this.pendingFrames >= maxPendingFrames) {
+      this.close();
+      return;
+    }
+    this.pendingFrames++;
+    this.chain = this.chain
+      .then(() => this.handleFrame(frame))
+      .catch(() => this.close())
+      .finally(() => {
+        this.pendingFrames--;
+      });
   }
 
   /** The transport's connection ended: stops every watch. */
@@ -196,9 +214,18 @@ export class GatewayConnection {
     this.reply({ type: "ok", replyTo: message.id });
   }
 
-  /** Passes an event on, unless its watch was replaced, ended or the connection closed. */
+  /**
+   * Passes an event on, unless its watch was replaced, ended or the connection closed.
+   * It runs in the source's callback, outside `chain`, so a failure here closes the
+   * connection instead of reaching the host's session code.
+   */
   private deliver(sessionId: string, watch: Watch, event: GatewaySessionEvent): void {
-    if (this.watches.get(sessionId) === watch) this.sendEvent(sessionId, event);
+    if (this.watches.get(sessionId) !== watch) return;
+    try {
+      this.sendEvent(sessionId, event);
+    } catch {
+      this.close();
+    }
   }
 
   private sendEvent(sessionId: string, event: GatewaySessionEvent): void {

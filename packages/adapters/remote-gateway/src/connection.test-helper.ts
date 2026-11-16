@@ -8,12 +8,15 @@ const encoder = new TextEncoder();
 export function openConnection(options: { allowRisky?: boolean } = {}) {
   const source = new FakeSource();
   const sent: GatewayHostMessage[] = [];
-  const transport = { closed: false, buffered: 0 };
+  const transport = { closed: false, buffered: 0, failSends: false };
   const connection = new GatewayConnection({
     source,
     policy: { allowRiskyRemotely: () => options.allowRisky === true },
     transport: {
-      send: (json) => sent.push(JSON.parse(json) as GatewayHostMessage),
+      send: (json) => {
+        if (transport.failSends) throw new Error("socket gone");
+        sent.push(JSON.parse(json) as GatewayHostMessage);
+      },
       bufferedBytes: () => transport.buffered,
       close: () => {
         transport.closed = true;
