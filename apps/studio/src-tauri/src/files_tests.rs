@@ -13,8 +13,7 @@ use serde_json::{Value, json};
 
 use super::{
     EntryAnswer, FileFolder, FileRefusal, Making, RemoveAnswer, WatchEvent, WatchStart,
-    WriteAnswer, kept_copies_root, only_writes_to_kept_copies, profile_fence, review_root,
-    workspace_root,
+    WriteAnswer, kept_copies, profile_fence, review_root, workspace_root,
 };
 
 fn as_json(value: impl serde::Serialize) -> Value {
