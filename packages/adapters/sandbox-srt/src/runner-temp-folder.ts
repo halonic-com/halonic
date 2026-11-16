@@ -104,7 +104,9 @@ async function makeInAccountFolder(sharedParent: string, start: RunProgram): Pro
     if (made) await rmdir(account).catch(() => undefined);
     throw error;
   }
-  const expected = await mkdtemp(join(account, "r-"));
+  // The account folder's own real path is the base: a shared folder given by a short name (`RUNNER~1`) must not look like a swap.
+  const realAccount = await realpath(account);
+  const expected = await mkdtemp(join(realAccount, "r-"));
   const real = await realpath(expected);
   if (real.toLowerCase() !== expected.toLowerCase()) {
     throw new Error("the run's folder is not where it was made");
