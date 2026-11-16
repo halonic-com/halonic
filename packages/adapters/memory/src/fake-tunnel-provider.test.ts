@@ -181,6 +181,42 @@ verifies("contracts.fake-tunnel-provider", () => {
       expect(await currentStatus(provider)).toMatchObject({ state: "ready" });
     });
 
+    it("reconnects after a drop during a start, without waiting on the doomed start", async () => {
+      const time = new FakeTunnelTime();
+      const provider = new FakeTunnelProvider({ time, latencyMs: 10 });
+      const doomed = expect(provider.start(config)).rejects.toThrow("before it was ready");
+      provider.drop("offline");
+      const reconnected = provider.reconnect();
+      time.advance(10);
+      await doomed;
+      await expect(reconnected).resolves.toMatchObject({ providerId: "fake" });
+      expect(await currentStatus(provider)).toMatchObject({ state: "ready" });
+    });
+
+    it("starts after a drop during a start, and lets only the new start finish", async () => {
+      const time = new FakeTunnelTime();
+      const provider = new FakeTunnelProvider({ time, latencyMs: 10 });
+      const doomed = expect(provider.start(config)).rejects.toThrow("before it was ready");
+      provider.drop("offline");
+      const fresh = provider.start(config);
+      time.advance(10);
+      await doomed;
+      await expect(fresh).resolves.toMatchObject({ providerId: "fake" });
+      expect(await currentStatus(provider)).toMatchObject({ state: "ready" });
+    });
+
+    it("does not spend a failure on a start that was dropped meanwhile", async () => {
+      const time = new FakeTunnelTime();
+      const provider = new FakeTunnelProvider({ time, latencyMs: 10 });
+      provider.failNextStart("signed-out");
+      const doomed = expect(provider.start(config)).rejects.toThrow("before it was ready");
+      provider.drop("offline");
+      const fresh = expect(provider.start(config)).rejects.toThrow("signed-out");
+      time.advance(10);
+      await doomed;
+      await fresh;
+    });
+
     it("tells a stream about a state only once when it is repeated", async () => {
       const provider = new FakeTunnelProvider();
       await provider.start(config);

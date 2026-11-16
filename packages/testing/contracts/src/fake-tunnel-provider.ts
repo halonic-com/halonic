@@ -141,6 +141,7 @@ export class FakeTunnelProvider implements TunnelProvider {
   private current: TunnelStatus;
   private tunnel: { config: TunnelConfig; endpoint: TunnelEndpoint } | undefined;
   private coming: Promise<TunnelEndpoint> | undefined;
+  private runs = 0;
   private failure: TunnelReason | undefined;
   private readers = new Set<StatusFeed>();
 
@@ -214,6 +215,7 @@ export class FakeTunnelProvider implements TunnelProvider {
   /** Goes through `starting` and, after the latency, `ready`; resolves with the endpoint. Shares a start already in progress. */
   reconnect(): Promise<TunnelEndpoint> {
     this.requireTunnel("reconnect");
+    if (this.current.state === "down") return this.bringUp();
     return this.coming ?? this.bringUp();
   }
 
@@ -228,7 +230,8 @@ export class FakeTunnelProvider implements TunnelProvider {
   }
 
   private bringUp(): Promise<TunnelEndpoint> {
-    const coming = this.runStart();
+    this.runs += 1;
+    const coming = this.runStart(this.runs);
     this.coming = coming;
     const forget = () => {
       if (this.coming === coming) this.coming = undefined;
@@ -237,12 +240,13 @@ export class FakeTunnelProvider implements TunnelProvider {
     return coming;
   }
 
-  private async runStart(): Promise<TunnelEndpoint> {
+  private async runStart(run: number): Promise<TunnelEndpoint> {
     const tunnel = this.tunnel;
     if (tunnel === undefined) throw new Error("no tunnel to start");
     this.publish({ state: "starting", at: this.stamp() });
     await this.time.wait(this.latencyMs);
-    if (this.tunnel !== tunnel) {
+    // A newer start, a stop or a drop may have replaced this run while it waited.
+    if (this.runs !== run || this.tunnel !== tunnel || this.current.state !== "starting") {
       throw new Error(`the tunnel went ${this.current.state} before it was ready`);
     }
     const reason = this.failure;
@@ -251,9 +255,6 @@ export class FakeTunnelProvider implements TunnelProvider {
       this.tunnel = undefined;
       this.publish({ state: "down", reason, at: this.stamp() });
       throw new Error(`the tunnel went down before it was ready: ${reason}`);
-    }
-    if (this.current.state !== "starting") {
-      throw new Error(`the tunnel went ${this.current.state} before it was ready`);
     }
     this.publish({ state: "ready", at: this.stamp() });
     return tunnel.endpoint;
