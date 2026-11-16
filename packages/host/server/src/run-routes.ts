@@ -7,6 +7,8 @@ export const runPathPrefix = "/api/runs/";
 
 /** What the routes answer for a run: its summary, read from the run store. */
 export interface RunRoutes {
+  /** `GET /api/waiting-runs`: the summaries of the runs that wait for an answer. */
+  waiting(): Promise<Response>;
   /** `GET /api/runs/<runId>`: the run's summary. */
   summary(runId: string): Promise<Response>;
   /** `POST /api/runs/<runId>/events`: delivers an event to a waiting run. */
@@ -16,6 +18,12 @@ export interface RunRoutes {
 }
 
 type RunRoutePorts = Pick<ServerPorts, "runs" | "runStore" | "trust" | "errorLog">;
+
+/** The path of the list of runs that wait for an answer. */
+export const waitingRunsPath = "/api/waiting-runs";
+
+/** The most runs the waiting list answers; a person has no use for more on a phone. */
+export const maxWaitingRuns = 100;
 
 /** The longest run id the executor accepts, in UTF-8 bytes. */
 const maxIdBytes = 256;
@@ -64,6 +72,12 @@ function isShortText(value: unknown): value is string {
 
 export function createRunRoutes({ runs, runStore, trust, errorLog }: RunRoutePorts): RunRoutes {
   return {
+    async waiting() {
+      // The run store belongs to the workspace the server runs, so no other workspace's run can be in the list.
+      const waiting = await runStore.list({ status: "waiting" });
+      return Response.json({ runs: waiting.slice(0, maxWaitingRuns) });
+    },
+
     async summary(runId) {
       const found = await runStore.get(runId);
       return found === null ? errorResponse(serverErrors.runNotFound) : Response.json(found);

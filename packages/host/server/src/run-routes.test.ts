@@ -15,6 +15,7 @@ interface Calls {
   cancelled: string[];
   logged: unknown[];
   lookups: string[];
+  lists: unknown[];
 }
 
 function setup(
@@ -23,9 +24,11 @@ function setup(
     sendFails?: Error;
     cancel?: boolean;
     passwordHash?: string | null;
+    stored?: { id: string; status: string }[];
   } = {},
 ) {
-  const calls: Calls = { sent: [], cancelled: [], logged: [], lookups: [] };
+  const stored = options.stored ?? [];
+  const calls: Calls = { sent: [], cancelled: [], logged: [], lookups: [], lists: [] };
   const runs = {
     send: async (...args: unknown[]) => {
       calls.sent.push(args);
@@ -42,7 +45,10 @@ function setup(
         }),
   } as unknown as RunExecutor;
   const runStore = {
-    list: async () => [],
+    list: async (filter?: { status?: string }) => {
+      calls.lists.push(filter);
+      return stored.filter((run) => filter?.status === undefined || run.status === filter.status);
+    },
     get: async (runId: string) => {
       calls.lookups.push(runId);
       return runId === "run_1" ? known : null;
@@ -299,6 +305,51 @@ describe("run routes", () => {
       for (const path of ["/api/runs/run_1/trust", "/api/runs/trust", "/api/runs/run_1/grant"]) {
         expect((await call(server, "POST", path)).status).toBe(404);
       }
+    });
+  });
+
+  verifies("server.waiting-runs", () => {
+    it("lists the waiting runs for a signed-in caller", async () => {
+      const stored = [
+        { id: "a", status: "waiting" },
+        { id: "b", status: "done" },
+        { id: "c", status: "waiting" },
+      ];
+      const { server, calls } = setup({ passwordHash: "hash:correct horse", stored });
+      expect((await call(server, "GET", "/api/waiting-runs")).status).toBe(401);
+      expect(calls.lists).toEqual([]);
+
+      const cookie = await signIn(server);
+      const response = await call(server, "GET", "/api/waiting-runs", { cookie });
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ runs: [stored[0], stored[2]] });
+      expect(calls.lists).toEqual([{ status: "waiting" }]);
+    });
+
+    it("answers an empty list with no waiting run, and at most 100 runs", async () => {
+      expect(await (await call(setup().server, "GET", "/api/waiting-runs")).json()).toEqual({
+        runs: [],
+      });
+      const stored = Array.from({ length: 150 }, (_, i) => ({ id: `r${i}`, status: "waiting" }));
+      const { server } = setup({ stored });
+      const body = (await (await call(server, "GET", "/api/waiting-runs")).json()) as {
+        runs: unknown[];
+      };
+      expect(body.runs).toHaveLength(100);
+    });
+
+    it("answers 404 to another method on the waiting list, and refuses a foreign Host", async () => {
+      const { server, calls } = setup();
+      for (const method of ["POST", "DELETE"]) {
+        expect((await call(server, method, "/api/waiting-runs")).status).toBe(404);
+      }
+      const foreignHost = await server.handle(
+        new Request("https://evil.example/api/waiting-runs", {
+          headers: { host: "evil.example" },
+        }),
+      );
+      expect(foreignHost.status).toBe(421);
+      expect(calls.lists).toEqual([]);
     });
   });
 });

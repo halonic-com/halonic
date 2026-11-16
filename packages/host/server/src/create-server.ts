@@ -16,7 +16,13 @@ import {
   isProviderKeyPath,
   providerKeyPathPrefix,
 } from "./provider-key-routes.ts";
-import { createRunRoutes, isJsonRequest, parseRunId, runPathPrefix } from "./run-routes.ts";
+import {
+  createRunRoutes,
+  isJsonRequest,
+  parseRunId,
+  runPathPrefix,
+  waitingRunsPath,
+} from "./run-routes.ts";
 import {
   checkHost,
   checkOrigin,
@@ -168,6 +174,9 @@ export const createServer: CreateServer = ({ config, ports }) => {
     const signedInRoute = await signedInOnlyRoute(request, context, body, pathname);
     if (signedInRoute !== null) {
       return signedInRoute;
+    }
+    if (request.method === "GET" && pathname === waitingRunsPath) {
+      return whenSignedIn(request, context, () => runRoutes.waiting());
     }
     if (pathname.startsWith(runPathPrefix)) {
       return runRoute(request, context, body, pathname.slice(runPathPrefix.length));
