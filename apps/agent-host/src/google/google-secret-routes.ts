@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
+import { type HostRoute, sendError, sendErrorAndHangUp, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
 import { secretBody } from "./google-schemas.ts";
 
@@ -24,6 +24,17 @@ export interface GoogleSecretRouteDeps {
   logFailure(error: unknown): void;
 }
 
+/**
+ * Whether a browser says the request comes from another site. The handler
+ * checks this too, but it gets a request built fresh with none of the page's
+ * headers, so the host must check the page's own. A request with no
+ * `Sec-Fetch-Site` header is Studio's own program or a script, and passes.
+ */
+function isFromOtherSite(request: IncomingMessage): boolean {
+  const site = request.headers["sec-fetch-site"];
+  return site !== undefined && site !== "same-origin";
+}
+
 /** The handler's `secret_needs_staging` refusal: the secret is in use, so Google must check a new one first. */
 async function needsStaging(answer: Response): Promise<boolean> {
   if (answer.status !== 409) return false;
@@ -35,6 +46,9 @@ async function needsStaging(answer: Response): Promise<boolean> {
  * The routes that save or replace a client secret, over the handler's own
  * (`createGoogleSecretRoutes`). The page sends the secret once and the handler
  * keeps it; nothing here reads it, logs it or answers it.
+ *
+ * Both refuse a request with a `Sec-Fetch-Site` other than `same-origin`
+ * (403 `secret_from_other_site`) before they read the body.
  *
  * - `POST /v1/google/secret` with `{ accountRef, clientSecret }`: the handler's
  *   save. Answers `{ saved: true }`, or 409 `secret_needs_staging` when the
@@ -62,6 +76,16 @@ export function googleSecretRoutes(deps: GoogleSecretRouteDeps): HostRoute[] {
       method: "POST",
       path,
       handle: async (request, response) => {
+        if (isFromOtherSite(request)) {
+          sendErrorAndHangUp(
+            request,
+            response,
+            403,
+            "secret_from_other_site",
+            "The agent host takes a secret only from its own page.",
+          );
+          return;
+        }
         const body = await readCheckedBody(request, response, secretBody, {
           describeProblems: false,
         });
