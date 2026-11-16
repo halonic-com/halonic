@@ -49,6 +49,8 @@ function agentsMdFor(pkg: FixturePackage): string {
 /** What a fixture repo holds besides its packages. */
 export interface FixtureOptions {
   readonly coreOrder?: string[];
+  /** Package folders the trace check is limited to, as `--package` sets them. */
+  readonly traceFolders?: string[];
   readonly extraFiles?: Record<string, string>;
   /** Entries added to the real dependencies.json. */
   readonly extraDependencies?: Record<string, unknown>;
@@ -168,7 +170,7 @@ export function runChecks(
 ): Problem[] {
   const root = writeFixtureRepo(packages, options);
   try {
-    const context = loadContext(root);
+    const context = loadContext(root, undefined, options.traceFolders);
     return selectRules(options.rules ?? [])
       .flatMap((name) => rules[name]?.(context).problems ?? [])
       .filter((problem) => problem.severity === "error");

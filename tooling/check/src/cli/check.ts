@@ -22,13 +22,22 @@ import { dcoRange } from "../rules/dco.ts";
  * other files under tooling/check) come from that checkout, and a missing
  * one is an error, so
  * CI can run the base commit's rules and lists over a pull request's tree.
- * With --report it also writes each package's requirement report to
+ * With --package <folder> (repeatable) the trace check reads only the
+ * packages in those folders, for a run that tested only them. With --report it also writes each package's requirement report to
  * test-results/requirements.md. The personal-terms guard has its own
  * command, `pnpm check:leaks`, because CI runs it with a secret.
  */
 function parseArguments(
   argv: readonly string[],
-): { selected: string[]; listsRoot?: string } | undefined {
+): { selected: string[]; listsRoot?: string; packages: string[] } | undefined {
+  const packages = argv.flatMap((argument, index) => {
+    const value = argv[index + 1];
+    return argument === "--package" && value !== undefined && !value.startsWith("-") ? [value] : [];
+  });
+  if (argv.filter((argument) => argument === "--package").length !== packages.length) {
+    console.error("check: --package needs a package folder.");
+    return undefined;
+  }
   const listsAt = argv.indexOf("--lists-from");
   const listsRoot = listsAt === -1 ? undefined : argv[listsAt + 1];
   if (listsAt !== -1 && (listsRoot === undefined || listsRoot.startsWith("-"))) {
@@ -36,9 +45,12 @@ function parseArguments(
     return undefined;
   }
   const selected = argv.filter(
-    (argument, index) => !argument.startsWith("-") && !(listsAt !== -1 && index === listsAt + 1),
+    (argument, index) =>
+      !argument.startsWith("-") &&
+      !(listsAt !== -1 && index === listsAt + 1) &&
+      argv[index - 1] !== "--package",
   );
-  return listsRoot === undefined ? { selected } : { selected, listsRoot };
+  return listsRoot === undefined ? { selected, packages } : { selected, listsRoot, packages };
 }
 
 function main(argv: readonly string[]): number {
@@ -46,7 +58,7 @@ function main(argv: readonly string[]): number {
   if (parsed === undefined) {
     return 2;
   }
-  const { selected, listsRoot } = parsed;
+  const { selected, listsRoot, packages } = parsed;
   const unknown = selected.filter((name) => !Object.hasOwn(rules, name));
   if (unknown.length > 0) {
     console.error(`Unknown rule: ${unknown.join(", ")}. Rules: ${Object.keys(rules).join(", ")}.`);
@@ -56,7 +68,7 @@ function main(argv: readonly string[]): number {
   const started = performance.now();
   let context: CheckContext;
   try {
-    context = loadContext(findRepoRoot(), listsRoot);
+    context = loadContext(findRepoRoot(), listsRoot, packages);
   } catch (error) {
     console.error(`check: ${(error as Error).message}`);
     return 2;
