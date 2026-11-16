@@ -3,6 +3,7 @@
 - Task: HAL-10697
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-10697 (team decision, no board card: it reuses the approved step 7 text, HAL-10741 UX check by Sofia)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:OrAVXsmKgRudzoFXaGcmEYRFijgHWBXodYpSMzp/atIscZ5Tf93aD4BdRjkDPNJqzFZ2j7MaQmAWd9dwdfumAQ==
 
 ## What changes
 
