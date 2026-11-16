@@ -13,10 +13,10 @@ The head is refused, and the connection closed and reset at the host with none o
 - the request line is not byte for byte `GET /v1/google/callback`, optionally `?` and a query, then ` HTTP/1.1`; the path is case-sensitive, and the query has at most 2048 bytes, no `#`, no space and no control or non-ASCII byte;
 - the head holds a bare CR, a bare LF, a NUL or any other control byte;
 - the head has a `Content-Length` (any value), `Transfer-Encoding`, `Upgrade` or `Expect` header, or a `Connection` header that lists `upgrade` (names compared without regard to case, whitespace before the colon ignored);
-- a header line starts with a space or tab, or has no colon;
+- a header line starts with a space or tab, or has no colon, or has a name that is not HTTP token characters (`Content Length`);
 - the head is longer than 16 KiB.
 
-A head that is not complete never reaches the host: one ending in bare LFs never ends, and the head deadline closes it. A first request that does not start like the callback (another method or path, `/v1/google/callback/`, `/v1/google/callbackx`) is not touched by this requirement: it is passed on, and `relay-limits.md` closes it without the token. The relay does not look at `Host` or `Origin`; the host refuses those itself.
+A head that is not complete never reaches the host: one ending in bare LFs never ends, and the head deadline closes it. A client that ends partway through `GET /v1/google/call…` has the bytes it sent forwarded unjudged: never a whole request, so harmless, and the token deadline still applies. A first request that does not start like the callback (another method or path, `/v1/google/callback/`, `/v1/google/callbackx`) is not touched by this requirement: it is passed on, and `relay-limits.md` closes it without the token. The relay does not look at `Host` or `Origin`; the host refuses those itself.
 
 While it holds a callback-only or a still-judged callback connection, the relay shall allow at most 4 of them at once, close one whose head is not whole 5 seconds after the relay accepted it, and close any of them 30 seconds after it accepted it, and shall reset each it closes at the host. These places are separate from the connections with the token, which they never fill, and each connection still counts toward the 256 the relay and the host allow. A connection past the 4 places is closed when it shows it starts like the callback.
 
