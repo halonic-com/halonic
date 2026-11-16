@@ -89,6 +89,13 @@ adapter throws when a step needs a change left out of the run, so the run ends
 as can't-try instead of failed (requirement `cant-try-error`). Check for it
 with `isCantTryError`.
 
+`remote-gateway-protocol.ts` isn't a port either: it holds the messages a phone
+and the host's remote gateway exchange (sessions, their events, approvals and
+prompt input, nothing else), with their own version, `gatewayProtocolVersion`,
+and a limit of `gatewayMaxMessageBytes` (64 KiB) per message (requirement
+`remote-gateway-protocol`). Why only the gateway is ever reachable by a tunnel
+is in the ADR "Only the remote gateway is reachable by a tunnel" in `docs/adr`.
+
 ## Rules that ship with the ports
 
 Some port rules are code, not only text, so that every adapter applies the same one. They are exported
@@ -112,6 +119,8 @@ next to the ports:
 | `signInCommandText` | a harness's sign-in for one agent's settings folder, as a person types it into PowerShell or `sh`; Studio's sign-in by hand and `halonic doctor` both show it | `harness-sign-in-command` |
 | `bridgeCallCharge` | what a bridged call costs and who paid (`paidBy: "subscription"` for a sign-in call); `bridgeCallCost` is deprecated in its favour | `harness-bridge-server` |
 | `maxIntegrationWaitMs` | the longest `IntegrationHost.wait`, 30 seconds | `integration-host` |
+| `gatewayErrorCodes`, `gatewayClosingErrorCodes`, `gatewayRefusalCodes` | the remote gateway's error codes: those that close the connection and those that leave it open | `remote-gateway-protocol` |
+| `gatewayMaxMessageBytes`, `gatewayMaxPromptLength`, `gatewayMaxIdLength`, `gatewayMaxWatches`, `gatewayMaxBufferedBytes` | the remote gateway's limits: 64 KiB per message, 10,000-unit prompts, 128-character ids, 16 watches and 1 MiB unsent per connection | `remote-gateway-protocol` |
 | `sandboxPackageManagers` | the package managers a `SandboxFix` can name, behind `SandboxPackageManager` | `sandbox-check-fix` |
 | `sandboxUnavailableReasons`, `adapterFailures`, `modelCallErrorReasons` | the lists behind `SandboxUnavailableReason`, `AdapterFailure` and `ModelCallErrorReason` | `sandbox-check-reason`, `run-failure-error`, `model-call-error` |
 | `tunnelStates`, `tunnelReasons` | the lists behind `TunnelState` and `TunnelReason` | `tunnel-provider` |

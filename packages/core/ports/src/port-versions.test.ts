@@ -17,6 +17,7 @@ const notPorts = new Set([
   "model-price.ts",
   "port-versions.ts",
   "provider-default-base-url.ts",
+  "remote-gateway-protocol.ts",
   "run-failure-error.ts",
   "run-target-not-found.ts",
   "vcs-status.ts",

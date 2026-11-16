@@ -204,6 +204,23 @@ export {
   recordStoreVersion,
 } from "./record-store.ts";
 export {
+  type GatewayApproval,
+  type GatewayClientMessage,
+  type GatewayErrorCode,
+  type GatewayEventBody,
+  type GatewayHostMessage,
+  type GatewaySession,
+  gatewayClosingErrorCodes,
+  gatewayErrorCodes,
+  gatewayMaxBufferedBytes,
+  gatewayMaxIdLength,
+  gatewayMaxMessageBytes,
+  gatewayMaxPromptLength,
+  gatewayMaxWatches,
+  gatewayProtocolVersion,
+  gatewayRefusalCodes,
+} from "./remote-gateway-protocol.ts";
+export {
   type FolderSize,
   type ProcessUsage,
   type ResourceProbe,
