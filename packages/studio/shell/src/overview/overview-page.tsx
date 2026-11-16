@@ -11,7 +11,7 @@ import {
   PlusIcon,
   SearchIcon,
 } from "@halonicjs/studio-kit";
-import { type KeyboardEvent, type ReactNode, useRef, useState } from "react";
+import { type KeyboardEvent, type ReactNode, type Ref, useRef, useState } from "react";
 import {
   allFilter,
   currentFilter,
@@ -93,6 +93,8 @@ export interface OverviewPageProps {
    * the empty state holds the only button (Workflows, flow-workflows 2.1).
    */
   readonly quietWhenEmpty?: boolean;
+  /** The "nothing yet" or "no match" state's title, so the feature can move focus there when the last item goes. */
+  readonly emptyTitleRef?: Ref<HTMLHeadingElement>;
 }
 
 /** Opens an item's ⋮ menu below the button that was pressed. */
@@ -152,6 +154,7 @@ export function OverviewPage({
   itemMenu,
   tabs,
   quietWhenEmpty = false,
+  emptyTitleRef,
 }: OverviewPageProps) {
   const [query, setQuery] = useState("");
   const searchField = useRef<HTMLInputElement>(null);
@@ -223,6 +226,7 @@ export function OverviewPage({
         query={query}
         onClearSearch={clearSearch}
         words={words}
+        emptyTitleRef={emptyTitleRef}
         loading={loading}
         failure={failure}
         onOpen={onOpen}
@@ -249,6 +253,7 @@ interface OverviewBodyProps {
   readonly query: string;
   readonly onClearSearch: () => void;
   readonly words: OverviewWords;
+  readonly emptyTitleRef: Ref<HTMLHeadingElement> | undefined;
   readonly loading: boolean;
   readonly failure: OverviewFailure | undefined;
   readonly onOpen: (id: string) => void;
@@ -265,6 +270,7 @@ function OverviewBody({
   query,
   onClearSearch,
   words,
+  emptyTitleRef,
   loading,
   failure,
   onOpen,
@@ -286,13 +292,19 @@ function OverviewBody({
     return <List label={words.loadingLabel} rows={[]} loading loadingLabel={words.loadingLabel} />;
   }
   if (!hasAnySection) {
-    return <EmptyState {...words.nothingYet} />;
+    return (
+      <EmptyState
+        {...words.nothingYet}
+        {...(emptyTitleRef === undefined ? {} : { titleRef: emptyTitleRef })}
+      />
+    );
   }
   if (sections.length === 0) {
     return (
       <EmptyState
         plain
         title={words.noMatch(query.trim())}
+        {...(emptyTitleRef === undefined ? {} : { titleRef: emptyTitleRef })}
         action={{ label: CLEAR_SEARCH, onClick: onClearSearch }}
       />
     );
