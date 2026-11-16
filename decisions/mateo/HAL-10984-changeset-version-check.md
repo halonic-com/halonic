@@ -1,6 +1,6 @@
 # Decision: CI runs the Version packages command before a pull request merges
 
-- Approval: [HAL-10984](/HAL/issues/HAL-10984), asked for by Liam
+- Approval: HAL-10984, asked for by Liam
 - Kind: internal
 
 The `Fast gates` job in `.github/workflows/ci.yml` now ends with `pnpm version-packages && pnpm check versions`,
