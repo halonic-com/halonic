@@ -5,6 +5,16 @@ export { buildSrtConfig } from "./srt-config.ts";
 export { type Runner, sandboxRuntimeFolder, srtRunner } from "./srt-runner.ts";
 export { type SandboxRemoval, type SandboxSetup, SrtSandbox } from "./srt-sandbox.ts";
 export {
+  assertWindowsFolder,
+  cleanupImportMounts,
+  driveMountOptions,
+  IMPORT_MOUNT_OPTIONS,
+  IMPORT_MOUNTS_FOLDER,
+  mountCommand,
+  type WslRoot,
+  withImportMount,
+} from "./wsl-mounts.ts";
+export {
   assertProjectName,
   WSL_DISTRO,
   type WslProjectLocation,
