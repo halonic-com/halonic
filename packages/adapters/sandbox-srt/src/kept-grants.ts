@@ -291,7 +291,7 @@ export class KeptGrants {
    * Never rejects.
    */
   async sweep(roots: readonly string[]): Promise<ForgetResult> {
-    if (roots.length === 0 && this.#recorded().length === 0) {
+    if (roots.length === 0) {
       return { heldByOthers: [], failed: [] };
     }
     let kept: string[];
@@ -308,7 +308,9 @@ export class KeptGrants {
         ],
       };
     }
-    // The recorded folders too: a grant srt made but a crash left out of its status.
+    // The recorded folders too (a grant srt made but a crash left out of its status). Only the host that
+    // holds the profile lock has roots, and it alone may sweep them: the record is shared by every process,
+    // and another process's live session holds its folders where this one can't see.
     return this.#forgetUnheld([
       ...kept.filter((folder) => roots.some((root) => isInsideWindows(root, folder))),
       ...this.#recorded(),

@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { KeptGrants, type RunSrtWin } from "./kept-grants.ts";
 
 const folderA = "Z:\\Runs\\a"; // leak-guard: allow absolute-path made-up Windows path for a test
+const sweepRoot = "Z:\\Runs"; // leak-guard: allow absolute-path made-up Windows path for a test
 const folderB = "Z:\\Runs\\b"; // leak-guard: allow absolute-path made-up Windows path for a test
 
 const temps: string[] = [];
@@ -48,7 +49,7 @@ verifies("sandbox-srt.kept-grants", () => {
       expect(recordedFolders(file)).toEqual([folderA]);
     });
 
-    it("sweeps recorded folders after a crash, even with no sweep root", async () => {
+    it("sweeps recorded folders after a crash, outside the sweep roots", async () => {
       const { file, calls, grants } = setup();
       grants.record([folderA]);
       const restarted = new KeptGrants(
@@ -59,7 +60,7 @@ verifies("sandbox-srt.kept-grants", () => {
         () => "0.0.82",
         file,
       );
-      const result = await restarted.sweep([]);
+      const result = await restarted.sweep([sweepRoot]);
       expect(result).toEqual({ heldByOthers: [], failed: [] });
       expect(calls).toContainEqual(["acl", "forget", folderA]);
       expect(existsSync(file)).toBe(false);
@@ -69,9 +70,17 @@ verifies("sandbox-srt.kept-grants", () => {
       const { calls, grants } = setup();
       grants.record([folderA]);
       grants.hold([folderA]);
-      const result = await grants.sweep([]);
+      const result = await grants.sweep([sweepRoot]);
       expect(result.heldByOthers).toEqual([folderA]);
       expect(calls.filter((call) => call[1] === "forget")).toEqual([]);
+    });
+
+    it("leaves the record alone without a sweep root, as the host without the profile lock has none", async () => {
+      const { file, calls, grants } = setup();
+      grants.record([folderA]);
+      expect(await grants.sweep([])).toEqual({ heldByOthers: [], failed: [] });
+      expect(calls).toEqual([]);
+      expect(recordedFolders(file)).toEqual([folderA]);
     });
 
     it("drops the record when everything is forgotten", async () => {
