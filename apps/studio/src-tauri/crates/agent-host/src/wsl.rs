@@ -149,6 +149,48 @@ pub fn distro_host_command(wsl: &Path, relay_port: u16) -> Command {
     command
 }
 
+/// Whether Halonic's distro is among the distros WSL lists. Answers
+/// nothing about WSL being enabled: a `wsl.exe` that ends with an error,
+/// such as one with no distro at all, is `Failed`, so the caller doesn't
+/// guess between "WSL is missing" and "the distro is missing".
+///
+/// # Errors
+///
+/// When `wsl.exe` can't start, or ends with an error.
+pub fn distro_installed(wsl: &Path) -> Result<bool, WslError> {
+    let mut command = Command::new(wsl);
+    command.env_remove("WSLENV").args(["--list", "--quiet"]);
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+    without_console_window(&mut command);
+    let output = command
+        .output()
+        .map_err(|error| WslError::Start(format!("wsl.exe could not start: {error}.")))?;
+    match output.status.code() {
+        Some(0) => Ok(lists_distro(&output.stdout)),
+        code => Err(WslError::Failed(code)),
+    }
+}
+
+/// True when `listing`, what `wsl.exe --list --quiet` printed, has a line
+/// that is exactly [`DISTRO`]. Piped, `wsl.exe` prints UTF-16 little-endian,
+/// often with a byte order mark; any other output is read as UTF-8.
+fn lists_distro(listing: &[u8]) -> bool {
+    let text = if listing.contains(&0) {
+        let units: Vec<u16> = listing
+            .chunks_exact(2)
+            .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
+            .collect();
+        String::from_utf16_lossy(&units)
+    } else {
+        String::from_utf8_lossy(listing).into_owned()
+    };
+    text.lines()
+        .any(|line| line.trim_matches(|c: char| c == '\u{feff}' || c.is_whitespace()) == DISTRO)
+}
+
 /// The command that runs one step of the runtime updater as root.
 ///
 /// # Errors

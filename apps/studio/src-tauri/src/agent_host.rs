@@ -19,8 +19,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use halonic_agent_host::{
-    AgentHost, Answer, Handshake, LineSplitter, Method, Route, executable_beside, find_route,
-    host_command,
+    AgentHost, Answer, Handshake, LineSplitter, Method, Route, distro_host_command,
+    distro_installed, executable_beside, find_route, host_command, wsl_exe,
 };
 use halonic_git_guard::plain_path;
 use serde::Serialize;
@@ -32,6 +32,10 @@ use tauri_plugin_http::reqwest;
 
 use crate::git::GitState;
 use crate::profile::cli_profile;
+
+#[path = "agent_host_choice.rs"]
+mod choice;
+use choice::{HostKind, host_for, saved_backend};
 
 #[path = "agent_host_life.rs"]
 mod life;
@@ -57,7 +61,27 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Makes the command that starts the host. Tests pass a stand-in's.
+#[cfg(test)]
 type HostCommand = Box<dyn Fn() -> Command + Send + Sync>;
+
+/// Makes the command that starts the host in the distro, given the port of
+/// the relay in front of it. Tests pass a stand-in's.
+type DistroCommand = Box<dyn Fn(u16) -> Command + Send + Sync>;
+
+/// How the shell starts a host.
+#[derive(Default)]
+enum Launch {
+    /// The real hosts: the sandbox choice picks the local one or the one in
+    /// Halonic's WSL distro.
+    #[default]
+    Real,
+    /// A stand-in for the local host, for tests.
+    #[cfg(test)]
+    Local(HostCommand),
+    /// A stand-in for the host in the distro, for tests.
+    #[cfg(test)]
+    Distro(DistroCommand),
+}
 
 /// The host the shell started, the streams pages have open on it, and the
 /// one HTTP client every call uses.
@@ -68,8 +92,7 @@ pub struct AgentHostState {
     /// Tells a stream from an earlier one the page gave the same id.
     next_serial: AtomicU64,
     client: Mutex<Option<reqwest::Client>>,
-    /// `None` starts the real host, next to the shell's executable.
-    command: Option<HostCommand>,
+    launch: Launch,
 }
 
 /// A stream, by the page that opened it and the id that page gave it.
@@ -91,7 +114,17 @@ impl AgentHostState {
     #[cfg(test)]
     pub fn with_command(command: impl Fn() -> Command + Send + Sync + 'static) -> Self {
         Self {
-            command: Some(Box::new(command)),
+            launch: Launch::Local(Box::new(command)),
+            ..Self::default()
+        }
+    }
+
+    /// A state whose host is started in the distro, relayed, with
+    /// `command`, for tests.
+    #[cfg(test)]
+    pub fn with_distro_command(command: impl Fn(u16) -> Command + Send + Sync + 'static) -> Self {
+        Self {
+            launch: Launch::Distro(Box::new(command)),
             ..Self::default()
         }
     }
@@ -158,11 +191,16 @@ impl AgentHostState {
 }
 
 /// Why a call didn't reach the host: `unknown_route`, `host_unavailable`,
-/// `stream_in_use`, `stream_ended` or `io`, and a message for the log. The
-/// host's own refusals are answers. No message contains the launch token.
+/// `stream_in_use`, `stream_ended` or `io`, and a message for the log. A
+/// `host_unavailable` for the WSL distro may carry a `reason`, one of the
+/// sandbox reasons (`wsl-missing`, `distro-missing`), so Studio can show the
+/// setup state without a running host to ask. The host's own refusals are
+/// answers. No message contains the launch token.
 #[derive(Debug, Serialize)]
 pub struct HostRefusal {
     kind: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reason: Option<&'static str>,
     message: String,
 }
 
@@ -170,8 +208,14 @@ impl HostRefusal {
     fn new(kind: &'static str, message: impl std::fmt::Display) -> Self {
         Self {
             kind,
+            reason: None,
             message: message.to_string(),
         }
+    }
+
+    fn with_reason(mut self, reason: &'static str) -> Self {
+        self.reason = Some(reason);
+        self
     }
 }
 
@@ -300,17 +344,60 @@ async fn running_host<R: Runtime>(app: &AppHandle<R>) -> Result<Handshake, HostR
         {
             return Ok(running.handshake().clone());
         }
-        let command = match &state.command {
-            Some(command) => command(),
-            None => real_host_command(&app)?,
-        };
-        let started = AgentHost::start(command, START_WAIT).map_err(unavailable)?;
+        let started = match &state.launch {
+            #[cfg(test)]
+            Launch::Local(command) => start_local(command()),
+            #[cfg(test)]
+            Launch::Distro(command) => start_in_distro(command),
+            Launch::Real => match chosen_host(&app)? {
+                HostKind::Local => start_local(real_host_command(&app)?),
+                HostKind::Distro => start_in_distro(&distro_host_command_for_real_wsl()?),
+            },
+        }?;
         let handshake = started.handshake().clone();
         *host = Some(started);
         Ok(handshake)
     })
     .await
     .map_err(|error| HostRefusal::new("io", error))?
+}
+
+fn start_local(command: Command) -> Result<AgentHost, HostRefusal> {
+    AgentHost::start(command, START_WAIT).map_err(unavailable)
+}
+
+/// Starts the host in the distro with a relay in front of it.
+fn start_in_distro(command: &DistroCommand) -> Result<AgentHost, HostRefusal> {
+    AgentHost::start_relayed(command, START_WAIT).map_err(unavailable)
+}
+
+/// Which host the person's sandbox choice asks for. Without a saved choice
+/// it is the platform's default, so on Windows a person who never opened the
+/// sandbox panel gets the distro, never a quiet move to the local host. A
+/// choice that can't be read refuses the start, naming the file.
+fn chosen_host<R: Runtime>(app: &AppHandle<R>) -> Result<HostKind, HostRefusal> {
+    let profile = cli_profile(app).map_err(|error| HostRefusal::new("io", error))?;
+    let backend = saved_backend(&profile).map_err(unavailable)?;
+    Ok(host_for(backend, profile.platform))
+}
+
+/// The command for the host in Halonic's distro, once `wsl.exe` is found and
+/// lists the distro. Refuses with the sandbox reason when it doesn't: a
+/// missing distro never falls back to the local host.
+fn distro_host_command_for_real_wsl() -> Result<DistroCommand, HostRefusal> {
+    let system_root = std::env::var("SystemRoot").ok();
+    let wsl = wsl_exe(system_root.as_deref())
+        .map_err(|error| unavailable(error).with_reason("wsl-missing"))?;
+    match distro_installed(&wsl) {
+        Ok(true) => {}
+        Ok(false) => {
+            return Err(
+                unavailable("Halonic's WSL distro isn't installed").with_reason("distro-missing")
+            );
+        }
+        Err(error) => return Err(unavailable(error)),
+    }
+    Ok(Box::new(move |port| distro_host_command(&wsl, port)))
 }
 
 /// The host next to the shell's executable, for the CLI's profile, with

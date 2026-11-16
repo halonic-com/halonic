@@ -18,11 +18,13 @@
 
 mod error;
 mod rename_over;
+mod sandbox_choice;
 mod saved;
 mod store;
 mod unlinked;
 
 pub use error::HostSettingsError;
+pub use sandbox_choice::{SANDBOX_BACKENDS, read_sandbox_backend};
 pub use saved::{
     MAX_BYTES, SavedChange, change_saved_host_settings, is_host_setting_key,
     read_saved_host_settings,

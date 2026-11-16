@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use super::{WslError, run_runtime_step, send_archive};
+use super::{WslError, lists_distro, run_runtime_step, send_archive};
 
 const ARCHIVE: &[u8] = b"a runtime archive\n";
 /// The SHA-256 of [`ARCHIVE`].
@@ -94,4 +94,21 @@ fn runtime_update_reports_the_updaters_reason() {
         let (updater, _script) = ending_with(code, &received);
         assert_eq!(run_runtime_step(updater), Err(expected));
     }
+}
+
+fn utf16(text: &str) -> Vec<u8> {
+    let mut bytes = vec![0xff, 0xfe];
+    for unit in text.encode_utf16() {
+        bytes.extend_from_slice(&unit.to_le_bytes());
+    }
+    bytes
+}
+
+#[test]
+fn the_listing_has_the_distro_only_as_a_whole_line() {
+    assert!(lists_distro(&utf16("Ubuntu\r\nhalonic\r\n")));
+    assert!(lists_distro(b"halonic\n"));
+    assert!(!lists_distro(&utf16("halonic-old\r\nUbuntu\r\n")));
+    assert!(!lists_distro(&utf16("")));
+    assert!(!lists_distro(b""));
 }

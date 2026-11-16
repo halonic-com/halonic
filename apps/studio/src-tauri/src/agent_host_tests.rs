@@ -21,7 +21,7 @@ use tauri::{App, AppHandle, Manager, Webview, WebviewUrl};
 
 use super::{
     AgentHostState, HostAnswer, HostRefusal, StreamStart, agent_host_request, agent_host_stream,
-    agent_host_stream_end, end_page_streams, sweep_roots,
+    agent_host_stream_end, end_page_streams, running_host, sweep_roots,
 };
 
 /// A made-up token of the right form, 43 base64url characters.
@@ -476,4 +476,32 @@ fn agent_host_commands_sweep_opened_folders_without_the_long_path_prefix() {
         sweep_roots(&profile, &[opened]),
         [profile, PathBuf::from(r"D:\acme")] // leak-guard: allow absolute-path made-up Windows path for a test
     );
+}
+
+/// Requirement `agent-host-commands`: a host that starts in the distro is
+/// started relayed, and the shell calls it at the relay's address, as it
+/// would a host on loopback.
+#[test]
+fn a_host_in_the_distro_is_reached_through_the_relay() {
+    let ports = Arc::new(Mutex::new(Vec::new()));
+    let recorded = Arc::clone(&ports);
+    let app = mock_app();
+    app.manage(AgentHostState::with_distro_command(move |port| {
+        recorded.lock().expect("the ports").push(port);
+        let number = NEXT_SCRIPT.fetch_add(1, Ordering::Relaxed);
+        let name = format!("halonic-agent-host-distro-{}-{number}", std::process::id());
+        let line = format!(r#"{{"token":"{TOKEN}"}}"#);
+        write_script(
+            std::env::temp_dir().join(name),
+            &line,
+            AfterHandshake::WaitForInput,
+        )
+    }));
+    let handshake = tauri::async_runtime::block_on(running_host(app.handle())).expect("it starts");
+    let ports = ports.lock().expect("the ports");
+    assert_eq!(ports.len(), 1);
+    assert_eq!(handshake.url(), format!("http://127.0.0.1:{}", ports[0]));
+    assert_eq!(handshake.token(), TOKEN);
+    let again = tauri::async_runtime::block_on(running_host(app.handle())).expect("it is running");
+    assert_eq!(again.url(), handshake.url(), "the running host is reused");
 }

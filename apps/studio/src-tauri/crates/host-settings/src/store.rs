@@ -108,7 +108,7 @@ impl FileHostSettingsStore {
     }
 }
 
-fn unreadable(file: &Path, failure: ReadFailure) -> HostSettingsError {
+pub(crate) fn unreadable(file: &Path, failure: ReadFailure) -> HostSettingsError {
     let reason = match failure {
         ReadFailure::Missing => "it isn't there".to_owned(),
         ReadFailure::Refused(reason) => reason.to_owned(),

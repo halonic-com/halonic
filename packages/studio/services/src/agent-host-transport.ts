@@ -227,6 +227,7 @@ function shellRefusal(error: unknown): AgentHostError {
       0,
       error["kind"],
       `The shell refused the agent host call: ${message}.`,
+      typeof error["reason"] === "string" ? error["reason"] : undefined,
     );
   }
   const message = error instanceof Error ? error.message : String(error);
