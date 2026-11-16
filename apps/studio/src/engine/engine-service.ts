@@ -7,9 +7,10 @@
 // close order) is shared with the CLI: `workspaceExecutorOptions` and
 // `assembleEngine`.
 //
-// In 0.1 the page has models and secrets only: a workflow that needs a
-// connector or an agent in a harness is refused as `unavailable` before the
-// engine opens, since the page can start neither.
+// In 0.1 the page runs the mock model only: the window's content policy
+// stops the page from calling a model server, and it can start neither a
+// connector nor a harness. A workflow with an agent that needs any of them is
+// refused as `unavailable` before the engine opens.
 
 import { NodeCoordination } from "@halonicjs/adapter-coordination-node";
 import { TauriBlobStore, TauriRecordStore, TauriRunStore } from "@halonicjs/adapter-fs-tauri";
@@ -27,7 +28,14 @@ import type { Clock, DefinitionStore, HttpClient, IdGenerator, Secrets } from "@
 import { KindedError } from "@halonicjs/std";
 import type { TauriIpc } from "@halonicjs/studio-services";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
-import { loadWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
+import {
+  callModelName,
+  definitionsOf,
+  type LoadedWorkspace,
+  loadWorkspace,
+  resolveModel,
+  runDefinitionsOf,
+} from "@halonicjs/workspace";
 
 /** The open workspace's engine service, provided by the app. */
 export const engineServiceKey: ServiceKey<EngineService> =
@@ -82,7 +90,8 @@ export class EngineService {
 
   /**
    * Refuses a workflow the page can't run, before the engine opens: one with
-   * an agent in a harness, or with an agent that lists a connector.
+   * an agent in a harness, an agent that lists a connector, or an agent whose
+   * model (or a fallback of it) is served by anything but the mock model.
    *
    * @throws KindedError `unavailable` naming the agent
    * @throws RangeError when the hub or the workflow doesn't exist
@@ -96,6 +105,15 @@ export class EngineService {
       }
       if (agent.connectors.length > 0) {
         throw unavailable(agent.name, "uses a connector");
+      }
+      const provider = realProviderOf(workspace, run.hubId, agent.id);
+      if (provider !== undefined) {
+        throw unavailable(
+          agent.name,
+          `uses the model provider "${provider}"`,
+          "can't call",
+          "Run this workflow from the command line, or give the agent the mock model.",
+        );
       }
     }
   }
@@ -220,8 +238,42 @@ function refusalOf(refusal: unknown): { kind?: string; message?: string; pid?: n
   };
 }
 
-function unavailable(agentName: string, why: string): KindedError {
-  return new KindedError("unavailable", `${agentName} ${why}, which this window can't start yet.`, {
-    fix: "Run this workflow from the command line.",
+/**
+ * The id of the first provider, other than the mock model, that a call of the agent can reach
+ * through its model, the model of any of its methods, or the fallbacks of either's alias;
+ * `undefined` when it reaches none. A model the workspace doesn't define is left to the engine,
+ * which refuses it with its own reason.
+ */
+function realProviderOf(
+  workspace: LoadedWorkspace,
+  hubId: string,
+  agentId: string,
+): string | undefined {
+  const definitions = definitionsOf(workspace, hubId);
+  const methods = Object.values(definitions.agents[agentId]?.methods ?? {});
+  const aliases = [undefined, ...methods.map(({ model }) => model)];
+  for (const alias of aliases) {
+    const name = callModelName(definitions, { agentId, ...(alias === undefined ? {} : { alias }) });
+    const target = resolveModel(workspace, hubId, name);
+    if (target === undefined) continue;
+    const id = [target, ...target.fallback]
+      .map(({ provider }) => provider)
+      .find((provider) => {
+        const file = definitions.providers[provider];
+        return file !== undefined && file.type !== "mock";
+      });
+    if (id !== undefined) return id;
+  }
+  return undefined;
+}
+
+function unavailable(
+  agentName: string,
+  why: string,
+  verb = "can't start",
+  fix = "Run this workflow from the command line.",
+): KindedError {
+  return new KindedError("unavailable", `${agentName} ${why}, which this window ${verb} yet.`, {
+    fix,
   });
 }
