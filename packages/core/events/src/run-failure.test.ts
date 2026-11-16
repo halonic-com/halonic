@@ -97,6 +97,37 @@ verifies("events.run-failed-sandbox-start-failed", () => {
   typeTest("has a reason for a sandbox that didn't start for this run", () => {
     expectTypeOf<IsReason<"sandbox-start-failed">>().toEqualTypeOf<true>();
   });
+
+  typeTest("names why the sandbox can't start, by the port's code", () => {
+    expectTypeOf<{
+      type: "run.failed";
+      state: string;
+      error: string;
+      reason: "sandbox-start-failed";
+      sandboxReason: "bubblewrap-missing";
+    }>().toExtend<EventOf<"run.failed">>();
+  });
+});
+
+verifies("events.run-failed-harness-cause", () => {
+  typeTest("says why a harness didn't start, when the engine knows", () => {
+    expectTypeOf<NonNullable<EventOf<"run.failed">["harnessCause"]>>().toEqualTypeOf<
+      "not-installed" | "signed-out"
+    >();
+    expectTypeOf<{
+      type: "run.failed";
+      state: string;
+      error: string;
+      reason: "harness-start-failed";
+      harnessCause: "signed-out";
+    }>().toExtend<EventOf<"run.failed">>();
+    expectTypeOf<{
+      type: "run.failed";
+      state: string;
+      error: string;
+      reason: "harness-start-failed";
+    }>().toExtend<EventOf<"run.failed">>();
+  });
 });
 
 verifies("events.run-failed-harness-start-failed", () => {

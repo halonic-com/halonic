@@ -10,6 +10,7 @@ export type {
   ApprovalResolver,
   CantTryReason,
   CantTryStep,
+  HarnessStartCause,
   InstructionsRefusal,
   LeftOutReason,
   LoggedInstructionPin,

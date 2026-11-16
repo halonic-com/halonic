@@ -30,9 +30,11 @@ import { KindedError, type StopSignal, StopSource } from "@halonicjs/std";
 import { BudgetReachedError, type CallBudget, noCallBudget } from "../budget/call-budget.ts";
 import type { RunHarnessEffect } from "../kernel/decide-types.ts";
 import { SandboxNotReadyError } from "../run/sandbox-not-ready-error.ts";
+import { StartFailedError } from "../run/start-failed-error.ts";
 import { BlockedAccesses } from "./blocked-accesses.ts";
 import type { HarnessAgent, HarnessRunsOptions, PlacementAnswer } from "./harness-host.ts";
 import { logHarnessStart } from "./log-harness-start.ts";
+import { harnessCauseOf, sandboxWhyOf } from "./start-failure-causes.ts";
 import {
   defaultStartTimeoutsMs,
   type StartLimits,
@@ -258,7 +260,7 @@ async function runInBridge(
       let result: { output: unknown } | undefined;
       let failure: unknown;
       try {
-        result = { output: await followRun(started, run, events, timeoutMs) };
+        result = { output: await followRun(started, session, run, events, timeoutMs) };
       } catch (error) {
         failure = error;
       }
@@ -360,9 +362,10 @@ async function openSandbox(
     });
   } catch (error) {
     stop.throwIfStopped();
-    throw new RunFailureError(
+    throw new StartFailedError(
       "sandbox-start-failed",
       `The sandbox for agent "${agent}" didn't open.`,
+      await sandboxWhyOf(stop, sandbox),
       { cause: error },
     );
   }
@@ -420,6 +423,7 @@ function openedEvent(
  */
 async function followRun(
   started: StartedCall,
+  session: SandboxSession,
   run: HarnessRun,
   events: AsyncIterator<HarnessEvent>,
   timeoutMs: number,
@@ -435,7 +439,8 @@ async function followRun(
     });
   } catch (error) {
     stop.throwIfStopped();
-    throw new RunFailureError("harness-start-failed", `${harness.name} didn't start.`, {
+    const why = await harnessCauseOf(stop, harness, session);
+    throw new StartFailedError("harness-start-failed", `${harness.name} didn't start.`, why, {
       cause: error,
     });
   }

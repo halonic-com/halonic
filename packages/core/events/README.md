@@ -22,7 +22,10 @@ optional and come with a requirement.
   `sandbox-not-ready` means the sandbox check failed before the step started;
   `sandboxReason` then gives the `Sandbox` port's reason code, such as
   `bubblewrap-missing` (requirement `run-failed-sandbox-not-ready`). A reader
-  that doesn't know a code reads it as `other`. `local-only` means the
+  that doesn't know a code reads it as `other`. `sandbox-start-failed` gives
+  `sandboxReason` too when the check fails once the sandbox didn't open, and
+  `harness-start-failed` gives `harnessCause` (`not-installed` or `signed-out`)
+  when the engine knows (requirement `run-failed-harness-cause`). `local-only` means the
   workspace is local only and no model the step could use is local; the
   `llm.skipped` events with that reason name them (requirement
   `run-failed-local-only`). `instructions-not-trusted` means a harness step

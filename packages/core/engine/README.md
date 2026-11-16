@@ -310,7 +310,10 @@ A `run-harness` effect runs the agent in a harness program (Claude Code or Codex
 engine can only ask, never choose. It checks the sandbox for that placement first; when the check
 fails it starts nothing, not even the bridge, and the run fails with `sandbox-not-ready` and the
 check's reason code (`sandboxReason` on `run.failed`), which `runFailureReasonOf` takes from the
-engine's own `SandboxNotReadyError`. A step logs `sandbox.started`, then `sandbox.opened` or, for a
+engine's own `SandboxNotReadyError`. When a sandbox that passed its check doesn't open, the engine asks the
+check again and, if it now fails, puts its code on `sandbox-start-failed` too; when a harness program doesn't
+start, it asks `detect()` for the agent's settings folder and puts `harnessCause` (`not-installed` or
+`signed-out`) on `harness-start-failed`, both through its own `StartFailedError`. A step logs `sandbox.started`, then `sandbox.opened` or, for a
 step on this computer, `sandbox.off` with `chosenAt` (never both), then `harness.started`
 (requirements `engine.run-harness`, `engine.run-harness-failures`).
 
