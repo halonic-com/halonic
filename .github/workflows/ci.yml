@@ -221,6 +221,13 @@ jobs:
     runs-on: ubuntu-24.04
     # pr.read can wait about 10 min in total under a GitHub rate limit.
     timeout-minutes: 15
+    # The personal terms live in the environment `leak-terms`, which only
+    # `main` and the merge queue may use (deployment branch rule), like the
+    # Turbo signing key. A pull request gets the empty `pull-request` and
+    # scans without them; leak-terms.yml checks its terms from the base
+    # branch, and the merge queue checks them here before anything merges
+    # (HAL-11232).
+    environment: ${{ github.event_name == 'pull_request' && 'pull-request' || 'leak-terms' }}
     permissions:
       contents: read
       pull-requests: read
@@ -239,8 +246,8 @@ jobs:
       - name: Scan the change
         env:
           PR_EVENT: ${{ steps.pr.outputs.event-path }}
-          HALONIC_DENY_TERMS: ${{ secrets.HALONIC_DENY_TERMS }}
-          HALONIC_TERMS_REQUIRED: ${{ vars.HALONIC_TERMS_ENFORCED == 'true' && github.event.pull_request.head.repo.fork != true && github.event.pull_request.user.login != 'dependabot[bot]' && 'true' || 'false' }}
+          HALONIC_DENY_TERMS: ${{ github.event_name != 'pull_request' && secrets.HALONIC_DENY_TERMS || '' }}
+          HALONIC_TERMS_REQUIRED: ${{ vars.HALONIC_TERMS_ENFORCED == 'true' && github.event_name != 'pull_request' && 'true' || 'false' }}
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
           HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.event.after }}
