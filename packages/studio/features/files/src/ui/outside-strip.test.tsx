@@ -21,6 +21,8 @@ vi.mock("@halonicjs/studio-code-editor", () => ({
       text: () => options.text,
       load: () => {},
       focus: focused,
+      setProblems: () => {},
+      goTo: () => {},
       destroy: () => {},
     };
   },

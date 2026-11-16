@@ -32,6 +32,27 @@ const frame = EditorView.theme({
   "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground": {
     backgroundColor: "var(--color-accent-soft)",
   },
+  ".cm-problem-error": {
+    textDecoration: "underline wavy var(--color-danger)",
+    textUnderlineOffset: "3px",
+  },
+  ".cm-problem-warning": {
+    textDecoration: "underline wavy var(--color-warning)",
+    textUnderlineOffset: "3px",
+  },
+  ".cm-problem-gutter": { width: "20px" },
+  ".cm-problem-gutter .cm-gutterElement": { cursor: "pointer", textAlign: "center" },
+  ".cm-problem-mark": {
+    display: "inline-block",
+    width: "12px",
+    height: "12px",
+    lineHeight: "12px",
+    fontSize: "9px",
+    borderRadius: "50%",
+    border: "1px solid currentColor",
+  },
+  ".cm-problem-mark-error": { color: "var(--color-danger)" },
+  ".cm-problem-mark-warning": { color: "var(--color-warning)", borderColor: "transparent" },
   "&.cm-focused .cm-matchingBracket": {
     backgroundColor: "var(--color-surface-muted)",
     outline: "1px solid var(--color-border-strong)",
