@@ -511,7 +511,8 @@ start, in this order, because its fix comes first.
   install `check()` reports `setup-needed` and nothing runs. On Windows there are
   no process groups, so stopping a program ends its whole tree at once with
   no grace period, and a program, argument or variable with a double quote,
-  a percent sign or a line break is refused rather than quoted. If the
+  a percent sign, an exclamation mark, a line break or a NUL is refused
+  rather than quoted. If the
   sandbox isn't set up or fails its check, Studio is to offer to run that
   agent on this computer only after a warning you confirm. That is the "this
   computer" choice below, never a fallback Halonic makes by itself. The
@@ -717,8 +718,11 @@ root. What matters is the distro reaching Windows.
 - **Your Windows tools run what the agent wrote.** Opening a project in the
   distro from a Windows git client, VS Code or Explorer runs
   their settings and hooks with your rights. srt stops the agent writing
-  `.git/hooks`, `.git/config`, `.vscode`, `.idea` and shell startup files; the
-  other files it wrote are still yours to open with care.
+  `.git/hooks`, `.git/config`, `.vscode`, `.idea`, `.zed`, `.devcontainer`, the
+  configs of hook managers (pre-commit, lefthook, lint-staged, simple-git-hooks)
+  and shell startup files; the other files it wrote are still yours to open
+  with care. lint-staged and simple-git-hooks can also read their config from
+  `package.json`, which stays writable because the agent edits it all the time.
 
 #### Continue without a sandbox
 

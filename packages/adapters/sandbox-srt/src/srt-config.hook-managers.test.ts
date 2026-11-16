@@ -22,6 +22,15 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
       const paths = writes.map((entry) => (typeof entry === "string" ? entry : entry.path));
       for (const name of [
         ".pre-commit-config.yaml",
+        "lefthook.yaml",
+        ".lefthook.yaml",
+        ".lefthook-local.yml",
+        "lefthook-local.yaml",
+        "lefthook.toml",
+        ".lintstagedrc.ts",
+        ".lintstagedrc.mts",
+        join(".config", "lefthook.yml"),
+        join(".config", "lefthook.json"),
         "lefthook.yml",
         ".lefthook.yml",
         "lefthook-local.yml",

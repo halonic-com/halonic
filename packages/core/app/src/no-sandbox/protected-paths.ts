@@ -12,6 +12,18 @@ function configFileNames(base: string, extensions: readonly string[]): PathSegme
 }
 
 /**
+ * lefthook reads `lefthook`, `.lefthook` and the `-local` variants of both,
+ * in the project folder and in `.config`, in each of these formats.
+ */
+const lefthookConfigPaths: readonly PathSegments[] = (() => {
+  const extensions = [".yml", ".yaml", ".json", ".jsonc", ".toml"];
+  const bases = ["lefthook", ".lefthook", "lefthook-local", ".lefthook-local"];
+  const inProjectFolder = bases.flatMap((base) => configFileNames(base, extensions));
+  const inConfigFolder = inProjectFolder.map((segments) => [".config", ...segments]);
+  return [...inProjectFolder, ...inConfigFolder];
+})();
+
+/**
  * The entries sandbox-runtime denies writing in the working folder. The
  * program may write the working folder, but not these, so it can't plant a
  * hook that runs outside the fence later.
@@ -48,10 +60,19 @@ export const writeFencedPaths: readonly PathSegments[] = [
   [".husky"],
   // Hook managers, which run the commands named here from git's own hooks.
   [".pre-commit-config.yaml"],
-  ["lefthook.yml"],
-  [".lefthook.yml"],
-  ["lefthook-local.yml"],
-  ...configFileNames(".lintstagedrc", ["", ".json", ".yaml", ".yml", ".js", ".cjs", ".mjs"]),
+  ...lefthookConfigPaths,
+  ...configFileNames(".lintstagedrc", [
+    "",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".js",
+    ".cjs",
+    ".mjs",
+    ".ts",
+    ".cts",
+    ".mts",
+  ]),
   ...configFileNames("lint-staged.config", [".js", ".cjs", ".mjs", ".ts", ".cts", ".mts"]),
   ...configFileNames(".simple-git-hooks", [".js", ".cjs", ".json"]),
   ...configFileNames("simple-git-hooks", [".js", ".cjs", ".json"]),
