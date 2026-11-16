@@ -2,6 +2,7 @@
 
 - Approval: HAL-10833 (Liam, CTO; review point on the watch port)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mScCV9GamdXkPT0mlDc+YdaW0iIROo0sclOid3iXTC6P48iMK12q3xciV9h6NW3MIL6Q+5ASP3pQ5epkQTzPDw==
 - Task: HAL-10833
 
 The protocol has no message for "history is gone" in the middle of a watch, only as the answer to a
