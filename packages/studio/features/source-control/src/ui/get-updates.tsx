@@ -1,0 +1,38 @@
+import { Button, useToastStore } from "@halonicjs/studio-kit";
+import type { ChangesList } from "../changes-list.ts";
+import { updatesWords } from "../changes-words.ts";
+
+/**
+ * Get updates (checklist part 2, 2.8): brings in the shared copy's newer versions when this
+ * workspace has none the shared copy lacks. The result is a toast; a failure's has Try again.
+ */
+export function GetUpdates({ list }: { readonly list: ChangesList }) {
+  const toasts = useToastStore();
+  const getUpdates = async (): Promise<void> => {
+    const outcome = await list.getUpdates();
+    if (outcome.kind === "got") {
+      toasts?.show({ tone: "success", title: updatesWords.got(outcome.count) });
+    } else if (outcome.kind === "up-to-date") {
+      toasts?.show({ tone: "success", title: updatesWords.upToDate });
+    } else {
+      const reason = outcome.kind === "both-moved" ? updatesWords.bothMoved : outcome.reason;
+      toasts?.show({
+        tone: "danger",
+        title: updatesWords.failed,
+        text: `${reason} ${updatesWords.nothingChanged}`,
+        action: { label: updatesWords.tryAgain, onClick: () => void getUpdates() },
+      });
+    }
+  };
+  return (
+    <Button
+      variant="secondary"
+      size="sm"
+      busy={list.state.gettingUpdates}
+      busyLabel={updatesWords.gettingUpdates}
+      onClick={() => void getUpdates()}
+    >
+      {updatesWords.getUpdates}
+    </Button>
+  );
+}

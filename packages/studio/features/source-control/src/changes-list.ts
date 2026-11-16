@@ -3,8 +3,15 @@ import type { VcsChange } from "@halonicjs/ports";
 import { applyLineChanges, diffLines, type LineChange } from "@halonicjs/std";
 import type { PlaceSignal, ServiceKey } from "@halonicjs/studio-shell";
 import { serviceKey } from "@halonicjs/studio-shell";
-import type { ChangesRead, ChangesSource, FileTexts, KeptFile, Version } from "./api.ts";
-import { discardWords, pageWords, undoWords, versionWords } from "./changes-words.ts";
+import type {
+  ChangesRead,
+  ChangesSource,
+  FileTexts,
+  KeptFile,
+  UpdatesResult,
+  Version,
+} from "./api.ts";
+import { discardWords, pageWords, undoWords, updatesWords, versionWords } from "./changes-words.ts";
 import { loadFailureReason } from "./load-failure.ts";
 import { versionMessage } from "./version-name.ts";
 
@@ -43,6 +50,9 @@ export type UndoOutcome =
 /** What {@link ChangesList.discardFile} did; the toast's Undo is `undo`, as for an undone change. */
 export type DiscardOutcome = UndoOutcome;
 
+/** What {@link ChangesList.getUpdates} did. */
+export type UpdatesOutcome = UpdatesResult | { readonly kind: "failed"; readonly reason: string };
+
 /** What the Changes list holds now. */
 export interface ChangesListState {
   /** The last read that worked; `undefined` before the first one. */
@@ -55,6 +65,10 @@ export interface ChangesListState {
   readonly turnOnError: unknown;
   /** Whether Turn on history is working. */
   readonly turningOn: boolean;
+  /** Whether the folder has a place to get updates from, as of the last read that worked. */
+  readonly hasRemote: boolean;
+  /** Whether Get updates is working. */
+  readonly gettingUpdates: boolean;
   /**
    * Set while Create version is open: the paths it opened with, or `undefined` inside for every
    * changed file. `undefined` when it is closed.
@@ -81,6 +95,8 @@ export class ChangesList {
     error: undefined,
     turnOnError: undefined,
     turningOn: false,
+    hasRemote: false,
+    gettingUpdates: false,
     version: undefined,
     history: { versions: [], more: false, loaded: false, error: undefined },
   };
@@ -123,8 +139,9 @@ export class ChangesList {
     try {
       const answer = await this.source.read();
       const files = answer.kind === "ready" ? await this.#describe(answer.changes) : [];
+      const hasRemote = answer.kind === "ready" && (await this.source.hasRemote());
       if (read !== this.#reads || this.#disposed) return;
-      this.#set({ ...this.#state, read: answer, files, error: undefined });
+      this.#set({ ...this.#state, read: answer, files, hasRemote, error: undefined });
       if (answer.kind === "ready") await this.#readHistory(this.#state.history.versions.length);
     } catch (error) {
       if (read !== this.#reads || this.#disposed) return;
@@ -411,6 +428,27 @@ export class ChangesList {
     if (this.#disposed) return;
     this.#set({ ...this.#state, turningOn: false });
     await this.refresh();
+  }
+
+  /**
+   * Gets the shared copy's newer versions and reads again. The page says what came of it; a
+   * failure comes back as a reason, with nothing changed here.
+   */
+  async getUpdates(): Promise<UpdatesOutcome> {
+    if (this.#disposed || this.#state.gettingUpdates) {
+      return { kind: "failed", reason: updatesWords.alreadyWorking };
+    }
+    this.#set({ ...this.#state, gettingUpdates: true });
+    try {
+      const outcome = await this.source.getUpdates();
+      if (this.#disposed) return outcome;
+      this.#set({ ...this.#state, gettingUpdates: false });
+      if (outcome.kind === "got") await this.refresh();
+      return outcome;
+    } catch (error) {
+      if (!this.#disposed) this.#set({ ...this.#state, gettingUpdates: false });
+      return { kind: "failed", reason: loadFailureReason(error) };
+    }
   }
 
   /** Calls `listener` after every change of {@link state}. Returns a function that stops the calls. */

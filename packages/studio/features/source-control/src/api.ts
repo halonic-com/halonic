@@ -59,6 +59,15 @@ export interface Version {
   readonly files: readonly string[];
 }
 
+/** What {@link ChangesSource.getUpdates} found. */
+export type UpdatesResult =
+  /** The shared copy had `count` newer versions; they are in the workspace now. */
+  | { readonly kind: "got"; readonly count: number }
+  /** The shared copy has nothing newer. */
+  | { readonly kind: "up-to-date" }
+  /** The shared copy and this workspace both have versions the other lacks; nothing was changed. */
+  | { readonly kind: "both-moved" };
+
 /** The history of one open workspace, as the app provides it. */
 export interface ChangesSource {
   /** Reads what changed since the last version. Throws when git answers with an error. */
@@ -96,6 +105,14 @@ export interface ChangesSource {
    * so Halonic can save versions of it.
    */
   readonly turnOnHistory: () => Promise<void>;
+  /** Whether the folder has a place to share to and get updates from. `false` for a folder with no history. */
+  readonly hasRemote: () => Promise<boolean>;
+  /**
+   * Brings in the shared copy's newer versions, only when this workspace has none the shared copy
+   * lacks (a fast-forward). Changes nothing otherwise. Throws, with a reason a person can read,
+   * when the shared copy can't be reached or git refuses.
+   */
+  readonly getUpdates: () => Promise<UpdatesResult>;
   /** Calls `listener` when the window comes to the front or a save may have changed a file; returns a function that stops it. */
   readonly subscribe: (listener: () => void) => () => void;
 }
