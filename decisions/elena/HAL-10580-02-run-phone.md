@@ -3,6 +3,7 @@
 - Task: HAL-10580
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-9387 (Liam's call: the phone layout comes after 0.1.0, and 0.1.0 is tagged); the layout is checklist 1.15 (HAL-1360, revision 10), already approved; Liam signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:CFWl7dHsIHjNVhwbvbuaF6NqUuWKIlDzFwfxrlQH7MP7x92CwWxDZqUkD/QtSx/8MLfFApE4DDHLoHbzqptKCg==
 
 ## What changes
 
