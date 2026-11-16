@@ -11,4 +11,4 @@ The requirement `publish.worker-bundle` says this now. No test was weakened or s
 ## Covers
 
 - publish.worker-bundle
-- tooling/check/src/lib/bundle-rules.ts
+- tooling/check/
