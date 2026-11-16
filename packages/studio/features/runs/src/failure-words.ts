@@ -10,11 +10,11 @@ export const failureWords = {
   sandboxStartFailed: (agent: string) =>
     `${capitalised(agent)} didn't start: the sandbox on this computer didn't start. Nothing ran.`,
   cloudModelUnreachable: (provider: string, host: string | undefined, model: string) =>
-    `Halonic couldn't reach ${capitalised(provider)}${host === undefined ? "" : ` at \`${host}\``} for the model \`${model}\`. This computer may be offline. Check your internet connection, then run again.`,
+    `Halonic couldn't reach ${capitalised(provider)}${host === undefined ? "" : ` at ${host}`} for the model ${model}. This computer may be offline. Check your internet connection, then run again.`,
   localModelUnreachable: (provider: string, host: string | undefined, model: string) =>
-    `Halonic couldn't reach ${capitalised(provider)}${host === undefined ? "" : ` at \`${host}\``} for the model \`${model}\`. ${capitalised(provider)} may not be running on this computer. Start ${capitalised(provider)}, then run again.`,
+    `Halonic couldn't reach ${capitalised(provider)}${host === undefined ? "" : ` at ${host}`} for the model ${model}. ${capitalised(provider)} may not be running on this computer. Start ${capitalised(provider)}, then run again.`,
   modelOutOfMemory: (provider: string, model: string) =>
-    `${capitalised(provider)} couldn't load \`${model}\`: this computer doesn't have enough free memory for it.`,
+    `${capitalised(provider)} couldn't load ${model}: this computer doesn't have enough free memory for it.`,
   modelOutOfMemoryFix: "Close other programs, or pick a smaller model in Models.",
   modelOutOfMemoryFixOnPhone: "Close other programs, or pick a smaller model.",
   fixOnComputer: (place: string) => `Fix this on your computer: ${place}`,

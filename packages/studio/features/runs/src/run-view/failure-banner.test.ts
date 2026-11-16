@@ -42,14 +42,14 @@ verifies("runs.run-view.failure-banners", () => {
     it("tells a cloud provider's from the internet, with the host", () => {
       const log = [call("claude", "claude-sonnet"), failedEvent("api.anthropic.com")];
       expect(lines(causeBanner(failed("model-unreachable"), log, context, false))).toEqual([
-        "Halonic couldn't reach Claude at `api.anthropic.com` for the model `claude-sonnet`. This computer may be offline. Check your internet connection, then run again.",
+        "Halonic couldn't reach Claude at api.anthropic.com for the model claude-sonnet. This computer may be offline. Check your internet connection, then run again.",
       ]);
     });
 
     it("tells a local provider's from the program that isn't running", () => {
       const log = [call("ollama", "llama3.2"), failedEvent("localhost:11434")];
       expect(lines(causeBanner(failed("model-unreachable"), log, context, false))).toEqual([
-        "Halonic couldn't reach Ollama at `localhost:11434` for the model `llama3.2`. Ollama may not be running on this computer. Start Ollama, then run again.",
+        "Halonic couldn't reach Ollama at localhost:11434 for the model llama3.2. Ollama may not be running on this computer. Start Ollama, then run again.",
       ]);
     });
 
@@ -60,7 +60,7 @@ verifies("runs.run-view.failure-banners", () => {
       );
       const gone = [call("elsewhere", "m"), failedEvent()];
       expect(lines(causeBanner(failed("model-unreachable"), gone, context, false))).toEqual([
-        "Halonic couldn't reach Elsewhere for the model `m`. This computer may be offline. Check your internet connection, then run again.",
+        "Halonic couldn't reach Elsewhere for the model m. This computer may be offline. Check your internet connection, then run again.",
       ]);
     });
 
@@ -77,14 +77,14 @@ verifies("runs.run-view.failure-banners", () => {
 
     it("says what to do on a computer", () => {
       expect(lines(causeBanner(failed("model-out-of-memory"), log, context, false))).toEqual([
-        "Ollama couldn't load `llama3.1:70b`: this computer doesn't have enough free memory for it.",
+        "Ollama couldn't load llama3.1:70b: this computer doesn't have enough free memory for it.",
         "Close other programs, or pick a smaller model in Models.",
       ]);
     });
 
     it("says to fix it on the computer, on a phone", () => {
       expect(lines(causeBanner(failed("model-out-of-memory"), log, context, true))).toEqual([
-        "Ollama couldn't load `llama3.1:70b`: this computer doesn't have enough free memory for it.",
+        "Ollama couldn't load llama3.1:70b: this computer doesn't have enough free memory for it.",
         "Close other programs, or pick a smaller model.",
         "Fix this on your computer: Models",
       ]);
