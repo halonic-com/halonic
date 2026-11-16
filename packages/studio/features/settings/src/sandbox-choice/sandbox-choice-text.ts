@@ -77,3 +77,51 @@ const reasonSentences: Record<SandboxUnavailableReason, string> = {
 
 /** The sentence for a reason a backend can't run here. */
 export const unavailable = (reason: SandboxUnavailableReason): string => reasonSentences[reason];
+
+/** The modal's own words: step label, back link, the checking and failed states. */
+export const STEP_LABEL = "Step 2 of 3";
+export const BACK = "Back";
+export const WHAT_HAPPENS_LEAD = "What will happen on this computer:";
+export const WHY = "Why?";
+export const CHECKING = "Checking your computer…";
+export const DETECTION_FAILED = "We couldn't check this computer. Pick an option below.";
+export const OTHER_OPTIONS_TITLE = "Choose a sandbox";
+
+/** The More info sections. The setup size and time are left out until they are measured (HAL-3777). */
+export const MORE_WHAT_TITLE = "What a sandbox does";
+export const MORE_WHAT =
+  "Agents can read and change files in your project. They can't see the rest of your computer, and they can only reach websites you allow.";
+export const MORE_COVERS_TITLE = "What this option covers";
+export const MORE_COVERS_WINDOWS = [
+  "Covers: files outside your project, your home folder, saved keys and passwords.",
+  "Covers partly: network access. Some connections can't be limited on Windows.",
+  "Doesn't cover: anything you approve yourself when an agent asks.",
+];
+export const MORE_COVERS = [
+  "Covers: files outside your project, your home folder, saved keys and passwords.",
+  "Covers: network access, to the websites you allow.",
+  "Doesn't cover: anything you approve yourself when an agent asks.",
+];
+export const MORE_WSL_TITLE = "What is WSL?";
+export const MORE_WSL =
+  "WSL is a Microsoft component of Windows that runs Linux next to Windows. Halonic uses it to host a stronger sandbox. It is made by Microsoft and installs through Windows.";
+export const MORE_OTHERS_TITLE = "Other options, one line each";
+export const MORE_OTHERS_WINDOWS = [
+  "Sandbox in WSL: stronger network limits, needs one restart.",
+  "MXC: Microsoft's sandbox for Windows 11.",
+  "Docker Sandboxes: runs agents in containers. Needs Docker.",
+  "Cloud sandbox: runs agents on a cloud service. Your project files are sent there.",
+];
+export const MORE_OTHERS = [
+  "Docker Sandboxes: runs agents in containers. Needs Docker.",
+  "Cloud sandbox: runs agents on a cloud service. Your project files are sent there.",
+];
+
+/** S6: continue without a sandbox. */
+export const CONFIRM_TITLE = "Continue without a sandbox?";
+export const CONFIRM_BODY = [
+  "Without a sandbox, agents run commands as you. That means an agent, or instructions hidden in a file or web page it reads, could look at things outside your project. For example, your SSH keys.",
+  "Halonic still asks before an agent runs a command or touches files outside the project.",
+  "A sandbox makes that a hard limit instead of a question. You can set one up any time in Settings.",
+];
+export const SET_UP_A_SANDBOX = "Set up a sandbox";
