@@ -16,14 +16,16 @@ import {
   useSyncExternalStore,
 } from "react";
 import { flushSync } from "react-dom";
-import { InboxRequestsService, InboxService } from "../api.ts";
+import { InboxNoticesService, InboxRequestsService, InboxService } from "../api.ts";
 import type { Inbox, SetupFocus } from "../inbox.ts";
 import type { InboxItem } from "../inbox-items.ts";
+import type { InboxNotices } from "../notices/inbox-notices.ts";
 import { secretTarget } from "../plain/secret-target.ts";
 import type { InboxRequests } from "../request/inbox-requests.ts";
 import { ApprovalCard } from "./approval-card.tsx";
 import type { NextItem } from "./card-parts.tsx";
 import { countDetail, itemTitle, lateCount, rowFor } from "./inbox-row.tsx";
+import { NoticesSection } from "./notices-section.tsx";
 import { SetupPane } from "./setup-pane.tsx";
 import { useOpenItem } from "./use-open-item.ts";
 import { useRequestPane } from "./use-request-pane.tsx";
@@ -49,6 +51,7 @@ export function InboxPage({ context }: PlaceViewProps) {
       inbox={context.services.get(InboxService)}
       words={engineWordsOf(context)}
       requests={context.services.find(InboxRequestsService)}
+      notices={context.services.find(InboxNoticesService)}
       {...(context.openPlace === undefined ? {} : { openPlace: context.openPlace })}
       {...(openItem && {
         openRun: (hubId: string, runId: string) => openItem({ kind: "run", hub: hubId, id: runId }),
@@ -69,6 +72,8 @@ export interface InboxViewProps {
   readonly words?: EngineWords;
   /** The workflows the Inbox starts as requests; without it there is no request form. */
   readonly requests?: InboxRequests | undefined;
+  /** The notices under Needs you; without it there is no Notices section. */
+  readonly notices?: InboxNotices | undefined;
   /** Opens a sidebar place, for a secret pasted when no account is there to take it: the Library. */
   readonly openPlace?: (place: SidebarPlace) => void;
   /** Opens a run's page, for **Open run** on the toast that says a request started. */
@@ -92,13 +97,16 @@ export interface InboxViewProps {
  * With no card open, the right pane is the request form when the workspace has a workflow with a
  * `start:` block (`InboxRequests`), and **New request** in the header brings it back.
  *
- * Not here yet: notices and the narrow layout (HAL-1305).
+ * Notices (`InboxNotices`) follow Needs you as flat rows with **Open run** and **×**.
+ *
+ * Not here yet: the notices' new dot and the narrow layout (HAL-1305).
  */
 export function InboxView({
   inbox,
   now = () => new Date(),
   words = engineWords["desktop-app"],
   requests,
+  notices,
   openPlace,
   openRun,
 }: InboxViewProps) {
@@ -166,6 +174,7 @@ export function InboxView({
               onRetry={retry}
             />
           )}
+          {failedFirst ? null : <NoticesSection source={notices} openRun={openRun} words={words} />}
         </div>
       </div>
       <div
