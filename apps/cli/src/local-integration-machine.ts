@@ -6,13 +6,13 @@
 
 import { rm } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname } from "node:path";
 import { FileSystemFolderReader, FileUnfencedRunConsentStore } from "@halonicjs/adapter-fs-node";
 import type { AddressCheckingHttpClient } from "@halonicjs/adapter-http-kit";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import {
   type RunnerMachine,
   runnerFile,
+  runnerNodeFolder,
   socketFolders,
   systemFiles,
 } from "@halonicjs/adapter-integration-runner";
@@ -33,6 +33,7 @@ import {
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
+import { connectorHostClass } from "./connector-machine.ts";
 import type { LocalIntegrationMachine } from "./open-local-integration.ts";
 import type { PluginBackendMachine } from "./open-plugin-backend.ts";
 import { openPluginService } from "./plugin-host.ts";
@@ -62,7 +63,7 @@ export interface ComputerIntegrationInput {
   readonly workspace: LoadedWorkspace;
   /** The trust records, clock and program search the trust check reads. */
   readonly trust: WorkspaceTrustMachine;
-  /** What the integration's own requests go out through; the sheet limits the hosts. Public sites only by default. */
+  /** What the integration's own requests go out through; the sheet limits the hosts, and a host it lists under `localHosts` may be this computer or the home network. */
   readonly transport?: AddressCheckingHttpClient;
   readonly environment?: ProfileEnvironment;
 }
@@ -93,10 +94,10 @@ export function computerIntegrationMachine(
     gate,
     runtime: {
       node: process.execPath,
-      nodeFolder: dirname(dirname(process.execPath)),
+      nodeFolder: runnerNodeFolder(process.execPath),
       runnerFile: runnerFile(),
     },
-    transport: input.transport ?? createNodeHttpClient({ hostClass: () => "public" }),
+    transport: input.transport ?? createNodeHttpClient({ hostClass: connectorHostClass }),
     // Read again at every start: what was checked when the command began is never reused.
     trustCheck: async () => {
       const read = await readWorkspaceTrust(input.dir, input.trust.commandSearch, input.workspace);

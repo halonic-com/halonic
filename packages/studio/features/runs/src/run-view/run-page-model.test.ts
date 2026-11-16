@@ -108,6 +108,13 @@ verifies("runs.run-page", () => {
       });
     });
 
+    it("writes a hidden character in a wait title as an escape", () => {
+      const atReview = { status: "waiting" as const, state: "review", accepts: ["approve"] };
+      expect(
+        page({ ...atReview, waitingFor: { title: "Refund\u202Efor Sam", body: "" } }).banner,
+      ).toMatchObject({ lines: ["Waiting for you: Refund\\u202efor Sam"] });
+    });
+
     it("names a wait step by its description, else by the step", () => {
       const atReview = { status: "waiting" as const, state: "review", accepts: ["approve"] };
       expect(

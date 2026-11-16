@@ -239,8 +239,8 @@ can judge the result for yourself.
 3. **Tests prove it.** Each requirement is proven by tests that run on every
    change. The rule is that nothing that works may break. A test that guards a
    requirement can't be deleted or weakened without an approved decision note.
-   A check for this runs on every change today; it reports and doesn't block
-   yet.
+   A check for this runs on every change and blocks a pull request that
+   breaks the rule.
 4. **Every change is reviewed and checked.** Every change goes through a pull
    request, a review and the automated checks before it merges: tests, licence
    and dependency checks, and a check for leaked secrets.

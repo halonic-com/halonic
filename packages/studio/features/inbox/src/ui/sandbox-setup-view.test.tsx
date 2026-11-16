@@ -52,7 +52,7 @@ const button = (root: HTMLElement, name: string) =>
 verifies("inbox.sandbox-row", () => {
   it("shows the reason, then the fix, the guide and the runs that didn't run", async () => {
     const root = await openCard(sandboxInbox(twoRoutines));
-    await until(() => root.textContent?.includes("acme/daily"));
+    await until(() => root.textContent?.includes("Daily summary"));
     const card = root.querySelector("section") as HTMLElement;
     expect(card.querySelector("h2")?.textContent).toBe("2 routines didn't run");
     expect(card.textContent).toContain("bubblewrap isn't installed, and the sandbox needs it.");
@@ -61,8 +61,9 @@ verifies("inbox.sandbox-row", () => {
       "https://docs.halonic.dev/sandbox#bubblewrap",
     );
     expect(card.textContent).toContain("Didn't run because of this");
-    expect(card.textContent).toContain("acme/weekly");
-    expect(card.textContent).toContain("acme/daily");
+    expect(card.textContent).toContain("Weekly report");
+    expect(card.textContent).toContain("Daily summary");
+    expect(card.textContent).not.toContain("acme/");
   });
 
   it("opens a run from its line", async () => {

@@ -2,6 +2,8 @@
 // 15.2). The run row says what `halonic runs` says, word for word, so
 // the two lists read the same.
 
+import { escapeHidden } from "@halonicjs/std";
+
 /** The status chip's word for each standing (mc 15.2, Status chips). */
 export const chipWords = {
   running: "Running",
@@ -28,6 +30,8 @@ export const rowLineWords = {
   finishedIn: (step: string) => `Finished in ${step}`,
   /** The failed banner's first sentence, until the banners by cause (HAL-1845). */
   failedIn: (workflow: string, step: string) => `${workflow} failed in the step ${step}.`,
+  /** A failed run that never entered a step, as a refused run's banner says it (HAL-11190). */
+  didntStart: (workflow: string) => `${workflow} didn't start.`,
   budgetReached: (step: string, took: string) => `Budget reached in ${step} after ${took}`,
   cancelledIn: (step: string, took: string) => `Cancelled in ${step} after ${took}`,
 };
@@ -97,6 +101,7 @@ export const rowLabelWords = {
     "cant-try": "couldn't try",
   },
   failedIn: (step: string) => `failed in the step ${step}`,
+  didntStart: "didn't start",
   row: (
     shortId: string,
     workflow: string,
@@ -243,7 +248,8 @@ export const runPageWords = {
   sandboxCheckedReady: "Sandbox checked: ready.",
   /** Said once when a press finds it still refuses; the reason follows. */
   sandboxCheckedRefused: (reason: string) => `Sandbox checked: not ready. ${reason}`,
-  sandboxReady: "The sandbox is ready. Run again to start it.",
+  /** The page has no Run again yet (T7), so this names none (HAL-11190). */
+  sandboxReady: "The sandbox is ready. The next run can start.",
   sandboxCheckFailed: "Halonic couldn't check the sandbox. Try again.",
   budgetName: "Stopped at its budget",
   /** One tool approval (mc 15.2): who asks and what for, in the words of the Inbox card's title. */
@@ -365,12 +371,14 @@ function asSentence(text: string): string {
 
 /**
  * How a step is named (cli-output 3.4): the first line of its description,
- * trimmed, else its id with only the first letter made a capital.
+ * trimmed, else its id with only the first letter made a capital. A hidden
+ * character in the description is written as an escape, since a description
+ * can be filled in from model output.
  */
 export function stepName(stateId: string, description: string | undefined): string {
   const firstLine = description?.split("\n")[0]?.trim() ?? "";
   if (firstLine !== "") {
-    return firstLine;
+    return escapeHidden(firstLine);
   }
   return stateId.charAt(0).toUpperCase() + stateId.slice(1);
 }
@@ -398,6 +406,8 @@ export const detailsWords = {
 export const summaryWords = {
   runningIn: (step: string) => `Running in ${step}`,
   failedIn: (step: string, took: string) => `Failed in ${step} after ${took}`,
+  /** A failed run that never entered a step (HAL-11190). */
+  failedAfter: (took: string) => `Failed after ${took}`,
   askedYou: (times: string) => `asked you ${times}`,
   soFar: (phrase: string) => `${phrase} so far`,
   counted: (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`,

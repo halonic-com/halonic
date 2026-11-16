@@ -45,7 +45,7 @@ still there on the latest `main` before you report it.
 
 In scope is everything in this repository: the Studio app, the engine, the
 `halonic` command-line tool, the adapters and the release builds.
-`halonic serve` is not built yet; it will be in scope once it ships.
+`halonic serve`, with or without `--network`, is in scope.
 
 Some things are by design and are not security bugs on their own:
 

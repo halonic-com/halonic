@@ -2,6 +2,7 @@ import type { RunSummary, RunTrigger } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { RunRoutine, RunWorkflow } from "../api.ts";
+import { stepName } from "../run-words.ts";
 import { approvalAt, minutesLater, mondayMorning, summaryWith } from "../summary.test-helper.ts";
 import { type RunRow, runRow } from "./run-row.ts";
 
@@ -56,6 +57,18 @@ verifies("runs.row", () => {
       expect(plain.line).toBe("Waiting for you in the step Check");
     });
 
+    it("writes a hidden character in a wait title or step description as an escape", () => {
+      const title = rowOf({
+        status: "waiting",
+        state: "review",
+        accepts: ["approve"],
+        waitingFor: { title: "Refund\u202Efor Sam", body: "" },
+      });
+
+      expect(title.line).toBe("Waiting for you: Refund\\u202efor Sam");
+      expect(stepName("review", "Check\u200Bit\nsecond line")).toBe("Check\\u200bit");
+    });
+
     it("says when a timer is due and which child run a run waits for, with a grey chip", () => {
       const timer = rowOf({
         status: "waiting",
@@ -92,6 +105,16 @@ verifies("runs.row", () => {
 
       expect(row.chip).toEqual({ word: "Failed", tone: "danger", dot: false });
       expect(row.line).toBe("Support reply failed in the step Draft.");
+    });
+
+    it("says a failed run that never entered a step didn't start, as its banner does", () => {
+      const refused = { status: "failed", reason: "sandbox-not-ready", state: null } as const;
+      const row = rowOf({ ...refused, statesVisited: [], approvals: [] });
+
+      expect(row.line).toBe("Support reply didn't start.");
+      expect(row.label).toBe(
+        "Run 01jd8q, Support reply, didn't start. Started by you, in the terminal, 10:40.",
+      );
     });
 
     it("says where and after how long a run stopped at its budget or was cancelled", () => {

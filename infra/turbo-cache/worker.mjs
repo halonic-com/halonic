@@ -1,5 +1,5 @@
 // Minimal Turborepo remote cache: R2 storage, keyed by artifact hash, one team. Reads take a static read token.
-// Writes take a short-lived token that POST /auth/github hands out only against a GitHub OIDC token (see below).
+// Writes take a short-lived token that POST /auth/github hands out only to a push to main, against a GitHub OIDC token (see below).
 // Refuses with 503 when the Cloudflare spend switch is off (turbo then builds without the cache).
 import { checkSpend, spendOffResponse } from "../spend-guard/src/check-spend.mjs";
 
@@ -64,12 +64,13 @@ async function verifyGithubToken(jwt) {
 }
 
 // GitHub sets event_name and ref in the token; a workflow file cannot change them. That keeps a workflow on a
-// pushed look-alike branch (gh-readonly-queue/main/x) from writing: its event is a plain push on another ref.
-function mayWrite(claims) {
-  if (claims.repository !== OIDC_REPOSITORY) return false;
+// pushed look-alike branch (gh-readonly-queue/main/x) from getting any token: its event is a plain push on another ref.
+// Only a push to main writes. The merge queue runs the queued change's own code, so it only reads.
+function tokenKind(claims) {
+  if (claims.repository !== OIDC_REPOSITORY) return null;
   if (claims.event_name === "merge_group")
-    return claims.ref?.startsWith("refs/heads/gh-readonly-queue/main/");
-  return claims.event_name === "push" && claims.ref === "refs/heads/main";
+    return claims.ref?.startsWith("refs/heads/gh-readonly-queue/main/") ? "r" : null;
+  return claims.event_name === "push" && claims.ref === "refs/heads/main" ? "w" : null;
 }
 
 async function hmac(secret, text) {
@@ -83,22 +84,31 @@ async function hmac(secret, text) {
   return b64url(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(text)));
 }
 
-// POST /auth/github with the OIDC token as bearer answers { token }: a write token that lasts 30 minutes.
+// POST /auth/github with the OIDC token as bearer answers { token }: a 30-minute token, "w." (reads and uploads) for
+// a push to main, "r." (reads only) for the merge queue.
 async function exchange(request, env) {
   const signingKey = await readSecret(env.TURBO_SIGNING_KEY);
   const jwt = (request.headers.get("authorization") || "").replace(/^Bearer /, "");
   const claims = signingKey && jwt ? await verifyGithubToken(jwt) : null;
   if (!claims) return json({ error: "unauthorized" }, 401);
-  if (!mayWrite(claims)) return json({ error: "forbidden" }, 403);
+  const kind = tokenKind(claims);
+  if (!kind) return json({ error: "forbidden" }, 403);
   const expires = Math.floor(Date.now() / 1000) + WRITE_TOKEN_SECONDS;
-  return json({ token: `w.${expires}.${await hmac(signingKey, `w.${expires}`)}` });
+  return json({ token: `${kind}.${expires}.${await hmac(signingKey, `${kind}.${expires}`)}` });
 }
 
-async function validWriteToken(given, env) {
-  const [tag, expires, mac] = given.split(".");
+// The kind of a live token we signed ("w" or "r"), else null.
+async function signedTokenKind(given, env) {
+  const [kind, expires, mac] = given.split(".");
   const signingKey = await readSecret(env.TURBO_SIGNING_KEY);
-  if (tag !== "w" || !signingKey || !mac || Number(expires) * 1000 <= Date.now()) return false;
-  return matches(given, `w.${expires}.${await hmac(signingKey, `w.${expires}`)}`);
+  if ((kind !== "w" && kind !== "r") || !signingKey || !mac) return null;
+  if (Number(expires) * 1000 <= Date.now()) return null;
+  return (await matches(
+    given,
+    `${kind}.${expires}.${await hmac(signingKey, `${kind}.${expires}`)}`,
+  ))
+    ? kind
+    : null;
 }
 
 async function matches(given, token) {
@@ -120,10 +130,13 @@ async function readSecret(binding) {
   }
 }
 
-// "write" (a token from /auth/github: reads and uploads), "read" (TURBO_TOKEN_READ: reads only) or null.
+// "write" (a "w." token from /auth/github: reads and uploads), "read" (an "r." token from /auth/github, or
+// TURBO_TOKEN_READ: reads only) or null.
 async function roleOf(request, env) {
   const given = (request.headers.get("authorization") || "").replace(/^Bearer /, "");
-  if (await validWriteToken(given, env)) return "write";
+  const kind = await signedTokenKind(given, env);
+  if (kind === "w") return "write";
+  if (kind === "r") return "read";
   return (await matches(given, await readSecret(env.TURBO_TOKEN_READ))) ? "read" : null;
 }
 

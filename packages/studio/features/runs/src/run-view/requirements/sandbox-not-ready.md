@@ -14,13 +14,13 @@ Until the log is read the page keeps its general banner. The check's own sentenc
 
 Where the open workspace provides `sandboxStartCheckKey`, the banner shall have one button, **Check again**, which asks the check now and never runs anything:
 
-- when the check passes, the banner turns calm and adds "The sandbox is ready. Run again to start it.", and the button goes;
+- when the check passes, the banner turns calm and adds "The sandbox is ready. The next run can start.", and the button goes;
 - when it is still refused, the lines change to the reason and fix of the new code, and the button stays;
 - when the check itself fails, the banner adds "Halonic couldn't check the sandbox. Try again.", and the button stays.
 
 Where nothing provides it, there is no button. The banner has no way to run anyway.
 
-Limits, for the docs: **Run again** comes with the page's Run again (T7); until then a passed check says to run again and the person does it from the workflow.
+Limits, for the docs: **Run again** comes with the page's Run again (T7); until then a passed check names no button, because no run page has one yet (HAL-11190).
 
 ## Examples
 
@@ -29,4 +29,4 @@ Limits, for the docs: **Run again** comes with the page's Run again (T7); until 
   then the banner gives the words for `sandbox-start.bubblewrap-missing`, then "Nothing ran.", and has Check again.
 - Given the same banner and a check that now passes,
   when the person presses Check again,
-  then it reads "The sandbox is ready. Run again to start it." and has no button.
+  then it reads "The sandbox is ready. The next run can start." and has no button.

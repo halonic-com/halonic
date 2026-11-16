@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import type { ItemUsage } from "@halonicjs/app";
-import type { ItemViewProps } from "@halonicjs/studio-shell";
+import { type ItemViewProps, limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { libraryFeature } from "../feature.ts";
 import {
   type KnowledgeHost,
   KnowledgeHostService,
@@ -44,10 +45,10 @@ function setup(
   const props = {
     item: { kind: "knowledge", hub: "~workspace", id: "handbook" },
     context: {
-      services: {
+      services: limitedLookup(libraryFeature, {
         get: (key: unknown) => (key === KnowledgeHostService ? host : undefined),
         find: (key: unknown) => (key === KnowledgeHostService ? host : undefined),
-      },
+      }),
       announcer: { announceState },
       openItem,
       openPlace,
@@ -165,7 +166,8 @@ verifies("library.knowledge-page", () => {
         ...props,
         context: {
           ...props.context,
-          services: {
+          services: limitedLookup(libraryFeature, {
+            get: () => undefined,
             find: () => ({
               read: async () => undefined,
               write: async () => {},
@@ -173,7 +175,7 @@ verifies("library.knowledge-page", () => {
               subscribe: () => () => {},
               summarize: async () => ({ kind: "no-documents" }),
             }),
-          },
+          }),
         },
       } as unknown as ItemViewProps;
       const root = render(<KnowledgePage {...missing} />);

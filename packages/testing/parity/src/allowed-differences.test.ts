@@ -210,6 +210,7 @@ verifies("parity.allowed-differences-checked", () => {
       "engine.budget-composite-stops",
       "workspace.references",
       "events.run-started-version",
+      "engine.llm-request-alias",
     ]);
   });
 

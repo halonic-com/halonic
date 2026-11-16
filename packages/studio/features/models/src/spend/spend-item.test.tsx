@@ -9,6 +9,7 @@ import {
   createShell,
   defineFeature,
   type ItemRef,
+  limitedLookup,
   type WorkspaceContext,
 } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
@@ -73,10 +74,10 @@ async function show(
   runCommand?: (id: string) => boolean,
   inView?: ItemRef | null,
 ) {
-  const services = {
+  const services = limitedLookup(modelsFeature, {
     get: () => files,
-    find: (key: unknown) => (key === RunsListService ? runs : files),
-  };
+    find: (key) => (key === RunsListService ? runs : files),
+  });
   const activeItem = { get: () => inView ?? null, subscribe: () => () => undefined };
   const context = { services, runCommand, activeItem } as unknown as WorkspaceContext;
   element = document.createElement("div");

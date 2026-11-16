@@ -1,8 +1,9 @@
 import { HostSettings } from "@halonicjs/app";
-import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { type AgentSandboxHost, AgentSandboxService, HostSettingsService } from "./api.ts";
+import { settingsFeature } from "./feature.ts";
 import { agentSandboxSummary, assistantSummary } from "./section-summaries.ts";
 import { MemoryHostSettingsStore } from "./test-support/memory-host-settings-store.ts";
 
@@ -16,10 +17,10 @@ async function contextWith(
   }
   const settings = new HostSettings(store);
   await settings.load();
-  const services = {
-    get: (key: unknown) => (key === HostSettingsService ? settings : undefined),
-    find: (key: unknown) => (key === AgentSandboxService ? sandbox : undefined),
-  };
+  const services = limitedLookup(settingsFeature, {
+    get: (key) => (key === HostSettingsService ? settings : undefined),
+    find: (key) => (key === AgentSandboxService ? sandbox : undefined),
+  });
   return { services } as unknown as WorkspaceContext;
 }
 

@@ -17,6 +17,8 @@ export interface SandboxRefusals {
   runs(): Promise<readonly RunSummary[]>;
   /** The reason code `run.failed` gave for this run, or `undefined` when it gave none. */
   reasonOf(runId: string): Promise<string | undefined>;
+  /** What the card calls the run: its routine's name. Without it the card names the run's workflow id. */
+  nameOf?(run: RunSummary): string;
   /** Calls `listener` whenever a run may have started or stopped. Returns a function that stops the calls. */
   subscribe(listener: () => void): () => void;
 }
@@ -45,6 +47,8 @@ export interface SandboxCardControl {
   reason(): string;
   /** The runs that didn't run because of the sandbox, newest first; while fixed, the ones it fixed. */
   runs(): Promise<readonly RunSummary[]>;
+  /** What the card calls one of those runs: its routine's name, never the routine's key. */
+  name(run: RunSummary): string;
 }
 
 /** The props of the sandbox card's view. */
@@ -171,6 +175,7 @@ export function sandboxSetup(
     async runs() {
       return fixed?.runs ?? (await stillRefused());
     },
+    name: (run) => refusals.nameOf?.(run) ?? run.workflowId,
   };
 
   // A check that passed on another screen: nothing is open here to show it Fixed, so it is a notice.

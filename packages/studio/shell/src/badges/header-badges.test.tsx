@@ -54,4 +54,31 @@ verifies("shell.header-badges", () => {
     act(() => button?.click());
     expect(onSelect).toHaveBeenCalledWith(button);
   });
+
+  it("names the button with one full stop, also when the label ends a sentence", () => {
+    const registry = createBadgeRegistry();
+    const container = render(<HeaderBadges registry={registry} />);
+    const badge = (label: string) => ({
+      id: "trust",
+      label,
+      tone: "neutral" as const,
+      priority: 1000,
+      action: "Try again",
+      onSelect: () => {},
+    });
+    let remove = () => {};
+    act(() => {
+      remove = registry.add(badge("Couldn't load workspace settings · Nothing to read"));
+    });
+    expect(container.querySelector("button")?.getAttribute("aria-label")).toBe(
+      "Couldn't load workspace settings · Nothing to read. Try again",
+    );
+    act(() => {
+      remove();
+      registry.add(badge("Couldn't load workspace settings · The folder has no location."));
+    });
+    expect(container.querySelector("button")?.getAttribute("aria-label")).toBe(
+      "Couldn't load workspace settings · The folder has no location. Try again",
+    );
+  });
 });

@@ -1,0 +1,350 @@
+//! The navigation guard in the shell: how a URL is read into a target, what
+//! the guard decides for it, and the confirmed address it decides with.
+//! `halonic_connect` has its own tests for the decision on made-up targets;
+//! these start from real URLs, the way the webview hands them over.
+
+use std::sync::Arc;
+use std::thread;
+
+use halonic_connect::{Destination, navigation_destination, page_may_stay, parse_address};
+use tauri::test::mock_builder;
+use tauri::{Manager, Url};
+
+use super::{CHANGE_ADDRESS_PAGE, ConfirmedAddress, back_to_connect, target};
+use crate::shell;
+
+/// The connect page, as the webview reports it on this platform.
+const CONNECT_PAGE: &str = if cfg!(any(windows, target_os = "android")) {
+    "http://tauri.localhost/connect.html"
+} else {
+    "tauri://localhost/connect.html"
+};
+
+fn confirmed(input: &str) -> halonic_connect::Address {
+    parse_address(input).expect("a test address")
+}
+
+/// What the guard decides for `url` once Connect confirmed `confirmed_input`
+/// (or before any Connect, for `None`).
+fn decide(url: &str, confirmed_input: Option<&str>) -> Destination {
+    let url = Url::parse(url).expect("a test URL");
+    let confirmed = confirmed_input.map(confirmed);
+    navigation_destination(&target(&url), confirmed.as_ref())
+}
+
+fn assert_all(urls: &[&str], confirmed_input: Option<&str>, expected: Destination) {
+    for url in urls {
+        assert_eq!(decide(url, confirmed_input), expected, "{url}");
+    }
+}
+
+#[test]
+fn target_reads_scheme_host_and_port_from_the_url() {
+    let url = Url::parse("https://My-Laptop.local:8443/a?b=c#d").unwrap();
+    let read = target(&url);
+    assert_eq!(read.scheme, "https");
+    assert_eq!(read.host, Some("my-laptop.local"));
+    assert_eq!(read.port, Some(8443));
+}
+
+#[test]
+fn target_fills_in_the_port_a_scheme_uses_when_the_url_names_none() {
+    let http = Url::parse("http://192.168.1.20/").unwrap();
+    assert_eq!(target(&http).port, Some(80));
+    let https = Url::parse("https://halonic.dev/").unwrap();
+    assert_eq!(target(&https).port, Some(443));
+}
+
+#[test]
+fn target_keeps_ipv6_hosts_in_brackets() {
+    let url = Url::parse("http://[fd00::20]:4280/").unwrap();
+    assert_eq!(target(&url).host, Some("[fd00::20]"));
+}
+
+#[test]
+fn target_leaves_out_the_host_and_port_a_url_does_not_have() {
+    for url in ["data:text/html,hi", "javascript:alert(1)", "about:blank"] {
+        let url = Url::parse(url).unwrap();
+        let read = target(&url);
+        assert_eq!(read.host, None, "{url}");
+        assert_eq!(read.port, None, "{url}");
+    }
+}
+
+#[test]
+fn guard_keeps_the_confirmed_address_in_the_window() {
+    assert_all(
+        &[
+            "http://192.168.1.20:4280",
+            "http://192.168.1.20:4280/",
+            "http://192.168.1.20:4280/settings?tab=about#top",
+        ],
+        Some("192.168.1.20:4280"),
+        Destination::Stay,
+    );
+}
+
+#[test]
+fn guard_compares_hosts_without_regard_to_case_and_fills_in_the_scheme_port() {
+    assert_all(
+        &[
+            "http://MY-LAPTOP.LOCAL:4280/",
+            "http://my-laptop.local:4280/",
+        ],
+        Some("My-Laptop.local:4280"),
+        Destination::Stay,
+    );
+    assert_all(
+        &["https://halonic.example/", "https://halonic.example:443/"],
+        Some("https://halonic.example"),
+        Destination::Stay,
+    );
+    assert_all(
+        &["http://[fd00::20]:4280/"],
+        Some("[fd00::20]:4280"),
+        Destination::Stay,
+    );
+}
+
+#[test]
+fn guard_keeps_the_connect_page_in_the_window_with_or_without_a_confirmed_address() {
+    assert_all(&[CONNECT_PAGE], None, Destination::Stay);
+    assert_all(
+        &[CONNECT_PAGE],
+        Some("192.168.1.20:4280"),
+        Destination::Stay,
+    );
+}
+
+#[test]
+fn guard_sends_the_connect_link_back_to_the_connect_screen() {
+    assert_all(
+        &["halonic-app://connect", "halonic-app://connect/?from=about"],
+        Some("192.168.1.20:4280"),
+        Destination::BackToConnect,
+    );
+    assert_all(&["halonic-app://connect"], None, Destination::BackToConnect);
+}
+
+#[test]
+fn guard_cancels_other_halonic_app_links() {
+    assert_all(
+        &["halonic-app://other", "halonic-app://connect.evil.com/"],
+        Some("192.168.1.20:4280"),
+        Destination::Nowhere,
+    );
+}
+
+#[test]
+fn guard_opens_outside_links_in_the_browser() {
+    assert_all(
+        &[
+            "https://halonic.dev/",
+            "http://example.com/page",
+            "https://example.com:8443/",
+        ],
+        Some("192.168.1.20:4280"),
+        Destination::Browser,
+    );
+}
+
+#[test]
+fn guard_opens_every_web_page_in_the_browser_before_a_connect() {
+    assert_all(
+        &["http://192.168.1.20:4280/", "https://halonic.dev/"],
+        None,
+        Destination::Browser,
+    );
+}
+
+#[test]
+fn guard_does_not_keep_another_port_on_the_confirmed_host() {
+    assert_all(
+        &[
+            "http://192.168.1.20:4281/",
+            "http://192.168.1.20/",
+            "http://192.168.1.20:80/",
+        ],
+        Some("192.168.1.20:4280"),
+        Destination::Browser,
+    );
+}
+
+#[test]
+fn guard_does_not_keep_the_other_scheme_on_the_confirmed_host() {
+    assert_all(
+        &["https://192.168.1.20:4280/"],
+        Some("192.168.1.20:4280"),
+        Destination::Browser,
+    );
+    assert_all(
+        &["http://halonic.example:443/", "http://halonic.example/"],
+        Some("https://halonic.example"),
+        Destination::Browser,
+    );
+}
+
+#[test]
+fn guard_reads_the_host_of_a_url_with_user_info_not_the_user_name() {
+    // The text before the `@` is a user name, so it can't pass for the host.
+    assert_all(
+        &[
+            "http://192.168.1.20:4280@example.com/",
+            "http://192.168.1.20@example.com:4280/",
+            "http://user:pass@example.com:4280/",
+        ],
+        Some("192.168.1.20:4280"),
+        Destination::Browser,
+    );
+    // The host after the `@` is the confirmed one, so the page really comes
+    // from the confirmed address.
+    assert_all(
+        &["http://example.com@192.168.1.20:4280/"],
+        Some("192.168.1.20:4280"),
+        Destination::Stay,
+    );
+}
+
+#[test]
+fn guard_does_not_keep_names_that_only_look_like_the_confirmed_one() {
+    assert_all(
+        &[
+            "http://my-laptop.local.example.com:4280/",
+            "http://evil-my-laptop.local:4280/",
+            "http://xmy-laptop.local:4280/",
+            "http://my-laptop.locale:4280/",
+            "http://my-laptop:4280/",
+            "http://local:4280/",
+        ],
+        Some("my-laptop.local:4280"),
+        Destination::Browser,
+    );
+}
+
+#[test]
+fn guard_does_not_keep_a_host_with_a_trailing_dot() {
+    assert_all(
+        &["http://my-laptop.local.:4280/"],
+        Some("my-laptop.local:4280"),
+        Destination::Browser,
+    );
+}
+
+#[test]
+fn guard_does_not_treat_localhost_127_0_0_1_and_ipv6_loopback_as_one_address() {
+    assert_all(
+        &["http://localhost:4280/", "http://[::1]:4280/"],
+        Some("127.0.0.1:4280"),
+        Destination::Browser,
+    );
+    assert_all(
+        &["http://localhost:4280/", "http://127.0.0.1:4280/"],
+        Some("[::1]:4280"),
+        Destination::Browser,
+    );
+    assert_all(
+        &["http://127.0.0.1:4280/", "http://[::1]:4280/"],
+        Some("localhost:4280"),
+        Destination::Browser,
+    );
+    assert_all(
+        &["http://127.0.0.1:4280/"],
+        Some("127.0.0.1:4280"),
+        Destination::Stay,
+    );
+}
+
+#[test]
+fn guard_cancels_what_is_not_a_web_page() {
+    assert_all(
+        &[
+            "data:text/html,<h1>hi</h1>",
+            "javascript:alert(1)",
+            "file:///etc/hosts",
+            "file://192.168.1.20/share",
+            "intent://scan#Intent;scheme=zxing;end",
+            "blob:http://192.168.1.20:4280/0b4c9f4e",
+            "about:blank",
+            "ftp://192.168.1.20:4280/",
+            "ws://192.168.1.20:4280/",
+            "tauri://example.com/",
+        ],
+        Some("192.168.1.20:4280"),
+        Destination::Nowhere,
+    );
+}
+
+#[test]
+fn guard_checks_a_loaded_page_with_the_same_rule() {
+    let laptop = confirmed("192.168.1.20:4280");
+    let may_stay = |url: &str| {
+        let url = Url::parse(url).unwrap();
+        page_may_stay(&target(&url), Some(&laptop))
+    };
+    assert!(may_stay("http://192.168.1.20:4280/"));
+    assert!(may_stay(CONNECT_PAGE));
+    assert!(!may_stay("http://192.168.1.20:4281/"));
+    assert!(!may_stay("https://halonic.dev/"));
+    assert!(!may_stay("data:text/html,hi"));
+    assert!(!may_stay("halonic-app://connect"));
+}
+
+#[test]
+fn change_address_page_is_the_connect_page_with_the_change_address_state() {
+    let page = Url::parse(CHANGE_ADDRESS_PAGE).expect("a valid page address");
+    assert_eq!(page.fragment(), Some("change-address"));
+    // The load that `back_to_connect` starts must pass the guard itself.
+    assert_eq!(
+        navigation_destination(&target(&page), None),
+        Destination::Stay
+    );
+}
+
+#[test]
+fn confirmed_address_starts_empty_and_remembers_the_last_one_set() {
+    let state = ConfirmedAddress::default();
+    assert_eq!(state.get(), None);
+    state.set(Some(confirmed("192.168.1.20:4280")));
+    assert_eq!(state.get(), Some(confirmed("192.168.1.20:4280")));
+    state.set(Some(confirmed("my-laptop.local:4280")));
+    assert_eq!(state.get(), Some(confirmed("my-laptop.local:4280")));
+}
+
+#[test]
+fn confirmed_address_forgets_the_address_when_set_to_none() {
+    let state = ConfirmedAddress::default();
+    state.set(Some(confirmed("192.168.1.20:4280")));
+    state.set(None);
+    assert_eq!(state.get(), None);
+}
+
+#[test]
+fn confirmed_address_still_answers_after_a_thread_panicked_holding_it() {
+    let state = Arc::new(ConfirmedAddress::default());
+    state.set(Some(confirmed("192.168.1.20:4280")));
+    let holder = Arc::clone(&state);
+    let panicked = thread::spawn(move || {
+        let _held = holder.0.lock().unwrap();
+        panic!("a thread dies while it holds the address");
+    })
+    .join();
+    assert!(panicked.is_err());
+    assert_eq!(state.get(), Some(confirmed("192.168.1.20:4280")));
+    state.set(None);
+    assert_eq!(state.get(), None);
+}
+
+#[test]
+fn back_to_connect_forgets_the_confirmed_address() {
+    let app = shell(mock_builder())
+        .build(tauri::generate_context!())
+        .expect("the shell builds on the mock runtime");
+    let window = crate::window::open(&app).expect("the main window opens");
+    let webview: &tauri::Webview<_> = window.as_ref();
+    let state = app.state::<ConfirmedAddress>();
+    state.set(Some(confirmed("192.168.1.20:4280")));
+
+    back_to_connect(webview);
+
+    assert_eq!(state.get(), None);
+}

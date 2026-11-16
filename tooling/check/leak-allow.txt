@@ -5,16 +5,22 @@
 #   <rule> <file or glob> [fp:<fingerprint>] <reason, a few words>
 #
 # A secret rule needs the fingerprint the leak guard printed, so an entry
-# allows that one value only. Personal terms can never be allowed here.
+# allows that one value only. An absolute-path entry needs root:<root> (the
+# root the leak guard printed) or commit:<hash> (the commit that added it), so
+# it allows that one kind of path or that one commit only. Personal terms can
+# never be allowed here.
 
 # Old commits that hold made-up paths (drive letters, /tmp, /home) as test
 # data or examples. The nightly --all scan reads every commit, and history
 # can't be rewritten. Each file's current version is clean.
-absolute-path tooling/check/src/lib/trace-inputs.test.ts test data: a fake Windows path
-absolute-path packages/core/yaml/src/limits.test.ts test data: fake drive paths
-absolute-path packages/core/yaml/src/properties.test.ts test data: a fake drive path
-absolute-path packages/core/app/src/routine-scheduler.test.ts test data: a fake /home path
-absolute-path packages/core/schema-kit/src/url.test.ts test data: a fake /tmp path
-absolute-path packages/testing/contracts/src/definition-store.ts old fixture: a fake Windows path
-absolute-path packages/testing/parity/README.md old example: a /tmp path
+absolute-path tooling/check/src/lib/trace-inputs.test.ts root:C:\\ test data: a fake Windows path
+absolute-path packages/core/yaml/src/limits.test.ts root:a:\ test data: fake drive paths
+absolute-path packages/core/yaml/src/limits.test.ts root:b:\ test data: fake drive paths
+absolute-path packages/core/yaml/src/limits.test.ts root:k:\ test data: fake drive paths
+absolute-path packages/core/yaml/src/properties.test.ts root:k:\ test data: a fake drive path
+absolute-path packages/core/app/src/routine-scheduler.test.ts root:/home/ test data: a fake /home path
+absolute-path packages/core/schema-kit/src/url.test.ts root:/tmp/ test data: a fake /tmp path
+absolute-path packages/testing/contracts/src/definition-store.ts root:C:\\ old fixture: a fake Windows path
+absolute-path packages/testing/parity/README.md commit:d5efbdb47 old example: a /tmp path
+absolute-path packages/testing/parity/README.md commit:6cb629818 old example: a /tmp path
 url-password packages/core/format/src/kinds/connector/is-local.test.ts fp:2bb80d537b1da3e3 test data: a fake password in a URL

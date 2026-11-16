@@ -247,7 +247,10 @@ async function runSignIn(run: SignInRun): Promise<GoogleSignInResult> {
   const answer = run.listener.firstCallback(waiting, new URL(url).searchParams.get("state") ?? "");
   const opened = (await run.setup.openBrowser?.(url)) ?? false;
   if (!opened) {
-    for (const line of [googleMessages.signInOpenThis().phrase, plainLine(url)]) {
+    for (const line of [
+      googleMessages.signInOpenThis().phrase,
+      plainLine(withoutAddressHint(url)),
+    ]) {
       run.ahead.push(line);
       context.printAhead(line);
     }
@@ -275,6 +278,17 @@ async function runSignIn(run: SignInRun): Promise<GoogleSignInResult> {
     await host.setups.update(accountRef, { kind: "sign-in-dropped" });
   }
   return result;
+}
+
+/**
+ * The sign-in address without `login_hint`, which carries the connector's
+ * address. A browser the command opens gets the hint; an address a person
+ * copies from the terminal must not, because the terminal's output is kept.
+ */
+function withoutAddressHint(url: string): string {
+  const printable = new URL(url);
+  printable.searchParams.delete("login_hint");
+  return printable.toString();
 }
 
 /** A printed line that is only text, such as an address. */

@@ -9,7 +9,7 @@ import {
 } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, beforeAll, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { type ConnectorStatusHost, ConnectorStatusHostService } from "../connector-status-host.ts";
 import { libraryFeature } from "../feature.ts";
 import { type LibraryItemsHost, LibraryItemsHostService } from "../library-items-host.ts";
@@ -95,11 +95,9 @@ function renderWindow() {
 
 /** Lets the tab's lazily loaded page arrive: waits until it has drawn a title. */
 async function settle(container: HTMLElement) {
-  for (let turn = 0; turn < 300 && container.querySelector("main h1") === null; turn++) {
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    });
-  }
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
 }
 
 verifies("shell.page-back-link", () => {

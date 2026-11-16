@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import type { ItemRef, WorkspaceContext } from "@halonicjs/studio-shell";
+import { type ItemRef, limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
+import { filesFeature } from "../feature.ts";
 import type { FilesHost } from "../files-host.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { FilesSidebarView } from "./files-sidebar-view.tsx";
@@ -30,7 +31,7 @@ verifies("files.ui.file-tab", () => {
   it("opens a file in a tab when its row is activated, and marks the open file", async () => {
     const openItem = vi.fn<(item: ItemRef) => void>();
     const context = {
-      services: { get: () => host },
+      services: limitedLookup(filesFeature, { get: () => host }),
       openItem,
       activeItem: {
         get: () => ({ kind: "file", hub: "workspace", id: "models.yaml" }),

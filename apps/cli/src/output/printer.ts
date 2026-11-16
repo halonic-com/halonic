@@ -25,7 +25,8 @@ import type { OutputStyle } from "./style.ts";
  * Results go to stdout and errors to stderr, each painted in its own
  * stream's style. With `--json`, stdout gets one JSON document, for a result
  * or an error alike, and a person's lines go nowhere. Every secret the
- * command loaded is removed from the document.
+ * command loaded is removed from the document and from every line, on stdout
+ * as on stderr.
  */
 export interface Printer {
   /** Lines that are the same with and without `--json`, such as the help, to stdout. */
@@ -154,7 +155,8 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
     };
   const writeOut = aroundLine(io.out);
   const writeErr = aroundLine(io.err);
-  const out = writerFor(writeOut, paintFor(options.out));
+  // A result line may quote outside text, such as an engine's error, so stdout is scrubbed like stderr.
+  const out = scrubbed(writerFor(writeOut, paintFor(options.out)), options.scrubber);
   const errPaint = paintFor(options.err);
   const err = writerFor(writeErr, errPaint);
   const asking: Asking = {

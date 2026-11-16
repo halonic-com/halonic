@@ -34,6 +34,12 @@ export const completedRun = (id: string, startedAt: string, routine?: string) =>
       : { trigger: { type: "schedule", routineId: `acme/${routine}`, at: startedAt } }),
   });
 
+/** The routines' names, as the app gives them by key. */
+const routineNames: Readonly<Record<string, string>> = {
+  "acme/daily": "Daily summary",
+  "acme/weekly": "Weekly report",
+};
+
 export async function settled(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
@@ -51,6 +57,7 @@ export function sandboxInbox(
   const refusals: SandboxRefusals = {
     runs: async () => runs,
     reasonOf: async () => reason,
+    nameOf: (run) => routineNames[run.trigger?.routineId ?? ""] ?? run.workflowId,
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);

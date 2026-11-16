@@ -82,10 +82,17 @@ function findSecrets(text: string, at: Location, settings: ScanSettings): Findin
 }
 
 function findPaths(text: string, at: Location, settings: ScanSettings): Finding[] {
-  if (hasInlineAllow(text) || settings.allowList.allows(absolutePathRule, at.file)) {
+  if (hasInlineAllow(text)) {
     return [];
   }
-  return findAbsolutePaths(text).map((root) => ({
+  const roots = findAbsolutePaths(text).filter(
+    (root) =>
+      !settings.allowList.allows(absolutePathRule, at.file, undefined, {
+        root,
+        commit: at.commit,
+      }),
+  );
+  return roots.map((root) => ({
     ...at,
     rule: absolutePathRule,
     message: `Contains an absolute local path under ${root}. Use a repo-relative path or a placeholder.`,

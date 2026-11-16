@@ -228,7 +228,7 @@ verifies("cli.commands.google.sign-in", () => {
     expect(await profileText()).not.toContain(fakeRefreshToken);
   });
 
-  it("prints the address when no browser opens, and still signs in", async () => {
+  it("prints the sign-in address without the connector's address when no browser opens, and still signs in", async () => {
     const accountRef = await readyAccount();
     const browser = fakeBrowser(goodAnswer, { opens: false });
 
@@ -237,8 +237,12 @@ verifies("cli.commands.google.sign-in", () => {
       http: fakeGoogle(),
     });
 
+    const printedUrl = new URL(browser.opened[0] ?? "");
+    printedUrl.searchParams.delete("login_hint");
     expect(code).toBe(exitCode.ok);
-    expect(io.stdout.join("\n")).toContain(browser.opened[0]);
+    expect(io.stdout.join("\n")).toContain(printedUrl.toString());
+    expect(io.stdout.join("\n")).not.toContain("login_hint");
+    expect(io.stdout.join("\n")).not.toContain(encodeURIComponent(address));
   });
 
   it("saves nothing when another Google account signs in", async () => {
@@ -366,7 +370,10 @@ verifies("cli.loopback-callback", () => {
       void waiting.then(() => {
         settled = true;
       });
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      // The listener handles the request before it answers, so its answer was the last
+      // chance for the stray request to settle the wait. One macrotask lets any
+      // promise callback that wrongly settled it run before we check.
+      await new Promise((resolve) => setImmediate(resolve));
       expect(settled).toBe(false);
 
       const answered = await fetch(`${base}${callbackPath}?state=s1&code=c1`);

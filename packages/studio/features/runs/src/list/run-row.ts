@@ -12,6 +12,7 @@ import {
   shortRunId,
 } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
+import { escapeHidden } from "@halonicjs/std";
 import type { StatusChipTone } from "@halonicjs/studio-kit";
 import type { RunRoutine, RunWorkflow, SourcedRun } from "../api.ts";
 import {
@@ -107,7 +108,7 @@ export function runRow(run: SourcedRun, context: RowContext): RunRow {
   const started = startedBy(run, context.routine);
   const spoken =
     standing === "failed"
-      ? rowLabelWords.failedIn(currentStepName(summary, context.workflow))
+      ? failedSpoken(summary, context.workflow)
       : `${rowLabelWords.standing[standing]}, ${lowerFirst(line)}`;
   return {
     id: summary.id,
@@ -176,6 +177,13 @@ export function startedBy(
   }
 }
 
+/** A failed run as the row's sentence says it: the step it failed in, or that it didn't start. */
+function failedSpoken(summary: RunSummary, workflow: RunWorkflow | undefined): string {
+  return enteredAStep(summary)
+    ? rowLabelWords.failedIn(currentStepName(summary, workflow))
+    : rowLabelWords.didntStart;
+}
+
 function lowerFirst(text: string): string {
   return text.charAt(0).toLowerCase() + text.slice(1);
 }
@@ -193,8 +201,12 @@ function rowLine(run: SourcedRun, standing: RunStanding, context: RowContext): s
       return waitingLine(runWait(summary), step, context.now);
     case "done":
       return doneLine(run, step, context.currency);
-    case "failed":
-      return rowLineWords.failedIn(context.workflow?.name ?? summary.workflowId, step);
+    case "failed": {
+      const workflow = context.workflow?.name ?? summary.workflowId;
+      return enteredAStep(summary)
+        ? rowLineWords.failedIn(workflow, step)
+        : rowLineWords.didntStart(workflow);
+    }
     case "budget":
       return withCost(rowLineWords.budgetReached(step, took(summary)), summary, context.currency);
     case "cancelled":
@@ -210,7 +222,7 @@ export function needsYouLine(wait: RunWait, step: string): string {
       : rowLineWords.waitingForApprovals(wait.count);
   }
   if (wait.kind === "step" && wait.title !== null) {
-    return rowLineWords.waitingForYou(wait.title);
+    return rowLineWords.waitingForYou(escapeHidden(wait.title));
   }
   return rowLineWords.waitingInStep(step);
 }
@@ -260,6 +272,11 @@ export function costParts(summary: RunSummary, currency: string): string[] {
 export function took(summary: RunSummary): string {
   const ended = summary.endedAt ?? summary.updatedAt;
   return tookWords(Date.parse(ended) - Date.parse(summary.startedAt));
+}
+
+/** Whether the run got as far as a step: a run the sandbox refused at its start has none. */
+export function enteredAStep(summary: RunSummary): boolean {
+  return summary.approvals.length > 0 || summary.state !== null || summary.statesVisited.length > 0;
 }
 
 /**

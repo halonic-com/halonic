@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
+import { filesFeature } from "../feature.ts";
 import type { FilesHost, FilesListing } from "../files-host.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -16,7 +17,7 @@ const listing = (paths: string[], marks: FilesListing["marks"] = new Map()): Fil
 });
 
 function contextOf(host: FilesHost): WorkspaceContext {
-  const services = { get: () => host, find: () => host };
+  const services = limitedLookup(filesFeature, { get: () => host, find: () => host });
   return { services } as unknown as WorkspaceContext;
 }
 
@@ -130,6 +131,33 @@ verifies("files.ui.tree-view", () => {
   it("says there are no files", async () => {
     const page = await show(hostOf(listing([])));
     expect(page.textContent).toContain("No files yet");
+  });
+
+  it("offers New file in the empty state, which opens the dialog and gets focus back", async () => {
+    fakeModal();
+    try {
+      const page = await show(hostOf(listing([])));
+      const inEmpty = [...page.querySelectorAll("button")].find(
+        (button) => button.textContent === "New file",
+      );
+      expect(inEmpty).toBeDefined();
+      await act(async () => {
+        inEmpty?.focus();
+        inEmpty?.click();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(document.querySelector<HTMLInputElement>("input")?.value).toBe("hubs/");
+      const cancel = [...document.querySelectorAll("button")].find(
+        (button) => button.textContent === "Cancel",
+      );
+      await act(async () => {
+        cancel?.click();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(document.activeElement).toBe(inEmpty);
+    } finally {
+      restoreModal();
+    }
   });
 
   it("lists again on a change and keeps the opened folders", async () => {

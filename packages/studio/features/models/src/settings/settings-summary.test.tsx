@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 
-import type { SettingsSectionProps, WorkspaceContext } from "@halonicjs/studio-shell";
+import {
+  limitedLookup,
+  type SettingsSectionProps,
+  type WorkspaceContext,
+} from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -48,10 +52,10 @@ function filesWith(options: {
 }
 
 function contextOf(files: ModelsFiles, runCommand = vi.fn(() => true)) {
-  const services = {
-    get: (key: unknown) => (key === ModelsFilesService ? files : undefined),
+  const services = limitedLookup(modelsFeature, {
+    get: (key) => (key === ModelsFilesService ? files : undefined),
     find: () => undefined,
-  };
+  });
   return { context: { services, runCommand } as unknown as WorkspaceContext, runCommand };
 }
 

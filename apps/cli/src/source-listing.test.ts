@@ -97,6 +97,26 @@ verifies("cli.source-listing", () => {
       expect(servers.running).toBe(0);
     });
 
+    it("starts no program that asks for a secret of Halonic's own", async () => {
+      // The file check refuses this name first; the secrets are the second wall, so skip the file.
+      const { target, trust } = await acmeNotes();
+      await trust();
+      const secrets = new MemorySecrets({ "token-key": "fake-token-key-value" });
+      const { transport } = target.connector;
+      if (!("stdio" in transport)) throw new TypeError("Notes is a local program");
+      const asking = {
+        ...target,
+        connector: {
+          ...target.connector,
+          transport: { stdio: { ...transport.stdio, secretEnv: { NOTES_KEY: "token-key" } } },
+        },
+      };
+      await expect(
+        readSourceListing(asking, machine, secrets, runMessages.nothingRan()),
+      ).rejects.toThrow("A workspace can't pick a secret that belongs to Halonic.");
+      expect(servers.started).toEqual([]);
+    });
+
     it("gives the program's starter every harness agent's working folder, as a real path", async () => {
       const acme = join(folder, "acme");
       await mkdir(join(acme, "agents"));

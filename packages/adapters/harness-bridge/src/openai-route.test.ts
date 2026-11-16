@@ -162,6 +162,23 @@ verifies("harness-bridge.openai", () => {
         },
         "The input_image part at input[2].output[0]",
       ],
+      [
+        "an image whose URL is an object",
+        {
+          role: "user",
+          content: [{ type: "input_image", image_url: { url: "https://example.test/a.png" } }],
+        },
+        "The input_image part at input[2].content[0]",
+      ],
+      [
+        "a file whose URL is an object",
+        {
+          type: "message",
+          role: "user",
+          content: [{ type: "input_file", file_url: { url: "https://example.test/a.pdf" } }],
+        },
+        "The input_file part at input[2].content[0]",
+      ],
     ];
     for (const [what, item, named] of urlInputs) {
       it(`refuses ${what} that OpenAI would fetch from a URL, naming the part`, async () => {

@@ -4,6 +4,7 @@ import {
   failedRunNotices,
   type InboxNotices,
 } from "@halonicjs/studio-feature-inbox/api";
+import { type RoutineRunNames, routineRunName } from "./routine-run-name.ts";
 
 /** The part of `Storage` that remembers the dismissed notices. */
 export interface DismissalStorage {
@@ -12,11 +13,9 @@ export interface DismissalStorage {
 }
 
 /** What {@link WorkspaceNotices} reads of the workspace's runs. */
-export interface WorkspaceNoticesRuns {
+export interface WorkspaceNoticesRuns extends RoutineRunNames {
   /** Every run of the workspace, real and test. */
   list(): Promise<readonly { readonly summary: RunSummary }[]>;
-  /** The routine's name by the `trigger.routineId` of its runs; `undefined` when it is gone. */
-  routine(key: string): { readonly name: string } | undefined;
   /** Calls `listener` whenever a run starts, changes or ends; returns a function that stops it. */
   subscribe(listener: () => void): () => void;
 }
@@ -57,7 +56,7 @@ export class WorkspaceNotices implements InboxNotices {
   async list(): Promise<readonly FailedRunNotice[]> {
     const { runs, now } = this.#parts;
     const summaries = (await runs.list()).map((run) => run.summary);
-    const nameOf = (routineId: string) => runs.routine(routineId)?.name ?? routineId;
+    const nameOf = (_routineId: string, run: RunSummary) => routineRunName(runs, run);
     const notices = failedRunNotices(summaries, nameOf, now());
     this.#reload();
     this.#forget(new Set(notices.map((notice) => notice.key)));

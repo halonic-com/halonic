@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { ItemRef, WorkspaceContext } from "@halonicjs/studio-shell";
+import { type ItemRef, limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -12,6 +12,7 @@ import {
   type NoLimitMemory,
   NoLimitMemoryService,
 } from "../api.ts";
+import { modelsFeature } from "../feature.ts";
 import { ProviderPage } from "../providers/provider-page.tsx";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -70,7 +71,7 @@ async function show(id: string, files: ModelsFiles, keys?: ModelKeys, memory?: N
     return key === NoLimitMemoryService ? memory : undefined;
   };
   const context = {
-    services: { get: () => files, find },
+    services: limitedLookup(modelsFeature, { get: () => files, find }),
     openItem: (_item: ItemRef) => undefined,
   } as unknown as WorkspaceContext;
   root = createRoot(element);

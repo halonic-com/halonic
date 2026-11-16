@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import type { CodeEditorOptions } from "@halonicjs/studio-code-editor";
-import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
+import { filesFeature } from "../feature.ts";
 import { fileItem } from "../file-item.ts";
 import type { FilesHost } from "../files-host.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -60,7 +61,9 @@ function hostOf(read: FilesHost["read"], edit: FilesHost["edit"] = () => {}): Fi
 }
 
 function show(host: FilesHost, path: string): HTMLElement {
-  const context = { services: { get: () => host } } as unknown as WorkspaceContext;
+  const context = {
+    services: limitedLookup(filesFeature, { get: () => host }),
+  } as unknown as WorkspaceContext;
   return render(<FileView item={fileItem(path)} context={context} Sections={() => null} />);
 }
 

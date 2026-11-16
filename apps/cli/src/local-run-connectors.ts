@@ -5,7 +5,12 @@
 // boundary.
 
 import type { ConnectorFactories, SendingSettings } from "@halonicjs/app";
-import type { ConnectorFactoryContext, Secrets, TrustGrant } from "@halonicjs/ports";
+import {
+  type ConnectorFactoryContext,
+  type Secrets,
+  type TrustGrant,
+  workspaceSecrets,
+} from "@halonicjs/ports";
 import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import type { ProgramFolders } from "./program-folders.ts";
 import { FolderRunConnectors, type VersionedRun } from "./run-connectors.ts";
@@ -94,7 +99,8 @@ export function localRunConnectors(
   const runConnectors = new FolderRunConnectors({
     factories: given.factories,
     programFolders: engine.programFolders,
-    context: { ...given.context, secrets: engine.secrets },
+    // A workspace names the secrets its connectors get, so never Halonic's own or a plugin's.
+    context: { ...given.context, secrets: workspaceSecrets(engine.secrets) },
     versionOf: async (run) => {
       const read = await versionRead(given, engine, run);
       return {
