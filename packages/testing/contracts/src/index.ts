@@ -55,6 +55,11 @@ export {
   readText,
 } from "./fake-sandbox-session.ts";
 export {
+  FakeTunnelProvider,
+  type FakeTunnelProviderOptions,
+  FakeTunnelTime,
+} from "./fake-tunnel-provider.ts";
+export {
   type FolderReaderContractOptions,
   type FolderTree,
   folderReaderContract,
@@ -234,6 +239,11 @@ export {
   trustStoreContract,
 } from "./trust-store.ts";
 export { type TrustConnectors, trustStoreAttackContract } from "./trust-store-attacks.ts";
+export {
+  type MakeTunnelProvider,
+  type TunnelProviderHarness,
+  tunnelProviderContract,
+} from "./tunnel-provider.ts";
 export {
   type MakeUnfencedRunConsentStore,
   type UnfencedRunConsentStoreHarness,
