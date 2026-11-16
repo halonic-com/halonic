@@ -9,7 +9,8 @@
 On Windows the launcher passes a fixed value for each of the 11 variables libuv would otherwise
 fill in with the user's own: `USERNAME`, `USERPROFILE`, `USERDOMAIN`, `HOMEDRIVE`, `HOMEPATH`,
 `LOGONSERVER`, `TEMP`, `SYSTEMDRIVE`, `SYSTEMROOT`, `WINDIR` and `PATH`. The runner learns
-nothing about the account or the profile folder.
+nothing about the account or the profile folder from these 11 variables, apart from the temp
+folder's path (below).
 
 ## What stays open
 
