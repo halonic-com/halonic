@@ -1,5 +1,6 @@
 import { counted } from "./counts.ts";
 import { defineMessages } from "./define.ts";
+import { harnessNames } from "./harness-names.ts";
 import { dim, type Phrase, phrase } from "./phrase.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
@@ -213,12 +214,6 @@ export interface RefusedFile {
   readonly file: string;
   readonly reason: string;
 }
-
-/** The agent page's names of the harnesses, by the id an agent file writes. */
-const harnessNames: ReadonlyMap<string, string> = new Map([
-  ["claude-code", "Claude Code"],
-  ["codex", "Codex"],
-]);
 
 /** "start 2 programs and 1 agent", "pass 1 secret", …: the clauses whose count isn't 0. */
 function summaryClauses(counts: TrustCounts): string[] {

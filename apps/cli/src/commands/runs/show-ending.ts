@@ -14,6 +14,7 @@ import { stepName } from "../../messages/step-name.ts";
 import { runFailureDetails } from "../../run-failure-details.ts";
 import {
   failedModelOf,
+  failedStartOf,
   type RunFailedEvent,
   runFailureOf,
   type WorkspaceModels,
@@ -69,7 +70,11 @@ function failedEnding(
   const failed = runFailedEvent(run);
   const named = (stepId: string) =>
     stepName(stepId, definitions.workflow?.states[stepId]?.description);
-  const failure = runFailureOf(failed, failedModelOf(run.events, models()));
+  const failure = runFailureOf(
+    failed,
+    failedModelOf(run.events, models()),
+    failedStartOf(run.events, failed),
+  );
   let lines: Phrase[];
   if (failure === undefined) {
     lines = [runsMessages.showCancelled(title, cancelledAt(run.events, failed, named)).phrase];

@@ -1,102 +1,23 @@
-import type { RunEvent, RunEventBody, RunFailureReason } from "@halonicjs/events";
-import type { ModelAlias, Provider } from "@halonicjs/format";
+import type { RunFailureReason } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { plainText } from "./messages/phrase.ts";
-import { type RunFailure, runFailedLines } from "./messages/run-failures.ts";
+import { runFailedLines } from "./messages/run-failures.ts";
 import { sandboxMessages } from "./messages/sandbox.ts";
+import { failedModelOf, runFailureOf } from "./run-failure-of.ts";
+
 import {
-  type FailedModel,
-  failedModelOf,
-  type RunFailedEvent,
-  runFailureOf,
-  type WorkspaceModels,
-} from "./run-failure-of.ts";
-
-const ollama: Provider = {
-  version: 1,
-  id: "ollama",
-  name: "Ollama",
-  type: "ollama",
-  local: true,
-  options: {},
-};
-const lmStudio: Provider = { ...ollama, id: "lmstudio", name: "LM Studio", type: "lmstudio" };
-const openai: Provider = {
-  version: 1,
-  id: "openai",
-  name: "OpenAI",
-  type: "openai-compatible",
-  secret: "openai-key",
-  local: false,
-  options: {},
-};
-
-function alias(provider: string, model: string, fallback: string[] = []): ModelAlias {
-  return { provider, model, params: {}, fallback };
-}
-
-/** The model `smart` the run called last, at OpenAI. */
-const openaiModel = { alias: "smart", model: "gpt-4o", providerId: "openai", provider: openai };
-
-const workspace: WorkspaceModels = {
-  name: "Acme",
-  aliases: new Map([
-    ["local", alias("ollama", "llama3.2")],
-    ["smart", alias("openai", "gpt-4o", ["local"])],
-  ]),
-  providers: new Map([ollama, lmStudio, openai].map((provider) => [provider.id, provider])),
-};
-
-/** The model the run called last: `local` at Ollama unless the test says otherwise. */
-function calledModel(change: Partial<FailedModel> = {}): FailedModel {
-  return {
-    alias: "local",
-    agent: "drafter",
-    workspace: "Acme",
-    model: "llama3.2",
-    providerId: "ollama",
-    provider: ollama,
-    keyMissing: false,
-    ...change,
-  };
-}
-
-function failedWith(reason: RunFailureReason | undefined, host?: string): RunFailedEvent {
-  return {
-    runId: "01JD8Q",
-    seq: 9,
-    at: "2026-11-10T09:00:00.000Z",
-    type: "run.failed",
-    state: "draft",
-    error: "the engine's own words",
-    ...(reason === undefined ? {} : { reason }),
-    ...(host === undefined ? {} : { host }),
-  };
-}
-
-/** The run log `bodies` make, numbered from 1. */
-function log(...bodies: RunEventBody[]): RunEvent[] {
-  return bodies.map((body, index) => ({
-    runId: "01JD8Q",
-    seq: index + 1,
-    at: "2026-11-10T09:00:00.000Z",
-    ...body,
-  }));
-}
-
-/** Line 2 of the failure, as plain words; `undefined` when the failure has none. */
-function fixLine(failure: RunFailure | undefined): string | undefined {
-  if (failure === undefined) throw new Error("expected a failure");
-  const run = { title: "Support reply", step: "Draft a reply", runId: "01JD8Q" };
-  const { fix } = runFailedLines(run, failure);
-  return fix === undefined ? undefined : plainText(fix.phrase);
-}
-
-/** The general line 2, which asks for a bug report. */
-const reportIt = /^Run it again with --debug to see the details, and report it: /;
-
-const general: RunFailure = { reason: "error", message: "the engine's own words" };
+  calledModel,
+  failedWith,
+  fixLine,
+  general,
+  lmStudio,
+  log,
+  openai,
+  openaiModel,
+  reportIt,
+  workspace,
+} from "./test/run-failure-fixtures.ts";
 
 verifies("cli.run-failure", () => {
   describe("server, from the provider's type", () => {
@@ -203,11 +124,7 @@ verifies("cli.run-failure", () => {
     const generalReasons: readonly RunFailureReason[] = [
       // The log doesn't hold the budget and the spend yet.
       "budget",
-      // Their words wait for the board (HAL-2264).
-      "model-out-of-memory",
-      "sandbox-start-failed",
-      "harness-start-failed",
-      // `halonic run` has no harnesses in 0.1; the engine's message names the step's effect.
+      // cli-output 3.4 has no line for it; the engine's message names the step's effect.
       "harness-unavailable",
       "error",
     ];
@@ -219,7 +136,7 @@ verifies("cli.run-failure", () => {
       });
     }
 
-    // Their words wait for the board too (HAL-2264), but the cause is known (HAL-6451).
+    // The cause is known (HAL-6451).
     const knownCauses: readonly RunFailureReason[] = [
       "disk-full",
       "interrupted",
