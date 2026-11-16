@@ -114,16 +114,18 @@ export function sandboxRuntimeFolder(): string {
 
 /**
  * What `cmd.exe` reads inside double quotes as more than text: a quote ends the
- * quoting, `%` starts a variable and a line break ends the command. Nothing
- * escapes them reliably, so a value with one is refused rather than guessed at.
+ * quoting, `%` starts a variable, `!` starts one when delayed expansion is on
+ * (it is a setting of the machine, so it can't be ruled out), and a line break
+ * ends the command. Nothing escapes them reliably, so a value with one is
+ * refused rather than guessed at.
  */
-const unquotableOnWindows = /["%\r\n\0]/;
+const unquotableOnWindows = /["%!\r\n\0]/;
 
 /** `value` as one `cmd.exe` word: in double quotes, with trailing backslashes doubled so they can't escape the closing quote. @throws when the value can't be quoted safely. */
 function quoteForCmd(value: string): string {
   if (unquotableOnWindows.test(value)) {
     throw new Error(
-      "on Windows, a program, argument or variable can't contain a double quote, a percent sign or a line break",
+      "on Windows, a program, argument or variable can't contain a double quote, a percent sign, an exclamation mark or a line break",
     );
   }
   return `"${value.replace(/\\+$/, (slashes) => slashes + slashes)}"`;

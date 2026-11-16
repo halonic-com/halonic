@@ -146,6 +146,53 @@ console.log(JSON.stringify(result));
     await expect(readFile(join(workspace, "made.txt"), "utf8")).rejects.toThrow();
   });
 
+  it("can't create the tool settings that don't exist yet in the working folder", async () => {
+    // Windows denies through the file system's permissions, which need an existing file or folder.
+    const out = await runScript(
+      "create-settings.cjs",
+      `const fs = require("node:fs");
+const path = require("node:path");
+const work = ${JSON.stringify(work)};
+const attempt = (...segments) => {
+  const target = path.join(work, ...segments);
+  try {
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, "x");
+    return "written";
+  } catch {
+    return "refused";
+  }
+};
+console.log(JSON.stringify({
+  claudeSettings: attempt(".claude", "settings.json"),
+  npmrc: attempt(".npmrc"),
+  mcp: attempt(".mcp.json"),
+  vscode: attempt(".vscode", "tasks.json"),
+  hookManager: attempt(".pre-commit-config.yaml"),
+  gitHook: attempt(".git", "hooks", "pre-commit"),
+  gitConfig: attempt(".git", "config"),
+}));
+`,
+    );
+    expect(JSON.parse(out.split(/\r?\n/).pop() ?? "")).toEqual({
+      claudeSettings: "refused",
+      npmrc: "refused",
+      mcp: "refused",
+      vscode: "refused",
+      hookManager: "refused",
+      gitHook: "refused",
+      gitConfig: "refused",
+    });
+    for (const path of [
+      [".claude", "settings.json"],
+      [".npmrc"],
+      [".mcp.json"],
+      [".git", "config"],
+    ]) {
+      await expect(readFile(join(work, ...path), "utf8")).rejects.toThrow();
+    }
+  });
+
   it("without a bridge, reaches no loopback port and gets none of srt's network variables", async () => {
     const before = connections;
     const unbridged = await sandbox.open({
