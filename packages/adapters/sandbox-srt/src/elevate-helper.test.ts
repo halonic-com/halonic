@@ -116,7 +116,7 @@ verifies("sandbox-srt.setup", () => {
     it("comes through SrtSandbox.setUp as a failed setup, with the sentence and the code", async () => {
       const windows = {
         platform: "win32",
-        hasWindowsSandbox: async () => false,
+        windowsSandboxState: async () => "setup-needed" as const,
         installWindowsSandbox: async () => {
           throw new HelperError("Windows didn't accept the sandbox's network rules", 12);
         },

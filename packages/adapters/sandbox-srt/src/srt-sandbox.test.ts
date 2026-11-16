@@ -23,7 +23,7 @@ function machine(overrides: Partial<Machine> = {}): Machine {
     appArmorRestrictsUserNamespaces: async () => false,
     hasSeatbelt: async () => true,
     packageManager: async () => null,
-    hasWindowsSandbox: async () => false,
+    windowsSandboxState: async () => "setup-needed" as const,
     installWindowsSandbox: async () => "installed" as const,
     letSandboxReadParents: async () => undefined,
     uninstallWindowsSandbox: async () => "removed" as const,
@@ -230,7 +230,7 @@ verifies("sandbox-srt.check", () => {
       await srt(machine({ hasBubblewrap: async () => false }), runner).check();
       await srt(machine({ platform: "darwin" }), runner).check();
       await srt(
-        machine({ platform: "win32", hasWindowsSandbox: async () => true }),
+        machine({ platform: "win32", windowsSandboxState: async () => "ok" as const }),
         runner,
       ).check();
       expect(started).toEqual([]);
@@ -254,7 +254,7 @@ verifies("sandbox-srt.check", () => {
     it("starts on Windows only when srt's Windows install is there", async () => {
       const windows = { platform: "win32" as const };
       expect(
-        await srt(machine({ ...windows, hasWindowsSandbox: async () => true })).check(),
+        await srt(machine({ ...windows, windowsSandboxState: async () => "ok" as const })).check(),
       ).toEqual({ ok: true, reason: null, missing: [] });
       const missing = await srt(machine(windows)).check();
       expect(missing).toMatchObject({ ok: false, reason: "setup-needed" });
@@ -283,7 +283,7 @@ verifies("sandbox-srt.check", () => {
         const sandbox = srt(
           machine({
             platform: "win32",
-            hasWindowsSandbox: async () => true,
+            windowsSandboxState: async () => "ok" as const,
             letSandboxReadParents: async (folders) => {
               asked.push(folders);
               throw new Error("icacls failed");
@@ -366,7 +366,7 @@ verifies("sandbox-srt.setup", () => {
       let installed = false;
       return machine({
         platform: "win32",
-        hasWindowsSandbox: async () => installed,
+        windowsSandboxState: async () => (installed ? "ok" : "setup-needed"),
         installWindowsSandbox: async () => {
           const result = await install();
           installed ||= result === "installed";
@@ -441,7 +441,7 @@ verifies("sandbox-srt.remove", () => {
       let installed = true;
       return machine({
         platform: "win32",
-        hasWindowsSandbox: async () => installed,
+        windowsSandboxState: async () => (installed ? "ok" : "setup-needed"),
         uninstallWindowsSandbox: async () => {
           const result = await uninstall();
           installed &&= result !== "removed";

@@ -25,6 +25,9 @@ import {
  * What the sandbox asks of the machine it runs on. A test hands the adapter a
  * fake one; {@link systemMachine} is the real one.
  */
+/** What srt's Windows install allows: see {@link Machine.windowsSandboxState}. */
+export type WindowsSandboxState = "ok" | "setup-needed" | "setup-conflict";
+
 export interface Machine {
   /** The operating system, as Node names it (`linux`, `darwin`, `win32`). */
   platform: NodeJS.Platform;
@@ -63,8 +66,15 @@ export interface Machine {
    * there is none Halonic knows. Only for the fix a refused check names.
    */
   packageManager(): Promise<SandboxPackageManager | null>;
-  /** Whether srt's Windows install is there and usable: the sandbox account, its network filters and a matching setup version. */
-  hasWindowsSandbox(): Promise<boolean>;
+  /**
+   * Whether srt's Windows install is there and usable: the sandbox account, its
+   * network filters and a matching setup version. `setup-conflict` is an
+   * install whose loopback mode isn't the closed one Halonic needs (another
+   * program set srt up with loopback open); Halonic doesn't change that
+   * machine-wide mode itself. `setup-needed` is everything else that blocks
+   * (not installed, set up by a different release, not readable).
+   */
+  windowsSandboxState(): Promise<WindowsSandboxState>;
   /**
    * Runs srt's Windows install (`srt windows-install`): the sandbox account and
    * its network filters, for the whole machine. It asks for an administrator
@@ -254,18 +264,21 @@ export const systemMachine: Machine = {
   appArmorRestrictsUserNamespaces: async () => (await readOrEmpty(restrictSetting)).trim() === "1",
   hasSeatbelt: () => exists("/usr/bin/sandbox-exec"),
   packageManager: () => findPackageManager(process.platform, process.env["PATH"] ?? ""),
-  async hasWindowsSandbox() {
-    if (process.platform !== "win32") return false;
+  async windowsSandboxState() {
+    if (process.platform !== "win32") return "setup-needed";
     try {
       const { checkWindowsDependenciesAsync, resolveSrtWin, VENDORED_SRT_WIN_EXE } = await import(
         "@anthropic-ai/sandbox-runtime"
       );
       const check = await checkWindowsDependenciesAsync({
         srtWin: resolveSrtWin({ path: VENDORED_SRT_WIN_EXE }),
+        // Loopback stays closed: the bridge is reached through srt's proxy.
+        allowLoopback: false,
       });
-      return check.errors.length === 0;
+      if (check.errors.length === 0) return "ok";
+      return check.loopbackMismatch === undefined ? "setup-needed" : "setup-conflict";
     } catch {
-      return false; // No srt-win, or it did not answer: not installed, as far as we can tell.
+      return "setup-needed"; // No srt-win, or it did not answer: not installed, as far as we can tell.
     }
   },
   async installWindowsSandbox() {
