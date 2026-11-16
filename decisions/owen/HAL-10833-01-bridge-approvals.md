@@ -2,6 +2,7 @@
 
 - Approval: HAL-10833 (Liam, CTO; review points 1 and 2 of HAL-10827)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:91J2QyNTpzVmn5+L3FUELceS2f4KbecalOPLyT+s3aDkk33ndCbWH2ge9eQ4tI1qs0ByPx3w/Rh1UTdOu4HyCw==
 - Task: HAL-10833
 
 The run ledger of the agent host used to show only the approvals a harness reports as events of the
