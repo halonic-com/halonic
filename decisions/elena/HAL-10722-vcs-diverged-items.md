@@ -2,6 +2,7 @@
 
 - Approval: Liam approved this in the review of #3073 (HAL-10722)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:fmt8cHph9Ar+ul99Av3cpNXnl0jb8QuP+TFabMlsVbahiVk/3Izqv3LBmodPGiwS1v0oMvq1EgC5I+IBFgq5CA==
 - Task: HAL-10722
 
 ## What changes
