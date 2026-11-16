@@ -1,6 +1,6 @@
 # Decision: the merge queue reads the remote cache but no longer writes to it
 
-- Task: [HAL-11241](/HAL/issues/HAL-11241)
+- Task: HAL-11241
 - Approval: the task asks for this change; Liam reviews it and signs this note as the CTO
 - Kind: internal
 
