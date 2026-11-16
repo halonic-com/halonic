@@ -1,7 +1,7 @@
 import type { RunSummary } from "@halonicjs/events";
 import { type ErrorKind, KindedError } from "@halonicjs/std";
 import type { InboxRuns } from "@halonicjs/studio-feature-inbox/api";
-import { type PollTimer, runsPollInterval } from "./workspace-runs.ts";
+import { type PollTimer, runsPollInterval, systemTimer } from "./workspace-runs.ts";
 
 /** The page's own `fetch`: same address, same session. */
 export type PageFetch = (path: string, init?: RequestInit) => Promise<Response>;
@@ -13,14 +13,12 @@ export interface ServedInboxRunsOptions {
   readonly timer?: PollTimer;
   /** Calls its listener when the window comes to the front; returns a function that stops it. */
   readonly onFocus?: (listener: () => void) => () => void;
+  /** How long a request may take, in ms. Defaults to 15 s. */
+  readonly timeoutMs?: number;
 }
 
-const systemTimer: PollTimer = {
-  every: (ms, tick) => {
-    const id = setInterval(tick, ms);
-    return () => clearInterval(id);
-  },
-};
+/** How long a request may take before it counts as not reached (a stalled mobile connection never answers). */
+const requestTimeout = 15_000;
 
 /** How a refusal by the computer reads, by its HTTP status. */
 function kindOfStatus(status: number): ErrorKind {
@@ -44,15 +42,19 @@ function kindOfStatus(status: number): ErrorKind {
 }
 
 /** The sentence for a refusal. It is ours, never the body's text, so nothing from the wire is shown. */
-function refusal(status: number, doing: string): KindedError {
+function refusal(status: number, doing: string, listing: boolean): KindedError {
   const kind = kindOfStatus(status);
   const why: Record<ErrorKind, string> = {
     invalid_input: `The computer didn't understand the request to ${doing}.`,
     unauthenticated: `Sign in again to ${doing}.`,
-    denied: `The computer refused to ${doing}. The workspace may not be trusted yet.`,
-    not_found: `That run is gone, so Halonic couldn't ${doing}.`,
+    denied: listing
+      ? `The computer refused to ${doing}. This page may not be one it serves.`
+      : `The computer refused to ${doing}. The workspace may not be trusted yet.`,
+    not_found: listing
+      ? `The computer doesn't offer that list, so Halonic couldn't ${doing}. It may be an older version.`
+      : `That run is gone, so Halonic couldn't ${doing}.`,
     conflict: `The run doesn't take that answer now, so Halonic couldn't ${doing}. It may have moved on.`,
-    limit_reached: `The computer has had too many requests today, so Halonic couldn't ${doing}.`,
+    limit_reached: `The computer has had too many requests just now, so Halonic couldn't ${doing}.`,
     unavailable: `Halonic couldn't reach the computer to ${doing}.`,
     internal: `Halonic couldn't ${doing}.`,
   };
@@ -72,20 +74,23 @@ function isWaitingSummary(value: unknown): value is RunSummary {
 }
 
 async function ask(
-  fetchPage: PageFetch,
+  options: ServedInboxRunsOptions,
   path: string,
   doing: string,
+  listing: boolean,
   init?: RequestInit,
 ): Promise<unknown> {
+  const timeout = AbortSignal.timeout(options.timeoutMs ?? requestTimeout);
+  const signal = init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
   let response: Response;
   try {
-    response = await fetchPage(path, init);
+    response = await options.fetch(path, { ...init, signal });
   } catch (cause) {
     throw new KindedError("unavailable", `Halonic couldn't reach the computer to ${doing}.`, {
       cause,
     });
   }
-  if (!response.ok) throw refusal(response.status, doing);
+  if (!response.ok) throw refusal(response.status, doing, listing);
   try {
     return await response.json();
   } catch (cause) {
@@ -117,6 +122,8 @@ export class ServedInboxRuns implements InboxRuns {
   #stopPolling: (() => void) | undefined;
   /** The waiting runs' ids and last events as the last poll saw them; `undefined` before the first. */
   #seen: string | undefined;
+  /** Whether a poll failed before any list was seen, so the next good one must tell the listeners. */
+  #missed = false;
   #polling = false;
   #disposed = false;
 
@@ -125,8 +132,10 @@ export class ServedInboxRuns implements InboxRuns {
   }
 
   async waiting(): Promise<RunSummary[]> {
-    const answer = await ask(this.#options.fetch, "/api/waiting-runs", "list what waits for you");
+    const answer = await ask(this.#options, "/api/waiting-runs", "list what waits for you", true);
     const runs = (answer as { runs?: unknown } | null)?.runs;
+    // One unreadable run rejects the whole list: the Inbox then shows "unavailable"
+    // rather than a list with an item missing that someone is waiting on.
     if (!Array.isArray(runs) || !runs.every(isWaitingSummary)) {
       throw new KindedError(
         "unavailable",
@@ -148,9 +157,10 @@ export class ServedInboxRuns implements InboxRuns {
       ...(options?.callId === undefined ? {} : { callId: options.callId }),
     };
     const summary = await ask(
-      this.#options.fetch,
+      this.#options,
       `/api/runs/${encodeURIComponent(runId)}/events`,
       "send your answer",
+      false,
       {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -194,12 +204,15 @@ export class ServedInboxRuns implements InboxRuns {
       stopTimer();
       stopFocus();
     };
+    // What waits now, so the first tick can tell a change.
+    void this.#poll();
   }
 
   #stopWatching(): void {
     this.#stopPolling?.();
     this.#stopPolling = undefined;
     this.#seen = undefined;
+    this.#missed = false;
   }
 
   async #poll(): Promise<void> {
@@ -208,11 +221,14 @@ export class ServedInboxRuns implements InboxRuns {
     try {
       const runs = await this.waiting();
       const seen = runs.map((run) => `${run.id}@${run.lastSeq}`).join(" ");
-      const changed = this.#seen !== undefined && seen !== this.#seen;
+      const changed = this.#missed || (this.#seen !== undefined && seen !== this.#seen);
       this.#seen = seen;
+      this.#missed = false;
       if (changed) for (const listener of [...this.#listeners]) listener();
     } catch {
       // The next poll tries again; a list that fails shows where the Inbox loads.
+      // With no list seen yet, whatever changed meanwhile is told after the next good one.
+      if (this.#seen === undefined) this.#missed = true;
     } finally {
       this.#polling = false;
     }

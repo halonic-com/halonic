@@ -60,6 +60,7 @@ verifies("studio.served-inbox-runs", () => {
     it.each([
       [401, "unauthenticated"],
       [403, "denied"],
+      [404, "not_found"],
       [429, "limit_reached"],
       [500, "unavailable"],
     ])("fails as the kind of a %i", async (status, kind) => {
@@ -140,6 +141,19 @@ verifies("studio.served-inbox-runs", () => {
       expect(((await errorOf(runs.send("a", "approve"))) as KindedError).kind).toBe("unavailable");
     });
 
+    it("fails as unavailable when the computer never answers", async () => {
+      const runs = new ServedInboxRuns({
+        timeoutMs: 20,
+        fetch: (_path, init) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () =>
+              reject(new DOMException("t", "TimeoutError")),
+            );
+          }),
+      });
+      expect(((await errorOf(runs.send("a", "approve"))) as KindedError).kind).toBe("unavailable");
+    });
+
     it("fails as unavailable when the computer can't be reached", async () => {
       const runs = new ServedInboxRuns({ fetch: () => Promise.reject(new TypeError("offline")) });
       expect(((await errorOf(runs.send("a", "approve"))) as KindedError).kind).toBe("unavailable");
@@ -167,6 +181,7 @@ verifies("studio.served-inbox-runs", () => {
         runs,
         clock,
         focus,
+        settle: () => new Promise((resolve) => setTimeout(resolve, 0)),
         set: (next: RunSummary[]) => {
           list = next;
         },
@@ -180,7 +195,7 @@ verifies("studio.served-inbox-runs", () => {
       const world = polled([waitingRun("a")]);
       const heard = vi.fn();
       world.runs.subscribe(heard);
-      await world.clock.tick(); // the first poll only learns the list
+      await world.settle(); // subscribing learns the list at once
       await world.clock.tick();
       expect(heard).not.toHaveBeenCalled();
       world.set([waitingRun("a"), waitingRun("b")]);
@@ -194,11 +209,34 @@ verifies("studio.served-inbox-runs", () => {
       expect(heard).toHaveBeenCalledTimes(3);
     });
 
+    it("hears a change between subscribing and the first tick", async () => {
+      const world = polled([waitingRun("a")]);
+      const heard = vi.fn();
+      world.runs.subscribe(heard);
+      await world.settle();
+      world.set([waitingRun("a"), waitingRun("b")]);
+      await world.clock.tick();
+      expect(heard).toHaveBeenCalledTimes(1);
+    });
+
+    it("tells its listeners after the next good poll when the first one failed", async () => {
+      const world = polled([waitingRun("a")]);
+      const heard = vi.fn();
+      world.fail(true);
+      world.runs.subscribe(heard);
+      await world.settle();
+      world.fail(false);
+      await world.clock.tick();
+      expect(heard).toHaveBeenCalledTimes(1);
+      await world.clock.tick();
+      expect(heard).toHaveBeenCalledTimes(1);
+    });
+
     it("reads the list again when the window comes to the front", async () => {
       const world = polled([waitingRun("a")]);
       const heard = vi.fn();
       world.runs.subscribe(heard);
-      await world.clock.tick();
+      await world.settle();
       world.set([]);
       for (const listener of world.focus) listener();
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -209,7 +247,7 @@ verifies("studio.served-inbox-runs", () => {
       const world = polled([waitingRun("a")]);
       const heard = vi.fn();
       world.runs.subscribe(heard);
-      await world.clock.tick();
+      await world.settle();
       world.fail(true);
       await world.clock.tick();
       world.fail(false);
