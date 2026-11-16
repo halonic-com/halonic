@@ -297,8 +297,13 @@ async function installOf(harness: string, platform: NodeJS.Platform): Promise<Ha
   return { program: harness, packageFolder: null };
 }
 
-/** The variables a harness program gets from the CLI's own: where to find programs, and the locale, never a key. */
-function programEnvironment(
+/**
+ * The variables a harness program gets from the CLI's own: where to find programs, and the
+ * locale, never a key. Built from a list of names, never by copying the environment and
+ * removing entries, so a variable this list doesn't know never reaches the program, with or
+ * without a fence (HAL-5397, N9).
+ */
+export function programEnvironment(
   variables: Readonly<Record<string, string | undefined>>,
 ): Record<string, string> {
   const names = ["PATH", "LANG", "LC_ALL", "LC_CTYPE", "TZ", "SystemRoot", "PATHEXT", "ComSpec"];
