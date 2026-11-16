@@ -322,6 +322,45 @@ verifies("fs-node.tool-approval-files", () => {
     });
   });
 
+  describe("a link in the place of a file", () => {
+    /** A valid approval file outside the store's folder, for a link to point at. */
+    async function outsideApproval(): Promise<string> {
+      const { file } = await storeWithLookup();
+      return file;
+    }
+
+    it("is refused for an approval, so the file it points at isn't read", async () => {
+      const root = await tempFolder();
+      const store = new FileToolApprovalStore(root);
+      const target = await outsideApproval();
+      const file = fileFor(root, lookup);
+      await mkdir(folderFor(root, lookup), { recursive: true });
+      await symlink(target, file);
+
+      await expect(store.get(lookup)).rejects.toThrow('tool "lookup" of "notes"');
+      await expect(store.list("/workspaces/acme", "notes")).rejects.toThrow(JSON.stringify(file));
+      await expect(store.approve(toolApproval())).rejects.toThrow(RangeError);
+      await store.revoke(lookup);
+      expect(await store.get(lookup)).toBeNull();
+    });
+
+    it("is refused for the waiting versions", async () => {
+      const root = await tempFolder();
+      const store = new FileToolApprovalStore(root);
+      const { root: otherRoot } = await storeWithLookup();
+      const other = new FileToolApprovalStore(otherRoot);
+      await other.noteWaiting(lookup, waitingVersion(1));
+      const folder = folderFor(root, lookup);
+      await mkdir(folder, { recursive: true });
+      await symlink(
+        join(folderFor(otherRoot, lookup), "waiting.json"),
+        join(folder, "waiting.json"),
+      );
+
+      await expect(store.noteWaiting(lookup, waitingVersion(1))).rejects.toThrow(RangeError);
+    });
+  });
+
   describe("a file system error", () => {
     it("names the tool when its approval is a folder", async () => {
       const root = await tempFolder();
