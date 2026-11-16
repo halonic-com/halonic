@@ -3,8 +3,10 @@ import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState } from "react";
 import { fileName } from "../file-item.ts";
-import { FilesHostService } from "../files-host.ts";
+import { FilesHostService, type OutsideChange } from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
+import { CompareView } from "./compare-view.tsx";
+import { OutsideStrip } from "./outside-strip.tsx";
 
 type Loaded =
   | { readonly kind: "loading" }
@@ -22,6 +24,17 @@ export function FileView({ item, context }: ItemViewProps) {
   const path = item.id;
   const [loaded, setLoaded] = useState<Loaded>({ kind: "loading" });
   const parent = useRef<HTMLDivElement>(null);
+  // Bumped when Compare changed the file, so the text is read again.
+  const [round, setRound] = useState(0);
+  const [comparing, setComparing] = useState(false);
+  // Why a choice made in the strip couldn't be saved; Compare opens with it.
+  const [failure, setFailure] = useState<string | undefined>();
+  const [outside, setOutside] = useState<OutsideChange | undefined>(() => host.outside().get(path));
+
+  useEffect(() => {
+    setOutside(host.outside().get(path));
+    return host.subscribe(() => setOutside(host.outside().get(path)));
+  }, [host, path]);
 
   useEffect(() => {
     let stopped = false;
@@ -42,12 +55,13 @@ export function FileView({ item, context }: ItemViewProps) {
     return () => {
       stopped = true;
     };
-  }, [host, path]);
+  }, [host, path, round]);
 
   const ready = loaded.kind === "ready";
+  const editing = ready && !comparing;
   useEffect(() => {
     const container = parent.current;
-    if (!ready || container === null) return;
+    if (!editing || container === null) return;
     // The editor starts from this text. Later changes the editor didn't make (the workspace's
     // Undo, a rename, another feature) come through the host and are loaded below.
     const text = loaded.kind === "ready" ? loaded.text : "";
@@ -81,7 +95,25 @@ export function FileView({ item, context }: ItemViewProps) {
       unsubscribe();
       editor?.destroy();
     };
-  }, [ready, host, path]);
+  }, [editing, host, path]);
+
+  /** Reads the text again, and shows no editor until it has: the old text would be stale. */
+  function reload(): void {
+    setLoaded({ kind: "loading" });
+    setRound((n) => n + 1);
+  }
+
+  /** The strip's own choices; a failed one leaves the strip as it was, and Compare shows the reason. */
+  async function settleWith(choice: "keep-mine" | "use-other"): Promise<void> {
+    try {
+      await host.settle(path, choice);
+      setOutside(host.outside().get(path));
+      reload();
+    } catch (error) {
+      setFailure(error instanceof Error ? error.message : String(error));
+      setComparing(true);
+    }
+  }
 
   return (
     <section className="flex h-full min-h-0 flex-col" aria-label={fileName(path)}>
@@ -109,7 +141,36 @@ export function FileView({ item, context }: ItemViewProps) {
           description={loaded.reason}
         />
       )}
-      {ready && <div ref={parent} className="min-h-0 flex-1 overflow-hidden" />}
+      {outside !== undefined && !comparing && (
+        <OutsideStrip
+          path={path}
+          change={outside}
+          onCompare={() => setComparing(true)}
+          onKeepMine={() => settleWith("keep-mine")}
+          onClose={() => settleWith("use-other")}
+        />
+      )}
+      {comparing && (
+        <CompareView
+          path={path}
+          context={context}
+          initialFailure={failure}
+          // The editor was closed while comparing, so it reopens from what the files hold now,
+          // which includes what was typed before Compare.
+          onCancel={() => {
+            setComparing(false);
+            setFailure(undefined);
+            reload();
+          }}
+          onDone={() => {
+            setComparing(false);
+            setFailure(undefined);
+            setOutside(host.outside().get(path));
+            reload();
+          }}
+        />
+      )}
+      {editing && <div ref={parent} className="min-h-0 flex-1 overflow-hidden" />}
     </section>
   );
 }
