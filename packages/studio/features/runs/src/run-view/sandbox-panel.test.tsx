@@ -195,9 +195,15 @@ verifies("runs.run-view.sandbox-panel", () => {
   });
 
   it("names a step that ran without the sandbox with the Full access chip", () => {
-    const container = render(<SandboxOffPanel agent="Coder" />);
+    const container = render(<SandboxOffPanel agent="Coder" place="desktop" />);
     expect(container.textContent).toContain("Full access");
     expect(container.textContent).toContain("Ran on this computer, without the sandbox");
     expect(container.textContent).toContain("You chose to run Coder on this computer");
+  });
+
+  it("says your computer on a phone", () => {
+    const container = render(<SandboxOffPanel agent="Coder" place="phone" />);
+    expect(container.textContent).toContain("You chose to run Coder on your computer");
+    expect(container.textContent).not.toContain("this computer");
   });
 });

@@ -5,7 +5,7 @@ import { stepEventsWords } from "../run-words.ts";
 import { BlockedSitesPanel } from "./blocked-sites.tsx";
 import type { StepEntry } from "./every-step-model.ts";
 import { stepSandboxes } from "./sandbox-model.ts";
-import { SandboxOffPanel, SandboxPanel } from "./sandbox-panel.tsx";
+import { SandboxOffPanel, SandboxPanel, sayText } from "./sandbox-panel.tsx";
 import { stepBlockedSites, stepChildRuns, stepEvents } from "./step-events-model.ts";
 
 /** Props for {@link StepPanel}. */
@@ -29,14 +29,14 @@ export interface StepPanelProps {
  * sites the step's sandbox refused (sandbox-screens 2.2), then the child
  * runs it started, "Started Verify → Run 7k2m9p" with the link, then its model
  * calls with their model and tokens, then its tool calls, each with its
- * arguments folded, and last what its sandbox could do (sandbox-screens 1.3). Opening it moves focus to its title, and closing it
- * moves focus back to the entry (kit `SidePanel`).
+ * arguments folded, and last what its sandbox could do (sandbox-screens 1.3).
+ * Opening it moves focus to its title, and closing it moves focus back to
+ * the entry (kit `SidePanel`).
  *
  * The Blocked sites part has no action yet: the Studio has no agent page to
  * open at its allowed sites, and the hint already says where to add a site.
  * It doesn't say "No connection was made." either, because the page can't
  * tell yet whether the run's sandbox has proven that (HAL-6219).
- *
  */
 export function StepPanel({
   entry,
@@ -51,6 +51,7 @@ export function StepPanel({
   const blocked = useMemo(() => stepBlockedSites(log, entry.id), [log, entry.id]);
   const sandboxes = useMemo(() => stepSandboxes(log, entry.id), [log, entry.id]);
   const children = stepChildRuns(log, entry.id, workflowName);
+  const place = phone ? "phone" : "desktop";
   const frame = useRef<HTMLDivElement>(null);
   // Escape while focus is in the panel; the shell's close stack isn't open to features.
   useEffect(() => {
@@ -148,23 +149,31 @@ export function StepPanel({
             </ul>
           </section>
         )}
-        {sandboxes.map((sandbox, index) =>
-          sandbox.kind === "unreadable" ? null : (
-            <div key={index} className="pt-4">
-              {sandbox.kind === "off" ? (
-                <SandboxOffPanel agent={sandbox.agent} />
-              ) : (
-                <SandboxPanel
-                  view={sandbox.view}
-                  agent={sandbox.agent}
-                  live={live}
-                  place={phone ? "phone" : "desktop"}
-                />
-              )}
-            </div>
-          ),
-        )}
+        {sandboxes.map((sandbox, index) => (
+          <div key={index} className="pt-4">
+            <SandboxItem sandbox={sandbox} live={live} place={place} />
+          </div>
+        ))}
       </SidePanel>
     </div>
   );
+}
+
+/** One sandbox event of the step: its list, the Full access note, or that it couldn't be read. */
+function SandboxItem({
+  sandbox,
+  live,
+  place,
+}: {
+  readonly sandbox: ReturnType<typeof stepSandboxes>[number];
+  readonly live: boolean;
+  readonly place: "desktop" | "phone";
+}) {
+  if (sandbox.kind === "unreadable") {
+    return <p className="text-body text-fg-muted">{sayText("sandbox.line.unreadable")}</p>;
+  }
+  if (sandbox.kind === "off") {
+    return <SandboxOffPanel agent={sandbox.agent} place={place} />;
+  }
+  return <SandboxPanel view={sandbox.view} agent={sandbox.agent} live={live} place={place} />;
 }

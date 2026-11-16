@@ -67,7 +67,7 @@ import { SandboxPanel, sandboxLineText } from "./run-view/sandbox-panel.tsx";
 
 const [step] = stepSandboxes(events, "step-1");
 // kind "opened": the line is sandboxLineText(step.view), the list is:
-<SandboxPanel view={step.view} agent={step.agent} live={run.endedAt === null} place="desktop" />;
+<SandboxPanel view={step.view} agent={step.agent} live={run.summary.endedAt === null} place="desktop" />;
 ```
 
 A step with neither event (an old run, or a step with no program) has no line; a damaged `sandbox.opened` says it couldn't be read. Every sentence comes from `sandbox-words.ts` by key; the words are placeholders until the board approves the sandbox screens (HAL-1784).

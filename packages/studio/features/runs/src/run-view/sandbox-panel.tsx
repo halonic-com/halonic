@@ -1,6 +1,6 @@
 import type { SandboxOpenedView } from "@halonicjs/events";
 import { escapeHidden } from "@halonicjs/std";
-import type { ReactNode, Ref } from "react";
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { SiteNameText } from "./blocked-sites-text.tsx";
 import { fillWords } from "./fill-words.tsx";
@@ -68,8 +68,6 @@ export interface SandboxPanelProps {
   readonly place: "desktop" | "phone";
   /** Opens the agent at Configuration › Harness. Desktop only; without it a desktop panel has no action. */
   readonly onOpenHarness?: () => void;
-  /** Takes focus when the line opened the entry. */
-  readonly headingRef?: Ref<HTMLHeadingElement>;
 }
 
 /**
@@ -81,18 +79,11 @@ export interface SandboxPanelProps {
  *
  * Not here yet: Your sign-in, which waits for HAL-1710.
  */
-export function SandboxPanel({
-  view,
-  agent,
-  live,
-  place,
-  onOpenHarness,
-  headingRef,
-}: SandboxPanelProps) {
+export function SandboxPanel({ view, agent, live, place, onOpenHarness }: SandboxPanelProps) {
   const folder = escapeHidden(view.workingFolder);
   return (
     <section className="flex flex-col gap-2 rounded-sm bg-surface-subtle p-3">
-      <h3 ref={headingRef} tabIndex={-1} className="text-body-strong outline-none">
+      <h3 className="text-body-strong">
         {sayText(live ? "sandbox.panel.title.live" : "sandbox.panel.title.ended")}
       </h3>
       <dl
@@ -246,19 +237,21 @@ function Action({
 /** The props of {@link SandboxOffPanel}. */
 export interface SandboxOffPanelProps {
   readonly agent: string;
+  /** On a phone the sentences say "your computer", not "this computer". */
+  readonly place: "desktop" | "phone";
 }
 
 /** What a step that ran without the sandbox says: the Full access chip and why it had no limits. */
-export function SandboxOffPanel({ agent }: SandboxOffPanelProps) {
+export function SandboxOffPanel({ agent, place }: SandboxOffPanelProps) {
   return (
     <section className="flex flex-col gap-2 rounded-sm bg-surface-subtle p-3">
       <h3 className="inline-flex items-center gap-1.5 text-body-strong">
         <span className="rounded-full bg-warning-soft px-2 text-small text-warning">
           {sayText("sandbox.off.chip")}
         </span>
-        <span className="sr-only">{sayText("sandbox.line.off")}</span>
+        <span className="sr-only">{sayText(`sandbox.line.off.${place}`)}</span>
       </h3>
-      <p className="text-small text-fg-muted">{sayText("sandbox.off.body", { agent })}</p>
+      <p className="text-small text-fg-muted">{sayText(`sandbox.off.body.${place}`, { agent })}</p>
     </section>
   );
 }

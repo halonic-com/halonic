@@ -1,5 +1,5 @@
 import type { RunEvent } from "@halonicjs/events";
-import { Button, List, type ListColumn, WarningIcon } from "@halonicjs/studio-kit";
+import { Button, List, type ListColumn, usePresentation, WarningIcon } from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { DamagedRunLog, type RunsSource } from "../api.ts";
 import { everyStepWords, runLogWords } from "../run-words.ts";
@@ -44,6 +44,7 @@ export function EveryStep({
   readonly openEntry: string | undefined;
   readonly onOpenEntry: (id: string) => void;
 }) {
+  const place = usePresentation() === "phone" ? "phone" : "desktop";
   const [showLog, setShowLog] = useState(false);
   const lines = useMemo(() => (showLog ? runLogLines(log) : []), [showLog, log]);
   if (log.length === 0) {
@@ -55,7 +56,13 @@ export function EveryStep({
         {showLog ? (
           <RunLog lines={lines} />
         ) : (
-          <Timeline entries={entries} log={log} openEntry={openEntry} onOpenEntry={onOpenEntry} />
+          <Timeline
+            entries={entries}
+            log={log}
+            openEntry={openEntry}
+            onOpenEntry={onOpenEntry}
+            place={place}
+          />
         )}
       </div>
       <Button variant="ghost" size="sm" onClick={() => setShowLog(!showLog)}>
@@ -71,11 +78,13 @@ function Timeline({
   log,
   openEntry,
   onOpenEntry,
+  place,
 }: {
   readonly entries: readonly StepEntry[];
   readonly log: readonly RunEvent[];
   readonly openEntry: string | undefined;
   readonly onOpenEntry: (id: string) => void;
+  readonly place: "desktop" | "phone";
 }) {
   if (entries.length === 0) {
     return null;
@@ -95,7 +104,7 @@ function Timeline({
           cells: { time: { value: entry.time } },
           label: entry.label,
         },
-        ...sandboxRows(entry, log),
+        ...sandboxRows(entry, log, place),
         ...blockedRow(entry, log),
         ...entry.groups.map((group) => ({
           id: group.id,
@@ -118,7 +127,7 @@ function Timeline({
  * `sandbox.opened`, an old run or a program-less step, gets no row; a damaged one says it couldn't
  * be read, quietly.
  */
-function sandboxRows(entry: StepEntry, log: readonly RunEvent[]) {
+function sandboxRows(entry: StepEntry, log: readonly RunEvent[], place: "desktop" | "phone") {
   return stepSandboxes(log, entry.id).map((sandbox, index) => {
     const id = `${entry.id}:sandbox-${index}`;
     if (sandbox.kind === "unreadable") {
@@ -129,7 +138,7 @@ function sandboxRows(entry: StepEntry, log: readonly RunEvent[]) {
     return {
       id,
       title: off
-        ? sayText("sandbox.line.off")
+        ? sayText(`sandbox.line.off.${place}`)
         : `${sandboxLineText(sandbox.view)} · ${sayText("sandbox.line.link")}`,
       icon: (
         <span className={`flex size-4 ${off ? "text-warning" : "text-fg-subtle"}`}>

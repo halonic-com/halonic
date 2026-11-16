@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { RunEventBody, SandboxOpenedView } from "@halonicjs/events";
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it } from "vitest";
@@ -23,7 +24,7 @@ const view: SandboxOpenedView = {
   timeLimitMs: 1_800_000,
 };
 
-async function openRun(body: [number, RunEventBody][], ended: boolean) {
+async function openRun(body: [number, RunEventBody][], ended: boolean, phone = false) {
   const events = logOf(runId, body);
   const summary = ended
     ? summaryWith({
@@ -36,7 +37,10 @@ async function openRun(body: [number, RunEventBody][], ended: boolean) {
       })
     : summaryWith({ id: runId, lastSeq: events.length });
   const list = new RunsList(fakeSource([summary], { [runId]: events }).source);
-  const root = render(<RunView list={list} runId={runId} now={() => mondayMorning} />);
+  const page = <RunView list={list} runId={runId} now={() => mondayMorning} />;
+  const root = render(
+    phone ? <PresentationProvider presentation="phone">{page}</PresentationProvider> : page,
+  );
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
@@ -106,6 +110,41 @@ verifies("runs.run-view.sandbox-panel", () => {
     expect(rowStarting(root, "Couldn't read what this step could do.")).toBeDefined();
     act(() => off?.querySelector<HTMLElement>('[role="gridcell"]')?.click());
     expect(root.querySelector("aside")?.textContent).toContain("Full access");
+  });
+
+  it("says your computer, not this computer, for a step that ran without the sandbox on a phone", async () => {
+    const root = await openRun(
+      [
+        [0, entered("draft")],
+        [
+          0,
+          { type: "sandbox.off", state: "draft", agent: "coder", chosenAt: "2026-11-10T08:00:00Z" },
+        ],
+      ],
+      true,
+      true,
+    );
+    const off = rowStarting(root, "Ran on your computer, without the sandbox");
+    expect(off).toBeDefined();
+    act(() => off?.querySelector<HTMLElement>('[role="gridcell"]')?.click());
+    const text = root.querySelector("aside")?.textContent;
+    expect(text).toContain("on your computer");
+    expect(text).not.toContain("this computer");
+  });
+
+  it("opens a damaged event's entry with the same sentence, not an empty panel", async () => {
+    const root = await openRun(
+      [
+        [0, entered("draft")],
+        [0, opened({ strength: "os" })],
+      ],
+      true,
+    );
+    const line = rowStarting(root, "Couldn't read what this step could do.");
+    act(() => line?.querySelector<HTMLElement>('[role="gridcell"]')?.click());
+    const panel = root.querySelector("aside");
+    expect(panel?.textContent).toContain("Couldn't read what this step could do.");
+    expect(panel?.textContent).not.toContain("made no model or tool calls");
   });
 
   it("shows no line for a step with no sandbox event, as an old run", async () => {

@@ -17,11 +17,14 @@ export const sandboxWords = {
   "sandbox.line.link": "What it can do",
   "sandbox.line.link-name": "What {step} can do",
   "sandbox.line.unreadable": "Couldn't read what this step could do.",
-  "sandbox.line.off": "Ran on this computer, without the sandbox",
+  "sandbox.line.off.desktop": "Ran on this computer, without the sandbox",
+  "sandbox.line.off.phone": "Ran on your computer, without the sandbox",
   "sandbox.line.off-name": "Ran without the sandbox, in the step {step}",
   "sandbox.off.chip": "Full access",
-  "sandbox.off.body":
+  "sandbox.off.body.desktop":
     "You chose to run {agent} on this computer, so this step wasn't confined: it could reach what you can.",
+  "sandbox.off.body.phone":
+    "You chose to run {agent} on your computer, so this step wasn't confined: it could reach what you can.",
   "sandbox.panel.title.live": "What this step can do",
   "sandbox.panel.title.ended": "What this step could do",
   "sandbox.panel.writes": "Writes in",
