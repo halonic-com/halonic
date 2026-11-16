@@ -212,10 +212,9 @@ export class LocalRuns {
 
   /**
    * A timer of a run is due: carry out the call it names, end a harness
-   * start whose time is up, or pass the run the timer a state set. Any
-   * other timer of a run first carries out the effects it kept. A timer
-   * that is late, repeated or no longer wanted changes nothing, so this
-   * resolves for it, and so does every timer after {@link LocalRuns.close}.
+   * start whose time is up, or pass the run the timer a state set; any
+   * other first carries out the effects the run kept. A late, repeated,
+   * unwanted or post-{@link LocalRuns.close} timer changes nothing.
    */
   async onTimer(timer: ScheduledTimer): Promise<void> {
     if (this.#closed) return;
@@ -234,6 +233,11 @@ export class LocalRuns {
     } else if (timer.timerId.startsWith(toolTimer)) {
       await this.#connectorCalls.make(timer.key, timer.timerId.slice(toolTimer.length));
     }
+  }
+
+  /** The approvals of one run's bridge ({@link LocalHarnessCalls.bridgeApprovals}). */
+  bridgeApprovals(runId: string) {
+    return this.#harnessCalls.bridgeApprovals(runId);
   }
 
   /**
