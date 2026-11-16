@@ -36,7 +36,6 @@ verifies("files.ui.file-tab", () => {
       activeItem: {
         get: () => ({ kind: "file", hub: "workspace", id: "models.yaml" }),
         subscribe: () => () => {},
-        onReloaded: () => () => {},
       },
     } as unknown as WorkspaceContext;
     const page = render(<FilesSidebarView context={context} />);
