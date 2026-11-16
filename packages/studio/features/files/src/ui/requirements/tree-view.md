@@ -1,4 +1,4 @@
-# files.tree.view
+# files.ui.tree-view
 
 - Status: active
 - Since: 0.1.0

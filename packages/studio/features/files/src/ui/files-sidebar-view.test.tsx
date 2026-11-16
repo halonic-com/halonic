@@ -44,7 +44,7 @@ function press(row: HTMLElement, key: string): void {
   });
 }
 
-verifies("files.tree.view", () => {
+verifies("files.ui.tree-view", () => {
   const files = ["hubs/p/hub.yaml", "models.yaml"];
   const hostOf = (value: FilesListing): FilesHost => ({
     list: async () => value,
