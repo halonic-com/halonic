@@ -120,6 +120,7 @@ export function InboxView({
   const { open, focus, openItem, openAt } = useOpenItem(inbox, state.items);
   const retry = () => void inbox.refresh();
   const list = useRef<HTMLDivElement>(null);
+  const needsYouHeading = useRef<HTMLHeadingElement>(null);
   // Not now: the pane empties and focus goes back to the row the item was open from.
   const close = () => {
     const row = list.current?.querySelector<HTMLElement>(
@@ -166,6 +167,7 @@ export function InboxView({
             <List
               heading={{
                 name: "Needs you",
+                headingRef: needsYouHeading,
                 ...countDetail(state.items.length, lateCount(state.items, now())),
               }}
               rows={state.items.map((item) => rowFor(item, now()))}
@@ -181,7 +183,14 @@ export function InboxView({
               onRetry={retry}
             />
           )}
-          {failedFirst ? null : <NoticesSection source={notices} openRun={openRun} words={words} />}
+          {failedFirst ? null : (
+            <NoticesSection
+              source={notices}
+              openRun={openRun}
+              onEmptied={() => needsYouHeading.current?.focus()}
+              words={words}
+            />
+          )}
         </div>
       </div>
       <div
