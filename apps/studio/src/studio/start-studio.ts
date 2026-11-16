@@ -1,6 +1,8 @@
+import { AgentHostSandbox } from "@halonicjs/adapter-agent-host-client";
 import { TauriPickedFolders, TauriTrustStore } from "@halonicjs/adapter-fs-tauri";
-import { ServiceRegistry } from "@halonicjs/app";
+import { ServiceRegistry, sandboxStartCheck, sandboxStartCheckKey } from "@halonicjs/app";
 import { SampleWorkspaceService } from "@halonicjs/studio-feature-first-run/api";
+import { SandboxPassesService } from "@halonicjs/studio-feature-inbox/api";
 import {
   BrowserDisplayPrefs,
   DisplaySettings,
@@ -48,6 +50,7 @@ import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
 import { desktopFeatures } from "./desktop-features.ts";
 import { newWorkspaceHostOf } from "./new-workspace-host.ts";
+import { observedSandboxStartCheck } from "./observed-sandbox-start-check.ts";
 import { openFolderScope, savingOf } from "./open-folder-scope.ts";
 import { openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
 import { provideFolderServices } from "./provide-folder-services.ts";
@@ -371,9 +374,16 @@ function updaterOf(ipc: TauriIpc & TauriCallbacks): TauriUpdater {
  * shell has an agent host. Without it the section reads Not available.
  */
 function provideAgentSandbox(services: ServiceRegistry, window: object): void {
-  if (!agentSandboxOffered) return;
   const transport = tauriAgentHostTransport(window);
-  if (transport !== undefined)
+  if (transport === undefined) return;
+  // The start check only reads: "Check again" on a run page and in the Inbox works whether or not
+  // this build offers the section's setup (D44).
+  const { check, passes } = observedSandboxStartCheck(
+    sandboxStartCheck(async () => (await AgentHostSandbox.connect(transport)).check()),
+  );
+  services.provide(sandboxStartCheckKey, check);
+  services.provide(SandboxPassesService, passes);
+  if (agentSandboxOffered)
     services.provide(
       AgentSandboxService,
       new AgentHostSandboxFacts(transport, undefined, undefined, () => transport.securityUpdates()),

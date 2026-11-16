@@ -119,6 +119,27 @@ verifies("runs.run-view.sandbox-not-ready", () => {
     expect(button(root)).toBeDefined();
   });
 
+  it("keeps the last known code when a later check can't run", async () => {
+    const results = [
+      async (): Promise<SandboxStartResult> => ({ ok: false, reason: "ripgrep-missing" }),
+      async (): Promise<SandboxStartResult> => {
+        throw new Error("host sentence");
+      },
+    ];
+    let call = 0;
+    const root = await open(log("bubblewrap-missing"), () => {
+      const next = results[Math.min(call++, results.length - 1)];
+      if (next === undefined) throw new Error("no result");
+      return next();
+    });
+    await act(async () => button(root)?.click());
+    await act(async () => button(root)?.click());
+
+    expect(banner(root)?.textContent).toContain("Halonic couldn't check the sandbox. Try again.");
+    expect(banner(root)?.textContent).toContain(sandboxStartWords("ripgrep-missing").reason);
+    expect(banner(root)?.textContent).not.toContain(sandboxStartWords("bubblewrap-missing").reason);
+  });
+
   it("says the fix is for the computer on a phone", async () => {
     const root = await open(log("bubblewrap-missing"), undefined, true);
     expect(banner(root)?.textContent).toContain(sandboxStartWords("bubblewrap-missing").phoneFix);

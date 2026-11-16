@@ -4,10 +4,11 @@ import {
   InboxRequestsService,
   InboxRunsService,
   InboxService,
+  SandboxPassesService,
   SandboxRefusalsService,
 } from "./api.ts";
 import { Inbox } from "./inbox.ts";
-import { sandboxSetupSource } from "./sandbox/sandbox-setup-source.ts";
+import { sandboxSetup } from "./sandbox/sandbox-setup-source.ts";
 
 /**
  * The Inbox feature. It builds one {@link Inbox} per open workspace from the
@@ -19,7 +20,7 @@ export const inboxFeature = defineFeature({
   id: "inbox",
   title: "Inbox",
   needs: [InboxRunsService],
-  wants: [InboxRequestsService, SandboxRefusalsService, sandboxStartCheckKey],
+  wants: [InboxRequestsService, SandboxRefusalsService, sandboxStartCheckKey, SandboxPassesService],
   provides: [InboxService],
   register(studio) {
     studio.services.provide(InboxService, (services) => {
@@ -28,7 +29,14 @@ export const inboxFeature = defineFeature({
       const refusals = services.find(SandboxRefusalsService);
       const check = services.find(sandboxStartCheckKey);
       if (refusals !== undefined && check !== undefined) {
-        inbox.addSetupSource(sandboxSetupSource(refusals, check));
+        const sandbox = sandboxSetup(
+          refusals,
+          check,
+          () => new Date(),
+          services.find(SandboxPassesService),
+        );
+        inbox.addSetupSource(sandbox.source);
+        inbox.extraNotices = sandbox.notices;
       }
       return inbox;
     });

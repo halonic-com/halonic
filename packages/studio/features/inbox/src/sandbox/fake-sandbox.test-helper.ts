@@ -3,7 +3,7 @@ import type { RunSummary } from "@halonicjs/events";
 import { fakeRuns } from "../fake-runs.test-helper.ts";
 import { Inbox } from "../inbox.ts";
 import { waitingRun } from "../test-runs.test-helper.ts";
-import { type SandboxRefusals, sandboxSetupSource } from "./sandbox-setup-source.ts";
+import { type SandboxRefusals, sandboxSetup } from "./sandbox-setup-source.ts";
 
 /** A routine run the sandbox refused. */
 export const refusedRun = (
@@ -56,7 +56,8 @@ export function sandboxInbox(
       return () => listeners.delete(listener);
     },
   };
-  const source = sandboxSetupSource(
+  const passListeners = new Set<() => void>();
+  const { source, notices } = sandboxSetup(
     refusals,
     {
       check: async () => {
@@ -65,12 +66,23 @@ export function sandboxInbox(
       },
     },
     () => new Date("2026-11-10T12:00:00.000Z"),
+    {
+      subscribe: (listener) => {
+        passListeners.add(listener);
+        return () => passListeners.delete(listener);
+      },
+    },
   );
   const inbox = new Inbox(fakeRuns([]).runs);
   inbox.addSetupSource(source);
   return {
     inbox,
     source,
+    notices,
+    /** A check passed on another screen. */
+    pass: () => {
+      for (const listener of [...passListeners]) listener();
+    },
     set: (value: readonly RunSummary[]) => {
       runs = value;
       for (const listener of [...listeners]) listener();

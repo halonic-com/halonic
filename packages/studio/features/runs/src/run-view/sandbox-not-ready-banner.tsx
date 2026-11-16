@@ -46,12 +46,15 @@ export function SandboxNotReadyBanner({
 }) {
   const [checked, setChecked] = useState<Checked>();
   const [checking, setChecking] = useState(false);
+  // The newest code a check gave. A check that can't run keeps it rather than going back to the run's.
+  const [lastReason, setLastReason] = useState<string>();
 
   const again = async () => {
     if (check === undefined) return;
     setChecking(true);
     try {
       const result = await check.check();
+      if (!result.ok) setLastReason(result.reason);
       setChecked(result.ok ? { kind: "ready" } : { kind: "refused", reason: result.reason });
     } catch {
       setChecked({ kind: "failed" });
@@ -60,7 +63,7 @@ export function SandboxNotReadyBanner({
     }
   };
 
-  const words = sandboxStartWords(checked?.kind === "refused" ? checked.reason : reason);
+  const words = sandboxStartWords(lastReason ?? reason);
   const ready = checked?.kind === "ready";
   const action =
     check === undefined || ready

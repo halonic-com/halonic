@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import type { FailedRunNotice } from "./failed-run-notices.ts";
-import type { InboxNotices } from "./inbox-notices.ts";
+import type { InboxNotice, InboxNotices } from "./inbox-notices.ts";
 
 /** What the Inbox shows of its notices. */
 export interface NoticesState {
-  readonly notices: readonly FailedRunNotice[];
+  readonly notices: readonly InboxNotice[];
   /** Why the last read failed, until one succeeds. The notices stay as they were. */
   readonly error: unknown;
 }

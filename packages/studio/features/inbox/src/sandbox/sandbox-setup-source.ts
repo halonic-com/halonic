@@ -2,6 +2,7 @@ import { type SandboxStartCheck, type SandboxStartResult, sandboxStartWords } fr
 import type { RunSummary } from "@halonicjs/events";
 import { createElement } from "react";
 import type { InboxSetupSource, SetupEntry, SetupViewProps } from "../inbox.ts";
+import type { InboxNotices, SandboxFixedNotice } from "../notices/inbox-notices.ts";
 import { sandboxInboxWords } from "./sandbox-words.ts";
 
 /** The one account of the sandbox source: the sandbox is per computer, so there is one row. */
@@ -18,6 +19,22 @@ export interface SandboxRefusals {
   reasonOf(runId: string): Promise<string | undefined>;
   /** Calls `listener` whenever a run may have started or stopped. Returns a function that stops the calls. */
   subscribe(listener: () => void): () => void;
+}
+
+/**
+ * Tells when a passing check ran somewhere else, such as a run page's **Check again**. The app
+ * provides it; without it the row learns of a pass only from its own card.
+ */
+export interface SandboxPasses {
+  /** Calls `listener` whenever a check passes. Returns a function that stops the calls. */
+  subscribe(listener: () => void): () => void;
+}
+
+/** The sandbox row's source and the "fixed" notices it leaves in Notices. */
+export interface SandboxSetup {
+  readonly source: InboxSetupSource;
+  /** The notice that says the sandbox is ready again, once the row has been seen as Fixed. */
+  readonly notices: InboxNotices;
 }
 
 /** What the card's view gets besides the item: the check, the reason and the runs that didn't run. */
@@ -82,10 +99,45 @@ export function sandboxSetupSource(
   refusals: SandboxRefusals,
   startCheck: SandboxStartCheck,
   now: () => Date = () => new Date(),
+  passes?: SandboxPasses,
 ): InboxSetupSource {
+  return sandboxSetup(refusals, startCheck, now, passes).source;
+}
+
+/**
+ * The sandbox row's source together with its "fixed" notices. A pass on the card keeps the row as
+ * Fixed until it is released, then leaves one notice; a pass seen from elsewhere (`passes`) while
+ * routines were refused goes straight to a notice. The notice has its ×, and it is gone on the
+ * next load.
+ *
+ * @example
+ * const { source, notices } = sandboxSetup(refusals, startCheck, () => new Date(), passes);
+ */
+export function sandboxSetup(
+  refusals: SandboxRefusals,
+  startCheck: SandboxStartCheck,
+  now: () => Date = () => new Date(),
+  passes?: SandboxPasses,
+): SandboxSetup {
   const listeners = new Set<() => void>();
   const changed = () => {
     for (const listener of [...listeners]) listener();
+  };
+  const noticeListeners = new Set<() => void>();
+  const noticesChanged = () => {
+    for (const listener of [...noticeListeners]) listener();
+  };
+  let notice: SandboxFixedNotice | undefined;
+  // While the card's own check runs, a pass it reports through `passes` is the card's to show.
+  let ownCheck = false;
+  const leaveNotice = (at: string) => {
+    notice = {
+      kind: "sandbox-fixed",
+      key: `sandbox-fixed:${at}`,
+      at,
+      title: sandboxInboxWords.fixedNotice,
+    };
+    noticesChanged();
   };
   let passedAt: string | undefined;
   let fixed: { readonly runs: readonly RunSummary[]; readonly at: string } | undefined;
@@ -99,7 +151,13 @@ export function sandboxSetupSource(
 
   const control: SandboxCardControl = {
     async check() {
-      const result = await startCheck.check();
+      ownCheck = true;
+      let result: SandboxStartResult;
+      try {
+        result = await startCheck.check();
+      } finally {
+        ownCheck = false;
+      }
       if (result.ok) {
         const listed = refused.length > 0 ? refused : await stillRefused();
         passedAt = now().toISOString();
@@ -115,7 +173,21 @@ export function sandboxSetupSource(
     },
   };
 
-  return {
+  // A check that passed on another screen: nothing is open here to show it Fixed, so it is a notice.
+  const watchPasses = () =>
+    passes?.subscribe(() => {
+      if (ownCheck) return;
+      void (async () => {
+        const listed = refused.length > 0 ? refused : await stillRefused();
+        if (listed.length === 0 || fixed !== undefined) return;
+        passedAt = now().toISOString();
+        refused = [];
+        leaveNotice(passedAt);
+        changed();
+      })().catch(() => {});
+    });
+
+  const source: InboxSetupSource = {
     provider: "sandbox",
     name: sandboxInboxWords.name,
     view: {
@@ -156,16 +228,34 @@ export function sandboxSetupSource(
     subscribe(listener) {
       listeners.add(listener);
       const stop = refusals.subscribe(listener);
+      const stopPasses = watchPasses();
       return () => {
         listeners.delete(listener);
         stop();
+        stopPasses?.();
       };
     },
     release() {
+      if (fixed !== undefined) leaveNotice(fixed.at);
       fixed = undefined;
       changed();
     },
   };
+
+  const notices: InboxNotices = {
+    list: async () => (notice === undefined ? [] : [notice]),
+    subscribe(listener) {
+      noticeListeners.add(listener);
+      return () => noticeListeners.delete(listener);
+    },
+    dismiss(key) {
+      if (notice?.key !== key) return;
+      notice = undefined;
+      noticesChanged();
+    },
+  };
+
+  return { source, notices };
 }
 
 function entry(fields: Omit<SetupEntry, "account">): SetupEntry {

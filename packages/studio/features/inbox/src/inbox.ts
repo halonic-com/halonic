@@ -11,6 +11,7 @@ import {
   type SetupItem,
   setupKey,
 } from "./inbox-items.ts";
+import type { InboxNotices } from "./notices/inbox-notices.ts";
 
 /**
  * The runs the Inbox reads and answers. The app provides them for the open
@@ -130,6 +131,11 @@ export interface InboxState {
  */
 export class Inbox {
   readonly decisions: InboxDecisions;
+  /**
+   * Notices a setup source leaves behind once its item is dealt with (the sandbox's "fixed"
+   * notice); the Notices section shows them with the app's. Set where the sources are added.
+   */
+  extraNotices: InboxNotices | undefined;
   #state: InboxState = { items: [], loaded: false, error: undefined };
   readonly #runs: InboxRuns;
   readonly #listeners = new Set<() => void>();
