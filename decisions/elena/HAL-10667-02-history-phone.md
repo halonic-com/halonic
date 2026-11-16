@@ -3,6 +3,7 @@
 - Task: HAL-10667
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-1302#document-plan (the approved T9 plan, step 6, phone frames F8 to F13)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mibfNRhh9LZVOq30gjwa3aV2tDmRCivhun2BcCKi2P2frVVfSkN6Wo0/9cxevd0pnc2I76Kxpk3/fymgHXgwAQ==
 
 ## What changes
 
