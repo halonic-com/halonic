@@ -12,12 +12,13 @@ import type { DefinitionStore, DefinitionWatch, RunStore } from "@halonicjs/port
 import { KindedError } from "@halonicjs/std";
 import type { InboxRuns } from "@halonicjs/studio-feature-inbox/api";
 import type {
+  ProviderKind,
   RunRoutine,
   RunsSource,
   RunWorkflow,
   SourcedRun,
 } from "@halonicjs/studio-feature-runs/api";
-import { filesOf, loadWorkspace } from "@halonicjs/workspace";
+import { filesOf, loadWorkspace, providerIsLocal } from "@halonicjs/workspace";
 
 /** How often the runs are read again to see whether one changed: every 10 s (states K5). */
 export const runsPollInterval = 10_000;
@@ -48,6 +49,8 @@ interface WorkspaceFacts {
   readonly workflows: readonly HubWorkflow[];
   /** By key, the `trigger.routineId` of the runs each starts. */
   readonly routines: ReadonlyMap<string, RoutineClock>;
+  /** By id, where each provider the workspace has runs. */
+  readonly providers: ReadonlyMap<string, ProviderKind>;
   readonly currency: string;
   readonly monthly: number | undefined;
 }
@@ -142,6 +145,10 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
       });
   }
 
+  providerKind(providerId: string): ProviderKind | undefined {
+    return this.#facts?.providers.get(providerId);
+  }
+
   currency(): string {
     return this.#facts?.currency ?? defaultCurrency;
   }
@@ -190,6 +197,12 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
     this.#facts = {
       workflows: hubWorkflows(workspace),
       routines: routineClocks(workspace),
+      providers: new Map(
+        filesOf(workspace, "provider").map(({ value }) => [
+          value.id,
+          providerIsLocal(value) ? "local" : "cloud",
+        ]),
+      ),
       currency: settings?.budget?.currency ?? defaultCurrency,
       monthly: settings?.budget?.monthly,
     };

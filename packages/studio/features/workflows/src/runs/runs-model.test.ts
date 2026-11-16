@@ -7,6 +7,7 @@ const reply = { hubId: "acme", id: "reply" };
 const source = {
   workflow: () => ({ name: "Support reply", stepDescription: () => undefined }),
   routine: () => undefined,
+  providerKind: () => undefined,
   currency: () => "EUR",
 };
 const sourced = (changes: Parameters<typeof runSummary>[0]) => ({

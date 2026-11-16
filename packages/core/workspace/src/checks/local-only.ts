@@ -101,7 +101,7 @@ function harnessIssues(context: CheckContext): WorkspaceIssue[] {
 }
 
 /** Whether a provider runs on this computer; the mock model always does. */
-function providerIsLocal(provider: Provider): boolean {
+export function providerIsLocal(provider: Provider): boolean {
   return provider.local || provider.type === "mock";
 }
 

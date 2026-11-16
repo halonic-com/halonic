@@ -179,6 +179,7 @@ export function memoryRuns(summaries: readonly RunSummary[] = []) {
     workflow: () => ({ name: "Support reply", stepDescription: () => undefined }),
     routine: () => undefined,
     runnableWorkflows: async () => ["reply"],
+    providerKind: () => undefined,
     currency: () => "EUR",
     monthlyBudget: () => undefined,
     subscribe: (listener) => {
