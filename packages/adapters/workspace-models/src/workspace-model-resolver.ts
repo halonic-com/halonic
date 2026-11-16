@@ -17,7 +17,9 @@ import type {
 import {
   callModelName,
   definitionsOf,
+  filesOf,
   type HubDefinitions,
+  isOnThisMachine,
   type LoadedWorkspace,
   type ModelTarget,
   modelPrice,
@@ -45,7 +47,8 @@ export interface WorkspaceModelResolverInput {
 /**
  * The engine's `resolveModel` for one workspace. A call's model is, in order:
  *
- * 1. the agent's unsaved settings from the agent editor, when the request has them;
+ * 1. the agent's unsaved settings from the agent editor, when the request has them
+ *    (in a local-only workspace, only settings whose address is on this computer);
  * 2. the request's `alias`;
  * 3. the `model` of the request's agent;
  * 4. the hub's default model, else the workspace's.
@@ -58,6 +61,7 @@ export interface WorkspaceModelResolverInput {
  *
  * @throws {WorkspaceModelError} from the resolver when the call's model names
  *   an alias the hub doesn't have or a provider the workspace doesn't have,
+ *   unsaved settings point away from this computer in a local-only workspace,
  *   or the provider can't be built (see `workspaceProvider`)
  * @throws RangeError from the resolver when the workspace has no such hub
  *
@@ -73,6 +77,7 @@ export function workspaceModelResolver(
   const providers = new Map<string, LlmProvider>();
   const mocks = new Map<string, Map<string, LlmProvider>>();
   const context = { secrets: input.secrets, http: input.http };
+  const localOnly = filesOf(input.workspace, "workspace")[0]?.value.privacy.localOnly === true;
 
   const definitionsFor = (hubId: string): HubDefinitions => {
     let definitions = hubs.get(hubId);
@@ -132,7 +137,7 @@ export function workspaceModelResolver(
 
   return async (request, scope) => {
     if (request.agent !== undefined) {
-      return unsavedModel(request.agent, context);
+      return unsavedModel(request.agent, { ...context, localOnly });
     }
     const definitions = definitionsFor(request.hubId);
     const name = callModelName(definitions, request);
@@ -194,11 +199,23 @@ function resolvedModel(
   };
 }
 
-/** The model of the agent editor's unsaved settings: a provider of their own, built for this call. */
+/**
+ * The model of the agent editor's unsaved settings: a provider of their own,
+ * built for this call. The settings come from the client, so in a local-only
+ * workspace their `local` flag is not trusted: the address decides, as it
+ * does for the agent host's model route.
+ */
 function unsavedModel(
   settings: ChatAgentSettings,
-  context: { secrets: Secrets; http: HttpClient },
+  context: { secrets: Secrets; http: HttpClient; localOnly: boolean },
 ): ResolvedModel {
+  if (context.localOnly && !isOnThisMachine({ ...settings, options: {} })) {
+    throw new WorkspaceModelError(
+      "not-on-this-machine",
+      modelTexts.notOnThisMachine(settings.model),
+      modelTexts.notOnThisMachineFix(),
+    );
+  }
   const file: ProviderFile = {
     id: settings.type,
     type: settings.type,

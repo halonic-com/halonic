@@ -166,6 +166,64 @@ verifies("cli.workspace-models", () => {
       expect(model.provider.type).toBe("openai");
     });
 
+    describe("in a local-only workspace", () => {
+      const localOnlyFiles = {
+        ...acmeFiles,
+        "workspace.yaml": "id: acme\nname: Acme\nprivacy:\n  localOnly: true\n",
+      };
+
+      it("refuses unsaved settings with an address away from this computer, whatever their local flag says", async () => {
+        const resolve = await resolverFor(localOnlyFiles);
+
+        await expect(
+          resolve(
+            callOf({
+              agent: {
+                type: "openai-compatible",
+                model: "x",
+                baseUrl: "https://host.example/v1",
+                local: true,
+              },
+            }),
+          ),
+        ).rejects.toMatchObject({ code: "not-on-this-machine" });
+      });
+
+      it("keeps unsaved settings with an address on this computer", async () => {
+        const resolve = await resolverFor(localOnlyFiles);
+
+        const model = await resolve(
+          callOf({
+            agent: {
+              type: "openai-compatible",
+              model: "x",
+              baseUrl: "http://localhost:1234/v1",
+              local: true,
+            },
+          }),
+        );
+
+        expect(model).toMatchObject({ model: "x", local: true });
+      });
+
+      it("still lets a workspace that isn't local only use any address", async () => {
+        const resolve = await resolverFor();
+
+        const model = await resolve(
+          callOf({
+            agent: {
+              type: "openai-compatible",
+              model: "x",
+              baseUrl: "https://host.example/v1",
+              local: false,
+            },
+          }),
+        );
+
+        expect(model).toMatchObject({ model: "x", local: false });
+      });
+    });
+
     it("builds each provider once in a run", async () => {
       const resolve = await resolverFor();
       const scope = { runId: "run-1" };
