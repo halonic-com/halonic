@@ -1,5 +1,6 @@
 import type {
   BridgeApprovalDecision,
+  BridgeApprovalRequest,
   BridgeApprovals,
   BridgeProvider,
   BridgeProviderAccess,
@@ -48,8 +49,26 @@ const approvalDecision = portSchema<BridgeApprovalDecision>(
 );
 const secretValue = s.string().nullable();
 
-/** The bridge's recorder, tools and approvals, each a call to Studio, where the engine keeps them. */
-export function studioServices(channel: CallChannel): {
+/**
+ * Who is told when the bridge asks Studio for an approval and when that call
+ * ends, such as the remote gateway's ledger. It only listens: a fault in it is
+ * dropped, never failing the approval.
+ */
+export interface ApprovalObserver {
+  asked(request: BridgeApprovalRequest): void;
+  /** `decision` is `undefined` when the call ended without one: cancelled, or Studio failed. */
+  ended(callId: string, decision: BridgeApprovalDecision | undefined): void;
+}
+
+/**
+ * The bridge's recorder, tools and approvals, each a call to Studio, where the engine keeps them.
+ *
+ * @param observer - told of each approval the bridge asks for
+ */
+export function studioServices(
+  channel: CallChannel,
+  observer?: ApprovalObserver,
+): {
   recorder: BridgeRecorder;
   tools: BridgeTools;
   approvals: BridgeApprovals;
@@ -68,13 +87,30 @@ export function studioServices(channel: CallChannel): {
         checked(toolResult, await channel.call(studioMethods.callTool, { name, args }, { signal })),
     },
     approvals: {
-      request: async (request, { signal }) =>
-        checked(
-          approvalDecision,
-          await channel.call(studioMethods.requestApproval, request, { signal }),
-        ),
+      request: async (request, { signal }) => {
+        listen(() => observer?.asked(request));
+        let decision: BridgeApprovalDecision | undefined;
+        try {
+          decision = checked(
+            approvalDecision,
+            await channel.call(studioMethods.requestApproval, request, { signal }),
+          );
+          return decision;
+        } finally {
+          listen(() => observer?.ended(request.callId, decision));
+        }
+      },
     },
   };
+}
+
+/** Runs what an observer does, so that a fault in it never breaks the call it listens to. */
+function listen(tell: () => void): void {
+  try {
+    tell();
+  } catch {
+    // The observer only records; the approval goes on without it.
+  }
 }
 
 /**

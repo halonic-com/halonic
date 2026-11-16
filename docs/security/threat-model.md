@@ -306,7 +306,9 @@ a second port next to the host's own, with its own checks (`Host`, no `Origin`,
 a WebSocket upgrade, one parser for every frame), and it takes no launch token
 yet, so anything on this computer could use it. That is why only tests start
 it until pairing (phase B) gives the person a switch. It can list the host's runs, watch their events and
-send a prompt, and nothing else: no command, file or secret. The host, not the
+send a prompt, and nothing else: no command, file or secret of its own. A
+prompt steers a live agent run, though, so the agent can do whatever its run
+allows without asking for approval. The host, not the
 phone, judges an approval `risky` (every tool, for now), and the host refuses
 every approval a phone answers, until approvals reach the engine in a follow-up
 and the person can allow it on the desktop, which nothing offers yet. Its events are the narrow ones (prompt, answers,

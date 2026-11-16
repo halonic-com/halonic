@@ -6,16 +6,17 @@ import type { RunLedger } from "./run-ledger.ts";
 
 /**
  * The host's remote gateway: starts the listener when the setting turns it on
- * and closes it again (requirement `agent-host.remote-gateway`).
+ * and closes it again (requirement `agent-host.remote-gateway`). Without a
+ * ledger, which the host makes only when the gateway is on, it stays off.
  */
 export class RemoteGateway {
   #listener: GatewayListener | undefined;
 
   readonly #settings: GatewaySettings;
-  readonly #ledger: RunLedger;
+  readonly #ledger: RunLedger | undefined;
   readonly #runs: RunTable;
 
-  constructor(settings: GatewaySettings, ledger: RunLedger, runs: RunTable) {
+  constructor(settings: GatewaySettings, ledger: RunLedger | undefined, runs: RunTable) {
     this.#settings = settings;
     this.#ledger = ledger;
     this.#runs = runs;
@@ -28,7 +29,7 @@ export class RemoteGateway {
    * @returns the port it listens on, `undefined` when it isn't listening
    */
   async start(log: (text: string) => void): Promise<number | undefined> {
-    if (!this.#settings.enabled) return undefined;
+    if (!this.#settings.enabled || this.#ledger === undefined) return undefined;
     try {
       this.#listener = await startGatewayListener({
         source: hostGatewaySource(this.#ledger, this.#runs),
