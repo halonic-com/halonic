@@ -127,7 +127,7 @@ verifies("runs.list", () => {
         "Run 9x8y7z, Support reply, stopped at its budget, budget reached in Draft after 2 min. Started by you, in the terminal, 10:40.",
         "Run t1t1t1, Support reply, waiting, waiting until 11:40. Started by a test case, 10:40, test run.",
         "# Yesterday",
-        "Run 4f2a1b, Support reply, done, sent nothing. Started by you, in the terminal, 16:00.",
+        "Run 4f2a1b, Support reply, done, finished in Draft. Started by you, in the terminal, 16:00.",
       ]);
     });
 
@@ -191,7 +191,7 @@ verifies("runs.list", () => {
       const { root } = await openPage(fakeSource([done, finishedTest]).source);
       expect(shown(root)).toEqual([
         "# Yesterday",
-        "Run 4f2a1b, Support reply, done, sent nothing. Started by you, in the terminal, 16:00.",
+        "Run 4f2a1b, Support reply, done, finished in Draft. Started by you, in the terminal, 16:00.",
       ]);
       const testRuns = control(root, "Test runs");
       expect(testRuns.getAttribute("aria-pressed")).toBe("false");
@@ -207,7 +207,7 @@ verifies("runs.list", () => {
       await settled();
       expect(shown(root)).toEqual([
         "# Today",
-        "Run 7k2m9p, Support reply, done, sent nothing. Started by you, in the terminal, 10:40.",
+        "Run 7k2m9p, Support reply, done, finished in Draft. Started by you, in the terminal, 10:40.",
       ]);
     });
   });
@@ -324,7 +324,7 @@ verifies("runs.row-columns", () => {
     expect(columnsOf(root, "e2e2e2")).toEqual([
       "Done",
       "e2e2e2",
-      "Support replyTestSent nothing",
+      "Support replyTestFinished in Draft",
       "A test case",
       "10:40took 2 min",
     ]);

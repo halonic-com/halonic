@@ -45,8 +45,9 @@ export class WorkspaceRequests implements InboxRequests {
 
   async offered(): Promise<readonly RequestWorkflow[]> {
     if (this.#parts.engine === undefined) return [];
-    return (await this.#requestable()).map(({ hubId, id, label, description }) => ({
+    return (await this.#requestable()).map(({ hubId, id, name, label, description }) => ({
       key: keyOf(hubId, id),
+      name,
       label,
       description,
     }));
@@ -86,6 +87,7 @@ export class WorkspaceRequests implements InboxRequests {
         {
           hubId: file.hub,
           id: file.value.id,
+          name: file.value.name,
           label: start.label,
           field: start.field,
           description: file.value.description,

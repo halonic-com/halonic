@@ -8,13 +8,13 @@ afterEach(unmountAll);
 
 verifies("runs.run-view.receipt-summary", () => {
   it("draws the summary line under the receipt's heading", () => {
-    const root = render(<Receipt summary="Finished in 2 min · sent nothing" approvals={[]} />);
+    const root = render(<Receipt summary="Finished in 2 min · asked you once" approvals={[]} />);
     expect(root.querySelector("h2")?.textContent).toBe("Receipt");
-    expect(root.querySelector("p")?.textContent).toBe("Finished in 2 min · sent nothing");
+    expect(root.querySelector("p")?.textContent).toBe("Finished in 2 min · asked you once");
   });
 
   it("hides the Approvals section when the run asked for none", () => {
-    const root = render(<Receipt summary="Finished in 2 min · sent nothing" approvals={[]} />);
+    const root = render(<Receipt summary="Finished in 2 min · asked you once" approvals={[]} />);
     expect(root.querySelector("h3")).toBeNull();
   });
 

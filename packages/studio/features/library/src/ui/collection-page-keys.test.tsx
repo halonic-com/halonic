@@ -217,7 +217,7 @@ verifies("library.collection-grid", () => {
         label.textContent?.startsWith("open"),
       ) as HTMLElement;
       await act(async () => chip.click());
-      expect(root.textContent).toContain("No records in “open”.");
+      expect(root.textContent).toContain("No records match this view.");
       expect(root.textContent).not.toContain("Add record");
     });
   });

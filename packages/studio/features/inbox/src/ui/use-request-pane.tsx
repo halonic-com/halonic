@@ -79,7 +79,7 @@ export function useRequestPane(options: {
       onStarted?.(started.runId);
       toasts?.show({
         tone: "success",
-        title: `${workflow.label} started`,
+        title: `${workflow.name} started`,
         ...(openRun && {
           action: { label: "Open run", onClick: () => openRun(started.hubId, started.runId) },
         }),

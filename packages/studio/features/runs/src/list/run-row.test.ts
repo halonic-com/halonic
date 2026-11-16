@@ -68,11 +68,11 @@ verifies("runs.row", () => {
       expect(child.line).toBe("Waiting for child run 7k2m9p");
     });
 
-    it("says a finished run without a tool call sent nothing, then its cost", () => {
+    it("leaves the sent part out of a finished run without a tool call, so it opens with its cost", () => {
       const row = rowOf({ status: "completed", cost: 0.004 }, false);
 
       expect(row.chip).toEqual({ word: "Done", tone: "success", dot: false });
-      expect(row.line).toBe("Sent nothing · estimated cost €0.004");
+      expect(row.line).toBe("Estimated cost €0.004");
     });
 
     it("names the calls without a price after the cost, and never shows €0.00", () => {
@@ -130,7 +130,7 @@ verifies("runs.row-columns", () => {
     );
     expect(ended.took).toBe("took 3 min");
     expect(ended.label).toBe(
-      "Run 01jd8q, Support reply, done, sent nothing. Started by a test case, 10:40, test run.",
+      "Run 01jd8q, Support reply, done, finished in Draft. Started by a test case, 10:40, test run.",
     );
     expect(failed.label).toBe(
       "Run 01jd8q, Support reply, failed in the step Draft. Started by you, in the terminal, 10:40.",

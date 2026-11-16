@@ -2,6 +2,7 @@ import type { RunSummary } from "@halonicjs/events";
 import { Button, List, type ListRow, StatusChip, usePresentation } from "@halonicjs/studio-kit";
 import type { HomeCardProps } from "@halonicjs/studio-shell";
 import { use, useCallback, useSyncExternalStore } from "react";
+import { SampleHintService } from "../api.ts";
 import { listRows } from "../list/list-rows.ts";
 import { recentRuns } from "../list/recent-runs.ts";
 import type { RunRow } from "../list/run-row.ts";
@@ -15,6 +16,7 @@ export function RecentRunsCard({ context }: HomeCardProps) {
   return (
     <RecentRunsView
       list={context.services.get(RunsListService)}
+      isSample={context.services.find(SampleHintService)?.isSample() === true}
       {...(openPlace === undefined ? {} : { openRuns: () => openPlace("runs") })}
       {...(openItem === undefined
         ? {}
@@ -28,6 +30,8 @@ export function RecentRunsCard({ context }: HomeCardProps) {
 /** Props for {@link RecentRunsView}. */
 export interface RecentRunsViewProps {
   readonly list: RunsList;
+  /** Whether the workspace is the Acme sample, where a run starts from the Inbox. */
+  readonly isSample?: boolean;
   /** Opens the Runs place, for **See all runs** on a phone; without it the row isn't there. */
   readonly openRuns?: () => void;
   /** Opens a run's page in the active tab; without it a row can't open. */
@@ -43,13 +47,15 @@ export interface RecentRunsViewProps {
  * place's signal, which the shell draws. On a phone, **See all runs** follows the rows. With no
  * runs: "No runs yet. When an agent or workflow runs, you'll see it here." and, so Home doesn't end on
  * nothing, how to start one from the command line, naming the first workflow to run, or saying the
- * workspace has none (HAL-10128).
+ * workspace has none (HAL-10128). In the
+ * Acme sample the one line says to start one from the Inbox, with no command line note.
  *
  * The section shows its skeleton until the first list loads, and its error with **Try again** if
  * that load fails; a later failed load keeps the rows as they were.
  */
 export function RecentRunsView({
   list,
+  isSample = false,
   openRuns,
   openRun,
   now = () => new Date(),
@@ -74,9 +80,9 @@ export function RecentRunsView({
         label={homeWords.label}
         rows={shown.map(homeRow)}
         {...(open === undefined ? {} : { onOpen: open })}
-        empty={{ title: homeWords.empty, plain: true }}
+        empty={{ title: isSample ? homeWords.sampleEmpty : homeWords.empty, plain: true }}
       />
-      {shown.length === 0 ? (
+      {shown.length === 0 && !isSample ? (
         <p className="m-0 px-4 text-fg-muted">
           {state.workflows?.length === 0 ? (
             homeWords.noWorkflowNote

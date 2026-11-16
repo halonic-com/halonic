@@ -60,13 +60,13 @@ verifies("runs.run-view.receipt-summary", () => {
     );
   });
 
-  it("says sent nothing only for a run without a tool call, and how often it asked", () => {
+  it("leaves the sent part out for a run without a tool call, and says how often it asked", () => {
     const waiting: RunEventBody = {
       type: "run.waiting",
       state: "review",
       events: ["approve"],
     } as RunEventBody;
-    expect(line(done, [waiting])).toBe("Finished in 2 min · sent nothing · asked you once");
+    expect(line(done, [waiting])).toBe("Finished in 2 min · asked you once");
   });
 
   it("says so far once after the last thing a live run sent, and has no cost for a free run", () => {
@@ -95,12 +95,12 @@ verifies("runs.run-view.receipt-summary", () => {
 
   it("opens a run that couldn't try a step with the step, as its row does, not as running", () => {
     expect(line({ status: "cant-try", endedAt: minutesLater(1), state: "draft" }, [])).toBe(
-      "In Draft · sent nothing",
+      "In Draft",
     );
   });
 
   it("leaves out the cost of a run with no priced call and no unpriced one", () => {
-    expect(line({ ...done, cost: 0 }, [])).toBe("Finished in 2 min · sent nothing");
+    expect(line({ ...done, cost: 0 }, [])).toBe("Finished in 2 min");
   });
 });
 

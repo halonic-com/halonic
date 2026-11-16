@@ -21,7 +21,7 @@ export interface ReceiptProps {
  * Lines are plain text, never Markdown or links (RCPT-3.3).
  *
  * @example
- * <Receipt summary="Finished in 2 min · sent nothing" approvals={[]} />
+ * <Receipt summary="Finished in 2 min · asked you once" approvals={[]} />
  */
 export function Receipt({
   summary,

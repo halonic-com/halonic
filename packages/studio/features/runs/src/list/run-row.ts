@@ -94,7 +94,7 @@ const chipLooks: Readonly<Record<RunStanding, Omit<RunChip, "word">>> = {
  *
  * @example
  * runRow({ summary, madeToolCalls: false }, { workflow, routine: undefined, currency: "EUR", now: new Date() });
- * // { shortId: "01jd8q", chip: { word: "Done", … }, line: "Sent nothing · estimated cost €0.004", startedBy: "You, with Run", … }
+ * // { shortId: "01jd8q", chip: { word: "Done", … }, line: "Estimated cost €0.004", startedBy: "You, with Run", … }
  */
 export function runRow(run: SourcedRun, context: RowContext): RunRow {
   const { summary } = run;
@@ -227,16 +227,11 @@ export function waitingLine(wait: RunWait, step: string, now: Date): string {
 }
 
 /**
- * A finished run, never an empty line: "Sent nothing" only for a run without
- * a tool call, since the log doesn't record what a tool sent yet; then the
- * cost. With neither, the step it finished in.
+ * A finished run, never an empty line: its cost, or with no cost the step it
+ * finished in. A run without a tool call has no sent part, never "Sent".
  */
 function doneLine(run: SourcedRun, step: string, currency: string): string {
-  const parts = [
-    ...(run.madeToolCalls ? [] : [rowLineWords.sentNothing]),
-    ...costParts(run.summary, currency),
-  ];
-  const line = parts.join(lineSeparator);
+  const line = costParts(run.summary, currency).join(lineSeparator);
   if (line === "") {
     return rowLineWords.finishedIn(step);
   }

@@ -28,7 +28,7 @@ import {
 import { pluginsFeature } from "@halonicjs/studio-feature-plugins";
 import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
 import { runsFeature } from "@halonicjs/studio-feature-runs";
-import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
+import { RunsSourceService, SampleHintService } from "@halonicjs/studio-feature-runs/api";
 import { settingsFeature } from "@halonicjs/studio-feature-settings";
 import {
   AssistantWorkspaceService,
@@ -91,6 +91,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     AssistantWorkspaceService,
     WorkspacePageService,
     SampleWorkspaceService,
+    SampleHintService,
     TrustedSourcesService,
   ],
 };

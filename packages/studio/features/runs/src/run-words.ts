@@ -27,7 +27,6 @@ export const rowLineWords = {
   waitingUntil: (time: string) => `Waiting until ${time}`,
   waitingForChildRun: (shortId: string) => `Waiting for child run ${shortId}`,
   waitingIn: (step: string) => `Waiting in ${step}`,
-  sentNothing: "Sent nothing",
   finishedIn: (step: string) => `Finished in ${step}`,
   /** The failed banner's first sentence, until the banners by cause (HAL-1845). */
   failedIn: (workflow: string, step: string) => `${workflow} failed in the step ${step}.`,
@@ -120,7 +119,7 @@ export const costWords = {
     calls === 1 ? "(+1 call without a price)" : `(+${calls} calls without a price)`,
 };
 
-/** What joins the parts of a line: "Sent nothing · estimated cost €0.004". */
+/** What joins the parts of a line: "Estimated cost €0.004". */
 export const lineSeparator = " · ";
 
 /**
@@ -395,7 +394,6 @@ export const detailsWords = {
 export const summaryWords = {
   runningIn: (step: string) => `Running in ${step}`,
   failedIn: (step: string, took: string) => `Failed in ${step} after ${took}`,
-  sentNothing: "sent nothing",
   askedYou: (times: string) => `asked you ${times}`,
   soFar: (phrase: string) => `${phrase} so far`,
   counted: (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`,
@@ -466,6 +464,8 @@ export const homeWords = {
     "halonic run",
     ".",
   ],
+  /** The empty line in the Acme sample, where a run starts from the Inbox, not the command line. */
+  sampleEmpty: "No runs yet. Start one from the Inbox, and it shows up here.",
   /** The same note when the workspace has no workflow yet (HAL-10128). */
   noWorkflowNote:
     "This workspace has no workflows yet. Add one in Workflows, then start it from the command line.",

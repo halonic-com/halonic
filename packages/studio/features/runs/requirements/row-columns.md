@@ -13,7 +13,7 @@ The Runs list shall lay its rows out in columns, in `halonic runs`' order: the s
   then it hears "Run 01jd8q, Support reply, needs you, waiting for 2 approvals. Started by you, in the terminal, 10:40.".
 - Given a finished test run that started at 10:40 and took 2 minutes,
   when its row is shown,
-  then it reads Done, its short id, Support reply with the Test tag over "Sent nothing", and "10:40" over "took 2 min".
+  then it reads Done, its short id, Support reply with the Test tag over "Finished in Draft", and "10:40" over "took 2 min".
 - Given a run that failed in the step Draft,
   when its row is shown,
   then its line "Support reply failed in the step Draft." is in the danger colour, with the Failed chip.

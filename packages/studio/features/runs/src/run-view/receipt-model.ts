@@ -96,11 +96,11 @@ function timesInWords(times: number): string {
 
 /**
  * What a run sent, one part per verb in call order, then a "may have" part per
- * verb for calls that broke off; "sent nothing" only for a run without a tool
- * call (cli-output 3.4, "What it sent"). The same words as the CLI's receipt.
+ * verb for calls that broke off; no part at all for a run without a tool call,
+ * which never says "Sent" (Studio design 4.5). The CLI's receipt still says "sent nothing".
  */
 export function sendsInWords(sends: RunSends): string[] {
-  if (!sends.madeToolCalls) return [summaryWords.sentNothing];
+  if (!sends.madeToolCalls) return [];
   return [
     ...sends.sent.map(groupInWords),
     ...sends.maySend.map((group) => `may have ${groupInWords(group)}`),

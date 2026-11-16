@@ -120,6 +120,7 @@ const chipTones: Record<NonNullable<SandboxView["chip"]>["tone"], StatusChipTone
   attention: "attention",
   neutral: "neutral",
   success: "success",
+  warning: "warning",
 };
 
 const marks: Record<SandboxStep["mark"], string> = { done: "✓", doing: "◌", waiting: "○" };
