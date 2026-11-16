@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { CollectionColumn } from "../collection-host.ts";
 import type { CollectionModel } from "../collection-model.ts";
+import { collectionWords } from "../collection-words.ts";
 
 /** The new row's id in the grid's navigation: no record has it, as a record's id has no `~`. */
 export const newRowId = "~new";
@@ -11,40 +12,77 @@ export interface CellRef {
   readonly field: string;
 }
 
+/** The cell being edited and the text its editor opens with, when a typed character replaced the value. */
+export interface OpenCell extends CellRef {
+  readonly seed?: string;
+}
+
 /** What the grid's cells and Remove dialog read and call. */
 export interface RecordEdits {
-  readonly editing: CellRef | undefined;
+  readonly editing: OpenCell | undefined;
   readonly saveFailed: CellRef | undefined;
   readonly addFailed: boolean;
   readonly removing: string | undefined;
   readonly removeFailed: boolean;
   readonly removeBusy: boolean;
+  /** What a screen reader hears after a record was added or removed. */
+  readonly announcement: string;
   readonly stopEditing: () => void;
-  /** Opens the cell's editor; a yes/no cell has none and flips instead. */
-  readonly start: (row: string, field: CollectionColumn, value: unknown) => void;
+  /**
+   * Opens the cell's editor; a yes/no cell has none and flips instead. With `seed` the editor
+   * starts with that text instead of the value.
+   */
+  readonly start: (row: string, field: CollectionColumn, value: unknown, seed?: string) => void;
+  /** Empties the cell; in the new row, only what was typed there. */
+  readonly clear: (row: string, field: CollectionColumn) => Promise<void>;
   readonly commit: (row: string, field: CollectionColumn, text: string) => Promise<void>;
   readonly askRemove: (row: string) => void;
   readonly cancelRemove: () => void;
   readonly confirmRemove: (row: string) => Promise<void>;
 }
 
+/** What the grid does after the edits it can't see: where focus goes once a record is added. */
+export interface RecordEditsOptions {
+  readonly onAdded: () => void;
+}
+
+/** The ids of the current rows. */
+function rowIds(model: CollectionModel): string[] {
+  return model.state.grid?.rows.map((row) => row.id) ?? [];
+}
+
 /** The grid's edit state: which cell is open, what failed, and the Remove dialog's. */
-export function useRecordEdits(model: CollectionModel): RecordEdits {
-  const [editing, setEditing] = useState<CellRef | undefined>(undefined);
+export function useRecordEdits(
+  model: CollectionModel,
+  { onAdded }: RecordEditsOptions,
+): RecordEdits {
+  const [editing, setEditing] = useState<OpenCell | undefined>(undefined);
+  const [announcement, setAnnouncement] = useState("");
   const [saveFailed, setSaveFailed] = useState<CellRef | undefined>(undefined);
   const [addFailed, setAddFailed] = useState(false);
   const [removing, setRemoving] = useState<string | undefined>(undefined);
   const [removeFailed, setRemoveFailed] = useState(false);
   const [removeBusy, setRemoveBusy] = useState(false);
 
+  /** Keeps what was typed in the new row and adds the record when that completes it. */
+  async function addFrom(field: CollectionColumn, text: string): Promise<void> {
+    model.typeNew(field.name, text);
+    setAddFailed(false);
+    const before = rowIds(model);
+    const outcome = await model.addNew();
+    if (outcome === "failed") setAddFailed(true);
+    if (outcome !== "added") return;
+    const added = rowIds(model).find((id) => !before.includes(id));
+    setAnnouncement(
+      added === undefined ? collectionWords.addedRecord : collectionWords.added(added),
+    );
+    onAdded();
+  }
+
   async function commit(row: string, field: CollectionColumn, text: string): Promise<void> {
     setEditing(undefined);
-    if (row === newRowId) {
-      model.typeNew(field.name, text);
-      setAddFailed(false);
-      if ((await model.addNew()) === "failed") setAddFailed(true);
-      return;
-    }
+    if (row === newRowId) return addFrom(field, text);
+    setAnnouncement("");
     setSaveFailed(undefined);
     model.editing(row, field.name);
     const saved = await model.saveCell(row, field.name, text);
@@ -53,7 +91,7 @@ export function useRecordEdits(model: CollectionModel): RecordEdits {
     if (!saved && !refused && !rowRemoved) setSaveFailed({ row, field: field.name });
   }
 
-  function start(row: string, field: CollectionColumn, value: unknown): void {
+  function start(row: string, field: CollectionColumn, value: unknown, seed?: string): void {
     if (field.computed) return;
     if (field.type === "boolean") {
       // A new row's yes/no is the text typed so far; a record's is its value.
@@ -63,7 +101,16 @@ export function useRecordEdits(model: CollectionModel): RecordEdits {
     }
     model.editing(row, field.name);
     setSaveFailed(undefined);
-    setEditing({ row, field: field.name });
+    setEditing(seed === undefined ? { row, field: field.name } : { row, field: field.name, seed });
+  }
+
+  async function clear(row: string, field: CollectionColumn): Promise<void> {
+    if (field.computed) return;
+    if (row === newRowId) {
+      model.typeNew(field.name, "");
+      return;
+    }
+    await commit(row, field, "");
   }
 
   async function confirmRemove(row: string): Promise<void> {
@@ -72,8 +119,10 @@ export function useRecordEdits(model: CollectionModel): RecordEdits {
     setRemoveFailed(false);
     const removed = await model.remove(row);
     setRemoveBusy(false);
-    if (removed) setRemoving(undefined);
-    else setRemoveFailed(true);
+    if (removed) {
+      setAnnouncement(collectionWords.removed(row));
+      setRemoving(undefined);
+    } else setRemoveFailed(true);
   }
 
   return {
@@ -83,8 +132,10 @@ export function useRecordEdits(model: CollectionModel): RecordEdits {
     removing,
     removeFailed,
     removeBusy,
+    announcement,
     stopEditing: () => setEditing(undefined),
     start,
+    clear,
     commit,
     askRemove: (row) => {
       setRemoveFailed(false);

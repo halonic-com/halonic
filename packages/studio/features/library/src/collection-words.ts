@@ -25,6 +25,12 @@ export const collectionWords = {
   removing: "Removing…",
   removeTitle: (row: string) => `Remove ${row}?`,
   removeFailed: "Couldn't remove the record.",
+  added: (row: string) => `Added ${row}.`,
+  addedRecord: "Added a record.",
+  removed: (row: string) => `Removed ${row}.`,
+  noRecords: "No records yet.",
+  addRecord: "Add record",
+  noneInView: (view: string) => `No records in “${view}”.`,
   usedBy: "Used by",
   notUsed: "No agent uses this collection yet.",
 } as const;
