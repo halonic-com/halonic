@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { refreshTokenName } from "@halonicjs/google-setup";
 import { encodeBase64url } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
 import { googleRoutes } from "./google-routes.ts";

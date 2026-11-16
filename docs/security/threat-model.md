@@ -346,6 +346,14 @@ What the callback answers to, in relay mode as on the host's own port:
   (S256), and the verifier stays in the host's memory, so the code is useless
   without it. The pending sign-in goes with the host: a restart ends it, and
   the page says the link is no longer valid.
+- **A flood of callback connections keeps the relay busy or blocks a real
+  sign-in.** Any local program can open the callback without the token. The
+  relay holds at most 4 such connections at once, closes one whose head is not
+  whole after 5 seconds and any of them after 30 seconds, so a slow or idle
+  client frees its place soon (`studio.src-tauri.crates.agent-host.relay-callback`).
+  While 4 are open, a real redirect can be refused until one closes, and the
+  user starts the sign-in again. This is a nuisance, not a way in: nothing
+  reaches the host or its memory beyond the one filtered head.
 - **Request smuggling through the relay's narrow filter.** The relay passes
   exactly the bytes up to the first blank line and stops reading the client;
   the host answers with `Connection: close`, so the connection ends with the

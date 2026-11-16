@@ -124,7 +124,7 @@ export async function run(
     if (given.roots.length > 0) io.writeError(text);
   };
   const lock = profileFolder === undefined ? null : await takeHostLock(profileFolder, warn);
-  const sharedFolders = args.includes("--wsl-shared-folders") ? WSL_SHARED_FOLDERS : [];
+  const sharedFolders = sharedFoldersOf(args);
   const sandbox = makeSandbox(lock === null ? [] : given.roots, sharedFolders);
   // Right after the lock is taken, so a host starting next skips its sweep
   // before any session of ours could lose a grant to it.
@@ -141,7 +141,7 @@ export async function run(
     places,
     profileGoogleSetup(profileFolder, places.workspaceRoots),
     optionalProfileOf(profileFolder),
-    args.includes("--stdio") ? relayPortOf(args) : undefined,
+    relayPortForServing(args),
   );
   try {
     if (args.includes("--stdio")) return await serveOverFrames(args, io, host);
@@ -153,6 +153,16 @@ export async function run(
       io.writeError(`The host lock couldn't be released: ${String(error)}\n`);
     });
   }
+}
+
+/** The folders every session denies: the WSL distro's shared ones when the launcher says the host runs there. */
+function sharedFoldersOf(args: readonly string[]): readonly string[] {
+  return args.includes("--wsl-shared-folders") ? WSL_SHARED_FOLDERS : [];
+}
+
+/** The relay's port, which only serving over frames uses for the sign-in redirect. */
+function relayPortForServing(args: readonly string[]): number | undefined {
+  return args.includes("--stdio") ? relayPortOf(args) : undefined;
 }
 
 /** Runs the `--sandbox-*` command in the arguments, or returns `undefined` when there is none. */
