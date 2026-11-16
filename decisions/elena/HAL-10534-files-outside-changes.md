@@ -2,7 +2,6 @@
 
 - Approval: HAL-10832
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gX74/25QOOWfrldTwTx8Scu67E/lfYjeNQVkuN4UHZvhxQg7OwAxz95YS+tjrQPL55x/aRMMCl6YYCmgz4lrAA==
 
 ## What changes
 
@@ -23,3 +22,4 @@ With the old behaviour, one held file stopped every file after it in the loop fr
 
 - app.workspace-save-unchanged
 - app.workspace-delete-to-trash
+- packages/core/app/src/workspace-files.test.ts
