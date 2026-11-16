@@ -3,6 +3,7 @@ import {
   type KeyboardPlatform,
   type Shell,
   StudioWindow,
+  type WelcomeSampleProblem,
   WelcomeWindow,
   type WindowActions,
 } from "@halonicjs/studio-shell";
@@ -13,6 +14,7 @@ import {
   type NewWorkspaceHost,
 } from "../new-workspace/new-workspace-dialog.tsx";
 import { createdLine } from "../new-workspace/new-workspace-text.ts";
+import type { SampleHost } from "../sample/sample-host.ts";
 import { WorkspaceTrustBadge } from "../trust/workspace-trust-badge.tsx";
 import { CloseWorkspaceDialog } from "./close-workspace-dialog.tsx";
 import { workspaceMenu } from "./workspace-menu.ts";
@@ -36,6 +38,8 @@ export interface WorkspaceWindowProps {
    * **New workspace…** row or button.
    */
   readonly newWorkspace?: NewWorkspaceHost;
+  /** What **Try the Acme sample** needs from the app. Without it Welcome has no such button. */
+  readonly sample?: SampleHost;
 }
 
 /**
@@ -54,10 +58,24 @@ export function WorkspaceWindow({
   language,
   regionFormat,
   newWorkspace,
+  sample,
 }: WorkspaceWindowProps) {
   const { open } = switcher;
   const [creating, setCreating] = useState(false);
   const askNewWorkspace = newWorkspace === undefined ? undefined : () => setCreating(true);
+  const trySample =
+    sample === undefined
+      ? undefined
+      : async (): Promise<WelcomeSampleProblem | undefined> => {
+          const made = await sample.create();
+          if (made.kind === "cant") return { folder: made.folder, reason: made.reason };
+          const toast = createdLine(
+            made.name,
+            made.trust.kind === "not-saved" ? made.trust.reason : undefined,
+          );
+          await switcher.fromMenu(() => switcher.openLocation(made.folder, toast));
+          return undefined;
+        };
   const shown = useSyncExternalStore(
     (onChange) => open.subscribe(onChange),
     () => open.shown,
@@ -125,6 +143,7 @@ export function WorkspaceWindow({
           language={language}
           onOpenFolder={() => switcher.pickAndOpen()}
           onNewWorkspace={askNewWorkspace}
+          onTrySample={trySample}
           recent={{
             workspaces: switcher.recent.list(),
             onOpen: (location) => switcher.openLocation(location),

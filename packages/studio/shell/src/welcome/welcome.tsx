@@ -8,6 +8,7 @@ import {
   WelcomeRecent,
   type WelcomeRecentWorkspace,
 } from "./welcome-recent.tsx";
+import { cantCreateSampleLine, TrySample, type WelcomeSampleProblem } from "./welcome-sample.tsx";
 
 /** The Welcome screen's Recent list and what its rows do. */
 export interface WelcomeRecentList {
@@ -30,6 +31,11 @@ export interface WelcomeProps {
    * Opens the New workspace dialog; without it Welcome has no **New workspace…** button.
    */
   readonly onNewWorkspace?: (() => void) | undefined;
+  /**
+   * Creates the Acme sample and opens it. Resolves with the problem when it couldn't, else with
+   * `undefined`; without it Welcome has no **Try the Acme sample** action.
+   */
+  readonly onTrySample?: (() => Promise<WelcomeSampleProblem | undefined>) | undefined;
   /** The workspaces remembered on this device; without it, or while it's empty, none show. */
   readonly recent?: WelcomeRecentList | undefined;
 }
@@ -41,7 +47,10 @@ interface ShownProblem {
 }
 
 /** What is opening: the picked folder, or the Recent row in that folder. */
-type Opening = { readonly from: "picker" } | { readonly from: "recent"; readonly location: string };
+type Opening =
+  | { readonly from: "picker" }
+  | { readonly from: "sample" }
+  | { readonly from: "recent"; readonly location: string };
 
 /**
  * The window while no workspace is open (`shell.welcome.open-action`, microcopy 3.2): "Halonic
@@ -61,9 +70,10 @@ type Opening = { readonly from: "picker" } | { readonly from: "recent"; readonly
  * @example
  * <Welcome onOpenFolder={openFolder} recent={{ workspaces, onOpen, onRemove }} />
  */
-export function Welcome({ onOpenFolder, onNewWorkspace, recent }: WelcomeProps) {
+export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: WelcomeProps) {
   const [opening, setOpening] = useState<Opening | undefined>(undefined);
   const [shownProblem, setShownProblem] = useState<ShownProblem | undefined>(undefined);
+  const [sampleProblem, setSampleProblem] = useState<WelcomeSampleProblem | undefined>(undefined);
   /** Where focus goes once a removed row is gone: a row's location, or `null` for Open folder. */
   const [focusAfterRemove, setFocusAfterRemove] = useState<string | null | undefined>(undefined);
   const openButton = useRef<HTMLButtonElement>(null);
@@ -97,11 +107,26 @@ export function Welcome({ onOpenFolder, onNewWorkspace, recent }: WelcomeProps) 
     }
     setOpening(what);
     setShownProblem(undefined);
+    setSampleProblem(undefined);
     try {
       const problem = await open();
       setShownProblem(
         problem === undefined ? undefined : { problem, fromRecent: what.from === "recent" },
       );
+    } finally {
+      setOpening(undefined);
+    }
+  };
+
+  const trySample = async () => {
+    if (opening !== undefined || onTrySample === undefined) {
+      return;
+    }
+    setOpening({ from: "sample" });
+    setShownProblem(undefined);
+    setSampleProblem(undefined);
+    try {
+      setSampleProblem(await onTrySample());
     } finally {
       setOpening(undefined);
     }
@@ -119,6 +144,11 @@ export function Welcome({ onOpenFolder, onNewWorkspace, recent }: WelcomeProps) 
   };
 
   const problem = shownProblem?.problem;
+  const hasRecent = recent !== undefined && recent.workspaces.length > 0;
+  const sample =
+    onTrySample === undefined ? null : (
+      <TrySample quiet={hasRecent} busy={opening?.from === "sample"} onPress={trySample} />
+    );
   const offersRemove =
     shownProblem?.fromRecent === true && problem?.kind === "not_found" && recent !== undefined;
 
@@ -147,8 +177,10 @@ export function Welcome({ onOpenFolder, onNewWorkspace, recent }: WelcomeProps) 
             New workspace…
           </Button>
         )}
+        {hasRecent ? null : sample}
         <p role="alert" className="text-body text-danger break-words empty:hidden">
           {problem === undefined ? null : `Can't open ${problem.folder}: ${problem.reason}`}
+          {sampleProblem === undefined ? null : cantCreateSampleLine(sampleProblem)}
         </p>
         {offersRemove ? (
           <button
@@ -176,6 +208,7 @@ export function Welcome({ onOpenFolder, onNewWorkspace, recent }: WelcomeProps) 
             rowRef={rowRef}
           />
         )}
+        {hasRecent ? sample : null}
       </div>
     </div>
   );
