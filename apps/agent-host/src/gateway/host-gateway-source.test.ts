@@ -36,7 +36,7 @@ function waitingRun() {
     args: { command: "rm -r build" },
     callId: "call-9",
   });
-  return { source: hostGatewaySource(ledger, runs), run, id };
+  return { source: hostGatewaySource(ledger, runs), run, id, ledger };
 }
 
 verifies("agent-host.remote-gateway", () => {
