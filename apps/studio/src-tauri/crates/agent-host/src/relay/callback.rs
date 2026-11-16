@@ -127,6 +127,11 @@ fn is_allowed_header(line: &[u8]) -> bool {
         return false;
     };
     let name = line[..colon].trim_ascii_end();
+    // A name with a space or other non-token byte is not a header the host's
+    // parser has to read the way the relay does, so the relay refuses it.
+    if !is_token(name) {
+        return false;
+    }
     let value = line[colon + 1..].trim_ascii();
     let refused = REFUSED_HEADERS
         .iter()
@@ -136,6 +141,14 @@ fn is_allowed_header(line: &[u8]) -> bool {
             .split(|&byte| byte == b',')
             .any(|option| option.trim_ascii().eq_ignore_ascii_case(b"upgrade"));
     !refused && !upgrades
+}
+
+/// A non-empty header name of HTTP token characters (RFC 9110, 5.6.2).
+fn is_token(name: &[u8]) -> bool {
+    !name.is_empty()
+        && name
+            .iter()
+            .all(|&byte| byte.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&byte))
 }
 
 #[cfg(test)]
@@ -264,5 +277,21 @@ mod tests {
         assert_eq!(callback(&sent), Judgement::Refused);
         let ended = format!("{sent}\r\n\r\n");
         assert_eq!(callback(&ended), Judgement::Refused);
+    }
+
+    #[test]
+    fn relay_callback_refuses_a_header_name_that_is_not_a_token() {
+        for header in [
+            "Content Length: 0",
+            ": x",
+            "Ho(st: x",
+            "Host\u{e9}: x",
+            "A B:x",
+        ] {
+            let head = format!("GET /v1/google/callback HTTP/1.1\r\n{header}\r\n\r\n");
+            assert_eq!(callback(&head), Judgement::Refused, "{header:?}");
+        }
+        let spaced = "GET /v1/google/callback HTTP/1.1\r\nHost : x\r\n\r\n";
+        assert_eq!(callback(spaced), Judgement::Callback(spaced.len()));
     }
 }

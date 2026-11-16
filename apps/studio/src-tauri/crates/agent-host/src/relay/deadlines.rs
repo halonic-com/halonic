@@ -25,6 +25,11 @@ pub(super) enum Due {
 /// A connection's id, when it is due and what for; `None` ends the thread.
 pub(super) type Deadline = Option<(u32, Instant, Due)>;
 
+/// Removes the entries of connections `is_open` no longer knows.
+fn drop_closed(waiting: &mut VecDeque<(u32, Instant, Due)>, is_open: impl Fn(u32) -> bool) {
+    waiting.retain(|&(id, _, _)| is_open(id));
+}
+
 impl Shared {
     /// Closes each connection still without the token at its deadline, and
     /// stops the relay once the host has taken too long to read a frame.
@@ -48,6 +53,12 @@ impl Shared {
             if self.host_stopped_reading() {
                 self.stop();
                 return;
+            }
+            // Ids are never reused, so an entry for a closed connection can
+            // only be dead weight; this keeps the queue to the open ones.
+            {
+                let connections = self.connections();
+                drop_closed(&mut waiting, |id| connections.open.contains_key(&id));
             }
             let now = Instant::now();
             while let Some(&(id, due, kind)) = waiting.front() {
@@ -91,5 +102,26 @@ impl Shared {
             connection.shut();
             let _ = self.send(id, RESET, &[]);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::VecDeque;
+    use std::time::{Duration, Instant};
+
+    use super::{Due, drop_closed};
+
+    #[test]
+    fn relay_limits_drops_the_waiting_entries_of_a_closed_connection() {
+        let now = Instant::now();
+        let mut waiting = VecDeque::from([
+            (1, now + Duration::from_secs(5), Due::CallbackHead),
+            (2, now + Duration::from_secs(6), Due::Token),
+            (1, now + Duration::from_secs(30), Due::CallbackLifetime),
+        ]);
+        drop_closed(&mut waiting, |id| id == 2);
+        let ids: Vec<u32> = waiting.iter().map(|&(id, _, _)| id).collect();
+        assert_eq!(ids, [2]);
     }
 }
