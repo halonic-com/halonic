@@ -69,7 +69,7 @@ export function sourceOf(
 export function setup(
   source: CollectionSource | undefined,
   usage: ItemUsage = nobody,
-  writes: Partial<Pick<CollectionHost, "change" | "add" | "remove" | "rename">> = {},
+  writes: Partial<Pick<CollectionHost, "read" | "change" | "add" | "remove" | "rename">> = {},
 ) {
   const host: CollectionHost = {
     read: async () => source,

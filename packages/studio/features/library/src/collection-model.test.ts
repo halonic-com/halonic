@@ -243,6 +243,7 @@ verifies("library.collection-page", () => {
       );
       await model.refresh();
       expect(model.state).toMatchObject({ loaded: false, failed: true });
+      expect(model.state.failureReason).toBeUndefined();
     });
 
     it("keeps the new row when the write fails", async () => {

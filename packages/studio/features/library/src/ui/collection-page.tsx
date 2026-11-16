@@ -1,5 +1,11 @@
-import { FilterChips, FormRows } from "@halonicjs/studio-kit";
-import { ItemGone, type ItemViewProps, NameField, PageBackLinkSlot } from "@halonicjs/studio-shell";
+import { Callout, FilterChips, FormRows } from "@halonicjs/studio-kit";
+import {
+  engineWordsOf,
+  ItemGone,
+  type ItemViewProps,
+  NameField,
+  PageBackLinkSlot,
+} from "@halonicjs/studio-shell";
 import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { chipText } from "../collection-format.ts";
 import { CollectionHostService, type CollectionRef } from "../collection-host.ts";
@@ -57,7 +63,7 @@ function LoadedCollectionPage({
 }: Pick<ItemViewProps, "item" | "context"> & { readonly model: CollectionModel }) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
   const state = useSyncExternalStore(subscribe, () => model.state);
-  const { loaded, gone, name, volatile, view, grid, usage } = state;
+  const { loaded, failed, failureReason, gone, name, volatile, view, grid, usage } = state;
   const [renameFailed, setRenameFailed] = useState(false);
   const trash = useItemTrash(context, {
     kind: "collection",
@@ -69,6 +75,22 @@ function LoadedCollectionPage({
 
   if (gone) {
     return trash.strip ?? <Gone context={context} />;
+  }
+  if (failed && !loaded) {
+    return (
+      <div className="px-4 py-5">
+        <Callout
+          tone="danger"
+          // The name isn't known before the first read, so the title uses the id: for a slug id it
+          // reads "Couldn't load claims" rather than "Claims". Accepted.
+          title={collectionWords.couldntLoad(item.id)}
+          action={{ label: collectionWords.tryAgain, onClick: () => model.refresh() }}
+        >
+          {/* A load that fails without a reason never reached the engine: say that, never nothing. */}
+          {failureReason ?? engineWordsOf(context).notAnswering}
+        </Callout>
+      </div>
+    );
   }
   if (!loaded || grid === undefined) {
     return <p className="px-4 py-5 text-small text-fg-muted">{collectionWords.loading}</p>;

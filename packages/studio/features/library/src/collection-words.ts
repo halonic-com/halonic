@@ -3,6 +3,8 @@ export const collectionWords = {
   kindName: "collection",
   place: "Library",
   loading: "Loading the collection",
+  couldntLoad: (name: string) => `Couldn't load ${name}`,
+  tryAgain: "Try again",
   renameFailed: "Couldn't rename the collection.",
   allChip: "All",
   chipsLabel: "Views",

@@ -1,4 +1,5 @@
 import type { ItemUsage } from "@halonicjs/app";
+import { errorMessageFor } from "@halonicjs/studio-shell";
 import type {
   CollectionGridData,
   CollectionHost,
@@ -6,6 +7,7 @@ import type {
   CollectionRef,
   CollectionSource,
 } from "./collection-host.ts";
+import { collectionWords } from "./collection-words.ts";
 
 /** A value the cell's field doesn't accept: the core message, shown under that cell until its next edit. */
 export interface CellError {
@@ -19,6 +21,8 @@ export interface CollectionState {
   readonly loaded: boolean;
   /** The first read failed and nothing has loaded yet; the next refresh clears it. */
   readonly failed: boolean;
+  /** Why the first read failed, in words for the user; absent when the error has none (the page then says the engine isn't answering). */
+  readonly failureReason: string | undefined;
   /** The workspace has no such collection (any more). */
   readonly gone: boolean;
   readonly name: string;
@@ -35,6 +39,13 @@ export interface CollectionState {
   readonly rowRemoved: boolean;
 }
 
+/** The sentence a failed read gives the user: a system message never reaches them. */
+function reasonOf(error: unknown): string | undefined {
+  const message = errorMessageFor(error, { title: collectionWords.couldntLoad("collection") });
+  const reason = message.body.trim();
+  return message.kind === "internal" || reason === "" ? undefined : reason;
+}
+
 /** What adding the new row came to. */
 export type AddOutcome = "added" | "needs-more" | "refused" | "failed";
 
@@ -48,6 +59,7 @@ export class CollectionModel {
   state: CollectionState = {
     loaded: false,
     failed: false,
+    failureReason: undefined,
     gone: false,
     name: "",
     volatile: false,
@@ -97,7 +109,13 @@ export class CollectionModel {
       if (ticket !== this.latest) return;
       if (source === undefined) {
         this.source = undefined;
-        this.set({ ...this.state, loaded: true, failed: false, gone: true });
+        this.set({
+          ...this.state,
+          loaded: true,
+          failed: false,
+          failureReason: undefined,
+          gone: true,
+        });
         return;
       }
       this.source = source;
@@ -106,6 +124,7 @@ export class CollectionModel {
         ...this.state,
         loaded: true,
         failed: false,
+        failureReason: undefined,
         gone: false,
         name: source.name,
         volatile: source.volatile,
@@ -113,9 +132,11 @@ export class CollectionModel {
         grid,
         usage,
       });
-    } catch {
-      // The page keeps what it shows; the host says why a read failed.
-      if (ticket === this.latest && !this.state.loaded) this.set({ ...this.state, failed: true });
+    } catch (error) {
+      // A page that has loaded keeps what it shows; only a first read that failed says so.
+      if (ticket === this.latest && !this.state.loaded) {
+        this.set({ ...this.state, failed: true, failureReason: reasonOf(error) });
+      }
     }
   }
 
