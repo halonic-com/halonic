@@ -2,6 +2,7 @@
 
 - Approval: the screens and wording are the board-approved plan and final wording (HAL-3777); Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ep24FdJzy6tmg/QjuBbvEXgbXfXxS7wcJSKMTZ3FXftOQAn5Sa/p1GdzHQGHOhzQ2mOuN5JKmEVqeHqysSrdCg==
 - Task: HAL-5405 (PR 2, the onboarding modal shell)
 
 ## What changes
