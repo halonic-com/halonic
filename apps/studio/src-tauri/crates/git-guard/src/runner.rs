@@ -318,7 +318,17 @@ impl GitRunner {
         command.arg(subcommand);
         // `remote.<name>.uploadpack` and `receivepack`.
         match subcommand.as_str() {
-            "pull" | "fetch" => {
+            "pull" => {
+                // `merge.autoStash`, `pull.rebase` and `branch.<name>.rebase`:
+                // before git 2.34 `--ff-only` did not beat a rebase setting,
+                // and an autostash re-applies with a real merge.
+                command.args([
+                    "--upload-pack=git-upload-pack",
+                    "--no-rebase",
+                    "--no-autostash",
+                ]);
+            }
+            "fetch" => {
                 command.arg("--upload-pack=git-upload-pack");
             }
             "push" => {

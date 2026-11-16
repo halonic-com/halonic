@@ -142,10 +142,12 @@ fn git_hardening_turns_off_external_diffs_for_diff_and_log() {
 fn git_hardening_names_upload_pack_and_receive_pack_itself() {
     let pull = arguments(&command("pull --ff-only origin main"));
     assert_eq!(
-        pull[pull.len() - 4..],
+        pull[pull.len() - 6..],
         [
             "pull",
             "--upload-pack=git-upload-pack",
+            "--no-rebase",
+            "--no-autostash",
             "--ff-only",
             "origin",
             "main"
