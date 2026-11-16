@@ -1,12 +1,13 @@
-// The failed banners by cause (microcopy 22 F6, F7, F8, F10, F15, F20; checklist FX-D2, FX-D3).
+// The failed banners by cause (microcopy 22 F6, F7, F8, F10, F15, F20, F21; checklist FX-D2, FX-D3).
 // Each reads the run's reason, and the log for what the summary doesn't hold: the model and its
-// provider from the last model call, the agent from the last agent that started. Run again,
-// Open Models and Copy details come with the buttons the page doesn't have yet.
+// provider from the last model call, the agent from the last agent that started, and the harness
+// program and its limit from the last `harness.started`. Run again, Open Models and Copy details
+// come with the buttons the page doesn't have yet.
 
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { failureWords } from "../failure-words.ts";
 import { currentStepName } from "../list/run-row.ts";
-import { runPageWords } from "../run-words.ts";
+import { capitalised, runPageWords } from "../run-words.ts";
 import type { RunBanner, RunPageContext } from "./run-page-model.ts";
 
 /** What a failure banner may need from the log. */
@@ -15,6 +16,10 @@ interface FailureFacts {
   readonly model: string | undefined;
   readonly host: string | undefined;
   readonly agent: string | undefined;
+  /** The harness program the last step tried to start, and how long the engine waits for it. */
+  readonly harness:
+    | { readonly id: string; readonly agent: string; readonly timeoutMs: number }
+    | undefined;
 }
 
 /**
@@ -51,7 +56,9 @@ export function causeBanner(
     case "model-unreachable":
       return modelUnreachable(facts, context);
     case "model-out-of-memory":
-      return modelOutOfMemory(facts, phone);
+      return modelOutOfMemory(facts, context, phone);
+    case "harness-start-failed":
+      return harnessStartFailed(facts, step);
     default:
       return undefined;
   }
@@ -72,10 +79,17 @@ function modelUnreachable(facts: FailureFacts, context: RunPageContext): RunBann
   return danger([words(provider, host, model)]);
 }
 
-/** F8: only a local model can run out of memory on this computer. */
-function modelOutOfMemory(facts: FailureFacts, phone: boolean): RunBanner | undefined {
+/**
+ * F8: only a local model can run out of memory on this computer. A provider that runs elsewhere
+ * keeps the page's general banner, since "this computer" would be wrong for it.
+ */
+function modelOutOfMemory(
+  facts: FailureFacts,
+  context: RunPageContext,
+  phone: boolean,
+): RunBanner | undefined {
   const { provider, model } = facts;
-  if (provider === undefined || model === undefined) {
+  if (provider === undefined || model === undefined || context.providerKind(provider) === "cloud") {
     return undefined;
   }
   return danger([
@@ -87,6 +101,17 @@ function modelOutOfMemory(facts: FailureFacts, phone: boolean): RunBanner | unde
         ]
       : [failureWords.modelOutOfMemoryFix]),
   ]);
+}
+
+/** F21: needs the log, for the program and the limit it was given. */
+function harnessStartFailed(facts: FailureFacts, step: string): RunBanner | undefined {
+  const { harness } = facts;
+  if (harness === undefined) {
+    return undefined;
+  }
+  const program = failureWords.harnessNames[harness.id] ?? capitalised(harness.id);
+  const seconds = Math.round(harness.timeoutMs / 1000);
+  return danger([failureWords.harnessStartFailed(harness.agent, program, seconds, step)]);
 }
 
 function danger(lines: readonly string[]): RunBanner {
@@ -101,10 +126,15 @@ function factsFrom(log: readonly RunEvent[]): FailureFacts {
       event.type === "agent.started" && event.parent === undefined,
   );
   const failed = log.findLast((event) => event.type === "run.failed");
+  const harness = log.findLast((event) => event.type === "harness.started");
   return {
     provider: request?.provider,
     model: request?.model,
     host: failed?.host,
     agent: started?.agent,
+    harness:
+      harness === undefined
+        ? undefined
+        : { id: harness.harness, agent: harness.agent, timeoutMs: harness.timeoutMs },
   };
 }
