@@ -7,8 +7,10 @@ import type {
   FileTexts,
   KeptFile,
   ReplaceResult,
+  Version,
   VersionInput,
 } from "@halonicjs/studio-feature-source-control/api";
+import { historyArgs, versionsFromLog } from "./history-log.ts";
 import { lastVersionDiffArgs, lastVersionFromDiff } from "./last-version.ts";
 import { statusArgs } from "./status-args.ts";
 
@@ -96,6 +98,18 @@ export class WorkspaceChanges implements ChangesSource {
     for (const file of files) {
       await this.#options.copies.write(`${stamp}/${file.path}`, file.text);
     }
+  }
+
+  async readHistory(limit: number): Promise<readonly Version[]> {
+    const log = await this.#run(historyArgs(limit));
+    if (log === "no-git") return [];
+    if (log.code !== 0) {
+      // A repository with no version yet has no log; any other refusal is a real failure.
+      const head = await this.#run(["rev-parse", "--verify", "--quiet", "HEAD"]);
+      if (head === "no-git" || head.code !== 0) return [];
+      throw new KindedError("unavailable", readableProblem(log));
+    }
+    return versionsFromLog(log.stdout, (path) => !isUnversionedPath(path));
   }
 
   async createVersion({ message, paths }: VersionInput): Promise<void> {
@@ -244,7 +258,9 @@ function ignoresStudio(text: string): boolean {
 
 /** Files in Halonic's own folders, such as review records, aren't versions of the workspace. */
 function isVersioned(change: VcsChange): boolean {
-  return !unversionedFolders.some(
-    (folder) => change.path === folder || change.path.startsWith(`${folder}/`),
-  );
+  return !isUnversionedPath(change.path);
+}
+
+function isUnversionedPath(path: string): boolean {
+  return unversionedFolders.some((folder) => path === folder || path.startsWith(`${folder}/`));
 }
