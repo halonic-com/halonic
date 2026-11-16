@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11055 (Liam's review of halonic#3165 asked for it; the rule is HAL-902)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Nm+1xXL/gxjSmI8UFTz+52I71FipqPkI7PZS/JSruEjsdWA+ytoNX6c9WUiVswUpwLa6FHO+SCCHfVfQjdhzAQ==
 
 `ModelChain` now calls a provider that can stream through `stream()` and answers with the full
 response of its `done` event, so the answer carries the text, tool calls, reasoning and usage as
