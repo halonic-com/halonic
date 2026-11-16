@@ -35,8 +35,8 @@ export type SandboxViewProps = SetupViewProps & { readonly control: SandboxCardC
 
 /**
  * The routine runs the sandbox check refused and nothing has superseded: failed with
- * `sandbox-not-ready`, started by a routine, and no later run started, which would show the sandbox
- * can start. A hand-started run isn't one: its page says what happened (requirement
+ * `sandbox-not-ready`, started by a routine, and no later run of that routine started, which would
+ * show the sandbox can start. A hand-started run isn't one: its page says what happened (requirement
  * `inbox.sandbox-row`).
  *
  * @example
@@ -46,11 +46,17 @@ export function refusedRoutineRuns(runs: readonly RunSummary[]): RunSummary[] {
   const real = runs.filter((run) => run.kind === "run");
   const isRefused = (run: RunSummary) =>
     run.status === "failed" && run.reason === "sandbox-not-ready";
+  // Only a later run of the same routine shows the sandbox can start: other runs may never use it.
   const startedOk = real.filter((run) => !isRefused(run) && run.reason !== "cancelled");
   return real
     .filter(isRefused)
     .filter((run) => run.trigger?.routineId !== undefined)
-    .filter((run) => !startedOk.some((ok) => ok.startedAt > run.startedAt))
+    .filter(
+      (run) =>
+        !startedOk.some(
+          (ok) => ok.trigger?.routineId === run.trigger?.routineId && ok.startedAt > run.startedAt,
+        ),
+    )
     .sort(newestFirst);
 }
 

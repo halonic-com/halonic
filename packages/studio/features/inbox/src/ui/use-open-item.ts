@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Inbox, SetupFocus } from "../inbox.ts";
-import type { InboxItem } from "../inbox-items.ts";
+import type { InboxItem, SetupItem } from "../inbox-items.ts";
 
 /** The item open in the Inbox's pane, and how to change it. */
 export interface OpenItem {
@@ -36,11 +36,17 @@ export function useOpenItem(inbox: Inbox, items: readonly InboxItem[]): OpenItem
     if (latest !== undefined && latest !== open) setOpen(latest);
   }, [items, open]);
   // A fixed item only stays while it is open: the source drops it once it isn't (or the page closes).
+  // It runs when the open key changes or the page closes, not when a refresh swaps in a new object.
+  const lastSetup = useRef<SetupItem | null>(null);
+  if (open?.kind === "setup") lastSetup.current = open;
+  const openKey = open?.kind === "setup" ? open.key : undefined;
   useEffect(
     () => () => {
-      if (open?.kind === "setup") inbox.releaseSetup(open);
+      if (openKey !== undefined && lastSetup.current !== null) {
+        inbox.releaseSetup(lastSetup.current);
+      }
     },
-    [inbox, open],
+    [inbox, openKey],
   );
   useEffect(() => {
     const take = () => {

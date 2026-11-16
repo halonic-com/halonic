@@ -23,8 +23,16 @@ export const refusedRun = (
   });
 
 /** A run that finished, so the sandbox started for it. */
-export const completedRun = (id: string, startedAt: string) =>
-  waitingRun(id, { status: "completed", state: null, startedAt, endedAt: startedAt });
+export const completedRun = (id: string, startedAt: string, routine?: string) =>
+  waitingRun(id, {
+    status: "completed",
+    state: null,
+    startedAt,
+    endedAt: startedAt,
+    ...(routine === undefined
+      ? {}
+      : { trigger: { type: "schedule", routineId: `acme/${routine}`, at: startedAt } }),
+  });
 
 export async function settled(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));

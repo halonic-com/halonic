@@ -19,8 +19,17 @@ verifies("inbox.sandbox-row", () => {
     const test = refusedRun("t", "x", "2026-11-10T06:00:00.000Z", { kind: "test" });
     const other = refusedRun("o", "x", "2026-11-10T06:00:00.000Z", { reason: "budget" });
     const old = refusedRun("old", "daily", "2026-11-10T06:00:00.000Z");
-    const later = completedRun("ok", "2026-11-10T07:00:00.000Z");
+    const later = completedRun("ok", "2026-11-10T07:00:00.000Z", "daily");
     expect(refusedRoutineRuns([manual, test, other, old, later])).toEqual([]);
+  });
+
+  it("is superseded only by a later run of the same routine, not by one that never used the sandbox", () => {
+    const refused = refusedRun("a", "daily", "2026-11-10T06:00:00.000Z");
+    const hourly = completedRun("h", "2026-11-10T07:00:00.000Z", "hourly");
+    const early = refusedRun("e", "hourly", "2026-11-10T08:00:00.000Z", { reason: "budget" });
+    expect(refusedRoutineRuns([refused, hourly, early]).map((run) => run.id)).toEqual(["a"]);
+    const daily = completedRun("d", "2026-11-10T09:00:00.000Z", "daily");
+    expect(refusedRoutineRuns([refused, hourly, daily])).toEqual([]);
   });
 
   it("lists one item for this computer, titled with the count and the reason's sentence", async () => {
@@ -121,7 +130,7 @@ verifies("inbox.sandbox-row", () => {
     const restarted = sandboxInbox(runs);
     await settled();
     expect(restarted.inbox.signal().value).toBe(1);
-    restarted.set([...runs, completedRun("ok", "2026-11-10T07:00:00.000Z")]);
+    restarted.set([...runs, completedRun("ok", "2026-11-10T07:00:00.000Z", "daily")]);
     await settled();
     expect(restarted.inbox.state.items).toEqual([]);
   });

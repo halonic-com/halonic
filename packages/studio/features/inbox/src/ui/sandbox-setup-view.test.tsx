@@ -117,6 +117,19 @@ verifies("inbox.sandbox-row", () => {
     expect(t.inbox.state.items).toEqual([]);
   });
 
+  it("keeps the fixed item while its card is open across a refresh", async () => {
+    const t = sandboxInbox(twoRoutines);
+    const root = await openCard(t);
+    await act(async () => button(root, "Check again")?.click());
+    await settled();
+    await act(async () => {
+      await t.inbox.refresh();
+    });
+    await settled();
+    expect(t.inbox.state.items).toHaveLength(1);
+    expect(root.querySelector("section h2")?.textContent).toBe("The sandbox is ready");
+  });
+
   it("has no way to run anyway", async () => {
     const t = sandboxInbox(twoRoutines);
     const root = await openCard(t);

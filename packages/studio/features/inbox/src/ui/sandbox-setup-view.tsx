@@ -35,7 +35,7 @@ export function SandboxSetupView({ item, control, openRun }: SandboxViewProps) {
     return () => {
       current = false;
     };
-  }, [control, item.title]);
+  }, [control, item.title, item.changedAt]);
 
   const checkAgain = async () => {
     if (checking) return;
