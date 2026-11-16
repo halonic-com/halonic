@@ -2,7 +2,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { NewConnectorHost } from "../new-connector-host.ts";
+import type { NewConnectorHost, NewConnectorWay } from "../new-connector-host.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { NewConnectorDialog } from "./new-connector-dialog.tsx";
@@ -14,18 +14,29 @@ afterEach(() => {
   fakeModal();
 });
 
-function setup(hubIds: readonly string[] = ["acme"], create?: NewConnectorHost["create"]) {
+function setup(
+  hubIds: readonly string[] = ["acme"],
+  create?: NewConnectorHost["create"],
+  start: { readonly way?: NewConnectorWay; readonly offered?: readonly NewConnectorWay[] } = {},
+) {
   const made = vi.fn(async () => ({ hub: "acme", id: "notes" }));
   const host: NewConnectorHost = {
     prepare: async () => {},
     hubs: () => hubIds.map((id) => ({ id, name: id })),
-    ways: () => ["google", "http", "stdio"],
+    ways: () => start.offered ?? ["google", "http", "stdio"],
     file: ({ name }) =>
       `hubs/acme/library/connectors/${name.trim() === "" ? "" : `${name.trim().toLowerCase()}.connector.yaml`}`,
     create: create ?? made,
   };
   const onCreated = vi.fn();
-  const root = render(<NewConnectorDialog host={host} onCreated={onCreated} onCancel={() => {}} />);
+  const root = render(
+    <NewConnectorDialog
+      host={host}
+      {...(start.way === undefined ? {} : { way: start.way })}
+      onCreated={onCreated}
+      onCancel={() => {}}
+    />,
+  );
   return { root, made, onCreated };
 }
 
@@ -88,6 +99,26 @@ verifies("library.new-connector", () => {
       expect(page(root)).toContain("Give it a name.");
       expect(page(root)).toContain("Choose how it connects.");
       expect(made).not.toHaveBeenCalled();
+    });
+
+    it("focuses the first way when Create is pressed with a name and no way", async () => {
+      const { root, made } = setup();
+      await type(root, "Name", "Notes");
+      await press(root, "Create");
+      const first = root.ownerDocument.querySelector('input[type="radio"]');
+      expect(root.ownerDocument.activeElement).toBe(first);
+      expect(made).not.toHaveBeenCalled();
+    });
+
+    it("ignores a start way the host does not offer", () => {
+      const { root } = setup(["acme"], undefined, { way: "google", offered: ["http", "stdio"] });
+      expect(page(root)).not.toContain("will ask a person first");
+      expect(root.ownerDocument.querySelector('input[type="radio"]:checked')).toBeNull();
+    });
+
+    it("starts on a way the host offers", () => {
+      const { root } = setup(["acme"], undefined, { way: "http" });
+      expect(root.ownerDocument.querySelector('input[type="radio"]:checked')).not.toBeNull();
     });
 
     it("checks the field of the picked way", async () => {

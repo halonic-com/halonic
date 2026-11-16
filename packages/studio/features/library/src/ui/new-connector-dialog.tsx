@@ -1,12 +1,7 @@
 import { Callout, Dialog, Field, Input, RadioGroup, Select } from "@halonicjs/studio-kit";
 import { useRef, useState } from "react";
 import { newConnectorErrors } from "../new-connector-check.ts";
-import type {
-  ConnectorRef,
-  NewConnectorDraft,
-  NewConnectorHost,
-  NewConnectorWay,
-} from "../new-connector-host.ts";
+import type { ConnectorRef, NewConnectorHost, NewConnectorWay } from "../new-connector-host.ts";
 import { newConnectorWords } from "../new-connector-words.ts";
 
 /** The props of {@link NewConnectorDialog}. */
@@ -14,7 +9,7 @@ export interface NewConnectorDialogProps {
   readonly host: NewConnectorHost;
   /** A name to start with, such as the missing connector a run banner names. */
   readonly name?: string;
-  /** A way to start with, when it is known; nothing is guessed otherwise. */
+  /** A way to start with, when it is known and the host offers it; nothing is guessed otherwise. */
   readonly way?: NewConnectorWay;
   /** After the connector is made: the caller opens its page. */
   readonly onCreated: (connector: ConnectorRef) => void;
@@ -49,7 +44,9 @@ export function NewConnectorDialog({
   const ways = host.ways();
   const [name, setName] = useState(startName);
   const [hub, setHub] = useState<string | null>(hubs[0]?.id ?? null);
-  const [way, setWay] = useState<NewConnectorWay | null>(startWay ?? null);
+  const [way, setWay] = useState<NewConnectorWay | null>(
+    startWay !== undefined && ways.includes(startWay) ? startWay : null,
+  );
   const [account, setAccount] = useState("");
   const [url, setUrl] = useState("");
   const [command, setCommand] = useState("");
@@ -60,6 +57,7 @@ export function NewConnectorDialog({
   const nameField = useRef<HTMLInputElement>(null);
   const wayField = useRef<HTMLInputElement>(null);
   const secretField = useRef<HTMLInputElement>(null);
+  const wayChoice = useRef<HTMLDivElement>(null);
   const typed = { name, hub, way, account, url, command, secret: secret.trim() };
   const errors = newConnectorErrors(typed);
 
@@ -67,7 +65,10 @@ export function NewConnectorDialog({
     setAsked(true);
     setFailure(undefined);
     if (errors.name !== undefined) return nameField.current?.focus();
-    if (typed.way === null) return;
+    if (typed.way === null) {
+      wayChoice.current?.querySelector<HTMLInputElement>('input[type="radio"]')?.focus();
+      return;
+    }
     if (errors.account ?? errors.url ?? errors.command) return wayField.current?.focus();
     if (errors.secret !== undefined) return secretField.current?.focus();
     setBusy(true);
@@ -168,15 +169,17 @@ export function NewConnectorDialog({
           label={newConnectorWords.way}
           error={asked && way === null ? newConnectorWords.wayMissing : null}
         >
-          <RadioGroup
-            value={way}
-            onChange={setWay}
-            options={ways.map((each) => ({
-              value: each,
-              label: newConnectorWords.ways[each],
-              field: fieldOf(each),
-            }))}
-          />
+          <div ref={wayChoice}>
+            <RadioGroup
+              value={way}
+              onChange={setWay}
+              options={ways.map((each) => ({
+                value: each,
+                label: newConnectorWords.ways[each],
+                field: fieldOf(each),
+              }))}
+            />
+          </div>
         </Field>
         {way !== null && way !== "google" && (
           <Field label={newConnectorWords.secret} hint={secretHint} error={shown(errors.secret)}>
