@@ -1,13 +1,10 @@
 import {
-  type IndexedRoutine,
-  writeDefinitionSnapshot,
-} from "@halonicjs/adapter-cloudflare-storage";
-import {
   type CloudflareApi,
   provision,
   resourcesFor,
   type UploadAndSwitchOptions,
   uploadAndSwitch,
+  writeWorkspaceSnapshot,
 } from "@halonicjs/target-cloudflare-deploy";
 import type { CloudflareRest } from "./cloudflare-rest.ts";
 import type { targetVariables } from "./live-target.ts";
@@ -22,21 +19,6 @@ const routineFile = [
   "trigger: { webhook: { secret: live-hook } }",
   "run: { workflow: handle-order, input: { order: '{{trigger.body.id}}' } }",
 ].join("\n");
-
-/** `routineFile` as the routine index of the snapshot lists it. */
-const indexedRoutine: IndexedRoutine = {
-  hub: "acme",
-  routine: {
-    version: 1,
-    id: "orders",
-    name: "Orders",
-    enabled: true,
-    trigger: { webhook: { secret: "live-hook", headers: [] } },
-    run: { workflow: "handle-order", input: { order: "{{trigger.body.id}}" } },
-    overlap: "skip",
-    catchUp: "last",
-  },
-};
 
 /** The Durable Object classes of the Worker, as `wrangler.toml` lists them (migration `v1`). */
 const durableObjects = [
@@ -113,7 +95,7 @@ export async function deployWebhookFixture(options: FixtureOptions): Promise<Dep
     await api.createResource(accountId, { kind: "bucket", name: definitions, markedIn: database });
     const databaseId = await rest.d1DatabaseId(accountId, database);
 
-    await writeDefinitionSnapshot(
+    await writeWorkspaceSnapshot(
       {
         async put(key, value) {
           written.push([definitions, key]);
@@ -126,7 +108,6 @@ export async function deployWebhookFixture(options: FixtureOptions): Promise<Dep
         },
       },
       { "hubs/acme/workflows/routines/orders.routine.yaml": routineFile },
-      [indexedRoutine],
     );
 
     const webhookSecret = random();

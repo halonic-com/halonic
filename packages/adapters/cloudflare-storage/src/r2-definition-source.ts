@@ -35,8 +35,10 @@ export interface R2DefinitionSourceOptions {
  * The workspace files `halonic deploy` uploaded, read from R2. It has no write
  * side: a deployed workspace changes only by deploying again.
  *
- * `list` leaves out the routine index, which isn't a workspace file. `list` and `read` answer from the snapshot's manifest, so R2 is never listed
- * and a path that isn't in the manifest never becomes a key. Each file is
+
+ * `list` leaves out the routine index, which isn't a workspace file, but `read`
+ * of `routines.index.json` returns it. `list` and `read` answer from the
+ * snapshot's manifest, so R2 is never listed and a path that isn't in the manifest never becomes a key. Each file is
  * checked against the manifest's hash as it is read, so a damaged snapshot
  * fails loudly instead of serving other text.
  *

@@ -3318,9 +3318,21 @@ importers:
 
   packages/targets/cloudflare/deploy:
     dependencies:
+      '@halonicjs/adapter-cloudflare-storage':
+        specifier: workspace:*
+        version: link:../../../adapters/cloudflare-storage
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../../core/app
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../../core/format
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../../core/ports
+      '@halonicjs/workspace':
+        specifier: workspace:*
+        version: link:../../../core/workspace
     devDependencies:
       '@halonicjs/testing-spec':
         specifier: workspace:*

@@ -14,8 +14,9 @@ export interface SnapshotWriteBucket {
  * Uploads a workspace as a snapshot: the files and the routine index the
  * Worker reads webhooks from, then the manifest, then `current`, so a
  * half-finished upload is never the one served. Private files are left out.
- * Pass the files and the routines of the same loaded workspace (`placedRoutines`),
- * so the two never differ. The index holds only what the routine files hold,
+ * This is the low-level call: it trusts that `routines` are those of `files`.
+ * A deploy calls `writeWorkspaceSnapshot` of `@halonicjs/target-cloudflare-deploy`,
+ * which builds them from the files, so the two never differ. The index holds only what the routine files hold,
  * and it is listed in the manifest with its hash like any file. This is the write side `halonic
  * deploy` uses; the Worker only reads.
  *
