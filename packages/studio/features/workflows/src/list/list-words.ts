@@ -1,3 +1,4 @@
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import type { WorkflowRunOutcome } from "../api.ts";
 
 /** The Workflows list's words (microcopy 9.1, flow-workflows 2.1). */
@@ -72,9 +73,9 @@ export function runWhen(iso: string, now: Date): string {
   return `${moment.getFullYear() === now.getFullYear() ? date : `${date} ${moment.getFullYear()}`} ${clock}`;
 }
 
-/** The reason a failed read gives, as one sentence ending in a full stop. */
+/** The reason a failed read gives (the generic sentence for an `internal` error), as one sentence ending in a full stop. */
 export function failureReason(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
+  const message = errorReasonFor(error);
   return message.endsWith(".") ? message : `${message}.`;
 }
 

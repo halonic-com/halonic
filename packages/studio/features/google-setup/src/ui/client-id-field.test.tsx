@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -110,7 +111,7 @@ verifies("google-setup.client-id-field", () => {
 
   it("keeps what was typed and says what failed when saving fails", async () => {
     const onSave = vi.fn(async () => {
-      throw new Error("The disk is full.");
+      throw new KindedError("unavailable", "The disk is full.");
     });
     const { container } = show({ onSave });
     await type(input(container), validId);

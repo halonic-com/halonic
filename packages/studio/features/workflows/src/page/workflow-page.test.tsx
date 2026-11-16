@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { RunsListService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
@@ -93,7 +94,11 @@ verifies("workflows.page.frame-and-states", () => {
       ...host,
       read: async (ref: { hubId: string; id: string }) => {
         calls += 1;
-        if (calls === 1) throw new Error("The engine isn't answering. It may still be starting.");
+        if (calls === 1)
+          throw new KindedError(
+            "unavailable",
+            "The engine isn't answering. It may still be starting.",
+          );
         return host.read(ref);
       },
     };
@@ -184,7 +189,11 @@ verifies("workflows.page.frame-and-states", () => {
     const flaky = {
       ...host,
       read: async () => {
-        if (failing) throw new Error("The engine isn't answering. It may still be starting.");
+        if (failing)
+          throw new KindedError(
+            "unavailable",
+            "The engine isn't answering. It may still be starting.",
+          );
         return reply;
       },
       subscribe: (listener: () => void) => {

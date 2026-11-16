@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import type { RunsSource } from "@halonicjs/studio-feature-runs/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -76,7 +77,7 @@ verifies("workflows.runs.runs-view", () => {
     expect(page.textContent).toContain("Still loading");
     await act(async () => release([]));
 
-    failWith(new Error("The engine isn't answering."));
+    failWith(new KindedError("unavailable", "The engine isn't answering."));
     const failing = await show(<Connected source={source} />);
     expect(failing.textContent).toContain("Couldn't load runs");
     expect(failing.textContent).toContain("The engine isn't answering.");
@@ -145,7 +146,7 @@ verifies("workflows.runs.card-receipt", () => {
       ...source,
       log: async () => {
         reads += 1;
-        if (reads === 1) throw new Error("x");
+        if (reads === 1) throw new KindedError("unavailable", "x");
         return [];
       },
     };

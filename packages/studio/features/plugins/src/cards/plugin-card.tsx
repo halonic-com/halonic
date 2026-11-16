@@ -11,6 +11,7 @@ import {
   SkeletonBar,
   WarningIcon,
 } from "@halonicjs/studio-kit";
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { fromPlugin, TRY_AGAIN } from "../commands/command-text.ts";
 import type { PluginToolCaller } from "../commands/plugin-command-dialog.tsx";
@@ -99,7 +100,7 @@ export function PluginCard({
         if (call === latest.current) setRun({ kind: "done", text, refreshing: false });
       },
       (error: unknown) => {
-        if (call === latest.current) setRun({ kind: "failed", reason: reasonOf(error) });
+        if (call === latest.current) setRun({ kind: "failed", reason: errorReasonFor(error) });
       },
     );
     return () => void ++latest.current;
@@ -244,8 +245,4 @@ function AnswerSkeleton() {
       <SkeletonBar kind="title" width="7/10" />
     </div>
   );
-}
-
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

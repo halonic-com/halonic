@@ -147,7 +147,8 @@ verifies("workspace.recent-reopens-picked-folder", () => {
     expect(steps).toEqual(["open /work/acme", "forget /work/old"]);
   });
 
-  it("removes the row even when forgetting the folder fails", async () => {
+  it("removes the row even when forgetting the folder fails, and logs it", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const forgetFolder = vi.fn(async () => {
       throw new KindedError("unavailable", "The desktop shell gave no answer about the folder.");
     });
@@ -158,5 +159,7 @@ verifies("workspace.recent-reopens-picked-folder", () => {
     await Promise.resolve();
     expect(switcher.recent.list()).toEqual([]);
     expect(forgetFolder).toHaveBeenCalledWith("/work/old");
+    await vi.waitFor(() => expect(error).toHaveBeenCalledTimes(1));
+    error.mockRestore();
   });
 });

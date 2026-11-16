@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -201,7 +202,7 @@ verifies("plugins.plugin-add", () => {
   it("says why when adding throws, and that nothing was installed", async () => {
     const seen = fresh();
     show(async () => {
-      throw new Error("The disk is full.");
+      throw new KindedError("unavailable", "The disk is full.");
     }, seen);
     await type(inputLabelled("Folder"), "/plugins/halonic-weather");
     await press("Add plugin");

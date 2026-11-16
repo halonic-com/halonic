@@ -18,6 +18,8 @@ export const TRY_AGAIN = "Try again";
 /** A secret setting's state, next to its label. "Not set" is amber. */
 export const SECRET_SET = "Set";
 export const SECRET_NOT_SET = "Not set";
+/** The keychain could not be read, so nobody knows. Neutral, never amber: it is not "Not set". */
+export const SECRET_UNKNOWN = "Can't check";
 
 /**
  * The line under a secret setting: where it's kept and where it goes.

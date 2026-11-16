@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { parseFile } from "@halonicjs/format";
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, Fragment, StrictMode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -205,7 +206,10 @@ verifies("plugins.plugin-commands", () => {
   });
 
   it("says the call failed with Try again, and keeps what was typed", async () => {
-    const { caller, calls } = callerAnswering(new Error("the service didn't answer."), "Sunny");
+    const { caller, calls } = callerAnswering(
+      new KindedError("unavailable", "the service didn't answer."),
+      "Sunny",
+    );
     open(forecast, caller);
     type(fieldNamed("Place"), "Ghent");
     await press("Run command");

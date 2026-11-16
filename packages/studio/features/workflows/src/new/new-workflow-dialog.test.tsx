@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -90,7 +91,7 @@ verifies("workflows.new.create", () => {
 
   it("says why it couldn't create, and Create tries again", async () => {
     const { node, create, onCreated } = dialog();
-    create.mockRejectedValueOnce(new Error("the disk is full"));
+    create.mockRejectedValueOnce(new KindedError("unavailable", "the disk is full"));
     await show(node);
     await typeInto(nameField(), "Invoice intake");
 
@@ -106,7 +107,7 @@ verifies("workflows.new.create", () => {
 
   it("offers Try again in the failure, which sends the form again", async () => {
     const { node, create, onCreated } = dialog();
-    create.mockRejectedValueOnce(new Error("the disk is full"));
+    create.mockRejectedValueOnce(new KindedError("unavailable", "the disk is full"));
     await show(node);
     await typeInto(nameField(), "Invoice intake");
     await act(async () => buttonNamed(document.body, "Create")?.click());

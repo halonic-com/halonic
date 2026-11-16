@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { parseFile } from "@halonicjs/format";
+import { KindedError } from "@halonicjs/std";
 import {
   createShell,
   defineFeature,
@@ -152,7 +153,7 @@ verifies("plugins.plugin-cards", () => {
   it("says why the call failed with Try again, in a live region, and calls again on Try again", async () => {
     const { caller, calls, answer } = callerWithAnswers();
     const { view } = showCard(caller);
-    await answer(new Error("the service is busy."));
+    await answer(new KindedError("unavailable", "the service is busy."));
     const live = view.querySelector('[aria-live="polite"]');
     expect(live?.textContent).toContain("Couldn't get Today's weather: the service is busy.");
     act(() => button(view, "Try again").click());

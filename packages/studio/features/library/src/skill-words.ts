@@ -13,5 +13,7 @@ export const skillWords = {
   files: "Files in this skill",
   notUsed: "No agent uses this skill yet. Add it under an agent's Tools.",
   loading: "Loading the skill",
+  couldntLoad: "Couldn't load the skill",
+  tryAgain: "Try again",
   unreadable: "This skill's file can't be read here. Open it as a file to fix its header.",
 } as const;

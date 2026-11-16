@@ -6,6 +6,8 @@ import {
   readKnowledgeText,
 } from "@halonicjs/app";
 import type { KnowledgeHost, KnowledgeRef, SummarizeOutcome } from "./knowledge-host.ts";
+import { knowledgeWords } from "./knowledge-words.ts";
+import { readFailureReason } from "./read-failure.ts";
 
 /** Where Summarize is: not asked, running, a draft waiting for a choice, or why there is none. */
 export type SummarizeState =
@@ -20,6 +22,10 @@ export type SummarizeState =
 /** What the knowledge page shows. */
 export interface KnowledgeState {
   readonly loaded: boolean;
+  /** The first read failed and nothing has loaded yet; the next refresh clears it. */
+  readonly failed: boolean;
+  /** Why the first read failed, in words for the user; absent when the error has none (the page then says the engine isn't answering). */
+  readonly failureReason: string | undefined;
   /** The workspace has no such source (any more). */
   readonly gone: boolean;
   /** The file isn't valid YAML, so only a person can fix it in the file. */
@@ -41,6 +47,8 @@ const idle: SummarizeState = { phase: "idle" };
 export class KnowledgeModel {
   state: KnowledgeState = {
     loaded: false,
+    failed: false,
+    failureReason: undefined,
     gone: false,
     unreadable: false,
     source: "",
@@ -85,13 +93,21 @@ export class KnowledgeModel {
       ]);
       if (ticket !== this.latest) return;
       if (read === undefined) {
-        this.set({ ...this.state, loaded: true, gone: true });
+        this.set({
+          ...this.state,
+          loaded: true,
+          failed: false,
+          failureReason: undefined,
+          gone: true,
+        });
         return;
       }
       this.text = read.text;
       const parts = readKnowledgeText(read.text);
       this.set({
         loaded: true,
+        failed: false,
+        failureReason: undefined,
         gone: false,
         unreadable: !parts.ok,
         source: read.source,
@@ -99,8 +115,17 @@ export class KnowledgeModel {
         summarize: this.state.summarize,
         ...(parts.ok ? { parts: parts.value } : {}),
       });
-    } catch {
-      // The page keeps what it shows; the host says why a read failed.
+    } catch (error) {
+      if (ticket !== this.latest) return;
+      console.error("Couldn't read the knowledge.", error);
+      // A page that has loaded keeps what it shows; only a first read that failed says so.
+      if (!this.state.loaded) {
+        this.set({
+          ...this.state,
+          failed: true,
+          failureReason: readFailureReason(error, knowledgeWords.couldntLoad),
+        });
+      }
     }
   }
 

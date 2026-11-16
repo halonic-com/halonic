@@ -7,6 +7,7 @@ import { KnowledgeModel } from "../knowledge-model.ts";
 import { knowledgeWords } from "../knowledge-words.ts";
 import { useItemTrash } from "./item-trash.tsx";
 import { sharedHubKey } from "./library-place.tsx";
+import { LoadFailed } from "./load-failed.tsx";
 import { SummaryField } from "./summary-field.tsx";
 import { UsedByField } from "./used-by-field.tsx";
 
@@ -57,10 +58,8 @@ function LoadedKnowledgePage({
   model,
 }: Pick<ItemViewProps, "item" | "context"> & { readonly model: KnowledgeModel }) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
-  const { loaded, gone, unreadable, parts, source, usage, summarize } = useSyncExternalStore(
-    subscribe,
-    () => model.state,
-  );
+  const { loaded, failed, failureReason, gone, unreadable, parts, source, usage, summarize } =
+    useSyncExternalStore(subscribe, () => model.state);
 
   const trash = useItemTrash(context, {
     kind: "knowledge",
@@ -79,6 +78,17 @@ function LoadedKnowledgePage({
 
   if (gone) {
     return trash.strip ?? <Gone context={context} />;
+  }
+  if (failed && !loaded) {
+    return (
+      <LoadFailed
+        title={knowledgeWords.couldntLoad}
+        reason={failureReason}
+        retryLabel={knowledgeWords.tryAgain}
+        context={context}
+        onRetry={() => void model.refresh()}
+      />
+    );
   }
   if (!loaded) {
     return <p className="px-4 py-5 text-small text-fg-muted">{knowledgeWords.loading}</p>;

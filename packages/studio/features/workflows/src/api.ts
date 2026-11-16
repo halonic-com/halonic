@@ -3,6 +3,7 @@
  * file. The app provides `WorkflowsHostService` for each open workspace; the Workflows feature's
  * list, dialogs and page read it.
  */
+import { KindedError } from "@halonicjs/std";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
 /** Names one workflow the way a deep link does: its hub and its id. */
@@ -216,10 +217,9 @@ export interface WorkflowsHost {
  * the words for where Studio runs ("the engine isn't answering. It may still be starting.") and
  * ignores this error's message, so the host needn't know them.
  */
-export class EngineNotAnswering extends Error {
+export class EngineNotAnswering extends KindedError {
   constructor() {
-    super("The engine isn't answering.");
-    this.name = "EngineNotAnswering";
+    super("unavailable", "The engine isn't answering.");
   }
 }
 

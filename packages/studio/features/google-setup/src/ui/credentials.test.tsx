@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -126,7 +127,8 @@ verifies("google-setup.client-id-field", () => {
   it("says the progress wasn't saved, not the client ID, when only the step tick fails", async () => {
     const { container } = await open(account(record(upToClient)), {
       edit: async (edit) => {
-        if (edit.kind === "step-done") throw new Error("The engine isn't answering.");
+        if (edit.kind === "step-done")
+          throw new KindedError("unavailable", "The engine isn't answering.");
       },
     });
     await type(inputs(container).id, clientId);
@@ -142,7 +144,8 @@ verifies("google-setup.client-id-field", () => {
     let failTick = false;
     const { fake, container } = await open(account(record(upToClient)), {
       edit: async (edit) => {
-        if (failTick && edit.kind === "step-done") throw new Error("The engine isn't answering.");
+        if (failTick && edit.kind === "step-done")
+          throw new KindedError("unavailable", "The engine isn't answering.");
       },
     });
     await type(inputs(container).secret, fakeSecret);
@@ -165,7 +168,7 @@ verifies("google-setup.client-id-field", () => {
     const { fake, container } = await open(account(saved), {
       edit: async (edit) => {
         if (failCredentials && edit.kind === "step-done" && edit.step === "credentials") {
-          throw new Error("The engine isn't answering.");
+          throw new KindedError("unavailable", "The engine isn't answering.");
         }
       },
     });
@@ -230,7 +233,7 @@ verifies("google-setup.secret-field", () => {
     );
     const { fake, container } = await open(account(withId), {
       saveSecret: async () => {
-        throw new Error("The store is locked.");
+        throw new KindedError("unavailable", "The store is locked.");
       },
     });
     await type(inputs(container).secret, fakeSecret);
@@ -245,7 +248,7 @@ verifies("google-setup.secret-field", () => {
   it("says the progress wasn't saved, not the secret, when only the step tick fails", async () => {
     const { fake, container } = await open(account(withId), {
       edit: async () => {
-        throw new Error("The engine isn't answering.");
+        throw new KindedError("unavailable", "The engine isn't answering.");
       },
     });
     await type(inputs(container).secret, fakeSecret);

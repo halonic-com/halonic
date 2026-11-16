@@ -117,10 +117,13 @@ verifies("services.tauri-ipc", () => {
       error.mockRestore();
     });
 
-    it("stops quietly when the unlisten call is refused", async () => {
+    it("stops without throwing, and logs it, when the unlisten call is refused", async () => {
       const { page } = webview(["plugin:event|unlisten"]);
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
       const stop = onWindowCloseRequested(page, async () => undefined);
       await expect(stop()).resolves.toBeUndefined();
+      expect(error).toHaveBeenCalledTimes(1);
+      error.mockRestore();
     });
   });
 });

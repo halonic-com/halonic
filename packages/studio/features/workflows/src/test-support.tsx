@@ -1,4 +1,5 @@
 import type { RunSummary } from "@halonicjs/events";
+import { KindedError } from "@halonicjs/std";
 import type { RunsSource } from "@halonicjs/studio-feature-runs/api";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -66,7 +67,7 @@ export function memoryHost(
     list: async () => listings,
     read: async (ref) => {
       const view = views.find((one) => one.hubId === ref.hubId && one.id === ref.id);
-      if (view === undefined) throw new Error("This workflow isn't there.");
+      if (view === undefined) throw new KindedError("not_found", "This workflow isn't there.");
       return view;
     },
     nameOf: (ref) =>
@@ -74,7 +75,7 @@ export function memoryHost(
         ?.name,
     configuration: async (ref) => {
       const found = configurations.find((one) => one.hubId === ref.hubId && one.id === ref.id);
-      if (found === undefined) throw new Error("This workflow isn't there.");
+      if (found === undefined) throw new KindedError("not_found", "This workflow isn't there.");
       return found;
     },
     tests: async () => ({ cases: [] }) satisfies WorkflowTests,

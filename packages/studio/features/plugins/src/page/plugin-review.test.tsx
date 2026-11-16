@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -126,7 +127,7 @@ verifies("plugins.plugin-review", () => {
   describe("when trust can't be saved", () => {
     it("stays open and says why", async () => {
       await show(weather("not-trusted"), async () => {
-        throw new Error("The store is locked.");
+        throw new KindedError("unavailable", "The store is locked.");
       });
       await press("Review");
       await press("Trust");

@@ -1,5 +1,13 @@
 import type { SkillChange } from "@halonicjs/app";
-import { Button, EmptyState, Field, FormRows, Input, TextArea } from "@halonicjs/studio-kit";
+import {
+  Button,
+  Callout,
+  EmptyState,
+  Field,
+  FormRows,
+  Input,
+  TextArea,
+} from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
 import {
   Fragment,
@@ -16,6 +24,7 @@ import { type SkillField, SkillModel } from "../skill-model.ts";
 import { skillWords } from "../skill-words.ts";
 import { useItemTrash } from "./item-trash.tsx";
 import { sharedHubKey } from "./library-place.tsx";
+import { LoadFailed } from "./load-failed.tsx";
 import { UsedByField } from "./used-by-field.tsx";
 
 type Edited = keyof SkillChange;
@@ -66,10 +75,8 @@ function LoadedSkillPage({
   model,
 }: Pick<ItemViewProps, "item" | "context"> & { readonly model: SkillModel }) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
-  const { loaded, gone, unreadable, parts, files, usage, kept } = useSyncExternalStore(
-    subscribe,
-    () => model.state,
-  );
+  const { loaded, failed, failureReason, gone, unreadable, parts, files, usage, kept } =
+    useSyncExternalStore(subscribe, () => model.state);
   const trash = useItemTrash(context, {
     kind: "skill",
     hub: item.hub === sharedHubKey ? null : item.hub,
@@ -89,6 +96,17 @@ function LoadedSkillPage({
 
   if (gone) {
     return trash.strip ?? <Gone context={context} />;
+  }
+  if (failed && !loaded) {
+    return (
+      <LoadFailed
+        title={skillWords.couldntLoad}
+        reason={failureReason}
+        retryLabel={skillWords.tryAgain}
+        context={context}
+        onRetry={() => void model.refresh()}
+      />
+    );
   }
   if (!loaded) {
     return <p className="px-4 py-5 text-small text-fg-muted">{skillWords.loading}</p>;

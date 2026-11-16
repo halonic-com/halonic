@@ -1,5 +1,4 @@
 import type { ItemUsage } from "@halonicjs/app";
-import { errorMessageFor } from "@halonicjs/studio-shell";
 import type {
   CollectionGridData,
   CollectionHost,
@@ -8,6 +7,7 @@ import type {
   CollectionSource,
 } from "./collection-host.ts";
 import { collectionWords } from "./collection-words.ts";
+import { readFailureReason } from "./read-failure.ts";
 
 /** A value the cell's field doesn't accept: the core message, shown under that cell until its next edit. */
 export interface CellError {
@@ -37,13 +37,6 @@ export interface CollectionState {
   readonly typed: Readonly<Record<string, string>>;
   /** Set when an edit found its row removed by another change; cleared by the next edit. */
   readonly rowRemoved: boolean;
-}
-
-/** The sentence a failed read gives the user: a system message never reaches them. */
-function reasonOf(error: unknown): string | undefined {
-  const message = errorMessageFor(error, { title: collectionWords.couldntLoad("collection") });
-  const reason = message.body.trim();
-  return message.kind === "internal" || reason === "" ? undefined : reason;
 }
 
 /** What adding the new row came to. */
@@ -135,7 +128,11 @@ export class CollectionModel {
     } catch (error) {
       // A page that has loaded keeps what it shows; only a first read that failed says so.
       if (ticket === this.latest && !this.state.loaded) {
-        this.set({ ...this.state, failed: true, failureReason: reasonOf(error) });
+        this.set({
+          ...this.state,
+          failed: true,
+          failureReason: readFailureReason(error, collectionWords.couldntLoad("collection")),
+        });
       }
     }
   }

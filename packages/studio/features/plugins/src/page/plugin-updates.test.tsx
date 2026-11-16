@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -121,7 +122,7 @@ verifies("plugins.plugin-updates", () => {
       checkForUpdate: async () => found,
       applyUpdate: async (plugin, approved) => {
         asked.push([plugin, approved]);
-        if (fail) throw new Error("The disk is full.");
+        if (fail) throw new KindedError("unavailable", "The disk is full.");
       },
     });
     await press("Check for updates");
@@ -151,7 +152,7 @@ verifies("plugins.plugin-updates", () => {
   it("says why in a toast when the source can't be looked at, and brings the button back", async () => {
     await show(weather(), {
       checkForUpdate: async () => {
-        throw new Error("You're offline.");
+        throw new KindedError("unavailable", "You're offline.");
       },
     });
 

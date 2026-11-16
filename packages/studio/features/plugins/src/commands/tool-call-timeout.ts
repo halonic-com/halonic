@@ -1,3 +1,4 @@
+import { KindedError } from "@halonicjs/std";
 import { noAnswerReason } from "./command-text.ts";
 import type { PluginToolCaller } from "./plugin-command-dialog.tsx";
 
@@ -20,7 +21,10 @@ export function timedToolCaller(
   return {
     call: (plugin, tool, args) =>
       new Promise<string>((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error(noAnswerReason(ms))), ms);
+        const timer = setTimeout(
+          () => reject(new KindedError("unavailable", noAnswerReason(ms))),
+          ms,
+        );
         caller.call(plugin, tool, args).then(
           (answer) => {
             clearTimeout(timer);

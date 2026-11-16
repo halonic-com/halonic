@@ -63,4 +63,19 @@ verifies("google-setup.connector-badges", () => {
     unmountAll();
     expect(badges.list()).toHaveLength(0);
   });
+
+  it("keeps what it shows and logs it when the list can't be read", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { accounts, badges, context } = setup();
+    render(<ConnectorBadges context={context} />);
+    await settle();
+    accounts.source.list = async () => {
+      throw new Error("The engine isn't answering.");
+    };
+    accounts.change([fine]);
+    await settle();
+    expect(badges.list()).toHaveLength(1);
+    expect(error).toHaveBeenCalledTimes(1);
+    error.mockRestore();
+  });
 });
