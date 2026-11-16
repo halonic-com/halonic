@@ -106,8 +106,10 @@ export class CodexRun implements HarnessRun {
       () => undefined,
     );
     const workingFolder = session.profile.workingFolder;
+    // No fence around the run is "no sandbox": nothing confines Codex, so a person answers every command.
+    const askMode = session.fence.state === "off";
     this.#started = launch.then((process) =>
-      this.#startTurn(process, workingFolder, options.clientInfo),
+      this.#startTurn(process, workingFolder, options.clientInfo, askMode),
     );
     // A program that can't start, or a turn that can't, is reported by the stream.
     this.#started.catch((error: unknown) => {
@@ -147,6 +149,7 @@ export class CodexRun implements HarnessRun {
     process: SandboxProcess,
     workingFolder: string,
     clientInfo: ClientInfo,
+    askMode: boolean,
   ): Promise<Started> {
     const errorTail = outputTail(process.stderr, keptErrorCharacters).catch(() => "");
     const client = new AppServerClient({
@@ -157,7 +160,7 @@ export class CodexRun implements HarnessRun {
     this.#client = client;
     void client.closed.then((cause) => this.#codexStopped(process, errorTail, cause));
     await client.initialize(clientInfo);
-    const thread = await client.request("thread/start", this.#threadParams(workingFolder));
+    const thread = await client.request("thread/start", this.#threadParams(workingFolder, askMode));
     const threadId = idOf(thread, "thread");
     this.#reader = new AppServerEventReader({
       agentId: this.#task.agentId,
@@ -175,9 +178,17 @@ export class CodexRun implements HarnessRun {
    * The thread runs in the session's working folder, with the agent's model
    * and instructions when its file sets them. It is ephemeral: Halonic keeps
    * the run's record, so Codex keeps none in the settings folder.
+   *
+   * In ask mode the thread says `approvalPolicy: "untrusted"` itself, because
+   * Codex 0.166.0 refuses that value in `config.toml` and a thread's own
+   * setting wins over every settings file, a project's `.codex/config.toml`
+   * included. Checked by hand against Codex 0.166.0 (HAL-5397, N2): `ls`,
+   * `cat`, `rg`, `git status`, `git diff` and `git log` each asked before
+   * running, so a planted `core.fsmonitor` or `diff.external` never ran.
    */
-  #threadParams(workingFolder: string): Record<string, unknown> {
+  #threadParams(workingFolder: string, askMode: boolean): Record<string, unknown> {
     const params: Record<string, unknown> = { cwd: workingFolder, ephemeral: true };
+    if (askMode) params["approvalPolicy"] = "untrusted";
     if (this.#task.model !== undefined) params["model"] = this.#task.model;
     if (this.#task.instructions.trim() !== "") {
       params["developerInstructions"] = this.#task.instructions;
