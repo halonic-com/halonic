@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-5397 (security conditions N1a, N6, N7, N8, approved with the plan); Liam reviewed and approved this pull request on https://paperclip.halonic.com/HAL/issues/HAL-10619 and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:z+YbP7m1dzHRBUZcSGyhRnhdiOiDToiGzYK4lEcsYZ1YSjDJ7HSokGi9QdGAB5G3BL42qsho3C01XaB2kKZ4Bg==
 
 ## What changes
 
