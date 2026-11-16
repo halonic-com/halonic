@@ -84,6 +84,7 @@ const source: RunsSource = {
   routine: () => undefined,
   runnableWorkflows: async () => ["review-pull-request"],
   currency: () => "EUR",
+  providerKind: () => undefined,
   monthlyBudget: () => undefined,
   subscribe: () => () => undefined,
 };
