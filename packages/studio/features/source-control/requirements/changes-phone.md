@@ -6,7 +6,9 @@
 
 When the screen is a phone, the Changes page shall be the same page in one column with a 16px inset. The top bar says "Changes", so the page's heading shall be for screen readers only. Create version shall be a secondary, full-width, 48px button under "Since your last version" and its count, shown only while something has changed. Create version shall open as a full-screen form sheet. Where the page names git, it shall say "your computer", because git runs there: "Halonic needs git on your computer to keep versions." and, when git doesn't answer, "Halonic on your computer isn't answering." as the reason under "Couldn't load changes", with Try again.
 
-While their phone layouts are not built, the sharing strip, History, the item rows, What changed and the version page shall follow the desktop pages.
+On a phone, the sharing strip shall say "Only on your computer." with the hint "Add where to share on a computer." and no action, Get updates shall be a 48px button at the end of the header, and History's Show more and Try again shall be full-width 48px buttons.
+
+While their phone layouts are not built, the item rows, What changed and the version page shall follow the desktop pages.
 
 ## Examples
 
