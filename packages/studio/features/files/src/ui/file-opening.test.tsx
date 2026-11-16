@@ -14,6 +14,7 @@ const host: FilesHost = {
   subscribe: () => () => {},
   read: async () => null,
   edit: () => {},
+  problems: async () => [],
 };
 
 verifies("files.ui.file-tab", () => {

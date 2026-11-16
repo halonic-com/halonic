@@ -1,4 +1,6 @@
-import type { FilesHost, FilesListing } from "@halonicjs/studio-feature-files/api";
+import type { FileIssue, FilesHost, FilesListing } from "@halonicjs/studio-feature-files/api";
+import { loadWorkspace } from "@halonicjs/workspace";
+import { unsavedSource } from "../library/workspace-library-items.ts";
 
 /** What {@link WorkspaceFilesHost} needs of the workspace's files and events. */
 export interface FilesHostParts {
@@ -8,6 +10,7 @@ export interface FilesHostParts {
   readonly files: {
     readonly pending: Readonly<Record<string, string | null>>;
     read(path: string): Promise<string | null>;
+    list(dir: string): Promise<string[]>;
     change(
       label: string,
       changes: Record<string, string | null>,
@@ -45,7 +48,25 @@ export class WorkspaceFilesHost implements FilesHost {
       if (text === null) paths.delete(path);
       else paths.add(path);
     }
-    return { paths: [...paths].sort(), marks: new Map() };
+    const marks = new Map<string, { errors: number; warnings: number }>();
+    for (const issue of await this.problems()) {
+      const mark = marks.get(issue.file) ?? { errors: 0, warnings: 0 };
+      if (issue.severity === "error") mark.errors += 1;
+      else mark.warnings += 1;
+      marks.set(issue.file, mark);
+    }
+    return { paths: [...paths].sort(), marks };
+  }
+
+  async problems(): Promise<readonly FileIssue[]> {
+    try {
+      const workspace = await loadWorkspace(unsavedSource(this.#parts.files));
+      return workspace.issues
+        .map(({ file, severity, message, line, col }) => ({ file, severity, message, line, col }))
+        .sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.col - b.col);
+    } catch {
+      return [];
+    }
   }
 
   read(path: string): Promise<string | null> {

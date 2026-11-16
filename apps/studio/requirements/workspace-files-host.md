@@ -1,10 +1,10 @@
 # studio.workspace-files-host
 
-- Status: draft
+- Status: active
 - Since: 0.1.0
 - Source: HAL-10534; the Files feature's `FilesHost`
 
-The Studio shall give the Files feature's file tree the workspace's files: every file path in the folder, with an unsaved new file listed and an unsaved delete left out. It shall list again, through `subscribe`, whenever the workspace's files change or a save finishes. It shall give no marks until problems and outside changes are reported. When the folder can't be read, it shall reject with the reason in one sentence.
+The Studio shall give the Files feature's file tree the workspace's files: every file path in the folder, with an unsaved new file listed and an unsaved delete left out. It shall list again, through `subscribe`, whenever the workspace's files change or a save finishes. It shall report every error and warning in the files, with unsaved changes applied, by file with line and column, and count them in the listing's marks; it shall report none when the files can't be checked. Outside changes are not marked yet. When the folder can't be read, it shall reject with the reason in one sentence.
 
 ## Examples
 
@@ -20,3 +20,6 @@ The Studio shall give the Files feature's file tree the workspace's files: every
 - Given a folder that can't be read,
   when the tree lists,
   then the listing rejects with a one-sentence reason.
+- Given `hubs/p/hub.yaml` has invalid YAML,
+  when the host reports problems,
+  then an error names that file with a line, and the listing marks the file with an error.

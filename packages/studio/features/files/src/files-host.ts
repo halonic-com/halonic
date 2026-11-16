@@ -9,6 +9,19 @@ export interface FilesListing {
   readonly marks: FileMarks;
 }
 
+/** One thing wrong with a file, and where in its text. */
+export interface FileIssue {
+  /** The file's path, such as `hubs/p/hub.yaml`. */
+  readonly file: string;
+  /** An error makes the file fail; a warning only informs. */
+  readonly severity: "error" | "warning";
+  /** What is wrong, in one sentence. */
+  readonly message: string;
+  /** 1-based line and column in the file's text. */
+  readonly line: number;
+  readonly col: number;
+}
+
 /** The workspace's files. The app provides it for each open workspace. */
 export interface FilesHost {
   /** Lists the files. Rejects with an `Error` whose message is one sentence when the folder can't be read. */
@@ -20,6 +33,11 @@ export interface FilesHost {
    * workspace saves a moment after typing stops.
    */
   edit(path: string, text: string): void;
+  /**
+   * Every error and warning in the workspace's files, with the unsaved changes applied, errors
+   * and warnings of one file in the order of the text. Resolves to none when the files can't be checked.
+   */
+  problems(): Promise<readonly FileIssue[]>;
   /** Calls `listener` whenever a file, or a mark on one, may have changed. Returns a function that stops the calls. */
   subscribe(listener: () => void): () => void;
 }

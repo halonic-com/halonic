@@ -46,6 +46,7 @@ function hostOf(read: FilesHost["read"], edit: FilesHost["edit"] = () => {}): Fi
     subscribe: () => () => {},
     read,
     edit,
+    problems: async () => [],
   };
 }
 
