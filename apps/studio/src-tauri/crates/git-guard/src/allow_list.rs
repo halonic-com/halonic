@@ -62,6 +62,9 @@ pub(crate) struct AllowedSubcommand {
 use AllowedOption::{Flag, Joined, Separate};
 use ValueRule::{BranchName, Number, OneOf, Text};
 
+/// The only merge strategy: it keeps this side's files as they are, never
+/// runs a merge driver and never writes conflict markers.
+const MERGE_STRATEGIES: &[&str] = &["ours"];
 const UNTRACKED_MODES: &[&str] = &["no", "normal", "all"];
 const PORCELAIN_VERSIONS: &[&str] = &["v1", "v2"];
 const DATE_FORMATS: &[&str] = &[
@@ -338,6 +341,51 @@ pub(crate) const ALLOWED_SUBCOMMANDS: &[AllowedSubcommand] = &[
         ],
         arguments: Arguments::RemoteAndRefs,
         uses_network: true,
+        shows_diffs: false,
+    },
+    AllowedSubcommand {
+        name: "fetch",
+        options: &[
+            Flag("--no-tags"),
+            Flag("--prune"),
+            Flag("-q"),
+            Flag("--quiet"),
+        ],
+        arguments: Arguments::RemoteAndRefs,
+        uses_network: true,
+        shows_diffs: false,
+    },
+    AllowedSubcommand {
+        name: "merge-base",
+        options: &[Flag("--is-ancestor"), Flag("--all")],
+        arguments: Arguments::RevisionsAndPaths,
+        uses_network: false,
+        shows_diffs: false,
+    },
+    // `show <revision>:<path>` reads one file as the other side has it.
+    AllowedSubcommand {
+        name: "show",
+        options: &[Flag("--no-patch"), Flag("-s"), Joined("--format", Text)],
+        arguments: Arguments::RevisionsAndPaths,
+        uses_network: false,
+        shows_diffs: true,
+    },
+    // Only the shape `check_merge` allows: the other side's history joins
+    // this one, and no file changes until the person has chosen.
+    AllowedSubcommand {
+        name: "merge",
+        options: &[
+            Flag("--no-ff"),
+            Flag("--no-commit"),
+            Flag("--no-edit"),
+            Flag("--abort"),
+            Flag("-q"),
+            Flag("--quiet"),
+            Joined("--strategy", OneOf(MERGE_STRATEGIES)),
+            Separate("-s", OneOf(MERGE_STRATEGIES)),
+        ],
+        arguments: Arguments::RevisionsAndPaths,
+        uses_network: false,
         shows_diffs: false,
     },
     AllowedSubcommand {

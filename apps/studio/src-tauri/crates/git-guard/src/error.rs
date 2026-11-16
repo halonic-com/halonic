@@ -25,6 +25,9 @@ pub enum GitError {
     },
     /// A `commit` without `-m` or `--message`, and not `--amend --no-edit`.
     MessageRequired,
+    /// A `merge` that is not `--no-ff --no-commit -s ours` with one revision,
+    /// or `--abort` alone.
+    MergeNotOurs,
     /// The folder is not inside a folder the user opened.
     FolderNotOpened,
     /// The folder does not exist or cannot be read.
@@ -69,6 +72,7 @@ impl GitError {
             GitError::MissingValue { .. } => "missing_value",
             GitError::ArgumentNotAllowed { .. } => "argument_not_allowed",
             GitError::MessageRequired => "message_required",
+            GitError::MergeNotOurs => "merge_not_ours",
             GitError::FolderNotOpened => "folder_not_opened",
             GitError::FolderUnreadable => "folder_unreadable",
             GitError::RepositoryUnreadable => "repository_unreadable",
@@ -120,6 +124,10 @@ impl fmt::Display for GitError {
             GitError::MessageRequired => write!(
                 formatter,
                 "git commit needs -m or --message, or --amend --no-edit"
+            ),
+            GitError::MergeNotOurs => write!(
+                formatter,
+                "git merge needs --no-ff --no-commit -s ours and one revision, or --abort alone"
             ),
             GitError::FolderNotOpened => write!(formatter, "the folder is not an opened folder"),
             GitError::FolderUnreadable => write!(formatter, "the folder cannot be read"),

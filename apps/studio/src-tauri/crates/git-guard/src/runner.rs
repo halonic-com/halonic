@@ -315,7 +315,7 @@ impl GitRunner {
         command.arg(subcommand);
         // `remote.<name>.uploadpack` and `receivepack`.
         match subcommand.as_str() {
-            "pull" => {
+            "pull" | "fetch" => {
                 command.arg("--upload-pack=git-upload-pack");
             }
             "push" => {
