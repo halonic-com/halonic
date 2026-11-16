@@ -2,6 +2,7 @@
 import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { requestConnectorTitleFocus } from "../connector-focus-request.ts";
 import { type ConnectorStatusHost, ConnectorStatusHostService } from "../connector-status-host.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ConnectorPage } from "./connector-page.tsx";
@@ -41,6 +42,13 @@ describe("ConnectorPage", () => {
     await settled();
     expect(root.querySelector("h1")?.textContent).toBe("Notes");
     expect(root.querySelector("h2")?.textContent).toBe("Recent refusals");
+  });
+
+  it("focuses the title of a connector just made in New connector, and only once", async () => {
+    requestConnectorTitleFocus({ hub: "local", id: "notes" });
+    const root = render(<ConnectorPage {...props("notes")} />);
+    await settled();
+    expect(document.activeElement).toBe(root.querySelector("h1"));
   });
 
   it("draws the sections other features add under the status section", async () => {

@@ -2,6 +2,7 @@ import type { LibraryItemKind } from "@halonicjs/app";
 import type { PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useState } from "react";
 import type { CollectionRef } from "../collection-host.ts";
+import { requestConnectorTitleFocus } from "../connector-focus-request.ts";
 import { LibraryItemsHostService } from "../library-items-host.ts";
 import type { LibraryEntryPlace } from "../library-overview.ts";
 import { LibraryTabMemoryService } from "../library-tab-memory.ts";
@@ -113,6 +114,7 @@ export function LibraryPlace({ context }: PlaceViewProps) {
           host={newConnectorHost}
           onCreated={(connector) => {
             setMakingConnector(false);
+            requestConnectorTitleFocus(connector);
             openConnector(connector);
           }}
           onCancel={() => setMakingConnector(false)}
