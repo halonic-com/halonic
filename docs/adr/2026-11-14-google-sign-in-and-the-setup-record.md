@@ -100,3 +100,28 @@ server on its own port that closes after the first callback. The route is part
 of the host's own server instead, so a closed-after-one-use listener, and its
 host-and-port check, are replaced by the loopback check above and the host's
 `Host` check.
+
+## Addendum: the callback over the shell relay (HAL-10029, 2026-11-15)
+
+In the Windows app the agent host runs in WSL and has no port: Studio's relay
+listens on Windows' loopback and passes connections to it as frames. Google's
+redirect must name that relay port, because only it is reachable from the
+browser. So in relay mode the host sends the redirect to `127.0.0.1:<relay
+port>/v1/google/callback`; the host's own port is unchanged at
+`/api/google/callback`. The path differs because the relay passes on without
+the token exactly one request, `GET /v1/google/callback` (HAL-10028, requirement
+`relay-callback`), so the redirect and the host's route must both use it. The
+host serves the callback over frames with the same route table and the same
+checks as on its own port: the `Host` must name the relay's port, `Origin` is
+refused, and the `state` is the proof.
+
+The callback page now also carries `Referrer-Policy: no-referrer` and
+`Connection: close`, in both modes. The code is in the address bar and the
+history, so nothing may carry it on as a referrer; and over frames the relay
+sees the answer end only when the host closes the connection.
+
+The sign-in uses PKCE (S256): the code is useless without the verifier the host
+holds in memory. A host restart ends a pending sign-in, and the page then says
+the link is no longer valid. A relay port that changes at each start is fine:
+Google's Desktop-app client takes any loopback port. The threat model's
+section 4.6 has the corrected rows for this route.

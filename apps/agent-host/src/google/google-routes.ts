@@ -13,6 +13,13 @@ export interface GoogleRouteDeps {
   clock?: Clock;
   /** Where the host writes what it keeps from a failure; the answer never carries it. */
   log?: (text: string) => void;
+  /**
+   * Set when the host serves over frames: the port of Studio's relay on Windows'
+   * loopback, the only address the browser can reach. The sign-in's redirect
+   * names this port and {@link relayCallbackPath}, and the callback is served there.
+   * Absent when the host listens on its own port.
+   */
+  relayPort?: number;
 }
 
 /**
@@ -21,6 +28,13 @@ export interface GoogleRouteDeps {
  * follows a started sign-in's redirect address is what keeps the two equal.
  */
 const googleCallbackPath = "/api/google/callback";
+
+/**
+ * Where Google sends the browser back to in relay mode. It is the one path
+ * Studio's relay passes on without the launch token (`relay-callback.md` of
+ * the agent-host crate), so the redirect and the route must both use it.
+ */
+export const relayCallbackPath = "/v1/google/callback";
 
 const setupsPath = "/api/google/setups";
 
@@ -66,7 +80,15 @@ const callbackFailedPage = `<!doctype html><html lang="en"><head><meta charset="
  *   text. The same-host check of the server still applies.
  */
 export function googleRoutes(deps: GoogleRouteDeps): HostRoute[] {
-  const handler = createGoogleRoutes({ google: deps.google, clock: deps.clock ?? systemClock });
+  const handler = createGoogleRoutes({
+    google: inRelayMode(deps.google, deps.relayPort),
+    clock: deps.clock ?? systemClock,
+  });
+  /** The port Google must send the browser back to, and the `Host` a request to it names. */
+  const portOf = (request: IncomingMessage): number =>
+    // `?? 80` only matters on a socket that has already closed, where no
+    // request is being answered anyway. Over frames there is no socket port.
+    deps.relayPort ?? request.socket.localPort ?? 80;
 
   /** Keeps what failed in the host's log only: the error's text can hold paths. */
   function logFailure(error: unknown): void {
@@ -122,7 +144,7 @@ export function googleRoutes(deps: GoogleRouteDeps): HostRoute[] {
   /** Google's redirect, as the handler's own callback answers it, page and all. */
   const callbackRoute: HostRoute = {
     method: "GET",
-    path: googleCallbackPath,
+    path: deps.relayPort === undefined ? googleCallbackPath : relayCallbackPath,
     tokenFree: true,
     handle: async (request, response) => {
       try {
@@ -131,18 +153,12 @@ export function googleRoutes(deps: GoogleRouteDeps): HostRoute[] {
             headers: { host: `127.0.0.1:${portOf(request)}` },
           }),
         );
-        response.writeHead(answer.status, {
-          "content-type": "text/html; charset=utf-8",
-          "cache-control": "no-store",
-        });
+        response.writeHead(answer.status, callbackPageHeaders);
         response.end(await answer.text());
       } catch (error) {
         logFailure(error);
         // A browser tab, not a script, asked: a page says it where JSON would show raw text.
-        response.writeHead(502, {
-          "content-type": "text/html; charset=utf-8",
-          "cache-control": "no-store",
-        });
+        response.writeHead(502, callbackPageHeaders);
         response.end(callbackFailedPage);
       }
     },
@@ -167,15 +183,6 @@ export function googleRoutes(deps: GoogleRouteDeps): HostRoute[] {
   ];
 }
 
-/**
- * The port this host serves on, which Google must send the browser back to.
- * `?? 80` only matters on a socket that has already closed, where no
- * request is being answered anyway.
- */
-function portOf(request: IncomingMessage): number {
-  return request.socket.localPort ?? 80;
-}
-
 /** Sends the handler's answer: its JSON, nothing for a 204, or its `{ code, message }` in the host's one error shape. */
 async function relay(response: ServerResponse, answer: Response): Promise<void> {
   if (answer.status === 204) {
@@ -188,4 +195,38 @@ async function relay(response: ServerResponse, answer: Response): Promise<void> 
   }
   const refusal = (await answer.json()) as { code: string; message: string };
   sendError(response, answer.status, refusal.code, refusal.message);
+}
+
+/**
+ * What the callback page is sent with. The address bar and the history hold
+ * the sign-in's code, so the page is never cached and sends no referrer, and
+ * it closes the connection: over frames the relay doesn't see the answer end,
+ * only the host's `end` frame, and a kept-alive connection would wait out
+ * Node's `keepAliveTimeout` (5 s) before the relay closes it.
+ */
+const callbackPageHeaders = {
+  "content-type": "text/html; charset=utf-8",
+  "cache-control": "no-store",
+  "referrer-policy": "no-referrer",
+  connection: "close",
+};
+
+/**
+ * The Google ports, with a sign-in that sends the browser back to
+ * {@link relayCallbackPath} when the host serves over frames (`relayPort`
+ * set); otherwise as they are. The handler builds the redirect from the
+ * request's port and its own fixed path, so the path is changed where the
+ * sign-in starts.
+ */
+function inRelayMode(google: GoogleSetupPorts, relayPort: number | undefined): GoogleSetupPorts {
+  if (relayPort === undefined) return google;
+  const { startSignIn } = google.actions;
+  return {
+    ...google,
+    actions: {
+      ...google.actions,
+      startSignIn: (input) =>
+        startSignIn({ ...input, redirect: { ...input.redirect, path: relayCallbackPath } }),
+    },
+  };
 }
