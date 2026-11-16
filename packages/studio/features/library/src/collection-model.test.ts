@@ -66,6 +66,7 @@ function hostOf(rows: CollectionRow[] | undefined, overrides: Partial<Collection
     change: vi.fn(async () => "saved" as const),
     add: vi.fn(async () => {}),
     remove: vi.fn(async () => {}),
+    rename: vi.fn(async () => {}),
     usage: async () => noUsage,
     subscribe: () => () => {},
     ...overrides,

@@ -211,6 +211,17 @@ export class CollectionModel {
     return this.source?.newRow(this.state.typed);
   }
 
+  /** Gives the collection a new name. Resolves to whether it was written. */
+  async rename(name: string): Promise<boolean> {
+    try {
+      await this.host.rename(this.collection, name);
+    } catch {
+      return false;
+    }
+    await this.refresh();
+    return true;
+  }
+
   /** Removes a record. Resolves to whether it was written (a record already gone counts). */
   async remove(row: string): Promise<boolean> {
     try {

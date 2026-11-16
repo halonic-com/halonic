@@ -1,6 +1,6 @@
 import { FilterChips, FormRows } from "@halonicjs/studio-kit";
-import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { ItemGone, type ItemViewProps, NameField, PageBackLinkSlot } from "@halonicjs/studio-shell";
+import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { chipText } from "../collection-format.ts";
 import { CollectionHostService, type CollectionRef } from "../collection-host.ts";
 import { CollectionModel } from "../collection-model.ts";
@@ -57,6 +57,7 @@ function LoadedCollectionPage({
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
   const state = useSyncExternalStore(subscribe, () => model.state);
   const { loaded, gone, name, volatile, view, grid, usage } = state;
+  const [renameFailed, setRenameFailed] = useState(false);
 
   if (gone) {
     return <Gone context={context} />;
@@ -68,9 +69,21 @@ function LoadedCollectionPage({
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 wide:px-6">
       <PageBackLinkSlot />
-      <h1 tabIndex={-1} className="text-title [overflow-wrap:anywhere]">
-        {name || item.id}
+      <h1 tabIndex={-1} className="flex min-w-0 text-title">
+        <NameField
+          name={name || item.id}
+          label={`${collectionWords.kindName} name`}
+          onRename={(next) => {
+            setRenameFailed(false);
+            void model.rename(next).then((written) => setRenameFailed(!written));
+          }}
+        />
       </h1>
+      {renameFailed ? (
+        <p role="alert" className="text-small text-danger">
+          {collectionWords.renameFailed}
+        </p>
+      ) : null}
       {volatile ? <p className="text-small text-fg-muted">{collectionWords.volatileLine}</p> : null}
       <FilterChips
         label={collectionWords.chipsLabel}
