@@ -3,6 +3,7 @@
 - Task: HAL-11190
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11120 (Sofia's walk of the approved screens found them; small wording and detail fixes on approved screens are a team decision, HAL-2282 rule; Priya reviewed the PR on HAL-11197)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nn4cxKZu5B676+vVdqj4H35OMuA8XHuM4UHLyftYeG96BGdCM4dA13pkxxOSJeP7Uwd+Q6OLExA+h4b7MeumBQ==
 
 ## What changes
 
