@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { FakeHost, ok, refused } from "./fake-host.test-helper.ts";
 import { AgentHostSandboxSetup } from "./sandbox-setup.ts";
 
+const BACKUP = "Z:\\backup\\halonic.tar"; // leak-guard: allow absolute-path example
+
 const finished = {
   verb: "setup",
   result: {
@@ -67,6 +69,53 @@ describe("AgentHostSandboxSetup", () => {
     const host = new FakeHost().answer("GET /v1/sandbox/setup", ok({ running: "always" }));
     await expect(new AgentHostSandboxSetup(host).status()).rejects.toMatchObject({
       kind: "answer_invalid",
+    });
+  });
+
+  describe("removing the WSL setup", () => {
+    const choice = { choice: "export-then-remove", file: BACKUP } as const;
+    const wslRunning = { running: "remove-wsl", last: null };
+    const wslEnd = {
+      verb: "remove-wsl",
+      result: { outcome: "removed", exportedTo: BACKUP },
+      finishedAt: "2026-11-16T09:12:00.000Z",
+    };
+
+    it("sends the user's choice and nothing else", async () => {
+      const host = new FakeHost().answer("POST /v1/sandbox/remove-wsl", {
+        status: 202,
+        body: wslRunning,
+      });
+      expect(await new AgentHostSandboxSetup(host).startRemoveWsl(choice)).toEqual(wslRunning);
+      expect(host.calls).toContainEqual({ route: "POST /v1/sandbox/remove-wsl", body: choice });
+    });
+
+    it("follows the removal and reads how it ended", async () => {
+      const answers = [wslRunning, { running: null, last: wslEnd }];
+      const host = new FakeHost().answer("GET /v1/sandbox/setup", () => ok(answers.shift()));
+      expect(await new AgentHostSandboxSetup(host, noPause).ended("remove-wsl")).toEqual(wslEnd);
+    });
+
+    it("reads a failed export and a host that threw", async () => {
+      for (const result of [
+        { outcome: "failed", reason: "export-failed", detail: "wsl --export ended with 1" },
+        { ok: false, outcome: "failed", reason: "The saved WSL setup state can't be read." },
+      ]) {
+        const last = { ...wslEnd, result };
+        const host = new FakeHost().answer("GET /v1/sandbox/setup", ok({ running: null, last }));
+        expect(await new AgentHostSandboxSetup(host, noPause).ended("remove-wsl")).toEqual(last);
+      }
+    });
+
+    it("answers how many runs use the sandbox when the host refuses", async () => {
+      const host = new FakeHost().answer("POST /v1/sandbox/remove-wsl", {
+        status: 409,
+        body: {
+          error: { kind: "sandbox_in_use", message: "1 run is using the sandbox." },
+          runs: 1,
+        },
+      });
+      expect(await new AgentHostSandboxSetup(host).startRemoveWsl(choice)).toEqual({ inUse: 1 });
     });
   });
 });

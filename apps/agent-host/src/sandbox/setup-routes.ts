@@ -1,9 +1,15 @@
 import type { ServerResponse } from "node:http";
-import type { SandboxRemoval, SandboxSetup } from "@halonicjs/adapter-sandbox-srt";
+import type {
+  SandboxRemoval,
+  SandboxSetup,
+  WslRemoveChoice,
+  WslRemoveResult,
+} from "@halonicjs/adapter-sandbox-srt";
 import { s } from "@halonicjs/schema-kit";
 import { type HostRoute, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
 import type { SessionTable } from "./session-table.ts";
+import type { WslRemover } from "./wsl-remove-host.ts";
 
 /** What the routes need of the sandbox: its one-time setup and its removal (see `SrtSandbox`). */
 export interface SandboxSetter {
@@ -11,15 +17,28 @@ export interface SandboxSetter {
   remove(): Promise<SandboxRemoval>;
 }
 
-type Verb = "setup" | "remove";
+/** The WSL setup's removal, when this host can do it (HAL-10974). */
+export type WslRemoval = WslRemover;
+
+type Verb = "setup" | "remove" | "remove-wsl";
 
 /** Both POSTs take an empty object: nothing about the setup comes from the caller. */
 const emptyBody = s.object({}).strict();
 
+/**
+ * What `POST /v1/sandbox/remove-wsl` takes: the user's explicit choice for the
+ * distro's files. There is no default, and no distro name: the host removes
+ * only Halonic's own. A backup file goes with `export-then-remove` only.
+ */
+const removeWslBody = s.union([
+  s.object({ choice: s.literal("export-then-remove"), file: s.string().min(1) }).strict(),
+  s.object({ choice: s.literal("remove-only") }).strict(),
+]);
+
 /** A setup or removal that has ended, and when. */
 export interface FinishedSetup {
   verb: Verb;
-  result: SandboxSetup | SandboxRemoval;
+  result: SandboxSetup | SandboxRemoval | WslRemoveResult;
   /** ISO time it ended. */
   finishedAt: string;
 }
@@ -36,9 +55,17 @@ export class SetupJobs {
   #running: { verb: Verb; done: Promise<FinishedSetup> } | null = null;
   #last: FinishedSetup | null = null;
 
-  constructor(setter: SandboxSetter, now: () => Date = () => new Date()) {
+  readonly #wsl: WslRemoval | undefined;
+
+  constructor(setter: SandboxSetter, now: () => Date = () => new Date(), wsl?: WslRemoval) {
     this.#setter = setter;
     this.#now = now;
+    this.#wsl = wsl;
+  }
+
+  /** Whether this host can remove the WSL setup. */
+  get canRemoveWsl(): boolean {
+    return this.#wsl !== undefined;
   }
 
   /** Which one runs now, if any, and the last one that ended. */
@@ -49,15 +76,15 @@ export class SetupJobs {
   /**
    * Starts `verb`, or joins it when it already runs.
    *
+   * @param choice - for `remove-wsl` only: what the user chose; a second press joins the job that runs, whatever it chose
    * @returns its end, or the other verb when that one runs
    */
-  run(verb: Verb): Promise<FinishedSetup> | { busy: Verb } {
+  run(verb: Verb, choice?: WslRemoveChoice): Promise<FinishedSetup> | { busy: Verb } {
     if (this.#running !== null) {
       return this.#running.verb === verb ? this.#running.done : { busy: this.#running.verb };
     }
-    const started: Promise<SandboxSetup | SandboxRemoval> =
-      verb === "setup" ? this.#setter.setUp() : this.#setter.remove();
-    // Both never throw; if one did, the slot must still free up.
+    const started = this.#start(verb, choice);
+    // None of them throws; if one did, the slot must still free up.
     const done = started.catch(thrown).then((result) => {
       const finished = { verb, result, finishedAt: this.#now().toISOString() };
       this.#last = finished;
@@ -66,6 +93,22 @@ export class SetupJobs {
     });
     this.#running = { verb, done };
     return done;
+  }
+
+  #start(
+    verb: Verb,
+    choice: WslRemoveChoice | undefined,
+  ): Promise<SandboxSetup | SandboxRemoval | WslRemoveResult> {
+    if (verb === "setup") return this.#setter.setUp();
+    if (verb === "remove") return this.#setter.remove();
+    return this.#removeWsl(choice);
+  }
+
+  #removeWsl(choice: WslRemoveChoice | undefined): Promise<WslRemoveResult> {
+    if (this.#wsl === undefined || choice === undefined) {
+      return Promise.reject(new Error("This host can't remove the WSL setup."));
+    }
+    return this.#wsl(choice);
   }
 }
 
@@ -81,8 +124,13 @@ function thrown(error: unknown): SandboxRemoval {
  * waits, so the caller follows it with `GET /v1/sandbox/setup`. Answers 409
  * `sandbox_busy` while the other verb runs.
  */
-function answerJob(jobs: SetupJobs, verb: Verb, response: ServerResponse): void {
-  const job = jobs.run(verb);
+function answerJob(
+  jobs: SetupJobs,
+  verb: Verb,
+  response: ServerResponse,
+  choice?: WslRemoveChoice,
+): void {
+  const job = jobs.run(verb, choice);
   if ("busy" in job) {
     const doing = job.busy === "setup" ? "being set up" : "being removed";
     sendJson(response, 409, {
@@ -109,7 +157,11 @@ function answerJob(jobs: SetupJobs, verb: Verb, response: ServerResponse): void 
  *   null, however long Windows' prompt takes;
  * - `POST /v1/sandbox/remove` does the same for the removal, but refuses
  *   with 409 `sandbox_in_use` and `runs`, before any prompt, while a
- *   sandboxed program runs here. It doesn't stop them (checklist 1.6, D5).
+ *   sandboxed program runs here. It doesn't stop them (checklist 1.6, D5);
+ * - `POST /v1/sandbox/remove-wsl` takes `{ choice: "export-then-remove", file }`
+ *   or `{ choice: "remove-only" }` and removes Halonic's WSL distro, with the
+ *   same 202, job slot and 409s. A failed export removes nothing. It is served
+ *   only by a host that can do it.
  */
 export function setupRoutes(jobs: SetupJobs, sessions: SessionTable): HostRoute[] {
   return [
@@ -143,5 +195,31 @@ export function setupRoutes(jobs: SetupJobs, sessions: SessionTable): HostRoute[
         answerJob(jobs, "remove", response);
       },
     },
+    ...(jobs.canRemoveWsl ? [removeWslRoute(jobs, sessions)] : []),
   ];
+}
+
+function removeWslRoute(jobs: SetupJobs, sessions: SessionTable): HostRoute {
+  return {
+    method: "POST",
+    path: "/v1/sandbox/remove-wsl",
+    handle: async (request, response) => {
+      const body = await readCheckedBody(request, response, removeWslBody);
+      if (body === undefined) return;
+      const runs = sessions.openCount;
+      if (runs > 0) {
+        const using = runs === 1 ? "1 run is" : `${runs} runs are`;
+        sendJson(response, 409, {
+          error: { kind: "sandbox_in_use", message: `${using} using the sandbox.` },
+          runs,
+        });
+        return;
+      }
+      const choice: WslRemoveChoice =
+        body.choice === "export-then-remove"
+          ? { choice: "export-then-remove", file: body.file }
+          : { choice: "remove-without-export" };
+      answerJob(jobs, "remove-wsl", response, choice);
+    },
+  };
 }

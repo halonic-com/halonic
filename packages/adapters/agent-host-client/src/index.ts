@@ -33,6 +33,8 @@ export {
   type SandboxSetupResult,
   type SandboxSetupStatus,
   type SandboxSetupVerb,
+  type WslRemoveChoice,
+  type WslRemoveOutcome,
 } from "./sandbox-setup.ts";
 export {
   type AgentHostAnswer,

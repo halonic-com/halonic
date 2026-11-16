@@ -1,10 +1,18 @@
-import type { SandboxRemoval, SandboxSetup } from "@halonicjs/adapter-sandbox-srt";
+import type {
+  SandboxRemoval,
+  SandboxSetup,
+  WslRemoveChoice,
+  WslRemoveResult,
+} from "@halonicjs/adapter-sandbox-srt";
 import type { SandboxSession } from "@halonicjs/ports";
+import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
 import { SessionTable } from "./session-table.ts";
 import { type SandboxSetter, SetupJobs, setupRoutes } from "./setup-routes.ts";
+
+const BACKUP = "Z:\\backup\\halonic.tar"; // leak-guard: allow absolute-path example
 
 const token = randomLaunchToken();
 const authorization = { authorization: `Bearer ${token}` };
@@ -159,6 +167,159 @@ describe("setupRoutes", () => {
     expect(await status(url)).toMatchObject({
       running: null,
       last: { result: { ok: false, outcome: "failed", reason: "broken" } },
+    });
+  });
+});
+
+/** A WSL removal that records its choices and answers what the test says. */
+function wslRemover(answer: WslRemoveResult = { outcome: "removed" }) {
+  const choices: WslRemoveChoice[] = [];
+  return {
+    choices,
+    remove: async (choice: WslRemoveChoice) => {
+      choices.push(choice);
+      return answer;
+    },
+  };
+}
+
+async function startedWsl(
+  wsl: ReturnType<typeof wslRemover>,
+  setter: SandboxSetter = heldSetter().setter,
+  sessions = new SessionTable(),
+): Promise<string> {
+  server = await startHostServer(
+    token,
+    setupRoutes(new SetupJobs(setter, () => at, wsl.remove), sessions),
+  );
+  return server.url;
+}
+
+const backup = { choice: "export-then-remove", file: BACKUP };
+
+verifies("agent-host.wsl-remove-route", () => {
+  describe("POST /v1/sandbox/remove-wsl", () => {
+    it("removes after an export to the file the user chose, and keeps how it ended", async () => {
+      const wsl = wslRemover({ outcome: "removed", exportedTo: BACKUP });
+      const url = await startedWsl(wsl);
+      const response = await post(url, "/v1/sandbox/remove-wsl", backup);
+      expect(response.status).toBe(202);
+      await settle();
+      expect(wsl.choices).toEqual([backup]);
+      expect(await status(url)).toEqual({
+        running: null,
+        last: {
+          verb: "remove-wsl",
+          result: { outcome: "removed", exportedTo: BACKUP },
+          finishedAt: at.toISOString(),
+        },
+      });
+    });
+
+    it("maps remove-only to a removal without an export", async () => {
+      const wsl = wslRemover();
+      const url = await startedWsl(wsl);
+      expect((await post(url, "/v1/sandbox/remove-wsl", { choice: "remove-only" })).status).toBe(
+        202,
+      );
+      await settle();
+      expect(wsl.choices).toEqual([{ choice: "remove-without-export" }]);
+    });
+
+    it("keeps a failed export as the end, so nothing was removed", async () => {
+      const failed: WslRemoveResult = {
+        outcome: "failed",
+        reason: "export-failed",
+        detail: "wsl --export ended with 1",
+      };
+      const url = await startedWsl(wslRemover(failed));
+      await post(url, "/v1/sandbox/remove-wsl", backup);
+      await settle();
+      expect(await status(url)).toMatchObject({ last: { verb: "remove-wsl", result: failed } });
+    });
+
+    it.each([
+      ["no body", {}],
+      ["no choice", { file: BACKUP }],
+      ["export without a file", { choice: "export-then-remove" }],
+      ["a file with remove-only", { choice: "remove-only", file: BACKUP }],
+      ["a choice that isn't one", { choice: "keep" }],
+      ["a distro name", { ...backup, distro: "Ubuntu" }],
+    ])("refuses %s before anything runs", async (_name, body) => {
+      const wsl = wslRemover();
+      const url = await startedWsl(wsl);
+      expect((await post(url, "/v1/sandbox/remove-wsl", body)).status).toBe(400);
+      expect(wsl.choices).toEqual([]);
+    });
+
+    it("answers 409 busy while a setup runs, and runs nothing", async () => {
+      const held = heldSetter();
+      const wsl = wslRemover();
+      const url = await startedWsl(wsl, held.setter);
+      await post(url, "/v1/sandbox/setup");
+      const response = await post(url, "/v1/sandbox/remove-wsl", backup);
+      expect(response.status).toBe(409);
+      expect(await response.json()).toMatchObject({ error: { kind: "sandbox_busy" } });
+      expect(wsl.choices).toEqual([]);
+      held.endSetUp({ ok: true });
+    });
+
+    it("answers 409 in use while a sandboxed run goes on", async () => {
+      const sessions = new SessionTable();
+      await sessions.add({
+        fence: { state: "fenced" },
+        profile: { timeLimitMs: 60_000 },
+        close: async () => {},
+        onBlocked: () => () => {},
+      } as unknown as SandboxSession);
+      const wsl = wslRemover();
+      const url = await startedWsl(wsl, heldSetter().setter, sessions);
+      const response = await post(url, "/v1/sandbox/remove-wsl", { choice: "remove-only" });
+      expect(response.status).toBe(409);
+      expect(await response.json()).toMatchObject({ error: { kind: "sandbox_in_use" }, runs: 1 });
+      expect(wsl.choices).toEqual([]);
+      await sessions.closeAll();
+    });
+
+    it("joins a removal that runs", async () => {
+      let end: (result: WslRemoveResult) => void = () => {};
+      const calls: WslRemoveChoice[] = [];
+      const wsl = {
+        choices: calls,
+        remove: (choice: WslRemoveChoice) => {
+          calls.push(choice);
+          return new Promise<WslRemoveResult>((resolve) => {
+            end = resolve;
+          });
+        },
+      };
+      const url = await startedWsl(wsl);
+      await post(url, "/v1/sandbox/remove-wsl", backup);
+      const second = await post(url, "/v1/sandbox/remove-wsl", backup);
+      expect(await second.json()).toEqual({ running: "remove-wsl", last: null });
+      end({ outcome: "removed" });
+      await settle();
+      expect(calls).toHaveLength(1);
+    });
+
+    it("ends a throwing removal as a failure and frees the slot", async () => {
+      const url = await startedWsl({
+        choices: [],
+        remove: async () => {
+          throw new Error("The saved WSL setup state can't be read.");
+        },
+      });
+      await post(url, "/v1/sandbox/remove-wsl", { choice: "remove-only" });
+      await settle();
+      expect(await status(url)).toMatchObject({
+        running: null,
+        last: { result: { ok: false, outcome: "failed" } },
+      });
+    });
+
+    it("is not served by a host that can't remove the setup", async () => {
+      const url = await started(heldSetter().setter);
+      expect((await post(url, "/v1/sandbox/remove-wsl", backup)).status).toBe(404);
     });
   });
 });

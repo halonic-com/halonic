@@ -80,7 +80,9 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
   }
 
   async running(): Promise<"setup" | "remove" | null> {
-    return (await this.#setup.status()).running;
+    const { running } = await this.#setup.status();
+    // The WSL removal is followed by its own dialog, not by the srt section.
+    return running === "remove-wsl" ? null : running;
   }
 
   async setUp(options: { readonly signal?: AbortSignal } = {}): Promise<SandboxOutcome | null> {
