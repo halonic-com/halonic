@@ -99,6 +99,10 @@ export const trustMessages = defineMessages("trust", {
    */
   takesFromEnvironment: (names: readonly string[]) =>
     phrase`takes ${listed(names)} from your environment`,
+  /** The label over the path a program's command resolves to on this computer. */
+  resolvedPath: () => phrase`Resolved path`,
+  /** The label over a program's own `env` entries, one `NAME=value` per line. */
+  programEnvironment: () => phrase`Environment`,
   agentsHeading: () => phrase`Agents`,
   /** The line under the Agents heading. The terminal has no count and no collapsing. */
   agentsIntro: () => phrase`Agents in this workspace that run in Claude Code or Codex.`,

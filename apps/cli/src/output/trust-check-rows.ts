@@ -56,7 +56,24 @@ export function programRow(
     lines.push(phrase`${underRow}${markPart("needsYou")} ${warning.phrase}`);
   }
   const sites = sandboxWorks ? siteLines(programSites(connector)) : [];
-  return [...lines, ...labelledLines(sites)];
+  const details = [...pathLines(connector), ...environmentLines(connector), ...sites];
+  return [...lines, ...labelledLines(details)];
+}
+
+/** "Resolved path" and where the command is on this computer, when it was found. */
+function pathLines(connector: ConnectorTrustContent): LabelledLine[] {
+  const path = text(connector.settings["path"]);
+  return path === "" ? [] : [[trustMessages.resolvedPath().phrase, phrase`${printable(path)}`]];
+}
+
+/** "Environment" and the program's own `env` entries as written, one `NAME=value` per line, by name. */
+function environmentLines(connector: ConnectorTrustContent): LabelledLine[] {
+  return Object.entries(record(connector.settings["env"]))
+    .sort(([first], [second]) => first.localeCompare(second, "en"))
+    .map(([name, value], index) => [
+      index === 0 ? trustMessages.programEnvironment().phrase : phrase``,
+      phrase`${printable(`${name}=${text(value)}`)}`,
+    ]);
 }
 
 /** The sites a program connector may reach in a sandbox, in their stored form, or none. */
