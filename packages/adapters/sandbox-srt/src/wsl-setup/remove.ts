@@ -14,6 +14,8 @@ export interface WslRemoveHost {
   exportDistro(name: string, file: string): Promise<ProgramResult>;
   /** `wsl --unregister <name>`: deletes the distro and all its files. */
   unregisterDistro(name: string): Promise<ProgramResult>;
+  /** The size in bytes of the file, or null when it doesn't exist. */
+  exportedSize(file: string): Promise<number | null>;
 }
 
 /**
@@ -33,7 +35,8 @@ export type WslRemoveChoice =
  * - `kept`: nothing was changed.
  * - `removed`: the distro is gone and the saved setup state is reset.
  * - `refused`: nothing was changed; `reason` says why.
- * - `failed`: a step ended with an error; `unregistered` says whether the distro is still there.
+ * - `failed`: a step ended with an error; `detail` says which. After `export-failed` the
+ *   distro is always still there, and so is the saved state.
  */
 export type WslRemoveResult =
   | { outcome: "kept" }
@@ -43,6 +46,18 @@ export type WslRemoveResult =
 
 /** A Windows path to a file, so the export can't go to a share, a device or a relative path. */
 const exportFile = /^[A-Za-z]:\\(?:[^\\/:*?"<>|\0]+\\)*[^\\/:*?"<>|\0]+$/;
+
+/** Windows device names: opening one with any extension doesn't write a file. */
+const deviceName = /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i;
+
+/** A drive path whose segments are real file names: no devices, no trailing dot or space. */
+function isExportFile(file: string): boolean {
+  if (!exportFile.test(file)) return false;
+  return file
+    .slice(3)
+    .split("\\")
+    .every((segment) => !/[. ]$/.test(segment) && !deviceName.test(segment.split(".")[0] ?? ""));
+}
 
 /**
  * Removes the distro of the setup, never without an explicit choice and never
@@ -64,10 +79,10 @@ export async function removeWslSetup(
   // W8: the distro Halonic imported is the only one it will ever delete.
   if (state.importedDistro?.name !== distro)
     return { outcome: "refused", reason: "distro-not-ours" };
+  if (choice.choice === "export-then-remove" && !isExportFile(choice.file))
+    return { outcome: "refused", reason: "bad-export-file" };
   const registered = (await host.distros()).some((d) => d.name === distro);
   if (!registered) return { outcome: "refused", reason: "distro-missing" };
-  if (choice.choice === "export-then-remove" && !exportFile.test(choice.file))
-    return { outcome: "refused", reason: "bad-export-file" };
 
   if (choice.choice === "export-then-remove") {
     const exported = await host.exportDistro(distro, choice.file);
@@ -77,6 +92,13 @@ export async function removeWslSetup(
         reason: "export-failed",
         detail: `wsl --export ended with ${exported.code ?? "no start"}`,
       };
+    // An exit code alone isn't proof of a backup: the delete below can't be undone.
+    if (!((await host.exportedSize(choice.file)) ?? 0))
+      return {
+        outcome: "failed",
+        reason: "export-failed",
+        detail: "wsl --export left no backup file",
+      };
   }
   const gone = await host.unregisterDistro(distro);
   if (gone.code !== 0)
@@ -85,6 +107,8 @@ export async function removeWslSetup(
       reason: "unregister-failed",
       detail: `wsl --unregister ended with ${gone.code ?? "no start"}`,
     };
+  // If this save throws, the state still names a distro that is gone; WslSetup
+  // reports that as `distro-missing`.
   await store.save({ step: "not-started" });
   return choice.choice === "export-then-remove"
     ? { outcome: "removed", exportedTo: choice.file }

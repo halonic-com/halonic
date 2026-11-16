@@ -18,10 +18,24 @@ const BAD_FILES = [
   "Z:\\", // leak-guard: allow absolute-path example
   "Z:\\a|b.tar", // leak-guard: allow absolute-path example
   "\\\\.\\pipe\\x",
+  "Z:\\NUL", // leak-guard: allow absolute-path example
+  "Z:\\CON", // leak-guard: allow absolute-path example
+  "Z:\\COM1.tar", // leak-guard: allow absolute-path example
+  "Z:\\backup\\nul.tar", // leak-guard: allow absolute-path example
+  "Z:\\lpt9.old.tar", // leak-guard: allow absolute-path example
+  "Z:\\backup.", // leak-guard: allow absolute-path example
+  "Z:\\backup \\a.tar", // leak-guard: allow absolute-path example
 ];
 const ours = { step: "done", importedDistro: { name: "halonic", location: DATA } } as const;
 
-function fakeHost(opts: { names?: string[]; exportCode?: number; unregisterCode?: number } = {}) {
+function fakeHost(
+  opts: {
+    names?: string[];
+    exportCode?: number;
+    unregisterCode?: number;
+    size?: number | null;
+  } = {},
+) {
   const calls: string[] = [];
   const host: WslRemoveHost = {
     distros: async () => (opts.names ?? ["halonic"]).map(distro),
@@ -33,6 +47,7 @@ function fakeHost(opts: { names?: string[]; exportCode?: number; unregisterCode?
       calls.push(`unregister ${name}`);
       return { code: opts.unregisterCode ?? 0, output: "" };
     },
+    exportedSize: async () => (opts.size === undefined ? 1024 : opts.size),
   };
   return { host, calls };
 }
@@ -81,6 +96,21 @@ verifies("sandbox-srt.wsl-remove", () => {
       expect(calls).toEqual([`export halonic ${BACKUP}`]);
       expect((await store.load()).step).toBe("done");
     });
+
+    it.each([null, 0])(
+      "keeps the distro when the export exits 0 but leaves size %s",
+      async (size) => {
+        const { host, calls } = fakeHost({ size });
+        const store = memoryWslSetupStore({ ...ours });
+        const result = await removeWslSetup(host, store, "halonic", {
+          choice: "export-then-remove",
+          file: BACKUP,
+        });
+        expect(result).toMatchObject({ outcome: "failed", reason: "export-failed" });
+        expect(calls).toEqual([`export halonic ${BACKUP}`]);
+        expect((await store.load()).step).toBe("done");
+      },
+    );
 
     it("keeps the saved state when the unregister fails", async () => {
       const { host } = fakeHost({ unregisterCode: 1 });

@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-5402, HAL-5407 (W12, W8)
 
-The sandbox-srt adapter shall remove the `srt-wsl` setup ("Remove sandbox setup") only after an explicit choice that says what happens to the distro's files: keep it, export then remove, or remove after the export was offered and turned down. It shall never run `wsl --unregister` for any other input. When an export is asked for it shall run `wsl --export` first, to a Windows drive path, and leave the distro in place when the export fails. It shall unregister only a distro that Halonic recorded as its own import, and only when it is registered. After a successful removal it shall reset the saved setup state.
+The sandbox-srt adapter shall remove the `srt-wsl` setup ("Remove sandbox setup") only after an explicit choice that says what happens to the distro's files: keep it, export then remove, or remove after the export was offered and turned down. It shall never run `wsl --unregister` for any other input. When an export is asked for it shall run `wsl --export` first, to a Windows drive path whose segments are real file names (no device names such as `NUL`), and leave the distro in place when the export fails or leaves no backup file. It shall unregister only a distro that Halonic recorded as its own import, and only when it is registered. After a successful removal it shall reset the saved setup state.
 
 ## Examples
 
