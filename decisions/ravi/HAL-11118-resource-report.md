@@ -3,6 +3,7 @@
 - Task: HAL-11118 (part 2, the `resource_report` command)
 - Approval: Liam asked for this step in his review of PR 3184 on HAL-11131; Liam signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Wjy+vVMASspl/4s+HlHMoDq+ctVGVpPuDwKnexDo8JyK5NM5B+ZTi4Kkltn+ChZdTDm3UUta2OlFSb00koU1CQ==
 
 ## What changes
 
