@@ -3,6 +3,7 @@
 - Task: HAL-9823 (follow-up to HAL-716, HAL-9810)
 - Approval: Paperclip task HAL-9823 (it follows the approved P8 design and adds no new wording)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ByMe0yZRghJkyqnZ5JC97dBED5UY0dzaNUdU8czJk3Ytq6NzvGMiB88sU4WZ/nSPikrgQZQrnYgAU32QjT8nCw==
 
 With no Google account waiting for setup, **Go to the secret field** now opens New connector in
 the Library. Before, it opened the Library and left the person to find where a connector is added.
