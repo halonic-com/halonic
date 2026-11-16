@@ -1,13 +1,22 @@
 import { defineFeature } from "@halonicjs/studio-shell";
+import { FilesHostService } from "./files-host.ts";
+import { filesWords } from "./files-words.ts";
 
 /**
- * The Files feature. The Studio shell loads it by this declaration:
- * add what it needs, provides and registers here as the feature grows.
+ * The Files feature. Its file tree is the view behind the sidebar's Files switch; the tab, the
+ * dialogs and the strips follow.
  */
 export const filesFeature = defineFeature({
   id: "files",
   title: "Files",
-  register() {
-    // Add this feature's pages, commands and services here.
+  needs: [FilesHostService],
+  register(studio) {
+    studio.sidebarViews.add({
+      id: "files",
+      order: 1,
+      label: filesWords.treeLabel,
+      view: "FilesSidebarView",
+      load: () => import("./ui/files-sidebar-view.tsx"),
+    });
   },
 });
