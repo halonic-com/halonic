@@ -1,7 +1,5 @@
 //! The folders the host sweeps.
 
-use std::path::PathBuf;
-
 use super::sweep_roots;
 
 #[test]
@@ -18,6 +16,8 @@ fn agent_host_commands_sweep_the_profile_and_the_opened_folders() {
 #[cfg(windows)]
 #[test]
 fn agent_host_commands_sweep_opened_folders_without_the_long_path_prefix() {
+    use std::path::PathBuf;
+
     let profile = PathBuf::from(r"C:\acme-profile"); // leak-guard: allow absolute-path made-up Windows path for a test
     let opened = PathBuf::from(r"\\?\D:\acme"); // leak-guard: allow absolute-path made-up Windows path for a test
     assert_eq!(
