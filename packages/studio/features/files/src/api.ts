@@ -10,5 +10,6 @@ export {
   FilesHostService,
   type FilesListing,
   type OutsideChange,
+  type RemovedFile,
 } from "./files-host.ts";
 export type { FileMarks, TreeMarks } from "./tree/tree-model.ts";

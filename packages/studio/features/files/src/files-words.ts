@@ -57,6 +57,21 @@ export const filesWords = {
     `Also updates ${count} ${count === 1 ? "place" : "places"}`,
   /** The toast after a rename, with the new path. */
   renamed: (path: string): string => `Renamed to ${path}`,
+  /** The toast after a delete: with a second line it is a sentence and ends with a full stop. */
+  deleted: (name: string, withLine: boolean): string =>
+    `Moved ${name} to the trash${withLine ? "." : ""}`,
+  /** The second line of that toast when other files name the deleted one by its id. */
+  deletedPlaces: (count: number): string =>
+    count === 1
+      ? "1 place now shows an error until you update it."
+      : `${count} places now show an error until you update them.`,
+  undo: "Undo",
+  tryAgain: "Try again",
+  couldntDelete: (name: string, reason: string | undefined): string =>
+    reason === undefined
+      ? `Couldn't move ${name} to the trash.`
+      : `Couldn't move ${name} to the trash: ${reason.replace(/\.$/, "")}.`,
+  couldntPutBack: (name: string): string => `Couldn't put ${name} back`,
   /** The toast after a new file is made, with its full path. */
   created: (path: string): string => `New file ${path}`,
 } as const;

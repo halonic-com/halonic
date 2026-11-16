@@ -22,6 +22,14 @@ export interface FileIssue {
   readonly col: number;
 }
 
+/** A file that was deleted, and the way to bring it back. */
+export interface RemovedFile {
+  /** How many places in other files named the file by its id and now show an error. */
+  readonly places: number;
+  /** Puts the file back while the delete is still the newest step; rejects with an `Error` whose message is one sentence when it can't. */
+  undo(): Promise<void>;
+}
+
 /** How a file differs outside Halonic while its unsaved changes wait for Compare. */
 export type OutsideChange = "changed" | "deleted";
 
@@ -65,6 +73,11 @@ export interface FilesHost {
    * whose message is one sentence, such as "workspace.yaml already exists.", when it can't.
    */
   rename(from: string, to: string): Promise<void>;
+  /**
+   * Deletes a file as one change that goes to the trash when saved. Rejects with an `Error` whose
+   * message is one sentence when it can't.
+   */
+  remove(path: string): Promise<RemovedFile>;
   /**
    * Every error and warning in the workspace's files, with the unsaved changes applied, errors
    * and warnings of one file in the order of the text. Resolves to none when the files can't be checked.
