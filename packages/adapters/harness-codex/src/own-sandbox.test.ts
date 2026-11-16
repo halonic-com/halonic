@@ -75,13 +75,10 @@ verifies("harness-codex.start", () => {
     it("asks before every command in a session with no fence, and sets no policy inside the fence", async () => {
       const log = new CodexLog();
       const program = fakeCodex((codex) => answer(codex, "Teal."), log);
-      const policyOf = () =>
-        (
-          log.requests.find(({ method }) => method === "thread/start")?.params as Record<
-            string,
-            unknown
-          >
-        )["approvalPolicy"];
+      const policyOf = () => {
+        const params = log.requests.find(({ method }) => method === "thread/start")?.params;
+        return (params as Record<string, unknown> | undefined)?.["approvalPolicy"];
+      };
 
       const noFence = new FakeSandboxSession({
         profile: engineProfile,
