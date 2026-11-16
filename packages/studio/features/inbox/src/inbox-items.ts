@@ -76,6 +76,8 @@ export interface SetupItem {
   readonly changedAt: string;
   /** Whether the account still needs a secret from you, so a secret pasted elsewhere goes here first. */
   readonly needsSecret?: boolean;
+  /** The setup is done and the item only stays to say so: it isn't counted and shows "Fixed". */
+  readonly fixed?: boolean;
 }
 
 export type InboxItem = SetupItem | RunItem;

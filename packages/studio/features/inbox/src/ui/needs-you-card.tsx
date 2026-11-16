@@ -43,7 +43,9 @@ export function NeedsYouView({ inbox, openInbox, now = () => new Date() }: Needs
   const phone = usePresentation() === "phone";
   // Called on every render, as React asks: the promise stays settled once the first list is in.
   use(firstLoad(inbox));
-  const shown = phone ? state.items.slice(0, PHONE_ROWS) : state.items;
+  // A fixed setup item stays in the Inbox while it is open, but nothing waits on it.
+  const waiting = state.items.filter((item) => item.kind !== "setup" || item.fixed !== true);
+  const shown = phone ? waiting.slice(0, PHONE_ROWS) : waiting;
   const open = (key: string) => {
     inbox.requestOpen(key);
     openInbox?.();
@@ -57,9 +59,9 @@ export function NeedsYouView({ inbox, openInbox, now = () => new Date() }: Needs
         {...(openInbox === undefined ? {} : { onOpen: open })}
         empty={{ title: "Nothing is waiting for you.", plain: true }}
       />
-      {phone && openInbox !== undefined && state.items.length > PHONE_ROWS ? (
+      {phone && openInbox !== undefined && waiting.length > PHONE_ROWS ? (
         <Button variant="ghost" size="touch" onClick={openInbox}>
-          {`See all ${state.items.length} in Inbox`}
+          {`See all ${waiting.length} in Inbox`}
         </Button>
       ) : null}
     </>

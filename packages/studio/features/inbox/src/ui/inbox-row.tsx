@@ -38,7 +38,12 @@ function setupRow(item: SetupItem): ListRow {
     id: item.key,
     title: itemTitle(item),
     meta: markedName(item.progress),
-    trailing: <StatusChip tone="neutral">Setup</StatusChip>,
+    trailing:
+      item.fixed === true ? (
+        <StatusChip tone="success">Fixed</StatusChip>
+      ) : (
+        <StatusChip tone="neutral">Setup</StatusChip>
+      ),
   };
 }
 

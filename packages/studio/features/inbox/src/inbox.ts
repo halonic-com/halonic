@@ -41,6 +41,11 @@ export interface SetupEntry {
   readonly changedAt: string;
   /** The account still needs a secret from you: a first one, or a new one for a refused one. */
   readonly needsSecret?: boolean;
+  /**
+   * The setup is done, but the entry stays in the list until you pick another row or leave (the
+   * source's {@link InboxSetupSource.release}). It says "Fixed", and it isn't counted.
+   */
+  readonly fixed?: boolean;
 }
 
 /** What to put the cursor on when a setup item opens: the field for the secret. */
@@ -66,6 +71,11 @@ export interface InboxSetupSource {
   list(): Promise<readonly SetupEntry[]>;
   /** Calls `listener` whenever an entry may have changed. Returns a function that stops the calls. */
   subscribe(listener: () => void): () => void;
+  /**
+   * Called once a `fixed` entry's item is no longer open: you picked another row or left the
+   * Inbox. The source stops listing the entry and tells its listeners.
+   */
+  release?(account: string): void;
 }
 
 /** What a setup source's view gets from the Inbox's pane. */
@@ -86,6 +96,8 @@ export interface SetupViewProps {
    * it and puts focus there instead of on the step's title; without it, the current step opens.
    */
   readonly focus?: SetupFocus | undefined;
+  /** Opens a run's page, for a view that lists runs; left out where the page can't open one. */
+  readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
 }
 
 /** What the Inbox holds now. */
@@ -288,6 +300,11 @@ export class Inbox {
     return note;
   }
 
+  /** Lets a source drop a `fixed` item once it isn't open any more. */
+  releaseSetup(item: SetupItem): void {
+    if (item.fixed === true) this.setupSource(item.provider)?.release?.(item.account);
+  }
+
   /** The setup source of a provider, for its name and its item's view. */
   setupSource(provider: string): InboxSetupSource | undefined {
     for (const source of this.#setupSources.keys()) if (source.provider === provider) return source;
@@ -375,5 +392,6 @@ function setupItem(provider: string, entry: SetupEntry): SetupItem {
     progress: entry.progress,
     changedAt: entry.changedAt,
     needsSecret: entry.needsSecret === true,
+    ...(entry.fixed === true ? { fixed: true } : {}),
   };
 }
