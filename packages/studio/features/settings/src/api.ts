@@ -133,3 +133,6 @@ export type { RestartRuns, RestartRunsHost } from "./updater/restart-runs.ts";
  */
 export const RestartRunsService: ServiceKey<RestartRunsHost> =
   serviceKey<RestartRunsHost>("settings.restart-runs");
+
+export type { SandboxChoiceHost } from "./sandbox-choice/sandbox-choice-host.ts";
+export { SandboxChoiceHostService } from "./sandbox-choice/sandbox-choice-host.ts";
