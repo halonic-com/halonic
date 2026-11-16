@@ -104,6 +104,59 @@ verifies("source-control.changes-page", () => {
       expect(list.state.read).toEqual({ kind: "not-a-repository" });
     });
 
+    it("knows whether the folder has a place to get updates from", async () => {
+      const fake = fakeSource({ kind: "ready", changes: [] });
+      const list = new ChangesList(fake.source);
+      await settle();
+      expect(list.state.hasRemote).toBe(false);
+      fake.setRemote(true);
+      await list.refresh();
+      expect(list.state.hasRemote).toBe(true);
+    });
+
+    it("gets updates and reads again when the shared copy had newer versions", async () => {
+      const fake = fakeSource({ kind: "ready", changes: [] });
+      fake.setUpdates({ kind: "got", count: 2 });
+      const list = new ChangesList(fake.source);
+      await settle();
+      fake.answer(twoChanged);
+      expect(await list.getUpdates()).toEqual({ kind: "got", count: 2 });
+      expect(list.changedFileCount).toBe(2);
+      expect(list.state.gettingUpdates).toBe(false);
+    });
+
+    it("says it is up to date, and that both sides moved, without changing anything", async () => {
+      const fake = fakeSource({ kind: "ready", changes: [] });
+      const list = new ChangesList(fake.source);
+      await settle();
+      expect(await list.getUpdates()).toEqual({ kind: "up-to-date" });
+      fake.setUpdates({ kind: "both-moved" });
+      expect(await list.getUpdates()).toEqual({ kind: "both-moved" });
+    });
+
+    it("gives a reason a person can read when getting updates fails", async () => {
+      const fake = fakeSource({ kind: "ready", changes: [] });
+      fake.failUpdates(
+        new KindedError("unavailable", "you can't reach the shared copy right now."),
+      );
+      const list = new ChangesList(fake.source);
+      await settle();
+      expect(await list.getUpdates()).toEqual({
+        kind: "failed",
+        reason: "You can't reach the shared copy right now.",
+      });
+      expect(list.state.gettingUpdates).toBe(false);
+    });
+
+    it("asks the source once while getting updates is already working", async () => {
+      const fake = fakeSource({ kind: "ready", changes: [] });
+      const list = new ChangesList(fake.source);
+      await settle();
+      const [first, second] = await Promise.all([list.getUpdates(), list.getUpdates()]);
+      expect(fake.updatesAsked()).toBe(1);
+      expect([first.kind, second.kind].sort()).toEqual(["failed", "up-to-date"]);
+    });
+
     it("stops watching and ignores reads once disposed", async () => {
       const fake = fakeSource(twoChanged);
       const list = new ChangesList(fake.source);

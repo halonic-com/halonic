@@ -12,6 +12,7 @@ use halonic_git_guard::plain_path;
 use tauri::{AppHandle, Manager, Runtime};
 
 use super::choice::{HostKind, host_for, saved_backend};
+use super::updates::read_in_distro;
 use super::{
     AgentHostState, DistroCommand, HostRefusal, Launch, START_WAIT, poisoned, unavailable,
 };
@@ -31,16 +32,21 @@ pub(super) async fn running_host<R: Runtime>(app: &AppHandle<R>) -> Result<Hands
         {
             return Ok(running.handshake().clone());
         }
-        let started = match &state.launch {
+        let (started, updates) = match &state.launch {
             #[cfg(test)]
-            Launch::Local(command) => start_local(command()),
+            Launch::Local(command) => (start_local(command())?, None),
             #[cfg(test)]
-            Launch::Distro(command) => start_in_distro(command),
+            Launch::Distro(command) => (start_in_distro(command)?, None),
             Launch::Real => match chosen_host(&app)? {
-                HostKind::Local => start_local(real_host_command(&app)?),
-                HostKind::Distro => start_in_distro(&distro_host_command_for_real_wsl()?),
+                HostKind::Local => (start_local(real_host_command(&app)?)?, None),
+                HostKind::Distro => {
+                    let (wsl, command) = distro_host_command_for_real_wsl()?;
+                    let started = start_in_distro(&command)?;
+                    (started, Some(read_in_distro(&wsl)))
+                }
             },
-        }?;
+        };
+        *state.security_updates.lock().map_err(|_| poisoned())? = updates;
         let handshake = started.handshake().clone();
         *host = Some(started);
         Ok(handshake)
@@ -68,10 +74,10 @@ fn chosen_host<R: Runtime>(app: &AppHandle<R>) -> Result<HostKind, HostRefusal> 
     Ok(host_for(backend, profile.platform))
 }
 
-/// The command for the host in Halonic's distro, once `wsl.exe` is found and
-/// lists the distro. Refuses with the sandbox reason when it doesn't: a
+/// `wsl.exe` and the command for the host in Halonic's distro, once `wsl.exe`
+/// is found and lists the distro. Refuses with the sandbox reason when it doesn't: a
 /// missing distro never falls back to the local host.
-fn distro_host_command_for_real_wsl() -> Result<DistroCommand, HostRefusal> {
+fn distro_host_command_for_real_wsl() -> Result<(PathBuf, DistroCommand), HostRefusal> {
     let system_root = std::env::var("SystemRoot").ok();
     let wsl = wsl_exe(system_root.as_deref())
         .map_err(|error| unavailable(error).with_reason("wsl-missing"))?;
@@ -84,7 +90,11 @@ fn distro_host_command_for_real_wsl() -> Result<DistroCommand, HostRefusal> {
         }
         Err(error) => return Err(unavailable(error)),
     }
-    Ok(Box::new(move |port| distro_host_command(&wsl, port)))
+    let command_wsl = wsl.clone();
+    Ok((
+        wsl,
+        Box::new(move |port| distro_host_command(&command_wsl, port)),
+    ))
 }
 
 /// Starts the host beside the shell and drops it again: the proof that this

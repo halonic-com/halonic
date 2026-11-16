@@ -128,6 +128,26 @@ export interface VcsFileDiff {
   diff: string;
 }
 
+/**
+ * Where this branch and its upstream stand when both have commits the other
+ * lacks, and the items both changed.
+ */
+export interface VcsDivergence {
+  /** This branch's last commit. */
+  ours: string;
+  /** The upstream's last commit, as fetched: a full commit id `readAt` takes. */
+  theirs: string;
+  /** The last commit both have: where they parted. */
+  base: string;
+  /**
+   * Paths, sorted, that both sides changed since `base` (added, edited or
+   * deleted) and now hold differently: the items a person must choose for.
+   * A file only one side changed, or both changed the same way, isn't listed.
+   * Private entries are left out.
+   */
+  items: string[];
+}
+
 /** How `applyPatch` applies a patch. */
 export interface VcsApplyOptions {
   /** Undo the patch instead: what discarding one hunk does. */
@@ -434,6 +454,17 @@ export interface Vcs {
    * @throws when the branch and its upstream have both moved on; nothing is merged
    */
   pull(): Promise<void>;
+  /**
+   * Fetches the upstream, then says where the branch and it parted, when
+   * `pull` would refuse because both have new commits; `null` when it
+   * wouldn't (nothing new either way, or only one side has commits). Changes
+   * no branch, no file and no index; only the fetched commits are new. The
+   * remote and the branch come from the repository, as for `pull`.
+   *
+   * @throws when there is no upstream, the fetch fails, or the two share no
+   *   commit
+   */
+  diverged(): Promise<VcsDivergence | null>;
   /**
    * Sends the branch's commits to its upstream, or to the first remote (which
    * becomes the upstream) when it has none.

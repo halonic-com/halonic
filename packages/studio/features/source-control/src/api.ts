@@ -43,6 +43,12 @@ export interface VersionInput {
   readonly paths: readonly string[];
 }
 
+/** Who versions are from: the name and email git writes on each one. An empty text is not set. */
+export interface Identity {
+  readonly name: string;
+  readonly email: string;
+}
+
 /** One version in the history: a recorded set of changes. */
 export interface Version {
   /** The version's full id. */
@@ -58,6 +64,15 @@ export interface Version {
   /** The files it changed, from the workspace folder; none for a version that changed nothing. */
   readonly files: readonly string[];
 }
+
+/** What {@link ChangesSource.getUpdates} found. */
+export type UpdatesResult =
+  /** The shared copy had `count` newer versions; they are in the workspace now. */
+  | { readonly kind: "got"; readonly count: number }
+  /** The shared copy has nothing newer. */
+  | { readonly kind: "up-to-date" }
+  /** The shared copy and this workspace both have versions the other lacks; nothing was changed. */
+  | { readonly kind: "both-moved" };
 
 /** The history of one open workspace, as the app provides it. */
 export interface ChangesSource {
@@ -92,10 +107,33 @@ export interface ChangesSource {
   /** Records a version of exactly `paths`; other files stay as changes. Throws when git refuses. */
   readonly createVersion: (input: VersionInput) => Promise<void>;
   /**
+   * Who versions of this workspace are from, as git would write it (this workspace's own setting,
+   * else the person's own on this computer). A part that isn't set is an empty text.
+   */
+  readonly readIdentity: () => Promise<Identity>;
+  /**
+   * Sets who versions of this workspace are from, in this workspace's own history settings.
+   * Throws, with a reason a person can read, when git refuses.
+   */
+  readonly setIdentity: (identity: Identity) => Promise<void>;
+  /**
    * Turns the folder into a repository and keeps `.studio/` out of it (`.gitignore`),
    * so Halonic can save versions of it.
    */
   readonly turnOnHistory: () => Promise<void>;
+  /** Whether the folder has a place to share to and get updates from. `false` for a folder with no history. */
+  readonly hasRemote: () => Promise<boolean>;
+  /**
+   * Makes `address` (a git address that passed `isShareAddress`) the place to share to and get
+   * updates from. Throws, with a reason a person can read, when git refuses it.
+   */
+  readonly addRemote: (address: string) => Promise<void>;
+  /**
+   * Brings in the shared copy's newer versions, only when this workspace has none the shared copy
+   * lacks (a fast-forward). Changes nothing otherwise. Throws, with a reason a person can read,
+   * when the shared copy can't be reached or git refuses.
+   */
+  readonly getUpdates: () => Promise<UpdatesResult>;
   /** Calls `listener` when the window comes to the front or a save may have changed a file; returns a function that stops it. */
   readonly subscribe: (listener: () => void) => () => void;
 }

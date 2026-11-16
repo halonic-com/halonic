@@ -152,6 +152,14 @@ const ROUTES: &[(&str, Route)] = &[
         route(Method::Post, "/v1/google/start-over", Answer::Json),
     ),
     (
+        "POST /v1/google/secret",
+        route(Method::Post, "/v1/google/secret", Answer::Json),
+    ),
+    (
+        "POST /v1/google/secret/replace",
+        route(Method::Post, "/v1/google/secret/replace", Answer::Json),
+    ),
+    (
         "POST /v1/google/sign-in",
         route(Method::Post, "/v1/google/sign-in", Answer::Json),
     ),

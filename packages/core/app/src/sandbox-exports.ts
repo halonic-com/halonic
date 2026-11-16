@@ -36,6 +36,7 @@ export {
   type SandboxChoice,
   type SandboxChoiceOptions,
   SandboxChoiceService,
+  type SecurityUpdatesState,
   sandboxBackendIds,
   sandboxBackendStates,
 } from "./sandbox-choice.ts";

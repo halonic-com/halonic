@@ -13,6 +13,7 @@
   "permissions": [
     "allow-agent-host-request",
     "allow-agent-host-stream",
-    "allow-agent-host-stream-end"
+    "allow-agent-host-stream-end",
+    "allow-agent-host-security-updates"
   ]
 }

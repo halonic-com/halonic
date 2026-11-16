@@ -36,7 +36,7 @@ function WhatNext(props: {
   return (
     <div className="pl-9 pt-1 text-fg-muted">
       <SignInElsewhere
-        email={account.email}
+        accountRef={account.record.accountRef}
         commandExists={signInEntry.kind === "elsewhere" && signInEntry.commandExists}
         copyable={false}
       />
@@ -66,6 +66,11 @@ export function PhoneView({ account, steps, signInEntry }: PhoneViewProps) {
         <>
           <ProblemBanner problem={problem} />
           <ViewOnlyLine>Fix this on your computer: Library › Connectors</ViewOnlyLine>
+          {problem.actionStep === "sign-in" && problem.lead === undefined ? (
+            <ViewOnlyLine>
+              Your client ID and secret are kept. Only the sign-in is needed.
+            </ViewOnlyLine>
+          ) : null}
         </>
       )}
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-body">

@@ -7,6 +7,7 @@ import {
   type VcsCommit,
   type VcsCommitVersionOptions,
   type VcsCommitWorktreeOptions,
+  type VcsDivergence,
   type VcsFileDiff,
   type VcsStatus,
   type VcsWorktree,
@@ -32,7 +33,7 @@ import {
 } from "./vcs-commits.ts";
 import { checkBranchNameShape, checkNoFolders, checkVcsPaths } from "./vcs-input.ts";
 import { applyToWorkingTree } from "./vcs-patch.ts";
-import { pullFastForward, pushToUpstream } from "./vcs-remote.ts";
+import { divergenceFromUpstream, pullFastForward, pushToUpstream } from "./vcs-remote.ts";
 import { listAtCommit, readAtCommit, snapshotCommit } from "./vcs-versions.ts";
 import { GitWorktrees } from "./vcs-worktrees.ts";
 
@@ -272,6 +273,10 @@ export class GitVcs implements Vcs {
 
   async pull(): Promise<void> {
     await pullFastForward(await this.#repository());
+  }
+
+  async diverged(): Promise<VcsDivergence | null> {
+    return divergenceFromUpstream(await this.#repository());
   }
 
   async push(): Promise<void> {

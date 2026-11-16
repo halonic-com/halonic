@@ -295,7 +295,10 @@ verifies("cli.commands.google.sign-in", () => {
 
   it("refuses an unknown account, a missing secret, and a record whose connector can't be used", async () => {
     const machine = fakeBrowser(goodAnswer).machine;
-    expect((await signIn(["gaccount_x"], machine)).code).toBe(exitCode.notFound);
+    const unknown = await signIn(["gaccount_x"], machine);
+    expect(unknown.code).toBe(exitCode.notFound);
+    expect(unknown.printed).toContain("takes the setup's ref, not an e-mail address");
+    expect((await signIn(["x@example.com"], machine)).code).toBe(exitCode.notFound);
     const bare = await openGoogleHost(setup).setups.start({
       route: { app: "own", runsOn: "this-computer" },
       accountType: "personal",

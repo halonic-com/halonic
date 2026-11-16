@@ -1,0 +1,82 @@
+// @vitest-environment jsdom
+import { verifies } from "@halonicjs/testing-spec";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, createCodeEditorForTest, type TestEditor } from "./test-support.ts";
+
+describe("undo history", () => {
+  let editor: TestEditor;
+  beforeEach(() => {
+    vi.useFakeTimers();
+    editor = createCodeEditorForTest("");
+  });
+  afterEach(() => {
+    editor.destroy();
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  verifies("code-editor.undo-history", () => {
+    it("joins typing within half a second into one step", () => {
+      editor.type("a");
+      vi.advanceTimersByTime(100);
+      editor.type("b");
+      expect(editor.text()).toBe("ab");
+      editor.undo();
+      expect(editor.text()).toBe("");
+    });
+
+    it("keeps typing after a pause as a separate step", () => {
+      editor.type("a");
+      vi.advanceTimersByTime(600);
+      editor.type("b");
+      editor.undo();
+      expect(editor.text()).toBe("a");
+    });
+
+    it("does an undone edit again", () => {
+      editor.type("a");
+      editor.undo();
+      expect(editor.redo()).toBe(true);
+      expect(editor.text()).toBe("a");
+    });
+
+    it("forgets the redo steps after a new edit", () => {
+      editor.type("a");
+      editor.undo();
+      vi.advanceTimersByTime(600);
+      editor.type("c");
+      expect(editor.canRedo()).toBe(false);
+    });
+
+    it("does not undo or redo while read-only", () => {
+      editor.type("abc");
+      editor.setReadOnly(true);
+      expect(editor.undo()).toBe(false);
+      expect(editor.text()).toBe("abc");
+      editor.setReadOnly(false);
+      editor.undo();
+      editor.setReadOnly(true);
+      expect(editor.redo()).toBe(false);
+      expect(editor.text()).toBe("");
+    });
+
+    it("does not call onChange when text is loaded", () => {
+      const onChange = vi.fn();
+      const own = createCodeEditorForTest("x", { onChange });
+      own.load("from disk");
+      expect(own.text()).toBe("from disk");
+      expect(onChange).not.toHaveBeenCalled();
+      expect(own.canUndo()).toBe(false);
+      own.type("!");
+      expect(onChange).toHaveBeenCalledWith("!from disk");
+      own.destroy();
+    });
+
+    it("has nothing to undo after another text is loaded", () => {
+      editor.type("a");
+      editor.load("other");
+      expect(editor.canUndo()).toBe(false);
+      expect(editor.undo()).toBe(false);
+    });
+  });
+});

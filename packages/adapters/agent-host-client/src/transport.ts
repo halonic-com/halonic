@@ -30,6 +30,8 @@ export const agentHostRequestRoutes = [
   "POST /v1/google/setups",
   "POST /v1/google/setups/edit",
   "POST /v1/google/start-over",
+  "POST /v1/google/secret",
+  "POST /v1/google/secret/replace",
   "POST /v1/google/sign-in",
   "POST /v1/google/sign-in/cancel",
   "POST /v1/plugins/call",

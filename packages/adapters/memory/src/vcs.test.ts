@@ -65,6 +65,39 @@ verifies("memory.vcs", () => {
     await expect(clone.pull()).rejects.toThrow("no branch main");
   });
 
+  describe("diverged", () => {
+    it("refuses without an upstream, and when the remote has lost the upstream branch", async () => {
+      const { vcs } = await repoWith({ "a.yaml": "1\n" });
+      await expect(vcs.diverged()).rejects.toThrow("no upstream");
+      const remote = new MemoryRemote();
+      vcs.addRemote("origin", remote);
+      await vcs.push();
+      const clone = await MemoryVcs.clone(remote, new MemoryDefinitionStore());
+      remote.branches.delete("main");
+      await expect(clone.diverged()).rejects.toThrow("no branch main");
+    });
+
+    it("refuses when the two share no version", async () => {
+      const remote = new MemoryRemote();
+      const { vcs } = await repoWith({ "a.yaml": "1\n" });
+      vcs.addRemote("origin", remote);
+      await vcs.push();
+      const store = new MemoryDefinitionStore();
+      const clone = await MemoryVcs.clone(remote, store);
+      const other = new MemoryRemote();
+      const { vcs: stranger } = await repoWith({ "b.yaml": "1\n" });
+      stranger.addRemote("origin", other);
+      await stranger.push();
+      for (const [hash, commit] of other.commits) remote.commits.set(hash, commit);
+      remote.branches.set("main", other.branches.get("main") ?? "");
+      await store.write("a.yaml", "2\n");
+      await clone.stage(["a.yaml"]);
+      await clone.commit("Change a");
+
+      await expect(clone.diverged()).rejects.toThrow("share no version");
+    });
+  });
+
   describe("switching commits", () => {
     it("refuses over an unstaged change to a tracked file, and keeps it", async () => {
       const { vcs, files } = await repoWith({ "a.yaml": "1\n" });

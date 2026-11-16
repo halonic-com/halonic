@@ -57,6 +57,23 @@ import { RunVersionLine } from "./run-view/run-version-line.tsx";
 
 The line says when the version was made, never when a file changed, and never suggests that saved changes don't run (requirement `runs.run-view.live-or-saved`).
 
+## What a step could do
+
+The line under a sandboxed step and the list in its open entry (requirement `runs.run-view.sandbox-panel`) are read from the step's `sandbox.opened` or `sandbox.off` event by `stepSandboxes`, never from the agent's current settings:
+
+```tsx
+import { stepSandboxes } from "./run-view/sandbox-model.ts";
+import { SandboxPanel, sandboxLineText } from "./run-view/sandbox-panel.tsx";
+
+const [step] = stepSandboxes(events, "step-1");
+// kind "opened": the line is sandboxLineText(step.view), the list is:
+<SandboxPanel view={step.view} agent={step.agent} live={run.summary.endedAt === null} place="desktop" />;
+```
+
+A step with neither event (an old run, or a step with no program) has no line; a damaged `sandbox.opened` says it couldn't be read. Every sentence comes from `sandbox-words.ts` by key; the words are placeholders until the board approves the sandbox screens (HAL-1784).
+
+Not built yet: **Your sign-in** (HAL-1710), the workflow run card's line, and the desktop action "Change in *Writer*'s settings", which needs an agent page to open (`onOpenHarness`).
+
 ## Blocked sites
 
 Each site a step's sandbox refused is named once, with its tries (requirement `runs.run-view.blocked-sites`), from `blockedSites` in `@halonicjs/events`:

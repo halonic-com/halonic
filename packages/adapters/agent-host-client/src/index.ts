@@ -14,6 +14,9 @@ export {
   type GoogleAccountType,
   type GoogleConnectorLink,
   type GoogleDisconnected,
+  type GoogleSecretCheckUnfinished,
+  type GoogleSecretReplaced,
+  type RevealableSecret,
 } from "./google.ts";
 export {
   AgentHostHarness,

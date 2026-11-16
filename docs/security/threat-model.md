@@ -314,7 +314,10 @@ host's `Host`, `Origin` and launch-token checks like every other, and its
 request names the account by a ref that is checked before anything is read. A
 sandboxed agent has no way to the launch token, which stays in the shell, and
 none to the profile folder, which the sandbox denies. A request that holds the
-token can disconnect an account, which removes access and grants none. The
+token can disconnect an account, which removes access and grants none. It can also send a client secret
+(`POST /v1/google/secret`, `…/secret/replace`; HAL-9910): the host keeps it through
+the CLI host's own handler, checks a new secret with Google before it replaces one in
+use, and leaves the secret out of every answer, log line and error. The
 sign-in's callback has no token by design (see the ADR
 `2026-11-14-google-sign-in-and-the-setup-record`), and the host serves it in
 both modes, with the same route table and the same checks (`Host`, `Origin`,

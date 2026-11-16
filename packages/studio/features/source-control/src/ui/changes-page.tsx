@@ -5,8 +5,13 @@ import { type ChangesRead, type DeveloperView, DeveloperViewService } from "../a
 import { type ChangesList, ChangesListService, type ChangesListState } from "../changes-list.ts";
 import { pageWords, stateWords } from "../changes-words.ts";
 import { loadFailureReason } from "../load-failure.ts";
+import { AddShareAddressDialog } from "./add-share-address-dialog.tsx";
 import { ChangeList } from "./change-list.tsx";
 import { CreateVersionDialog } from "./create-version-dialog.tsx";
+import { GetUpdates } from "./get-updates.tsx";
+import { History } from "./history.tsx";
+import { IdentityDialog } from "./identity-dialog.tsx";
+import { SharingStrip } from "./sharing-strip.tsx";
 
 /** The Changes place's page: the open workspace's changes, from `ChangesListService`. */
 export function ChangesPage({ context }: PlaceViewProps) {
@@ -31,27 +36,42 @@ export interface ChangesViewProps {
  * work", "Halonic needs git to keep versions.", or "Nothing has changed since your last version.".
  * A later read that fails keeps what the page showed (states D1).
  *
- * Not here yet: History and the sharing strip.
+ * Not here yet: the sharing strip's other states.
  */
 export function ChangesView({ list, developerView }: ChangesViewProps) {
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
   const state = useSyncExternalStore(subscribe, () => list.state);
   const developer = useDeveloperView(developerView);
   const heading = useRef<HTMLHeadingElement>(null);
+  const [addingAddress, setAddingAddress] = useState(false);
   return (
     <div className="flex w-full flex-col gap-4 px-6 py-5">
-      <header className="flex flex-col gap-1">
-        <h1 ref={heading} tabIndex={-1} className="text-title">
+      <header className="flex items-center gap-3">
+        <h1 ref={heading} tabIndex={-1} className="text-title flex-1">
           {pageWords.title}
         </h1>
+        {state.hasRemote ? <GetUpdates list={list} /> : null}
       </header>
+      {state.read?.kind === "ready" && !state.hasRemote ? (
+        <SharingStrip onAdd={() => setAddingAddress(true)} />
+      ) : null}
       <PageBody
         list={list}
         state={state}
         developer={developer}
         focusHeading={() => heading.current?.focus()}
       />
-      {state.version === undefined ? null : (
+      {addingAddress ? (
+        <AddShareAddressDialog
+          list={list}
+          onClose={() => setAddingAddress(false)}
+          returnFocus={() => heading.current}
+        />
+      ) : null}
+      {list.needsIdentity && state.identity !== undefined ? (
+        <IdentityDialog list={list} initial={state.identity} returnFocus={() => heading.current} />
+      ) : null}
+      {state.version === undefined || list.needsIdentity ? null : (
         <CreateVersionDialog
           list={list}
           files={list.versionFiles}
@@ -123,10 +143,16 @@ function ReadBody({
       />
     );
   }
-  if (read.changes.length === 0) {
-    return <p className="text-body text-fg-muted">{stateWords.nothingChanged}</p>;
-  }
-  return <ChangeList list={list} files={state.files} developer={developer} />;
+  return (
+    <>
+      {read.changes.length === 0 ? (
+        <p className="text-body text-fg-muted">{stateWords.nothingChanged}</p>
+      ) : (
+        <ChangeList list={list} files={state.files} developer={developer} />
+      )}
+      <History list={list} history={state.history} />
+    </>
+  );
 }
 
 /** Whether the developer view is on, read again when it is turned on or off. */
@@ -224,6 +250,7 @@ function TurnOnHistory({
           ...(state.turningOn ? { busy: true } : {}),
         }}
       />
+      <p className="text-small text-fg-muted">{stateWords.historyIsOff}</p>
       {state.turnOnError === undefined ? null : (
         <p role="alert" className="text-small text-danger">
           {stateWords.turnOnFailed}. {loadFailureReason(state.turnOnError)}

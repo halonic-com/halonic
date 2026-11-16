@@ -25,6 +25,7 @@ function setup() {
   };
   const records = new MemoryRecordStore();
   const listeners = new Set<() => void>();
+  const changes: { label: string; files: Record<string, string | null> }[] = [];
   const host = new WorkspaceCollections({
     files: {
       read: async (path) => store[path] ?? null,
@@ -32,6 +33,7 @@ function setup() {
         Object.keys(store)
           .filter((path) => path.startsWith(`${dir}/`))
           .sort(),
+      change: (label, files) => changes.push({ label, files }),
     },
     onChange: (listener) => {
       listeners.add(listener);
@@ -40,7 +42,7 @@ function setup() {
     records,
     clock: new ManualClock("2026-11-16T10:00:00Z"),
   });
-  return { host, records, listeners };
+  return { host, records, listeners, changes };
 }
 
 const ref = { hub: null, id: "claims" };
@@ -91,6 +93,31 @@ verifies("library.collection-page", () => {
     const before = (await records.changes("claims")).length;
     expect(await host.change(ref, "trip", { amount: 1 })).toBe("removed");
     expect((await records.changes("claims")).length).toBe(before);
+  });
+
+  it("renames one collection as one change that keeps the rest of the file", async () => {
+    const { host, changes } = setup();
+    await host.rename(ref, "  Claims 2024 ");
+    expect(changes).toEqual([
+      {
+        label: "Renamed collection claims",
+        files: {
+          "library/collections/claims.collection.yaml": claims.replace(
+            "name: Claims",
+            "name: Claims 2024",
+          ),
+        },
+      },
+    ]);
+  });
+
+  it("writes nothing for the same name, and refuses an empty one or a missing collection", async () => {
+    const { host, changes } = setup();
+    await host.rename(ref, "Claims");
+    expect(changes).toEqual([]);
+    await expect(host.rename(ref, "  ")).rejects.toThrow("name_missing");
+    await expect(host.rename({ hub: null, id: "nope" }, "X")).rejects.toThrow("gone");
+    expect(changes).toEqual([]);
   });
 
   it("adds a record and removes one, and a removed seed record stays removed", async () => {

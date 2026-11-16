@@ -5,6 +5,7 @@ import { type Clock, systemClock } from "@halonicjs/std";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
 import { accountRefBody, editSetupBody, startSetupBody } from "./google-schemas.ts";
+import { googleSecretRoutes, type HandlerCall } from "./google-secret-routes.ts";
 
 /** What the Google routes reach. */
 export interface GoogleRouteDeps {
@@ -74,6 +75,9 @@ const callbackFailedPage = `<!doctype html><html lang="en"><head><meta charset="
  * - `POST /v1/google/start-over` with `{ accountRef }`: removes the record,
  *   the refresh token and the client secret without asking Google, starts a
  *   fresh record for the same connector, and answers `{ clientSecret, accountRef }`.
+ * - `POST /v1/google/secret` and `POST /v1/google/secret/replace` with
+ *   `{ accountRef, clientSecret }`: save a client secret, and replace one in use
+ *   after Google has checked it ({@link googleSecretRoutes}).
  * - `GET /api/google/callback`: where Google sends the browser back. The
  *   browser has no launch token, so this one route is `tokenFree`; the
  *   sign-in's own `state` is the proof, and the page it answers with is fixed
@@ -92,9 +96,28 @@ export function googleRoutes(deps: GoogleRouteDeps): HostRoute[] {
 
   /** Keeps what failed in the host's log only: the error's text can hold paths. */
   function logFailure(error: unknown): void {
-    const name = error instanceof Error ? error.name : "Error";
     const detail = error instanceof Error ? error.message : String(error);
-    deps.log?.(`A Google request failed (${name}): ${detail}\n`);
+    deps.log?.(`A Google request failed (${errorName(error)}): ${detail}\n`);
+  }
+
+  /**
+   * Runs the handler for `call` with a request built here: its own `Host`, so the
+   * handler tells it is on loopback, and its own `content-type`. This server
+   * listens on loopback only, so the name is true. Nothing of the page's
+   * request is forwarded, not even a header.
+   */
+  function callHandler(request: IncomingMessage, call: HandlerCall): Promise<Response> {
+    const host = `127.0.0.1:${portOf(request)}`;
+    return handler.handle(
+      new Request(`http://${host}${call.path}`, {
+        method: call.method,
+        headers: { host, "content-type": "application/json" },
+      }),
+      call.payload === undefined
+        ? new Uint8Array()
+        : new TextEncoder().encode(JSON.stringify(call.payload)),
+      {},
+    );
   }
 
   /**
@@ -104,7 +127,7 @@ export function googleRoutes(deps: GoogleRouteDeps): HostRoute[] {
   function forwardRoute<Body>(
     path: string,
     schema: Schema<Body>,
-    forward: (body: Body) => { method: string; path: string; payload?: unknown },
+    forward: (body: Body) => HandlerCall,
   ): HostRoute {
     return {
       method: "POST",
@@ -112,19 +135,8 @@ export function googleRoutes(deps: GoogleRouteDeps): HostRoute[] {
       handle: async (request, response) => {
         const body = await readCheckedBody(request, response, schema);
         if (body === undefined) return;
-        const { method, path: setupPath, payload } = forward(body);
-        const host = `127.0.0.1:${portOf(request)}`;
         try {
-          const answer = await handler.handle(
-            // A built request has no `Host` header, and the handler tells a loopback request by it.
-            // This server listens on loopback only, so the name is true.
-            new Request(`http://${host}${setupPath}`, { method, headers: { host } }),
-            payload === undefined
-              ? new Uint8Array()
-              : new TextEncoder().encode(JSON.stringify(payload)),
-            {},
-          );
-          await relay(response, answer);
+          await relay(response, await callHandler(request, forward(body)));
         } catch (error) {
           logFailure(error);
           sendError(response, 502, "google_failed", googleFailedMessage);
@@ -170,6 +182,15 @@ export function googleRoutes(deps: GoogleRouteDeps): HostRoute[] {
     setupRoute("/v1/google/sign-in", "POST", "sign-in"),
     setupRoute("/v1/google/sign-in/cancel", "DELETE", "sign-in"),
     setupRoute("/v1/google/start-over", "POST", "start-over"),
+    ...googleSecretRoutes({
+      callHandler,
+      relay,
+      setupsPath,
+      failedMessage: googleFailedMessage,
+      logFailure: (error) =>
+        // Only the name: a failure inside a secret route can hold text from the request.
+        deps.log?.(`A Google secret request failed (${errorName(error)}).\n`),
+    }),
     forwardRoute("/v1/google/setups", startSetupBody, (body) => ({
       method: "POST",
       path: setupsPath,
@@ -181,6 +202,10 @@ export function googleRoutes(deps: GoogleRouteDeps): HostRoute[] {
       payload: change,
     })),
   ];
+}
+
+function errorName(error: unknown): string {
+  return error instanceof Error ? error.name : "Error";
 }
 
 /** Sends the handler's answer: its JSON, nothing for a 204, or its `{ code, message }` in the host's one error shape. */

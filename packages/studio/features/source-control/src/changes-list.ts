@@ -1,68 +1,41 @@
-import { type ChangeLine, describeFileChange, type FileChange, revertParts } from "@halonicjs/app";
+import { type ChangeLine, revertParts } from "@halonicjs/app";
 import type { VcsChange } from "@halonicjs/ports";
 import { applyLineChanges, diffLines, type LineChange } from "@halonicjs/std";
 import type { PlaceSignal, ServiceKey } from "@halonicjs/studio-shell";
 import { serviceKey } from "@halonicjs/studio-shell";
-import type { ChangesRead, ChangesSource, FileTexts, KeptFile, Version } from "./api.ts";
-import { discardWords, pageWords, undoWords, versionWords } from "./changes-words.ts";
+import type { ChangesSource, Identity, KeptFile } from "./api.ts";
+import {
+  type ChangedFile,
+  type ChangesListState,
+  type DiscardOutcome,
+  historyPageSize,
+  type UndoOutcome,
+  type UpdatesOutcome,
+} from "./changes-list-state.ts";
+import {
+  discardWords,
+  pageWords,
+  shareWords,
+  undoWords,
+  updatesWords,
+  versionWords,
+} from "./changes-words.ts";
+import { describeChanges } from "./describe-changes.ts";
+import { isIdentityComplete } from "./identity.ts";
+import { type IdentityOutcome, saveIdentity } from "./identity-save.ts";
 import { loadFailureReason } from "./load-failure.ts";
+import { isShareAddress } from "./share-address.ts";
 import { versionMessage } from "./version-name.ts";
 
-/** How many changed files' texts are read at the same time. */
-const readsAtOnce = 4;
-
-/** How many versions History shows first, and how many more Show more adds. */
-export const historyPageSize = 20;
-
-/** What History holds now: the newest versions of the workspace folder. */
-export interface HistoryState {
-  /** The newest versions, newest first; empty before the first read worked and for a new repository. */
-  readonly versions: readonly Version[];
-  /** Whether the workspace has older versions than `versions`. */
-  readonly more: boolean;
-  /** Whether a read worked yet, so "No versions yet." isn't said while it still loads. */
-  readonly loaded: boolean;
-  /** Why the last read failed, until one works; `versions` stay as they were. */
-  readonly error: unknown;
-}
-
-/** One changed file: what changed in it, and the texts the changes can be undone from. */
-export interface ChangedFile {
-  readonly path: string;
-  readonly description: FileChange;
-  /** `undefined` when the file couldn't be read as text; its lines then have no parts to undo. */
-  readonly texts: FileTexts | undefined;
-}
-
-/** What {@link ChangesList.undoChange} did. */
-export type UndoOutcome =
-  /** The change is undone; `undo` puts it back, as the toast's Undo does, and says why when it can't. */
-  | { readonly kind: "undone"; readonly undo: () => Promise<string | undefined> }
-  | { readonly kind: "failed"; readonly reason: string };
-
-/** What {@link ChangesList.discardFile} did; the toast's Undo is `undo`, as for an undone change. */
-export type DiscardOutcome = UndoOutcome;
-
-/** What the Changes list holds now. */
-export interface ChangesListState {
-  /** The last read that worked; `undefined` before the first one. */
-  readonly read: ChangesRead | undefined;
-  /** What changed in each file of `read`, one entry for each path. Empty until a read worked. */
-  readonly files: readonly ChangedFile[];
-  /** Why the last read failed, until one works; `read` stays as it was. */
-  readonly error: unknown;
-  /** Why Turn on history failed, until the next try. */
-  readonly turnOnError: unknown;
-  /** Whether Turn on history is working. */
-  readonly turningOn: boolean;
-  /**
-   * Set while Create version is open: the paths it opened with, or `undefined` inside for every
-   * changed file. `undefined` when it is closed.
-   */
-  readonly version: { readonly paths: readonly string[] | undefined } | undefined;
-  /** The workspace's versions; only read while the folder is a git repository. */
-  readonly history: HistoryState;
-}
+export type {
+  ChangedFile,
+  ChangesListState,
+  DiscardOutcome,
+  HistoryState,
+  UndoOutcome,
+  UpdatesOutcome,
+} from "./changes-list-state.ts";
+export { historyPageSize } from "./changes-list-state.ts";
 
 /**
  * The changes of one open workspace, kept current from its `ChangesSource`. The sidebar's count
@@ -81,6 +54,9 @@ export class ChangesList {
     error: undefined,
     turnOnError: undefined,
     turningOn: false,
+    identity: undefined,
+    hasRemote: false,
+    gettingUpdates: false,
     version: undefined,
     history: { versions: [], more: false, loaded: false, error: undefined },
   };
@@ -122,9 +98,13 @@ export class ChangesList {
     const read = ++this.#reads;
     try {
       const answer = await this.source.read();
-      const files = answer.kind === "ready" ? await this.#describe(answer.changes) : [];
+      const files =
+        answer.kind === "ready" ? await describeChanges(this.source, answer.changes) : [];
+      const hasRemote = answer.kind === "ready" && (await this.source.hasRemote());
       if (read !== this.#reads || this.#disposed) return;
-      this.#set({ ...this.#state, read: answer, files, error: undefined });
+      const identity = answer.kind === "ready" ? await this.#identity() : undefined;
+      if (read !== this.#reads || this.#disposed) return;
+      this.#set({ ...this.#state, read: answer, files, hasRemote, identity, error: undefined });
       if (answer.kind === "ready") await this.#readHistory(this.#state.history.versions.length);
     } catch (error) {
       if (read !== this.#reads || this.#disposed) return;
@@ -271,6 +251,29 @@ export class ChangesList {
     this.#set({ ...this.#state, version: { paths } });
   }
 
+  /** Who versions are from; once both parts are set they are kept, so a refresh doesn't ask git. */
+  async #identity(): Promise<Identity> {
+    const known = this.#state.identity;
+    return known !== undefined && isIdentityComplete(known)
+      ? known
+      : await this.source.readIdentity();
+  }
+
+  /** Whether Create version must first ask who versions are from. */
+  get needsIdentity(): boolean {
+    const { identity, version } = this.#state;
+    return version !== undefined && identity !== undefined && !isIdentityComplete(identity);
+  }
+
+  /** Saves who versions are from, so Create version can go on. */
+  async saveIdentity(identity: Identity): Promise<IdentityOutcome> {
+    const outcome = await saveIdentity(this.source, identity);
+    if (outcome.kind === "saved" && !this.#disposed) {
+      this.#set({ ...this.#state, identity: outcome.identity });
+    }
+    return outcome;
+  }
+
   /** Closes Create version without creating anything. */
   cancelVersion(): void {
     if (this.#state.version !== undefined) this.#set({ ...this.#state, version: undefined });
@@ -376,28 +379,6 @@ export class ChangesList {
     return first.status;
   }
 
-  /** What changed in each file, one entry for each path. A file that can't be read is just "Changed". */
-  async #describe(changes: readonly VcsChange[]): Promise<ChangedFile[]> {
-    const firstOfEachPath = [...new Map(changes.map((change) => [change.path, change])).values()];
-    const files: ChangedFile[] = [];
-    // A few files at a time: every read starts a git process.
-    for (let start = 0; start < firstOfEachPath.length; start += readsAtOnce) {
-      const batch = firstOfEachPath.slice(start, start + readsAtOnce);
-      files.push(...(await Promise.all(batch.map((change) => this.#describeFile(change)))));
-    }
-    return files;
-  }
-
-  async #describeFile(change: VcsChange): Promise<ChangedFile> {
-    try {
-      const texts = await this.source.readTexts(change);
-      const description = describeFileChange(change.path, texts.before, texts.after);
-      return { path: change.path, description, texts };
-    } catch {
-      return { path: change.path, description: unreadable(change), texts: undefined };
-    }
-  }
-
   /** Turns history on, then reads again. A failure stays in `turnOnError` for the page to say. */
   async turnOnHistory(): Promise<void> {
     if (this.#disposed || this.#state.turningOn) return;
@@ -411,6 +392,46 @@ export class ChangesList {
     if (this.#disposed) return;
     this.#set({ ...this.#state, turningOn: false });
     await this.refresh();
+  }
+
+  /**
+   * Gets the shared copy's newer versions and reads again. The page says what came of it; a
+   * failure comes back as a reason, with nothing changed here.
+   */
+  async getUpdates(): Promise<UpdatesOutcome> {
+    if (this.#disposed || this.#state.gettingUpdates) {
+      return { kind: "failed", reason: updatesWords.alreadyWorking };
+    }
+    this.#set({ ...this.#state, gettingUpdates: true });
+    try {
+      const outcome = await this.source.getUpdates();
+      if (this.#disposed) return outcome;
+      this.#set({ ...this.#state, gettingUpdates: false });
+      if (outcome.kind === "got") await this.refresh();
+      return outcome;
+    } catch (error) {
+      if (!this.#disposed) this.#set({ ...this.#state, gettingUpdates: false });
+      return { kind: "failed", reason: loadFailureReason(error) };
+    }
+  }
+
+  /**
+   * Makes `address` the place to share to and get updates from, then reads again so the page
+   * shows Get updates. Gives why it didn't work, or `undefined`; nothing reaches git for an
+   * address that isn't one of the three forms.
+   */
+  async addShareAddress(address: string): Promise<string | undefined> {
+    const trimmed = address.trim();
+    if (!isShareAddress(trimmed)) return shareWords.badAddress;
+    try {
+      await this.source.addRemote(trimmed);
+    } catch (error) {
+      // An address may have been added outside Halonic while the dialog was open.
+      await this.refresh();
+      return loadFailureReason(error);
+    }
+    await this.refresh();
+    return undefined;
   }
 
   /** Calls `listener` after every change of {@link state}. Returns a function that stops the calls. */
@@ -430,19 +451,6 @@ export class ChangesList {
     this.#state = state;
     for (const listener of [...this.#listeners]) listener();
   }
-}
-
-/** The one line for a file that couldn't be read as text: only that it is new, deleted or changed. */
-function unreadable(change: VcsChange): FileChange {
-  let sentence = "Changed";
-  if (change.status === "added" || change.status === "untracked") sentence = "New";
-  if (change.status === "deleted") sentence = "Deleted";
-  return {
-    path: change.path,
-    kind: undefined,
-    lines: [{ id: "item", sentence, parts: [] }],
-    described: false,
-  };
 }
 
 /** The open workspace's {@link ChangesList}; the feature provides it from `ChangesSourceService`. */

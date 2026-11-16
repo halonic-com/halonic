@@ -2,7 +2,12 @@ import { type RunEvent, type RunEventBody, type RunSummary, summarize } from "@h
 import type { AppendResult, RunFilter, RunSnapshot, RunStore } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { endInterruptedRuns, interruptedError, parentEndedError } from "./end-interrupted-runs.ts";
+import {
+  endInterruptedRuns,
+  endLostRuns,
+  interruptedError,
+  parentEndedError,
+} from "./end-interrupted-runs.ts";
 
 const now = new Date("2026-11-09T14:00:00.000Z");
 const clock = { now: () => new Date(now) };
@@ -208,5 +213,23 @@ verifies("engine.end-orphaned-child-runs", () => {
 
     expect(await endInterruptedRuns(store, clock)).toEqual([]);
     expect((await store.get("run_1.2"))?.status).toBe("waiting");
+  });
+});
+
+verifies("engine.report-interrupted-runs", () => {
+  it("tells the runs it interrupted from the child runs it cancelled", async () => {
+    const store = new MemoryRuns();
+    store.add("run_going", [started, { type: "state.entered", state: "pay" }]);
+    store.add("run_1", [...waitingParent, { type: "run.failed", state: "check", error: "Stop." }]);
+    store.add("run_1.2", waitingChild("run_1"));
+
+    expect(await endLostRuns(store, clock)).toEqual({
+      interrupted: ["run_going"],
+      cancelled: ["run_1.2"],
+    });
+  });
+
+  it("tells nothing when no run was lost", async () => {
+    expect(await endLostRuns(new MemoryRuns(), clock)).toEqual({ interrupted: [], cancelled: [] });
   });
 });

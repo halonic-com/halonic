@@ -16,12 +16,13 @@ import {
 import { randomIds, systemClock } from "@halonicjs/std";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
-import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
+import { InboxRequestsService, InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import {
   CollectionHostService,
   KnowledgeHostService,
   LibraryItemsHostService,
   LibraryTabMemoryService,
+  NewCollectionHostService,
   NewSkillHostService,
   SkillHostService,
 } from "@halonicjs/studio-feature-library/api";
@@ -43,11 +44,13 @@ import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.t
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import { WorkspaceFilesHost } from "../files/workspace-files-host.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
+import { WorkspaceRequests } from "../inbox/workspace-requests.ts";
 import { provideLibraryServices } from "../library/provide-library-services.ts";
 import { WorkspaceCollections } from "../library/workspace-collections.ts";
 import { WorkspaceKnowledge } from "../library/workspace-knowledge.ts";
 import { WorkspaceLibraryItems } from "../library/workspace-library-items.ts";
 import { WorkspaceLibraryTab } from "../library/workspace-library-tab.ts";
+import { WorkspaceNewCollection } from "../library/workspace-new-collection.ts";
 import { WorkspaceNewSkill } from "../library/workspace-new-skill.ts";
 import { WorkspaceSkills } from "../library/workspace-skills.ts";
 import { WorkspaceModelKeys } from "../models/workspace-model-keys.ts";
@@ -157,6 +160,14 @@ export function provideFolderServices(
       engine,
     }),
   );
+  services.provide(
+    InboxRequestsService,
+    new WorkspaceRequests({
+      files: services.get(workspaceFilesKey),
+      onChange: (listener) => scope.events.on("files.changed", listener),
+      engine,
+    }),
+  );
   const transport = tauriAgentHostTransport(window);
   services.provide(
     LibraryItemsHostService,
@@ -191,6 +202,13 @@ export function provideFolderServices(
         transport === undefined
           ? () => Promise.reject(new Error("Summarize needs the agent host, which isn't running."))
           : (provider, request) => new AgentHostChat(transport, location).chat(provider, request),
+    }),
+  );
+  services.provide(
+    NewCollectionHostService,
+    new WorkspaceNewCollection({
+      files: services.get(workspaceFilesKey),
+      onChange: (listener) => scope.events.on("files.changed", listener),
     }),
   );
   services.provide(

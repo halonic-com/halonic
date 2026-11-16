@@ -45,6 +45,83 @@
       ],
       "reason": "TypeScript types for the Workers runtime and its bindings (D1, R2, Durable Objects, scheduled events), so the Cloudflare adapters and the Worker typecheck against what workerd really offers (plan section 7). Types only, no code, no dependencies."
     },
+    "@codemirror/commands": {
+      "category": "studio-framework",
+      "allowedIn": [
+        "@halonicjs/studio-code-editor"
+      ],
+      "layers": [
+        "studio"
+      ],
+      "reason": "Approved by the board on HAL-10536 (option A, kit spec 24.7). The Files code editor. Only the core packages plus YAML and Markdown language support; our own undo history replaces the library's; loaded only when a file is opened.",
+      "useInstead": "the code editor from @halonicjs/studio-code-editor"
+    },
+    "@codemirror/lang-markdown": {
+      "category": "studio-framework",
+      "allowedIn": [
+        "@halonicjs/studio-code-editor"
+      ],
+      "layers": [
+        "studio"
+      ],
+      "reason": "Approved by the board on HAL-10536 (option A, kit spec 24.7). The Files code editor. Only the core packages plus YAML and Markdown language support; our own undo history replaces the library's; loaded only when a file is opened.",
+      "useInstead": "the code editor from @halonicjs/studio-code-editor"
+    },
+    "@codemirror/lang-yaml": {
+      "category": "studio-framework",
+      "allowedIn": [
+        "@halonicjs/studio-code-editor"
+      ],
+      "layers": [
+        "studio"
+      ],
+      "reason": "Approved by the board on HAL-10536 (option A, kit spec 24.7). The Files code editor. Only the core packages plus YAML and Markdown language support; our own undo history replaces the library's; loaded only when a file is opened.",
+      "useInstead": "the code editor from @halonicjs/studio-code-editor"
+    },
+    "@codemirror/language": {
+      "category": "studio-framework",
+      "allowedIn": [
+        "@halonicjs/studio-code-editor"
+      ],
+      "layers": [
+        "studio"
+      ],
+      "reason": "Approved by the board on HAL-10536 (option A, kit spec 24.7). The Files code editor. Only the core packages plus YAML and Markdown language support; our own undo history replaces the library's; loaded only when a file is opened.",
+      "useInstead": "the code editor from @halonicjs/studio-code-editor"
+    },
+    "@codemirror/state": {
+      "category": "studio-framework",
+      "allowedIn": [
+        "@halonicjs/studio-code-editor"
+      ],
+      "layers": [
+        "studio"
+      ],
+      "reason": "Approved by the board on HAL-10536 (option A, kit spec 24.7). The Files code editor. Only the core packages plus YAML and Markdown language support; our own undo history replaces the library's; loaded only when a file is opened.",
+      "useInstead": "the code editor from @halonicjs/studio-code-editor"
+    },
+    "@codemirror/view": {
+      "category": "studio-framework",
+      "allowedIn": [
+        "@halonicjs/studio-code-editor"
+      ],
+      "layers": [
+        "studio"
+      ],
+      "reason": "Approved by the board on HAL-10536 (option A, kit spec 24.7). The Files code editor. Only the core packages plus YAML and Markdown language support; our own undo history replaces the library's; loaded only when a file is opened.",
+      "useInstead": "the code editor from @halonicjs/studio-code-editor"
+    },
+    "@lezer/highlight": {
+      "category": "studio-framework",
+      "allowedIn": [
+        "@halonicjs/studio-code-editor"
+      ],
+      "layers": [
+        "studio"
+      ],
+      "reason": "Approved by the board on HAL-10536 (option A, kit spec 24.7). The Files code editor. Only the core packages plus YAML and Markdown language support; our own undo history replaces the library's; loaded only when a file is opened.",
+      "useInstead": "the code editor from @halonicjs/studio-code-editor"
+    },
     "@microsoft/mxc-sdk": {
       "category": "outside-world",
       "allowedIn": [
@@ -226,6 +303,7 @@
       "allowedIn": [
         "@halonicjs/studio-kit",
         "@halonicjs/studio-shell",
+        "@halonicjs/studio-code-editor",
         "@halonicjs/app-studio",
         "@halonicjs/studio-feature-*"
       ],

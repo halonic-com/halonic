@@ -2,7 +2,9 @@ import type {
   ChangesRead,
   ChangesSource,
   FileTexts,
+  Identity,
   KeptFile,
+  UpdatesResult,
   Version,
   VersionInput,
 } from "./api.ts";
@@ -18,8 +20,19 @@ export function fakeSource(initial: ChangesRead) {
   let versionFailure: unknown;
   let historyFailure: unknown;
   let turnedOn = 0;
+  // Set, so the tests of Create version don't ask who versions are from.
+  let identity: Identity = { name: "Sam Smith", email: "sam@acme.example" };
+  let identityFailure: unknown;
+  const identities: Identity[] = [];
+  let identityReads = 0;
   let recorded: readonly Version[] = [];
   const historyLimits: number[] = [];
+  let remote = false;
+  let updates: UpdatesResult = { kind: "up-to-date" };
+  let updatesFailure: unknown;
+  let remoteFailure: unknown;
+  const remotes: string[] = [];
+  let updatesAsked = 0;
   const texts = new Map<string, FileTexts>();
   const replaced: { path: string; text: string; expected: string | null }[] = [];
   const removed: { path: string; expected: string }[] = [];
@@ -68,10 +81,30 @@ export function fakeSource(initial: ChangesRead) {
         answer = { kind: "ready", changes: answer.changes.filter((c) => !recorded.has(c.path)) };
       }
     },
+    readIdentity: async () => {
+      identityReads += 1;
+      return identity;
+    },
+    setIdentity: async (next) => {
+      if (identityFailure !== undefined) throw identityFailure;
+      identities.push(next);
+      identity = next;
+    },
     turnOnHistory: async () => {
       turnedOn += 1;
       if (turnOnFailure !== undefined) throw turnOnFailure;
       answer = { kind: "ready", changes: [] };
+    },
+    hasRemote: async () => remote,
+    addRemote: async (address) => {
+      if (remoteFailure !== undefined) throw remoteFailure;
+      remotes.push(address);
+      remote = true;
+    },
+    getUpdates: async () => {
+      updatesAsked += 1;
+      if (updatesFailure !== undefined) throw updatesFailure;
+      return updates;
     },
     subscribe: (listener) => {
       listeners.add(listener);
@@ -122,6 +155,38 @@ export function fakeSource(initial: ChangesRead) {
     failTurnOn: (error: unknown) => {
       turnOnFailure = error;
     },
+    /** Who versions are from now; empty texts for a part that isn't set. */
+    setIdentity: (next: Identity) => {
+      identity = next;
+    },
+    /** How many times who versions are from was read. */
+    identityReads: () => identityReads,
+    /** Every identity `setIdentity` was given, in order. */
+    identities,
+    /** Makes saving who versions are from fail with `error`. */
+    failIdentity: (error: unknown) => {
+      identityFailure = error;
+    },
+    /** Every address `addRemote` was given, in order. */
+    remotes,
+    /** Makes adding a share address fail with `error`; `undefined` makes it work again. */
+    failRemote: (error: unknown) => {
+      remoteFailure = error;
+    },
+    /** Whether the folder has a place to get updates from. */
+    setRemote: (has: boolean) => {
+      remote = has;
+    },
+    /** What the next Get updates finds. */
+    setUpdates: (next: UpdatesResult) => {
+      updates = next;
+    },
+    /** Makes Get updates fail with `error`; `undefined` makes it work again. */
+    failUpdates: (error: unknown) => {
+      updatesFailure = error;
+    },
+    /** How many times Get updates reached the source. */
+    updatesAsked: () => updatesAsked,
     /** The window came to the front, or a save may have changed a file. */
     wake: () => {
       for (const listener of [...listeners]) listener();

@@ -1,0 +1,15 @@
+{
+  "extends": "@halonicjs/tooling-config/tsconfig/node.json",
+  "//": "Tests run in Node with a jsdom page, so they need the DOM types.",
+  "compilerOptions": {
+    "lib": [
+      "es2024",
+      "dom",
+      "dom.iterable"
+    ]
+  },
+  "include": [
+    "src",
+    "vitest.config.ts"
+  ]
+}

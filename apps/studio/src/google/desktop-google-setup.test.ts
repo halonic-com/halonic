@@ -7,7 +7,8 @@ import { BrowserDisplayPrefs, DisplaySettings } from "@halonicjs/studio-feature-
 import { createShell } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { desktopFeatures, openFolder } from "../studio/start-studio.ts";
+import { desktopFeatures } from "../studio/desktop-features.ts";
+import { openFolder } from "../studio/start-studio.ts";
 
 const acmeKey = "a".repeat(32);
 

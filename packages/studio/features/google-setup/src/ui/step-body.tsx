@@ -52,6 +52,8 @@ export interface StepBodyProps {
   /** The app name chosen in step 3, and the saved project ID, for step 7's text before the button. */
   readonly appName: string | undefined;
   readonly savedProjectId: string | null;
+  /** The setup record's ref, which `halonic google sign-in` takes. */
+  readonly accountRef: string;
   /** Where the sign-in can run: the button here, or the text for another computer. */
   readonly signInEntry: SignInEntry;
   /** What step 7's sign-in needs from the host and the record. */
@@ -125,7 +127,7 @@ export function StepBody(props: StepBodyProps) {
           <SignInResults {...props.results} />
           {props.signInEntry.kind === "elsewhere" ? (
             <SignInElsewhere
-              email={props.results.email}
+              accountRef={props.accountRef}
               commandExists={props.signInEntry.commandExists}
               copyable
             />

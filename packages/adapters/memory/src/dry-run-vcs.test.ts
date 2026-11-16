@@ -4,6 +4,7 @@ import { MemoryDefinitionStore } from "./definition-store.ts";
 import { DryRunVcs } from "./dry-run-vcs.ts";
 import { unifiedDiff } from "./line-diff.ts";
 import { MemoryVcs } from "./vcs.ts";
+import { MemoryRemote } from "./vcs-repository.ts";
 
 /** A repository with one commit holding `a.yaml`, and an unstaged change to it. */
 async function changedRepository(): Promise<{ real: MemoryVcs; files: MemoryDefinitionStore }> {
@@ -269,6 +270,19 @@ verifies("memory.dry-run-vcs-commits", () => {
     await expect(dryRun.commitWorktreeTo("w", ref, { parent: "a".repeat(40) })).rejects.toThrow(
       /Unknown version/,
     );
+    expect(dryRun.changes()).toEqual([]);
+  });
+});
+
+verifies("memory.dry-run-vcs", () => {
+  it("reads where the branch and its upstream parted, and records nothing", async () => {
+    const remote = new MemoryRemote();
+    const { real } = await changedRepository();
+    real.addRemote("origin", remote);
+    await real.push();
+    const dryRun = new DryRunVcs(real);
+
+    expect(await dryRun.diverged()).toBeNull();
     expect(dryRun.changes()).toEqual([]);
   });
 });

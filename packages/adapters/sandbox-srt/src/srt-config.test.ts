@@ -63,6 +63,48 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
     expect(buildSrtConfig(profile(), [], [], "win32").filesystem).not.toHaveProperty("allowRead");
   });
 
+  it("grants reading, not writing, the tool folders on Windows only", () => {
+    const tools = ["C:\\Users\\Ada\\.nvm\\v22"]; // leak-guard: allow absolute-path made-up Windows paths for the test
+    const win = buildSrtConfig(profile(), [], [], "win32", [], tools).filesystem;
+    expect(win?.allowRead).toContainEqual({ path: tools[0], literal: true });
+    // Never in `denyWrite`: on the Windows runner that made srt change the access on the parent
+    // folders and broke the fence (HAL-10705). A tool folder is outside every writable folder, so
+    // it is not writable anyway.
+    expect(win?.denyWrite).not.toContainEqual({ path: tools[0], literal: true });
+    const linux = buildSrtConfig(profile(), [], [], "linux", [], tools).filesystem;
+    expect(linux).not.toHaveProperty("allowRead");
+    expect(linux?.allowWrite).not.toContainEqual({ path: tools[0], literal: true });
+  });
+
+  it("leaves out a tool folder on, above or inside anything the config hides or writes", () => {
+    const home = "C:\\Users\\Ada"; // leak-guard: allow absolute-path made-up Windows paths for the test
+    const keep = `${home}\\.nvm\\v22`;
+    const tools = [
+      keep,
+      `${home}\\.halonic-journal`, // journal folder itself
+      `${home}\\.halonic-journal\\bin`, // inside it
+      `${home}\\shared\\tools`, // inside a shared folder
+      `${home}\\.ssh`, // above a denied path
+      `${home}\\WORK\\bin`, // inside the working folder, other case
+    ];
+    const win = buildSrtConfig(
+      profile({
+        workingFolder: `${home}\\work`,
+        deniedPaths: [`${home}\\.ssh\\keys`],
+      }),
+      [`${home}\\.halonic-journal`],
+      [],
+      "win32",
+      [`${home}\\shared`],
+      tools,
+    ).filesystem;
+    expect(win?.allowRead).toContainEqual({ path: keep, literal: true });
+    expect(win?.denyWrite).not.toContainEqual({ path: keep, literal: true });
+    for (const path of tools.slice(1)) {
+      expect(win?.allowRead).not.toContainEqual({ path, literal: true });
+    }
+  });
+
   it("denies writing the tool settings and hooks inside the working folder", () => {
     const writes = buildSrtConfig(profile()).filesystem?.denyWrite;
     const inWork = (...parts: string[]) => ({

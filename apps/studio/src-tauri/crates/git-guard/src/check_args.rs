@@ -21,7 +21,7 @@ impl CheckedCall {
         &self.args
     }
 
-    /// Whether the call talks to another machine (`pull`, `push`), so it
+    /// Whether the call talks to another machine (`fetch`, `pull`, `push`), so it
     /// gets the longer time limit.
     pub fn uses_network(&self) -> bool {
         self.subcommand.uses_network
@@ -74,8 +74,9 @@ pub fn check_args(args: &[String]) -> Result<CheckedCall, GitError> {
         }
         arguments.push(arg.as_str());
     }
-    check_arguments(subcommand, &arguments)?;
+    check_arguments(subcommand, &options, &arguments)?;
     check_message(subcommand, &options)?;
+    check_merge(subcommand, &options, &arguments)?;
     Ok(CheckedCall {
         subcommand,
         args: args.to_vec(),
@@ -157,7 +158,38 @@ fn check_message(subcommand: &AllowedSubcommand, options: &[&str]) -> Result<(),
     Err(GitError::MessageRequired)
 }
 
-fn check_arguments(subcommand: &AllowedSubcommand, arguments: &[&str]) -> Result<(), GitError> {
+/// `merge` only joins the other side's history without touching a file:
+/// `--no-ff --no-commit -s ours` and one revision, or `--abort` alone. That
+/// strategy never runs a merge driver and never writes conflict markers, so
+/// what ends up in a file is what the person chose and the app wrote.
+fn check_merge(
+    subcommand: &AllowedSubcommand,
+    options: &[&str],
+    arguments: &[&str],
+) -> Result<(), GitError> {
+    if subcommand.name != "merge" {
+        return Ok(());
+    }
+    let has = |name: &str| options.contains(&name);
+    if has("--abort") {
+        return if options.len() == 1 && arguments.is_empty() {
+            Ok(())
+        } else {
+            Err(GitError::MergeNotOurs)
+        };
+    }
+    let is_ours = has("-s") || has("--strategy");
+    if has("--no-ff") && has("--no-commit") && is_ours && arguments.len() == 1 {
+        return Ok(());
+    }
+    Err(GitError::MergeNotOurs)
+}
+
+fn check_arguments(
+    subcommand: &AllowedSubcommand,
+    options: &[&str],
+    arguments: &[&str],
+) -> Result<(), GitError> {
     match subcommand.arguments {
         Arguments::RevisionsAndPaths => {
             match arguments
@@ -174,6 +206,7 @@ fn check_arguments(subcommand: &AllowedSubcommand, arguments: &[&str]) -> Result
         },
         Arguments::RemoteAndRefs => check_remote_and_refs(subcommand, arguments),
         Arguments::RemoteCommand => check_remote(subcommand, arguments),
+        Arguments::ConfigCommand => check_config(subcommand, options, arguments),
     }
 }
 
@@ -210,6 +243,40 @@ fn check_remote(subcommand: &AllowedSubcommand, arguments: &[&str]) -> Result<()
         return Ok(());
     }
     Err(argument_not_allowed(subcommand, &arguments.join(" ")))
+}
+
+/// The identity keys `config` may touch, as git writes them.
+const IDENTITY_KEYS: &[&str] = &["user.name", "user.email"];
+
+/// The longest identity value `config` may write.
+const MAX_IDENTITY_LENGTH: usize = 254;
+
+/// `config`: set `user.name` or `user.email` (git writes it to the
+/// repository's own config), or read one with `--get`. Nothing else: every
+/// other key can name a program or a server.
+fn check_config(
+    subcommand: &AllowedSubcommand,
+    options: &[&str],
+    arguments: &[&str],
+) -> Result<(), GitError> {
+    let shape_is_allowed = match (options, arguments) {
+        (["--get"], [key]) => IDENTITY_KEYS.contains(key),
+        ([], [key, value]) => IDENTITY_KEYS.contains(key) && is_identity_value(value),
+        _ => false,
+    };
+    if shape_is_allowed {
+        return Ok(());
+    }
+    Err(argument_not_allowed(subcommand, &arguments.join(" ")))
+}
+
+/// A name or an email address as one line of plain text. A leading `-` is
+/// refused because git would read the value as an option.
+fn is_identity_value(value: &str) -> bool {
+    !value.trim().is_empty()
+        && value.len() <= MAX_IDENTITY_LENGTH
+        && !value.starts_with('-')
+        && !value.chars().any(char::is_control)
 }
 
 fn argument_not_allowed(subcommand: &AllowedSubcommand, argument: &str) -> GitError {

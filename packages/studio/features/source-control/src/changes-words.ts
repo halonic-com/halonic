@@ -14,6 +14,8 @@ export const stateWords = {
   notARepositoryBody:
     "Halonic saves versions of this workspace so you can see what changed and go back.",
   turnOnHistory: "Turn on history",
+  /** Under "Keep a history of your work": what a folder without history means for saving (save model 2.8). */
+  historyIsOff: "History is off. Everything you save is used right away.",
   turnOnFailed: "Couldn't turn on history",
   noGitTitle: "Halonic needs git to keep versions.",
   installGit: "How to install git",
@@ -107,4 +109,74 @@ export const versionWords = {
     if (items.length === 2) return `Changes to ${first} and ${second}`;
     return `Changes to ${items.length} items`;
   },
+};
+
+/** Who should versions be from? (checklist part 2, 2.6, T9-F21; microcopy 16, HAL-1566). */
+export const identityWords = {
+  title: "Who should versions be from?",
+  intro: "Your name shows next to each version you create, for you and your team.",
+  name: "Name",
+  email: "Email",
+  emailHint: "Shown in the history. Use a no-reply address if you prefer.",
+  saveAndContinue: "Save and continue",
+  saving: "Saving…",
+  /** Under Name, for an empty field. */
+  emptyName: "Enter your name.",
+  /** Under Email, for an empty field and for one that isn't an address. */
+  badEmail: "Enter an email address, like sam@acme.example.",
+  failed: "Couldn't save this",
+  tryAgain: "Try again",
+};
+
+/** Get updates (checklist part 2, 2.8; microcopy revision 94, 16). */
+export const updatesWords = {
+  getUpdates: "Get updates",
+  gettingUpdates: "Getting updates…",
+  /** The toast: "Got 2 versions from the shared copy". One phrase, no full stop. */
+  got: (count: number) =>
+    count === 1
+      ? "Got 1 version from the shared copy"
+      : `Got ${count} versions from the shared copy`,
+  upToDate: "Already up to date",
+  /** The toast's title when nothing could be got; the reason and "Nothing changed here." follow. */
+  failed: "Couldn't get versions",
+  nothingChanged: "Nothing changed here.",
+  /** Both sides have new versions; combining them, item by item, comes with Keep mine and Use theirs. */
+  bothMoved:
+    "The shared copy and this workspace both have new versions, so they can't be combined here yet.",
+  tryAgain: "Try again",
+  alreadyWorking: "Halonic is already getting updates.",
+};
+
+/** History (checklist part 2, 2.9 and 2.10; microcopy revision 94, 16). */
+export const historyWords = {
+  title: "History",
+  loading: "Loading history",
+  loadFailed: "Couldn't load history",
+  tryAgain: "Try again",
+  noVersions: "No versions yet.",
+  showMore: "Show more",
+  today: "Today",
+  yesterday: "Yesterday",
+  /** The name of the box that shows the picked version. */
+  detailsLabel: (name: string) => `Version "${name}"`,
+  whatsInIt: "What's in it",
+  noFiles: "No workspace files changed.",
+  fileCount: (count: number) => (count === 1 ? "1 file" : `${count} files`),
+};
+
+/** The sharing strip and Add where to share (checklist part 2, 2.3; microcopy 16, HAL-1566). */
+export const shareWords = {
+  onlyHere: "Only on this computer",
+  addWhereToShare: "Add where to share",
+  adding: "Adding…",
+  intro: "Your team gets your versions from this git address, and you get theirs.",
+  addressLabel: "Git address",
+  addressHint: "Copy it from the Clone button on GitHub, GitLab or your own git server.",
+  add: "Add",
+  /** Under Git address, for an empty field or an address that isn't one of the three forms. */
+  badAddress:
+    "Enter a git address, like https://github.com/acme/agents.git or git@github.com:acme/agents.git.",
+  failed: "Couldn't add this address",
+  tryAgain: "Try again",
 };

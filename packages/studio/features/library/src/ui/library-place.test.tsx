@@ -7,6 +7,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { type LibraryItemsHost, LibraryItemsHostService } from "../library-items-host.ts";
 import { type LibraryTabMemory, LibraryTabMemoryService } from "../library-tab-memory.ts";
 import { requestLibraryTab } from "../library-tab-request.ts";
+import { type NewCollectionHost, NewCollectionHostService } from "../new-collection-host.ts";
 import { type NewSkillHost, NewSkillHostService } from "../new-skill-host.ts";
 import { fakeModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -144,5 +145,43 @@ verifies("library.library-place", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(page.ownerDocument.querySelector("dialog[open]")).not.toBeNull();
+  });
+
+  it("opens the New collection dialog on Collections and opens the new collection's page", async () => {
+    fakeModal();
+    const openItem = vi.fn();
+    const { context } = contextOf("collection", { openItem });
+    const host: NewCollectionHost = {
+      prepare: async () => {},
+      file: () => "library/collections/",
+      create: async () => ({ hub: null, id: "claims" }),
+    };
+    const find = context.services.find;
+    context.services.find = ((key: unknown) =>
+      key === NewCollectionHostService ? host : find(key as never)) as typeof find;
+    const page = await show(context);
+    const button = [...page.querySelectorAll("button")].find((each) =>
+      each.textContent?.includes("New collection"),
+    );
+    await act(async () => {
+      button?.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const dialog = page.ownerDocument.querySelector("dialog[open]");
+    expect(dialog).not.toBeNull();
+    const input = dialog?.querySelector("input") as HTMLInputElement;
+    expect(page.ownerDocument.activeElement).toBe(input);
+    await act(async () => {
+      const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+      set?.call(input, "Claims");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      [...(dialog?.querySelectorAll("button") ?? [])]
+        .find((each) => each.textContent?.startsWith("Create"))
+        ?.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(openItem).toHaveBeenCalledWith({ kind: "collection", hub: "~workspace", id: "claims" });
   });
 });

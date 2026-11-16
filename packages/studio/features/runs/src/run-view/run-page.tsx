@@ -167,6 +167,7 @@ export function RunView({
             workflowName={(workflowId) => workflowName(list, run, workflowId)}
             openRun={openRun}
             phone={phone}
+            live={run.summary.endedAt === null}
             onClose={() => setOpenEntry(undefined)}
           />
         )}

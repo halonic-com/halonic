@@ -1,4 +1,9 @@
-import type { VcsChange, VcsCommit } from "@halonicjs/ports";
+import {
+  isPrivateWorkspacePath,
+  type VcsChange,
+  type VcsCommit,
+  type VcsDivergence,
+} from "@halonicjs/ports";
 
 /** Files by path: a commit's tree or the index. */
 export type Tree = ReadonlyMap<string, string>;
@@ -215,4 +220,50 @@ export function countMissing(
 ): number {
   const theirs = history(commits, other);
   return [...history(commits, from)].filter((hash) => !theirs.has(hash)).length;
+}
+
+/** The last commit `a` and `b` share, or `null` when they have none. */
+export function commonAncestor(
+  commits: ReadonlyMap<string, Commit>,
+  a: string,
+  b: string,
+): string | null {
+  const mine = history(commits, a);
+  for (let hash: string | null = b; hash !== null; hash = commitOf(commits, hash).parent) {
+    if (mine.has(hash)) return hash;
+  }
+  return null;
+}
+
+/** The paths both trees changed since `base` and now hold differently, sorted. A missing file counts as a change. */
+export function changedOnBothSides(base: Tree, ours: Tree, theirs: Tree): string[] {
+  const changed = (tree: Tree, path: string): boolean => tree.get(path) !== base.get(path);
+  return [...new Set([...ours.keys(), ...theirs.keys(), ...base.keys()])]
+    .filter(
+      (path) => changed(ours, path) && changed(theirs, path) && ours.get(path) !== theirs.get(path),
+    )
+    .sort();
+}
+
+/** What `diverged` gives: the upstream fetched, then where the branch and it parted; `null` unless both moved. */
+export function fetchedDivergence(repo: Repository): VcsDivergence | null {
+  const upstream = repo.upstreams.get(repo.head);
+  if (upstream === undefined) throw new Error(`The branch ${repo.head} has no upstream.`);
+  const remote = remoteOf(repo, upstream.remote);
+  const theirs = remote.branches.get(upstream.branch);
+  if (theirs === undefined) throw new Error(`The remote has no branch ${upstream.branch}.`);
+  copyCommits(remote.commits, repo.commits);
+  repo.tracking.set(`${upstream.remote}/${upstream.branch}`, theirs);
+
+  const ours = headCommit(repo);
+  if (ours === null || isAncestor(repo.commits, theirs, ours)) return null;
+  if (isAncestor(repo.commits, ours, theirs)) return null;
+  const base = commonAncestor(repo.commits, ours, theirs);
+  if (base === null) throw new Error("The two copies share no version.");
+  const items = changedOnBothSides(
+    treeOf(repo.commits, base),
+    treeOf(repo.commits, ours),
+    treeOf(repo.commits, theirs),
+  ).filter((path) => !isPrivateWorkspacePath(path));
+  return { ours, theirs, base, items };
 }

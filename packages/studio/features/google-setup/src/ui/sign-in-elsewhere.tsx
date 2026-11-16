@@ -2,8 +2,8 @@ import { CopyButton } from "@halonicjs/studio-kit";
 
 /** Props for {@link SignInElsewhere}. */
 export interface SignInElsewhereProps {
-  /** The connector's address, which the command signs in. */
-  readonly email: string;
+  /** The setup record's ref, which the command signs in. It is never the connector's address. */
+  readonly accountRef: string;
   /** Whether the host has `halonic google sign-in`, so the command can be shown. */
   readonly commandExists: boolean;
   /** Whether **Copy** is shown with the command. A phone shows the command as text only. */
@@ -16,8 +16,8 @@ export interface SignInElsewhereProps {
  * Halonic. The command is shown only when the host has it; until then the text ends after
  * "Finish this step there."
  */
-export function SignInElsewhere({ email, commandExists, copyable }: SignInElsewhereProps) {
-  const command = `halonic google sign-in ${email}`;
+export function SignInElsewhere({ accountRef, commandExists, copyable }: SignInElsewhereProps) {
+  const command = `halonic google sign-in ${accountRef}`;
   const sentence =
     "Google sends the sign-in back to the computer running Halonic. Finish this step ";
   return (

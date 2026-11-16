@@ -3,7 +3,8 @@ import { BrowserDisplayPrefs, DisplaySettings } from "@halonicjs/studio-feature-
 import { createShell } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { desktopFeatures, openFolder } from "./start-studio.ts";
+import { desktopFeatures } from "./desktop-features.ts";
+import { openFolder } from "./start-studio.ts";
 
 const answers: Record<string, unknown> = {
   fs_list: ["workspace.yaml"],
