@@ -2,6 +2,7 @@
 
 - Approval: HAL-11244; the CTO signs as the holder of the user-visible key
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:By+xr5LaHiqT2yRBkzdVUlyKbFYtpSMNx++ZYybWsKX65g6IUK7YYTeM6a5XxCKmL9Gpl/1RFVgKkc+TdEqABw==
 
 ## What changes
 
