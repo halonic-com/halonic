@@ -1,6 +1,6 @@
 # Decision: bound timer delays and routine intervals
 
-- Approval: [HAL-11239](/HAL/issues/HAL-11239)
+- Approval: HAL-11239
 - Kind: user-visible
 
 A timer delay (`after`) and a routine interval (`every`) are now a count of
