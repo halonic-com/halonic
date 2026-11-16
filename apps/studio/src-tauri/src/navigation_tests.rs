@@ -13,12 +13,31 @@ use tauri::{Manager, Url};
 use super::{CHANGE_ADDRESS_PAGE, ConfirmedAddress, back_to_connect, target};
 use crate::shell;
 
-/// The connect page, as the webview reports it on this platform.
-const CONNECT_PAGE: &str = if cfg!(any(windows, target_os = "android")) {
-    "http://tauri.localhost/connect.html"
+/// The origin the app's pages load from on this platform, without a path.
+const APP_ORIGIN: &str = if cfg!(any(windows, target_os = "android")) {
+    "http://tauri.localhost"
 } else {
-    "tauri://localhost/connect.html"
+    "tauri://localhost"
 };
+
+/// The page the window opens and that may stay in it: the connect page on
+/// Android, the Studio on desktop. The other isn't bundled.
+const APP_PAGE: &str = if cfg!(target_os = "android") {
+    "/connect.html"
+} else {
+    "/studio.html"
+};
+
+/// The page the window doesn't open on this platform.
+const OTHER_PAGE: &str = if cfg!(target_os = "android") {
+    "/studio.html"
+} else {
+    "/connect.html"
+};
+
+fn app_page() -> String {
+    format!("{APP_ORIGIN}{APP_PAGE}")
+}
 
 fn confirmed(input: &str) -> halonic_connect::Address {
     parse_address(input).expect("a test address")
@@ -107,35 +126,55 @@ fn guard_compares_hosts_without_regard_to_case_and_fills_in_the_scheme_port() {
 }
 
 #[test]
-fn guard_keeps_the_connect_page_in_the_window_with_or_without_a_confirmed_address() {
-    assert_all(&[CONNECT_PAGE], None, Destination::Stay);
+fn guard_keeps_the_apps_own_page_in_the_window_with_or_without_a_confirmed_address() {
+    assert_all(&[app_page().as_str()], None, Destination::Stay);
     assert_all(
-        &[CONNECT_PAGE],
+        &[app_page().as_str()],
         Some("192.168.1.20:4280"),
         Destination::Stay,
     );
 }
 
-/// The origin of the connect page on this platform, without a path.
-const APP_ORIGIN: &str = if cfg!(any(windows, target_os = "android")) {
-    "http://tauri.localhost"
-} else {
-    "tauri://localhost"
-};
-
+/// The window opens the page `tauri.conf.json` (`tauri.android.conf.json` on
+/// Android) names, so that page has to be one the guard keeps. If the
+/// configuration moves, the window must not be cut off from its own page.
 #[test]
-fn guard_keeps_the_connect_page_with_the_change_address_fragment() {
-    assert_all(&[CHANGE_ADDRESS_PAGE], None, Destination::Stay);
+fn guard_keeps_the_page_the_window_opens() {
+    let context = tauri::generate_context!();
+    let window = context.config().app.windows.first().expect("a window");
+    let tauri::utils::config::WebviewUrl::App(path) = &window.url else {
+        panic!("the window opens a page of the app: {:?}", window.url);
+    };
+    let url = format!("{APP_ORIGIN}/{}", path.display());
+    assert_eq!(url, app_page());
+    assert_all(&[url.as_str()], None, Destination::Stay);
 }
 
-/// Every other page the app bundles has the window's capabilities too, so
-/// none of them may stay, and neither may the connect page with a query.
+#[test]
+fn guard_keeps_the_connect_page_with_the_change_address_fragment_on_android_only() {
+    let page = format!("{APP_ORIGIN}/connect.html#change-address");
+    let expected = if cfg!(target_os = "android") {
+        Destination::Stay
+    } else {
+        // Not bundled on desktop, and the Studio reads no fragment.
+        Destination::Nowhere
+    };
+    assert_eq!(decide(&page, None), expected);
+}
+
+/// Every other page of the app origin has the window's capabilities too, so
+/// none of them may stay, and neither may the app's page with a query or a
+/// fragment it doesn't read.
 /// What the guard does instead depends on the platform's scheme.
 #[test]
 fn guard_keeps_no_other_page_of_the_app_origin_in_the_window() {
     let paths = [
-        "/studio.html",
+        OTHER_PAGE,
         "/studio.html#change-address",
+        "/studio.html#",
+        "/studio.html#other",
+        "/studio.html?x=1",
+        "/studio.html/",
         "/",
         "/index.html",
         "/connect.html/../studio.html",
@@ -148,6 +187,8 @@ fn guard_keeps_no_other_page_of_the_app_origin_in_the_window() {
         "/connect.html?x=1#change-address",
         "/connect.html#other",
         "/connect.html#",
+        "/studio.html/../connect.html",
+        "/studio.html/..%2fconnect.html",
     ];
     for path in paths {
         let url = format!("{APP_ORIGIN}{path}");
@@ -160,14 +201,10 @@ fn guard_keeps_no_other_page_of_the_app_origin_in_the_window() {
 }
 
 #[test]
-fn guard_keeps_the_connect_page_only_on_its_own_port() {
-    let other_ports = if cfg!(any(windows, target_os = "android")) {
-        ["http://tauri.localhost:8080/connect.html"]
-    } else {
-        ["tauri://localhost:9999/connect.html"]
-    };
-    for url in other_ports {
-        assert_ne!(decide(url, None), Destination::Stay, "{url}");
+fn guard_keeps_the_apps_own_page_only_on_its_own_port() {
+    for port in [8080, 9999, 0] {
+        let url = format!("{APP_ORIGIN}:{port}{APP_PAGE}");
+        assert_ne!(decide(&url, None), Destination::Stay, "{url}");
     }
 }
 
@@ -337,7 +374,7 @@ fn guard_checks_a_loaded_page_with_the_same_rule() {
         page_may_stay(&target(&url), Some(&laptop))
     };
     assert!(may_stay("http://192.168.1.20:4280/"));
-    assert!(may_stay(CONNECT_PAGE));
+    assert!(may_stay(&app_page()));
     assert!(!may_stay("http://192.168.1.20:4281/"));
     assert!(!may_stay("https://halonic.dev/"));
     assert!(!may_stay("data:text/html,hi"));
@@ -345,9 +382,13 @@ fn guard_checks_a_loaded_page_with_the_same_rule() {
 }
 
 #[test]
-fn change_address_page_is_the_connect_page_with_the_change_address_state() {
+fn change_address_page_is_the_apps_own_page_and_on_android_shows_the_change_address_state() {
     let page = Url::parse(CHANGE_ADDRESS_PAGE).expect("a valid page address");
-    assert_eq!(page.fragment(), Some("change-address"));
+    assert_eq!(
+        page.as_str().contains("#change-address"),
+        cfg!(target_os = "android")
+    );
+    assert_eq!(page.as_str().split('#').next(), Some(app_page().as_str()));
     // The load that `back_to_connect` starts must pass the guard itself.
     assert_eq!(
         navigation_destination(&target(&page), None),
