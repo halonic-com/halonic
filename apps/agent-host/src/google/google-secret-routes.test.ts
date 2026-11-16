@@ -266,6 +266,48 @@ verifies("agent-host.google-secret-routes", () => {
       },
     );
 
+    it.each([
+      ["/v1/google/secret", "cross-site"],
+      ["/v1/google/secret", "same-site"],
+      ["/v1/google/secret/replace", "cross-site"],
+      ["/v1/google/secret/replace", "same-site"],
+    ])("refuses %s from %s with 403 before it reads the body", async (path, site) => {
+      const { url, google } = await started();
+      const { accountRef } = await setupWithSecret(google);
+
+      const response = await post(
+        url,
+        path,
+        { accountRef, clientSecret: newSecret },
+        { "sec-fetch-site": site },
+      );
+      // A body that isn't JSON would get 400 if the route read it first.
+      const unread = await post(url, path, `not json ${newSecret}`, { "sec-fetch-site": site });
+
+      expect(response.status).toBe(403);
+      expect(unread.status).toBe(403);
+      expect(await unread.text()).not.toContain(newSecret);
+      const clientRef = (await google.setups.read(accountRef))?.clientSecret?.clientRef ?? "";
+      expect(await google.clientSecrets.readClientSecret(clientRef)).toBe(oldSecret);
+    });
+
+    it.each(["/v1/google/secret", "/v1/google/secret/replace"])(
+      "serves %s for a request from the same origin",
+      async (path) => {
+        const { url, google } = await started();
+        const { accountRef } = await setupWithSecret(google);
+
+        const response = await post(
+          url,
+          path,
+          { accountRef, clientSecret: newSecret },
+          { "sec-fetch-site": "same-origin" },
+        );
+
+        expect(response.status).toBe(200);
+      },
+    );
+
     it("builds its own request: the page's content type and site headers don't reach the handler", async () => {
       const { url, google } = await started();
       const { accountRef } = await setupWithSecret(google);
