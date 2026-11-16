@@ -1,6 +1,6 @@
 import type { InstructionTrustService } from "@halonicjs/app";
 import type { LoggedInstructionPin } from "@halonicjs/events";
-import { errorKindOf } from "@halonicjs/std";
+import { type ErrorKind, errorKindOf } from "@halonicjs/std";
 import type {
   InstructionTrustAnswer,
   InstructionTrustHost,
@@ -34,7 +34,7 @@ export class WorkspaceInstructionTrust implements InstructionTrustHost {
   }
 }
 
-function answerOfRefusal(kind: ReturnType<typeof errorKindOf>): InstructionTrustAnswer {
+function answerOfRefusal(kind: ErrorKind): InstructionTrustAnswer {
   if (kind === "denied") return "declined";
   if (kind === "conflict") return "busy";
   return "unavailable";
