@@ -2,8 +2,8 @@ import { MonthBars, usePresentation } from "@halonicjs/studio-kit";
 import type { HomeCardProps } from "@halonicjs/studio-shell";
 import { use, useCallback, useSyncExternalStore } from "react";
 import { RunsSourceService } from "../api.ts";
+import { spendWords } from "../home-words.ts";
 import { spendTile } from "../list/spend-tile.ts";
-import { spendWords } from "../run-words.ts";
 import { type RunsList, RunsListService } from "../runs-list.ts";
 import { firstLoad } from "./first-load.ts";
 
