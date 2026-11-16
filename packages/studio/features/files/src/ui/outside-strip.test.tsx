@@ -10,6 +10,7 @@ import { FileView } from "./file-view.tsx";
 
 // Every editor the tab opened, with the text it started from.
 const opened: { text: string; onChange: ((text: string) => void) | undefined }[] = [];
+const focused = vi.fn();
 
 vi.mock("@halonicjs/studio-code-editor", () => ({
   languageFor: () => "yaml",
@@ -18,6 +19,7 @@ vi.mock("@halonicjs/studio-code-editor", () => ({
     return {
       text: () => options.text,
       load: () => {},
+      focus: focused,
       destroy: () => {},
     };
   },
@@ -26,6 +28,7 @@ vi.mock("@halonicjs/studio-code-editor", () => ({
 afterEach(() => {
   unmountAll();
   opened.length = 0;
+  focused.mockClear();
 });
 
 function fixture(change: OutsideChange | undefined, compare: Partial<FileCompare> = {}) {
@@ -93,13 +96,34 @@ verifies("files.ui.outside-strip", () => {
     expect(page.querySelector("[role=status]")).toBeNull();
   });
 
-  it("shows the strip with Compare and keeps the editor", async () => {
+  it("shows the strip with Keep mine, Load theirs and Compare, and keeps the editor", async () => {
     const { page } = fixture("changed");
     await flush();
     expect(page.querySelector("[role=status]")?.textContent).toContain(
-      "a.agent.yaml changed outside Halonic",
+      "a.agent.yaml changed outside Halonic.",
     );
+    expect(page.querySelector("[role=status] em")?.textContent).toBe("a.agent.yaml");
+    expect(button(page, "Keep mine")).toBeDefined();
+    expect(button(page, "Load theirs")).toBeDefined();
     expect(button(page, "Compare")).toBeDefined();
+    expect(opened).toHaveLength(1);
+  });
+
+  it("settles with the folder's text on Load theirs, and focuses the editor", async () => {
+    const { page, settle } = fixture("changed");
+    await flush();
+    await press(page, "Load theirs");
+    expect(settle).toHaveBeenCalledWith("a.agent.yaml", "use-other");
+    expect(page.querySelector("[role=status]")).toBeNull();
+    expect(focused).toHaveBeenCalledTimes(1);
+  });
+
+  it("settles with the user's text on Keep mine in the strip, and focuses the editor", async () => {
+    const { page, settle } = fixture("changed");
+    await flush();
+    await press(page, "Keep mine");
+    expect(settle).toHaveBeenCalledWith("a.agent.yaml", "keep-mine");
+    expect(focused).toHaveBeenCalledTimes(1);
   });
 
   it("shows both texts in Compare, and Combine both only when they can be combined", async () => {

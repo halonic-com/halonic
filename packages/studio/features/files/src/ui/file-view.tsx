@@ -39,6 +39,8 @@ export function FileView({ item, context }: ItemViewProps) {
   const [comparing, setComparing] = useState(false);
   // Why a choice made in the strip couldn't be saved; Compare opens with it.
   const [failure, setFailure] = useState<string | undefined>();
+  // Set when the user chose in the strip or in Compare: the reopened editor takes focus.
+  const refocus = useRef(false);
   const [outside, setOutside] = useState<OutsideChange | undefined>(() => host.outside().get(path));
 
   useEffect(() => {
@@ -100,6 +102,10 @@ export function FileView({ item, context }: ItemViewProps) {
       else {
         editor = made;
         unsubscribe = follow(made);
+        if (refocus.current) {
+          refocus.current = false;
+          made.focus();
+        }
       }
     });
     return () => {
@@ -119,6 +125,7 @@ export function FileView({ item, context }: ItemViewProps) {
   async function settleWith(choice: "keep-mine" | "use-other"): Promise<void> {
     try {
       await host.settle(path, choice);
+      refocus.current = true;
       setOutside(host.outside().get(path));
       reload();
     } catch (error) {
@@ -174,6 +181,7 @@ export function FileView({ item, context }: ItemViewProps) {
           change={outside}
           onCompare={() => setComparing(true)}
           onKeepMine={() => settleWith("keep-mine")}
+          onLoadTheirs={() => settleWith("use-other")}
           onClose={() => settleWith("use-other")}
         />
       )}
@@ -190,6 +198,7 @@ export function FileView({ item, context }: ItemViewProps) {
             reload();
           }}
           onDone={() => {
+            refocus.current = true;
             setComparing(false);
             setFailure(undefined);
             setOutside(host.outside().get(path));

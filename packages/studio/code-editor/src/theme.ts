@@ -38,14 +38,9 @@ const frame = EditorView.theme({
   },
 });
 
-/** Four colours: keys, strings, numbers and words that mean something, comments. */
+/** Three looks: keys and headings in the accent, comments quiet and italic, the rest in the text colour. */
 const colours = HighlightStyle.define([
   { tag: [tags.propertyName, tags.heading, tags.strong], color: "var(--color-accent-text)" },
-  { tag: [tags.string], color: "var(--color-success)" },
-  {
-    tag: [tags.number, tags.bool, tags.null, tags.atom, tags.keyword],
-    color: "var(--color-warning)",
-  },
   { tag: [tags.comment, tags.meta], color: "var(--color-fg-subtle)", fontStyle: "italic" },
 ]);
 

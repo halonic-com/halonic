@@ -113,7 +113,7 @@ export function createCodeEditor(options: CodeEditorOptions): CodeEditor {
     },
     {
       key: "Ctrl-m",
-      mac: "Shift-Ctrl-m",
+      mac: "Shift-Alt-m",
       run: () => {
         setTabMovesFocus(!tabMovesFocus);
         return true;

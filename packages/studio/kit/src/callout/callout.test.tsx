@@ -163,6 +163,27 @@ verifies("kit.callout", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
+  it("draws several actions side by side, each running its own click", async () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const { container } = render(
+      <Callout
+        tone="warning"
+        action={[
+          { label: "Keep mine", onClick: first },
+          { label: "Load theirs", onClick: second },
+        ]}
+      >
+        Changed outside Halonic.
+      </Callout>,
+    );
+    const buttons = [...container.querySelectorAll("button")];
+    expect(buttons.map((b) => b.textContent)).toEqual(["Keep mine", "Load theirs"]);
+    await click(buttons[1] as HTMLButtonElement);
+    expect(second).toHaveBeenCalledTimes(1);
+    expect(first).not.toHaveBeenCalled();
+  });
+
   it("keeps its action busy until the promise it returns settles", async () => {
     let finish = () => {};
     const onClick = vi.fn(
