@@ -49,6 +49,7 @@ const host: ConnectorStatusHost = {
 
 const itemsHost: LibraryItemsHost = {
   list: async () => ({ hubs: [] }),
+  remove: async () => ({ undo: async () => {} }),
   subscribe: () => () => {},
 };
 

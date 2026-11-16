@@ -5,6 +5,7 @@ import { chipText } from "../collection-format.ts";
 import { CollectionHostService, type CollectionRef } from "../collection-host.ts";
 import { CollectionModel } from "../collection-model.ts";
 import { collectionWords } from "../collection-words.ts";
+import { useItemTrash } from "./item-trash.tsx";
 import { sharedHubKey } from "./library-place.tsx";
 import { RecordsGrid } from "./records-grid.tsx";
 import { UsedByField } from "./used-by-field.tsx";
@@ -58,9 +59,16 @@ function LoadedCollectionPage({
   const state = useSyncExternalStore(subscribe, () => model.state);
   const { loaded, gone, name, volatile, view, grid, usage } = state;
   const [renameFailed, setRenameFailed] = useState(false);
+  const trash = useItemTrash(context, {
+    kind: "collection",
+    hub: item.hub === sharedHubKey ? null : item.hub,
+    id: item.id,
+    name: name || item.id,
+    ...(usage === undefined ? {} : { usage }),
+  });
 
   if (gone) {
-    return <Gone context={context} />;
+    return trash.strip ?? <Gone context={context} />;
   }
   if (!loaded || grid === undefined) {
     return <p className="px-4 py-5 text-small text-fg-muted">{collectionWords.loading}</p>;
@@ -69,16 +77,19 @@ function LoadedCollectionPage({
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 wide:px-6">
       <PageBackLinkSlot />
-      <h1 tabIndex={-1} className="flex min-w-0 text-title">
-        <NameField
-          name={name || item.id}
-          label={`${collectionWords.kindName} name`}
-          onRename={(next) => {
-            setRenameFailed(false);
-            void model.rename(next).then((written) => setRenameFailed(!written));
-          }}
-        />
-      </h1>
+      <div className="flex items-start justify-between gap-2">
+        <h1 tabIndex={-1} className="flex min-w-0 text-title">
+          <NameField
+            name={name || item.id}
+            label={`${collectionWords.kindName} name`}
+            onRename={(next) => {
+              setRenameFailed(false);
+              void model.rename(next).then((written) => setRenameFailed(!written));
+            }}
+          />
+        </h1>
+        {trash.menu}
+      </div>
       {renameFailed ? (
         <p role="alert" className="text-small text-danger">
           {collectionWords.renameFailed}

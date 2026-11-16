@@ -1,9 +1,12 @@
 import { type LibraryItemKind, whoUses } from "@halonicjs/app";
 import type { DefinitionSource } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
 import type {
   LibraryEntry,
+  LibraryItemPlace,
   LibraryItemsHost,
   LibraryListing,
+  RemovedLibraryItem,
 } from "@halonicjs/studio-feature-library/api";
 import {
   filesOf,
@@ -29,6 +32,18 @@ export interface WorkspaceLibraryItemsParts {
  */
 const folders = ["hubs", "library", "agents", "workflows"];
 
+/** What {@link WorkspaceLibraryItems} needs: the reads, and the kernel's way to change and undo. */
+export interface WorkspaceLibraryItemsHostParts extends WorkspaceLibraryItemsParts {
+  readonly files: WorkspaceLibraryItemsParts["files"] & {
+    /** The kernel's `WorkspaceFiles.change`: `null` deletes the file when saved, into the trash. */
+    change(label: string, changes: Record<string, string | null>): void;
+    /** The kernel's `WorkspaceFiles.undo`: `false` when there was nothing to undo. */
+    undo(): boolean;
+    /** The kernel's `WorkspaceFiles.pending`: a new object after every change, so it tells a step is still the newest. */
+    readonly pending: unknown;
+  };
+}
+
 const settingsPath = "workspace.yaml";
 
 type Item = LoadedFileOf<LibraryItemKind>;
@@ -51,9 +66,9 @@ function detailOf(item: Item): string | undefined {
  * services.provide(LibraryItemsHostService, new WorkspaceLibraryItems({ files, onChange }));
  */
 export class WorkspaceLibraryItems implements LibraryItemsHost {
-  readonly #parts: WorkspaceLibraryItemsParts;
+  readonly #parts: WorkspaceLibraryItemsHostParts;
 
-  constructor(parts: WorkspaceLibraryItemsParts) {
+  constructor(parts: WorkspaceLibraryItemsHostParts) {
     this.#parts = parts;
   }
 
@@ -84,6 +99,34 @@ export class WorkspaceLibraryItems implements LibraryItemsHost {
     };
   }
 
+  /**
+   * Deletes the item's file (a skill's whole folder) as one change. Undo is the workspace's undo,
+   * so it puts the item back only while the delete is still the newest step: after any other
+   * change, or after the delete was undone some other way, it rejects and undoes nothing.
+   */
+  async remove(kind: LibraryItemKind, place: LibraryItemPlace): Promise<RemovedLibraryItem> {
+    const files = this.#parts.files;
+    const name = displayName(kind, place.id);
+    const paths = await itemPaths(files, kind, place);
+    if (paths.length === 0)
+      throw new KindedError("not_found", `${name} isn't in this workspace any more.`);
+    files.change(
+      `Deleted ${kind} ${place.id}`,
+      Object.fromEntries(paths.map((path) => [path, null])),
+    );
+    const afterDelete = files.pending;
+    return {
+      undo: async () => {
+        if (files.pending !== afterDelete || !files.undo()) {
+          throw new KindedError(
+            "conflict",
+            `${name} can't be put back, because the workspace changed after it was deleted.`,
+          );
+        }
+      },
+    };
+  }
+
   subscribe(listener: () => void): () => void {
     return this.#parts.onChange(listener);
   }
@@ -110,4 +153,24 @@ export function unsavedSource(files: WorkspaceLibraryItemsParts["files"]): Defin
 
 function nameOf(workspace: LoadedWorkspace): string {
   return filesOf(workspace, "workspace")[0]?.value.name ?? "the workspace";
+}
+
+function displayName(kind: LibraryItemKind, id: string): string {
+  return `The ${kind} ${id}`;
+}
+
+/** The files an item is made of that exist now: a skill's folder, or the one file of the others. */
+async function itemPaths(
+  files: WorkspaceLibraryItemsParts["files"],
+  kind: LibraryItemKind,
+  { hub, id }: LibraryItemPlace,
+): Promise<string[]> {
+  const root = hub === null ? "" : `hubs/${hub}/`;
+  if (kind === "skill") return files.list(`${root}library/skills/${id}`);
+  const path = {
+    knowledge: `${root}library/knowledge/${id}.yaml`,
+    collection: `${root}library/collections/${id}.collection.yaml`,
+    connector: `${root}library/connectors/${id}.connector.yaml`,
+  }[kind];
+  return (await files.read(path)) === null ? [] : [path];
 }

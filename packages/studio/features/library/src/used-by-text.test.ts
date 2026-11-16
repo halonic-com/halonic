@@ -1,7 +1,7 @@
 import type { ItemUsage, Usage } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { usedByText } from "./used-by-text.ts";
+import { usedByLine, usedByText } from "./used-by-text.ts";
 
 const named = (...names: string[]): Usage[] =>
   names.map((name) => ({ id: name.toLowerCase(), name, hub: null }));
@@ -40,5 +40,21 @@ verifies("library.library-used-by", () => {
   it("says not used yet, also when only a hub takes the item", () => {
     expect(usedByText(usage({}))).toBe("Not used yet");
     expect(usedByText(usage({ hubs: named("beta") }))).toBe("Not used yet");
+  });
+});
+
+verifies("library.library-delete", () => {
+  it("says nothing when no agent uses the item", () => {
+    expect(usedByLine(usage({}))).toBeUndefined();
+    expect(usedByLine(usage({ hubs: named("Support"), routines: named("Inbox") }))).toBeUndefined();
+  });
+
+  it("counts the agents that now show an error", () => {
+    expect(usedByLine(usage({ agents: named("Support") }))).toBe(
+      "1 agent now shows an error until you take it off its Tools page.",
+    );
+    expect(usedByLine(usage({ agents: named("Support", "Billing") }))).toBe(
+      "2 agents now show an error until you take it off their Tools page.",
+    );
   });
 });

@@ -5,6 +5,7 @@ import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { KnowledgeHostService, type KnowledgeRef } from "../knowledge-host.ts";
 import { KnowledgeModel } from "../knowledge-model.ts";
 import { knowledgeWords } from "../knowledge-words.ts";
+import { useItemTrash } from "./item-trash.tsx";
 import { sharedHubKey } from "./library-place.tsx";
 import { SummaryField } from "./summary-field.tsx";
 import { UsedByField } from "./used-by-field.tsx";
@@ -61,6 +62,13 @@ function LoadedKnowledgePage({
     () => model.state,
   );
 
+  const trash = useItemTrash(context, {
+    kind: "knowledge",
+    hub: item.hub === sharedHubKey ? null : item.hub,
+    id: item.id,
+    name: parts?.name || item.id,
+    ...(usage === undefined ? {} : { usage }),
+  });
   const announce = useCallback(
     (text: string) => context.announcer.announceState("knowledge-summary", text),
     [context.announcer],
@@ -70,7 +78,7 @@ function LoadedKnowledgePage({
     runCommand === undefined ? undefined : () => void runCommand(openModelsCommand);
 
   if (gone) {
-    return <Gone context={context} />;
+    return trash.strip ?? <Gone context={context} />;
   }
   if (!loaded) {
     return <p className="px-4 py-5 text-small text-fg-muted">{knowledgeWords.loading}</p>;
@@ -82,9 +90,12 @@ function LoadedKnowledgePage({
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 wide:px-6">
       <PageBackLinkSlot />
-      <h1 tabIndex={-1} className="text-title [overflow-wrap:anywhere]">
-        {parts.name || item.id}
-      </h1>
+      <div className="flex items-start justify-between gap-2">
+        <h1 tabIndex={-1} className="text-title [overflow-wrap:anywhere]">
+          {parts.name || item.id}
+        </h1>
+        {trash.menu}
+      </div>
       <FormRows>
         <Field
           label={knowledgeWords.source}

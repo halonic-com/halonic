@@ -28,3 +28,20 @@ export function usedByText(usage: ItemUsage): string {
   if (last === undefined) return "Not used yet";
   return `Used by ${parts.length === 1 ? last : `${parts.slice(0, -1).join(", ")} and ${last}`}`;
 }
+
+/**
+ * The second line of "Moved X to the trash.": what breaks, or `undefined` when no agent uses the
+ * item. Only agents have a sentence in the design (flow-library 4, microcopy 11.3); the other
+ * users of an item (collections, connectors' routines, hubs) have none until Maya settles it.
+ *
+ * @example
+ * usedByLine({ agents: [{ id: "support", name: "Support", hub: null }], hubs: [], routines: [], collections: [] });
+ * // "1 agent now shows an error until you take it off its Tools page."
+ */
+export function usedByLine(usage: ItemUsage): string | undefined {
+  const count = usage.agents.length;
+  if (count === 0) return undefined;
+  return count === 1
+    ? "1 agent now shows an error until you take it off its Tools page."
+    : `${count} agents now show an error until you take it off their Tools page.`;
+}
