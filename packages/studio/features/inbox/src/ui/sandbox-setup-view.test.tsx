@@ -60,6 +60,8 @@ verifies("inbox.sandbox-row", () => {
   it("opens a run from its line", async () => {
     const openRun = vi.fn();
     const root = await openCard(sandboxInbox(twoRoutines), openRun);
+    // The run lines load after the card opens; wait for them instead of counting ticks.
+    for (let tries = 0; tries < 50 && !button(root, "Open run"); tries++) await settled();
     act(() => button(root, "Open run")?.click());
     expect(openRun).toHaveBeenCalledWith("acme", "c");
   });
