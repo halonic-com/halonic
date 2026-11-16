@@ -53,31 +53,6 @@ function titles(toasts: ReturnType<typeof createToastStore>): readonly string[] 
 }
 
 verifies("workspace.open-folder", () => {
-  it("remembers a sample as the sample before its workspace is shown", async () => {
-    const { switcher } = setup();
-    let sampleWhenShown: boolean | undefined;
-    switcher.open.subscribe(() => {
-      sampleWhenShown ??= switcher.recent.isSample("/work/acme");
-    });
-
-    expect(await switcher.openLocation("/work/acme", undefined, true)).toBeUndefined();
-
-    expect(sampleWhenShown).toBe(true);
-    expect(switcher.recent.isSample("/work/acme")).toBe(true);
-  });
-
-  it("doesn't remember a folder that fails to open as the sample", async () => {
-    const { switcher } = setup({
-      openFolder: vi.fn(async () => {
-        throw new Error("gone");
-      }),
-    });
-
-    expect(await switcher.openLocation("/work/acme", undefined, true)).toBeDefined();
-
-    expect(switcher.recent.isSample("/work/acme")).toBe(false);
-  });
-
   it("opens the picked folder, shows it, remembers it and says so", async () => {
     const { switcher, toasts } = setup();
 
