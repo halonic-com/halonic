@@ -2,6 +2,7 @@
 
 - Approval: Liam decided this on HAL-11107 (from the HAL-11098 design check); the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:SX8+LSgJX6T0Sl8cnuKk+82kmigbcO3CSgYK8JEsjxbbVCkbId6S0egCKR5hpQ7++6twA6hefWPNJLptmvC7AQ==
 - Task: HAL-11119
 
 ## What changes
