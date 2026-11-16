@@ -22,6 +22,7 @@ import {
   KnowledgeHostService,
   LibraryItemsHostService,
   LibraryTabMemoryService,
+  NewCollectionHostService,
   NewSkillHostService,
   SkillHostService,
 } from "@halonicjs/studio-feature-library/api";
@@ -48,6 +49,7 @@ import { WorkspaceCollections } from "../library/workspace-collections.ts";
 import { WorkspaceKnowledge } from "../library/workspace-knowledge.ts";
 import { WorkspaceLibraryItems } from "../library/workspace-library-items.ts";
 import { WorkspaceLibraryTab } from "../library/workspace-library-tab.ts";
+import { WorkspaceNewCollection } from "../library/workspace-new-collection.ts";
 import { WorkspaceNewSkill } from "../library/workspace-new-skill.ts";
 import { WorkspaceSkills } from "../library/workspace-skills.ts";
 import { WorkspaceModelKeys } from "../models/workspace-model-keys.ts";
@@ -191,6 +193,13 @@ export function provideFolderServices(
         transport === undefined
           ? () => Promise.reject(new Error("Summarize needs the agent host, which isn't running."))
           : (provider, request) => new AgentHostChat(transport, location).chat(provider, request),
+    }),
+  );
+  services.provide(
+    NewCollectionHostService,
+    new WorkspaceNewCollection({
+      files: services.get(workspaceFilesKey),
+      onChange: (listener) => scope.events.on("files.changed", listener),
     }),
   );
   services.provide(
