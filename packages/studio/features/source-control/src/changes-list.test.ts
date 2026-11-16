@@ -37,7 +37,21 @@ verifies("source-control.changes-page", () => {
         }).source,
       );
       await settle();
-      expect(list.changedFileCount).toBe(1);
+      expect(list.changedItemCount).toBe(1);
+    });
+
+    it("counts the files of one item once, so the sidebar says 1 change", async () => {
+      const list = new ChangesList(
+        fakeSource({
+          kind: "ready",
+          changes: [
+            { path: "library/skills/triage/SKILL.md", status: "modified", staged: false },
+            { path: "library/skills/triage/checklist.md", status: "untracked", staged: false },
+          ],
+        }).source,
+      );
+      await settle();
+      expect(list.signal()).toEqual({ mark: "count", value: 1, spoken: "1 change" });
     });
 
     it("reads 1 change in the singular", async () => {
@@ -61,7 +75,7 @@ verifies("source-control.changes-page", () => {
       fake.answer(twoChanged);
       fake.wake();
       await settle();
-      expect(list.changedFileCount).toBe(2);
+      expect(list.changedItemCount).toBe(2);
     });
 
     it("keeps the last answer when a later read fails", async () => {
@@ -80,7 +94,7 @@ verifies("source-control.changes-page", () => {
       const first = list.refresh();
       fake.answer(twoChanged);
       await Promise.all([first, list.refresh()]);
-      expect(list.changedFileCount).toBe(2);
+      expect(list.changedItemCount).toBe(2);
     });
 
     it("turns history on and reads again", async () => {
@@ -121,7 +135,7 @@ verifies("source-control.changes-page", () => {
       await settle();
       fake.answer(twoChanged);
       expect(await list.getUpdates()).toEqual({ kind: "got", count: 2 });
-      expect(list.changedFileCount).toBe(2);
+      expect(list.changedItemCount).toBe(2);
       expect(list.state.gettingUpdates).toBe(false);
     });
 
@@ -165,7 +179,7 @@ verifies("source-control.changes-page", () => {
       expect(fake.listenerCount()).toBe(0);
       fake.answer({ kind: "ready", changes: [] });
       await list.refresh();
-      expect(list.changedFileCount).toBe(2);
+      expect(list.changedItemCount).toBe(2);
     });
   });
 });
@@ -205,7 +219,7 @@ verifies("source-control.create-version", () => {
         { message: "First reply flow\n\nTone changed.", paths: ["agents/b.agent.yaml"] },
       ]);
       expect(list.state.version).toBeUndefined();
-      expect(list.changedFileCount).toBe(1);
+      expect(list.changedItemCount).toBe(1);
     });
 
     it("names both paths of a renamed file", async () => {

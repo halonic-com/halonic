@@ -25,10 +25,16 @@ async function describeFile(source: ChangesSource, change: VcsChange): Promise<C
   try {
     const texts = await source.readTexts(change);
     const description = describeFileChange(change.path, texts.before, texts.after);
-    return { path: change.path, description, texts };
+    return { ...fileOf(change), description, texts };
   } catch {
-    return { path: change.path, description: unreadable(change), texts: undefined };
+    return { ...fileOf(change), description: unreadable(change), texts: undefined };
   }
+}
+
+function fileOf(change: VcsChange): Pick<ChangedFile, "path" | "from"> {
+  return change.from === undefined
+    ? { path: change.path }
+    : { path: change.path, from: change.from };
 }
 
 /** The one line for a file that couldn't be read as text: only that it is new, deleted or changed. */

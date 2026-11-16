@@ -36,6 +36,7 @@
     "@halonicjs/std": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/studio-shell": "workspace:*",
+    "@halonicjs/workspace": "workspace:*",
     "react": "catalog:"
   }
 }

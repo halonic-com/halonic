@@ -4,6 +4,7 @@ import { applyLineChanges, diffLines, type LineChange } from "@halonicjs/std";
 import type { PlaceSignal, ServiceKey } from "@halonicjs/studio-shell";
 import { serviceKey } from "@halonicjs/studio-shell";
 import type { ChangesSource, Identity, KeptFile } from "./api.ts";
+import { type ChangeItem, groupIntoItems } from "./change-items.ts";
 import {
   type ChangedFile,
   type ChangesListState,
@@ -76,15 +77,19 @@ export class ChangesList {
     return this.#state;
   }
 
-  /** How many files changed since the last version; zero when nothing did or there is no history. */
-  get changedFileCount(): number {
-    const read = this.#state.read;
-    return read?.kind === "ready" ? new Set(read.changes.map((change) => change.path)).size : 0;
+  /** The rows of the list: an item's files together, other files one each (checklist 2.2). */
+  get items(): readonly ChangeItem[] {
+    return groupIntoItems(this.#state.files);
+  }
+
+  /** How many items changed since the last version; zero when nothing did or there is no history. */
+  get changedItemCount(): number {
+    return this.items.length;
   }
 
   /** The sidebar's count, "Changes, 3 changes"; nothing at zero. */
   signal(): PlaceSignal | undefined {
-    const count = this.changedFileCount;
+    const count = this.changedItemCount;
     if (count === 0) return undefined;
     return { mark: "count", value: count, spoken: pageWords.spokenCount(count) };
   }
