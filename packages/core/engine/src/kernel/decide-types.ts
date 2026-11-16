@@ -1,5 +1,6 @@
 import type {
   AgentResume,
+  ApprovalResolver,
   CantTryStep,
   InstructionsRefusal,
   ProviderText,
@@ -67,6 +68,8 @@ export interface SendInput extends InputBase {
   readonly payload?: unknown;
   /** The call the event is meant for; a mismatch is refused (3c). */
   readonly callId?: string;
+  /** Where a person's answer came from; absent: at the screen. Logged as `by` on `approval.resolved`. */
+  readonly by?: Extract<ApprovalResolver, "person" | "remote-device">;
 }
 
 /** A timer the run set is due. */

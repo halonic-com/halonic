@@ -285,5 +285,8 @@ export interface ProviderText {
  */
 export type ModelSkipReason = "no-key" | "local-only";
 
-/** Who resolved an approval: a person, or a rule that answers without asking anyone. */
-export type ApprovalResolver = "person" | "rule";
+/**
+ * Who resolved an approval: a person at the screen, a person on a remote
+ * device (a phone), or a rule that answers without asking anyone.
+ */
+export type ApprovalResolver = "person" | "remote-device" | "rule";
