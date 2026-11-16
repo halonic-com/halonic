@@ -109,6 +109,35 @@ verifies("sandbox-mxc.sdk-setup", () => {
   });
 
   describe("importing the downloaded SDK", () => {
+    const changes: [string, (folder: string) => Promise<void>][] = [
+      [
+        "a file is changed",
+        (folder) =>
+          writeFile(
+            join(folder, "node_modules", "@microsoft", "mxc-sdk", "dist", "v1", "index.js"),
+            "globalThis.mxcSdkWasImported = true;",
+          ),
+      ],
+      ["a file is added", (folder) => writeFile(join(folder, "node_modules", "extra.js"), "")],
+      [
+        "a file is removed",
+        (folder) => rm(join(folder, "node_modules", "@microsoft", "mxc-sdk", "package.json")),
+      ],
+    ];
+    for (const [what, change] of changes) {
+      it(`imports nothing once ${what} after the download`, async () => {
+        const setup = mxcSdkSetup({ root, pins, fetchBytes: fakeRegistry(answers()).fetchBytes });
+        await setup.download();
+        await change(installFolder(root, pins));
+        await expect(setup.importSdk()).rejects.toThrow();
+        expect(Reflect.has(globalThis, "mxcSdkWasImported")).toBe(false);
+        expect(await setup.isDownloaded()).toBe(false);
+        // A new download puts the verified files back.
+        expect(await setup.download()).toEqual({ done: true });
+        await expect(setup.importSdk()).resolves.toBeDefined();
+      });
+    }
+
     it("imports nothing when the marker is missing", async () => {
       const folder = installFolder(root, pins);
       const entry = join(folder, "node_modules", "@microsoft", "mxc-sdk", "dist", "v1");

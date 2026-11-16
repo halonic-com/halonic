@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, relative, sep } from "node:path";
 import { mxcSdkPinsFor, type PinnedPackage } from "./sdk-pins.ts";
 import { readTarball } from "./tar-reader.ts";
 
@@ -73,7 +73,7 @@ export async function installMxcSdk(options: SdkInstallOptions): Promise<SdkInst
     if (await isVerified(folder, pins)) return { installed: true, folder, downloaded: false };
     await rm(folder, { recursive: true, force: true });
     await writeFolder(folder, unpacked.files);
-    await writeFile(join(folder, markerName), markerText(pins));
+    await writeFile(join(folder, markerName), markerFor(pins, unpacked.files));
   } catch (error) {
     return { installed: false, reason: "failed", problem: describe(error) };
   }
@@ -117,17 +117,81 @@ export function installFolder(
   return join(root, `mxc-sdk-${id}`);
 }
 
-/** Whether the folder holds a finished install of exactly these pins. */
+/**
+ * Whether the folder holds a finished install of exactly these pins, with
+ * every file as it was unpacked: the marker lists each file's SHA-256, and
+ * a file that changed, went missing or was added since makes the install
+ * unverified. Run at every import, because the SDK brings native code.
+ */
 export async function isVerified(folder: string, pins: readonly PinnedPackage[]): Promise<boolean> {
   try {
-    return (await readFile(join(folder, markerName), "utf8")) === markerText(pins);
+    const marker = await readFile(join(folder, markerName), "utf8");
+    const separator = marker.indexOf(manifestSeparator);
+    if (marker.slice(0, separator) !== markerText(pins)) return false;
+    const manifest = parseManifest(marker.slice(separator + manifestSeparator.length));
+    return manifest !== null && (await filesMatch(folder, manifest));
   } catch {
     return false;
   }
 }
 
+/** The pins' text alone: it names the install folder, so a manifest never changes where it lives. */
 function markerText(pins: readonly PinnedPackage[]): string {
   return pins.map((pin) => `${pin.name}@${pin.version} ${pin.integrity}`).join("\n");
+}
+
+/** Each unpacked file's path (with `/`) and the SHA-256 of its content. */
+type FileManifest = Record<string, string>;
+
+/** What the `.verified` marker holds: the pins, a blank line, then the manifest as JSON. */
+const manifestSeparator = "\n\n";
+
+function markerFor(pins: readonly PinnedPackage[], files: readonly UnpackedFile[]): string {
+  const manifest: FileManifest = {};
+  for (const file of files) manifest[file.path] = sha256Of(file.content);
+  return `${markerText(pins)}${manifestSeparator}${JSON.stringify(manifest)}`;
+}
+
+/** The manifest in a marker, or `null` when it isn't one (such as the older marker, which had none). */
+function parseManifest(text: string): FileManifest | null {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
+    return Object.values(parsed).every((hash) => typeof hash === "string")
+      ? (parsed as FileManifest)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Whether the folder holds exactly the manifest's files, each with its hash. */
+async function filesMatch(folder: string, manifest: FileManifest): Promise<boolean> {
+  const present = await listFiles(folder);
+  if (present === null) return false;
+  const expected = Object.keys(manifest);
+  if (present.length !== expected.length) return false;
+  for (const path of expected) {
+    const content = await readFile(join(folder, path)).catch(() => null);
+    if (content === null || sha256Of(content) !== manifest[path]) return false;
+  }
+  return true;
+}
+
+/** The paths (with `/`) of every file under `folder` except the marker, or `null` when something else is there, such as a link. */
+async function listFiles(folder: string): Promise<string[] | null> {
+  const paths: string[] = [];
+  for (const entry of await readdir(folder, { recursive: true, withFileTypes: true })) {
+    if (entry.isDirectory()) continue;
+    if (!entry.isFile()) return null;
+    const path = relative(folder, join(entry.parentPath, entry.name)).split(sep).join("/");
+    if (path !== markerName) paths.push(path);
+  }
+  return paths;
+}
+
+function sha256Of(bytes: Buffer): string {
+  return createHash("sha256").update(bytes).digest("hex");
 }
 
 /** Every pinned tarball's bytes, checked against its integrity; or why not. */
