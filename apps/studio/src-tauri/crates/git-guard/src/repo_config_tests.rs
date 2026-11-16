@@ -1,6 +1,6 @@
 use super::{
-    ConfigEntry, add_repository_filters, blank_filters, check_listing, check_refused_keys,
-    neutralise_programs, parse_listing,
+    ConfigEntry, add_repository_filters, blank_filters, blank_merge_options, check_listing,
+    check_refused_keys, neutralise_programs, parse_listing,
 };
 use crate::error::GitError;
 
@@ -109,6 +109,22 @@ fn repo_config_makes_the_repositorys_merge_drivers_report_a_conflict() {
     assert_eq!(
         pairs(&neutralise_programs(&entries)),
         [("merge.acme.driver", "exit 1")]
+    );
+}
+
+#[test]
+fn repo_config_blanks_every_branchs_merge_options() {
+    let entries = [
+        entry("local", "branch.main.mergeoptions", "-s recursive"),
+        entry("global", "branch.Feature/x.mergeoptions", "-s theirs"),
+        entry("local", "branch.main.remote", "origin"),
+    ];
+    assert_eq!(
+        pairs(&blank_merge_options(&entries)),
+        [
+            ("branch.main.mergeoptions", ""),
+            ("branch.Feature/x.mergeoptions", "")
+        ]
     );
 }
 

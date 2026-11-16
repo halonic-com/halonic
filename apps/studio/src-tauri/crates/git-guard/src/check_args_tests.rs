@@ -42,6 +42,15 @@ fn git_allow_list_allows_the_calls_the_adapter_makes() {
         "pull --ff-only origin main",
         "push --set-upstream origin HEAD:main",
         "push origin +feature:feature",
+        "fetch --quiet --no-tags origin",
+        "fetch origin main",
+        "merge-base HEAD origin/main",
+        "merge-base --is-ancestor HEAD origin/main",
+        "show origin/main:notes/plan.md",
+        "show --no-patch --format=%H origin/main",
+        "merge --no-ff --no-commit -s ours origin/main",
+        "merge --no-ff --no-commit --strategy=ours --no-edit origin/main",
+        "merge --abort",
     ];
     for call in calls {
         assert_eq!(check(call), Ok(()), "{call}");
@@ -132,7 +141,6 @@ fn git_allow_list_refuses_global_options_and_other_subcommands() {
         "--exec-path=/elsewhere status",
         "config core.hooksPath hooks",
         "submodule update",
-        "fetch origin",
         "clone https://git.acme.example/acme/notes.git",
     ];
     for call in calls {
@@ -312,10 +320,97 @@ fn git_allow_list_reads_everything_after_the_separator_as_paths() {
 fn git_allow_list_marks_network_and_diff_calls() {
     let push = check_args(&args("push origin main")).expect("push is allowed");
     assert!(push.uses_network());
+    let fetch = check_args(&args("fetch origin")).expect("fetch is allowed");
+    assert!(fetch.uses_network());
+    assert!(
+        !check_args(&args("merge --abort"))
+            .expect("merge is allowed")
+            .uses_network()
+    );
+    assert!(
+        check_args(&args("show HEAD"))
+            .expect("show is allowed")
+            .shows_diffs()
+    );
     assert!(!push.shows_diffs());
     let log = check_args(&args("log --oneline")).expect("log is allowed");
     assert!(!log.uses_network());
     assert!(log.shows_diffs());
     assert_eq!(log.subcommand(), "log");
     assert_eq!(log.args(), ["log", "--oneline"]);
+}
+
+#[test]
+fn git_allow_list_lets_merge_only_join_history_and_keep_this_side() {
+    for call in [
+        "merge origin/main",
+        "merge --no-ff --no-commit origin/main",
+        "merge --no-commit -s ours origin/main",
+        "merge --no-ff -s ours origin/main",
+        "merge --no-ff --no-commit -s ours",
+        "merge --no-ff --no-commit -s ours origin/main other",
+        "merge --abort origin/main",
+        "merge --abort -q",
+        "merge",
+    ] {
+        assert_eq!(check(call), Err(GitError::MergeNotOurs), "{call}");
+    }
+    // Any other strategy, or an option to one, could write conflict markers
+    // or run a merge driver.
+    for call in [
+        "merge --no-ff --no-commit -s recursive origin/main",
+        "merge --no-ff --no-commit -s resolve origin/main",
+        "merge --no-ff --no-commit --strategy=octopus origin/main",
+        "merge --no-ff --no-commit -s ours --strategy-option=theirs origin/main",
+        "merge --no-ff --no-commit -s ours -X theirs origin/main",
+        "merge --no-ff --no-commit -s ours --squash origin/main",
+        "merge --no-ff --no-commit -s ours --allow-unrelated-histories origin/main",
+        "merge --no-ff --no-commit -s ours --signoff origin/main",
+        "merge --no-ff --no-commit -s ours -F /etc/passwd origin/main",
+    ] {
+        assert!(
+            matches!(
+                check(call),
+                Err(GitError::ValueNotAllowed { .. } | GitError::OptionNotAllowed { .. })
+            ),
+            "{call}"
+        );
+    }
+}
+
+#[test]
+fn git_allow_list_keeps_fetch_to_a_remote_name_and_refs() {
+    for call in [
+        "fetch https://git.acme.example/acme/notes.git",
+        "fetch ext::sh",
+        "fetch -- origin",
+        "fetch . main",
+        "fetch origin ext::sh",
+    ] {
+        assert!(
+            matches!(check(call), Err(GitError::ArgumentNotAllowed { .. })),
+            "{call}"
+        );
+    }
+    for call in [
+        "fetch --upload-pack=touch%20owned origin",
+        "fetch --recurse-submodules origin",
+        "fetch --all",
+        "fetch --depth=1 origin",
+        "merge-base --fork-point HEAD",
+        "show --ext-diff HEAD",
+        "show --output=owned.txt HEAD",
+    ] {
+        assert!(refused_option(call), "{call}");
+    }
+    for call in [
+        "show /etc/passwd",
+        "show -- ../outside",
+        "merge-base HEAD ../x",
+    ] {
+        assert!(
+            matches!(check(call), Err(GitError::ArgumentNotAllowed { .. })),
+            "{call}"
+        );
+    }
 }

@@ -21,7 +21,7 @@ impl CheckedCall {
         &self.args
     }
 
-    /// Whether the call talks to another machine (`pull`, `push`), so it
+    /// Whether the call talks to another machine (`fetch`, `pull`, `push`), so it
     /// gets the longer time limit.
     pub fn uses_network(&self) -> bool {
         self.subcommand.uses_network
@@ -76,6 +76,7 @@ pub fn check_args(args: &[String]) -> Result<CheckedCall, GitError> {
     }
     check_arguments(subcommand, &arguments)?;
     check_message(subcommand, &options)?;
+    check_merge(subcommand, &options, &arguments)?;
     Ok(CheckedCall {
         subcommand,
         args: args.to_vec(),
@@ -155,6 +156,33 @@ fn check_message(subcommand: &AllowedSubcommand, options: &[&str]) -> Result<(),
         return Ok(());
     }
     Err(GitError::MessageRequired)
+}
+
+/// `merge` only joins the other side's history without touching a file:
+/// `--no-ff --no-commit -s ours` and one revision, or `--abort` alone. That
+/// strategy never runs a merge driver and never writes conflict markers, so
+/// what ends up in a file is what the person chose and the app wrote.
+fn check_merge(
+    subcommand: &AllowedSubcommand,
+    options: &[&str],
+    arguments: &[&str],
+) -> Result<(), GitError> {
+    if subcommand.name != "merge" {
+        return Ok(());
+    }
+    let has = |name: &str| options.contains(&name);
+    if has("--abort") {
+        return if options.len() == 1 && arguments.is_empty() {
+            Ok(())
+        } else {
+            Err(GitError::MergeNotOurs)
+        };
+    }
+    let is_ours = has("-s") || has("--strategy");
+    if has("--no-ff") && has("--no-commit") && is_ours && arguments.len() == 1 {
+        return Ok(());
+    }
+    Err(GitError::MergeNotOurs)
 }
 
 fn check_arguments(subcommand: &AllowedSubcommand, arguments: &[&str]) -> Result<(), GitError> {

@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-192, HAL-1508 (closes HAL-6 finding 7)
 
-When the Studio asks the shell to run git, the shell shall run it only if the first argument is a subcommand on the allow-list and every option matches, exactly, an option on that subcommand's list, with a value that meets the option's rule. If an option is shortened, bundled, unknown or given a wrong value, if a global option comes first, or if a URL appears anywhere but in `remote add` or `remote set-url`, then the shell shall refuse the call before git starts. After `--`, every argument shall count as a path. If a revision or path, before or after `--`, is absolute (`/`, `\`, `C:` or `\\server`) or has a `..` component, then the shell shall refuse the call, because `diff` reads a path outside the repository as `--no-index` and would print any file. If a remote name starts with `.`, or a URL's host or user starts with `-`, then the shell shall refuse the call. If a `commit` has neither `-m` nor `--message`, and is not `--amend --no-edit`, then the shell shall refuse it with `message_required`, because git would take its message from `commit.template`, a file the repository's config can name anywhere.
+When the Studio asks the shell to run git, the shell shall run it only if the first argument is a subcommand on the allow-list and every option matches, exactly, an option on that subcommand's list, with a value that meets the option's rule. If an option is shortened, bundled, unknown or given a wrong value, if a global option comes first, or if a URL appears anywhere but in `remote add` or `remote set-url`, then the shell shall refuse the call before git starts. After `--`, every argument shall count as a path. If a revision or path, before or after `--`, is absolute (`/`, `\`, `C:` or `\\server`) or has a `..` component, then the shell shall refuse the call, because `diff` reads a path outside the repository as `--no-index` and would print any file. If a remote name starts with `.`, or a URL's host or user starts with `-`, then the shell shall refuse the call. If a `commit` has neither `-m` nor `--message`, and is not `--amend --no-edit`, then the shell shall refuse it with `message_required`, because git would take its message from `commit.template`, a file the repository's config can name anywhere. If a `merge` is not `--no-ff --no-commit -s ours` with exactly one revision, or `--abort` alone, then the shell shall refuse it with `merge_not_ours`, because every other strategy can write conflict markers or run a merge driver. For a `merge`, the runner also blanks every `branch.<name>.mergeOptions` in the config, because git would try those strategies before `-s ours`. `fetch` takes a remote name and refs, never a URL, and gets the same pinned `--upload-pack` as `pull`.
 
 ## Examples
 
@@ -32,3 +32,18 @@ When the Studio asks the shell to run git, the shell shall run it only if the fi
 - Given the call `remote add origin ssh://-oProxyCommand=x/acme.git`,
   when it is checked,
   then it is refused, because ssh would read the host as an option.
+- Given the call `merge --no-ff --no-commit -s recursive origin/main`,
+  when it is checked,
+  then it is refused, because only `-s ours` never writes conflict markers.
+- Given the call `merge origin/main`,
+  when it is checked,
+  then it is refused with `merge_not_ours`.
+- Given a config that sets `branch.main.mergeOptions` to `-s recursive`, a
+  merge driver and a `.gitattributes` line that uses it,
+  when `merge --no-ff --no-commit -s ours origin/main` runs on `main`,
+  then the driver never runs and the person's files stay as they were,
+  because the runner blanks every `branch.<name>.mergeoptions` for `merge`
+  (and refuses a repository's own config that sets one).
+- Given the call `fetch https://git.acme.example/acme/notes.git`,
+  when it is checked,
+  then it is refused, because `fetch` takes a remote name, not a URL.
