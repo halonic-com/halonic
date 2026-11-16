@@ -21,7 +21,7 @@ describe("toolFoldersInProfile", () => {
   });
 
   it("never takes the profile itself, or a folder above it", () => {
-    expect(folders(`${home};${home};C:\\Users;C:\\`)).toEqual([]); // leak-guard: allow absolute-path made-up Windows paths for the test
+    expect(folders(`${home};${home}\\;C:\\Users;C:\\`)).toEqual([]); // leak-guard: allow absolute-path made-up Windows paths for the test
   });
 
   it("never takes AppData or its Roaming or Local as a whole", () => {
