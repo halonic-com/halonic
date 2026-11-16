@@ -120,7 +120,7 @@ globalThis.fetch = async (url, init) =>
       })
     : realFetch(url, init);
 
-test("turbo-cache: only a merge_group or main push OIDC token buys a write token", async () => {
+test("turbo-cache: only a main push OIDC token buys a write token; the merge queue gets a read token", async () => {
   const store = new Map();
   const env = {
     SPEND_KV: kv({ spend_ok: "on", "spend_ok:turbo-cache": "on" }),
@@ -146,11 +146,9 @@ test("turbo-cache: only a merge_group or main push OIDC token buys a write token
       env,
     );
 
-  const queue = await exchange(
-    await oidc({ event_name: "merge_group", ref: "refs/heads/gh-readonly-queue/main/x" }),
-  );
-  assert.equal(queue.status, 200);
-  const { token } = await queue.json();
+  const main = await exchange(await oidc({ event_name: "push", ref: "refs/heads/main" }));
+  assert.equal(main.status, 200);
+  const { token } = await main.json();
   assert.equal((await put(token)).status, 202);
   assert.equal((await put(`${token}x`)).status, 401);
   assert.equal(
@@ -158,8 +156,27 @@ test("turbo-cache: only a merge_group or main push OIDC token buys a write token
     401,
   );
 
-  const main = await exchange(await oidc({ event_name: "push", ref: "refs/heads/main" }));
-  assert.equal(main.status, 200);
+  // The queue runs the queued change's own code, so its token reads and never uploads.
+  const queue = await exchange(
+    await oidc({ event_name: "merge_group", ref: "refs/heads/gh-readonly-queue/main/x" }),
+  );
+  assert.equal(queue.status, 200);
+  const { token: queueToken } = await queue.json();
+  assert.match(queueToken, /^r\./);
+  assert.equal((await put(queueToken)).status, 403);
+  // Relabelling the read token as a write token breaks its signature.
+  assert.equal((await put(`w.${queueToken.slice(2)}`)).status, 401);
+  assert.equal(
+    (
+      await worker.fetch(
+        new Request("https://x/v8/artifacts/status", {
+          headers: { authorization: `Bearer ${queueToken}` },
+        }),
+        env,
+      )
+    ).status,
+    200,
+  );
 
   // A merge queue on another branch is not ours.
   assert.equal(

@@ -917,9 +917,10 @@ CI shares Turbo results through a remote cache: a small Cloudflare Worker with
 an R2 bucket (`infra/turbo-cache`). The `build` job uses it only on `main` and
 in the merge queue. A pull request uses the local cache, so it can't put
 anything into the cache that other runs trust, and it holds none of the cache's
-secrets. On `main` and in the merge queue, the job gets a 30-minute write token
-from the Worker against its GitHub OIDC token, which the Worker only grants for
-those events. Entries are signed (`remoteCache.signature` in `turbo.json`) with
+secrets. On `main` and in the merge queue, the job gets a 30-minute token from
+the Worker against its GitHub OIDC token. A push to `main` gets a write token.
+The merge queue runs the queued change's own code, so it gets a read token and
+runs with `remote:r`: it uses entries but can't upload any. Entries are signed (`remoteCache.signature` in `turbo.json`) with
 `TURBO_REMOTE_CACHE_SIGNATURE_KEY`, a secret of the GitHub environment
 `turbo-cache-write`, whose deployment branches are `main` and
 `gh-readonly-queue/main/*`, so no pull request can read it. Don't keep that key
