@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
+import { reviewedTools } from "../agent/listed-tool-approval.test-helper.ts";
 import { secretsWith, steppingClock } from "../agent/turn-test-kit.test-helper.ts";
 import { LocalExecutor } from "../local-executor.ts";
 import { replyStart, runsOn } from "./local-runs-test-kit.test-helper.ts";
@@ -31,6 +32,7 @@ verifies("engine.report-interrupted-runs", () => {
       connectors: [],
       secrets: secretsWith(),
       clock: steppingClock(),
+      listedToolApproval: reviewedTools,
     });
     expect(await executor.endLostRuns()).toBe(0);
   });

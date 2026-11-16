@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
+import { noListedToolApproval } from "../../agent/listed-tool-approval.ts";
 import { secretsWith, steppingClock } from "../../agent/turn-test-kit.test-helper.ts";
 import { LocalExecutor } from "../../local-executor.ts";
 import { call, callAnswer, ScriptedModel, textAnswer } from "../../testing/scripted-model.ts";
@@ -24,6 +25,7 @@ function executorOn(model: ScriptedModel, records = memoryRecords()) {
     halonicTools: [],
     memory: records,
     connectors: [],
+    listedToolApproval: noListedToolApproval,
     secrets: secretsWith(),
     clock: steppingClock(),
   });

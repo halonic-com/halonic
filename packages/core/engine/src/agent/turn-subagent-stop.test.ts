@@ -6,6 +6,7 @@ import { stoppedSubagentOf } from "../kernel/stopped-subagent.ts";
 import { call, callAnswer, ScriptedModel, textAnswer } from "../testing/scripted-model.ts";
 import { type SubagentOutcome, subagentTools } from "../tools/subagents/subagent-tools.ts";
 import type { CallChecker } from "./check-call-before-run.ts";
+import { noListedToolApproval } from "./listed-tool-approval.ts";
 import { runAgentTurn } from "./run-model-turn.ts";
 import type { TurnStop } from "./turn-approval.ts";
 import {
@@ -69,6 +70,7 @@ async function agentTurn(
     messages: [{ role: "user", content: `${agent}: handle the Acme invoice` }],
     halonicTools: [tool("lookup"), tool("publish"), ...delegates],
     connectors: [],
+    listedToolApproval: noListedToolApproval,
     maxRounds: 6,
     agent,
     clock: steppingClock(),
@@ -154,6 +156,7 @@ verifies("engine.turn-subagent-stop", () => {
       messages: [],
       halonicTools: [],
       connectors: [],
+      listedToolApproval: noListedToolApproval,
       maxRounds: 6,
       agent: "writer",
       clock: steppingClock(),

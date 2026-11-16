@@ -152,6 +152,15 @@ offers nothing from a connector with no lists, and refuses a call to a tool the 
 (or `approve: all`), whatever risk the server lists. Without it, a chat offers every tool its
 connectors list and checks only the risk the servers give.
 
+Before the fence, every turn runs the approval step of HAL-850 (`approveConnectorListing`, requirement
+`engine.listed-tool-approval`): a connector's listing is read with `readToolListing` and checked with
+`approveListedTools`, and only the tools a person approved as they are now go on to `offerListedTools`.
+The others come back in `waiting` (`ports.chat-turn-waiting`), never to the model. A call to one, also a
+`call-tool` effect, is refused like a call to a tool nobody offered. `LocalExecutorOptions.listedToolApproval`
+is required, so each host chooses: the CLI passes its profile's approvals (`cliListedToolApproval`),
+a host with none passes `noListedToolApproval`, which keeps every listed tool off, and the test runner
+passes `allToolsReviewed` because its tools are scripted.
+
 `LocalExecutorOptions` is what a `LocalExecutor` is built from; `maxRounds` defaults to
 `defaultMaxRounds` (20).
 
@@ -378,7 +387,7 @@ package may not import itself by name; outside this package, import `@halonicjs/
 
 ```ts
 import type { ChatRequest, ChatResponse, LlmProvider } from "@halonicjs/ports";
-import { type HalonicTool, LocalExecutor } from "@halonicjs/engine";
+import { type HalonicTool, LocalExecutor, noListedToolApproval } from "@halonicjs/engine";
 
 // A stand-in model that first calls the `lookup` tool, then answers with what
 // the tool returned. A real provider comes from an adapter, such as OpenAI's.
@@ -415,6 +424,8 @@ export async function runExample(): Promise<{ answer: string; roles: string[]; m
     resolveModel: async () => ({ provider: model, model: "acme-1" }),
     halonicTools: [lookup],
     connectors: [],
+    // No connector lists tools here, so there is nothing to approve.
+    listedToolApproval: noListedToolApproval,
     // The stand-in model names no key, so no secret is ever looked up.
     secrets: { get: async () => null },
     clock: { now: () => new Date("2026-11-09T09:00:00Z") },

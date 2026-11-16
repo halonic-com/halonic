@@ -1,24 +1,39 @@
 import { spawnSync } from "node:child_process";
-import { cp, mkdir, mkdtemp, readdir, readFile, stat, symlink, writeFile } from "node:fs/promises";
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  realpath,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FolderDefinitionStore, heldLockRenewEveryMs } from "@halonicjs/adapter-fs-node";
+import {
+  FileToolApprovalStore,
+  FolderDefinitionStore,
+  heldLockRenewEveryMs,
+} from "@halonicjs/adapter-fs-node";
 import { RunHistory, WorkflowRuns } from "@halonicjs/app";
+import { approveAllShown, checkConnectorTools } from "@halonicjs/app/listed-tools";
 import {
   type ConnectorClient,
   type HttpClient,
   runLockFormat,
   type Secrets,
 } from "@halonicjs/ports";
-import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
-import { KindedError } from "@halonicjs/std";
+import { type ProfileEnvironment, profileFolder, toolApprovalFolder } from "@halonicjs/profile";
+import { KindedError, systemClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
-import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
+import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { engineLockFile, type LocalEngine, openLocalEngine } from "./local-engine-host.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
-import { nodeProfileEnvironment, openWorkspaceRuns } from "./workspace-runs.ts";
+import { nodeProfileEnvironment, openWorkspaceRuns, webCryptoDigest } from "./workspace-runs.ts";
 
 /** The Acme example, on the test model: Support reply takes Sam's email down the refund path. */
 const acmeExample = fileURLToPath(new URL("../../../examples/acme", import.meta.url));
@@ -348,10 +363,9 @@ describe("the engine lock under attack", () => {
       workspace = await loadWorkspace(new FolderDefinitionStore(acme, "./acme"));
     }
 
-    it("refuses a read tool that its connector file puts under approve", async () => {
-      await mailWorkspace();
-      const calls: string[] = [];
-      const mail: ConnectorClient = {
+    /** A mail connector that lists `lookup` and records the calls it gets. */
+    function mailConnector(calls: string[]): ConnectorClient {
+      return {
         id: "mail",
         listTools: async () => [
           {
@@ -367,6 +381,32 @@ describe("the engine lock under attack", () => {
         },
         close: async () => {},
       };
+    }
+
+    /** What `halonic tools approve --all` writes for `mail`, in this test's profile. */
+    async function approveMailTools(mail: ConnectorClient): Promise<void> {
+      const store = new FileToolApprovalStore(toolApprovalFolder(profileFolder(profile)));
+      const connector = filesOf(workspace, "connector").find((file) => file.value.id === "mail");
+      if (connector === undefined) throw new Error("the workspace has the mail connector");
+      const location = await realpath(acme);
+      const check = await checkConnectorTools({
+        location,
+        connector: connector.value,
+        listed: await mail.listTools(),
+        trust: { location, fingerprint: "hfp1:test" },
+        store,
+        digest: webCryptoDigest,
+        clock: systemClock,
+      });
+      if (!check.ok) throw new Error(check.error);
+      await approveAllShown(check.value, check.value.waiting, store, systemClock);
+    }
+
+    it("refuses a read tool that its connector file puts under approve", async () => {
+      await mailWorkspace();
+      const calls: string[] = [];
+      const mail = mailConnector(calls);
+      await approveMailTools(mail);
       const engine = await openLocalEngine({
         workspace,
         workspaceRoot: acme,
@@ -389,6 +429,35 @@ describe("the engine lock under attack", () => {
       expect(response.refusals).toEqual([
         expect.objectContaining({ source: "mail", name: "lookup", refused: "call" }),
       ]);
+    });
+
+    it("keeps a listed tool nobody approved off, and says so to the host", async () => {
+      await mailWorkspace();
+      const calls: string[] = [];
+      const heard: string[] = [];
+      const engine = await openLocalEngine({
+        workspace,
+        workspaceRoot: acme,
+        secrets,
+        http,
+        environment: profile,
+        connectors: [mailConnector(calls)],
+        reportWaiting: (connector, waiting) =>
+          heard.push(`${connector}: ${waiting.map((tool) => tool.name).join(",")}`),
+        reportError: (error) => schedulerErrors.push(error),
+      });
+      opened.push(engine);
+
+      const response = await engine.executor.chatTurn({
+        hubId: "support",
+        agentId: "clerk",
+        messages: [{ role: "user", content: "Find the refund mail." }],
+        tools: [],
+      });
+
+      expect(calls).toEqual([]);
+      expect(response.waiting).toEqual([{ source: "mail", name: "lookup" }]);
+      expect(heard).toEqual(["mail: lookup"]);
     });
   });
 });

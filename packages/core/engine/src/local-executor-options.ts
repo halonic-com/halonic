@@ -9,6 +9,7 @@ import type {
   RecordStore,
   Secrets,
 } from "@halonicjs/ports";
+import type { ListedToolApproval } from "./agent/listed-tool-approval.ts";
 import type { ResolvedModel } from "./agent/model-chain.ts";
 import type { HalonicTool } from "./agent/turn-tools.ts";
 import type { AgentKnowledgeOptions } from "./knowledge/agent-knowledge.ts";
@@ -44,6 +45,13 @@ export interface LocalExecutorOptions {
    * in every run when `runs.runConnectors` isn't given.
    */
   readonly connectors: readonly ConnectorClient[];
+  /**
+   * Which listed tools a person approved, for every path that offers or calls
+   * a connector's tool: chat turns, runs' model calls, subagents and
+   * `call-tool` effects. Required, so each host chooses: one with no approval
+   * store passes `noListedToolApproval`, which keeps every listed tool off.
+   */
+  readonly listedToolApproval: ListedToolApproval;
   /** Where a turn checks that a model's key is set, to skip the model before calling it when it isn't. */
   readonly secrets: Secrets;
   readonly clock: Clock;

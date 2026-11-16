@@ -4,7 +4,7 @@
 // only. The CLI's `openLocalEngine` and the Studio's `EngineService` both
 // build it here, so the two engines answer a model call the same way.
 
-import type { LocalExecutorOptions } from "@halonicjs/engine";
+import type { ListedToolApproval, LocalExecutorOptions } from "@halonicjs/engine";
 import type { Agent } from "@halonicjs/format";
 import type {
   ChatTurnRequest,
@@ -36,6 +36,8 @@ export interface WorkspaceExecutorInput {
   /** What the model providers call their servers with. */
   readonly http: HttpClient;
   readonly clock: Clock;
+  /** Which tools a server lists a person approved; the host chooses, so none is offered by default. */
+  readonly listedToolApproval: ListedToolApproval;
   /** The connected servers a chat turn calls; none by default. */
   readonly connectors?: readonly ConnectorClient[];
 }
@@ -58,6 +60,7 @@ export function workspaceExecutorOptions(input: WorkspaceExecutorInput): Workspa
     connectors: input.connectors ?? [],
     secrets: input.secrets,
     clock: input.clock,
+    listedToolApproval: input.listedToolApproval,
     // A chat turn reads the workspace's files as a run does: its agent's file,
     // and its connector files' `allow` and `approve` lists (HAL-5645).
     chatAgentOf: async (request) => chatAgentOf(latest(), request),

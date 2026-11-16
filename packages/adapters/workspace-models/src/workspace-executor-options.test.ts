@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
+import { noListedToolApproval } from "@halonicjs/engine";
 import type { Clock, Secrets } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
@@ -28,7 +29,13 @@ async function optionsOf(files: Record<string, string>) {
     writeFileSync(join(root, path), text);
   }
   const workspace = await loadWorkspace(new FolderDefinitionStore(root, "./acme"));
-  return workspaceExecutorOptions({ workspace, secrets, http: { fetch }, clock });
+  return workspaceExecutorOptions({
+    workspace,
+    secrets,
+    http: { fetch },
+    clock,
+    listedToolApproval: noListedToolApproval,
+  });
 }
 
 verifies("cli.workspace-models", () => {

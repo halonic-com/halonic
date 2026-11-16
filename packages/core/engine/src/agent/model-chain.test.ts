@@ -11,6 +11,8 @@ import {
   ScriptedModel,
   textAnswer,
 } from "../testing/scripted-model.ts";
+import { reviewedTools } from "./listed-tool-approval.test-helper.ts";
+import { noListedToolApproval } from "./listed-tool-approval.ts";
 import type { ResolvedModel } from "./model-chain.ts";
 import { runModelTurn } from "./run-model-turn.ts";
 import {
@@ -43,6 +45,7 @@ function runTurnOn(model: ResolvedModel, setup: TurnSetup = {}) {
     callerTools: [],
     halonicTools: [],
     connectors: setup.connectors ?? [],
+    listedToolApproval: reviewedTools,
     maxRounds: 20,
     agent: "clerk",
     clock: setup.clock ?? steppingClock(),
@@ -66,6 +69,7 @@ verifies("engine.skip-model-without-key", () => {
         alias("smart", smart, { secret: "acme-cloud-key", fallback: [alias("default", local())] }),
       halonicTools: [],
       connectors: [],
+      listedToolApproval: noListedToolApproval,
       secrets: secretsWith("another-key"),
       clock: steppingClock(),
     });
