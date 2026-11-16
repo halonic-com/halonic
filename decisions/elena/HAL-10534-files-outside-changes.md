@@ -2,6 +2,7 @@
 
 - Approval: [HAL-10832](/HAL/issues/HAL-10832)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:PGfK2Y+cOUCW1Wi0B2kR+u4Hhvk9LnevtEPBUG6z4ChhMqX7kUOLehFMVCU9/FQavGm3GzCdOYotQQ0JDywoAA==
 
 ## What changes
 
