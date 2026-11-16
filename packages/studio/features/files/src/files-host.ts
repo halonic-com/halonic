@@ -51,6 +51,11 @@ export interface FilesHost {
    */
   edit(path: string, text: string): void;
   /**
+   * Makes an empty file at `path`, and the folders on the way, as one undo step. Rejects with an
+   * `Error` whose message is one sentence, such as "workspace.yaml already exists.", when it can't.
+   */
+  create(path: string): Promise<void>;
+  /**
    * Every error and warning in the workspace's files, with the unsaved changes applied, errors
    * and warnings of one file in the order of the text. Resolves to none when the files can't be checked.
    */

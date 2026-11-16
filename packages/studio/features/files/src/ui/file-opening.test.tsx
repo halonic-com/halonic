@@ -18,6 +18,7 @@ const host: FilesHost = {
   outside: () => new Map(),
   compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
   settle: async () => {},
+  create: async () => {},
 };
 
 verifies("files.ui.file-tab", () => {

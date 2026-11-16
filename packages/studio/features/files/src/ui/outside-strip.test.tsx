@@ -44,6 +44,7 @@ function fixture(change: OutsideChange | undefined, compare: Partial<FileCompare
       text = next;
     },
     problems: async () => [],
+    create: async () => {},
     outside: () => outside,
     compare: async (path) => ({
       path,
