@@ -142,6 +142,7 @@ sessions are open at once, srt still lets one read the other (known limit, `it.f
 | `LinuxHelper` | A helper srt runs next to bubblewrap: `socat` or `ripgrep`. |
 | `Runner`, `srtRunner` | Starts a program inside the fence; a test passes a fake `Runner`. |
 | `WSL_SHARED_FOLDERS` | The folders `srt-wsl` hides in Halonic's WSL distro: the `halonic` home, `/mnt/halonic` and `/mnt/wsl`. |
+| `importWindowsProject` | Imports a Windows git folder as a project in the distro: clone from a read-only mount, the source's remotes and its uncommitted changes. |
 | `wslProjectFolder`, `wslWindowsPath`, `assertProjectName`, `WSL_DISTRO` | Where a project lives in the WSL distro (in it, or one Windows folder mounted at `/mnt/halonic/<name>`), its path on the distro's WSL share for "Open in Explorer", and the check that a project name is one plain folder name. |
 
 `new SrtSandbox(machine?, runner?, journalFolder?)` takes the real machine and runner by default.
