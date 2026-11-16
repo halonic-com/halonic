@@ -119,6 +119,7 @@ verifies("shell.sidebar-switch", () => {
   const filesView: Registered<SidebarViewContribution> = {
     featureId: "files",
     id: "files",
+    order: 10,
     label: "Files",
     view: "FilesView",
     load: async () => ({ FilesView: () => <p>The file tree</p> }),
