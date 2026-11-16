@@ -1,4 +1,4 @@
-import type { ChatTurnRefusal } from "@halonicjs/ports";
+import type { ChatTurnRefusal, ChatTurnWaiting } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { RefusalsFeed } from "./refusals-feed.ts";
@@ -38,6 +38,26 @@ verifies("library.refusals-feed", () => {
     expect(listener).toHaveBeenCalledTimes(1);
     stop();
     feed.record([refusal("notes", 2)]);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps what waits for approval as the last turn left it, and clears it with an empty set", () => {
+    const feed = new RefusalsFeed();
+    const lookup: ChatTurnWaiting = { source: "notes", name: "lookup" };
+    feed.recordWaiting([lookup, { source: "mail", name: "send" }]);
+    expect(feed.waiting("notes")).toEqual([lookup]);
+    feed.recordWaiting([]);
+    expect(feed.waiting("notes")).toEqual([]);
+    expect(feed.waiting("mail")).toEqual([]);
+  });
+
+  it("calls watchers only when the waiting set changed", () => {
+    const feed = new RefusalsFeed();
+    const listener = vi.fn();
+    feed.subscribe(listener);
+    feed.recordWaiting([]);
+    feed.recordWaiting([{ source: "notes", name: "lookup" }]);
+    feed.recordWaiting([{ source: "notes", name: "lookup" }]);
     expect(listener).toHaveBeenCalledTimes(1);
   });
 });

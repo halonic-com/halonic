@@ -14,7 +14,8 @@ import type {
   ToolServer,
   WaitingVersion,
 } from "@halonicjs/ports";
-import { allToolsReviewed, type ListedToolApprovalStore } from "./listed-tool-approval.ts";
+import { allToolsReviewed } from "../testing.ts";
+import type { ListedToolApprovalStore } from "./listed-tool-approval.ts";
 
 /** A gate that passes every connector's tools as they are: the tests' tools are scripted. */
 export const reviewedTools = allToolsReviewed;

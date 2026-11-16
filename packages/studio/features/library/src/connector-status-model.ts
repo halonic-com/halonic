@@ -1,3 +1,4 @@
+import type { ChatTurnWaiting } from "@halonicjs/ports";
 import type {
   ConnectorStatus,
   ConnectorStatusHost,
@@ -17,6 +18,8 @@ export interface ConnectorStatusState {
   readonly connector?: ConnectorStatus;
   /** Newest first, never more than {@link refusalLimit}. */
   readonly refusals: readonly RecordedRefusal[];
+  /** The connector's listed tools that wait for approval. */
+  readonly waiting: readonly ChatTurnWaiting[];
 }
 
 /**
@@ -25,7 +28,7 @@ export interface ConnectorStatusState {
  * `useSyncExternalStore`.
  */
 export class ConnectorStatusModel {
-  state: ConnectorStatusState = { loaded: false, refusals: [] };
+  state: ConnectorStatusState = { loaded: false, refusals: [], waiting: [] };
   private readonly listeners = new Set<() => void>();
   private stopHost: (() => void) | undefined;
   private latest = 0;
@@ -58,15 +61,17 @@ export class ConnectorStatusModel {
   async refresh(): Promise<void> {
     const ticket = ++this.latest;
     try {
-      const [connectors, refusals] = await Promise.all([
+      const [connectors, refusals, waiting] = await Promise.all([
         this.host.list(),
         this.host.refusals(this.connectorId),
+        this.host.waiting(this.connectorId),
       ]);
       if (ticket !== this.latest) return;
       const connector = connectors.find((candidate) => candidate.id === this.connectorId);
       this.state = {
         loaded: true,
         refusals: refusals.slice(0, refusalLimit),
+        waiting,
         ...(connector === undefined ? {} : { connector }),
       };
     } catch (error) {

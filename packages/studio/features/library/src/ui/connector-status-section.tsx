@@ -17,7 +17,8 @@ export interface ConnectorStatusSectionProps {
 
 /**
  * One connector's status, for the connector page to put under its `h1`: the state as a word
- * with the sentence that says why, then "Recent refusals" as a plain list of text lines. It is
+ * with the sentence that says why, then "Recent refusals" as a plain list of text lines, then,
+ * when listed tools wait for a person's approval, "Waiting for approval" as plain lines too. It is
  * a plain `div`, with no landmark of its own: the shell owns the landmarks.
  */
 export function ConnectorStatusSection({
@@ -58,6 +59,40 @@ export function ConnectorStatusSection({
           retry={() => void model.refresh()}
         />
       </div>
+      {state.loaded && state.waiting.length > 0 ? (
+        <WaitingForApproval
+          lines={state.waiting.map((tool) => statusWords.waitingLine(tool.source, tool.name))}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/** The listed tools that wait for approval, one plain line each. Shown only when some wait. */
+function WaitingForApproval({ lines }: { readonly lines: readonly string[] }) {
+  const headingId = useId();
+  return (
+    <div className="flex min-w-0 flex-col gap-2">
+      <h2 id={headingId} className="text-heading [overflow-wrap:anywhere]">
+        {statusWords.waitingHeading}
+      </h2>
+      <ul
+        // Safari drops the list semantics of a list without bullets, so the role is set on purpose.
+        // biome-ignore lint/a11y/noRedundantRoles: see above
+        role="list"
+        aria-labelledby={headingId}
+        className="m-0 list-none rounded-md border border-border p-0"
+      >
+        {lines.map((line, index) => (
+          // The lines come in the engine's order and repeat for nothing, so the line and its place are the key.
+          <li
+            key={`${index}:${line}`}
+            className="min-h-10 min-w-0 border-b border-border px-4 py-3 text-body text-fg [overflow-wrap:anywhere] last:border-b-0"
+          >
+            {line}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -106,7 +106,7 @@ verifies("cli.listed-tool-approval", () => {
     });
   });
 
-  describe("the debug line", () => {
+  describe("the warning", () => {
     it("names the tools and the command, once for each set of them", () => {
       const lines: Phrase[] = [];
       const report = waitingReporter((line) => lines.push(line));
@@ -117,6 +117,7 @@ verifies("cli.listed-tool-approval", () => {
       report("mail", [...waiting, { source: "mail", name: "send" }]);
 
       expect(lines).toHaveLength(2);
+      expect(plainText(lines[0] as Phrase)).toMatch(/^! The tools lookup of mail wait/);
       expect(plainText(lines[0] as Phrase)).toContain("halonic tools review mail");
       expect(plainText(lines[0] as Phrase)).toContain("lookup");
       expect(plainText(lines[1] as Phrase)).toContain("lookup, send");

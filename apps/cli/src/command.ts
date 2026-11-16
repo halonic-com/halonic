@@ -43,6 +43,14 @@ export interface CommandContext {
    */
   debug(line: Phrase): void;
   /**
+   * A line that tells the person something while the command goes on and
+   * that isn't part of its result, such as tools that wait for approval.
+   * It goes to stderr straight away, above the live line, with every loaded
+   * secret removed, with or without `--debug` and also with `--json`, so
+   * stdout stays the result alone.
+   */
+  warn(line: Phrase): void;
+  /**
    * Whether the command line has `--debug`, for a result whose words change
    * with it: a failed run's line 2 doesn't ask for `--debug` again once it
    * was given (HAL-6613). Left out, it reads as without `--debug`.

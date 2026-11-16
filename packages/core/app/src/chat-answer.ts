@@ -74,6 +74,8 @@ export class AnswerInProgress {
     if (refusals.length > 0) {
       this.tell((listener) => listener.onRefusals?.(refusals));
     }
+    const waiting = response.waiting ?? [];
+    this.tell((listener) => listener.onWaiting?.(waiting));
   }
 
   /**

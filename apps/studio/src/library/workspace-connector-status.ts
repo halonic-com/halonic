@@ -1,4 +1,4 @@
-import type { DefinitionStore, DefinitionWatch } from "@halonicjs/ports";
+import type { ChatTurnWaiting, DefinitionStore, DefinitionWatch } from "@halonicjs/ports";
 import {
   connectorFacts,
   type GoogleSetupAccount,
@@ -115,6 +115,10 @@ export class WorkspaceConnectorStatus implements ConnectorStatusHost {
 
   async refusals(connectorId: string): Promise<readonly RecordedRefusal[]> {
     return this.#options.refusals.refusals(connectorId);
+  }
+
+  async waiting(connectorId: string): Promise<readonly ChatTurnWaiting[]> {
+    return this.#options.refusals.waiting(connectorId);
   }
 
   subscribe(listener: () => void): () => void {

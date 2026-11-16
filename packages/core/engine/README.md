@@ -159,7 +159,7 @@ The others come back in `waiting` (`ports.chat-turn-waiting`), never to the mode
 `call-tool` effect, is refused like a call to a tool nobody offered. `LocalExecutorOptions.listedToolApproval`
 is required, so each host chooses: the CLI passes its profile's approvals (`cliListedToolApproval`),
 a host with none passes `noListedToolApproval`, which keeps every listed tool off, and the test runner
-passes `allToolsReviewed` because its tools are scripted.
+passes `allToolsReviewed` because its tools are scripted. That gate is only in `@halonicjs/engine/testing`, not in the main entry, so a host can't pick it by accident.
 
 `LocalExecutorOptions` is what a `LocalExecutor` is built from; `maxRounds` defaults to
 `defaultMaxRounds` (20).

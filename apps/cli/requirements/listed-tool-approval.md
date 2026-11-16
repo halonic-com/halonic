@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-850 section 2 ("CLI and `serve`: the profile folder") and section 4 ("Where nobody can answer … the log and status name the command to run"), HAL-2212
 
-The local engine the CLI opens shall check the listed tools of every connector against the approvals in the profile folder's `tool-approvals`, keyed by the workspace's resolved real path, at the address `connectorToolServer` gives, the same one `halonic tools` approves at, with the connector's pin taken from the workspace's trust record. A connector whose file is `http` or `stdio` lists tools a server wrote; the tools of any other connector (an integration's, a plugin's, the built-in Google connector's) are ones Halonic reviewed and shall pass. A connector with no file in the workspace, a trust record that can't be read, or no address to approve at shall keep its listed tools off. For the listed tools a turn leaves waiting, the command shall write one `--debug` line, once for each connector and set of tools, that names the tools and the command `halonic tools review <connector>`.
+The local engine the CLI opens shall check the listed tools of every connector against the approvals in the profile folder's `tool-approvals`, keyed by the workspace's resolved real path, at the address `connectorToolServer` gives, the same one `halonic tools` approves at, with the connector's pin taken from the workspace's trust record. A connector whose file is `http` or `stdio` lists tools a server wrote; the tools of any other connector (an integration's, a plugin's, the built-in Google connector's) are ones Halonic reviewed and shall pass. A connector with no file in the workspace, a trust record that can't be read, or no address to approve at shall keep its listed tools off. For the listed tools a turn leaves waiting, the command shall write one warning to stderr, with or without `--debug`, once for each connector and set of tools, that names the tools and the command `halonic tools review <connector>`.
 
 ## Examples
 
@@ -25,4 +25,4 @@ The local engine the CLI opens shall check the listed tools of every connector a
   then it has none, so its listed tools wait.
 - Given tools that wait at every step of a run,
   when the engine tells the host each time,
-  then the command writes one debug line naming `halonic tools review mail`.
+  then the command writes one warning naming `halonic tools review mail`.

@@ -2,12 +2,8 @@
 // case's events and timers, and goes as far as it goes. What it did comes
 // back for the expectations to check.
 
-import {
-  type AgentKnowledgeOptions,
-  allToolsReviewed,
-  InputRefused,
-  LocalExecutor,
-} from "@halonicjs/engine";
+import { type AgentKnowledgeOptions, InputRefused, LocalExecutor } from "@halonicjs/engine";
+import { allToolsReviewed } from "@halonicjs/engine/testing";
 import type { WorkflowTestCase } from "@halonicjs/format";
 import type { IdGenerator, RunStore, Secrets } from "@halonicjs/ports";
 import { parseDuration } from "@halonicjs/workflow";
