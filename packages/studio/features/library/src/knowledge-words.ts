@@ -16,7 +16,11 @@ export const knowledgeWords = {
   models: "Models ›",
   noDocuments: (name: string) =>
     `${name} has no documents to summarize, or Halonic can't list them.`,
-  summarizeFailed: (name: string) => `Couldn't summarize ${name}.`,
+  summarizeFailed: (name: string, reason: string) => `Couldn't summarize ${name}: ${reason}.`,
+  modelFailed: "the local model didn't answer",
+  hostUnreachable: "Halonic on your computer isn't answering",
+  tooLarge: "it has more text than one summary can take",
+  tryAgain: "Try again",
   removeSummary: "Remove summary",
   lookup: "How agents look things up",
   lookupTools: "Agents search when they decide to (tools)",

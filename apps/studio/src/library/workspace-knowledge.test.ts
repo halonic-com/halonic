@@ -1,3 +1,4 @@
+import { AgentHostError } from "@halonicjs/adapter-agent-host-client";
 import type { ChatRequest } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -128,6 +129,20 @@ verifies("studio.workspace-knowledge", () => {
   it("rejects when the model fails", async () => {
     const { host } = setup({}, new Error("down"));
     await expect(host.summarize(handbook)).rejects.toThrow("down");
+  });
+
+  it.each([
+    [
+      new AgentHostError(403, "provider_not_on_this_machine", "http://secret.example"),
+      "no-local-model",
+    ],
+    [new AgentHostError(404, "unknown_provider", "x"), "no-local-model"],
+    [new AgentHostError(413, "request_too_large", "x"), "too-large"],
+    [new AgentHostError(502, "model_failed", "http://localhost:11434 refused"), "model-failed"],
+    [new AgentHostError(0, "unreachable", "x"), "host-unreachable"],
+  ])("says why the host refused: %s", async (error, kind) => {
+    const { host } = setup({}, error);
+    expect(await host.summarize(handbook)).toEqual({ kind });
   });
 
   it("tells a listener when files change, until it stops", () => {
