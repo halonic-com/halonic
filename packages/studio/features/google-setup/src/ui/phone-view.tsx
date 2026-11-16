@@ -66,7 +66,7 @@ export function PhoneView({ account, steps, signInEntry }: PhoneViewProps) {
         <>
           <ProblemBanner problem={problem} />
           <ViewOnlyLine>Fix this on your computer: Library › Connectors</ViewOnlyLine>
-          {problem.actionStep === "sign-in" ? (
+          {problem.actionStep === "sign-in" && problem.lead === undefined ? (
             <ViewOnlyLine>
               Your client ID and secret are kept. Only the sign-in is needed.
             </ViewOnlyLine>

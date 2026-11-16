@@ -9,7 +9,9 @@
 On a phone, when Google has refused a sign-in, the banner already says "Fix this on your computer:
 Library › Connectors". It now also says "Your client ID and secret are kept. Only the sign-in is
 needed." A refused client secret or an unknown client does not say it, because for those the secret
-or the client is what has to be replaced.
+or the client is what has to be replaced. It does not show under the Testing hint either ("Publish
+it, then sign in again."), because there the user must publish the app first, so "only the sign-in
+is needed" would be wrong.
 
 The requirement `google-setup.connector-problem` quotes the new sentence and gains an example for a
 phone with a refused client secret. The test of the requirement checks both cases. No test was
