@@ -3,6 +3,7 @@
 - Task: HAL-11004
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11004 (follow-up to HAL-10967, whose cli-output 3.4 wording for known causes the board approved; no new wording)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:pMDM/HFhanvisEoqkqI52vpdhBRCa20ZB/TmVplZlky7NWCnl+O0qE9O1HtAKwxHfv2pe4yzrVTd/uniW/h6AQ==
 
 ## What changes
 
