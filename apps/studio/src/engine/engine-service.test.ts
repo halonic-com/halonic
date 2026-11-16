@@ -236,6 +236,25 @@ verifies("studio.engine-service", () => {
         expect((refusal as Error).message).toContain(`"${id}"`);
       });
 
+      it("refuses an agent whose method uses a real provider's alias", async () => {
+        const writer =
+          "model: fast\nmethods:\n  draft:\n    instructions: Draft.\n    model: smart\n";
+        const service = serviceOn(fakeShell(), acmeFiles({ writer }, providers));
+
+        const refusal = await service.check(reply).catch((error: unknown) => error);
+
+        expect(refusal).toMatchObject({ kind: "unavailable" });
+        expect((refusal as Error).message).toContain(`"anthropic"`);
+      });
+
+      it("passes an agent whose methods use the mock model too", async () => {
+        const writer =
+          "model: fast\nmethods:\n  draft:\n    instructions: Draft.\n    model: fast\n  plain:\n    instructions: Plain.\n";
+        const service = serviceOn(fakeShell(), acmeFiles({ writer }, providers));
+
+        await expect(service.check(reply)).resolves.toBeUndefined();
+      });
+
       it("passes an agent whose model is the mock model", async () => {
         const service = serviceOn(fakeShell(), acmeFiles({ writer: "model: fast\n" }, providers));
 

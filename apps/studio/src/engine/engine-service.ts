@@ -108,7 +108,12 @@ export class EngineService {
       }
       const provider = realProviderOf(workspace, run.hubId, agent.id);
       if (provider !== undefined) {
-        throw unavailable(agent.name, `uses the model provider "${provider}"`, "can't call");
+        throw unavailable(
+          agent.name,
+          `uses the model provider "${provider}"`,
+          "can't call",
+          "Run this workflow from the command line, or give the agent the mock model.",
+        );
       }
     }
   }
@@ -235,8 +240,9 @@ function refusalOf(refusal: unknown): { kind?: string; message?: string; pid?: n
 
 /**
  * The id of the first provider, other than the mock model, that a call of the agent can reach
- * through its model or the fallbacks of its alias; `undefined` when it reaches none. A model
- * the workspace doesn't define is left to the engine, which refuses it with its own reason.
+ * through its model, the model of any of its methods, or the fallbacks of either's alias;
+ * `undefined` when it reaches none. A model the workspace doesn't define is left to the engine,
+ * which refuses it with its own reason.
  */
 function realProviderOf(
   workspace: LoadedWorkspace,
@@ -244,18 +250,30 @@ function realProviderOf(
   agentId: string,
 ): string | undefined {
   const definitions = definitionsOf(workspace, hubId);
-  const target = resolveModel(workspace, hubId, callModelName(definitions, { agentId }));
-  if (target === undefined) return undefined;
-  return [target, ...target.fallback]
-    .map(({ provider }) => provider)
-    .find((id) => {
-      const file = definitions.providers[id];
-      return file !== undefined && file.type !== "mock";
-    });
+  const methods = Object.values(definitions.agents[agentId]?.methods ?? {});
+  const aliases = [undefined, ...methods.map(({ model }) => model)];
+  for (const alias of aliases) {
+    const name = callModelName(definitions, { agentId, ...(alias === undefined ? {} : { alias }) });
+    const target = resolveModel(workspace, hubId, name);
+    if (target === undefined) continue;
+    const id = [target, ...target.fallback]
+      .map(({ provider }) => provider)
+      .find((provider) => {
+        const file = definitions.providers[provider];
+        return file !== undefined && file.type !== "mock";
+      });
+    if (id !== undefined) return id;
+  }
+  return undefined;
 }
 
-function unavailable(agentName: string, why: string, verb = "can't start"): KindedError {
+function unavailable(
+  agentName: string,
+  why: string,
+  verb = "can't start",
+  fix = "Run this workflow from the command line.",
+): KindedError {
   return new KindedError("unavailable", `${agentName} ${why}, which this window ${verb} yet.`, {
-    fix: "Run this workflow from the command line, or give the agent the mock model.",
+    fix,
   });
 }
