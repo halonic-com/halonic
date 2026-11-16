@@ -344,6 +344,9 @@ mod tests {
                 scheme,
                 host: None,
                 port: None,
+                path: "",
+                query: None,
+                fragment: None,
             };
             assert_eq!(
                 navigation_destination(&page, Some(&laptop)),
