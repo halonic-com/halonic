@@ -58,9 +58,10 @@ export class WorkspaceNotices implements InboxNotices {
     const { runs, now } = this.#parts;
     const summaries = (await runs.list()).map((run) => run.summary);
     const nameOf = (routineId: string) => runs.routine(routineId)?.name ?? routineId;
-    return failedRunNotices(summaries, nameOf, now()).filter(
-      (notice) => !this.#dismissed.has(notice.key),
-    );
+    const notices = failedRunNotices(summaries, nameOf, now());
+    this.#reload();
+    this.#forget(new Set(notices.map((notice) => notice.key)));
+    return notices.filter((notice) => !this.#dismissed.has(notice.key));
   }
 
   subscribe(listener: () => void): () => void {
@@ -73,13 +74,31 @@ export class WorkspaceNotices implements InboxNotices {
   }
 
   dismiss(key: string): void {
+    this.#reload();
     this.#dismissed.add(key);
+    this.#save();
+    for (const listener of [...this.#listeners]) listener();
+  }
+
+  /** Takes in what another window of the same workspace dismissed since this one read the list. */
+  #reload(): void {
+    for (const stored of this.#stored()) this.#dismissed.add(stored);
+  }
+
+  /** Drops the dismissals whose notice is gone, so the stored list doesn't grow for ever. */
+  #forget(current: ReadonlySet<string>): void {
+    const gone = [...this.#dismissed].filter((key) => !current.has(key));
+    if (gone.length === 0) return;
+    for (const key of gone) this.#dismissed.delete(key);
+    this.#save();
+  }
+
+  #save(): void {
     try {
       this.#parts.storage?.setItem(this.#key, JSON.stringify([...this.#dismissed]));
     } catch {
       // Kept for this session only.
     }
-    for (const listener of [...this.#listeners]) listener();
   }
 
   #stored(): string[] {
