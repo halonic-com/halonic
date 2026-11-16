@@ -200,6 +200,16 @@ export function LibraryPage({
               }
             : {})}
           itemMenu={(row) => [
+            {
+              id: "open",
+              label: deleteWords.open,
+              onSelect: () => onOpen(kind, entryOfRow(row.id)),
+            },
+            {
+              id: "open-in-new-tab",
+              label: deleteWords.openInNewTab,
+              onSelect: () => onOpenInNewTab(kind, entryOfRow(row.id)),
+            },
             ...(onOpenAsFile === undefined
               ? []
               : [

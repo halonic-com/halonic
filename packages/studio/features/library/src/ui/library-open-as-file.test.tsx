@@ -129,6 +129,34 @@ verifies("library.library-open-as-file", () => {
     expect(onOpenAsFile).toHaveBeenCalledWith("skill", { hub: null, id: "tone" });
   });
 
+  it("lists a row's entries in the spec's order and opens from them", async () => {
+    const { host } = itemsHost(nobody);
+    const onOpen = vi.fn();
+    const onOpenInNewTab = vi.fn();
+    const page = render(
+      <ToastStoreProvider store={createToastStore()}>
+        <LibraryPage
+          host={host}
+          kind="skill"
+          onKindChange={() => undefined}
+          onOpen={onOpen}
+          onOpenInNewTab={onOpenInNewTab}
+          onOpenAsFile={() => undefined}
+        />
+      </ToastStoreProvider>,
+    );
+    await settled();
+    act(() =>
+      page.querySelector<HTMLElement>('button[aria-label="More actions for Tone"]')?.click(),
+    );
+    const entries = [...document.querySelectorAll('[role="menuitem"]')].map((e) => e.textContent);
+    expect(entries).toEqual(["Open", "Open in new tab", "Open as file", "Delete"]);
+    await pick(page, "More actions for Tone", "Open");
+    expect(onOpen).toHaveBeenCalledWith("skill", { hub: null, id: "tone" });
+    await pick(page, "More actions for Tone", "Open in new tab");
+    expect(onOpenInNewTab).toHaveBeenCalledWith("skill", { hub: null, id: "tone" });
+  });
+
   it("offers no Open as file when the app can't open a tab", async () => {
     const { host } = itemsHost(nobody);
     const { page } = await showLibrary(host);
@@ -136,7 +164,7 @@ verifies("library.library-open-as-file", () => {
       page.querySelector<HTMLElement>('button[aria-label="More actions for Tone"]')?.click(),
     );
     const entries = [...document.querySelectorAll('[role="menuitem"]')].map((e) => e.textContent);
-    expect(entries).toEqual(["Delete"]);
+    expect(entries).toEqual(["Open", "Open in new tab", "Delete"]);
   });
 
   it("opens an open page's file from its menu", async () => {
@@ -197,6 +225,6 @@ verifies("library.library-open-as-file", () => {
       page.querySelector<HTMLElement>('button[aria-label="More actions for Tone"]')?.click(),
     );
     const entries = [...document.querySelectorAll('[role="menuitem"]')].map((e) => e.textContent);
-    expect(entries).toEqual(["Delete"]);
+    expect(entries).toEqual(["Open", "Open in new tab", "Delete"]);
   });
 });
