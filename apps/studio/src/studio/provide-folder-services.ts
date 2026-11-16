@@ -125,6 +125,7 @@ export function provideFolderServices(
       files: services.get(workspaceFilesKey),
       onChange: (listener) => scope.events.on("files.changed", listener),
       runs: services.get(RunsSourceService),
+      settle: async () => void (await services.get(workspaceFilesKey).save()),
       engine,
     }),
   );
