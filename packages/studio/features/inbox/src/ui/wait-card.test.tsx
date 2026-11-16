@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { KindedError } from "@halonicjs/std";
+import { engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -144,6 +145,26 @@ verifies("inbox.wait-card", () => {
         "Needs infoWorking…",
       ]);
       expect(root.innerHTML).not.toContain("danger");
+    });
+  });
+
+  describe("while the engine isn't answering", () => {
+    it("shows the last-said line and keeps the answers focusable but still", async () => {
+      const { root, sent, later } = openCard({
+        item: reviewItem({ accepts: ["approve", "reject"] }),
+        answering: false,
+      });
+      later(2);
+      const line = root.querySelector("p[id]");
+      expect(line?.textContent).toBe(engineWords["desktop-app"].showingLast);
+      for (const name of ["Approve", "Reject"]) {
+        const target = button(root, name);
+        expect(target.getAttribute("aria-disabled")).toBe("true");
+        expect(target.getAttribute("aria-describedby")).toContain(line?.id);
+        expect(target.disabled).toBe(false);
+        await press(target);
+      }
+      expect(sent).toEqual([]);
     });
   });
 

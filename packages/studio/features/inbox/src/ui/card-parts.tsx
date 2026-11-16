@@ -1,5 +1,12 @@
 import { errorKindOf } from "@halonicjs/std";
-import { Button, Callout, type CalloutHandle, CommandBox } from "@halonicjs/studio-kit";
+import {
+  Button,
+  type ButtonUnavailable,
+  Callout,
+  type CalloutHandle,
+  CommandBox,
+} from "@halonicjs/studio-kit";
+import { type EngineWords, engineWords } from "@halonicjs/studio-shell";
 import { type RefObject, useEffect, useState } from "react";
 import { PlainValue } from "./plain-value.tsx";
 
@@ -211,4 +218,37 @@ export function FailedLine({ onRetry, manual = null, elsewhere = null }: FailedL
       )}
     </div>
   );
+}
+
+/** What a card's bar takes to know the engine isn't answering (UX check item 9). */
+export interface EngineState {
+  /** `false` while the engine isn't answering: the buttons stay, but don't act. */
+  readonly answering?: boolean;
+  /** The host's words for it; the desktop app's when left out. */
+  readonly words?: EngineWords;
+}
+
+/**
+ * The line over a card's bar while the engine isn't answering, "showing what it said last",
+ * which the decision buttons point at as their reason. Nothing while it answers.
+ */
+export function NotAnsweringLine({
+  id,
+  answering = true,
+  words = engineWords["desktop-app"],
+}: EngineState & { readonly id: string }) {
+  if (answering) return null;
+  return (
+    <p id={id} className="text-small text-fg-muted">
+      {words.showingLast}
+    </p>
+  );
+}
+
+/** What a decision button gets while the engine isn't answering: focusable, no action, a reason. */
+export function unavailableWhile(
+  answering: boolean,
+  reasonId: string,
+): ButtonUnavailable | undefined {
+  return answering ? undefined : { reason: reasonId };
 }

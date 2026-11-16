@@ -11,17 +11,20 @@ import {
   type BackLink,
   CardHeader,
   DecidedBar,
+  type EngineState,
   FailedLine,
   failedText,
   type ManualAnswer,
   manualAnswerOf,
   type NextItem,
+  NotAnsweringLine,
+  unavailableWhile,
   useEveryMinute,
   wasDecidedElsewhere,
 } from "./card-parts.tsx";
 import { useDecisionGuard } from "./decision-guard.ts";
 
-export interface ApprovalCardProps {
+export interface ApprovalCardProps extends EngineState {
   readonly item: ApprovalItem;
   /** The agent's name as the workspace shows it. */
   readonly agentName: string;
@@ -191,6 +194,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
         <DecisionBar
           state={state}
           guard={guard}
+          engine={props}
           onDecide={decide}
           onOpenRun={
             props.onOpenRun === undefined ? undefined : () => props.onOpenRun?.(item.runId)
@@ -247,6 +251,7 @@ function DecidedAction({ item }: { readonly item: ApprovalItem }) {
 interface DecisionBarProps {
   readonly state: Exclude<CardState, { kind: "decided" }>;
   readonly guard: ReturnType<typeof useDecisionGuard>;
+  readonly engine: EngineState;
   readonly onDecide: (decision: Decision) => void;
   readonly onAskForChanges: () => void;
   readonly onOpenRun: (() => void) | undefined;
@@ -257,7 +262,16 @@ interface DecisionBarProps {
  * Approve, right-aligned. While one is sent it is busy and the others ignore presses but keep
  * focus. A failed decision says so in the always-mounted alert slot above the buttons.
  */
-function DecisionBar({ state, guard, onDecide, onAskForChanges, onOpenRun }: DecisionBarProps) {
+function DecisionBar({
+  state,
+  guard,
+  engine,
+  onDecide,
+  onAskForChanges,
+  onOpenRun,
+}: DecisionBarProps) {
+  const reasonId = useId();
+  const unavailable = unavailableWhile(engine.answering ?? true, reasonId);
   const busy = (decision: Decision) => state.kind === "deciding" && state.decision === decision;
   const failed = state.kind === "open" ? state.failed : null;
   return (
@@ -266,6 +280,7 @@ function DecisionBar({ state, guard, onDecide, onAskForChanges, onOpenRun }: Dec
       onPointerDownCapture={guard.onPointerDownCapture}
       onKeyDownCapture={guard.onKeyDownCapture}
     >
+      <NotAnsweringLine id={reasonId} {...engine} />
       <FailedLine
         onRetry={failed === null ? null : () => onDecide(failed)}
         manual={state.kind === "open" ? state.manual : null}
@@ -273,15 +288,19 @@ function DecisionBar({ state, guard, onDecide, onAskForChanges, onOpenRun }: Dec
       />
       <div className="flex flex-wrap justify-end gap-2">
         <Button
+          unavailable={unavailable}
           busy={busy("reject")}
           busyLabel={busyLabels.reject}
           onClick={() => onDecide("reject")}
         >
           Reject
         </Button>
-        <Button onClick={onAskForChanges}>Ask for changes</Button>
+        <Button unavailable={unavailable} onClick={onAskForChanges}>
+          Ask for changes
+        </Button>
         <Button
           variant="primary"
+          unavailable={unavailable}
           busy={busy("approve")}
           busyLabel={busyLabels.approve}
           onClick={() => onDecide("approve")}
