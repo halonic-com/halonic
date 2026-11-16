@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -113,7 +113,8 @@ describe("the runner's temp folder on Windows", () => {
 
   beforeAll(async () => {
     expect(programData, "ProgramData is set").not.toBe("");
-    profileBase = await mkdtemp(join(tmpdir(), "halonic-runner-profile-"));
+    // The real path: tmpdir() may spell the profile with a short name (RUNNER~1) that the made folder does not.
+    profileBase = await realpath(await mkdtemp(join(tmpdir(), "halonic-runner-profile-")));
     privateParent = join(profileBase, "runner-temp");
     shared = await mkdtemp(join(programData, "halonic-fence-"));
     await run("net.exe", ["user", other, "/delete"]); // a leftover from an earlier run, if any
@@ -189,8 +190,16 @@ describe("the runner's temp folder on Windows", () => {
         { privateParent: fallback, sharedParent: planted },
         { log: (text) => otherNotes.push(text) },
       );
-      expect(made.toLowerCase().startsWith(`${fallback.toLowerCase()}\\`)).toBe(true);
-      expect(otherNotes).toHaveLength(1);
+      const where = `made ${made}, notes ${JSON.stringify(otherNotes)}`;
+      expect(
+        made.toLowerCase().startsWith(`${plantedAccount.toLowerCase()}\\`),
+        `used the planted folder: ${where}`,
+      ).toBe(false);
+      expect(
+        made.toLowerCase().startsWith(`${fallback.toLowerCase()}\\`),
+        `not in the fallback: ${where}`,
+      ).toBe(true);
+      expect(otherNotes, where).toHaveLength(1);
       expect(otherNotes[0]).toContain("not private");
       // Nothing of the run went into the planted folder, and its entry was not carried anywhere.
       expect(await readdir(plantedAccount)).toEqual([]);
