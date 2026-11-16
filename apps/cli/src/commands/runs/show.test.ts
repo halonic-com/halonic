@@ -232,6 +232,44 @@ verifies("cli.commands.runs.show", () => {
       ]);
     });
 
+    it("asks for an open approval even when the run also waits for a child run (HAL-10646)", async () => {
+      await storeRuns({
+        ...waiting,
+        after: [
+          [today("10:40:30"), { type: "state.entered", state: "draft" }],
+          [
+            today("10:41:00"),
+            {
+              type: "approval.requested",
+              state: "draft",
+              agent: "writer",
+              tool: "gmail__send",
+              args: {},
+              callId: "call-1",
+              resume: { messages: [], calls: [], step: 0 },
+            },
+          ],
+          [
+            today("10:41:00"),
+            {
+              type: "run.waiting",
+              state: "draft",
+              events: ["approve", "reject"],
+              child: "r-child",
+            },
+          ],
+        ],
+      });
+
+      const { io } = await showIn(acme, "09d9a0");
+
+      expect(io.stdout.slice(-3)).toEqual([
+        "",
+        "! Waiting for your approval: Writer wants to use gmail__send",
+        "  Answer with: halonic runs send 09d9a0 approve (or reject)",
+      ]);
+    });
+
     it("says one answer settles only the first of several tool approvals (HAL-7937)", async () => {
       const ask = (time: string, callId: string, tool: string): readonly [string, RunEventBody] => [
         today(time),
