@@ -256,7 +256,8 @@ export const createServer: CreateServer = ({ config, ports }) => {
 
   async function answer(request: Request, context: RequestContext): Promise<Response> {
     const hasPassword = (await ports.secrets.get(passwordSecretName)) !== null;
-    const refusal = checkHost(request, { allowedHosts, hasPassword }) ?? checkOrigin(request);
+    const refusal =
+      checkHost(request, { allowedHosts, hasPassword }) ?? checkOrigin(request, context);
     if (refusal !== null) {
       return errorResponse(refusal);
     }

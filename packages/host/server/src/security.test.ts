@@ -96,6 +96,23 @@ describe("origin check", () => {
       }
     });
 
+    it("takes the scheme from a host that says the client came over HTTPS, as a proxy that ended TLS does", async () => {
+      const server = withPassword();
+      const origin = "https://halonic.acme.example";
+      const secure = await server.handle(
+        request("http://halonic.acme.example/x", { host, origin }),
+        {
+          secure: true,
+        },
+      );
+      const plain = await server.handle(request("http://halonic.acme.example/x", { host, origin }));
+      const plainOrigin = await server.handle(
+        request("http://halonic.acme.example/x", { host, origin: "http://halonic.acme.example" }),
+        { secure: true },
+      );
+      expect([secure.status, plain.status, plainOrigin.status]).toEqual([404, 403, 403]);
+    });
+
     it("refuses a page on a loopback server that is not the server's own origin", async () => {
       const response = await withoutPassword().handle(
         request("http://localhost:4173/x", {

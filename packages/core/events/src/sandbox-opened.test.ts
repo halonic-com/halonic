@@ -128,6 +128,22 @@ verifies("events.sandbox-opened", () => {
     expect(view.deniedPaths).toEqual(["~\\private"]);
   });
 
+  it("shortens a Windows home path whose drive letter or folder differs in case", () => {
+    const windows = {
+      ...profile,
+      workingFolder: "c:\\users\\USER\\work", // leak-guard: allow absolute-path a made-up Windows path
+      deniedPaths: ["c:\\Users\\user"], // leak-guard: allow absolute-path a made-up Windows path
+    };
+    const view = sandboxOpenedView(windows, { ...options, home: windowsHome });
+    expect(view.workingFolder).toBe("~\\work");
+    expect(view.deniedPaths).toEqual(["~"]);
+  });
+
+  it("matches a home folder that isn't on Windows by case", () => {
+    const paths = { ...profile, workingFolder: "/HOME/user/work" }; // leak-guard: allow absolute-path a made-up path
+    expect(sandboxOpenedView(paths, options).workingFolder).toBe("/HOME/user/work");
+  });
+
   it("keeps paths as they are when the home folder is unknown or empty", () => {
     expect(sandboxOpenedView(profile, { ...options, home: null }).workingFolder).toBe(
       `${home}/work/site`,

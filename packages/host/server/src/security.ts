@@ -69,16 +69,22 @@ export function isSecureConnection(
  * makes to another address and on every same-origin write, so a request whose
  * `Origin` isn't exactly this server's own address comes from another page.
  * A request with no `Origin` (the Android app, `curl`) passes. `Origin: null`
- * does not: sandboxed pages and redirects send it.
+ * does not: sandboxed pages and redirects send it. The scheme is the one
+ * {@link isSecureConnection} gives, so a proxy that ended TLS still matches
+ * the `https` origin its browsers send.
  *
  * @returns `null` when the request may go on, otherwise the error to send
  */
-export function checkOrigin(request: Request): ServerError | null {
+export function checkOrigin(
+  request: Request,
+  context: { readonly secure?: boolean },
+): ServerError | null {
   const origin = request.headers.get("origin");
   if (origin === null) {
     return null;
   }
-  const ownOrigin = `${new URL(request.url).protocol}//${request.headers.get("host")?.toLowerCase()}`;
+  const scheme = isSecureConnection(request, context) ? "https:" : "http:";
+  const ownOrigin = `${scheme}//${request.headers.get("host")?.toLowerCase()}`;
   return origin.toLowerCase() === ownOrigin ? null : serverErrors.originNotAllowed;
 }
 

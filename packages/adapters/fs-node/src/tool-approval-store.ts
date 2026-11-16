@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readdir, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, realpath, rename, rm } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
   approvalFrom,
@@ -17,7 +17,9 @@ import {
   UnreadableToolApprovalError,
   type WaitingVersion,
 } from "@halonicjs/ports";
+import { writeFlushedFile } from "./flushed-write.ts";
 import { isMissing } from "./links.ts";
+import { readUnlinkedFile } from "./private-files.ts";
 import { withRunLock } from "./run-lock.ts";
 
 /** An approval's file name: the SHA-256 of the tool's name, then `.json`. */
@@ -256,21 +258,21 @@ async function realPathOf(path: string): Promise<string> {
   }
 }
 
-/** A file's text, or `undefined` when it is gone. */
+/** A file's text, or `undefined` when it is gone. A link is refused, see `readUnlinkedFile`. */
 async function readText(file: string): Promise<string | undefined> {
   try {
-    return await readFile(file, "utf8");
+    return await readUnlinkedFile(file);
   } catch (error) {
     if (isMissing(error)) return undefined;
     throw error;
   }
 }
 
-/** Writes `text` through a temporary file and a rename, private to the user. */
+/** Writes `text` through a temporary file, flushed before the rename, private to the user. */
 async function writePrivate(file: string, text: string): Promise<void> {
   const temporary = `${file}.${randomUUID()}.tmp`;
   try {
-    await writeFile(temporary, text, { encoding: "utf8", mode: 0o600 });
+    await writeFlushedFile(temporary, text, { mode: 0o600 });
     await rename(temporary, file);
   } catch (error) {
     await rm(temporary, { force: true });
