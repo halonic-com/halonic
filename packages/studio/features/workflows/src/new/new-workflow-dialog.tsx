@@ -7,6 +7,7 @@ import {
   Select,
   usePresentation,
 } from "@halonicjs/studio-kit";
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import { useRef, useState } from "react";
 import type { NewWorkflow, WorkflowHub, WorkflowRef } from "../api.ts";
 import { newWorkflowWords as words } from "./new-workflow-words.ts";
@@ -75,7 +76,7 @@ export function NewWorkflowDialog({
     try {
       onCreated(await create({ name: name.trim(), hubId }));
     } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
+      const reason = errorReasonFor(error);
       setFailure(words.createFailed(reason.replace(/\.$/, "")));
       setBusy(false);
     }

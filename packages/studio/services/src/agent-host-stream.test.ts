@@ -1,6 +1,6 @@
 import type { AgentHostStreamAnswer } from "@halonicjs/adapter-agent-host-client";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { TauriAgentHostTransport } from "./agent-host-transport.ts";
 import { FakeShell } from "./fake-shell.test-helper.ts";
 
@@ -154,6 +154,7 @@ verifies("services.agent-host-transport", () => {
       shell.answer("agent_host_stream_end", () => {
         throw "gone";
       });
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
       const caller = new AbortController();
 
       const answer = await new TauriAgentHostTransport(shell).stream(
@@ -167,6 +168,8 @@ verifies("services.agent-host-transport", () => {
 
       expect(await readAll(answer)).toEqual([]);
       expect(shell.registered(channels[0] as string)).toBe(false);
+      await vi.waitFor(() => expect(error).toHaveBeenCalledTimes(1));
+      error.mockRestore();
     });
 
     it("passes on the host's refusal of the stream as an answer, and closes the channel", async () => {

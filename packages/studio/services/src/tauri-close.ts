@@ -51,6 +51,8 @@ export function onWindowCloseRequested(
     ipc.unregisterCallback(callback);
     await ipc
       .invoke("plugin:event|unlisten", { event: closeRequestedEvent, eventId })
-      .catch(() => undefined);
+      .catch((error: unknown) => {
+        console.error(error);
+      });
   };
 }

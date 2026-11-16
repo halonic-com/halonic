@@ -265,6 +265,23 @@ verifies("settings.agent-sandbox-section", () => {
     expect(view.textContent).not.toMatch(/vulnerable|unsafe|insecure/i);
   });
 
+  it("logs it when the host can't say about updates or a running setup", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { host } = fakeHost(ready);
+    const { view } = await show({
+      ...host,
+      securityUpdates: async () => {
+        throw new Error("no host");
+      },
+      running: async () => {
+        throw new Error("no host");
+      },
+    });
+    expect(view.textContent).not.toContain("Security updates");
+    expect(error).toHaveBeenCalledTimes(2);
+    error.mockRestore();
+  });
+
   it("shows no update warning when updates are current, unknown or the host can't read them", async () => {
     const { host } = fakeHost(ready);
     for (const securityUpdates of [

@@ -69,8 +69,9 @@ export class TauriUpdater implements UpdaterHost {
       }
     });
     this.#channel = channel;
-    this.#ipc.invoke("update_watch", { onStatus: channel.argument }).catch(() => {
+    this.#ipc.invoke("update_watch", { onStatus: channel.argument }).catch((error: unknown) => {
       // The shell refused the watch: close the channel, so the next listener tries again.
+      console.error("The shell refused to watch for update status.", error);
       channel.close();
       this.#channel = undefined;
     });

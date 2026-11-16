@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -174,9 +175,23 @@ verifies("workflows.start.start-run", () => {
     expect(attempts).toHaveBeenLastCalledWith({ a: 1 });
   });
 
+  it("never shows the message of an error without a kind", async () => {
+    const { page } = await open(async () => {
+      throw new Error("ENOENT: .halonic/runs.json");
+    });
+
+    await click(runButton(page));
+    await click(buttonNamed(page, "Start run"));
+
+    expect(page.textContent).toContain(
+      "Couldn't start the run: Halonic ran into a problem it can't explain yet.",
+    );
+    expect(page.textContent).not.toContain("ENOENT");
+  });
+
   it("says another reason as the host gave it, with a full stop", async () => {
     const { page } = await open(async () => {
-      throw new Error("The disk is full");
+      throw new KindedError("unavailable", "The disk is full");
     });
 
     await click(runButton(page));

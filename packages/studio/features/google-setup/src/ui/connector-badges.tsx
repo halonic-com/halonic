@@ -25,7 +25,10 @@ export function ConnectorBadges({ context }: ConnectorBadgesProps) {
     let removers: (() => void)[] = [];
     let stopped = false;
     const show = async () => {
-      const listed = await accounts.list().catch(() => undefined);
+      const listed = await accounts.list().catch((error: unknown) => {
+        console.error("Couldn't list the Google accounts for the connector badges.", error);
+        return undefined;
+      });
       if (stopped || listed === undefined) return;
       for (const remove of removers) remove();
       removers = [];

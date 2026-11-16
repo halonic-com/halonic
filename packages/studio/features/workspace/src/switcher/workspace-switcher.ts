@@ -165,7 +165,9 @@ export class WorkspaceSwitcher {
     }
     // Forgetting only takes access away, and the row is gone either way. If the shell can't
     // forget it now, its entry is dropped when it falls off the shell's own list.
-    this.#options.forgetFolder?.(location).catch(() => {});
+    this.#options.forgetFolder?.(location).catch((error: unknown) => {
+      console.error("Couldn't take the app's access to a removed workspace away.", error);
+    });
   }
 
   /**

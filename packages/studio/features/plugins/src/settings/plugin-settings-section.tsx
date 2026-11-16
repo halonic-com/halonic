@@ -8,6 +8,7 @@ import {
   StatusChip,
   Switch,
 } from "@halonicjs/studio-kit";
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import {
   type PluginSecretWriter,
@@ -19,6 +20,7 @@ import {
   hostFromSetting,
   SECRET_NOT_SET,
   SECRET_SET,
+  SECRET_UNKNOWN,
   SETTINGS_HEADING,
   secretNotSavedLine,
   secretStoredLine,
@@ -83,7 +85,7 @@ export function PluginSettingsSection({
   const headingId = useId();
   const fields = Object.entries(plugin.ui?.settings ?? {});
   const [values, setValues] = useState<Values | undefined>(undefined);
-  const [secretSet, setSecretSet] = useState<Readonly<Record<string, boolean>>>({});
+  const [secretSet, setSecretSet] = useState<Readonly<Record<string, SecretState>>>({});
   const [errors, setErrors] = useState<Readonly<Record<string, string>>>({});
   const [loadError, setLoadError] = useState<string | undefined>(undefined);
   const [attempt, setAttempt] = useState(0);
@@ -108,7 +110,7 @@ export function PluginSettingsSection({
         setSecretSet(set);
         setLoadError(undefined);
       } catch (error) {
-        if (current) setLoadError(settingProblemLine(reasonOf(error)));
+        if (current) setLoadError(settingProblemLine(errorReasonFor(error)));
       }
     })();
     return () => {
@@ -169,7 +171,10 @@ export function PluginSettingsSection({
       }
       const failure = outcome.failed[0];
       if (failure !== undefined) {
-        const line = secretNotSavedLine(reasonOf(failure.error), secretSet[setting] === true);
+        const line = secretNotSavedLine(
+          errorReasonFor(failure.error),
+          secretSet[setting] === "set",
+        );
         setErrors((now) => ({ ...now, [setting]: line }));
         setFailedSaves((now) => new Set(now).add(setting));
         onSaveState?.("failed");
@@ -182,7 +187,7 @@ export function PluginSettingsSection({
       return true;
     } catch (error) {
       const label = plugin.ui?.settings[setting]?.label ?? setting;
-      const line = settingNotSavedLine(label, reasonOf(error));
+      const line = settingNotSavedLine(label, errorReasonFor(error));
       setErrors((now) => ({ ...now, [setting]: line }));
       setFailedSaves((now) => new Set(now).add(setting));
       onSaveState?.("failed");
@@ -216,12 +221,12 @@ export function PluginSettingsSection({
               <SecretRow
                 {...row}
                 field={field}
-                isSet={secretSet[setting] === true}
+                state={secretSet[setting] ?? "not-set"}
                 onSave={(secret) =>
                   attemptSave(setting, async () => {
                     const ok = await save(setting, undefined, secret);
                     if (ok) {
-                      setSecretSet((now) => ({ ...now, [setting]: true }));
+                      setSecretSet((now) => ({ ...now, [setting]: "set" }));
                       // The closure holds the secret: drop it once it is saved.
                       delete retries.current[setting];
                     }
@@ -325,7 +330,7 @@ function SettingRow({ field, value, error, off, onSave }: SettingRowProps) {
 
 interface SecretRowProps extends RowProps {
   readonly field: SecretField;
-  readonly isSet: boolean;
+  readonly state: SecretState;
   /** Returns whether it was saved, so the entry empties only then. */
   readonly onSave: (secret: string) => Promise<boolean>;
 }
@@ -334,12 +339,12 @@ interface SecretRowProps extends RowProps {
  * A secret: its state, an entry that never shows what's stored, and where
  * it goes. Leaving the entry empty keeps what's stored.
  */
-function SecretRow({ plugin, field, isSet, error, off, onSave }: SecretRowProps) {
+function SecretRow({ plugin, field, state, error, off, onSave }: SecretRowProps) {
   const [draft, setDraft] = useState("");
   const hint: ReactNode = (
     <>
-      <StatusChip tone={isSet ? "neutral" : "attention"}>
-        {isSet ? SECRET_SET : SECRET_NOT_SET}
+      <StatusChip tone={state === "not-set" ? "attention" : "neutral"}>
+        {SECRET_STATE_TEXT[state]}
       </StatusChip>{" "}
       {field.help === undefined ? null : <span className="block">{field.help}</span>}
       <span className="block">
@@ -394,21 +399,39 @@ export function secretHosts(plugin: Plugin, secret: string): string {
   return new Intl.ListFormat("en", { type: "conjunction" }).format([...hosts]);
 }
 
+/** What the keychain said about a secret setting: a value, none, or nothing (it could not be read). */
+type SecretState = "set" | "not-set" | "unknown";
+
+const SECRET_STATE_TEXT: Record<SecretState, string> = {
+  set: SECRET_SET,
+  "not-set": SECRET_NOT_SET,
+  unknown: SECRET_UNKNOWN,
+};
+
 /**
  * Whether each secret setting has a value in the keychain. One the keychain
- * can't read counts as not set; the value itself is dropped at once.
+ * can't read is `unknown`, never "not set"; the value itself is dropped at once.
  */
 async function secretsSet(
   host: PluginSettingsReader,
   secrets: PluginSecretStore,
   plugin: Plugin,
-): Promise<Record<string, boolean>> {
+): Promise<Record<string, SecretState>> {
   const names = host.secretNames(plugin);
-  const set: Record<string, boolean> = {};
+  const set: Record<string, SecretState> = {};
   for (const [setting, field] of Object.entries(plugin.ui?.settings ?? {})) {
     if (field.type !== "secret") continue;
     const name = names[field.secret];
-    set[setting] = name !== undefined && (await secrets.get(name).catch(() => null)) !== null;
+    if (name === undefined) {
+      set[setting] = "not-set";
+      continue;
+    }
+    try {
+      set[setting] = (await secrets.get(name)) === null ? "not-set" : "set";
+    } catch (error) {
+      console.error(`Couldn't read the secret for the setting ${setting}.`, error);
+      set[setting] = "unknown";
+    }
   }
   return set;
 }
@@ -453,8 +476,4 @@ function typed(field: InputField, text: string): PluginSettingValue | undefined 
   if (field.type !== "number") return text;
   const number = Number(text.trim());
   return text.trim() !== "" && Number.isFinite(number) ? number : text;
-}
-
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

@@ -1,4 +1,5 @@
 import { Dialog, Field, Input, Select } from "@halonicjs/studio-kit";
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import { useRef, useState } from "react";
 import type { ModelsFiles } from "../api.ts";
 import { addAlias, type FieldProblem } from "./alias-edits.ts";
@@ -74,7 +75,7 @@ export function NewAliasDialog({
       files.changeModels(aliasAddedLine(name.trim()), added.value);
       onCreated(name.trim());
     } catch (error) {
-      setFailure(createFailedLine(error instanceof Error ? error.message : String(error)));
+      setFailure(createFailedLine(errorReasonFor(error)));
       setBusy(false);
     }
   }

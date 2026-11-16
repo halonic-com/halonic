@@ -213,7 +213,9 @@ class ShellStream {
   #end(error?: Error): void {
     if (this.#finished) return;
     this.finish(error);
-    this.#ipc.invoke("agent_host_stream_end", { stream: this.id }).catch(() => {});
+    this.#ipc.invoke("agent_host_stream_end", { stream: this.id }).catch((error: unknown) => {
+      console.error("Couldn't tell the shell an agent host stream ended.", error);
+    });
   }
 }
 

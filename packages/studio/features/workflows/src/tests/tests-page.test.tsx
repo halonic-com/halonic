@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -108,7 +109,7 @@ verifies("workflows.tests.page", () => {
   it("says why the tests couldn't run, with Try again", async () => {
     const runTests = vi
       .fn()
-      .mockRejectedValueOnce(new Error("The engine is stopped"))
+      .mockRejectedValueOnce(new KindedError("unavailable", "The engine is stopped"))
       .mockResolvedValue(afterRun);
     const { page, toasts } = await open({ tests: async () => afterRun, runTests });
     await act(async () => buttonNamed(page, "Run tests")?.click());
@@ -178,7 +179,7 @@ verifies("workflows.tests.page", () => {
   it("says why the tests can't be read, and tries again", async () => {
     const tests = vi
       .fn()
-      .mockRejectedValueOnce(new Error("The file is damaged"))
+      .mockRejectedValueOnce(new KindedError("unavailable", "The file is damaged"))
       .mockResolvedValue(afterRun);
     const { page } = await open({ tests });
 

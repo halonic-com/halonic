@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
 import { type Plugin, type PluginSettingValue, parseFile } from "@halonicjs/format";
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, unmountAll } from "../test-support/render.tsx";
 import type { PluginSettingProblem } from "./plugin-secrets.ts";
 import {
@@ -55,6 +56,8 @@ interface FakeOptions {
   readonly hostFails?: boolean;
   readonly stored?: Record<string, string>;
   readonly locked?: boolean;
+  /** Reading a secret fails, as with a locked keychain. */
+  readonly keychainUnreadable?: boolean;
   readonly unreadable?: boolean;
 }
 
@@ -73,12 +76,13 @@ function fakes(options: FakeOptions = {}) {
   };
   const host: PluginSettingsReader = {
     settings: async () => {
-      if (options.unreadable === true) throw new Error("The profile can't be read.");
+      if (options.unreadable === true)
+        throw new KindedError("unavailable", "The profile can't be read.");
       return { city: "Oslo", units: "metric", alerts: false, ...options.values };
     },
     saveSettings: async (_plugin, values) => {
       if (options.held === true) await new Promise<void>((resolve) => waiting.push(resolve));
-      if (options.hostFails === true) throw new Error("The disk is full.");
+      if (options.hostFails === true) throw new KindedError("unavailable", "The disk is full.");
       if (options.problems !== undefined) return { ok: false, error: options.problems };
       const problems = options.check?.(values) ?? [];
       if (problems.length > 0) return { ok: false, error: problems };
@@ -89,9 +93,13 @@ function fakes(options: FakeOptions = {}) {
     forget: async () => {},
   };
   const secrets: PluginSecretStore = {
-    get: async (name) => keychain.get(name) ?? null,
+    get: async (name) => {
+      if (options.keychainUnreadable === true)
+        throw new KindedError("unavailable", "The keychain is locked.");
+      return keychain.get(name) ?? null;
+    },
     set: async (name, value) => {
-      if (locked) throw new Error("The keychain is locked.");
+      if (locked) throw new KindedError("unavailable", "The keychain is locked.");
       keychain.set(name, value);
     },
     remove: async (name) => {
@@ -163,6 +171,14 @@ verifies("plugins.plugin-settings", () => {
       expect(lineUnder(key)).toBe(
         "Not set Stored in your secrets as weather-key. Sent only to api.example.com.",
       );
+    });
+
+    it("says it can't check a secret the keychain can't read, never Not set", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { view } = await show({ keychainUnreadable: true });
+      expect(lineUnder(fieldNamed(view, "API key"))).toMatch(/^Can't check /u);
+      expect(error).toHaveBeenCalled();
+      error.mockRestore();
     });
 
     it("says Set for a stored secret, and never puts its value on screen", async () => {

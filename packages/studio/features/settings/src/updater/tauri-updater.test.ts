@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { TauriUpdater } from "./tauri-updater.ts";
 import type { UpdateStatus } from "./updater-status.ts";
 
@@ -108,7 +108,8 @@ verifies("settings.updater-interface", () => {
       expect(late).toEqual(["0.1.0"]);
     });
 
-    it("tries the watch again for the next listener when the shell refuses it", async () => {
+    it("tries the watch again for the next listener when the shell refuses it, and logs it", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
       const shell = fakeShell();
       shell.refused.add("update_watch");
       const updater = new TauriUpdater(shell.ipc);
@@ -116,6 +117,8 @@ verifies("settings.updater-interface", () => {
       updater.subscribe(() => {});
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(shell.callbacks.size).toBe(0);
+      expect(error).toHaveBeenCalledTimes(1);
+      error.mockRestore();
 
       shell.refused.clear();
       updater.subscribe(() => {});

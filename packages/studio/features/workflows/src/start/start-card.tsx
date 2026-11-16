@@ -6,6 +6,7 @@ import {
   Field,
   TextArea,
 } from "@halonicjs/studio-kit";
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { EngineNotAnswering } from "../api.ts";
 import { startWords as words } from "./start-words.ts";
@@ -27,7 +28,7 @@ function afterColon(reason: string): string {
 
 function reasonOf(error: unknown, notAnswering: string): string {
   if (error instanceof EngineNotAnswering) return afterColon(notAnswering);
-  return error instanceof Error ? error.message : String(error);
+  return errorReasonFor(error);
 }
 
 function withFullStop(reason: string): string {

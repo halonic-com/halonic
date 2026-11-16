@@ -1,4 +1,6 @@
-/** A thrown value's message, for the person. */
+import { errorReasonFor } from "@halonicjs/studio-shell";
+
+/** A thrown value's reason, for the person: an `internal` error gives the generic sentence. */
 export function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return errorReasonFor(error);
 }

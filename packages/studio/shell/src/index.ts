@@ -88,6 +88,7 @@ export {
   type ErrorContext,
   type ErrorMessage,
   errorMessageFor,
+  errorReasonFor,
   itemGoneWords,
   type RulePlace,
 } from "./errors/error-message.ts";

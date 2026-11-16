@@ -1,26 +1,33 @@
+import { KindedError } from "@halonicjs/std";
 import { describe, expect, it } from "vitest";
 import { failureLine } from "./failure-line.ts";
 
 describe("failureLine", () => {
   it("puts the host's reason after a colon, with one full stop", () => {
-    expect(failureLine("save your progress", new Error("The disk is full."))).toBe(
+    const error = new KindedError("unavailable", "The disk is full.");
+    expect(failureLine("save your progress", error)).toBe(
       "Couldn't save your progress: the disk is full.",
     );
   });
 
   it("keeps a capital inside a word", () => {
-    expect(failureLine("start over", new Error("OAuth said no"))).toBe(
-      "Couldn't start over: OAuth said no.",
-    );
+    const error = new KindedError("unavailable", "OAuth said no");
+    expect(failureLine("start over", error)).toBe("Couldn't start over: OAuth said no.");
   });
 
   it("keeps a name's capital", () => {
-    expect(failureLine("save your progress", new Error("Google isn't answering"))).toBe(
+    const error = new KindedError("unavailable", "Google isn't answering");
+    expect(failureLine("save your progress", error)).toBe(
       "Couldn't save your progress: Google isn't answering.",
     );
   });
 
-  it("says only what failed when there is no reason", () => {
-    expect(failureLine("save the account type", "nope")).toBe("Couldn't save the account type.");
+  it("gives the generic sentence, never the message, for an error without a kind", () => {
+    expect(failureLine("save the account type", new Error("ENOENT: .halonic/x"))).toBe(
+      "Couldn't save the account type: Halonic ran into a problem it can't explain yet.",
+    );
+    expect(failureLine("save the account type", "nope")).toBe(
+      "Couldn't save the account type: Halonic ran into a problem it can't explain yet.",
+    );
   });
 });

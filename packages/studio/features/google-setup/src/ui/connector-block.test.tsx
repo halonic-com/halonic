@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { KindedError } from "@halonicjs/std";
 import {
   createToastStore,
   PresentationProvider,
@@ -237,7 +238,7 @@ verifies("google-setup.connector-block", () => {
     vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
     const { container, toasts } = await show(account(signedIn), {
       answer: async () => {
-        throw new Error("The engine isn't answering.");
+        throw new KindedError("unavailable", "The engine isn't answering.");
       },
     });
     await press(button(container, "Disconnect Google…"));
@@ -255,7 +256,7 @@ verifies("google-setup.connector-block", () => {
     vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
     const { container } = await show(account(signedIn), {
       answer: async () => {
-        throw new Error("The engine isn't answering.");
+        throw new KindedError("unavailable", "The engine isn't answering.");
       },
     });
     await press(button(container, "Disconnect Google…"));

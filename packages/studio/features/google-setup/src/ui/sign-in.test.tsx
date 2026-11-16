@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
+
 import { pendingSignInLifetimeMs, type ServiceCheckOutcome } from "@halonicjs/google-setup";
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -69,7 +71,7 @@ verifies("google-setup.sign-in", () => {
   it("says Cancel failed and keeps waiting", async () => {
     const { container } = await open(signedOut(), {
       cancelSignIn: async () => {
-        throw new Error("The engine isn't answering");
+        throw new KindedError("unavailable", "The engine isn't answering");
       },
     });
     await press(button(container, "Sign in with Google"));
@@ -102,7 +104,7 @@ verifies("google-setup.sign-in", () => {
     let fail = true;
     const { container } = await open(signedOut(), {
       startSignIn: async () => {
-        if (fail) throw new Error("The engine isn't answering");
+        if (fail) throw new KindedError("unavailable", "The engine isn't answering");
         return address;
       },
     });
@@ -294,7 +296,7 @@ verifies("google-setup.check-again", () => {
   it("says why the check couldn't run when the engine fails", async () => {
     const { container } = await open(signedInRecord(apiOff), {
       checkAgain: async () => {
-        throw new Error("The engine isn't answering");
+        throw new KindedError("unavailable", "The engine isn't answering");
       },
     });
     await press(button(container, "Check again"));
@@ -347,7 +349,7 @@ verifies("google-setup.wrong-account", () => {
     const { container } = await open(wrongRecord(), {
       wrongAccount: async () => "other@example.com",
       changeAddress: async () => {
-        throw new Error("The engine isn't answering");
+        throw new KindedError("unavailable", "The engine isn't answering");
       },
     });
     await press(button(container, "Use other@example.com for this connector instead"));

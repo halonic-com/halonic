@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { KindedError } from "@halonicjs/std";
 import type { SetupViewProps } from "@halonicjs/studio-feature-inbox/api";
 import { PresentationProvider } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWords, loadView } from "@halonicjs/studio-shell";
@@ -175,7 +176,7 @@ verifies("google-setup.checklist", () => {
       ...fake.source,
       list: async () => {
         reads += 1;
-        if (reads === 1) throw new Error("down");
+        if (reads === 1) throw new KindedError("unavailable", "down");
         return [account(twoDone)];
       },
     };
@@ -226,7 +227,7 @@ verifies("google-setup.checklist", () => {
     const save = fake.source.edit;
     let fails = true;
     fake.source.edit = async (accountRef, edit) => {
-      if (fails) throw new Error("The disk is full.");
+      if (fails) throw new KindedError("unavailable", "The disk is full.");
       await save(accountRef, edit);
     };
     await press(button(container, "Done, next"));
@@ -380,7 +381,7 @@ verifies("google-setup.resume-and-start-over", () => {
     vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
     const { fake, container } = await open([account(threeDone)]);
     fake.source.startOver = async () => {
-      throw new Error("The engine isn't answering.");
+      throw new KindedError("unavailable", "The engine isn't answering.");
     };
     await press(button(container, "Start over"));
     const confirm = dialog(container)?.querySelector<HTMLElement>("button[id]");

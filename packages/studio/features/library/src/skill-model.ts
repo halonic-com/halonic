@@ -6,7 +6,9 @@ import {
   type SkillParts,
   type SkillTextError,
 } from "@halonicjs/app";
+import { readFailureReason } from "./read-failure.ts";
 import type { SkillFile, SkillHost, SkillRef } from "./skill-host.ts";
+import { skillWords } from "./skill-words.ts";
 
 /** The parts that have a hint for a refused empty value. */
 export type SkillField = "name" | "description";
@@ -14,6 +16,10 @@ export type SkillField = "name" | "description";
 /** What the skill page shows. */
 export interface SkillState {
   readonly loaded: boolean;
+  /** The first read failed and nothing has loaded yet; the next refresh clears it. */
+  readonly failed: boolean;
+  /** Why the first read failed, in words for the user; absent when the error has none (the page then says the engine isn't answering). */
+  readonly failureReason: string | undefined;
   /** The workspace has no such skill (any more). */
   readonly gone: boolean;
   /** The file has no valid header, so only a person can fix it in the file. */
@@ -38,7 +44,15 @@ function refusedField(error: SkillTextError): SkillField | undefined {
  * `useSyncExternalStore`.
  */
 export class SkillModel {
-  state: SkillState = { loaded: false, gone: false, unreadable: false, files: [], kept: [] };
+  state: SkillState = {
+    loaded: false,
+    failed: false,
+    failureReason: undefined,
+    gone: false,
+    unreadable: false,
+    files: [],
+    kept: [],
+  };
   private text = "";
   private readonly listeners = new Set<() => void>();
   private stopHost: (() => void) | undefined;
@@ -78,13 +92,21 @@ export class SkillModel {
       ]);
       if (ticket !== this.latest) return;
       if (source === undefined) {
-        this.set({ ...this.state, loaded: true, gone: true });
+        this.set({
+          ...this.state,
+          loaded: true,
+          failed: false,
+          failureReason: undefined,
+          gone: true,
+        });
         return;
       }
       this.text = source.text;
       const read = readSkillText(source.text);
       this.set({
         loaded: true,
+        failed: false,
+        failureReason: undefined,
         gone: false,
         unreadable: !read.ok,
         files: source.files,
@@ -92,8 +114,17 @@ export class SkillModel {
         kept: this.state.kept,
         ...(read.ok ? { parts: read.value } : {}),
       });
-    } catch {
-      // The page keeps what it shows; the host says why a read failed.
+    } catch (error) {
+      if (ticket !== this.latest) return;
+      console.error("Couldn't read the skill.", error);
+      // A page that has loaded keeps what it shows; only a first read that failed says so.
+      if (!this.state.loaded) {
+        this.set({
+          ...this.state,
+          failed: true,
+          failureReason: readFailureReason(error, skillWords.couldntLoad),
+        });
+      }
     }
   }
 

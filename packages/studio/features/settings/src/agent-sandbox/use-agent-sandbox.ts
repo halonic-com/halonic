@@ -111,7 +111,9 @@ export function useAgentSandbox(
       (facts) => {
         if (alive.current) setUpdatesOverdue(facts?.overdue === true);
       },
-      () => undefined,
+      (error: unknown) => {
+        console.error("Couldn't read whether security updates are overdue.", error);
+      },
     );
     // A setup or removal that began before Settings opened shows as running and is followed,
     // never started: opening Settings sends no command.
@@ -119,7 +121,9 @@ export function useAgentSandbox(
       (verb) => {
         if (alive.current && verb !== null) void run(verb, true);
       },
-      () => undefined,
+      (error: unknown) => {
+        console.error("Couldn't read whether a sandbox setup is running.", error);
+      },
     );
     return () => {
       alive.current = false;

@@ -1,5 +1,6 @@
 import { type PluginSettingValue, type PluginUi, settingValueProblem } from "@halonicjs/format";
 import { Checkbox, CopyButton, Dialog, Field, Input, Select } from "@halonicjs/studio-kit";
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import { useEffect, useId, useRef, useState } from "react";
 import { settingProblemLine } from "../settings/settings-text.ts";
 import { PluginResult } from "../ui/plugin-result.tsx";
@@ -93,7 +94,7 @@ export function PluginCommandDialog({
       const text = await caller.call(plugin.id, command.tool, args);
       if (attempt === latest.current) setRun({ kind: "done", text });
     } catch (error) {
-      if (attempt === latest.current) setRun({ kind: "failed", reason: reasonOf(error) });
+      if (attempt === latest.current) setRun({ kind: "failed", reason: errorReasonFor(error) });
     }
   }
 
@@ -288,8 +289,4 @@ function typedValue(field: FormField, draft: Draft): PluginSettingValue {
   if (field.type !== "number" || typeof draft !== "string") return draft;
   const number = Number(draft.trim());
   return draft.trim() !== "" && Number.isFinite(number) ? number : draft;
-}
-
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

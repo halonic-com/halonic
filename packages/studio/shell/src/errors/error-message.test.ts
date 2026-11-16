@@ -1,7 +1,7 @@
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { errorMessageFor } from "./error-message.ts";
+import { errorMessageFor, errorReasonFor } from "./error-message.ts";
 
 const title = "Couldn't save Support reply.";
 
@@ -219,6 +219,22 @@ verifies("shell.error-messages", () => {
     ])("calls %s internal and keeps its text off screen", (_, error) => {
       const message = errorMessageFor(error, { title, service: { name: "Anthropic" } });
       expect(message).toEqual(internal);
+    });
+  });
+
+  describe("errorReasonFor", () => {
+    it("gives a kinded error's own message", () => {
+      expect(errorReasonFor(new KindedError("unavailable", "The disk is full."))).toBe(
+        "The disk is full.",
+      );
+    });
+
+    it.each([
+      ["an error without a kind", new Error("ENOENT: .halonic/x")],
+      ["a string", "boom"],
+      ["a kinded error with no message", new KindedError("unavailable", "")],
+    ])("gives the generic sentence, never the text, for %s", (_, error) => {
+      expect(errorReasonFor(error)).toBe("Halonic ran into a problem it can't explain yet.");
     });
   });
 });

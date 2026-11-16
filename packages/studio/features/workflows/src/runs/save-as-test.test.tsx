@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -159,7 +160,7 @@ verifies("workflows.runs.save-as-test", () => {
   it("keeps the dialog open and says why when the host can't write the case", async () => {
     const page = await openRunCard(finished, {
       saveRunAsTest: async () => {
-        throw new Error("The disk is full");
+        throw new KindedError("unavailable", "The disk is full");
       },
     });
     await click(buttonNamed(page, "Save as test"));

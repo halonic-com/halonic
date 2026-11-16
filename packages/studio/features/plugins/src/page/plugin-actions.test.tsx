@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { parseFile } from "@halonicjs/format";
+import { KindedError } from "@halonicjs/std";
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -46,7 +47,7 @@ function recordingActions(
   const asked: string[] = [];
   const step = (name: keyof PluginActions, detail: string) => {
     asked.push(detail);
-    if (options.fail === name) throw new Error("The store is locked.");
+    if (options.fail === name) throw new KindedError("unavailable", "The store is locked.");
   };
   const actions: PluginActions = {
     trust: async (plugin) => step("trust", `trust ${plugin}`),
@@ -56,7 +57,7 @@ function recordingActions(
       return options.removed ?? { kind: "removed" };
     },
     usedBy: async () => {
-      if (options.fail === "usedBy") throw new Error("The store is locked.");
+      if (options.fail === "usedBy") throw new KindedError("unavailable", "The store is locked.");
       return options.uses ?? [];
     },
     checkForUpdate: async (plugin) => {

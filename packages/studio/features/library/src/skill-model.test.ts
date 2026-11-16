@@ -120,5 +120,27 @@ verifies("library.skill-page", () => {
       expect(text).toContain("description: Use for Acme refunds");
       expect(model.state.parts?.name).toBe("Acme refunds");
     });
+
+    it("says the first read failed while nothing has loaded, then clears it on the next read", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      let failing = true;
+      const host: SkillHost = {
+        read: async () => {
+          if (failing) throw new Error("locked");
+          return { text: skillText, files: [] };
+        },
+        write: async () => {},
+        usage: async () => noUsage,
+        subscribe: () => () => {},
+      };
+      const model = new SkillModel(host, { hub: null, id: "refunds" });
+      await model.refresh();
+      expect(model.state).toMatchObject({ loaded: false, failed: true });
+      expect(error).toHaveBeenCalledOnce();
+      failing = false;
+      await model.refresh();
+      expect(model.state).toMatchObject({ loaded: true, failed: false });
+      error.mockRestore();
+    });
   });
 });
