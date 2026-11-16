@@ -93,11 +93,15 @@ First, check that it really is one. If it is:
   (see `.github/CODEOWNERS`):
 
   ```text
-  <rule> <file or glob> [fp:<fingerprint>] <reason>
+  <rule> <file or glob> [fp:<fingerprint>] [root:<root>] [commit:<hash>] <reason>
   ```
 
   A secret rule needs the `fp:` fingerprint from the leak guard's report.
-  The entry then allows that one value in that file and nothing else. A
+  The entry then allows that one value in that file and nothing else. An
+  `absolute-path` entry needs `root:<root>` (the root the report shows, such
+  as `/tmp/`) or `commit:<hash>` (the commit that added the path, at least 7
+  characters), so it excuses that one kind of path or that one commit in the
+  file, never any path added there later. A
   glob's `*` matches within a folder, and `**` matches across folders, but
   an entry must start with a named folder or file, never a glob. File
   rules (`env-file`, `key-file`, `credential-file`) need the exact path.

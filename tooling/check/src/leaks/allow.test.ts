@@ -14,10 +14,38 @@ describe("AllowList", () => {
     expect(list.allows("npm-token", "docs/guides/a.md", print)).toBe(false);
   });
 
-  it("allows a path rule for a file or glob", () => {
-    const list = new AllowList("absolute-path docs/*/layout.md explains where an OS keeps files");
-    expect(list.allows("absolute-path", "docs/guides/layout.md")).toBe(true);
-    expect(list.allows("absolute-path", "docs/guides/deeper/layout.md")).toBe(false);
+  it("allows an absolute path only for the named root, in the named files", () => {
+    const list = new AllowList(
+      "absolute-path docs/*/layout.md root:/tmp/ explains where an OS keeps files",
+    );
+    expect(list.problems).toEqual([]);
+    const tmp = { root: "/tmp/", commit: undefined };
+    expect(list.allows("absolute-path", "docs/guides/layout.md", undefined, tmp)).toBe(true);
+    expect(list.allows("absolute-path", "docs/guides/deeper/layout.md", undefined, tmp)).toBe(
+      false,
+    );
+    const home = { root: "/home/", commit: undefined };
+    expect(list.allows("absolute-path", "docs/guides/layout.md", undefined, home)).toBe(false);
+  });
+
+  it("allows an absolute path only in the named commit", () => {
+    const list = new AllowList("absolute-path docs/a.md commit:abc1234 an old example");
+    expect(list.problems).toEqual([]);
+    const at = (commit: string | undefined) => ({ root: "/tmp/", commit });
+    expect(list.allows("absolute-path", "docs/a.md", undefined, at("abc12345f"))).toBe(true);
+    expect(list.allows("absolute-path", "docs/a.md", undefined, at("def4567ab"))).toBe(false);
+    expect(list.allows("absolute-path", "docs/a.md", undefined, at(undefined))).toBe(false);
+  });
+
+  it("refuses an absolute-path entry that names neither a root nor a commit", () => {
+    const list = new AllowList(
+      [
+        "absolute-path docs/a.md an old example",
+        "absolute-path docs/a.md commit:abc an old example",
+        "github-token docs/a.md root:/tmp/ an old example",
+      ].join("\n"),
+    );
+    expect(list.problems.map((problem) => problem.line)).toEqual([1, 2, 3]);
   });
 
   it("allows a file rule for one exact file only", () => {

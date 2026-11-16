@@ -33,7 +33,19 @@ interface AllowEntry {
   readonly rule: string;
   readonly file: RegExp;
   readonly fingerprint: string | undefined;
+  /** For an absolute path: the root it may sit under (`root:`), as the leak guard prints it. */
+  readonly root: string | undefined;
+  /** For an absolute path: the commit it may be added in (`commit:`), as a hash prefix. */
+  readonly commit: string | undefined;
 }
+
+/** What an absolute-path finding is, so an entry can excuse that and nothing else. */
+export interface PathFinding {
+  readonly root: string;
+  readonly commit: string | undefined;
+}
+
+const minCommitLength = 7;
 
 /** A mistake in the allow file, reported as a finding on that file. */
 export interface AllowFileProblem {
@@ -67,16 +79,47 @@ function globPattern(glob: string): RegExp {
   return new RegExp(`^${source}$`);
 }
 
+/** Removes a leading `<prefix><value>` word from the words and returns the value. */
+function takePin(words: string[], prefix: string): string | undefined {
+  const word = words[0];
+  if (word?.startsWith(prefix)) {
+    words.shift();
+    return word.slice(prefix.length);
+  }
+  return undefined;
+}
+
+/** What is wrong with the `root:` and `commit:` pins of an entry, or `undefined` if they are right. */
+function pathPinProblem(
+  rule: string,
+  root: string | undefined,
+  commit: string | undefined,
+): string | undefined {
+  const pinned = root !== undefined || commit !== undefined;
+  if (rule === absolutePathRule && !pinned) {
+    return "An absolute-path entry needs root:<root> or commit:<hash>, so it excuses one thing and not whatever the file holds later.";
+  }
+  if (rule !== absolutePathRule && pinned) {
+    return "Only absolute-path entries take root: or commit:.";
+  }
+  if (commit !== undefined && commit.length < minCommitLength) {
+    return `A commit needs at least ${minCommitLength} characters of its hash.`;
+  }
+  return undefined;
+}
+
 /**
  * Reads one line of the allow file:
  *
- *   <rule> <file or glob> [fp:<fingerprint>] <reason …>
+ *   <rule> <file or glob> [fp:<fingerprint>] [root:<root>] [commit:<hash>] <reason …>
  *
  * @returns the entry, or a message saying what is wrong with the line
  */
 function parseEntry(text: string): AllowEntry | string {
   const [rule = "", file = "", ...rest] = text.split(/\s+/);
   const fingerprint = rest[0]?.startsWith("fp:") ? rest.shift() : undefined;
+  const root = takePin(rest, "root:");
+  const commit = takePin(rest, "commit:");
   const reason = rest.join(" ");
   if (rule === personalTermRule) {
     return "Personal terms can't be allowed. Reword the text instead.";
@@ -96,13 +139,17 @@ function parseEntry(text: string): AllowEntry | string {
   if (secretRuleNames.has(rule) && fingerprint === undefined) {
     return "A secret rule needs the fingerprint the leak guard printed (fp:…).";
   }
+  const pinProblem = pathPinProblem(rule, root, commit);
+  if (pinProblem !== undefined) {
+    return pinProblem;
+  }
   if (!secretRuleNames.has(rule) && fingerprint !== undefined) {
     return "Only secret rules take a fingerprint.";
   }
   if (reason.split(" ").length < 2) {
     return "Give a reason of a few words.";
   }
-  return { rule, file: globPattern(file), fingerprint };
+  return { rule, file: globPattern(file), fingerprint, root, commit };
 }
 
 /** The checked-in allow file, read once per run. */
@@ -134,13 +181,16 @@ export class AllowList {
    * True when an entry allows this finding.
    *
    * @param fingerprint - for secret rules, the fingerprint of the matched value
+   * @param path - for absolute paths, the root found and the commit it was added in
    */
-  allows(rule: string, file: string, fingerprint?: string): boolean {
+  allows(rule: string, file: string, fingerprint?: string, path?: PathFinding): boolean {
     return this.entries.some(
       (entry) =>
         entry.rule === rule &&
         entry.file.test(file) &&
-        (entry.fingerprint === undefined || entry.fingerprint === fingerprint),
+        (entry.fingerprint === undefined || entry.fingerprint === fingerprint) &&
+        (entry.root === undefined || entry.root === path?.root) &&
+        (entry.commit === undefined || (path?.commit ?? "").startsWith(entry.commit)),
     );
   }
 }
