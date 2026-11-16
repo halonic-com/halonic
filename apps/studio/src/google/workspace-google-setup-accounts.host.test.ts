@@ -74,7 +74,6 @@ verifies("studio.workspace-google-setup-accounts", () => {
     });
 
     describe("client secret", () => {
-      let mailRef = "";
       const typed = new SecretText("GOCSPX-typed-in-the-field");
 
       it("sends the secret to the host once, with the account's ref, and tells its listeners", async () => {
@@ -115,20 +114,26 @@ verifies("studio.workspace-google-setup-accounts", () => {
         expect(listener).toHaveBeenCalledTimes(1);
       });
 
-      it("answers an accepted replace with the addresses of the accounts it fixed", async () => {
+      it("answers an accepted replace with the addresses of every account that uses the new secret", async () => {
         const { accounts, setups } = await accountsOf({
           host: hostWith({
-            replaceClientSecret: async () => ({
-              result: "accepted",
-              accountsFixed: [mailRef, "gaccount_unknown"],
-            }),
+            replaceClientSecret: async () => ({ result: "accepted", accountsFixed: [] }),
           }),
         });
-        mailRef = ((await setups.forConnector(acmeKey, "mail")) as SetupRecord).accountRef;
+        const mail = (await setups.forConnector(acmeKey, "mail")) as SetupRecord;
+        const files = (await setups.forConnector(acmeKey, "files")) as SetupRecord;
+        await setups.update(mail.accountRef, {
+          kind: "client-secret-saved",
+          clientRef: "gclient_1",
+        });
+        await setups.update(files.accountRef, {
+          kind: "client-secret-saved",
+          clientRef: "gclient_1",
+        });
 
-        expect(await accounts.replaceClientSecret("gaccount_1", typed)).toEqual({
+        expect(await accounts.replaceClientSecret(mail.accountRef, typed)).toEqual({
           kind: "accepted",
-          usedBy: ["sam@acme.example"],
+          usedBy: ["sam@acme.example", "kim@acme.example"],
         });
       });
 

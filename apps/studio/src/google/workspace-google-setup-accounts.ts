@@ -170,7 +170,7 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
       host.replaceClientSecret(accountRef, secret),
     );
     if (answer.result !== "accepted") return replaceAnswerOf(answer);
-    return { kind: "accepted", usedBy: await this.#addressesOf(answer.accountsFixed) };
+    return { kind: "accepted", usedBy: await this.#usingClient(accountRef) };
   }
 
   async startOver(accountRef: string): Promise<void> {
@@ -222,12 +222,15 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
     };
   }
 
-  /** The addresses of the accounts with these refs; the host names accounts by ref, the page by address. */
-  async #addressesOf(accountRefs: readonly string[]): Promise<string[]> {
+  /**
+   * The addresses of every account that uses the account's client secret, this one first. They
+   * are read after the host answered, so they show who the new secret applies to, which is not
+   * only the accounts whose "client refused" mark the host cleared.
+   */
+  async #usingClient(accountRef: string): Promise<string[]> {
     const accounts = await this.list();
-    return accounts
-      .filter(({ record }) => accountRefs.includes(record.accountRef))
-      .map(({ email }) => email);
+    const own = accounts.find(({ record }) => record.accountRef === accountRef);
+    return own === undefined ? [] : [own.email, ...own.clientSharedWith];
   }
 
   /** The agent host that makes a change, or a refusal in plain words when the app has none. */
@@ -296,9 +299,20 @@ function replaceAnswerOf(
       return { kind: "refused" };
     case "unreachable":
       return { kind: "no-network" };
-    default:
+    case "signInRefused":
+    case "nothingStaged":
+    case "notSignedIn":
+    case "googleError":
+    case "unexpectedAnswer":
       throw new Error(replaceUnfinished);
+    default:
+      return unhandled(answer.result);
   }
+}
+
+/** Fails to compile when a case of `value` isn't handled above. */
+function unhandled(value: never): never {
+  throw new Error(`Unhandled answer: ${JSON.stringify(value)}`);
 }
 
 /** The addresses of the other accounts of this workspace whose setup uses the record's client. */
