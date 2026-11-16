@@ -94,6 +94,16 @@ verifies("runs.row", () => {
       expect(row.line).toBe("Support reply failed in the step Draft.");
     });
 
+    it("says a failed run that never entered a step didn't start, as its banner does", () => {
+      const refused = { status: "failed", reason: "sandbox-not-ready", state: null } as const;
+      const row = rowOf({ ...refused, statesVisited: [], approvals: [] });
+
+      expect(row.line).toBe("Support reply didn't start.");
+      expect(row.label).toBe(
+        "Run 01jd8q, Support reply, didn't start. Started by you, in the terminal, 10:40.",
+      );
+    });
+
     it("says where and after how long a run stopped at its budget or was cancelled", () => {
       const ended = { endedAt: minutesLater(3), cost: 5.08 };
       const budget = rowOf({ status: "failed", reason: "budget", ...ended });

@@ -13,5 +13,5 @@ The Files view shall show the file tree as an ARIA tree with one Tab stop, show 
 - Given `hubs/p/hub.yaml` has 2 errors, then the closed "hubs" row says "2 errors" to a screen reader.
 - Given the file list is still loading, then three or more grey bars show and nothing else.
 - Given the folder can't be read, then the view reads "Couldn't load files" with the reason and "Try again"; after "Try again" works, the tree shows.
-- Given the workspace has no files, then the view reads "No files yet".
+- Given the workspace has no files, then the view reads "No files yet" with a **New file** button, which opens the same dialog as the **+** button (HAL-11190).
 - Given a file changes while the view shows, then the tree shows the new list and keeps the opened folders.

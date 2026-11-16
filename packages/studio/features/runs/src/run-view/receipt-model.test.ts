@@ -93,6 +93,21 @@ verifies("runs.run-view.receipt-summary", () => {
     );
   });
 
+  it("opens a failed run that never entered a step with how long it took alone", () => {
+    expect(
+      line(
+        {
+          status: "failed",
+          endedAt: minutesLater(1),
+          state: null,
+          statesVisited: [],
+          approvals: [],
+        },
+        [],
+      ),
+    ).toBe("Failed after 1 min");
+  });
+
   it("opens a run that couldn't try a step with the step, as its row does, not as running", () => {
     expect(line({ status: "cant-try", endedAt: minutesLater(1), state: "draft" }, [])).toBe(
       "In Draft",

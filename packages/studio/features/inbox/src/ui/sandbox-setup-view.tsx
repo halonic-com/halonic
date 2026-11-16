@@ -106,7 +106,7 @@ export function SandboxSetupView({ item, control, openRun, announce }: SandboxVi
           <h3 className="text-small text-fg-muted">{sandboxInboxWords.runsHeading}</h3>
           <ul>
             {runs.map((run) => (
-              <RunLine key={run.id} run={run} openRun={openRun} />
+              <RunLine key={run.id} run={run} name={control.name(run)} openRun={openRun} />
             ))}
           </ul>
         </div>
@@ -117,16 +117,18 @@ export function SandboxSetupView({ item, control, openRun, announce }: SandboxVi
 
 function RunLine({
   run,
+  name,
   openRun,
 }: {
   readonly run: RunSummary;
+  readonly name: string;
   readonly openRun: SandboxViewProps["openRun"];
 }) {
   const nameId = useId();
   return (
     <li className="flex items-center gap-2 border-b border-border py-2">
       <p id={nameId} className="min-w-0 flex-1 text-body">
-        {markedName(run.trigger?.routineId ?? run.workflowId)}
+        {markedName(name)}
       </p>
       {openRun === undefined ? null : (
         <Button
