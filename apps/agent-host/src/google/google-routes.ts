@@ -227,12 +227,17 @@ async function relay(response: ServerResponse, answer: Response): Promise<void> 
  * the sign-in's code, so the page is never cached and sends no referrer, and
  * it closes the connection: over frames the relay doesn't see the answer end,
  * only the host's `end` frame, and a kept-alive connection would wait out
- * Node's `keepAliveTimeout` (5 s) before the relay closes it.
+ * Node's `keepAliveTimeout` (5 s) before the relay closes it. The page may be
+ * reached by any page's navigation, so it also can't be framed or sniffed, and
+ * the policy is the CLI host's (`securityHeaders` of `@halonicjs/host-server`).
  */
 const callbackPageHeaders = {
   "content-type": "text/html; charset=utf-8",
   "cache-control": "no-store",
   "referrer-policy": "no-referrer",
+  "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
   connection: "close",
 };
 
