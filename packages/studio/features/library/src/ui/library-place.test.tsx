@@ -360,6 +360,8 @@ verifies("library.library-phone", () => {
       requestNewConnector({ name: "notes" });
     });
     await settled();
+    // One call: the shell replaces the kind page shown (`replaceSibling`), it doesn't stack on it.
+    expect(openPlaceList).toHaveBeenCalledTimes(1);
     expect(openPlaceList).toHaveBeenCalledWith("library", "connector", "Connectors");
     expect(page.ownerDocument.querySelector("dialog[open]")).toBeNull();
   });

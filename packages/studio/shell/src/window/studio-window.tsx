@@ -192,7 +192,8 @@ export function StudioWindow(props: StudioWindowProps) {
       ...(onDesktop.current ? { activeItem } : {}),
       openPlace: (place) => openPlaceHere.current(place),
       openPlaceList: (place, sub, title) => {
-        if (!onDesktop.current) openPhone({ key: `${place}/${sub}`, title }, { list: true });
+        if (!onDesktop.current)
+          openPhone({ key: `${place}/${sub}`, title }, { list: true, replaceSibling: true });
       },
       badges: shell.badges,
       openItem: (item, options) => openHere.current(locationOfItem(item, options)),

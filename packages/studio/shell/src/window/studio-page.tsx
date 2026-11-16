@@ -75,9 +75,12 @@ export function StudioPage({
       />
     );
   }
-  const place = contributions.places
-    .list()
-    .find((added) => location.key === added.id || location.key.startsWith(`${added.id}/`));
+  const place = contributions.places.list().find((added) => {
+    const rest = location.key.slice(added.id.length + 1);
+    return (
+      location.key === added.id || (location.key.startsWith(`${added.id}/`) && !rest.includes("/"))
+    );
+  });
   if (place !== undefined) {
     const sub = location.key.slice(place.id.length + 1);
     return (
