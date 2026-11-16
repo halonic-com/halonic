@@ -1,8 +1,9 @@
 import type { ItemUsage, LibraryItemKind } from "@halonicjs/app";
-import { Button, Menu, MoreIcon, useToastStore } from "@halonicjs/studio-kit";
+import { Button, Menu, MoreIcon, usePresentation, useToastStore } from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useState } from "react";
 import { deleteWords } from "../delete-words.ts";
+import { itemFileRef } from "../item-file.ts";
 import { LibraryItemsHostService, type RemovedLibraryItem } from "../library-items-host.ts";
 import { putBack, removeItem } from "../remove-item.ts";
 
@@ -35,6 +36,7 @@ const noUsage: ItemUsage = { agents: [], hubs: [], routines: [], collections: []
 export function useItemTrash(context: ItemViewProps["context"], item: TrashableItem): ItemTrash {
   const host = context.services.find(LibraryItemsHostService);
   const toasts = useToastStore();
+  const desktop = usePresentation() === "desktop";
   const [removed, setRemoved] = useState<RemovedLibraryItem>();
   const { kind, hub, id, name, usage } = item;
 
@@ -65,7 +67,18 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
             label={deleteWords.pageMenuLabel(name)}
           />
         )}
-        entries={[{ id: "delete", label: deleteWords.delete, danger: true, onSelect: onDelete }]}
+        entries={[
+          ...(!desktop || context.openItem === undefined
+            ? []
+            : [
+                {
+                  id: "open-as-file",
+                  label: deleteWords.openAsFile,
+                  onSelect: () => context.openItem?.(itemFileRef(kind, { hub, id })),
+                },
+              ]),
+          { id: "delete", label: deleteWords.delete, danger: true, onSelect: onDelete },
+        ]}
       />
     );
   const strip =

@@ -163,6 +163,7 @@ export {
   newAgentsRun,
 } from "./new-agent-placement.ts";
 export {
+  libraryItemPath,
   type NewConnectorTransport,
   type NewLibraryFile,
   type NewLibraryItem,
