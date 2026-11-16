@@ -241,6 +241,7 @@ export async function openEngine(
     workspaceRoot: acme,
     secrets: { get: async () => null },
     http: { fetch: () => Promise.reject(new TypeError("The test model calls no server.")) },
+    trusted: true,
     environment: profile,
     harnessParts: fakes.parts,
     ...(git ? { git: { git: await testGit() } } : {}),

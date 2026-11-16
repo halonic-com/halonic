@@ -1,3 +1,4 @@
+import { keyDestination } from "@halonicjs/adapter-workspace-models";
 import { programName, type TrustCheck } from "@halonicjs/app";
 import { defaultWorkingFolder } from "@halonicjs/format";
 import type {
@@ -244,10 +245,19 @@ function addressRow(connector: ConnectorTrustContent): TrustRowView {
 }
 
 function providerRow(provider: ProviderTrustContent): TrustRowView {
+  const destination = keyDestination(provider);
   return {
     id: provider.id,
     detail: provider.baseUrl ?? provider.type,
-    lines: provider.secret === undefined ? [] : [["Gets secrets", secretName(provider.secret)]],
+    lines: [
+      ...(provider.secret === undefined
+        ? []
+        : [["Gets secrets", secretName(provider.secret)] as const]),
+      // The key goes somewhere other than its type's own address (HAL-11342).
+      ...(destination === undefined || destination.isDefault
+        ? []
+        : [["Sends its key to", destination.origin] as const]),
+    ],
   };
 }
 

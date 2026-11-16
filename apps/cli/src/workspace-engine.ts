@@ -190,6 +190,7 @@ export async function openWorkspaceEngine(
     )(target.trust, target),
     secrets: context.secrets,
     http: setup.http,
+    trusted: target.trust !== null,
     // The scheduler retries a failed step; one that keeps failing stops the command with its
     // error, or goes to `onStuck`, and after an hour to `onGaveUp`. A failed clean-up is only
     // a `--debug` line (HAL-7171).

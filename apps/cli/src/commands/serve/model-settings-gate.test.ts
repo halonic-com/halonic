@@ -85,7 +85,7 @@ describe("the model settings of a served chat turn", () => {
       const secrets: Secrets = {
         get: async (name) => (name === "openai-key" ? "sk-stored" : null),
       };
-      const resolve = workspaceModelResolver({ workspace, secrets, http });
+      const resolve = workspaceModelResolver({ workspace, secrets, http, isTrusted: () => true });
       const server = createServer({
         config: {
           deploymentId: "t",

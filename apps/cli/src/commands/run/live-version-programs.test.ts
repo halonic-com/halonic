@@ -173,6 +173,7 @@ async function askNotesFromALiveRun(): Promise<{ answer: string; copiesLeft: str
   const engine = await openLocalEngine({
     workspace: loaded.workspace,
     workspaceRoot: acme,
+    trusted: true,
     secrets: new MemorySecrets({}),
     http: { fetch: async () => new Response("unused") },
     environment: profile,

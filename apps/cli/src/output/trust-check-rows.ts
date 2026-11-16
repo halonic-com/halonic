@@ -4,6 +4,7 @@
 // with its sites and folder, and a changed agent's or local integration's
 // rows for what changed. `trust-check.ts` puts them in sections.
 
+import { keyDestination } from "@halonicjs/adapter-workspace-models";
 import { programName } from "@halonicjs/app";
 import { defaultWorkingFolder } from "@halonicjs/format";
 import type {
@@ -77,14 +78,21 @@ export function addressRow(connector: ConnectorTrustContent): Phrase {
 /**
  * "  claude        https://api.anthropic.com/ · gets the secret ANTHROPIC_KEY":
  * where the provider sends its requests, or its type when the file names no
- * address and the adapter's own is used.
+ * address and the adapter's own is used. A key that goes to another address than its
+ * type's own gets a second line, "Sends its key to https://llm.example.com.".
  */
-export function providerRow(provider: ProviderTrustContent): Phrase {
+export function providerRow(provider: ProviderTrustContent): Phrase[] {
   const address = provider.baseUrl ?? provider.type;
-  return row(
-    printable(provider.id),
-    withSecrets(phrase`${printable(address)}`, providerSecretNames(provider)),
-  );
+  const destination = keyDestination(provider);
+  return [
+    row(
+      printable(provider.id),
+      withSecrets(phrase`${printable(address)}`, providerSecretNames(provider)),
+    ),
+    ...(destination === undefined || destination.isDefault
+      ? []
+      : [phrase`${underRow}${trustMessages.keyDestination(printable(destination.origin)).phrase}`]),
+  ];
 }
 
 /**

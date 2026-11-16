@@ -342,6 +342,26 @@ verifies("cli.trust-check", () => {
     ]);
   });
 
+  it("adds a line for a provider whose key goes to another address than its type's own", () => {
+    const crm: ProviderTrustContent = {
+      id: "crm",
+      type: "openai-compatible",
+      baseUrl: "https://llm.example.com/v1",
+      secret: "‹secret CRM_KEY›",
+      local: false,
+    };
+    const check: FingerprintedCheck = {
+      status: "new",
+      content: { connectors: [], providers: [crm] },
+      fingerprint,
+      unpinned: [],
+    };
+    expect(lines(check)).toContain(
+      "  crm           https://llm.example.com/v1 · gets the secret CRM_KEY",
+    );
+    expect(lines(check)).toContain("                Sends its key to https://llm.example.com.");
+  });
+
   it("shows a provider whose address changed as one changed address", () => {
     const before: ProviderTrustContent = {
       id: "claude",
