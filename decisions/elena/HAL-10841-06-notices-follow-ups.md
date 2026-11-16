@@ -3,6 +3,7 @@
 - Task: HAL-10841
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-10850 (Liam's review of #3116; a team decision with no board card, HAL-2282 rule: it builds on the approved flow-inbox 3.2 Notices section)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:XJTgo0lMoD8TdlVq5U/tyOZI0zOQ326BFEo0iJJ1tpE7P1u95JqbCm88odOQ8108r/xsGAmMZ5FMBREHVEJpBg==
 
 ## What changes
 
