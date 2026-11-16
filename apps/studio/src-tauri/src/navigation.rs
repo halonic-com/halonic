@@ -95,3 +95,7 @@ fn back_to_connect<R: Runtime>(webview: &Webview<R>) {
         let _ = webview.navigate(page);
     });
 }
+
+#[cfg(test)]
+#[path = "navigation_tests.rs"]
+mod tests;
