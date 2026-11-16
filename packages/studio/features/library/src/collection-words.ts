@@ -3,6 +3,7 @@ export const collectionWords = {
   kindName: "collection",
   place: "Library",
   loading: "Loading the collection",
+  renameFailed: "Couldn't rename the collection.",
   allChip: "All",
   chipsLabel: "Views",
   gridLabel: (name: string) => `${name} records`,

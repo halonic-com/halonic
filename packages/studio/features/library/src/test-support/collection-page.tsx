@@ -69,13 +69,14 @@ export function sourceOf(
 export function setup(
   source: CollectionSource | undefined,
   usage: ItemUsage = nobody,
-  writes: Partial<Pick<CollectionHost, "change" | "add" | "remove">> = {},
+  writes: Partial<Pick<CollectionHost, "change" | "add" | "remove" | "rename">> = {},
 ) {
   const host: CollectionHost = {
     read: async () => source,
     change: async () => "saved",
     add: async () => {},
     remove: async () => {},
+    rename: async () => {},
     usage: async () => usage,
     subscribe: () => () => {},
     ...writes,

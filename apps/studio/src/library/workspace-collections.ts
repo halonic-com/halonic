@@ -1,4 +1,4 @@
-import { whoUses } from "@halonicjs/app";
+import { renameCollectionText, whoUses } from "@halonicjs/app";
 import {
   type CollectionRecord,
   CollectionRecords,
@@ -14,10 +14,11 @@ import type {
   CollectionSource,
 } from "@halonicjs/studio-feature-library/api";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
-import { unsavedSource, type WorkspaceLibraryItemsParts } from "./workspace-library-items.ts";
+import { unsavedSource } from "./workspace-library-items.ts";
+import type { WorkspaceSkillsParts } from "./workspace-skills.ts";
 
 /** What {@link WorkspaceCollections} needs of the workspace's files and its records. */
-export interface WorkspaceCollectionsParts extends WorkspaceLibraryItemsParts {
+export interface WorkspaceCollectionsParts extends WorkspaceSkillsParts {
   /** The workspace's record store: the same log the CLI and the engine read. */
   readonly records: RecordStore;
   readonly clock: Clock;
@@ -95,6 +96,21 @@ export class WorkspaceCollections implements CollectionHost {
     };
     await this.#parts.records.append([change]);
     this.#notify();
+  }
+
+  async rename(ref: CollectionRef, name: string): Promise<void> {
+    const workspace = await loadWorkspace(unsavedSource(this.#parts.files));
+    const found = filesOf(workspace, "collection").find(
+      (item) => item.hub === ref.hub && item.value.id === ref.id,
+    );
+    if (found === undefined) throw new Error(`The collection "${ref.id}" is gone.`);
+    const text = await this.#parts.files.read(found.path);
+    if (text === null) throw new Error(`The collection "${ref.id}" is gone.`);
+    const renamed = renameCollectionText(text, name);
+    if (!renamed.ok)
+      throw new Error(`The collection "${ref.id}" can't be renamed: ${renamed.error}.`);
+    if (renamed.value === text) return;
+    this.#parts.files.change(`Renamed collection ${ref.id}`, { [found.path]: renamed.value });
   }
 
   async usage(ref: CollectionRef) {

@@ -99,6 +99,11 @@ export interface CollectionHost {
   add(collection: CollectionRef, values: Readonly<Record<string, unknown>>): Promise<void>;
   /** Removes a record as the person "you". A record that is gone already is fine. Rejects when it can't be written. */
   remove(collection: CollectionRef, record: string): Promise<void>;
+  /**
+   * Gives the collection a new name (trimmed, not empty) as one change that shows in Changes. The
+   * id and the file stay. Rejects when the name is empty or the file can't be changed.
+   */
+  rename(collection: CollectionRef, name: string): Promise<void>;
   /** Who uses the collection (`whoUses` of core). */
   usage(collection: CollectionRef): Promise<ItemUsage>;
   /** Calls `listener` whenever a collection or its records may have changed. Returns a function that stops the calls. */
