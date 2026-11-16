@@ -5,12 +5,12 @@ import { createToastStore } from "@halonicjs/studio-kit";
 import { createShell, StudioWorkspace } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   type MountedWorkspaceWindow,
   mountWorkspaceWindow,
 } from "../switcher/mount-workspace-window.tsx";
-import { RecentWorkspaces } from "../switcher/recent-workspaces.ts";
+import { RecentWorkspaces, type RememberedWorkspace } from "../switcher/recent-workspaces.ts";
 import { folderName, WorkspaceSwitcher } from "../switcher/workspace-switcher.ts";
 import type { CreatedSample } from "./sample-host.ts";
 
@@ -20,6 +20,8 @@ let element: HTMLElement;
 let mounted: MountedWorkspaceWindow | undefined;
 
 beforeEach(() => {
+  // jsdom has no popovers, which a menu closes itself with.
+  HTMLElement.prototype.hidePopover ??= () => {};
   window.matchMedia = (query) =>
     ({
       media: query,
@@ -37,10 +39,13 @@ afterEach(() => {
   element.remove();
 });
 
-/** The window on Welcome, with a sample host that answers `made`. */
-function start(made: CreatedSample) {
+/** The window with a sample host that answers `made`, on Welcome unless `remembered` shows it. */
+function start(made: CreatedSample, remembered: readonly RememberedWorkspace[] = []) {
   const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
-  const storage = new Map<string, string>();
+  const storage = new Map<string, string>(
+    remembered.length === 0 ? [] : [["halonic.workspace.recent", JSON.stringify(remembered)]],
+  );
+  const create = vi.fn(async (_known: readonly string[]) => made);
   const switcher = new WorkspaceSwitcher({
     pickFolder: async () => undefined,
     openFolder: async (location) => {
@@ -68,10 +73,16 @@ function start(made: CreatedSample) {
       switcher,
       platform: "windows",
       language: "en",
-      sample: { create: async () => made },
+      sample: { create },
     });
   });
-  return shell;
+  return { shell, create };
+}
+
+function chip(): HTMLButtonElement | undefined {
+  return [...element.querySelectorAll("button")].find((each) =>
+    each.textContent?.includes("Sample · test model"),
+  );
 }
 
 function trySample(): HTMLButtonElement | undefined {
@@ -82,7 +93,7 @@ function trySample(): HTMLButtonElement | undefined {
 
 verifies("workspace.try-sample", () => {
   it("opens the sample with the toast Created Acme sample", async () => {
-    const shell = start({
+    const { shell } = start({
       kind: "created",
       folder: "/docs/Acme sample",
       name: "Acme sample",
@@ -98,7 +109,11 @@ verifies("workspace.try-sample", () => {
   });
 
   it("says why on Welcome and opens nothing when it can't", async () => {
-    const shell = start({ kind: "cant", folder: "~/Documents", reason: "permission denied" });
+    const { shell } = start({
+      kind: "cant",
+      folder: "~/Documents",
+      reason: "permission denied",
+    });
 
     await act(async () => trySample()?.click());
 
@@ -107,5 +122,84 @@ verifies("workspace.try-sample", () => {
     );
     expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio");
     expect(shell.toasts.list()).toEqual([]);
+  });
+
+  it("remembers the new folder as the sample and shows the chip, not a trust badge", async () => {
+    const { create } = start({
+      kind: "created",
+      folder: "/docs/Acme sample",
+      name: "Acme sample",
+      trust: { kind: "trusted" },
+    });
+
+    await act(async () => trySample()?.click());
+
+    expect(create).toHaveBeenCalledWith([]);
+    expect(chip()?.textContent).toBe("Sample · test model");
+  });
+
+  it("shows no chip for a workspace that is not remembered as a sample", async () => {
+    start({ kind: "cant", folder: "~/Documents", reason: "x" }, [
+      { location: "/work/acme", name: "Acme" },
+    ]);
+
+    await act(async () => element.querySelector<HTMLButtonElement>("li button")?.click());
+
+    expect(element.querySelector('button[aria-label^="Workspace: "]')).not.toBeNull();
+    expect(chip()).toBeUndefined();
+  });
+
+  it("hands the host the known samples and reopens one without a Created toast", async () => {
+    const known = { location: "/docs/Acme sample", name: "Acme", sample: true } as const;
+    const { shell, create } = start({ kind: "existing", folder: known.location }, [known]);
+
+    await act(async () => trySample()?.click());
+
+    expect(create).toHaveBeenCalledWith([known.location]);
+    expect(shell.toasts.list().map((toast) => toast.title)).toEqual(["Opened Acme sample"]);
+    expect(chip()).toBeDefined();
+  });
+
+  it("Fresh copy writes a new copy asked with no known samples and says the old one stays", async () => {
+    const known = { location: "/docs/Acme sample", name: "Acme", sample: true } as const;
+    const { shell, create } = start(
+      {
+        kind: "created",
+        folder: "/docs/Acme sample 2",
+        name: "Acme sample 2",
+        trust: { kind: "trusted" },
+      },
+      [known],
+    );
+    await act(async () => element.querySelector<HTMLButtonElement>("li button")?.click());
+
+    await act(async () => chip()?.click());
+    const row = [...document.querySelectorAll('[role="menuitem"]')].find((each) =>
+      each.textContent?.includes("Fresh copy of the sample"),
+    );
+    await act(async () => (row as HTMLElement | undefined)?.click());
+
+    expect(create).toHaveBeenCalledWith([]);
+    expect(shell.toasts.list().map((toast) => toast.title)).toContain(
+      "Created Acme sample 2. Your earlier copy is still in Recent.",
+    );
+  });
+
+  it("says in a toast why Fresh copy couldn't write", async () => {
+    const known = { location: "/docs/Acme sample", name: "Acme", sample: true } as const;
+    const { shell } = start({ kind: "cant", folder: "~/Documents", reason: "permission denied" }, [
+      known,
+    ]);
+    await act(async () => element.querySelector<HTMLButtonElement>("li button")?.click());
+
+    await act(async () => chip()?.click());
+    const row = [...document.querySelectorAll('[role="menuitem"]')].find((each) =>
+      each.textContent?.includes("Fresh copy of the sample"),
+    );
+    await act(async () => (row as HTMLElement | undefined)?.click());
+
+    expect(shell.toasts.list().map((toast) => toast.title)).toContain(
+      "Can't create the sample in ~/Documents: permission denied.",
+    );
   });
 });

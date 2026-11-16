@@ -31,7 +31,7 @@ verifies("studio.try-sample", () => {
   it("copies the example into Acme sample and trusts it", async () => {
     const { host, store, trust } = hostOf([]);
 
-    expect(await host.create()).toEqual({
+    expect(await host.create([])).toEqual({
       kind: "created",
       folder: "/docs/Documents/Acme sample",
       name: "Acme sample",
@@ -46,7 +46,7 @@ verifies("studio.try-sample", () => {
   it("never writes into a folder that is there: it takes the next free name", async () => {
     const { host, calls } = hostOf(["Acme sample", "Acme sample 2"]);
 
-    const made = await host.create();
+    const made = await host.create([]);
 
     expect(made).toMatchObject({ kind: "created", name: "Acme sample 3" });
     expect(calls.filter(([command]) => command === "create_workspace_folder")).toEqual([
@@ -59,12 +59,33 @@ verifies("studio.try-sample", () => {
       create_workspace_folder: { reject: { kind: "parent_private" } },
     });
 
-    expect(await host.create()).toEqual({
+    expect(await host.create([])).toEqual({
       kind: "cant",
       folder: "/docs/Documents",
       reason: "Halonic keeps its own files there",
     });
     expect(await store.list()).toEqual([]);
     expect(trust).not.toHaveBeenCalled();
+  });
+
+  it("reopens the first taken name when the device knows it as a sample, and writes nothing", async () => {
+    const { host, store, trust, calls } = hostOf(["Acme sample"]);
+
+    expect(await host.create(["/docs/Documents/Acme sample"])).toEqual({
+      kind: "existing",
+      folder: "/docs/Documents/Acme sample",
+    });
+    expect(await store.list()).toEqual([]);
+    expect(trust).not.toHaveBeenCalled();
+    expect(calls.some(([command]) => command === "create_workspace_folder")).toBe(false);
+  });
+
+  it("passes by a taken folder it doesn't know, then reopens a known later copy", async () => {
+    const { host } = hostOf(["Acme sample", "Acme sample 2"]);
+
+    expect(await host.create(["/docs/Documents/Acme sample 2"])).toEqual({
+      kind: "existing",
+      folder: "/docs/Documents/Acme sample 2",
+    });
   });
 });

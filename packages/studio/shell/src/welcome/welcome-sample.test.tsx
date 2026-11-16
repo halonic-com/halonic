@@ -118,4 +118,27 @@ verifies("shell.welcome-sample", () => {
     );
     expect(sampleButton(root)?.getAttribute("aria-busy")).not.toBe("true");
   });
+
+  it("ends a sample's Recent row in a Sample tag, and names it in the row's label", () => {
+    const root = render(
+      <Welcome
+        onOpenFolder={async () => undefined}
+        recent={{
+          ...recent,
+          workspaces: [
+            { name: "Acme", location: "~/Documents/Acme sample", sample: true },
+            { name: "Acme", location: "~/Work/Acme" },
+          ],
+        }}
+      />,
+    );
+
+    const rows = [...root.querySelectorAll("li button")];
+    expect(rows.map((row) => row.getAttribute("aria-label"))).toEqual([
+      "Acme, ~/Documents/Acme sample, Sample",
+      "Acme, ~/Work/Acme",
+    ]);
+    expect(rows[0]?.textContent).toBe("Acme~/Documents/Acme sampleSample");
+    expect(rows[1]?.textContent).toBe("Acme~/Work/Acme");
+  });
 });

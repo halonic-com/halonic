@@ -7,7 +7,15 @@ export interface WelcomeRecentWorkspace {
   readonly location: string;
   /** Its name, such as "Acme Support". */
   readonly name: string;
+  /** True when it was created as the Acme sample on this device: its row ends in a Sample tag. */
+  readonly sample?: boolean | undefined;
 }
+
+/** The tag at the end of a sample's row: a fact, so an outline tag and not a tone chip (flow-first-run 2.1). */
+export const sampleTag = "Sample";
+
+const tagClasses =
+  "shrink-0 rounded-xs border border-border px-1.5 text-caption text-fg-muted contrast-more:border-border-control";
 
 /** The Welcome screen shows this many Recent rows at most (flow-workspace 2.1). */
 export const WELCOME_RECENT_ROWS = 5;
@@ -52,7 +60,7 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef }: WelcomeRe
               <button
                 ref={rowRef(workspace.location)}
                 type="button"
-                aria-label={`${workspace.name}, ${workspace.location}`}
+                aria-label={`${workspace.name}, ${workspace.location}${workspace.sample === true ? `, ${sampleTag}` : ""}`}
                 aria-busy={busy || undefined}
                 className={rowClasses}
                 onClick={() => {
@@ -65,6 +73,11 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef }: WelcomeRe
                   <span className="truncate text-body text-fg">{workspace.name}</span>
                   <span className="truncate text-caption text-fg-subtle">{workspace.location}</span>
                 </span>
+                {workspace.sample === true ? (
+                  <span aria-hidden="true" className={tagClasses}>
+                    {sampleTag}
+                  </span>
+                ) : null}
                 {busy ? (
                   <span aria-hidden="true" className="size-icon-sm shrink-0 *:size-full">
                     <Spinner />
