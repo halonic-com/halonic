@@ -2,6 +2,7 @@
 
 - Approval: the Try the sample card is in the board-approved first-run flow (flow-first-run rev 15, HAL-663, section 3.3); Liam approved the T15 plan that builds it on HAL-10917
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kETGtbyqGeYiCWdTt8dCSQLeKZfpLtXHg+Dw3sGwwTYba/84HTQgfzKtVDGVsQlszi761Pb7Tp+iGnzX/6nQCw==
 
 The Try the sample card (first-run.sample-card) needs three things from other packages, and each adds one sentence to a
 requirement without changing what it already says:
