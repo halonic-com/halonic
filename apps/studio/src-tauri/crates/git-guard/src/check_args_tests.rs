@@ -39,6 +39,10 @@ fn git_allow_list_allows_the_calls_the_adapter_makes() {
         "remote add origin https://git.acme.example/acme/notes.git",
         "remote set-url origin git@git.acme.example:acme/notes.git",
         "remote remove origin",
+        "config user.name Sam",
+        "config user.email sam@acme.example",
+        "config --get user.name",
+        "config --get user.email",
         "pull --ff-only origin main",
         "push --set-upstream origin HEAD:main",
         "push origin +feature:feature",
@@ -111,15 +115,11 @@ fn git_allow_list_refuses_later_options_that_run_programs_or_write_outside() {
     for call in calls {
         assert!(refused_option(call), "{call}");
     }
-    for call in [
-        "cat-file --textconv HEAD:a.yaml",
-        "config --file=../owned acme.key 1",
-    ] {
-        assert!(
-            matches!(check(call), Err(GitError::SubcommandNotAllowed { .. })),
-            "{call}"
-        );
-    }
+    assert!(matches!(
+        check("cat-file --textconv HEAD:a.yaml"),
+        Err(GitError::SubcommandNotAllowed { .. })
+    ));
+    assert!(refused_option("config --file=../owned user.name Sam"));
 }
 
 #[test]
@@ -130,7 +130,6 @@ fn git_allow_list_refuses_global_options_and_other_subcommands() {
         "--work-tree=/elsewhere status",
         "-C /elsewhere status",
         "--exec-path=/elsewhere status",
-        "config core.hooksPath hooks",
         "submodule update",
         "fetch origin",
         "clone https://git.acme.example/acme/notes.git",
@@ -318,4 +317,56 @@ fn git_allow_list_marks_network_and_diff_calls() {
     assert!(log.shows_diffs());
     assert_eq!(log.subcommand(), "log");
     assert_eq!(log.args(), ["log", "--oneline"]);
+}
+
+#[test]
+fn git_allow_list_lets_config_touch_only_the_identity() {
+    let refused = [
+        "config core.hooksPath hooks",
+        "config core.sshCommand touch%20owned",
+        "config url.x.insteadOf y",
+        "config alias.status !touch%20owned",
+        "config User.Name Sam",
+        "config user.signingkey abc",
+        "config user.name",
+        "config user.name Sam extra",
+        "config --get core.hooksPath",
+        "config --get user.name Sam",
+        "config --get",
+        "config --list",
+        "config",
+        "config user.name -x",
+        "config user.name ",
+        "config user.name --",
+    ];
+    for call in refused {
+        let result = check(call);
+        assert!(
+            matches!(
+                result,
+                Err(GitError::ArgumentNotAllowed { .. } | GitError::OptionNotAllowed { .. })
+            ),
+            "{call}: {result:?}"
+        );
+    }
+}
+
+#[test]
+fn git_allow_list_refuses_identity_values_git_would_misread() {
+    for value in ["-x", "", "   ", "Sam\nPlanted"] {
+        let call = vec![
+            "config".to_owned(),
+            "user.name".to_owned(),
+            value.to_owned(),
+        ];
+        assert!(check_args(&call).is_err(), "{value:?}");
+    }
+    let long = vec!["config".to_owned(), "user.name".to_owned(), "a".repeat(255)];
+    assert!(check_args(&long).is_err());
+    let spaced = vec![
+        "config".to_owned(),
+        "user.name".to_owned(),
+        "Sam Smith".to_owned(),
+    ];
+    assert!(check_args(&spaced).is_ok());
 }

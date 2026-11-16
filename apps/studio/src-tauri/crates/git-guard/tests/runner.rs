@@ -326,3 +326,23 @@ fn git_hardening_accepts_a_wrapper_that_passes_its_config_on() {
     halonic_git_guard::GitRunner::new(wrapper, &temporary.path().join("empty-hooks"))
         .expect("the wrapper is accepted");
 }
+
+#[test]
+fn git_hardening_sets_and_reads_the_identity_in_the_repository_config() {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    sandbox.git_ok("config user.name Sam");
+    sandbox.git_ok("config user.email sam@acme.example");
+    assert_eq!(sandbox.git_ok("config --get user.name"), "Sam\n");
+    assert_eq!(
+        sandbox.git_ok("config --get user.email"),
+        "sam@acme.example\n"
+    );
+    sandbox.write("notes.md", "acme notes\n");
+    sandbox.git_ok("add -A");
+    sandbox.git_ok("commit -m first-note");
+    assert_eq!(
+        sandbox.git_ok("log --format=%an,%ae"),
+        "Sam,sam@acme.example\n"
+    );
+}

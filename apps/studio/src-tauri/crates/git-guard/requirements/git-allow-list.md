@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-192, HAL-1508 (closes HAL-6 finding 7)
 
-When the Studio asks the shell to run git, the shell shall run it only if the first argument is a subcommand on the allow-list and every option matches, exactly, an option on that subcommand's list, with a value that meets the option's rule. If an option is shortened, bundled, unknown or given a wrong value, if a global option comes first, or if a URL appears anywhere but in `remote add` or `remote set-url`, then the shell shall refuse the call before git starts. After `--`, every argument shall count as a path. If a revision or path, before or after `--`, is absolute (`/`, `\`, `C:` or `\\server`) or has a `..` component, then the shell shall refuse the call, because `diff` reads a path outside the repository as `--no-index` and would print any file. If a remote name starts with `.`, or a URL's host or user starts with `-`, then the shell shall refuse the call. If a `commit` has neither `-m` nor `--message`, and is not `--amend --no-edit`, then the shell shall refuse it with `message_required`, because git would take its message from `commit.template`, a file the repository's config can name anywhere.
+When the Studio asks the shell to run git, the shell shall run it only if the first argument is a subcommand on the allow-list and every option matches, exactly, an option on that subcommand's list, with a value that meets the option's rule. If an option is shortened, bundled, unknown or given a wrong value, if a global option comes first, or if a URL appears anywhere but in `remote add` or `remote set-url`, then the shell shall refuse the call before git starts. After `--`, every argument shall count as a path. If a revision or path, before or after `--`, is absolute (`/`, `\`, `C:` or `\\server`) or has a `..` component, then the shell shall refuse the call, because `diff` reads a path outside the repository as `--no-index` and would print any file. If a `config` call is anything but setting or reading (`--get`) `user.name` or `user.email`, with a one-line value that doesn't start with `-`, then the shell shall refuse it, because any other key can name a program or a server. If a remote name starts with `.`, or a URL's host or user starts with `-`, then the shell shall refuse the call. If a `commit` has neither `-m` nor `--message`, and is not `--amend --no-edit`, then the shell shall refuse it with `message_required`, because git would take its message from `commit.template`, a file the repository's config can name anywhere.
 
 ## Examples
 
@@ -20,6 +20,9 @@ When the Studio asks the shell to run git, the shell shall run it only if the fi
 - Given the call `remote add origin ext::sh`,
   when it is checked,
   then it is refused; `remote add origin https://git.acme.example/acme.git` is allowed.
+- Given the call `config user.name Sam`,
+  when it is checked,
+  then it is allowed, and git writes it to the repository's own config; `config core.hooksPath hooks` and `config --get core.sshCommand` are refused.
 - Given the call `add -- --upload-pack=x`,
   when it is checked,
   then it is allowed, with `--upload-pack=x` as a path.
