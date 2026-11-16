@@ -12,8 +12,8 @@ use halonic_workspace_files::{
 use serde_json::{Value, json};
 
 use super::{
-    EntryAnswer, FileFolder, FileRefusal, RemoveAnswer, WatchEvent, WatchStart, WriteAnswer,
-    profile_fence, review_root, workspace_root,
+    EntryAnswer, FileFolder, FileRefusal, Making, RemoveAnswer, WatchEvent, WatchStart,
+    WriteAnswer, kept_copies, profile_fence, review_root, workspace_root,
 };
 
 fn as_json(value: impl serde::Serialize) -> Value {
@@ -119,6 +119,10 @@ fn files_take_the_folders_the_adapter_names() {
         Some(Some(FileFolder::Workspace))
     );
     assert_eq!(folder(json!("review")).ok(), Some(Some(FileFolder::Review)));
+    assert_eq!(
+        folder(json!("discarded")).ok(),
+        Some(Some(FileFolder::Discarded))
+    );
     assert!(
         folder(json!("runs")).is_err(),
         "no other folder is reachable"
@@ -234,4 +238,44 @@ fn files_name_a_special_file_refusal_for_the_page() {
     }));
     assert_eq!(refusal["kind"], "special_path");
     assert!(refusal.get("path").is_none(), "{refusal}");
+}
+
+#[test]
+fn files_keep_discarded_copies_in_the_studio_folder_made_by_a_write() {
+    let scratch = Scratch::new("discarded");
+    let workspace = scratch.0.join("workspace");
+    let root = kept_copies::root(&workspace, Making::Nothing).expect("a read makes nothing");
+    assert!(root.ends_with(".studio/discarded"), "{root:?}");
+    assert!(!workspace.join(".studio").exists());
+
+    let root = kept_copies::root(&workspace, Making::Folder).expect("a write makes the folders");
+    assert!(root.is_dir());
+    assert!(workspace.join(".studio/discarded").is_dir());
+}
+
+#[cfg(unix)]
+#[test]
+fn files_refuse_a_link_on_the_way_to_the_discarded_folder() {
+    let scratch = Scratch::new("discarded-link");
+    let workspace = scratch.0.join("workspace");
+    let elsewhere = scratch.0.join("elsewhere");
+    std::fs::create_dir_all(&elsewhere).expect("the target");
+    std::os::unix::fs::symlink(&elsewhere, workspace.join(".studio")).expect("the link");
+
+    let refusal = kept_copies::root(&workspace, Making::Folder).expect_err("a link is refused");
+    assert_eq!(refusal.kind, "private_path");
+    assert!(
+        std::fs::read_dir(&elsewhere)
+            .expect("target")
+            .next()
+            .is_none(),
+        "nothing was made behind the link"
+    );
+}
+
+#[test]
+fn files_let_only_a_write_reach_the_discarded_folder() {
+    assert!(kept_copies::only_writes(Some(FileFolder::Discarded)).is_err());
+    assert!(kept_copies::only_writes(Some(FileFolder::Review)).is_ok());
+    assert!(kept_copies::only_writes(None).is_ok());
 }

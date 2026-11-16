@@ -1,7 +1,7 @@
 import { EmptyState, ExternalLink, List } from "@halonicjs/studio-kit";
 import type { PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useRef, useState, useSyncExternalStore } from "react";
-import type { ChangesRead } from "../api.ts";
+import { type ChangesRead, type DeveloperView, DeveloperViewService } from "../api.ts";
 import { type ChangesList, ChangesListService, type ChangesListState } from "../changes-list.ts";
 import { pageWords, stateWords } from "../changes-words.ts";
 import { loadFailureReason } from "../load-failure.ts";
@@ -10,12 +10,19 @@ import { CreateVersionDialog } from "./create-version-dialog.tsx";
 
 /** The Changes place's page: the open workspace's changes, from `ChangesListService`. */
 export function ChangesPage({ context }: PlaceViewProps) {
-  return <ChangesView list={context.services.get(ChangesListService)} />;
+  return (
+    <ChangesView
+      list={context.services.get(ChangesListService)}
+      developerView={context.services.find(DeveloperViewService)}
+    />
+  );
 }
 
 /** Props for {@link ChangesView}. */
 export interface ChangesViewProps {
   readonly list: ChangesList;
+  /** Whether the developer view is on; without it the view is off. */
+  readonly developerView?: DeveloperView | undefined;
 }
 
 /**
@@ -26,9 +33,10 @@ export interface ChangesViewProps {
  *
  * Not here yet: History and the sharing strip.
  */
-export function ChangesView({ list }: ChangesViewProps) {
+export function ChangesView({ list, developerView }: ChangesViewProps) {
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
   const state = useSyncExternalStore(subscribe, () => list.state);
+  const developer = useDeveloperView(developerView);
   const heading = useRef<HTMLHeadingElement>(null);
   return (
     <div className="flex w-full flex-col gap-4 px-6 py-5">
@@ -37,7 +45,12 @@ export function ChangesView({ list }: ChangesViewProps) {
           {pageWords.title}
         </h1>
       </header>
-      <PageBody list={list} state={state} focusHeading={() => heading.current?.focus()} />
+      <PageBody
+        list={list}
+        state={state}
+        developer={developer}
+        focusHeading={() => heading.current?.focus()}
+      />
       {state.version === undefined ? null : (
         <CreateVersionDialog
           list={list}
@@ -53,10 +66,12 @@ export function ChangesView({ list }: ChangesViewProps) {
 function PageBody({
   list,
   state,
+  developer,
   focusHeading,
 }: {
   readonly list: ChangesList;
   readonly state: ChangesListState;
+  readonly developer: boolean;
   readonly focusHeading: () => void;
 }) {
   const retry = () => void list.refresh();
@@ -69,7 +84,13 @@ function PageBody({
       {state.error === undefined ? null : (
         <LoadFailed list={list} state={state} focusHeading={focusHeading} />
       )}
-      <ReadBody list={list} state={state} read={read} focusHeading={focusHeading} />
+      <ReadBody
+        list={list}
+        state={state}
+        read={read}
+        developer={developer}
+        focusHeading={focusHeading}
+      />
     </>
   );
 }
@@ -79,11 +100,13 @@ function ReadBody({
   list,
   state,
   read,
+  developer,
   focusHeading,
 }: {
   readonly list: ChangesList;
   readonly state: ChangesListState;
   readonly read: ChangesRead;
+  readonly developer: boolean;
   readonly focusHeading: () => void;
 }) {
   if (read.kind === "not-a-repository") {
@@ -103,7 +126,16 @@ function ReadBody({
   if (read.changes.length === 0) {
     return <p className="text-body text-fg-muted">{stateWords.nothingChanged}</p>;
   }
-  return <ChangeList list={list} files={state.files} />;
+  return <ChangeList list={list} files={state.files} developer={developer} />;
+}
+
+/** Whether the developer view is on, read again when it is turned on or off. */
+function useDeveloperView(view: DeveloperView | undefined): boolean {
+  const subscribe = useCallback(
+    (listener: () => void) => view?.subscribe(listener) ?? (() => undefined),
+    [view],
+  );
+  return useSyncExternalStore(subscribe, () => view?.enabled() ?? false);
 }
 
 /** Runs `work`, and says while it runs so a button can show it's busy. */

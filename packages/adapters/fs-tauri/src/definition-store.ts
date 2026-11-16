@@ -49,6 +49,10 @@ export const webCryptoDigest: Digest = {
  * `reviewRecords`. Nothing outside Halonic edits them, so that store's watch
  * reports nothing, as the port says of a store that sees no outside change.
  *
+ * With `folder: "discarded"` the store only writes, into the workspace's
+ * `.studio/discarded`, which the workspace store refuses as private; the
+ * shell takes nothing else for it.
+ *
  * @example
  * const store = new TauriDefinitionStore(shell, workspace);
  * const reviewRecords = new TauriDefinitionStore(shell, workspace, { folder: "review" });
@@ -64,7 +68,7 @@ export class TauriDefinitionStore implements DefinitionStore {
   /**
    * @param shell - the shell's IPC with a way to open channels, built from `window.__TAURI_INTERNALS__`
    * @param workspace - the workspace folder, as the person opened it in the shell
-   * @param options.folder - which of the workspace's folders the store keeps: `"workspace"` (the default) or `"review"`
+   * @param options.folder - which of the workspace's folders the store keeps: `"workspace"` (the default), `"review"` or `"discarded"`
    */
   constructor(
     shell: TauriFileShell,

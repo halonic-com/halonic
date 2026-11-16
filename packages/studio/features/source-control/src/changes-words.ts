@@ -53,6 +53,30 @@ export const undoWords = {
   changedMeanwhile: "The file changed while you were looking. Look at the change again.",
 };
 
+/** Discard: Undo these changes, and in the developer view Discard and Discard this part. */
+export const discardWords = {
+  /** The file's button; the developer view says `discard` for the same action. */
+  undoTheseChanges: "Undo these changes",
+  discard: "Discard",
+  discardThisPart: "Discard this part",
+  showLines: "Show lines",
+  hideLines: "Hide lines",
+  /** The line diff's heading, read by a screen reader. */
+  lines: (path: string) => `Changed lines in ${path}`,
+  /** The toast after a discard: "Discarded changes in 1 file". */
+  discarded: (count: number) =>
+    count === 1 ? "Discarded changes in 1 file" : `Discarded changes in ${count} files`,
+  partDiscarded: "Discarded this part",
+  failed: "Couldn't discard these changes",
+  partFailed: "Couldn't discard this part",
+  /** The toast's Undo, when putting the changes back didn't work. */
+  undoFailed: "Couldn't put the changes back",
+  cantDiscard: "These changes can't be discarded here.",
+  addedOutside:
+    "Another program added this file to a version. Discard it there, or create the version here.",
+  noCopy: "Halonic couldn't keep a copy, so nothing was discarded.",
+};
+
 /** Create version (checklist part 2, 2.6; microcopy revision 94, 16). */
 export const versionWords = {
   /** The heading over the changes, with the count beside it. */

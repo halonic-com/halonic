@@ -120,6 +120,10 @@ pub enum FileFolder {
     /// One source's approvals of listed tools in the opened workspace, kept
     /// in the profile and never in the workspace (HAL-8868). Needs `source`.
     ToolApprovals,
+    /// `.studio/discarded` in the workspace, where a discard keeps a copy of
+    /// what it threw away. Only a write goes there: a list, read or remove of
+    /// it is refused, and a link on the way to it is too.
+    Discarded,
 }
 
 /// The real path of `workspace`, which must be a folder the person opened
@@ -202,6 +206,10 @@ where
                 }
                 (root, Fence::Outside)
             }
+            FileFolder::Discarded => {
+                let real = workspace_root(&opened, &workspace)?;
+                (kept_copies::root(&real, making)?, Fence::Outside)
+            }
             FileFolder::ToolApprovals => {
                 let root =
                     tool_approvals::source_root(&opened, &profile, &workspace, source.as_deref())?;
@@ -227,6 +235,7 @@ pub async fn fs_list<R: Runtime>(
     source: Option<String>,
     dir: Option<String>,
 ) -> Result<Vec<String>, FileRefusal> {
+    kept_copies::only_writes(folder)?;
     tool_approvals::check_list(folder, dir.as_deref())?;
     in_workspace(
         app,
@@ -248,6 +257,7 @@ pub async fn fs_read<R: Runtime>(
     source: Option<String>,
     path: String,
 ) -> Result<Option<String>, FileRefusal> {
+    kept_copies::only_writes(folder)?;
     tool_approvals::check_file(folder, &path)?;
     in_workspace(
         app,
@@ -299,6 +309,7 @@ pub async fn fs_remove<R: Runtime>(
     path: String,
     expected: Option<String>,
 ) -> Result<RemoveAnswer, FileRefusal> {
+    kept_copies::only_writes(folder)?;
     tool_approvals::check_file(folder, &path)?;
     in_workspace(
         app,
@@ -470,6 +481,8 @@ fn look_while_open(
     FolderSnapshot::of(root, fence)
 }
 
+#[path = "kept_copies.rs"]
+mod kept_copies;
 #[path = "tool_approvals.rs"]
 mod tool_approvals;
 

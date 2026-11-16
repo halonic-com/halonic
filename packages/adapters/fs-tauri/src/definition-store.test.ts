@@ -255,3 +255,28 @@ verifies("fs-tauri.review-records-on-disk", () => {
     });
   });
 });
+
+verifies("fs-tauri.discarded-copies", () => {
+  describe("TauriDefinitionStore for the copies a discard keeps", () => {
+    it("writes into the discarded folder with folder: discarded, leaving the workspace's files alone", async () => {
+      const shell = new FakeFileShell({ opened: [acme], files: { "a.yaml": "workspace" } });
+      const copies = new TauriDefinitionStore(shell, acme, { folder: "discarded" });
+      await copies.write("2026-11-16T10-00-00.000Z/hubs/a.yaml", "mine\n");
+      expect(shell.discarded.files.get("2026-11-16T10-00-00.000Z/hubs/a.yaml")).toBe("mine\n");
+      expect([...shell.files.keys()]).toEqual(["a.yaml"]);
+      expect(shell.calls.map(({ command, args }) => [command, args?.["folder"]])).toEqual([
+        ["fs_write", "discarded"],
+      ]);
+    });
+
+    it("has a fake shell that takes only a write for the discarded folder", async () => {
+      const shell = new FakeFileShell({ opened: [acme] });
+      for (const command of ["fs_list", "fs_read", "fs_remove"]) {
+        const failure = await rejection(
+          shell.invoke(command, { workspace: acme, folder: "discarded", path: "a", dir: null }),
+        );
+        expect(isFileRefusal(failure) && failure.kind).toBe("private_path");
+      }
+    });
+  });
+});

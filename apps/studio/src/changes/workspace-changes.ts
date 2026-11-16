@@ -5,6 +5,7 @@ import type {
   ChangesRead,
   ChangesSource,
   FileTexts,
+  KeptFile,
   ReplaceResult,
   VersionInput,
 } from "@halonicjs/studio-feature-source-control/api";
@@ -26,13 +27,20 @@ export interface WorkspaceChangesOptions {
    */
   readonly git: (args: readonly string[]) => Promise<GitAnswer>;
   /** The folder's files, for `.gitignore`. */
-  readonly files: Pick<DefinitionStore, "read" | "write">;
+  readonly files: Pick<DefinitionStore, "read" | "write" | "remove">;
+  /**
+   * Where a discard keeps its copies, a folder of its own: the folder's files refuse `.studio`.
+   * Every path given to it is relative to that folder.
+   */
+  readonly copies: Pick<DefinitionStore, "write">;
   /** Hashes a file's text for the write-if-unchanged check. */
   readonly digest: Sha256;
   /** Calls its listener when the window comes to the front; returns a function that stops it. */
   readonly onFocus: (listener: () => void) => () => void;
   /** Calls its listener when a file of the workspace changed; returns a function that stops it. */
   readonly onFilesChanged: (listener: () => void) => () => void;
+  /** The time, for the name of a kept copy; the system clock when left out. */
+  readonly now?: () => Date;
 }
 
 /** The line that keeps Halonic's own data out of the history. */
@@ -69,11 +77,25 @@ export class WorkspaceChanges implements ChangesSource {
     return { before: await this.#lastVersionOf(change, after), after };
   }
 
-  async replaceFile(path: string, text: string, expected: string): Promise<ReplaceResult> {
+  async replaceFile(path: string, text: string, expected: string | null): Promise<ReplaceResult> {
     const result = await this.#options.files.write(path, text, {
-      expected: await contentDigest(expected, this.#options.digest),
+      expected: expected === null ? "absent" : await contentDigest(expected, this.#options.digest),
     });
     return result.status === "written" ? "replaced" : "changed-on-disk";
+  }
+
+  async removeFile(path: string, expected: string): Promise<ReplaceResult> {
+    const result = await this.#options.files.remove(path, {
+      expected: await contentDigest(expected, this.#options.digest),
+    });
+    return result.status === "removed" ? "replaced" : "changed-on-disk";
+  }
+
+  async keepCopy(files: readonly KeptFile[]): Promise<void> {
+    const stamp = (this.#options.now?.() ?? new Date()).toISOString().replaceAll(":", "-");
+    for (const file of files) {
+      await this.#options.copies.write(`${stamp}/${file.path}`, file.text);
+    }
   }
 
   async createVersion({ message, paths }: VersionInput): Promise<void> {

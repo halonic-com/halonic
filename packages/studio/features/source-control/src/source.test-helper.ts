@@ -1,4 +1,4 @@
-import type { ChangesRead, ChangesSource, FileTexts, VersionInput } from "./api.ts";
+import type { ChangesRead, ChangesSource, FileTexts, KeptFile, VersionInput } from "./api.ts";
 
 /**
  * A source whose answer and failures a test sets, and which a test can wake as the window coming
@@ -11,7 +11,10 @@ export function fakeSource(initial: ChangesRead) {
   let versionFailure: unknown;
   let turnedOn = 0;
   const texts = new Map<string, FileTexts>();
-  const replaced: { path: string; text: string; expected: string }[] = [];
+  const replaced: { path: string; text: string; expected: string | null }[] = [];
+  const removed: { path: string; expected: string }[] = [];
+  const kept: KeptFile[][] = [];
+  let keepFailure: unknown;
   const versions: VersionInput[] = [];
   const listeners = new Set<() => void>();
   const source: ChangesSource = {
@@ -27,9 +30,20 @@ export function fakeSource(initial: ChangesRead) {
     replaceFile: async (path, text, expected) => {
       replaced.push({ path, text, expected });
       const current = texts.get(path);
-      if (current?.after !== expected) return "changed-on-disk";
-      texts.set(path, { ...current, after: text });
+      if ((current?.after ?? null) !== expected) return "changed-on-disk";
+      texts.set(path, { before: current?.before ?? null, after: text });
       return "replaced";
+    },
+    removeFile: async (path, expected) => {
+      removed.push({ path, expected });
+      const current = texts.get(path);
+      if (current?.after !== expected) return "changed-on-disk";
+      texts.set(path, { ...current, after: null });
+      return "replaced";
+    },
+    keepCopy: async (files) => {
+      if (keepFailure !== undefined) throw keepFailure;
+      kept.push([...files]);
     },
     createVersion: async (input) => {
       if (versionFailure !== undefined) throw versionFailure;
@@ -61,6 +75,14 @@ export function fakeSource(initial: ChangesRead) {
     },
     /** Every `replaceFile` call, in order. */
     replaced,
+    /** Every `removeFile` call, in order. */
+    removed,
+    /** The files each `keepCopy` call was given, in order. */
+    kept,
+    /** Makes keeping a copy fail with `error`; `undefined` makes it work again. */
+    failKeep: (error: unknown) => {
+      keepFailure = error;
+    },
     /** Makes reads fail with `error`; `undefined` makes them work again. */
     failReads: (error: unknown) => {
       readFailure = error;

@@ -56,9 +56,12 @@ export const fileCommands = {
  * Which folder of a workspace a file command works in: `"workspace"`, the
  * workspace's own files, or `"review"`, the assistant's changes to review,
  * which are kept in the profile and never in the workspace (HAL-3417), at
- * `reviewFolder()` of `workspaceFolders` in `@halonicjs/profile`.
+ * `reviewFolder()` of `workspaceFolders` in `@halonicjs/profile`, or
+ * `"discarded"`, `.studio/discarded` in the workspace, where a discard keeps
+ * a copy of what it threw away. The shell takes only `write` for it: a list,
+ * read or remove is refused.
  */
-export type TauriFileFolder = "workspace" | "review";
+export type TauriFileFolder = "workspace" | "review" | "discarded";
 
 /** Why the shell refused a file call: the `kind` of its error, which names no secret. */
 export const fileRefusalKinds = [
