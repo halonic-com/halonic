@@ -14,7 +14,9 @@ the Library. Before, it opened the Library and left the person to find where a c
   `Source` line adds HAL-9823.
 - The Library gets a command, `library.new-connector`, that shows the Connectors tab and opens
   New connector (the P8d request path, nothing filled in). The Inbox runs it by id, as it can't
-  import the Library.
+  import the Library. It is also listed as **New connector** in the command palette (Ctrl K, and
+  phone search), reusing the approved label; where there is no new-connector host it opens the
+  Library and no dialog.
 - With one or more Google accounts waiting, nothing changes. The note is still kept in the card.
 
 ## Why
@@ -27,3 +29,4 @@ test that expected `openPlace("library")` now expects New connector to be opened
 ## Covers
 
 - inbox.secret-hold
+- library.new-connector
