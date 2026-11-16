@@ -110,6 +110,25 @@ function Assert-UserData([hashtable]$Before) {
   Write-Output "user data unchanged: $($Before.Count) files"
 }
 
+# HAL-11048: the reopen after "Restart to update" sometimes isn't seen. Says
+# what is running, what the installer left behind and what Windows logged, so
+# a failed run tells "never started", "started and died" and "slow" apart.
+function Write-ReopenReport([datetime]$Since, [hashtable]$Seen) {
+  Write-Output "--- reopen report: no Halonic within 180 s of update_restart ($($Since.ToString('HH:mm:ss')) local) ---"
+  Write-Output "installed: $(Get-InstalledVersion); Halonic processes seen while waiting: $(if ($Seen.Count) { ($Seen.GetEnumerator() | ForEach-Object { "$($_.Key) from $($_.Value.ToString('HH:mm:ss'))" }) -join ', ' } else { 'none' })"
+  Get-Process | Where-Object { $_.Name -match 'Halonic|setup|installer|agent|explorer|msedgewebview2' } | Sort-Object Name | Format-Table Id, Name, SessionId, StartTime, Path -AutoSize | Out-String -Width 250 | Write-Output
+  Get-CimInstance Win32_Process -Filter "Name like '%setup%' or Name like '%installer%' or Name like 'Halonic%'" -ErrorAction SilentlyContinue | ForEach-Object { "$($_.ProcessId) parent $($_.ParentProcessId): $($_.CommandLine)" } | Write-Output
+  Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = $Since.AddSeconds(-30) } -ErrorAction SilentlyContinue |
+    Where-Object { $_.Message -match 'Halonic|halonic-agent-host|msedgewebview2' } | Select-Object -First 10 |
+    ForEach-Object { "$($_.TimeCreated.ToString('HH:mm:ss')) $($_.ProviderName) $($_.Id): $($_.Message -replace '\s+', ' ')" } | Write-Output
+  $updates = Join-Path $profileFolder 'updates'
+  Get-ChildItem $updates -Recurse -ErrorAction SilentlyContinue | ForEach-Object { "$($_.FullName)  $($_.Length)  $($_.LastWriteTime.ToString('HH:mm:ss'))" } | Write-Output
+  Get-Content (Join-Path $updates 'updates.log') -ErrorAction SilentlyContinue | Write-Output
+  Get-Content $record -ErrorAction SilentlyContinue | Write-Output
+  Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic' -ErrorAction SilentlyContinue | Select-Object DisplayVersion, InstallLocation | Format-List | Out-String | Write-Output
+  Get-ChildItem $dir -ErrorAction SilentlyContinue | ForEach-Object { "$($_.Name)  $($_.LastWriteTime.ToString('HH:mm:ss'))" } | Write-Output
+}
+
 New-Item -ItemType Directory -Force $Serve | Out-Null
 $server = Start-Process python -ArgumentList '-m', 'http.server', "$port", '--bind', '127.0.0.1', '--directory', $Serve -PassThru -WindowStyle Hidden
 try {
@@ -137,15 +156,23 @@ try {
   Start-Halonic
   Invoke-Driver wait ready 300
   Invoke-Driver call update_restart
+  $reopenFrom = Get-Date
   $reopened = $false
+  $seen = @{}
   foreach ($i in 1..90) {
     Start-Sleep -Seconds 2
+    # Note every Halonic that shows up, so a relaunch that starts and dies
+    # again within one 2 s step still leaves a trace.
+    foreach ($proc in (Get-Process Halonic -ErrorAction SilentlyContinue)) { $seen[$proc.Id] = $proc.StartTime }
     if ((Get-InstalledVersion) -eq '0.1.1' -and (Get-Process Halonic -ErrorAction SilentlyContinue)) {
       $reopened = $true
       break
     }
   }
-  if (-not $reopened) { throw "Halonic didn't reopen as 0.1.1 (installed: $(Get-InstalledVersion))" }
+  if (-not $reopened) {
+    Write-ReopenReport $reopenFrom $seen
+    throw "Halonic didn't reopen as 0.1.1 (installed: $(Get-InstalledVersion))"
+  }
   $entry = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic'
   if ($entry.DisplayVersion -ne '0.1.1') { throw "the uninstall entry says $($entry.DisplayVersion)" }
   # The new version's first start reads the install record and clears it,
