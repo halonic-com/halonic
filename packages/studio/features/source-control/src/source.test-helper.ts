@@ -140,13 +140,13 @@ export function fakeSource(initial: ChangesRead) {
     failTurnOn: (error: unknown) => {
       turnOnFailure = error;
     },
-    /** Whether the folder has a place to get updates from. */
     /** Every address `addRemote` was given, in order. */
     remotes,
     /** Makes adding a share address fail with `error`; `undefined` makes it work again. */
     failRemote: (error: unknown) => {
       remoteFailure = error;
     },
+    /** Whether the folder has a place to get updates from. */
     setRemote: (has: boolean) => {
       remote = has;
     },

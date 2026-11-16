@@ -470,6 +470,8 @@ export class ChangesList {
     try {
       await this.source.addRemote(trimmed);
     } catch (error) {
+      // An address may have been added outside Halonic while the dialog was open.
+      await this.refresh();
       return loadFailureReason(error);
     }
     await this.refresh();

@@ -34,5 +34,16 @@ verifies("source-control.share-address", () => {
       );
       expect(list.state.hasRemote).toBe(false);
     });
+
+    it("reads the folder again when git refuses, so a remote added elsewhere shows", async () => {
+      const fake = fakeSource({ kind: "ready", changes: [] });
+      fake.failRemote(new KindedError("unavailable", "Remote origin already exists."));
+      const list = new ChangesList(fake.source);
+      await settle();
+      expect(list.state.hasRemote).toBe(false);
+      fake.setRemote(true);
+      await list.addShareAddress("https://github.com/acme/agents.git");
+      expect(list.state.hasRemote).toBe(true);
+    });
   });
 });
