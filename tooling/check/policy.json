@@ -56,14 +56,17 @@
     ],
     "@halonicjs/app": [
       "./listed-tools",
+      "./outside-run",
       "./routines"
     ],
     "@halonicjs/engine": [
       "./testing"
     ],
     "@halonicjs/format": [
+      "./connector",
       "./integration",
       "./recording",
+      "./routine",
       "./runtime-export"
     ],
     "@halonicjs/std": [

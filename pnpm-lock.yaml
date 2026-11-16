@@ -747,9 +747,15 @@ importers:
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../../core/events
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../core/format
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports
+      '@halonicjs/schema-kit':
+        specifier: workspace:*
+        version: link:../../core/schema-kit
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../core/std
@@ -3312,9 +3318,21 @@ importers:
 
   packages/targets/cloudflare/deploy:
     dependencies:
+      '@halonicjs/adapter-cloudflare-storage':
+        specifier: workspace:*
+        version: link:../../../adapters/cloudflare-storage
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../../core/app
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../../core/format
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../../core/ports
+      '@halonicjs/workspace':
+        specifier: workspace:*
+        version: link:../../../core/workspace
     devDependencies:
       '@halonicjs/testing-spec':
         specifier: workspace:*
@@ -3349,9 +3367,6 @@ importers:
       '@halonicjs/adapter-token-store':
         specifier: workspace:*
         version: link:../../../adapters/token-store
-      '@halonicjs/app':
-        specifier: workspace:*
-        version: link:../../../core/app
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../../core/format
@@ -3367,9 +3382,6 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std
-      '@halonicjs/workspace':
-        specifier: workspace:*
-        version: link:../../../core/workspace
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'

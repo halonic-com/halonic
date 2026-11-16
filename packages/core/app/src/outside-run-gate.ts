@@ -3,7 +3,7 @@
 // runs this before every such call (`server.outside-run-connector-gate`), so
 // a served Studio can't reach a connector past the checks a run applies.
 
-import { type Connector, needsApproval } from "@halonicjs/format";
+import { type Connector, needsApproval } from "@halonicjs/format/connector";
 import type { ConnectionKey } from "@halonicjs/ports";
 import type { SendingSettings } from "./connection-settings.ts";
 import { checkToolCall } from "./tool-call-check.ts";

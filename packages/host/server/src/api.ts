@@ -1,4 +1,5 @@
-import type { OutsideRunCall, SendingSettings } from "@halonicjs/app";
+import type { SendingSettings } from "@halonicjs/app";
+import type { OutsideRunCall } from "@halonicjs/app/outside-run";
 import type {
   ClientSecretStore,
   ServiceResult,

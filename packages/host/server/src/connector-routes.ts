@@ -1,4 +1,4 @@
-import { checkOutsideRunCall, type OutsideRunCall } from "@halonicjs/app";
+import { checkOutsideRunCall, type OutsideRunCall } from "@halonicjs/app/outside-run";
 import type { ConnectorCallPorts, ServerPorts } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { isJsonRequest } from "./run-routes.ts";

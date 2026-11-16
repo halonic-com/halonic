@@ -13,7 +13,9 @@
   },
   "dependencies": {
     "@halonicjs/events": "workspace:*",
+    "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
+    "@halonicjs/schema-kit": "workspace:*",
     "@halonicjs/std": "workspace:*"
   },
   "devDependencies": {

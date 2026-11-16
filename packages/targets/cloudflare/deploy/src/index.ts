@@ -60,3 +60,4 @@ export type { VersionNote } from "./version-note.ts";
 export { parseVersionNote, versionNote } from "./version-note.ts";
 export type { ImportedCounts, WorkerTransferOptions } from "./worker-transfer.ts";
 export { exportFromWorker, importToWorker } from "./worker-transfer.ts";
+export { writeWorkspaceSnapshot } from "./write-workspace-snapshot.ts";

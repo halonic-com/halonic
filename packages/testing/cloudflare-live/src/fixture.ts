@@ -1,10 +1,10 @@
-import { writeDefinitionSnapshot } from "@halonicjs/adapter-cloudflare-storage";
 import {
   type CloudflareApi,
   provision,
   resourcesFor,
   type UploadAndSwitchOptions,
   uploadAndSwitch,
+  writeWorkspaceSnapshot,
 } from "@halonicjs/target-cloudflare-deploy";
 import type { CloudflareRest } from "./cloudflare-rest.ts";
 import type { targetVariables } from "./live-target.ts";
@@ -95,7 +95,7 @@ export async function deployWebhookFixture(options: FixtureOptions): Promise<Dep
     await api.createResource(accountId, { kind: "bucket", name: definitions, markedIn: database });
     const databaseId = await rest.d1DatabaseId(accountId, database);
 
-    await writeDefinitionSnapshot(
+    await writeWorkspaceSnapshot(
       {
         async put(key, value) {
           written.push([definitions, key]);

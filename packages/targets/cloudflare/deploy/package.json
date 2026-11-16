@@ -12,7 +12,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@halonicjs/format": "workspace:*"
+    "@halonicjs/adapter-cloudflare-storage": "workspace:*",
+    "@halonicjs/app": "workspace:*",
+    "@halonicjs/format": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/workspace": "workspace:*"
   },
   "devDependencies": {
     "@halonicjs/testing-spec": "workspace:*",
