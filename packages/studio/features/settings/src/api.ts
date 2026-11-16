@@ -186,3 +186,10 @@ export const RestartRunsService: ServiceKey<RestartRunsHost> =
 
 export type { SandboxChoiceHost } from "./sandbox-choice/sandbox-choice-host.ts";
 export { SandboxChoiceHostService } from "./sandbox-choice/sandbox-choice-host.ts";
+export type { SandboxCard, SandboxChoiceView } from "./sandbox-choice/sandbox-choice-view.ts";
+export { sandboxChoiceView } from "./sandbox-choice/sandbox-choice-view.ts";
+export type {
+  SandboxChoiceFlowProps,
+  SandboxChoiceScreen,
+} from "./sandbox-choice/ui/sandbox-choice-flow.tsx";
+export { SandboxChoiceFlow } from "./sandbox-choice/ui/sandbox-choice-flow.tsx";

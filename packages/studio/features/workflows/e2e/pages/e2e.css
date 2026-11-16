@@ -9,5 +9,6 @@
 @source "../../src";
 @source "../../../../kit/src";
 @source "../../../runs/src";
+@source "../../../settings/src";
 @source ".";
 @source not "../../../../**/*.md";
