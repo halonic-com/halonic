@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-10833 (Liam, CTO; review point 1 of HAL-10827, relay design approved on HAL-10835)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:pnXglHB1sYnRaFM1h+QewpqUmr6r7yJVUXU9K9rZ+y81UfC+BlnhR0ijaYtCpwyPT0pRBmlve5RnYC51di+mBw==
 - Task: HAL-10833
 
 The agent host gets one new call to Studio on the bridge's call channel, `approvals.remote-decision`,
