@@ -9,7 +9,7 @@ export const STILL_LOADING_AFTER_MS = 10_000;
 /** Whether something has loaded: waiting for it, the reason it didn't, or the value. */
 export type Load<Value> =
   | { readonly kind: "loading"; readonly skeleton: boolean; readonly slow: boolean }
-  | { readonly kind: "failed"; readonly reason: string }
+  | { readonly kind: "failed"; readonly reason: string; readonly retrying: boolean }
   | { readonly kind: "ready"; readonly value: Value };
 
 /**
@@ -25,15 +25,20 @@ export type LoadSource<Value> = {
 /**
  * Reads a value, and again when the source says it may have changed. A read after the first keeps
  * the value on screen, so a refresh never shows a skeleton (D1, D10). Only the newest read's answer
- * is used, and a failed read after the first keeps what is shown. **Try again** starts the
- * skeleton and "Still loading" timers over.
+ * is used, and a failed read after the first keeps what is shown. **Try again** after a failure
+ * keeps the failure on screen with `retrying` true, never a skeleton, and calls `onRetried` when
+ * the read works, so the screen can move focus off the button that is gone. **Try again** while
+ * "Still loading" shows starts the skeleton and the timers over.
  */
-export function useLoad<Value>(source: LoadSource<Value>): {
+export function useLoad<Value>(
+  source: LoadSource<Value>,
+  onRetried?: () => void,
+): {
   readonly load: Load<Value>;
   readonly retry: () => void;
 } {
   const [result, setResult] = useState<
-    | { readonly kind: "failed"; readonly reason: string }
+    | { readonly kind: "failed"; readonly reason: string; readonly retrying: boolean }
     | { readonly kind: "ready"; readonly value: Value }
     | undefined
   >();
@@ -41,24 +46,36 @@ export function useLoad<Value>(source: LoadSource<Value>): {
   // Counts the starts, so a retry restarts the timers even though `waiting` never went false.
   const [attempt, setAttempt] = useState(0);
   const newestRead = useRef(0);
+  const retried = useRef(onRetried);
+  retried.current = onRetried;
+  // Set by a Try again after a failure, until that read is answered.
+  const retryingFailure = useRef(false);
 
   const read = useCallback(() => {
     const mine = ++newestRead.current;
     source.fetch().then(
       (value) => {
-        if (mine === newestRead.current) setResult({ kind: "ready", value });
+        if (mine !== newestRead.current) return;
+        setResult({ kind: "ready", value });
+        if (!retryingFailure.current) return;
+        retryingFailure.current = false;
+        retried.current?.();
       },
       (error: unknown) => {
+        if (mine !== newestRead.current) return;
+        retryingFailure.current = false;
         // A failed refresh keeps the value on screen, so the person's zoom stays (D9).
-        if (mine === newestRead.current)
-          setResult((was) =>
-            was?.kind === "ready" ? was : { kind: "failed", reason: failureReason(error) },
-          );
+        setResult((was) =>
+          was?.kind === "ready"
+            ? was
+            : { kind: "failed", reason: failureReason(error), retrying: false },
+        );
       },
     );
   }, [source]);
 
   useEffect(() => {
+    retryingFailure.current = false;
     setResult(undefined);
     setWaited({ skeleton: false, slow: false });
     setAttempt((was) => was + 1);
@@ -87,12 +104,18 @@ export function useLoad<Value>(source: LoadSource<Value>): {
     };
   }, [waiting, attempt]);
 
+  const failed = result?.kind === "failed";
   const retry = useCallback(() => {
-    setResult(undefined);
-    setWaited({ skeleton: false, slow: false });
-    setAttempt((was) => was + 1);
+    if (failed) {
+      retryingFailure.current = true;
+      setResult((was) => (was?.kind === "failed" ? { ...was, retrying: true } : was));
+    } else {
+      setResult(undefined);
+      setWaited({ skeleton: false, slow: false });
+      setAttempt((was) => was + 1);
+    }
     read();
-  }, [read]);
+  }, [read, failed]);
 
   return { load: result ?? { kind: "loading", ...waited }, retry };
 }

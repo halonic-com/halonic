@@ -198,6 +198,50 @@ verifies("settings.ai-agent-section", () => {
     expect(control<HTMLSelectElement>(view, "select").value).toBe("not-set-up");
   });
 
+  it("keeps the error with a busy button while Try again reads, then focuses the section's heading", async () => {
+    const store = new MemoryHostSettingsStore();
+    let answer: () => void = () => undefined;
+    const read = store.read.bind(store);
+    let reads = 0;
+    store.read = () => {
+      reads += 1;
+      if (reads === 1) return Promise.reject(new Error("The settings file is locked."));
+      return new Promise((resolve) => {
+        answer = () => resolve(read());
+      });
+    };
+    const settings = new HostSettings(store);
+    await settings.load().catch(() => undefined);
+    const context = {
+      services: limitedLookup(settingsFeature, {
+        get: (key) => (key === HostSettingsService ? settings : undefined),
+        find: () => undefined,
+      }),
+      announcer: { announce: vi.fn() },
+    } as unknown as SettingsSectionProps["context"];
+    const view = render(
+      // The settings container's section, which names the view.
+      <section aria-labelledby="name">
+        <h3 id="name" tabIndex={-1}>
+          Assistant
+        </h3>
+        <AssistantSection context={context} place="app" surface="window" closeSettings={() => {}} />
+      </section>,
+    );
+    const tryAgain = () =>
+      [...view.querySelectorAll("button")].find((b) => b.textContent === "Try again");
+
+    await act(async () => tryAgain()?.click());
+
+    expect(view.textContent).toContain("Couldn't load the Assistant settings");
+    expect(tryAgain()?.getAttribute("aria-busy")).toBe("true");
+
+    await act(async () => answer());
+
+    expect(view.textContent).not.toContain("Couldn't load");
+    expect(document.activeElement).toBe(view.querySelector("h3"));
+  });
+
   it("keeps a path or a stack out of the reason and gives the plain line instead", async () => {
     const store = new MemoryHostSettingsStore();
     store.read = async () => {

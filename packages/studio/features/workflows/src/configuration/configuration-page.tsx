@@ -41,7 +41,7 @@ export function Configuration({
         tone="error"
         title={words.loadFailedTitle(name)}
         description={load.reason}
-        action={{ label: words.tryAgain, onClick: retry }}
+        action={{ label: words.tryAgain, onClick: retry, busy: load.retrying }}
       />
     );
   }

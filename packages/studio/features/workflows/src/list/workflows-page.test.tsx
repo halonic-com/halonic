@@ -174,18 +174,25 @@ verifies("workflows.list.rows-and-states", () => {
     expect(page.textContent).toContain("Halonic on your computer isn't answering.");
   });
 
-  it("shows the skeleton while Try again reads after a first failure", async () => {
+  it("keeps the error with a busy button while Try again reads, then focuses the heading", async () => {
     const { host } = memoryHost(hubs, workflows);
+    let answer: (rows: readonly WorkflowListing[]) => void = () => undefined;
     const list = vi
       .fn()
       .mockRejectedValueOnce(new Error("x"))
-      .mockReturnValue(new Promise(() => undefined));
+      .mockReturnValue(new Promise((resolve) => (answer = resolve)));
     const page = await show(<WorkflowsView host={{ ...host, list }} />);
 
     await act(async () => buttonNamed(page, "Try again")?.click());
 
-    expect(page.textContent).not.toContain("Couldn't load workflows");
-    expect(page.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(page.textContent).toContain("Couldn't load workflows");
+    expect(buttonNamed(page, "Try again")?.getAttribute("aria-busy")).toBe("true");
+    expect(page.querySelector('[aria-busy="true"]')).toBe(buttonNamed(page, "Try again"));
+
+    await act(async () => answer(workflows));
+
+    expect(page.textContent).toContain("Mail triage");
+    expect(document.activeElement).toBe(page.querySelector("h1"));
   });
 
   it("keeps the rows and adds a line with Try again when a refresh fails", async () => {

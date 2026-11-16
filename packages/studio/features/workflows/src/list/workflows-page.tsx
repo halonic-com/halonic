@@ -20,10 +20,11 @@ import { rowId, workflowHubs } from "./workflow-rows.tsx";
 /**
  * Whether the workflows have loaded: the skeleton, a first read that failed, or the list. A list
  * that was read keeps its rows when a later read fails (`stale`) or is still going (`refreshing`).
+ * A failed first read stays on screen while **Try again** reads again (`retrying`).
  */
 type Load =
   | { readonly kind: "loading" }
-  | { readonly kind: "failed" }
+  | { readonly kind: "failed"; readonly retrying: boolean }
   | {
       readonly kind: "ready";
       readonly listings: readonly WorkflowListing[];
@@ -78,6 +79,7 @@ export function WorkflowsView({ host, open, openInNewTab, engine }: WorkflowsVie
   const phone = usePresentation() === "phone";
   const [load, setLoad] = useState<Load>({ kind: "loading" });
   const [creating, setCreating] = useState(false);
+  const title = useRef<HTMLHeadingElement>(null);
 
   // Each read takes a number; only the newest read's result is shown, so a slow older read never
   // overwrites a newer one, and nothing is set after unmount.
@@ -86,22 +88,26 @@ export function WorkflowsView({ host, open, openInNewTab, engine }: WorkflowsVie
   const read = useCallback(
     (showProgress = false) => {
       const mine = ++newestRead.current;
-      // Try again shows it is reading: the skeleton before any rows, a busy button over them.
+      // Try again shows it is reading with a busy button, over the error or over the rows; never a skeleton.
       if (showProgress) {
-        setLoad((was) =>
-          was.kind === "ready" ? { ...was, refreshing: true } : { kind: "loading" },
-        );
+        setLoad((was) => {
+          if (was.kind === "ready") return { ...was, refreshing: true };
+          return was.kind === "failed" ? { kind: "failed", retrying: true } : was;
+        });
       }
       host.list().then(
         (listings) => {
-          if (mine === newestRead.current) {
-            setLoad({ kind: "ready", listings, stale: false, refreshing: false });
-          }
+          if (mine !== newestRead.current) return;
+          setLoad({ kind: "ready", listings, stale: false, refreshing: false });
+          // The button that had the focus is gone: the page's heading takes it.
+          if (showProgress) title.current?.focus();
         },
         () => {
           if (mine !== newestRead.current) return;
           setLoad((was) =>
-            was.kind === "ready" ? { ...was, stale: true, refreshing: false } : { kind: "failed" },
+            was.kind === "ready"
+              ? { ...was, stale: true, refreshing: false }
+              : { kind: "failed", retrying: false },
           );
         },
       );
@@ -141,7 +147,9 @@ export function WorkflowsView({ host, open, openInNewTab, engine }: WorkflowsVie
   return (
     <div className="flex w-full flex-col gap-4 px-6 py-5">
       <header className={phone ? "sr-only" : "flex flex-col gap-1"}>
-        <h1 className="text-title">{listWords.title}</h1>
+        <h1 ref={title} tabIndex={-1} className="text-title outline-none">
+          {listWords.title}
+        </h1>
         {(listings.length > 0 || load.kind !== "ready") && (
           <p className="text-body text-fg-muted">{listWords.sentence}</p>
         )}
@@ -164,7 +172,7 @@ export function WorkflowsView({ host, open, openInNewTab, engine }: WorkflowsVie
           tone="error"
           title={listWords.loadFailedTitle}
           description={words.notAnswering}
-          action={{ label: listWords.tryAgain, onClick: tryAgain }}
+          action={{ label: listWords.tryAgain, onClick: tryAgain, busy: load.retrying }}
         />
       ) : (
         <OverviewPage

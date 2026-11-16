@@ -1,8 +1,13 @@
 import type { HostSettings } from "@halonicjs/app";
 import type { HostSettingValue } from "@halonicjs/ports";
 import { EmptyState, Field, Select, Switch } from "@halonicjs/studio-kit";
-import type { SettingsPlace, SettingsSectionProps, SettingsSurface } from "@halonicjs/studio-shell";
-import { useState, useSyncExternalStore } from "react";
+import {
+  focusSectionHeading,
+  type SettingsPlace,
+  type SettingsSectionProps,
+  type SettingsSurface,
+} from "@halonicjs/studio-shell";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   type AssistantNavigation,
   type AssistantWorkspace,
@@ -36,19 +41,27 @@ const providerOptions = assistantProviders.map((provider) => ({
 export function AssistantSection({ context, closeSettings, place, surface }: SettingsSectionProps) {
   const settings = context.services.get(HostSettingsService);
   const loaded = useLoaded(settings);
-  if (!loaded.ready) {
-    return <NotLoaded reason={loaded.reason} trying={loaded.trying} onTryAgain={loaded.tryAgain} />;
-  }
+  // Try again keeps the error on screen, busy, until the settings read; then the heading has the focus.
+  const anchor = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (loaded.ready && loaded.recovered) focusSectionHeading(anchor.current);
+  }, [loaded.ready, loaded.recovered]);
   return (
-    <AssistantView
-      settings={settings}
-      announce={(line) => context.announcer.announce(line)}
-      place={place}
-      surface={surface}
-      workspace={workspaceOf(context)}
-      navigate={navigationOf(context)}
-      closeSettings={closeSettings}
-    />
+    <div ref={anchor}>
+      {loaded.ready ? (
+        <AssistantView
+          settings={settings}
+          announce={(line) => context.announcer.announce(line)}
+          place={place}
+          surface={surface}
+          workspace={workspaceOf(context)}
+          navigate={navigationOf(context)}
+          closeSettings={closeSettings}
+        />
+      ) : (
+        <NotLoaded reason={loaded.reason} trying={loaded.trying} onTryAgain={loaded.tryAgain} />
+      )}
+    </div>
   );
 }
 
@@ -65,16 +78,22 @@ function useLoaded(settings: HostSettings) {
   const [, redraw] = useState(0);
   const [trying, setTrying] = useState(false);
   const [reason, setReason] = useState<string | null>(null);
+  const [recovered, setRecovered] = useState(false);
   return {
     ready: settings.loaded,
     trying,
     reason,
+    /** True once a Try again has read the settings. */
+    recovered,
     tryAgain: () => {
       setTrying(true);
       settings
         .load()
         .then(
-          () => setReason(null),
+          () => {
+            setReason(null);
+            setRecovered(true);
+          },
           (error: unknown) => setReason(plainReason(error)),
         )
         .finally(() => {

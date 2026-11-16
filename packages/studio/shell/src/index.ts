@@ -377,6 +377,7 @@ export {
   type ServiceTarget,
 } from "./service-catalog.ts";
 export { type ServiceKey, serviceKey } from "./service-key.ts";
+export { focusSectionHeading } from "./settings/section-heading.ts";
 export {
   SettingsDialog,
   type SettingsDialogProps,
