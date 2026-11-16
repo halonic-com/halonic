@@ -46,6 +46,7 @@ import {
   tauriAgentHostTransport,
 } from "@halonicjs/studio-services";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
+import { choicesMemory } from "../changes/workspace-merge.ts";
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import { WorkspaceFilesHost } from "../files/workspace-files-host.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
@@ -134,6 +135,7 @@ export function provideFolderServices(
       files: new TauriDefinitionStore(files, location),
       // `.studio/discarded`, which the folder's own store refuses as private.
       copies: new TauriDefinitionStore(files, location, { folder: "discarded" }),
+      choices: choicesMemory(storageOf(window), location),
       digest: webCryptoDigest,
       onFocus: (listener) => focusOf(window, listener),
       onFilesChanged: (listener) => scope.events.on("files.changed", listener),

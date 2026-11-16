@@ -7,6 +7,7 @@ import type { DefinitionStore } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { type GitAnswer, WorkspaceChanges } from "./workspace-changes.ts";
+import { choicesMemory } from "./workspace-merge.ts";
 
 const sha256 = {
   sha256: async (data: Uint8Array) =>
@@ -49,6 +50,7 @@ function history(
     git,
     files,
     copies,
+    choices: choicesMemory(undefined, "test"),
     digest: sha256,
     onFocus: (listener) => watching(focus, listener),
     onFilesChanged: (listener) => watching(changed, listener),
@@ -305,6 +307,7 @@ verifies("source-control.changes-page", () => {
             git: async () => answer(""),
             files: workspace,
             copies: new FolderDefinitionStore(kept),
+            choices: choicesMemory(undefined, "test"),
             digest: sha256,
             onFocus: () => () => {},
             onFilesChanged: () => () => {},

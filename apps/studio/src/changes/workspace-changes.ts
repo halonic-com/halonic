@@ -1,5 +1,10 @@
 import type { DefinitionStore } from "@halonicjs/ports";
-import { parseStatus, unversionedFolders, type VcsChange } from "@halonicjs/ports";
+import {
+  isPrivateWorkspacePath,
+  parseStatus,
+  unversionedFolders,
+  type VcsChange,
+} from "@halonicjs/ports";
 import { contentDigest, KindedError, type Sha256 } from "@halonicjs/std";
 import type {
   ChangesRead,
@@ -7,7 +12,10 @@ import type {
   FileTexts,
   Identity,
   KeptFile,
+  MergeStart,
   ReplaceResult,
+  UpdateChoice,
+  UpdateMerge,
   UpdatesResult,
   Version,
   VersionInput,
@@ -15,6 +23,7 @@ import type {
 import { historyArgs, versionsFromLog } from "./history-log.ts";
 import { lastVersionDiffArgs, lastVersionFromDiff } from "./last-version.ts";
 import { statusArgs } from "./status-args.ts";
+import { type ChoicesMemory, UpdatesMerge } from "./workspace-merge.ts";
 
 /** What git said, as the shell's `git` command gives it back. */
 export interface GitAnswer {
@@ -37,6 +46,8 @@ export interface WorkspaceChangesOptions {
    * Every path given to it is relative to that folder.
    */
   readonly copies: Pick<DefinitionStore, "write">;
+  /** Where a half-done Get updates keeps what was chosen. */
+  readonly choices: ChoicesMemory;
   /** Hashes a file's text for the write-if-unchanged check. */
   readonly digest: Sha256;
   /** Calls its listener when the window comes to the front; returns a function that stops it. */
@@ -60,9 +71,34 @@ const studioIgnoreLine = ".studio/";
  */
 export class WorkspaceChanges implements ChangesSource {
   readonly #options: WorkspaceChangesOptions;
+  readonly #merge: UpdatesMerge;
 
   constructor(options: WorkspaceChangesOptions) {
     this.#options = options;
+    this.#merge = new UpdatesMerge({
+      run: async (args) => {
+        const answer = await this.#run(args);
+        if (answer === "no-git")
+          throw new KindedError("unavailable", "git isn't on this computer.");
+        return answer;
+      },
+      reason: (answer, doing) => (doing === "get" ? updatesReason(answer) : gitReason(answer)),
+      files: options.files,
+      choices: options.choices,
+      replaceFile: (path, text, expected) => this.replaceFile(path, text, expected),
+      removeFile: (path, expected) => this.removeFile(path, expected),
+      changedPaths: async () => {
+        const read = await this.read();
+        return new Set(
+          read.kind === "ready"
+            ? read.changes.flatMap((change) =>
+                change.from === undefined ? [change.path] : [change.path, change.from],
+              )
+            : [],
+        );
+      },
+      isPrivate: (path) => isUnversionedPath(path) || isPrivateWorkspacePath(path),
+    });
   }
 
   async read(): Promise<ChangesRead> {
@@ -200,6 +236,30 @@ export class WorkspaceChanges implements ChangesSource {
       kind: "got",
       count: log.stdout.split("\n").filter((line) => line.trim() !== "").length,
     };
+  }
+
+  startMerge(): Promise<MergeStart> {
+    return this.#merge.start();
+  }
+
+  readMerge(): Promise<UpdateMerge | null> {
+    return this.#merge.read();
+  }
+
+  chooseUpdate(path: string, choice: UpdateChoice, label: string): Promise<void> {
+    return this.#merge.choose(path, choice, label);
+  }
+
+  undoUpdateChoice(path: string): Promise<void> {
+    return this.#merge.undo(path);
+  }
+
+  finishMerge(message: string): Promise<void> {
+    return this.#merge.finish(message);
+  }
+
+  cancelMerge(): Promise<void> {
+    return this.#merge.cancel();
   }
 
   subscribe(listener: () => void): () => void {
