@@ -1,7 +1,9 @@
 import { execFile } from "node:child_process";
+import { stat } from "node:fs/promises";
 import { release } from "node:os";
 import { join } from "node:path";
 import type { ProgramResult, WslDistro, WslHost, WslPolicy } from "./host.ts";
+import type { WslRemoveHost } from "./remove.ts";
 
 /** The `RunOnce` value Halonic's setup owns. */
 const RUN_ONCE_NAME = "HalonicWslSetup";
@@ -131,4 +133,35 @@ export function systemWslHost(run: Run = systemRun): WslHost {
       await run(reg, ["delete", RUN_ONCE_KEY, "/v", RUN_ONCE_NAME, "/f"]);
     },
   };
+}
+
+/**
+ * The real host for "Remove sandbox setup". It only runs `wsl --export` and
+ * `wsl --unregister` with the arguments it is given; `removeWslSetup` is the
+ * guard that decides whether they may run. `run` and `sizeOf` are only for
+ * tests of this file.
+ */
+export function systemWslRemoveHost(
+  run: Run = systemRun,
+  sizeOf: (file: string) => Promise<number | null> = fileSize,
+): WslRemoveHost {
+  const root = process.env["SystemRoot"] ?? process.env["windir"] ?? "%SystemRoot%";
+  const wsl = join(root, "System32", "wsl.exe");
+  return {
+    async distros() {
+      const result = await run(wsl, ["--list", "--verbose"]);
+      return result.code === 0 ? parseDistroList(result.output) : [];
+    },
+    exportDistro: (name, file) => run(wsl, ["--export", name, file]),
+    unregisterDistro: (name) => run(wsl, ["--unregister", name]),
+    exportedSize: sizeOf,
+  };
+}
+
+async function fileSize(file: string): Promise<number | null> {
+  try {
+    return (await stat(file)).size;
+  } catch {
+    return null;
+  }
 }

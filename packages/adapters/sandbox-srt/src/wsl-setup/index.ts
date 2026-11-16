@@ -21,4 +21,4 @@ export {
   type WslSetupStore,
   wslSetupSteps,
 } from "./state.ts";
-export { systemWslHost } from "./system-host.ts";
+export { systemWslHost, systemWslRemoveHost } from "./system-host.ts";
