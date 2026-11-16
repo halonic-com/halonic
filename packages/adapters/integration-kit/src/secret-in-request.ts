@@ -9,11 +9,15 @@ import {
   secretForms,
   secretRemoved,
 } from "./secret-filter.ts";
+import { checkSecretLength } from "./secret-placement.ts";
 
 /**
  * The values of every secret the integration declares and the workspace
  * has set up, whether this request places them or not. The kit refuses a
  * request that carries one of them anywhere it didn't put it.
+ *
+ * @throws {IntegrationRefusedError} `secret-too-short` when a value is under the minimum length:
+ * the filter would remove ordinary text for it and show where the value sits
  */
 export async function readDeclaredSecrets(
   policy: IntegrationPolicy,
@@ -22,7 +26,9 @@ export async function readDeclaredSecrets(
   const values = new Map<string, string>();
   for (const name of Object.keys(policy.secrets)) {
     const value = await secrets.get(name);
-    if (value !== null && value !== "") values.set(name, value);
+    if (value === null || value === "") continue;
+    checkSecretLength(policy.name, name, value);
+    values.set(name, value);
   }
   return values;
 }
