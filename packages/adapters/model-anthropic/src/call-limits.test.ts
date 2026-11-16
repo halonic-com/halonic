@@ -44,7 +44,7 @@ afterEach(() => {
 });
 
 verifies("model-anthropic.call-limits", () => {
-  it("ends a call whose reply doesn't start in time as offline, and closes it", async () => {
+  it("ends a call whose reply doesn't start in time as timeout, and closes it", async () => {
     const { vendor, provider } = providerWith();
     vendor.hangNext();
     const error = await after(
@@ -52,7 +52,7 @@ verifies("model-anthropic.call-limits", () => {
       provider.chat(chatRequest()).catch((thrown: unknown) => thrown),
     );
 
-    expect(isModelCallError(error) && error.reason).toBe("offline");
+    expect(isModelCallError(error) && error.reason).toBe("timeout");
     expect((error as Error).message).toBe(
       "acme at api.anthropic.com didn't answer within 2 seconds",
     );

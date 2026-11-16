@@ -1,7 +1,7 @@
 // The models one turn may use: the one its request resolved to, then that
 // alias's own fallbacks. A model whose key isn't set is skipped before any
 // call, so a local-only workspace never shows a pointless 401. A model that
-// is offline, or whose provider is busy, hands the call to the next one at
+// is offline or too slow, or whose provider is busy, hands the call to the next one at
 // once: retrying would only make the person wait. Any other failure ends the
 // turn with its own reason. A refused key or an empty account ends it too,
 // because the person has to fix it, and moving on would hide that and could
@@ -77,6 +77,7 @@ export interface ChainAnswer {
 const noneLeftBecause = {
   "no-key": "no model has its key set",
   offline: "no model reachable",
+  timeout: "no model answered in time",
   "provider-busy": "no model free: the last one's provider was busy",
 } as const satisfies Partial<Record<ModelCallErrorReason, string>>;
 
@@ -167,7 +168,7 @@ export class ModelChain {
 
   /**
    * Makes one model call, moving on to the next model when one has no key,
-   * is offline or its provider is busy. It writes an `llm.fallback` for each move.
+   * is offline, too slow or its provider is busy. It writes an `llm.fallback` for each move.
    * Each model gets its own alias's params under the call's, never the first model's.
    * Once `request.signal` has aborted, it throws its reason instead of moving on.
    *

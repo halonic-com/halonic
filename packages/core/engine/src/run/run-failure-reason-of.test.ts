@@ -40,6 +40,17 @@ verifies("engine.run-failure-reason-of", () => {
       });
     });
 
+    it("gives model-timeout for timeout", () => {
+      expect(runFailureReasonOf(new ModelCallError("timeout", "no first answer"))).toEqual({
+        reason: "model-timeout",
+      });
+      expect(
+        runFailureReasonOf(
+          new ModelCallError("timeout", "no first answer", { host: "localhost:11434" }),
+        ),
+      ).toEqual({ reason: "model-timeout", host: "localhost:11434" });
+    });
+
     it.each(["model-missing", "model-no-tools"] as const)("keeps %s", (reason) => {
       expect(runFailureReasonOf(new ModelCallError(reason, "x"))).toEqual({ reason });
     });

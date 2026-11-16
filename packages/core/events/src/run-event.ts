@@ -395,7 +395,7 @@ export type RunEventBody =
   | { type: "run.completed"; state: string; context: Record<string, unknown> }
   /**
    * `reason`: why the run failed (requirement `events.run-failed-reason`); absent in older logs.
-   * `host`: with `model-unreachable` only, the host and port that didn't answer, such as
+   * `host`: with `model-unreachable` and `model-timeout` only, the host and port that didn't answer, such as
    * `localhost:11434` (requirement `events.run-failed-model-unreachable`).
    * `sandboxReason`: with `sandbox-not-ready`, and with `sandbox-start-failed` when the sandbox
    * check no longer passed once the sandbox failed to open, why the sandbox can't start, as the

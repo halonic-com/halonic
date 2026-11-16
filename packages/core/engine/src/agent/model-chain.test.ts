@@ -220,6 +220,31 @@ verifies("engine.offline-falls-back", () => {
     expect(runFailureReasonOf(failure)).toEqual({ reason: "model-unreachable" });
   });
 
+  it("moves on when a provider gave no first answer in time, and says timeout when none is left", async () => {
+    const slow = () =>
+      new ModelCallError("timeout", "acme-local didn't answer within 600 seconds", {
+        host: "localhost:11434",
+      });
+    const cloud = new ScriptedModel([textAnswer("From the cloud")], "acme-cloud");
+    const local = new ScriptedModel([slow()], "acme-local");
+
+    const result = await runTurnOn(alias("local", local, { fallback: [alias("smart", cloud)] }));
+    expect(result.content).toBe("From the cloud");
+
+    const alone = new ScriptedModel([slow()], "acme-local");
+    const failure = await runTurnOn(alias("local", alone)).catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({
+      reason: "timeout",
+      host: "localhost:11434",
+      message: "no model answered in time (tried local)",
+    });
+    expect(runFailureReasonOf(failure)).toEqual({
+      reason: "model-timeout",
+      host: "localhost:11434",
+    });
+  });
+
   it("moves on as well when a provider itself says it has no key", async () => {
     const smart = new ScriptedModel(
       [new ModelCallError("no-key", "acme-cloud has no key")],

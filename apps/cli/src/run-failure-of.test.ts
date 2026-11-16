@@ -104,6 +104,25 @@ verifies("cli.run-failure", () => {
       });
     });
 
+    it("words a model that gave no first answer, with the address when it is on this computer", () => {
+      expect(runFailureOf(failedWith("model-timeout", "localhost:11434"), calledModel())).toEqual({
+        reason: "model-timeout",
+        provider: "Ollama",
+        within: "10 minutes",
+        localAddress: "localhost:11434",
+      });
+      const cloud = calledModel({
+        ...openaiModel,
+        provider: { ...openai, baseUrl: "https://api.openai.com/v1" },
+      });
+      expect(runFailureOf(failedWith("model-timeout"), cloud)).toEqual({
+        reason: "model-timeout",
+        provider: "OpenAI",
+        within: "10 minutes",
+      });
+      expect(runFailureOf(failedWith("model-timeout"), undefined)).toEqual(general);
+    });
+
     it("names the provider without credit", () => {
       expect(runFailureOf(failedWith("out-of-credit"), calledModel({ ...openaiModel }))).toEqual({
         reason: "out-of-credit",

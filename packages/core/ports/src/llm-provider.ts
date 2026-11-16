@@ -29,7 +29,7 @@ export interface LlmProvider {
    * Makes one model call.
    *
    * @throws {ModelCallError} when the call fails, with the reason why: no
-   * key, offline, the model is missing, it can't call tools, it ran out of
+   * key, offline, no first answer in time, the model is missing, it can't call tools, it ran out of
    * memory, the key wasn't accepted, the account is out of credit, the
    * provider is busy, or the provider refused. Callers treat any other error as `refused`, except the abort
    * error when `request.signal` aborts the call.
@@ -56,6 +56,7 @@ export const modelCallErrorReasons = [
   "model-missing",
   "model-no-tools",
   "out-of-memory",
+  "timeout",
   "key-refused",
   "out-of-credit",
   "provider-busy",
@@ -68,12 +69,14 @@ export const modelCallErrorReasons = [
  * - `no-key`: the provider needs a key and its secret isn't set. A provider
  *   that has a key and is turned away says `key-refused`.
  * - `offline`: the provider couldn't be reached, such as no network, a DNS
- *   failure, a refused connection or a timeout. The error names the `host`
+ *   failure, a refused connection or a reply that went silent. The error names the `host`
  *   when the provider knows it.
  * - `model-missing`: the provider doesn't have the model asked for.
  * - `model-no-tools`: the model can't call tools and the request offered some.
  * - `out-of-memory`: the model doesn't fit in the memory of the machine that
  *   runs it. Providers find it with {@link isModelOutOfMemory}.
+ * - `timeout`: the provider was reached but gave no first answer in time (10
+ *   minutes by default). The error names the `host` when the provider knows it.
  * - `key-refused`: the provider didn't accept the key (HTTP 401 or 403).
  * - `out-of-credit`: the account at the provider has no credit left or
  *   reached its spending limit, such as HTTP 402 or OpenAI's 429 with
@@ -102,7 +105,7 @@ export class ModelCallError extends Error {
   override readonly name = "ModelCallError";
   readonly reason: ModelCallErrorReason;
   /**
-   * With `offline` only: the host that didn't answer, as its name and port,
+   * With `offline` and `timeout` only: the host that didn't answer, as its name and port,
    * such as `localhost:11434`. Never a URL with a path, a query or a key.
    */
   readonly host: string | undefined;
@@ -111,7 +114,7 @@ export class ModelCallError extends Error {
    * @param reason - why the call failed
    * @param message - plain text for the run log, never a key
    * @param options - `cause` keeps the error this one wraps; `host` names the
-   * host that didn't answer, and is kept only with `offline`
+   * host that didn't answer, and is kept only with `offline` and `timeout`
    */
   constructor(
     reason: ModelCallErrorReason,
@@ -120,7 +123,7 @@ export class ModelCallError extends Error {
   ) {
     super(message, options);
     this.reason = reason;
-    this.host = reason === "offline" ? options?.host : undefined;
+    this.host = reason === "offline" || reason === "timeout" ? options?.host : undefined;
   }
 }
 

@@ -59,13 +59,14 @@ verifies("ports.model-call-error", () => {
     expect(isModelCallError("ModelCallError")).toBe(false);
   });
 
-  typeTest("has exactly the ten reasons", () => {
+  typeTest("has exactly the eleven reasons", () => {
     expectTypeOf<ModelCallErrorReason>().toEqualTypeOf<
       | "no-key"
       | "offline"
       | "model-missing"
       | "model-no-tools"
       | "out-of-memory"
+      | "timeout"
       | "key-refused"
       | "out-of-credit"
       | "provider-busy"
