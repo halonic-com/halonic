@@ -3,6 +3,7 @@
 - Task: HAL-10596
 - Approval: Liam approves this note in review on the review task of HAL-10596 (HAL-10687); the sentence is a small wording decision on an approved screen, made by the team under the HAL-2282 rule with no board card
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5mze+GKFs1TnvuxfBvK2FHTlFnOnO+9dDmPhc1q9c6mXrLZSO1ApcwomSCWwVpK8WqoKFJTk/m05pxd5jEKNBQ==
 
 ## What changes
 
