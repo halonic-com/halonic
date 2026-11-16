@@ -1,6 +1,6 @@
 # Decision: the gateway closes the connection when a watch loses events mid-stream
 
-- Approval: [HAL-10833](/HAL/issues/HAL-10833) (Liam, CTO; review point on the watch port)
+- Approval: HAL-10833 (Liam, CTO; review point on the watch port)
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QzIxDU3IfFJ/WnecMggNtr9f08R7GOP9qcmuw5ar30idischd64Ab9zCfyBCFz/wIUiuplEhKzS7xRRAACUjBg==
 - Task: HAL-10833
