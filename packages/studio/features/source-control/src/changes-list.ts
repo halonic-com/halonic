@@ -154,7 +154,7 @@ export class ChangesList {
       const answer = await this.source.read();
       const files = answer.kind === "ready" ? await this.#describe(answer.changes) : [];
       if (read !== this.#reads || this.#disposed) return;
-      const identity = answer.kind === "ready" ? await this.source.readIdentity() : undefined;
+      const identity = answer.kind === "ready" ? await this.#identity() : undefined;
       if (read !== this.#reads || this.#disposed) return;
       this.#set({ ...this.#state, read: answer, files, identity, error: undefined });
       if (answer.kind === "ready") await this.#readHistory(this.#state.history.versions.length);
@@ -301,6 +301,14 @@ export class ChangesList {
    */
   startVersion(paths?: readonly string[]): void {
     this.#set({ ...this.#state, version: { paths } });
+  }
+
+  /** Who versions are from; once both parts are set they are kept, so a refresh doesn't ask git. */
+  async #identity(): Promise<Identity> {
+    const known = this.#state.identity;
+    return known !== undefined && isIdentityComplete(known)
+      ? known
+      : await this.source.readIdentity();
   }
 
   /** Whether Create version must first ask who versions are from. */

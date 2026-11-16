@@ -25,6 +25,7 @@ export function fakeSource(initial: ChangesRead) {
   let identity: Identity = { name: "Sam Smith", email: "sam@acme.example" };
   let identityFailure: unknown;
   const identities: Identity[] = [];
+  let identityReads = 0;
   const texts = new Map<string, FileTexts>();
   const replaced: { path: string; text: string; expected: string | null }[] = [];
   const removed: { path: string; expected: string }[] = [];
@@ -73,7 +74,10 @@ export function fakeSource(initial: ChangesRead) {
         answer = { kind: "ready", changes: answer.changes.filter((c) => !recorded.has(c.path)) };
       }
     },
-    readIdentity: async () => identity,
+    readIdentity: async () => {
+      identityReads += 1;
+      return identity;
+    },
     setIdentity: async (next) => {
       if (identityFailure !== undefined) throw identityFailure;
       identities.push(next);
@@ -137,6 +141,8 @@ export function fakeSource(initial: ChangesRead) {
     setIdentity: (next: Identity) => {
       identity = next;
     },
+    /** How many times who versions are from was read. */
+    identityReads: () => identityReads,
     /** Every identity `setIdentity` was given, in order. */
     identities,
     /** Makes saving who versions are from fail with `error`. */

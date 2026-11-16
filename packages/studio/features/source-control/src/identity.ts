@@ -1,11 +1,11 @@
 import type { Identity } from "./api.ts";
 
-/** The longest name or email the shell accepts. */
+/** The longest name or email the shell accepts, in UTF-8 bytes. */
 const longest = 254;
 
 /**
  * Whether `text` is a name the shell accepts for a version's author: one line, no longer than
- * {@link longest}, and not starting with `-`, which git would read as an option. The shell checks
+ * {@link longest} bytes, and not starting with `-`, which git would read as an option. The shell checks
  * the same rules again before git starts (`config user.name`).
  */
 export function isAuthorName(text: string): boolean {
@@ -32,8 +32,8 @@ export function isIdentityComplete(identity: Identity): boolean {
 function isOneLine(text: string): boolean {
   return (
     text.trim() !== "" &&
-    text.length <= longest &&
+    new TextEncoder().encode(text).length <= longest &&
     !text.startsWith("-") &&
-    ![...text].some((character) => character < " " || character === "\u007f")
+    !/\p{Cc}/u.test(text)
   );
 }
