@@ -11,8 +11,16 @@ import type {
   UpdatesResult,
   Version,
 } from "./api.ts";
-import { discardWords, pageWords, undoWords, updatesWords, versionWords } from "./changes-words.ts";
+import {
+  discardWords,
+  pageWords,
+  shareWords,
+  undoWords,
+  updatesWords,
+  versionWords,
+} from "./changes-words.ts";
 import { loadFailureReason } from "./load-failure.ts";
+import { isShareAddress } from "./share-address.ts";
 import { versionMessage } from "./version-name.ts";
 
 /** How many changed files' texts are read at the same time. */
@@ -449,6 +457,23 @@ export class ChangesList {
       if (!this.#disposed) this.#set({ ...this.#state, gettingUpdates: false });
       return { kind: "failed", reason: loadFailureReason(error) };
     }
+  }
+
+  /**
+   * Makes `address` the place to share to and get updates from, then reads again so the page
+   * shows Get updates. Gives why it didn't work, or `undefined`; nothing reaches git for an
+   * address that isn't one of the three forms.
+   */
+  async addShareAddress(address: string): Promise<string | undefined> {
+    const trimmed = address.trim();
+    if (!isShareAddress(trimmed)) return shareWords.badAddress;
+    try {
+      await this.source.addRemote(trimmed);
+    } catch (error) {
+      return loadFailureReason(error);
+    }
+    await this.refresh();
+    return undefined;
   }
 
   /** Calls `listener` after every change of {@link state}. Returns a function that stops the calls. */

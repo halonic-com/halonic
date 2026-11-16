@@ -5,10 +5,12 @@ import { type ChangesRead, type DeveloperView, DeveloperViewService } from "../a
 import { type ChangesList, ChangesListService, type ChangesListState } from "../changes-list.ts";
 import { pageWords, stateWords } from "../changes-words.ts";
 import { loadFailureReason } from "../load-failure.ts";
+import { AddShareAddressDialog } from "./add-share-address-dialog.tsx";
 import { ChangeList } from "./change-list.tsx";
 import { CreateVersionDialog } from "./create-version-dialog.tsx";
 import { GetUpdates } from "./get-updates.tsx";
 import { History } from "./history.tsx";
+import { SharingStrip } from "./sharing-strip.tsx";
 
 /** The Changes place's page: the open workspace's changes, from `ChangesListService`. */
 export function ChangesPage({ context }: PlaceViewProps) {
@@ -33,13 +35,14 @@ export interface ChangesViewProps {
  * work", "Halonic needs git to keep versions.", or "Nothing has changed since your last version.".
  * A later read that fails keeps what the page showed (states D1).
  *
- * Not here yet: the sharing strip.
+ * Not here yet: the sharing strip's other states.
  */
 export function ChangesView({ list, developerView }: ChangesViewProps) {
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
   const state = useSyncExternalStore(subscribe, () => list.state);
   const developer = useDeveloperView(developerView);
   const heading = useRef<HTMLHeadingElement>(null);
+  const [addingAddress, setAddingAddress] = useState(false);
   return (
     <div className="flex w-full flex-col gap-4 px-6 py-5">
       <header className="flex items-center gap-3">
@@ -48,12 +51,22 @@ export function ChangesView({ list, developerView }: ChangesViewProps) {
         </h1>
         {state.hasRemote ? <GetUpdates list={list} /> : null}
       </header>
+      {state.read?.kind === "ready" && !state.hasRemote ? (
+        <SharingStrip onAdd={() => setAddingAddress(true)} />
+      ) : null}
       <PageBody
         list={list}
         state={state}
         developer={developer}
         focusHeading={() => heading.current?.focus()}
       />
+      {addingAddress ? (
+        <AddShareAddressDialog
+          list={list}
+          onClose={() => setAddingAddress(false)}
+          returnFocus={() => heading.current}
+        />
+      ) : null}
       {state.version === undefined ? null : (
         <CreateVersionDialog
           list={list}
