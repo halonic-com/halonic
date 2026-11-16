@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1303 (P8c); flow-library 5.4 and 3.3, microcopy 11.2 (`library.connectors.connection-summary`)
 
-The Library feature shall show, on a connector's page between its name and its status, a "How it connects" section with plain rows: the transport as the New connector dialog words its ways ("MCP over HTTP", "Local program (stdio)", "Gmail and Google Drive (built in)"), where it connects (the account, the URL, the command with its arguments, or the folder or plugin id), and "Secrets" with the secrets' names separated by commas, or "none". It shall show a secret's name only, never a value. It shall show no such section when the host gives no connection for the connector. The section shall draw no landmark.
+The Library feature shall show, on a connector's page between its name and its status, a "How it connects" section with plain rows: the transport as the New connector dialog words its ways ("MCP over HTTP", "Local program (stdio)", "Gmail and Google Drive (built in)"), where it connects (the account, the URL, the command with its arguments, or the folder or plugin id), and, for an HTTP, local program or Google connector, "Secrets" with the secrets' names separated by commas, or "none". It shall show no "Secrets" row for a plugin or an integration, which declare their secrets in their own sheet. It shall show a secret's name only, never a value. It shall show no such section when the host gives no connection for the connector. The section shall draw no landmark.
 
 ## Examples
 
@@ -17,6 +17,12 @@ The Library feature shall show, on a connector's page between its name and its s
 - Given a Google connector for fin@acme.example,
   when its page shows,
   then it shows the "Account" row and "Secrets" as "none".
+- Given a plugin or an integration connector,
+  when its page shows,
+  then it shows no "Secrets" row.
+- Given an integration or a plugin connector,
+  when its page shows,
+  then it shows no "Secrets" row.
 - Given a connector whose file can't be read,
   when its page shows,
   then it shows no "How it connects" section.

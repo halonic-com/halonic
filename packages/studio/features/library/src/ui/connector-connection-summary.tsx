@@ -18,14 +18,27 @@ function detailOf(connection: ConnectorConnection): string {
   }
 }
 
-/** The names of the secrets the connection uses; Google, integrations and plugins keep theirs elsewhere. */
-function secretsOf(connection: ConnectorConnection): readonly string[] {
-  return connection.kind === "http" || connection.kind === "stdio" ? connection.secrets : [];
+/**
+ * The names of the secrets the connection uses, or null when the row would mislead. Google keeps none;
+ * a plugin or an integration declares its secrets in its own sheet, which the summary can't see, so
+ * it shows no row rather than a false "none".
+ */
+function secretsOf(connection: ConnectorConnection): readonly string[] | null {
+  switch (connection.kind) {
+    case "http":
+    case "stdio":
+      return connection.secrets;
+    case "google":
+      return [];
+    case "integration":
+    case "plugin":
+      return null;
+  }
 }
 
 /**
  * How one connector connects, for the connector page to put above its status: the transport, where
- * it goes, and the names of its secrets (never their values), as plain rows under a heading. It is
+ * it goes, and the names of its secrets (never their values; none for an integration or a plugin), as plain rows under a heading. It is
  * a plain `div`, with no landmark of its own: the shell owns the landmarks.
  */
 export function ConnectorConnectionSummary({
@@ -44,10 +57,12 @@ export function ConnectorConnectionSummary({
       <dl aria-labelledby={headingId} className="m-0 flex min-w-0 flex-col gap-1">
         <Row label={words.transport} value={words.transports[connection.kind]} />
         <Row label={words.detail[connection.kind]} value={detailOf(connection)} />
-        <Row
-          label={words.secrets}
-          value={secrets.length === 0 ? words.noSecrets : secrets.join(", ")}
-        />
+        {secrets === null ? null : (
+          <Row
+            label={words.secrets}
+            value={secrets.length === 0 ? words.noSecrets : secrets.join(", ")}
+          />
+        )}
       </dl>
     </div>
   );

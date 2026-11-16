@@ -105,7 +105,7 @@ verifies("studio.workspace-connector-status", () => {
           "  stdio:",
           "    command: npx",
           "    args: [-y, '@acme/notes-mcp']",
-          "    secretEnv: { NOTES_TOKEN: NOTES_TOKEN }",
+          "    secretEnv: { NOTES_TOKEN: acme-notes-token }",
         ].join("\n"),
       }),
       refusals: new RefusalsFeed(),
@@ -118,7 +118,11 @@ verifies("studio.workspace-connector-status", () => {
       { id: "mail", connection: { kind: "google", account: "sam@acme.example" } },
       {
         id: "notes",
-        connection: { kind: "stdio", command: "npx -y @acme/notes-mcp", secrets: ["NOTES_TOKEN"] },
+        connection: {
+          kind: "stdio",
+          command: "npx -y @acme/notes-mcp",
+          secrets: ["acme-notes-token"],
+        },
       },
       {
         id: "search",

@@ -28,11 +28,11 @@ verifies("library.connection-summary", () => {
 
   it("shows a local program's command and the names of its secrets", () => {
     expect(
-      rowsOf({ kind: "stdio", command: "npx -y @acme/notes-mcp", secrets: ["NOTES_TOKEN", "B"] }),
+      rowsOf({ kind: "stdio", command: "npx -y @acme/notes-mcp", secrets: ["NOTES_TOKEN", "NOTES_KEY"] }),
     ).toEqual([
       "Transport: Local program (stdio)",
       "Command: npx -y @acme/notes-mcp",
-      "Secrets: NOTES_TOKEN, B",
+      "Secrets: NOTES_TOKEN, NOTES_KEY",
     ]);
   });
 
@@ -41,6 +41,27 @@ verifies("library.connection-summary", () => {
       "Transport: Gmail and Google Drive (built in)",
       "Account: fin@acme.example",
       "Secrets: none",
+    ]);
+  });
+
+  it("shows no Secrets row for a plugin or an integration, whose secrets are in its sheet", () => {
+    expect(rowsOf({ kind: "plugin", id: "acme-notes" })).toEqual([
+      "Transport: Plugin",
+      "Plugin: acme-notes",
+    ]);
+    expect(rowsOf({ kind: "integration", folder: "integrations/acme" }).join("|")).not.toContain(
+      "Secrets",
+    );
+  });
+
+  it("shows no Secrets row for an integration or a plugin, whose sheet declares its own", () => {
+    expect(rowsOf({ kind: "integration", folder: "acme-crm" })).toEqual([
+      "Transport: Local integration",
+      "Folder: acme-crm",
+    ]);
+    expect(rowsOf({ kind: "plugin", id: "acme-notes" })).toEqual([
+      "Transport: Plugin",
+      "Plugin: acme-notes",
     ]);
   });
 
