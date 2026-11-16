@@ -19,9 +19,9 @@ import type {
   TokenStore,
   ToolApprovalStore,
 } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
 import type { ListedToolsHost, ListedToolsSnapshot } from "@halonicjs/studio-feature-library/api";
 import { listedToolsSnapshot } from "@halonicjs/studio-feature-library/api";
-import { KindedError } from "@halonicjs/std";
 import {
   filesOf,
   harnessWorkingFolders,
