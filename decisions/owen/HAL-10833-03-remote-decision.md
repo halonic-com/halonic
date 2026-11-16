@@ -1,8 +1,7 @@
 # Decision: a phone's decision on a bridge approval goes to Studio through one typed call
 
-- Approval: HAL-10833 (Liam, CTO; review point 1 of HAL-10827, relay design approved on HAL-10835)
+- Approval: https://paperclip.halonic.com/HAL/issues/HAL-10833 (Liam, CTO; review point 1 of HAL-10827, relay design approved on HAL-10835)
 - Kind: internal
-- Signature: pending
 - Task: HAL-10833
 
 The agent host gets one new call to Studio on the bridge's call channel, `approvals.remote-decision`,
