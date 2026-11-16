@@ -20,6 +20,11 @@ export const filesWords = {
   missingTitle: "This file isn't here any more",
   missingDescription: "It was moved or deleted. Pick another file in the tree.",
   unreadableTitle: "Couldn't open this file",
+  /** The line above the editor of a file over the size limit. */
+  largeFile: "This file is large, so it opens read-only.",
+  /** What a file that isn't text says in place of the editor, with its size as the description. */
+  notTextTitle: "This file can't be shown here.",
+  notTextDescription: (size: string): string => `It is ${size}.`,
   /** The strip above the editor of a file with unsaved changes that changed outside Halonic. */
   changedOutside: (name: string): string => `${name} changed outside Halonic`,
   deletedOutside: (name: string): string => `${name} was deleted outside Halonic.`,
@@ -72,6 +77,11 @@ export const filesWords = {
       ? `Couldn't move ${name} to the trash.`
       : `Couldn't move ${name} to the trash: ${reason.replace(/\.$/, "")}.`,
   couldntPutBack: (name: string): string => `Couldn't put ${name} back`,
+  /** The toast after files changed outside Halonic were taken in: the name for one file, the count for a batch. */
+  reloaded: (names: readonly string[]): string =>
+    names.length === 1
+      ? `Reloaded ${names[0]}: changed outside Halonic`
+      : `Reloaded ${names.length} files changed outside Halonic`,
   /** The toast after a new file is made, with its full path. */
   created: (path: string): string => `New file ${path}`,
 } as const;

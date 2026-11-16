@@ -6,7 +6,7 @@ function setup(
   saved: string[] | Error,
   pending: Record<string, string | null> = {},
   more: Record<string, string> = {},
-  outside: { held?: string[]; theirs?: string | null } = {},
+  outside: { held?: string[]; reloaded?: { path: string }[]; theirs?: string | null } = {},
 ) {
   const watching: {
     changed?: (changes: { path: string; kind: "changed" | "removed" }[]) => void;
@@ -42,7 +42,10 @@ function setup(
         undone.push(1);
         return true;
       },
-      reloadFromOutside: async () => ({ held: outside.held ?? [] }),
+      reloadFromOutside: async () => ({
+        reloaded: outside.reloaded ?? [],
+        held: outside.held ?? [],
+      }),
       compare: async (path) => ({
         path,
         mine: "mine",
@@ -409,5 +412,52 @@ verifies("studio.workspace-files-delete", () => {
       "This skill has other files in its folder, so it can't be deleted here yet.",
     );
     expect(changes).toEqual([]);
+  });
+});
+
+verifies("studio.workspace-files-outside", () => {
+  it("tells a listener which files it took in from outside, once for the batch", async () => {
+    const { host, watching } = setup(
+      ["a.md", "b.md"],
+      {},
+      {},
+      { reloaded: [{ path: "a.md" }, { path: "b.md" }] },
+    );
+    const heard: (readonly string[])[] = [];
+    host.onReloaded((paths) => heard.push(paths));
+
+    watching.changed?.([
+      { path: "a.md", kind: "changed" },
+      { path: "b.md", kind: "removed" },
+    ]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(heard).toEqual([["a.md", "b.md"]]);
+  });
+
+  it("tells no listener when nothing was taken in", async () => {
+    const { host, watching } = setup(["a.md"], { "a.md": "mine" }, {}, { held: ["a.md"] });
+    const heard: (readonly string[])[] = [];
+    host.onReloaded((paths) => heard.push(paths));
+
+    watching.changed?.([{ path: "a.md", kind: "changed" }]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(heard).toEqual([]);
+  });
+
+  it("holds the files a save left alone, as changed or deleted, and tells a subscriber", () => {
+    const { host } = setup(["a.md", "b.md"]);
+    let told = 0;
+    host.subscribe(() => told++);
+
+    host.noteHeld([
+      { path: "a.md", current: "theirs" },
+      { path: "b.md", current: null },
+    ]);
+
+    expect(host.outside().get("a.md")).toBe("changed");
+    expect(host.outside().get("b.md")).toBe("deleted");
+    expect(told).toBe(1);
   });
 });

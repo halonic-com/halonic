@@ -53,6 +53,8 @@ verifies("files.ui.tree-view", () => {
     edit: () => {},
     problems: async () => [],
     outside: () => new Map(),
+    noteHeld: () => undefined,
+    onReloaded: () => () => undefined,
     compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
     settle: async () => {},
     create: async () => {},
@@ -188,6 +190,8 @@ verifies("files.ui.new-file", () => {
     remove: async () => ({ places: 0, undo: async () => {} }),
     problems: async () => [],
     outside: () => new Map(),
+    noteHeld: () => undefined,
+    onReloaded: () => () => undefined,
     compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
     settle: async () => {},
   });
@@ -315,6 +319,8 @@ function contextHost(): FilesHost {
     remove: async () => ({ places: 0, undo: async () => {} }),
     problems: async () => [],
     outside: () => new Map(),
+    noteHeld: () => undefined,
+    onReloaded: () => () => undefined,
     compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
     settle: async () => {},
   };

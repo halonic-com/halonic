@@ -1,4 +1,4 @@
-import { SaveScheduler } from "@halonicjs/app";
+import { ChangedOnDiskError, type HeldFile, SaveScheduler } from "@halonicjs/app";
 import {
   type KeyboardPlatform,
   type SaveReason,
@@ -28,6 +28,11 @@ export interface WorkspaceSavingOptions {
   readonly saving: SaveState;
   /** The workspace's name, which a failed save names, such as "Acme". */
   readonly name: string;
+  /**
+   * Hears the files a save left alone because they changed outside Halonic (save model 1.7), such
+   * as the Files feature's host, which marks them for Compare. The save itself is no failure.
+   */
+  readonly onHeld?: (held: readonly HeldFile[]) => void;
   /** How long to wait after the last change; {@link AUTOSAVE_DELAY_MS} unless a test says. */
   readonly delayMs?: number;
 }
@@ -104,6 +109,13 @@ export class WorkspaceSaving {
         await files.save();
         this.#problem = undefined;
       } catch (error) {
+        if (error instanceof ChangedOnDiskError) {
+          // The other files were written. The held ones wait for Compare, which the toolbar says;
+          // they stay unsaved, so closing still asks.
+          this.#problem = undefined;
+          this.#options.onHeld?.(error.held);
+          return;
+        }
         this.#problem = { reason: saveFailureFor(error).reason };
         throw error;
       }

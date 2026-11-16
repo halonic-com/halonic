@@ -4,7 +4,7 @@ import {
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
 import { openWorkspace, type WorkspaceScope, workspaceFilesKey } from "@halonicjs/app";
-import { WorkspaceSaving } from "@halonicjs/studio-feature-workspace";
+import { WorkspaceSaving, type WorkspaceSavingOptions } from "@halonicjs/studio-feature-workspace";
 import type { StudioWorkspace } from "@halonicjs/studio-shell";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
 
@@ -13,12 +13,14 @@ export function savingOf(
   scope: WorkspaceScope,
   workspace: StudioWorkspace,
   name: string,
+  onHeld?: WorkspaceSavingOptions["onHeld"],
 ): WorkspaceSaving {
   return new WorkspaceSaving({
     files: scope.services.get(workspaceFilesKey),
     onChange: (listener) => scope.events.on("files.changed", listener),
     saving: workspace.saving,
     name,
+    ...(onHeld === undefined ? {} : { onHeld }),
   });
 }
 

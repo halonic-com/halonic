@@ -48,6 +48,8 @@ function hostOf(read: FilesHost["read"], edit: FilesHost["edit"] = () => {}): Fi
     edit,
     problems: async () => [],
     outside: () => new Map(),
+    noteHeld: () => undefined,
+    onReloaded: () => () => undefined,
     compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
     settle: async () => {},
     create: async () => {},
@@ -174,5 +176,42 @@ verifies("files.ui.file-tab", () => {
 
     expect(page.textContent).toContain("Couldn't open this file");
     expect(page.textContent).toContain("Access was denied.");
+  });
+});
+
+verifies("files.ui.large-or-not-text", () => {
+  it("opens a file over the limit read-only under its line", async () => {
+    const page = show(
+      hostOf(async () => "a".repeat(1_000_001)),
+      "big.md",
+    );
+    await settle();
+
+    expect(page.textContent).toContain("This file is large, so it opens read-only.");
+    expect(opened).toHaveLength(1);
+    expect(opened[0]?.options.readOnly).toBe(true);
+  });
+
+  it("opens a file at the limit as usual", async () => {
+    const page = show(
+      hostOf(async () => "a".repeat(1_000_000)),
+      "edge.md",
+    );
+    await settle();
+
+    expect(page.textContent).not.toContain("read-only");
+    expect(opened[0]?.options.readOnly).toBe(false);
+  });
+
+  it("says a file with a zero byte can't be shown, with its size, and opens no editor", async () => {
+    const page = show(
+      hostOf(async () => `PK\u0000\u0003${"x".repeat(2000)}`),
+      "logo.png",
+    );
+    await settle();
+
+    expect(page.textContent).toContain("This file can't be shown here.");
+    expect(page.textContent).toContain("It is 2.0 KB.");
+    expect(opened).toHaveLength(0);
   });
 });

@@ -49,6 +49,8 @@ function fixture(change: OutsideChange | undefined, compare: Partial<FileCompare
     rename: async () => {},
     remove: async () => ({ places: 0, undo: async () => {} }),
     outside: () => outside,
+    noteHeld: () => undefined,
+    onReloaded: () => () => undefined,
     compare: async (path) => ({
       path,
       mine: "mine",
