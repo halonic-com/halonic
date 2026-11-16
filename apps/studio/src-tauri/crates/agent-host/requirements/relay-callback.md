@@ -1,6 +1,6 @@
 # studio.src-tauri.crates.agent-host.relay-callback
 
-- Status: active
+- Status: draft
 - Since: 0.1.0
 - Source: HAL-10028 (plan: HAL-10017, Revision 2); security read HAL-10026
 
