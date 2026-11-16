@@ -1618,6 +1618,7 @@ dependencies = [
  "halonic-connect",
  "halonic-git-guard",
  "halonic-host-settings",
+ "halonic-http-guard",
  "halonic-keychain",
  "halonic-login-shell",
  "halonic-process-probe",
@@ -1639,6 +1640,7 @@ dependencies = [
  "tauri-plugin-http",
  "tauri-plugin-opener",
  "tauri-plugin-updater",
+ "url",
 ]
 
 [[package]]

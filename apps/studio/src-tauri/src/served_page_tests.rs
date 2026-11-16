@@ -140,6 +140,8 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "agent_host_request",
         "agent_host_stream",
         "agent_host_stream_end",
+        "http_fetch",
+        "http_fetch_abort",
         "fs_list",
         "fs_read",
         "fs_write",
@@ -211,6 +213,22 @@ fn served_page_test_sees_the_connect_page_allowed_to_run_git_on_desktop() {
     );
     let refusal = answer.expect_err("no folder is opened yet");
     assert_eq!(refusal["kind"], "folder_not_opened", "{refusal}");
+}
+
+#[cfg(desktop)]
+#[test]
+fn served_page_test_sees_the_connect_page_allowed_to_fetch_on_desktop() {
+    let window = app_window();
+    let request = json!({"request": {"method": "TRACE", "url": "https://example.com/"}, "call": 1});
+    let refusal = invoke(&window, CONNECT_PAGE, "http_fetch", request).expect_err("method refused");
+    assert_eq!(refusal["kind"], "method_refused", "{refusal}");
+    let aborted = invoke(
+        &window,
+        CONNECT_PAGE,
+        "http_fetch_abort",
+        json!({"call": 1}),
+    );
+    assert_eq!(aborted, Ok(Value::Null));
 }
 
 #[cfg(desktop)]

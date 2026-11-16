@@ -32,6 +32,7 @@ mod files;
 mod git;
 mod google_setups;
 mod host_settings;
+mod http_fetch;
 mod instruction_trust;
 mod native_dialogs;
 mod navigation;
@@ -84,6 +85,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(engine_lock::EngineLockState::default())
         .manage(records::RecordState::default())
         .manage(agent_host::AgentHostState::default())
+        .manage(http_fetch::HttpFetchState::default())
         .manage(files::FileState::default());
     #[cfg(desktop)]
     let builder = builder
@@ -114,6 +116,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .on_page_load(|webview, payload| {
             if payload.event() == PageLoadEvent::Started {
                 agent_host::end_page_streams(webview.app_handle(), webview.label());
+                http_fetch::end_page_calls(webview.app_handle(), webview.label());
                 files::end_page_watches(webview.app_handle(), webview.label());
                 #[cfg(desktop)]
                 updates::end_page_watches(webview.app_handle(), webview.label());
@@ -126,6 +129,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
                     .state::<engine_lock::EngineLockState>()
                     .release_window(window.label());
                 agent_host::end_page_streams(window.app_handle(), window.label());
+                http_fetch::end_page_calls(window.app_handle(), window.label());
                 files::end_page_watches(window.app_handle(), window.label());
                 #[cfg(desktop)]
                 updates::end_page_watches(window.app_handle(), window.label());
@@ -167,6 +171,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             agent_host::agent_host_request,
             agent_host::agent_host_stream,
             agent_host::agent_host_stream_end,
+            http_fetch::http_fetch,
+            http_fetch::http_fetch_abort,
             files::fs_list,
             files::fs_read,
             files::fs_write,
