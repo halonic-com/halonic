@@ -143,7 +143,7 @@ verifies("cloudflare-durable.watchdog-limits", () => {
   });
 
   describe("a limit on the calls of one sweep", () => {
-    function manyStuckRuns(count: number, maxRunsPerSweep: number) {
+    function manyStuckRuns(count: number, maxRunsPerSweep?: number) {
       const t = newWatchdog(maxRunsPerSweep);
       for (let run = 0; run < count; run++) {
         t.add(`run_${String(run).padStart(2, "0")}`, "waiting", {
@@ -182,6 +182,13 @@ verifies("cloudflare-durable.watchdog-limits", () => {
       const wakes = t.scheduled.length;
       expect(wakes).toBe(defaultMaxRunsPerSweep);
       expect(callsBeforeTheRuns + checks + wakes).toBeLessThanOrEqual(callLimit);
+    });
+
+    it("checks 20 runs in a sweep when no limit is given", async () => {
+      const t = manyStuckRuns(100);
+      const report = await t.watchdog.sweep();
+      expect(report.woken).toHaveLength(20);
+      expect(report.deferred).toBe(80);
     });
 
     it("checks everything at once when the runs fit the limit", async () => {
