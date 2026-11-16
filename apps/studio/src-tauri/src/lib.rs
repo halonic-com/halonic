@@ -16,7 +16,8 @@
 //! (capabilities/desktop-blobs.json) and the `record_*` commands
 //! (capabilities/desktop-records.json) and the read-only `google_setup_read`
 //! command (capabilities/desktop-google-setups.json) and the read-only `workspace_key`
-//! command (capabilities/desktop-workspace-key.json) and the `update_*` commands
+//! command (capabilities/desktop-workspace-key.json) and the read-only `resource_report`
+//! command (capabilities/desktop-resources.json) and the `update_*` commands
 //! (capabilities/desktop-updates.json) and the page's close request
 //! (capabilities/desktop-window.json); the Studio it then opens is
 //! served by the computer and gets no command at all. The navigation guard keeps
@@ -40,6 +41,7 @@ mod plugin_folder;
 mod plugin_folder_remove;
 mod profile;
 mod records;
+mod resource_report;
 mod runs;
 mod secrets;
 mod system_region;
@@ -195,6 +197,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             records::record_replace,
             google_setups::google_setup_read,
             workspace_key::workspace_key,
+            resource_report::resource_report,
             #[cfg(desktop)]
             updates::update_status,
             #[cfg(desktop)]

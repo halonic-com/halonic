@@ -1581,6 +1581,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-resource-probe"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "halonic-run-lock"
 version = "0.1.0"
 dependencies = [
@@ -1624,6 +1632,7 @@ dependencies = [
  "halonic-process-probe",
  "halonic-profile",
  "halonic-record-store",
+ "halonic-resource-probe",
  "halonic-run-lock",
  "halonic-run-store",
  "halonic-secrets",
