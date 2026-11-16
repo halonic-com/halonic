@@ -10,9 +10,9 @@ function folders(path: string, denied: string[] = []): string[] {
 
 describe("toolFoldersInProfile", () => {
   it("keeps folders strictly below the profile", () => {
-    expect(folders(`${home}\\.nvm\\v22;${home}\\AppData\\Roaming\\npm`)).toEqual([
+    expect(folders(`${home}\\.nvm\\v22;${home}\\.cargo\\bin`)).toEqual([
       `${home}\\.nvm\\v22`,
-      `${home}\\AppData\\Roaming\\npm`,
+      `${home}\\.cargo\\bin`,
     ]);
   });
 
@@ -24,10 +24,10 @@ describe("toolFoldersInProfile", () => {
     expect(folders(`${home};${home}\\;C:\\Users;C:\\`)).toEqual([]); // leak-guard: allow absolute-path made-up Windows paths for the test
   });
 
-  it("never takes AppData or its Roaming or Local as a whole", () => {
+  it("never takes AppData or a folder inside it", () => {
     expect(
       folders(
-        `${home}\\AppData;${home}\\AppData;${home}\\appdata\\roaming;${home}\\AppData\\Local\\`,
+        `${home}\\AppData;${home}\\appdata\\roaming;${home}\\AppData\\Local\\;${home}\\AppData\\Roaming\\npm;${home}\\AppData\\Local\\Microsoft\\WindowsApps`,
       ),
     ).toEqual([]);
   });
@@ -42,19 +42,20 @@ describe("toolFoldersInProfile", () => {
   });
 
   it("drops folders on, above and inside a denied path", () => {
-    const denied = [`${home}\\.ssh`, `${home}\\AppData\\Roaming\\Halonic`];
+    const denied = [`${home}\\.ssh`, `${home}\\Halonic\\data`];
     expect(
       folders(
         [
           `${home}\\.ssh`,
           `${home}\\.ssh\\bin`,
-          `${home}\\AppData\\Roaming\\Halonic\\bin`,
-          `${home}\\AppData\\Roaming`,
-          `${home}\\AppData\\Roaming\\npm`,
+          `${home}\\Halonic\\data\\bin`,
+          `${home}\\bin`,
+          `${home}\\Halonic`,
+          `${home}\\tools`,
         ].join(";"),
         denied,
       ),
-    ).toEqual([`${home}\\AppData\\Roaming\\npm`]);
+    ).toEqual([`${home}\\bin`, `${home}\\tools`]);
   });
 
   it("drops folders on, above and inside a folder the program writes", () => {

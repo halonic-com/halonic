@@ -15,8 +15,9 @@ function insideOrSame(parent: string, child: string): boolean {
  *
  * A folder counts only when it is a full path with a drive letter that lies
  * strictly below `home`, and is not:
- * - `AppData`, or its `Roaming` or `Local` as a whole (only a folder inside
- *   them), as that would open every program's data;
+ * - `AppData` or anything inside it: it holds every program's data, and a
+ *   read grant on `AppData\Local\Microsoft\WindowsApps` made the fence
+ *   probe fail with `EPERM` on `AppData\Local` on the Windows runner;
  * - on, above or inside a path in `denied` (srt lets a read allowance win
  *   over a denial, so a folder inside one would reopen it);
  * - on, above or inside a folder the program writes, in `writable`.
@@ -32,7 +33,6 @@ export function toolFoldersInProfile(
 ): string[] {
   const root = win32.resolve(home);
   const appData = win32.join(root, "AppData");
-  const whole = [appData, win32.join(appData, "Roaming"), win32.join(appData, "Local")];
   const refused = [...denied, ...writable].map((path) => win32.resolve(path));
   const found = new Map<string, string>();
   for (const entry of (hostPath ?? "").split(";")) {
@@ -40,7 +40,7 @@ export function toolFoldersInProfile(
     if (!/^[a-z]:[\\/]/i.test(raw)) continue;
     const folder = win32.resolve(raw);
     if (!insideOrSame(root, folder) || folder.toLowerCase() === root.toLowerCase()) continue;
-    if (whole.some((path) => path.toLowerCase() === folder.toLowerCase())) continue;
+    if (insideOrSame(appData, folder)) continue;
     if (refused.some((path) => insideOrSame(path, folder) || insideOrSame(folder, path))) continue;
     if (!found.has(folder.toLowerCase())) found.set(folder.toLowerCase(), folder);
   }
