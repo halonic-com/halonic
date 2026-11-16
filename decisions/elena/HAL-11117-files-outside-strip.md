@@ -3,7 +3,6 @@
 - Task: HAL-11117
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11117 (design fix 7 of HAL-11098's design check; Liam's review of #3179 asked for this note; a team decision with no board card, HAL-2282 rule, because it builds on the approved files flow 2.4)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yXIMq/PHVssej2bV2g7aeMyVDTlXCvQOipNialMBziQVvj7Lc33i1xOlzEjeBC7JWHt6V/RcRXbSp8TuO/biAA==
 
 ## What changes
 
