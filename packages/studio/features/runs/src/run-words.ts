@@ -219,6 +219,21 @@ export const runPageWords = {
   waitingForYouName: "Waiting for you",
   waitingName: "Waiting",
   failedName: "Run failed",
+  /**
+   * The failed banner of a run the harness check refused (checklist S1, S2, S5 and S7 of the
+   * instruction trust check). Calm words: nothing broke, a person hasn't said yes yet.
+   */
+  instructionsName: "Instructions not trusted",
+  instructionsFirstTime: (agent: string) =>
+    `${capitalised(agent)} didn't start. You haven't trusted its instructions yet.`,
+  instructionsChanged: (agent: string) =>
+    `${capitalised(agent)} didn't start. Its instructions changed since you trusted them.`,
+  reviewInstructions: "Review instructions",
+  instructionsOnComputer: "Trust these instructions on your computer first.",
+  instructionsDeclined: "Nothing was trusted, so the run didn't start.",
+  instructionsBusy: "A question about instructions is already open. Answer it first.",
+  instructionsUnavailable: "Nothing was trusted. Try again.",
+  instructionsTrusted: "Trusted. Run again to start it.",
   budgetName: "Stopped at its budget",
   /** One tool approval (mc 15.2): who asks and what for, in the words of the Inbox card's title. */
   approval: (what: string, sends: boolean) =>

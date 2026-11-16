@@ -1,24 +1,17 @@
 import { shortRunId } from "@halonicjs/app";
 import { type RunEvent, type RunSummary, type RunVersion, summarize } from "@halonicjs/events";
-import {
-  Callout,
-  type CalloutAction,
-  EmptyState,
-  List,
-  StatusChip,
-  usePresentation,
-} from "@halonicjs/studio-kit";
+import { Callout, EmptyState, List, StatusChip, usePresentation } from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
 import { type ReactNode, useCallback, useState, useSyncExternalStore } from "react";
-import type { SourcedRun } from "../api.ts";
+import { type InstructionTrustHost, InstructionTrustHostService, type SourcedRun } from "../api.ts";
 import { loadFailureReason } from "../load-failure.ts";
 import { emptyListWords, runPageWords } from "../run-words.ts";
 import { type RunsList, RunsListService } from "../runs-list.ts";
-import { BlockedFailureBanner, blockedFailure } from "./blocked-banner.tsx";
 import { Details, type DetailsProps, DetailsRow } from "./details.tsx";
 import { detailRows } from "./details-model.ts";
 import { EveryStep, useRunLog } from "./every-step.tsx";
 import { entryIdOfStep, everyStep, type StepEntry } from "./every-step-model.ts";
+import { PageBanner } from "./page-banner.tsx";
 import { Receipt } from "./receipt.tsx";
 import {
   approvalLines,
@@ -27,23 +20,19 @@ import {
   readLines,
   summaryLine,
 } from "./receipt-model.ts";
-import {
-  type BannerAction,
-  type RunBanner,
-  type RunPageContext,
-  runBanner,
-  runHeader,
-} from "./run-page-model.ts";
+import { type RunPageContext, runHeader } from "./run-page-model.ts";
 import { StepPanel } from "./step-panel.tsx";
 
 /** The `run` item kind's page: one run of the open workspace, from `RunsListService`. */
 export function RunPage({ item, context, step }: ItemViewProps) {
   const { openPlace, openItem } = context;
+  const instructionTrust = context.services.find(InstructionTrustHostService);
   return (
     <RunView
       list={context.services.get(RunsListService)}
       runId={item.id}
       {...(step === undefined ? {} : { step })}
+      {...(instructionTrust === undefined ? {} : { instructionTrust })}
       {...(openPlace === undefined
         ? {}
         : { goToRuns: () => openPlace("runs"), reviewInInbox: () => openPlace("inbox") })}
@@ -65,6 +54,8 @@ export interface RunViewProps {
    * and out ›** asks for. A step the run didn't reach opens the page at the top.
    */
   readonly step?: string;
+  /** Asks to trust an agent's instructions; absent on a served page or a phone, which can't ask. */
+  readonly instructionTrust?: InstructionTrustHost;
   /** Opens the Runs list, for a run that isn't there any more. */
   readonly goToRuns?: () => void;
   /** Opens the Inbox, for Review in Inbox; without it the button isn't there. */
@@ -96,6 +87,7 @@ export function RunView({
   list,
   runId,
   step,
+  instructionTrust,
   goToRuns,
   reviewInInbox,
   openRun,
@@ -134,6 +126,7 @@ export function RunView({
             entries={entries}
             reviewInInbox={reviewInInbox}
             openRun={openRun}
+            instructionTrust={{ host: instructionTrust }}
             onSeeStep={setOpenEntry}
           />
           <DamagedLogBanner line={logRead.damagedLine} />
@@ -348,86 +341,6 @@ function RunLayout({
       {children}
     </div>
   );
-}
-
-/** The page's one banner: the sandbox's failed banner for a run it stopped, else the usual one. */
-export function PageBanner({
-  run,
-  context,
-  log,
-  entries,
-  reviewInInbox,
-  openRun,
-  onSeeStep,
-}: {
-  readonly run: SourcedRun;
-  readonly context: RunPageContext;
-  readonly log: readonly RunEvent[] | undefined;
-  readonly entries: readonly StepEntry[];
-  readonly reviewInInbox: (() => void) | undefined;
-  readonly openRun: ((runId: string) => void) | undefined;
-  readonly onSeeStep: (entryId: string) => void;
-}) {
-  const blocked = log === undefined ? undefined : blockedFailure(run.summary, log, entries);
-  if (blocked !== undefined) {
-    return <BlockedFailureBanner failure={blocked} onSeeStep={onSeeStep} />;
-  }
-  return (
-    <Banner banner={runBanner(run, context)} reviewInInbox={reviewInInbox} openRun={openRun} />
-  );
-}
-
-/**
- * The one banner: a Callout in a region named by its hidden title, or the
- * cancelled run's plain note. A banner that appears mid-run doesn't take focus.
- */
-function Banner({
-  banner,
-  reviewInInbox,
-  openRun,
-}: {
-  readonly banner: RunBanner | undefined;
-  readonly reviewInInbox: (() => void) | undefined;
-  readonly openRun: ((runId: string) => void) | undefined;
-}) {
-  if (banner === undefined) {
-    return null;
-  }
-  if (banner.kind === "note") {
-    return <p className="text-body">{banner.text}</p>;
-  }
-  const action = bannerAction(banner.action, reviewInInbox, openRun);
-  return (
-    <section aria-label={banner.name}>
-      <Callout
-        tone={banner.tone}
-        {...(banner.title === undefined ? {} : { title: banner.title })}
-        {...(action === undefined ? {} : { action })}
-      >
-        {banner.lines.map((line) => (
-          <span key={line} className="block">
-            {line}
-          </span>
-        ))}
-      </Callout>
-    </section>
-  );
-}
-
-/** The banner's button, when the page can do what it asks. */
-function bannerAction(
-  action: BannerAction | undefined,
-  reviewInInbox: (() => void) | undefined,
-  openRun: ((runId: string) => void) | undefined,
-): CalloutAction | undefined {
-  if (action?.kind === "review-in-inbox" && reviewInInbox !== undefined) {
-    return { label: runPageWords.reviewInInbox, onClick: reviewInInbox };
-  }
-  if (action?.kind === "open-run" && openRun !== undefined) {
-    const { runId } = action;
-    return { label: action.label, onClick: () => openRun(runId) };
-  }
-  return undefined;
 }
 
 /** The routine that started the run, when it has one and the workspace still has it. */

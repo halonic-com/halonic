@@ -101,7 +101,7 @@ export interface RunsSource {
 export const RunsSourceService: ServiceKey<RunsSource> = serviceKey<RunsSource>("runs.source");
 
 /**
- * What the shell's native question came to (`runs.instruction-trust-host`): `trusted` when the
+ * What the shell's native question came to (see `InstructionTrustHostService`): `trusted` when the
  * person said yes and the instructions are saved, `declined` when they said no, `busy` while
  * another question is open, `unavailable` when nothing could be asked or saved.
  */

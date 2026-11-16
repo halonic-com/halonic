@@ -6,6 +6,7 @@ import { loadFailureReason } from "../load-failure.ts";
 import { runPageWords } from "../run-words.ts";
 import { EveryStep, type RunLogRead } from "./every-step.tsx";
 import { everyStep } from "./every-step-model.ts";
+import { PageBanner } from "./page-banner.tsx";
 import { Receipt } from "./receipt.tsx";
 import {
   approvalLines,
@@ -14,7 +15,7 @@ import {
   readLines,
   summaryLine,
 } from "./receipt-model.ts";
-import { DamagedLogBanner, PageBanner } from "./run-page.tsx";
+import { DamagedLogBanner } from "./run-page.tsx";
 
 /** The props of `RunCardReceipt`. */
 export interface RunCardReceiptProps {
