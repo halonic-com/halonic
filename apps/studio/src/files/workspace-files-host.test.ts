@@ -13,6 +13,7 @@ function setup(
     closed: number;
   } = { closed: 0 };
   const settled: string[] = [];
+  const renames: { from: string; to: string; rewrites?: Record<string, string> }[] = [];
   const texts: Record<string, string> = { "workspace.yaml": "id: acme\nname: Acme\n", ...more };
   const listeners = new Set<() => void>();
   const changes: { label: string; changes: Record<string, string | null>; key?: string }[] = [];
@@ -40,6 +41,9 @@ function setup(
         theirs: outside.theirs === undefined ? "theirs" : outside.theirs,
         combined: null,
       }),
+      rename: async (from, to, rewrites) => {
+        renames.push({ from, to, ...(rewrites ? { rewrites } : {}) });
+      },
       settle: async (path) => {
         settled.push(path);
       },
@@ -58,7 +62,7 @@ function setup(
       return () => listeners.delete(listener);
     },
   });
-  return { host, listeners, changes, watching, settled };
+  return { host, listeners, changes, watching, settled, renames };
 }
 
 verifies("studio.workspace-files-host", () => {
@@ -216,5 +220,55 @@ verifies("studio.workspace-files-create", () => {
     );
 
     expect(changes).toEqual([]);
+  });
+});
+
+verifies("studio.workspace-files-rename", () => {
+  const skill = "hubs/support/library/skills/refunds/SKILL.md";
+  const agent = "hubs/support/agents/helper.agent.yaml";
+  const workspace = {
+    "hubs/support/hub.yaml": "id: support\nname: Support\n",
+    [skill]: "---\nname: Refunds\ndescription: Use for refunds\n---\nBe kind.\n",
+    [agent]: "id: helper\nname: Helper\n# the list\nskills: [refunds]\nmodel: test\n",
+  };
+
+  it("rewrites the places that name a Library item whose id the new name changes", async () => {
+    const { host, renames } = setup([], {}, workspace);
+    const to = "hubs/support/library/skills/returns/SKILL.md";
+
+    expect(await host.renameImpact(skill, to)).toBe(1);
+    await host.rename(skill, to);
+
+    expect(renames).toEqual([
+      {
+        from: skill,
+        to,
+        rewrites: {
+          [agent]: "id: helper\nname: Helper\n# the list\nskills: [returns]\nmodel: test\n",
+        },
+      },
+    ]);
+  });
+
+  it("changes no other file for a file that is not a Library item or a move that keeps the id", async () => {
+    const { host, renames } = setup([], {}, { ...workspace, "notes.md": "hi" });
+
+    expect(await host.renameImpact("notes.md", "todo.md")).toBe(0);
+    expect(await host.renameImpact(skill, "hubs/support/library/skills/refunds/other.md")).toBe(0);
+    await host.rename("notes.md", "todo.md");
+
+    expect(renames).toEqual([{ from: "notes.md", to: "todo.md", rewrites: {} }]);
+  });
+
+  it("refuses a path that has a file and the file's own path", async () => {
+    const { host, renames } = setup([], {}, { ...workspace, "notes.md": "hi" });
+
+    await expect(host.rename("notes.md", "workspace.yaml")).rejects.toThrow(
+      "workspace.yaml already exists.",
+    );
+    await expect(host.rename("notes.md", "notes.md")).rejects.toThrow(
+      "notes.md already has that name.",
+    );
+    expect(renames).toEqual([]);
   });
 });

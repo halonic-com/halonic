@@ -19,6 +19,8 @@ const host: FilesHost = {
   compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
   settle: async () => {},
   create: async () => {},
+  renameImpact: async () => 0,
+  rename: async () => {},
 };
 
 verifies("files.ui.file-tab", () => {

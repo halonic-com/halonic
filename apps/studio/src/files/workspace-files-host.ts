@@ -1,3 +1,4 @@
+import { type LibraryItemKind, type Reference, referencesTo } from "@halonicjs/app";
 import {
   checkWorkspacePath,
   type DefinitionWatch,
@@ -12,7 +13,8 @@ import type {
   FilesListing,
   OutsideChange,
 } from "@halonicjs/studio-feature-files/api";
-import { loadWorkspace } from "@halonicjs/workspace";
+import { loadWorkspace, placeOf } from "@halonicjs/workspace";
+import { editYaml } from "@halonicjs/yaml";
 import { unsavedSource } from "../library/workspace-library-items.ts";
 
 /** What {@link WorkspaceFilesHost} needs of the workspace's files and events. */
@@ -38,12 +40,21 @@ export interface FilesHostParts {
     ): void;
     /** Takes in outside changes of files with no unsaved changes as one undo step; the rest come back as `held`. */
     reloadFromOutside(paths: readonly string[]): Promise<{ held: string[] }>;
+    /** Moves a file as one undo step; `rewrites` is the new text of the files that name it. Rejects with an `Error` when it can't. */
+    rename(from: string, to: string, rewrites?: Record<string, string>): Promise<void>;
     compare(path: string): Promise<FileCompare>;
     settle(path: string, choice: CompareChoice): Promise<unknown>;
   };
   /** Calls `listener` after every change of the workspace's files and every save; returns the way to stop. */
   readonly onChange: (listener: () => void) => () => void;
 }
+
+const libraryKinds: ReadonlySet<string> = new Set([
+  "skill",
+  "knowledge",
+  "collection",
+  "connector",
+]);
 
 /**
  * The Files feature's view of the workspace (`studio.workspace-files-host`): saved and unsaved
@@ -183,6 +194,55 @@ export class WorkspaceFilesHost implements FilesHost {
     if ((await files.list(path)).length > 0) throw new Error(`${path} is a folder.`);
     if ((await files.read(path)) !== null) throw new Error(`${path} already exists.`);
     files.change(`New file ${path}`, { [path]: "" });
+  }
+
+  async renameImpact(from: string, to: string): Promise<number> {
+    return (await this.#renamePlan(from, to)).places;
+  }
+
+  async rename(from: string, to: string): Promise<void> {
+    if (from === to) throw new Error(`${to} already has that name.`);
+    if ((await this.#parts.files.read(to)) !== null) throw new Error(`${to} already exists.`);
+    const { rewrites } = await this.#renamePlan(from, to);
+    await this.#parts.files.rename(from, to, rewrites);
+  }
+
+  /**
+   * What a rename does to other files. A Library item's id is the `<id>` of its file name, so
+   * a new name is a new id, and every place that names the old one gets the new one. A move
+   * that keeps the id, or a file that isn't a Library item, changes nothing else.
+   */
+  async #renamePlan(
+    from: string,
+    to: string,
+  ): Promise<{ rewrites: Record<string, string>; places: number }> {
+    const none = { rewrites: {}, places: 0 };
+    const old = placeOf(from);
+    const next = placeOf(to);
+    if (old?.placeId === undefined || next?.placeId === undefined) return none;
+    if (old.kind !== next.kind || old.hub !== next.hub || old.placeId === next.placeId) return none;
+    if (!libraryKinds.has(old.kind)) return none;
+    const kind = old.kind as LibraryItemKind;
+    let places: Reference[];
+    try {
+      const workspace = await loadWorkspace(unsavedSource(this.#parts.files));
+      places = referencesTo(workspace, {
+        kind,
+        id: old.placeId,
+        hub: kind === "collection" ? null : old.hub,
+      });
+    } catch {
+      return none;
+    }
+    const rewrites: Record<string, string> = {};
+    for (const place of places) {
+      const text = rewrites[place.file] ?? (await this.#parts.files.read(place.file));
+      if (text === null) continue;
+      const edited = editYaml(text, [{ kind: "set", path: place.path, value: next.placeId }]);
+      if (!edited.ok) throw new Error(`Couldn't update ${place.file}.`);
+      rewrites[place.file] = edited.value.text;
+    }
+    return { rewrites, places: places.length };
   }
 
   edit(path: string, text: string): void {
