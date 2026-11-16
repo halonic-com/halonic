@@ -1,9 +1,9 @@
+import { moneyAmount } from "@halonicjs/app";
 import type { RunSends } from "@halonicjs/events";
 import { printable } from "../output/printable.ts";
 import { counted, listInWords, timesInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { oldestSupported } from "./doctor.ts";
-import { money } from "./money.ts";
 import { dim, joinedFacts, lineOfFacts, markPart, type Phrase, phrase } from "./phrase.ts";
 import { sendsInWords } from "./sends.ts";
 import { suggestedCommand } from "./suggested-command.ts";
@@ -313,7 +313,7 @@ function receiptLine(receipt: RunReceipt): Phrase {
     parts.push(`asked you ${timesInWords(receipt.askedYou)}`);
   }
   if (receipt.estimatedCost !== undefined) {
-    parts.push(`estimated cost ${money(receipt.estimatedCost)}`);
+    parts.push(`estimated cost ${moneyAmount(receipt.estimatedCost)}`);
   }
   return lineOfFacts(parts);
 }

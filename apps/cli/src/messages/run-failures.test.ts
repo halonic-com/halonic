@@ -1,7 +1,7 @@
+import { moneyAmount } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { listInWords, timesInWords } from "./counts.ts";
-import { money } from "./money.ts";
 import { plainText } from "./phrase.ts";
 import { type FailedRun, type RunFailure, runFailedLines } from "./run-failures.ts";
 
@@ -263,29 +263,29 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
   });
 });
 
-describe("money", () => {
+describe("moneyAmount", () => {
   it("writes two decimals, or three below a cent", () => {
-    expect([money(0.004), money(0.03), money(5), money(5.08), money(0)]).toEqual([
-      "€0.004",
-      "€0.03",
-      "€5.00",
-      "€5.08",
-      "€0.00",
-    ]);
+    expect([
+      moneyAmount(0.004),
+      moneyAmount(0.03),
+      moneyAmount(5),
+      moneyAmount(5.08),
+      moneyAmount(0),
+    ]).toEqual(["€0.004", "€0.03", "€5.00", "€5.08", "€0.00"]);
   });
 
   it("says under €0.001 rather than €0.000 for a tiny spend (revision 25)", () => {
-    expect([money(0.0004), money(0.00001), money(0.0005), money(0.001)]).toEqual([
-      "under €0.001",
-      "under €0.001",
-      "€0.001",
-      "€0.001",
-    ]);
+    expect([
+      moneyAmount(0.0004),
+      moneyAmount(0.00001),
+      moneyAmount(0.0005),
+      moneyAmount(0.001),
+    ]).toEqual(["under €0.001", "under €0.001", "€0.001", "€0.001"]);
   });
 
   it("throws for an amount no spend or budget can have", () => {
     for (const amount of [-0.5, Number.NaN, Number.POSITIVE_INFINITY]) {
-      expect(() => money(amount)).toThrow(RangeError);
+      expect(() => moneyAmount(amount)).toThrow(RangeError);
     }
   });
 });

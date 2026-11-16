@@ -1,9 +1,9 @@
 import { secretVariableName } from "@halonicjs/adapter-env-secrets";
+import { moneyAmount } from "@halonicjs/app";
 import type { ModelSkipReason } from "@halonicjs/events";
 import { counted, timesInWords } from "./counts.ts";
 import { defineMessages, type Message } from "./define.ts";
 import { errorMessages } from "./general.ts";
-import { money } from "./money.ts";
 import { type Phrase, phrase } from "./phrase.ts";
 import { sandboxMessages } from "./sandbox.ts";
 import { suggestedCommand } from "./suggested-command.ts";
@@ -204,8 +204,8 @@ const lineOne = {
   budget: (run, failure) =>
     phrase`${run.title} stopped in the step ${run.step}: ${
       failure.per === "run"
-        ? phrase`this run reached its budget of ${money(failure.budget)} (estimated ${money(failure.spent)} spent).`
-        : phrase`this month's estimated spend reached its budget of ${money(failure.budget)}.`
+        ? phrase`this run reached its budget of ${moneyAmount(failure.budget)} (estimated ${moneyAmount(failure.spent)} spent).`
+        : phrase`this month's estimated spend reached its budget of ${moneyAmount(failure.budget)}.`
     }`,
   "turn-limit": (run, failure) => {
     // "used all 1 turn" reads like a bug (HAL-2745).

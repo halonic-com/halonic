@@ -3,10 +3,15 @@
 // word, which sentence for the What column, and when the run started. The
 // words themselves come from `runsListMessages`, so this file holds no text.
 
-import { shortRunId, type WorkflowDefinition } from "@halonicjs/app";
+import {
+  moneyAmount,
+  runStanding,
+  runWait,
+  shortRunId,
+  type WorkflowDefinition,
+} from "@halonicjs/app";
 import type { RunSends, RunSummary } from "@halonicjs/events";
 import { duration } from "../../messages/duration.ts";
-import { money } from "../../messages/money.ts";
 import type { Phrase } from "../../messages/phrase.ts";
 import { type ListedStatus, runsListMessages } from "../../messages/runs-list.ts";
 import { sendsInWords } from "../../messages/sends.ts";
@@ -75,51 +80,42 @@ export function workflowTitle(
 }
 
 /**
- * Studio's status word for a run: a waiting run needs the user unless it
- * waits for a time or a child run, and a failed run that kept to its budget
- * or was cancelled is Stopped.
+ * Studio's status word for a run, from the app's run facts (`runStanding`):
+ * a run with an open approval needs the user, a waiting run needs the user
+ * unless it waits for a time or a child run, and a failed run that kept to
+ * its budget or was cancelled is Stopped.
  */
 export function listedStatus(summary: RunSummary): ListedStatus {
-  switch (summary.status) {
+  switch (runStanding(summary)) {
     case "running":
       return "running";
+    case "needs-you":
+      return "needsYou";
     case "waiting":
-      return waitsForTheUser(summary) ? "needsYou" : "waiting";
-    case "completed":
+      return "waiting";
+    case "done":
       return "done";
     case "failed":
-      return isStopped(summary) ? "stopped" : "failed";
+      return "failed";
+    case "budget":
+    case "cancelled":
+      return "stopped";
     case "cant-try":
       return "couldntTry";
   }
 }
 
-/**
- * Whether a waiting run waits for the user, decided in this order
- * (cli-output 3.4, revision 31, M6): a pending tool approval needs the user;
- * a run with `waitingOn` waits for its child run; a step that accepts events
- * needs the user. Anything else waits for a time, or just waits.
- */
-function waitsForTheUser(summary: RunSummary): boolean {
-  if (summary.approvals.length > 0) {
-    return true;
-  }
-  return summary.waitingOn === null && summary.accepts.length > 0;
-}
-
 /** A ◌ Waiting run: for its child run, until its timer, or else in its step. */
 function waitingWhat(summary: RunSummary, step: string, clock: RunClock): Phrase {
-  if (summary.waitingOn !== null) {
-    return runsListMessages.waitingForChildRun(shortRunId(summary.waitingOn)).phrase;
+  const wait = runWait(summary);
+  switch (wait.kind) {
+    case "child-run":
+      return runsListMessages.waitingForChildRun(shortRunId(wait.runId)).phrase;
+    case "timer":
+      return runsListMessages.waitingUntil(dueAt(new Date(wait.at), clock)).phrase;
+    default:
+      return runsListMessages.waitingIn(step).phrase;
   }
-  if (summary.nextTimer !== null) {
-    return runsListMessages.waitingUntil(dueAt(new Date(summary.nextTimer), clock)).phrase;
-  }
-  return runsListMessages.waitingIn(step).phrase;
-}
-
-function isStopped(summary: RunSummary): boolean {
-  return summary.reason === "budget" || summary.reason === "cancelled";
 }
 
 function whatColumn(
@@ -155,7 +151,7 @@ function whatColumn(
  * finished in.
  */
 function doneWhat(run: RunToList, step: string): Phrase {
-  const cost = run.summary.cost > 0 ? money(run.summary.cost) : undefined;
+  const cost = run.summary.cost > 0 ? moneyAmount(run.summary.cost) : undefined;
   const sends = run.sends === undefined ? [] : sendsInWords(run.sends);
   if (sends.length > 0) {
     return runsListMessages.whatItSent(sends, cost).phrase;
