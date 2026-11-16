@@ -92,6 +92,45 @@ verifies("studio.workspace-connector-status", () => {
     ]);
   });
 
+  it("says how each connector connects, with secret names only", async () => {
+    const status = new WorkspaceConnectorStatus({
+      definitions: new MemoryDefinitionStore({
+        "workspace.yaml": "id: acme\nname: Acme\n",
+        "library/connectors/search.connector.yaml": `${searchFile}\nsecret: search-token`,
+        "library/connectors/mail.connector.yaml": googleFile,
+        "library/connectors/notes.connector.yaml": [
+          "version: 1",
+          "id: notes",
+          "transport:",
+          "  stdio:",
+          "    command: npx",
+          "    args: [-y, '@acme/notes-mcp']",
+          "    secretEnv: { NOTES_TOKEN: NOTES_TOKEN }",
+        ].join("\n"),
+      }),
+      refusals: new RefusalsFeed(),
+      google: noGoogle,
+    });
+
+    const listed = await status.list();
+
+    expect(listed.map(({ id, connection }) => ({ id, connection }))).toEqual([
+      { id: "mail", connection: { kind: "google", account: "sam@acme.example" } },
+      {
+        id: "notes",
+        connection: { kind: "stdio", command: "npx -y @acme/notes-mcp", secrets: ["NOTES_TOKEN"] },
+      },
+      {
+        id: "search",
+        connection: {
+          kind: "http",
+          url: "https://search.acme.example/mcp",
+          secrets: ["search-token"],
+        },
+      },
+    ]);
+  });
+
   it("gives a Google connector the state of its account's setup record", async () => {
     const signedIn = "2026-11-12T02:10:00.000Z";
     const states = async (extra: Partial<SetupRecord>) => {
