@@ -1,6 +1,7 @@
 import type { HarnessEvent, HarnessInput, HarnessRun, HarnessTask } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import type { DecideRemotely } from "../bridge/studio-services.ts";
 import { RunTable } from "../harness/run-table.ts";
 import { hostGatewaySource } from "./host-gateway-source.ts";
 import { RunLedger } from "./run-ledger.ts";
@@ -35,7 +36,7 @@ function waitingRun() {
     args: { command: "rm -r build" },
     callId: "call-9",
   });
-  return { source: hostGatewaySource(ledger, runs), run, id };
+  return { source: hostGatewaySource(ledger, runs), run, id, ledger };
 }
 
 verifies("agent-host.remote-gateway", () => {
@@ -51,7 +52,61 @@ verifies("agent-host.remote-gateway", () => {
       expect(source.approvalRisk(id, "approval-2")).toBeUndefined();
     });
 
-    it("refuses every approval and leaves the run and the approval as they were", async () => {
+    describe("an approval the bridge asked for", () => {
+      /** A run with a bridge approval, whose decisions go to `decide`. */
+      function bridgeApproval(decide: DecideRemotely) {
+        const found = waitingRun();
+        found.ledger.bridgeApprovalAsked(
+          "run_1",
+          "writer",
+          { callId: "b", tool: "Bash", args: {} },
+          decide,
+        );
+        return found;
+      }
+
+      it("tells Studio of a phone's decision and leaves the ledger to settle from the answer that comes back", async () => {
+        const told: boolean[] = [];
+        const { source, run, id, ledger } = bridgeApproval(async (approved) => {
+          told.push(approved);
+          return "decided";
+        });
+        await source.answerApproval(id, "approval-2", "approve");
+        expect(told).toEqual([true]);
+        expect(run.sent).toEqual([]);
+        expect(source.approvalRisk(id, "approval-2")).toBe("risky");
+        ledger.bridgeApprovalEnded("run_1", "writer", "b", { approved: true });
+        expect(source.approvalRisk(id, "approval-2")).toBeUndefined();
+      });
+
+      it("refuses a decision for an approval Studio doesn't have waiting", async () => {
+        const { source, run, id } = bridgeApproval(async () => "unknown");
+        await expect(source.answerApproval(id, "approval-2", "approve")).rejects.toThrow(
+          "no approval waiting",
+        );
+        expect(run.sent).toEqual([]);
+      });
+
+      it("refuses a decision that comes second", async () => {
+        const { source, id } = bridgeApproval(async () => "already-decided");
+        await expect(source.answerApproval(id, "approval-2", "deny")).rejects.toThrow(
+          "already been decided",
+        );
+      });
+
+      it("fails closed when Studio doesn't answer: the approval still waits and nothing is allowed", async () => {
+        const { source, run, id } = bridgeApproval(async () => {
+          throw new Error("Studio is away");
+        });
+        await expect(source.answerApproval(id, "approval-2", "approve")).rejects.toThrow(
+          "still waits",
+        );
+        expect(source.approvalRisk(id, "approval-2")).toBe("risky");
+        expect(run.sent).toEqual([]);
+      });
+    });
+
+    it("refuses every other approval and leaves the run and the approval as they were", async () => {
       const { source, run, id } = waitingRun();
       await expect(source.answerApproval(id, "approval-1", "approve")).rejects.toThrow("yet");
       expect(run.sent).toEqual([]);

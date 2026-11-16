@@ -414,7 +414,7 @@ function hostServices(
       ledger === undefined
         ? undefined
         : (runId, agentId) => ({
-            asked: (request) => ledger.bridgeApprovalAsked(runId, agentId, request),
+            asked: (request, decide) => ledger.bridgeApprovalAsked(runId, agentId, request, decide),
             ended: (callId, decision) =>
               ledger.bridgeApprovalEnded(runId, agentId, callId, decision),
           }),

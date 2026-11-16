@@ -19,6 +19,7 @@ export const studioMethods = {
   checkTool: "tools.check",
   callTool: "tools.call",
   requestApproval: "approvals.request",
+  remoteDecision: "approvals.remote-decision",
   getSecret: "secrets.get",
 } as const;
 
@@ -48,6 +49,22 @@ const approvalDecision = portSchema<BridgeApprovalDecision>(
   s.object({ approved: s.boolean(), comment: s.string().optional() }),
 );
 const secretValue = s.string().nullable();
+const remoteDecisionAnswer = s.object({
+  status: s.enum(["decided", "unknown", "already-decided"]),
+});
+
+/**
+ * What Studio says to a decision from a remote device: it was taken, no such
+ * approval waits (it is unknown, or ended), or someone decided first.
+ */
+export type RemoteDecisionStatus = "decided" | "unknown" | "already-decided";
+
+/**
+ * Tells Studio a person decided a waiting approval on a remote device.
+ * Studio's engine decides it from there, and the answer comes back through
+ * the approval's own call, which is what settles it for the ledger.
+ */
+export type DecideRemotely = (approved: boolean) => Promise<RemoteDecisionStatus>;
 
 /**
  * Who is told when the bridge asks Studio for an approval and when that call
@@ -55,7 +72,7 @@ const secretValue = s.string().nullable();
  * dropped, never failing the approval.
  */
 export interface ApprovalObserver {
-  asked(request: BridgeApprovalRequest): void;
+  asked(request: BridgeApprovalRequest, decide: DecideRemotely): void;
   /** `decision` is `undefined` when the call ended without one: cancelled, or Studio failed. */
   ended(callId: string, decision: BridgeApprovalDecision | undefined): void;
 }
@@ -88,7 +105,9 @@ export function studioServices(
     },
     approvals: {
       request: async (request, { signal }) => {
-        listen(() => observer?.asked(request));
+        listen(() =>
+          observer?.asked(request, (approved) => decideRemotely(channel, request.callId, approved)),
+        );
         let decision: BridgeApprovalDecision | undefined;
         try {
           decision = checked(
@@ -102,6 +121,22 @@ export function studioServices(
       },
     },
   };
+}
+
+/**
+ * The call for a decision from a remote device. `source` is set here, by the
+ * host, so nothing a phone sends can change who Studio's run log says decided.
+ * Studio not answering in time is an error: the approval stays waiting, and
+ * is never taken as allowed.
+ */
+async function decideRemotely(
+  channel: CallChannel,
+  callId: string,
+  approved: boolean,
+): Promise<RemoteDecisionStatus> {
+  const params = { callId, approved, source: "remote-device" };
+  const answer = await channel.call(studioMethods.remoteDecision, params, quick);
+  return checked(remoteDecisionAnswer, answer).status;
 }
 
 /** Runs what an observer does, so that a fault in it never breaks the call it listens to. */

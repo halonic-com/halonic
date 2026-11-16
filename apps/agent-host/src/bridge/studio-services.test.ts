@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CallChannel, StudioCallError } from "../server/call-channel.ts";
 import type { NdjsonStream } from "../server/ndjson-stream.ts";
-import { quickCallLimitMs, studioSecrets, studioServices } from "./studio-services.ts";
+import {
+  type DecideRemotely,
+  quickCallLimitMs,
+  studioSecrets,
+  studioServices,
+} from "./studio-services.ts";
 
 /** A channel whose every call Studio answers with `result`; `lines` keeps what went out. */
 function answeringChannel(result: unknown): { channel: CallChannel; lines: unknown[] } {
@@ -63,6 +68,43 @@ describe("studioServices", () => {
       ["asked", "c1"],
       ["ended", "c1", { approved: true }],
     ]);
+  });
+
+  it("gives the observer a way to tell Studio of a remote decision, with the source set by the host", async () => {
+    const { channel, lines } = answeringChannel({ status: "decided" });
+    let decide: DecideRemotely | undefined;
+    const { approvals } = studioServices(channel, {
+      asked: (_request, decideRemotely) => {
+        decide = decideRemotely;
+      },
+      ended: () => {},
+    });
+    // The fake answers every call alike, so the approval itself ends with a wrong-shaped answer.
+    approvals
+      .request({ callId: "c1", tool: "Bash", args: {} }, { signal: new AbortController().signal })
+      .catch(() => {});
+    await expect(decide?.(true)).resolves.toBe("decided");
+    expect(lines[1]).toMatchObject({
+      type: "call",
+      method: "approvals.remote-decision",
+      params: { callId: "c1", approved: true, source: "remote-device" },
+    });
+  });
+
+  it("refuses a status Studio answers a remote decision with that isn't the contract's", async () => {
+    const { channel } = answeringChannel({ status: "allowed" });
+    let decide: DecideRemotely | undefined;
+    const { approvals } = studioServices(channel, {
+      asked: (_request, decideRemotely) => {
+        decide = decideRemotely;
+      },
+      ended: () => {},
+    });
+    // The fake answers every call alike, so the approval itself ends with a wrong-shaped answer.
+    approvals
+      .request({ callId: "c1", tool: "Bash", args: {} }, { signal: new AbortController().signal })
+      .catch(() => {});
+    await expect(decide?.(true)).rejects.toThrow("wrong shape");
   });
 
   it("tells the observer a call that failed ended without a decision, and survives its faults", async () => {
