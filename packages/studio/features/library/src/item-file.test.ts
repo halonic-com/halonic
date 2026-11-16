@@ -12,7 +12,7 @@ describe("itemFilePath", () => {
   it("names the one file of the other kinds", () => {
     expect(itemFilePath("knowledge", { hub: null, id: "faq" })).toBe("library/knowledge/faq.yaml");
     expect(itemFilePath("collection", { hub: "p", id: "claims" })).toBe(
-      "hubs/p/library/collections/claims.collection.yaml",
+      "library/collections/claims.collection.yaml",
     );
     expect(itemFilePath("connector", { hub: null, id: "mail" })).toBe(
       "library/connectors/mail.connector.yaml",

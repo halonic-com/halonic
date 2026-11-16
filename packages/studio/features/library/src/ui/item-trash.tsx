@@ -1,5 +1,5 @@
 import type { ItemUsage, LibraryItemKind } from "@halonicjs/app";
-import { Button, Menu, MoreIcon, useToastStore } from "@halonicjs/studio-kit";
+import { Button, Menu, MoreIcon, usePresentation, useToastStore } from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useState } from "react";
 import { deleteWords } from "../delete-words.ts";
@@ -36,6 +36,7 @@ const noUsage: ItemUsage = { agents: [], hubs: [], routines: [], collections: []
 export function useItemTrash(context: ItemViewProps["context"], item: TrashableItem): ItemTrash {
   const host = context.services.find(LibraryItemsHostService);
   const toasts = useToastStore();
+  const desktop = usePresentation() === "desktop";
   const [removed, setRemoved] = useState<RemovedLibraryItem>();
   const { kind, hub, id, name, usage } = item;
 
@@ -67,7 +68,7 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
           />
         )}
         entries={[
-          ...(context.openItem === undefined
+          ...(!desktop || context.openItem === undefined
             ? []
             : [
                 {

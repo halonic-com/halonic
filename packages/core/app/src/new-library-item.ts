@@ -6,6 +6,7 @@
 import { err, ok, type Result, slugify, uniqueName } from "@halonicjs/std";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { writeFrontMatter, writeYamlFile } from "@halonicjs/yaml";
+import type { LibraryItemKind } from "./who-uses.ts";
 
 /** How a new connector reaches its tools; the same three ways as the New connector dialog. */
 export type NewConnectorTransport =
@@ -63,17 +64,31 @@ export type NewLibraryItemError =
 
 const secretNamePattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
-/** Where a new item's file sits for an id; the same places the kinds register. */
-function pathOf(item: NewLibraryItem, id: string): string {
-  const root = item.kind !== "collection" && item.hub !== null ? `hubs/${item.hub}/` : "";
-  switch (item.kind) {
+/**
+ * Where a Library item's file sits, for its kind, hub and id; the same places the kinds register.
+ * A skill is a folder with `SKILL.md`; the other kinds are one file. Collections live only at the
+ * workspace root, so a hub is ignored for them.
+ */
+export function libraryItemPath(
+  kind: LibraryItemKind,
+  { hub, id }: { readonly hub: string | null; readonly id: string },
+): string {
+  const root = kind !== "collection" && hub !== null ? `hubs/${hub}/` : "";
+  switch (kind) {
     case "skill":
       return `${root}library/skills/${id}/SKILL.md`;
+    case "knowledge":
+      return `${root}library/knowledge/${id}.yaml`;
     case "collection":
       return `library/collections/${id}.collection.yaml`;
     case "connector":
       return `${root}library/connectors/${id}.connector.yaml`;
   }
+}
+
+/** Where a new item's file sits for an id. */
+function pathOf(item: NewLibraryItem, id: string): string {
+  return libraryItemPath(item.kind, { hub: item.kind === "collection" ? null : item.hub, id });
 }
 
 /**

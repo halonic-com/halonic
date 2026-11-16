@@ -1,4 +1,5 @@
 import type { LibraryItemKind } from "@halonicjs/app";
+import { usePresentation } from "@halonicjs/studio-kit";
 import type { PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useState } from "react";
 import type { CollectionRef } from "../collection-host.ts";
@@ -84,6 +85,8 @@ export function LibraryPlace({ context }: PlaceViewProps) {
     });
   }, [newConnectorHost, show]);
   const { openItem, openItemInNewTab } = context;
+  // A phone has no tabs: its openItem opens the page, so Open as file is desktop only.
+  const desktop = usePresentation() === "desktop";
   const openSkill = ({ hub, id }: SkillRef) =>
     openItem?.({ kind: "skill", hub: hub ?? sharedHubKey, id });
   const openCollection = ({ hub, id }: CollectionRef) =>
@@ -107,7 +110,7 @@ export function LibraryPlace({ context }: PlaceViewProps) {
         onKindChange={show}
         onOpen={(each, entry) => openItem?.(refOf(each, entry))}
         onOpenInNewTab={(each, entry) => openItemInNewTab?.(refOf(each, entry))}
-        {...(openItem === undefined
+        {...(!desktop || openItem === undefined
           ? {}
           : { onOpenAsFile: (each, entry) => openItem(itemFileRef(each, entry)) })}
         {...(onNew === undefined ? {} : { onNew })}
