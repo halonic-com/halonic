@@ -12,6 +12,7 @@ afterEach(unmountAll);
 const host: ConnectorStatusHost = {
   list: async () => [{ id: "notes", name: "Notes", state: "connected" }],
   refusals: async () => [],
+  waiting: async () => [],
   subscribe: () => () => {},
 };
 

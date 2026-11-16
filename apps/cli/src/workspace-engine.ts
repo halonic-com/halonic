@@ -28,7 +28,7 @@ import {
 import { computerIntegrationMachine, computerPluginMachine } from "./local-integration-machine.ts";
 import type { LocalRunConnectorsInput } from "./local-run-connectors.ts";
 import type { Message } from "./messages/define.ts";
-import type { Phrase } from "./messages/phrase.ts";
+import { markPart, type Phrase, phrase } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import { openLocalIntegration } from "./open-local-integration.ts";
 import { openPluginBackend } from "./open-plugin-backend.ts";
@@ -194,7 +194,7 @@ export async function openWorkspaceEngine(
     // error, or goes to `onStuck`, and after an hour to `onGaveUp`. A failed clean-up is only
     // a `--debug` line (HAL-7171).
     reportError: engineErrorReporter(stuck, (line) => context.debug(line)),
-    reportWaiting: waitingReporter((line) => context.debug(line)),
+    reportWaiting: waitingReporter((line) => context.warn(line)),
     // A timer that worked starts over: only an hour of failures in a row gives up on its run.
     onTimerDone: (timer) => stuck.succeeded(timer),
     holdsTimer: (timer) => stuck.holds(timer),
@@ -290,17 +290,18 @@ function computerRunConnectors(
 }
 
 /**
- * The engine's `reportWaiting`: a debug line naming the command that
- * approves the tools a turn left out. A run asks about them at every step,
- * so each line is written once.
+ * The engine's `reportWaiting`: a warning naming the command that approves
+ * the tools a turn left out, shown with or without `--debug`. A run asks
+ * about them at every step, so each warning is written once for each
+ * connector and set of tools.
  *
  * @example
- * const reportWaiting = waitingReporter((line) => context.debug(line));
+ * const reportWaiting = waitingReporter((line) => context.warn(line));
  * reportWaiting("notes", [{ source: "notes", name: "lookup" }]);
- * // the tools lookup of notes wait for your approval and stay off; to approve them, run halonic tools review notes
+ * // ! The tools lookup of notes wait for your approval and stay off. To approve them, run halonic tools review notes
  */
 export function waitingReporter(
-  debug: (line: Phrase) => void,
+  warn: (line: Phrase) => void,
 ): (connector: string, waiting: readonly ChatTurnWaiting[]) => void {
   const told = new Set<string>();
   return (connector, waiting) => {
@@ -308,13 +309,12 @@ export function waitingReporter(
     const key = `${connector}\n${names}`;
     if (told.has(key)) return;
     told.add(key);
-    debug(
-      runMessages.toolsWaiting(
-        printable(connector),
-        names,
-        `halonic tools review ${printable(connector)}`,
-      ).phrase,
+    const line = runMessages.toolsWaiting(
+      printable(connector),
+      names,
+      `halonic tools review ${printable(connector)}`,
     );
+    warn(phrase`${markPart("needsYou")} ${line.phrase}`);
   };
 }
 

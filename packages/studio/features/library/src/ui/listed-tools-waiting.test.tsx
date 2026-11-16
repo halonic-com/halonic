@@ -23,6 +23,7 @@ afterEach(() => {
 const statusHost: ConnectorStatusHost = {
   list: async () => [{ id: "notes", name: "Notes", state: "connected" }],
   refusals: async () => [],
+  waiting: async () => [],
   subscribe: () => () => {},
 };
 

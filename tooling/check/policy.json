@@ -58,6 +58,9 @@
       "./listed-tools",
       "./routines"
     ],
+    "@halonicjs/engine": [
+      "./testing"
+    ],
     "@halonicjs/format": [
       "./integration",
       "./recording",

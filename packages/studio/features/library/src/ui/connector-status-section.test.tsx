@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { ChatTurnRefusal } from "@halonicjs/ports";
+import type { ChatTurnRefusal, ChatTurnWaiting } from "@halonicjs/ports";
 import { type EngineWords, engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -27,7 +27,11 @@ function refusal(index: number): ChatTurnRefusal {
 }
 
 /** A host the test steers: what it answers now, and a way to say "something changed". */
-function fakeHost(answer: { connectors: ConnectorStatus[]; refusals: ChatTurnRefusal[] }) {
+function fakeHost(answer: {
+  connectors: ConnectorStatus[];
+  refusals: ChatTurnRefusal[];
+  waiting?: ChatTurnWaiting[];
+}) {
   const listeners = new Set<() => void>();
   const host: ConnectorStatusHost & { fail?: Error } = {
     async list() {
@@ -39,6 +43,10 @@ function fakeHost(answer: { connectors: ConnectorStatus[]; refusals: ChatTurnRef
       return answer.refusals.map(
         (refusal) => ({ refusal, at: new Date(0) }) satisfies RecordedRefusal,
       );
+    },
+    async waiting() {
+      if (host.fail !== undefined) throw host.fail;
+      return answer.waiting ?? [];
     },
     subscribe(listener) {
       listeners.add(listener);
@@ -91,6 +99,27 @@ verifies("library.status-section", () => {
         'notes: left out "tool 1": why 1',
         'notes: left out "tool 2": why 2',
       ]);
+    });
+
+    it("shows the tools that wait for approval as plain lines under Refused, and no group when none waits", async () => {
+      const waiting = [
+        { source: "notes", name: "lookup" },
+        { source: "notes", name: "<b>send</b>" },
+      ];
+      const { host } = fakeHost({ connectors: [notes], refusals: [refusal(1)], waiting });
+      const { root } = await openSection(host);
+      const headings = [...root.querySelectorAll("h2")].map((heading) => heading.textContent);
+      expect(headings).toEqual(["Recent refusals", "Waiting for approval"]);
+      const group = root.querySelectorAll("ul")[1];
+      expect([...(group?.querySelectorAll("li") ?? [])].map((item) => item.textContent)).toEqual([
+        'notes: "lookup" waits for your approval and stays off.',
+        'notes: "<b>send</b>" waits for your approval and stays off.',
+      ]);
+      expect(group?.querySelector("b")).toBeNull();
+
+      const none = fakeHost({ connectors: [notes], refusals: [refusal(1)] });
+      const quiet = await openSection(none.host);
+      expect(quiet.root.textContent).not.toContain("Waiting for approval");
     });
 
     it("shows the time of each refusal", async () => {
@@ -152,6 +181,7 @@ verifies("library.status-section", () => {
       const pending: ConnectorStatusHost = {
         list: () => new Promise(() => {}),
         refusals: () => new Promise(() => {}),
+        waiting: () => new Promise(() => {}),
         subscribe: () => () => {},
       };
       const loading = await openSection(pending);

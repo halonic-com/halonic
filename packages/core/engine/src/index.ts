@@ -1,6 +1,5 @@
 export {
   type AllToolsReviewed,
-  allToolsReviewed,
   type ConnectorToolAddress,
   type ListedToolApproval,
   type ListedToolApprovalStore,

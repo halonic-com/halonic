@@ -237,7 +237,7 @@ export const runMessages = defineMessages("run", {
    * only place the command is named. The names arrive escaped.
    */
   toolsWaiting: (source: string, names: string, command: string) =>
-    phrase`the tools ${names} of ${source} wait for your approval and stay off; to approve them, run ${command}`,
+    phrase`The tools ${names} of ${source} wait for your approval and stay off. To approve them, run ${command}`,
   /** The same when a stopped command gave up waiting for the engine to close (HAL-6677). */
   closeAbandoned: (seconds: number) =>
     phrase`the engine didn't close within ${seconds} s of the stop; released its lock and ending without it`,

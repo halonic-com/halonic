@@ -1,4 +1,4 @@
-import type { ChatMessage, ChatTurnRefusal, ToolCall } from "@halonicjs/ports";
+import type { ChatMessage, ChatTurnRefusal, ChatTurnWaiting, ToolCall } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { notRunAfterStop } from "./chat-answer.ts";
@@ -344,5 +344,37 @@ verifies("app.chat-refusals", () => {
     });
 
     expect(heard).toEqual([]);
+  });
+});
+
+verifies("app.chat-waiting", () => {
+  const waiting: ChatTurnWaiting = { source: "notes", name: "lookup" };
+
+  it("tells the listener the tools that wait and keeps them out of the messages", async () => {
+    const heard: (readonly ChatTurnWaiting[])[] = [];
+    const model = new ScriptedChat([{ ...textTurn("Done."), waiting: [waiting] }]);
+
+    const answer = await new ChatService(model).answer({
+      settings,
+      messages: question,
+      tools: [],
+      listener: { onWaiting: (tools) => heard.push(tools) },
+    });
+
+    expect(heard).toEqual([[waiting]]);
+    expect(answer.messages).toEqual([{ role: "assistant", content: "Done." }]);
+  });
+
+  it("tells the listener an empty list for a turn where nothing waits", async () => {
+    const heard: (readonly ChatTurnWaiting[])[] = [];
+
+    await new ChatService(new ScriptedChat([textTurn("Done.")])).answer({
+      settings,
+      messages: question,
+      tools: [],
+      listener: { onWaiting: (tools) => heard.push(tools) },
+    });
+
+    expect(heard).toEqual([[]]);
   });
 });

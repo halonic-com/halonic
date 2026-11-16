@@ -3,6 +3,7 @@ import type {
   ChatTurnRefusal,
   ChatTurnRequest,
   ChatTurnResponse,
+  ChatTurnWaiting,
   RunExecutor,
   ToolCall,
   ToolDefinition,
@@ -71,6 +72,13 @@ export interface ChatAnswerListener {
    * status only. The refusal text never goes back to the model.
    */
   onRefusals?(refusals: readonly ChatTurnRefusal[]): void;
+  /**
+   * A model turn left out listed tools that wait for a person's approval.
+   * Called after every turn, with an empty list when none waits, so the
+   * listener always holds the current set. For the person's integration
+   * status only: it never goes back to the model.
+   */
+  onWaiting?(waiting: readonly ChatTurnWaiting[]): void;
 }
 
 /**

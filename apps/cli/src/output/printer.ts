@@ -62,6 +62,11 @@ export interface Printer {
    */
   debug(line: Phrase): void;
   /**
+   * A command's warning to stderr, scrubbed and above the live line, with or
+   * without `--debug` and also with `--json`, since stdout stays one document.
+   */
+  warn(line: Phrase): void;
+  /**
    * A command that Ctrl C or SIGTERM stopped (cli-output 1.5): the live line
    * goes away, then "Stopped." and what that meant go to stderr, since
    * they aren't a result. With `--json`, stdout gets the command's document
@@ -209,6 +214,9 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
       if (options.debug) {
         scrubbed(err, options.scrubber)(line);
       }
+    },
+    warn(line) {
+      scrubbed(err, options.scrubber)(line);
     },
     close: () => liveLine?.close(),
     ask(question, signal) {
