@@ -16,7 +16,7 @@ import {
 import { randomIds, systemClock } from "@halonicjs/std";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
-import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
+import { InboxRequestsService, InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import {
   CollectionHostService,
   KnowledgeHostService,
@@ -44,6 +44,7 @@ import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.t
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import { WorkspaceFilesHost } from "../files/workspace-files-host.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
+import { WorkspaceRequests } from "../inbox/workspace-requests.ts";
 import { provideLibraryServices } from "../library/provide-library-services.ts";
 import { WorkspaceCollections } from "../library/workspace-collections.ts";
 import { WorkspaceKnowledge } from "../library/workspace-knowledge.ts";
@@ -156,6 +157,14 @@ export function provideFolderServices(
       onChange: (listener) => scope.events.on("files.changed", listener),
       runs: services.get(RunsSourceService),
       ...(settle === undefined ? {} : { settle }),
+      engine,
+    }),
+  );
+  services.provide(
+    InboxRequestsService,
+    new WorkspaceRequests({
+      files: services.get(workspaceFilesKey),
+      onChange: (listener) => scope.events.on("files.changed", listener),
       engine,
     }),
   );

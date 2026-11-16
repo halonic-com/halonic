@@ -1,51 +1,19 @@
 import { TauriPickedFolders, TauriTrustStore } from "@halonicjs/adapter-fs-tauri";
 import { ServiceRegistry } from "@halonicjs/app";
-import { googleSetupFeature } from "@halonicjs/studio-feature-google-setup";
-import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
-import { inboxFeature } from "@halonicjs/studio-feature-inbox";
-import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
-import { libraryFeature } from "@halonicjs/studio-feature-library";
-import {
-  CollectionHostService,
-  ConnectorStatusHostService,
-  KnowledgeHostService,
-  LibraryItemsHostService,
-  LibraryTabMemoryService,
-  ListedToolsHostService,
-  NewCollectionHostService,
-  NewSkillHostService,
-  SkillHostService,
-} from "@halonicjs/studio-feature-library/api";
-import { modelsFeature } from "@halonicjs/studio-feature-models";
-import {
-  ModelKeysService,
-  ModelsFilesService,
-  NoLimitMemoryService,
-} from "@halonicjs/studio-feature-models/api";
-import { pluginsFeature } from "@halonicjs/studio-feature-plugins";
-import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
-import { runsFeature } from "@halonicjs/studio-feature-runs";
-import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import {
   BrowserDisplayPrefs,
   DisplaySettings,
   type DisplayStorage,
-  settingsFeature,
   TauriUpdater,
   watchAppearance,
 } from "@halonicjs/studio-feature-settings";
 import {
   AgentSandboxService,
-  AssistantWorkspaceService,
   DisplaySettingsService,
   HostSettingsService,
   RestartRunsService,
   UpdaterService,
 } from "@halonicjs/studio-feature-settings/api";
-import { sourceControlFeature } from "@halonicjs/studio-feature-source-control";
-import { ChangesSourceService } from "@halonicjs/studio-feature-source-control/api";
-import { workflowsFeature } from "@halonicjs/studio-feature-workflows";
-import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
 import {
   folderName,
   mountWorkspaceWindow,
@@ -53,7 +21,6 @@ import {
   type RecentStorage,
   RecentWorkspaces,
   WorkspaceSwitcher,
-  workspaceFeature,
 } from "@halonicjs/studio-feature-workspace";
 import {
   TrustedSourcesService,
@@ -73,12 +40,12 @@ import {
   createShell,
   type KeyboardPlatform,
   type Shell,
-  type ShellOptions,
   type StudioHost,
   StudioWorkspace,
 } from "@halonicjs/studio-shell";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
+import { desktopFeatures } from "./desktop-features.ts";
 import { newWorkspaceHostOf } from "./new-workspace-host.ts";
 import { openFolderScope, savingOf } from "./open-folder-scope.ts";
 import { openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
@@ -92,6 +59,8 @@ import { followSystemRegion } from "./system-region.ts";
 import { trustedSourcesOf } from "./trusted-sources.ts";
 import { hostSettingsOf } from "./window-host-settings.ts";
 import { WorkspaceTrustView } from "./workspace-trust-control.ts";
+
+export { desktopFeatures };
 
 /**
  * The language of the Studio's words. Every text is English in v0.1, so the window's
@@ -166,50 +135,6 @@ export function startStudio(page: StudioPage, desktop = desktopFeatures): Starte
   }
   return startServedStudio(page, { host, platform, language: studioLanguage });
 }
-
-/**
- * The features of the desktop app, and the services the app gives them for each open folder
- * ({@link openFolder}).
- */
-export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = {
-  features: [
-    googleSetupFeature,
-    inboxFeature,
-    libraryFeature,
-    modelsFeature,
-    pluginsFeature,
-    runsFeature,
-    settingsFeature,
-    sourceControlFeature,
-    workflowsFeature,
-    workspaceFeature,
-  ],
-  hostServices: [
-    CollectionHostService,
-    ConnectorStatusHostService,
-    KnowledgeHostService,
-    LibraryItemsHostService,
-    LibraryTabMemoryService,
-    NewCollectionHostService,
-    NewSkillHostService,
-    SkillHostService,
-    GoogleSetupAccountsService,
-    ListedToolsHostService,
-    InboxRunsService,
-    RunsSourceService,
-    ChangesSourceService,
-    WorkflowsHostService,
-    ModelsFilesService,
-    ModelKeysService,
-    NoLimitMemoryService,
-    PluginsHostService,
-    DisplaySettingsService,
-    HostSettingsService,
-    AssistantWorkspaceService,
-    WorkspacePageService,
-    TrustedSourcesService,
-  ],
-};
 
 /** What the desktop app's window is made of. */
 interface DesktopParts {
