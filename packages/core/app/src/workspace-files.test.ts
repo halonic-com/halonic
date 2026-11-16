@@ -89,6 +89,34 @@ verifies("app.workspace-undo", () => {
     expect(files.dirty).toBe(false);
   });
 
+  it("keeps `step` over a save and moves it on every other change to the steps", async () => {
+    const { files } = open({ "a.yaml": "v0", "b.yaml": "b0" });
+    files.change("Deleted a", { "a.yaml": null });
+    const step = files.step;
+    const pending = files.pending;
+    await files.save();
+    expect(files.pending).not.toBe(pending);
+    expect(files.step).toBe(step);
+    // The delete is still the newest step after the save, and undo brings the file back.
+    expect(files.undo()).toBe(true);
+    expect(await files.read("a.yaml")).toBe("v0");
+    files.redo();
+    files.change("Edited b", { "b.yaml": "b1" });
+    expect(files.step).not.toBe(step);
+    const afterChange = files.step;
+    files.undo();
+    expect(files.step).not.toBe(afterChange);
+    const afterUndo = files.step;
+    files.redo();
+    expect(files.step).not.toBe(afterUndo);
+    const afterRedo = files.step;
+    await files.rename("b.yaml", "c.yaml");
+    expect(files.step).not.toBe(afterRedo);
+    const afterRename = files.step;
+    files.discard();
+    expect(files.step).not.toBe(afterRename);
+  });
+
   it("undoes a saved new file to an unsaved delete", async () => {
     const { files } = open({});
     files.change("Added b", { "b.yaml": "new" });
@@ -390,6 +418,22 @@ verifies("app.workspace-compare", () => {
     expect(store.files.get("a.yaml")).toBe("a: outside\nb: 2\nc: mine\n");
     expect(files.undo()).toBe(true);
     expect(await files.read("a.yaml")).toBe("a: 1\nb: 2\nc: mine\n");
+  });
+
+  it("moves `step` when a Compare choice changes a file, and not on keep-mine", async () => {
+    const { files } = await changedBothWays("a: mine\n", "a: outside\n");
+    const step = files.step;
+    await files.settle("a.yaml", "keep-mine");
+    expect(files.step).toBe(step);
+    await files.settle("a.yaml", "use-other");
+    expect(files.step).not.toBe(step);
+    const { files: both } = await changedBothWays(
+      "a: 1\nb: 2\nc: mine\n",
+      "a: outside\nb: 2\nc: 3\n",
+    );
+    const before = both.step;
+    await both.settle("a.yaml", "combine-both");
+    expect(both.step).not.toBe(before);
   });
 
   it("keeps mine: the next save overwrites the outside text", async () => {

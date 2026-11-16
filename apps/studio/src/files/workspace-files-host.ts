@@ -32,6 +32,8 @@ export interface FilesHostParts {
   /** The kernel's `WorkspaceFiles`: its unsaved changes by path, `null` for an unsaved delete. */
   readonly files: {
     readonly pending: Readonly<Record<string, string | null>>;
+    /** The kernel's `WorkspaceFiles.step`: moves on every change to the undo steps, not on a save, so it tells a step is still the newest. */
+    readonly step: number;
     read(path: string): Promise<string | null>;
     list(dir: string): Promise<string[]>;
     change(
@@ -249,11 +251,11 @@ export class WorkspaceFilesHost implements FilesHost {
         : ((await this.#placesNaming(path, old.kind as LibraryItemKind, old.hub, old.placeId)) ??
           []);
     files.change(`Deleted ${path}`, { [path]: null });
-    const afterDelete = files.pending;
+    const afterDelete = files.step;
     return {
       places: places.length,
       undo: async () => {
-        if (files.pending !== afterDelete || !files.undo()) {
+        if (files.step !== afterDelete || !files.undo()) {
           throw new Error(
             `${path} can't be put back, because the workspace changed after it was deleted.`,
           );

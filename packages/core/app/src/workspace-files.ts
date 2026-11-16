@@ -64,6 +64,8 @@ export class WorkspaceFiles {
   private saving: Promise<number> | null = null;
   /** Goes up on every discard, so a save that was running can tell. */
   private discards = 0;
+  /** Goes up on every change to the undo steps; see `step`. */
+  private steps = 0;
   private readonly store: DefinitionStore;
   private readonly events: EventBus<AppEvents>;
   private readonly digest: Sha256;
@@ -91,6 +93,23 @@ export class WorkspaceFiles {
   /** The unsaved changes. */
   get pending(): PendingChanges {
     return this.changes;
+  }
+
+  /**
+   * A marker of the newest undo step: it moves on `change`, `rename`, `undo`, `redo`, a reload from
+   * outside that took files in, a Compare choice that changed a file (`use-other`, `combine-both`)
+   * and `discard`, and stays put on a save. `pending` is a new object after a save too, so only this
+   * tells that nothing was done since a step, such as a delete behind an Undo toast, even when
+   * autosave has run.
+   *
+   * @example
+   * files.change("Deleted a", { "a.yaml": null });
+   * const step = files.step;
+   * await files.save();
+   * files.step === step; // true: `files.undo()` still brings a.yaml back
+   */
+  get step(): number {
+    return this.steps;
   }
 
   /** Whether anything is unsaved. */
@@ -140,6 +159,7 @@ export class WorkspaceFiles {
    * @param changes - new text by path, or `null` to delete the file
    */
   change(label: string, changes: Record<string, string | null>, options: ChangeOptions = {}): void {
+    this.steps++;
     this.history.record(this.changes, options.coalesceKey ?? null);
     this.apply({ ...this.changes, ...changes }, label);
   }
@@ -176,6 +196,7 @@ export class WorkspaceFiles {
       rewrites,
     });
     const text = next[to] as string;
+    this.steps++;
     this.history.record(changes, null);
     // A rename of a file that was itself just moved carries the first move on to the new path.
     for (const [origin, move] of this.moves) {
@@ -191,6 +212,7 @@ export class WorkspaceFiles {
     if (previous === undefined) {
       return false;
     }
+    this.steps++;
     this.apply(previous, "Undone");
     return true;
   }
@@ -201,6 +223,7 @@ export class WorkspaceFiles {
     if (next === undefined) {
       return false;
     }
+    this.steps++;
     this.apply(next, "Redone");
     return true;
   }
@@ -332,6 +355,7 @@ export class WorkspaceFiles {
     if (choice === "keep-mine") return view;
     const text = choice === "use-other" ? view.theirs : view.combined;
     const { [path]: _settled, ...others } = this.changes;
+    this.steps++;
     this.history.record(this.changes);
     // A file that now reads what the store holds has nothing left to save.
     const settled = text === view.theirs ? others : { ...others, [path]: text };
@@ -390,6 +414,7 @@ export class WorkspaceFiles {
     if (saved.length === 0) return { reloaded, held };
     // The kept steps and the new one are measured against the new store text.
     this.history.map((snapshot) => rebase(snapshot, saved));
+    this.steps++;
     this.history.record(rebase(changes, saved), null);
     this.apply(changes, "Changed outside Halonic");
     return { reloaded, held };
@@ -398,6 +423,7 @@ export class WorkspaceFiles {
   /** Drops every unsaved change and the undo history, such as when the files are read again from disk. */
   discard(): void {
     this.discards++;
+    this.steps++;
     this.history.clear();
     this.known.clear();
     this.moves.clear();

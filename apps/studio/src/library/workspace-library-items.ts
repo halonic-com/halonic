@@ -39,8 +39,8 @@ export interface WorkspaceLibraryItemsHostParts extends WorkspaceLibraryItemsPar
     change(label: string, changes: Record<string, string | null>): void;
     /** The kernel's `WorkspaceFiles.undo`: `false` when there was nothing to undo. */
     undo(): boolean;
-    /** The kernel's `WorkspaceFiles.pending`: a new object after every change, so it tells a step is still the newest. */
-    readonly pending: unknown;
+    /** The kernel's `WorkspaceFiles.step`: moves on every change to the undo steps, not on a save, so it tells a step is still the newest. */
+    readonly step: number;
   };
 }
 
@@ -114,10 +114,10 @@ export class WorkspaceLibraryItems implements LibraryItemsHost {
       `Deleted ${kind} ${place.id}`,
       Object.fromEntries(paths.map((path) => [path, null])),
     );
-    const afterDelete = files.pending;
+    const afterDelete = files.step;
     return {
       undo: async () => {
-        if (files.pending !== afterDelete || !files.undo()) {
+        if (files.step !== afterDelete || !files.undo()) {
           throw new KindedError(
             "conflict",
             `${name} can't be put back, because the workspace changed after it was deleted.`,
