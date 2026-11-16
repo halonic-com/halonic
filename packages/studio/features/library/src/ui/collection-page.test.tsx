@@ -11,6 +11,7 @@ import {
   nobody,
   opened,
   rich,
+  settled,
   sourceOf,
   swim,
   trip,
@@ -21,6 +22,44 @@ afterEach(cleanUp);
 
 verifies("library.collection-page", () => {
   describe("CollectionPage", () => {
+    it("says the collection couldn't load, with the reason and Try again, instead of waiting", async () => {
+      let attempts = 0;
+      const { root } = await opened(undefined, undefined, {
+        read: async () => {
+          attempts += 1;
+          if (attempts === 1) throw new Error("unreadable");
+          return sourceOf([swim]);
+        },
+      });
+      expect(root.textContent).toContain("Couldn't load claims");
+      expect(root.textContent).not.toContain("Loading the collection");
+      const tryAgain = [...root.querySelectorAll("button")].find(
+        (button) => button.textContent === "Try again",
+      );
+      await act(async () => tryAgain?.click());
+      await settled();
+      expect(root.textContent).not.toContain("Couldn't load");
+      expect(chips(root)).toEqual(["All (1)", "open (1) · 45,00"]);
+    });
+
+    it("gives the reason a failed load came with", async () => {
+      const { root } = await opened(undefined, undefined, {
+        read: async () => {
+          throw { kind: "unavailable", message: "The workspace folder isn't readable." };
+        },
+      });
+      expect(root.textContent).toContain("The workspace folder isn't readable.");
+    });
+
+    it("says the engine isn't answering when a failed load came with no reason", async () => {
+      const { root } = await opened(undefined, undefined, {
+        read: async () => {
+          throw new Error("unreadable");
+        },
+      });
+      expect(root.textContent).toContain("The engine isn't answering.");
+    });
+
     it("shows the chips with counts and totals, with All chosen", async () => {
       const { root } = await opened(sourceOf([swim, trip]));
       expect(chips(root)).toEqual(["All (2)", "open (1) · 45,00"]);
