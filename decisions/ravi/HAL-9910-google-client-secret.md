@@ -2,6 +2,7 @@
 
 - Approval: the plan for this change is approved on HAL-10655, and the review of this change is HAL-10658; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Qejk8uKW2q+sU7//RmORruEuF102NmOQbvPEXLIZskXFWM80PzgcC+WpWIispmRn/VFdST8zbgikETZYTPzlDg==
 - Task: HAL-9910
 
 ## What changes
