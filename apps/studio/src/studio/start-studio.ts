@@ -73,6 +73,7 @@ export { servedServices } from "./served-studio.ts";
 
 import { followSystemRegion } from "./system-region.ts";
 import { trustedSourcesOf } from "./trusted-sources.ts";
+import { windowCloseHandler } from "./window-close.ts";
 import { hostSettingsOf } from "./window-host-settings.ts";
 import { WorkspaceTrustView } from "./workspace-trust-control.ts";
 
@@ -198,13 +199,15 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
   const window = mountWorkspaceWindow(page.element, parts);
   // Formats follows the system's region once the shell has read it; until then, the browser's.
   const stopRegion = followSystemRegion(ipc, (r) => window.update({ ...parts, regionFormat: r }));
-  const stopListening = onWindowCloseRequested(page.window, async () => {
-    // A save that fails keeps the window open on "Close Acme?" (HAL-9370); a hung one doesn't.
-    const saved = await withinLimit(switcher.saveAllForWindowClose(), closeLimitMs, true);
-    if (!saved) return false;
-    await withinLimit(stopped(), closeLimitMs, undefined);
-    return true;
-  });
+  const stopListening = onWindowCloseRequested(
+    page.window,
+    windowCloseHandler({
+      workspaces: switcher,
+      stop: () => stopped(),
+      limitMs: closeLimitMs,
+      within: withinLimit,
+    }),
+  );
   const stopped = once(async () => {
     stopRegion();
     resources.stop();
@@ -217,8 +220,9 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
 }
 
 /**
- * How long a closing window waits for the open workspaces to save before it goes anyway, so a
- * hung save can't keep it open for ever. A save that misses it loses its changes (HAL-8048).
+ * How long a closing window waits for the open workspaces to save before it asks, so a
+ * hung save can't keep it open for ever. A save that misses it doesn't close the window: it asks
+ * "Close Acme?" with "still saving" and waits for the answer (HAL-8048).
  */
 export const closeLimitMs = 5000;
 
@@ -232,7 +236,7 @@ function once(task: () => Promise<void>): () => Promise<void> {
 }
 
 /** Settles with `task`'s result or, after `ms`, with `fallback`, whichever comes first. */
-async function withinLimit<T>(task: Promise<T>, ms: number, fallback: T): Promise<T> {
+export async function withinLimit<T>(task: Promise<T>, ms: number, fallback: T): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const limit = new Promise<T>((resolve) => {
     timer = setTimeout(() => resolve(fallback), ms);

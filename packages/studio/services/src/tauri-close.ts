@@ -15,23 +15,23 @@ const windowLabel = "main";
  * It reads Tauri's own event and window commands, which the capability `desktop-window` grants.
  *
  * @param page - the page's global object, usually `window`
- * @param handler - what to finish before the window goes; resolve `false` to keep it open
+ * @param handler - what to finish before the window goes; resolve `false` to keep it open. It gets
+ *   a function that destroys the window, for a handler that kept it open and finishes later
  * @returns a function that stops listening, so a later close is Tauri's own
  */
 export function onWindowCloseRequested(
   page: object,
-  handler: () => Promise<boolean | undefined>,
+  handler: (destroy: () => Promise<void>) => Promise<boolean | undefined>,
 ): () => Promise<void> {
   const ipc: (TauriIpc & TauriCallbacks) | undefined = tauriChannelIpc(page);
   if (ipc === undefined) return async () => {};
+  const destroy = async () => {
+    await ipc.invoke("plugin:window|destroy", { label: windowLabel });
+  };
   const callback = ipc.transformCallback(() => {
-    void handler()
+    void handler(destroy)
       .catch((error: unknown) => console.error(error))
-      .then((keepOpen) =>
-        keepOpen === false
-          ? undefined
-          : ipc.invoke("plugin:window|destroy", { label: windowLabel }),
-      )
+      .then((keepOpen) => (keepOpen === false ? undefined : destroy()))
       .catch((error: unknown) => console.error(error));
   });
   const listening = ipc

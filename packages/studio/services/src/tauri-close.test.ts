@@ -73,6 +73,21 @@ verifies("services.tauri-ipc", () => {
       expect(calls.map(([command]) => command)).not.toContain("plugin:window|destroy");
     });
 
+    it("lets a handler that kept the window open destroy it later", async () => {
+      const { page, calls, press } = webview();
+      let destroy: (() => Promise<void>) | undefined;
+      onWindowCloseRequested(page, async (destroyNow) => {
+        destroy = destroyNow;
+        return false;
+      });
+      press();
+      await settle();
+      expect(calls.map(([command]) => command)).not.toContain("plugin:window|destroy");
+
+      await destroy?.();
+      expect(calls.at(-1)).toEqual(["plugin:window|destroy", { label: "main" }]);
+    });
+
     it("still destroys the window when the handler fails", async () => {
       const { page, calls, press } = webview();
       const error = vi.spyOn(console, "error").mockImplementation(() => {});
