@@ -14,3 +14,6 @@ On a phone the Library shall not offer New connector, on the Connectors tab or f
 - Given a desktop,
   when the Connectors tab shows,
   then New connector shows.
+- Given a phone,
+  when a run banner requests a new connector,
+  then the Connectors tab shows and no dialog opens.

@@ -350,4 +350,15 @@ verifies("library.library-phone", () => {
       ),
     ).toBe(false);
   });
+
+  it("shows the Connectors tab, and no dialog, for a request on a phone", async () => {
+    const { context } = contextOf("skill");
+    const page = await show(context, "phone");
+    await act(async () => {
+      requestNewConnector({ name: "notes" });
+    });
+    await settled();
+    expect(selectedTab(page)).toContain("Connectors");
+    expect(page.ownerDocument.querySelector("dialog[open]")).toBeNull();
+  });
 });

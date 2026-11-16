@@ -74,9 +74,9 @@ export function LibraryPlace({ context }: PlaceViewProps) {
   // The run banner's "Add connector" opens New connector on the Connectors tab with what it knows filled in.
   useEffect(() => {
     if (newConnectorHost === undefined) {
-      // Nothing here can make a connector. Taking the request and dropping it stops it from
-      // waiting, where it would open the dialog later, unasked, if a host appeared.
-      return takeNewConnectorRequests(() => {});
+      // Nothing here can make a connector. Taking the request stops it from waiting, where it
+      // would open the dialog later, unasked, if a host appeared. The Connectors tab still shows.
+      return takeNewConnectorRequests(() => show("connector"));
     }
     return takeNewConnectorRequests((request) => {
       show("connector");
@@ -91,7 +91,6 @@ export function LibraryPlace({ context }: PlaceViewProps) {
     });
   }, [newConnectorHost, show]);
   const { openItem, openItemInNewTab } = context;
-  // A phone has no tabs: its openItem opens the page, so Open as file is desktop only.
   const openSkill = ({ hub, id }: SkillRef) =>
     openItem?.({ kind: "skill", hub: hub ?? sharedHubKey, id });
   const openCollection = ({ hub, id }: CollectionRef) =>
@@ -115,6 +114,7 @@ export function LibraryPlace({ context }: PlaceViewProps) {
         onKindChange={show}
         onOpen={(each, entry) => openItem?.(refOf(each, entry))}
         onOpenInNewTab={(each, entry) => openItemInNewTab?.(refOf(each, entry))}
+        // A phone has no tabs: its openItem opens the page, so Open as file is desktop only.
         {...(!desktop || openItem === undefined
           ? {}
           : { onOpenAsFile: (each, entry) => openItem(itemFileRef(each, entry)) })}
