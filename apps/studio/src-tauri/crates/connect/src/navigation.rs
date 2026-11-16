@@ -13,7 +13,18 @@ pub struct NavigationTarget<'a> {
     pub host: Option<&'a str>,
     /// The port, or the scheme's own port when the URL doesn't name one.
     pub port: Option<u16>,
+    /// The path, for example `/connect.html`. Empty when the URL has none.
+    pub path: &'a str,
+    /// The query, without the `?`, if the URL has one.
+    pub query: Option<&'a str>,
+    /// The fragment, without the `#`, if the URL has one.
+    pub fragment: Option<&'a str>,
 }
+
+/// The one bundled page that may stay in the window, and the fragment that
+/// tells it to show the Change address state.
+const CONNECT_PAGE_PATH: &str = "/connect.html";
+const CHANGE_ADDRESS_FRAGMENT: &str = "change-address";
 
 /// What the guard does with a navigation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -65,16 +76,25 @@ pub fn page_may_stay(target: &NavigationTarget, confirmed: Option<&Address>) -> 
     navigation_destination(target, confirmed) == Destination::Stay
 }
 
-/// The app's own pages: `http://tauri.localhost` on its own port on
-/// Android and Windows, and `tauri://localhost` everywhere else. On macOS
-/// and Linux, `http://tauri.localhost` is an address on the network like
-/// any other.
+/// The app's own connect page: `http://tauri.localhost` on its own port on
+/// Android and Windows, and `tauri://localhost` (no port) everywhere else. On
+/// macOS and Linux, `http://tauri.localhost` is an address on the network
+/// like any other.
+///
+/// The window's capabilities (secrets, files, git) belong to every page on
+/// this origin, so only the connect page itself stays: no other bundled
+/// page, and no query, because the page reads nothing from it. The page
+/// reads the fragment, which may be empty or `change-address`.
 fn is_connect_page(target: &NavigationTarget) -> bool {
-    if cfg!(any(windows, target_os = "android")) {
+    let own_origin = if cfg!(any(windows, target_os = "android")) {
         target.scheme == "http" && target.host == Some("tauri.localhost") && target.port == Some(80)
     } else {
-        target.scheme == "tauri" && target.host == Some("localhost")
-    }
+        target.scheme == "tauri" && target.host == Some("localhost") && target.port.is_none()
+    };
+    own_origin
+        && target.path == CONNECT_PAGE_PATH
+        && target.query.is_none()
+        && matches!(target.fragment, None | Some(CHANGE_ADDRESS_FRAGMENT))
 }
 
 #[cfg(test)]
@@ -86,6 +106,9 @@ mod tests {
             scheme,
             host: Some(host),
             port: Some(port),
+            path: "/",
+            query: None,
+            fragment: None,
         }
     }
 
@@ -140,10 +163,17 @@ mod tests {
 
     /// The connect page's address on the platform the tests run on.
     fn connect_page() -> NavigationTarget<'static> {
-        if cfg!(any(windows, target_os = "android")) {
+        let own_origin = if cfg!(any(windows, target_os = "android")) {
             target("http", "tauri.localhost", 80)
         } else {
-            target("tauri", "localhost", 0)
+            NavigationTarget {
+                port: None,
+                ..target("tauri", "localhost", 0)
+            }
+        };
+        NavigationTarget {
+            path: "/connect.html",
+            ..own_origin
         }
     }
 
@@ -179,11 +209,96 @@ mod tests {
     }
 
     #[test]
+    fn navigation_guard_keeps_the_connect_page_with_its_change_address_fragment() {
+        for fragment in [None, Some("change-address")] {
+            let page = NavigationTarget {
+                fragment,
+                ..connect_page()
+            };
+            assert_eq!(navigation_destination(&page, None), Destination::Stay);
+        }
+    }
+
+    #[test]
+    fn navigation_guard_keeps_no_other_page_of_the_app_origin() {
+        let pages = [
+            "/studio.html",
+            "/",
+            "",
+            "/index.html",
+            "/connect.html/",
+            "/connect.html/../studio.html",
+            "/connect.htm",
+            "/Connect.html",
+            "/connect%2Ehtml",
+            "//connect.html",
+        ];
+        for path in pages {
+            let page = NavigationTarget {
+                path,
+                ..connect_page()
+            };
+            assert_ne!(
+                navigation_destination(&page, None),
+                Destination::Stay,
+                "{path}"
+            );
+        }
+    }
+
+    #[test]
+    fn navigation_guard_keeps_the_connect_page_only_without_a_query_or_another_fragment() {
+        let variants = [
+            (Some(""), None),
+            (Some("a=b"), None),
+            (Some("a=b"), Some("change-address")),
+            (None, Some("other")),
+            (None, Some("Change-Address")),
+            (None, Some("change-address&x")),
+        ];
+        for (query, fragment) in variants {
+            let page = NavigationTarget {
+                query,
+                fragment,
+                ..connect_page()
+            };
+            assert_ne!(
+                navigation_destination(&page, None),
+                Destination::Stay,
+                "{query:?} {fragment:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn navigation_guard_keeps_the_connect_page_only_on_its_own_port() {
+        let ports = if cfg!(any(windows, target_os = "android")) {
+            [None, Some(0), Some(8080)]
+        } else {
+            [Some(80), Some(9999), Some(0)]
+        };
+        for port in ports {
+            let page = NavigationTarget {
+                port,
+                ..connect_page()
+            };
+            assert_ne!(
+                navigation_destination(&page, None),
+                Destination::Stay,
+                "{port:?}"
+            );
+        }
+    }
+
+    #[test]
     fn navigation_guard_returns_to_the_connect_screen_for_change_address() {
         let link = NavigationTarget {
             scheme: "halonic-app",
             host: Some("connect"),
             port: None,
+            path: "",
+            query: None,
+            fragment: None,
         };
         let laptop = confirmed("192.168.1.20:4280");
         assert_eq!(
@@ -213,6 +328,9 @@ mod tests {
             scheme: "blob",
             host: None,
             port: None,
+            path: "",
+            query: None,
+            fragment: None,
         };
         assert!(!may_stay(blob));
         assert!(!page_may_stay(&target("http", "192.168.1.20", 4280), None));

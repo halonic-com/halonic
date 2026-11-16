@@ -81,6 +81,9 @@ fn target(url: &Url) -> NavigationTarget<'_> {
         scheme: url.scheme(),
         host: url.host_str(),
         port: url.port_or_known_default(),
+        path: url.path(),
+        query: url.query(),
+        fragment: url.fragment(),
     }
 }
 

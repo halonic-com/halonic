@@ -116,6 +116,64 @@ fn guard_keeps_the_connect_page_in_the_window_with_or_without_a_confirmed_addres
     );
 }
 
+/// The origin of the connect page on this platform, without a path.
+const APP_ORIGIN: &str = if cfg!(any(windows, target_os = "android")) {
+    "http://tauri.localhost"
+} else {
+    "tauri://localhost"
+};
+
+#[test]
+fn guard_keeps_the_connect_page_with_the_change_address_fragment() {
+    assert_all(
+        &[CHANGE_ADDRESS_PAGE, &format!("{CONNECT_PAGE}#")],
+        None,
+        Destination::Stay,
+    );
+}
+
+/// Every other page the app bundles has the window's capabilities too, so
+/// none of them may stay, and neither may the connect page with a query.
+/// What the guard does instead depends on the platform's scheme.
+#[test]
+fn guard_keeps_no_other_page_of_the_app_origin_in_the_window() {
+    let paths = [
+        "/studio.html",
+        "/studio.html#change-address",
+        "/",
+        "/index.html",
+        "/connect.html/../studio.html",
+        "/connect.html/",
+        "/connect.html/..%2fstudio.html",
+        "/connect%2Ehtml",
+        "/%2e%2e/studio.html",
+        "/connect.html?x=1",
+        "/connect.html?",
+        "/connect.html?x=1#change-address",
+        "/connect.html#other",
+    ];
+    for path in paths {
+        let url = format!("{APP_ORIGIN}{path}");
+        assert_ne!(decide(&url, None), Destination::Stay, "{url}");
+        let confirmed = Some("192.168.1.20:4280");
+        assert_ne!(decide(&url, confirmed), Destination::Stay, "{url}");
+        let page = Url::parse(&url).unwrap();
+        assert!(!page_may_stay(&target(&page), None), "{url}");
+    }
+}
+
+#[test]
+fn guard_keeps_the_connect_page_only_on_its_own_port() {
+    let other_ports = if cfg!(any(windows, target_os = "android")) {
+        ["http://tauri.localhost:8080/connect.html"]
+    } else {
+        ["tauri://localhost:9999/connect.html"]
+    };
+    for url in other_ports {
+        assert_ne!(decide(url, None), Destination::Stay, "{url}");
+    }
+}
+
 #[test]
 fn guard_sends_the_connect_link_back_to_the_connect_screen() {
     assert_all(
