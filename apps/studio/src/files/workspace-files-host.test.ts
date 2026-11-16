@@ -193,4 +193,28 @@ verifies("studio.workspace-files-create", () => {
       },
     ]);
   });
+
+  it("refuses a path that is a folder, or has a file on the way", async () => {
+    const { host, changes } = setup(["workspace.yaml"], {}, { "hubs/p/agents/a.agent.yaml": "x" });
+
+    await expect(host.create("hubs/p/agents")).rejects.toThrow("hubs/p/agents is a folder.");
+    await expect(host.create("workspace.yaml/x.yaml")).rejects.toThrow(
+      "workspace.yaml is a file, not a folder.",
+    );
+
+    expect(changes).toEqual([]);
+  });
+
+  it("refuses a path the workspace doesn't serve in plain words", async () => {
+    const { host, changes } = setup(["workspace.yaml"]);
+
+    await expect(host.create("hubs//x.yaml")).rejects.toThrow(
+      "Files must stay inside the workspace.",
+    );
+    await expect(host.create(".git/config")).rejects.toThrow(
+      '".git/config" is not part of the workspace definitions',
+    );
+
+    expect(changes).toEqual([]);
+  });
 });

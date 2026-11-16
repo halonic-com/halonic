@@ -1,4 +1,9 @@
-import type { DefinitionWatch, WorkspaceFileChange } from "@halonicjs/ports";
+import {
+  checkWorkspacePath,
+  type DefinitionWatch,
+  isPrivateWorkspacePath,
+  type WorkspaceFileChange,
+} from "@halonicjs/ports";
 import type {
   CompareChoice,
   FileCompare,
@@ -160,8 +165,24 @@ export class WorkspaceFilesHost implements FilesHost {
   }
 
   async create(path: string): Promise<void> {
-    if ((await this.#parts.files.read(path)) !== null) throw new Error(`${path} already exists.`);
-    this.#parts.files.change(`New file ${path}`, { [path]: "" });
+    try {
+      checkWorkspacePath(path);
+    } catch {
+      throw new Error("Files must stay inside the workspace.");
+    }
+    if (isPrivateWorkspacePath(path)) {
+      throw new Error(`"${path}" is not part of the workspace definitions`);
+    }
+    const { files } = this.#parts;
+    const segments = path.split("/");
+    for (let end = 1; end < segments.length; end++) {
+      const prefix = segments.slice(0, end).join("/");
+      if ((await files.read(prefix)) !== null)
+        throw new Error(`${prefix} is a file, not a folder.`);
+    }
+    if ((await files.list(path)).length > 0) throw new Error(`${path} is a folder.`);
+    if ((await files.read(path)) !== null) throw new Error(`${path} already exists.`);
+    files.change(`New file ${path}`, { [path]: "" });
   }
 
   edit(path: string, text: string): void {
