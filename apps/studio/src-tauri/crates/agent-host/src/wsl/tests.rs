@@ -6,9 +6,12 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU32, Ordering};
 
+#[cfg(unix)]
 use std::time::{Duration, Instant};
 
-use super::{WslError, lists_distro, run_runtime_step, run_runtime_step_within, send_archive};
+#[cfg(unix)]
+use super::run_runtime_step_within;
+use super::{WslError, lists_distro, run_runtime_step, send_archive};
 
 const ARCHIVE: &[u8] = b"a runtime archive\n";
 /// The SHA-256 of [`ARCHIVE`].
