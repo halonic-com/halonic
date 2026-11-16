@@ -290,4 +290,34 @@ verifies("library.library-place", () => {
     const dialog = page.ownerDocument.querySelector("dialog[open]");
     expect(dialog?.querySelector<HTMLInputElement>("input")?.value).toBe("mail");
   });
+
+  it("drops a request made while no host can take it, so a host that appears later opens nothing", async () => {
+    fakeModal();
+    document.querySelectorAll("dialog").forEach((left) => {
+      left.remove();
+    });
+    const { context: withoutHost } = contextOf("connector");
+    await show(withoutHost);
+    await act(async () => {
+      requestNewConnector({ name: "drive" });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    unmountAll();
+    const { context } = contextOf("connector");
+    const host: NewConnectorHost = {
+      prepare: async () => {},
+      hubs: () => [{ id: "acme", name: "acme" }],
+      ways: () => ["http"],
+      file: () => "hubs/acme/library/connectors/drive.connector.yaml",
+      create: async () => ({ hub: "acme", id: "drive" }),
+    };
+    const find = context.services.find;
+    context.services.find = ((key: unknown) =>
+      key === NewConnectorHostService ? host : find(key as never)) as typeof find;
+    const page = await show(context);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(page.ownerDocument.querySelector("dialog[open]")).toBeNull();
+  });
 });
