@@ -1,6 +1,6 @@
 # The git guard lets Get updates merge only with the "ours" strategy
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-16
 
 ## Context
@@ -38,9 +38,15 @@ including other strategies, `-X` options, `--squash` and
 ## Consequences
 
 The guard cannot be made to write conflict markers or run a merge driver
-through `merge`. Without the second parent, the commit would hide the other
+through `merge`. git reads `branch.<name>.mergeOptions` before the command
+line and every `-s` adds a strategy rather than replacing one, so a planted
+`-s recursive` would be tried first. The runner already refuses a repository
+whose own config sets the key. For `merge` only, it also sets an empty
+`branch.<name>.mergeoptions` for every such key in the config from any file
+(the user's own included), so the strategy list is just `ours`. Without the second parent, the commit would hide the other
 side's history, so "no merge without both parents" depends on the app; the
-guard cannot enforce it. Tests: `check_args_tests.rs` (the refused forms) and
+guard cannot enforce it. Tests: `check_args_tests.rs` (the refused forms), `repo_config_tests.rs` and
+`tests/runner.rs` (the planted merge options and driver) and
 `runner_fetch_tests.rs`, which fetches, finds the base, reads the other side
 and merges a file both sides changed, then checks the file is untouched and the
 commit has two parents. The `Vcs` port method that returns the items both

@@ -258,6 +258,24 @@ fn is_credential_helper(key: &str) -> bool {
     lower.starts_with("credential.") && lower.ends_with(".helper")
 }
 
+/// Blanks every `branch.<name>.mergeOptions`, from any file. git reads the
+/// current branch's before the command line and every `-s` adds a strategy
+/// to the list, so a planted `-s recursive` would be tried before `-s ours`
+/// and could run a merge driver or change the person's files. Only a merge
+/// needs this. The key's subsection keeps its case, as git matches it.
+pub(crate) fn blank_merge_options(entries: &[ConfigEntry]) -> Vec<(String, String)> {
+    let mut overrides: Vec<(String, String)> = Vec::new();
+    for entry in entries {
+        if let Some((_, name)) = subsection_key(&entry.key, "branch")
+            && name.eq_ignore_ascii_case("mergeoptions")
+            && !overrides.iter().any(|(known, _)| *known == entry.key)
+        {
+            overrides.push((entry.key.clone(), String::new()));
+        }
+    }
+    overrides
+}
+
 /// Splits `<section>.<subsection>.<name>` for the given section, case
 /// aside. The subsection may itself hold dots.
 fn subsection_key<'a>(key: &'a str, section: &str) -> Option<(&'a str, &'a str)> {
