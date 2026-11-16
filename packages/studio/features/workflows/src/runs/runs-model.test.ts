@@ -12,7 +12,6 @@ const source = {
 };
 const sourced = (changes: Parameters<typeof runSummary>[0]) => ({
   summary: runSummary(changes),
-  madeToolCalls: false,
 });
 const done = (id: string) =>
   sourced({ id, status: "completed", state: null, endedAt: "2026-11-09T10:45:00.000Z" });

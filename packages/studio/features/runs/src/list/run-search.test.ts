@@ -8,7 +8,7 @@ import { findRuns, SEARCHED_RUNS, SHOWN_RUNS } from "./run-search.ts";
 function rowOf(id: string, changes: Partial<RunSummary> = {}, name = "Support reply") {
   const workflow = { name, stepDescription: () => undefined };
   return runRow(
-    { summary: summaryWith({ id, ...changes }), madeToolCalls: false },
+    { summary: summaryWith({ id, ...changes }) },
     { workflow, routine: undefined, currency: "EUR", now: mondayMorning },
   );
 }

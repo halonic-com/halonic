@@ -36,7 +36,7 @@ function sentCall(tool: string, noun: [string, string], verb?: "saved"): RunEven
 }
 
 function line(changes: Parameters<typeof summaryWith>[0], bodies: RunEventBody[]): string {
-  const run: SourcedRun = { summary: summaryWith(changes), madeToolCalls: bodies.length > 0 };
+  const run: SourcedRun = { summary: summaryWith(changes) };
   const events: RunEvent[] = logOf(
     id,
     bodies.map((body) => [1, body] as const),

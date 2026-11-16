@@ -19,7 +19,7 @@ const context: RunPageContext = {
 };
 
 function page(changes: Partial<RunSummary>) {
-  const run = { summary: summaryWith(changes), madeToolCalls: false };
+  const run = { summary: summaryWith(changes) };
   return { header: runHeader(run, context), banner: runBanner(run, context) };
 }
 

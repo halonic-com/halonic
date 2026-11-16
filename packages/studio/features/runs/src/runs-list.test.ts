@@ -68,7 +68,7 @@ describe("RunsList", () => {
     };
     const list = new RunsList(source);
     const second = list.refresh();
-    answers[1]?.([{ summary: running, madeToolCalls: false }]);
+    answers[1]?.([{ summary: running }]);
     await second;
     answers[0]?.([]);
     await settled();

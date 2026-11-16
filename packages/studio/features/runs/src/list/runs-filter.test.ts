@@ -7,7 +7,7 @@ import { dayGroups, emptyList, filterRuns, startFilters, statusCounts } from "./
 function rowOf(id: string, changes: Partial<RunSummary>) {
   const workflow = { name: "Support reply", stepDescription: () => undefined };
   return runRow(
-    { summary: summaryWith({ id, ...changes }), madeToolCalls: false },
+    { summary: summaryWith({ id, ...changes }) },
     { workflow, routine: undefined, currency: "EUR", now: mondayMorning },
   );
 }
@@ -55,7 +55,7 @@ describe("filterRuns", () => {
 
 describe("the workflow filter", () => {
   const other = runRow(
-    { summary: summaryWith({ id: "other", workflowId: "order-intake" }), madeToolCalls: false },
+    { summary: summaryWith({ id: "other", workflowId: "order-intake" }) },
     { workflow: undefined, routine: undefined, currency: "EUR", now: mondayMorning },
   );
   const reply = { hubId: "acme", id: "support-reply" };

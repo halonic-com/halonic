@@ -23,7 +23,7 @@ function fakeRuns(initial: readonly RunSummary[], logs: Record<string, RunEvent[
   const runs: SampleRuns = {
     get state() {
       return {
-        runs: summaries.map((summary) => ({ summary, madeToolCalls: false })),
+        runs: summaries.map((summary) => ({ summary })),
         loaded: true,
         error: undefined,
         workflows: undefined,

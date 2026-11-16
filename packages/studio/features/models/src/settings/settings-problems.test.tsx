@@ -71,7 +71,6 @@ function contextOf(setup: Setup): WorkspaceContext {
                   hubId: "acme",
                   parentRunId: null,
                 },
-                madeToolCalls: false,
               },
             ],
     },

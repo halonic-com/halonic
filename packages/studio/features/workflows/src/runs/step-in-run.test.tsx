@@ -43,7 +43,7 @@ const ended = { endedAt: "2026-11-09T10:45:00.000Z" };
 
 /** What the line for `step` says of a run changed by `changes`. */
 function lineFor(step: string, changes: Parameters<typeof runSummary>[0]) {
-  const run: SourcedRun = { summary: runSummary(changes), madeToolCalls: false };
+  const run: SourcedRun = { summary: runSummary(changes) };
   const row = runRow(run, {
     workflow: undefined,
     routine: undefined,

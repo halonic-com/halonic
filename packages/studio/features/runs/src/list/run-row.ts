@@ -93,7 +93,7 @@ const chipLooks: Readonly<Record<RunStanding, Omit<RunChip, "word">>> = {
  * The row of one run.
  *
  * @example
- * runRow({ summary, madeToolCalls: false }, { workflow, routine: undefined, currency: "EUR", now: new Date() });
+ * runRow({ summary }, { workflow, routine: undefined, currency: "EUR", now: new Date() });
  * // { shortId: "01jd8q", chip: { word: "Done", … }, line: "Estimated cost €0.004", startedBy: "You, with Run", … }
  */
 export function runRow(run: SourcedRun, context: RowContext): RunRow {

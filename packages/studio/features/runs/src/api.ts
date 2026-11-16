@@ -14,14 +14,9 @@ export { RunCardReceipt, type RunCardReceiptProps } from "./run-view/card-receip
 export { type RunLogRead, useRunLog } from "./run-view/every-step.tsx";
 export { type RunsList, RunsListService, type RunsListState } from "./runs-list.ts";
 
-/** One run as the Runs list reads it: its summary, and the one fact the summary doesn't hold. */
+/** One run as the Runs list reads it: its summary. */
 export interface SourcedRun {
   readonly summary: RunSummary;
-  /**
-   * Whether the run's log has a tool call (`RunHistory.madeToolCalls`). The
-   * Runs list no longer reads it (Studio design 4.5); `halonic runs` does (cli-output 3.4).
-   */
-  readonly madeToolCalls: boolean;
   /**
    * A test run's case, by its `name` in the test file; absent for a real run,
    * and while the run log doesn't record which case started it.

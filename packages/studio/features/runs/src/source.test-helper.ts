@@ -29,7 +29,7 @@ export function fakeSource(
   const source: RunsSource = {
     list: async () => {
       if (failure !== undefined) throw failure;
-      return summaries.map((summary) => ({ summary, madeToolCalls: false }));
+      return summaries.map((summary) => ({ summary }));
     },
     log: async (runId) => {
       if (failure !== undefined) throw failure;
