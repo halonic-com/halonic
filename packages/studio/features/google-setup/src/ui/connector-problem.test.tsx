@@ -147,5 +147,13 @@ verifies("google-setup.connector-problem", () => {
     expect(container.querySelectorAll("button")).toHaveLength(0);
     expect(container.textContent).toContain("Google no longer accepts the sign-in");
     expect(container.textContent).toContain("Fix this on your computer: Library › Connectors");
+    expect(container.textContent).toContain(
+      "Your client ID and secret are kept. Only the sign-in is needed.",
+    );
+  });
+
+  it("does not say the client is kept on a phone when the secret was refused", async () => {
+    const container = await open([refused("client")], "phone");
+    expect(container.textContent).not.toContain("are kept");
   });
 });

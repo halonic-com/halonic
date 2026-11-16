@@ -66,6 +66,11 @@ export function PhoneView({ account, steps, signInEntry }: PhoneViewProps) {
         <>
           <ProblemBanner problem={problem} />
           <ViewOnlyLine>Fix this on your computer: Library › Connectors</ViewOnlyLine>
+          {problem.actionStep === "sign-in" ? (
+            <ViewOnlyLine>
+              Your client ID and secret are kept. Only the sign-in is needed.
+            </ViewOnlyLine>
+          ) : null}
         </>
       )}
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-body">
