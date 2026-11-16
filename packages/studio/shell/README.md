@@ -41,7 +41,8 @@ first, as for `needs`, but nobody providing it is no error.
 | `TitleBarBrand`, `HistoryButtons` | the Halonic Studio mark, and Back and Forward, in the title bar | `shell.title-bar` |
 | `shell.engine` | send and announce when the engine is lost and back | `shell.engine-connection` |
 | `EngineLine` | the one line while the engine isn't answering | `shell.engine-line` |
-| `shell.engine.supervise` | start the engine, restart it once, report why it failed | `shell.engine-start` |
+| `shell.engine.supervise` | start the engine, restart it once, report why it failed | `shell.engine-start`, `shell.engine-report-interrupted-runs` |
+| `watchEngineRestart`, `stoppedRunsText` | toast when the engine started again, with the runs it stopped | `shell.engine-restarted-toast` |
 | `saveFailureFor` | turn a write error into a save reason | `shell.save-reasons` |
 | `SaveState` | the save note and the failed-save toast | `shell.save-state` |
 | `StatusBarSaveNote` | the save note at the status bar's right end, and what it reads out | `shell.save-note` |
@@ -587,7 +588,8 @@ with `shell.engine.words.notAnswering` as the reason. The words follow `createSh
 
 On the desktop the app starts the engine process instead: it hands an `EngineLauncher` to
 `shell.engine.supervise(launcher)`. The shell sends `starting { attempt, since }` at once, then
-`connected` when the engine answers. A start that fails sends `failed { failure }` with one of
+`connected` when the engine answers; `connected` can carry `interruptedRuns`, the number of runs
+the restart ended. A start that fails sends `failed { failure }` with one of
 three reasons, and the shell doesn't try again by itself:
 
 | Reason | When |
@@ -1045,7 +1047,7 @@ The rest of `src/index.ts`, by area; the types are what the parts above take and
 - **Engine:** `createShellEngine`, `ShellEngine`, `ShellEngineState`, `EngineConnectionEvent`,
   `EngineConnectionListener`, `EngineStartEvent`, `EngineStartFailure`,
   `EngineStartFailureReason`, `EngineLauncher`, `EngineProcess`, `EngineProcessEvents`,
-  `EngineSupervisor`, `engineAnswerTimeoutMs` (30 s), `engineRestartDelayMs` (2 s),
+  `EngineSupervisor`, `watchEngineRestart`, `stoppedRunsText`, `engineAnswerTimeoutMs` (30 s), `engineRestartDelayMs` (2 s),
   `engineRestartWindowMs` (60 s), `engineWords`, `EngineWords`, `StudioHost`, `EngineLineProps`.
 - **Frame:** `ShellFrameProps`, `StatusBarItemsProps`, `StatusBarItemProps` (what an item's view
   gets: `context`), `HomeCardProps`, `FeatureDialogsProps`, `DialogHostProps`.
