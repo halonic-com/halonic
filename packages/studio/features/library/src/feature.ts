@@ -1,4 +1,5 @@
 import { defineFeature } from "@halonicjs/studio-shell";
+import { CollectionHostService } from "./collection-host.ts";
 import { ConnectorStatusHostService } from "./connector-status-host.ts";
 import { KnowledgeHostService } from "./knowledge-host.ts";
 import { LibraryItemsHostService } from "./library-items-host.ts";
@@ -6,7 +7,10 @@ import { LibraryTabMemoryService } from "./library-tab-memory.ts";
 import { requestLibraryTab } from "./library-tab-request.ts";
 import { libraryKinds, tabLabel } from "./library-words.ts";
 import { ListedToolsHostService } from "./listed-tools-host.ts";
+import { NewCollectionHostService } from "./new-collection-host.ts";
+import { NewConnectorHostService } from "./new-connector-host.ts";
 import { requestNewConnector } from "./new-connector-request.ts";
+import { NewSkillHostService } from "./new-skill-host.ts";
 import { SkillHostService } from "./skill-host.ts";
 
 /** Alt+4 to Alt+7 open the tabs, in the tabs' order. */
@@ -26,7 +30,16 @@ export const libraryFeature = defineFeature({
   needs: [ConnectorStatusHostService, LibraryItemsHostService, LibraryTabMemoryService],
   // Without an agent host nothing can start a connector, so the review is not provided (HAL-8868).
   // Without a skill host a skill's page says the skill isn't in the workspace (HAL-1303 P5c gives it one).
-  wants: [ListedToolsHostService, SkillHostService, KnowledgeHostService],
+  // The place's New buttons and a collection's page look up their hosts too (HAL-11189).
+  wants: [
+    ListedToolsHostService,
+    SkillHostService,
+    KnowledgeHostService,
+    CollectionHostService,
+    NewCollectionHostService,
+    NewConnectorHostService,
+    NewSkillHostService,
+  ],
   register(studio) {
     studio.places.add({
       id: "library",

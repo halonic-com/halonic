@@ -1,6 +1,7 @@
 import { sandboxStartCheckKey } from "@halonicjs/app";
 import { defineFeature } from "@halonicjs/studio-shell";
 import {
+  InboxNoticesService,
   InboxRequestsService,
   InboxRunsService,
   InboxService,
@@ -20,7 +21,14 @@ export const inboxFeature = defineFeature({
   id: "inbox",
   title: "Inbox",
   needs: [InboxRunsService],
-  wants: [InboxRequestsService, SandboxRefusalsService, sandboxStartCheckKey, SandboxPassesService],
+  // The page reads the app's notices (HAL-1845); listing them here lets it look them up (HAL-11189).
+  wants: [
+    InboxNoticesService,
+    InboxRequestsService,
+    SandboxRefusalsService,
+    sandboxStartCheckKey,
+    SandboxPassesService,
+  ],
   provides: [InboxService],
   register(studio) {
     studio.services.provide(InboxService, (services) => {
