@@ -42,6 +42,8 @@ export function hasInstructions(task: HarnessTask): boolean {
  *   against Claude Code 2.1.318: with a marker in each file, the model
  *   request held none of them; with `project` and `local` added it held
  *   all three.
+ * - `--permission-mode default`, said outright so no setting, and no
+ *   earlier default, can widen what runs without asking (HAL-5397, N1a).
  * - `--settings` with {@link unfencedSettingsFile}, when its own sandbox is
  *   on. These settings load next to the agent's own, whatever
  *   `--setting-sources` says.
@@ -69,6 +71,8 @@ export function claudeCodeCommand(task: HarnessTask, files: ClaudeCodeFiles): Sa
     "--strict-mcp-config",
     "--setting-sources",
     "user",
+    "--permission-mode",
+    "default",
   ];
   if (files.ownSandbox) args.push("--settings", join(files.settingsFolder, unfencedSettingsFile));
   args.push("--permission-prompt-tool", permissionPromptTool);
