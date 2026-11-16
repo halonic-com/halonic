@@ -68,7 +68,7 @@ verifies("runs.row", () => {
       expect(child.line).toBe("Waiting for child run 7k2m9p");
     });
 
-    it("leaves the sent part out of a finished run without a tool call, so it opens with its cost", () => {
+    it("leaves the sent part out of a finished run, so it opens with its cost", () => {
       const row = rowOf({ status: "completed", cost: 0.004 });
 
       expect(row.chip).toEqual({ word: "Done", tone: "success", dot: false });
