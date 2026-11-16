@@ -59,12 +59,14 @@ builds it. The test harness, `packages/targets/cloudflare/testing`, never ships.
   `wrangler`'s templates and `@cloudflare/*`) and the modules its runtime
   provides (`cloudflare:*`, `node:*`).
 - **`pnpm check:bundle --target cloudflare <metafile>`** checks a runtime
-  build. Today nothing runs it on the Worker build (`buildWorkerBundle`); a test
-  runs it on an integration bundle (`tooling/publish/src/pack.test.ts`).
-  It reads the bundler's metafile (`--metafile`), so it sees
-  every file that went in, including whatever an approved library pulls
-  with it, and fails on any package not allowed above, and on any module
-  left external that the provider doesn't supply.
+  build. Two callers run it: `buildWorkerBundle` (`tooling/publish`) runs
+  it on the Cloudflare Worker's metafile on every build, and a test runs
+  it on an integration bundle (`tooling/publish/src/pack.test.ts`). It
+  reads the bundler's metafile (`--metafile`), so it sees every file that
+  went in, including whatever an approved library pulls with it. It fails
+  on any package not allowed above, and on any module left external that
+  the provider doesn't supply. The Worker build fails on any finding, so
+  the real Worker can't carry anything else.
 
 ## Adding one
 

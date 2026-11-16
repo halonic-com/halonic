@@ -1,6 +1,13 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
+import {
+  checkCloudBundle,
+  findRepoRoot,
+  loadBundleRules,
+  type Metafile,
+} from "@halonicjs/tooling-check";
 import { type BuildFailure, build } from "esbuild";
 
 /**
@@ -9,6 +16,9 @@ import { type BuildFailure, build } from "esbuild";
  * not at the upload.
  */
 export const MAX_COMPRESSED_BYTES = 10_000_000;
+
+/** The cloud runtime whose list of allowed packages the Worker is checked against. */
+const WORKER_TARGET = "cloudflare";
 
 /** The Worker as one ES module script, and the SHA-256 of its bytes. */
 export interface WorkerBundle {
@@ -26,12 +36,16 @@ export interface WorkerBundle {
  * no timestamp, no source map and no absolute path, and keeps esbuild's
  * path comments relative to the package that holds the entry file.
  *
+ * Every build also runs the cloud bundle check (`pnpm check:bundle`) on the bundle's metafile, so
+ * the Worker holds only our own code, Cloudflare's own code and the libraries marked `cloudRuntime`.
+ *
  * @param entryPoint - absolute path of the Worker's entry file, `src/index.ts` of
  *   `@halonicjs/target-cloudflare-runtime`. Tooling can't depend on a target, so the caller resolves it.
  * @param options.maxCompressedBytes - the size limit of the gzip-compressed script, `MAX_COMPRESSED_BYTES` by default
  * @returns the script and its hash
- * @throws Error when the bundle doesn't build (the message names each import that couldn't be bundled)
- *   or when the compressed script is over the limit
+ * @throws Error when the bundle doesn't build (the message names each import that couldn't be bundled),
+ *   when it holds a package or leaves a module external that the Cloudflare runtime list doesn't allow
+ *   (the message names each one), or when the compressed script is over the limit
  */
 export async function buildWorkerBundle(
   entryPoint: string,
@@ -52,6 +66,8 @@ export async function buildWorkerBundle(
     sourcemap: false,
     legalComments: "none",
     write: false,
+    // Read only by the bundle check below: the metafile isn't part of the script, so the bytes don't change.
+    metafile: true,
     logLevel: "silent",
   }).catch((error: unknown) => {
     throw new Error(`The Worker didn't build.\n${describeFailure(error)}`, { cause: error });
@@ -60,6 +76,7 @@ export async function buildWorkerBundle(
   if (file === undefined || result.outputFiles.length !== 1) {
     throw new Error("esbuild didn't return exactly one file for the Worker.");
   }
+  assertRuntimeBundle(result.metafile);
   const limit = options.maxCompressedBytes ?? MAX_COMPRESSED_BYTES;
   const compressed = gzipSync(file.text).byteLength;
   if (compressed > limit) {
@@ -68,6 +85,25 @@ export async function buildWorkerBundle(
     );
   }
   return { script: file.text, hash: hashScript(file.text) };
+}
+
+/**
+ * Runs the cloud bundle check on the Worker's metafile.
+ *
+ * @throws Error naming each package or module the Cloudflare runtime doesn't allow
+ */
+function assertRuntimeBundle(metafile: Metafile): void {
+  const root = findRepoRoot(path.dirname(fileURLToPath(import.meta.url)));
+  const rules = loadBundleRules(root, WORKER_TARGET);
+  if (rules === undefined) {
+    throw new Error(`tooling/check/policy.json has no cloud runtime "${WORKER_TARGET}".`);
+  }
+  const problems = checkCloudBundle(metafile, "the Worker bundle", rules);
+  if (problems.length > 0) {
+    throw new Error(
+      `The Worker holds code its runtime doesn't allow.\n${problems.map(({ message }) => message).join("\n")}`,
+    );
+  }
 }
 
 /** One line per esbuild error, so a failing import shows by name, e.g. `Could not resolve "left-pad"`. */

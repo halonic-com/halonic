@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
@@ -73,6 +73,26 @@ verifies("publish.worker-bundle", () => {
         const entry = `${folder}/index.ts`;
         await writeFile(entry, 'import "halonic-no-such-package";\n');
         await expect(buildWorkerBundle(entry)).rejects.toThrow(/halonic-no-such-package/);
+      } finally {
+        await rm(folder, { recursive: true, force: true });
+      }
+    });
+
+    it("refuses a package that isn't on the runtime list, and names it", async () => {
+      const folder = await mkdtemp(`${tmpdir()}/halonic-bundle-`);
+      try {
+        // A package of our own making, so the test needs no outside library.
+        await mkdir(`${folder}/node_modules/halonic-not-on-the-list`, { recursive: true });
+        await writeFile(
+          `${folder}/node_modules/halonic-not-on-the-list/index.js`,
+          "export const answer = 42;\n",
+        );
+        const entry = `${folder}/index.ts`;
+        await writeFile(
+          entry,
+          'import { answer } from "halonic-not-on-the-list";\nexport default answer;\n',
+        );
+        await expect(buildWorkerBundle(entry)).rejects.toThrow(/"halonic-not-on-the-list"/);
       } finally {
         await rm(folder, { recursive: true, force: true });
       }

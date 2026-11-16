@@ -2,6 +2,8 @@
  * Public entry point of tooling/check: the rules, so tooling/discover and
  * tests can run them. The command lines live in `cli/`.
  */
+export { checkCloudBundle, type Metafile } from "./lib/bundle.ts";
+export { loadBundleRules } from "./lib/bundle-rules.ts";
 export { type CheckContext, loadContext } from "./lib/context.ts";
 export { type CoverageFloor, defaultCoverageFloors } from "./lib/coverage.ts";
 export {
