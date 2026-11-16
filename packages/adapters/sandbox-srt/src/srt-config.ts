@@ -292,7 +292,7 @@ export function buildSrtConfig(
         )
       : [];
   const readable = [
-    ...(platform === "win32" ? [...profile.readOnlyPaths, ...tools] : []),
+    ...(platform === "win32" ? [...profile.readOnlyPaths] : []),
     ...(profile.reopenedPaths ?? []),
     ...(sharedFolders.length > 0 ? [...writableFolders, ...profile.readOnlyPaths] : []),
   ];
