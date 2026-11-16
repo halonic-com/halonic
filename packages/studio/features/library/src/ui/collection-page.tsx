@@ -1,15 +1,12 @@
-import { FilterChips, FormRows, useGridNavigation } from "@halonicjs/studio-kit";
+import { FilterChips, FormRows } from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
-import { Fragment, useCallback, useMemo, useSyncExternalStore } from "react";
-import { cellText, chipText, headerMarks } from "../collection-format.ts";
-import {
-  type CollectionColumn,
-  CollectionHostService,
-  type CollectionRef,
-} from "../collection-host.ts";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { chipText } from "../collection-format.ts";
+import { CollectionHostService, type CollectionRef } from "../collection-host.ts";
 import { CollectionModel } from "../collection-model.ts";
 import { collectionWords } from "../collection-words.ts";
 import { sharedHubKey } from "./library-place.tsx";
+import { RecordsGrid } from "./records-grid.tsx";
 import { UsedByField } from "./used-by-field.tsx";
 
 /** The chip of "All"; a view's chip is its name after `view:`, so a view called "all" is its own chip. */
@@ -58,10 +55,8 @@ function LoadedCollectionPage({
   model,
 }: Pick<ItemViewProps, "item" | "context"> & { readonly model: CollectionModel }) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
-  const { loaded, gone, name, volatile, view, grid, usage } = useSyncExternalStore(
-    subscribe,
-    () => model.state,
-  );
+  const state = useSyncExternalStore(subscribe, () => model.state);
+  const { loaded, gone, name, volatile, view, grid, usage } = state;
 
   if (gone) {
     return <Gone context={context} />;
@@ -90,74 +85,14 @@ function LoadedCollectionPage({
       />
       <RecordsGrid
         label={collectionWords.gridLabel(name || item.id)}
+        model={model}
+        state={state}
         fields={grid.fields}
         rows={grid.rows}
       />
       <FormRows>
         <UsedByField usage={usage} notUsed={collectionWords.notUsed} context={context} />
       </FormRows>
-    </div>
-  );
-}
-
-interface RecordsGridProps {
-  readonly label: string;
-  readonly fields: readonly CollectionColumn[];
-  readonly rows: readonly {
-    readonly id: string;
-    readonly values: Readonly<Record<string, unknown>>;
-  }[];
-}
-
-/** A real `grid`: one Tab stop, arrows move between cells (flow-library 5.3, accessibility pass 9.3). */
-function RecordsGrid({ label, fields, rows }: RecordsGridProps) {
-  const navigation = useGridNavigation(
-    rows.map((row) => ({ id: row.id, cells: fields.map(() => true) })),
-  );
-  return (
-    <div className="min-w-0 overflow-x-auto rounded-md border border-border">
-      <table
-        // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the ARIA grid pattern on a table, as the kit's List does
-        role="grid"
-        aria-label={label}
-        className="w-full border-collapse"
-        {...navigation.gridProps}
-      >
-        <thead>
-          <tr className="border-b border-border bg-surface-subtle text-left text-small font-medium">
-            {fields.map((field) => (
-              <th key={field.name} scope="col" className="min-w-32 px-3 py-2 font-medium">
-                {field.name}
-                {headerMarks(field).map(({ mark, hint }) => (
-                  <Fragment key={hint}>
-                    {" "}
-                    <span aria-hidden="true">{mark}</span>
-                    <span className="sr-only">{hint}</span>
-                  </Fragment>
-                ))}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.id} className="border-b border-border last:border-b-0">
-              {fields.map((field, column) => (
-                // biome-ignore lint/a11y/useFocusableInteractive: its tabIndex comes from navigation.cell(), which Biome can't see
-                <td
-                  key={field.name}
-                  // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a cell of the grid above
-                  role="gridcell"
-                  className={`min-w-32 px-3 py-2 focus-ring [overflow-wrap:anywhere] ${field.computed ? "bg-surface-subtle" : ""}`}
-                  {...navigation.cell(row.id, column)}
-                >
-                  {cellText(field, row.values[field.name])}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   );
 }

@@ -12,10 +12,22 @@ import {
   type CollectionRow,
   type CollectionSource,
 } from "../collection-host.ts";
+import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { CollectionPage } from "./collection-page.tsx";
 
-afterEach(unmountAll);
+// jsdom has no `popover`; the row menu only needs its open and close to exist.
+Object.assign(HTMLElement.prototype, {
+  showPopover: () => {},
+  hidePopover: () => {},
+  togglePopover: () => false,
+});
+fakeModal();
+afterEach(() => {
+  unmountAll();
+  restoreModal();
+  fakeModal();
+});
 
 const nobody: ItemUsage = { agents: [], hubs: [], routines: [], collections: [] };
 
@@ -31,7 +43,11 @@ const swim: CollectionRow = {
 };
 const trip: CollectionRow = { id: "trip", values: { what: "Trip", amount: 20, share: null } };
 
-function sourceOf(rows: readonly CollectionRow[], volatile = false): CollectionSource {
+function sourceOf(
+  rows: readonly CollectionRow[],
+  volatile = false,
+  rules: Partial<Pick<CollectionSource, "editCell" | "newRow">> = {},
+): CollectionSource {
   return {
     name: "Claims",
     volatile,
@@ -45,10 +61,15 @@ function sourceOf(rows: readonly CollectionRow[], volatile = false): CollectionS
     }),
     editCell: () => ({ ok: true, values: {} }),
     newRow: (typed) => ({ draft: typed, stillNeeded: [] }),
+    ...rules,
   };
 }
 
-function setup(source: CollectionSource | undefined, usage: ItemUsage = nobody) {
+function setup(
+  source: CollectionSource | undefined,
+  usage: ItemUsage = nobody,
+  writes: Partial<Pick<CollectionHost, "change" | "add" | "remove">> = {},
+) {
   const host: CollectionHost = {
     read: async () => source,
     change: async () => "saved",
@@ -56,6 +77,7 @@ function setup(source: CollectionSource | undefined, usage: ItemUsage = nobody) 
     remove: async () => {},
     usage: async () => usage,
     subscribe: () => () => {},
+    ...writes,
   };
   const openItem = vi.fn();
   const openPlace = vi.fn();
@@ -72,7 +94,7 @@ function setup(source: CollectionSource | undefined, usage: ItemUsage = nobody) 
     },
     Sections: () => null,
   } as unknown as ItemViewProps;
-  return { props, openItem, openPlace };
+  return { props, host, openItem, openPlace };
 }
 
 async function settled(): Promise<void> {
@@ -81,8 +103,12 @@ async function settled(): Promise<void> {
   });
 }
 
-async function opened(source: CollectionSource | undefined, usage?: ItemUsage) {
-  const { props, ...rest } = setup(source, usage);
+async function opened(
+  source: CollectionSource | undefined,
+  usage?: ItemUsage,
+  writes?: Parameters<typeof setup>[2],
+) {
+  const { props, ...rest } = setup(source, usage, writes);
   const root = render(<CollectionPage {...props} />);
   await settled();
   return { root, ...rest };
@@ -93,6 +119,42 @@ function chips(root: HTMLElement): string[] {
     (label) => label.textContent ?? "",
   );
 }
+
+const cell = (root: HTMLElement, row: number, column: number): HTMLElement =>
+  root.querySelectorAll("tbody tr")[row]?.querySelectorAll<HTMLElement>("td")[
+    column
+  ] as HTMLElement;
+
+/** Opens a cell's editor with Enter, types `text` and leaves the cell. */
+async function typeInto(root: HTMLElement, row: number, column: number, text: string) {
+  await act(async () => {
+    cell(root, row, column).dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    );
+  });
+  const input = cell(root, row, column).querySelector("input") as HTMLInputElement;
+  const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  await act(async () => {
+    set?.call(input, text);
+    input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
+async function pressButton(root: HTMLElement, label: string) {
+  const button = [...root.ownerDocument.querySelectorAll("button")].find((each) =>
+    each.textContent?.startsWith(label),
+  );
+  await act(async () => {
+    button?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
+const amountEdit: CollectionSource["editCell"] = (field, text) =>
+  Number.isNaN(Number(text))
+    ? { ok: false, message: `${field} needs a number.` }
+    : { ok: true, values: { [field]: text === "" ? null : Number(text) } };
 
 verifies("library.collection-page", () => {
   describe("CollectionPage", () => {
@@ -107,7 +169,7 @@ verifies("library.collection-page", () => {
     it("shows a column per field with * for required and ƒ for computed", async () => {
       const { root } = await opened(sourceOf([swim]));
       const headers = [...root.querySelectorAll("th")].map((header) => header.textContent);
-      expect(headers).toEqual(["what *required", "amount *required", "share ƒcomputed"]);
+      expect(headers).toEqual(["what *required", "amount *required", "share ƒcomputed", ""]);
       // The marks are hidden from a screen reader, which hears the words instead.
       const spoken = [...root.querySelectorAll("th")].map((header) =>
         [...header.childNodes]
@@ -117,7 +179,7 @@ verifies("library.collection-page", () => {
           .replace(/\s+/g, " ")
           .trim(),
       );
-      expect(spoken).toEqual(["what required", "amount required", "share computed"]);
+      expect(spoken).toEqual(["what required", "amount required", "share computed", ""]);
       expect(root.querySelector('[role="grid"]')?.getAttribute("aria-label")).toBe(
         "Claims records",
       );
@@ -126,11 +188,13 @@ verifies("library.collection-page", () => {
     it("shows the records with money in the nl-NL format and empty values as nothing", async () => {
       const { root } = await opened(sourceOf([swim, trip]));
       const rows = [...root.querySelectorAll("tbody tr")].map((row) =>
-        [...row.querySelectorAll("td")].map((cell) => cell.textContent),
+        [...row.querySelectorAll("td")].slice(0, 3).map((cell) => cell.textContent),
       );
+      // The last row is the new one, empty.
       expect(rows).toEqual([
         ["Swim lesson", "60,00", "45,00"],
         ["Trip", "20,00", ""],
+        ["", "", ""],
       ]);
     });
 
@@ -152,8 +216,10 @@ verifies("library.collection-page", () => {
       const { root } = await opened(sourceOf([swim, trip]));
       const open = root.querySelector<HTMLInputElement>('input[value="view:open"]');
       await act(async () => open?.click());
-      expect(root.querySelectorAll("tbody tr")).toHaveLength(1);
+      // The record and the new row.
+      expect(root.querySelectorAll("tbody tr")).toHaveLength(2);
       expect(root.querySelector("tbody")?.textContent).toContain("Swim lesson");
+      expect(root.querySelector("tbody")?.textContent).not.toContain("Trip");
     });
 
     it("is one Tab stop in the grid", async () => {
@@ -189,6 +255,125 @@ verifies("library.collection-page", () => {
       );
       await act(async () => go?.click());
       expect(openPlace).toHaveBeenCalledWith("library");
+    });
+  });
+  describe("CollectionPage editing", () => {
+    it("saves what was typed into a cell as one change when the cell is left", async () => {
+      const change = vi.fn(async () => "saved" as const);
+      const { root } = await opened(sourceOf([swim], false, { editCell: amountEdit }), undefined, {
+        change,
+      });
+      await typeInto(root, 0, 1, "65");
+      expect(change).toHaveBeenCalledTimes(1);
+      expect(change).toHaveBeenCalledWith({ hub: null, id: "claims" }, "swim-oct", { amount: 65 });
+    });
+
+    it("saves an emptied cell as null", async () => {
+      const change = vi.fn(async () => "saved" as const);
+      const { root } = await opened(sourceOf([swim], false, { editCell: amountEdit }), undefined, {
+        change,
+      });
+      await typeInto(root, 0, 1, "");
+      expect(change).toHaveBeenCalledWith(expect.anything(), "swim-oct", { amount: null });
+    });
+
+    it("writes nothing for an unchanged value", async () => {
+      const change = vi.fn(async () => "saved" as const);
+      const { root } = await opened(sourceOf([swim], false, { editCell: amountEdit }), undefined, {
+        change,
+      });
+      await typeInto(root, 0, 1, "60");
+      expect(change).not.toHaveBeenCalled();
+    });
+
+    it("shows the core message under a cell whose value isn't accepted, and writes nothing", async () => {
+      const change = vi.fn(async () => "saved" as const);
+      const { root } = await opened(sourceOf([swim], false, { editCell: amountEdit }), undefined, {
+        change,
+      });
+      await typeInto(root, 0, 1, "lots");
+      expect(change).not.toHaveBeenCalled();
+      expect(cell(root, 0, 1).textContent).toContain("amount needs a number.");
+      // The next edit of that cell clears the message.
+      await act(async () => {
+        cell(root, 0, 1).dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+        );
+      });
+      expect(cell(root, 0, 1).textContent).not.toContain("needs a number");
+    });
+
+    it("opens no editor in a computed cell", async () => {
+      const { root } = await opened(sourceOf([swim]));
+      await act(async () => {
+        cell(root, 0, 2).dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+        );
+      });
+      expect(cell(root, 0, 2).querySelector("input")).toBeNull();
+    });
+
+    it("says the row was removed by another change when the host finds it gone", async () => {
+      const { root } = await opened(
+        sourceOf([swim, trip], false, { editCell: amountEdit }),
+        undefined,
+        {
+          change: async () => "removed",
+        },
+      );
+      await typeInto(root, 1, 1, "30");
+      expect(root.textContent).toContain("Row removed by another change.");
+      expect(root.querySelectorAll("tbody tr").length).toBeGreaterThan(1);
+    });
+
+    it("says what is still needed under the grid and adds nothing yet", async () => {
+      const add = vi.fn(async () => {});
+      const source = sourceOf([swim], false, {
+        newRow: (typed) => ({ draft: typed, stillNeeded: ["amount"] }),
+      });
+      const { root } = await opened(source, undefined, { add });
+      expect(root.textContent).toContain("Fill the last row to add a record: still needed amount.");
+      await typeInto(root, 1, 0, "Taxi");
+      expect(add).not.toHaveBeenCalled();
+    });
+
+    it("shows a default as a default tag in the new row", async () => {
+      const source = sourceOf([swim], false, {
+        newRow: (typed) => ({ draft: { ...typed, amount: "100" }, stillNeeded: [] }),
+      });
+      const { root } = await opened(source);
+      expect(cell(root, 1, 1).textContent).toBe("100 default");
+    });
+
+    it("adds the record once every required field is filled", async () => {
+      const add = vi.fn(async () => {});
+      const source = sourceOf([swim], false, {
+        newRow: (typed) =>
+          typed["what"] === undefined
+            ? { draft: typed, stillNeeded: ["what"] }
+            : { draft: typed, stillNeeded: [], record: { what: typed["what"] } },
+      });
+      const { root } = await opened(source, undefined, { add });
+      await typeInto(root, 1, 0, "Taxi");
+      expect(add).toHaveBeenCalledWith({ hub: null, id: "claims" }, { what: "Taxi" });
+      expect(cell(root, 1, 0).textContent).toBe("");
+    });
+
+    it("asks before removing a record, and removes it on Remove", async () => {
+      const remove = vi.fn(async () => {});
+      const { root } = await opened(sourceOf([swim]), undefined, { remove });
+      await pressButton(root, "Remove");
+      expect(root.ownerDocument.body.textContent).toContain("Remove swim-oct?");
+      expect(remove).not.toHaveBeenCalled();
+      // The menu's Remove comes first; the dialog's is the last one.
+      const confirm = [...root.ownerDocument.querySelectorAll("button")]
+        .filter((each) => each.textContent?.startsWith("Remove"))
+        .at(-1);
+      await act(async () => {
+        (confirm as HTMLElement).click();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(remove).toHaveBeenCalledWith({ hub: null, id: "claims" }, "swim-oct");
     });
   });
 });
