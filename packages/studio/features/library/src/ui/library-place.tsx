@@ -69,7 +69,11 @@ export function LibraryPlace({ context }: PlaceViewProps) {
   const [connectorRequests, setConnectorRequests] = useState(0);
   // The run banner's "Add connector" opens New connector on the Connectors tab with what it knows filled in.
   useEffect(() => {
-    if (newConnectorHost === undefined) return;
+    if (newConnectorHost === undefined) {
+      // Nothing here can make a connector. Taking the request and dropping it stops it from
+      // waiting, where it would open the dialog later, unasked, if a host appeared.
+      return takeNewConnectorRequests(() => {});
+    }
     return takeNewConnectorRequests((request) => {
       show("connector");
       prepareThen(newConnectorHost, () => {
