@@ -65,12 +65,21 @@ export function LibraryPlace({ context }: PlaceViewProps) {
   const [makingCollection, setMakingCollection] = useState(false);
   const newConnectorHost = context.services.find(NewConnectorHostService);
   const [makingConnector, setMakingConnector] = useState<NewConnectorRequest>();
+  // Each request gets its own dialog, so a second request while one is open shows its own name and way.
+  const [connectorRequests, setConnectorRequests] = useState(0);
   // The run banner's "Add connector" opens New connector on the Connectors tab with what it knows filled in.
   useEffect(() => {
     if (newConnectorHost === undefined) return;
     return takeNewConnectorRequests((request) => {
       show("connector");
-      prepareThen(newConnectorHost, () => setMakingConnector(request));
+      prepareThen(newConnectorHost, () => {
+        // A way the host does not offer is dropped: nothing is guessed, so no way is picked.
+        const { way, ...rest } = request;
+        setMakingConnector(
+          way !== undefined && newConnectorHost.ways().includes(way) ? request : rest,
+        );
+        setConnectorRequests((count) => count + 1);
+      });
     });
   }, [newConnectorHost, show]);
   const { openItem, openItemInNewTab } = context;
@@ -122,6 +131,7 @@ export function LibraryPlace({ context }: PlaceViewProps) {
       )}
       {makingConnector !== undefined && newConnectorHost !== undefined && (
         <NewConnectorDialog
+          key={connectorRequests}
           host={newConnectorHost}
           {...(makingConnector.name === undefined ? {} : { name: makingConnector.name })}
           {...(makingConnector.way === undefined ? {} : { way: makingConnector.way })}

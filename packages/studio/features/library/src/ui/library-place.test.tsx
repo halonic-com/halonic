@@ -238,4 +238,52 @@ verifies("library.library-place", () => {
       "google",
     );
   });
+
+  it("picks no way when a run banner asks for one the host does not offer", async () => {
+    fakeModal();
+    const { context } = contextOf("connector");
+    const host: NewConnectorHost = {
+      prepare: async () => {},
+      hubs: () => [{ id: "acme", name: "acme" }],
+      ways: () => ["http"],
+      file: () => "hubs/acme/library/connectors/drive.connector.yaml",
+      create: async () => ({ hub: "acme", id: "drive" }),
+    };
+    const find = context.services.find;
+    context.services.find = ((key: unknown) =>
+      key === NewConnectorHostService ? host : find(key as never)) as typeof find;
+    const page = await show(context);
+    await act(async () => {
+      requestNewConnector({ name: "drive", way: "google" });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const dialog = page.ownerDocument.querySelector("dialog[open]");
+    expect(dialog?.querySelector<HTMLInputElement>("input")?.value).toBe("drive");
+    expect(dialog?.querySelector("input[type=radio]:checked")).toBeNull();
+    expect(dialog?.textContent).not.toContain("Google");
+  });
+
+  it("shows a second request's name while the dialog is open", async () => {
+    fakeModal();
+    const { context } = contextOf("connector");
+    const host: NewConnectorHost = {
+      prepare: async () => {},
+      hubs: () => [{ id: "acme", name: "acme" }],
+      ways: () => ["google", "http"],
+      file: () => "hubs/acme/library/connectors/x.connector.yaml",
+      create: async () => ({ hub: "acme", id: "x" }),
+    };
+    const find = context.services.find;
+    context.services.find = ((key: unknown) =>
+      key === NewConnectorHostService ? host : find(key as never)) as typeof find;
+    const page = await show(context);
+    for (const name of ["drive", "mail"]) {
+      await act(async () => {
+        requestNewConnector({ name });
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    }
+    const dialog = page.ownerDocument.querySelector("dialog[open]");
+    expect(dialog?.querySelector<HTMLInputElement>("input")?.value).toBe("mail");
+  });
 });
