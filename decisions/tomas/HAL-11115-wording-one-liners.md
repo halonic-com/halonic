@@ -3,6 +3,7 @@
 - Task: HAL-11115
 - Approval: HAL-11133 (Liam's review of PR 3187, team decision under the HAL-2282 rule for small wording on an approved screen)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:eeW/b6cYTOjEK40mrJhJy53WkoQ0ID2T89L3FuHBmWu7d/IJT/GmyD3Xrh8meP4CCE+WHVrDBn+LGOS0XVa4BQ==
 
 ## What changes
 
