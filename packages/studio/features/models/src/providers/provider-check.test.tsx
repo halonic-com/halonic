@@ -111,13 +111,36 @@ verifies("models.providers.check", () => {
     const view = await show(checkAnswering(true, true), ollama);
     await act(async () => button(view).click());
     await settle();
-    const first = view.querySelector("[role=status]");
+    const line = view.querySelector("[role=status]");
+    const first = line?.firstElementChild;
     await act(async () => button(view).click());
     await settle();
-    const second = view.querySelector("[role=status]");
 
-    expect(second?.textContent).toBe(first?.textContent);
-    expect(second).not.toBe(first);
+    expect(view.querySelector("[role=status]")).toBe(line);
+    expect(line?.firstElementChild?.textContent).toBe(first?.textContent);
+    expect(line?.firstElementChild).not.toBe(first);
+  });
+
+  it("keeps one status line mounted, empty until the first check", async () => {
+    const view = await show(checkAnswering(true), ollama);
+    const line = view.querySelector("[role=status]");
+    expect(line?.textContent).toBe("");
+
+    await act(async () => button(view).click());
+    await settle();
+    expect(view.querySelector("[role=status]")).toBe(line);
+  });
+
+  it("drops a result once the address changes", async () => {
+    const check = checkAnswering(true);
+    const view = await show(check, ollama);
+    await act(async () => button(view).click());
+    await settle();
+
+    check.addressOf = () => "localhost:9999";
+    await act(async () => root?.render(<CheckProvider check={check} provider={ollama} now={at} />));
+    expect(view.textContent).not.toContain("Answering at");
+    expect(view.querySelector("[role=status]")?.textContent).toBe("");
   });
 
   it("shows nothing for a cloud provider or one with no address", async () => {

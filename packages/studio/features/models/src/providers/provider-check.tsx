@@ -46,7 +46,6 @@ function clockTime(date: Date): string {
  */
 export function CheckProvider({ check, provider, now = () => new Date() }: CheckProviderProps) {
   const [result, setResult] = useState<Result>();
-  const [checks, setChecks] = useState(0);
   const [busy, setBusy] = useState(false);
   const alive = useRef(true);
   useEffect(() => {
@@ -56,6 +55,8 @@ export function CheckProvider({ check, provider, now = () => new Date() }: Check
     };
   }, []);
   const address = check?.addressOf(provider);
+  // A result for another address (the base URL was edited since) is no longer the answer.
+  const current = result?.address === address ? result : undefined;
   if (check === undefined || !provider.local || address === undefined) return null;
 
   async function run(asked: ProviderCheck, where: string) {
@@ -63,8 +64,7 @@ export function CheckProvider({ check, provider, now = () => new Date() }: Check
     const answering = await asked.isAnswering(provider);
     if (!alive.current) return;
     const checkedAt = clockTime(now());
-    setChecks(checks + 1);
-    setResult({ count: checks + 1, answering, address: where, checkedAt });
+    setResult({ count: (result?.count ?? 0) + 1, answering, address: where, checkedAt });
     setBusy(false);
   }
 
@@ -80,25 +80,28 @@ export function CheckProvider({ check, provider, now = () => new Date() }: Check
           {CHECK}
         </Button>
       </div>
-      {result === undefined ? null : (
+      {current === undefined ? null : (
         <p className="flex items-center gap-2">
           <span
             aria-hidden="true"
-            className={`size-2 shrink-0 rounded-full ${result.answering ? "bg-success" : "border border-fg-muted"}`}
+            className={`size-2 shrink-0 rounded-full ${current.answering ? "bg-success" : "border border-fg-muted"}`}
           />
-          {checkResultLine(result.answering, result.address, result.checkedAt)}
+          {checkResultLine(current.answering, current.address, current.checkedAt)}
         </p>
       )}
-      {/* New for each check, so a result that is the same as before is announced again. */}
-      <p key={result?.count ?? 0} role="status" className="sr-only">
-        {result === undefined
-          ? ""
-          : checkAnnouncement(
+      {/* Mounted from the start, so a screen reader hears its text change; the span inside is new
+          for each check, so a result that is the same as before is announced again. */}
+      <p role="status" className="sr-only">
+        {current === undefined ? null : (
+          <span key={current.count}>
+            {checkAnnouncement(
               providerName(provider),
-              result.answering,
-              result.address,
-              result.checkedAt,
+              current.answering,
+              current.address,
+              current.checkedAt,
             )}
+          </span>
+        )}
       </p>
       <p className="text-small text-fg-muted">{CHECK_HINT}</p>
     </section>
