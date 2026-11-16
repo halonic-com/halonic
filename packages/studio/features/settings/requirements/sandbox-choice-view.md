@@ -13,10 +13,10 @@ The Studio shall turn the engine's typed sandbox choice into the cards of the fi
   then the recommended card is Sandbox in WSL with **Recommended**, and Sandbox for Windows is listed second with **Experimental**.
 - Given Linux and bubblewrap is missing for srt,
   when the cards are made,
-  then the Sandbox card is selectable (its setup shows the fix) and reads "You may need to run one command."
+  then the Sandbox card is selectable (its setup shows the fix) and reads "You may need to run one command"
 - Given Docker Sandboxes can't run because virtualisation is off,
   when the cards are made,
-  then its card is disabled with "Hardware virtualisation is turned off on this computer."
+  then its card is disabled with "Virtualisation is turned off on this computer."
 - Given the engine doesn't offer MXC,
   when the cards are made,
   then no MXC card is in the list.

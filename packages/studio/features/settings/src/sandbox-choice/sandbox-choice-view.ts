@@ -45,7 +45,7 @@ export interface SandboxChoiceView {
  * @param platform the operating system, as Node's `process.platform` names it
  *
  * @example
- * sandboxChoiceView(choice, "win32").recommended?.name; // "Sandbox for Windows"
+ * sandboxChoiceView(choice, "win32").recommended?.name; // "Sandbox in WSL"
  */
 export function sandboxChoiceView(choice: SandboxChoice, platform: string): SandboxChoiceView {
   const windows = platform === "win32";
