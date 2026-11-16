@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, realpath, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
+import { connectorHostClass } from "@halonicjs/adapter-http-kit";
 import { MemorySecrets, MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
@@ -151,6 +152,18 @@ verifies("cli.source-listing", () => {
       expect(factories.serves("stdio")).toBe(true);
       expect(factories.serves("http")).toBe(true);
       expect(factories.serves("google")).toBe(false);
+    });
+
+    it.each([
+      ["https://notes.acme.test/mcp", "public"],
+      ["http://localhost:8080/mcp", "loopback"],
+      ["http://127.0.0.1:8080/mcp", "loopback"],
+      ["http://[::1]:8080/mcp", "loopback"],
+      ["http://192.168.1.20/mcp", "private"],
+      ["http://169.254.169.254/latest", undefined],
+      ["http://0.0.0.0/mcp", undefined],
+    ])("lets %s lead only to %s", (url, expected) => {
+      expect(connectorHostClass(new URL(url))).toBe(expected);
     });
   });
 });
