@@ -2,12 +2,14 @@ import { type CodeEditor, languageFor, openCodeEditor } from "@halonicjs/studio-
 import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState } from "react";
-import { fileName } from "../file-item.ts";
+import { fileItem, fileName } from "../file-item.ts";
 import { sizeOf, textKindOf } from "../file-size.ts";
 import { FilesHostService, type OutsideChange } from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
 import { CompareView } from "./compare-view.tsx";
 import { OutsideStrip } from "./outside-strip.tsx";
+import { ProblemsPanel } from "./problems-panel.tsx";
+import { useFileProblems } from "./use-file-problems.ts";
 
 type Loaded =
   | { readonly kind: "loading" }
@@ -40,6 +42,57 @@ export function FileView({ item, context }: ItemViewProps) {
   // Why a choice made in the strip couldn't be saved; Compare opens with it.
   const [failure, setFailure] = useState<string | undefined>();
   const [outside, setOutside] = useState<OutsideChange | undefined>(() => host.outside().get(path));
+  const editorRef = useRef<CodeEditor | undefined>(undefined);
+  const [panelOpen, setPanelOpen] = useState(true);
+  // The problem F8 or a click last went to, by its place in the panel.
+  const [selected, setSelected] = useState<number | undefined>();
+  const [focusRequest, setFocusRequest] = useState<{ index: number } | undefined>();
+  const [announced, setAnnounced] = useState("");
+  const large = loaded.kind === "ready" && loaded.readOnly;
+  const problems = useFileProblems(host, path, loaded.kind === "ready" && !large);
+  const problemsRef = useRef(problems.here);
+  problemsRef.current = problems.here;
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
+
+  useEffect(() => {
+    setSelected(undefined);
+    setAnnounced("");
+  }, [path]);
+
+  useEffect(() => {
+    editorRef.current?.setProblems(problems.here);
+  }, [problems.here]);
+
+  /** Puts the cursor on a problem and remembers it as the one the user is at. */
+  function goToProblem(index: number): void {
+    const problem = problemsRef.current[index];
+    if (problem === undefined) return;
+    setSelected(index);
+    editorRef.current?.goTo(problem.line, problem.col);
+  }
+
+  /** F8 and Shift F8: the next and the previous problem in the panel's order, round the ends. */
+  function moveToProblem(direction: 1 | -1): void {
+    const count = problemsRef.current.length;
+    if (count === 0) return;
+    const at = selectedRef.current;
+    const start = direction === 1 ? 0 : count - 1;
+    const index = at === undefined ? start : (at + direction + count) % count;
+    goToProblem(index);
+    const problem = problemsRef.current[index];
+    // The editor keeps focus, so a screen reader hears the problem here.
+    if (problem !== undefined) setAnnounced(filesWords.problemRow(problem.line, problem.message));
+  }
+
+  /** The gutter's mark: opens the panel on the first problem of that line. */
+  function showProblemOnLine(line: number): void {
+    const index = problemsRef.current.findIndex((problem) => problem.line === line);
+    if (index < 0) return;
+    setPanelOpen(true);
+    setSelected(index);
+    setFocusRequest({ index });
+  }
 
   useEffect(() => {
     setOutside(host.outside().get(path));
@@ -95,16 +148,21 @@ export function FileView({ item, context }: ItemViewProps) {
       label: filesWords.editorLabel(path),
       readOnly,
       onChange: (next) => host.edit(path, next),
+      onProblemClick: showProblemOnLine,
+      onProblemKey: moveToProblem,
     }).then((made) => {
       if (stopped) made.destroy();
       else {
         editor = made;
+        editorRef.current = made;
+        made.setProblems(problemsRef.current);
         unsubscribe = follow(made);
       }
     });
     return () => {
       stopped = true;
       unsubscribe();
+      editorRef.current = undefined;
       editor?.destroy();
     };
   }, [editing, host, path]);
@@ -168,6 +226,11 @@ export function FileView({ item, context }: ItemViewProps) {
           description={loaded.reason}
         />
       )}
+      {ready && problems.syntaxLine !== null && (
+        <div className="border-b border-border bg-danger-soft px-4 py-1 text-small text-fg">
+          {filesWords.cantBeRead(fileName(path), problems.syntaxLine)}
+        </div>
+      )}
       {outside !== undefined && !comparing && (
         <OutsideStrip
           path={path}
@@ -198,6 +261,24 @@ export function FileView({ item, context }: ItemViewProps) {
         />
       )}
       {editing && <div ref={parent} className="min-h-0 flex-1 overflow-hidden" />}
+      {editing && (
+        <>
+          <ProblemsPanel
+            issues={problems.here}
+            tooLong={large}
+            elsewhere={problems.elsewhere}
+            open={panelOpen}
+            onToggle={() => setPanelOpen((open) => !open)}
+            selected={selected}
+            focusRequest={focusRequest}
+            onPick={goToProblem}
+            onOpenFile={(other) => context.openItem?.(fileItem(other))}
+          />
+          <div aria-live="polite" className="sr-only">
+            {announced}
+          </div>
+        </>
+      )}
     </section>
   );
 }

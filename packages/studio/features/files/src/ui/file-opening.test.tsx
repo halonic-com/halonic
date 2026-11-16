@@ -17,6 +17,7 @@ const host: FilesHost = {
   problems: async () => [],
   outside: () => new Map(),
   noteHeld: () => undefined,
+  yamlSyntaxLine: async () => null,
   onReloaded: () => () => undefined,
   compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
   settle: async () => {},

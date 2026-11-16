@@ -83,6 +83,11 @@ export interface FilesHost {
    * and warnings of one file in the order of the text. Resolves to none when the files can't be checked.
    */
   problems(): Promise<readonly FileIssue[]>;
+  /**
+   * The 1-based line where a YAML file stops being valid YAML, or `null` when the file reads as
+   * YAML, isn't a YAML file, or isn't there.
+   */
+  yamlSyntaxLine(path: string): Promise<number | null>;
   /** The files that changed outside Halonic while they had unsaved changes, by path. Their saving is paused. */
   outside(): ReadonlyMap<string, OutsideChange>;
   /** Both texts of a file in {@link FilesHost.outside}, read again from the folder now. */

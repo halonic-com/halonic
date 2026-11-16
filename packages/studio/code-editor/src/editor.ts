@@ -19,6 +19,7 @@ import {
   lineNumbers,
 } from "@codemirror/view";
 import type { EditorLanguage } from "./language.ts";
+import { type EditorProblem, goToPosition, problemMarks, setProblemsOf } from "./problems.ts";
 import { theme } from "./theme.ts";
 import { canRedo, canUndo, forgetHistoryEffect, redo, undo, undoHistory } from "./undo-history.ts";
 
@@ -34,6 +35,10 @@ export type CodeEditorOptions = {
   readonly onChange?: (text: string) => void;
   /** Called when Tab starts or stops moving focus (Ctrl M, or Esc then Tab). */
   readonly onTabFocusChange?: (tabMovesFocus: boolean) => void;
+  /** Called with the line when the user clicks a ✕ or △ in the gutter. */
+  readonly onProblemClick?: (line: number) => void;
+  /** Called with 1 for F8 and -1 for Shift F8: the next and the previous problem. */
+  readonly onProblemKey?: (direction: 1 | -1) => void;
 };
 
 export type CodeEditor = {
@@ -41,6 +46,10 @@ export type CodeEditor = {
   /** Replaces the whole text, for example after the file changed on disk. The undo history starts again. */
   readonly load: (text: string, language?: EditorLanguage) => void;
   readonly setReadOnly: (readOnly: boolean) => void;
+  /** Underlines the problems and marks their lines in the gutter; an empty list clears them. */
+  readonly setProblems: (problems: readonly EditorProblem[]) => void;
+  /** Moves the cursor to a 1-based line and column, scrolls it into view and focuses the editor. */
+  readonly goTo: (line: number, col: number) => void;
   readonly focus: () => void;
   readonly undo: () => boolean;
   readonly redo: () => boolean;
@@ -119,6 +128,17 @@ export function createCodeEditor(options: CodeEditorOptions): CodeEditor {
         return true;
       },
     },
+    {
+      key: "F8",
+      run: () => {
+        options.onProblemKey?.(1);
+        return true;
+      },
+      shift: () => {
+        options.onProblemKey?.(-1);
+        return true;
+      },
+    },
     { key: "Mod-z", run: undo, preventDefault: true },
     { key: "Mod-Shift-z", run: redo, preventDefault: true },
     { key: "Mod-y", run: redo, preventDefault: true },
@@ -131,6 +151,8 @@ export function createCodeEditor(options: CodeEditorOptions): CodeEditor {
       extensions: [
         undoHistory,
         keymap.of([...keys, ...defaultKeymap]),
+        // The icons sit left of the line numbers, as in the Files frames.
+        problemMarks((line) => options.onProblemClick?.(line)),
         lineNumbers(),
         highlightActiveLine(),
         highlightActiveLineGutter(),
@@ -166,6 +188,11 @@ export function createCodeEditor(options: CodeEditorOptions): CodeEditor {
     },
     setReadOnly: (readOnly) =>
       view.dispatch({ effects: readOnlySlot.reconfigure(EditorState.readOnly.of(readOnly)) }),
+    setProblems: (problems) => setProblemsOf(view, problems),
+    goTo: (line, col) => {
+      goToPosition(view, line, col);
+      view.focus();
+    },
     focus: () => view.focus(),
     undo: () => undo(view),
     redo: () => redo(view),

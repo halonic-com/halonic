@@ -18,6 +18,8 @@ vi.mock("@halonicjs/studio-code-editor", () => ({
     return {
       text: () => options.text,
       load: () => {},
+      setProblems: () => {},
+      goTo: () => {},
       destroy: () => {},
     };
   },
@@ -50,6 +52,7 @@ function fixture(change: OutsideChange | undefined, compare: Partial<FileCompare
     remove: async () => ({ places: 0, undo: async () => {} }),
     outside: () => outside,
     noteHeld: () => undefined,
+    yamlSyntaxLine: async () => null,
     onReloaded: () => () => undefined,
     compare: async (path) => ({
       path,

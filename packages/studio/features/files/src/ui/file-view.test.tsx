@@ -28,6 +28,8 @@ vi.mock("@halonicjs/studio-code-editor", () => ({
         entry.text = text;
         entry.loads.push(text);
       },
+      setProblems: () => {},
+      goTo: () => {},
       destroy: () => {
         entry.destroyed = true;
       },
@@ -49,6 +51,7 @@ function hostOf(read: FilesHost["read"], edit: FilesHost["edit"] = () => {}): Fi
     problems: async () => [],
     outside: () => new Map(),
     noteHeld: () => undefined,
+    yamlSyntaxLine: async () => null,
     onReloaded: () => () => undefined,
     compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
     settle: async () => {},
@@ -84,7 +87,7 @@ verifies("files.ui.file-tab", () => {
     expect(opened[0]?.options.text).toBe("name: a\n");
     expect(opened[0]?.options.language).toBe("yaml");
     expect(opened[0]?.options.label).toBe("Text of models.yaml");
-    expect(page.querySelector("button")).toBeNull();
+    expect(page.textContent).not.toMatch(/save/i);
   });
 
   it("sends every edit to the workspace's files", async () => {

@@ -25,6 +25,23 @@ export const filesWords = {
   /** What a file that isn't text says in place of the editor, with its size as the description. */
   notTextTitle: "This file can't be shown here.",
   notTextDescription: (size: string): string => `It is ${size}.`,
+  /** The Problems panel's header, and what it says when there is nothing to list. */
+  problemsTitle: (count: number): string => `Problems (${count})`,
+  noProblems: "No problems.",
+  /** The panel's one line for a file over the size limit, which isn't checked. */
+  tooLongToCheck: "This file is too long to check.",
+  /** One row of the panel: the line first, then what is wrong. */
+  problemRow: (line: number, message: string): string => `Line ${line}: ${message}`,
+  problemSeverity: (severity: "error" | "warning"): string =>
+    severity === "error" ? "Error" : "Warning",
+  /** The line under the panel when the user's edits in this file broke other files. */
+  causesElsewhere: (count: number): string =>
+    count === 1
+      ? "Changes in this file cause 1 problem in another file."
+      : `Changes in this file cause ${count} problems in other files.`,
+  /** The strip above the editor of a YAML file that stopped being valid YAML. */
+  cantBeRead: (name: string, line: number): string =>
+    `${name} can't be read: line ${line} isn't valid YAML.`,
   /** The strip above the editor of a file with unsaved changes that changed outside Halonic. */
   changedOutside: (name: string): string => `${name} changed outside Halonic`,
   deletedOutside: (name: string): string => `${name} was deleted outside Halonic.`,

@@ -196,6 +196,14 @@ export class WorkspaceFilesHost implements FilesHost {
     }
   }
 
+  async yamlSyntaxLine(path: string): Promise<number | null> {
+    if (!/\.ya?ml$/i.test(path)) return null;
+    const text = await this.#parts.files.read(path);
+    if (text === null) return null;
+    const read = readYaml(text);
+    return !read.ok && read.error.kind === "syntax" ? read.error.line : null;
+  }
+
   read(path: string): Promise<string | null> {
     return this.#parts.files.read(path);
   }
