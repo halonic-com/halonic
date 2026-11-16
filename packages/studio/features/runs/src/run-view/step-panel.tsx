@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef } from "react";
 import { stepEventsWords } from "../run-words.ts";
 import { BlockedSitesPanel } from "./blocked-sites.tsx";
 import type { StepEntry } from "./every-step-model.ts";
+import { stepSandboxes } from "./sandbox-model.ts";
+import { SandboxOffPanel, SandboxPanel } from "./sandbox-panel.tsx";
 import { stepBlockedSites, stepChildRuns, stepEvents } from "./step-events-model.ts";
 
 /** Props for {@link StepPanel}. */
@@ -18,6 +20,8 @@ export interface StepPanelProps {
   readonly onClose: () => void;
   /** On a phone the panel fills the screen over the page, with Back, instead of standing beside it. */
   readonly phone?: boolean;
+  /** Whether the run is still going, for the sandbox list's "can" or "could". */
+  readonly live?: boolean;
 }
 
 /**
@@ -25,7 +29,7 @@ export interface StepPanelProps {
  * sites the step's sandbox refused (sandbox-screens 2.2), then the child
  * runs it started, "Started Verify → Run 7k2m9p" with the link, then its model
  * calls with their model and tokens, then its tool calls, each with its
- * arguments folded. Opening it moves focus to its title, and closing it
+ * arguments folded, and last what its sandbox could do (sandbox-screens 1.3). Opening it moves focus to its title, and closing it
  * moves focus back to the entry (kit `SidePanel`).
  *
  * The Blocked sites part has no action yet: the Studio has no agent page to
@@ -33,7 +37,6 @@ export interface StepPanelProps {
  * It doesn't say "No connection was made." either, because the page can't
  * tell yet whether the run's sandbox has proven that (HAL-6219).
  *
- * Not here yet: what the step could do (HAL-1707).
  */
 export function StepPanel({
   entry,
@@ -42,9 +45,11 @@ export function StepPanel({
   openRun,
   onClose,
   phone = false,
+  live = false,
 }: StepPanelProps) {
   const { modelCalls, toolCalls } = useMemo(() => stepEvents(log, entry.id), [log, entry.id]);
   const blocked = useMemo(() => stepBlockedSites(log, entry.id), [log, entry.id]);
+  const sandboxes = useMemo(() => stepSandboxes(log, entry.id), [log, entry.id]);
   const children = stepChildRuns(log, entry.id, workflowName);
   const frame = useRef<HTMLDivElement>(null);
   // Escape while focus is in the panel; the shell's close stack isn't open to features.
@@ -106,7 +111,10 @@ export function StepPanel({
             ))}
           </ul>
         )}
-        {modelCalls.length === 0 && toolCalls.length === 0 && children.length === 0 ? (
+        {modelCalls.length === 0 &&
+        toolCalls.length === 0 &&
+        children.length === 0 &&
+        sandboxes.length === 0 ? (
           <p className="text-body text-fg-muted">{stepEventsWords.none}</p>
         ) : null}
         {modelCalls.length === 0 ? null : (
@@ -139,6 +147,22 @@ export function StepPanel({
               ))}
             </ul>
           </section>
+        )}
+        {sandboxes.map((sandbox, index) =>
+          sandbox.kind === "unreadable" ? null : (
+            <div key={index} className="pt-4">
+              {sandbox.kind === "off" ? (
+                <SandboxOffPanel agent={sandbox.agent} />
+              ) : (
+                <SandboxPanel
+                  view={sandbox.view}
+                  agent={sandbox.agent}
+                  live={live}
+                  place={phone ? "phone" : "desktop"}
+                />
+              )}
+            </div>
+          ),
         )}
       </SidePanel>
     </div>

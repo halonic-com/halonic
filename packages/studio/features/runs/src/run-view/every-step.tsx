@@ -7,6 +7,9 @@ import { fillText } from "./blocked-sites-text.tsx";
 import type { StepEntry, StepMark } from "./every-step-model.ts";
 import { RunLog } from "./run-log.tsx";
 import { runLogLines } from "./run-log-model.ts";
+import { stepSandboxes } from "./sandbox-model.ts";
+import { sandboxLineText, sayText } from "./sandbox-panel.tsx";
+import { ShieldIcon } from "./shield-icon.tsx";
 import { stepBlockedSites } from "./step-events-model.ts";
 
 const timelineColumns: readonly ListColumn[] = [{ kind: "main" }, { kind: "time", key: "time" }];
@@ -92,6 +95,7 @@ function Timeline({
           cells: { time: { value: entry.time } },
           label: entry.label,
         },
+        ...sandboxRows(entry, log),
         ...blockedRow(entry, log),
         ...entry.groups.map((group) => ({
           id: group.id,
@@ -105,6 +109,40 @@ function Timeline({
       ])}
     />
   );
+}
+
+/**
+ * The line under a sandboxed step (sandbox-screens 1.2): "In a sandbox · writes only in its working
+ * folder · reaches only Halonic", a child row with the shield that opens the step's entry, where
+ * the full list sits. A step that ran without the sandbox says so in warning tone. A step with no
+ * `sandbox.opened`, an old run or a program-less step, gets no row; a damaged one says it couldn't
+ * be read, quietly.
+ */
+function sandboxRows(entry: StepEntry, log: readonly RunEvent[]) {
+  return stepSandboxes(log, entry.id).map((sandbox, index) => {
+    const id = `${entry.id}:sandbox-${index}`;
+    if (sandbox.kind === "unreadable") {
+      const title = sayText("sandbox.line.unreadable");
+      return { id, title, cells: {}, label: title, child: true as const };
+    }
+    const off = sandbox.kind === "off";
+    return {
+      id,
+      title: off
+        ? sayText("sandbox.line.off")
+        : `${sandboxLineText(sandbox.view)} · ${sayText("sandbox.line.link")}`,
+      icon: (
+        <span className={`flex size-4 ${off ? "text-warning" : "text-fg-subtle"}`}>
+          <ShieldIcon />
+        </span>
+      ),
+      cells: {},
+      label: off
+        ? sayText("sandbox.line.off-name", { step: entry.name })
+        : `${sandboxLineText(sandbox.view)}, ${sayText("sandbox.line.link-name", { step: entry.name })}`,
+      child: true as const,
+    };
+  });
 }
 
 /**

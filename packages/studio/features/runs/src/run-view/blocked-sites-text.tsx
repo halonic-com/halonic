@@ -1,8 +1,7 @@
 import { siteName } from "@halonicjs/std";
-import { Fragment, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { type BlockedSitesKey, blockedSitesWords, maxShownTries } from "./blocked-sites-words.ts";
-
-const placeholder = /\{(\w+)\}/;
+import { fillWords } from "./fill-words.tsx";
 
 /**
  * The words of `key` with each `{name}` replaced by its value, which may be text or an element (a
@@ -14,16 +13,7 @@ const placeholder = /\{(\w+)\}/;
  * fill("sandbox.blocked-sites.action", { agent: "Writer" }); // "Open Writer's allowed sites"
  */
 export function fill(key: BlockedSitesKey, values: Readonly<Record<string, ReactNode>> = {}) {
-  // split() with a capture group gives text, name, text, name, …: the odd parts are names.
-  const parts = blockedSitesWords[key].split(placeholder);
-  return parts.map((part, index) => {
-    if (index % 2 === 0) return part;
-    if (!(part in values)) throw new Error(`${key}: no value for {${part}}`);
-    const value = values[part];
-    if (typeof value === "string" || typeof value === "number") return String(value);
-    // By place, not by name: a sentence may use one name twice.
-    return <Fragment key={index}>{value}</Fragment>;
-  });
+  return fillWords(blockedSitesWords, key, values);
 }
 
 /** The words of `key` as plain text, for words whose values are all text. */
