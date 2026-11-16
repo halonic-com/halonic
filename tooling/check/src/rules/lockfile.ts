@@ -103,6 +103,30 @@ function readEntryLine(
   return true;
 }
 
+/** The tarball URL npm serves a `name@version` package from, or `undefined` if the key has no version. */
+function npmTarballUrl(key: string): string | undefined {
+  const at = key.lastIndexOf("@");
+  if (at <= 0) {
+    return undefined;
+  }
+  const name = key.slice(0, at);
+  const version = key.slice(at + 1);
+  const basename = name.slice(name.lastIndexOf("/") + 1);
+  return `${npmRegistry}${name}/-/${basename}-${version}.tgz`;
+}
+
+/** Explains why a tarball URL is not the npm registry's own copy of the package, if it isn't. */
+function tarballProblem(key: string, tarball: string): string | undefined {
+  if (!tarball.startsWith(npmRegistry)) {
+    return `${key} comes from ${tarball}, not from the npm registry.`;
+  }
+  const expected = npmTarballUrl(key);
+  if (expected !== undefined && tarball !== expected) {
+    return `${key} comes from ${tarball}, not from its own tarball ${expected}.`;
+  }
+  return undefined;
+}
+
 /** Explains what is wrong with one locked package, or returns `undefined` if it is fine. */
 export function lockedPackageProblem(entry: LockedPackage): string | undefined {
   const { resolution, key } = entry;
@@ -131,8 +155,9 @@ export function lockedPackageProblem(entry: LockedPackage): string | undefined {
   if (tarball === undefined && entry.forPackageManager !== true) {
     return `${key} has no tarball URL, so its registry can't be checked. Keep lockfileIncludeTarballUrl: true in pnpm-workspace.yaml and run pnpm install.`;
   }
-  if (tarball !== undefined && !tarball.startsWith(npmRegistry)) {
-    return `${key} comes from ${tarball}, not from the npm registry.`;
+  const tarballIssue = tarball === undefined ? undefined : tarballProblem(key, tarball);
+  if (tarballIssue !== undefined) {
+    return tarballIssue;
   }
   if (!/\bintegrity:\s*sha512-/.test(resolution)) {
     return `${key} has no sha512 integrity hash.`;
