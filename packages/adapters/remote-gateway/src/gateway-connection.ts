@@ -64,18 +64,17 @@ export class GatewayConnection {
    * A phone that sends faster than the host answers is closed once too many frames wait.
    */
   receive(frame: GatewayFrame): void {
-    if (this.closed) return;
-    if (this.pendingFrames >= maxPendingFrames) {
-      this.close();
-      return;
-    }
-    this.pendingFrames++;
-    this.chain = this.chain
-      .then(() => this.handleFrame(frame))
-      .catch(() => this.close())
-      .finally(() => {
-        this.pendingFrames--;
-      });
+    this.enqueue(() => this.handleFrame(frame));
+  }
+
+  /** The transport saw a frame declare more than 64 KiB, and kept none of it. */
+  receiveTooLarge(): void {
+    this.enqueue(() => this.closeWith("too-large"));
+  }
+
+  /** Whether the phone has said hello yet. */
+  hasGreeted(): boolean {
+    return this.greeted;
   }
 
   /** The transport's connection ended: stops every watch. */
@@ -85,6 +84,22 @@ export class GatewayConnection {
     for (const watch of this.watches.values()) watch.stop();
     this.watches.clear();
     this.deps.transport.close();
+  }
+
+  /** Runs `step` after the ones before it; a phone with too many waiting is closed. */
+  private enqueue(step: () => void | Promise<void>): void {
+    if (this.closed) return;
+    if (this.pendingFrames >= maxPendingFrames) {
+      this.close();
+      return;
+    }
+    this.pendingFrames++;
+    this.chain = this.chain
+      .then(step)
+      .catch(() => this.close())
+      .finally(() => {
+        this.pendingFrames--;
+      });
   }
 
   private async handleFrame(frame: GatewayFrame): Promise<void> {

@@ -331,6 +331,9 @@ importers:
       '@halonicjs/adapter-model-openai':
         specifier: workspace:*
         version: link:../../packages/adapters/model-openai
+      '@halonicjs/adapter-remote-gateway':
+        specifier: workspace:*
+        version: link:../../packages/adapters/remote-gateway
       '@halonicjs/adapter-sandbox-host':
         specifier: workspace:*
         version: link:../../packages/adapters/sandbox-host
