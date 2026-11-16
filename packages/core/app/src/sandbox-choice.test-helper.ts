@@ -36,7 +36,7 @@ export const inContainer: SandboxCheck = {
   missing: ["in a container"],
 };
 
-export const clean: CanaryFindings = {
+export const clean: Extract<CanaryFindings, { started: true }> = {
   started: true,
   leaks: [],
   controls: { readOnlyFileRead: true, workFolderScriptLoaded: true, networkBlockProven: true },
