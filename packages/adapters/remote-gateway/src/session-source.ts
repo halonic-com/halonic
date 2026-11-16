@@ -32,7 +32,10 @@ export interface GatewaySessionSource {
    *
    * When events the watch hadn't yet been given are dropped from the
    * session's history, the source ends the watch and calls `onHistoryGone`
-   * once, so the gateway never passes on a gap.
+   * once, so the gateway never passes on a gap. Calls `onHistoryGone` only
+   * after `watch` has returned: the gateway ignores it before then, and the
+   * phone would miss events without knowing. Calling `stop` after
+   * `onHistoryGone` is safe.
    */
   watch(
     sessionId: string,

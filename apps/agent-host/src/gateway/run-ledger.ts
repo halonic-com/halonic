@@ -6,6 +6,7 @@ import type {
   HarnessInput,
   HarnessTask,
 } from "@halonicjs/ports";
+import { gatewayMaxMessageBytes } from "@halonicjs/ports";
 import { judgeApprovalRisk } from "./approval-risk.ts";
 
 /** One event of a session, numbered in it. */
@@ -38,6 +39,8 @@ const defaultMaxEvents = 500;
 const defaultMaxFinished = 20;
 const titleLength = 80;
 const summaryLength = 300;
+/** What the `sessions` reply may spend on its sessions: its message limit, less the envelope. */
+const sessionsBudgetBytes = gatewayMaxMessageBytes - 1024;
 
 interface PendingApproval {
   readonly callId: string;
@@ -152,15 +155,29 @@ export class RunLedger {
     this.#forgetOldFinished();
   }
 
-  /** The sessions a phone may see. */
+  /**
+   * The sessions a phone may see, oldest first. The newest ones that fit in
+   * one `sessions` reply are listed; a session older than those isn't, so the
+   * reply never goes over {@link gatewayMaxMessageBytes}.
+   */
   list(): readonly GatewaySession[] {
-    return [...this.#sessions.values()].map((session) => ({
-      id: session.id,
-      title: session.title,
-      state: session.state,
-      lastSeq: session.lastSeq,
-      updatedAt: session.updatedAt,
-    }));
+    const newestFirst = [...this.#sessions.values()].reverse().map(
+      (session): GatewaySession => ({
+        id: session.id,
+        title: session.title,
+        state: session.state,
+        lastSeq: session.lastSeq,
+        updatedAt: session.updatedAt,
+      }),
+    );
+    const listed: GatewaySession[] = [];
+    let bytes = 0;
+    for (const session of newestFirst) {
+      bytes += new TextEncoder().encode(JSON.stringify(session)).byteLength + 1;
+      if (bytes > sessionsBudgetBytes) break;
+      listed.push(session);
+    }
+    return listed.reverse();
   }
 
   /**
