@@ -386,7 +386,8 @@ function hostServices(
   const sessions = new SessionTable();
   const listeningPorts = new Set<number>();
   const bridges = new BridgeTable();
-  const ledger = new RunLedger();
+  // Runs are recorded only when the gateway can show them to someone.
+  const ledger = gateway.enabled ? new RunLedger() : undefined;
   const runs = new RunTable(ledger);
   const remoteGateway = new RemoteGateway(gateway, ledger, runs);
   const harnesses = hostHarnesses(version);
@@ -410,10 +411,13 @@ function hostServices(
           ...(socketFolder === undefined ? {} : { socketFolder }),
         }),
       bridges,
-      (runId, agentId) => ({
-        asked: (request) => ledger.bridgeApprovalAsked(runId, agentId, request),
-        ended: (callId, decision) => ledger.bridgeApprovalEnded(runId, agentId, callId, decision),
-      }),
+      ledger === undefined
+        ? undefined
+        : (runId, agentId) => ({
+            asked: (request) => ledger.bridgeApprovalAsked(runId, agentId, request),
+            ended: (callId, decision) =>
+              ledger.bridgeApprovalEnded(runId, agentId, callId, decision),
+          }),
     ),
     ...harnessRoutes({ harnesses, sessions, bridges, runs }),
     ...connectorRoutes(connectorDeps),

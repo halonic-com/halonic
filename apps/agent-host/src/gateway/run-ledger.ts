@@ -207,7 +207,7 @@ export class RunLedger {
     const listed: GatewaySession[] = [];
     let bytes = 0;
     for (const session of newestFirst) {
-      bytes += new TextEncoder().encode(JSON.stringify(session)).byteLength + 1;
+      bytes += Buffer.byteLength(JSON.stringify(session)) + 1;
       if (bytes > sessionsBudgetBytes) break;
       listed.push(session);
     }
