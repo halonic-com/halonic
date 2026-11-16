@@ -11,6 +11,8 @@ export interface ChangeListProps {
   readonly files: readonly ChangedFile[];
   /** Whether the developer view is on: it adds Discard and "Discard this part". */
   readonly developer?: boolean;
+  /** On a phone Create version is a full-width touch button under the heading and count (2.12). */
+  readonly phone?: boolean;
 }
 
 /**
@@ -19,17 +21,24 @@ export interface ChangeListProps {
  * first, each as before → after, then the others; every change that can be undone on its own has
  * Undo this change.
  */
-export function ChangeList({ list, files, developer = false }: ChangeListProps) {
+export function ChangeList({ list, files, developer = false, phone = false }: ChangeListProps) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
         <h2 className="text-heading">{versionWords.sinceLastVersion}</h2>
         <span className="text-small text-fg-muted">{versionWords.itemCount(files.length)}</span>
         <span className="flex-1" />
-        <Button variant="primary" size="sm" onClick={() => list.startVersion()}>
+        {phone ? null : (
+          <Button variant="primary" size="sm" onClick={() => list.startVersion()}>
+            {versionWords.createVersion}
+          </Button>
+        )}
+      </div>
+      {phone ? (
+        <Button variant="secondary" size="touch" block onClick={() => list.startVersion()}>
           {versionWords.createVersion}
         </Button>
-      </div>
+      ) : null}
       <ul className="flex flex-col gap-4">
         {files.map((file) => (
           <li key={file.path}>
