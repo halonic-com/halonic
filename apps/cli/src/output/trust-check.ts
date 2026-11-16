@@ -11,6 +11,7 @@ import { dayInWords, localDay } from "../messages/dates.ts";
 import type { Message } from "../messages/define.ts";
 import { markPart, type Phrase, phrase } from "../messages/phrase.ts";
 import { type RowChanges, type TrustChangeCounts, trustMessages } from "../messages/trust.ts";
+import { printable } from "./printable.ts";
 import {
   addressRow,
   agentFieldChanges,
@@ -58,7 +59,9 @@ export type FingerprintedCheck = Exclude<TrustCheck, { readonly status: "refused
  * //  "Will start 2 programs …", "", "Programs", "  mail-mcp      npx …", …,
  * //  "", "Fingerprint", "  hfp1:c9b6…"] (as phrases)
  */
-export function trustCheckLines(check: FingerprintedCheck, facts: TrustCheckFacts): Phrase[] {
+export function trustCheckLines(check: FingerprintedCheck, rawFacts: TrustCheckFacts): Phrase[] {
+  // The name and the folder come from the workspace, so they are escaped once, here.
+  const facts = { ...rawFacts, name: printable(rawFacts.name), folder: printable(rawFacts.folder) };
   if (check.status === "trusted") {
     const trustedOn = shownDate(check.trustedAt);
     return [marked("done", trustMessages.alreadyTrusted(facts.name, trustedOn))];
