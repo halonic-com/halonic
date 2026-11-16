@@ -12,7 +12,7 @@ A deployment that lacks a binding, a secret or one of the two required variables
 
 The Worker's provider keys shall be its Workers secrets, set at deploy time. `GET /api/secrets/<name>` shall say whether one is set and never its value. `PUT` and `DELETE` shall pass the same checks as on any host (plain http to a non-loopback name is 403 `secure_connection_required`), then answer 409 `keys_read_only` with a message that names no secret: a Worker can't change its own secrets.
 
-The workspace is trusted, because the deployer uploaded it. A webhook finds its routine in the snapshot the deployer uploaded, read at every delivery, and the checks of `host/server` apply unchanged: the signature, the time window, the replay refusal, and one neutral answer for an unknown address, a routine that is off and a bad signature. No run is started by the Worker yet: starting a run answers 501, so a signed delivery for a routine answers 501 too, and its delivery id is not used up.
+The workspace is trusted, because the deployer uploaded it. A webhook finds its routine in the snapshot the deployer uploaded: the snapshot's version is read at every delivery, and its routines are parsed again when the version changes, and the checks of `host/server` apply unchanged: the signature, the time window, the replay refusal, and one neutral answer for an unknown address, a routine that is off and a bad signature. No run is started by the Worker yet: starting a run answers 501, so a signed delivery for a routine answers 501 too, and its delivery id is not used up.
 
 ## Examples
 

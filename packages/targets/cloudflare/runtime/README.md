@@ -31,7 +31,7 @@ A deployment that lacks a binding, a secret or one of the first two variables an
 except `/health` with 503 and a fixed body; the names of what is missing go to the Worker's log only.
 The client's address is `CF-Connecting-IP`. The workspace is trusted, since the deployer uploaded it.
 Starting a run answers 501: the Worker doesn't run workflows yet. A webhook finds its routine in the
-snapshot at every delivery and gets the same checks as on the Node host, so a signed delivery for a
+snapshot: the snapshot's version is read at every delivery, and its routines are parsed again when the version changes. It gets the same checks as on the Node host, so a signed delivery for a
 routine answers 501 until the Worker can start runs.
 
 ## Export and import routes (the contract for the CLI)
