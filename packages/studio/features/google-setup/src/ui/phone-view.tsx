@@ -36,7 +36,7 @@ function WhatNext(props: {
   return (
     <div className="pl-9 pt-1 text-fg-muted">
       <SignInElsewhere
-        email={account.email}
+        accountRef={account.record.accountRef}
         commandExists={signInEntry.kind === "elsewhere" && signInEntry.commandExists}
         copyable={false}
       />
