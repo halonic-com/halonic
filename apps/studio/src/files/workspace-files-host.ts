@@ -121,23 +121,27 @@ export class WorkspaceFilesHost implements FilesHost {
       if (text === null) paths.delete(path);
       else paths.add(path);
     }
+    const marks = await this.#marks();
+    return { paths: [...paths].sort(), marks };
+  }
+
+  /** The problems and outside changes by file. */
+  async #marks(): Promise<Map<string, { errors: number; warnings: number; outside: boolean }>> {
     // A file that has no unsaved changes any more (undone) is no longer waiting for Compare.
     for (const path of this.#outside.keys()) {
       if (!Object.hasOwn(this.#parts.files.pending, path)) this.#outside.delete(path);
     }
     const marks = new Map<string, { errors: number; warnings: number; outside: boolean }>();
-    for (const issue of await this.problems()) {
-      const mark = marks.get(issue.file) ?? { errors: 0, warnings: 0, outside: false };
-      if (issue.severity === "error") mark.errors += 1;
-      else mark.warnings += 1;
-      marks.set(issue.file, mark);
-    }
-    for (const path of this.#outside.keys()) {
+    const markOf = (path: string) => {
       const mark = marks.get(path) ?? { errors: 0, warnings: 0, outside: false };
-      mark.outside = true;
       marks.set(path, mark);
+      return mark;
+    };
+    for (const issue of await this.problems()) {
+      markOf(issue.file)[issue.severity === "error" ? "errors" : "warnings"] += 1;
     }
-    return { paths: [...paths].sort(), marks };
+    for (const path of this.#outside.keys()) markOf(path).outside = true;
+    return marks;
   }
 
   async problems(): Promise<readonly FileIssue[]> {
