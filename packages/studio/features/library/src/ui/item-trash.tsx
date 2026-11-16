@@ -3,6 +3,7 @@ import { Button, Menu, MoreIcon, useToastStore } from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useState } from "react";
 import { deleteWords } from "../delete-words.ts";
+import { itemFileRef } from "../item-file.ts";
 import { LibraryItemsHostService, type RemovedLibraryItem } from "../library-items-host.ts";
 import { putBack, removeItem } from "../remove-item.ts";
 
@@ -65,7 +66,18 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
             label={deleteWords.pageMenuLabel(name)}
           />
         )}
-        entries={[{ id: "delete", label: deleteWords.delete, danger: true, onSelect: onDelete }]}
+        entries={[
+          ...(context.openItem === undefined
+            ? []
+            : [
+                {
+                  id: "open-as-file",
+                  label: deleteWords.openAsFile,
+                  onSelect: () => context.openItem?.(itemFileRef(kind, { hub, id })),
+                },
+              ]),
+          { id: "delete", label: deleteWords.delete, danger: true, onSelect: onDelete },
+        ]}
       />
     );
   const strip =

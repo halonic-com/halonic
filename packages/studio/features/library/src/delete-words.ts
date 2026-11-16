@@ -10,6 +10,7 @@ const kindNouns: Record<LibraryItemKind, string> = {
 /** The words of deleting a Library item (flow-library 4, microcopy 2, 7, 8.1, 11.3): no dialog, the trash and Undo. */
 export const deleteWords = {
   delete: "Delete",
+  openAsFile: "Open as file",
   undo: "Undo",
   tryAgain: "Try again",
   pageMenuLabel: (name: string) => `More actions for ${name}`,

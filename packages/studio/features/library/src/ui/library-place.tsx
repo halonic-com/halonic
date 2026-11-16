@@ -3,6 +3,7 @@ import type { PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useState } from "react";
 import type { CollectionRef } from "../collection-host.ts";
 import { requestConnectorTitleFocus } from "../connector-focus-request.ts";
+import { itemFileRef } from "../item-file.ts";
 import { LibraryItemsHostService } from "../library-items-host.ts";
 import type { LibraryEntryPlace } from "../library-overview.ts";
 import { LibraryTabMemoryService } from "../library-tab-memory.ts";
@@ -106,6 +107,9 @@ export function LibraryPlace({ context }: PlaceViewProps) {
         onKindChange={show}
         onOpen={(each, entry) => openItem?.(refOf(each, entry))}
         onOpenInNewTab={(each, entry) => openItemInNewTab?.(refOf(each, entry))}
+        {...(openItem === undefined
+          ? {}
+          : { onOpenAsFile: (each, entry) => openItem(itemFileRef(each, entry)) })}
         {...(onNew === undefined ? {} : { onNew })}
       />
       {makingSkill && newSkillHost !== undefined && (
