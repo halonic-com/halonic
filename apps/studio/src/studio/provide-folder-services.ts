@@ -16,7 +16,7 @@ import {
 import { randomIds, systemClock } from "@halonicjs/std";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
-import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
+import { InboxRequestsService, InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import {
   CollectionHostService,
   KnowledgeHostService,
@@ -44,6 +44,7 @@ import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.t
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import { WorkspaceFilesHost } from "../files/workspace-files-host.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
+import { WorkspaceRequests } from "../inbox/workspace-requests.ts";
 import { provideLibraryServices } from "../library/provide-library-services.ts";
 import { WorkspaceCollections } from "../library/workspace-collections.ts";
 import { WorkspaceKnowledge } from "../library/workspace-knowledge.ts";
@@ -149,7 +150,7 @@ export function provideFolderServices(
       reportError: (error) => console.error("The engine", error),
     }),
   );
-  services.provide(
+  const workflows = services.provide(
     WorkflowsHostService,
     new WorkspaceWorkflows({
       files: services.get(workspaceFilesKey),
@@ -159,6 +160,7 @@ export function provideFolderServices(
       engine,
     }),
   );
+  services.provide(InboxRequestsService, new WorkspaceRequests(workflows));
   const transport = tauriAgentHostTransport(window);
   services.provide(
     LibraryItemsHostService,

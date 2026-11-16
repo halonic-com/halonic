@@ -3,7 +3,7 @@ import { ServiceRegistry } from "@halonicjs/app";
 import { googleSetupFeature } from "@halonicjs/studio-feature-google-setup";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
-import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
+import { InboxRequestsService, InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import { libraryFeature } from "@halonicjs/studio-feature-library";
 import {
   CollectionHostService,
@@ -196,6 +196,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     GoogleSetupAccountsService,
     ListedToolsHostService,
     InboxRunsService,
+    InboxRequestsService,
     RunsSourceService,
     ChangesSourceService,
     WorkflowsHostService,
