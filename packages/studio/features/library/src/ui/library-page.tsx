@@ -9,7 +9,7 @@ import {
 } from "@halonicjs/studio-kit";
 import { errorMessageFor, OverviewPage } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { deleteWords } from "../delete-words.ts";
+import { deleteWords, phoneCanDelete } from "../delete-words.ts";
 import type { LibraryEntry, LibraryItemsHost, LibraryListing } from "../library-items-host.ts";
 import { entryOfRow, type LibraryEntryPlace, libraryOverview } from "../library-overview.ts";
 import {
@@ -252,12 +252,17 @@ export function LibraryPage({
                     onSelect: () => onOpenAsFile(kind, entryOfRow(row.id)),
                   },
                 ]),
-            {
-              id: "delete",
-              label: deleteWords.delete,
-              danger: true,
-              onSelect: () => remove(row.id),
-            },
+            // A phone can't remove what it can't make again, so only some kinds keep Delete.
+            ...(phone && !phoneCanDelete(kind)
+              ? []
+              : [
+                  {
+                    id: "delete",
+                    label: deleteWords.delete,
+                    danger: true,
+                    onSelect: () => remove(row.id),
+                  },
+                ]),
           ]}
           onOpen={(row) => onOpen(kind, entryOfRow(row))}
           onOpenInNewTab={(row) => onOpenInNewTab(kind, entryOfRow(row))}

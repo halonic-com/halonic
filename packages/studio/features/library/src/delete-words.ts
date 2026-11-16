@@ -27,3 +27,8 @@ export const deleteWords = {
       : `Couldn't move ${name} to the trash: ${reason.replace(/\.$/, "")}.`,
   couldntUndo: (name: string) => `Couldn't put ${name} back`,
 } as const;
+
+/** Whether a phone can delete the kind: it can't remove what it can't make again (flow-library 8.1, phone layout 1.1). */
+export function phoneCanDelete(kind: LibraryItemKind): boolean {
+  return kind === "skill" || kind === "collection";
+}
