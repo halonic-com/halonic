@@ -9,8 +9,8 @@ import {
   writerAgent,
 } from "../kernel/kernel-test-kit.test-helper.ts";
 import { textAnswer } from "../testing/scripted-model.ts";
-import { cancelledError } from "./local-runs.ts";
 import { replyStart, runsOn, typesOf } from "./local-runs-test-kit.test-helper.ts";
+import { cancelledError } from "./run-errors.ts";
 
 /** A parent whose first state runs the `approval` workflow and waits on it. */
 const onboard: Workflow = {

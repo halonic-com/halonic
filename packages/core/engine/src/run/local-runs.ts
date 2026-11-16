@@ -38,6 +38,7 @@ import {
   RunConnectorCallRunner,
 } from "./run-connector-call-runner.ts";
 import type { RunsConnectors } from "./run-connectors.ts";
+import { cancelledError, harnessGoneError } from "./run-errors.ts";
 import { RunFeed } from "./run-feed.ts";
 import { callTimer, childTimer, harnessTimer, stateTimer, toolTimer } from "./run-timer-ids.ts";
 import { sendNames } from "./send-names.ts";
@@ -47,16 +48,6 @@ import { sweepLostRuns } from "./sweep-lost-runs.ts";
 import { UnfinishedEffects } from "./unfinished-effects.ts";
 import { UnrecordedResults } from "./unrecorded-results.ts";
 import { WatchedRuns } from "./watched-runs.ts";
-
-/**
- * The `error` of a run whose harness call was gone when a person answered
- * the approval it asked for: the engine stopped while the run waited.
- */
-export const harnessGoneError =
-  "The engine stopped while the harness waited for an answer, so the harness can't go on.";
-
-/** The `error` of a run someone cancelled; screens word the reason themselves. */
-export const cancelledError = "The run was cancelled.";
 
 /** How a call a run waits on is carried out: a model call, or a run of the agent's harness. */
 type CallKind = "model" | "harness";
@@ -115,6 +106,7 @@ export class LocalRuns {
       clock,
       ...(this.#budget === undefined ? {} : { budget: this.#budget }),
       record: (runId, input) => this.#record(runId, input),
+      send: (runId, event, options) => this.send(runId, event, undefined, options),
     });
     this.#effects = new UnfinishedEffects({
       store: this.store,
@@ -238,6 +230,11 @@ export class LocalRuns {
   /** The approvals of one run's bridge ({@link LocalHarnessCalls.bridgeApprovals}). */
   bridgeApprovals(runId: string) {
     return this.#harnessCalls.bridgeApprovals(runId);
+  }
+
+  /** The remote decisions on one run's bridge ({@link LocalHarnessCalls.bridgeRemoteDecisions}). */
+  bridgeRemoteDecisions(runId: string) {
+    return this.#harnessCalls.bridgeRemoteDecisions(runId);
   }
 
   /**

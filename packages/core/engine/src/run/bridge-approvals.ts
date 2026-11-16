@@ -7,7 +7,12 @@
 
 import type { BridgeApprovalDecision, BridgeApprovals } from "@halonicjs/ports";
 import type { StopSignal } from "@halonicjs/std";
-import type { HarnessApprovals, HarnessEventLog } from "../harness/run-harness-call.ts";
+import type {
+  HarnessAnswer,
+  HarnessApprovals,
+  HarnessEventLog,
+  HarnessQuestion,
+} from "../harness/run-harness-call.ts";
 import { unlessStopped } from "../harness/unless-stopped.ts";
 
 /** What the bridge is told when no harness call of the run can take the question. */
@@ -21,6 +26,30 @@ export const bridgeNotAskedComment = "Nobody could be asked, so the answer is no
 export const noRunApprovals: BridgeApprovals = {
   request: async () => ({ approved: false, comment: bridgeNoCallComment }),
 };
+
+/**
+ * What the engine says to a decision made on a remote device: it was taken,
+ * no such question waits (it is unknown, or has ended), or another answer
+ * came first. The same three words as the agent host client's `RemoteDecisionStatus`.
+ */
+export type BridgeDecisionStatus = "decided" | "unknown" | "already-decided";
+
+/**
+ * A decision made on a remote device on a question the bridge asked. It names
+ * the bridge's own call id, which is all a phone is shown.
+ */
+export interface BridgeRemoteDecision {
+  readonly callId: string;
+  readonly approved: boolean;
+}
+
+/** Takes decisions on the questions of one run's bridge. Structurally the agent host client's `RemoteDecisions`. */
+export interface BridgeRemoteDecisions {
+  decide(decision: BridgeRemoteDecision): Promise<BridgeDecisionStatus>;
+}
+
+/** The remote decisions of an executor that runs no workflows: no question waits. */
+export const noRunDecisions: BridgeRemoteDecisions = { decide: async () => "unknown" };
 
 /** What one running harness call lets the bridge ask through. */
 export interface AskingCall {
@@ -41,6 +70,8 @@ export interface AskingCall {
  */
 export class RunBridgeApprovals {
   readonly #calls = new Map<string, Set<AskingCall>>();
+  /** The run's call id of each question that waits, by run and then by the bridge's own call id. */
+  readonly #asked = new Map<string, Map<string, string>>();
 
   /**
    * Lists a running harness call.
@@ -69,7 +100,7 @@ export class RunBridgeApprovals {
    */
   of(runId: string): BridgeApprovals {
     return {
-      request: async ({ tool, args }, { signal }): Promise<BridgeApprovalDecision> => {
+      request: async ({ callId, tool, args }, { signal }): Promise<BridgeApprovalDecision> => {
         const call = this.#onlyCallOf(runId);
         if (call === undefined) return { approved: false, comment: bridgeNoCallComment };
         signal.throwIfAborted();
@@ -79,7 +110,7 @@ export class RunBridgeApprovals {
             call.log.whileHeld(() => {
               // Waiting its turn is not asking yet: a request withdrawn by now is never put to a person.
               signal.throwIfAborted();
-              return unlessStopped(call.stop, call.approvals.ask({ tool, args }));
+              return unlessStopped(call.stop, this.#ask(runId, callId, call, { tool, args }));
             }),
           );
           // Only the answer goes to the bridge: what the run's answer carries besides is the engine's.
@@ -90,6 +121,38 @@ export class RunBridgeApprovals {
         }
       },
     };
+  }
+
+  /**
+   * The run's call id of the question the bridge asked under its own `callId`,
+   * while it waits; `undefined` for one never asked, or already answered.
+   */
+  engineCallIdOf(runId: string, bridgeCallId: string): string | undefined {
+    return this.#asked.get(runId)?.get(bridgeCallId);
+  }
+
+  /** Asks through the call, and lists the question while it waits, even when its request was aborted. */
+  async #ask(
+    runId: string,
+    bridgeCallId: string,
+    call: AskingCall,
+    question: HarnessQuestion,
+  ): Promise<HarnessAnswer> {
+    const asked = this.#asked.get(runId) ?? new Map<string, string>();
+    this.#asked.set(runId, asked);
+    let engineCall: string | undefined;
+    try {
+      return await call.approvals.ask(question, (engineCallId) => {
+        engineCall = engineCallId;
+        asked.set(bridgeCallId, engineCallId);
+      });
+    } finally {
+      // A reused bridge call id may name another question by now: take off only our own.
+      if (engineCall !== undefined && asked.get(bridgeCallId) === engineCall) {
+        asked.delete(bridgeCallId);
+      }
+      if (asked.size === 0 && this.#asked.get(runId) === asked) this.#asked.delete(runId);
+    }
   }
 
   #onlyCallOf(runId: string): AskingCall | undefined {

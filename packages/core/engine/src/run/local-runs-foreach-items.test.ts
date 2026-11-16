@@ -6,8 +6,8 @@ import { KernelRuns, replyWorkflow } from "../kernel/kernel-test-kit.test-helper
 import { ScriptedConnector, textAnswer } from "../testing/scripted-model.ts";
 import { parentEndedError } from "./child-runs.ts";
 import type { RunConnectorCalls } from "./connector-calls.ts";
-import { cancelledError } from "./local-runs.ts";
 import { agentsUsing, runsOn } from "./local-runs-test-kit.test-helper.ts";
+import { cancelledError } from "./run-errors.ts";
 
 /** Runs `step` for each customer, two at a time. */
 function foreachOf(step: { agent: string } | { workflow: string }): Workflow {

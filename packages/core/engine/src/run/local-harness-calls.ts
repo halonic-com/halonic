@@ -3,7 +3,7 @@
 // and stops every call when the engine stops.
 
 import type { RunEvent } from "@halonicjs/events";
-import type { BlobStore, BridgeApprovals, Clock, RunStore } from "@halonicjs/ports";
+import type { BlobStore, BridgeApprovals, Clock, RunStore, SendOptions } from "@halonicjs/ports";
 import type { StopSignal } from "@halonicjs/std";
 import { RunCallBudget } from "../budget/call-budget.ts";
 import type { BudgetCheck } from "../budget/keep-to-budget.ts";
@@ -14,7 +14,8 @@ import { programHarnessOf } from "../kernel/agent-call.ts";
 import type { AnswerHarnessEffect, DecideInput } from "../kernel/decide-types.ts";
 import { definitionsOf } from "../kernel/kept-definitions.ts";
 import type { PendingCall, RunState } from "../kernel/run-state.ts";
-import { RunBridgeApprovals } from "./bridge-approvals.ts";
+import { type BridgeRemoteDecisions, RunBridgeApprovals } from "./bridge-approvals.ts";
+import { remoteDecisionsOf } from "./bridge-remote-decisions.ts";
 import { HarnessAnswers } from "./harness-answers.ts";
 import { LiveCalls } from "./live-calls.ts";
 import { type RunsProposalFolders, topLevelRunOf } from "./proposal-folders.ts";
@@ -38,6 +39,8 @@ export interface HarnessCallsOptions {
    * @returns the events the step stored
    */
   record(runId: string, input: DecideInput): Promise<readonly RunEvent[]>;
+  /** Sends an event to the run, as a person's click does; a remote device's decision goes this way. */
+  send(runId: string, event: string, options: SendOptions): Promise<unknown>;
 }
 
 /** The harness calls of the local executor's runs. */
@@ -134,6 +137,14 @@ export class LocalHarnessCalls {
     return this.#bridgeApprovals.of(runId);
   }
 
+  /** The decisions a remote device makes on the questions of the run's bridge, taken as a card click is. */
+  bridgeRemoteDecisions(runId: string): BridgeRemoteDecisions {
+    return remoteDecisionsOf({
+      questionOf: (bridgeCallId) => this.#bridgeApprovals.engineCallIdOf(runId, bridgeCallId),
+      send: (event, options) => this.#options.send(runId, event, options),
+    });
+  }
+
   /** Stops the run's harness calls going on, and resolves once each has stopped all it started. */
   stop(runId: string): Promise<void> {
     return this.#live.stop(runId);
@@ -169,7 +180,7 @@ export class LocalHarnessCalls {
     stop: StopSignal,
   ): HarnessApprovals {
     return {
-      ask: async ({ tool, args }) => {
+      ask: async ({ tool, args }, onRecorded) => {
         const answer = await this.#answers.waitFor(runId, stop, async () => {
           const events = await this.#options.record(runId, {
             type: "harness-asked",
@@ -178,11 +189,14 @@ export class LocalHarnessCalls {
             tool,
             args,
           });
-          if (!events.some(({ type }) => type === "approval.requested")) {
+          const requested = events.find(({ type }) => type === "approval.requested");
+          if (requested === undefined) {
             throw new Error(
               `Agent "${agent}" asked for an approval of "${tool}" where its run can't wait for one, as in an item of a for-each state.`,
             );
           }
+          // Only a question that waits carries the call id a decision names.
+          if ("callId" in requested) onRecorded?.(requested.callId);
         });
         waitedOn.callId = answer.callId;
         return answer;
