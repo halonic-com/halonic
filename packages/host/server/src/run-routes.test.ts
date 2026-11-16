@@ -300,6 +300,15 @@ describe("run routes", () => {
       expect(calls.sent).toEqual([]);
     });
 
+    it("has no route that grants trust", async () => {
+      const { server } = setup();
+      for (const path of ["/api/runs/run_1/trust", "/api/runs/trust", "/api/runs/run_1/grant"]) {
+        expect((await call(server, "POST", path)).status).toBe(404);
+      }
+    });
+  });
+
+  verifies("server.waiting-runs", () => {
     it("lists the waiting runs for a signed-in caller", async () => {
       const stored = [
         { id: "a", status: "waiting" },
@@ -341,13 +350,6 @@ describe("run routes", () => {
       );
       expect(foreignHost.status).toBe(421);
       expect(calls.lists).toEqual([]);
-    });
-
-    it("has no route that grants trust", async () => {
-      const { server } = setup();
-      for (const path of ["/api/runs/run_1/trust", "/api/runs/trust", "/api/runs/run_1/grant"]) {
-        expect((await call(server, "POST", path)).status).toBe(404);
-      }
     });
   });
 });
