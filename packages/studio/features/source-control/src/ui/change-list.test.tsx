@@ -5,6 +5,7 @@ import { act } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { ChangesList } from "../changes-list.ts";
 import { fakeSource, settle } from "../source.test-helper.ts";
+import { openItem } from "../test-support/open-item.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ChangeList } from "./change-list.tsx";
 import { ChangesView } from "./changes-page.tsx";
@@ -48,30 +49,102 @@ verifies("source-control.change-list", () => {
   describe("ChangeList", () => {
     it("lists each changed file with its Important changes first and Undo this change on the ones with parts", async () => {
       const { root } = await openPage();
-      const section = root.querySelector(`section[aria-label="${agentPath}"]`);
-      expect(section?.querySelector("h3")?.textContent).toBe("Important");
-      const rows = [...(section?.querySelectorAll("li") ?? [])].map((row) => row.textContent);
+      const section = openItem(root, "triage");
+      expect(section.querySelector("h4")?.textContent).toBe("Important");
+      const rows = [...section.querySelectorAll("li")].map((row) => row.textContent);
       expect(rows[0]).toContain("Instructions");
       expect(rows[1]).toContain("Model");
-      expect(buttons(section as HTMLElement, "Undo this change")).toHaveLength(2);
+      expect(buttons(section, "Undo this change")).toHaveLength(2);
+    });
+
+    it("shows one row for each item with its name and sentence, no path, and Other files by friendly names", async () => {
+      const { root } = await openPage();
+      const rows = [...root.querySelectorAll("tr[data-row-id]")].map((row) => row.textContent);
+      expect(rows).toHaveLength(3);
+      expect(rows[0]).toContain("triage");
+      expect(rows[0]).toContain("Instructions");
+      expect(root.textContent).toContain("Other files");
+      expect(root.textContent).not.toContain(agentPath);
+      expect(root.textContent).toContain("3 items");
+    });
+
+    it("is one Tab stop: only one cell of the list is in the Tab order, and the arrows move", async () => {
+      const { root } = await openPage();
+      const cells = [...root.querySelectorAll<HTMLElement>('td[role="gridcell"]')];
+      expect(cells.filter((cell) => cell.tabIndex === 0)).toHaveLength(1);
+      const [first, second] = cells;
+      await act(async () => first?.focus());
+      await act(async () => {
+        first?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+      });
+      expect(document.activeElement).toBe(second);
+    });
+
+    it("opens an item with Enter", async () => {
+      const { root } = await openPage();
+      const first = root.querySelector<HTMLElement>('td[role="gridcell"]');
+      await act(async () => {
+        first?.focus();
+        first?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      });
+      expect(root.querySelector('section[aria-label="triage"]')).not.toBeNull();
+    });
+
+    it("moves focus to the row that took its place after Undo these changes, never to the page", async () => {
+      const { fake, root } = await openPage();
+      const section = openItem(root, "triage");
+      fake.answer({
+        kind: "ready",
+        changes: [
+          { path: "README.md", status: "modified", staged: false },
+          { path: "notes/new.txt", status: "untracked", staged: false },
+        ],
+      });
+      await act(async () => {
+        buttons(section, "Undo these changes")[0]?.click();
+        await settle();
+      });
+      expect(root.querySelector('section[aria-label="triage"]')).toBeNull();
+      const focused = document.activeElement;
+      expect(focused).not.toBe(document.body);
+      expect(focused?.textContent).toContain("README.md");
+    });
+
+    it("moves focus to the heading when the last row is gone", async () => {
+      const fake = fakeSource({
+        kind: "ready",
+        changes: [{ path: agentPath, status: "modified", staged: false }],
+      });
+      fake.setTexts(agentPath, { before, after });
+      const list = new ChangesList(fake.source);
+      const root = render(<ChangesView list={list} />);
+      await act(settle);
+      const section = openItem(root, "triage");
+      fake.answer({ kind: "ready", changes: [] });
+      await act(async () => {
+        buttons(section, "Undo these changes")[0]?.click();
+        await settle();
+      });
+      expect(document.activeElement?.tagName).toBe("H1");
     });
 
     it("shows a file no kind places as one line without Undo this change", async () => {
       const { root } = await openPage();
-      const section = root.querySelector('section[aria-label="README.md"]');
-      expect(section?.textContent).toContain("Changed");
-      expect(buttons(section as HTMLElement, "Undo this change")).toHaveLength(0);
+      const section = openItem(root, "README.md");
+      expect(section.textContent).toContain("Changed");
+      expect(buttons(section, "Undo this change")).toHaveLength(0);
     });
 
     it("shows a file that can't be read as text as one line, New for an untracked one", async () => {
       const { root } = await openPage();
-      const section = root.querySelector('section[aria-label="notes/new.txt"]');
-      expect(section?.textContent).toContain("New");
-      expect(buttons(section as HTMLElement, "Undo this change")).toHaveLength(0);
+      const section = openItem(root, "new.txt");
+      expect(section.textContent).toContain("New");
+      expect(buttons(section, "Undo this change")).toHaveLength(0);
     });
 
     it("undoes one change at once, keeps the other, and offers Undo in a toast", async () => {
       const { fake, root, toasts } = await openPage();
+      openItem(root, "triage");
       const [undoInstructions] = buttons(root, "Undo this change");
       await act(async () => {
         undoInstructions?.click();
@@ -94,6 +167,7 @@ verifies("source-control.change-list", () => {
 
     it("writes nothing and says why when the file changed since the page read it", async () => {
       const { fake, root } = await openPage();
+      openItem(root, "triage");
       const [undoInstructions] = buttons(root, "Undo this change");
       fake.setTexts(agentPath, { before, after: `${after}# edited elsewhere\n` });
       await act(async () => {
@@ -108,6 +182,7 @@ verifies("source-control.change-list", () => {
 
     it("shows why the toast's Undo didn't work when the file changed in the meantime", async () => {
       const { fake, root, toasts } = await openPage();
+      openItem(root, "triage");
       const [undoInstructions] = buttons(root, "Undo this change");
       await act(async () => {
         undoInstructions?.click();
@@ -174,6 +249,7 @@ verifies("source-control.change-list", () => {
       };
       const list = new ChangesList(fakeSource({ kind: "ready", changes: [] }).source);
       const root = render(<ChangeList list={list} files={[file]} />);
+      openItem(root, "alert");
       const [first, second] = buttons(root, "Undo this change");
       expect(first?.getAttribute("aria-disabled")).toBe("true");
       expect(second?.getAttribute("aria-disabled")).toBeNull();
