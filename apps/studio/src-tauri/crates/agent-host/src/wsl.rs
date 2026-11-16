@@ -20,7 +20,8 @@
 use std::fs::File;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command, ExitStatus, Stdio};
+use std::time::{Duration, Instant};
 
 use sha2::{Digest, Sha256};
 
@@ -66,6 +67,10 @@ pub enum WslError {
     ArchiveRefused,
     /// There is no earlier version to roll back to (exit 6).
     NothingToRollBack,
+    /// The updater didn't end within the time given, so it was stopped.
+    TimedOut,
+    /// Some import mounts couldn't be cleaned up; the others were (exit 7).
+    MountsLeft,
     /// Any other ending, with the exit code, or `None` for a signal.
     Failed(Option<i32>),
 }
@@ -83,6 +88,8 @@ impl std::fmt::Display for WslError {
             Self::Busy => formatter.write_str("A sandbox session is running in the distro."),
             Self::ArchiveRefused => formatter.write_str("The runtime archive was refused."),
             Self::NothingToRollBack => formatter.write_str("There is no earlier runtime."),
+            Self::TimedOut => formatter.write_str("The step took too long and was stopped."),
+            Self::MountsLeft => formatter.write_str("Some import mounts could not be cleaned up."),
             Self::Failed(Some(code)) => write!(formatter, "The step ended with exit code {code}."),
             Self::Failed(None) => formatter.write_str("The step was stopped."),
         }
@@ -105,6 +112,8 @@ pub enum RuntimeStep<'a> {
     Rollback,
     /// Debian security updates, at most once a day.
     SecurityUpdate,
+    /// Unmount and remove the import mounts a crash left behind.
+    CleanupImportMounts,
     /// Print `{"current","previous","securityUpdated"}`.
     Status,
 }
@@ -213,6 +222,9 @@ pub fn runtime_command(wsl: &Path, step: RuntimeStep<'_>) -> Result<Command, Wsl
         RuntimeStep::SecurityUpdate => {
             command.arg("security-update");
         }
+        RuntimeStep::CleanupImportMounts => {
+            command.arg("cleanup-import-mounts");
+        }
         RuntimeStep::Status => {
             command.arg("status");
         }
@@ -249,6 +261,16 @@ pub fn install_runtime(
 /// When `wsl.exe` can't start, or with the updater's reason when it fails.
 pub fn run_runtime_step(command: Command) -> Result<String, WslError> {
     run(command, Stdio::null())
+}
+
+/// [`run_runtime_step`] with a time limit: a step that hasn't ended after
+/// `limit` is stopped, so a stuck step never holds up what waits for it.
+///
+/// # Errors
+///
+/// [`WslError::TimedOut`] after `limit`, otherwise as [`run_runtime_step`].
+pub fn run_runtime_step_within(command: Command, limit: Duration) -> Result<String, WslError> {
+    run_within(command, Stdio::null(), limit)
 }
 
 /// The SHA-256 of a file, as 64 lowercase hex digits.
@@ -301,21 +323,57 @@ fn distro_command(wsl: &Path, user: &str, program: &str) -> Command {
     command
 }
 
-fn run(mut command: Command, input: Stdio) -> Result<String, WslError> {
+fn run(command: Command, input: Stdio) -> Result<String, WslError> {
+    run_within(command, input, Duration::MAX)
+}
+
+fn run_within(mut command: Command, input: Stdio, limit: Duration) -> Result<String, WslError> {
     command
         .stdin(input)
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit());
     without_console_window(&mut command);
-    let output = command
-        .output()
+    let mut child = command
+        .spawn()
         .map_err(|error| WslError::Start(format!("wsl.exe could not start: {error}.")))?;
-    match output.status.code() {
-        Some(0) => Ok(String::from_utf8_lossy(&output.stdout).into_owned()),
+    let mut stdout = child.stdout.take().expect("stdout is piped");
+    // Read on another thread, so a step that fills the pipe can't stall the wait.
+    let reader = std::thread::spawn(move || {
+        let mut printed = Vec::new();
+        let _ = stdout.read_to_end(&mut printed);
+        printed
+    });
+    let deadline = Instant::now().checked_add(limit);
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) if deadline.is_some_and(|deadline| Instant::now() >= deadline) => {
+                let _ = child.kill();
+                // The reader is left to end on its own: a child of the step may still hold the pipe.
+                let _ = child.wait();
+                return Err(WslError::TimedOut);
+            }
+            Ok(None) => std::thread::sleep(Duration::from_millis(20)),
+            Err(error) => {
+                let _ = child.kill();
+                return Err(WslError::Start(format!(
+                    "wsl.exe could not be awaited: {error}."
+                )));
+            }
+        }
+    };
+    let printed = reader.join().unwrap_or_default();
+    ending(status, &printed)
+}
+
+fn ending(status: ExitStatus, stdout: &[u8]) -> Result<String, WslError> {
+    match status.code() {
+        Some(0) => Ok(String::from_utf8_lossy(stdout).into_owned()),
         Some(3) => Err(WslError::Busy),
         Some(4) => Err(WslError::ChecksumDiffers),
         Some(5) => Err(WslError::ArchiveRefused),
         Some(6) => Err(WslError::NothingToRollBack),
+        Some(7) => Err(WslError::MountsLeft),
         code => Err(WslError::Failed(code)),
     }
 }

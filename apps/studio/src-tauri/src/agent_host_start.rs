@@ -12,7 +12,7 @@ use halonic_git_guard::plain_path;
 use tauri::{AppHandle, Manager, Runtime};
 
 use super::choice::{HostKind, host_for, saved_backend};
-use super::updates::read_in_distro;
+use super::updates::{clean_import_mounts, read_in_distro};
 use super::{
     AgentHostState, DistroCommand, HostRefusal, Launch, START_WAIT, poisoned, unavailable,
 };
@@ -41,6 +41,7 @@ pub(super) async fn running_host<R: Runtime>(app: &AppHandle<R>) -> Result<Hands
                 HostKind::Local => (start_local(real_host_command(&app)?)?, None),
                 HostKind::Distro => {
                     let (wsl, command) = distro_host_command_for_real_wsl()?;
+                    clean_import_mounts(&wsl);
                     let started = start_in_distro(&command)?;
                     (started, Some(read_in_distro(&wsl)))
                 }

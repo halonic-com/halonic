@@ -17,3 +17,7 @@ When the shell starts a program in Halonic's WSL distro, it shall start `wsl.exe
 - Given a version `$(x)` or `current`,
   when the shell would install a runtime,
   then it refuses and starts nothing.
+- Given the shell starts the agent host in the distro,
+  when it first cleans up the import mounts a crash left behind,
+  then it runs the runtime updater as root with the one step `cleanup-import-mounts` and no other argument, within a time limit,
+  and starts the host whether that step succeeded, failed or ran out of time.

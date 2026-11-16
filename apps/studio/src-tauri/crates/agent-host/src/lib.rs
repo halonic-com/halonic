@@ -27,7 +27,7 @@ pub use security_updates::{OVERDUE_AFTER_DAYS, SecurityUpdates, security_updates
 pub use wsl::{
     DISTRO, DISTRO_HOST, DISTRO_PROFILE_FOLDER, DISTRO_USER, RUNTIME_UPDATER, RuntimeStep,
     WslError, distro_host_command, distro_installed, file_sha256, install_runtime,
-    run_runtime_step, runtime_command, wsl_exe,
+    run_runtime_step, run_runtime_step_within, runtime_command, wsl_exe,
 };
 
 /// The host's executable name, without the `.exe` Windows adds.
