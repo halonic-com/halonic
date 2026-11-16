@@ -21,6 +21,7 @@ import {
   runnerProfile,
   socketFolders,
   systemFiles,
+  windowsEnvironment,
 } from "./runner-profile.ts";
 
 /** A small file tree: each folder with its names. */
@@ -56,7 +57,8 @@ const machine: RunnerMachine = {
   timeLimitMs: 60_000,
   platform: "linux",
 } as const;
-const onWindows = { ...machine, platform: "win32" } as const;
+const windowsFolder = "C:\\Windows"; // leak-guard: allow absolute-path fake Windows folder
+const onWindows = { ...machine, platform: "win32", windowsFolder } as const;
 
 /** The same machine on a system whose fence opens reads by default, with a merged `/usr`. */
 const topLevelLinks: Record<string, string> = {
@@ -87,6 +89,33 @@ verifies("integration-runner.start", () => {
         "/run",
         "/shared-tmp",
       ]);
+    });
+
+    it("gives a Windows runner fixed values for what libuv would fill in, and TMPDIR", () => {
+      const { env } = runnerProfile(files, onWindows, disk);
+      expect(env).toEqual({
+        TMPDIR: machine.tempFolder,
+        HOMEDRIVE: "C:",
+        HOMEPATH: "\\",
+        LOGONSERVER: "\\\\RUNNER",
+        PATH: `${windowsFolder}\\System32`,
+        SYSTEMDRIVE: "C:",
+        SYSTEMROOT: windowsFolder,
+        TEMP: machine.tempFolder,
+        USERDOMAIN: "RUNNER",
+        USERNAME: "runner",
+        USERPROFILE: machine.tempFolder,
+        WINDIR: windowsFolder,
+      });
+      expect(env).toEqual({
+        TMPDIR: machine.tempFolder,
+        ...windowsEnvironment(machine.tempFolder, windowsFolder),
+      });
+    });
+
+    it("refuses a Windows start that doesn't know the Windows folder", () => {
+      const { windowsFolder: _known, ...unknown } = onWindows;
+      expect(() => runnerProfile(files, unknown, disk)).toThrow(/Windows folder/);
     });
 
     it("reopens the paths the runner needs inside them, and no other", () => {

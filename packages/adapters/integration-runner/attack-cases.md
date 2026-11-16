@@ -27,8 +27,8 @@ One difference from the design: A30 on plain `http` is refused as `scheme-not-al
 | A13 | writing files, replacing its own code | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts` |
 | A14 | starting a process | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts`, `runner-process-attacks.mxc.test.ts`; on MXC with Node's layer off a shell starts, and the box refuses it the home folder |
 | A15 | a worker, add-on, WASI or the inspector | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts`, `runner-process-attacks.mxc.test.ts`; on MXC with Node's layer off a worker and creating a WASI object are allowed, because neither reaches past the box (a WASI module sees only the folders it is given), and a real DLL is loaded and then refused as no add-on |
-| A16 | signalling Halonic or another process | fence: `runner-attacks.test.ts`; native Windows is a recorded gap |
-| A17 | reading a key from the environment | fence: `runner-attacks.test.ts`; native Windows is a recorded gap |
+| A16 | signalling Halonic or another process | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts` (the launcher gives fixed values for the variables libuv adds, so the account name and profile folder stay out) |
+| A17 | reading a key from the environment | fence: `runner-attacks.test.ts`, `runner-attacks.windows.test.ts` (the launcher gives fixed values for the variables libuv adds, so the account name and profile folder stay out) |
 | A18 | an undeclared secret, or one on another host | `adapters/integration-runner/src/halonic/kit-attacks.test.ts` |
 | A19 | a key echoed back by a server | `adapters/integration-kit/src/secret-filter.test.ts`, `adapters/integration-runner/src/halonic/kit-attacks.test.ts`, `call-limits.test.ts` |
 | A20 | a key in the URL, an error or the log | `adapters/integration-kit/src/limited-http.test.ts` (the request log), `adapters/integration-runner/src/halonic/call-limits.test.ts` (errors and stderr on the bridge) |

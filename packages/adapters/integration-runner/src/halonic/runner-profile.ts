@@ -3,7 +3,9 @@
 // runtime and the code. Write only a private temp folder. Every top-level
 // folder is hidden except the system files Node and the fence's own shell
 // need, and the home folder and the socket folders a network namespace
-// doesn't cover are hidden as well. The environment holds only `TMPDIR`.
+// doesn't cover are hidden as well. The environment holds only `TMPDIR`, and
+// on Windows the variables libuv would fill in with the user's own values,
+// set to fixed ones ({@link windowsEnvironment}).
 // The OS key store is denied: on macOS the Keychain answers over Mach, past
 // the file fence (attack case A36).
 //
@@ -46,7 +48,7 @@
 // because denying its real place would hide the runner's own files.
 
 import { readdirSync, realpathSync } from "node:fs";
-import { dirname, isAbsolute, join, relative, sep } from "node:path";
+import { dirname, isAbsolute, join, relative, sep, win32 } from "node:path";
 import type { SandboxProfile } from "@halonicjs/ports";
 
 /** Where the runner's files are. Every path is absolute. */
@@ -81,6 +83,8 @@ export interface RunnerMachine {
   readonly timeLimitMs: number;
   /** The system, as `process.platform` names it; this one unless a test passes another. */
   readonly platform?: NodeJS.Platform;
+  /** The Windows folder, where Windows is installed; the srt-shaped profile needs it on Windows and ignores it elsewhere. It holds no personal data. */
+  readonly windowsFolder?: string | undefined;
   /** The sandbox the profile is for; `srt` unless the start gate picked MXC. */
   readonly backend?: RunnerBackend;
 }
@@ -249,10 +253,51 @@ export function runnerProfile(
     settingsFolder: null,
     readOnlyPaths,
     ...hiding(machine, kept, disk),
-    env: { TMPDIR: machine.tempFolder },
+    env: runnerEnvironment(machine),
     network: { bridge: null, allowedSites: [] },
     timeLimitMs: machine.timeLimitMs,
     keyStore: "denied",
+  };
+}
+
+/** The runner's environment: `TMPDIR`, and on Windows the fixed values of {@link windowsEnvironment}. */
+function runnerEnvironment(machine: RunnerMachine): Record<string, string> {
+  if ((machine.platform ?? process.platform) !== "win32") return { TMPDIR: machine.tempFolder };
+  if (machine.windowsFolder === undefined) {
+    throw new Error("the Windows folder is needed to give the runner its environment");
+  }
+  return {
+    TMPDIR: machine.tempFolder,
+    ...windowsEnvironment(machine.tempFolder, machine.windowsFolder),
+  };
+}
+
+/**
+ * The variables libuv adds to a Windows program's environment when they are
+ * missing, with the user's own values: their account name, profile folder and
+ * domain among them. Giving each one here keeps libuv from adding it, so the
+ * integration learns nothing about the account. The user's variables point at
+ * the runner's temp folder or hold a fixed name; the system ones are the
+ * Windows folder's own, the same for every account. `PATH` is the system
+ * folder alone.
+ */
+export function windowsEnvironment(
+  tempFolder: string,
+  windowsFolder: string,
+): Record<string, string> {
+  const drive = win32.parse(windowsFolder).root.replace(/[\\/]$/, "");
+  return {
+    HOMEDRIVE: drive,
+    HOMEPATH: "\\",
+    LOGONSERVER: "\\\\RUNNER",
+    PATH: win32.join(windowsFolder, "System32"),
+    SYSTEMDRIVE: drive,
+    SYSTEMROOT: windowsFolder,
+    TEMP: tempFolder,
+    USERDOMAIN: "RUNNER",
+    USERNAME: "runner",
+    USERPROFILE: tempFolder,
+    WINDIR: windowsFolder,
   };
 }
 

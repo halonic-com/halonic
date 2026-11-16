@@ -156,6 +156,7 @@ export async function openAttack(options: RunAttackOptions): Promise<OpenedAttac
       sandboxFolders: options.sandboxFolders,
       tempFolder: options.folders.tempFolder,
       timeLimitMs: 30_000,
+      windowsFolder: process.env["SystemRoot"],
       ...(options.backend === undefined ? {} : { backend: options.backend }),
     },
   );

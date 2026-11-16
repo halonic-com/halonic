@@ -113,6 +113,7 @@ async function startRunnerFor(
       sandboxFolders: [sandboxRuntimeFolder()],
       tempFolder,
       timeLimitMs: 60_000,
+      windowsFolder: process.env["SystemRoot"],
     },
   });
 }

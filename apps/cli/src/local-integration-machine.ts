@@ -109,6 +109,7 @@ export function computerIntegrationMachine(
         sandboxFolders: [sandboxRuntimeFolder()],
         tempFolder,
         timeLimitMs: runnerTimeLimitMs,
+        windowsFolder: process.env["SystemRoot"],
       };
     },
     dispose: async () => {
