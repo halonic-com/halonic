@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import {
+  ClipboardProvider,
   createToastStore,
   OpenExternalProvider,
   type ToastStore,
@@ -87,12 +88,25 @@ function setup(
   } as unknown as WorkspaceContext;
   const toasts = createToastStore();
   const openExternal = vi.fn(async () => {});
+  const writeClipboard = vi.fn(async (_text: string) => true);
   const frame = (child: ReactNode) => (
     <ToastStoreProvider store={toasts}>
-      <OpenExternalProvider openExternal={openExternal}>{child}</OpenExternalProvider>
+      <ClipboardProvider writeClipboard={writeClipboard}>
+        <OpenExternalProvider openExternal={openExternal}>{child}</OpenExternalProvider>
+      </ClipboardProvider>
     </ToastStoreProvider>
   );
-  return { ...updater, flow, announce, openSettings, context, toasts, openExternal, frame };
+  return {
+    ...updater,
+    flow,
+    announce,
+    openSettings,
+    context,
+    toasts,
+    openExternal,
+    writeClipboard,
+    frame,
+  };
 }
 
 async function mount(first: UpdateStatus, runs?: RestartRuns, count?: () => Promise<RestartRuns>) {
@@ -293,5 +307,66 @@ verifies("settings.restart-flow", () => {
     page.host.download.mockRejectedValueOnce(new Error("down"));
     await act(async () => page.toasts.list()[0]?.action?.onClick());
     expect(titles(page.toasts).at(-1)).toBe("Halonic's updater didn't answer.");
+  });
+});
+
+verifies("settings.not-carried-toast", () => {
+  it("shows one sticky toast for settings an update couldn't carry over, with Copy details", async () => {
+    const justUpdated = {
+      from: "0.1.0",
+      to: "0.1.1",
+      notCarriedOver: ["appearance.panelOpacity", "formats.dateStyle"],
+    };
+    const { toasts } = await mount(statusOf({ kind: "up-to-date" }, { justUpdated }));
+    await settle();
+    const toast = toasts.list().find((t) => t.sticky);
+    expect(toast?.tone).toBe("info");
+    expect(toast?.title).toBe(
+      "Some settings couldn't be carried over from Halonic 0.1.0, so they're back to their defaults.",
+    );
+    expect(toast?.text).toBe("Halonic kept a copy of the old ones.");
+    expect(toast?.action?.label).toBe("Copy details");
+    expect(toasts.list().filter((t) => t.sticky)).toHaveLength(1);
+  });
+
+  it("shows it once for an update, however often the status arrives", async () => {
+    const justUpdated = { from: "0.1.0", to: "0.1.1", notCarriedOver: ["formats.dateStyle"] };
+    const { toasts, set } = await mount(statusOf({ kind: "up-to-date" }, { justUpdated }));
+    set(statusOf({ kind: "up-to-date" }, { justUpdated }));
+    await settle();
+    expect(toasts.list().filter((t) => t.sticky)).toHaveLength(1);
+  });
+
+  it("copies the names and where the old copy is, never values, and stays open", async () => {
+    const justUpdated = {
+      from: "0.1.0",
+      to: "0.1.1",
+      notCarriedOver: ["appearance.panelOpacity", "formats.dateStyle"],
+    };
+    const { toasts, writeClipboard } = await mount(
+      statusOf({ kind: "up-to-date" }, { justUpdated }),
+    );
+    await settle();
+    const toast = toasts.list().find((t) => t.sticky);
+    expect(toast?.action?.keepOpen).toBe(true);
+    toast?.action?.onClick();
+    await settle();
+    expect(writeClipboard).toHaveBeenCalledTimes(1);
+    expect(writeClipboard.mock.calls[0]?.[0]).toBe(
+      [
+        "Settings not carried over, Halonic 0.1.0 to 0.1.1:",
+        "appearance.panelOpacity",
+        "formats.dateStyle",
+        "The old files are next to the current ones in Halonic's data folder, with .0.1.0.bak added to their names.",
+      ].join("\n"),
+    );
+    expect(toasts.list().some((t) => t.sticky)).toBe(true);
+  });
+
+  it("shows no settings toast when nothing was left behind", async () => {
+    const justUpdated = { from: "0.1.0", to: "0.1.1", notCarriedOver: [] };
+    const { toasts } = await mount(statusOf({ kind: "up-to-date" }, { justUpdated }));
+    await settle();
+    expect(toasts.list().some((t) => t.sticky)).toBe(false);
   });
 });

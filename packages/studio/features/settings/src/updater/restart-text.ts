@@ -1,4 +1,5 @@
 import type { RestartRuns } from "./restart-runs.ts";
+import type { JustUpdated } from "./updater-status.ts";
 
 /**
  * The words of the restart flow: microcopy 20.2, 20.3 and 20.5 as flow-install-update 4.4 to 4.6
@@ -47,6 +48,17 @@ export function runsBody({ running, waitingForYou }: RestartRuns): string {
 export const confirmLabel = (running: number) => `Restart and stop ${runs(running)}`;
 
 export const updatedTo = (version: string) => `Updated to Halonic ${version}`;
+/** Microcopy 22 F5: one toast, however many settings; the list goes in Copy details. */
+export const settingsNotCarriedOver = (from: string) =>
+  `Some settings couldn't be carried over from Halonic ${from}, so they're back to their defaults.`;
+export const SETTINGS_KEPT_COPY = "Halonic kept a copy of the old ones.";
+export const notCarriedOverDetails = ({ from, to, notCarriedOver }: JustUpdated) =>
+  [
+    `Settings not carried over, Halonic ${from} to ${to}:`,
+    ...notCarriedOver,
+    `The old files are next to the current ones in Halonic's data folder, with .${from}.bak added to their names.`,
+  ].join("\n");
+
 export const didNotInstall = (version: string, current: string) =>
   `Halonic ${version} didn't install. You're still on ${current}.`;
 export const SECOND_FAILURE = "Download it from the release page.";
