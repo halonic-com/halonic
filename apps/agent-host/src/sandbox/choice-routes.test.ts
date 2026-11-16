@@ -1,5 +1,6 @@
 import type { SandboxChoice } from "@halonicjs/app";
-import { afterEach, describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { afterEach, expect, it } from "vitest";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
 import { type SandboxChoiceSource, sandboxChoiceRoutes } from "./choice-routes.ts";
@@ -72,7 +73,7 @@ function post(url: string, body: unknown): Promise<Response> {
   });
 }
 
-describe("agent-host.sandbox-choice-routes", () => {
+verifies("agent-host.sandbox-choice-routes", () => {
   it("starts the choice on the first GET and answers the latest one after that", async () => {
     const choice = new FakeChoice();
     const url = await started(choice);

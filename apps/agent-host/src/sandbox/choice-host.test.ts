@@ -2,7 +2,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Sandbox } from "@halonicjs/ports";
-import { afterEach, describe, expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { afterEach, expect, it } from "vitest";
 import { hostSandboxChoice } from "./choice-host.ts";
 
 /** A sandbox whose own check passes; opening a session is never reached by the unbuilt canary. */
@@ -25,7 +26,7 @@ afterEach(async () => {
   await Promise.all(profiles.splice(0).map((folder) => rm(folder, { recursive: true })));
 });
 
-describe("agent-host.sandbox-choice-routes", () => {
+verifies("agent-host.sandbox-choice-routes", () => {
   it("fails closed until the real canary exists: the backend is never in use", async () => {
     const choice = hostSandboxChoice(
       { id: "srt", sandbox: workingSandbox },
