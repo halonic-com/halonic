@@ -1,6 +1,6 @@
 import type { RunVersion } from "@halonicjs/events";
-import { Tooltip } from "@halonicjs/studio-kit";
-import type { ReactNode } from "react";
+import { ChevronRightIcon, SheetFrame, Tooltip } from "@halonicjs/studio-kit";
+import { type ReactNode, useRef, useState } from "react";
 import { detailsWords } from "../run-words.ts";
 import type { DetailRow } from "./details-model.ts";
 import { RunVersionLine } from "./run-version-line.tsx";
@@ -63,6 +63,41 @@ function Row({ label, children }: { readonly label: string; readonly children: R
     <>
       <dt className="text-fg-muted">{label}</dt>
       <dd className="min-w-0 break-words">{children}</dd>
+    </>
+  );
+}
+
+/**
+ * Details on a phone (1.15): one 48px row, "Details" with a chevron, that opens the same rows in
+ * a sheet with Close; focus goes back to the row.
+ */
+export function DetailsRow(props: DetailsProps) {
+  const [open, setOpen] = useState(false);
+  const row = useRef<HTMLButtonElement>(null);
+  return (
+    <>
+      <button
+        ref={row}
+        type="button"
+        className="flex min-h-touch w-full items-center justify-between rounded-md text-left text-body focus-ring"
+        aria-haspopup="dialog"
+        onClick={() => setOpen(true)}
+      >
+        {detailsWords.heading}
+        <ChevronRightIcon />
+      </button>
+      {open ? (
+        <SheetFrame
+          title={detailsWords.heading}
+          onClose={() => setOpen(false)}
+          onCancel={() => setOpen(false)}
+          returnFocus={() => row.current}
+        >
+          <div className="px-4 py-3">
+            <Details {...props} />
+          </div>
+        </SheetFrame>
+      ) : null}
     </>
   );
 }

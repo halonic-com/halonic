@@ -16,6 +16,8 @@ export interface StepPanelProps {
   readonly openRun: ((runId: string) => void) | undefined;
   /** ✕, Escape, and Back on a phone. Focus goes back to the entry. */
   readonly onClose: () => void;
+  /** On a phone the panel fills the screen over the page, with Back, instead of standing beside it. */
+  readonly phone?: boolean;
 }
 
 /**
@@ -33,7 +35,14 @@ export interface StepPanelProps {
  *
  * Not here yet: what the step could do (HAL-1707).
  */
-export function StepPanel({ entry, log, workflowName, openRun, onClose }: StepPanelProps) {
+export function StepPanel({
+  entry,
+  log,
+  workflowName,
+  openRun,
+  onClose,
+  phone = false,
+}: StepPanelProps) {
   const { modelCalls, toolCalls } = useMemo(() => stepEvents(log, entry.id), [log, entry.id]);
   const blocked = useMemo(() => stepBlockedSites(log, entry.id), [log, entry.id]);
   const children = stepChildRuns(log, entry.id, workflowName);
@@ -51,7 +60,12 @@ export function StepPanel({ entry, log, workflowName, openRun, onClose }: StepPa
     return () => element?.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
   return (
-    <div ref={frame} className="sticky top-0 w-panel shrink-0 self-start">
+    <div
+      ref={frame}
+      className={
+        phone ? "fixed inset-0 z-40 bg-surface" : "sticky top-0 w-panel shrink-0 self-start"
+      }
+    >
       <SidePanel
         title={entry.name}
         onClose={onClose}
