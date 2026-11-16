@@ -1,23 +1,13 @@
-import { type ChangeLine, type FileChange, revertParts } from "@halonicjs/app";
+import { type ChangeLine, revertParts } from "@halonicjs/app";
 import type { VcsChange } from "@halonicjs/ports";
 import { applyLineChanges, diffLines, type LineChange } from "@halonicjs/std";
 import type { PlaceSignal, ServiceKey } from "@halonicjs/studio-shell";
 import { serviceKey } from "@halonicjs/studio-shell";
-import type {
-  ChangesRead,
-  ChangesSource,
-  FileTexts,
-  Identity,
-  KeptFile,
-  UpdatesResult,
-  Version,
-} from "./api.ts";
-import { describeChanges } from "./describe-changes.ts";
+import type { ChangesSource, Identity, KeptFile } from "./api.ts";
 import {
   type ChangedFile,
   type ChangesListState,
   type DiscardOutcome,
-  type HistoryState,
   historyPageSize,
   type UndoOutcome,
   type UpdatesOutcome,
@@ -30,6 +20,7 @@ import {
   updatesWords,
   versionWords,
 } from "./changes-words.ts";
+import { describeChanges } from "./describe-changes.ts";
 import { isIdentityComplete } from "./identity.ts";
 import { type IdentityOutcome, saveIdentity } from "./identity-save.ts";
 import { loadFailureReason } from "./load-failure.ts";

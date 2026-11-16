@@ -1,4 +1,4 @@
-import type { ChangeLine, FileChange } from "@halonicjs/app";
+import type { FileChange } from "@halonicjs/app";
 import type { ChangesRead, FileTexts, Identity, UpdatesResult, Version } from "./api.ts";
 
 /** How many versions History shows first, and how many more Show more adds. */
