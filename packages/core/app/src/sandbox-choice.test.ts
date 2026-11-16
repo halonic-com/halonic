@@ -160,7 +160,12 @@ verifies("app.sandbox-choice", () => {
   });
 
   it("shows the residuals of an ok check next to the trust check's (HAL-5398, S4)", async () => {
-    const readable: SandboxCheck = { ...ok, residuals: ["kept-roots-readable"] };
+    const readable: SandboxCheck = {
+      ok: true,
+      reason: null,
+      missing: [],
+      residuals: ["kept-roots-readable"],
+    };
     const { choice } = machine({
       setting: choose("mxc"),
       backends: { srt: { check: readable }, mxc: { check: readable, canary: [clean] } },
