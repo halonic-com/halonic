@@ -259,7 +259,8 @@ export async function assertSrtDeniesKeychain(profile: SandboxProfile): Promise<
  * denied (see {@link keychainMachServices}).
  *
  * On Windows, `toolFolders` (see `toolFoldersInProfile`) are readable and
- * not writable, unless one lies on, above or inside a hidden, shared or
+ * not writable (they are left out of `allowWrite`, and out of `denyWrite`, which on Windows
+ * makes srt change the access on their parent folders), unless one lies on, above or inside a hidden, shared or
  * writable folder (either spelling): then it is left out.
  */
 export function buildSrtConfig(
@@ -314,7 +315,6 @@ export function buildSrtConfig(
       denyWrite: withResolved([
         ...hidden.filter((path) => !notDeniedForWriting.includes(path)),
         ...profile.readOnlyPaths,
-        ...tools,
         ...toolSettings,
       ]).map(literalPath),
     },

@@ -67,10 +67,13 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
     const tools = ["C:\\Users\\Ada\\.nvm\\v22"]; // leak-guard: allow absolute-path made-up Windows paths for the test
     const win = buildSrtConfig(profile(), [], [], "win32", [], tools).filesystem;
     expect(win?.allowRead).toContainEqual({ path: tools[0], literal: true });
-    expect(win?.denyWrite).toContainEqual({ path: tools[0], literal: true });
+    // Never in `denyWrite`: on the Windows runner that made srt change the access on the parent
+    // folders and broke the fence (HAL-10705). A tool folder is outside every writable folder, so
+    // it is not writable anyway.
+    expect(win?.denyWrite).not.toContainEqual({ path: tools[0], literal: true });
     const linux = buildSrtConfig(profile(), [], [], "linux", [], tools).filesystem;
     expect(linux).not.toHaveProperty("allowRead");
-    expect(linux?.denyWrite).not.toContainEqual({ path: tools[0], literal: true });
+    expect(linux?.allowWrite).not.toContainEqual({ path: tools[0], literal: true });
   });
 
   it("leaves out a tool folder on, above or inside anything the config hides or writes", () => {
