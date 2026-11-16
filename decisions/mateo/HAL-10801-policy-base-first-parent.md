@@ -11,6 +11,9 @@ its base copy from `git rev-parse HEAD^1` of the checked-out merge ref, not from
 `github.event.pull_request.base.sha`. The checkout reads two commits deep so the parent exists.
 In the merge queue the first parent is the commit the group is built on, as before.
 
+The step fails if the first parent can't be read; it never falls back to another ref, so the base
+copy can't silently become the pull request's own files.
+
 The rules, the allow-lists and which files are trusted don't change.
 
 ## Why
@@ -23,7 +26,8 @@ changes the pull request didn't make, and a re-run didn't help (#3069, run 43811
 
 ## Other jobs checked
 
-`guard` and `base-tests` already use `HEAD^1`. `coverage-floors`, the DCO range and the leak scan
+`base-tests` already uses `HEAD^1`, and `guard` takes that commit from `base-tests`. `guard` still
+reads `approvers.json` from `pull_request.base.sha` on purpose; don't change that. `coverage-floors`, the DCO range and the leak scan
 compare the pull request's own head with its recorded base, not the merge ref, so they're
 consistent. `changes` diffs the recorded base with the merge ref, which can only run more areas,
 never fewer.
