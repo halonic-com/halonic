@@ -112,6 +112,8 @@ export interface RunState {
   readonly enteredSeq: number | null;
   /** The events a waiting run takes, as its last `run.waiting` listed them; empty while it isn't waiting. */
   readonly accepts: readonly string[];
+  /** ISO time of the last `run.waiting`, which names the wait step a person answered; `null` before the first. */
+  readonly waitingAt: string | null;
   /** The tool calls waiting for a person's approval, oldest first. */
   readonly approvals: readonly WaitingApproval[];
   /**
@@ -209,6 +211,7 @@ function startedState(event: RunEvent): RunState {
     enteredAt: null,
     enteredSeq: null,
     accepts: [],
+    waitingAt: null,
     approvals: [],
     context: {},
     calls: 0,
@@ -252,7 +255,7 @@ function applyEvent(state: RunState, event: RunEvent): RunState {
     case "context.updated":
       return { ...state, context: { ...state.context, [event.key]: event.value } };
     case "run.waiting":
-      return { ...state, status: "waiting", accepts: event.events };
+      return { ...state, status: "waiting", accepts: event.events, waitingAt: event.at };
     case "event.received":
       return receiveEvent(state, event.event);
     case "timer.fired":

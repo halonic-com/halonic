@@ -30,6 +30,8 @@ const [review] = inboxItems([
   waitingRun("r2", { waitingFor: { title: "Approve this reply?", body: "" } }),
 ]);
 
+const waitOptions = { wait: { state: "review", since: "2026-11-10T10:40:00.000Z" } };
+
 verifies("inbox.decisions", () => {
   it("approves and rejects a tool call by its call id", async () => {
     const executor = recordingExecutor();
@@ -57,12 +59,12 @@ verifies("inbox.decisions", () => {
     ]);
   });
 
-  it("answers a wait step without a call id", async () => {
+  it("answers a wait step by its state and the time it started waiting, without a call id", async () => {
     const executor = recordingExecutor();
     if (review === undefined) throw new Error("expected a wait item");
     await inboxDecisions(executor).reject(review);
     expect(executor.sent).toEqual([
-      { runId: "r2", event: "reject", payload: undefined, options: undefined },
+      { runId: "r2", event: "reject", payload: undefined, options: waitOptions },
     ]);
   });
 
@@ -71,7 +73,7 @@ verifies("inbox.decisions", () => {
     if (review === undefined || review.kind !== "wait") throw new Error("expected a wait item");
     await inboxDecisions(executor).answer(review, "escalate");
     expect(executor.sent).toEqual([
-      { runId: "r2", event: "escalate", payload: undefined, options: undefined },
+      { runId: "r2", event: "escalate", payload: undefined, options: waitOptions },
     ]);
   });
 });

@@ -4,7 +4,8 @@ export type RefusalCode =
   | "engine.run-unknown"
   | "engine.run-ended"
   | "engine.input-not-accepted"
-  | "engine.decision-callid-must-match";
+  | "engine.decision-callid-must-match"
+  | "engine.decision-wait-must-match";
 
 /**
  * An input `decide` refuses. `step` reports it to the caller and appends

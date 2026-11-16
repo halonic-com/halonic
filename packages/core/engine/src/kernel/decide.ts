@@ -148,8 +148,9 @@ export function checkRunTakes(run: RunState | null, input: DecideInput): void {
 /**
  * A send that names a call must name one the run waits on, an approval or a
  * call whose outcome is unknown: a person who answered one that has since
- * moved on must not answer the next one by accident. Then the run must be
- * waiting, for this event.
+ * moved on must not answer the next one by accident. A send that names a
+ * wait step must name the one the run waits at, from the time it started
+ * waiting there. Then the run must be waiting, for this event.
  */
 function checkRunTakesSend(run: RunState, input: SendInput): void {
   const waitsOn = (approval: WaitingApproval) => approval.callId === input.callId;
@@ -158,6 +159,13 @@ function checkRunTakesSend(run: RunState, input: SendInput): void {
     throw new InputRefused(
       "engine.decision-callid-must-match",
       `Run "${run.runId}" doesn't wait on call "${input.callId}".`,
+    );
+  }
+  const { wait } = input;
+  if (wait !== undefined && (run.state !== wait.state || run.waitingAt !== wait.since)) {
+    throw new InputRefused(
+      "engine.decision-wait-must-match",
+      `Run "${run.runId}" doesn't wait at the step "${wait.state}" you answered.`,
     );
   }
   if (run.status !== "waiting" || !run.accepts.includes(input.event)) {

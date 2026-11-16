@@ -111,6 +111,15 @@ verifies("executor-remote.runs", () => {
       });
     });
 
+    it("sends the wait step an event names", async () => {
+      const host = fakeHost(() => Response.json(summaryOf("run_1")));
+      const wait = { state: "review", since: "2026-11-10T10:40:00.000Z" };
+
+      await executorFor(host).send("run_1", "approve", undefined, { wait });
+
+      expect(host.calls[0]).toMatchObject({ body: { event: "approve", wait } });
+    });
+
     it("rejects an event the host refuses with the host's code", async () => {
       const host = fakeHost(() => errorBody(409, "event_not_accepted"));
 

@@ -1,3 +1,4 @@
+import type { Workflow } from "@halonicjs/format";
 import type { Clock } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -58,6 +59,57 @@ verifies("engine.wait-timers", () => {
     moveTo("2026-11-11T09:00:00.000Z");
     await executor.onTimer(timer);
     expect(await runs.get("run_1")).toMatchObject({ status: "completed", state: "expired" });
+  });
+});
+
+verifies("engine.decision-wait-must-match", () => {
+  const twoWaits = (): Workflow => ({
+    ...approvalWorkflow([]),
+    id: "two-waits",
+    initial: "review",
+    states: {
+      review: {
+        type: "wait",
+        on: [
+          { to: "publish", event: "approve" },
+          { to: "rejected", event: "reject" },
+        ],
+      },
+      publish: {
+        type: "wait",
+        on: [
+          { to: "approved", event: "approve" },
+          { to: "rejected", event: "reject" },
+        ],
+      },
+      approved: { type: "final", on: [] },
+      rejected: { type: "final", on: [] },
+    },
+  });
+  const start = { hubId: "acme", workflowId: "two-waits", input: {} };
+
+  it("refuses an answer to a wait step the run has moved on from, and records nothing", async () => {
+    const time = settableClock("2026-11-09T09:00:00.000Z");
+    const setup = { workflow: twoWaits(), clock: time.clock };
+    const { executor, runs } = runsOn([], new KernelRuns(), setup);
+    const review = await executor.start(start);
+    const staleCard = { state: "review", since: review.lastWaitingAt as string };
+
+    time.moveTo("2026-11-09T09:05:00.000Z");
+    const publish = await executor.send("run_1", "approve", undefined, { wait: staleCard });
+    expect(publish).toMatchObject({ status: "waiting", state: "publish" });
+    const logged = runs.logs.get("run_1")?.length;
+
+    await expect(
+      executor.send("run_1", "approve", undefined, { wait: staleCard }),
+    ).rejects.toMatchObject({ code: "engine.decision-wait-must-match" });
+    expect(runs.logs.get("run_1")).toHaveLength(logged as number);
+
+    const current = { state: "publish", since: publish.lastWaitingAt as string };
+    expect(await executor.send("run_1", "approve", undefined, { wait: current })).toMatchObject({
+      status: "completed",
+      state: "approved",
+    });
   });
 });
 

@@ -180,7 +180,7 @@ export function createRemoteExecutor(options: RemoteExecutorOptions): RunExecuto
       payload?: unknown,
       sendOptions?: SendOptions,
     ): Promise<RunSummary> {
-      const body = { event, payload, callId: sendOptions?.callId };
+      const body = { event, payload, callId: sendOptions?.callId, wait: sendOptions?.wait };
       return readSummary(await client.call(`${runPath(runId)}/events`, { method: "POST", body }));
     },
 

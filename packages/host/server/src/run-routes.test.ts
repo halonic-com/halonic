@@ -149,6 +149,13 @@ describe("run routes", () => {
       expect(calls.sent).toEqual([["run_1", "approve", { note: "ok" }, { callId: "c1" }]]);
     });
 
+    it("delivers an event with the wait step it names", async () => {
+      const { server, calls } = setup();
+      const wait = { state: "review", since: "2026-11-10T10:40:00.000Z" };
+      await call(server, "POST", "/api/runs/run_1/events", { body: { event: "approve", wait } });
+      expect(calls.sent).toEqual([["run_1", "approve", undefined, { wait }]]);
+    });
+
     it("delivers an event that names no call without options", async () => {
       const { server, calls } = setup();
       await call(server, "POST", "/api/runs/run_1/events", { body: { event: "approve" } });
@@ -164,6 +171,9 @@ describe("run routes", () => {
         { event: "x".repeat(257) },
         { event: "approve", callId: "" },
         { event: "approve", callId: 4 },
+        { event: "approve", wait: "review" },
+        { event: "approve", wait: { state: "review" } },
+        { event: "approve", wait: { state: "", since: "2026-11-10T10:40:00.000Z" } },
       ]) {
         expect((await call(server, "POST", "/api/runs/run_1/events", { body })).status).toBe(400);
       }

@@ -1,5 +1,5 @@
 import type { RunSummary } from "@halonicjs/events";
-import type { RunExecutor } from "@halonicjs/ports";
+import type { RunExecutor, SendOptions } from "@halonicjs/ports";
 import type { RunItem, WaitItem } from "./inbox-items.ts";
 
 /** Your answers to the Inbox's run items, sent to the runs that wait for them. A setup item takes none. */
@@ -14,10 +14,18 @@ export interface InboxDecisions {
   answer(item: WaitItem, event: string): Promise<RunSummary>;
 }
 
+/** What an answer names: a tool call, or the wait step from the time it started waiting. */
+function sendOptions(item: RunItem): SendOptions {
+  return item.kind === "approval"
+    ? { callId: item.callId }
+    : { wait: { state: item.state, since: item.since } };
+}
+
 /**
  * Sends your answers through the executor. A tool call's answer names its
- * call, so an answer that comes late can't answer the next call: the engine
- * refuses it and records nothing.
+ * call, and a wait step's answer names its step, so an answer that comes
+ * late can't answer the next call or the next wait step: the engine refuses
+ * it and records nothing.
  *
  * @example
  * const decisions = inboxDecisions(executor);
@@ -25,12 +33,7 @@ export interface InboxDecisions {
  */
 export function inboxDecisions(executor: Pick<RunExecutor, "send">): InboxDecisions {
   const send = (item: RunItem, event: string, payload?: unknown) =>
-    executor.send(
-      item.runId,
-      event,
-      payload,
-      item.kind === "approval" ? { callId: item.callId } : undefined,
-    );
+    executor.send(item.runId, event, payload, sendOptions(item));
   return {
     approve: (item) => send(item, "approve"),
     reject: (item) => send(item, "reject"),

@@ -177,8 +177,7 @@ export class LocalRuns {
       at: this.#now(),
       event,
       ...(payload === undefined ? {} : { payload }),
-      ...(options?.callId === undefined ? {} : { callId: options.callId }),
-      ...(options?.by === undefined ? {} : { by: options.by }),
+      ...options,
     });
     return this.#summary(runId);
   }
