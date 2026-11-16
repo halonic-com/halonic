@@ -4,7 +4,7 @@
 - Since: 0.2.0
 - Source: HAL-1305; inbox.notices-section
 
-The Studio shall give the Inbox, for the open workspace, the failed routine runs in its run logs as notices, without the ones the person dismissed. A dismissal shall be kept on this device, per workspace folder, as the notice's key and nothing else, and shall survive a restart. When storage can't be read or written, a dismissal shall last until the window closes.
+The Studio shall give the Inbox, for the open workspace, the failed routine runs in its run logs as notices, without the ones the person dismissed. A dismissal shall be kept on this device, per workspace folder, as the notice's key and nothing else, and shall survive a restart. A dismissal shall not undo what another window of the same workspace dismissed, and a dismissal whose notice is gone shall be forgotten. When storage can't be read or written, a dismissal shall last until the window closes.
 
 ## Examples
 
@@ -20,3 +20,9 @@ The Studio shall give the Inbox, for the open workspace, the failed routine runs
 - Given storage that refuses,
   when the person dismisses a notice,
   then it is gone until the window closes.
+- Given two windows on the same workspace that each dismiss a different notice,
+  when both have dismissed,
+  then a new window shows neither.
+- Given a dismissed notice that is no longer in the run logs,
+  when the Inbox asks for the notices,
+  then its key is no longer stored.
