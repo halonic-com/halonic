@@ -39,7 +39,7 @@ verifies("google-setup.sign-in-elsewhere", () => {
     const { container } = await open(signedOut(), {
       signInEntry: { kind: "elsewhere", commandExists: true },
     });
-    expect(container.textContent).toContain(`${sentence} there, or run${command}`);
+    expect(container.textContent).toContain(`${sentence} there, or run ${command}`);
     expect(container.textContent).toContain("on it.");
     expect(container.querySelector("code")?.textContent).toBe(command);
     expect(container.querySelector(`button[aria-label="Copy the command"]`)).not.toBeNull();
@@ -61,7 +61,7 @@ verifies("google-setup.sign-in-elsewhere", () => {
       </PresentationProvider>,
     );
     await settle();
-    expect(container.textContent).toContain(`${sentence} there, or run${command}on it.`);
+    expect(container.textContent).toContain(`${sentence} there, or run ${command} on it.`);
     expect(container.textContent).not.toContain("Continue on a computer.");
     expect(container.querySelectorAll("button, input, a")).toHaveLength(0);
   });

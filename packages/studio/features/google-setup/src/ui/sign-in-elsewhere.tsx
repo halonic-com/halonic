@@ -24,10 +24,11 @@ export function SignInElsewhere({ email, commandExists, copyable }: SignInElsewh
     <div className="flex flex-wrap items-center gap-2 text-body">
       {commandExists ? (
         <>
-          <p>{`${sentence}there, or run`}</p>
-          <code className="min-w-0 break-all text-fg">{command}</code>
+          <p>
+            {`${sentence}there, or run `}
+            <code className="min-w-0 break-all text-fg">{command}</code> on it.
+          </p>
           {copyable ? <CopyButton text={command} label="Copy the command" /> : null}
-          <p>on it.</p>
         </>
       ) : (
         <p>{`${sentence}there.`}</p>
