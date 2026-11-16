@@ -63,9 +63,14 @@ verifies("inbox.items", () => {
         accepts: ["approve", "reject"],
         answerLabels: {},
         since: "2026-11-10T10:40:00.000Z",
+        waitingAt: "2026-11-10T10:40:00.000Z",
         movesOnAt: "2026-11-12T10:40:00.000Z",
       },
     ]);
+  });
+
+  it("lists no wait step for a run that has not said it waits", () => {
+    expect(inboxItems([waitingRun("r2", { lastWaitingAt: null })])).toEqual([]);
   });
 
   it("gives a wait step's own answer labels as core sends them", () => {

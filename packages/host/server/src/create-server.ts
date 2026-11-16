@@ -1,3 +1,4 @@
+import { runExecutorVersion } from "@halonicjs/ports";
 import type { CreateServer, RequestContext, ServerConfig, ServerPorts } from "./api.ts";
 import { chatTurnPath, createChatTurnRoutes } from "./chat-turn-routes.ts";
 import { connectorCallPath, createConnectorRoutes } from "./connector-routes.ts";
@@ -226,6 +227,8 @@ export const createServer: CreateServer = ({ config, ports }) => {
           product: "halonic",
           version: config.version,
           minAppVersion: config.minAppVersion,
+          // So a remote executor can tell whether this host honors what a version 2 `send` names.
+          runExecutorVersion,
         });
       case "POST /api/login":
         return signIn.login(request, body, context);

@@ -11,7 +11,7 @@ import type {
 import type { ChatMessage, ChatParams, ChatResponse, ToolDefinition } from "./chat.ts";
 
 /** Version of the {@link RunExecutor} port. A breaking change bumps it and comes with an ADR. */
-export const runExecutorVersion = 1;
+export const runExecutorVersion = 2;
 
 /**
  * Start a workflow run. Subflows are not started through this port: the
@@ -86,6 +86,15 @@ export interface SendOptions {
    * next one by accident. Absent: no check.
    */
   readonly callId?: string;
+  /**
+   * The wait step the event is meant for, as the run's summary names it: its
+   * state and the time it started waiting (`lastWaitingAt`). When it is given
+   * and the run now waits at another step, or has waited again since, `send`
+   * is refused before anything is recorded: a person who answered a wait
+   * card that has since moved on must not answer the next wait step by
+   * accident. Absent: no check.
+   */
+  readonly wait?: { readonly state: string; readonly since: string };
   /**
    * Where a person's answer to an approval came from, so the run log can say
    * so: `person` at the screen, `remote-device` from a phone. The host sets
@@ -279,7 +288,8 @@ export interface RunExecutor {
    * Delivers an event to a waiting run, such as "approve".
    *
    * @throws when the run doesn't exist, doesn't accept the event now, or
-   *   doesn't wait on the call that `options.callId` names
+   *   doesn't wait on the call that `options.callId` or the step that
+   *   `options.wait` names
    */
   send(runId: string, event: string, payload?: unknown, options?: SendOptions): Promise<RunSummary>;
   /**

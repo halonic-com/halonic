@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1218; E5 in the HAL-186 plan (approvals routed by `callId`); ux-checklists-approvals (HAL-1250) 2.2 and 2.3
 
-The Inbox shall send your answer to the run that waits for it: Approve as `approve`, Reject as `reject`, Ask for changes as `reject` with the note as `{ comment }`, and any other answer a `wait` step takes by its event name. An answer to a tool call shall name its call id, so the engine refuses an answer that no longer matches the call the run waits on. An answer to a `wait` step names no call.
+The Inbox shall send your answer to the run that waits for it: Approve as `approve`, Reject as `reject`, Ask for changes as `reject` with the note as `{ comment }`, and any other answer a `wait` step takes by its event name. An answer to a tool call shall name its call id, so the engine refuses an answer that no longer matches the call the run waits on. An answer to a `wait` step names no call but the step itself, by its state and the time it started waiting, so the engine refuses an answer that no longer matches the step the run waits at.
 
 ## Examples
 
@@ -16,7 +16,10 @@ The Inbox shall send your answer to the run that waits for it: Approve as `appro
   then `reject` is sent to `r1` with `{ comment: "Use the shorter title" }` and the call id `call-1`.
 - Given Acme's `review` item,
   when you reject it,
-  then `reject` is sent to its run with no call id.
+  then `reject` is sent to its run with no call id, naming the step `review` and the time it started waiting.
 - Given a `wait` step that takes `escalate`,
   when you answer Escalate,
-  then `escalate` is sent to its run with no call id.
+  then `escalate` is sent to its run with no call id, naming the step and the time it started waiting.
+- Given a wait card that is still open after its run moved on to another wait step,
+  when you press Approve on it,
+  then the engine refuses the answer, and the run's new wait step stays unanswered.

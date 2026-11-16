@@ -1,3 +1,4 @@
+import { runExecutorVersion } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { testServer } from "./test-server.ts";
@@ -6,7 +7,7 @@ const host = "halonic.acme.example";
 
 describe("hello", () => {
   verifies("server.hello", () => {
-    it("answers exactly three keys without a session, even when a password is set", async () => {
+    it("answers exactly four keys without a session, even when a password is set", async () => {
       const server = testServer({
         passwordHash: "hash",
         config: { version: "1.2.3", minAppVersion: "1.0.0" },
@@ -19,6 +20,7 @@ describe("hello", () => {
         product: "halonic",
         version: "1.2.3",
         minAppVersion: "1.0.0",
+        runExecutorVersion,
       });
     });
 

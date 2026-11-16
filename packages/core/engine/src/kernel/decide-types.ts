@@ -69,6 +69,8 @@ export interface SendInput extends InputBase {
   readonly payload?: unknown;
   /** The call the event is meant for; a mismatch is refused (3c). */
   readonly callId?: string;
+  /** The wait step the event is meant for; a run that waits at another step, or since another time, refuses it. */
+  readonly wait?: { readonly state: string; readonly since: string };
   /** Where a person's answer came from; absent: at the screen. Logged as `by` on `approval.resolved`. */
   readonly by?: Extract<ApprovalResolver, "person" | "remote-device">;
 }

@@ -1,4 +1,5 @@
 import type { RunSummary } from "@halonicjs/events";
+import type { SendOptions } from "@halonicjs/ports";
 import { createShell, type ServiceKey, type ServiceTarget } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
@@ -15,7 +16,10 @@ function fakeRuns(initial: readonly RunSummary[]) {
   const loads: { resolve: (runs: readonly RunSummary[]) => void; reject: (e: unknown) => void }[] =
     [];
   let manual = false;
-  const send = vi.fn(async (runId: string) => waitingRun(runId));
+  const send = vi.fn(
+    async (runId: string, _event?: string, _payload?: unknown, _options?: SendOptions) =>
+      waitingRun(runId),
+  );
   const runs: InboxRuns = {
     waiting: () =>
       manual
@@ -221,6 +225,42 @@ describe("inboxFeature", () => {
     shell.services.instantiate(workspace);
     await settled();
     expect(workspace.get(InboxService).signal().value).toBe(1);
+  });
+});
+
+verifies("inbox.decisions", () => {
+  it("refuses an answer from a wait card whose run has moved on to the next wait step", async () => {
+    const first = waitingRun("r2", {
+      state: "review",
+      waitingFor: { title: "Approve this draft?", body: "" },
+      lastWaitingAt: "2026-11-10T10:40:00.000Z",
+    });
+    const second = waitingRun("r2", {
+      state: "publish",
+      waitingFor: { title: "Send to all customers?", body: "" },
+      lastWaitingAt: "2026-11-10T10:44:00.000Z",
+    });
+    const { runs, send, change } = fakeRuns([first]);
+    // The engine's rule: an answer names the wait it is for, or it is refused.
+    send.mockImplementation(async (runId, _event, _payload, options) => {
+      const now = second;
+      if (options?.wait?.state !== now.state || options?.wait?.since !== now.lastWaitingAt) {
+        throw new Error("engine.decision-wait-must-match");
+      }
+      return waitingRun(runId);
+    });
+    const inbox = new Inbox(runs);
+    await inbox.refresh();
+    const [card] = inbox.state.items;
+    if (card === undefined || !isRunItem(card)) throw new Error("expected the wait card");
+
+    // The run moves on while the card is open, as when a phone answers the first step.
+    change([second]);
+    await settled();
+    await expect(inbox.decisions.approve(card)).rejects.toThrow("engine.decision-wait-must-match");
+
+    // The new step is still there for you to answer.
+    expect(inbox.state.items.map((item) => item.key)).toEqual(["r2:publish"]);
   });
 });
 

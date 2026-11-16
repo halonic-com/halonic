@@ -70,6 +70,27 @@ function isShortText(value: unknown): value is string {
   return typeof value === "string" && value !== "" && byteLength(value) <= maxIdBytes;
 }
 
+/** What a send names: a call, a wait step, or neither. `undefined` when it names none, `null` when it is malformed. */
+function parseSendOptions(message: Record<string, unknown>): SendNames | null | undefined {
+  const { callId, wait } = message;
+  if (callId !== undefined && !isShortText(callId)) {
+    return null;
+  }
+  if (wait !== undefined) {
+    const { state, since } = (typeof wait === "object" && wait !== null ? wait : {}) as Record<
+      string,
+      unknown
+    >;
+    if (!isShortText(state) || !isShortText(since)) {
+      return null;
+    }
+    return { ...(callId === undefined ? {} : { callId }), wait: { state, since } };
+  }
+  return callId === undefined ? undefined : { callId };
+}
+
+type SendNames = { callId?: string; wait?: { state: string; since: string } };
+
 export function createRunRoutes({ runs, runStore, trust, errorLog }: RunRoutePorts): RunRoutes {
   return {
     async waiting() {
@@ -88,8 +109,9 @@ export function createRunRoutes({ runs, runStore, trust, errorLog }: RunRoutePor
         return errorResponse(serverErrors.unsupportedMediaType);
       }
       const message = parseObject(body);
-      const { event, payload, callId } = message ?? {};
-      if (!isShortText(event) || (callId !== undefined && !isShortText(callId))) {
+      const { event, payload } = message ?? {};
+      const names = parseSendOptions(message ?? {});
+      if (!isShortText(event) || names === null) {
         return errorResponse(serverErrors.badRequest);
       }
       if ((await runStore.get(runId)) === null) {
@@ -101,12 +123,7 @@ export function createRunRoutes({ runs, runStore, trust, errorLog }: RunRoutePor
         return refusal;
       }
       try {
-        const summary = await runs.send(
-          runId,
-          event,
-          payload,
-          callId === undefined ? undefined : { callId },
-        );
+        const summary = await runs.send(runId, event, payload, names);
         return Response.json(summary);
       } catch (error) {
         // The port gives one error for "doesn't wait on this", "ended" and "wrong call", so all of them are a refusal.

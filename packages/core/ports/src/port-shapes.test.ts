@@ -166,6 +166,20 @@ verifies("ports.send-call-id", () => {
   });
 });
 
+verifies("ports.send-wait", () => {
+  typeTest("names the wait step an event is meant for", () => {
+    expectTypeOf<RunExecutor["send"]>().toBeCallableWith("run_1", "approve", undefined, {
+      wait: { state: "review", since: "2026-11-10T10:40:00.000Z" },
+    });
+  });
+
+  it("needs both the state and the time of the wait", () => {
+    // @ts-expect-error: a wait step is named by its state and the time it started waiting
+    const options: SendOptions = { wait: { state: "review" } };
+    expect(options).toBeDefined();
+  });
+});
+
 verifies("ports.run-cancel", () => {
   typeTest("keeps cancel optional, so an executor without it still fits the port", () => {
     const withoutCancel = {
