@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cellText } from "../collection-format.ts";
 import type { CollectionColumn } from "../collection-host.ts";
 import {
   cell,
   chips,
+  cleanUp,
   nobody,
   opened,
   rich,
@@ -14,7 +15,9 @@ import {
   swim,
   trip,
   typeInto,
-} from "./collection-page.fixture.tsx";
+} from "../test-support/collection-page.tsx";
+
+afterEach(cleanUp);
 
 verifies("library.collection-page", () => {
   describe("CollectionPage", () => {
@@ -108,13 +111,13 @@ verifies("library.collection-page", () => {
     });
 
     it("says the collection isn't in the workspace any more, with Go to Library", async () => {
-      const { root, openPlace } = await opened(undefined);
+      const { root, placesOpened } = await opened(undefined);
       expect(root.textContent).toContain("This collection isn't in this workspace any more.");
       const go = [...root.querySelectorAll("button")].find(
         (button) => button.textContent === "Go to Library",
       );
       await act(async () => go?.click());
-      expect(openPlace).toHaveBeenCalledWith("library");
+      expect(placesOpened).toEqual(["library"]);
     });
   });
   describe("CollectionPage new row", () => {

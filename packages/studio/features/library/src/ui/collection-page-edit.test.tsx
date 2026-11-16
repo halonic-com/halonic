@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   amountEdit,
   cell,
+  cleanUp,
   leave,
   meal,
   opened,
@@ -17,7 +18,9 @@ import {
   swim,
   trip,
   typeInto,
-} from "./collection-page.fixture.tsx";
+} from "../test-support/collection-page.tsx";
+
+afterEach(cleanUp);
 
 verifies("library.collection-page", () => {
   describe("CollectionPage editing", () => {

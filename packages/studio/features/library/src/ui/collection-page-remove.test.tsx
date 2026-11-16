@@ -1,8 +1,17 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { describe, expect, it, vi } from "vitest";
-import { opened, pressButton, pressConfirm, sourceOf, swim } from "./collection-page.fixture.tsx";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  cleanUp,
+  opened,
+  pressButton,
+  pressConfirm,
+  sourceOf,
+  swim,
+} from "../test-support/collection-page.tsx";
+
+afterEach(cleanUp);
 
 verifies("library.collection-page", () => {
   describe("CollectionPage remove", () => {

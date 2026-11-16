@@ -1,7 +1,6 @@
 import type { ItemUsage } from "@halonicjs/app";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { act } from "react";
-import { afterEach, vi } from "vitest";
 import {
   type CollectionColumn,
   type CollectionHost,
@@ -9,9 +8,9 @@ import {
   type CollectionRow,
   type CollectionSource,
 } from "../collection-host.ts";
-import { fakeModal, restoreModal } from "../test-support/modal.ts";
-import { render, unmountAll } from "../test-support/render.tsx";
-import { CollectionPage } from "./collection-page.tsx";
+import { CollectionPage } from "../ui/collection-page.tsx";
+import { fakeModal, restoreModal } from "./modal.ts";
+import { render, unmountAll } from "./render.tsx";
 
 // jsdom has no `popover`; the row menu only needs its open and close to exist.
 Object.assign(HTMLElement.prototype, {
@@ -20,11 +19,12 @@ Object.assign(HTMLElement.prototype, {
   togglePopover: () => false,
 });
 fakeModal();
-afterEach(() => {
+/** What each test file runs after every test. */
+export function cleanUp(): void {
   unmountAll();
   restoreModal();
   fakeModal();
-});
+}
 
 export const nobody: ItemUsage = { agents: [], hubs: [], routines: [], collections: [] };
 
@@ -80,8 +80,7 @@ export function setup(
     subscribe: () => () => {},
     ...writes,
   };
-  const openItem = vi.fn();
-  const openPlace = vi.fn();
+  const placesOpened: string[] = [];
   const props = {
     item: { kind: "collection", hub: "~workspace", id: "claims" },
     context: {
@@ -89,13 +88,13 @@ export function setup(
         get: (key: unknown) => (key === CollectionHostService ? host : undefined),
         find: (key: unknown) => (key === CollectionHostService ? host : undefined),
       },
-      announcer: { announceState: vi.fn() },
-      openItem,
-      openPlace,
+      announcer: { announceState: () => {} },
+      openItem: () => {},
+      openPlace: (place: string) => placesOpened.push(place),
     },
     Sections: () => null,
   } as unknown as ItemViewProps;
-  return { props, host, openItem, openPlace };
+  return { props, host, placesOpened };
 }
 
 export async function settled(): Promise<void> {
