@@ -134,7 +134,15 @@ export class SrtSandbox implements Sandbox {
     } catch {
       unavailable = { reason: "other", missing: "the machine could not be examined" };
     }
-    if (unavailable === null) return { ok: true, reason: null, missing: [] };
+    if (unavailable === null) {
+      const readable = await this.#profileReadable();
+      return {
+        ok: true,
+        reason: null,
+        missing: [],
+        ...(readable ? { residuals: ["kept-roots-readable" as const] } : {}),
+      };
+    }
     const { reason, missing, fix } = unavailable;
     return { ok: false, reason, missing: [missing], ...(fix === undefined ? {} : { fix }) };
   }
@@ -277,6 +285,16 @@ export class SrtSandbox implements Sandbox {
   async sweepKeptGrants(): Promise<ForgetResult> {
     if (this.#machine.platform !== "win32") return { heldByOthers: [], failed: [] };
     return this.#grants.sweep(this.#sweepRoots);
+  }
+
+  /** Whether another program's srt setup lets every session read the profile; a setup that can't be read counts. Never throws. */
+  async #profileReadable(): Promise<boolean> {
+    if (this.#machine.platform !== "win32") return false;
+    try {
+      return await this.#machine.profileReadGranted();
+    } catch {
+      return true;
+    }
   }
 
   /** The first reason, in the order the port lists them, because its fix comes first. */

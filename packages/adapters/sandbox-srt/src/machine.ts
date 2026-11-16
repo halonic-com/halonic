@@ -76,6 +76,13 @@ export interface Machine {
    */
   windowsSandboxState(): Promise<WindowsSandboxState>;
   /**
+   * Whether srt's profile read grant is on this machine, which lets every
+   * sandboxed session read the user's profile (another program installed srt
+   * without `--skip-profile-grant`). Also true when the grant can't be read:
+   * the answer errs on reporting a limit. Windows only; false elsewhere.
+   */
+  profileReadGranted(): Promise<boolean>;
+  /**
    * Runs srt's Windows install (`srt windows-install`): the sandbox account and
    * its network filters, for the whole machine. It asks for an administrator
    * once, unless this process already runs as one. Running it again repairs
@@ -279,6 +286,19 @@ export const systemMachine: Machine = {
       return check.loopbackMismatch === undefined ? "setup-needed" : "setup-conflict";
     } catch {
       return "setup-needed"; // No srt-win, or it did not answer: not installed, as far as we can tell.
+    }
+  },
+  async profileReadGranted() {
+    if (process.platform !== "win32") return false;
+    try {
+      const { getWindowsProfileReadStatusAsync, resolveSrtWin, VENDORED_SRT_WIN_EXE } =
+        await import("@anthropic-ai/sandbox-runtime");
+      const status = await getWindowsProfileReadStatusAsync({
+        srtWin: resolveSrtWin({ path: VENDORED_SRT_WIN_EXE }),
+      });
+      return status.state !== "none";
+    } catch {
+      return true;
     }
   },
   async installWindowsSandbox() {

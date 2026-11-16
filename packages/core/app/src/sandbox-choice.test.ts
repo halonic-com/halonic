@@ -159,6 +159,19 @@ verifies("app.sandbox-choice", () => {
     expect(current).not.toHaveProperty("securityUpdatesLast");
   });
 
+  it("shows the residuals of an ok check next to the trust check's (HAL-5398, S4)", async () => {
+    const readable: SandboxCheck = { ...ok, residuals: ["kept-roots-readable"] };
+    const { choice } = machine({
+      setting: choose("mxc"),
+      backends: { srt: { check: readable }, mxc: { check: readable, canary: [clean] } },
+    });
+    const result = await choice.start();
+    expect(statusOf(result, "srt")).toMatchObject({ residuals: ["kept-roots-readable"] });
+    expect(statusOf(result, "mxc")).toMatchObject({
+      residuals: ["kept-roots-readable", "name-lookups-leave"],
+    });
+  });
+
   it("runs nothing when the check fails, without falling through or changing the setting", async () => {
     const { choice } = machine({
       setting: choose("mxc"),

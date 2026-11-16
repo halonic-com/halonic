@@ -104,10 +104,20 @@ export type SandboxUnavailableReason = (typeof sandboxUnavailableReasons)[number
  *   Studio words the refusal from `reason`.
  * - `fix`, when set, is what fixes it on this machine, as data (since
  *   HAL-5393; optional, so the port stays at its version). See {@link SandboxFix}.
+ * - `residuals`, on an `ok` check, are limits that hold on this machine only
+ *   (HAL-5398; optional). See {@link SandboxResidual}.
  */
 export type SandboxCheck =
-  | { ok: true; reason: null; missing: [] }
+  | { ok: true; reason: null; missing: []; residuals?: SandboxResidual[] }
   | { ok: false; reason: SandboxUnavailableReason; missing: string[]; fix?: SandboxFix };
+
+/**
+ * A limit an `ok` check found on this machine that isn't a fact of the backend:
+ * `kept-roots-readable` is srt on Windows set up by another program with its
+ * profile read grant (or a setup that couldn't be read), so every sandboxed
+ * session can read the profile. The list is closed, and a new one is a port change.
+ */
+export type SandboxResidual = "kept-roots-readable";
 
 /**
  * Every package manager a {@link SandboxFix} can name: `apt` (Debian,
