@@ -367,7 +367,9 @@ verifies("cli.loopback-callback", () => {
         settled = true;
       });
       // The listener handles the request before it answers, so its answer was the last
-      // chance for the stray request to settle the wait; no sleep is needed.
+      // chance for the stray request to settle the wait. One macrotask lets any
+      // promise callback that wrongly settled it run before we check.
+      await new Promise((resolve) => setImmediate(resolve));
       expect(settled).toBe(false);
 
       const answered = await fetch(`${base}${callbackPath}?state=s1&code=c1`);

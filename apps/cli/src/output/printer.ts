@@ -25,7 +25,8 @@ import type { OutputStyle } from "./style.ts";
  * Results go to stdout and errors to stderr, each painted in its own
  * stream's style. With `--json`, stdout gets one JSON document, for a result
  * or an error alike, and a person's lines go nowhere. Every secret the
- * command loaded is removed from the document.
+ * command loaded is removed from the document and from every line, on stdout
+ * as on stderr.
  */
 export interface Printer {
   /** Lines that are the same with and without `--json`, such as the help, to stdout. */
