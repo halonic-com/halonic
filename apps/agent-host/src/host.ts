@@ -12,6 +12,7 @@ import {
   SrtSandbox,
   WSL_SHARED_FOLDERS,
 } from "@halonicjs/adapter-sandbox-srt";
+import type { SandboxChoiceService } from "@halonicjs/app";
 import type { GoogleSetupPorts } from "@halonicjs/host-server";
 import type { Harness, TrustStore } from "@halonicjs/ports";
 import { type ProfileFolder, type ProfilePlatform, trustFolder } from "@halonicjs/profile";
@@ -30,6 +31,8 @@ import { hostPluginBackends, unavailablePluginBackends } from "./plugin/host-plu
 import { hostPluginMachine } from "./plugin/host-plugin-machine.ts";
 import { pluginRoutes } from "./plugin/plugin-routes.ts";
 import { PluginTable } from "./plugin/plugin-table.ts";
+import { hostSandboxChoice } from "./sandbox/choice-host.ts";
+import { sandboxChoiceRoutes } from "./sandbox/choice-routes.ts";
 import { sandboxRoutes } from "./sandbox/sandbox-routes.ts";
 import { SessionTable } from "./sandbox/session-table.ts";
 import { SetupJobs, setupRoutes } from "./sandbox/setup-routes.ts";
@@ -156,6 +159,12 @@ export async function run(
     profileGoogleSetup(profileFolder, places.workspaceRoots),
     optionalProfileOf(profileFolder),
     relayPortForServing(args),
+    profileFolder === undefined
+      ? undefined
+      : hostSandboxChoice(
+          { id: sharedFolders.length > 0 ? "srt-wsl" : "srt", sandbox },
+          profileFolder,
+        ),
   );
   try {
     if (args.includes("--stdio")) return await serveOverFrames(args, io, host);
@@ -339,6 +348,7 @@ interface HostServices {
  * @param google - the Google setup of the profile, or `undefined` without a profile folder (no Google route is served)
  * @param profile - the profile folder plugins and their trust are read from; `undefined` without one, and then no plugin call is served
  * @param relayPort - the relay's port in `--stdio` mode, which the Google sign-in's redirect names; `undefined` when the host listens on its own port
+ * @param choice - the choice service of this host's backend, `undefined` without a profile folder (no choice route is served)
  */
 function hostServices(
   version: string,
@@ -348,6 +358,7 @@ function hostServices(
   google: GoogleSetupPorts | undefined,
   profile: ProfileFolder | undefined,
   relayPort: number | undefined,
+  choice: SandboxChoiceService | undefined,
 ): HostServices {
   const sessions = new SessionTable();
   const listeningPorts = new Set<number>();
@@ -365,6 +376,7 @@ function hostServices(
   const routes = [
     healthRoute(version),
     ...sandboxRoutes(sandbox, sessions),
+    ...(choice === undefined ? [] : sandboxChoiceRoutes(choice)),
     ...setupRoutes(new SetupJobs(sandbox), sessions),
     ...bridgeRoutes(
       (secrets) =>

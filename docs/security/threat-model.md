@@ -305,6 +305,13 @@ through the `/v1/connectors` routes: a request carries the connector file's
 fields, its own secrets and the trust grant, never a sandbox profile, and a
 workspace the launcher didn't name is refused.
 
+The host also answers **which sandbox runs** (HAL-10796): `GET /v1/sandbox/choice` and
+`POST /v1/sandbox/choice/settings-changed` give back the `SandboxChoice` as codes. The
+setting is read from the profile, never from the request, and no route saves, changes or
+removes it: only the shell does, from a person's press, so a program in a sandbox or a
+page can't pick its own fence. Until the real canary exists (HAL-10552) the trust check
+fails closed, so no backend is reported as in use.
+
 The host also opens the **Google setup** of the profile it serves (HAL-9911):
 `POST /v1/google/disconnect` asks Google to end an account's sign-in and removes
 the refresh token, the record and the client secret. The page and the shell
