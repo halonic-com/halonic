@@ -271,4 +271,81 @@ verifies("studio.workspace-files-rename", () => {
     );
     expect(renames).toEqual([]);
   });
+
+  const collection = "library/collections/claims.collection.yaml";
+  const collectionText = "id: claims\nname: Claims\nfields:\n  title: { type: text }\n";
+  const lister = "hubs/support/agents/lister.agent.yaml";
+
+  it("gives a file with an id of its own the new id too, with the places that name it", async () => {
+    const { host, renames } = setup(
+      [],
+      {},
+      {
+        "hubs/support/hub.yaml": "id: support\nname: Support\n",
+        [collection]: collectionText,
+        [lister]: "id: lister\nname: Lister\ncollections: [claims]\nmodel: test\n",
+      },
+    );
+    const to = "library/collections/cases.collection.yaml";
+
+    await host.rename(collection, to);
+
+    expect(renames[0]?.rewrites?.[collection]).toBe(
+      "id: cases\nname: Claims\nfields:\n  title: { type: text }\n",
+    );
+    expect(renames[0]?.rewrites?.[lister]).toContain("collections: [cases]");
+    expect(await host.renameImpact(collection, to)).toBe(1);
+  });
+
+  it("keeps the id of a file whose own id isn't its name, and changes no other file", async () => {
+    const old = "library/collections/old-name.collection.yaml";
+    const { host, renames } = setup(
+      [],
+      {},
+      {
+        "hubs/support/hub.yaml": "id: support\nname: Support\n",
+        [old]: collectionText,
+        [lister]: "id: lister\nname: Lister\ncollections: [claims]\nmodel: test\n",
+      },
+    );
+    const to = "library/collections/new-name.collection.yaml";
+
+    expect(await host.renameImpact(old, to)).toBe(0);
+    await host.rename(old, to);
+
+    expect(renames).toEqual([{ from: old, to, rewrites: {} }]);
+  });
+
+  it("refuses to rename a skill whose folder has other files, and moves a SKILL.md alone", async () => {
+    const other = "hubs/support/library/skills/refunds/script.sh";
+    const { host, renames } = setup([], {}, { ...workspace, [other]: "echo" });
+    const to = "hubs/support/library/skills/returns/SKILL.md";
+
+    await expect(host.rename(skill, to)).rejects.toThrow(
+      "This skill has other files in its folder, so it can't be renamed here yet.",
+    );
+    expect(renames).toEqual([]);
+
+    const alone = setup([], {}, workspace);
+    await alone.host.rename(skill, to);
+    expect(alone.renames).toHaveLength(1);
+  });
+
+  it("refuses a path the workspace doesn't serve, a folder and a file on the way", async () => {
+    const { host, renames } = setup([], {}, { ...workspace, "notes.md": "hi" });
+
+    await expect(host.rename("notes.md", "hubs//x.yaml")).rejects.toThrow(
+      "Files must stay inside the workspace.",
+    );
+    await expect(host.rename("notes.md", ".git/config")).rejects.toThrow(
+      '".git/config" is not part of the workspace definitions',
+    );
+    await expect(host.rename("notes.md", "hubs/support/agents")).rejects.toThrow(
+      "hubs/support/agents is a folder.",
+    );
+    await expect(host.rename("notes.md", "notes.md/x.yaml")).rejects.toThrow(
+      "notes.md is a file, not a folder.",
+    );
+    expect(renames).toEqual([]);
+  });
 });
