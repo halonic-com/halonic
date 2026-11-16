@@ -28,6 +28,19 @@ use tauri_plugin_http::reqwest;
 #[path = "agent_host_choice.rs"]
 mod choice;
 
+/// Whether the host the shell starts runs beside it, which is where the
+/// removal of Halonic's WSL setup is served (the host in the distro can't
+/// unregister the distro it runs in). A choice that can't be read says no.
+pub fn host_runs_beside_shell<R: Runtime>(app: &AppHandle<R>) -> bool {
+    let Ok(profile) = crate::profile::cli_profile(app) else {
+        return false;
+    };
+    matches!(
+        choice::saved_backend(&profile).map(|backend| choice::host_for(backend, profile.platform)),
+        Ok(choice::HostKind::Local)
+    )
+}
+
 #[path = "agent_host_start.rs"]
 mod start;
 use start::running_host;

@@ -208,3 +208,52 @@ verifies("studio.agent-sandbox-host", () => {
     });
   });
 });
+
+verifies("settings.wsl-remove-dialog", () => {
+  const shell = { choose: async () => "halonic.tar", reveal: async () => undefined };
+  const ended = (result: unknown) => ({
+    status: 200,
+    body: {
+      running: null,
+      last: { verb: "remove-wsl", result, finishedAt: "2026-11-16T10:00:00Z" },
+    },
+  });
+
+  it("offers the removal only when the shell does", () => {
+    const { transport } = host({});
+    expect(new AgentHostSandboxFacts(transport).removeWslSetup).toBeUndefined();
+    expect(new AgentHostSandboxFacts(transport).chooseBackupFile).toBeUndefined();
+    const facts = new AgentHostSandboxFacts(transport, undefined, undefined, undefined, shell);
+    expect(facts.removeWslSetup).toBeTypeOf("function");
+  });
+
+  it("sends the choice and answers how the host says it ended", async () => {
+    const { transport, asked } = host({
+      "POST /v1/sandbox/remove-wsl": ended({ outcome: "removed", exportedTo: "halonic.tar" }),
+    });
+    const facts = new AgentHostSandboxFacts(transport, undefined, undefined, undefined, shell);
+    const result = await facts.removeWslSetup?.({
+      choice: "export-then-remove",
+      file: "halonic.tar",
+    });
+    expect(result).toEqual({ outcome: "removed", exportedTo: "halonic.tar" });
+    expect(asked).toEqual(["POST /v1/sandbox/remove-wsl"]);
+  });
+
+  it("throws when the host is busy or stops without an answer", async () => {
+    const busy = host({ "POST /v1/sandbox/remove-wsl": { status: 409, body: { runs: 1 } } });
+    const facts = new AgentHostSandboxFacts(busy.transport, undefined, undefined, undefined, shell);
+    await expect(facts.removeWslSetup?.({ choice: "remove-only" })).rejects.toThrow(/still using/);
+    const silent = host({
+      "POST /v1/sandbox/remove-wsl": { status: 200, body: { running: null, last: null } },
+    });
+    const none = new AgentHostSandboxFacts(
+      silent.transport,
+      undefined,
+      undefined,
+      undefined,
+      shell,
+    );
+    await expect(none.removeWslSetup?.({ choice: "remove-only" })).rejects.toThrow(/did not say/);
+  });
+});

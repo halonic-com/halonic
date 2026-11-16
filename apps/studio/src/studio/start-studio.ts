@@ -55,7 +55,7 @@ import {
   type StudioHost,
   StudioWorkspace,
 } from "@halonicjs/studio-shell";
-import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
+import { AgentHostSandboxFacts, type WslBackupShell } from "./agent-sandbox-host.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
 import { desktopFeatures } from "./desktop-features.ts";
 import { watchDesktopResources } from "./desktop-resources.ts";
@@ -326,7 +326,7 @@ export async function openFolder(
   provideShellSecrets(services, window);
   provideShellHostSettings(services, window);
   services.provide(HostSettingsService, await hostSettingsOf(services, window));
-  provideAgentSandbox(services, window);
+  await provideAgentSandbox(services, window, ipc);
   if (ipc !== undefined) {
     services.provide(UpdaterService, updaterOf(ipc));
     services.provide(RestartRunsService, restartRunsOfWindow);
@@ -414,7 +414,11 @@ function updaterOf(ipc: TauriIpc & TauriCallbacks): TauriUpdater {
  * Gives the section the agent host's sandbox through the shell, when the build offers it and the
  * shell has an agent host. Without it the section reads Not available.
  */
-function provideAgentSandbox(services: ServiceRegistry, window: object): void {
+async function provideAgentSandbox(
+  services: ServiceRegistry,
+  window: object,
+  ipc: TauriIpc | undefined,
+): Promise<void> {
   const transport = tauriAgentHostTransport(window);
   if (transport === undefined) return;
   // The start check only reads: "Check again" on a run page and in the Inbox works whether or not
@@ -427,8 +431,32 @@ function provideAgentSandbox(services: ServiceRegistry, window: object): void {
   if (agentSandboxOffered)
     services.provide(
       AgentSandboxService,
-      new AgentHostSandboxFacts(transport, undefined, undefined, () => transport.securityUpdates()),
+      new AgentHostSandboxFacts(
+        transport,
+        undefined,
+        undefined,
+        () => transport.securityUpdates(),
+        ipc === undefined ? undefined : await wslBackupOf(ipc),
+      ),
     );
+}
+
+/**
+ * The shell's part of removing the WSL setup, when it offers the removal (Windows, host beside the
+ * shell); `undefined` otherwise, so the section shows no **Remove sandbox setup**.
+ */
+async function wslBackupOf(ipc: TauriIpc): Promise<WslBackupShell | undefined> {
+  const offered = await ipc.invoke("wsl_removal_offered").catch(() => false);
+  if (offered !== true) return undefined;
+  return {
+    choose: async (suggestedName) => {
+      const chosen = await ipc.invoke("wsl_backup_choose", { suggested: suggestedName });
+      return typeof chosen === "string" ? chosen : null;
+    },
+    reveal: async () => {
+      await ipc.invoke("wsl_backup_reveal");
+    },
+  };
 }
 
 /**

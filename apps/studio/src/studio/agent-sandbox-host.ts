@@ -11,6 +11,8 @@ import type {
   SandboxCheckFacts,
   SandboxOutcome,
   SecurityUpdatesFacts,
+  WslRemoveRequest,
+  WslRemoveResult,
 } from "@halonicjs/studio-feature-settings";
 
 /**
@@ -19,6 +21,16 @@ import type {
  * section says what is wrong, in the catalogue's sentence (`sandboxStartWords`, the one the Inbox,
  * the run page and the CLI use), and offers only Check again (`studio.agent-sandbox-host`).
  */
+
+/**
+ * What the shell does for the removal of the WSL setup: its save dialog for the backup, and
+ * showing the saved file. It names no path to show: the shell shows the file chosen last.
+ */
+export interface WslBackupShell {
+  choose(suggestedName: string): Promise<string | null>;
+  reveal(): Promise<void>;
+}
+
 const needsRepair: readonly SandboxUnavailableReason[] = ["distro-missing", "setup-conflict"];
 
 /**
@@ -35,14 +47,27 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
   readonly #setup: AgentHostSandboxSetup;
   readonly #now: () => Date;
   readonly securityUpdates?: () => Promise<SecurityUpdatesFacts | null>;
+  readonly removeWslSetup?: NonNullable<AgentSandboxHost["removeWslSetup"]>;
+  readonly chooseBackupFile?: NonNullable<AgentSandboxHost["chooseBackupFile"]>;
+  readonly showInFolder?: NonNullable<AgentSandboxHost["showInFolder"]>;
 
+  /**
+   * `wslBackup` is given only where the shell offers the removal of the WSL setup (HAL-10974);
+   * without it the section has no **Remove sandbox setup**.
+   */
   constructor(
     transport: AgentHostTransport,
     setup: AgentHostSandboxSetup = new AgentHostSandboxSetup(transport),
     now: () => Date = () => new Date(),
     securityUpdates?: () => Promise<SecurityUpdatesFacts | null>,
+    wslBackup?: WslBackupShell,
   ) {
     if (securityUpdates !== undefined) this.securityUpdates = securityUpdates;
+    if (wslBackup !== undefined) {
+      this.removeWslSetup = (request, options) => this.#removeWsl(request, options);
+      this.chooseBackupFile = (suggestedName) => wslBackup.choose(suggestedName);
+      this.showInFolder = () => wslBackup.reveal();
+    }
     this.#transport = transport;
     this.#setup = setup;
     this.#now = now;
@@ -82,6 +107,23 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
       return started.last?.verb === "remove" ? outcomeOf("remove", started.last.result) : null;
     }
     return outcomeOf("remove", (await this.#setup.ended("remove", options))?.result);
+  }
+
+  /**
+   * Removes the WSL setup and waits for how the host says it ended. A refusal to start (busy) or
+   * a host that stopped without an answer throws, so the dialog tells the person it can't say.
+   */
+  async #removeWsl(
+    request: WslRemoveRequest,
+    options: { readonly signal?: AbortSignal } = {},
+  ): Promise<WslRemoveResult> {
+    const started = await this.#setup.startRemoveWsl(request);
+    if ("inUse" in started) throw new Error("Sandboxed runs are still using the sandbox.");
+    const last =
+      started.running === null ? started.last : await this.#setup.ended("remove-wsl", options);
+    if (last?.verb !== "remove-wsl") throw new Error("The host did not say how it ended.");
+    if ("ok" in last.result) throw new Error(last.result.reason);
+    return last.result;
   }
 
   /** Follows the command that runs, with `GET`s only: it starts nothing. */

@@ -19,7 +19,8 @@
 //! command (capabilities/desktop-workspace-key.json) and the read-only `resource_report`
 //! command (capabilities/desktop-resources.json) and the `update_*` commands
 //! (capabilities/desktop-updates.json) and the page's close request
-//! (capabilities/desktop-window.json); the Studio it then opens is
+//! (capabilities/desktop-window.json) and the `wsl_*` commands of the sandbox
+//! backup (capabilities/desktop-sandbox-backup.json); the Studio it then opens is
 //! served by the computer and gets no command at all. The navigation guard keeps
 //! everything but the confirmed address out of the window.
 
@@ -46,6 +47,7 @@ mod profile;
 mod records;
 mod resource_report;
 mod runs;
+mod sandbox_backup;
 mod secrets;
 mod system_region;
 mod trust;
@@ -91,6 +93,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(records::RecordState::default())
         .manage(agent_host::AgentHostState::default())
         .manage(http_fetch::HttpFetchState::default())
+        .manage(sandbox_backup::BackupState::default())
         .manage(files::FileState::default())
         .manage(plugin_source::PluginSources::default())
         .manage(plugin_git::PluginGitExports::default());
@@ -202,6 +205,9 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             plugin_source::plugin_source_read,
             plugin_git::plugin_git_export,
             plugin_git::plugin_git_export_end,
+            sandbox_backup::wsl_removal_offered,
+            sandbox_backup::wsl_backup_choose,
+            sandbox_backup::wsl_backup_reveal,
             blobs::blob_put,
             blobs::blob_get,
             records::record_append,
