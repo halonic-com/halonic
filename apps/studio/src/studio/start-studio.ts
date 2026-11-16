@@ -305,7 +305,12 @@ export async function openFolder(
   const trustView = trust === undefined ? undefined : new WorkspaceTrustView(trust, location);
   services.provide(DisplaySettingsService, display);
   services.provide(WorkspacePageService, { name, trust: trustView });
-  const sample = sampleWorkspaceOf(location, device.recent, device.storage, device.startOwnWorkspace);
+  const sample = sampleWorkspaceOf(
+    location,
+    device.recent,
+    device.storage,
+    device.startOwnWorkspace,
+  );
   services.provide(SampleWorkspaceService, sample);
   services.provide(SampleHintService, sample);
   const trustStore = ipc === undefined ? undefined : new TauriTrustStore(ipc);
