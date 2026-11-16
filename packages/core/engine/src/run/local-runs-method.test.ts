@@ -4,6 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { halonicTool } from "../agent/turn-test-kit.test-helper.ts";
 import { KernelRuns, replyWorkflow, writerAgent } from "../kernel/kernel-test-kit.test-helper.ts";
+import type { ModelScope } from "../local-executor-options.ts";
 import { call, callAnswer, ScriptedConnector, textAnswer } from "../testing/scripted-model.ts";
 import { replyStart, runsOn } from "./local-runs-test-kit.test-helper.ts";
 import { methodConnectors } from "./method-tools.ts";
@@ -60,16 +61,20 @@ async function runMethod(
   agentOutput: AgentOutput = { type: "text" },
 ) {
   const asked: ChatTurnRequest[] = [];
+  const scopes: (ModelScope | undefined)[] = [];
   const runs = new KernelRuns();
   const setup = runsOn(answers, runs, {
     workflow: methodWorkflow,
     agents: { writer: { ...writerAgent(), output: agentOutput, methods: { draft: method } } },
     halonicTools: tools,
-    onResolveModel: (request) => asked.push(request),
+    onResolveModel: (request, scope) => {
+      asked.push(request);
+      scopes.push(scope);
+    },
   });
   await setup.executor.start(replyStart);
   await setup.scheduler.runDue();
-  return { ...setup, runs, asked };
+  return { ...setup, runs, asked, scopes };
 }
 
 function offered(request: { tools?: readonly { name: string }[] } | undefined): string[] {
@@ -85,6 +90,11 @@ verifies("engine.task-method", () => {
       content: 'Method "draft".\n\nDraft a reply to support.',
     });
     expect(await runs.get("run_1")).toMatchObject({ status: "completed" });
+  });
+
+  it("names the run in the scope of its model call, so a model can start afresh for each run", async () => {
+    const { scopes } = await runMethod([textAnswer("Dear support")]);
+    expect(scopes).toEqual([{ runId: "run_1" }]);
   });
 
   it("offers only the tools the method names, and none for []", async () => {

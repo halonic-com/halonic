@@ -35,6 +35,7 @@ import {
 } from "../kernel/kernel-test-kit.test-helper.ts";
 import type { AgentKnowledgeOptions } from "../knowledge/agent-knowledge.ts";
 import { LocalExecutor } from "../local-executor.ts";
+import type { ModelScope } from "../local-executor-options.ts";
 import { ScriptedModel } from "../testing/scripted-model.ts";
 import type { AbortOnStop } from "./abort-on-stop.ts";
 import type { RunConnectorCalls } from "./connector-calls.ts";
@@ -158,7 +159,7 @@ export interface RunsSetup {
   /** How a model call's stop becomes an `AbortSignal`; model calls get none when left out. */
   readonly abortOnStop?: AbortOnStop;
   /** Gets each request the executor resolves a model for, such as a method's alias. */
-  readonly onResolveModel?: (request: ChatTurnRequest) => void;
+  readonly onResolveModel?: (request: ChatTurnRequest, scope?: ModelScope) => void;
 }
 
 /** A local executor with runs on memory ports, a scripted model and one workflow. */
@@ -186,8 +187,8 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
   const definitionsAsked: string[] = [];
   const versionsAsked: (RunVersion | undefined)[] = [];
   const executor = new LocalExecutor({
-    resolveModel: async (request) => {
-      setup.onResolveModel?.(request);
+    resolveModel: async (request, scope) => {
+      setup.onResolveModel?.(request, scope);
       return (
         setup.model ?? {
           provider: model,

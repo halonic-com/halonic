@@ -5,7 +5,7 @@
 // CLI's printer, argv or `process` (Liam, HAL-3895), so it can move into a
 // package Studio shares once Studio starts runs.
 
-import { layeredParams, type ResolvedModel } from "@halonicjs/engine";
+import { layeredParams, type ModelScope, type ResolvedModel } from "@halonicjs/engine";
 import type { Provider } from "@halonicjs/format";
 import type {
   ChatAgentSettings,
@@ -30,6 +30,9 @@ import {
   workspaceProvider,
 } from "./workspace-providers.ts";
 
+/** How many runs' mock providers a resolver keeps; the oldest are dropped first. */
+const MOCK_RUNS_KEPT = 32;
+
 /** What {@link workspaceModelResolver} reads. */
 export interface WorkspaceModelResolverInput {
   /** The loaded workspace, checked for errors before a run starts. */
@@ -49,7 +52,9 @@ export interface WorkspaceModelResolverInput {
  *
  * A name with a `/` names a provider and a model directly; any other name is
  * an alias the hub can use, with its own fallbacks. Each provider is built
- * once, on its first call.
+ * once, on its first call. The exception is a `type: mock` provider, which
+ * keeps its script's place: a run gets a mock of its own, so every run starts
+ * the script afresh, and a call without a run (a chat turn) gets a new mock each time.
  *
  * @throws {WorkspaceModelError} from the resolver when the call's model names
  *   an alias the hub doesn't have or a provider the workspace doesn't have,
@@ -63,9 +68,10 @@ export interface WorkspaceModelResolverInput {
  */
 export function workspaceModelResolver(
   input: WorkspaceModelResolverInput,
-): (request: ChatTurnRequest) => Promise<ResolvedModel> {
+): (request: ChatTurnRequest, scope?: ModelScope) => Promise<ResolvedModel> {
   const hubs = new Map<string, HubDefinitions>();
   const providers = new Map<string, LlmProvider>();
+  const mocks = new Map<string, Map<string, LlmProvider>>();
   const context = { secrets: input.secrets, http: input.http };
 
   const definitionsFor = (hubId: string): HubDefinitions => {
@@ -77,7 +83,32 @@ export function workspaceModelResolver(
     return definitions;
   };
 
-  const modelAt = (definitions: HubDefinitions, target: ModelTarget): ResolvedModel => {
+  const mockFor = (file: Provider, scope: ModelScope | undefined): LlmProvider => {
+    if (scope === undefined) {
+      return workspaceProvider(file, context);
+    }
+    let ofRun = mocks.get(scope.runId);
+    if (ofRun === undefined) {
+      ofRun = new Map();
+      mocks.set(scope.runId, ofRun);
+      const oldest = mocks.keys().next().value;
+      if (mocks.size > MOCK_RUNS_KEPT && oldest !== undefined) {
+        mocks.delete(oldest);
+      }
+    }
+    let mock = ofRun.get(file.id);
+    if (mock === undefined) {
+      mock = workspaceProvider(file, context);
+      ofRun.set(file.id, mock);
+    }
+    return mock;
+  };
+
+  const modelAt = (
+    definitions: HubDefinitions,
+    target: ModelTarget,
+    scope: ModelScope | undefined,
+  ): ResolvedModel => {
     const file: Provider | undefined = definitions.providers[target.provider];
     if (file === undefined) {
       throw new WorkspaceModelError(
@@ -86,15 +117,20 @@ export function workspaceModelResolver(
         modelTexts.noProviderFix(target.provider),
       );
     }
-    let provider = providers.get(file.id);
-    if (provider === undefined) {
-      provider = workspaceProvider(file, context);
-      providers.set(file.id, provider);
+    let provider: LlmProvider | undefined;
+    if (file.type === "mock") {
+      provider = mockFor(file, scope);
+    } else {
+      provider = providers.get(file.id);
+      if (provider === undefined) {
+        provider = workspaceProvider(file, context);
+        providers.set(file.id, provider);
+      }
     }
     return resolvedModel(provider, file, target);
   };
 
-  return async (request) => {
+  return async (request, scope) => {
     if (request.agent !== undefined) {
       return unsavedModel(request.agent, context);
     }
@@ -108,8 +144,8 @@ export function workspaceModelResolver(
         modelTexts.unknownAliasFix(),
       );
     }
-    const fallback = target.fallback.map((next) => modelAt(definitions, next));
-    return { ...modelAt(definitions, target), fallback };
+    const fallback = target.fallback.map((next) => modelAt(definitions, next, scope));
+    return { ...modelAt(definitions, target, scope), fallback };
   };
 }
 
@@ -124,16 +160,16 @@ export function workspaceModelResolver(
 export function latestModelResolver(
   input: Omit<WorkspaceModelResolverInput, "workspace">,
   workspace: () => LoadedWorkspace,
-): (request: ChatTurnRequest) => Promise<ResolvedModel> {
+): (request: ChatTurnRequest, scope?: ModelScope) => Promise<ResolvedModel> {
   let last:
     | { workspace: LoadedWorkspace; resolve: ReturnType<typeof workspaceModelResolver> }
     | undefined;
-  return async (request) => {
+  return async (request, scope) => {
     const now = workspace();
     if (last === undefined || last.workspace !== now) {
       last = { workspace: now, resolve: workspaceModelResolver({ ...input, workspace: now }) };
     }
-    return await last.resolve(request);
+    return await last.resolve(request, scope);
   };
 }
 

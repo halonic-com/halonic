@@ -385,7 +385,8 @@ export class LocalExecutor implements RunExecutor {
         runLocalSubagent(
           {
             turn,
-            resolveModel: (request) => this.options.resolveModel(request),
+            resolveModel: (request) =>
+              this.options.resolveModel(request, { runId: turn.run.runId }),
             secrets: this.options.secrets,
             clock: this.options.clock,
             connectorsOfRun: () => this.connectorsOfRun(turn.run),
@@ -431,7 +432,7 @@ export class LocalExecutor implements RunExecutor {
     return runModelCall({
       turn,
       call,
-      resolveModel: (request) => this.options.resolveModel(request),
+      resolveModel: (request) => this.options.resolveModel(request, { runId: run.runId }),
       secrets: this.options.secrets,
       clock: this.options.clock,
       ...(connectorCalls === undefined
