@@ -59,6 +59,7 @@ export class WorkspaceNotices implements InboxNotices {
     const summaries = (await runs.list()).map((run) => run.summary);
     const nameOf = (routineId: string) => runs.routine(routineId)?.name ?? routineId;
     const notices = failedRunNotices(summaries, nameOf, now());
+    this.#reload();
     this.#forget(new Set(notices.map((notice) => notice.key)));
     return notices.filter((notice) => !this.#dismissed.has(notice.key));
   }
@@ -73,11 +74,15 @@ export class WorkspaceNotices implements InboxNotices {
   }
 
   dismiss(key: string): void {
-    // Another window of the same workspace may have dismissed notices since this one read them.
-    for (const stored of this.#stored()) this.#dismissed.add(stored);
+    this.#reload();
     this.#dismissed.add(key);
     this.#save();
     for (const listener of [...this.#listeners]) listener();
+  }
+
+  /** Takes in what another window of the same workspace dismissed since this one read the list. */
+  #reload(): void {
+    for (const stored of this.#stored()) this.#dismissed.add(stored);
   }
 
   /** Drops the dismissals whose notice is gone, so the stored list doesn't grow for ever. */

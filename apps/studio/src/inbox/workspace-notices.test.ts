@@ -93,9 +93,24 @@ verifies("studio.inbox-notices", () => {
     const shared = storage();
     const { notices } = setup("/work/acme", shared);
     const [notice] = await notices.list();
+    expect(notice).toBeDefined();
     notices.dismiss(notice?.key ?? "");
     notices.dismiss("gone");
     await notices.list();
+    expect(
+      JSON.parse(shared.getItem("halonic.inbox-dismissed-notices:/work/acme") ?? "[]"),
+    ).toEqual([notice?.key]);
+  });
+
+  it("keeps another window's dismissal when it forgets a gone one", async () => {
+    const shared = storage();
+    const first = setup("/work/acme", shared).notices;
+    first.dismiss("gone");
+    const second = setup("/work/acme", shared).notices;
+    const [notice] = await second.list();
+    expect(notice).toBeDefined();
+    second.dismiss(notice?.key ?? "");
+    await first.list();
     expect(
       JSON.parse(shared.getItem("halonic.inbox-dismissed-notices:/work/acme") ?? "[]"),
     ).toEqual([notice?.key]);
