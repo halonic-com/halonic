@@ -18,6 +18,7 @@ function setup(
   const listeners = new Set<() => void>();
   const changes: { label: string; changes: Record<string, string | null>; key?: string }[] = [];
   let current = pending;
+  let step = 0;
   const undone: number[] = [];
   const host = new WorkspaceFilesHost({
     store: {
@@ -37,6 +38,9 @@ function setup(
     files: {
       get pending() {
         return current;
+      },
+      get step() {
+        return step;
       },
       undo: () => {
         undone.push(1);
@@ -62,6 +66,7 @@ function setup(
       list: async (dir) => Object.keys(texts).filter((path) => path.startsWith(`${dir}/`)),
       change: (label, made, options) => {
         current = { ...current };
+        step++;
         changes.push({
           label,
           changes: made,
@@ -74,7 +79,10 @@ function setup(
       return () => listeners.delete(listener);
     },
   });
-  return { host, listeners, changes, watching, settled, renames, undone };
+  const save = () => {
+    current = { ...current };
+  };
+  return { host, listeners, changes, watching, settled, renames, undone, save };
 }
 
 verifies("studio.workspace-files-host", () => {
@@ -388,6 +396,16 @@ verifies("studio.workspace-files-delete", () => {
     await removed.undo();
 
     expect(removed.places).toBe(0);
+    expect(undone).toHaveLength(1);
+  });
+
+  it("undoes the delete after autosave replaced the unsaved changes", async () => {
+    const { host, undone, save } = setup([], {}, workspace);
+
+    const removed = await host.remove("notes.md");
+    save();
+    await removed.undo();
+
     expect(undone).toHaveLength(1);
   });
 
