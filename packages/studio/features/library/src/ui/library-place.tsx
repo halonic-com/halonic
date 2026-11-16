@@ -1,14 +1,17 @@
 import type { LibraryItemKind } from "@halonicjs/app";
 import type { PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useState } from "react";
+import type { CollectionRef } from "../collection-host.ts";
 import { LibraryItemsHostService } from "../library-items-host.ts";
 import type { LibraryEntryPlace } from "../library-overview.ts";
 import { LibraryTabMemoryService } from "../library-tab-memory.ts";
 import { takeLibraryTabRequests } from "../library-tab-request.ts";
+import { NewCollectionHostService } from "../new-collection-host.ts";
 import { NewSkillHostService } from "../new-skill-host.ts";
 import { requestSkillInstructionsFocus } from "../skill-focus-request.ts";
 import type { SkillRef } from "../skill-host.ts";
 import { LibraryPage } from "./library-page.tsx";
+import { NewCollectionDialog } from "./new-collection-dialog.tsx";
 import { NewSkillDialog } from "./new-skill-dialog.tsx";
 
 /**
@@ -19,6 +22,13 @@ export const sharedHubKey = "~workspace";
 
 function refOf(kind: LibraryItemKind, { hub, id }: LibraryEntryPlace) {
   return { kind, hub: hub ?? sharedHubKey, id };
+}
+
+function newButtonOf(
+  kind: LibraryItemKind,
+  opens: Partial<Record<LibraryItemKind, (() => void) | undefined>>,
+): (() => void) | undefined {
+  return opens[kind];
 }
 
 /**
@@ -40,9 +50,25 @@ export function LibraryPlace({ context }: PlaceViewProps) {
   useEffect(() => takeLibraryTabRequests(show), [show]);
   const newSkillHost = context.services.find(NewSkillHostService);
   const [makingSkill, setMakingSkill] = useState(false);
+  const newCollectionHost = context.services.find(NewCollectionHostService);
+  const [makingCollection, setMakingCollection] = useState(false);
   const { openItem, openItemInNewTab } = context;
   const openSkill = ({ hub, id }: SkillRef) =>
     openItem?.({ kind: "skill", hub: hub ?? sharedHubKey, id });
+  const openCollection = ({ hub, id }: CollectionRef) =>
+    openItem?.({ kind: "collection", hub: hub ?? sharedHubKey, id });
+  const prepareThen = (host: { prepare(): Promise<void> }, open: () => void) =>
+    void host
+      .prepare()
+      .catch(() => undefined)
+      .then(open);
+  // Skills and Collections have a New dialog so far; the other tabs show no button until theirs lands.
+  // The dialog opens even if the read failed: it has fallbacks, and Create shows its own error.
+  const onNew = newButtonOf(kind, {
+    skill: newSkillHost && (() => prepareThen(newSkillHost, () => setMakingSkill(true))),
+    collection:
+      newCollectionHost && (() => prepareThen(newCollectionHost, () => setMakingCollection(true))),
+  });
   return (
     <>
       <LibraryPage
@@ -51,17 +77,7 @@ export function LibraryPlace({ context }: PlaceViewProps) {
         onKindChange={show}
         onOpen={(each, entry) => openItem?.(refOf(each, entry))}
         onOpenInNewTab={(each, entry) => openItemInNewTab?.(refOf(each, entry))}
-        // Only Skills has a New dialog so far; the other tabs show no button until theirs lands.
-        {...(newSkillHost === undefined || kind !== "skill"
-          ? {}
-          : {
-              // The dialog opens even if the read failed: it has fallbacks, and Create shows its own error.
-              onNew: () =>
-                void newSkillHost
-                  .prepare()
-                  .catch(() => undefined)
-                  .then(() => setMakingSkill(true)),
-            })}
+        {...(onNew === undefined ? {} : { onNew })}
       />
       {makingSkill && newSkillHost !== undefined && (
         <NewSkillDialog
@@ -72,6 +88,16 @@ export function LibraryPlace({ context }: PlaceViewProps) {
             openSkill(skill);
           }}
           onCancel={() => setMakingSkill(false)}
+        />
+      )}
+      {makingCollection && newCollectionHost !== undefined && (
+        <NewCollectionDialog
+          host={newCollectionHost}
+          onCreated={(collection) => {
+            setMakingCollection(false);
+            openCollection(collection);
+          }}
+          onCancel={() => setMakingCollection(false)}
         />
       )}
     </>
