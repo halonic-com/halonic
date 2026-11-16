@@ -62,3 +62,34 @@ verifies("studio.connect.shell-bridge", () => {
     ]);
   });
 });
+
+/** A shell that refuses every call, as one without the command would. */
+class RefusingInternals implements TauriIpc {
+  invoke(): Promise<unknown> {
+    return Promise.reject(new Error("The shell refused."));
+  }
+}
+
+verifies("studio.connect.shell-bridge", () => {
+  it("lets a refused connect call fail, for the page to show as Can't reach", async () => {
+    const bridge = tauriBridge(new RefusingInternals(), new FakeWindow());
+
+    await expect(bridge.connect("192.168.1.20:4280")).rejects.toThrow("The shell refused.");
+  });
+
+  it("lets a refused opener call fail, for the page to ignore", async () => {
+    const bridge = tauriBridge(new RefusingInternals(), new FakeWindow());
+
+    await expect(bridge.openReleasePage()).rejects.toThrow("The shell refused.");
+  });
+
+  it("passes the address on as typed, without trimming or checking it", async () => {
+    const internals = new FakeInternals();
+
+    await tauriBridge(internals, new FakeWindow()).connect("  not an address ");
+
+    expect(internals.calls).toEqual([
+      { command: "connect", args: { address: "  not an address " } },
+    ]);
+  });
+});
