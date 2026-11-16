@@ -2,7 +2,7 @@ import { shortRunId } from "@halonicjs/app";
 import { type RunEvent, type RunSummary, type RunVersion, summarize } from "@halonicjs/events";
 import { Callout, EmptyState, List, StatusChip, usePresentation } from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
-import { type ReactNode, useCallback, useState, useSyncExternalStore } from "react";
+import { type ReactNode, useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { type InstructionTrustHost, InstructionTrustHostService, type SourcedRun } from "../api.ts";
 import { loadFailureReason } from "../load-failure.ts";
 import { emptyListWords, runPageWords } from "../run-words.ts";
@@ -21,6 +21,7 @@ import {
   summaryLine,
 } from "./receipt-model.ts";
 import { type RunPageContext, runHeader } from "./run-page-model.ts";
+import { slowStepDueAt } from "./slow-step.ts";
 import { StepPanel } from "./step-panel.tsx";
 
 /** The `run` item kind's page: one run of the open workspace, from `RunsListService`. */
@@ -100,6 +101,7 @@ export function RunView({
   const logRead = useRunLog(list.source, runId, run?.summary.lastSeq ?? 0, state);
   const log = logRead.events;
   const [openEntry, setOpenEntry] = useOpenEntry(runId, step, log, run?.summary);
+  useRedrawWhenSlow(log, run?.summary.status === "running", now);
   const title = runPageWords.title(shortRunId(runId));
   const retry = () => void list.refresh();
 
@@ -271,6 +273,27 @@ function useOpenEntry(
     setOpenEntry(entryIdOfStep(log, summarize(log) ?? summary, step));
   }
   return [openEntry, setOpenEntry] as const;
+}
+
+/**
+ * Draws the page again at the moment the log's last event turns 10 seconds old, so a step that
+ * waits gets its line (F3) although nothing new was written. A new event moves the moment on.
+ */
+function useRedrawWhenSlow(
+  log: readonly RunEvent[] | undefined,
+  running: boolean,
+  now: () => Date,
+) {
+  const [, redraw] = useState(0);
+  const due = running && log !== undefined ? slowStepDueAt(log) : undefined;
+  const dueTime = due?.getTime();
+  useEffect(() => {
+    if (dueTime === undefined) return;
+    const wait = dueTime - now().getTime();
+    if (wait <= 0) return;
+    const timer = setTimeout(() => redraw((count) => count + 1), wait);
+    return () => clearTimeout(timer);
+  }, [dueTime, now]);
 }
 
 /** The red banner for a log with a damaged line; nothing for a log that reads whole. */

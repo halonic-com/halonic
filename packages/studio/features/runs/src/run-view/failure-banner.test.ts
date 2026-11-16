@@ -91,6 +91,50 @@ verifies("runs.run-view.failure-banners", () => {
     });
   });
 
+  it("keeps the general banner for a provider that runs elsewhere, since it can't use this computer's memory", () => {
+    const log = [call("claude", "claude-sonnet")];
+    expect(causeBanner(failed("model-out-of-memory"), log, context, false)).toBeUndefined();
+    const gone = [call("elsewhere", "m")];
+    expect(lines(causeBanner(failed("model-out-of-memory"), gone, context, false))?.[0]).toContain(
+      "this computer doesn't have enough free memory",
+    );
+  });
+
+  describe("a harness program that didn't start", () => {
+    const started = (harness: string, timeoutMs: number) =>
+      event({ type: "harness.started", state: "draft", agent: "reporter", harness, timeoutMs }, 2);
+
+    it("names the program, its limit and the step", () => {
+      const log = [started("claude-code", 60_000)];
+      expect(lines(causeBanner(failed("harness-start-failed"), log, context, false))).toEqual([
+        "Reporter didn't start: Claude Code didn't start on this computer, or didn't answer within 60 seconds. Nothing ran in the step Draft.",
+      ]);
+    });
+
+    it("says Codex, a program it doesn't know by its id, and one second", () => {
+      const say = (harness: string, timeoutMs: number) =>
+        lines(
+          causeBanner(
+            failed("harness-start-failed"),
+            [started(harness, timeoutMs)],
+            context,
+            false,
+          ),
+        )?.[0];
+      expect(say("codex", 30_000)).toContain("Codex didn't start");
+      expect(say("aider", 1_000)).toContain(
+        "Aider didn't start on this computer, or didn't answer within 1 second.",
+      );
+    });
+
+    it("waits for the log, and for the program's start in it", () => {
+      expect(
+        causeBanner(failed("harness-start-failed"), undefined, context, false),
+      ).toBeUndefined();
+      expect(causeBanner(failed("harness-start-failed"), [], context, false)).toBeUndefined();
+    });
+  });
+
   it("names the agent whose sandbox didn't start, never the engine's text", () => {
     const log = [
       event({ type: "agent.started", state: "draft", agent: "reporter", prompt: "" }, 1),
