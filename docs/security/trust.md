@@ -80,10 +80,13 @@ server grants trust: you do that on the computer, with `halonic trust`.
 
 ## What Studio asks for
 
-Studio doesn't show this check. Its shell asks "Trust this folder?" before it
-opens a folder you didn't pick yourself, and then names only the folder. It
-doesn't list programs, agents, addresses or the fingerprint. Don't read that
-question as a review of what the workspace can start (HAL-5519).
+Studio shows this check too (`apps/studio`, `src/studio/workspace-trust.ts`,
+`src/studio/trust-review.ts`). It checks a folder with the same `TrustService`
+and the same fingerprint as the CLI, and its review lists the programs, agents,
+addresses and integrations the workspace can start, or what changed since you
+trusted it. Its shell's older "Trust this folder?" question, asked before it
+opens a folder you didn't pick yourself, names only the folder: don't read that
+question as a review of what the workspace can start.
 
 ## What trust does not protect against
 

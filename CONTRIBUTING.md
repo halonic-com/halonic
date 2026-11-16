@@ -36,10 +36,6 @@ need no code.
 
 ## Setup
 
-> **One check doesn't block yet.** The requirement guard (the test-weakening
-> check) runs on every pull request but only reports, until approvals of
-> user-visible changes exist. See [docs/guides/checks.md](docs/guides/checks.md).
-
 You need:
 
 - **Node 26 LTS** and **pnpm 12**. pnpm manages its own version from
@@ -115,7 +111,7 @@ below it:
 | testing | `packages/testing/*` | anything | being a runtime dependency |
 | tooling | `tooling/*` | other tooling packages | being a runtime dependency |
 
-There are no targets yet; the layer is ready for them. A check
+The targets are `packages/targets/node` and `packages/targets/cloudflare`. A check
 (`tooling/check`) enforces this on every pull request and explains how
 to fix what it finds. The most important consequences:
 
@@ -160,7 +156,7 @@ Halonic has one firm rule: **nothing that works may break.**
 - **Tests that guard a requirement can't be weakened quietly.** Deleting or
   skipping a test, removing assertions, changing a golden file or editing an
   active requirement needs an approved decision note in the pull request. The
-  requirement guard checks this; for now it reports without blocking. If you
+  requirement guard checks this and blocks the pull request. If you
   think a requirement is wrong, open an issue.
 - **No flaky tests:** no retries, fake timers instead of sleeps, and always
   clean up temporary folders.
@@ -203,8 +199,7 @@ Halonic has one firm rule: **nothing that works may break.**
   (`ci-ok`) must pass in CI before anything is merged.
 - **Changes to cloud code run against a real cloud account.** A pull request
   that changes a cloud path (today `packages/targets`, `packages/host` and
-  `core/ports`; the Cloudflare adapters and the deploy command once they
-  exist; the full list is in
+  `core/ports`; the full list is in
   [`tooling/check/src/lib/cloud-paths.ts`](tooling/check/src/lib/cloud-paths.ts))
   must pass the live suites before it merges, once they are switched on.
   Until CI has a Cloudflare test token (HAL-198), they don't run and nothing

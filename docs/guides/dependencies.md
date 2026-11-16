@@ -45,10 +45,9 @@ A new core exception needs the user's approval, not only Liam's.
 What runs at a cloud provider (a Cloudflare Worker, later a container image)
 carries **only our own code, the provider's own code and `zod`**. The runtime
 never reads YAML: the deploy step ships the workspace as checked JSON.
-Passwords are checked with WebCrypto, not `@noble/hashes`. `main` has no cloud
-runtime yet (only the Cloudflare test harness, `packages/targets/cloudflare/testing`,
-which never ships), so these rules and `pnpm check:bundle` wait for the first
-runtime build.
+Passwords are checked with WebCrypto, not `@noble/hashes`. The Cloudflare runtime
+is `packages/targets/cloudflare/runtime`, and `tooling/publish/src/worker-bundle.ts`
+builds it. The test harness, `packages/targets/cloudflare/testing`, never ships.
 
 - `"cloudRuntime": true` in `dependencies.json` puts a library on the
   runtime list. Today only `zod` has it, and a test pins that. Only core
@@ -59,8 +58,10 @@ runtime build.
   `tooling/check/policy.json`: its own npm packages (for Cloudflare,
   `wrangler`'s templates and `@cloudflare/*`) and the modules its runtime
   provides (`cloudflare:*`, `node:*`).
-- **`pnpm check:bundle --target cloudflare <metafile>`** runs after each
-  runtime build. It reads the bundler's metafile (`--metafile`), so it sees
+- **`pnpm check:bundle --target cloudflare <metafile>`** checks a runtime
+  build. Today nothing runs it on the Worker build (`buildWorkerBundle`); a test
+  runs it on an integration bundle (`tooling/publish/src/pack.test.ts`).
+  It reads the bundler's metafile (`--metafile`), so it sees
   every file that went in, including whatever an approved library pulls
   with it, and fails on any package not allowed above, and on any module
   left external that the provider doesn't supply.
