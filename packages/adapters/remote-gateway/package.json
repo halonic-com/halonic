@@ -1,0 +1,33 @@
+{
+  "name": "@halonicjs/adapter-remote-gateway",
+  "private": true,
+  "type": "module",
+  "description": "The remote gateway: the one listener a tunnel may reach, speaking only the remote gateway protocol.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "owen",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    },
+    "runtime": "node"
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*"
+  }
+}
