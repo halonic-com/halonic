@@ -7,7 +7,7 @@ import {
   workflowIn,
 } from "@halonicjs/app";
 import { type RoutineClock, routineClocks } from "@halonicjs/app/routines";
-import { type RunEvent, type RunSummary, sendsOf } from "@halonicjs/events";
+import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { DefinitionStore, DefinitionWatch, RunStore } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { InboxRuns } from "@halonicjs/studio-feature-inbox/api";
@@ -82,8 +82,6 @@ export const systemTimer: PollTimer = {
 export class WorkspaceRuns implements RunsSource, InboxRuns {
   readonly #options: WorkspaceRunsOptions;
   readonly #listeners = new Set<() => void>();
-  /** Whether each run's log had a tool call, by run id, at the summary's `lastSeq`. */
-  readonly #toolCalls = new Map<string, { readonly lastSeq: number; readonly made: boolean }>();
   #facts: WorkspaceFacts | undefined;
   /** Whether the files changed since {@link WorkspaceRuns.#facts} was read, or can't be watched. */
   #factsStale = true;
@@ -102,12 +100,7 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
   async list(): Promise<SourcedRun[]> {
     await this.#readFacts();
     const summaries = await this.#options.runs.list();
-    return Promise.all(
-      summaries.map(async (summary) => ({
-        summary,
-        madeToolCalls: await this.#madeToolCalls(summary),
-      })),
-    );
+    return summaries.map((summary) => ({ summary }));
   }
 
   log(runId: string): Promise<RunEvent[]> {
@@ -206,18 +199,6 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
       currency: settings?.budget?.currency ?? defaultCurrency,
       monthly: settings?.budget?.monthly,
     };
-  }
-
-  /** Whether the run's log has a tool call, read once for each event the run adds. */
-  async #madeToolCalls(summary: RunSummary): Promise<boolean> {
-    const known = this.#toolCalls.get(summary.id);
-    // A log only grows, so a run that made a tool call always has made one.
-    if (known !== undefined && (known.made || known.lastSeq === summary.lastSeq)) {
-      return known.made;
-    }
-    const made = sendsOf(await this.#options.runs.events(summary.id)).madeToolCalls;
-    this.#toolCalls.set(summary.id, { lastSeq: summary.lastSeq, made });
-    return made;
   }
 
   #startWatching(): void {

@@ -8,7 +8,7 @@ import { runRow } from "./run-row.ts";
 function rowOf(id: string, changes: Partial<RunSummary>) {
   const workflow = { name: "Support reply", stepDescription: () => undefined };
   return runRow(
-    { summary: summaryWith({ id, ...changes }), madeToolCalls: false },
+    { summary: summaryWith({ id, ...changes }) },
     { workflow, routine: undefined, currency: "EUR", now: mondayMorning },
   );
 }

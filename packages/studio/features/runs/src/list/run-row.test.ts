@@ -11,9 +11,9 @@ const supportReply: RunWorkflow = {
     stateId === "review" ? "Approve this reply?\n{{reply}}" : undefined,
 };
 
-function rowOf(changes: Partial<RunSummary>, madeToolCalls = true): RunRow {
+function rowOf(changes: Partial<RunSummary>): RunRow {
   return runRow(
-    { summary: summaryWith(changes), madeToolCalls },
+    { summary: summaryWith(changes) },
     { workflow: supportReply, routine: undefined, currency: "EUR", now: mondayMorning },
   );
 }
@@ -68,8 +68,8 @@ verifies("runs.row", () => {
       expect(child.line).toBe("Waiting for child run 7k2m9p");
     });
 
-    it("leaves the sent part out of a finished run without a tool call, so it opens with its cost", () => {
-      const row = rowOf({ status: "completed", cost: 0.004 }, false);
+    it("leaves the sent part out of a finished run, so it opens with its cost", () => {
+      const row = rowOf({ status: "completed", cost: 0.004 });
 
       expect(row.chip).toEqual({ word: "Done", tone: "success", dot: false });
       expect(row.line).toBe("Estimated cost €0.004");
@@ -107,7 +107,7 @@ verifies("runs.row", () => {
 
     it("names a workflow that's gone by its id, and marks a test run", () => {
       const row = runRow(
-        { summary: summaryWith({ kind: "test" }), madeToolCalls: false },
+        { summary: summaryWith({ kind: "test" }) },
         { workflow: undefined, routine: undefined, currency: "EUR", now: mondayMorning },
       );
 
@@ -120,7 +120,7 @@ verifies("runs.row", () => {
 verifies("runs.row-columns", () => {
   it("gives when it started, how long it took once it ended, and the sentence a screen reader hears", () => {
     const live = rowOf({ status: "waiting", approvals: [approvalAt(1), approvalAt(2)] });
-    const ended = rowOf({ kind: "test", status: "completed", endedAt: minutesLater(3) }, false);
+    const ended = rowOf({ kind: "test", status: "completed", endedAt: minutesLater(3) });
     const failed = rowOf({ status: "failed", reason: "model-missing", endedAt: minutesLater(1) });
 
     expect(live.time).toBe("10:40");
@@ -141,7 +141,7 @@ verifies("runs.row-columns", () => {
     const morningBrief: RunRoutine = { name: "Morning brief", schedule: "Weekdays at 08:00" };
     const triggered = (trigger: RunTrigger, routine?: RunRoutine) =>
       runRow(
-        { summary: summaryWith({ trigger }), madeToolCalls: false },
+        { summary: summaryWith({ trigger }) },
         { workflow: supportReply, routine, currency: "EUR", now: mondayMorning },
       );
     const at = minutesLater(0);
@@ -213,7 +213,6 @@ verifies("runs.row-columns", () => {
       const named = runRow(
         {
           summary: summaryWith({ kind: "test" }),
-          madeToolCalls: false,
           testCase: "Refund over €100",
         },
         { workflow: supportReply, routine: undefined, currency: "EUR", now: mondayMorning },

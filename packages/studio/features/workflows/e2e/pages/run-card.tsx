@@ -137,7 +137,7 @@ function Card() {
     line: state.line,
     startedBy: "A message arrived",
   } as RunRow;
-  const run = { summary: state.summary, madeToolCalls: false } satisfies SourcedRun;
+  const run = { summary: state.summary } satisfies SourcedRun;
   return (
     <div className="flex h-screen justify-end bg-surface text-fg">
       <RunCard

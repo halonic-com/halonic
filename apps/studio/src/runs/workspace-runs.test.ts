@@ -1,6 +1,5 @@
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import { shortRunId } from "@halonicjs/app";
-import type { RunEvent } from "@halonicjs/events";
 import type { RunStore } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
@@ -150,55 +149,6 @@ verifies("studio.workspace-runs", () => {
       schedule: "Weekdays at 08:00",
     });
     expect(runs.routine("acme/gone")).toBeUndefined();
-  });
-
-  it("reads a run's log again only when it grew", async () => {
-    const { engine, runId } = await waitingRun();
-    const events = vi.spyOn(engine.stores.store, "events");
-    const runs = new WorkspaceRuns({ runs: engine.stores.store, definitions: acmeFiles() });
-
-    await runs.list();
-    await runs.list();
-    expect(events).toHaveBeenCalledTimes(1);
-
-    const [call] = (await runs.waiting())[0]?.approvals ?? [];
-    await engine.executor.send(runId, "approve", undefined, { callId: call?.callId ?? "" });
-    await engine.settle(runId);
-    events.mockClear();
-    await runs.list();
-    await runs.list();
-
-    expect(events).toHaveBeenCalledTimes(1);
-    expect(events).toHaveBeenCalledWith(runId);
-  });
-
-  it("says a run made a tool call when its log has one, and never reads that log again", async () => {
-    const { engine } = await waitingRun();
-    const store = engine.stores.store;
-    const withCall: Pick<RunStore, "list" | "events"> = {
-      list: async (filter) =>
-        (await store.list(filter)).map((run) => ({ ...run, lastSeq: run.lastSeq + reads })),
-      events: async (runId) => {
-        reads += 1;
-        const logged = await store.events(runId);
-        const toolCalled: RunEvent = {
-          runId,
-          seq: logged.length + 1,
-          at: "2026-01-01T00:00:02.000Z",
-          type: "tool.called",
-          agent: "writer",
-          tool: "publish",
-          args: {},
-        };
-        return [...logged, toolCalled];
-      },
-    };
-    let reads = 0;
-    const runs = new WorkspaceRuns({ runs: withCall, definitions: acmeFiles() });
-
-    expect((await runs.list())[0]?.madeToolCalls).toBe(true);
-    expect((await runs.list())[0]?.madeToolCalls).toBe(true);
-    expect(reads).toBe(1);
   });
 
   it("gives the Inbox the runs that wait, and can't answer one yet", async () => {

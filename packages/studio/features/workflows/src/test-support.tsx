@@ -173,7 +173,7 @@ export function memoryRuns(summaries: readonly RunSummary[] = []) {
   const source: RunsSource = {
     list: async () => {
       if (failure) throw failure;
-      return runs.map((summary) => ({ summary, madeToolCalls: false }));
+      return runs.map((summary) => ({ summary }));
     },
     log: async () => [],
     workflow: () => ({ name: "Support reply", stepDescription: () => undefined }),

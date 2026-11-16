@@ -62,7 +62,6 @@ function runsOf(
     loaded: !unread,
     runs: runs.map(([startedAt, cost, more]) => ({
       summary: { startedAt, cost, unpricedCalls: 0, hubId: "acme", parentRunId: null, ...more },
-      madeToolCalls: false,
     })),
   };
   return { state, subscribe: () => () => undefined } as unknown as RunsList;

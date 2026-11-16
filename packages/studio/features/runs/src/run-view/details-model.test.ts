@@ -13,7 +13,7 @@ const context = {
 };
 
 function rowsOf(changes: Parameters<typeof summaryWith>[0]) {
-  const run: SourcedRun = { summary: summaryWith(changes), madeToolCalls: false };
+  const run: SourcedRun = { summary: summaryWith(changes) };
   return detailRows(run, context, undefined).map((row) => [row.label, row.value]);
 }
 
