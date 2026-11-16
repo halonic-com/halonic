@@ -19,6 +19,26 @@ describe("lockfile check", () => {
     ).toEqual([undefined]);
   });
 
+  it("rejects an npm tarball that belongs to another package or version", () => {
+    const other = "https://registry.npmjs.org/other/-/other-1.0.0.tgz";
+    const wrongVersion = "https://registry.npmjs.org/a/-/a-2.0.0.tgz";
+    expect(
+      problems(`  a@1.0.0:\n    resolution: {integrity: ${integrity}, tarball: ${other}}\n`)[0],
+    ).toMatch(/not from its own tarball/);
+    expect(
+      problems(
+        `  a@1.0.0:\n    resolution: {integrity: ${integrity}, tarball: ${wrongVersion}}\n`,
+      )[0],
+    ).toMatch(/not from its own tarball/);
+  });
+
+  it("accepts the tarball path of a scoped package", () => {
+    const scoped = "https://registry.npmjs.org/@s/p/-/p-1.0.0.tgz";
+    expect(
+      problems(`  '@s/p@1.0.0':\n    resolution: {integrity: ${integrity}, tarball: ${scoped}}\n`),
+    ).toEqual([undefined]);
+  });
+
   it("rejects entries without a tarball URL, which a mirror registry also produces", () => {
     expect(problems(`  a@1.0.0:\n    resolution: {integrity: ${integrity}}\n`)[0]).toMatch(
       /no tarball URL/,
