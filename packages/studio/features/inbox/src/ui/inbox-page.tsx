@@ -226,7 +226,6 @@ export function InboxView({
               items={state.items}
               focus={focus}
               openNewConnector={openNewConnector}
-              openPlace={openPlace}
               openRun={openRun}
               now={now}
               answering={state.error === undefined}
@@ -279,7 +278,6 @@ function OpenCard({
   items,
   focus,
   openNewConnector,
-  openPlace,
   openRun,
 }: {
   readonly item: InboxItem;
@@ -288,7 +286,6 @@ function OpenCard({
   readonly items: readonly InboxItem[];
   readonly focus: SetupFocus | undefined;
   readonly openNewConnector: (() => void) | undefined;
-  readonly openPlace: ((place: SidebarPlace) => void) | undefined;
   readonly openRun: ((hubId: string, runId: string) => void) | undefined;
   readonly next: NextItem | null;
   readonly now: () => Date;
