@@ -236,6 +236,11 @@ export class LocalRuns {
     }
   }
 
+  /** The approvals of one run's bridge ({@link LocalHarnessCalls.bridgeApprovals}). */
+  bridgeApprovals(runId: string) {
+    return this.#harnessCalls.bridgeApprovals(runId);
+  }
+
   /**
    * Stops running runs in this process: every harness run going on is
    * stopped, with its session and bridge, and this resolves once they all

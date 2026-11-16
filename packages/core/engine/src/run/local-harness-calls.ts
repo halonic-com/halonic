@@ -3,7 +3,7 @@
 // and stops every call when the engine stops.
 
 import type { RunEvent } from "@halonicjs/events";
-import type { BlobStore, Clock, RunStore } from "@halonicjs/ports";
+import type { BlobStore, BridgeApprovals, Clock, RunStore } from "@halonicjs/ports";
 import type { StopSignal } from "@halonicjs/std";
 import { RunCallBudget } from "../budget/call-budget.ts";
 import type { BudgetCheck } from "../budget/keep-to-budget.ts";
@@ -14,6 +14,7 @@ import { programHarnessOf } from "../kernel/agent-call.ts";
 import type { AnswerHarnessEffect, DecideInput } from "../kernel/decide-types.ts";
 import { definitionsOf } from "../kernel/kept-definitions.ts";
 import type { PendingCall, RunState } from "../kernel/run-state.ts";
+import { RunBridgeApprovals } from "./bridge-approvals.ts";
 import { HarnessAnswers } from "./harness-answers.ts";
 import { LiveCalls } from "./live-calls.ts";
 import { type RunsProposalFolders, topLevelRunOf } from "./proposal-folders.ts";
@@ -44,6 +45,7 @@ export class LocalHarnessCalls {
   readonly #options: HarnessCallsOptions;
   readonly #live = new LiveCalls();
   readonly #answers = new HarnessAnswers();
+  readonly #bridgeApprovals = new RunBridgeApprovals();
 
   constructor(options: HarnessCallsOptions) {
     this.#options = options;
@@ -91,7 +93,7 @@ export class LocalHarnessCalls {
     );
     const log = new SerialRunLog(store, runId, waitedOn, lastSeq, clock, item?.item ?? null);
     const limits = startDeadlines.of(runId, call.callId);
-    const running = (stop: StopSignal) => {
+    const running = async (stop: StopSignal) => {
       const approvals = this.#approvalsOf(runId, call.agent, waitedOn, stop);
       const harnessCall = {
         effect,
@@ -102,7 +104,12 @@ export class LocalHarnessCalls {
         filesFolder,
         ...(budget === undefined ? {} : { budget: new RunCallBudget(budget, run, clock) }),
       };
-      return runHarnessCall(harnesses, harnessCall, log, approvals, limits, stop);
+      const unlist = this.#bridgeApprovals.add(runId, { approvals, log, stop });
+      try {
+        return await runHarnessCall(harnesses, harnessCall, log, approvals, limits, stop);
+      } finally {
+        unlist();
+      }
     };
     return this.#live.run(runId, running, topLevelRunId);
   }
@@ -115,6 +122,16 @@ export class LocalHarnessCalls {
    */
   answer(runId: string, effect: AnswerHarnessEffect): boolean {
     return this.#answers.give(runId, effect);
+  }
+
+  /**
+   * The approvals of the run's bridge: what the program or a Halonic tool
+   * needs a person's OK for goes to the run as an approval, answered with
+   * `approve` or `reject`. With no harness call of the run going on, each
+   * request is answered with no.
+   */
+  bridgeApprovals(runId: string): BridgeApprovals {
+    return this.#bridgeApprovals.of(runId);
   }
 
   /** Stops the run's harness calls going on, and resolves once each has stopped all it started. */

@@ -5,6 +5,7 @@ import type { RunSummary } from "@halonicjs/events";
 import type { Agent } from "@halonicjs/format";
 import {
   AgentRunsNotAvailable,
+  type BridgeApprovals,
   type ChatTurnRequest,
   type ChatTurnResponse,
   type ConnectorClient,
@@ -34,6 +35,7 @@ import {
 import type { LocalExecutorOptions } from "./local-executor-options.ts";
 import { type RunTurn, runLocalSubagent } from "./local-subagent.ts";
 import { callAlongsideOthers } from "./run/alongside-others.ts";
+import { noRunApprovals } from "./run/bridge-approvals.ts";
 import {
   allowedToolsOf,
   connectorsOf,
@@ -212,6 +214,18 @@ export class LocalExecutor implements RunExecutor {
    */
   async endLostRuns(): Promise<number> {
     return (await this.runs?.ready()) ?? 0;
+  }
+
+  /**
+   * The approvals of one run's bridge, which the host serves its harness
+   * program's bridge with (HAL-10849). What the program or a Halonic tool
+   * needs a person's OK for is recorded in the run as `approval.requested`,
+   * and answered by a `send` of `approve` or `reject`; the first answer wins.
+   * With no harness call of the run going on, or no `runs`, every request is
+   * answered with no.
+   */
+  bridgeApprovals(runId: string): BridgeApprovals {
+    return this.runs?.bridgeApprovals(runId) ?? noRunApprovals;
   }
 
   /**
