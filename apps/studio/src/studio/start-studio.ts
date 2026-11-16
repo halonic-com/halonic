@@ -86,6 +86,8 @@ import { trustedSourcesOf } from "./trusted-sources.ts";
 import { hostSettingsOf } from "./window-host-settings.ts";
 import { WorkspaceTrustView } from "./workspace-trust-control.ts";
 
+export { desktopFeatures };
+
 /**
  * The language of the Studio's words. Every text is English in v0.1, so the window's
  * `<html lang>` says so whatever the browser prefers; the kit's tabs hyphenate by it.
