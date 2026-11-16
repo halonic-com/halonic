@@ -4,6 +4,7 @@ import { isPlainObject } from "@halonicjs/std";
 import { type BudgetCheck, keepToBudget } from "../budget/keep-to-budget.ts";
 import { checkRunTakes, decide, tellParent } from "./decide.ts";
 import type { DecideInput, Decision, Effect, LoggedEvent, RunDefinitions } from "./decide-types.ts";
+import { InputRefused } from "./input-refused.ts";
 import { definitionsOf, UnreadableDefinitions } from "./kept-definitions.ts";
 import { foldRun, type RunState } from "./run-state.ts";
 import { saveArtifacts } from "./saved-artifacts.ts";
@@ -132,7 +133,25 @@ async function decideWithDefinitions(
       effects: tellParent({ ...run, status: "failed" }),
     };
   }
-  return decide(run, input, definitions);
+  try {
+    return decide(run, input, definitions);
+  } catch (error) {
+    // A run that exists is never left running by a decision that throws, as it would be
+    // asked again with the same input for as long as the process lives. A refused input
+    // is not a failure of the run, and a starting run has nothing stored to fail.
+    if (run === null || error instanceof InputRefused) throw error;
+    return {
+      events: [
+        {
+          type: "run.failed",
+          state: run.state,
+          error: error instanceof Error ? error.message : String(error),
+          reason: "error",
+        },
+      ],
+      effects: tellParent({ ...run, status: "failed" }),
+    };
+  }
 }
 
 /** Numbers the decided events after `lastSeq` and stamps them with the input's time. */

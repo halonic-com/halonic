@@ -49,4 +49,13 @@ verifies("routines.parse-every-rejects-bad-intervals", () => {
     expect(() => parseEvery("")).toThrow('"" is not an interval');
     expect(() => parseEvery("  ")).toThrow('"  " is not an interval');
   });
+
+  it("accepts a count of five digits and rejects one of six", () => {
+    expect(parseEvery("99999d")).toBe(99_999 * 86_400_000);
+    expect(() => parseEvery("100000d")).toThrow(CronError);
+  });
+
+  it("rejects an interval that no date can hold", () => {
+    expect(() => parseEvery("100000000000d")).toThrow(CronError);
+  });
 });

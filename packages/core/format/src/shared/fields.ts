@@ -72,8 +72,12 @@ export const collectionId = s
 /** The `version` key: `1`, and `1` when the file leaves it out. */
 export const version = s.literal(SCHEMA_VERSION).default(SCHEMA_VERSION);
 
-/** A whole number and a unit: minutes, hours or days ("30m", "4h", "2d"). */
-export const DURATION_PATTERN = /^[1-9]\d*(m|h|d)$/;
+/**
+ * A whole number of up to five digits and a unit: minutes, hours or days
+ * ("30m", "4h", "2d"). The most is 99999 days, about 273 years: longer would
+ * leave the range of a date, so no timer could be set for it.
+ */
+export const DURATION_PATTERN = /^[1-9]\d{0,4}(m|h|d)$/;
 
 /** Tuning passed to a model (temperature, maxTokens, …). */
 export const ModelParams = s

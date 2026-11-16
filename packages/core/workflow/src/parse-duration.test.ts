@@ -47,4 +47,13 @@ verifies("workflow.parse-duration-rejects-bad-durations", () => {
       expect(() => parseDuration(text), JSON.stringify(text)).toThrow("Bad duration");
     }
   });
+
+  it("accepts a count of five digits and rejects one of six", () => {
+    expect(parseDuration("99999d")).toBe(99_999 * 86_400_000);
+    expect(() => parseDuration("100000d")).toThrow('Bad duration "100000d"');
+  });
+
+  it("rejects a delay that no date can hold", () => {
+    expect(() => parseDuration("100000000000d")).toThrow('Bad duration "100000000000d"');
+  });
 });

@@ -1,6 +1,6 @@
 import type { ScheduledTimer, SchedulerListener } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ManualClock } from "./fakes.test-helper.ts";
 import { NodeRunSql } from "./node/node-sql.spec.ts";
 import { napFor, TimerDelivery } from "./timer-delivery.ts";
@@ -118,6 +118,23 @@ verifies("cloudflare-durable.timers", () => {
   });
 
   describe("napFor", () => {
+    it("waits no longer than setTimeout keeps, for a timer more than 24 days away", async () => {
+      const delays: unknown[] = [];
+      const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout").mockImplementation(((
+        _callback: unknown,
+        delay: unknown,
+      ) => {
+        delays.push(delay);
+        return 0;
+      }) as unknown as typeof setTimeout);
+      try {
+        void napFor(30 * 24 * 60 * 60 * second, new AbortController().signal);
+      } finally {
+        setTimeoutSpy.mockRestore();
+      }
+      expect(delays).toEqual([2 ** 31 - 1]);
+    });
+
     it("resolves when the time has passed, and at once when it is aborted", async () => {
       const abort = new AbortController();
       await expect(napFor(1, abort.signal)).resolves.toBeUndefined();

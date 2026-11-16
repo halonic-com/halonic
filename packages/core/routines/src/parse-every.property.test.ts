@@ -13,7 +13,7 @@ const SEED = 576;
 const UNIT_LENGTHS = { m: 60 * 1000, h: 60 * 60 * 1000, d: 24 * 60 * 60 * 1000 };
 
 const unit = fc.constantFrom("m", "h", "d") as fc.Arbitrary<keyof typeof UNIT_LENGTHS>;
-const count = fc.integer({ min: 1, max: 1_000_000 });
+const count = fc.integer({ min: 1, max: 99_999 });
 
 /**
  * Whether the text, without the spaces around it, is a count of 1 or more

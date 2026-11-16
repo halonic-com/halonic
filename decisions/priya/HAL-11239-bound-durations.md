@@ -1,0 +1,21 @@
+# Decision: bound timer delays and routine intervals
+
+- Approval: HAL-11239
+- Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:igtDOyibS12yCu/tnP4VbMw8aMpmVWph1dWPzIFDFcnG762IyQFe7NR2JmgS1ZqF+fChbdzeM8y6QuyU+O6aDw==
+
+A timer delay (`after`) and a routine interval (`every`) are now a count of
+1 to 99999 followed by `m`, `h` or `d`, so the longest is 99999 days, about
+273 years. Before, any number of digits was accepted, and a count too large
+for a date made the engine throw while it entered a wait state. No real
+workflow needs a longer delay. A file with a longer one is now refused with
+the same message as any other bad duration.
+
+The three JSON Schema golden files change in the `pattern` of these
+durations only.
+
+## Covers
+
+- packages/core/format/spec/routine.schema.json
+- packages/core/format/spec/workflow-test.schema.json
+- packages/core/format/spec/workflow.schema.json

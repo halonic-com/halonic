@@ -47,7 +47,7 @@
           "properties": {
             "every": {
               "type": "string",
-              "pattern": "^[1-9]\\d*(m|h|d)$"
+              "pattern": "^[1-9]\\d{0,4}(m|h|d)$"
             }
           },
           "required": [
@@ -111,7 +111,7 @@
                 "every": {
                   "default": "2m",
                   "type": "string",
-                  "pattern": "^[1-9]\\d*(m|h|d)$"
+                  "pattern": "^[1-9]\\d{0,4}(m|h|d)$"
                 }
               },
               "required": [
