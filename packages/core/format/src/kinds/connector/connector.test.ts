@@ -27,6 +27,39 @@ verifies("format.connector-file", () => {
     expect(summary(problemsOf("connector", http))).toEqual(["transport.http.url invalid_format 4"]);
   });
 
+  it("refuses a secret name that belongs to Halonic or to a plugin, at its line", () => {
+    const http = (name: string) =>
+      yaml(
+        "id: tracker",
+        "transport:",
+        "  http: { url: 'https://tracker.example.com' }",
+        `secret: ${name}`,
+      );
+    const stdio = (name: string) =>
+      yaml(
+        "id: files",
+        "transport:",
+        "  stdio:",
+        "    command: mcp",
+        "    secretEnv:",
+        `      TOKEN: ${name}`,
+      );
+    for (const name of [
+      "token-key",
+      "Serve_Password",
+      "halonic_token_google",
+      "plugin__weather__key",
+    ]) {
+      expect(summary(problemsOf("connector", http(name)))).toEqual([
+        "secret secret-name-reserved 4",
+      ]);
+      expect(summary(problemsOf("connector", stdio(name)))).toEqual([
+        "transport.stdio.secretEnv.TOKEN secret-name-reserved 6",
+      ]);
+    }
+    expect(parsedValue("connector", http("tracker-key")).secret).toBe("tracker-key");
+  });
+
   it("refuses two transports at once, at the transport", () => {
     const text = yaml(
       "id: tracker",

@@ -1,4 +1,4 @@
-import { passesNameRule } from "@halonicjs/ports";
+import { isHalonicSecretName, isPluginSecretName, passesNameRule } from "@halonicjs/ports";
 import type { Path } from "@halonicjs/schema-kit";
 import { isSecretVariableName } from "@halonicjs/std";
 import type { FileKind, KindCheckProblem } from "../../kind.ts";
@@ -44,9 +44,32 @@ function secretNames(connector: Connector): Array<readonly [string, Path]> {
   return names;
 }
 
-/** The secrets are named in the file, so a bad name or a pasted key is caught here, not at run time. */
+/*
+ * The words are the team's, next to `secret-name.ts`: a small wording on a
+ * check the board already approved (HAL-11237).
+ */
+const reservedNameMessage =
+  "This secret name belongs to Halonic or to a plugin, so a connector can't use it. Store the value under a name of your own, such as my-service-key.";
+
+/**
+ * The secrets are named in the file, so a bad name or a pasted key is caught
+ * here, not at run time. A name that belongs to Halonic (`token-key`,
+ * `serve-password`) or to a plugin is refused too: the file is the
+ * workspace's, and what it names reaches a program or a server.
+ */
 function checkSecretNames(connector: Connector): KindCheckProblem[] {
-  return secretNames(connector).flatMap(([name, path]) => checkSecretName(name, path) ?? []);
+  return secretNames(connector).flatMap(([name, path]) => {
+    const problem = checkSecretName(name, path);
+    if (problem !== undefined) {
+      return [problem];
+    }
+    if (isHalonicSecretName(name) || isPluginSecretName(name)) {
+      return [
+        { severity: "error", code: "secret-name-reserved", path, message: reservedNameMessage },
+      ];
+    }
+    return [];
+  });
 }
 
 /**

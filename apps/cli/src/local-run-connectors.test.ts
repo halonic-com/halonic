@@ -6,7 +6,7 @@ import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { ConnectorFactories } from "@halonicjs/app";
 import type { RunVersion } from "@halonicjs/events";
-import type { ConnectorFactory, TrustGrant } from "@halonicjs/ports";
+import type { ConnectorFactory, Secrets, TrustGrant } from "@halonicjs/ports";
 import { contractGrant } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
@@ -41,12 +41,16 @@ function connectorsOn(
     readonly reported?: unknown[];
     readonly versions?: RunConnectorsEngine["versions"];
     readonly created?: Created[];
+    /** Where each connector's secrets go, for a test that reads through them. */
+    readonly secretsSeen?: Secrets[];
+    readonly secrets?: Secrets;
   } = {},
 ): LocalRunConnectors {
   const stdio: ConnectorFactory = {
     transport: "stdio",
     create: (config, context) => {
       options.created?.push({ id: config.id, trust: context.trust });
+      options.secretsSeen?.push(context.secrets);
       return {
         id: config.id,
         listTools: async () => [],
@@ -68,7 +72,7 @@ function connectorsOn(
       workspace: { files: [] } as unknown as LoadedWorkspace,
       ...(options.versions === undefined ? {} : { versions: options.versions }),
       location: folder,
-      secrets: { get: async () => null },
+      secrets: options.secrets ?? { get: async () => null },
       programFolders: {
         folderFor: async () => ({ path: folder, release: async () => {} }),
         close: async () => {},
@@ -129,6 +133,32 @@ verifies("cli.local-engine", () => {
     expect(created).toEqual([{ id: "notes", trust: contractGrant }]);
     await runConnectors.end(reportRun.runId);
     expect(forgotten).toEqual([reportRun.runId]);
+  });
+
+  it("gives a run's connectors no secret of Halonic's own or a plugin's", async () => {
+    const secretsSeen: Secrets[] = [];
+    const stored: Record<string, string> = {
+      "token-key": "fake-key-value",
+      "serve-password": "fake-hash-value",
+      "plugin__weather__acme-key": "fake-plugin-value",
+      "notes-key": "fake-notes-value",
+    };
+    const { runConnectors } = connectorsOn({
+      secretsSeen,
+      secrets: { get: async (name) => stored[name] ?? null },
+      versions: {
+        trustedVersionOf: async () => ({ workspace: await acmeWithNotes(), trust: contractGrant }),
+        forget: () => {},
+      },
+    }).runs;
+
+    await runConnectors.open(reportRun);
+
+    const [secrets] = secretsSeen;
+    expect(await secrets?.get("notes-key")).toBe("fake-notes-value");
+    for (const name of ["token-key", "serve-password", "plugin__weather__acme-key"]) {
+      await expect(secrets?.get(name)).rejects.toThrow(RangeError);
+    }
   });
 
   it("starts no connector of a run whose version may not run here, saying why", async () => {
