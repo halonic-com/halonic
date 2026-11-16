@@ -14,7 +14,7 @@ When a run failed for a reason the engine names, the run page's banner shall say
 
 The model and its provider shall come from the log's last model call, the host from `run.failed`. A banner that needs the model shall wait for the log, and until then the page's general banner shows. The engine's own error text, and the provider's, shall never be on the banner.
 
-Limits, for the docs: the banners have **Run again** (`runs.run-view.run-again`) but no **Open Models** or **Copy details** yet, because the banner has room for one button. They come with the local-model banners. The provider is named by its id with a capital until the engine logs a display name, and the model is named instead of its alias until the engine logs the alias.
+Limits, for the docs: the banners have no **Run again**, **Open Models** or **Copy details** yet, because the page has no Run again and the banner has room for one action. They come with those. The provider is named by its id with a capital until the engine logs a display name, and the model is named instead of its alias until the engine logs the alias.
 
 ## Examples
 

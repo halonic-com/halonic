@@ -8,7 +8,7 @@ When a run failed with `harness-start-failed`, the run page's banner shall say w
 
 A `model-out-of-memory` failure on a provider that runs elsewhere shall keep the page's general banner, because the memory sentence of `runs.run-view.failure-banners` says "this computer". A provider that is no longer in the workspace still gets that sentence.
 
-Limits, for the docs: the sentences for a program that isn't installed or isn't signed in (F21b, F21c) come with a detail on `run.failed`. It has **Run again** (`runs.run-view.run-again`) but no **Copy details** yet, as for the other banners. With agents that run side by side, the last model call in the log may not be the one that failed.
+Limits, for the docs: the sentences for a program that isn't installed or isn't signed in (F21b, F21c) come with a detail on `run.failed`. There is no **Run again** or **Copy details** yet, as for the other banners. With agents that run side by side, the last model call in the log may not be the one that failed.
 
 ## Examples
 
