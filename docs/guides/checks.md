@@ -68,6 +68,7 @@ queue.
 | `invisible-characters` | docs, code, config or tests hold a character nobody can see: a format character (zero-width, bidi control, tag letter, byte order mark), a variation selector, or a control character other than tab, line feed and carriage return. Emoji with their joiners and selectors, and other visible non-ASCII such as umlauts or CJK, are fine. Write such a character as an escape (`\u202E`) in code; name it in words in docs |
 | `markdown-tables` | a Markdown table is padded to equal column widths, so one longer cell rewrites every row and two pull requests that each add a row conflict in the merge queue. Fix with `pnpm check:tables`, which writes `\| a \| b \|` rows |
 | `tracker-links` | a Markdown file links to the task tracker (a link target starting with `/HAL/issues/`). Readers outside the team can't open it. Write the task id as plain text (`HAL-136`), and link the requirement or ADR that records the substance if the reader needs it. Code blocks and code spans are exempt |
+| `notes-signed` | a decision note under `decisions/` has no signature line, a signature in the wrong form or from a key `tooling/check/approvers.json` doesn't pin, or a header the note format doesn't accept. On a pull request the branch's own note is left to the note check; in the merge queue and on `main` every note counts. The notes merged unsigned before the note check was required are listed in `decisions/liam/HAL-11244-note-record.md` and pass |
 | `native-disabled` | a `.tsx` or `.jsx` file outside `packages/studio/kit` gives a `<button>` a native `disabled` attribute. A disabled button loses focus and hides why it can't be used; use the kit's Button with `unavailable={{ reason }}` (component specs 23, A1). Tests are exempt |
 | `readme-examples` | a package's `examples/` file has no block in its README, or the block (the first `ts` block after the line linking to `examples/<file>`) differs from the file. Only the `../src/index.ts` import may differ: the README names the package. Fix by copying the file into the block |
 | `process-starts` | a product file imports `child_process`, `worker_threads`, `cluster` or `vm` (with or without `node:`), or loads a module the check can't follow, without an entry in `tooling/check/process-starters.json`, or an entry's file no longer starts a process, or an entry has no reason or names no existing test. An entry whose file doesn't exist yet is a warning. See [process-starts](#process-starts) |
@@ -341,7 +342,9 @@ note check. The notes are the record of what was approved, so nobody rewrites
 an `Approval` or `Covers` line quietly. If there is a real case for it (a typo
 fix), the pull request needs a `user-visible` note of its own that lists the
 edited note's path under Covers, signed like any other (a deleted note's path
-counts too).
+counts too). The `notes-signed` rule of `pnpm check` (table above) checks
+every note on `main` for a signature from a pinned key, so a note that got
+past the note check unsigned fails the next run.
 
 **Two guardians for the trust roots.** A change to the guard's trust roots needs
 two `- Signature:` lines from two different guardians, one under the other in
@@ -788,8 +791,8 @@ your deny-terms file and how to allow a false positive.
 `.github/workflows/ci.yml` runs on every pull request, in the merge queue
 and on `main`. The only check this repo's code makes required is `ci-ok`: it always runs,
 waits for every other job in this workflow and fails if any failed. The
-note check in `guard-notes.yml` is another workflow, so it is required
-only if an admin adds it in the repo settings. Jobs that only run for some
+note check in `guard-notes.yml` is another workflow; the organisation's
+ruleset requires it on `main`. Jobs that only run for some
 changes (such as the scaffold check, which proves `pnpm new` still
 produces packages that pass) are then skipped without blocking the merge.
 
