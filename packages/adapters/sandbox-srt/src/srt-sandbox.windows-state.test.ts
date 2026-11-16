@@ -6,7 +6,10 @@ import { SrtSandbox } from "./srt-sandbox.ts";
 import { endedProgram } from "./srt-session.test-helper.ts";
 
 /** A Windows machine whose srt install is in `state`; nothing else is asked of it here. */
-function windows(state: Awaited<ReturnType<Machine["windowsSandboxState"]>>): Machine {
+function windows(
+  state: Awaited<ReturnType<Machine["windowsSandboxState"]>>,
+  profileReadGranted: Machine["profileReadGranted"] = async () => false,
+): Machine {
   return {
     platform: "win32",
     insideContainer: async () => false,
@@ -19,6 +22,7 @@ function windows(state: Awaited<ReturnType<Machine["windowsSandboxState"]>>): Ma
     hasSeatbelt: async () => false,
     packageManager: async () => null,
     windowsSandboxState: async () => state,
+    profileReadGranted,
     installWindowsSandbox: async () => "installed" as const,
     letSandboxReadParents: async () => undefined,
     uninstallWindowsSandbox: async () => "removed" as const,
@@ -47,6 +51,30 @@ verifies("sandbox-srt.check", () => {
       expect(check).toMatchObject({ ok: false, reason: "setup-conflict" });
       expect(check.missing[0]).toContain("loopback");
       await expect(sandbox.open(profile)).rejects.toThrow("can't start");
+    });
+
+    it("reports kept-roots-readable for another program's setup with the profile read grant, and for one it can't read (HAL-5398, S4)", async () => {
+      const foreign = await new SrtSandbox(windows("ok", async () => true)).check();
+      expect(foreign).toEqual({
+        ok: true,
+        reason: null,
+        missing: [],
+        residuals: ["kept-roots-readable"],
+      });
+      const unreadable = await new SrtSandbox(
+        windows("ok", async () => {
+          throw new Error("srt-win did not answer");
+        }),
+      ).check();
+      expect(unreadable).toMatchObject({ ok: true, residuals: ["kept-roots-readable"] });
+    });
+
+    it("reports no residual for a setup Halonic owns, without the profile read grant", async () => {
+      expect(await new SrtSandbox(windows("ok")).check()).toEqual({
+        ok: true,
+        reason: null,
+        missing: [],
+      });
     });
   });
 });

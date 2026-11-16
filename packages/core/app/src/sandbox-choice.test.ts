@@ -1,4 +1,4 @@
-import type { SandboxSetting } from "@halonicjs/ports";
+import type { SandboxCheck, SandboxSetting } from "@halonicjs/ports";
 import { FakeSandboxSession, idleProgram } from "@halonicjs/testing-contracts";
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
@@ -157,6 +157,24 @@ verifies("app.sandbox-choice", () => {
     const current = await overdue({ overdue: false });
     expect(current.residuals).not.toContain("security-updates-overdue");
     expect(current).not.toHaveProperty("securityUpdatesLast");
+  });
+
+  it("shows the residuals of an ok check next to the trust check's (HAL-5398, S4)", async () => {
+    const readable: SandboxCheck = {
+      ok: true,
+      reason: null,
+      missing: [],
+      residuals: ["kept-roots-readable"],
+    };
+    const { choice } = machine({
+      setting: choose("mxc"),
+      backends: { srt: { check: readable }, mxc: { check: readable, canary: [clean] } },
+    });
+    const result = await choice.start();
+    expect(statusOf(result, "srt")).toMatchObject({ residuals: ["kept-roots-readable"] });
+    expect(statusOf(result, "mxc")).toMatchObject({
+      residuals: ["kept-roots-readable", "name-lookups-leave"],
+    });
   });
 
   it("runs nothing when the check fails, without falling through or changing the setting", async () => {

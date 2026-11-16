@@ -289,6 +289,7 @@ export {
   type SandboxPackageManager,
   type SandboxProcess,
   type SandboxProfile,
+  type SandboxResidual,
   type SandboxSession,
   type SandboxStrength,
   type SandboxUnavailableReason,
