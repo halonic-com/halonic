@@ -120,6 +120,10 @@ pub enum FileFolder {
     /// One source's approvals of listed tools in the opened workspace, kept
     /// in the profile and never in the workspace (HAL-8868). Needs `source`.
     ToolApprovals,
+    /// `.studio/discarded` in the workspace, where a discard keeps a copy of
+    /// what it threw away. Only a write goes there: a list, read or remove of
+    /// it is refused, and a link on the way to it is too.
+    Discarded,
 }
 
 /// The real path of `workspace`, which must be a folder the person opened
@@ -170,6 +174,46 @@ pub(crate) enum Making {
     Removing,
 }
 
+/// The folder a discard keeps its copies in, `.studio/discarded` under the
+/// workspace's real path `root`. A link in either segment is refused, so a
+/// copy can't land outside the workspace; only a write makes the folders.
+fn kept_copies_root(root: &Path, making: Making) -> Result<PathBuf, FileRefusal> {
+    let mut folder = root.to_owned();
+    for segment in [".studio", "discarded"] {
+        folder.push(segment);
+        match std::fs::symlink_metadata(&folder) {
+            Ok(entry) if entry.file_type().is_symlink() => {
+                return Err(FileError::LinkedPath {
+                    path: format!(".studio/{segment}"),
+                }
+                .into());
+            }
+            Ok(entry) if entry.is_dir() => {}
+            Ok(_) => return Err(FileRefusal::io(format!("{segment:?} is not a folder."))),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                if making != Making::Folder {
+                    return Ok(folder);
+                }
+                std::fs::create_dir(&folder).map_err(FileRefusal::io)?;
+            }
+            Err(error) => return Err(FileRefusal::io(error)),
+        }
+    }
+    Ok(folder)
+}
+
+/// Refuses every call but a write for the `"discarded"` folder.
+fn only_writes_to_kept_copies(folder: Option<FileFolder>) -> Result<(), FileRefusal> {
+    if folder != Some(FileFolder::Discarded) {
+        return Ok(());
+    }
+    Err(FileRefusal {
+        kind: "private_path",
+        message: "the discarded folder only takes writes".to_owned(),
+        path: None,
+    })
+}
+
 /// Runs `call` on the folder of the workspace the page named, on a worker
 /// thread: it reads and writes files, and may wait for another write's turn.
 async fn in_workspace<R, T, F>(
@@ -202,6 +246,10 @@ where
                 }
                 (root, Fence::Outside)
             }
+            FileFolder::Discarded => {
+                let real = workspace_root(&opened, &workspace)?;
+                (kept_copies_root(&real, making)?, Fence::Outside)
+            }
             FileFolder::ToolApprovals => {
                 let root =
                     tool_approvals::source_root(&opened, &profile, &workspace, source.as_deref())?;
@@ -227,6 +275,7 @@ pub async fn fs_list<R: Runtime>(
     source: Option<String>,
     dir: Option<String>,
 ) -> Result<Vec<String>, FileRefusal> {
+    only_writes_to_kept_copies(folder)?;
     tool_approvals::check_list(folder, dir.as_deref())?;
     in_workspace(
         app,
@@ -248,6 +297,7 @@ pub async fn fs_read<R: Runtime>(
     source: Option<String>,
     path: String,
 ) -> Result<Option<String>, FileRefusal> {
+    only_writes_to_kept_copies(folder)?;
     tool_approvals::check_file(folder, &path)?;
     in_workspace(
         app,
@@ -299,6 +349,7 @@ pub async fn fs_remove<R: Runtime>(
     path: String,
     expected: Option<String>,
 ) -> Result<RemoveAnswer, FileRefusal> {
+    only_writes_to_kept_copies(folder)?;
     tool_approvals::check_file(folder, &path)?;
     in_workspace(
         app,

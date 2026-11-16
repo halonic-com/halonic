@@ -1,7 +1,9 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
+import type { DefinitionStore } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { type GitAnswer, WorkspaceChanges } from "./workspace-changes.ts";
@@ -36,12 +38,17 @@ function watching(listeners: Set<() => void>, listener: () => void): () => void 
   return () => listeners.delete(listener);
 }
 
-function history(git: (args: readonly string[]) => Promise<GitAnswer>, files = fakeFiles()) {
+function history(
+  git: (args: readonly string[]) => Promise<GitAnswer>,
+  files = fakeFiles(),
+  copies: Pick<DefinitionStore, "write"> = fakeFiles(),
+) {
   const focus = new Set<() => void>();
   const changed = new Set<() => void>();
   const changes = new WorkspaceChanges({
     git,
     files,
+    copies,
     digest: sha256,
     onFocus: (listener) => watching(focus, listener),
     onFilesChanged: (listener) => watching(changed, listener),
@@ -276,14 +283,39 @@ verifies("source-control.changes-page", () => {
         await expect(changes.removeFile("a.yaml", "new\n")).resolves.toBe("changed-on-disk");
       });
 
-      it("keeps a copy under .studio/discarded, named by the time", async () => {
+      it("keeps a copy in the copies store, named by the time, and leaves the folder's files alone", async () => {
         const files = fakeFiles();
-        const { changes } = history(async () => answer(""), files);
+        const copies = fakeFiles();
+        const { changes } = history(async () => answer(""), files, copies);
         await changes.keepCopy([{ path: "hubs/a.yaml", text: "mine\n" }]);
-        expect([...files.files.keys()]).toHaveLength(1);
-        expect([...files.files.keys()][0]).toMatch(
-          /^\.studio\/discarded\/\d{4}-\d{2}-\d{2}T[\d-]+\.\d+Z\/hubs\/a\.yaml$/,
+        expect([...copies.files.keys()]).toHaveLength(1);
+        expect([...copies.files.keys()][0]).toMatch(
+          /^\d{4}-\d{2}-\d{2}T[\d-]+\.\d+Z\/hubs\/a\.yaml$/,
         );
+        expect(files.write).not.toHaveBeenCalled();
+      });
+
+      it("writes a kept copy into a real folder under .studio/discarded, which the folder's own store refuses", async () => {
+        const folder = mkdtempSync(join(tmpdir(), "halonic-discard-"));
+        try {
+          const kept = join(folder, ".studio", "discarded");
+          mkdirSync(kept, { recursive: true });
+          const workspace = new FolderDefinitionStore(folder);
+          const changes = new WorkspaceChanges({
+            git: async () => answer(""),
+            files: workspace,
+            copies: new FolderDefinitionStore(kept),
+            digest: sha256,
+            onFocus: () => () => {},
+            onFilesChanged: () => () => {},
+          });
+          await expect(workspace.write(".studio/discarded/x/a.yaml", "x")).rejects.toThrow();
+          await changes.keepCopy([{ path: "hubs/a.yaml", text: "mine\n" }]);
+          const [stamp] = readdirSync(kept);
+          expect(readFileSync(join(kept, stamp ?? "", "hubs", "a.yaml"), "utf8")).toBe("mine\n");
+        } finally {
+          rmSync(folder, { recursive: true, force: true });
+        }
       });
 
       it("says changed-on-disk when the store refuses", async () => {

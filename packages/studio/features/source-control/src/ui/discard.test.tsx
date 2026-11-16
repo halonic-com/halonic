@@ -199,6 +199,18 @@ verifies("source-control.discard", () => {
       expect(fake.replaced[1]?.text).toBe(after);
     });
 
+    it("ignores a second press on Discard this part while the first is working", async () => {
+      const { fake, root } = await openPage({ developer: true });
+      await press(buttons(section(root, hub), "Show lines")[0]);
+      const [part] = buttons(section(root, hub), "Discard this part");
+      await act(async () => {
+        part?.click();
+        part?.click();
+        await settle();
+      });
+      expect(fake.replaced).toHaveLength(1);
+    });
+
     it("discards the whole file with Discard", async () => {
       const { fake, root } = await openPage({ developer: true });
       await press(buttons(section(root, hub), "Discard")[0]);

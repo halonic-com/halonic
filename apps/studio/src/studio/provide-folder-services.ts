@@ -74,6 +74,8 @@ export function provideFolderServices(
       git: async (args) =>
         (await ipc.invoke("git", { root: location, args: [...args] })) as GitAnswer,
       files: new TauriDefinitionStore(files, location),
+      // `.studio/discarded`, which the folder's own store refuses as private.
+      copies: new TauriDefinitionStore(files, location, { folder: "discarded" }),
       digest: webCryptoDigest,
       onFocus: (listener) => focusOf(window, listener),
       onFilesChanged: (listener) => scope.events.on("files.changed", listener),

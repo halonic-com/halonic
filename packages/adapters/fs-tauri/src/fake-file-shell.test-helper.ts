@@ -55,6 +55,7 @@ export class FakeFileShell implements TauriFileShell {
   #nextWatch = 0;
   #nextRefusal: { kind: FileRefusalKind; command: string | undefined } | undefined;
   #review: FakeFileShell | undefined;
+  #discarded: FakeFileShell | undefined;
   readonly #approvals = new Map<string, FakeFileShell>();
 
   /**
@@ -78,6 +79,12 @@ export class FakeFileShell implements TauriFileShell {
   get review(): FakeFileShell {
     this.#review ??= new FakeFileShell({ opened: this.#opened, granted: this.#granted });
     return this.#review;
+  }
+
+  /** The workspace's `.studio/discarded`, which `fs_write` calls with `folder: "discarded"` reach. */
+  get discarded(): FakeFileShell {
+    this.#discarded ??= new FakeFileShell({ opened: this.#opened, granted: this.#granted });
+    return this.#discarded;
   }
 
   /** One source's tool approvals in `workspace`, which calls with `folder: "tool-approvals"` and that `source` reach. */
@@ -151,12 +158,9 @@ export class FakeFileShell implements TauriFileShell {
       throw refusal("folder_not_open", "the folder isn't open");
     }
     const { folder, ...rest } = args;
-    if (folder === "review" && command !== "fs_watch") {
-      return await this.review.invoke(command, rest);
-    }
-    if (folder === "tool-approvals" && command !== "fs_watch") {
-      const { source, ...others } = rest;
-      return await this.#approvalsCall(command, String(args["workspace"]), source, others);
+    const other = await this.#otherFolder(folder, command, rest);
+    if (other !== undefined) {
+      return other.answer;
     }
     if (folder !== undefined && folder !== "workspace") {
       // What Tauri rejects with for an argument the command can't take: text, not a refusal.
@@ -183,6 +187,33 @@ export class FakeFileShell implements TauriFileShell {
       default:
         throw `Command ${command} not found`;
     }
+  }
+
+  /** The answer of a call for a folder other than the workspace's own, `undefined` for the workspace's own. */
+  async #otherFolder(
+    folder: unknown,
+    command: string,
+    rest: Record<string, unknown>,
+  ): Promise<{ answer: unknown } | undefined> {
+    if (folder === "discarded") {
+      if (command !== "fs_write") {
+        throw refusal("private_path", "the discarded folder only takes writes");
+      }
+      return { answer: await this.discarded.invoke(command, rest) };
+    }
+    if (command === "fs_watch") {
+      return undefined;
+    }
+    if (folder === "review") {
+      return { answer: await this.review.invoke(command, rest) };
+    }
+    if (folder === "tool-approvals") {
+      const { source, ...others } = rest;
+      return {
+        answer: await this.#approvalsCall(command, String(rest["workspace"]), source, others),
+      };
+    }
+    return undefined;
   }
 
   /** A call on the approvals folder: it needs a source, lists only the whole folder and keeps to the store's own file names. */

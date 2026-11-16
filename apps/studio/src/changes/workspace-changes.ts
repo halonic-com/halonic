@@ -28,6 +28,11 @@ export interface WorkspaceChangesOptions {
   readonly git: (args: readonly string[]) => Promise<GitAnswer>;
   /** The folder's files, for `.gitignore`. */
   readonly files: Pick<DefinitionStore, "read" | "write" | "remove">;
+  /**
+   * Where a discard keeps its copies, a folder of its own: the folder's files refuse `.studio`.
+   * Every path given to it is relative to that folder.
+   */
+  readonly copies: Pick<DefinitionStore, "write">;
   /** Hashes a file's text for the write-if-unchanged check. */
   readonly digest: Sha256;
   /** Calls its listener when the window comes to the front; returns a function that stops it. */
@@ -40,9 +45,6 @@ export interface WorkspaceChangesOptions {
 
 /** The line that keeps Halonic's own data out of the history. */
 const studioIgnoreLine = ".studio/";
-
-/** Where a discard keeps a copy of what it threw away; inside `.studio/`, so git ignores it. */
-const keptFolder = ".studio/discarded";
 
 /**
  * The open workspace's history, read through the shell's `git` command: what changed since the
@@ -92,7 +94,7 @@ export class WorkspaceChanges implements ChangesSource {
   async keepCopy(files: readonly KeptFile[]): Promise<void> {
     const stamp = (this.#options.now?.() ?? new Date()).toISOString().replaceAll(":", "-");
     for (const file of files) {
-      await this.#options.files.write(`${keptFolder}/${stamp}/${file.path}`, file.text);
+      await this.#options.copies.write(`${stamp}/${file.path}`, file.text);
     }
   }
 

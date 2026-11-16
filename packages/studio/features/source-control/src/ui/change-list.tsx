@@ -1,7 +1,7 @@
 import type { ChangeLine } from "@halonicjs/app";
 import type { LineChange } from "@halonicjs/std";
 import { Button, useToastStore } from "@halonicjs/studio-kit";
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import type { ChangedFile, ChangesList, DiscardOutcome } from "../changes-list.ts";
 import { discardWords, listWords, undoWords, versionWords } from "../changes-words.ts";
 
@@ -144,6 +144,11 @@ function useDiscardToasts(): DiscardToasts {
   };
 }
 
+/** What tells one part of a file from the others. */
+function partKey(part: LineChange): string {
+  return `${part.beforeStart}:${part.afterStart}`;
+}
+
 /** The developer view's line diff of one file: each part with its own "Discard this part". */
 function LineDiff({
   list,
@@ -157,18 +162,30 @@ function LineDiff({
   readonly discarding: DiscardToasts;
 }) {
   const [failure, setFailure] = useState<string>();
+  // The part being discarded: a second press on it, or on another part, would find the file changed.
+  const [busyPart, setBusyPart] = useState<string>();
+  // A ref too, since a second press can come before the page has drawn the busy state.
+  const working = useRef(false);
   async function discardPart(part: LineChange) {
+    if (working.current) return;
+    working.current = true;
+    setBusyPart(partKey(part));
     setFailure(undefined);
-    const reason = await discarding.run(await list.discardPart(file, part), {
-      title: discardWords.partDiscarded,
-      text: file.path,
-    });
-    setFailure(reason);
+    try {
+      const reason = await discarding.run(await list.discardPart(file, part), {
+        title: discardWords.partDiscarded,
+        text: file.path,
+      });
+      setFailure(reason);
+    } finally {
+      working.current = false;
+      setBusyPart(undefined);
+    }
   }
   return (
     <section aria-label={discardWords.lines(file.path)} className="flex flex-col gap-2">
       {hunks.map((part) => (
-        <div key={`${part.beforeStart}:${part.afterStart}`} className="flex items-start gap-3">
+        <div key={partKey(part)} className="flex items-start gap-3">
           <pre className="text-small flex-1 overflow-x-auto rounded-md border border-border p-2">
             {part.removed.map((line, index) => (
               <span key={`-${index}`} className="block text-danger">
@@ -181,7 +198,12 @@ function LineDiff({
               </span>
             ))}
           </pre>
-          <Button variant="ghost" size="sm" onClick={() => void discardPart(part)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            busy={busyPart !== undefined}
+            onClick={() => void discardPart(part)}
+          >
             {discardWords.discardThisPart}
           </Button>
         </div>
