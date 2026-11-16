@@ -7,7 +7,10 @@ import {
 import type { KeyEntry, ModelKeys } from "@halonicjs/studio-feature-models/api";
 import type { SecretText } from "@halonicjs/studio-kit";
 
-/** The OS keychain as the keys use it: `has` tells whether a key is there without reading it. */
+/**
+ * The OS keychain as the keys use it: `has` tells whether a key is there
+ * without reading it.
+ */
 type Keychain = Secrets & TokenStore & { has(name: string): Promise<boolean> };
 
 /** The key entry of the desktop app: the field is there and this computer's keychain keeps the key. */
