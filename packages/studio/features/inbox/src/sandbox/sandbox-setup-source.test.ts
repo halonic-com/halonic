@@ -1,10 +1,17 @@
 import type { SandboxStartResult } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { beforeAll, expect, it } from "vitest";
 import { completedRun, refusedRun, sandboxInbox, settled } from "./fake-sandbox.test-helper.ts";
 import { refusedRoutineRuns } from "./sandbox-setup-source.ts";
 
 verifies("inbox.sandbox-row", () => {
+  // The card's view loads lazily. The first import transforms the view and everything behind it,
+  // which on a busy CI machine can take longer than a test's own 5 s (and tests run in random
+  // order, so any of them can be first). Do it up front under the hook's longer limit.
+  beforeAll(async () => {
+    await import("../ui/sandbox-setup-view.tsx");
+  }, 60_000);
+
   it("counts the routines the sandbox refused, once each", () => {
     const runs = [
       refusedRun("a", "daily", "2026-11-10T06:00:00.000Z"),
