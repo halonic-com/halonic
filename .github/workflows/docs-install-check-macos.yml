@@ -25,8 +25,7 @@ jobs:
           step() { # step <number> <command>
             local n="$1" cmd="$2" s=$SECONDS rc
             echo "::group::Step $n: $cmd"
-            bash -c "$cmd"
-            rc=$?
+            bash -c "$cmd" && rc=0 || rc=$?
             echo "::endgroup::"
             printf '%s\t%s\t%ss\t%s\n' "$n" "$([ $rc -eq 0 ] && echo ok || echo "FAILED (exit $rc)")" "$((SECONDS - s))" "$cmd" >> "$RUNNER_TEMP/results.tsv"
             return 0
@@ -40,7 +39,7 @@ jobs:
           step 6 'halonic --version && halonic --help'
           step 7 'halonic doctor'
           step 8 'mkdir halonic-start && cd halonic-start && halonic init --example acme && cd acme && halonic validate && halonic test && halonic run support-reply --input examples/refund-question.json'
-          step 9 'cd halonic-start/acme && halonic routines && halonic trust && halonic run reports/weekly-report && (timeout 15 halonic routines watch || true)'
+          step 9 'cd halonic-start/acme && halonic routines && halonic trust && halonic run reports/weekly-report && (perl -e 'alarm 15; exec @ARGV' halonic routines watch || true)'
           {
             echo "## Docs install check (macOS)"
             echo
@@ -50,7 +49,7 @@ jobs:
             echo
             echo "| Step | Result | Time | Command |"
             echo "|---|---|---|---|"
-            awk -F'\t' '{printf "| %s | %s | %s | `%s` |\n", $1, $2, $3, $4}' "$RUNNER_TEMP/results.tsv"
+            awk -F'\t' '{gsub(/\|/, "\\|", $4); printf "| %s | %s | %s | `%s` |\n", $1, $2, $3, $4}' "$RUNNER_TEMP/results.tsv"
             echo
             echo "Total, steps 1 to 9: $((SECONDS - T0))s (target: under 600s)"
             echo
