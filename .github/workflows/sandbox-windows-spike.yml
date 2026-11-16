@@ -17,6 +17,7 @@ on:
       - packages/adapters/sandbox-srt/scripts/windows-verdict-probe.mjs
       - packages/adapters/sandbox-srt/scripts/windows-isolation-probe.mjs
       - packages/adapters/sandbox-srt/scripts/windows-wsl-probe.mjs
+      - packages/adapters/sandbox-srt/scripts/windows-wsl-import-probe.mjs
       - packages/adapters/sandbox-srt/scripts/windows-token-probe.ps1
 
 permissions:
@@ -103,3 +104,29 @@ jobs:
             packages/adapters/sandbox-srt/windows-isolation-results.json
             packages/adapters/sandbox-srt/windows-wsl-results.json
           if-no-files-found: warn
+
+  # HAL-10927: who owns the files of the WSL import mount, and does one import
+  # work (runs the import code of the branch it tests). Report-only.
+  import-probe:
+    name: WSL import mount ownership (HAL-10927)
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+      - name: Download a small Linux root file system
+        shell: bash
+        env:
+          SHA256: 412454ed98025ad9cd910d13f3d448b184e81502baa83180e89f98d0f13674be
+        run: |
+          rootfs="$RUNNER_TEMP/rootfs.tar.gz"
+          url="https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/x86_64/alpine-minirootfs-3.22.2-x86_64.tar.gz"
+          curl -sSfL -o "$rootfs" "$url" || { rm -f "$rootfs"; exit 1; }
+          echo "$SHA256  $rootfs" | sha256sum -c - || { rm -f "$rootfs"; exit 1; }
+      - name: Import probe (mount owner, clone and fetch without safe.directory)
+        shell: bash
+        run: HALONIC_PROBE_ROOTFS="$RUNNER_TEMP/rootfs.tar.gz" node packages/adapters/sandbox-srt/scripts/windows-wsl-import-probe.mjs
