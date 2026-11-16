@@ -181,7 +181,9 @@ verifies("sandbox-srt.wsl-setup", () => {
 
       expect(await setupOn(fake).setup.run()).toMatchObject({ outcome: "done" });
       expect(fake.calls).toContain("in distro: uname -r");
-      expect(fake.calls.some((call) => call.includes("--version") && !call.includes("--import"))).toBe(false);
+      expect(
+        fake.calls.some((call) => call.includes("--version") && !call.includes("--import")),
+      ).toBe(false);
     });
 
     it("carries on after the restart when Windows' start time can't be read", async () => {
