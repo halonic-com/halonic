@@ -3,7 +3,7 @@
 // with `run`'s failure lines, a waiting run with `run`'s waiting lines.
 // Every sentence is the catalogue's.
 
-import { type RunDetail, shortRunId } from "@halonicjs/app";
+import { type RunDetail, runWait, shortRunId } from "@halonicjs/app";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { duration } from "../../messages/duration.ts";
 import { markPart, type Phrase, phrase } from "../../messages/phrase.ts";
@@ -178,14 +178,17 @@ function cancelledAt(
  * approval: Writer wants to use send_email" line for each, oldest first, and
  * the same answer line: one answer takes the oldest, and a line under the answer says so. A run waiting for its
  * child run or a time has no such lines; its step line already says what it
- * waits for.
+ * waits for. What the run waits for is {@link runWait}'s, so a run with an
+ * open approval and a child run asks for the approval, as the list does
+ * (HAL-10646).
  */
 function waitingEnding(
   summary: RunSummary,
   definitions: RunDefinitions,
   dir: string | undefined,
 ): Phrase[] {
-  if (summary.waitingOn !== null || summary.accepts.length === 0) {
+  const { kind } = runWait(summary);
+  if ((kind !== "approvals" && kind !== "step") || summary.accepts.length === 0) {
     return [];
   }
   const waiting = waitingLines(summary, definitions);
