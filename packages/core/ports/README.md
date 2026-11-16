@@ -87,6 +87,13 @@ adapter throws when a step needs a change left out of the run, so the run ends
 as can't-try instead of failed (requirement `cant-try-error`). Check for it
 with `isCantTryError`.
 
+`remote-gateway-protocol.ts` isn't a port either: it holds the messages a phone
+and the host's remote gateway exchange (sessions, their events, approvals and
+prompt input, nothing else), with their own version, `gatewayProtocolVersion`,
+and a limit of `gatewayMaxMessageBytes` (64 KiB) per message (requirement
+`remote-gateway-protocol`). Why only the gateway is ever reachable by a tunnel
+is in the ADR "Only the remote gateway is reachable by a tunnel" in `docs/adr`.
+
 ## Rules that ship with the ports
 
 Some port rules are code, not only text, so that every adapter applies the same one. They are exported
@@ -110,6 +117,7 @@ next to the ports:
 | `signInCommandText` | a harness's sign-in for one agent's settings folder, as a person types it into PowerShell or `sh`; Studio's sign-in by hand and `halonic doctor` both show it | `harness-sign-in-command` |
 | `bridgeCallCharge` | what a bridged call costs and who paid (`paidBy: "subscription"` for a sign-in call); `bridgeCallCost` is deprecated in its favour | `harness-bridge-server` |
 | `maxIntegrationWaitMs` | the longest `IntegrationHost.wait`, 30 seconds | `integration-host` |
+| `gatewayErrorCodes`, `gatewayMaxMessageBytes`, `gatewayMaxPromptLength` | the remote gateway's error codes, its 64 KiB message limit and the longest prompt | `remote-gateway-protocol` |
 | `sandboxPackageManagers` | the package managers a `SandboxFix` can name, behind `SandboxPackageManager` | `sandbox-check-fix` |
 | `sandboxUnavailableReasons`, `adapterFailures`, `modelCallErrorReasons` | the lists behind `SandboxUnavailableReason`, `AdapterFailure` and `ModelCallErrorReason` | `sandbox-check-reason`, `run-failure-error`, `model-call-error` |
 
