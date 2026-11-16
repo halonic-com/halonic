@@ -64,6 +64,28 @@ for (const size of sizes) {
         await page.goto(`/sandbox-choice.html?screen=${screen}`);
         await expect(page.getByRole("heading", { level: 2 })).toBeVisible();
         await expect(page.getByTestId("sandbox-halo")).toBeAttached();
+        if (screen === "choose") {
+          // A full-page shot can't show content that scrolls inside the card, so check the main
+          // button sits inside the window and the links keep clear of the card's bottom edge.
+          const card = await page.getByRole("region").boundingBox();
+          const setUp = await page
+            .getByRole("button", { name: /set up/i })
+            .first()
+            .boundingBox();
+          const more = await page.getByRole("button", { name: "More info" }).boundingBox();
+          expect(card, "the card is shown").not.toBeNull();
+          expect(setUp, "Set up is shown").not.toBeNull();
+          expect(more, "More info is shown").not.toBeNull();
+          if (card !== null && setUp !== null && more !== null) {
+            expect(setUp.y + setUp.height, "Set up is inside the card").toBeLessThanOrEqual(
+              card.y + card.height,
+            );
+            expect(setUp.y, "Set up is inside the window").toBeGreaterThanOrEqual(0);
+            expect(more.y + more.height, "links clear the card edge").toBeLessThanOrEqual(
+              card.y + card.height - 8,
+            );
+          }
+        }
         await page.screenshot({
           path: `test-results/screenshots/sandbox-choice-${screen}-${size.width}x${size.height}-${scheme}.png`,
           fullPage: true,

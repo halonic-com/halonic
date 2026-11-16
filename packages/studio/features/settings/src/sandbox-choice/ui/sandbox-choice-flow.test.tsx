@@ -200,4 +200,13 @@ verifies("settings.sandbox-choice-flow", () => {
     const root = render(flow());
     expect(root.querySelector("section")?.className).toContain("[@media(max-height:560px)]:");
   });
+
+  it("pins the action row below a body that scrolls, so Set up is always reachable", () => {
+    const root = render(flow());
+    const section = root.querySelector("section");
+    const footer = section?.querySelector("footer");
+    expect(footer?.textContent).toContain("Set up");
+    expect(footer?.previousElementSibling?.className).toContain("overflow-y-auto");
+    expect(section?.className).toContain("overflow-hidden");
+  });
 });
