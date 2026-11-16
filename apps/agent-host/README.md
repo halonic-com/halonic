@@ -83,6 +83,8 @@ A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413`
 | `GET /v1/sandbox/setup` | `{"running","last"}`: the setup or removal running now, if any, and the last one that ended |
 | `POST /v1/sandbox/setup` with `{}` | `202` with `{"running","last"}` at once: it starts the one-time setup, or joins the one that runs. Follow it with the GET until `running` is null, however long the administrator prompt takes (Studio stops any call at 120 s). `409 sandbox_busy` while a removal runs |
 | `POST /v1/sandbox/remove` with `{}` | the same for the removal, or `409 sandbox_in_use` with `"runs"`, before any prompt, while sandboxed programs run here |
+| `GET /v1/sandbox/choice` | the `SandboxChoice`: which backend runs and every backend's state, as codes. The first ask runs the trust check |
+| `POST /v1/sandbox/choice/settings-changed` with `{}` | the new `SandboxChoice`, chosen again from the setting saved in the profile. The caller gives no setting; nothing here saves one |
 | `POST /v1/bridge/open` | an NDJSON stream: the bridge, then its calls to Studio (below) |
 | `POST /v1/bridge/answer` | `{"answered":true}`, or `404` for a call the bridge isn't waiting for |
 | `POST /v1/bridge/close` | `{"closed":true}`, or `404` for an unknown bridge |
