@@ -10,12 +10,12 @@ export interface CallLimits {
 }
 
 /**
- * The limits a provider uses when it is given none: 10 minutes until the first
+ * The limits a provider uses when it is given none: 5 minutes until the first
  * answer (HAL-902), and no limit on the whole answer while it keeps coming.
  * An answer that isn't streamed starts its reply only once it is complete.
  */
 export const defaultCallLimits: CallLimits = {
-  responseTimeoutMs: 10 * 60_000,
+  responseTimeoutMs: 5 * 60_000,
   idleTimeoutMs: 2 * 60_000,
 };
 

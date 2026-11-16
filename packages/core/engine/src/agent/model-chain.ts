@@ -167,8 +167,12 @@ export class ModelChain {
   }
 
   /**
-   * Makes one model call, moving on to the next model when one has no key,
-   * is offline, too slow or its provider is busy. It writes an `llm.fallback` for each move.
+   * Makes one model call, through `stream()` when the provider can stream, so
+   * the provider's limit for the first answer never cuts off a long answer
+   * (HAL-902). Nothing of a stream is passed on before it is whole, so a model
+   * that fails part way moves on like one that fails at once. It moves on to
+   * the next model when one has no key, is offline, too slow or its provider
+   * is busy. It writes an `llm.fallback` for each move.
    * Each model gets its own alias's params under the call's, never the first model's.
    * Once `request.signal` has aborted, it throws its reason instead of moving on.
    *
@@ -179,7 +183,7 @@ export class ModelChain {
     for (;;) {
       const model = await this.current();
       try {
-        const response = await model.provider.chat(requestFor(model, request));
+        const response = await answerOf(model.provider, requestFor(model, request));
         return { response, answeredBy: model };
       } catch (error) {
         // A stopped call isn't the model's failure: no other model is tried.
@@ -241,6 +245,33 @@ export class ModelChain {
       this.lastHost === undefined ? {} : { host: this.lastHost },
     );
   }
+}
+
+/**
+ * One model's answer. A provider that can stream is called through `stream()`
+ * and the answer is its `done` event, so the provider's limit for the first
+ * answer ends only a silent model, never a long answer (HAL-902). Any other
+ * provider gets `chat()`.
+ *
+ * @throws {ModelCallError} `refused` when a stream ends without `done` or goes on after it
+ */
+async function answerOf(provider: LlmProvider, request: ChatRequest): Promise<ChatResponse> {
+  if (!provider.capabilities.streaming || provider.stream === undefined) {
+    return provider.chat(request);
+  }
+  let response: ChatResponse | undefined;
+  for await (const event of provider.stream(request)) {
+    if (response !== undefined) {
+      throw new ModelCallError("refused", `${provider.id} went on after its answer was done`);
+    }
+    if (event.type === "done") {
+      response = event.response;
+    }
+  }
+  if (response === undefined) {
+    throw new ModelCallError("refused", `${provider.id} ended its answer before it was done`);
+  }
+  return response;
 }
 
 /** The call as one model gets it: its model name, and the call's params over its alias's. */

@@ -199,7 +199,7 @@ export type ToolVerb = "sent" | "saved" | "created" | "updated" | "moved" | "dra
  * - `error`: something else went wrong; the `error` text says what.
  * - `model-unreachable`: the model's host didn't answer; `run.failed` names it in `host`.
  * - `model-out-of-memory`: the machine running the model ran out of memory for it.
- * - `model-timeout`: the model's provider was reached but gave no first answer in time (10 minutes by default);
+ * - `model-timeout`: the model's provider was reached but gave no first answer in time (5 minutes by default);
  *   `run.failed` names its host in `host` when it is known.
  * - `disk-full`: there was no disk space left to write what the run needed.
  * - `interrupted`: the engine stopped while the run was going, and found it on its next start.

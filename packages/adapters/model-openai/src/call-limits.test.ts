@@ -96,10 +96,10 @@ verifies("model-openai.call-limits", () => {
       settled = true;
     });
 
-    await vi.advanceTimersByTimeAsync(10 * 60_000 - 1);
+    await vi.advanceTimersByTimeAsync(5 * 60_000 - 1);
     expect(settled).toBe(false);
     const error = await after(1, pending);
-    expect((error as Error).message).toMatch(/didn't answer within 600 seconds$/);
+    expect((error as Error).message).toMatch(/didn't answer within 300 seconds$/);
   });
 
   it("still fails with the caller's own reason when the caller stops first", async () => {
