@@ -3,6 +3,7 @@
 - Task: HAL-11112
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11112 (reading "next Home visit" as the next workspace open is a team decision, HAL-2282 rule, reviewed in HAL-11126)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JMQY+hHOQyvLUr03CU//XIlpWZBVk94+cutyis8f8Key1Sf6OGvR8lWoxFcuMF43ZjqzSDG4wdItvsuqzRHLCA==
 
 ## What changes
 
