@@ -13,6 +13,8 @@ const maxIdBytes = 256;
 const tickEveryMs = 60_000;
 const firstRetryMs = 1000;
 const maxRetryMs = 15 * 60_000;
+/** The longest delay `setTimeout` keeps; Node runs a longer one after 1 ms. */
+const MAX_TIMER_DELAY_MS = 2 ** 31 - 1;
 
 /** The collection the timers are kept in when no other is given. */
 export const defaultTimerCollection = "halonic.scheduler.timers";
@@ -277,8 +279,12 @@ export class NodeScheduler implements Scheduler {
     }
     // Nothing to wake for while only the tick runs; it sets the wake-up when it settles.
     if (wakeAt === Number.POSITIVE_INFINITY) return;
-    // The tick is at most a minute away and a retry 15 minutes, so the delay always fits setTimeout.
-    const delayMs = Math.max(notBeforeMs, wakeAt - this.#clock.now().getTime());
+    // A timer can be days away, and setTimeout runs a longer delay at once; the wake-up
+    // then finds nothing due and sets the next one.
+    const delayMs = Math.min(
+      MAX_TIMER_DELAY_MS,
+      Math.max(notBeforeMs, wakeAt - this.#clock.now().getTime()),
+    );
     this.#cancelWakeUp = this.#setTimer(() => {
       this.#cancelWakeUp = undefined;
       this.deliverDue().then(

@@ -11,14 +11,18 @@ const UNIT_MS = {
 
 type IntervalUnit = keyof typeof UNIT_MS;
 
-/** A count of 1 or more without leading zeros, then one unit letter. */
-const INTERVAL = /^([1-9]\d*)(m|h|d)$/;
+/**
+ * A count of 1 to 99999 without leading zeros, then one unit letter. The
+ * count stops at five digits (about 273 years in days), the same as a
+ * duration in the format, so a next run always fits in a date.
+ */
+const INTERVAL = /^([1-9]\d{0,4})(m|h|d)$/;
 
 /**
  * Reads an interval such as `"15m"`, `"2h"` or `"1d"` and returns its length
  * in milliseconds. Spaces around the text are ignored.
  *
- * @throws {CronError} when the text is not a count of 1 or more followed by
+ * @throws {CronError} when the text is not a count of 1 to 99999 followed by
  * `m`, `h` or `d`
  *
  * @example

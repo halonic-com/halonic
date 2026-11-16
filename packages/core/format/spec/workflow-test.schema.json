@@ -57,7 +57,7 @@
                   "properties": {
                     "advance": {
                       "type": "string",
-                      "pattern": "^[1-9]\\d*(m|h|d)$"
+                      "pattern": "^[1-9]\\d{0,4}(m|h|d)$"
                     }
                   },
                   "required": [

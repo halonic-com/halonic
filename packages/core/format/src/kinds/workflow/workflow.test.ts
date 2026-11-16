@@ -79,6 +79,13 @@ verifies("format.workflow-file", () => {
     ]);
   });
 
+  it("refuses a timer delay of more than five digits", () => {
+    const text = workflow("  start:", "    on: [{ to: done, after: 100000d }]");
+    expect(summary(problemsOf("workflow", text))).toEqual([
+      "states.start.on.0.after invalid_format 6",
+    ]);
+  });
+
   it("refuses more than 16 items at once and an unknown join", () => {
     const text = workflow("  each:", "    type: foreach", "    concurrency: 17", "    join: some");
     expect(summary(problemsOf("workflow", text))).toEqual([

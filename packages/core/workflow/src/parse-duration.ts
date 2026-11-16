@@ -9,8 +9,13 @@ const UNIT_MS = {
 
 type DurationUnit = keyof typeof UNIT_MS;
 
-/** A count of 1 or more without leading zeros, then one unit letter, and nothing around it. */
-const DURATION = /^([1-9]\d*)(m|h|d)$/;
+/**
+ * A count of 1 to 99999 without leading zeros, then one unit letter, and
+ * nothing around it. The count stops at five digits (about 273 years in
+ * days), the same as a duration in the format, so a timer's time always fits
+ * in a date.
+ */
+const DURATION = /^([1-9]\d{0,4})(m|h|d)$/;
 
 /**
  * Reads the delay of a timer transition (`after: "30m"`), such as `"30m"`,
@@ -20,7 +25,7 @@ const DURATION = /^([1-9]\d*)(m|h|d)$/;
  * `@halonicjs/routines`, spaces around it are not ignored.
  *
  * @throws {Error} `Bad duration "<text>"` when the text is not a count of 1
- * or more followed by `m`, `h` or `d`
+ * to 99999 followed by `m`, `h` or `d`
  *
  * @example
  * parseDuration("30m"); // 1_800_000

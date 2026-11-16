@@ -15,10 +15,17 @@ export interface TimerDeliveryOptions {
   nap: (ms: number, signal: AbortSignal) => Promise<void>;
 }
 
-/** Waits `ms` with `setTimeout`, and stops waiting at once when `signal` aborts. */
+/** The longest delay `setTimeout` keeps; a longer one runs at once. */
+const MAX_NAP_MS = 2 ** 31 - 1;
+
+/**
+ * Waits `ms` with `setTimeout`, and stops waiting at once when `signal`
+ * aborts. A wait longer than `setTimeout` keeps ends early; the loop looks
+ * again and naps for what is left.
+ */
 export function napFor(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
-    const timeout = setTimeout(resolve, ms);
+    const timeout = setTimeout(resolve, Math.min(ms, MAX_NAP_MS));
     signal.addEventListener("abort", () => {
       clearTimeout(timeout);
       resolve();

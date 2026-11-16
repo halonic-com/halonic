@@ -109,6 +109,22 @@ verifies("scheduler-node.slow-delivery", () => {
       await s.scheduler.close();
     });
 
+    it("wakes for a timer more than 24 days away in steps setTimeout can keep", async () => {
+      const s = startScheduler();
+      const tick = holdTicks(s);
+      const thirtyDays = 30 * 24 * 60 * minute;
+      await s.scheduler.schedule("run_1", "far", s.inMs(thirtyDays));
+
+      await fireWakeUpsAfter(s, minute);
+      expect(s.listener.ticks).toHaveLength(1);
+
+      // Only the far timer is left to wake for while the tick runs.
+      expect(s.timers.delays.at(-1)).toBe(2 ** 31 - 1);
+
+      tick.release();
+      await s.scheduler.close();
+    });
+
     it("waits for a tick that runs past the next one, then catches up at once", async () => {
       const s = startScheduler();
       const tick = holdTicks(s);

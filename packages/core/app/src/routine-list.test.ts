@@ -103,6 +103,17 @@ verifies("app.routine-list", () => {
       ]);
     });
 
+    it("still lists the other routines when one has an interval no date can hold", async () => {
+      const routines = await listed({
+        [routinePath("far")]: routineFile("far", "{ every: 100000000000d }"),
+        [routinePath("daily")]: routineFile("daily", "{ every: 1d }"),
+      });
+
+      expect(routines.map((each) => [each.routineId, each.nextRun])).toEqual([
+        ["daily", "2026-11-12T00:00:00.000Z"],
+      ]);
+    });
+
     it("gives the newest run each routine started as its last run", async () => {
       const runs = new MemoryRuns();
       runs.add("run_old", "2026-11-09T08:00:00.000Z", [startedBy("weekly")]);

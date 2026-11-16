@@ -1,3 +1,4 @@
+import type { Workflow } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { InputRefused } from "./input-refused.ts";
@@ -89,6 +90,41 @@ verifies("engine.step-appends-once", () => {
         `gave up after ${maxStepAttempts} tries`,
       );
       expect(runs.appends).toBe(1);
+    });
+  });
+
+  describe("a decision that throws", () => {
+    // A workflow read from a file never has this delay; the format refuses it.
+    const overlongWait: Workflow = {
+      ...replyWorkflow,
+      states: {
+        draft: {
+          type: "task",
+          agent: "writer",
+          input: "Reply to {{input.from}}",
+          output: "reply",
+          on: [{ to: "waiting", event: "done" }],
+        },
+        waiting: { type: "wait", on: [{ to: "sent", event: "done", after: "100000000000d" }] },
+        sent: { type: "final", on: [] },
+      },
+    };
+
+    it("fails a run that is under way instead of leaving it running", async () => {
+      const runs = new KernelRuns();
+      const blobs = new KernelBlobs();
+      const version = await keepDefinitions(blobs, { workflow: overlongWait });
+      const ports = { runs, blobs };
+      await step(ports, "r-acme", startInput(version));
+
+      const result = await step(ports, "r-acme", answer("call-1", "Thanks"));
+
+      expect(result.run.status).toBe("failed");
+      expect(result.events.map((event) => event.type)).toEqual(["run.failed"]);
+      expect(result.events[0]).toMatchObject({
+        reason: "error",
+        error: 'Bad duration "100000000000d"',
+      });
     });
   });
 });
