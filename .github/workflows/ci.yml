@@ -205,6 +205,12 @@ jobs:
       # tooling findings are reported by the daily scheduled run.
       - name: Dependency audit (shipped code)
         run: pnpm check:audit --prod --audit-level high
+      # The same command the Version packages workflow runs on main. A
+      # changeset it refuses (for example one that names a private package
+      # together with the app) fails here, not after the merge (HAL-10984).
+      # Last step of the job: it edits the checkout, which is thrown away.
+      - name: Changesets can be versioned
+        run: pnpm version-packages && pnpm check versions
 
   leaks:
     # The leak guard: the same rules as the local git hooks (secrets, keys,
