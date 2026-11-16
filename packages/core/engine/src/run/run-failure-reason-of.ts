@@ -1,17 +1,20 @@
-import type { InstructionsRefusal, RunFailureReason } from "@halonicjs/events";
+import type { HarnessStartCause, InstructionsRefusal, RunFailureReason } from "@halonicjs/events";
 import { isModelCallError, isRunFailureError, type ModelCallErrorReason } from "@halonicjs/ports";
 import { InstructionsNotTrustedError } from "../harness/check-instruction-trust.ts";
 import { SandboxNotReadyError } from "./sandbox-not-ready-error.ts";
+import { StartFailedError } from "./start-failed-error.ts";
 
 /**
  * Why a run failed, as `run.failed` records it: the reason, the host for
- * `model-unreachable`, the sandbox's reason code for `sandbox-not-ready`, and
- * the agent and what the check saw for `instructions-not-trusted`.
+ * `model-unreachable`, the sandbox's reason code for `sandbox-not-ready` and
+ * for a `sandbox-start-failed` that has one, the harness cause for a
+ * `harness-start-failed` that has one, and the agent and what the check saw for `instructions-not-trusted`.
  */
 export interface RunFailure {
   reason: RunFailureReason;
   host?: string;
   sandboxReason?: string;
+  harnessCause?: HarnessStartCause;
   agent?: string;
   refusal?: InstructionsRefusal;
 }
@@ -42,6 +45,8 @@ const reasonOfModelCall = {
  *   host for `offline`. `no-key` is `key-refused`, and `refused` is
  *   `error`: the message says what went wrong.
  * - a `RunFailureError` from an adapter gives its own failure;
+ * - the engine's own `StartFailedError` gives its failure with the
+ *   sandbox's reason code or the harness cause it found, when it found one;
  * - the engine's own `SandboxNotReadyError` is `sandbox-not-ready`, with
  *   the check's reason code;
  * - the engine's own `InstructionsNotTrustedError` is `instructions-not-trusted`,
@@ -62,6 +67,13 @@ export function runFailureReasonOf(error: unknown): RunFailure {
   if (isModelCallError(error)) {
     const reason = reasonOfModelCall[error.reason];
     return error.host === undefined ? { reason } : { reason, host: error.host };
+  }
+  if (error instanceof StartFailedError) {
+    return {
+      reason: error.failure,
+      ...(error.sandboxReason === undefined ? {} : { sandboxReason: error.sandboxReason }),
+      ...(error.harnessCause === undefined ? {} : { harnessCause: error.harnessCause }),
+    };
   }
   if (isRunFailureError(error)) {
     return { reason: error.failure };

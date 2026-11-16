@@ -4,6 +4,7 @@ import type { AgentResume } from "./agent-resume.ts";
 import type {
   ApprovalResolver,
   CantTryStep,
+  HarnessStartCause,
   LoggedInstructionPin,
   ProviderText,
   RunFailureReason,
@@ -161,6 +162,8 @@ verifies("events.run-log-contract", () => {
       host?: string;
       // Added after the reference by events.run-failed-sandbox-not-ready (HAL-1709).
       sandboxReason?: string;
+      // Added after the reference by events.run-failed-harness-cause (HAL-10967).
+      harnessCause?: HarnessStartCause;
       // Added after the reference by events.run-failed-instructions-not-trusted (HAL-10524).
       agent?: string;
       pin?: LoggedInstructionPin;

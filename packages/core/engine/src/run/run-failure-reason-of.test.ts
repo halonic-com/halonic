@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { InstructionsNotTrustedError } from "../harness/check-instruction-trust.ts";
 import { runFailureReasonOf } from "./run-failure-reason-of.ts";
 import { SandboxNotReadyError } from "./sandbox-not-ready-error.ts";
+import { StartFailedError } from "./start-failed-error.ts";
 
 /** An error as another copy of `@halonicjs/ports` would build it: same name and fields, other class. */
 function fromOtherCopy(name: string, fields: Record<string, unknown>): Error {
@@ -85,6 +86,29 @@ verifies("engine.run-failure-reason-of", () => {
       reason: "sandbox-not-ready",
       sandboxReason: "bubblewrap-missing",
     });
+  });
+
+  it("gives a start failure with the sandbox's code or the harness cause the engine found", () => {
+    const sandbox = new StartFailedError("sandbox-start-failed", "It didn't open.", {
+      sandboxReason: "bubblewrap-missing",
+    });
+    const harness = new StartFailedError("harness-start-failed", "It didn't start.", {
+      harnessCause: "not-installed",
+    });
+    expect(runFailureReasonOf(sandbox)).toEqual({
+      reason: "sandbox-start-failed",
+      sandboxReason: "bubblewrap-missing",
+    });
+    expect(runFailureReasonOf(harness)).toEqual({
+      reason: "harness-start-failed",
+      harnessCause: "not-installed",
+    });
+  });
+
+  it("gives a start failure without a cause when the engine found none", () => {
+    expect(
+      runFailureReasonOf(new StartFailedError("harness-start-failed", "It didn't start.", {})),
+    ).toEqual({ reason: "harness-start-failed" });
   });
 
   it("gives instructions-not-trusted with the agent and the pin for the engine's own refusal", () => {

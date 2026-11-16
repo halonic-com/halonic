@@ -2,6 +2,8 @@ import type {
   BridgeRecorder,
   Harness,
   HarnessBridge,
+  HarnessDetection,
+  HarnessDetectOptions,
   HarnessEvent,
   HarnessInput,
   HarnessRun,
@@ -138,8 +140,13 @@ export class FakeHarness implements Harness {
     this.#steps = steps;
   }
 
-  async detect() {
-    return { status: "ready" as const, version: "1.0.0" };
+  /** What `detect()` answers; the settings folder it was asked about is in `detectedFor`. */
+  detection: HarnessDetection = { status: "ready", version: "1.0.0" };
+  readonly detectedFor: (string | undefined)[] = [];
+
+  async detect(options?: HarnessDetectOptions) {
+    this.detectedFor.push(options?.settingsFolder);
+    return this.detection;
   }
 
   environment(bridge: HarnessBridge): Record<string, string> {

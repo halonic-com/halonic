@@ -244,6 +244,27 @@ verifies("engine.run-call-fails", () => {
       },
     ]);
   });
+
+  it("puts the harness cause on run.failed", () => {
+    const notStarted: DecideInput = {
+      type: "effect-failed",
+      at: "2026-11-09T09:00:05.000Z",
+      callId: "call-1",
+      error: "Claude Code didn't start.",
+      reason: "harness-start-failed",
+      harnessCause: "signed-out",
+    };
+    const { decisions } = play(reply, [startInput, notStarted]);
+    expect(decisions[1]?.events).toEqual([
+      {
+        type: "run.failed",
+        state: "draft",
+        error: "Claude Code didn't start.",
+        reason: "harness-start-failed",
+        harnessCause: "signed-out",
+      },
+    ]);
+  });
 });
 
 verifies("engine.run-failure-reason-of", () => {

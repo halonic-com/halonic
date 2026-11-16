@@ -2,6 +2,7 @@ import type { AgentResume } from "./agent-resume.ts";
 import type {
   ApprovalResolver,
   CantTryStep,
+  HarnessStartCause,
   LoggedInstructionPin,
   ModelSkipReason,
   ProviderText,
@@ -396,9 +397,13 @@ export type RunEventBody =
    * `reason`: why the run failed (requirement `events.run-failed-reason`); absent in older logs.
    * `host`: with `model-unreachable` only, the host and port that didn't answer, such as
    * `localhost:11434` (requirement `events.run-failed-model-unreachable`).
-   * `sandboxReason`: with `sandbox-not-ready` only, why the sandbox can't start, as the `Sandbox`
-   * port's reason code, such as `bubblewrap-missing` (requirement `events.run-failed-sandbox-not-ready`).
+   * `sandboxReason`: with `sandbox-not-ready`, and with `sandbox-start-failed` when the sandbox
+   * check no longer passed once the sandbox failed to open, why the sandbox can't start, as the
+   * `Sandbox` port's reason code, such as `bubblewrap-missing` (requirements
+   * `events.run-failed-sandbox-not-ready` and `events.run-failed-sandbox-start-failed`).
    * A reader that doesn't know the code reads it as `other`.
+   * `harnessCause`: with `harness-start-failed` only, why the program didn't start when the engine
+   * knows, `not-installed` or `signed-out` (requirement `events.run-failed-harness-cause`).
    * `agent`, `pin` and `changed`: with `instructions-not-trusted` only, the agent that didn't start,
    * the digests of the instructions the check saw (never their text) and whether a person had
    * trusted instructions for it before (requirement `events.run-failed-instructions-not-trusted`);
@@ -413,6 +418,7 @@ export type RunEventBody =
       reason?: RunFailureReason;
       host?: string;
       sandboxReason?: string;
+      harnessCause?: HarnessStartCause;
       agent?: string;
       pin?: LoggedInstructionPin;
       changed?: boolean;

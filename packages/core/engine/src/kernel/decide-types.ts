@@ -2,6 +2,7 @@ import type {
   AgentResume,
   ApprovalResolver,
   CantTryStep,
+  HarnessStartCause,
   InstructionsRefusal,
   ProviderText,
   RunEventBase,
@@ -161,8 +162,10 @@ export interface EffectFailedInput extends InputBase {
   readonly reason: RunFailureReason;
   /** The host that couldn't be reached, for `model-unreachable`. */
   readonly host?: string;
-  /** Why the sandbox can't start, as the `Sandbox` port's code, for `sandbox-not-ready`. */
+  /** Why the sandbox can't start, as the `Sandbox` port's code, for `sandbox-not-ready` and `sandbox-start-failed`. */
   readonly sandboxReason?: string;
+  /** Why the harness program didn't start, for `harness-start-failed`. */
+  readonly harnessCause?: HarnessStartCause;
   /** The agent that didn't start, for `instructions-not-trusted`. */
   readonly agent?: string;
   /** What the trust check saw, for `instructions-not-trusted`. */

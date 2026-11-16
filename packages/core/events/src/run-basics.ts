@@ -266,6 +266,14 @@ export interface InstructionsRefusal {
 }
 
 /**
+ * Why a harness program didn't start, when the engine knows (requirement
+ * `events.run-failed-harness-cause`): `not-installed` when the program isn't
+ * on this computer, `signed-out` when it is but no one is signed in to it for
+ * the agent. A reader that doesn't know a cause reads it as absent.
+ */
+export type HarnessStartCause = "not-installed" | "signed-out";
+
+/**
  * The model provider's own error text, kept in the run log for `--debug` and
  * Copy details only (requirement `events.provider-text`). Studio and the
  * command line never show it by default: microcopy 1.4 allows no quoted
