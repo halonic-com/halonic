@@ -56,10 +56,17 @@ verifies("sandbox-srt.wsl-mounts", () => {
       expect(calls.map((c) => c[0]).slice(-2)).toEqual(["umount", "rmdir"]);
     });
 
-    it("unmounts when the mount itself failed", async () => {
-      const { root, calls } = fakeRoot((a) => ({ code: a[0] === "mount" ? 32 : 0 }));
+    it("removes the mount point without unmounting when the mount itself failed", async () => {
+      // like the real umount: it fails on a folder that isn't mounted
+      const { root, calls } = fakeRoot((a) => {
+        if (a[0] === "mount") return { code: 32 };
+        if (a[0] === "umount") return { code: 32 };
+        return { code: 0 };
+      });
       await expect(withImportMount(root, folder, async () => 1)).rejects.toThrow("mount failed");
-      expect(calls.map((c) => c[0])).toContain("rmdir");
+      const names = calls.map((c) => c[0]);
+      expect(names).not.toContain("umount");
+      expect(names.at(-1)).toBe("rmdir");
     });
 
     it("reports a mount that can't be unmounted", async () => {

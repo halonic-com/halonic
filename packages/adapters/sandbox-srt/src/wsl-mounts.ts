@@ -78,14 +78,17 @@ export async function withImportMount<T>(
   await mustRun(root, ["mkdir", "-m", "700", "--", mountPoint]);
   let result: T | undefined;
   let failure: { error: unknown } | undefined;
+  let mounted = false;
   try {
     await mustRun(root, command);
+    mounted = true;
     result = await use(mountPoint);
   } catch (error) {
     failure = { error };
   }
   try {
-    await mustRun(root, ["umount", "--", mountPoint]);
+    // umount fails on a folder that isn't mounted, so a failed mount only needs the rmdir
+    if (mounted) await mustRun(root, ["umount", "--", mountPoint]);
     await mustRun(root, ["rmdir", "--", mountPoint]);
   } catch (error) {
     failure ??= { error };
