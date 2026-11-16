@@ -2,6 +2,7 @@
 
 - Approval: HAL-11239
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:igtDOyibS12yCu/tnP4VbMw8aMpmVWph1dWPzIFDFcnG762IyQFe7NR2JmgS1ZqF+fChbdzeM8y6QuyU+O6aDw==
 
 A timer delay (`after`) and a routine interval (`every`) are now a count of
 1 to 99999 followed by `m`, `h` or `d`, so the longest is 99999 days, about
