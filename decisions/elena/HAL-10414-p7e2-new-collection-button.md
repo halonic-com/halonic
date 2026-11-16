@@ -3,6 +3,7 @@
 - Task: HAL-10414
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-10743 (Liam's review of #3081; a team decision with no board card, HAL-2282 rule: it builds on the approved flow-library 5.3 and the New collection dialog)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6nBbKv744iGAZHWOB+eJghF2GGxcLNEZwNQ+ArFn4dlXGUYmiBZyaYDDrlprHYuIPFZRUnhsvNmoAdFN9gqADw==
 
 ## What changes
 
