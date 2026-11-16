@@ -64,7 +64,9 @@ builds it. The test harness, `packages/targets/cloudflare/testing`, never ships.
   It reads the bundler's metafile (`--metafile`), so it sees
   every file that went in, including whatever an approved library pulls
   with it, and fails on any package not allowed above, and on any module
-  left external that the provider doesn't supply.
+  left external that the provider doesn't supply. `buildWorkerBundle`
+  (`tooling/publish`) runs the same check on the Cloudflare Worker's metafile on every build and fails
+  the build on any finding, so the real Worker can't carry anything else.
 
 ## Adding one
 

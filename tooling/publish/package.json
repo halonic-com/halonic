@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-check": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",
     "esbuild": "catalog:",

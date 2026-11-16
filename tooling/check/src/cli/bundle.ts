@@ -1,14 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { checkCloudBundle, type Metafile } from "../lib/bundle.ts";
-import type { DependencyList, Policy } from "../lib/context.ts";
+import { loadBundleRules } from "../lib/bundle-rules.ts";
+import type { Policy } from "../lib/context.ts";
 import { formatAnnotation, formatProblem } from "../lib/problems.ts";
-import { findRepoRoot, listWorkspacePackages, readJson } from "../lib/workspace.ts";
-
-/** The npm package of a published import path: `@scope/name/subpath` gives `@scope/name`. */
-function layerPackageOf(publishedName: string | undefined): string | undefined {
-  return publishedName?.split("/").slice(0, 2).join("/");
-}
+import { findRepoRoot, readJson } from "../lib/workspace.ts";
 
 /**
  * pnpm check:bundle --target <cloud> <metafile> …
@@ -25,28 +21,14 @@ function main(argv: readonly string[]): number {
     (argument, index) => !argument.startsWith("-") && index !== targetAt + 1,
   );
   const root = findRepoRoot();
-  const policy = readJson<Policy>(join(root, "tooling/check/policy.json"));
-  const runtime = target === undefined ? undefined : policy.cloudRuntimes[target];
-  if (target === undefined || runtime === undefined || metafiles.length === 0) {
-    const targets = Object.keys(policy.cloudRuntimes).join(", ");
+  const rules = target === undefined ? undefined : loadBundleRules(root, target);
+  if (target === undefined || rules === undefined || metafiles.length === 0) {
+    const targets = Object.keys(
+      readJson<Policy>(join(root, "tooling/check/policy.json")).cloudRuntimes,
+    ).join(", ");
     console.error(`Usage: pnpm check:bundle --target <${targets}> <metafile> …`);
     return 2;
   }
-  const rules = {
-    target,
-    runtime,
-    dependencyList: readJson<DependencyList>(join(root, "tooling/check/dependencies.json")),
-    // Our own code under its workspace name or, installed from npm, under
-    // the layer package it is published in (`@halonicjs/adapters` for
-    // `@halonicjs/adapters/integration-kit`).
-    workspacePackages: new Set(
-      listWorkspacePackages(root).flatMap((pkg) =>
-        [pkg.manifest.name, layerPackageOf(pkg.manifest.halonic?.publish?.name)].filter(
-          (name): name is string => name !== undefined,
-        ),
-      ),
-    ),
-  };
   const annotate = process.env["GITHUB_ACTIONS"] === "true";
   let errors = 0;
   for (const path of metafiles) {

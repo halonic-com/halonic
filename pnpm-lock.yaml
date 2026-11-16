@@ -3828,6 +3828,9 @@ importers:
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../packages/testing/spec
+      '@halonicjs/tooling-check':
+        specifier: workspace:*
+        version: link:../check
       '@halonicjs/tooling-config':
         specifier: workspace:*
         version: link:../config
