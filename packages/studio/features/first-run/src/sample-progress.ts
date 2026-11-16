@@ -37,17 +37,38 @@ export class SampleProgress {
   readonly #logsRead = new Set<string>();
   #state: SampleProgressState;
   #disposed = false;
+  /** Whether an earlier visit already showed the finished card; fixed when this visit began. */
+  readonly #finishedBefore: boolean;
 
   constructor(runs: SampleRuns, workspace: SampleWorkspace) {
     this.#runs = runs;
     this.#workspace = workspace;
     this.#state = { done: new Set(workspace.doneSteps()), finishedRun: undefined };
+    this.#finishedBefore = workspace.finishedShown();
     this.#stopWatching = runs.subscribe(() => void this.#read());
     void this.#read();
   }
 
   get state(): SampleProgressState {
     return this.#state;
+  }
+
+  /**
+   * Whether the card is gone: an earlier visit showed it finished (flow-first-run 3.3). The visit
+   * in which it finished still shows it, so this stays the same until the workspace opens again.
+   */
+  get hidden(): boolean {
+    return this.#finishedBefore;
+  }
+
+  /** Saves that the finished card was shown, so the next visit has no card. */
+  recordFinishedShown(): void {
+    if (!this.#disposed) this.#workspace.recordFinishedShown();
+  }
+
+  /** Opens the New workspace dialog, or `undefined` when the app has none. */
+  get startOwnWorkspace(): (() => void) | undefined {
+    return this.#workspace.startOwnWorkspace?.bind(this.#workspace);
   }
 
   /** Calls `listener` after every change of {@link state}. Returns a function that stops the calls. */

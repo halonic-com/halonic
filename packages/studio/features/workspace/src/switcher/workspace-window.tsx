@@ -11,6 +11,7 @@ import {
 } from "@halonicjs/studio-shell";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { openWorkspaceCommand } from "../feature.ts";
+import type { NewWorkspaceAsks } from "../new-workspace/new-workspace-asks.ts";
 import {
   NewWorkspaceDialog,
   type NewWorkspaceHost,
@@ -42,6 +43,8 @@ export interface WorkspaceWindowProps {
    * **New workspace…** row or button.
    */
   readonly newWorkspace?: NewWorkspaceHost;
+  /** Lets the rest of the app open the New workspace dialog, such as the finished sample card. */
+  readonly newWorkspaceAsks?: NewWorkspaceAsks;
   /** What **Try the Acme sample** needs from the app. Without it Welcome has no such button. */
   readonly sample?: SampleHost;
   /**
@@ -67,12 +70,19 @@ export function WorkspaceWindow({
   language,
   regionFormat,
   newWorkspace,
+  newWorkspaceAsks,
   sample,
   resources,
 }: WorkspaceWindowProps) {
   const { open } = switcher;
   const [creating, setCreating] = useState(false);
   const askNewWorkspace = newWorkspace === undefined ? undefined : () => setCreating(true);
+  useEffect(
+    () =>
+      askNewWorkspace === undefined ? undefined : newWorkspaceAsks?.subscribe(askNewWorkspace),
+    // The dialog opens through `setCreating`, which never changes; the ask is rebuilt each render.
+    [newWorkspace, newWorkspaceAsks],
+  );
   // What Try the Acme sample and Fresh copy do with the host's answer: a copy or a known sample opens.
   const openSample = async (
     made: Exclude<CreatedSample, { kind: "cant" }>,

@@ -18,6 +18,15 @@ export interface SampleWorkspace {
   doneSteps(): readonly SampleStepId[];
   /** Saves that a step is done in this folder. */
   recordDone(step: SampleStepId): void;
+  /** Whether the finished card was shown in an earlier visit, so it is gone now. Read each time. */
+  finishedShown(): boolean;
+  /** Saves that the finished card was shown, so the next visit doesn't show it. */
+  recordFinishedShown(): void;
+  /**
+   * Opens the New workspace dialog, which the finished card offers as **Start your own workspace**.
+   * Without it the app has no such dialog and the card offers no button.
+   */
+  startOwnWorkspace?(): void;
 }
 
 /** The sample facts of the open folder, provided by the app (`first-run.sample-card`). */
