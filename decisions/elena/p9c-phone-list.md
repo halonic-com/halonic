@@ -3,6 +3,7 @@
 - Task: HAL-11294
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-606 (flow-library 8.1, approved) and https://paperclip.halonic.com/HAL/issues/HAL-949 (phone layout 1.1, approved); Liam signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:lWyVq4M2+XpwInDwhLkO2vE0hggWhk/o7vq59cvgt/4yd973XonZNIm2CsizpnVgC+yjf9rGbpBQBk/z3BOPCQ==
 
 ## What changes
 
