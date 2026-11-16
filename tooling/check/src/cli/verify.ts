@@ -12,6 +12,12 @@ import { findRepoRoot } from "../lib/workspace.ts";
  * trace check, which reads every package's test result files, as CI does.
  * Plain verify leaves trace out: in a fresh worktree it would run every
  * package's tests.
+ *
+ * `--only <folder>` (repeatable, with --full) narrows the Turbo run to those
+ * package folders and everything that depends on them, plus `--also <name>`
+ * packages (repeatable) and their dependents, and scopes the trace check to the
+ * folders. CI uses it to check the packages `pnpm new` generates; the `turbo`
+ * job runs every other package.
  */
 interface Step {
   readonly label: string;
@@ -19,9 +25,34 @@ interface Step {
   readonly args: readonly string[];
 }
 
+/** The values of every `flag value` pair in the arguments. */
+function valuesOf(argv: readonly string[], flag: string): string[] {
+  return argv.flatMap((argument, index) => {
+    const value = argv[index + 1];
+    return argument === flag && value !== undefined ? [value] : [];
+  });
+}
+
+/** The Turbo arguments that choose which packages run. */
+function scopeFilters(full: boolean, only: readonly string[], also: readonly string[]): string[] {
+  if (only.length > 0) {
+    return [
+      ...only.map((folder) => `--filter=...{./${folder}}`),
+      ...also.map((name) => `--filter=...${name}`),
+    ];
+  }
+  return full ? [] : ["--affected"];
+}
+
 function main(argv: readonly string[]): number {
   const full = argv.includes("--full");
-  const turboScope = full ? [] : ["--affected"];
+  const only = valuesOf(argv, "--only");
+  const also = valuesOf(argv, "--also");
+  if (only.length > 0 && !full) {
+    console.error("verify: --only goes with --full.");
+    return 2;
+  }
+  const turboScope = scopeFilters(full, only, also);
   const turboLimit = process.env["CI"] ? [] : ["--concurrency=2"];
   const steps: Step[] = [
     {
@@ -63,7 +94,14 @@ function main(argv: readonly string[]): number {
     steps.push({
       label: "requirements and their tests (trace)",
       command: "pnpm",
-      args: ["run", "--silent", "check", "trace", "--report"],
+      args: [
+        "run",
+        "--silent",
+        "check",
+        "trace",
+        "--report",
+        ...only.flatMap((folder) => ["--package", folder]),
+      ],
     });
   }
   const root = findRepoRoot();

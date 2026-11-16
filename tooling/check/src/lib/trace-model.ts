@@ -55,6 +55,12 @@ export function buildTraceModel(context: CheckContext): TraceModel {
   return { requirements, malformed, calls, taggedTests, withoutResults, unreadableResults };
 }
 
+/** True when the trace check covers this package: every package, or those in `--package` folders. */
+function inTraceScope(context: CheckContext, pkg: WorkspacePackage): boolean {
+  const folders = context.traceFolders ?? [];
+  return folders.length === 0 || folders.includes(pkg.directory);
+}
+
 /** The requirement files and the test files, read. */
 function readRepoFiles(context: CheckContext) {
   const found: { requirement: Requirement; pkg: WorkspacePackage }[] = [];
@@ -63,7 +69,7 @@ function readRepoFiles(context: CheckContext) {
   const packagesWithTests = new Set<WorkspacePackage>();
   for (const file of context.files) {
     const pkg = owningPackage(file, context.packages);
-    if (pkg === undefined) {
+    if (pkg === undefined || !inTraceScope(context, pkg)) {
       continue;
     }
     if (isRequirementFile(file)) {
@@ -104,7 +110,7 @@ function readResultFiles(context: CheckContext, packagesWithTests: ReadonlySet<W
   const taggedTests: TestOutcome[] = [];
   const withoutResults = new Set<WorkspacePackage>();
   const unreadableResults = new Map<WorkspacePackage, string>();
-  for (const pkg of context.packages) {
+  for (const pkg of context.packages.filter((candidate) => inTraceScope(context, candidate))) {
     const results = readTestResults(context.root, pkg.directory);
     if (results.kind === "missing") {
       if (packagesWithTests.has(pkg)) {

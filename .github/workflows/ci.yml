@@ -823,14 +823,26 @@ jobs:
           pnpm new package targets/ci-example/runtime --owner ci --purpose "Empty example target that CI generates to prove the scaffold passes every check."
           pnpm new feature ci-example --owner ci --purpose "Empty example feature that CI generates to prove the scaffold passes every check."
           pnpm install --no-frozen-lockfile
-      - name: pnpm verify --full
-        # This job runs every package's tests on one shared runner, so a test
-        # that passes in its own job can pass the default 5 s limit only
-        # barely (HAL-3852). Give each test and hook 30 s and use fewer workers.
+      - name: Check what was generated
+        # The repo-wide checks run in full. Turbo runs only the generated
+        # packages and feature and what depends on them, plus the apps that
+        # read the generated registry (`//#codegen`). The `turbo` job runs
+        # every task for the other packages, and with no cache here the full
+        # run took 14 to 19 minutes (HAL-10774). The trace check reads only the
+        # generated packages. Test timeout and workers: HAL-3852, a test that
+        # passes in its own job can pass the default 5 s limit only barely.
         env:
           HALONIC_TEST_TIMEOUT: "30000"
           HALONIC_TEST_WORKERS: "2"
-        run: pnpm verify --full
+        run: |
+          pnpm verify --full \
+            --only packages/core/ci-example \
+            --only packages/adapters/ci-example \
+            --only packages/host/ci-example \
+            --only packages/targets/ci-example/runtime \
+            --only packages/studio/features/ci-example \
+            --also @halonicjs/app-studio \
+            --also halonic
 
   # Conditional jobs. Each runs only when its area changes, and ci-ok
   # accepts "skipped". docs is a stub until the code it checks exists.

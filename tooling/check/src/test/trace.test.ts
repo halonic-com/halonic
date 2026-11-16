@@ -59,11 +59,13 @@ function workflow(files: Record<string, string>): FixturePackage {
   };
 }
 
-function traceErrors(packages: FixturePackage[]): string[] {
+function traceErrors(packages: FixturePackage[], traceFolders?: string[]): string[] {
   const coreOrder = ["@halonicjs/routines", "@halonicjs/workflow"];
-  return runChecks(packages, { coreOrder, rules: ["trace"] }).map(
-    (problem) => `${problem.file}: ${problem.message}`,
-  );
+  return runChecks(packages, {
+    coreOrder,
+    rules: ["trace"],
+    ...(traceFolders === undefined ? {} : { traceFolders }),
+  }).map((problem) => `${problem.file}: ${problem.message}`);
 }
 
 const id = "workflow.timer-fires";
@@ -80,6 +82,17 @@ verifies("check.trace-active-needs-passing-test", () => {
       ...results([{ requirement: id }]),
     });
     expect(traceErrors([pkg])).toEqual([]);
+  });
+
+  test("reads only the packages in the --package folders", () => {
+    const pkg = workflow({ "requirements/timer-fires.md": requirementText(id), ...results([]) });
+    const other: FixturePackage = {
+      directory: "packages/core/routines",
+      manifest: manifestFor("@halonicjs/routines", "core"),
+      files: { "src/index.ts": "export const x = 1;\n" },
+    };
+    expect(traceErrors([pkg, other], ["packages/core/routines"])).toEqual([]);
+    expect(traceErrors([pkg, other], [workflowDirectory])).toHaveLength(1);
   });
 
   test("fails when an active requirement has no test", () => {

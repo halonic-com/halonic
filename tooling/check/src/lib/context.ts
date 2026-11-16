@@ -32,6 +32,8 @@ export interface CheckContext {
   readonly files: readonly string[];
   readonly packages: readonly WorkspacePackage[];
   readonly packagesByName: ReadonlyMap<string, WorkspacePackage>;
+  /** Package folders the trace check is limited to (`--package`); none means every package. */
+  readonly traceFolders?: readonly string[];
   readonly policy: Policy;
   readonly dependencyList: DependencyList;
   readonly policyPath: string;
@@ -62,9 +64,14 @@ const listFiles: ReadonlySet<string> = new Set([
 /**
  * Reads the repo once and returns the context every rule shares.
  *
+ * @param traceFolders package folders the trace check is limited to; empty for every package
  * @param listsRoot a checkout whose allow-lists replace the checked tree's own; a list missing there is an error, never a fall back to the tree
  */
-export function loadContext(root: string, listsRoot?: string): CheckContext {
+export function loadContext(
+  root: string,
+  listsRoot?: string,
+  traceFolders: readonly string[] = [],
+): CheckContext {
   const listPath = (file: string): string => {
     if (listsRoot === undefined || !listFiles.has(file)) {
       return join(root, file);
@@ -86,6 +93,12 @@ export function loadContext(root: string, listsRoot?: string): CheckContext {
       packagesByName.set(pkg.manifest.name, pkg);
     }
   }
+  const notPackages = traceFolders.filter(
+    (folder) => !packages.some((pkg) => pkg.directory === folder),
+  );
+  if (notPackages.length > 0) {
+    throw new Error(`--package folder is not a package: ${notPackages.join(", ")}.`);
+  }
   const texts = new Map<string, string>();
   const facts = new Map<string, SourceFacts>();
   const read = (file: string): string => {
@@ -101,6 +114,7 @@ export function loadContext(root: string, listsRoot?: string): CheckContext {
     files: listRepoFiles(root),
     packages,
     packagesByName,
+    traceFolders,
     policy: parsePolicy(policyPath, readJson(listPath(policyPath))),
     dependencyList: parseDependencyList(dependencyListPath, readJson(listPath(dependencyListPath))),
     policyPath,
