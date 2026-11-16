@@ -1,6 +1,9 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { WorkspaceLibraryItems } from "./workspace-library-items.ts";
+import {
+  WorkspaceLibraryItems,
+  type WorkspaceLibraryItemsHostParts,
+} from "./workspace-library-items.ts";
 
 function setup(extra: Record<string, string> = {}) {
   const store: Record<string, string> = {
@@ -17,35 +20,43 @@ function setup(extra: Record<string, string> = {}) {
     ...extra,
   };
   const history: Record<string, string>[] = [];
+  let pending = {};
   const listeners = new Set<() => void>();
-  const host = new WorkspaceLibraryItems({
-    files: {
-      change: (_label, changes) => {
-        history.push({ ...store });
-        for (const [path, text] of Object.entries(changes)) {
-          if (text === null) delete store[path];
-          else store[path] = text;
-        }
-      },
-      undo: () => {
-        const previous = history.pop();
-        if (previous === undefined) return false;
-        for (const path of Object.keys(store)) delete store[path];
-        Object.assign(store, previous);
-        return true;
-      },
-      read: async (path) => store[path] ?? null,
-      list: async (dir) =>
-        Object.keys(store)
-          .filter((path) => path.startsWith(`${dir}/`))
-          .sort(),
+  const files: WorkspaceLibraryItemsHostParts["files"] = {
+    get pending() {
+      return pending;
     },
+    change: (_label, changes) => {
+      pending = {};
+      history.push({ ...store });
+      for (const [path, text] of Object.entries(changes)) {
+        if (text === null) delete store[path];
+        else store[path] = text;
+      }
+    },
+    undo: () => {
+      const previous = history.pop();
+      if (previous === undefined) return false;
+      pending = {};
+      for (const path of Object.keys(store)) delete store[path];
+      Object.assign(store, previous);
+      return true;
+    },
+    read: async (path) => store[path] ?? null,
+    list: async (dir) =>
+      Object.keys(store)
+        .filter((path) => path.startsWith(`${dir}/`))
+        .sort(),
+  };
+  const host = new WorkspaceLibraryItems({
+    files,
     onChange: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
   });
-  return { host, listeners, store };
+  const edit = (path: string, text: string) => files.change("Edited", { [path]: text });
+  return { host, listeners, store, edit, ctrlZ: () => files.undo() };
 }
 
 verifies("library.library-page", () => {
@@ -115,10 +126,28 @@ verifies("library.library-delete", () => {
     expect(store).toEqual(before);
   });
 
-  it("refuses an Undo when nothing is left to undo", async () => {
+  it("refuses an Undo after another change, and undoes nothing", async () => {
+    const { host, store, edit } = setup();
+    const removed = await host.remove("skill", { hub: null, id: "tone" });
+    edit("library/collections/claims.collection.yaml", "id: claims\nname: Claims 2\n");
+    await expect(removed.undo()).rejects.toThrow("can't be put back");
+    expect(store["library/skills/tone/SKILL.md"]).toBeUndefined();
+    expect(store["library/collections/claims.collection.yaml"]).toContain("Claims 2");
+  });
+
+  it("refuses an Undo after the delete was undone some other way", async () => {
+    const { host, store, ctrlZ } = setup();
+    const removed = await host.remove("skill", { hub: null, id: "tone" });
+    ctrlZ();
+    expect(store["library/skills/tone/SKILL.md"]).toContain("Plain.");
+    await expect(removed.undo()).rejects.toThrow("can't be put back");
+    expect(store["library/skills/tone/SKILL.md"]).toContain("Plain.");
+  });
+
+  it("refuses a second Undo", async () => {
     const { host } = setup();
     const removed = await host.remove("skill", { hub: null, id: "tone" });
     await removed.undo();
-    await expect(removed.undo()).rejects.toThrow("Nothing is left to undo");
+    await expect(removed.undo()).rejects.toThrow("can't be put back");
   });
 });

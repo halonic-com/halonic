@@ -25,6 +25,11 @@ afterEach(() => {
   restorePopover();
 });
 
+/** An error with a kind, as the host throws: its message is safe to show. */
+function kinded(kind: string, message: string): Error {
+  return Object.assign(new Error(message), { kind });
+}
+
 const nobody: ItemUsage = { agents: [], hubs: [], routines: [], collections: [] };
 const usedBySupport: ItemUsage = {
   ...nobody,
@@ -88,13 +93,24 @@ verifies("library.library-delete", () => {
     expect(host.remove).toHaveBeenCalledWith("skill", { hub: null, id: "tone" });
     expect(document.querySelector("dialog[open]")).toBeNull();
     expect(toasts.list()[0]).toMatchObject({
-      title: "Moved Tone to the trash",
-      text: "Used by Support",
+      title: "Moved Tone to the trash.",
+      text: "1 agent now shows an error until you take it off its Tools page.",
       action: { label: "Undo" },
     });
     await act(async () => toasts.list()[0]?.action?.onClick());
     expect(undo).toHaveBeenCalledOnce();
-    expect(toasts.list().at(-1)?.title).toBe("Put Tone back");
+    expect(toasts.list()).toHaveLength(1);
+  });
+
+  it("says why Undo failed", async () => {
+    const { host, undo } = itemsHost(nobody);
+    undo.mockRejectedValue(
+      kinded("conflict", "Tone can't be put back, because the workspace changed."),
+    );
+    const { page, toasts } = await showLibrary(host);
+    await pick(page, "More actions for Tone", "Delete");
+    await act(async () => toasts.list()[0]?.action?.onClick());
+    expect(toasts.list().at(-1)).toMatchObject({ tone: "danger", title: "Couldn't put Tone back" });
   });
 
   it("gives an item nobody uses no second line", async () => {
@@ -106,11 +122,29 @@ verifies("library.library-delete", () => {
 
   it("says why a delete failed, and shows no system message", async () => {
     const { host } = itemsHost(nobody, async () => {
-      throw new Error("Tone isn't in this workspace any more.");
+      throw kinded("not_found", "Tone isn't in this workspace any more.");
     });
     const { page, toasts } = await showLibrary(host);
     await pick(page, "More actions for Tone", "Delete");
-    expect(toasts.list()[0]).toMatchObject({ tone: "danger", title: "Couldn't delete Tone" });
+    expect(toasts.list()[0]).toMatchObject({
+      tone: "danger",
+      title: "Couldn't move Tone to the trash: Tone isn't in this workspace any more.",
+      sticky: true,
+      action: { label: "Try again" },
+    });
+  });
+
+  it("tries the delete again from the failure toast", async () => {
+    const { host, undo } = itemsHost(nobody);
+    host.remove = vi
+      .fn<LibraryItemsHost["remove"]>()
+      .mockRejectedValueOnce(kinded("unavailable", "The disk is full."))
+      .mockResolvedValue({ undo });
+    const { page, toasts } = await showLibrary(host);
+    await pick(page, "More actions for Tone", "Delete");
+    await act(async () => toasts.list()[0]?.action?.onClick());
+    expect(host.remove).toHaveBeenCalledTimes(2);
+    expect(toasts.list().at(-1)?.title).toBe("Moved Tone to the trash");
   });
 
   it("deletes from an open page and shows the strip with Undo, not the gone state", async () => {
@@ -166,13 +200,13 @@ verifies("library.library-delete", () => {
     await settled();
     await pick(page, "More actions for Tone", "Delete");
     expect(remove).toHaveBeenCalledWith("skill", { hub: null, id: "tone" });
-    expect(page.textContent).toContain("Moved Tone to the trash");
+    expect(page.textContent).toContain("This skill was moved to the trash");
     expect(page.textContent).not.toContain("isn't in this workspace any more");
     const undoButton = [...page.querySelectorAll("button")].find((b) => b.textContent === "Undo");
     await act(async () => undoButton?.click());
     await settled();
     expect(undo).toHaveBeenCalledOnce();
     expect(page.querySelector("h1")?.textContent).toBe("Tone");
-    expect(page.textContent).not.toContain("Moved Tone to the trash");
+    expect(page.textContent).not.toContain("This skill was moved to the trash");
   });
 });

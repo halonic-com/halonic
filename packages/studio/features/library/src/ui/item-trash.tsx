@@ -40,13 +40,12 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
 
   const onDelete = useCallback(async () => {
     if (host === undefined) return;
-    const done = await removeItem(
+    await removeItem(
       host,
       toasts,
       { kind, place: { hub, id }, name, usage: usage ?? noUsage },
-      { quiet: true },
+      { quiet: true, onRemoved: setRemoved },
     );
-    if (done !== undefined) setRemoved(done);
   }, [host, toasts, kind, hub, id, name, usage]);
 
   const onUndo = useCallback(async () => {
@@ -72,7 +71,7 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
   const strip =
     removed === undefined ? null : (
       <p role="status" className="flex flex-wrap items-center gap-2 px-4 py-5">
-        {deleteWords.moved(name)}
+        {deleteWords.pageMoved(kind)}
         <Button variant="ghost" onClick={() => void onUndo()}>
           {deleteWords.undo}
         </Button>

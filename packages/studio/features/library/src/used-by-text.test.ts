@@ -44,19 +44,17 @@ verifies("library.library-used-by", () => {
 });
 
 verifies("library.library-delete", () => {
-  it("says nothing when nobody uses the item", () => {
+  it("says nothing when no agent uses the item", () => {
     expect(usedByLine(usage({}))).toBeUndefined();
+    expect(usedByLine(usage({ hubs: named("Support"), routines: named("Inbox") }))).toBeUndefined();
   });
 
-  it("says who uses it, as the row does", () => {
-    expect(usedByLine(usage({ agents: named("Support") }))).toBe("Used by Support");
-  });
-
-  it("names the hubs that take a shared item, which the row doesn't count", () => {
-    expect(usedByLine(usage({ hubs: named("Support") }))).toBe("Used by the Support hub");
-    expect(usedByLine(usage({ hubs: named("Support", "Billing") }))).toBe("Used by 2 hubs");
-    expect(usedByLine(usage({ agents: named("Support"), hubs: named("Billing") }))).toBe(
-      "Used by Support and 1 hub",
+  it("counts the agents that now show an error", () => {
+    expect(usedByLine(usage({ agents: named("Support") }))).toBe(
+      "1 agent now shows an error until you take it off its Tools page.",
+    );
+    expect(usedByLine(usage({ agents: named("Support", "Billing") }))).toBe(
+      "2 agents now show an error until you take it off their Tools page.",
     );
   });
 });

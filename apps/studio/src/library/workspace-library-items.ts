@@ -1,5 +1,6 @@
 import { type LibraryItemKind, whoUses } from "@halonicjs/app";
 import type { DefinitionSource } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
 import type {
   LibraryEntry,
   LibraryItemPlace,
@@ -38,6 +39,8 @@ export interface WorkspaceLibraryItemsHostParts extends WorkspaceLibraryItemsPar
     change(label: string, changes: Record<string, string | null>): void;
     /** The kernel's `WorkspaceFiles.undo`: `false` when there was nothing to undo. */
     undo(): boolean;
+    /** The kernel's `WorkspaceFiles.pending`: a new object after every change, so it tells a step is still the newest. */
+    readonly pending: unknown;
   };
 }
 
@@ -98,17 +101,27 @@ export class WorkspaceLibraryItems implements LibraryItemsHost {
 
   /**
    * Deletes the item's file (a skill's whole folder) as one change. Undo is the workspace's undo,
-   * so it puts the item back only while nothing was changed after the delete.
+   * so it puts the item back only while the delete is still the newest step: after any other
+   * change, or after the delete was undone some other way, it rejects and undoes nothing.
    */
   async remove(kind: LibraryItemKind, place: LibraryItemPlace): Promise<RemovedLibraryItem> {
     const files = this.#parts.files;
     const name = displayName(kind, place.id);
     const paths = await itemPaths(files, kind, place);
-    if (paths.length === 0) throw new Error(`${name} isn't in this workspace any more.`);
-    files.change(`Deleted ${kind} ${place.id}`, Object.fromEntries(paths.map((path) => [path, null])));
+    if (paths.length === 0)
+      throw new KindedError("not_found", `${name} isn't in this workspace any more.`);
+    files.change(
+      `Deleted ${kind} ${place.id}`,
+      Object.fromEntries(paths.map((path) => [path, null])),
+    );
+    const afterDelete = files.pending;
     return {
       undo: async () => {
-        if (!files.undo()) throw new Error(`Nothing is left to undo for ${name}.`);
+        if (files.pending !== afterDelete || !files.undo()) {
+          throw new Error(
+            `${name} can't be put back, because the workspace changed after it was deleted.`,
+          );
+        }
       },
     };
   }

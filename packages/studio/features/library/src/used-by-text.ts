@@ -30,23 +30,18 @@ export function usedByText(usage: ItemUsage): string {
 }
 
 /**
- * The second line of "Moved X to the trash": who still uses the item, or `undefined` when nobody
- * does. Unlike a row's text it names the hubs that take a shared item (flow-library 3.1, 4).
+ * The second line of "Moved X to the trash.": what breaks, or `undefined` when no agent uses the
+ * item. Only agents have a sentence in the design (flow-library 4, microcopy 11.3); the other
+ * users of an item (collections, connectors' routines, hubs) have none until Maya settles it.
  *
  * @example
  * usedByLine({ agents: [{ id: "support", name: "Support", hub: null }], hubs: [], routines: [], collections: [] });
- * // "Used by Support"
+ * // "1 agent now shows an error until you take it off its Tools page."
  */
 export function usedByLine(usage: ItemUsage): string | undefined {
-  if (usage.hubs.length === 0) {
-    return usedByText(usage) === "Not used yet" ? undefined : usedByText(usage);
-  }
-  const [onlyHub] = usage.hubs;
-  const others = usage.agents.length + usage.routines.length + usage.collections.length;
-  if (onlyHub !== undefined && usage.hubs.length === 1 && others === 0) {
-    return `Used by the ${onlyHub.name} hub`;
-  }
-  const rest = usedByText({ ...usage, hubs: [] });
-  const hubs = counted(usage.hubs.length, "hub");
-  return others === 0 ? `Used by ${hubs}` : `${rest} and ${hubs}`;
+  const count = usage.agents.length;
+  if (count === 0) return undefined;
+  return count === 1
+    ? "1 agent now shows an error until you take it off its Tools page."
+    : `${count} agents now show an error until you take it off their Tools page.`;
 }
