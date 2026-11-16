@@ -211,10 +211,10 @@ export class FakeTunnelProvider implements TunnelProvider {
     this.publish({ state: "ready", at: this.stamp() });
   }
 
-  /** Goes through `starting` and, after the latency, `ready`; resolves with the endpoint. */
+  /** Goes through `starting` and, after the latency, `ready`; resolves with the endpoint. Shares a start already in progress. */
   reconnect(): Promise<TunnelEndpoint> {
     this.requireTunnel("reconnect");
-    return this.bringUp();
+    return this.coming ?? this.bringUp();
   }
 
   /** Makes the next start, or reconnect, end `down` with `reason` instead of `ready`. */
@@ -242,6 +242,9 @@ export class FakeTunnelProvider implements TunnelProvider {
     if (tunnel === undefined) throw new Error("no tunnel to start");
     this.publish({ state: "starting", at: this.stamp() });
     await this.time.wait(this.latencyMs);
+    if (this.tunnel !== tunnel) {
+      throw new Error(`the tunnel went ${this.current.state} before it was ready`);
+    }
     const reason = this.failure;
     if (reason !== undefined) {
       this.failure = undefined;
@@ -249,7 +252,7 @@ export class FakeTunnelProvider implements TunnelProvider {
       this.publish({ state: "down", reason, at: this.stamp() });
       throw new Error(`the tunnel went down before it was ready: ${reason}`);
     }
-    if (this.current.state !== "starting" || this.tunnel !== tunnel) {
+    if (this.current.state !== "starting") {
       throw new Error(`the tunnel went ${this.current.state} before it was ready`);
     }
     this.publish({ state: "ready", at: this.stamp() });

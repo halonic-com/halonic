@@ -145,12 +145,76 @@ verifies("contracts.fake-tunnel-provider", () => {
       expect(() => provider.reconnect()).toThrow("no tunnel is up");
     });
 
-    it("stops delivering to a reader that left", async () => {
+    it("ends the stream of a reader that left early and keeps serving the others", async () => {
       const provider = new FakeTunnelProvider();
       await provider.start(config);
-      expect((await currentStatus(provider)).state).toBe("ready");
+      const leaver = provider.status()[Symbol.asyncIterator]();
+      expect(await leaver.next()).toMatchObject({ value: { state: "ready" } });
+      await leaver.return?.();
+      const stayer = watch(provider);
       provider.drop("offline");
-      await expect(provider.stop()).resolves.toBeUndefined();
+      await settle();
+      expect(await leaver.next()).toEqual({ done: true, value: undefined });
+      expect(states(stayer)).toEqual(["ready", "down/offline"]);
+    });
+
+    it("rejects a start that is dropped before its latency ends", async () => {
+      const time = new FakeTunnelTime();
+      const provider = new FakeTunnelProvider({ time, latencyMs: 10 });
+      const started = provider.start(config);
+      const rejected = expect(started).rejects.toThrow("went down before it was ready");
+      provider.drop("offline");
+      time.advance(10);
+      await rejected;
+      expect(await currentStatus(provider)).toMatchObject({ state: "down", reason: "offline" });
+    });
+
+    it("lets a start that replaced a stopped one finish", async () => {
+      const time = new FakeTunnelTime();
+      const provider = new FakeTunnelProvider({ time, latencyMs: 10 });
+      const stale = expect(provider.start(config)).rejects.toThrow("before it was ready");
+      await provider.stop();
+      const fresh = provider.start(config);
+      time.advance(10);
+      await stale;
+      await expect(fresh).resolves.toMatchObject({ providerId: "fake" });
+      expect(await currentStatus(provider)).toMatchObject({ state: "ready" });
+    });
+
+    it("tells a stream about a state only once when it is repeated", async () => {
+      const provider = new FakeTunnelProvider();
+      await provider.start(config);
+      const watched = watch(provider);
+      provider.drop("offline");
+      provider.drop("offline");
+      await settle();
+      expect(states(watched)).toEqual(["ready", "down/offline"]);
+    });
+
+    it("shares a start in progress when it reconnects while starting", async () => {
+      const time = new FakeTunnelTime();
+      const provider = new FakeTunnelProvider({ time, latencyMs: 10 });
+      const watched = watch(provider);
+      const started = provider.start(config);
+      const reconnected = provider.reconnect();
+      time.advance(10);
+      expect(await reconnected).toEqual(await started);
+      await settle();
+      expect(states(watched)).toEqual(["down/stopped", "starting", "ready"]);
+    });
+
+    it("does not spend a failure on a start that was stopped meanwhile", async () => {
+      const time = new FakeTunnelTime();
+      const provider = new FakeTunnelProvider({ time, latencyMs: 10 });
+      provider.failNextStart("signed-out");
+      const stopped = expect(provider.start(config)).rejects.toThrow("before it was ready");
+      await provider.stop();
+      time.advance(10);
+      await stopped;
+      const next = provider.start(config);
+      time.advance(10);
+      await expect(next).rejects.toThrow("signed-out");
+      expect(await currentStatus(provider)).toMatchObject({ state: "down", reason: "signed-out" });
     });
   });
 });
