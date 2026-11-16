@@ -11,6 +11,7 @@ verifies("services.agent-host-transport", () => {
     it("reads the shell's answer, null for a host beside the shell, and refuses another shape", async () => {
       const answers: unknown[] = [
         { overdue: true, last: "2026-11-01T00:00:00Z" },
+        { overdue: false },
         null,
         { overdue: 1 },
       ];
@@ -21,6 +22,7 @@ verifies("services.agent-host-transport", () => {
         overdue: true,
         last: "2026-11-01T00:00:00Z",
       });
+      await expect(transport.securityUpdates()).resolves.toEqual({ overdue: false, last: null });
       await expect(transport.securityUpdates()).resolves.toBeNull();
       await expect(transport.securityUpdates()).rejects.toMatchObject({ kind: "answer_invalid" });
     });
