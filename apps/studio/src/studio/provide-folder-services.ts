@@ -63,12 +63,17 @@ export interface FolderServiceParts {
   readonly location: string;
   /** The open workspace, whose files and events the Models feature reads. */
   readonly scope: WorkspaceScope;
+  /**
+   * Saves what is waiting through the workspace's save state, so the toolbar says "Saving…" and a
+   * failure has its toast; rejects when the save fails. Absent: Run starts without waiting.
+   */
+  readonly settle?: () => Promise<void>;
 }
 
 /** Gives the folder in `location` the services its features read through the shell. */
 export function provideFolderServices(
   services: ServiceRegistry,
-  { ipc, files, window, trust, location, scope }: FolderServiceParts,
+  { ipc, files, window, trust, location, scope, settle }: FolderServiceParts,
 ): void {
   services.provide(
     ModelsFilesService,
@@ -127,6 +132,7 @@ export function provideFolderServices(
       files: services.get(workspaceFilesKey),
       onChange: (listener) => scope.events.on("files.changed", listener),
       runs: services.get(RunsSourceService),
+      ...(settle === undefined ? {} : { settle }),
       engine,
     }),
   );

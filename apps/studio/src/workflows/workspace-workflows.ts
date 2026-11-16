@@ -22,6 +22,12 @@ export interface WorkspaceWorkflowsParts {
     list(dir: string): Promise<string[]>;
     change(label: string, changes: Record<string, string | null>): void;
   };
+  /**
+   * Resolves once nothing is unsaved, ending a pending save at once instead of waiting out its
+   * pause; rejects when the save fails. `startRun` waits for it, so a run starts on what is on disk.
+   * Absent where nothing is saved by itself: the run then starts at once.
+   */
+  readonly settle?: () => Promise<void>;
   /** Calls `listener` after every change of the workspace's files; returns the way to stop. */
   readonly onChange: (listener: () => void) => () => void;
   /** The workspace's runs, which the rows count, and the way to hear one start, move on or end. */
@@ -91,9 +97,24 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     const { engine } = parts;
     if (engine !== undefined) {
       this.startRun = async ({ hubId, id }, input) => {
+        // The engine reads the files on disk: wait for a pending save, so a new workflow has its file.
+        await this.#saved();
         const { id: runId } = await engine.startRun({ hubId, workflowId: id }, input);
         return { runId };
       };
+    }
+  }
+
+  /** Waits for the pending save; a failed one is why the run doesn't start (R1, HAL-10622). */
+  async #saved(): Promise<void> {
+    const { settle } = this.#parts;
+    if (settle === undefined) return;
+    try {
+      await settle();
+    } catch {
+      // The reason of the failure is on the save's own toast; the run says only what didn't happen.
+      // The save covers the whole workspace, so any file can be the one that failed.
+      throw new Error("The workspace couldn't be saved.");
     }
   }
 

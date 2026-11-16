@@ -181,8 +181,8 @@ export interface WorkflowsHost {
    * Starts a run of the workflow through the engine with `input` as the run's input, and returns
    * the new run's id. The run is what is saved in the workspace now: the engine runs the saved
    * files. Studio saves by itself, so this differs from what the page shows only while a save is
-   * pending or a field has a mistake; the host waits for a pending save to finish before it starts
-   * the run, and never saves on **Run**'s behalf (HAL-10348). Absent while the app has no engine
+   * pending or a field has a mistake; the host saves what is waiting at once and then starts the run,
+   * and never saves a field that has a mistake (HAL-10348). Absent while the app has no engine
    * to start it, so the page shows no **Run**. Rejects with {@link EngineNotAnswering} when the
    * engine can't be reached, or with the reason it didn't start, which includes a save that failed.
    */

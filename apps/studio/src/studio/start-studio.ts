@@ -1,16 +1,5 @@
-import {
-  TauriDefinitionStore,
-  type TauriFileShell,
-  TauriPickedFolders,
-  TauriTrustStore,
-  webCryptoDigest,
-} from "@halonicjs/adapter-fs-tauri";
-import {
-  openWorkspace,
-  ServiceRegistry,
-  type WorkspaceScope,
-  workspaceFilesKey,
-} from "@halonicjs/app";
+import { TauriPickedFolders, TauriTrustStore } from "@halonicjs/adapter-fs-tauri";
+import { ServiceRegistry } from "@halonicjs/app";
 import { googleSetupFeature } from "@halonicjs/studio-feature-google-setup";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
@@ -61,7 +50,6 @@ import {
   type OpenedWorkspace,
   type RecentStorage,
   RecentWorkspaces,
-  WorkspaceSaving,
   WorkspaceSwitcher,
   workspaceFeature,
 } from "@halonicjs/studio-feature-workspace";
@@ -90,6 +78,7 @@ import {
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
 import { newWorkspaceHostOf } from "./new-workspace-host.ts";
+import { openFolderScope, savingOf } from "./open-folder-scope.ts";
 import { openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
 import { provideFolderServices } from "./provide-folder-services.ts";
 import { restartRunsOfWindow } from "./restart-runs.ts";
@@ -100,7 +89,6 @@ export { servedServices } from "./served-studio.ts";
 import { followSystemRegion } from "./system-region.ts";
 import { trustedSourcesOf } from "./trusted-sources.ts";
 import { hostSettingsOf } from "./window-host-settings.ts";
-import type { WorkspaceTrust } from "./workspace-trust.ts";
 import { WorkspaceTrustView } from "./workspace-trust-control.ts";
 
 /**
@@ -380,14 +368,27 @@ export async function openFolder(
   }
   const assistant = provideAssistant(services, files, location, name, scope);
   if (ipc !== undefined && files !== undefined && trust !== undefined && scope !== undefined) {
-    provideFolderServices(services, { ipc, files, window, trust, location, scope });
+    provideFolderServices(services, {
+      ipc,
+      files,
+      window,
+      trust,
+      location,
+      scope,
+      // Run waits through the workspace's own save, which is made below, once the workspace is.
+      settle: async () => {
+        if (!((await saving?.saveNow()) ?? true))
+          throw new Error("The workspace is still unsaved.");
+      },
+    });
   }
   shell.services.instantiate(services);
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name });
+  const saving = scope === undefined ? undefined : savingOf(scope, workspace, name);
   return {
     name,
     workspace,
-    saving: scope === undefined ? undefined : savingOf(scope, workspace, name),
+    saving,
     trust: trustView,
     dispose: () => {
       if (trust !== undefined) open.delete(trust);
@@ -427,38 +428,6 @@ function provideAgentSandbox(services: ServiceRegistry, window: object): void {
   const transport = tauriAgentHostTransport(window);
   if (transport !== undefined)
     services.provide(AgentSandboxService, new AgentHostSandboxFacts(transport));
-}
-
-/** Saves the scope's files by themselves, through the workspace's save state (`workspace.saves-itself`). */
-function savingOf(
-  scope: WorkspaceScope,
-  workspace: StudioWorkspace,
-  name: string,
-): WorkspaceSaving {
-  return new WorkspaceSaving({
-    files: scope.services.get(workspaceFilesKey),
-    onChange: (listener) => scope.events.on("files.changed", listener),
-    saving: workspace.saving,
-    name,
-  });
-}
-
-/** The workspace's scope over its folder and its review records, which live in the profile. */
-function openFolderScope(
-  files: TauriFileShell,
-  location: string,
-  trust: WorkspaceTrust,
-): WorkspaceScope {
-  const scope = openWorkspace({
-    store: new TauriDefinitionStore(files, location),
-    reviewRecords: new TauriDefinitionStore(files, location, { folder: "review" }),
-    digest: webCryptoDigest,
-    isTrusted: () => trust.isTrusted(),
-    onListenerError: (error) => console.error(error),
-  });
-  // A saved change may add something to run, so trust is checked again on what is saved.
-  scope.events.on("files.saved", () => void trust.refresh());
-  return scope;
 }
 
 /**
