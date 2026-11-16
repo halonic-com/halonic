@@ -2,12 +2,20 @@
 import type { LibraryItemKind } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { LibraryItemsHost, LibraryListing } from "../library-items-host.ts";
+import { installFakePopover } from "../test-support/popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { LibraryPage, type LibraryPageProps } from "./library-page.tsx";
 
-afterEach(unmountAll);
+let restorePopover: () => void;
+beforeEach(() => {
+  restorePopover = installFakePopover();
+});
+afterEach(() => {
+  unmountAll();
+  restorePopover();
+});
 
 const noUsage = { agents: [], hubs: [], routines: [], collections: [] };
 
@@ -166,6 +174,34 @@ verifies("library.library-page", () => {
     );
     act(() => cell?.click());
     expect(onOpen).toHaveBeenCalledWith("skill", { hub: "acme", id: "refunds" });
+  });
+
+  it("lists a row's menu in the spec's order and opens from it", async () => {
+    const onOpen = vi.fn();
+    const onOpenInNewTab = vi.fn();
+    const page = await show(hostWith({ skill: skills }), {
+      onOpen,
+      onOpenInNewTab,
+      onOpenAsFile: () => undefined,
+    });
+    const item = (name: string) =>
+      [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+        (each) => each.textContent === name,
+      );
+    const openMenu = () =>
+      act(() =>
+        page
+          .querySelector<HTMLElement>('button[aria-label="More actions for Acme refunds"]')
+          ?.click(),
+      );
+    openMenu();
+    const entries = [...document.querySelectorAll('[role="menuitem"]')].map((e) => e.textContent);
+    expect(entries).toEqual(["Open", "Open in new tab", "Open as file", "Delete"]);
+    await act(async () => item("Open")?.click());
+    expect(onOpen).toHaveBeenCalledWith("skill", { hub: "acme", id: "refunds" });
+    openMenu();
+    await act(async () => item("Open in new tab")?.click());
+    expect(onOpenInNewTab).toHaveBeenCalledWith("skill", { hub: "acme", id: "refunds" });
   });
 
   it("offers Open the docs folder in the empty Knowledge tab, and only there", async () => {
