@@ -1,5 +1,13 @@
 import { randomUUID } from "node:crypto";
-import type { HarnessRun } from "@halonicjs/ports";
+import type { HarnessEvent, HarnessInput, HarnessRun, HarnessTask } from "@halonicjs/ports";
+
+/** Who is told what happens to the runs in the table, such as the remote gateway's ledger. */
+export interface RunObserver {
+  started(id: string, task: HarnessTask): void;
+  event(id: string, event: HarnessEvent): void;
+  answered(id: string, input: HarnessInput): void;
+  ended(id: string, outcome: "done" | "failed"): void;
+}
 
 /**
  * The harness runs the host has going, by an id it made. A run is here from
@@ -9,25 +17,51 @@ import type { HarnessRun } from "@halonicjs/ports";
 export class RunTable {
   private readonly runs = new Map<string, HarnessRun>();
   private stopping = false;
+  private readonly observer: RunObserver | undefined;
+
+  /** @param observer - told about each run's start, events, answers and end */
+  constructor(observer?: RunObserver) {
+    this.observer = observer;
+  }
 
   /** True once {@link RunTable.cancelAll} has started: the host starts no more runs. */
   get isStopping(): boolean {
     return this.stopping;
   }
 
-  add(run: HarnessRun): string {
+  add(run: HarnessRun, task: HarnessTask): string {
     const id = randomUUID();
     this.runs.set(id, run);
+    this.observer?.started(id, task);
     return id;
+  }
+
+  /** The run reported an event. */
+  record(id: string, event: HarnessEvent): void {
+    this.observer?.event(id, event);
+  }
+
+  /**
+   * Passes a person's answer to the run: the one road for an answer from
+   * Studio and from a phone.
+   *
+   * @throws when there is no such run, or the run refuses the answer
+   */
+  async send(id: string, input: HarnessInput): Promise<void> {
+    const run = this.runs.get(id);
+    if (run === undefined) throw new Error("The agent host has no harness run with this id.");
+    await run.send(input);
+    this.observer?.answered(id, input);
   }
 
   get(id: string): HarnessRun | undefined {
     return this.runs.get(id);
   }
 
-  /** Forgets a run whose stream has ended. */
-  remove(id: string): void {
+  /** Forgets a run whose stream has ended, `failed` or not. */
+  remove(id: string, outcome: "done" | "failed"): void {
     this.runs.delete(id);
+    this.observer?.ended(id, outcome);
   }
 
   /** Cancels every run, when the host stops. One that fails to stop doesn't stop the others. */
