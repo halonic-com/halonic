@@ -1,8 +1,7 @@
 # Decision: the gateway closes the connection when a watch loses events mid-stream
 
-- Approval: HAL-10833 (Liam, CTO; review point on the watch port)
+- Approval: [HAL-10833](/HAL/issues/HAL-10833) (Liam, CTO; review point on the watch port)
 - Kind: internal
-- Signature: pending (Liam signs from a clean worktree of `origin/main`)
 - Task: HAL-10833
 
 The protocol has no message for "history is gone" in the middle of a watch, only as the answer to a
