@@ -3,6 +3,7 @@
 - Task: HAL-10534
 - Approval: the board approved option A (CodeMirror 6) on HAL-10536 (https://paperclip.halonic.com/HAL/issues/HAL-10536#comment-a7bb8957-fcbf-42be-93f3-26e5145695e2): "Option A, CodeMirror 6 ... one package `studio/code-editor`; core CodeMirror packages plus YAML and Markdown language support only; our own undo history; loaded only when a file is opened."
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:PGCdggeLWT9ChcXLiuj0Mpg7wZ4fiGXqexQ7U27PXf5DtpJCdi2qBL4ksREVjTrTTBBjRQoaX+nhTMzelhz5CA==
 
 ## What changes
 
