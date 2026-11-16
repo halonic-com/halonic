@@ -235,8 +235,6 @@ export const runPageWords = {
   instructionsUnavailable: "Nothing was trusted. Try again.",
   instructionsTrusted: "Trusted. Run again to start it.",
   budgetName: "Stopped at its budget",
-  /** For a failed sandbox start that names no agent. */
-  theAgent: "The agent",
   /** One tool approval (mc 15.2): who asks and what for, in the words of the Inbox card's title. */
   approval: (what: string, sends: boolean) =>
     `Waiting for your approval. ${what}. ${sends ? "Nothing is sent" : "It doesn't run"} until you decide.`,
@@ -263,28 +261,6 @@ export const runPageWords = {
       : `${workflow} stopped in the step ${step}: ${asSentence(message)}`,
   budgetChecks:
     "Halonic checks the budget before each model call, so calls already under way can take a run over it.",
-  /**
-   * The failed banners by cause (microcopy 22 F6, F7, F8, F10, F15, F20). The reason the engine
-   * gives never shows: it goes into Copy details, which the banner doesn't have yet.
-   */
-  sandboxStartFailed: (agent: string) =>
-    `${capitalised(agent)} didn't start: the sandbox on this computer didn't start. Nothing ran.`,
-  cloudModelUnreachable: (provider: string, host: string | undefined, model: string) =>
-    `Halonic couldn't reach ${capitalised(provider)}${host === undefined ? "" : ` at \`${host}\``} for the model \`${model}\`. This computer may be offline. Check your internet connection, then run again.`,
-  localModelUnreachable: (provider: string, host: string | undefined, model: string) =>
-    `Halonic couldn't reach ${capitalised(provider)}${host === undefined ? "" : ` at \`${host}\``} for the model \`${model}\`. ${capitalised(provider)} may not be running on this computer. Start ${capitalised(provider)}, then run again.`,
-  modelOutOfMemory: (provider: string, model: string) =>
-    `${capitalised(provider)} couldn't load \`${model}\`: this computer doesn't have enough free memory for it.`,
-  modelOutOfMemoryFix: "Close other programs, or pick a smaller model in Models.",
-  modelOutOfMemoryFixOnPhone: "Close other programs, or pick a smaller model.",
-  fixOnComputer: (place: string) => `Fix this on your computer: ${place}`,
-  modelsPlace: "Models",
-  diskFull: (workflow: string, step: string) =>
-    `${workflow} stopped in the step ${step}: the disk is full, so Halonic couldn't write the run log. Free some space, then run again.`,
-  engineStopped: (workflow: string, step: string) =>
-    `${workflow} stopped because Halonic's engine stopped during the step ${step}. Nothing after that step ran.`,
-  engineStoppedBeforeFirstStep: (workflow: string) =>
-    `${workflow} stopped because Halonic's engine stopped before the first step. Nothing ran.`,
   cancelledIn: (workflow: string, step: string) =>
     `${workflow} was cancelled in the step ${step}. Nothing after it ran.`,
   cancelledBeforeStart: (workflow: string) => `${workflow} was cancelled before it started.`,
@@ -427,7 +403,7 @@ export function toolAction(tool: string): string {
   return plainToolActions[tool] ?? `use ${tool}`;
 }
 
-function capitalised(text: string): string {
+export function capitalised(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 

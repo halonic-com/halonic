@@ -4,6 +4,7 @@
 // Open Models and Copy details come with the buttons the page doesn't have yet.
 
 import type { RunEvent, RunSummary } from "@halonicjs/events";
+import { failureWords } from "../failure-words.ts";
 import { currentStepName } from "../list/run-row.ts";
 import { runPageWords } from "../run-words.ts";
 import type { RunBanner, RunPageContext } from "./run-page-model.ts";
@@ -38,14 +39,14 @@ export function causeBanner(
   const facts = factsFrom(log ?? []);
   switch (summary.reason) {
     case "sandbox-start-failed":
-      return danger([runPageWords.sandboxStartFailed(facts.agent ?? runPageWords.theAgent)]);
+      return danger([failureWords.sandboxStartFailed(facts.agent ?? failureWords.theAgent)]);
     case "disk-full":
-      return danger([runPageWords.diskFull(workflow, step)]);
+      return danger([failureWords.diskFull(workflow, step)]);
     case "interrupted":
       return danger([
         summary.statesVisited.length === 0
-          ? runPageWords.engineStoppedBeforeFirstStep(workflow)
-          : runPageWords.engineStopped(workflow, step),
+          ? failureWords.engineStoppedBeforeFirstStep(workflow)
+          : failureWords.engineStopped(workflow, step),
       ]);
     case "model-unreachable":
       return modelUnreachable(facts, context);
@@ -66,8 +67,8 @@ function modelUnreachable(facts: FailureFacts, context: RunPageContext): RunBann
   // likelier cause, and the local one tells a person to start a program that may not exist.
   const words =
     context.providerKind(provider) === "local"
-      ? runPageWords.localModelUnreachable
-      : runPageWords.cloudModelUnreachable;
+      ? failureWords.localModelUnreachable
+      : failureWords.cloudModelUnreachable;
   return danger([words(provider, host, model)]);
 }
 
@@ -78,13 +79,13 @@ function modelOutOfMemory(facts: FailureFacts, phone: boolean): RunBanner | unde
     return undefined;
   }
   return danger([
-    runPageWords.modelOutOfMemory(provider, model),
+    failureWords.modelOutOfMemory(provider, model),
     ...(phone
       ? [
-          runPageWords.modelOutOfMemoryFixOnPhone,
-          runPageWords.fixOnComputer(runPageWords.modelsPlace),
+          failureWords.modelOutOfMemoryFixOnPhone,
+          failureWords.fixOnComputer(failureWords.modelsPlace),
         ]
-      : [runPageWords.modelOutOfMemoryFix]),
+      : [failureWords.modelOutOfMemoryFix]),
   ]);
 }
 
