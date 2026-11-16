@@ -3064,6 +3064,9 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std
+      '@halonicjs/studio-feature-inbox':
+        specifier: workspace:*
+        version: link:../inbox
       '@halonicjs/studio-feature-runs':
         specifier: workspace:*
         version: link:../runs

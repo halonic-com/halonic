@@ -38,6 +38,7 @@
   },
   "dependencies": {
     "@halonicjs/std": "workspace:*",
+    "@halonicjs/studio-feature-inbox": "workspace:*",
     "@halonicjs/studio-feature-runs": "workspace:*",
     "@halonicjs/studio-feature-settings": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
