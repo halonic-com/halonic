@@ -39,6 +39,9 @@ export const stateWords = {
 export const phoneWords = {
   noGitTitle: "Halonic needs git on your computer to keep versions.",
   notAnswering: "Halonic on your computer isn't answering.",
+  /** The sharing strip: a share address is set on the computer, so a phone can't add one (552 5.4). */
+  onlyHere: "Only on your computer.",
+  addOnComputer: "Add where to share on a computer.",
 };
 
 /** The list of changes and Undo this change (checklist part 2, 2.3). */

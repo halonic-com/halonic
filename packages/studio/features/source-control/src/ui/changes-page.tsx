@@ -54,10 +54,14 @@ export function ChangesView({ list, developerView }: ChangesViewProps) {
         <h1 ref={heading} tabIndex={-1} className={phone ? "sr-only flex-1" : "text-title flex-1"}>
           {pageWords.title}
         </h1>
-        {state.hasRemote ? <GetUpdates list={list} /> : null}
+        {state.hasRemote ? (
+          <span className="ml-auto">
+            <GetUpdates list={list} phone={phone} />
+          </span>
+        ) : null}
       </header>
       {state.read?.kind === "ready" && !state.hasRemote ? (
-        <SharingStrip onAdd={() => setAddingAddress(true)} />
+        <SharingStrip onAdd={() => setAddingAddress(true)} phone={phone} />
       ) : null}
       <PageBody
         list={list}
@@ -160,7 +164,7 @@ function ReadBody({
       ) : (
         <ChangeList list={list} files={state.files} developer={developer} phone={phone} />
       )}
-      <History list={list} history={state.history} />
+      <History list={list} history={state.history} phone={phone} />
     </>
   );
 }

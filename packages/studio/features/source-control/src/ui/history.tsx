@@ -12,6 +12,8 @@ export interface HistoryProps {
   readonly history: HistoryState;
   /** What time it is now, so "Today" and "Yesterday" are right. */
   readonly now?: Date;
+  /** On a phone Show more and Try again are 48px touch buttons, and git's words say "your computer". */
+  readonly phone?: boolean;
 }
 
 /**
@@ -22,7 +24,7 @@ export interface HistoryProps {
  *
  * Not here yet: Restore just this, Go back, and the shared marks.
  */
-export function History({ list, history, now = new Date() }: HistoryProps) {
+export function History({ list, history, now = new Date(), phone = false }: HistoryProps) {
   const headingId = useId();
   const [pickedId, setPickedId] = useState<string>();
   const picked = history.versions.find((version) => version.id === pickedId);
@@ -42,6 +44,7 @@ export function History({ list, history, now = new Date() }: HistoryProps) {
             list={list}
             history={history}
             now={now}
+            phone={phone}
             pickedId={picked?.id}
             onPick={setPickedId}
           />
@@ -56,12 +59,14 @@ function HistoryBody({
   list,
   history,
   now,
+  phone,
   pickedId,
   onPick,
 }: {
   readonly list: ChangesList;
   readonly history: HistoryState;
   readonly now: Date;
+  readonly phone: boolean;
   readonly pickedId: string | undefined;
   readonly onPick: (id: string) => void;
 }) {
@@ -69,9 +74,13 @@ function HistoryBody({
   const failed = history.error !== undefined && (
     <div role="alert" className="flex flex-col items-start gap-2">
       <p className="text-body text-danger">
-        {historyWords.loadFailed}. {loadFailureReason(history.error)}
+        {historyWords.loadFailed}. {loadFailureReason(history.error, phone)}
       </p>
-      <Button variant="secondary" size="sm" onClick={() => void list.refreshHistory()}>
+      <Button
+        variant="secondary"
+        size={phone ? "touch" : "sm"}
+        onClick={() => void list.refreshHistory()}
+      >
         {historyWords.tryAgain}
       </Button>
     </div>
@@ -119,7 +128,13 @@ function HistoryBody({
       )}
       {history.more ? (
         <div>
-          <Button variant="secondary" size="sm" busy={busy} onClick={() => void showMore()}>
+          <Button
+            variant="secondary"
+            size={phone ? "touch" : "sm"}
+            block={phone}
+            busy={busy}
+            onClick={() => void showMore()}
+          >
             {historyWords.showMore}
           </Button>
         </div>
