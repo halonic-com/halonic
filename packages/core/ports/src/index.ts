@@ -340,6 +340,26 @@ export {
   trustStoreVersion,
 } from "./trust-store.ts";
 export {
+  type TunnelCapabilities,
+  type TunnelConfig,
+  type TunnelEndpoint,
+  type TunnelProvider,
+  type TunnelReason,
+  type TunnelState,
+  type TunnelStatus,
+  tunnelProviderVersion,
+  tunnelReasons,
+  tunnelStates,
+} from "./tunnel-provider.ts";
+export {
+  type TunnelResolver,
+  type TunnelTransport,
+  type TunnelTransportState,
+  tunnelBackoff,
+  tunnelReconnectDelayMs,
+  tunnelResolverVersion,
+} from "./tunnel-resolver.ts";
+export {
   type UnfencedRunConsent,
   type UnfencedRunConsentStore,
   unfencedRunConsentStoreVersion,
