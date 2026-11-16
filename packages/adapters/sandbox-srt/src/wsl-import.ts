@@ -17,9 +17,29 @@ async function mustRun(root: WslRoot, argv: readonly string[]): Promise<string> 
   return stdout;
 }
 
-/** Git as root on the read-only source: its folder is owned by Windows, so git must be told to trust it. */
+/**
+ * Git as root on the read-only source, for questions that never run anything
+ * from the source's own config: its folder is owned by Windows, so git must be
+ * told to trust it.
+ */
 function sourceGit(source: string, args: readonly string[]): string[] {
   return ["git", "-c", `safe.directory=${source}`, "-C", source, ...args];
+}
+
+/**
+ * Git as root with the clone's own git folder (and so its config, which this
+ * import made) against the source's files. The source's config is never read,
+ * so a command set there (`core.fsmonitor`, a clean filter) can't run as root.
+ */
+function cloneGitOnSource(source: string, destination: string, args: readonly string[]): string[] {
+  return ["git", `--git-dir=${posix.join(destination, ".git")}`, `--work-tree=${source}`, ...args];
+}
+
+/** A path inside the project: it resolves (links followed) to the project folder or below it. */
+async function assertInside(root: WslRoot, project: string, path: string): Promise<void> {
+  const resolved = (await mustRun(root, ["realpath", "-m", "--", path])).trim();
+  if (resolved !== project && !resolved.startsWith(`${project}/`))
+    throw new Error(`the file ${JSON.stringify(path)} would be written outside the project`);
 }
 
 /** A path from the source's file list: relative, with no `..`, so it can't reach out of the project. */
@@ -54,26 +74,50 @@ async function sourceRemotes(root: WslRoot, source: string): Promise<Array<[stri
  * The project is made at the distro's project folder for `name` and owned by
  * the `halonic` user. A failed import removes what it made.
  *
+ * Every local branch of the source is kept. A remote whose name or address
+ * git could read as an option is not copied; `onSkippedRemote` is told its name.
+ * An untracked nested repository is copied as it is; a modified submodule's
+ * folder isn't (the clone leaves submodules empty).
+ *
  * @throws when the name or the folder isn't valid, the project already exists, or the folder isn't a git repository
  */
 export async function importWindowsProject(
   root: WslRoot,
   windowsFolder: string,
   name: string,
+  onSkippedRemote: (remote: string) => void = () => {},
 ): Promise<string> {
   const destination = wslProjectFolder("distro", name);
   if ((await root.run(["test", "-e", destination])).code === 0)
     throw new Error(`the project ${JSON.stringify(name)} already exists`);
-  await mustRun(root, ["mkdir", "-p", "--", posix.dirname(destination)]);
+  const projects = posix.dirname(destination);
+  const projectsExisted = (await root.run(["test", "-d", projects])).code === 0;
+  await mustRun(root, ["mkdir", "-p", "--", projects]);
+  if (!projectsExisted) await mustRun(root, ["chown", PROJECT_OWNER, "--", projects]);
   try {
     await withImportMount(root, windowsFolder, async (source) => {
       const inside = await root.run(sourceGit(source, ["rev-parse", "--is-inside-work-tree"]));
       if (inside.code !== 0) throw new Error("the folder isn't a git repository");
       const remotes = await sourceRemotes(root, source);
       await mustRun(root, ["git", "clone", "--no-hardlinks", "--", source, destination]);
+      // the clone has only the current branch; the others are remote branches until `origin` goes
+      await mustRun(root, [
+        "git",
+        "-C",
+        destination,
+        "fetch",
+        "--update-head-ok",
+        "--no-tags",
+        "--",
+        source,
+        "+refs/heads/*:refs/heads/*",
+      ]);
       await mustRun(root, ["git", "-C", destination, "remote", "remove", "origin"]);
       for (const [remote, url] of remotes) {
-        if (!remoteName.test(remote) || url.startsWith("-")) continue;
+        if (!remoteName.test(remote) || url.startsWith("-")) {
+          onSkippedRemote(remote);
+          continue;
+        }
         await mustRun(root, ["git", "-C", destination, "remote", "add", remote, "--", url]);
       }
       await copyUncommitted(root, source, destination);
@@ -87,8 +131,12 @@ export async function importWindowsProject(
 }
 
 async function copyUncommitted(root: WslRoot, source: string, destination: string): Promise<void> {
+  const project = (await mustRun(root, ["realpath", "-m", "--", destination])).trim();
+  // the clone's index is the source's last commit, so staged changes count as changes too
   const list = async (flag: string[]) =>
-    nulList(await mustRun(root, sourceGit(source, ["ls-files", "-z", ...flag])));
+    nulList(
+      await mustRun(root, cloneGitOnSource(source, destination, ["ls-files", "-z", ...flag])),
+    );
   const deleted = new Set(await list(["--deleted"]));
   const changed = [
     ...(await list(["--modified"])),
@@ -96,14 +144,28 @@ async function copyUncommitted(root: WslRoot, source: string, destination: strin
   ];
   for (const file of deleted) {
     assertRelative(file);
-    await mustRun(root, ["rm", "-f", "--", posix.join(destination, file)]);
-  }
-  for (const file of new Set(changed)) {
-    if (deleted.has(file)) continue;
-    assertRelative(file);
     const target = posix.join(destination, file);
+    await assertInside(root, project, posix.dirname(target));
+    await mustRun(root, ["rm", "-f", "--", target]);
+  }
+  for (const entry of new Set(changed)) {
+    if (deleted.has(entry)) continue;
+    const nested = entry.endsWith("/"); // an untracked nested repository
+    const file = nested ? entry.slice(0, -1) : entry;
+    assertRelative(file);
+    const from = posix.join(source, file);
+    // a modified submodule shows as its folder; the clone has the submodule empty
+    if (
+      !nested &&
+      (await root.run(["test", "-d", from])).code === 0 &&
+      (await root.run(["test", "-L", from])).code !== 0
+    )
+      continue;
+    const target = posix.join(destination, file);
+    await assertInside(root, project, posix.dirname(target)); // before anything is made there
     await mustRun(root, ["mkdir", "-p", "--", posix.dirname(target)]);
+    await mustRun(root, ["rm", "-rf", "--", target]); // a link at the target is replaced, not written through
     // -P copies a link as a link, so a link in the source is never followed
-    await mustRun(root, ["cp", "-P", "--no-preserve=all", "--", posix.join(source, file), target]);
+    await mustRun(root, ["cp", "-rP", "--no-preserve=all", "--", from, target]);
   }
 }
