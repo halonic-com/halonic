@@ -1,7 +1,8 @@
 import type { SandboxStartCheck } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
-import { Callout, type CalloutAction } from "@halonicjs/studio-kit";
+import { Callout, type CalloutAction, useWriteClipboard } from "@halonicjs/studio-kit";
 import type { InstructionTrustHost, SourcedRun } from "../api.ts";
+import { failureWords } from "../failure-words.ts";
 import { runPageWords } from "../run-words.ts";
 import { BlockedFailureBanner, blockedFailure } from "./blocked-banner.tsx";
 import type { StepEntry } from "./every-step-model.ts";
@@ -11,6 +12,7 @@ import { InstructionsRefusalBanner } from "./instructions-refusal-banner.tsx";
 import type { RunAgain } from "./run-again.ts";
 import {
   type BannerAction,
+  type BannerFix,
   type RunBanner,
   type RunPageContext,
   runBanner,
@@ -29,6 +31,7 @@ export function PageBanner({
   sandboxStartCheck,
   announce,
   runAgain,
+  openModels,
   phone = false,
   onSeeStep,
 }: {
@@ -50,6 +53,8 @@ export function PageBanner({
   readonly announce?: ((line: string) => void) | undefined;
   /** Run again, offered on a failed banner that has no button of its own; absent when it can't be done. */
   readonly runAgain?: RunAgain | undefined;
+  /** Opens the workspace page at Models, for a failed banner that offers **Open Models**; absent where it can't. */
+  readonly openModels?: (() => void) | undefined;
   /** Whether the page is a phone's: a fix it can't do is said as a line (microcopy 15.3). */
   readonly phone?: boolean;
   readonly onSeeStep: (entryId: string) => void;
@@ -85,7 +90,13 @@ export function PageBanner({
   const cause = causeBanner(run.summary, log, context, phone);
   if (cause !== undefined) {
     return (
-      <Banner banner={cause} reviewInInbox={reviewInInbox} openRun={openRun} runAgain={runAgain} />
+      <Banner
+        banner={cause}
+        reviewInInbox={reviewInInbox}
+        openRun={openRun}
+        runAgain={runAgain}
+        openModels={openModels}
+      />
     );
   }
   const blocked = log === undefined ? undefined : blockedFailure(run.summary, log, entries);
@@ -111,29 +122,34 @@ function Banner({
   reviewInInbox,
   openRun,
   runAgain,
+  openModels,
 }: {
   readonly banner: RunBanner | undefined;
   readonly reviewInInbox: (() => void) | undefined;
   readonly openRun: ((runId: string) => void) | undefined;
   readonly runAgain: RunAgain | undefined;
+  readonly openModels?: (() => void) | undefined;
 }) {
+  const writeClipboard = useWriteClipboard();
   if (banner === undefined) {
     return null;
   }
   if (banner.kind === "note") {
     return <p className="text-body">{banner.text}</p>;
   }
-  const action =
-    bannerAction(banner.action, reviewInInbox, openRun) ??
-    (banner.tone === "danger" && runAgain !== undefined
-      ? { label: runPageWords.runAgain, onClick: runAgain.start }
-      : undefined);
+  const own = bannerAction(banner.action, reviewInInbox, openRun);
+  const fixes = (banner.fixes ?? []).flatMap((fix) => fixAction(fix, writeClipboard, openModels));
+  const again =
+    own === undefined && banner.tone === "danger" && runAgain !== undefined
+      ? [{ label: runPageWords.runAgain, onClick: runAgain.start }]
+      : [];
+  const action = [...(own === undefined ? [] : [own]), ...fixes, ...again];
   return (
     <section aria-label={banner.name}>
       <Callout
         tone={banner.tone}
         {...(banner.title === undefined ? {} : { title: banner.title })}
-        {...(action === undefined ? {} : { action })}
+        {...(action.length === 0 ? {} : { action })}
       >
         {banner.lines.map((line) => (
           <span key={line} className="block">
@@ -159,4 +175,26 @@ function bannerAction(
     return { label: action.label, onClick: () => openRun(runId) };
   }
   return undefined;
+}
+
+/** A fix's button, or nothing when the page can't do it: Models can't be opened on every page. */
+function fixAction(
+  fix: BannerFix,
+  writeClipboard: (text: string) => Promise<boolean>,
+  openModels: (() => void) | undefined,
+): CalloutAction[] {
+  if (fix.kind === "copy-command") {
+    const { command } = fix;
+    return [{ label: failureWords.copyCommand, onClick: () => void writeClipboard(command) }];
+  }
+  return openModels === undefined
+    ? []
+    : [
+        {
+          label: failureWords.openModels,
+          onClick: () => {
+            openModels();
+          },
+        },
+      ];
 }

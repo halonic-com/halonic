@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { PresentationProvider } from "@halonicjs/studio-kit";
+import { ClipboardProvider, PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it } from "vitest";
@@ -26,16 +26,32 @@ async function settled(milliseconds = 0): Promise<void> {
   });
 }
 
-async function openOn(presentation: "desktop" | "phone", run: ReturnType<typeof summaryWith>) {
+async function openOn(
+  presentation: "desktop" | "phone",
+  run: ReturnType<typeof summaryWith>,
+  hooks: { copied?: string[]; openModels?: () => void } = {},
+) {
   const log = logOf(run.id, [
     [0, entered("draft")],
     [0, modelCall],
   ]);
   const list = new RunsList(fakeSource([run], { [run.id]: log }).source);
   const root = render(
-    <PresentationProvider presentation={presentation}>
-      <RunView list={list} runId={run.id} now={() => mondayMorning} />
-    </PresentationProvider>,
+    <ClipboardProvider
+      writeClipboard={async (text) => {
+        hooks.copied?.push(text);
+        return true;
+      }}
+    >
+      <PresentationProvider presentation={presentation}>
+        <RunView
+          list={list}
+          runId={run.id}
+          now={() => mondayMorning}
+          {...(hooks.openModels === undefined ? {} : { openModels: hooks.openModels })}
+        />
+      </PresentationProvider>
+    </ClipboardProvider>,
   );
   await settled();
   return root;
@@ -60,6 +76,34 @@ verifies("runs.run-view.failure-banners", () => {
     const root = await openOn("phone", outOfMemory);
     expect(root.textContent).toContain("Close other programs, or pick a smaller model.");
     expect(root.textContent).toContain("Fix this on your computer: Models");
+  });
+});
+
+verifies("runs.run-view.failure-banners", () => {
+  const missing = summaryWith({
+    id: "run_c_4n8x2q",
+    status: "failed",
+    reason: "model-missing",
+    state: "draft",
+    endedAt: mondayMorning.toISOString(),
+  });
+  const button = (root: HTMLElement, name: string) =>
+    [...root.querySelectorAll("button")].find((candidate) => candidate.textContent === name);
+
+  it("copies the pull command and opens Models from a missing model's banner", async () => {
+    const copied: string[] = [];
+    let opened = 0;
+    const root = await openOn("desktop", missing, { copied, openModels: () => opened++ });
+    await act(async () => button(root, "Copy command")?.click());
+    await act(async () => button(root, "Open Models")?.click());
+    expect(copied).toEqual(["ollama pull llama3.1:70b"]);
+    expect(opened).toBe(1);
+  });
+
+  it("leaves out Open Models where the page can't open it", async () => {
+    const root = await openOn("desktop", missing);
+    expect(button(root, "Copy command")).toBeDefined();
+    expect(button(root, "Open Models")).toBeUndefined();
   });
 });
 

@@ -38,6 +38,8 @@ export type RunBanner =
       readonly title?: string;
       readonly lines: readonly string[];
       readonly action?: BannerAction;
+      /** The buttons that mend the cause, before **Run again**; the page leaves out one it can't do. */
+      readonly fixes?: readonly BannerFix[];
     }
   /** A cancelled run's plain note, without a Callout's colour: nothing needs fixing. */
   | { readonly kind: "note"; readonly text: string };
@@ -46,6 +48,11 @@ export type RunBanner =
 export type BannerAction =
   | { readonly kind: "review-in-inbox" }
   | { readonly kind: "open-run"; readonly runId: string; readonly label: string };
+
+/** A button that mends a failed run's cause: copy the command that does it, or go to Models. */
+export type BannerFix =
+  | { readonly kind: "copy-command"; readonly command: string }
+  | { readonly kind: "open-models" };
 
 /** What the page needs besides the run. */
 export interface RunPageContext {

@@ -2,19 +2,20 @@
 // Each reads the run's reason, and the log for what the summary doesn't hold: the model and its
 // provider from the last model call, the agent from the last agent that started, and the harness
 // program and its limit from the last `harness.started`. Run again is the banner's button
-// (`run-again.ts`); Open Models and Copy details come with the banner that has room for a second
-// one.
+// (`run-again.ts`); the local-model banners add Copy command and Open Models before it.
 
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { failureWords } from "../failure-words.ts";
 import { currentStepName } from "../list/run-row.ts";
 import { capitalised, runPageWords } from "../run-words.ts";
-import type { RunBanner, RunPageContext } from "./run-page-model.ts";
+import type { BannerFix, RunBanner, RunPageContext } from "./run-page-model.ts";
 
 /** What a failure banner may need from the log. */
 interface FailureFacts {
   readonly provider: string | undefined;
   readonly model: string | undefined;
+  /** The model alias the last call went to, when the log names it (older logs don't). */
+  readonly alias: string | undefined;
   readonly host: string | undefined;
   readonly agent: string | undefined;
   /** The harness program the last step tried to start, and how long the engine waits for it. */
@@ -58,6 +59,12 @@ export function causeBanner(
       return modelUnreachable(facts, context);
     case "model-out-of-memory":
       return modelOutOfMemory(facts, context, phone);
+    case "model-missing":
+      return modelMissing(facts, context, phone);
+    case "model-timeout":
+      return modelTimeout(facts, context, step);
+    case "model-no-tools":
+      return modelNoTools(facts, step, phone);
     case "harness-start-failed":
       return harnessStartFailed(facts, step);
     default:
@@ -104,6 +111,62 @@ function modelOutOfMemory(
   ]);
 }
 
+/**
+ * `model-missing`: only a local provider can lack a model it was asked for. Ollama's line tells
+ * how to pull it and offers the command; another local provider says to download it there.
+ */
+function modelMissing(
+  facts: FailureFacts,
+  context: RunPageContext,
+  phone: boolean,
+): RunBanner | undefined {
+  const { provider, model } = facts;
+  if (provider === undefined || model === undefined || context.providerKind(provider) === "cloud") {
+    return undefined;
+  }
+  const ollama = provider === "ollama";
+  const line = ollama
+    ? failureWords.modelMissingOllama(model)
+    : failureWords.modelMissingOther(provider, model);
+  if (phone) {
+    return danger([line, failureWords.fixOnComputer(failureWords.modelsPlace)]);
+  }
+  const copy: BannerFix = { kind: "copy-command", command: failureWords.ollamaPullCommand(model) };
+  return danger([line], ollama ? [copy, openModels] : [openModels]);
+}
+
+/** `model-timeout`: Run again is the button; nothing the person set caused it. */
+function modelTimeout(
+  facts: FailureFacts,
+  context: RunPageContext,
+  step: string,
+): RunBanner | undefined {
+  const { provider, host } = facts;
+  if (provider === undefined) {
+    return undefined;
+  }
+  return danger([
+    context.providerKind(provider) === "local"
+      ? failureWords.localModelTimeout(provider, host)
+      : failureWords.cloudModelTimeout(provider, step),
+  ]);
+}
+
+/**
+ * `model-no-tools`: Run again fails the same way until the alias changes, so Open Models comes
+ * first. A phone can't open Models, so it says to do it on the computer.
+ */
+function modelNoTools(facts: FailureFacts, step: string, phone: boolean): RunBanner | undefined {
+  const { model, alias } = facts;
+  if (model === undefined) {
+    return undefined;
+  }
+  const line = failureWords.modelNoTools(model, alias, step);
+  return phone
+    ? danger([line, failureWords.fixOnComputer(failureWords.modelsPlace)])
+    : danger([line], [openModels]);
+}
+
 /** F21: needs the log, for the program and the limit it was given. */
 function harnessStartFailed(facts: FailureFacts, step: string): RunBanner | undefined {
   const { harness } = facts;
@@ -115,8 +178,16 @@ function harnessStartFailed(facts: FailureFacts, step: string): RunBanner | unde
   return danger([failureWords.harnessStartFailed(harness.agent, program, seconds, step)]);
 }
 
-function danger(lines: readonly string[]): RunBanner {
-  return { kind: "callout", tone: "danger", name: runPageWords.failedName, lines };
+const openModels: BannerFix = { kind: "open-models" };
+
+function danger(lines: readonly string[], fixes?: readonly BannerFix[]): RunBanner {
+  return {
+    kind: "callout",
+    tone: "danger",
+    name: runPageWords.failedName,
+    lines,
+    ...(fixes === undefined ? {} : { fixes }),
+  };
 }
 
 /** The last model call's provider and model, `run.failed`'s host, and the agent that started last. */
@@ -131,6 +202,7 @@ function factsFrom(log: readonly RunEvent[]): FailureFacts {
   return {
     provider: request?.provider,
     model: request?.model,
+    alias: request?.alias,
     host: failed?.host,
     agent: started?.agent,
     harness:
