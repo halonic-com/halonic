@@ -11,6 +11,7 @@ import {
   LibraryTabMemoryService,
   ListedToolsHostService,
   NewCollectionHostService,
+  NewConnectorHostService,
   NewSkillHostService,
   SkillHostService,
 } from "@halonicjs/studio-feature-library/api";
@@ -64,6 +65,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     LibraryItemsHostService,
     LibraryTabMemoryService,
     NewCollectionHostService,
+    NewConnectorHostService,
     NewSkillHostService,
     SkillHostService,
     GoogleSetupAccountsService,

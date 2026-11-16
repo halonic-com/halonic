@@ -23,6 +23,7 @@ import {
   LibraryItemsHostService,
   LibraryTabMemoryService,
   NewCollectionHostService,
+  NewConnectorHostService,
   NewSkillHostService,
   SkillHostService,
 } from "@halonicjs/studio-feature-library/api";
@@ -51,6 +52,7 @@ import { WorkspaceKnowledge } from "../library/workspace-knowledge.ts";
 import { WorkspaceLibraryItems } from "../library/workspace-library-items.ts";
 import { WorkspaceLibraryTab } from "../library/workspace-library-tab.ts";
 import { WorkspaceNewCollection } from "../library/workspace-new-collection.ts";
+import { WorkspaceNewConnector } from "../library/workspace-new-connector.ts";
 import { WorkspaceNewSkill } from "../library/workspace-new-skill.ts";
 import { WorkspaceSkills } from "../library/workspace-skills.ts";
 import { WorkspaceModelKeys } from "../models/workspace-model-keys.ts";
@@ -207,6 +209,13 @@ export function provideFolderServices(
   services.provide(
     NewCollectionHostService,
     new WorkspaceNewCollection({
+      files: services.get(workspaceFilesKey),
+      onChange: (listener) => scope.events.on("files.changed", listener),
+    }),
+  );
+  services.provide(
+    NewConnectorHostService,
+    new WorkspaceNewConnector({
       files: services.get(workspaceFilesKey),
       onChange: (listener) => scope.events.on("files.changed", listener),
     }),

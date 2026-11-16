@@ -4,12 +4,14 @@ import {
   type ItemViewProps,
   PageBackLinkSlot,
 } from "@halonicjs/studio-shell";
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { takeConnectorTitleFocus } from "../connector-focus-request.ts";
 import { ConnectorStatusHostService } from "../connector-status-host.ts";
 import { ConnectorStatusModel } from "../connector-status-model.ts";
 import { ListedToolsHostService } from "../listed-tools-host.ts";
 import { ListedToolsReviewModel } from "../listed-tools-review-model.ts";
 import { ConnectorStatusSection } from "./connector-status-section.tsx";
+import { sharedHubKey } from "./library-place.tsx";
 import { ListedToolsWaiting } from "./listed-tools-waiting.tsx";
 
 /**
@@ -28,6 +30,17 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
       listedTools === undefined ? undefined : new ListedToolsReviewModel(listedTools, item.id),
     [listedTools, item.id],
   );
+  const title = useRef<HTMLHeadingElement>(null);
+  const ready = loaded && connector !== undefined;
+  // A connector just made in New connector opens with its name focused, so a screen reader reads it.
+  useEffect(() => {
+    if (
+      ready &&
+      takeConnectorTitleFocus({ hub: item.hub === sharedHubKey ? null : item.hub, id: item.id })
+    ) {
+      title.current?.focus();
+    }
+  }, [ready, item.hub, item.id]);
 
   if (loaded && connector === undefined) {
     return (
@@ -41,7 +54,7 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 wide:px-6">
       <PageBackLinkSlot />
-      <h1 tabIndex={-1} className="text-title [overflow-wrap:anywhere]">
+      <h1 ref={title} tabIndex={-1} className="text-title [overflow-wrap:anywhere]">
         {connector?.name ?? item.id}
       </h1>
       {toolsModel === undefined ? null : (
