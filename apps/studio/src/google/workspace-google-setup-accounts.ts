@@ -1,3 +1,4 @@
+import type { GoogleSecretReplaced } from "@halonicjs/adapter-agent-host-client";
 import { readLocalIntegrations } from "@halonicjs/app";
 import type { AccountType, SetupEdit, SetupRecord, SetupRecords } from "@halonicjs/google-setup";
 import type { DefinitionStore, DefinitionWatch, Digest, FolderReader } from "@halonicjs/ports";
@@ -6,8 +7,10 @@ import type {
   GoogleSetupAccount,
   GoogleSetupAccounts,
   SecretEntry,
+  SecretReplaceAnswer,
   SignInEntry,
 } from "@halonicjs/studio-feature-google-setup/api";
+import type { SecretText } from "@halonicjs/studio-kit";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import { googleAccountOf } from "./google-account.ts";
 import { googleServices } from "./google-services.ts";
@@ -23,6 +26,10 @@ export interface GoogleSetupHost {
   ): Promise<string>;
   /** Applies one change a person makes to the record. */
   edit(accountRef: string, change: SetupEdit): Promise<void>;
+  /** Keeps a client secret for an account that has none. The host reveals the text once, in its request. */
+  saveClientSecret(accountRef: string, secret: SecretText): Promise<void>;
+  /** Replaces the account's client secret; the host checks it with Google when the old one was used. */
+  replaceClientSecret(accountRef: string, secret: SecretText): Promise<GoogleSecretReplaced>;
   /**
    * Removes the record, the sign-in and the client secret (unless another account uses it),
    * without asking Google, and starts a fresh record for the same connector, all in one step.
@@ -89,7 +96,7 @@ const desktopSignIn: SignInEntry = { kind: "here" };
  * connector with the same id is never this one's. A connector with no record has no account yet:
  * `start` makes one, with the link to the connector. The page never writes a record: the agent
  * host does, so `start`, `edit`, `startOver` and the sign-in go to it, and are refused in plain
- * words when the app has none. The client secret and the checks can't be done in the app yet.
+ * words when the app has none. The client secret goes to the host in its own request; the checks can't be done in the app yet.
  *
  * @example
  * services.provide(GoogleSetupAccountsService, new WorkspaceGoogleSetupAccounts(options));
@@ -152,12 +159,18 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
     await this.#asked("save this", () => host.edit(accountRef, edit));
   }
 
-  async saveClientSecret(): Promise<void> {
-    throw new Error(notYet);
+  async saveClientSecret(accountRef: string, secret: SecretText): Promise<void> {
+    const host = this.#host();
+    await this.#asked("save the client secret", () => host.saveClientSecret(accountRef, secret));
   }
 
-  async replaceClientSecret(): Promise<never> {
-    throw new Error(notYet);
+  async replaceClientSecret(accountRef: string, secret: SecretText): Promise<SecretReplaceAnswer> {
+    const host = this.#host();
+    const answer = await this.#asked("replace the client secret", () =>
+      host.replaceClientSecret(accountRef, secret),
+    );
+    if (answer.result !== "accepted") return replaceAnswerOf(answer);
+    return { kind: "accepted", usedBy: await this.#usingClient(accountRef) };
   }
 
   async startOver(accountRef: string): Promise<void> {
@@ -209,6 +222,17 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
     };
   }
 
+  /**
+   * The addresses of every account that uses the account's client secret, this one first. They
+   * are read after the host answered, so they show who the new secret applies to, which is not
+   * only the accounts whose "client refused" mark the host cleared.
+   */
+  async #usingClient(accountRef: string): Promise<string[]> {
+    const accounts = await this.list();
+    const own = accounts.find(({ record }) => record.accountRef === accountRef);
+    return own === undefined ? [] : [own.email, ...own.clientSharedWith];
+  }
+
   /** The agent host that makes a change, or a refusal in plain words when the app has none. */
   #host(): GoogleSetupHost {
     const { host } = this.#options;
@@ -258,6 +282,37 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
     this.#stopWatching?.();
     this.#stopWatching = undefined;
   }
+}
+
+/** Said when the check of a new client secret couldn't finish; the old secret is still in use. */
+const replaceUnfinished =
+  "Halonic couldn't finish checking the new client secret with Google. The old one is still in use.";
+
+/** What the page shows for how the host's replace ended; an unfinished check is a rejection. */
+function replaceAnswerOf(
+  answer: Exclude<GoogleSecretReplaced, { readonly result: "accepted" }>,
+): SecretReplaceAnswer {
+  switch (answer.result) {
+    case "replaced":
+      return { kind: "replaced" };
+    case "refused":
+      return { kind: "refused" };
+    case "unreachable":
+      return { kind: "no-network" };
+    case "signInRefused":
+    case "nothingStaged":
+    case "notSignedIn":
+    case "googleError":
+    case "unexpectedAnswer":
+      throw new Error(replaceUnfinished);
+    default:
+      return unhandled(answer.result);
+  }
+}
+
+/** Fails to compile when a case of `value` isn't handled above. */
+function unhandled(value: never): never {
+  throw new Error(`Unhandled answer: ${JSON.stringify(value)}`);
 }
 
 /** The addresses of the other accounts of this workspace whose setup uses the record's client. */

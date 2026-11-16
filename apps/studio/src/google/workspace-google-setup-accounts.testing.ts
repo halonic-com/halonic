@@ -111,6 +111,8 @@ export function hostWith(part: Partial<GoogleSetupHost>): GoogleSetupHost {
     disconnect: unasked,
     start: unasked,
     edit: unasked,
+    saveClientSecret: unasked,
+    replaceClientSecret: unasked,
     startOver: unasked,
     startSignIn: unasked,
     cancelSignIn: unasked,
