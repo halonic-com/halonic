@@ -26,6 +26,11 @@ export {
   minTurnLimit,
 } from "./chat-service.ts";
 export {
+  type CollectionTextError,
+  readCollectionName,
+  renameCollectionText,
+} from "./collection-text.ts";
+export {
   CommandBus,
   CommandError,
   type CommandHandler,
