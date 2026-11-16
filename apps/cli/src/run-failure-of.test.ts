@@ -108,7 +108,7 @@ verifies("cli.run-failure", () => {
       expect(runFailureOf(failedWith("model-timeout", "localhost:11434"), calledModel())).toEqual({
         reason: "model-timeout",
         provider: "Ollama",
-        within: "10 minutes",
+        within: "5 minutes",
         localAddress: "localhost:11434",
       });
       const cloud = calledModel({
@@ -118,7 +118,7 @@ verifies("cli.run-failure", () => {
       expect(runFailureOf(failedWith("model-timeout"), cloud)).toEqual({
         reason: "model-timeout",
         provider: "OpenAI",
-        within: "10 minutes",
+        within: "5 minutes",
       });
       expect(runFailureOf(failedWith("model-timeout"), undefined)).toEqual(general);
     });

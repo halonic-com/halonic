@@ -9,8 +9,11 @@ response of its `done` event, so the answer carries the text, tool calls, reason
 
 The behaviour change: a model now has **5 minutes to its first token, and no cap on the whole answer
 while it keeps coming** (a silent stretch of 2 minutes still ends it). Before, Ollama sent nothing until
-the whole answer was done, so the response limit capped the whole answer. The 5-minute default, the CLI
-`within` and the requirement text were already set in halonic#3165.
+the whole answer was done, so the response limit capped the whole answer. This PR also lowers the
+default response limit of `model-openai` and `model-anthropic` from 10 to 5 minutes, and with it the
+CLI `within` (`model-timeout` lines), the requirement texts, the READMEs and their tests. The limit ends
+when the reply's headers arrive: for Ollama, which sends them with its first piece, that is the first
+token; the cloud APIs send headers at once, so the 2-minute idle limit covers their wait for it.
 
 Fallback and `noneLeftBecause` are unchanged. A stream that fails, before its first piece or after,
 moves on like a failed `chat()`: the engine passes nothing of a stream on until it is whole, so a

@@ -324,7 +324,7 @@ function timeoutFailure(failed: RunFailedEvent, model: FailedModel | undefined):
   return {
     reason: "model-timeout",
     provider: providerName(model),
-    within: "10 minutes",
+    within: "5 minutes",
     ...(model.provider?.local === true && address !== undefined ? { localAddress: address } : {}),
   };
 }
