@@ -3,6 +3,7 @@
 - Task: HAL-10631
 - Approval: Liam approves this note in review on HAL-10631
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8lJyq4akurEDLnKU0FQReidrUENBnpOYttfQgBpPJbVFnUfjSlrxDZQNdntUh9oKGqUzIo5X+CAQTZro9rTqDQ==
 
 ## What changes
 
