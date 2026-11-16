@@ -2,10 +2,16 @@ import { AgentHostChat } from "@halonicjs/adapter-agent-host-client";
 import {
   TauriDefinitionStore,
   type TauriFileShell,
+  TauriInstructionTrustStore,
   TauriRunStore,
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
-import { type ServiceRegistry, type WorkspaceScope, workspaceFilesKey } from "@halonicjs/app";
+import {
+  InstructionTrustService,
+  type ServiceRegistry,
+  type WorkspaceScope,
+  workspaceFilesKey,
+} from "@halonicjs/app";
 import { randomIds, systemClock } from "@halonicjs/std";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
@@ -21,7 +27,7 @@ import {
   ModelsFilesService,
   NoLimitMemoryService,
 } from "@halonicjs/studio-feature-models/api";
-import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
+import { InstructionTrustHostService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import { ChangesSourceService } from "@halonicjs/studio-feature-source-control/api";
 import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
 import { shellKeychain, type TauriIpc, tauriAgentHostTransport } from "@halonicjs/studio-services";
@@ -40,6 +46,7 @@ import { WorkspaceNoLimit } from "../models/workspace-no-limit.ts";
 import { providePlugins } from "../plugins/provide-plugins.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
+import { WorkspaceInstructionTrust } from "./workspace-instruction-trust.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
 
 /** What the services of one open folder read: the shell, the page's window and the folder. */
@@ -68,6 +75,16 @@ export function provideFolderServices(
   services.provide(ModelKeysService, new WorkspaceModelKeys(shellKeychain(ipc)));
   services.provide(NoLimitMemoryService, new WorkspaceNoLimit(storageOf(window), location));
   provideWorkspaceRuns(services, { ipc, files, window }, location);
+  services.provide(
+    InstructionTrustHostService,
+    new WorkspaceInstructionTrust(
+      new InstructionTrustService({
+        store: new TauriInstructionTrustStore(ipc),
+        clock: systemClock,
+      }),
+      location,
+    ),
+  );
   services.provide(
     ChangesSourceService,
     new WorkspaceChanges({

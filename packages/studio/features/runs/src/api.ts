@@ -5,7 +5,7 @@
  * Runs feature keeps one `RunsList` per workspace (`RunsListService`) that
  * other features read instead of listing the runs again.
  */
-import type { RunEvent, RunSummary } from "@halonicjs/events";
+import type { LoggedInstructionPin, RunEvent, RunSummary } from "@halonicjs/events";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
 export { type RunChip, type RunRow, runRow } from "./list/run-row.ts";
@@ -99,3 +99,28 @@ export interface RunsSource {
 
 /** The open workspace's runs. The app provides it for each open workspace. */
 export const RunsSourceService: ServiceKey<RunsSource> = serviceKey<RunsSource>("runs.source");
+
+/**
+ * What the shell's native question came to (`runs.instruction-trust-host`): `trusted` when the
+ * person said yes and the instructions are saved, `declined` when they said no, `busy` while
+ * another question is open, `unavailable` when nothing could be asked or saved.
+ */
+export type InstructionTrustAnswer = "trusted" | "declined" | "busy" | "unavailable";
+
+/**
+ * The way past a refused harness start: asks the person, in the shell's own dialog, whether to
+ * trust one agent's instructions in the open workspace. The page only asks; the shell writes the
+ * record when the person says yes. The app provides it only where the shell can ask: a served
+ * page or a phone has none, and the run page then says to trust on the computer first.
+ */
+export interface InstructionTrustHost {
+  /**
+   * Asks about the instructions `pin` describes (the pin `run.failed` carried) for `agent`.
+   * Never rejects: a failure is `unavailable`.
+   */
+  readonly trust: (agent: string, pin: LoggedInstructionPin) => Promise<InstructionTrustAnswer>;
+}
+
+/** The open workspace's way to trust an agent's instructions. Absent where the shell can't ask. */
+export const InstructionTrustHostService: ServiceKey<InstructionTrustHost> =
+  serviceKey<InstructionTrustHost>("runs.instruction-trust-host");
