@@ -10,7 +10,7 @@ import {
 import { createWorkspace } from "@halonicjs/workspace";
 
 /** The shell's commands for a new workspace's folder (`create_workspace_folder`, its two helpers, and the probe and open of a folder that is there). */
-const commands = {
+export const commands = {
   documents: "documents_folder",
   pickParent: "pick_parent_folder",
   create: "create_workspace_folder",

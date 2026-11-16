@@ -39,6 +39,9 @@ verifies("shell.welcome-sample", () => {
 
     expect(sampleButton(root)?.getAttribute("aria-busy")).not.toBe("true");
     expect(root.textContent).toContain(costLine);
+    const described = sampleButton(root)?.getAttribute("aria-describedby");
+    expect(described).toBeTruthy();
+    expect(document.getElementById(described ?? "")?.textContent).toBe(costLine);
   });
 
   it("moves under Recent without the cost line once Recent has entries", () => {
@@ -74,6 +77,30 @@ verifies("shell.welcome-sample", () => {
     expect(document.activeElement).toBe(sampleButton(root));
     await act(async () => finish(undefined));
     expect(sampleButton(root)?.getAttribute("aria-busy")).not.toBe("true");
+  });
+
+  it("keeps Open folder and New workspace… usable while the sample is created", async () => {
+    let finish: (problem: WelcomeSampleProblem | undefined) => void = () => {};
+    const onOpenFolder = vi.fn(async () => undefined);
+    const onNewWorkspace = vi.fn();
+    const root = render(
+      <Welcome
+        onOpenFolder={onOpenFolder}
+        onNewWorkspace={onNewWorkspace}
+        onTrySample={() => new Promise<WelcomeSampleProblem | undefined>((r) => (finish = r))}
+      />,
+    );
+    const named = (label: string) =>
+      [...root.querySelectorAll("button")].find((each) => each.textContent?.includes(label));
+
+    await act(async () => sampleButton(root)?.click());
+    await act(async () => named("Open folder")?.click());
+    await act(async () => named("New workspace…")?.click());
+
+    expect(sampleButton(root)?.getAttribute("aria-busy")).toBe("true");
+    expect(onOpenFolder).toHaveBeenCalledTimes(1);
+    expect(onNewWorkspace).toHaveBeenCalledTimes(1);
+    await act(async () => finish(undefined));
   });
 
   it("says why under the text when the sample can't be created", async () => {

@@ -47,10 +47,7 @@ interface ShownProblem {
 }
 
 /** What is opening: the picked folder, or the Recent row in that folder. */
-type Opening =
-  | { readonly from: "picker" }
-  | { readonly from: "sample" }
-  | { readonly from: "recent"; readonly location: string };
+type Opening = { readonly from: "picker" } | { readonly from: "recent"; readonly location: string };
 
 /**
  * The window while no workspace is open (`shell.welcome.open-action`, microcopy 3.2): "Halonic
@@ -72,6 +69,8 @@ type Opening =
  */
 export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: WelcomeProps) {
   const [opening, setOpening] = useState<Opening | undefined>(undefined);
+  /** True while the sample is being written; Open folder and New workspace… stay usable. */
+  const [creatingSample, setCreatingSample] = useState(false);
   const [shownProblem, setShownProblem] = useState<ShownProblem | undefined>(undefined);
   const [sampleProblem, setSampleProblem] = useState<WelcomeSampleProblem | undefined>(undefined);
   /** Where focus goes once a removed row is gone: a row's location, or `null` for Open folder. */
@@ -119,16 +118,16 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
   };
 
   const trySample = async () => {
-    if (opening !== undefined || onTrySample === undefined) {
+    if (creatingSample || onTrySample === undefined) {
       return;
     }
-    setOpening({ from: "sample" });
+    setCreatingSample(true);
     setShownProblem(undefined);
     setSampleProblem(undefined);
     try {
       setSampleProblem(await onTrySample());
     } finally {
-      setOpening(undefined);
+      setCreatingSample(false);
     }
   };
 
@@ -147,7 +146,7 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
   const hasRecent = recent !== undefined && recent.workspaces.length > 0;
   const sample =
     onTrySample === undefined ? null : (
-      <TrySample quiet={hasRecent} busy={opening?.from === "sample"} onPress={trySample} />
+      <TrySample quiet={hasRecent} busy={creatingSample} onPress={trySample} />
     );
   const offersRemove =
     shownProblem?.fromRecent === true && problem?.kind === "not_found" && recent !== undefined;

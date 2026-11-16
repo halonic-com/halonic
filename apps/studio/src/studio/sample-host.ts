@@ -3,6 +3,7 @@ import { TauriDefinitionStore } from "@halonicjs/adapter-fs-tauri";
 import type { CreatedSample, SampleHost } from "@halonicjs/studio-feature-workspace";
 import { copyWorkspace } from "@halonicjs/workspace";
 import {
+  commands,
   madeFolder,
   type NewWorkspaceHostParts,
   probed,
@@ -53,7 +54,7 @@ function cant(folder: string, reason: string): CreatedSample {
 
 /** Where Documents is; rejects when this computer has none. */
 async function documentsOf(parts: NewWorkspaceHostParts): Promise<string> {
-  const documents = await parts.shell.invoke("documents_folder");
+  const documents = await parts.shell.invoke(commands.documents);
   if (typeof documents !== "string") throw new Error("this computer has no Documents folder");
   return documents;
 }

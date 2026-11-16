@@ -1,4 +1,5 @@
 import { Button } from "@halonicjs/studio-kit";
+import { useId } from "react";
 
 /** Why the Acme sample couldn't be created: the folder it goes in, as the user knows it, and the reason. */
 export interface WelcomeSampleProblem {
@@ -31,26 +32,33 @@ export interface TrySampleProps {
 }
 
 /**
- * **Try the Acme sample** on the Welcome screen (`shell.welcome.try-sample`). While Recent is
+ * **Try the Acme sample** on the Welcome screen (`shell.welcome-sample`). While Recent is
  * empty it is a secondary button with the cost line under it; once Recent has entries it is a
- * ghost button under the list, without the cost line. While busy it reads "Creating the sample…",
+ * ghost button under the list, without the cost line. The cost line is the button's description
+ * (accessibility pass 1.3). While busy it reads "Creating the sample…",
  * keeps focus and ignores presses.
  *
  * @example
  * <TrySample quiet={false} busy={false} onPress={createSample} />
  */
 export function TrySample({ quiet, busy, onPress }: TrySampleProps) {
+  const costId = useId();
   return (
     <div className="flex flex-col items-center gap-1">
       <Button
         variant={quiet ? "ghost" : "secondary"}
         busy={busy}
         busyLabel={trySampleWords.creating}
+        {...(quiet ? {} : { "aria-describedby": costId })}
         onClick={onPress}
       >
         {trySampleWords.action}
       </Button>
-      {quiet ? null : <p className="text-small text-fg-muted">{trySampleWords.cost}</p>}
+      {quiet ? null : (
+        <p id={costId} className="text-small text-fg-muted">
+          {trySampleWords.cost}
+        </p>
+      )}
     </div>
   );
 }
