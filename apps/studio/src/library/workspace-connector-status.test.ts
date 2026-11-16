@@ -92,6 +92,27 @@ verifies("studio.workspace-connector-status", () => {
     ]);
   });
 
+  it("says which tools ask first only when the file says it the way New connector writes it", async () => {
+    const asksOf = async (tools: string) => {
+      const status = new WorkspaceConnectorStatus({
+        definitions: new MemoryDefinitionStore({
+          "workspace.yaml": "id: acme\nname: Acme\n",
+          "library/connectors/search.connector.yaml": `${searchFile}\n${tools}`,
+          "library/connectors/mail.connector.yaml": `${googleFile}\ntools: { approve: [gmail_send] }`,
+        }),
+        refusals: new RefusalsFeed(),
+        google: noGoogle,
+      });
+      return Object.fromEntries((await status.list()).map(({ id, asks }) => [id, asks]));
+    };
+
+    expect(await asksOf("tools: { approve: all }")).toEqual({
+      mail: "changes",
+      search: "every-tool",
+    });
+    expect(await asksOf("tools: { approve: [] }")).toEqual({ mail: "changes", search: undefined });
+  });
+
   it("says how each connector connects, with secret names only", async () => {
     const status = new WorkspaceConnectorStatus({
       definitions: new MemoryDefinitionStore({

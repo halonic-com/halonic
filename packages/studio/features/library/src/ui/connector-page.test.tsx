@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { requestConnectorTitleFocus } from "../connector-focus-request.ts";
 import { type ConnectorStatusHost, ConnectorStatusHostService } from "../connector-status-host.ts";
 import { libraryFeature } from "../feature.ts";
+import { asksFirstWords } from "../new-connector-words.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ConnectorPage } from "./connector-page.tsx";
 
@@ -55,6 +56,36 @@ describe("ConnectorPage", () => {
     await settled();
     const headings = [...root.querySelectorAll("h2")].map((h) => h.textContent);
     expect(headings).toEqual(["How it connects", "Recent refusals"]);
+  });
+
+  it.each([
+    [
+      "an MCP server over HTTP",
+      { kind: "http", url: "https://notes.acme.example/mcp", secrets: [] },
+      "every-tool",
+    ],
+    [
+      "a local program",
+      { kind: "stdio", command: "npx -y @acme/files-mcp", secrets: [] },
+      "every-tool",
+    ],
+    ["Gmail and Google Drive", { kind: "google", account: "fin@acme.example" }, "changes"],
+  ] as const)(
+    "says what asks first for %s, in the dialog's words",
+    async (_way, connection, asks) => {
+      hostList.mockResolvedValueOnce([
+        { id: "notes", name: "Notes", state: "connected", connection, asks },
+      ]);
+      const root = render(<ConnectorPage {...props("notes")} />);
+      await settled();
+      expect(root.textContent).toContain(asksFirstWords[asks]);
+    },
+  );
+
+  it("says nothing about asking first when the file doesn't say it", async () => {
+    const root = render(<ConnectorPage {...props("notes")} />);
+    await settled();
+    expect(root.textContent).not.toContain("ask a person first");
   });
 
   it("shows the connector's name as the h1, then its status section", async () => {

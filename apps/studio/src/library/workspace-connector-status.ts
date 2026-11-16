@@ -6,6 +6,7 @@ import {
   type GoogleSetupAccounts,
 } from "@halonicjs/studio-feature-google-setup/api";
 import type {
+  ConnectorAsks,
   ConnectorConnection,
   ConnectorStatus,
   ConnectorStatusHost,
@@ -63,6 +64,13 @@ function connectionOf({ transport, secret }: Connector): ConnectorConnection {
   return { kind: "plugin", id: transport.plugin.id };
 }
 
+/** What the file says about asking first, in the two ways the New connector dialog writes it. */
+function asksOf({ transport, tools }: Connector): ConnectorAsks | undefined {
+  if (tools.approve === "all") return "every-tool";
+  if ("google" in transport && tools.approve.length > 0) return "changes";
+  return undefined;
+}
+
 /**
  * The connectors of one open workspace as the Library's status view reads them
  * (requirement `studio.workspace-connector-status`).
@@ -98,14 +106,16 @@ export class WorkspaceConnectorStatus implements ConnectorStatusHost {
     const accounts = connectors.some(({ transport }) => "google" in transport)
       ? await this.#options.google.list()
       : [];
-    const listed = connectors.map(
-      (connector): ConnectorStatus => ({
+    const listed = connectors.map((connector): ConnectorStatus => {
+      const asks = asksOf(connector);
+      return {
         id: connector.id,
         name: connector.name ?? connector.id,
         state: this.#stateOf(connector, accounts),
         connection: connectionOf(connector),
-      }),
-    );
+        ...(asks === undefined ? {} : { asks }),
+      };
+    });
     // A file that parsed is not an unreadable one.
     const known = new Set(connectors.map(({ id }) => id));
     const unreadable = new Set<string>();

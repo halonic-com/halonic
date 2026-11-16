@@ -1,3 +1,4 @@
+import type { ConnectorAsks } from "./connector-status-host.ts";
 import type { NewConnectorWay } from "./new-connector-host.ts";
 
 /** The words of the New connector dialog: flow-library 3.3 and microcopy 11.2. */
@@ -35,3 +36,9 @@ export const newConnectorWords = {
   folder: (path: string) => `Folder: ${path}`,
   failed: (reason: string) => `Couldn't create the connector: ${reason}.`,
 } as const;
+
+/** The sentence that says which tools ask first, the same on the dialog and on the connector's page. */
+export const asksFirstWords: Record<ConnectorAsks, string> = {
+  "every-tool": newConnectorWords.asksFirst,
+  changes: newConnectorWords.googleAsksFirst,
+};
