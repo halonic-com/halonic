@@ -59,9 +59,9 @@ builds it. The test harness, `packages/targets/cloudflare/testing`, never ships.
   `wrangler`'s templates and `@cloudflare/*`) and the modules its runtime
   provides (`cloudflare:*`, `node:*`).
 - **`pnpm check:bundle --target cloudflare <metafile>`** checks a runtime
-  build. Today only a test runs it, on the metafile of a bundle it builds
-  (`tooling/publish/src/pack.test.ts`); `buildWorkerBundle` doesn't run it
-  itself. It reads the bundler's metafile (`--metafile`), so it sees
+  build. Today nothing runs it on the Worker build (`buildWorkerBundle`); a test
+  runs it on an integration bundle (`tooling/publish/src/pack.test.ts`).
+  It reads the bundler's metafile (`--metafile`), so it sees
   every file that went in, including whatever an approved library pulls
   with it, and fails on any package not allowed above, and on any module
   left external that the provider doesn't supply.

@@ -39,10 +39,12 @@ apps:
   shell starts it on the first call to it (see
   [4.6](#46-agents-in-a-sandbox-b8)).
 
-An **On `main`** item is a protection you have today only when the CLI uses it,
-such as the trust check in [4.1](#41-workspace-code-b1) and the run log in
-[4.2](#42-model-output-and-content-b2). The rest is tested code that no shipped
-app calls yet (for example `readToolListing` has no caller outside its tests).
+An **On `main`** item is code that is on `main`. Whether you have it today
+depends on the app. The CLI uses the trust check in
+[4.1](#41-workspace-code-b1) and the run log in
+[4.2](#42-model-output-and-content-b2) now. Studio's **On `main`** rows are code
+on `main` that you get once Studio ships. The rest is tested code that no app
+calls yet (for example `readToolListing` has no caller outside its tests).
 
 | Shape | Who can reach it | Status |
 | --- | --- | --- |
@@ -555,7 +557,7 @@ your SSH keys, browser profiles and Halonic's own data (including the token
 store, whose key sits on the same machine, see 4.4), change any file you can,
 including the workspace's definitions, trust records and its own settings,
 and reach any address. The OS keychain doesn't stop it either: the
-desktop app keeps secrets and tokens there (4.4), such an agent can
+desktop app keeps secrets and tokens there (4.4), so such an agent can
 read those items. On Linux (Secret Service, while it's unlocked) and Windows
 (Credential Manager) it gets them without a prompt; on macOS the keychain may
 ask you once for each app. Approvals then only hold as long as the agent keeps to
