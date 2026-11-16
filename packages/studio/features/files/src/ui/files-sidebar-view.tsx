@@ -1,6 +1,6 @@
 import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FilesHostService, type FilesListing } from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
 import { emptyTreeState, type TreeState } from "../tree/tree-keyboard.ts";
@@ -30,18 +30,24 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   const [state, setState] = useState<TreeState>(emptyTreeState);
   const [retrying, setRetrying] = useState(false);
 
+  const latest = useRef(0);
+
   const load = useCallback(
-    (cancelled: () => boolean) =>
-      host.list().then(
+    (cancelled: () => boolean) => {
+      // A slower, older listing must not overwrite a newer one.
+      const mine = ++latest.current;
+      const stale = () => cancelled() || mine !== latest.current;
+      return host.list().then(
         (listing) => {
-          if (!cancelled()) setLoaded({ kind: "ready", listing });
+          if (!stale()) setLoaded({ kind: "ready", listing });
         },
         (error: unknown) => {
-          if (cancelled()) return;
+          if (stale()) return;
           const reason = error instanceof Error ? error.message : String(error);
           setLoaded({ kind: "error", reason });
         },
-      ),
+      );
+    },
     [host],
   );
 

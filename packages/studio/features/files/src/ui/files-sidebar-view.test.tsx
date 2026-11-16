@@ -3,7 +3,7 @@ import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import { type FilesHost, FilesHostService, type FilesListing } from "../files-host.ts";
+import type { FilesHost, FilesListing } from "../files-host.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { FilesSidebarView } from "./files-sidebar-view.tsx";
 
@@ -16,7 +16,6 @@ const listing = (paths: string[], marks: FilesListing["marks"] = new Map()): Fil
 
 function contextOf(host: FilesHost): WorkspaceContext {
   const services = { get: () => host, find: () => host };
-  expect(FilesHostService).toBeDefined();
   return { services } as unknown as WorkspaceContext;
 }
 
@@ -137,5 +136,29 @@ verifies("files.ui.tree-view", () => {
     await settled();
     expect(rowNamed(page, "hubs").getAttribute("aria-expanded")).toBe("true");
     expect(rowNamed(page, "hubs/p")).toBeDefined();
+  });
+
+  it("keeps the newest listing when an older one arrives late", async () => {
+    let changed = () => {};
+    const pending: Array<(value: FilesListing) => void> = [];
+    const host: FilesHost = {
+      list: () => new Promise((resolve) => pending.push(resolve)),
+      subscribe: (listener) => {
+        changed = listener;
+        return () => {};
+      },
+    };
+    const page = render(<FilesSidebarView context={contextOf(host)} />);
+    act(() => changed());
+    await act(async () => {
+      pending[1]?.(listing(["new.yaml"]));
+      await Promise.resolve();
+    });
+    await act(async () => {
+      pending[0]?.(listing(["old.yaml"]));
+      await Promise.resolve();
+    });
+    expect(page.querySelector('[data-path="new.yaml"]')).not.toBeNull();
+    expect(page.querySelector('[data-path="old.yaml"]')).toBeNull();
   });
 });
