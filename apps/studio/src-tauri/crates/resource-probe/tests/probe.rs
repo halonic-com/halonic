@@ -2,6 +2,10 @@ use halonic_resource_probe::{folder_size_bytes, free_disk_bytes, process_memory_
 use std::fs;
 use std::path::PathBuf;
 
+/// How far two readings of one drive's free space may drift apart while a
+/// test runs.
+const FREE_SPACE_TOLERANCE_BYTES: u64 = 64 * 1024 * 1024;
+
 /// A new empty folder under the system's temporary folder, removed when
 /// dropped.
 struct TempFolder(PathBuf);
@@ -38,9 +42,13 @@ fn resource_probe_reads_the_free_space_of_a_folder() {
 fn resource_probe_reads_the_drive_of_a_folder_that_does_not_exist_yet() {
     let folder = TempFolder::new("missing-drive");
     let not_yet = folder.0.join("not").join("yet");
-    assert_eq!(
-        free_disk_bytes(&not_yet).expect("free space"),
-        free_disk_bytes(&folder.0).expect("free space"),
+    let of_missing = free_disk_bytes(&not_yet).expect("free space");
+    let of_existing = free_disk_bytes(&folder.0).expect("free space");
+    // Free space on a shared drive moves between two readings, so the two
+    // only have to be close. A different drive would differ by far more.
+    assert!(
+        of_missing.abs_diff(of_existing) <= FREE_SPACE_TOLERANCE_BYTES,
+        "free space of the missing folder ({of_missing}) is not the drive's ({of_existing})",
     );
 }
 
