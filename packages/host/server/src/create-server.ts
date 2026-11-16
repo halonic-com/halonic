@@ -1,10 +1,11 @@
-import type { CreateServer, RequestContext, ServerConfig } from "./api.ts";
+import type { CreateServer, RequestContext, ServerConfig, ServerPorts } from "./api.ts";
 import { chatTurnPath, createChatTurnRoutes } from "./chat-turn-routes.ts";
 import { connectorCallPath, createConnectorRoutes } from "./connector-routes.ts";
 import { checkDailyRequests } from "./daily-requests.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { streamRunEvents } from "./event-stream.ts";
 import {
+  createGoogleReadOnlyRoutes,
   createGoogleRoutes,
   type GoogleRoutes,
   googlePathPrefix,
@@ -57,6 +58,14 @@ function isWholeNumberAboveZero(value: number): boolean {
  * `Host` check, the `Origin` check, the daily request ceiling, then the body
  * limit. Then `GET /api/hello` and the sign-in routes answer. A route behind the sign-in needs a session when a password is set. A route that starts a run asks the trust gate first.
  */
+/** The full Google routes, or the read-only ones when the host passed only `googleRead`; `null` with neither. */
+function googleRoutesOf(ports: ServerPorts): GoogleRoutes | null {
+  if (ports.google !== undefined) {
+    return createGoogleRoutes({ google: ports.google, clock: ports.clock });
+  }
+  return ports.googleRead === undefined ? null : createGoogleReadOnlyRoutes(ports.googleRead);
+}
+
 export const createServer: CreateServer = ({ config, ports }) => {
   checkConfig(config);
   const allowedHosts = config.allowedHosts.map((name) => name.toLowerCase());
@@ -102,10 +111,7 @@ export const createServer: CreateServer = ({ config, ports }) => {
     ports.workspace === undefined ? null : createWorkspaceRoutes(ports.workspace);
   const studioPageRoutes =
     ports.studioPage === undefined ? null : createStudioPageRoutes(ports.studioPage);
-  const googleRoutes =
-    ports.google === undefined
-      ? null
-      : createGoogleRoutes({ google: ports.google, clock: ports.clock });
+  const googleRoutes = googleRoutesOf(ports);
 
   /** Answers `serve` when the caller is signed in (or no password is set), and 401 otherwise. */
   async function whenSignedIn(

@@ -298,11 +298,18 @@ export interface GoogleAccountActions {
   >;
 }
 
+/** What the read-only Google setup routes need: the saved progress and what the connectors say about it. */
+export interface GoogleSetupReadPorts {
+  /** The saved setup progress, one record per Google account. */
+  readonly setups: Pick<SetupRecords, "read" | "list">;
+  readonly source: GoogleSetupSource;
+}
+
 /**
  * What the Google setup routes need. A host that has no Google setup leaves
  * the whole group out, and the routes then answer 404.
  */
-export interface GoogleSetupPorts {
+export interface GoogleSetupPorts extends GoogleSetupReadPorts {
   /** The saved setup progress, one record per Google account. */
   readonly setups: SetupRecords;
   /** Where client secrets are kept. The routes write to it and never read a secret back. */
@@ -311,7 +318,6 @@ export interface GoogleSetupPorts {
   readonly tokens: TokenStore;
   /** What talks to Google, wired by the target from the sign-in package. */
   readonly actions: GoogleAccountActions;
-  readonly source: GoogleSetupSource;
   /** Where a finished sign-in is announced to the open setup item. */
   readonly signInEvents: GoogleSignInEvents;
   /**
@@ -441,6 +447,11 @@ export interface ServerPorts {
   readonly studioPage?: StudioPage;
   /** The Google setup routes' ports. Without them `/api/google/…` answers 404. */
   readonly google?: GoogleSetupPorts;
+  /**
+   * The read-only Google setup routes' ports, for a host that can show setups but not change them.
+   * Ignored when `google` is given. Without either, `/api/google/…` answers 404.
+   */
+  readonly googleRead?: GoogleSetupReadPorts;
   /** Where finished requests are logged by path. Without it nothing is logged. */
   readonly requestLog?: RequestLog;
   /** The time; replaced in tests to cross a UTC day. */

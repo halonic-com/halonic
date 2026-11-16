@@ -6,6 +6,7 @@ export type {
   GoogleCheckOutcome,
   GoogleCheckRequest,
   GoogleSetupPorts,
+  GoogleSetupReadPorts,
   GoogleSetupSource,
   GoogleSetupSubject,
   GoogleSignInEvents,
@@ -36,4 +37,5 @@ export { createGoogleRoutes, type GoogleRoutes } from "./google-routes.ts";
 export { MemoryRequestCountStore } from "./memory-request-count-store.ts";
 export { ProviderKeysReadOnlyError, providerKeysOf } from "./provider-key-routes.ts";
 export { passwordSecretName } from "./sign-in.ts";
+export { type SignInPlace, signInPlace } from "./sign-in-place.ts";
 export { WEBHOOK_TOLERANCE_SECONDS } from "./webhooks.ts";
