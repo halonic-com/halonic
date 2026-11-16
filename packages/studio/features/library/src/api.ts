@@ -39,9 +39,11 @@ export {
 export {
   type LibraryEntry,
   type LibraryHubEntries,
+  type LibraryItemPlace,
   type LibraryItemsHost,
   LibraryItemsHostService,
   type LibraryListing,
+  type RemovedLibraryItem,
 } from "./library-items-host.ts";
 export { type LibraryTabMemory, LibraryTabMemoryService } from "./library-tab-memory.ts";
 export { libraryKinds } from "./library-words.ts";

@@ -1,8 +1,16 @@
 import type { LibraryItemKind } from "@halonicjs/app";
-import { Button, TabList, TabPanel, usePresentation, useTabIds } from "@halonicjs/studio-kit";
+import {
+  Button,
+  TabList,
+  TabPanel,
+  usePresentation,
+  useTabIds,
+  useToastStore,
+} from "@halonicjs/studio-kit";
 import { errorMessageFor, OverviewPage } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { LibraryItemsHost, LibraryListing } from "../library-items-host.ts";
+import { deleteWords } from "../delete-words.ts";
+import type { LibraryEntry, LibraryItemsHost, LibraryListing } from "../library-items-host.ts";
 import { entryOfRow, type LibraryEntryPlace, libraryOverview } from "../library-overview.ts";
 import {
   couldntLoad,
@@ -14,6 +22,7 @@ import {
   tabSentence,
   tryingAgain,
 } from "../library-words.ts";
+import { removeItem } from "../remove-item.ts";
 
 /** The props of {@link LibraryPage}. */
 export interface LibraryPageProps {
@@ -107,6 +116,15 @@ function useListing(
   return { load, retry: useCallback(() => setAttempt((count) => count + 1), []) };
 }
 
+/** The listing's entry at a place. */
+function findEntry(listing: LibraryListing, place: LibraryEntryPlace): LibraryEntry | undefined {
+  const entries =
+    place.hub === null
+      ? (listing.shared?.entries ?? [])
+      : (listing.hubs.find((hub) => hub.id === place.hub)?.entries ?? []);
+  return entries.find((entry) => entry.id === place.id);
+}
+
 /**
  * The Library: one sentence, four tabs (Skills, Knowledge, Collections, Connectors) and, under
  * them, the shell's overview page with that tab's items and their "Used by". The Library
@@ -130,6 +148,13 @@ export function LibraryPage({
     [load],
   );
   const label = newLabel(kind);
+  const toasts = useToastStore();
+  const remove = (row: string) => {
+    const place = entryOfRow(row);
+    const entry = load.state === "loaded" ? findEntry(load.listing, place) : undefined;
+    if (entry === undefined) return;
+    void removeItem(host, toasts, { kind, place, name: entry.name, usage: entry.usage });
+  };
 
   return (
     <div>
@@ -171,6 +196,14 @@ export function LibraryPage({
                 },
               }
             : {})}
+          itemMenu={(row) => [
+            {
+              id: "delete",
+              label: deleteWords.delete,
+              danger: true,
+              onSelect: () => remove(row.id),
+            },
+          ]}
           onOpen={(row) => onOpen(kind, entryOfRow(row))}
           onOpenInNewTab={(row) => onOpenInNewTab(kind, entryOfRow(row))}
           {...(onNew !== undefined && label !== undefined

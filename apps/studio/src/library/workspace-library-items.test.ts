@@ -16,9 +16,24 @@ function setup(extra: Record<string, string> = {}) {
       "id: claims\nname: Claims\nfields:\n  amount: { type: number }\n  note: { type: text }\n",
     ...extra,
   };
+  const history: Record<string, string>[] = [];
   const listeners = new Set<() => void>();
   const host = new WorkspaceLibraryItems({
     files: {
+      change: (_label, changes) => {
+        history.push({ ...store });
+        for (const [path, text] of Object.entries(changes)) {
+          if (text === null) delete store[path];
+          else store[path] = text;
+        }
+      },
+      undo: () => {
+        const previous = history.pop();
+        if (previous === undefined) return false;
+        for (const path of Object.keys(store)) delete store[path];
+        Object.assign(store, previous);
+        return true;
+      },
       read: async (path) => store[path] ?? null,
       list: async (dir) =>
         Object.keys(store)
@@ -30,7 +45,7 @@ function setup(extra: Record<string, string> = {}) {
       return () => listeners.delete(listener);
     },
   });
-  return { host, listeners };
+  return { host, listeners, store };
 }
 
 verifies("library.library-page", () => {
@@ -68,5 +83,42 @@ verifies("library.library-page", () => {
     expect(listeners.size).toBe(1);
     stop();
     expect(listeners.size).toBe(0);
+  });
+});
+
+verifies("library.library-delete", () => {
+  it("deletes a skill's whole folder and Undo brings it back", async () => {
+    const { host, store } = setup({ "library/skills/tone/notes.md": "More." });
+    const removed = await host.remove("skill", { hub: null, id: "tone" });
+    expect(Object.keys(store).filter((path) => path.includes("skills/tone"))).toEqual([]);
+    await removed.undo();
+    expect(store["library/skills/tone/SKILL.md"]).toContain("Plain.");
+    expect(store["library/skills/tone/notes.md"]).toBe("More.");
+  });
+
+  it("deletes the one file of a collection and of a hub's connector", async () => {
+    const { host, store } = setup({
+      "hubs/support/library/connectors/mail.connector.yaml": "id: mail\n",
+    });
+    await host.remove("collection", { hub: null, id: "claims" });
+    await host.remove("connector", { hub: "support", id: "mail" });
+    expect(store["library/collections/claims.collection.yaml"]).toBeUndefined();
+    expect(store["hubs/support/library/connectors/mail.connector.yaml"]).toBeUndefined();
+  });
+
+  it("says so when the item is gone, and changes nothing", async () => {
+    const { host, store } = setup();
+    const before = { ...store };
+    await expect(host.remove("knowledge", { hub: null, id: "missing" })).rejects.toThrow(
+      "isn't in this workspace any more",
+    );
+    expect(store).toEqual(before);
+  });
+
+  it("refuses an Undo when nothing is left to undo", async () => {
+    const { host } = setup();
+    const removed = await host.remove("skill", { hub: null, id: "tone" });
+    await removed.undo();
+    await expect(removed.undo()).rejects.toThrow("Nothing is left to undo");
   });
 });

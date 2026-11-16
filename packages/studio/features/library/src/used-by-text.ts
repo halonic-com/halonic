@@ -28,3 +28,25 @@ export function usedByText(usage: ItemUsage): string {
   if (last === undefined) return "Not used yet";
   return `Used by ${parts.length === 1 ? last : `${parts.slice(0, -1).join(", ")} and ${last}`}`;
 }
+
+/**
+ * The second line of "Moved X to the trash": who still uses the item, or `undefined` when nobody
+ * does. Unlike a row's text it names the hubs that take a shared item (flow-library 3.1, 4).
+ *
+ * @example
+ * usedByLine({ agents: [{ id: "support", name: "Support", hub: null }], hubs: [], routines: [], collections: [] });
+ * // "Used by Support"
+ */
+export function usedByLine(usage: ItemUsage): string | undefined {
+  if (usage.hubs.length === 0) {
+    return usedByText(usage) === "Not used yet" ? undefined : usedByText(usage);
+  }
+  const [onlyHub] = usage.hubs;
+  const others = usage.agents.length + usage.routines.length + usage.collections.length;
+  if (onlyHub !== undefined && usage.hubs.length === 1 && others === 0) {
+    return `Used by the ${onlyHub.name} hub`;
+  }
+  const rest = usedByText({ ...usage, hubs: [] });
+  const hubs = counted(usage.hubs.length, "hub");
+  return others === 0 ? `Used by ${hubs}` : `${rest} and ${hubs}`;
+}

@@ -12,6 +12,7 @@ import { ListedToolsHostService } from "../listed-tools-host.ts";
 import { ListedToolsReviewModel } from "../listed-tools-review-model.ts";
 import { ConnectorConnectionSummary } from "./connector-connection-summary.tsx";
 import { ConnectorStatusSection } from "./connector-status-section.tsx";
+import { useItemTrash } from "./item-trash.tsx";
 import { sharedHubKey } from "./library-place.tsx";
 import { ListedToolsWaiting } from "./listed-tools-waiting.tsx";
 
@@ -32,6 +33,12 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
     [listedTools, item.id],
   );
   const title = useRef<HTMLHeadingElement>(null);
+  const trash = useItemTrash(context, {
+    kind: "connector",
+    hub: item.hub === sharedHubKey ? null : item.hub,
+    id: item.id,
+    name: connector?.name ?? item.id,
+  });
   const ready = loaded && connector !== undefined;
   // A connector just made in New connector opens with its name focused, so a screen reader reads it.
   useEffect(() => {
@@ -45,19 +52,24 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
 
   if (loaded && connector === undefined) {
     return (
-      <ItemGone
-        kindName="connector"
-        place="Library"
-        onGoTo={() => context.openPlace?.("library")}
-      />
+      trash.strip ?? (
+        <ItemGone
+          kindName="connector"
+          place="Library"
+          onGoTo={() => context.openPlace?.("library")}
+        />
+      )
     );
   }
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 wide:px-6">
       <PageBackLinkSlot />
-      <h1 ref={title} tabIndex={-1} className="text-title [overflow-wrap:anywhere]">
-        {connector?.name ?? item.id}
-      </h1>
+      <div className="flex items-start justify-between gap-2">
+        <h1 ref={title} tabIndex={-1} className="text-title [overflow-wrap:anywhere]">
+          {connector?.name ?? item.id}
+        </h1>
+        {trash.menu}
+      </div>
       {toolsModel === undefined ? null : (
         <ListedToolsWaiting model={toolsModel} sourceName={connector?.name ?? item.id} />
       )}

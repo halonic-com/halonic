@@ -46,7 +46,11 @@ function contextOf(
         }
       : {}),
   }));
-  const host: LibraryItemsHost = { list, subscribe: () => () => {} };
+  const host: LibraryItemsHost = {
+    list,
+    remove: async () => ({ undo: async () => {} }),
+    subscribe: () => () => {},
+  };
   const memory = { get: () => kept, set: vi.fn() };
   const provided = new Map<unknown, unknown>([
     [LibraryItemsHostService, host],

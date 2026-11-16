@@ -29,10 +29,27 @@ export interface LibraryListing {
   };
 }
 
+/** Where an item sits: its hub's id, or `null` when the workspace shares it. */
+export interface LibraryItemPlace {
+  readonly hub: string | null;
+  readonly id: string;
+}
+
+/** An item that was moved to the trash, and the way to bring it back. */
+export interface RemovedLibraryItem {
+  /** Puts the item back where it was. Rejects with an `Error` whose message is one sentence when it can't. */
+  undo(): Promise<void>;
+}
+
 /** The items of the open workspace. The app provides it for each open workspace. */
 export interface LibraryItemsHost {
   /** The workspace's items of one kind. Rejects with an `Error` whose message is one sentence when they can't be read. */
   list(kind: LibraryItemKind): Promise<LibraryListing>;
+  /**
+   * Moves one item to the trash, as one change that shows in Changes and goes to the trash when saved.
+   * Rejects with an `Error` whose message is one sentence when it can't, such as when the item is gone.
+   */
+  remove(kind: LibraryItemKind, place: LibraryItemPlace): Promise<RemovedLibraryItem>;
   /** Calls `listener` whenever a Library item may have changed. Returns a function that stops the calls. */
   subscribe(listener: () => void): () => void;
 }

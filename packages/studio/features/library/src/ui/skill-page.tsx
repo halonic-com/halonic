@@ -14,6 +14,7 @@ import { takeSkillInstructionsFocus } from "../skill-focus-request.ts";
 import { SkillHostService, type SkillRef } from "../skill-host.ts";
 import { type SkillField, SkillModel } from "../skill-model.ts";
 import { skillWords } from "../skill-words.ts";
+import { useItemTrash } from "./item-trash.tsx";
 import { sharedHubKey } from "./library-place.tsx";
 import { UsedByField } from "./used-by-field.tsx";
 
@@ -69,6 +70,13 @@ function LoadedSkillPage({
     subscribe,
     () => model.state,
   );
+  const trash = useItemTrash(context, {
+    kind: "skill",
+    hub: item.hub === sharedHubKey ? null : item.hub,
+    id: item.id,
+    name: parts?.name || item.id,
+    ...(usage === undefined ? {} : { usage }),
+  });
   const [drafts, setDrafts] = useState<Drafts>({});
   const instructions = useRef<HTMLTextAreaElement>(null);
   const ready = loaded && !gone && !unreadable && parts !== undefined;
@@ -80,7 +88,7 @@ function LoadedSkillPage({
   }, [ready, item.hub, item.id]);
 
   if (gone) {
-    return <Gone context={context} />;
+    return trash.strip ?? <Gone context={context} />;
   }
   if (!loaded) {
     return <p className="px-4 py-5 text-small text-fg-muted">{skillWords.loading}</p>;
@@ -111,9 +119,12 @@ function LoadedSkillPage({
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 wide:px-6">
       <PageBackLinkSlot />
-      <h1 tabIndex={-1} className="text-title [overflow-wrap:anywhere]">
-        {parts.name || item.id}
-      </h1>
+      <div className="flex items-start justify-between gap-2">
+        <h1 tabIndex={-1} className="text-title [overflow-wrap:anywhere]">
+          {parts.name || item.id}
+        </h1>
+        {trash.menu}
+      </div>
       <FormRows>
         <Field label={skillWords.name} hint={keptHint("name", skillWords.nameKept)}>
           <Input
