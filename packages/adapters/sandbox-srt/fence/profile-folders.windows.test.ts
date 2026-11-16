@@ -1,6 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { join } from "node:path";
+import { toolFoldersInProfile } from "../src/tool-folders.ts";
 import type { SandboxProfile, SandboxSession } from "@halonicjs/ports";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { removeFolder } from "../src/remove-folder.ts";
@@ -53,6 +55,7 @@ describe("SrtSandbox on Windows, with the session's folders in the user profile"
     work = join(base, "work");
     temp = join(base, "tmp", runId());
     await mkdir(work, { recursive: true });
+    console.log("DEBUG tool folders", JSON.stringify(toolFoldersInProfile(process.env["PATH"], homedir(), [], [work, temp])));
     session = await sandbox.open(profile());
   });
 
