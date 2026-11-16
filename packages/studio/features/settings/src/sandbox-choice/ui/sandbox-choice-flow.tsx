@@ -1,6 +1,6 @@
 import type { SandboxBackendId } from "@halonicjs/app";
 import { Button, Checkbox, InfoIcon, RadioGroup } from "@halonicjs/studio-kit";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 import * as text from "../sandbox-choice-text.ts";
 import type { SandboxCard, SandboxChoiceView } from "../sandbox-choice-view.ts";
 import { SandboxModal } from "./sandbox-modal.tsx";
@@ -33,7 +33,12 @@ export function SandboxChoiceFlow({
   onContinueWithout,
   initialScreen = "choose",
 }: SandboxChoiceFlowProps) {
-  const [screen, setScreen] = useState<SandboxChoiceScreen>(initialScreen);
+  const [screen, setScreenNow] = useState<SandboxChoiceScreen>(initialScreen);
+  const [moved, setMoved] = useState(false);
+  const setScreen = (next: SandboxChoiceScreen) => {
+    setMoved(true);
+    setScreenNow(next);
+  };
   const windows = platform === "win32";
   const cards = typeof view === "string" ? null : view;
   if (screen === "more-info") {
@@ -41,16 +46,25 @@ export function SandboxChoiceFlow({
       <MoreInfo
         card={cards?.recommended ?? null}
         windows={windows}
+        focusTitle={moved}
         onBack={() => setScreen("choose")}
       />
     );
   }
   if (screen === "options" && cards !== null) {
-    return <Options cards={cards.options} onSetUp={onSetUp} onBack={() => setScreen("choose")} />;
+    return (
+      <Options
+        cards={cards.options}
+        focusTitle={moved}
+        onSetUp={onSetUp}
+        onBack={() => setScreen("choose")}
+      />
+    );
   }
   if (screen === "confirm-none") {
     return (
       <ConfirmNone
+        focusTitle={moved}
         onSetUp={() =>
           setScreen(cards !== null && cards.recommended !== null ? "choose" : "options")
         }
@@ -61,6 +75,7 @@ export function SandboxChoiceFlow({
   return (
     <Choose
       view={view}
+      focusTitle={moved}
       onSetUp={onSetUp}
       onMore={() => setScreen("more-info")}
       onOptions={() => setScreen("options")}
@@ -71,13 +86,14 @@ export function SandboxChoiceFlow({
 
 interface ChooseProps {
   readonly view: SandboxChoiceFlowProps["view"];
+  readonly focusTitle: boolean;
   readonly onSetUp: (backend: SandboxBackendId) => void;
   readonly onMore: () => void;
   readonly onOptions: () => void;
   readonly onWithout: () => void;
 }
 
-function Choose({ view, onSetUp, onMore, onOptions, onWithout }: ChooseProps) {
+function Choose({ view, focusTitle, onSetUp, onMore, onOptions, onWithout }: ChooseProps) {
   const card = typeof view === "string" ? null : view.recommended;
   let body: ReactNode = null;
   if (view === "checking") {
@@ -95,12 +111,12 @@ function Choose({ view, onSetUp, onMore, onOptions, onWithout }: ChooseProps) {
   }
   const hasOptions = typeof view !== "string" && view.options.length > 0;
   return (
-    <SandboxModal step={text.STEP_LABEL} title={text.TITLE}>
+    <SandboxModal step={text.STEP_LABEL} title={text.TITLE} focusTitle={focusTitle}>
       <p>{text.INTRO}</p>
       {body}
       <div className="flex flex-col items-start gap-1">
         <div className="flex w-full items-center justify-between">
-          {hasOptions || view === "failed" ? (
+          {hasOptions ? (
             <Button variant="ghost" size="sm" onClick={onOptions}>
               {text.OTHER_OPTIONS}
             </Button>
@@ -130,7 +146,12 @@ interface RecommendedProps {
 function RecommendedCard({ card, onSetUp, onMore }: RecommendedProps) {
   return (
     <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-subtle p-4">
-      {card.badge === null ? null : <p className="text-small text-fg-muted">★ {card.badge}</p>}
+      {card.badge === null ? null : (
+        <p className="text-small text-fg-muted">
+          <span aria-hidden="true">★ </span>
+          {card.badge}
+        </p>
+      )}
       <h3 className="text-section">{card.name}</h3>
       <p className="text-small text-fg-muted">{card.subtitle}</p>
       {card.whatHappens.length === 0 ? null : (
@@ -163,17 +184,19 @@ function RecommendedCard({ card, onSetUp, onMore }: RecommendedProps) {
 function MoreInfo({
   card,
   windows,
+  focusTitle,
   onBack,
 }: {
   readonly card: SandboxCard | null;
   readonly windows: boolean;
+  readonly focusTitle: boolean;
   readonly onBack: () => void;
 }) {
   const wsl = card?.id === "srt-wsl";
   const covers = windows && !wsl ? text.MORE_COVERS_WINDOWS : text.MORE_COVERS;
   const others = windows ? text.MORE_OTHERS_WINDOWS : text.MORE_OTHERS;
   return (
-    <SandboxModal step={text.STEP_LABEL} title={text.MORE_INFO}>
+    <SandboxModal step={text.STEP_LABEL} title={text.MORE_INFO} focusTitle={focusTitle}>
       <Block title={text.MORE_WHAT_TITLE}>
         <p>{text.MORE_WHAT}</p>
       </Block>
@@ -218,19 +241,20 @@ function Lines({ lines }: { readonly lines: readonly string[] }) {
 
 interface OptionsProps {
   readonly cards: readonly SandboxCard[];
+  readonly focusTitle: boolean;
   readonly onSetUp: (backend: SandboxBackendId) => void;
   readonly onBack: () => void;
 }
 
-function Options({ cards, onSetUp, onBack }: OptionsProps) {
+function Options({ cards, focusTitle, onSetUp, onBack }: OptionsProps) {
   const first = cards.find((card) => card.use !== "disabled" && card.id !== "cloud");
   const [picked, setPicked] = useState<SandboxBackendId | null>(first?.id ?? null);
   const [confirmed, setConfirmed] = useState(false);
   const card = cards.find((one) => one.id === picked) ?? null;
   const needsBox = card?.needsConfirmation === true;
-  const blockedReason = "sandbox-confirm-reason";
+  const blockedReason = useId();
   return (
-    <SandboxModal step={text.STEP_LABEL} title={text.OTHER_OPTIONS_TITLE}>
+    <SandboxModal step={text.STEP_LABEL} title={text.OTHER_OPTIONS_TITLE} focusTitle={focusTitle}>
       <p>{text.OTHER_OPTIONS_INTRO}</p>
       <RadioGroup<SandboxBackendId>
         label={text.OTHER_OPTIONS_TITLE}
@@ -258,6 +282,12 @@ function Options({ cards, onSetUp, onBack }: OptionsProps) {
           {card.warning}
         </p>
       )}
+      {card?.caveat == null ? null : (
+        <p className="text-small" role="note">
+          {card.caveat}
+        </p>
+      )}
+      {/* The view gives every card that needs a box its label, so the box is always there. */}
       {needsBox && card?.confirmation != null ? (
         <Checkbox checked={confirmed} onChange={setConfirmed}>
           {card.confirmation}
@@ -278,21 +308,23 @@ function Options({ cards, onSetUp, onBack }: OptionsProps) {
         </Button>
       </div>
       <span id={blockedReason} className="sr-only">
-        {card === null ? text.OTHER_OPTIONS_INTRO : (card.confirmation ?? "")}
+        {card === null ? text.PICK_ONE : (card.confirmation ?? "")}
       </span>
     </SandboxModal>
   );
 }
 
 function ConfirmNone({
+  focusTitle,
   onSetUp,
   onContinue,
 }: {
+  readonly focusTitle: boolean;
   readonly onSetUp: () => void;
   readonly onContinue: () => void;
 }) {
   return (
-    <SandboxModal title={text.CONFIRM_TITLE}>
+    <SandboxModal title={text.CONFIRM_TITLE} focusTitle={focusTitle}>
       {text.CONFIRM_BODY.map((paragraph) => (
         <p key={paragraph}>{paragraph}</p>
       ))}

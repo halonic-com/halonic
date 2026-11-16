@@ -147,11 +147,57 @@ verifies("settings.sandbox-choice-flow", () => {
     expect(onContinueWithout).toHaveBeenCalledOnce();
   });
 
-  it("says it is checking, and says when it couldn't check, with Other options still there", () => {
+  it("says it is checking, and says when it couldn't check, with no Other options to press", () => {
     const checking = render(flow({ view: "checking" }));
     expect(checking.textContent).toContain("Checking your computer…");
     const failed = render(flow({ view: "failed" }));
-    expect(failed.textContent).toContain("We couldn't check this computer. Pick an option below.");
+    expect(failed.textContent).toContain("We couldn't check this computer.");
     expect(failed.textContent).toContain("Continue without sandbox");
+    expect(failed.textContent).not.toContain("Other options");
+  });
+
+  it("leads with no card when the recommended backend can't run, and Set up a sandbox leaves the confirmation", () => {
+    const blocked = sandboxChoiceView(
+      {
+        active: null,
+        setting: null,
+        backends: [
+          backend("srt-wsl", { state: "not-available", reason: "virtualisation-off" }),
+          backend("srt"),
+        ],
+      },
+      "win32",
+    );
+    const onSetUp = vi.fn();
+    const root = render(flow({ view: blocked, onSetUp }));
+    expect(root.textContent).not.toContain("Recommended");
+    expect(root.querySelector("h3")).toBeNull();
+    press(root, "Other options");
+    expect(root.textContent).toContain("Virtualisation is turned off on this computer.");
+    press(root, "Back");
+    press(root, "Continue without sandbox");
+    press(root, "Set up a sandbox");
+    expect(root.textContent).toContain("Choose a sandbox");
+  });
+
+  it("shows the network caveat of the picked card in Other options", () => {
+    const root = render(flow({ initialScreen: "options" }));
+    act(() => root.querySelector<HTMLInputElement>('input[type="radio"][value="srt"]')?.click());
+    expect(root.textContent).toContain("Network limits are weaker on Windows.");
+  });
+
+  it("moves focus to the title of the screen it opens, but not on the first screen", () => {
+    const root = render(flow());
+    expect(document.activeElement).toBe(document.body);
+    press(root, "More info");
+    expect(document.activeElement?.tagName).toBe("H2");
+    expect(document.activeElement?.textContent).toBe("More info");
+    press(root, "Back");
+    expect(document.activeElement?.textContent).toBe("Keep agents inside your project");
+  });
+
+  it("caps the card's height in a window that is short, not narrow", () => {
+    const root = render(flow());
+    expect(root.querySelector("section")?.className).toContain("[@media(max-height:560px)]:");
   });
 });

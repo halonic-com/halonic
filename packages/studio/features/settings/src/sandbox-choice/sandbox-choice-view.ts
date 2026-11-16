@@ -30,7 +30,7 @@ export interface SandboxCard {
 
 /** What the choice screens show: the recommended card, the list for Other options and the no-sandbox link. */
 export interface SandboxChoiceView {
-  /** The recommended backend's card for S1, or `null` when this computer doesn't offer it. */
+  /** The recommended backend's card for S1, or `null` when this computer doesn't offer it or it can't run. */
   recommended: SandboxCard | null;
   /** Every offered backend for S2: the recommended one first, then the rest in the host's order. */
   options: SandboxCard[];
@@ -40,7 +40,7 @@ export interface SandboxChoiceView {
  * Turns the engine's {@link SandboxChoice} into the cards of S1 and S2 for this platform
  * (`settings.sandbox-choice-view`). The recommended backend is Sandbox in WSL on Windows and the plain
  * sandbox elsewhere; the native one on Windows is Experimental. A backend the computer doesn't offer is left
- * out, and one that can't run is shown disabled with the reason.
+ * out, and one that can't run is shown disabled with the reason, and is never the recommended one.
  *
  * @param platform the operating system, as Node's `process.platform` names it
  *
@@ -55,8 +55,10 @@ export function sandboxChoiceView(choice: SandboxChoice, platform: string): Sand
     .map((backend) =>
       cardOf(backend, { platform, windows, recommended: backend.id === recommendedId }),
     );
-  const recommended = cards.find((card) => card.id === recommendedId) ?? null;
-  const rest = cards.filter((card) => card.id !== recommendedId);
+  // S1 never leads with a backend that can't run; Other options still lists it with its reason.
+  const found = cards.find((card) => card.id === recommendedId) ?? null;
+  const recommended = found !== null && found.use !== "disabled" ? found : null;
+  const rest = cards.filter((card) => card !== recommended);
   return { recommended, options: recommended === null ? rest : [recommended, ...rest] };
 }
 
@@ -68,7 +70,10 @@ interface Where {
 
 function cardOf(backend: SandboxBackendStatus, where: Where): SandboxCard {
   const { disabled, current } = useOf(backend);
-  const card = describe(backend.id, where);
+  const card = describe(backend.id, {
+    ...where,
+    recommended: where.recommended && disabled === null,
+  });
   let use: SandboxCardUse = "selectable";
   if (disabled !== null) use = "disabled";
   else if (current) use = "current";

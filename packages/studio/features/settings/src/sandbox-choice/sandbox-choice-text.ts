@@ -84,7 +84,8 @@ export const BACK = "Back";
 export const WHAT_HAPPENS_LEAD = "What will happen on this computer:";
 export const WHY = "Why?";
 export const CHECKING = "Checking your computer…";
-export const DETECTION_FAILED = "We couldn't check this computer. Pick an option below.";
+export const DETECTION_FAILED = "We couldn't check this computer.";
+export const PICK_ONE = "Pick a sandbox first.";
 export const OTHER_OPTIONS_TITLE = "Choose a sandbox";
 
 /** The More info sections. The setup size and time are left out until they are measured (HAL-3777). */

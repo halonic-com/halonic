@@ -83,7 +83,21 @@ verifies("settings.sandbox-choice-view", () => {
       choice([backend("srt", { state: "not-available", reason: "too-strict" })]),
       "linux",
     );
-    expect(view.recommended?.disabledReason).toBe("It can't run on this computer.");
+    expect(view.recommended).toBeNull();
+    expect(view.options[0]?.disabledReason).toBe("It can't run on this computer.");
+  });
+
+  it("never recommends a backend that can't run, and lists it in Other options without the badge", () => {
+    const view = sandboxChoiceView(
+      choice([
+        backend("srt-wsl", { state: "not-available", reason: "virtualisation-off" }),
+        backend("srt"),
+      ]),
+      "win32",
+    );
+    expect(view.recommended).toBeNull();
+    expect(view.options.map((card) => card.id)).toEqual(["srt-wsl", "srt"]);
+    expect(view.options[0]).toMatchObject({ use: "disabled", badge: null });
   });
 
   it("shows a failed safety test as disabled, and the backend in use as current", () => {
@@ -97,6 +111,7 @@ verifies("settings.sandbox-choice-view", () => {
       ),
       "win32",
     );
+    expect(view.recommended).toBeNull();
     expect(view.options[0]).toMatchObject({ use: "disabled" });
     expect(view.options[0]?.disabledReason).toContain("safety test didn't pass");
     expect(view.options[1]).toMatchObject({ use: "current", badge: "In use" });

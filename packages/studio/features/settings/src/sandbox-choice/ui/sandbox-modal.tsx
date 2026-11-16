@@ -1,10 +1,12 @@
-import { type ReactNode, useId } from "react";
+import { type ReactNode, useEffect, useId, useRef } from "react";
 
 /** Props for {@link SandboxModal}. */
 export interface SandboxModalProps {
   /** The small text above the title: "Step 2 of 3". Absent on a card that has none. */
   readonly step?: string;
   readonly title: string;
+  /** Move focus to the title on mount, so a screen change doesn't leave focus on `<body>`. */
+  readonly focusTitle?: boolean;
   readonly children: ReactNode;
 }
 
@@ -15,8 +17,12 @@ export interface SandboxModalProps {
  * stays visible, and the halo is decoration only: it carries no text and takes no pointer events
  * (`settings.sandbox-choice-flow`).
  */
-export function SandboxModal({ step, title, children }: SandboxModalProps) {
+export function SandboxModal({ step, title, focusTitle = false, children }: SandboxModalProps) {
   const titleId = useId();
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (focusTitle) titleRef.current?.focus();
+  }, [focusTitle]);
   return (
     <div className="relative flex min-h-full flex-1 items-center justify-center overflow-hidden bg-canvas p-6 phone:p-3">
       <div
@@ -26,11 +32,11 @@ export function SandboxModal({ step, title, children }: SandboxModalProps) {
       />
       <section
         aria-labelledby={titleId}
-        className="relative flex max-h-[60vh] min-h-0 w-full max-w-110 flex-col gap-4 overflow-y-auto rounded-lg border border-border-strong bg-surface p-6 shadow-2 max-[560px]:max-h-[90vh]"
+        className="relative flex max-h-[60vh] min-h-0 w-full max-w-110 flex-col gap-4 overflow-y-auto rounded-lg border border-border-strong bg-surface p-6 shadow-2 [@media(max-height:560px)]:max-h-[90vh]"
       >
         <header className="flex flex-col gap-1">
           {step === undefined ? null : <p className="text-small text-fg-muted">{step}</p>}
-          <h2 id={titleId} className="text-section">
+          <h2 ref={titleRef} id={titleId} tabIndex={-1} className="text-section outline-none">
             {title}
           </h2>
         </header>
