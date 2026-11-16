@@ -55,7 +55,7 @@ export function RunsView({
         tone="error"
         title={words.loadFailedTitle}
         description={load.reason}
-        action={{ label: words.tryAgain, onClick: retry }}
+        action={{ label: words.tryAgain, onClick: retry, busy: load.retrying }}
       />
     );
   }

@@ -34,7 +34,8 @@ import { useModels } from "./use-models.ts";
  */
 export function ModelsSection({ context }: ItemPageSectionViewProps) {
   const files = context.services.get(ModelsFilesService);
-  const [state, retry] = useModels(files);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const [state, retry, retrying] = useModels(files, () => heading.current?.focus());
   const [creating, setCreating] = useState(false);
   const newButton = useRef<HTMLButtonElement>(null);
   const headingId = useId();
@@ -46,7 +47,7 @@ export function ModelsSection({ context }: ItemPageSectionViewProps) {
       className="flex flex-col gap-2"
     >
       <div className="flex items-center justify-between gap-2">
-        <h2 id={headingId} tabIndex={-1} className="text-heading">
+        <h2 ref={heading} id={headingId} tabIndex={-1} className="text-heading outline-none">
           {MODELS_HEADING}
         </h2>
         <Button ref={newButton} variant="secondary" onClick={() => setCreating(true)}>
@@ -54,7 +55,13 @@ export function ModelsSection({ context }: ItemPageSectionViewProps) {
         </Button>
       </div>
       <BudgetBlock files={files} state={state} />
-      <AliasList state={state} retry={retry} open={open} create={() => setCreating(true)} />
+      <AliasList
+        state={state}
+        retry={retry}
+        retrying={retrying}
+        open={open}
+        create={() => setCreating(true)}
+      />
       {creating ? (
         <NewAliasDialog
           files={files}
@@ -82,11 +89,13 @@ function providersOf(state: ModelsState): string[] {
 function AliasList({
   state,
   retry,
+  retrying,
   open,
   create,
 }: {
   readonly state: ModelsState;
   readonly retry: () => void;
+  readonly retrying: boolean;
   readonly open: (name: string) => void;
   readonly create: () => void;
 }) {
@@ -99,7 +108,7 @@ function AliasList({
         headingLevel={3}
         title={MODELS_UNREADABLE_TITLE}
         description={MODELS_UNREADABLE_REASON}
-        action={{ label: TRY_AGAIN, onClick: retry }}
+        action={{ label: TRY_AGAIN, onClick: retry, busy: retrying }}
       />
     );
   }

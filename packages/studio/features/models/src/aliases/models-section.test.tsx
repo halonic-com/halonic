@@ -153,6 +153,26 @@ verifies("models.aliases.list", () => {
     expect(section.textContent).toContain("smart · anthropic");
   });
 
+  it("keeps the error with a busy button while Try again reads, then focuses the heading", async () => {
+    const files = filesWith(new Error("gone"));
+    const section = await showSection(files);
+    let answer: (text: string) => void = () => undefined;
+    files.readModels = () => new Promise((resolve) => (answer = resolve));
+    const retry = () =>
+      [...section.querySelectorAll("button")].find((b) => b.textContent === "Try again");
+
+    await act(async () => retry()?.click());
+
+    expect(section.textContent).toContain("Couldn't load models");
+    expect(section.textContent).not.toContain("Loading models");
+    expect(retry()?.getAttribute("aria-busy")).toBe("true");
+
+    await act(async () => answer(twoAliases));
+
+    expect(section.textContent).toContain("smart · anthropic");
+    expect(document.activeElement).toBe(section.querySelector("h2"));
+  });
+
   it("opens the alias tab of the row that is clicked", async () => {
     const opened: ItemRef[] = [];
     const section = await showSection(filesWith(twoAliases), opened);

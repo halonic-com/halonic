@@ -113,6 +113,35 @@ verifies("workflows.page.frame-and-states", () => {
     expect(page.querySelector("h1")?.textContent).toBe("Support reply");
   });
 
+  it("keeps the error with a busy button while Try again reads, then focuses the name", async () => {
+    let answer: (view: WorkflowView) => void = () => undefined;
+    const { host } = memoryHost([], [], [reply]);
+    let calls = 0;
+    const failing = {
+      ...host,
+      read: (ref: { hubId: string; id: string }) => {
+        calls += 1;
+        if (calls === 1) return Promise.reject(new Error("The engine isn't answering."));
+        return new Promise<WorkflowView>((resolve) => (answer = resolve));
+      },
+    };
+    const page = await show(
+      <WorkflowScreen host={failing} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
+
+    await act(async () => buttonNamed(page, "Try again")?.click());
+    await act(async () => vi.advanceTimersByTime(300));
+
+    expect(page.textContent).toContain("Couldn't load this workflow");
+    expect(page.querySelector("[role=status]")).toBeNull();
+    expect(buttonNamed(page, "Try again")?.getAttribute("aria-busy")).toBe("true");
+
+    await act(async () => answer(await host.read({ hubId: "acme", id: "reply" })));
+
+    expect(page.textContent).not.toContain("Couldn't load this workflow");
+    expect(document.activeElement).toBe(page.querySelector("h1"));
+  });
+
   it("keeps the zoom when the workflow changes under it", async () => {
     let current = reply;
     const listeners = new Set<() => void>();

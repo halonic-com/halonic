@@ -162,4 +162,37 @@ verifies("workspace.trusted-sources", () => {
     await act(async () => button("Try again")?.click());
     expect(element.textContent).toContain("pdf-tools");
   });
+
+  it("keeps the error with a busy button while Try again reads, then focuses the section's heading", async () => {
+    let answer: (sources: TrustedSource[]) => void = () => undefined;
+    const list = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("the profile is locked."))
+      .mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    // The settings container's section, which names the view.
+    element.innerHTML =
+      '<section aria-labelledby="name"><h3 id="name" tabindex="-1">Trusted</h3><div id="view"></div></section>';
+    const mount = element.querySelector("#view") as HTMLElement;
+    root = createRoot(mount);
+    await act(async () => {
+      root?.render(
+        createElement(TrustedSourcesView, {
+          host: { list, remove: vi.fn() },
+          readOnly: false,
+          announce: vi.fn(),
+        }),
+      );
+    });
+
+    await act(async () => button("Try again")?.click());
+
+    expect(element.textContent).toContain("Couldn't load trusted sources");
+    expect(element.querySelector('[role="status"]')).toBeNull();
+    expect(button("Try again")?.getAttribute("aria-busy")).toBe("true");
+
+    await act(async () => answer([pdf]));
+
+    expect(element.textContent).toContain("pdf-tools");
+    expect(document.activeElement).toBe(element.querySelector("h3"));
+  });
 });

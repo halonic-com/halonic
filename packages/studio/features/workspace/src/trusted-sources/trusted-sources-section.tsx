@@ -1,5 +1,5 @@
 import { Button, Dialog, EmptyState, SkeletonBar, ViewOnlyLine } from "@halonicjs/studio-kit";
-import type { SettingsSectionProps } from "@halonicjs/studio-shell";
+import { focusSectionHeading, type SettingsSectionProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type TrustedSource, type TrustedSourcesHost, TrustedSourcesService } from "../api.ts";
 import * as text from "./trusted-sources-text.ts";
@@ -44,6 +44,8 @@ export function TrustedSourcesView({ host, readOnly, announce }: TrustedSourcesV
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
   const [removing, setRemoving] = useState<TrustedSource | undefined>();
   const [busy, setBusy] = useState(false);
+  // Try again keeps the error on screen with its button busy, and swaps in the list only once it reads.
+  const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const lead = useRef<HTMLParagraphElement | null>(null);
   const alive = useRef(true);
@@ -51,12 +53,22 @@ export function TrustedSourcesView({ host, readOnly, announce }: TrustedSourcesV
   // Where focus goes when the dialog closes after a Remove: the next row's button, else the previous.
   const focusAfter = useRef<string | undefined>(undefined);
 
+  // After Try again reads, the heading takes the focus its button had.
+  const focusHeading = useRef(false);
+
   const load = useCallback(() => {
-    setLoaded({ state: "loading" });
     host.list().then(
-      (sources) => alive.current && setLoaded({ state: "ready", sources: newestFirst(sources) }),
-      (reason: unknown) =>
-        alive.current && setLoaded({ state: "failed", reason: reasonOf(reason) }),
+      (sources) => {
+        if (!alive.current) return;
+        setLoaded({ state: "ready", sources: newestFirst(sources) });
+        setRetrying(false);
+      },
+      (reason: unknown) => {
+        if (!alive.current) return;
+        setLoaded({ state: "failed", reason: reasonOf(reason) });
+        focusHeading.current = false;
+        setRetrying(false);
+      },
     );
   }, [host]);
 
@@ -67,6 +79,18 @@ export function TrustedSourcesView({ host, readOnly, announce }: TrustedSourcesV
       alive.current = false;
     };
   }, [load]);
+
+  useEffect(() => {
+    if (loaded.state !== "ready" || !focusHeading.current) return;
+    focusHeading.current = false;
+    focusSectionHeading(lead.current);
+  }, [loaded.state]);
+
+  const tryAgain = () => {
+    focusHeading.current = true;
+    setRetrying(true);
+    load();
+  };
 
   const confirmRemove = async (source: TrustedSource) => {
     setBusy(true);
@@ -102,7 +126,7 @@ export function TrustedSourcesView({ host, readOnly, announce }: TrustedSourcesV
         headingLevel={4}
         title={text.LOAD_FAILED}
         description={loaded.reason}
-        action={{ label: text.TRY_AGAIN, onClick: load }}
+        action={{ label: text.TRY_AGAIN, onClick: tryAgain, busy: retrying }}
       />
     );
   }

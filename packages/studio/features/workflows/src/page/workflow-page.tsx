@@ -80,11 +80,19 @@ export function WorkflowScreen({
   seeAllRuns,
   reviewInInbox,
 }: WorkflowScreenProps) {
-  const { load, retry } = useWorkflow(host, { hubId, id });
+  // After a Try again reads, the workflow's name takes the focus the button had.
+  const title = useRef<HTMLHeadingElement>(null);
+  const focusTitle = useCallback(() => title.current?.focus(), []);
+  const { load, retry } = useWorkflow(host, { hubId, id }, focusTitle);
   const name = load.kind === "ready" ? load.value.name : id;
-  const settings = useHostRead(host, { hubId, id }, (one, ref) => one.configuration(ref));
-  const everyWorkflow = useHostRead(host, { hubId, id }, (one) => one.list());
-  const runsRead = useRuns(runs);
+  const settings = useHostRead(
+    host,
+    { hubId, id },
+    (one, ref) => one.configuration(ref),
+    focusTitle,
+  );
+  const everyWorkflow = useHostRead(host, { hubId, id }, (one) => one.list(), focusTitle);
+  const runsRead = useRuns(runs, focusTitle);
   const [view, setView] = useState<WorkflowView>("flow");
   // The canvas unmounts on Configuration, so the page keeps its zoom and pan (D9). They belong to
   // one workflow: the same screen can be handed another, which opens fitted.
@@ -137,7 +145,9 @@ export function WorkflowScreen({
           <Avatar name={name} />
           <div className="flex flex-col">
             <p className="text-caption text-fg-muted">{pageWords.kind}</p>
-            <h1 className={phone ? "sr-only" : "text-title"}>{name}</h1>
+            <h1 ref={title} tabIndex={-1} className={phone ? "sr-only" : "text-title outline-none"}>
+              {name}
+            </h1>
           </div>
         </div>
         <TabList
@@ -319,7 +329,7 @@ function FlowView({
           tone="error"
           title={pageWords.loadFailedTitle}
           description={load.reason}
-          action={{ label: pageWords.tryAgain, onClick: retry }}
+          action={{ label: pageWords.tryAgain, onClick: retry, busy: load.retrying }}
         />
       )}
       {load.kind === "loading" && load.skeleton && (

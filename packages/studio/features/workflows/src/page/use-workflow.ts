@@ -13,8 +13,9 @@ export type WorkflowLoad = Load<WorkflowView>;
 export function useWorkflow(
   host: WorkflowsHost,
   ref: WorkflowRef,
+  onRetried?: () => void,
 ): { readonly load: WorkflowLoad; readonly retry: () => void } {
-  return useHostRead(host, ref, (one, at) => one.read(at));
+  return useHostRead(host, ref, (one, at) => one.read(at), onRetried);
 }
 
 /**
@@ -25,6 +26,7 @@ export function useHostRead<Value>(
   host: WorkflowsHost,
   ref: WorkflowRef,
   fetch: (host: WorkflowsHost, ref: WorkflowRef) => Promise<Value>,
+  onRetried?: () => void,
 ): { readonly load: Load<Value>; readonly retry: () => void } {
   const fetchRef = useRef(fetch);
   fetchRef.current = fetch;
@@ -36,5 +38,5 @@ export function useHostRead<Value>(
     }),
     [host, hubId, id],
   );
-  return useLoad(source);
+  return useLoad(source, onRetried);
 }

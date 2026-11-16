@@ -5,7 +5,7 @@ import { useLoad } from "../page/use-load.ts";
 /** Whether the runs have loaded once: waiting for them, why not, or the runs. */
 export type RunsLoad =
   | { readonly kind: "loading"; readonly skeleton: boolean; readonly slow: boolean }
-  | { readonly kind: "failed"; readonly reason: string }
+  | { readonly kind: "failed"; readonly reason: string; readonly retrying: boolean }
   | { readonly kind: "ready"; readonly runs: readonly SourcedRun[] };
 
 /**
@@ -13,7 +13,10 @@ export type RunsLoad =
  * update in place: a read after the first never shows a skeleton and a failed one keeps the rows
  * (R11). Only the newest read's answer counts.
  */
-export function useRuns(source: RunsSource): { load: RunsLoad; retry: () => void } {
+export function useRuns(
+  source: RunsSource,
+  onRetried?: () => void,
+): { load: RunsLoad; retry: () => void } {
   const loadSource = useMemo(
     () => ({
       fetch: () => source.list(),
@@ -21,6 +24,6 @@ export function useRuns(source: RunsSource): { load: RunsLoad; retry: () => void
     }),
     [source],
   );
-  const { load, retry } = useLoad(loadSource);
+  const { load, retry } = useLoad(loadSource, onRetried);
   return { load: load.kind === "ready" ? { kind: "ready", runs: load.value } : load, retry };
 }
