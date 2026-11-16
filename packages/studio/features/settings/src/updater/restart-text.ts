@@ -53,7 +53,11 @@ export const settingsNotCarriedOver = (from: string) =>
   `Some settings couldn't be carried over from Halonic ${from}, so they're back to their defaults.`;
 export const SETTINGS_KEPT_COPY = "Halonic kept a copy of the old ones.";
 export const notCarriedOverDetails = ({ from, to, notCarriedOver }: JustUpdated) =>
-  [`Settings not carried over, Halonic ${from} to ${to}:`, ...notCarriedOver].join("\n");
+  [
+    `Settings not carried over, Halonic ${from} to ${to}:`,
+    ...notCarriedOver,
+    `The old files are next to the current ones in Halonic's data folder, with .${from}.bak added to their names.`,
+  ].join("\n");
 
 export const didNotInstall = (version: string, current: string) =>
   `Halonic ${version} didn't install. You're still on ${current}.`;
