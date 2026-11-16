@@ -314,7 +314,6 @@ export function buildSrtConfig(
       denyWrite: withResolved([
         ...hidden.filter((path) => !notDeniedForWriting.includes(path)),
         ...profile.readOnlyPaths,
-        ...tools,
         ...toolSettings,
       ]).map(literalPath),
     },
