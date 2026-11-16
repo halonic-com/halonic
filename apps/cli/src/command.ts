@@ -66,6 +66,13 @@ export interface CommandContext {
    */
   printAhead(line: Phrase): void;
   /**
+   * With `--json` and the command's {@link CliCommand.jsonLinesOption}:
+   * prints one JSON line with these fields now, such as a run's event while
+   * it goes (requirement `cli.json-lines`), after `outputVersion`. Without
+   * both, nothing: the result is then the one document.
+   */
+  printJsonLine(fields: JsonFields): void;
+  /**
    * Asks the user a yes-or-no question with `[y/N]` on stderr and returns
    * whether they said yes (cli-output 1.7). Its `shownFirst` lines come
    * right before it, such as the trust check before "Trust Acme on this
@@ -188,6 +195,14 @@ export interface CliCommand {
   action?(input: CommandInput, context: Pick<CommandContext, "cwd">): Message;
   /** The options it accepts, by name without the dashes. */
   readonly options: Readonly<Record<string, CliOption>>;
+  /**
+   * The name of a switch among its `options` that, together with `--json`,
+   * turns stdout into JSON Lines: the lines the command prints through
+   * {@link CommandContext.printJsonLine}, then its result, or its error, as
+   * one last line (requirement `cli.json-lines`). The switch without
+   * `--json` is a usage error.
+   */
+  readonly jsonLinesOption?: string;
   /**
    * The commands under this one, such as `show` and `send` under `runs`, each
    * with its own word as `name`. `runCli` hands `halonic runs show <run-id>`

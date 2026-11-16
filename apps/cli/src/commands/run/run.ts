@@ -43,6 +43,7 @@ import {
   type WorkspaceEngineSetup,
 } from "../../workspace-engine.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
+import { eventLines } from "./event-lines.ts";
 import { runHarnessOf } from "./harness.ts";
 import { runInputOf } from "./input.ts";
 import { liveLines } from "./live-lines.ts";
@@ -126,6 +127,8 @@ export async function runWorkflow(
   // One clock for the lines printed while the run goes and the result that repeats them.
   const clock = setup.clock();
   const live = liveLines(context, { workspace, workspaceName, clock });
+  // `--json --follow`: the events are printed as they happen, so the result holds only the run.
+  const streaming = input.options["follow"] === true;
   try {
     const events = eventsOf(input);
     const place = { workspace, name: workspaceName, dir: typedDir };
@@ -135,7 +138,7 @@ export async function runWorkflow(
       (signal) =>
         followWithEvents(engine, place, { workflow, input: runInput, version }, events, {
           signal,
-          onEvent: live.onEvent,
+          onEvent: streaming ? eventLines(context) : live.onEvent,
         }),
       typedDir,
     );
@@ -151,7 +154,8 @@ export async function runWorkflow(
       unusedEvents,
       debugging: context.debugging === true,
     });
-    return { ...result, lines: [...warnings, ...result.lines] };
+    const json = streaming ? { run: run.summary } : result.json;
+    return { ...result, json, lines: [...warnings, ...result.lines] };
   } finally {
     live.end();
     await engine.close();

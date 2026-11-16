@@ -1,6 +1,6 @@
 # cli.json-lines
 
-- Status: draft
+- Status: active
 - Since: 0.2.0
 - Source: HAL-4139 (agreed on HAL-4064 for HAL-4056: in 0.1 `halonic run --json` stays one document; settled by the CTO on HAL-4139); the CLI output design on HAL-1981 (cli-output 1.8), approved by the board on HAL-2123; the `--json` section of the CLI reference on HAL-1986
 

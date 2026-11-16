@@ -85,6 +85,9 @@ export const runMessages = defineMessages("run", {
   /** `--event`'s line in the help. */
   eventOption: () =>
     phrase`What to answer when the run waits for you, such as approve. One per wait, in order.`,
+  /** `--follow`'s line in the help. */
+  followOption: () =>
+    phrase`With --json, print one line for each event as it happens, then the result.`,
   /** `--harness`'s line in the help. */
   harnessOption: () =>
     phrase`The harness every agent of the run runs in, in place of its own. For now only halonic works.`,

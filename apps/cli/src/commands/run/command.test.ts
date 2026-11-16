@@ -185,6 +185,100 @@ verifies("cli.run", () => {
   });
 });
 
+/** What stdout holds with `--json --follow`: every line as JSON, so a line that isn't fails the test. */
+function jsonLinesOf(io: CapturedIo): Record<string, unknown>[] {
+  return io.stdout.map((line) => JSON.parse(line) as Record<string, unknown>);
+}
+
+/** The events a plain `--json` document holds, from a run of its own. */
+async function plainEvents(...args: string[]): Promise<unknown[]> {
+  const { io } = await run(...args, "--json");
+  return (JSON.parse(io.stdout.join("\n")) as { events: unknown[] }).events;
+}
+
+verifies("cli.json-lines", () => {
+  it("prints each event as a line, then the run as the last line", {
+    timeout: heavyTestTimeout,
+  }, async () => {
+    const { code, io } = await run("support-reply", ...samsEmail, "--json", "--follow");
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stderr).toEqual([]);
+    const lines = jsonLinesOf(io);
+    const last = lines.pop();
+    expect(lines.every((line) => line["outputVersion"] === 1 && "event" in line)).toBe(true);
+    expect(lines.map((line) => line["event"])).toEqual(
+      await plainEvents("support-reply", ...samsEmail),
+    );
+    expect(last).toMatchObject({ outputVersion: 1, ok: true, run: { status: "waiting" } });
+    expect(last).not.toHaveProperty("events");
+  });
+
+  it("prints each event once when --event moves the run on", {
+    timeout: heavyTestTimeout,
+  }, async () => {
+    const args = ["support-reply", ...samsEmail, "--event", "approve"];
+    const { code, io } = await run(...args, "--json", "--follow");
+
+    expect(code).toBe(exitCode.ok);
+    const lines = jsonLinesOf(io);
+    const last = lines.pop();
+    const events = lines.map((line) => line["event"] as { seq: number; type: string });
+    expect(events).toEqual(await plainEvents(...args));
+    expect(new Set(events.map((event) => event.seq)).size).toBe(events.length);
+    expect(events.at(-1)?.type).toBe("run.completed");
+    expect(last).toMatchObject({ ok: true, run: { status: "completed" } });
+  });
+
+  it("ends a failed run with ok false and the run, and exit 1", async () => {
+    const mock = join(acme, "providers/mock.yaml");
+    const script = await readFile(mock, "utf8");
+    const firstReply = "- Sam wants a refund for order 1042, which arrived damaged.";
+    await writeFile(mock, script.replace(firstReply, "- refuse: not a text reply"));
+
+    const { code, io } = await run("support-reply", ...samsEmail, "--json", "--follow");
+
+    expect(code).toBe(exitCode.failed);
+    expect(jsonLinesOf(io).at(-1)).toMatchObject({
+      outputVersion: 1,
+      ok: false,
+      run: { status: "failed" },
+    });
+  });
+
+  it("prints only the error as a line when nothing could start", async () => {
+    const { code, io } = await run("no-such-workflow", "--json", "--follow");
+
+    expect(code).toBe(exitCode.notFound);
+    expect(io.stderr).toEqual([]);
+    expect(jsonLinesOf(io)).toEqual([
+      { outputVersion: 1, ok: false, error: expect.objectContaining({ kind: "not_found" }) },
+    ]);
+  });
+
+  it("keeps --json alone as one document with the events in it", {
+    timeout: heavyTestTimeout,
+  }, async () => {
+    const { code, io } = await run("support-reply", ...samsEmail, "--json");
+
+    expect(code).toBe(exitCode.ok);
+    expect(JSON.parse(io.stdout.join("\n"))).toMatchObject({
+      outputVersion: 1,
+      ok: true,
+      run: { status: "waiting" },
+      events: expect.any(Array),
+    });
+  });
+
+  it("refuses --follow without --json, and starts nothing", async () => {
+    const { code, io } = await run("support-reply", ...samsEmail, "--follow");
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stdout).toEqual([]);
+    expect(io.stderr[0]).toBe("✕ --follow only works with --json.");
+  });
+});
+
 describe("halonic run's refusals", () => {
   it("needs exactly one workflow", async () => {
     const none = await run();

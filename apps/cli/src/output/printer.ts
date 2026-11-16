@@ -1,5 +1,5 @@
 import type { SecretScrubber } from "@halonicjs/std";
-import type { CliIo, CommandResult, StoppedResult } from "../command.ts";
+import type { CliIo, CommandResult, JsonFields, StoppedResult } from "../command.ts";
 import type { Message } from "../messages/define.ts";
 import { type Phrase, phrase, renderPhrase } from "../messages/phrase.ts";
 import { stopMessages } from "../messages/stop.ts";
@@ -11,7 +11,7 @@ import {
   printError,
   scrubPhrase,
 } from "../print-error.ts";
-import { jsonText, resultDocument, scrubbedDocument } from "./json.ts";
+import { jsonText, outputVersion, resultDocument, scrubbedDocument } from "./json.ts";
 import { type Paint, paintFor } from "./paint.ts";
 import { printable } from "./printable.ts";
 import { printedAhead } from "./printed-ahead.ts";
@@ -75,6 +75,19 @@ export interface Printer {
    * "ok": false }`.
    */
   stopped(result?: StoppedResult): void;
+  /**
+   * From now on, `--json` prints JSON Lines: each document, the result, an
+   * error or a stop, is one line, and {@link Printer.jsonLine} may print
+   * lines before it (requirement `cli.json-lines`). Called before the
+   * command can print anything.
+   */
+  useJsonLines(): void;
+  /**
+   * One line of JSON Lines to stdout now, after `outputVersion`, with every
+   * loaded secret removed. Without `--json` and {@link Printer.useJsonLines},
+   * nothing.
+   */
+  jsonLine(fields: JsonFields): void;
   /** Takes the live line away for good, when the command has ended. */
   close(): void;
   /**
@@ -149,9 +162,12 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
     render: (line) => renderPhrase(line, errPaint),
   };
   const ahead = printedAhead();
-  const writeDocument = (result: CommandResult | StoppedResult) => {
-    const scrub = (text: string) => options.scrubber.scrub(text);
-    writeOut(jsonText(scrubbedDocument(resultDocument(result), scrub)));
+  let jsonLines = false;
+  const scrub = (text: string) => options.scrubber.scrub(text);
+  /** One document: indented for a person, or on one line when stdout is JSON Lines. */
+  const writeDocument = (document: object) => {
+    const clean = scrubbedDocument(document, scrub);
+    writeOut(jsonLines ? JSON.stringify(clean) : jsonText(clean));
   };
   return {
     lines: (lines) => printLines(out, lines),
@@ -165,7 +181,7 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
       // Also with `--json`, so a command's mismatch shows in its tests either way.
       const rest = ahead.rest(result.lines);
       if (options.json) {
-        writeDocument(result);
+        writeDocument(resultDocument(result));
       } else {
         printLines(out, rest);
       }
@@ -181,7 +197,7 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
       // The line says the command was interrupted, so it comes after the live line is gone.
       liveLine?.close();
       if (options.json) {
-        writeDocument(result);
+        writeDocument(resultDocument(result));
       } else {
         err(stopMessages.stopped(result.meaning).phrase);
       }
@@ -189,7 +205,7 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
     error(error, errorContext) {
       const context: PrintErrorContext = { ...errorContext, scrubber: options.scrubber };
       if (options.json) {
-        writeOut(jsonText(errorDocument(error, context)));
+        writeDocument(errorDocument(error, context));
         // `--debug` asked for the error's own text: it goes to stderr, and stdout stays one document.
         printDebug(error, err, context);
         return;
@@ -217,6 +233,14 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
     },
     warn(line) {
       scrubbed(err, options.scrubber)(line);
+    },
+    useJsonLines() {
+      jsonLines = true;
+    },
+    jsonLine(fields) {
+      if (options.json && jsonLines) {
+        writeDocument({ outputVersion, ...fields });
+      }
     },
     close: () => liveLine?.close(),
     ask(question, signal) {
