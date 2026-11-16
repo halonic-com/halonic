@@ -210,10 +210,15 @@ export {
   type GatewayEventBody,
   type GatewayHostMessage,
   type GatewaySession,
+  gatewayClosingErrorCodes,
   gatewayErrorCodes,
+  gatewayMaxBufferedBytes,
+  gatewayMaxIdLength,
   gatewayMaxMessageBytes,
   gatewayMaxPromptLength,
+  gatewayMaxWatches,
   gatewayProtocolVersion,
+  gatewayRefusalCodes,
 } from "./remote-gateway-protocol.ts";
 export {
   type FolderSize,

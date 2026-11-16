@@ -117,7 +117,8 @@ next to the ports:
 | `signInCommandText` | a harness's sign-in for one agent's settings folder, as a person types it into PowerShell or `sh`; Studio's sign-in by hand and `halonic doctor` both show it | `harness-sign-in-command` |
 | `bridgeCallCharge` | what a bridged call costs and who paid (`paidBy: "subscription"` for a sign-in call); `bridgeCallCost` is deprecated in its favour | `harness-bridge-server` |
 | `maxIntegrationWaitMs` | the longest `IntegrationHost.wait`, 30 seconds | `integration-host` |
-| `gatewayErrorCodes`, `gatewayMaxMessageBytes`, `gatewayMaxPromptLength` | the remote gateway's error codes, its 64 KiB message limit and the longest prompt | `remote-gateway-protocol` |
+| `gatewayErrorCodes`, `gatewayClosingErrorCodes`, `gatewayRefusalCodes` | the remote gateway's error codes: those that close the connection and those that leave it open | `remote-gateway-protocol` |
+| `gatewayMaxMessageBytes`, `gatewayMaxPromptLength`, `gatewayMaxIdLength`, `gatewayMaxWatches`, `gatewayMaxBufferedBytes` | the remote gateway's limits: 64 KiB per message, 10,000-unit prompts, 128-character ids, 16 watches and 1 MiB unsent per connection | `remote-gateway-protocol` |
 | `sandboxPackageManagers` | the package managers a `SandboxFix` can name, behind `SandboxPackageManager` | `sandbox-check-fix` |
 | `sandboxUnavailableReasons`, `adapterFailures`, `modelCallErrorReasons` | the lists behind `SandboxUnavailableReason`, `AdapterFailure` and `ModelCallErrorReason` | `sandbox-check-reason`, `run-failure-error`, `model-call-error` |
 
