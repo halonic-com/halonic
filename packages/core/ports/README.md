@@ -50,6 +50,8 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `TokenStore` | `token-store.ts` | 1 | secrets the server writes itself, such as refresh tokens | `token-store` |
 | `ToolApprovalStore` | `tool-approval-store.ts` | 1 | approved listed tools in the user's profile, by workspace, source, name; `approveListedTools` decides | `tool-approval-store` (with first adapter) |
 | `TrustStore` | `trust-store.ts` | 1 | trust records in the user's profile, by location and fingerprint; `TrustService` decides | `trust-store` |
+| `TunnelProvider` | `tunnel-provider.ts` | 1 | makes the remote gateway (and only it) reachable from a phone: capabilities, start, a status stream, stop | `tunnel-provider` (with the fake provider) |
+| `TunnelResolver` | `tunnel-resolver.ts` | 1 | on the phone, turns an endpoint into a transport that reconnects with `tunnelReconnectDelayMs` while in the foreground | `tunnel-resolver` (with the fake provider) |
 | `UnfencedRunConsentStore` | `unfenced-run-consent-store.ts` | 1 | the user's yes to run plugin and integration code without the sandbox; `UnfencedRuns` decides | `unfenced-run-consent-store` |
 | `Vcs` | `vcs.ts` | 2 | version control of the workspace folder | `vcs`, `vcs-safety`, `vcs-hardened` (with first adapter) |
 
@@ -112,6 +114,9 @@ next to the ports:
 | `maxIntegrationWaitMs` | the longest `IntegrationHost.wait`, 30 seconds | `integration-host` |
 | `sandboxPackageManagers` | the package managers a `SandboxFix` can name, behind `SandboxPackageManager` | `sandbox-check-fix` |
 | `sandboxUnavailableReasons`, `adapterFailures`, `modelCallErrorReasons` | the lists behind `SandboxUnavailableReason`, `AdapterFailure` and `ModelCallErrorReason` | `sandbox-check-reason`, `run-failure-error`, `model-call-error` |
+| `tunnelStates`, `tunnelReasons` | the lists behind `TunnelState` and `TunnelReason` | `tunnel-provider` |
+| `assertTunnelConfig`, `assertGatewayTunnelConfig` | the runtime check of a `TunnelConfig`, and the host's check that it points at its own gateway port | `tunnel-provider` |
+| `tunnelReconnectDelayMs`, `tunnelBackoff` | how long a `TunnelTransport` waits before each reconnect: 0.5 s, doubling to a base of at most 30 s, ±20 % jitter | `tunnel-resolver` |
 
 The types these use (`RunFilter`, `RecordChange`, `ToolCall` and the rest) are exported from
 `src/index.ts` and documented where they are declared.

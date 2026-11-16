@@ -31,6 +31,8 @@ import { secretsVersion } from "./secrets.ts";
 import { tokenStoreVersion } from "./token-store.ts";
 import { toolApprovalStoreVersion } from "./tool-approval-store.ts";
 import { trustStoreVersion } from "./trust-store.ts";
+import { tunnelProviderVersion } from "./tunnel-provider.ts";
+import { tunnelResolverVersion } from "./tunnel-resolver.ts";
 import { unfencedRunConsentStoreVersion } from "./unfenced-run-consent-store.ts";
 import { vcsVersion } from "./vcs.ts";
 
@@ -76,6 +78,8 @@ export const portVersions = {
   TokenStore: tokenStoreVersion,
   ToolApprovalStore: toolApprovalStoreVersion,
   TrustStore: trustStoreVersion,
+  TunnelProvider: tunnelProviderVersion,
+  TunnelResolver: tunnelResolverVersion,
   UnfencedRunConsentStore: unfencedRunConsentStoreVersion,
   Vcs: vcsVersion,
 } as const;
