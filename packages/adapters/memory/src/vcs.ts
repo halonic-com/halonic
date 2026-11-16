@@ -11,6 +11,7 @@ import {
   type VcsCommit,
   type VcsCommitVersionOptions,
   type VcsCommitWorktreeOptions,
+  type VcsDivergence,
   type VcsFileDiff,
   type VcsStatus,
   type VcsWorktree,
@@ -27,6 +28,7 @@ import {
   commitOf,
   copyCommits,
   countMissing,
+  fetchedDivergence,
   headCommit,
   headTree,
   historyOf,
@@ -391,6 +393,10 @@ export class MemoryVcs implements Vcs {
     await this.#requireClean(repo, treeOf(repo.commits, theirs));
     await this.#switchTree(headTree(repo), treeOf(repo.commits, theirs));
     repo.branches.set(repo.head, theirs);
+  }
+
+  async diverged(): Promise<VcsDivergence | null> {
+    return fetchedDivergence(this.#requireRepo());
   }
 
   async push(): Promise<void> {

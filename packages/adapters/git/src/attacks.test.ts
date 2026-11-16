@@ -239,7 +239,7 @@ verifies("git.repo-leaks", () => {
         ["--git-dir=/tmp", "status"],
         ["-C", "/", "status"],
         ["-p", "log"],
-        ["fetch", "origin"],
+        ["merge", "origin/main"],
         ["clone", "ext::planted"],
         ["submodule", "update"],
         ["difftool", "HEAD"],
