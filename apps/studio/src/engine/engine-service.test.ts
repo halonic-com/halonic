@@ -1,8 +1,9 @@
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
+import type { SetTimer } from "@halonicjs/adapter-scheduler-node";
 import type { Clock, IdGenerator, Secrets } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { EngineService, type EngineServiceOptions } from "./engine-service.ts";
 
 const location = "/acme";
@@ -40,20 +41,25 @@ function acmeFiles(
 type Handler = (args: Record<string, unknown>) => unknown;
 
 /**
- * What the shell keeps for one engine: run logs and snapshots, blobs, and records that stay empty.
+ * What the shell keeps for one engine: run logs and snapshots, blobs, and records the scheduler keeps its timers in.
  * Each command is a handler, so a test starts a run on the page's own stores.
  */
 function shellStores(): Record<string, Handler> {
   const logs = new Map<string, string[]>();
   const snapshots = new Map<string, string>();
   const blobs = new Map<string, string>();
+  const records = new Map<string, string>();
   return {
     run_append: ({ runId, expectedSeq, lines, snapshot }) => {
       const log = logs.get(runId as string) ?? [];
-      if (log.length !== expectedSeq) return { ok: false, reason: "conflict", lastSeq: log.length };
+      const seq = log.join("").split("\n").length - 1;
+      if (seq !== expectedSeq) return { ok: false, reason: "conflict", lastSeq: seq };
       logs.set(runId as string, [...log, ...(lines as string[])]);
       if (snapshot !== null) snapshots.set(runId as string, snapshot as string);
-      return { ok: true, lastSeq: log.length + (lines as string[]).length };
+      return {
+        ok: true,
+        lastSeq: [...log, ...(lines as string[])].join("").split("\n").length - 1,
+      };
     },
     run_events: ({ runId }) => (logs.get(runId as string) ?? []).join(""),
     run_snapshot: ({ runId }) => {
@@ -69,8 +75,15 @@ function shellStores(): Record<string, Handler> {
       return { hash };
     },
     blob_get: ({ hash }) => blobs.get(hash as string) ?? null,
-    record_read: () => ({ lines: "", version: "0", file: "records" }),
-    record_append: () => undefined,
+    record_read: ({ collection }) => {
+      const lines = records.get(collection as string) ?? "";
+      return { lines, version: String(lines.length), file: "records" };
+    },
+    record_append: ({ appends }) => {
+      for (const { collection, lines } of appends as { collection: string; lines: string }[]) {
+        records.set(collection, (records.get(collection) ?? "") + lines);
+      }
+    },
     record_replace: () => ({ status: "replaced" }),
   };
 }
@@ -251,6 +264,47 @@ verifies("studio.engine-service", () => {
       await expect(service.startRun(reply, {})).rejects.toMatchObject({ kind: "unavailable" });
 
       expect(shell.calls).toEqual([]);
+    });
+
+    it("sends an agent's model call through the given `http`, with the key from `secrets`", async () => {
+      const requests: { url: string; authorization: string | null }[] = [];
+      const http = {
+        fetch: async (url: string, init?: RequestInit) => {
+          requests.push({ url, authorization: new Headers(init?.headers).get("authorization") });
+          throw new TypeError("Failed to fetch");
+        },
+      };
+      const secrets: Secrets = { get: async (name) => (name === "acme-key" ? "fake-key" : null) };
+      const files = acmeFiles(
+        { writer: "model: remote/chat\n" },
+        {
+          "providers/remote.yaml": [
+            "id: remote",
+            "type: openai-compatible",
+            "baseUrl: https://models.example.com/v1",
+            "secret: acme-key",
+            "",
+          ].join("\n"),
+        },
+      );
+      const globalFetch = vi.spyOn(globalThis, "fetch");
+      const setTimer: SetTimer = (callback, delayMs) => {
+        const timer = setTimeout(callback, delayMs);
+        return () => clearTimeout(timer);
+      };
+      const service = serviceOn(fakeShell(), files, { http, secrets, setTimer });
+
+      try {
+        await service.startRun(reply, {});
+        await vi.waitFor(() => expect(requests).not.toEqual([]));
+
+        expect(requests[0]?.url).toMatch(/^https:\/\/models\.example\.com\/v1\//);
+        expect(requests[0]?.authorization).toBe("Bearer fake-key");
+        expect(globalFetch).not.toHaveBeenCalled();
+      } finally {
+        globalFetch.mockRestore();
+        await service.close();
+      }
     });
 
     it("opens the engine and starts the run", async () => {

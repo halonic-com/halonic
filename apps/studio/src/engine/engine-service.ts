@@ -9,7 +9,8 @@
 //
 // The page calls model servers through the shell's `http_fetch` (the options'
 // `http`), not its own `fetch`, which the window's content policy stops. The
-// shell checks every address and redirect, and the keys stay out of the page.
+// shell checks every address and every redirect hop, and a key never goes
+// through the webview's network layer (the page still reads it from `secrets`).
 // The page can start neither a connector nor a harness: a workflow with an
 // agent that needs either is refused as `unavailable` before the engine opens.
 
