@@ -131,6 +131,12 @@ export interface HarnessBridgeOptions {
   recorder: BridgeRecorder;
   tools: BridgeTools;
   approvals: BridgeApprovals;
+  /**
+   * Hears of a request that failed for a reason the bridge doesn't name to the
+   * program, so the run log can hold what the program was told is there.
+   * `kind` is the error kind of `@halonicjs/std`; `message` never holds the run token. It must not throw.
+   */
+  reportError?(failure: { kind: string; message: string }): void;
   /** Aborting it closes the bridge, as {@link OpenHarnessBridge.close} does. */
   signal?: AbortSignal;
 }

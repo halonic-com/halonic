@@ -67,11 +67,14 @@ function fetchesUrl(part: Record<string, unknown>): boolean {
 
 /**
  * Whether `value` is a URL OpenAI would fetch. Only a `data:` URL, which
- * carries the data itself, is let through; any other string counts as a URL,
- * so a scheme OpenAI might accept later is refused too.
+ * carries the data itself, is let through, and so is a missing value (the
+ * part then names a `file_id`). Anything else counts as a URL, whatever its
+ * shape: a string with another scheme, or an object such as
+ * `{ "url": "https://..." }`, so a form OpenAI might accept later is refused too.
  */
 function isUrl(value: unknown): boolean {
-  return typeof value === "string" && !value.startsWith("data:");
+  if (value === undefined || value === null) return false;
+  return !(typeof value === "string" && value.startsWith("data:"));
 }
 
 function urlInputRefused(type: string, at: string): KindedError {
