@@ -7,11 +7,13 @@ import type { LibraryEntryPlace } from "../library-overview.ts";
 import { LibraryTabMemoryService } from "../library-tab-memory.ts";
 import { takeLibraryTabRequests } from "../library-tab-request.ts";
 import { NewCollectionHostService } from "../new-collection-host.ts";
+import { type ConnectorRef, NewConnectorHostService } from "../new-connector-host.ts";
 import { NewSkillHostService } from "../new-skill-host.ts";
 import { requestSkillInstructionsFocus } from "../skill-focus-request.ts";
 import type { SkillRef } from "../skill-host.ts";
 import { LibraryPage } from "./library-page.tsx";
 import { NewCollectionDialog } from "./new-collection-dialog.tsx";
+import { NewConnectorDialog } from "./new-connector-dialog.tsx";
 import { NewSkillDialog } from "./new-skill-dialog.tsx";
 
 /**
@@ -52,22 +54,28 @@ export function LibraryPlace({ context }: PlaceViewProps) {
   const [makingSkill, setMakingSkill] = useState(false);
   const newCollectionHost = context.services.find(NewCollectionHostService);
   const [makingCollection, setMakingCollection] = useState(false);
+  const newConnectorHost = context.services.find(NewConnectorHostService);
+  const [makingConnector, setMakingConnector] = useState(false);
   const { openItem, openItemInNewTab } = context;
   const openSkill = ({ hub, id }: SkillRef) =>
     openItem?.({ kind: "skill", hub: hub ?? sharedHubKey, id });
   const openCollection = ({ hub, id }: CollectionRef) =>
     openItem?.({ kind: "collection", hub: hub ?? sharedHubKey, id });
+  const openConnector = ({ hub, id }: ConnectorRef) =>
+    openItem?.({ kind: "connector", hub: hub ?? sharedHubKey, id });
   const prepareThen = (host: { prepare(): Promise<void> }, open: () => void) =>
     void host
       .prepare()
       .catch(() => undefined)
       .then(open);
-  // Skills and Collections have a New dialog so far; the other tabs show no button until theirs lands.
+  // Skills, Collections and Connectors have a New dialog; Knowledge shows no button (its items are files).
   // The dialog opens even if the read failed: it has fallbacks, and Create shows its own error.
   const onNew = newButtonOf(kind, {
     skill: newSkillHost && (() => prepareThen(newSkillHost, () => setMakingSkill(true))),
     collection:
       newCollectionHost && (() => prepareThen(newCollectionHost, () => setMakingCollection(true))),
+    connector:
+      newConnectorHost && (() => prepareThen(newConnectorHost, () => setMakingConnector(true))),
   });
   return (
     <>
@@ -98,6 +106,16 @@ export function LibraryPlace({ context }: PlaceViewProps) {
             openCollection(collection);
           }}
           onCancel={() => setMakingCollection(false)}
+        />
+      )}
+      {makingConnector && newConnectorHost !== undefined && (
+        <NewConnectorDialog
+          host={newConnectorHost}
+          onCreated={(connector) => {
+            setMakingConnector(false);
+            openConnector(connector);
+          }}
+          onCancel={() => setMakingConnector(false)}
         />
       )}
     </>
