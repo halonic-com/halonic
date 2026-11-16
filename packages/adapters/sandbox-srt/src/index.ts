@@ -31,9 +31,13 @@ export {
 export {
   HALONIC_DISTRO,
   memoryWslSetupStore,
+  removeWslSetup,
   systemWslHost,
   WSL_KERNEL_FLOOR,
   type WslHost,
+  type WslRemoveChoice,
+  type WslRemoveHost,
+  type WslRemoveResult,
   type WslResidual,
   WslSetup,
   type WslSetupFailureCode,
