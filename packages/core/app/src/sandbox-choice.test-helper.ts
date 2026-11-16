@@ -5,7 +5,6 @@ import type {
   SandboxSession,
   SandboxSetting,
 } from "@halonicjs/ports";
-import { FakeSandboxSession, idleProgram } from "@halonicjs/testing-contracts";
 import {
   type LimitCode,
   type SandboxBackend,
@@ -76,6 +75,13 @@ export interface Machine {
 }
 
 /** A choice over fake backends, how many trust checks each ran, and the most that ran at once. */
+/** The test file sets this to open fake sessions: a helper that is not a test file may not import the testing packages. */
+export const sessions: { open: (profile: SandboxProfile) => SandboxSession } = {
+  open: () => {
+    throw new Error("sessions.open is not set");
+  },
+};
+
 export function machine(setup: Machine = {}) {
   let setting = setup.setting ?? null;
   const checks: Partial<Record<SandboxBackendId, number>> = {};
@@ -106,8 +112,7 @@ export function machine(setup: Machine = {}) {
           sandboxChecks[id] = (sandboxChecks[id] ?? 0) + 1;
           return fake.check ?? ok;
         },
-        open: async (opened): Promise<SandboxSession> =>
-          new FakeSandboxSession({ profile: opened, program: idleProgram }),
+        open: async (opened): Promise<SandboxSession> => sessions.open(opened),
       },
       ...(fake.needsDownload === undefined
         ? {}

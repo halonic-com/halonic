@@ -1,4 +1,4 @@
-import type { SandboxBackendId, SandboxSession } from "@halonicjs/ports";
+import { FakeSandboxSession, idleProgram } from "@halonicjs/testing-contracts";
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
 import {
@@ -11,6 +11,7 @@ import {
   needsSetup,
   ok,
   profile,
+  sessions,
   statusOf,
   tooStrict,
 } from "./sandbox-choice.test-helper.ts";
@@ -22,6 +23,8 @@ import {
   type SecurityUpdatesState,
   sandboxBackendStates,
 } from "./sandbox-choice.ts";
+
+sessions.open = (opened) => new FakeSandboxSession({ profile: opened, program: idleProgram });
 
 verifies("app.sandbox-choice", () => {
   it("runs the first default backend of the platform when nothing is chosen", async () => {
