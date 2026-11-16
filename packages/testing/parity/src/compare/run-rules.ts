@@ -144,6 +144,11 @@ export const runRules: readonly RunRule[] = [
     new: (test) => eachEvent(test, "run.waiting", (event) => omit(event, ["labels", "title"])),
   },
   {
+    id: "llm-request-alias",
+    does: "takes alias out of the new llm.request",
+    new: (test) => eachEvent(test, "llm.request", (event) => omit(event, ["alias"])),
+  },
+  {
     id: "child-context-in-finished",
     does: "takes context out of the new workflow.finished",
     new: (test) => eachEvent(test, "workflow.finished", (event) => omit(event, ["context"])),
