@@ -9,6 +9,7 @@ import { type LibraryTabMemory, LibraryTabMemoryService } from "../library-tab-m
 import { requestLibraryTab } from "../library-tab-request.ts";
 import { type NewCollectionHost, NewCollectionHostService } from "../new-collection-host.ts";
 import { type NewConnectorHost, NewConnectorHostService } from "../new-connector-host.ts";
+import { requestNewConnector } from "../new-connector-request.ts";
 import { type NewSkillHost, NewSkillHostService } from "../new-skill-host.ts";
 import { fakeModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -210,5 +211,79 @@ verifies("library.library-place", () => {
     });
     const dialog = page.ownerDocument.querySelector("dialog[open]");
     expect(dialog?.textContent).toContain("How it connects");
+  });
+
+  it("opens New connector with the name and way a run banner asked for, on the Connectors tab", async () => {
+    fakeModal();
+    const { context, memory } = contextOf("skill");
+    const host: NewConnectorHost = {
+      prepare: async () => {},
+      hubs: () => [{ id: "acme", name: "acme" }],
+      ways: () => ["google", "http"],
+      file: () => "hubs/acme/library/connectors/drive.connector.yaml",
+      create: async () => ({ hub: "acme", id: "drive" }),
+    };
+    const find = context.services.find;
+    context.services.find = ((key: unknown) =>
+      key === NewConnectorHostService ? host : find(key as never)) as typeof find;
+    const page = await show(context);
+    await act(async () => {
+      requestNewConnector({ name: "drive", way: "google" });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const dialog = page.ownerDocument.querySelector("dialog[open]");
+    expect(memory.set).toHaveBeenCalledWith("connector");
+    expect(dialog?.querySelector<HTMLInputElement>("input")?.value).toBe("drive");
+    expect(dialog?.querySelector<HTMLInputElement>("input[type=radio]:checked")?.value).toBe(
+      "google",
+    );
+  });
+
+  it("picks no way when a run banner asks for one the host does not offer", async () => {
+    fakeModal();
+    const { context } = contextOf("connector");
+    const host: NewConnectorHost = {
+      prepare: async () => {},
+      hubs: () => [{ id: "acme", name: "acme" }],
+      ways: () => ["http"],
+      file: () => "hubs/acme/library/connectors/drive.connector.yaml",
+      create: async () => ({ hub: "acme", id: "drive" }),
+    };
+    const find = context.services.find;
+    context.services.find = ((key: unknown) =>
+      key === NewConnectorHostService ? host : find(key as never)) as typeof find;
+    const page = await show(context);
+    await act(async () => {
+      requestNewConnector({ name: "drive", way: "google" });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const dialog = page.ownerDocument.querySelector("dialog[open]");
+    expect(dialog?.querySelector<HTMLInputElement>("input")?.value).toBe("drive");
+    expect(dialog?.querySelector("input[type=radio]:checked")).toBeNull();
+    expect(dialog?.textContent).not.toContain("Google");
+  });
+
+  it("shows a second request's name while the dialog is open", async () => {
+    fakeModal();
+    const { context } = contextOf("connector");
+    const host: NewConnectorHost = {
+      prepare: async () => {},
+      hubs: () => [{ id: "acme", name: "acme" }],
+      ways: () => ["google", "http"],
+      file: () => "hubs/acme/library/connectors/x.connector.yaml",
+      create: async () => ({ hub: "acme", id: "x" }),
+    };
+    const find = context.services.find;
+    context.services.find = ((key: unknown) =>
+      key === NewConnectorHostService ? host : find(key as never)) as typeof find;
+    const page = await show(context);
+    for (const name of ["drive", "mail"]) {
+      await act(async () => {
+        requestNewConnector({ name });
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    }
+    const dialog = page.ownerDocument.querySelector("dialog[open]");
+    expect(dialog?.querySelector<HTMLInputElement>("input")?.value).toBe("mail");
   });
 });
