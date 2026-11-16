@@ -134,6 +134,27 @@ verifies("remote-gateway.connection", () => {
       expect(t.transport.closed).toBe(false);
     });
 
+    it("closes the connection when history is dropped mid-stream, so the phone resumes and is told history-gone", async () => {
+      const t = openConnection();
+      t.source.addSession("s1");
+      for (let n = 0; n < 3; n++) t.source.emit("s1", { type: "state", state: "running" });
+      await t.hello();
+      await t.say({ type: "watch", id: "w1", sessionId: "s1", afterSeq: 0 });
+      t.source.forgetBefore("s1", 3);
+      expect(t.transport.closed).toBe(true);
+      expect(t.source.watcherCount("s1")).toBe(0);
+    });
+
+    it("keeps the connection when history is dropped after the watch ended", async () => {
+      const t = openConnection();
+      t.source.addSession("s1");
+      await t.hello();
+      await t.say({ type: "watch", id: "w1", sessionId: "s1", afterSeq: 0 });
+      await t.say({ type: "unwatch", id: "u1", sessionId: "s1" });
+      t.source.forgetBefore("s1", 3);
+      expect(t.transport.closed).toBe(false);
+    });
+
     it("replaces a second watch of the same session", async () => {
       const t = openConnection();
       t.source.addSession("s1");

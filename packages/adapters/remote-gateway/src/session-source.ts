@@ -29,11 +29,16 @@ export interface GatewaySessionSource {
    * the other with none missing, then each new one. Starts with the oldest
    * kept event when `afterSeq` is 0. Calls `onEvent` only after it has
    * returned.
+   *
+   * When events the watch hadn't yet been given are dropped from the
+   * session's history, the source ends the watch and calls `onHistoryGone`
+   * once, so the gateway never passes on a gap.
    */
   watch(
     sessionId: string,
     afterSeq: number,
     onEvent: (event: GatewaySessionEvent) => void,
+    onHistoryGone: () => void,
   ): GatewayWatchResult;
   /**
    * How risky the approval is, as the host judged it, or `undefined` when no
