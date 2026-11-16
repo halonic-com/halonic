@@ -21,3 +21,18 @@ export {
   wslProjectFolder,
   wslWindowsPath,
 } from "./wsl-projects.ts";
+export {
+  HALONIC_DISTRO,
+  memoryWslSetupStore,
+  systemWslHost,
+  WSL_KERNEL_FLOOR,
+  type WslHost,
+  type WslResidual,
+  WslSetup,
+  type WslSetupFailureCode,
+  type WslSetupOptions,
+  type WslSetupResult,
+  type WslSetupState,
+  type WslSetupStep,
+  type WslSetupStore,
+} from "./wsl-setup/index.ts";
