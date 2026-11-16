@@ -16,7 +16,11 @@ import {
 import { randomIds, systemClock } from "@halonicjs/std";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
-import { InboxRequestsService, InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
+import {
+  InboxNoticesService,
+  InboxRequestsService,
+  InboxRunsService,
+} from "@halonicjs/studio-feature-inbox/api";
 import {
   CollectionHostService,
   KnowledgeHostService,
@@ -45,6 +49,7 @@ import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.t
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import { WorkspaceFilesHost } from "../files/workspace-files-host.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
+import { WorkspaceNotices } from "../inbox/workspace-notices.ts";
 import { WorkspaceRequests } from "../inbox/workspace-requests.ts";
 import { provideLibraryServices } from "../library/provide-library-services.ts";
 import { WorkspaceCollections } from "../library/workspace-collections.ts";
@@ -269,6 +274,15 @@ function provideWorkspaceRuns(
   });
   services.provide(RunsSourceService, runs);
   services.provide(InboxRunsService, runs);
+  services.provide(
+    InboxNoticesService,
+    new WorkspaceNotices({
+      runs,
+      storage: storageOf(window),
+      location,
+      now: () => new Date(),
+    }),
+  );
 }
 
 /** Calls `listener` whenever the page's window comes to the front; returns a function that stops it. */
