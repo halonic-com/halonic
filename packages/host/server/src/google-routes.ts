@@ -1,7 +1,13 @@
-import { savedConnectorState, setupSteps, startOver } from "@halonicjs/google-setup";
+import { startOver } from "@halonicjs/google-setup";
 import type { Clock } from "@halonicjs/ports";
-import type { GoogleCheckOutcome, GoogleSetupPorts, RequestContext } from "./api.ts";
+import type {
+  GoogleCheckOutcome,
+  GoogleSetupPorts,
+  GoogleSetupReadPorts,
+  RequestContext,
+} from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
+import { createGoogleReadRoutes } from "./google-read-routes.ts";
 import { readSetup } from "./google-read-setup.ts";
 import { createGoogleSecretRoutes } from "./google-secret-routes.ts";
 import { createGoogleSetupWriteRoutes } from "./google-setup-write-routes.ts";
@@ -46,44 +52,12 @@ type GoogleRoutePorts = { readonly google: GoogleSetupPorts; readonly clock: Clo
 
 export function createGoogleRoutes({ google, clock }: GoogleRoutePorts): GoogleRoutes {
   const { setups, clientSecrets, source, tokens, actions } = google;
+  const readRoutes = createGoogleReadRoutes(google);
   const wrongAccountNotes = new WrongAccountNotes(clock);
   const signInRoutes = createGoogleSignInRoutes({ google, wrongAccountNotes });
 
   const secretRoutes = createGoogleSecretRoutes({ google });
   const writeRoutes = createGoogleSetupWriteRoutes({ google, wrongAccountNotes });
-
-  /** `GET /api/google/setups/<ref>`: the progress and the steps. Nothing secret is in it, and not even the secret's ref. */
-  async function show(accountRef: string): Promise<Response> {
-    const record = await readSetup(setups, accountRef);
-    const subject = record === null ? null : await source.describe(accountRef);
-    if (record === null || subject === null) {
-      return errorResponse(serverErrors.googleSetupNotFound);
-    }
-    const steps = setupSteps({
-      route: record.route,
-      accountType: record.accountType,
-      account: subject.account,
-      ...(record.projectId === null ? {} : { projectId: record.projectId }),
-      services: subject.services,
-    });
-    return Response.json({
-      accountRef,
-      accountType: record.accountType,
-      startedAt: record.startedAt,
-      projectId: record.projectId,
-      stepsDone: record.stepsDone,
-      inProductionTickedAt: record.inProductionTickedAt,
-      clientId: record.clientId,
-      clientSecretSavedAt: record.clientSecret?.savedAt ?? null,
-      signInStartedAt: record.signInStartedAt,
-      lastSignInAt: record.lastSignInAt,
-      wrongAccountAt: record.wrongAccountAt,
-      lastSignInEnded: record.lastSignInEnded,
-      services: record.services,
-      problem: savedConnectorState(record),
-      steps,
-    });
-  }
 
   /**
    * `POST /api/google/setups/<ref>/check`: Check again (design 3.5, item 7).
@@ -196,8 +170,13 @@ export function createGoogleRoutes({ google, clock }: GoogleRoutePorts): GoogleR
     callback: (request) => signInRoutes.callback(request),
     async handle(request, body, context) {
       const { pathname } = new URL(request.url);
-      if (request.method === "POST" && pathname === setupsPrefix.slice(0, -1)) {
-        return writeRoutes.start(request, body);
+      if (pathname === setupsPrefix.slice(0, -1)) {
+        if (request.method === "GET") {
+          return readRoutes.list(request, context);
+        }
+        if (request.method === "POST") {
+          return writeRoutes.start(request, body);
+        }
       }
       if (!pathname.startsWith(setupsPrefix)) {
         return errorResponse(serverErrors.notFound);
@@ -206,7 +185,7 @@ export function createGoogleRoutes({ google, clock }: GoogleRoutePorts): GoogleR
       const endpoint = `${request.method} /${action.join("/")}`;
       switch (endpoint) {
         case "GET /":
-          return show(accountRef);
+          return readRoutes.show(accountRef);
         case "PATCH /":
           return writeRoutes.edit(request, body, accountRef);
         case "POST /start-over":
@@ -232,6 +211,29 @@ export function createGoogleRoutes({ google, clock }: GoogleRoutePorts): GoogleR
         default:
           return errorResponse(serverErrors.notFound);
       }
+    },
+  };
+}
+
+/**
+ * The Google routes of a host that can show setups but not change them: `GET` of the list and of
+ * one setup. Every other route under `/api/google/`, and Google's redirect, answers 404.
+ */
+export function createGoogleReadOnlyRoutes(read: GoogleSetupReadPorts): GoogleRoutes {
+  const routes = createGoogleReadRoutes(read);
+  return {
+    callback: async () => errorResponse(serverErrors.notFound),
+    async handle(request, _body, context) {
+      const { pathname } = new URL(request.url);
+      if (request.method === "GET" && pathname === setupsPrefix.slice(0, -1)) {
+        return routes.list(request, context);
+      }
+      const [accountRef = "", ...rest] = pathname.startsWith(setupsPrefix)
+        ? pathname.slice(setupsPrefix.length).split("/")
+        : [""];
+      return request.method === "GET" && accountRef !== "" && rest.length === 0
+        ? routes.show(accountRef)
+        : errorResponse(serverErrors.notFound);
     },
   };
 }

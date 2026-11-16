@@ -35,6 +35,7 @@ verifies("server.api", () => {
       | "workspace"
       | "studioPage"
       | "google"
+      | "googleRead"
       | "requestLog"
       | "clock"
       | "ids"
