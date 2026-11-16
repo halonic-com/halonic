@@ -56,6 +56,14 @@ verifies("library.new-connector", () => {
     expect(text).toContain("approve: all");
   });
 
+  it("writes a local program connector that asks about every tool too", async () => {
+    const { host, changes } = setup();
+    await host.create({ ...blank, name: "Files", way: "stdio", command: "npx -y @acme/files-mcp" });
+    const text = changes[0]?.[1]["library/connectors/files.connector.yaml"] ?? "";
+    expect(text).toContain("npx");
+    expect(text).toContain("approve: all");
+  });
+
   it("asks first only for the Google tools that change or send something", async () => {
     const { host, changes } = setup();
     await host.create({ ...blank, name: "Mail", hub: "support", way: "google", account: "a@b.co" });
