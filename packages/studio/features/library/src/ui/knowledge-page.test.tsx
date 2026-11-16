@@ -261,8 +261,26 @@ verifies("library.knowledge-summarize", () => {
       await settled();
       await act(async () => button(second, "Summarize").click());
       await settled();
-      expect(second.textContent).toContain("Couldn't summarize Handbook.");
+      expect(second.textContent).toContain(
+        "Couldn't summarize Handbook: the local model didn't answer.",
+      );
       expect(second.textContent).not.toContain("boom");
+      expect(button(second, "Try again")).toBeDefined();
+    });
+
+    it.each([
+      [
+        "host-unreachable",
+        "Couldn't summarize Handbook: Halonic on your computer isn't answering.",
+      ],
+      ["too-large", "Couldn't summarize Handbook: it has more text than one summary can take."],
+    ] as const)("gives a reason when Summarize ends with %s", async (kind, line) => {
+      const { props } = setup(undefined, nobody, { kind });
+      const root = render(<KnowledgePage {...props} />);
+      await settled();
+      await act(async () => button(root, "Summarize").click());
+      await settled();
+      expect(root.textContent).toContain(line);
     });
   });
 });

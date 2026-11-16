@@ -14,7 +14,7 @@ export type SummarizeState =
   | { readonly phase: "draft"; readonly text: string }
   | {
       readonly phase: "failed";
-      readonly reason: Exclude<SummarizeOutcome["kind"], "drafted"> | "failed";
+      readonly reason: Exclude<SummarizeOutcome["kind"], "drafted">;
     };
 
 /** What the knowledge page shows. */
@@ -143,7 +143,7 @@ export class KnowledgeModel {
           ? { phase: "draft", text: outcome.text }
           : { phase: "failed", reason: outcome.kind };
     } catch {
-      summarize = { phase: "failed", reason: "failed" };
+      summarize = { phase: "failed", reason: "model-failed" };
     }
     this.set({ ...this.state, summarize });
   }

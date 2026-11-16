@@ -65,7 +65,12 @@ export function SummaryField({
         )}
       </div>
       {summarize.phase === "failed" ? (
-        <Problem reason={summarize.reason} name={name} openModels={openModels} />
+        <Problem
+          reason={summarize.reason}
+          name={name}
+          openModels={openModels}
+          tryAgain={() => void model.summarize()}
+        />
       ) : null}
       {drafted ? (
         <div className="flex flex-col gap-2">
@@ -101,10 +106,12 @@ function Problem({
   reason,
   name,
   openModels,
+  tryAgain,
 }: {
-  readonly reason: "no-local-model" | "no-documents" | "failed";
+  readonly reason: Exclude<SummarizeState, { phase: "idle" | "working" | "draft" }>["reason"];
   readonly name: string;
   readonly openModels: (() => void) | undefined;
+  readonly tryAgain: () => void;
 }) {
   if (reason === "no-local-model") {
     return (
@@ -118,11 +125,21 @@ function Problem({
       </Callout>
     );
   }
+  if (reason === "no-documents") {
+    return <Callout tone="danger">{knowledgeWords.noDocuments(name)}</Callout>;
+  }
+  if (reason === "too-large") {
+    return (
+      <Callout tone="danger">
+        {knowledgeWords.summarizeFailed(name, knowledgeWords.tooLarge)}
+      </Callout>
+    );
+  }
+  const why =
+    reason === "host-unreachable" ? knowledgeWords.hostUnreachable : knowledgeWords.modelFailed;
   return (
-    <Callout tone="danger">
-      {reason === "no-documents"
-        ? knowledgeWords.noDocuments(name)
-        : knowledgeWords.summarizeFailed(name)}
+    <Callout tone="danger" action={{ label: knowledgeWords.tryAgain, onClick: tryAgain }}>
+      {knowledgeWords.summarizeFailed(name, why)}
     </Callout>
   );
 }

@@ -20,7 +20,13 @@ export type SummarizeOutcome =
   /** The default model alias has no local model, and Summarize only uses one. */
   | { readonly kind: "no-local-model" }
   /** The source has no documents, or the host can't list them. */
-  | { readonly kind: "no-documents" };
+  | { readonly kind: "no-documents" }
+  /** The local model didn't answer, or couldn't finish. */
+  | { readonly kind: "model-failed" }
+  /** Halonic's agent host, which makes the model call, didn't answer. */
+  | { readonly kind: "host-unreachable" }
+  /** The documents are more than one request can take. */
+  | { readonly kind: "too-large" };
 
 /** The knowledge sources of the open workspace, one at a time. The app provides it for each open workspace. */
 export interface KnowledgeHost {
