@@ -19,15 +19,19 @@ export function CompareView({
   context,
   onDone,
   onCancel,
+  initialFailure,
 }: {
   readonly path: string;
   readonly context: WorkspaceContext;
   readonly onDone: () => void;
   readonly onCancel: () => void;
+  /** Why a choice made in the strip failed, shown until the next choice. */
+  readonly initialFailure?: string | undefined;
 }) {
   const host = context.services.get(FilesHostService);
   const [loaded, setLoaded] = useState<Loaded>({ kind: "loading" });
-  const [failure, setFailure] = useState<string | undefined>();
+  const [failure, setFailure] = useState<string | undefined>(initialFailure);
+  const [settling, setSettling] = useState(false);
 
   useEffect(() => {
     let stopped = false;
@@ -46,11 +50,13 @@ export function CompareView({
 
   async function choose(choice: CompareChoice): Promise<void> {
     setFailure(undefined);
+    setSettling(true);
     try {
       await host.settle(path, choice);
       onDone();
     } catch (error) {
       setFailure(reasonOf(error));
+      setSettling(false);
     }
   }
 
@@ -85,14 +91,14 @@ export function CompareView({
         <Side heading={filesWords.compareTheirs} text={compare.theirs} />
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" onClick={() => choose("keep-mine")}>
+        <Button variant="secondary" busy={settling} onClick={() => choose("keep-mine")}>
           {filesWords.keepMine}
         </Button>
-        <Button variant="secondary" onClick={() => choose("use-other")}>
+        <Button variant="secondary" busy={settling} onClick={() => choose("use-other")}>
           {filesWords.useOther}
         </Button>
         {compare.combined !== null && (
-          <Button variant="secondary" onClick={() => choose("combine-both")}>
+          <Button variant="secondary" busy={settling} onClick={() => choose("combine-both")}>
             {filesWords.combineBoth}
           </Button>
         )}

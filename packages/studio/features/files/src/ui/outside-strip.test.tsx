@@ -8,16 +8,25 @@ import type { CompareChoice, FileCompare, FilesHost, OutsideChange } from "../fi
 import { render, unmountAll } from "../test-support/render.tsx";
 import { FileView } from "./file-view.tsx";
 
+// Every editor the tab opened, with the text it started from.
+const opened: { text: string; onChange: ((text: string) => void) | undefined }[] = [];
+
 vi.mock("@halonicjs/studio-code-editor", () => ({
   languageFor: () => "yaml",
-  openCodeEditor: async (options: { text: string }) => ({
-    text: () => options.text,
-    load: () => {},
-    destroy: () => {},
-  }),
+  openCodeEditor: async (options: { text: string; onChange?: (text: string) => void }) => {
+    opened.push({ text: options.text, onChange: options.onChange });
+    return {
+      text: () => options.text,
+      load: () => {},
+      destroy: () => {},
+    };
+  },
 }));
 
-afterEach(unmountAll);
+afterEach(() => {
+  unmountAll();
+  opened.length = 0;
+});
 
 function fixture(change: OutsideChange | undefined, compare: Partial<FileCompare> = {}) {
   let text = "mine";
@@ -31,7 +40,9 @@ function fixture(change: OutsideChange | undefined, compare: Partial<FileCompare
     list: async () => ({ paths: [], marks: new Map() }),
     subscribe: () => () => {},
     read: async () => text,
-    edit: () => {},
+    edit: (_path, next) => {
+      text = next;
+    },
     problems: async () => [],
     outside: () => outside,
     compare: async (path) => ({
@@ -110,6 +121,27 @@ verifies("files.ui.outside-strip", () => {
     expect(settle).toHaveBeenCalledWith("a.agent.yaml", "use-other");
     expect(page.querySelector("[role=status]")).toBeNull();
     expect(button(page, "Keep mine")).toBeUndefined();
+    expect(opened.at(-1)?.text).toBe("chosen");
+  });
+
+  it("reopens the editor with what was typed when Compare is cancelled", async () => {
+    const { page } = fixture("changed");
+    await flush();
+    opened[0]?.onChange?.("typed in this tab");
+    await press(page, "Compare");
+    await press(page, "Cancel");
+    expect(opened.at(-1)?.text).toBe("typed in this tab");
+  });
+
+  it("sends a second click on a choice no further while the first is saving", async () => {
+    const { page, settle } = fixture("changed");
+    settle.mockImplementationOnce(() => new Promise(() => {}));
+    await flush();
+    await press(page, "Compare");
+    await press(page, "Keep mine");
+    expect(button(page, "Keep mine")?.getAttribute("aria-busy")).toBe("true");
+    await press(page, "Keep mine");
+    expect(settle).toHaveBeenCalledTimes(1);
   });
 
   it("keeps Compare open and says why when a choice can't be saved", async () => {
@@ -131,6 +163,15 @@ verifies("files.ui.outside-strip", () => {
     expect(button(page, "Compare")).toBeUndefined();
     await press(page, "Keep mine");
     expect(settle).toHaveBeenCalledWith("a.agent.yaml", "keep-mine");
+  });
+
+  it("shows the reason in Compare when a choice made in the strip can't be saved", async () => {
+    const { page, settle } = fixture("deleted");
+    settle.mockRejectedValueOnce(new Error("the folder is read-only"));
+    await flush();
+    await press(page, "Keep mine");
+    expect(page.textContent).toContain("the folder is read-only");
+    expect(button(page, "Use the other one")).toBeDefined();
   });
 
   it("settles a deleted file with the other side when Close is chosen", async () => {

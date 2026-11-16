@@ -27,6 +27,8 @@ export function FileView({ item, context }: ItemViewProps) {
   // Bumped when Compare changed the file, so the text is read again.
   const [round, setRound] = useState(0);
   const [comparing, setComparing] = useState(false);
+  // Why a choice made in the strip couldn't be saved; Compare opens with it.
+  const [failure, setFailure] = useState<string | undefined>();
   const [outside, setOutside] = useState<OutsideChange | undefined>(() => host.outside().get(path));
 
   useEffect(() => {
@@ -95,13 +97,20 @@ export function FileView({ item, context }: ItemViewProps) {
     };
   }, [editing, host, path]);
 
+  /** Reads the text again, and shows no editor until it has: the old text would be stale. */
+  function reload(): void {
+    setLoaded({ kind: "loading" });
+    setRound((n) => n + 1);
+  }
+
   /** The strip's own choices; a failed one leaves the strip as it was, and Compare shows the reason. */
   async function settleWith(choice: "keep-mine" | "use-other"): Promise<void> {
     try {
       await host.settle(path, choice);
       setOutside(host.outside().get(path));
-      setRound((n) => n + 1);
-    } catch {
+      reload();
+    } catch (error) {
+      setFailure(error instanceof Error ? error.message : String(error));
       setComparing(true);
     }
   }
@@ -145,11 +154,19 @@ export function FileView({ item, context }: ItemViewProps) {
         <CompareView
           path={path}
           context={context}
-          onCancel={() => setComparing(false)}
+          initialFailure={failure}
+          // The editor was closed while comparing, so it reopens from what the files hold now,
+          // which includes what was typed before Compare.
+          onCancel={() => {
+            setComparing(false);
+            setFailure(undefined);
+            reload();
+          }}
           onDone={() => {
             setComparing(false);
+            setFailure(undefined);
             setOutside(host.outside().get(path));
-            setRound((n) => n + 1);
+            reload();
           }}
         />
       )}
