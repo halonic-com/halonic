@@ -204,6 +204,7 @@ export function StudioWindow(props: StudioWindowProps) {
   }
   // The same list each render, so the sidebar subscribes to the places' signals only once.
   const places = useMemo(() => contributions.places.list(), [contributions]);
+  const sidebarViews = useMemo(() => contributions.sidebarViews.list(), [contributions]);
   const kinds = useMemo(() => contributions.itemKinds.list(), [contributions]);
   useClosingGoneItemTabs(tabs, kinds, contextFor);
   usePhoneBackButton(!desktop, shell.closeStack, phone);
@@ -252,6 +253,7 @@ export function StudioWindow(props: StudioWindowProps) {
       sidebar={
         <StudioSidebar
           places={places}
+          views={sidebarViews}
           tabs={tabs}
           announcer={announcer}
           platform={platform}

@@ -4,7 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { createAnnouncer } from "../announcer/announcer.ts";
-import type { PlaceContribution, PlaceSignal } from "../points/frame.ts";
+import type { PlaceContribution, PlaceSignal, SidebarViewContribution } from "../points/frame.ts";
 import type { Registered } from "../points/point-store.ts";
 import { TabSet } from "../tabs/tab-set.ts";
 import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
@@ -112,5 +112,67 @@ verifies("shell.place-signal-changes", () => {
     unmountAll();
 
     expect(waiting.listeners.size).toBe(0);
+  });
+});
+
+verifies("shell.sidebar-switch", () => {
+  const filesView: Registered<SidebarViewContribution> = {
+    featureId: "files",
+    id: "files",
+    label: "Files",
+    view: "FilesView",
+    load: async () => ({ FilesView: () => <p>The file tree</p> }),
+  };
+
+  function renderWithViews(views: readonly Registered<SidebarViewContribution>[]) {
+    const tabs = new TabSet();
+    const announcer = createAnnouncer({ timers: new FakeTimers() });
+    const context = {
+      services: { get: () => undefined },
+      announcer,
+    } as unknown as WorkspaceContext;
+    return render(
+      <StudioSidebar
+        places={[inboxPlace(new WaitingCount())]}
+        views={views}
+        tabs={tabs}
+        announcer={announcer}
+        platform="windows"
+        contextFor={() => context}
+        onSearch={() => {}}
+        onSettings={() => {}}
+      />,
+    );
+  }
+
+  const tabNamed = (container: HTMLElement, name: string) =>
+    Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]')).find(
+      (tab) => tab.textContent?.startsWith(name) === true,
+    );
+
+  it("shows no switch while no feature added a view", () => {
+    const container = renderWithViews([]);
+
+    expect(container.querySelector('[role="tablist"]')).toBeNull();
+    expect(container.querySelector('nav[aria-label="Places"]')).not.toBeNull();
+  });
+
+  it("shows Studio selected with the places, then the view and the Settings row when picked", async () => {
+    const container = renderWithViews([filesView]);
+
+    expect(tabNamed(container, "Studio")?.getAttribute("aria-selected")).toBe("true");
+    expect(container.textContent).toContain("Inbox");
+
+    await act(async () => tabNamed(container, "Files")?.click());
+    await act(async () => {});
+
+    expect(container.textContent).toContain("The file tree");
+    expect(container.textContent).not.toContain("Inbox");
+    expect(container.textContent).toContain("Settings");
+
+    await act(async () => tabNamed(container, "Studio")?.click());
+
+    expect(container.textContent).toContain("Inbox");
+    expect(container.textContent).not.toContain("The file tree");
   });
 });
