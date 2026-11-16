@@ -38,14 +38,24 @@ export type EngineStartEvent =
       /** On a restart: the exit code of the engine that stopped. */
       readonly lastExitCode?: number | null;
     }
-  | { readonly state: "connected" }
+  | {
+      readonly state: "connected";
+      /**
+       * How many runs the engine ended as `interrupted` while it got ready, when it told.
+       * After a restart these are the runs the stop cut off.
+       */
+      readonly interruptedRuns?: number;
+    }
   | { readonly state: "lost" }
   | { readonly state: "failed"; readonly failure: EngineStartFailure };
 
 /** What an engine process tells the shell. Calls after the first ending are ignored. */
 export interface EngineProcessEvents {
-  /** The engine answered and is ready. */
-  ready(): void;
+  /**
+   * The engine answered and is ready. `interruptedRuns` is how many runs it ended as
+   * `interrupted` on the way, when it counts them.
+   */
+  ready(interruptedRuns?: number): void;
   /** The engine found it can't write its data folder. */
   dataFolderNotWritable(): void;
   /** The process ended, with its exit code, or `null` when a signal ended it. */
@@ -197,13 +207,17 @@ class Supervision {
 
   private eventsFor(run: Attempt): EngineProcessEvents {
     return {
-      ready: this.steps.wrap(() => {
+      ready: this.steps.wrap((interruptedRuns?: number) => {
         if (run.phase !== "starting") {
           return;
         }
         run.phase = "running";
         this.timers.clearTimeout(run.answerTimer);
-        this.steps.emit({ state: "connected" });
+        this.steps.emit(
+          interruptedRuns === undefined
+            ? { state: "connected" }
+            : { state: "connected", interruptedRuns },
+        );
       }),
       dataFolderNotWritable: this.steps.wrap(() => {
         if (run.phase !== "ended") {
