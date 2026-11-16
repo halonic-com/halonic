@@ -27,3 +27,6 @@ No test was weakened. New requirement `engine.model-calls-stream` with five test
 
 - engine.model-calls-stream
 - engine.offline-falls-back
+- cli.run-failure
+- model-anthropic.call-limits
+- model-openai.call-limits
