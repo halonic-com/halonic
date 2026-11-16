@@ -2,6 +2,7 @@
 
 - Approval: HAL-10832
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gX74/25QOOWfrldTwTx8Scu67E/lfYjeNQVkuN4UHZvhxQg7OwAxz95YS+tjrQPL55x/aRMMCl6YYCmgz4lrAA==
 
 ## What changes
 
