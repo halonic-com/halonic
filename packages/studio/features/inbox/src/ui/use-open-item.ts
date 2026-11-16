@@ -35,6 +35,13 @@ export function useOpenItem(inbox: Inbox, items: readonly InboxItem[]): OpenItem
     const latest = items.find((item) => item.key === open.key);
     if (latest !== undefined && latest !== open) setOpen(latest);
   }, [items, open]);
+  // A fixed item only stays while it is open: the source drops it once it isn't (or the page closes).
+  useEffect(
+    () => () => {
+      if (open?.kind === "setup") inbox.releaseSetup(open);
+    },
+    [inbox, open],
+  );
   useEffect(() => {
     const take = () => {
       const asked = inbox.takeOpenRequest();

@@ -17,6 +17,7 @@ import {
 import { flushSync } from "react-dom";
 import { InboxNoticesService, InboxRequestsService, InboxService } from "../api.ts";
 import type { Inbox, SetupFocus } from "../inbox.ts";
+import { waitingCount } from "../inbox-count.ts";
 import type { InboxItem } from "../inbox-items.ts";
 import type { InboxNotices } from "../notices/inbox-notices.ts";
 import { secretTarget } from "../plain/secret-target.ts";
@@ -173,7 +174,7 @@ export function InboxView({
               heading={{
                 name: "Needs you",
                 headingRef: needsYouHeading,
-                ...countDetail(state.items.length, lateCount(state.items, now())),
+                ...countDetail(waitingCount(state.items), lateCount(state.items, now())),
               }}
               rows={state.items.map((item) => rowFor(item, now()))}
               onOpen={(key) => openItem(state.items.find((item) => item.key === key) ?? null)}
@@ -225,6 +226,8 @@ export function InboxView({
               items={state.items}
               focus={focus}
               openNewConnector={openNewConnector}
+              openPlace={openPlace}
+              openRun={openRun}
               now={now}
               answering={state.error === undefined}
               words={words}
@@ -276,6 +279,8 @@ function OpenCard({
   items,
   focus,
   openNewConnector,
+  openPlace,
+  openRun,
 }: {
   readonly item: InboxItem;
   readonly inbox: Inbox;
@@ -283,6 +288,8 @@ function OpenCard({
   readonly items: readonly InboxItem[];
   readonly focus: SetupFocus | undefined;
   readonly openNewConnector: (() => void) | undefined;
+  readonly openPlace: ((place: SidebarPlace) => void) | undefined;
+  readonly openRun: ((hubId: string, runId: string) => void) | undefined;
   readonly next: NextItem | null;
   readonly now: () => Date;
   readonly answering: boolean;
@@ -316,6 +323,7 @@ function OpenCard({
         words={words}
         close={close}
         focus={focus}
+        openRun={openRun}
       />
     );
   }

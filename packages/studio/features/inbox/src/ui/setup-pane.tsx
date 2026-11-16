@@ -24,6 +24,7 @@ export function SetupPane({
   words = engineWords["desktop-app"],
   close,
   focus,
+  openRun,
 }: SetupPaneProps) {
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key !== "Escape" || event.defaultPrevented) return;
@@ -36,6 +37,7 @@ export function SetupPane({
     words,
     close,
     focus,
+    openRun,
   };
 
   return (

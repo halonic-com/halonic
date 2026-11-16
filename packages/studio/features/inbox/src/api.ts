@@ -7,6 +7,7 @@ import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { Inbox, InboxRuns } from "./inbox.ts";
 import type { InboxNotices } from "./notices/inbox-notices.ts";
 import type { InboxRequests } from "./request/inbox-requests.ts";
+import type { SandboxRefusals } from "./sandbox/sandbox-setup-source.ts";
 
 export { type InboxDecisions, inboxDecisions } from "./decide.ts";
 export type {
@@ -33,6 +34,7 @@ export { type FailedRunNotice, failedRunNotices } from "./notices/failed-run-not
 export type { InboxNotices } from "./notices/inbox-notices.ts";
 export { clockTime } from "./plain/waiting-time.ts";
 export type { InboxRequests, RequestWorkflow, StartedRun } from "./request/inbox-requests.ts";
+export type { SandboxRefusals } from "./sandbox/sandbox-setup-source.ts";
 
 /** The runs the Inbox reads and answers. The app provides it for each open workspace. */
 export const InboxRunsService: ServiceKey<InboxRuns> = serviceKey<InboxRuns>("inbox.runs");
@@ -53,3 +55,10 @@ export const InboxRequestsService: ServiceKey<InboxRequests> =
  */
 export const InboxNoticesService: ServiceKey<InboxNotices> =
   serviceKey<InboxNotices>("inbox.notices");
+
+/**
+ * The runs the sandbox row reads. The app provides it for each open workspace; without it, or
+ * without a `SandboxStartCheck`, the Inbox has no sandbox row.
+ */
+export const SandboxRefusalsService: ServiceKey<SandboxRefusals> =
+  serviceKey<SandboxRefusals>("inbox.sandbox-refusals");
