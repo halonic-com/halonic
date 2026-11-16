@@ -4,7 +4,7 @@
 
 import { runWait, shortRunId } from "@halonicjs/app";
 import type { PendingApproval, RunSummary } from "@halonicjs/events";
-import type { RunWorkflow, SourcedRun } from "../api.ts";
+import type { ProviderKind, RunWorkflow, SourcedRun } from "../api.ts";
 import { currentStepName, type RunChip, runRow } from "../list/run-row.ts";
 import { lineSeparator, runPageWords } from "../run-words.ts";
 import { clockTime, dayAndMonth, dayWords, dueWords, tookWords } from "../time-words.ts";
@@ -51,6 +51,8 @@ export interface RunPageContext {
   readonly workflow: RunWorkflow | undefined;
   /** The name of what another run of the workspace ran, for a child run; `undefined` when it isn't loaded. */
   readonly workflowOfRun: (runId: string) => string | undefined;
+  /** Whether a model provider runs on this computer or elsewhere; `undefined` when it isn't in the workspace. */
+  readonly providerKind: (providerId: string) => ProviderKind | undefined;
   readonly currency: string;
   readonly now: Date;
 }

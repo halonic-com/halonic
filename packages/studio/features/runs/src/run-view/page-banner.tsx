@@ -4,6 +4,7 @@ import type { InstructionTrustHost, SourcedRun } from "../api.ts";
 import { runPageWords } from "../run-words.ts";
 import { BlockedFailureBanner, blockedFailure } from "./blocked-banner.tsx";
 import type { StepEntry } from "./every-step-model.ts";
+import { causeBanner } from "./failure-banner.ts";
 import { refusedInstructions } from "./instructions-refusal.ts";
 import { InstructionsRefusalBanner } from "./instructions-refusal-banner.tsx";
 import {
@@ -13,7 +14,7 @@ import {
   runBanner,
 } from "./run-page-model.ts";
 
-/** The page's one banner: the sandbox's failed banner for a run it stopped, else the usual one. */
+/** The page's one banner: the failed banner for the run's cause, the sandbox's for a run it stopped, else the usual one. */
 export function PageBanner({
   run,
   context,
@@ -22,6 +23,7 @@ export function PageBanner({
   reviewInInbox,
   openRun,
   instructionTrust,
+  phone = false,
   onSeeStep,
 }: {
   readonly run: SourcedRun;
@@ -36,6 +38,8 @@ export function PageBanner({
    * run shows the usual banner there.
    */
   readonly instructionTrust?: { readonly host: InstructionTrustHost | undefined };
+  /** Whether the page is a phone's: a fix it can't do is said as a line (microcopy 15.3). */
+  readonly phone?: boolean;
   readonly onSeeStep: (entryId: string) => void;
 }) {
   const refused =
@@ -51,6 +55,10 @@ export function PageBanner({
         host={instructionTrust?.host}
       />
     );
+  }
+  const cause = causeBanner(run.summary, log, context, phone);
+  if (cause !== undefined) {
+    return <Banner banner={cause} reviewInInbox={reviewInInbox} openRun={openRun} />;
   }
   const blocked = log === undefined ? undefined : blockedFailure(run.summary, log, entries);
   if (blocked !== undefined) {

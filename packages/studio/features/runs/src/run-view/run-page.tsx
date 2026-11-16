@@ -127,6 +127,7 @@ export function RunView({
             reviewInInbox={reviewInInbox}
             openRun={openRun}
             instructionTrust={{ host: instructionTrust }}
+            phone={phone}
             onSeeStep={setOpenEntry}
           />
           <DamagedLogBanner line={logRead.damagedLine} />
@@ -380,6 +381,7 @@ function pageContext(
       }
       return source.workflow(other.hubId, other.workflowId)?.name ?? other.workflowId;
     },
+    providerKind: source.providerKind,
     currency: source.currency(),
     now,
   };
