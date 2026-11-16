@@ -7,6 +7,7 @@ import { RefusalsFeed } from "@halonicjs/studio-feature-library/api";
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { WorkspaceConnectorStatus } from "./workspace-connector-status.ts";
+import { googleAskFirst } from "./workspace-new-connector.ts";
 
 const searchFile = [
   "version: 1",
@@ -98,19 +99,29 @@ verifies("studio.workspace-connector-status", () => {
         definitions: new MemoryDefinitionStore({
           "workspace.yaml": "id: acme\nname: Acme\n",
           "library/connectors/search.connector.yaml": `${searchFile}\n${tools}`,
-          "library/connectors/mail.connector.yaml": `${googleFile}\ntools: { approve: [gmail_send] }`,
+          "library/connectors/mail.connector.yaml": `${googleFile}\n${tools}`,
         }),
         refusals: new RefusalsFeed(),
         google: noGoogle,
       });
       return Object.fromEntries((await status.list()).map(({ id, asks }) => [id, asks]));
     };
+    const list = (tools: readonly string[]) => `tools: { approve: [${tools.join(", ")}] }`;
 
     expect(await asksOf("tools: { approve: all }")).toEqual({
-      mail: "changes",
+      mail: "every-tool",
       search: "every-tool",
     });
-    expect(await asksOf("tools: { approve: [] }")).toEqual({ mail: "changes", search: undefined });
+    expect(await asksOf(list([...googleAskFirst].reverse()))).toEqual({
+      mail: "changes",
+      search: undefined,
+    });
+    expect(await asksOf(list(["gmail_send"]))).toEqual({ mail: undefined, search: undefined });
+    expect(await asksOf(list([...googleAskFirst, "gmail_search"]))).toEqual({
+      mail: undefined,
+      search: undefined,
+    });
+    expect(await asksOf("tools: { approve: [] }")).toEqual({ mail: undefined, search: undefined });
   });
 
   it("says how each connector connects, with secret names only", async () => {

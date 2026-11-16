@@ -15,6 +15,7 @@ import type {
 } from "@halonicjs/studio-feature-library/api";
 import { type ConnectionState, connectionStateOf } from "@halonicjs/studio-feature-library/api";
 import { filesOf, loadWorkspace, placeOf } from "@halonicjs/workspace";
+import { googleAskFirst } from "./workspace-new-connector.ts";
 
 /** What {@link WorkspaceConnectorStatus} reads. */
 export interface WorkspaceConnectorStatusOptions {
@@ -64,10 +65,20 @@ function connectionOf({ transport, secret }: Connector): ConnectorConnection {
   return { kind: "plugin", id: transport.plugin.id };
 }
 
-/** What the file says about asking first, in the two ways the New connector dialog writes it. */
+/** Whether the list names exactly the tools a new Google connector asks first about, in any order. */
+function isGoogleAskFirst(approve: readonly string[]): boolean {
+  const listed = new Set(approve);
+  return listed.size === googleAskFirst.length && googleAskFirst.every((tool) => listed.has(tool));
+}
+
+/**
+ * What the file says about asking first, in the two ways the New connector dialog writes it. A
+ * list that differs from the dialog's, even by one tool, says nothing: the page never says more
+ * than the file does.
+ */
 function asksOf({ transport, tools }: Connector): ConnectorAsks | undefined {
   if (tools.approve === "all") return "every-tool";
-  if ("google" in transport && tools.approve.length > 0) return "changes";
+  if ("google" in transport && isGoogleAskFirst(tools.approve)) return "changes";
   return undefined;
 }
 
