@@ -32,8 +32,6 @@ export { type SandboxBackendId, sandboxBackendIds };
  * - `kept-roots-readable`: the folders Halonic keeps outside a project can be read. Only a
  *   residual of an `ok` check on Windows, when another program's srt setup lets every
  *   session read the profile, or the setup can't be read; no backend lists it as a limit (HAL-5398).
- * - `reads-open-by-default`: the sandbox reads whatever the Users group can read, unless denied.
- * - `wsl-service-reachable`: the WSL service answers sandboxed programs, and `wsl.exe` can't be denied.
  * - `files-leave-machine`: project files are copied to another machine.
  * - `project-folder-writable`: the project folder is writable (true for every backend).
  * - `no-file-fence`, `no-network-fence`: with no sandbox, nothing fences files or the network.
@@ -48,8 +46,6 @@ export const limitCodes = [
   "token-switch-unfenced",
   "schannel-tls-fails",
   "kept-roots-readable",
-  "reads-open-by-default",
-  "wsl-service-reachable",
   "files-leave-machine",
   "project-folder-writable",
   "no-file-fence",
