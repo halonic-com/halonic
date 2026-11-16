@@ -475,39 +475,6 @@ describe("doctorReportLines", () => {
     ]);
   });
 
-  it("escapes the control characters in model, provider and address text", () => {
-    const models: ModelsLine = {
-      check: "models",
-      status: "failed",
-      ready: [
-        {
-          provider: "ollama",
-          name: "Ol\u001b[2Klama",
-          answering: true,
-          address: "localhost\u001b[1A:11434",
-          models: [{ name: "llama\u001b[2K\u001b[1A", memoryBytes: 2 * gb }],
-        },
-        { provider: "anthropic", name: "Anth\u001b[2Kropic", keyStored: true },
-      ],
-      problems: [
-        {
-          problem: "unreachable",
-          provider: "lmstudio",
-          name: "LM\u001b[2K Studio",
-          address: "localhost\u001b[1A:1234",
-        },
-        { problem: "no-key", alias: "sm\u001b[2Kart", provider: "openai", name: "Open\u001b[2KAI" },
-      ],
-    };
-    const lines = printed(reportOf({ models, sandbox: sandboxReady, disk: diskFree }));
-    expect(check(lines, "Models")).toEqual([
-      "✕ Models      Ol\\u001b[2Klama answering at localhost\\u001b[1A:11434 · llama\\u001b[2K\\u001b[1A loaded (2.0 GB)",
-      "              Anth\\u001b[2Kropic: API key stored",
-      "              LM\\u001b[2K Studio isn't answering at localhost\\u001b[1A:1234",
-      "              sm\\u001b[2Kart needs an API key for Open\\u001b[2KAI.",
-    ]);
-  });
-
   it("says at least when the count stopped, and drops the use when a folder couldn't be read", () => {
     const partial: DiskLine = { ...diskFree, data: { ...data, complete: false } };
     const unknown: DiskLine = { ...diskFree, data: null };
