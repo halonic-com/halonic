@@ -1,16 +1,3 @@
-import {
-  TauriDefinitionStore,
-  type TauriFileShell,
-  TauriPickedFolders,
-  TauriTrustStore,
-  webCryptoDigest,
-} from "@halonicjs/adapter-fs-tauri";
-import {
-  openWorkspace,
-  ServiceRegistry,
-  type WorkspaceScope,
-  workspaceFilesKey,
-} from "@halonicjs/app";
 import { googleSetupFeature } from "@halonicjs/studio-feature-google-setup";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
@@ -35,62 +22,25 @@ import { pluginsFeature } from "@halonicjs/studio-feature-plugins";
 import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
 import { runsFeature } from "@halonicjs/studio-feature-runs";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
+import { settingsFeature } from "@halonicjs/studio-feature-settings";
 import {
-  BrowserDisplayPrefs,
-  DisplaySettings,
-  type DisplayStorage,
-  settingsFeature,
-  TauriUpdater,
-  watchAppearance,
-} from "@halonicjs/studio-feature-settings";
-import {
-  AgentSandboxService,
   AssistantWorkspaceService,
   DisplaySettingsService,
   HostSettingsService,
-  RestartRunsService,
-  UpdaterService,
 } from "@halonicjs/studio-feature-settings/api";
 import { sourceControlFeature } from "@halonicjs/studio-feature-source-control";
 import { ChangesSourceService } from "@halonicjs/studio-feature-source-control/api";
 import { workflowsFeature } from "@halonicjs/studio-feature-workflows";
 import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
-import {
-  folderName,
-  mountWorkspaceWindow,
-  type OpenedWorkspace,
-  type RecentStorage,
-  RecentWorkspaces,
-  WorkspaceSaving,
-  WorkspaceSwitcher,
-  workspaceFeature,
-} from "@halonicjs/studio-feature-workspace";
+import { workspaceFeature } from "@halonicjs/studio-feature-workspace";
 import {
   TrustedSourcesService,
   WorkspacePageService,
 } from "@halonicjs/studio-feature-workspace/api";
-import {
-  onWindowCloseRequested,
-  provideShellHostSettings,
-  provideShellSecrets,
-  type TauriCallbacks,
-  type TauriIpc,
-  tauriAgentHostTransport,
-  tauriChannelIpc,
-  tauriIpc,
-} from "@halonicjs/studio-services";
-import {
-  createShell,
-  type KeyboardPlatform,
-  type Shell,
-  type ShellOptions,
-  type StudioHost,
-  StudioWorkspace,
-} from "@halonicjs/studio-shell";
+import type { ShellOptions } from "@halonicjs/studio-shell";
 
 /**
- * The features of the desktop app, and the services the app gives them for each open folder
- * ({@link openFolder}).
+ * The features of the desktop app, and the services the app gives them for each open folder.
  */
 export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = {
   features: [

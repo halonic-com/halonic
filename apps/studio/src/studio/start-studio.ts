@@ -30,22 +30,16 @@ import {
   BrowserDisplayPrefs,
   DisplaySettings,
   type DisplayStorage,
-  settingsFeature,
   TauriUpdater,
   watchAppearance,
 } from "@halonicjs/studio-feature-settings";
 import {
   AgentSandboxService,
-  AssistantWorkspaceService,
   DisplaySettingsService,
   HostSettingsService,
   RestartRunsService,
   UpdaterService,
 } from "@halonicjs/studio-feature-settings/api";
-import { sourceControlFeature } from "@halonicjs/studio-feature-source-control";
-import { ChangesSourceService } from "@halonicjs/studio-feature-source-control/api";
-import { workflowsFeature } from "@halonicjs/studio-feature-workflows";
-import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
 import {
   folderName,
   mountWorkspaceWindow,
@@ -53,7 +47,6 @@ import {
   type RecentStorage,
   RecentWorkspaces,
   WorkspaceSwitcher,
-  workspaceFeature,
 } from "@halonicjs/studio-feature-workspace";
 import {
   TrustedSourcesService,
@@ -73,7 +66,6 @@ import {
   createShell,
   type KeyboardPlatform,
   type Shell,
-  type ShellOptions,
   type StudioHost,
   StudioWorkspace,
 } from "@halonicjs/studio-shell";
