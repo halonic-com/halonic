@@ -10,6 +10,7 @@ export { WSL_SHARED_FOLDERS } from "./shared-folders.ts";
 export { buildSrtConfig } from "./srt-config.ts";
 export { type Runner, sandboxRuntimeFolder, srtRunner } from "./srt-runner.ts";
 export { type SandboxRemoval, type SandboxSetup, SrtSandbox } from "./srt-sandbox.ts";
+export { importWindowsProject } from "./wsl-import.ts";
 export {
   assertWindowsFolder,
   cleanupImportMounts,
