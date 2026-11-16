@@ -50,6 +50,8 @@ export interface RemoveOptions {
   readonly quiet?: boolean;
   /** Called with the way back once the item is in the trash, also after a Try again. */
   readonly onRemoved?: (removed: RemovedLibraryItem) => void;
+  /** Called once the toast's Undo has put the item back. */
+  readonly onRestored?: () => void;
 }
 
 /**
@@ -75,7 +77,13 @@ export async function removeItem(
         tone: "success",
         title: deleteWords.moved(name, line !== undefined),
         ...(line === undefined ? {} : { text: line }),
-        action: { label: deleteWords.undo, onClick: () => void putBack(removed, name, toasts) },
+        action: {
+          label: deleteWords.undo,
+          onClick: () =>
+            void putBack(removed, name, toasts).then((restored) => {
+              if (restored) options.onRestored?.();
+            }),
+        },
       });
     }
     return removed;

@@ -8,7 +8,7 @@ import {
   useToastStore,
 } from "@halonicjs/studio-kit";
 import { errorMessageFor, OverviewPage } from "@halonicjs/studio-shell";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { deleteWords } from "../delete-words.ts";
 import type { LibraryEntry, LibraryItemsHost, LibraryListing } from "../library-items-host.ts";
 import { entryOfRow, type LibraryEntryPlace, libraryOverview } from "../library-overview.ts";
@@ -23,6 +23,7 @@ import {
   tryingAgain,
 } from "../library-words.ts";
 import { removeItem } from "../remove-item.ts";
+import { type FocusTarget, focusRow, targetAfterRemoving, visibleRowIds } from "../row-focus.ts";
 
 /** The props of {@link LibraryPage}. */
 export interface LibraryPageProps {
@@ -152,15 +153,46 @@ export function LibraryPage({
   );
   const label = newLabel(kind);
   const toasts = useToastStore();
+  const page = useRef<HTMLDivElement>(null);
+  const emptyTitle = useRef<HTMLHeadingElement>(null);
+  // Where focus goes once it can: a restored row only shows when the list is read again.
+  // It waits for the list that was on screen when it was set to be replaced, then is dropped
+  // if it still isn't there (a search can hide the restored row).
+  const pendingFocus = useRef<{ target: FocusTarget; listAtStart: Load } | undefined>(undefined);
+  const latestLoad = useRef(load);
+  latestLoad.current = load;
+  const applyFocus = useCallback(() => {
+    const pending = pendingFocus.current;
+    if (pending === undefined || page.current === null) return;
+    const { target } = pending;
+    const shown =
+      target === "empty" ? emptyTitle.current !== null : focusRow(page.current, target.row);
+    if (target === "empty") emptyTitle.current?.focus();
+    const listReadAgain =
+      latestLoad.current.state === "loaded" && latestLoad.current !== pending.listAtStart;
+    if (shown || listReadAgain) pendingFocus.current = undefined;
+  }, []);
+  // Runs after every render, to catch the row or the empty state when it appears.
+  useEffect(applyFocus);
+  const focusOn = (target: FocusTarget) => {
+    pendingFocus.current = { target, listAtStart: latestLoad.current };
+    applyFocus();
+  };
   const remove = (row: string) => {
     const place = entryOfRow(row);
     const entry = load.state === "loaded" ? findEntry(load.listing, place) : undefined;
-    if (entry === undefined) return;
-    void removeItem(host, toasts, { kind, place, name: entry.name, usage: entry.usage });
+    if (entry === undefined || page.current === null) return;
+    const after = targetAfterRemoving(visibleRowIds(page.current), row);
+    void removeItem(
+      host,
+      toasts,
+      { kind, place, name: entry.name, usage: entry.usage },
+      { onRemoved: () => focusOn(after), onRestored: () => focusOn({ row }) },
+    );
   };
 
   return (
-    <div>
+    <div ref={page}>
       <h1 className={phone ? "sr-only" : "px-4 pt-4 text-title"}>Library</h1>
       <p className="px-4 pt-2 text-small text-fg-muted">{tabSentence(kind)}</p>
       <div className="px-4 py-2">
@@ -189,6 +221,7 @@ export function LibraryPage({
             onNew !== undefined && label !== undefined ? () => onNew(kind) : undefined,
           )}
           quietWhenEmpty
+          emptyTitleRef={emptyTitle}
           loading={load.state === "loading"}
           {...(load.state === "failed"
             ? {

@@ -211,6 +211,7 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
 
   return (
     <tr
+      data-row-id={row.id}
       aria-selected={selection === undefined ? undefined : isSelected}
       aria-current={isCurrent ? true : undefined}
       aria-disabled={isUnavailable ? true : undefined}
