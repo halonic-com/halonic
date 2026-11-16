@@ -53,6 +53,14 @@ const findCommand: CliCommand = {
         json: { found: { key: await context.secrets.get("key") } },
       };
     }
+    if (what === "a key line") {
+      const key = await context.secrets.get("key");
+      return {
+        exitCode: exitCode.ok,
+        lines: [phrase`${markPart("needsYou")} ${findMessages.found(`it said ${key}`).phrase}`],
+        json: {},
+      };
+    }
     if (what === "a bug") {
       throw new Error("undefined is not a function");
     }
@@ -195,6 +203,14 @@ verifies("cli.json", () => {
     const secrets: Secrets = { get: async () => "made-up-key-7" };
     const { document } = await runJson(["find", "the key", "--json"], secrets);
     expect(document.error.message).toBe("The vault refused [secret removed].");
+  });
+
+  it("removes a loaded secret from a result line on stdout", async () => {
+    // A made-up value, not shaped like any real key.
+    const secrets: Secrets = { get: async () => "made-up-key-7" };
+    const io = captureIo("/work");
+    await runCli(["find", "a key line"], io, [findCommand], { secrets });
+    expect(io.stdout).toEqual(["! Found it said [secret removed]."]);
   });
 
   it("removes a loaded secret from a result's fields, before JSON escapes it", async () => {

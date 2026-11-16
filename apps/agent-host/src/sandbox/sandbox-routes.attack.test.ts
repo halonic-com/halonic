@@ -102,14 +102,6 @@ function later(): { promise: Promise<void>; settle: () => void } {
   return { promise, settle };
 }
 
-/** Waits until `condition` holds, for the server's side of a closed connection. */
-async function eventually(condition: () => boolean): Promise<void> {
-  for (let tries = 0; tries < 200 && !condition(); tries++) {
-    await new Promise((resolve) => setTimeout(resolve, 5));
-  }
-  expect(condition()).toBe(true);
-}
-
 let server: HostServer | undefined;
 let sandbox: FakeSandbox;
 let sessions: SessionTable;
@@ -453,7 +445,9 @@ describe("sandbox routes, attacked by a caller with the token", () => {
     // The server sees the hang-up before the session arrives. The ceiling stays under the test timeout.
     await waitUntil("the hang-up", () => openConnectionsClosed === 1, { timeout: 4_000 });
     release.settle();
-    await eventually(() => sandbox.opened[0]?.closeCount === 1);
+    await waitUntil("the session closing", () => sandbox.opened[0]?.closeCount === 1, {
+      timeout: 4_000,
+    });
     // Nobody can name it: the table holds nothing to close at stop.
     await sessions.closeAll();
     expect(sandbox.opened[0]?.closeCount).toBe(1);
@@ -472,7 +466,9 @@ describe("sandbox routes, attacked by a caller with the token", () => {
     expect(stream.status).toBe(200);
     expect(sandbox.opened[0]?.listeners.size).toBe(1);
     abort.abort();
-    await eventually(() => sandbox.opened[0]?.listeners.size === 0);
+    await waitUntil("the listeners going away", () => sandbox.opened[0]?.listeners.size === 0, {
+      timeout: 4_000,
+    });
     // The session itself stays open until it is closed.
     expect(sandbox.opened[0]?.closeCount).toBe(0);
   });
