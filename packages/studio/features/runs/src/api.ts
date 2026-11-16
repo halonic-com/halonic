@@ -66,6 +66,9 @@ export interface RunRoutine {
   readonly schedule: string | undefined;
 }
 
+/** Where a model provider runs: on this computer, or elsewhere. */
+export type ProviderKind = "local" | "cloud";
+
 /** The runs of one open workspace, as the app provides them. */
 export interface RunsSource {
   /** Every run, real and test, newest start first. */
@@ -89,6 +92,12 @@ export interface RunsSource {
    * workspace has none. Rejects when the files can't be read.
    */
   readonly runnableWorkflows: () => Promise<readonly string[]>;
+  /**
+   * Whether the provider with this id runs on this computer (`local`) or reaches past it
+   * (`cloud`), as its file says; the mock model counts as local. `undefined` when the workspace
+   * has no such provider. The run page's banners read it to tell a local model from a cloud one.
+   */
+  readonly providerKind: (providerId: string) => ProviderKind | undefined;
   /** The workspace's currency (`budget.currency`, EUR when it names none). */
   readonly currency: () => string;
   /** The workspace's monthly budget (`budget.monthly`); `undefined` when it sets none. */

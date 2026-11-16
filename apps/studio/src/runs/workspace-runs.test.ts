@@ -106,6 +106,24 @@ verifies("studio.workspace-runs", () => {
     expect(await empty.runnableWorkflows()).toEqual([]);
   });
 
+  it("says whether a provider runs on this computer, and nothing for one the workspace lacks", async () => {
+    const { engine } = await waitingRun();
+    const definitions = new MemoryDefinitionStore({
+      "workspace.yaml": "id: acme\nname: Acme\n",
+      "providers/mock.yaml": "id: mock\nname: Mock\ntype: mock\n",
+      "providers/ollama.yaml": "id: ollama\nname: Ollama\ntype: ollama\nlocal: true\n",
+      "providers/claude.yaml": "id: claude\nname: Claude\ntype: anthropic\nsecret: anthropic-key\n",
+    });
+    const runs = new WorkspaceRuns({ runs: engine.stores.store, definitions });
+
+    await runs.list();
+
+    expect(runs.providerKind("mock")).toBe("local");
+    expect(runs.providerKind("ollama")).toBe("local");
+    expect(runs.providerKind("claude")).toBe("cloud");
+    expect(runs.providerKind("gone")).toBeUndefined();
+  });
+
   it("reads the workspace's monthly budget, and none when it sets none", async () => {
     const { engine } = await waitingRun();
     const capped = new WorkspaceRuns({

@@ -116,6 +116,7 @@ const logs: Record<string, RunEvent[]> = {
 const source = {
   log: async () => logs[new URLSearchParams(location.search).get("state") ?? "finished"] ?? [],
   workflow: () => ({ name: "Support reply", stepDescription: () => undefined }),
+  providerKind: () => undefined,
   currency: () => "EUR",
 };
 

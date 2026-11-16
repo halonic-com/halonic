@@ -1,6 +1,7 @@
 // The public API of @halonicjs/workspace. Internal code imports by relative path.
 
 export { callModelName, modelPrice } from "./call-model.ts";
+export { providerIsLocal } from "./checks/local-only.ts";
 export {
   type CopiedWorkspace,
   type CopyWorkspaceError,
