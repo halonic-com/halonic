@@ -87,10 +87,19 @@ verifies("agent-host.sandbox-choice-routes", () => {
 
   it("runs one start when two first GETs arrive together", async () => {
     const choice = new FakeChoice();
-    let release: () => void = () => {};
+    // Open the gate only once both requests are in the handler, so the second one
+    // really arrives while the first start is still running.
+    let asked = 0;
+    let bothAsked: () => void = () => {};
     const gate = new Promise<void>((resolve) => {
-      release = resolve;
+      bothAsked = resolve;
     });
+    const current = choice.current.bind(choice);
+    choice.current = () => {
+      asked += 1;
+      if (asked === 2) bothAsked();
+      return current();
+    };
     const start = choice.start.bind(choice);
     choice.start = async () => {
       await gate;
@@ -98,7 +107,6 @@ verifies("agent-host.sandbox-choice-routes", () => {
     };
     const url = await started(choice);
     const asks = [1, 2].map(() => fetch(`${url}/v1/sandbox/choice`, { headers: authorization }));
-    release();
     for (const response of await Promise.all(asks)) expect(response.status).toBe(200);
     expect(choice.starts).toBe(1);
   });
