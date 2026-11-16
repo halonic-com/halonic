@@ -60,6 +60,8 @@ export interface SandboxFacts {
   readonly outcome: SandboxOutcome | null;
   /** A **Check again** is out: the last result stays and the button is busy. */
   readonly rechecking?: boolean;
+  /** The host says the sandbox's security updates are overdue: one warning line, not blocking. */
+  readonly securityUpdatesOverdue?: boolean;
 }
 
 export type ChipTone = "attention" | "neutral" | "success";

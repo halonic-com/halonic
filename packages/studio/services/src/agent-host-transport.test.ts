@@ -7,6 +7,27 @@ import { FakeShell } from "./fake-shell.test-helper.ts";
 const health = "GET /v1/health";
 
 verifies("services.agent-host-transport", () => {
+  describe("TauriAgentHostTransport.securityUpdates", () => {
+    it("reads the shell's answer, null for a host beside the shell, and refuses another shape", async () => {
+      const answers: unknown[] = [
+        { overdue: true, last: "2026-11-01T00:00:00Z" },
+        { overdue: false },
+        null,
+        { overdue: 1 },
+      ];
+      const shell = new FakeShell().answer("agent_host_security_updates", () => answers.shift());
+      const transport = new TauriAgentHostTransport(shell);
+
+      await expect(transport.securityUpdates()).resolves.toEqual({
+        overdue: true,
+        last: "2026-11-01T00:00:00Z",
+      });
+      await expect(transport.securityUpdates()).resolves.toEqual({ overdue: false, last: null });
+      await expect(transport.securityUpdates()).resolves.toBeNull();
+      await expect(transport.securityUpdates()).rejects.toMatchObject({ kind: "answer_invalid" });
+    });
+  });
+
   describe("TauriAgentHostTransport.request", () => {
     it("calls agent_host_request with the route and body, and returns the host's answer", async () => {
       const shell = new FakeShell().answer("agent_host_request", () => ({

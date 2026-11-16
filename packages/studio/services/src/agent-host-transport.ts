@@ -46,6 +46,20 @@ export class TauriAgentHostTransport implements AgentHostTransport {
     return hostAnswer(route, answer);
   }
 
+  /**
+   * Whether the distro's security updates are overdue, as the shell reads them when it starts the
+   * host (`agent_host_security_updates`); null for a host beside the shell.
+   */
+  async securityUpdates(): Promise<{ overdue: boolean; last: string | null } | null> {
+    const answer = await this.#invoke("agent_host_security_updates", {});
+    if (answer === null) return null;
+    if (isRecord(answer) && typeof answer["overdue"] === "boolean") {
+      const last = answer["last"];
+      return { overdue: answer["overdue"], last: typeof last === "string" ? last : null };
+    }
+    throw invalid("agent_host_security_updates");
+  }
+
   async stream(
     route: AgentHostStreamRoute,
     body: unknown,

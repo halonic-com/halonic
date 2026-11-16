@@ -147,6 +147,9 @@ export function AgentSandboxView({
         <StatusChip tone={chipTones[view.chip.tone]}>{view.chip.label}</StatusChip>
       ) : null}
       {view.lead === "" ? null : <p className="text-small">{view.lead}</p>}
+      {facts.securityUpdatesOverdue && facts.available ? (
+        <Callout tone="warning">{text.SECURITY_UPDATES_OVERDUE}</Callout>
+      ) : null}
       {view.callout ? (
         <Callout
           tone="warning"

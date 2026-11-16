@@ -39,6 +39,7 @@ export function useAgentSandbox(
   const [rechecking, setRechecking] = useState(remembered !== undefined);
   const [running, setRunning] = useState<SandboxRunning | null>(null);
   const [outcome, setOutcome] = useState<SandboxOutcome | null>(null);
+  const [updatesOverdue, setUpdatesOverdue] = useState(false);
   const alive = useRef(true);
   const busy = useRef(false);
   // The container passes a new `announce` on every render; the effects must not restart for it.
@@ -105,6 +106,13 @@ export function useAgentSandbox(
       setCheck(facts);
       setRechecking(false);
     });
+    // Never blocks: a host that can't say, or a failure, shows no warning here.
+    void host?.securityUpdates?.().then(
+      (facts) => {
+        if (alive.current) setUpdatesOverdue(facts?.overdue === true);
+      },
+      () => undefined,
+    );
     // A setup or removal that began before Settings opened shows as running and is followed,
     // never started: opening Settings sends no command.
     void host?.running().then(
@@ -130,6 +138,7 @@ export function useAgentSandbox(
       running,
       outcome,
       rechecking,
+      securityUpdatesOverdue: updatesOverdue,
     },
     setUp: () => void run(check.state === "needs-repair" ? "repair" : "setup"),
     remove: () => void run("remove"),

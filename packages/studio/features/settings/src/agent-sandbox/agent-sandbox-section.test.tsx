@@ -253,6 +253,33 @@ verifies("settings.agent-sandbox-section", () => {
     );
     expect(checkedAtLabel(new Date(2026, 10, 3, 9, 12).toISOString(), now)).toBe("3 Nov at 09:12");
   });
+  it("warns that security updates are overdue, without stopping or renaming anything else", async () => {
+    const { host } = fakeHost(ready);
+    const overdue = {
+      ...host,
+      securityUpdates: vi.fn(async () => ({ overdue: true, last: null })),
+    };
+    const { view } = await show(overdue);
+    expect(view.textContent).toContain("Security updates for the agent sandbox are overdue.");
+    expect(view.textContent).toContain("Ready");
+    expect(view.textContent).not.toMatch(/vulnerable|unsafe|insecure/i);
+  });
+
+  it("shows no update warning when updates are current, unknown or the host can't read them", async () => {
+    const { host } = fakeHost(ready);
+    for (const securityUpdates of [
+      async () => ({ overdue: false, last: "2026-11-15T09:00:00Z" }),
+      async () => null,
+      async () => {
+        throw new Error("no host");
+      },
+      undefined,
+    ]) {
+      const { view } = await show({ ...host, ...(securityUpdates ? { securityUpdates } : {}) });
+      expect(view.textContent).not.toContain("Security updates");
+      unmountAll();
+    }
+  });
 });
 
 it("shows a checking line, not an error, while the first check is out", async () => {

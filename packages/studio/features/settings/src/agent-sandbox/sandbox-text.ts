@@ -27,6 +27,8 @@ export const needsRepair = (reason: string) =>
 export const notReady = (reason: string) => `The sandbox isn't ready: ${reason}`;
 export const RESTART_NEEDED =
   "Windows needs to restart to finish setting up the sandbox. Restart Windows, then press Check again.";
+/** W2 (HAL-7373): a warning, never "vulnerable" or "unsafe". The section has no update button yet. */
+export const SECURITY_UPDATES_OVERDUE = "Security updates for the agent sandbox are overdue.";
 export const CHECKING = "Checking the sandbox…";
 export const cannotCheck = (reason: string) => `Couldn't check the sandbox: ${reason}`;
 

@@ -9,6 +9,7 @@ export {
   HostSettingsService,
   type SandboxCheckFacts,
   type SandboxOutcome,
+  type SecurityUpdatesFacts,
 } from "./api.ts";
 export {
   agentCharactersPref,
