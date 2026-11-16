@@ -4,9 +4,9 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 /*
- * The run page of a made-up Review pull request run, for halonic.dev (HAL-10732): Summarise and
- * Check done, the run waiting at "Publish the review?". The names are the site's own, so the picture
- * matches its copy. The page draws a step only once the run reached it, so Publish isn't listed.
+ * The run page of a made-up Review pull request run, for halonic.dev (HAL-10732): Summarise
+ * done, the run waiting at "Publish the review?". The names are the site's own, so the picture
+ * matches its copy. Studio draws a step only once the run reached it, so Publish isn't listed.
  */
 
 const start = new Date(2026, 10, 9, 10, 40, 0);
@@ -27,7 +27,7 @@ const summary: RunSummary = {
   cost: 0,
   unpricedCalls: 0,
   subscriptionCalls: 0,
-  statesVisited: ["summarise", "check", "approve"],
+  statesVisited: ["summarise", "approve"],
   context: {},
   error: null,
   reason: null,
@@ -39,12 +39,12 @@ const summary: RunSummary = {
   answerLabels: {},
   nextTimer: null,
   waitingFor: { title: "Publish the review?", body: "" },
-  lastWaitingAt: at(53),
+  lastWaitingAt: at(41),
   approvals: [],
   signals: [],
   cantTry: [],
   lastSeq: 5,
-  updatedAt: at(53),
+  updatedAt: at(41),
 };
 
 const timed: readonly (readonly [number, RunEventBody])[] = [
@@ -57,12 +57,16 @@ const timed: readonly (readonly [number, RunEventBody])[] = [
       input: {},
       kind: "run",
       definitionsVersion: "v1",
+      version: {
+        reads: "live-version",
+        commit: "3f2a1c9e5b7d4a60b1c2d3e4f5a6b7c8d9e0f1a2",
+        versionDate: at(-3600),
+      },
     },
   ],
   [0, { type: "state.entered", state: "summarise" }],
-  [41, { type: "state.entered", state: "check" }],
-  [53, { type: "state.entered", state: "approve" }],
-  [53, { type: "run.waiting", state: "approve", events: ["approve", "reject"] }],
+  [41, { type: "state.entered", state: "approve" }],
+  [41, { type: "run.waiting", state: "approve", events: ["approve", "reject"] }],
 ];
 const log: RunEvent[] = timed.map(([seconds, body], index) => ({
   ...body,

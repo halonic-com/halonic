@@ -33,6 +33,8 @@ for (const screen of screens) {
         shot.getByText(screen.shown).first(),
         problems.join("; ") || "the page threw nothing",
       ).toBeVisible();
+      // The card focuses its title when it opens: that ring is for a keyboard, not a picture.
+      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
       await shot.screenshot({ path: `test-results/screenshots/${screen.name}-${scheme}.png` });
     });
   }
