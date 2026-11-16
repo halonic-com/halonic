@@ -12,17 +12,12 @@
 //! host for as long as the shell runs.
 
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
-use halonic_agent_host::{
-    AgentHost, Answer, Handshake, LineSplitter, Method, Route, executable_beside, find_route,
-    host_command,
-};
-use halonic_git_guard::plain_path;
+use halonic_agent_host::{AgentHost, Answer, LineSplitter, Method, Route, find_route};
 use serde::Serialize;
 use serde_json::Value;
 use tauri::async_runtime::JoinHandle;
@@ -30,8 +25,12 @@ use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, Runtime, Webview};
 use tauri_plugin_http::reqwest;
 
-use crate::git::GitState;
-use crate::profile::cli_profile;
+#[path = "agent_host_choice.rs"]
+mod choice;
+
+#[path = "agent_host_start.rs"]
+mod start;
+use start::running_host;
 
 #[path = "agent_host_life.rs"]
 mod life;
@@ -57,7 +56,27 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Makes the command that starts the host. Tests pass a stand-in's.
+#[cfg(test)]
 type HostCommand = Box<dyn Fn() -> Command + Send + Sync>;
+
+/// Makes the command that starts the host in the distro, given the port of
+/// the relay in front of it. Tests pass a stand-in's.
+type DistroCommand = Box<dyn Fn(u16) -> Command + Send + Sync>;
+
+/// How the shell starts a host.
+#[derive(Default)]
+enum Launch {
+    /// The real hosts: the sandbox choice picks the local one or the one in
+    /// Halonic's WSL distro.
+    #[default]
+    Real,
+    /// A stand-in for the local host, for tests.
+    #[cfg(test)]
+    Local(HostCommand),
+    /// A stand-in for the host in the distro, for tests.
+    #[cfg(test)]
+    Distro(DistroCommand),
+}
 
 /// The host the shell started, the streams pages have open on it, and the
 /// one HTTP client every call uses.
@@ -68,8 +87,7 @@ pub struct AgentHostState {
     /// Tells a stream from an earlier one the page gave the same id.
     next_serial: AtomicU64,
     client: Mutex<Option<reqwest::Client>>,
-    /// `None` starts the real host, next to the shell's executable.
-    command: Option<HostCommand>,
+    launch: Launch,
 }
 
 /// A stream, by the page that opened it and the id that page gave it.
@@ -91,7 +109,17 @@ impl AgentHostState {
     #[cfg(test)]
     pub fn with_command(command: impl Fn() -> Command + Send + Sync + 'static) -> Self {
         Self {
-            command: Some(Box::new(command)),
+            launch: Launch::Local(Box::new(command)),
+            ..Self::default()
+        }
+    }
+
+    /// A state whose host is started in the distro, relayed, with
+    /// `command`, for tests.
+    #[cfg(test)]
+    pub fn with_distro_command(command: impl Fn(u16) -> Command + Send + Sync + 'static) -> Self {
+        Self {
+            launch: Launch::Distro(Box::new(command)),
             ..Self::default()
         }
     }
@@ -158,11 +186,16 @@ impl AgentHostState {
 }
 
 /// Why a call didn't reach the host: `unknown_route`, `host_unavailable`,
-/// `stream_in_use`, `stream_ended` or `io`, and a message for the log. The
-/// host's own refusals are answers. No message contains the launch token.
+/// `stream_in_use`, `stream_ended` or `io`, and a message for the log. A
+/// `host_unavailable` for the WSL distro may carry a `reason`, one of the
+/// sandbox reasons (`wsl-missing`, `distro-missing`), so Studio can show the
+/// setup state without a running host to ask. The host's own refusals are
+/// answers. No message contains the launch token.
 #[derive(Debug, Serialize)]
 pub struct HostRefusal {
     kind: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reason: Option<&'static str>,
     message: String,
 }
 
@@ -170,8 +203,14 @@ impl HostRefusal {
     fn new(kind: &'static str, message: impl std::fmt::Display) -> Self {
         Self {
             kind,
+            reason: None,
             message: message.to_string(),
         }
+    }
+
+    fn with_reason(mut self, reason: &'static str) -> Self {
+        self.reason = Some(reason);
+        self
     }
 }
 
@@ -285,62 +324,6 @@ fn poisoned() -> HostRefusal {
         "io",
         "the agent host's state was left broken by an earlier failure",
     )
-}
-
-/// The running host's handshake, starting the host first when there is
-/// none or it has exited. It starts on a worker thread: it unpacks files
-/// and waits for the host's first line.
-async fn running_host<R: Runtime>(app: &AppHandle<R>) -> Result<Handshake, HostRefusal> {
-    let app = app.clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        let state = app.state::<AgentHostState>();
-        let mut host = state.host.lock().map_err(|_| poisoned())?;
-        if let Some(running) = host.as_mut()
-            && !running.has_exited()
-        {
-            return Ok(running.handshake().clone());
-        }
-        let command = match &state.command {
-            Some(command) => command(),
-            None => real_host_command(&app)?,
-        };
-        let started = AgentHost::start(command, START_WAIT).map_err(unavailable)?;
-        let handshake = started.handshake().clone();
-        *host = Some(started);
-        Ok(handshake)
-    })
-    .await
-    .map_err(|error| HostRefusal::new("io", error))?
-}
-
-/// The host next to the shell's executable, for the CLI's profile, with
-/// the folders it may sweep kept grants in.
-fn real_host_command<R: Runtime>(app: &AppHandle<R>) -> Result<Command, HostRefusal> {
-    let profile = cli_profile(app).map_err(|error| HostRefusal::new("io", error))?;
-    let shell = std::env::current_exe().map_err(|error| HostRefusal::new("io", error))?;
-    let executable = executable_beside(&shell).map_err(unavailable)?;
-    let profile = Path::new(&profile.root);
-    let opened = app.state::<GitState>().folders().list();
-    Ok(host_command(
-        &executable,
-        profile,
-        &sweep_roots(profile, &opened),
-    ))
-}
-
-/// The folders the host sweeps kept Windows grants in (HAL-6256): the
-/// profile, which holds every session's temp folder and every workspace's
-/// runs, and each folder the person has open now, which holds working
-/// folders such as `files/agents/<name>`. Without the long-path prefix,
-/// as srt-win lists its grants.
-fn sweep_roots(profile: &Path, opened: &[PathBuf]) -> Vec<PathBuf> {
-    std::iter::once(profile.to_owned())
-        .chain(
-            opened
-                .iter()
-                .map(|folder| PathBuf::from(plain_path(folder))),
-        )
-        .collect()
 }
 
 fn unavailable(error: impl std::fmt::Display) -> HostRefusal {

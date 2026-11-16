@@ -26,7 +26,14 @@ pub fn stop_host<R: Runtime>(app: &AppHandle<R>) {
 }
 
 /// Whether the host starts, or runs, and answers its handshake: part of the
-/// proof that a newly installed version works (HAL-1206).
+/// proof that a newly installed version works (HAL-1206). A refusal that
+/// names a sandbox reason (no WSL, no distro yet) counts too: the shell
+/// works and says what is left to set up, and a PC without the distro must
+/// still be able to prove an update. It counts only when the host file
+/// beside the shell starts and answers, so a broken host never passes.
 pub async fn host_answers<R: Runtime>(app: &AppHandle<R>) -> bool {
-    running_host(app).await.is_ok()
+    match running_host(app).await {
+        Ok(_) => true,
+        Err(refusal) => refusal.reason.is_some() && super::start::local_host_starts(app).await,
+    }
 }

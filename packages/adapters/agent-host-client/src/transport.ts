@@ -98,11 +98,17 @@ export class AgentHostError extends Error {
    */
   readonly status: number;
   readonly kind: string;
+  /**
+   * Why the shell couldn't start the host, when it says: a sandbox reason such as
+   * `distro-missing`, from the shell's refusal. Not checked here against the list.
+   */
+  readonly reason: string | undefined;
 
-  constructor(status: number, kind: string, message: string) {
+  constructor(status: number, kind: string, message: string, reason?: string) {
     super(message);
     this.status = status;
     this.kind = kind;
+    this.reason = reason;
   }
 }
 

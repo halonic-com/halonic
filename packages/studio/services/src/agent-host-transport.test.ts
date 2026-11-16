@@ -47,6 +47,17 @@ verifies("services.agent-host-transport", () => {
       });
     });
 
+    it("keeps the sandbox reason the shell gives for a host it can't start", async () => {
+      const shell = new FakeShell().answer("agent_host_request", () => {
+        throw { kind: "host_unavailable", reason: "distro-missing", message: "no distro" };
+      });
+
+      await expect(new TauriAgentHostTransport(shell).request(health)).rejects.toMatchObject({
+        kind: "host_unavailable",
+        reason: "distro-missing",
+      });
+    });
+
     it.each([
       ["a kind without a message", { kind: "io" }, "io", /: io\./],
       ["an Error", new Error("IPC gone"), "shell_failed", /IPC gone/],
