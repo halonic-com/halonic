@@ -47,7 +47,8 @@ function UpdateItem({
   }
   if (!restartApplies(status)) return null;
   return (
-    <span className="hidden wide:contents">
+    // `data-status-update` tells the status bar the resource item gives way to this one at 900 to 1199px.
+    <span data-status-update className="hidden wide:contents">
       <Button variant="ghost" size="sm" icon={<UpdateReadyIcon />} onClick={request}>
         <span aria-hidden="true">{text.RESTART_TO_UPDATE}</span>
         <span className="sr-only">{text.itemName(status.state.version)}</span>
