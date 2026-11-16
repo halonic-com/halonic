@@ -21,8 +21,10 @@ import {
 // the only layer. Run by the `sandbox-windows` CI job
 // (`vitest.fence-windows.config.ts`), with Node's layer on as in production.
 //
-// The cases Node's layer doesn't stop are the known gaps: A16 and A39 signals
-// and A36 the Credential Manager once past Node's layer. They expect what gets
+// The cases Node's layer doesn't stop are the known gaps: A16 and A39 signals,
+// A17 the temp folder's path (narrowed: the launcher gives fixed values for the
+// variables Windows adds, but the temp folder sits in the profile folder), A36
+// the Credential Manager once past Node's layer. They expect what gets
 // through, so a gap that closes fails too and the list stays true. Every other
 // case expects `refused`, so a gap that opens fails. Node 26's network permission also
 // covers DNS (A4, A6) and named pipes (A35), which the design had counted as
@@ -260,10 +262,12 @@ describe("an integration in the runner on native Windows, Node's layer only", ()
     expect(await hasEnded(pid)).toBe(true);
   });
 
-  it("A17: sees fixed values for the variables Windows adds, never the user's own", async () => {
+  it("A17: sees fixed values for the variables Windows adds, and the temp folder's path (narrowed gap)", async () => {
     // The launcher passes TMPDIR and its own fixed values for the variables
     // libuv would fill in with the user's account name, profile folder and
-    // domain, so nothing of the account reaches the runner.
+    // domain. Three of them are the runner's temp folder, and that folder is
+    // inside the profile folder, so its path still shows the account name.
+    // The user's own values must not appear in the others.
     const folders = await attackFolders(base, "a17");
     const { attempts } = await attack(
       `await attempt("environment", () => JSON.stringify(process.env));`,
@@ -276,12 +280,14 @@ describe("an integration in the runner on native Windows, Node's layer only", ()
       TMPDIR: folders.tempFolder,
       ...windowsEnvironment(folders.tempFolder, windowsFolder),
     });
+    const fromTempFolder = ["TMPDIR", "TEMP", "USERPROFILE"];
+    const others = Object.entries(seen).filter(([name]) => !fromTempFolder.includes(name));
     for (const own of [
       process.env["USERNAME"],
       process.env["USERPROFILE"],
       process.env["USERDOMAIN"],
     ]) {
-      expect(JSON.stringify(seen), "the user's own value").not.toContain(own ?? "\0");
+      expect(JSON.stringify(others), "the user's own value").not.toContain(own ?? "\0");
     }
   });
 

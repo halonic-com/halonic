@@ -11,9 +11,22 @@ fill in with the user's own: `USERNAME`, `USERPROFILE`, `USERDOMAIN`, `HOMEDRIVE
 `LOGONSERVER`, `TEMP`, `SYSTEMDRIVE`, `SYSTEMROOT`, `WINDIR` and `PATH`. The runner learns
 nothing about the account or the profile folder.
 
+## What stays open
+
+`TMPDIR`, `TEMP` and `USERPROFILE` are the runner's temp folder. That folder is inside the Halonic
+profile folder, so on Windows its path runs through the account's user folder and shows
+the account name. `process.cwd()` shows it too. A17 is therefore a narrowed known gap, not closed.
+Moving the runner's temp folder out of the profile on Windows is a separate follow-up.
+
 ## Why
 
 HAL-7555 recorded this as the A17 known gap. The note
 `decisions/ravi/HAL-7555-windows-runner-attacks.md` still lists A17 as a gap, because notes on
-`main` are append-only. This note supersedes that line: A17 is now expected `refused` in
-`runner-attacks.windows.test.ts`.
+`main` are append-only. This note narrows that line: the user's own `USERNAME`, `USERDOMAIN`,
+`LOGONSERVER` and `PATH` no longer reach the runner. `runner-attacks.windows.test.ts` expects the
+fixed values, and checks that the user's own values appear in no variable that doesn't come from
+the temp folder.
+
+## Covers
+
+- packages/adapters/integration-runner/fence/runner-attacks.windows.test.ts
