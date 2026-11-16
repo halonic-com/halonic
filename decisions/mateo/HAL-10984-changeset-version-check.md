@@ -2,6 +2,7 @@
 
 - Approval: HAL-10984, asked for by Liam
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:lS2CTfPmZnruSXC9URvmdpf9zk90wD8lKCMsMNFS6B6TCAUYa+XIpwS8Yrq6UcNEs3GX2Zpn9f5motCXLqPfDw==
 
 The `Fast gates` job in `.github/workflows/ci.yml` now ends with `pnpm version-packages && pnpm check versions`,
 the same command the Version packages workflow runs on `main`. A changeset that Changesets refuses
