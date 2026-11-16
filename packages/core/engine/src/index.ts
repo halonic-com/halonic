@@ -109,7 +109,7 @@ export {
 export { defaultMaxRounds, LocalExecutor } from "./local-executor.ts";
 export type { LocalExecutorOptions } from "./local-executor-options.ts";
 export type { AbortOnStop } from "./run/abort-on-stop.ts";
-export { endInterruptedRuns, interruptedError } from "./run/end-interrupted-runs.ts";
+export { type EndedLostRuns, endInterruptedRuns, endLostRuns, interruptedError } from "./run/end-interrupted-runs.ts";
 export type { ProposalRun, RunProposalFolders } from "./run/proposal-folders.ts";
 export type { ConnectorsRun, RunConnectors } from "./run/run-connectors.ts";
 export { type RunFailure, runFailureReasonOf } from "./run/run-failure-reason-of.ts";
