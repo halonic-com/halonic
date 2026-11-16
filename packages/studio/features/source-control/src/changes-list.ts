@@ -3,22 +3,9 @@ import type { VcsChange } from "@halonicjs/ports";
 import { applyLineChanges, diffLines, type LineChange } from "@halonicjs/std";
 import type { PlaceSignal, ServiceKey } from "@halonicjs/studio-shell";
 import { serviceKey } from "@halonicjs/studio-shell";
-import type {
-  ChangesRead,
-  ChangesSource,
-  FileTexts,
-  Identity,
-  KeptFile,
-  Version,
-} from "./api.ts";
-import {
-  discardWords,
-  identityWords,
-  pageWords,
-  undoWords,
-  versionWords,
-} from "./changes-words.ts";
-import { isAuthorEmail, isAuthorName, isIdentityComplete } from "./identity.ts";
+import type { ChangesRead, ChangesSource, FileTexts, Identity, KeptFile, Version } from "./api.ts";
+import { discardWords, pageWords, undoWords, versionWords } from "./changes-words.ts";
+import { type IdentityProblems, identityProblems, isIdentityComplete } from "./identity.ts";
 import { loadFailureReason } from "./load-failure.ts";
 import { versionMessage } from "./version-name.ts";
 
@@ -60,11 +47,7 @@ export type DiscardOutcome = UndoOutcome;
 /** What {@link ChangesList.saveIdentity} did; `invalid` says what is wrong under each field. */
 export type IdentityOutcome =
   | { readonly kind: "saved" }
-  | {
-      readonly kind: "invalid";
-      readonly name: string | undefined;
-      readonly email: string | undefined;
-    }
+  | ({ readonly kind: "invalid" } & IdentityProblems)
   | { readonly kind: "failed"; readonly reason: string };
 
 /** What the Changes list holds now. */
@@ -322,13 +305,10 @@ export class ChangesList {
    * email that is empty or isn't one, without reaching git, or why git refused.
    */
   async saveIdentity(identity: Identity): Promise<IdentityOutcome> {
+    const problems = identityProblems(identity);
+    if (problems !== undefined) return { kind: "invalid", ...problems };
     const name = identity.name.trim();
     const email = identity.email.trim();
-    const nameProblem = isAuthorName(name) ? undefined : identityWords.emptyName;
-    const emailProblem = isAuthorEmail(email) ? undefined : identityWords.badEmail;
-    if (nameProblem !== undefined || emailProblem !== undefined) {
-      return { kind: "invalid", name: nameProblem, email: emailProblem };
-    }
     try {
       await this.source.setIdentity({ name, email });
     } catch (error) {
