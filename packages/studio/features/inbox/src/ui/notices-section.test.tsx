@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
 import { KindedError } from "@halonicjs/std";
+import { engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeRuns } from "../fake-runs.test-helper.ts";
 import { Inbox } from "../inbox.ts";
@@ -12,6 +13,7 @@ import { pendingApproval, waitingRun } from "../test-runs.test-helper.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { InboxView } from "./inbox-page.tsx";
+import { NoticesSection } from "./notices-section.tsx";
 
 beforeEach(fakeModal);
 afterEach(() => {
@@ -83,6 +85,55 @@ verifies("inbox.notices-section", () => {
     expect(document.activeElement).toBe(button(root, "Dismiss Weekly report failed at 07:00"));
   });
 
+  it("moves focus to the Needs you heading when the last notice goes", async () => {
+    const { source } = fakeNotices(async () => [a]);
+    const { root } = await open(source);
+    await act(async () => button(root, "Dismiss Daily summary failed at 06:00").click());
+    const heading = [...root.querySelectorAll("h2")].find((h) =>
+      h.textContent?.includes("Needs you"),
+    );
+    expect(document.activeElement).toBe(heading);
+  });
+
+  it("describes each Open run by its row's title", async () => {
+    const { source } = fakeNotices(async () => [a, b]);
+    const { root } = await open(source);
+    const described = [...root.querySelectorAll("button")]
+      .filter((x) => x.textContent === "Open run")
+      .map((x) => document.getElementById(x.getAttribute("aria-describedby") ?? "")?.textContent);
+    expect(described).toEqual([a.title, b.title]);
+  });
+
+  it("shows no other source's notices when a new source fails to read", async () => {
+    const first = fakeNotices(async () => [a]).source;
+    const second = fakeNotices(async () => {
+      throw new KindedError("unavailable", "The engine isn't answering.");
+    }).source;
+    function Switch() {
+      const [source, setSource] = useState(first);
+      return (
+        <>
+          <button type="button" onClick={() => setSource(second)}>
+            Switch
+          </button>
+          <NoticesSection
+            source={source}
+            openRun={undefined}
+            onEmptied={() => {}}
+            words={engineWords["desktop-app"]}
+          />
+        </>
+      );
+    }
+    const root = render(<Switch />);
+    await settled();
+    expect(root.textContent).toContain(a.title);
+    await act(async () => button(root, "Switch").click());
+    await settled();
+    expect(root.textContent).not.toContain(a.title);
+    expect(root.textContent).toContain("Couldn't load notices");
+  });
+
   it("says Fixed in place of Open run and keeps the ×", async () => {
     const { source } = fakeNotices(async () => [
       notice("r7", "Daily summary failed at 06:00", true),
@@ -99,6 +150,19 @@ verifies("inbox.notices-section", () => {
       expect(root.querySelector("#inbox-notices")).toBeNull();
       unmountAll();
     }
+  });
+
+  it("shows no Notices section while Needs you failed to load", async () => {
+    const { source } = fakeNotices(async () => [a]);
+    const fake = fakeRuns([]);
+    fake.fail(new Error("fetch failed"));
+    const root = render(
+      <InboxView inbox={new Inbox(fake.runs)} notices={source} openRun={vi.fn()} />,
+    );
+    await settled();
+    expect(root.textContent).toContain("Couldn't load the Inbox");
+    expect(root.querySelector("#inbox-notices")).toBeNull();
+    expect(root.textContent).not.toContain("Daily summary failed at 06:00");
   });
 
   describe("when they can't be read", () => {

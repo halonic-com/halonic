@@ -14,11 +14,15 @@ export interface NoticesState {
  * Notices heading is hidden, as it is when nothing failed.
  */
 export function useNotices(source: InboxNotices | undefined): NoticesState & { retry(): void } {
-  const [state, setState] = useState<NoticesState>({ notices: [], error: undefined });
+  const [held, setState] = useState<NoticesState & { source: InboxNotices | undefined }>({
+    source,
+    notices: [],
+    error: undefined,
+  });
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (source === undefined) {
-      setState({ notices: [], error: undefined });
+      setState({ source, notices: [], error: undefined });
       return;
     }
     let current = true;
@@ -28,10 +32,16 @@ export function useNotices(source: InboxNotices | undefined): NoticesState & { r
       const mine = ++latest;
       source.list().then(
         (notices) => {
-          if (current && mine === latest) setState({ notices, error: undefined });
+          if (current && mine === latest) setState({ source, notices, error: undefined });
         },
         (error: unknown) => {
-          if (current && mine === latest) setState((was) => ({ notices: was.notices, error }));
+          if (current && mine === latest)
+            setState((was) => ({
+              source,
+              // A failed read keeps this source's notices, never another source's.
+              notices: was.source === source ? was.notices : [],
+              error,
+            }));
         },
       );
     };
@@ -42,5 +52,7 @@ export function useNotices(source: InboxNotices | undefined): NoticesState & { r
       stop();
     };
   }, [source, attempt]);
-  return { ...state, retry: () => setAttempt((n) => n + 1) };
+  // Until this source has answered, what was read from another one is not shown.
+  const state = held.source === source ? held : { notices: [], error: undefined };
+  return { notices: state.notices, error: state.error, retry: () => setAttempt((n) => n + 1) };
 }

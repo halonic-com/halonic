@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode } from "react";
+import type { MouseEvent, ReactNode, Ref } from "react";
 import type { ListEmpty } from "./empty-list.tsx";
 import type { ListSkeletonShape } from "./list-skeleton.tsx";
 
@@ -184,7 +184,12 @@ interface ListOfRows<Id extends string, Row extends AnyListRow<Id>> extends List
 /** A list named by its heading, the box's first line (18.3). */
 interface ListWithHeading<Id extends string, Row extends AnyListRow<Id>>
   extends ListOfRows<Id, Row> {
-  readonly heading: { readonly name: string; readonly detail?: ReactNode };
+  readonly heading: {
+    readonly name: string;
+    readonly detail?: ReactNode;
+    /** For code that moves focus to the heading (see `ListHeading`). */
+    readonly headingRef?: Ref<HTMLHeadingElement>;
+  };
   readonly label?: never;
 }
 

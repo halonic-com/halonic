@@ -1,6 +1,6 @@
 import { Button, CloseIcon, EmptyState, ListHeading } from "@halonicjs/studio-kit";
 import { type EngineWords, errorMessageFor } from "@halonicjs/studio-shell";
-import { useRef } from "react";
+import { useId, useRef } from "react";
 import type { FailedRunNotice } from "../notices/failed-run-notices.ts";
 import type { InboxNotices } from "../notices/inbox-notices.ts";
 import { type NoticesState, useNotices } from "../notices/use-notices.ts";
@@ -14,14 +14,18 @@ const loadFailed = "Couldn't load notices";
  * hidden when there is nothing to show. Returns `null` with no source.
  *
  * @param openRun Opens a run's page; without it a notice has no **Open run**.
+ * @param onEmptied Called as the last notice is dismissed, to move focus somewhere that stays on the
+ *   page: the section's heading goes with it.
  */
 export function NoticesSection({
   source,
   openRun,
+  onEmptied,
   words,
 }: {
   readonly source: InboxNotices | undefined;
   readonly openRun: ((hubId: string, runId: string) => void) | undefined;
+  readonly onEmptied: () => void;
   readonly words: EngineWords;
 }) {
   const { notices, error, retry } = useNotices(source);
@@ -29,7 +33,9 @@ export function NoticesSection({
   // The dismissed row goes away, so focus moves first: to the next notice's ×, else the previous one's.
   const dismiss = (source: InboxNotices, index: number, key: string) => {
     const buttons = rows.current?.querySelectorAll<HTMLElement>("li button[aria-label^='Dismiss']");
-    (buttons?.[index + 1] ?? buttons?.[index - 1])?.focus();
+    const next = buttons?.[index + 1] ?? buttons?.[index - 1];
+    if (next === undefined) onEmptied();
+    else next.focus();
     source.dismiss(key);
   };
   if (source === undefined) return null;
@@ -68,15 +74,23 @@ function NoticeRow({
   readonly dismiss: () => void;
 }) {
   const title = markedName(notice.title);
+  const titleId = useId();
   const link =
     openRun === undefined ? null : (
-      <Button variant="ghost" size="sm" onClick={() => openRun(notice.hubId, notice.runId)}>
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-describedby={titleId}
+        onClick={() => openRun(notice.hubId, notice.runId)}
+      >
         Open run
       </Button>
     );
   return (
     <li className="flex items-center gap-2 border-b border-border px-4 py-2">
-      <p className="min-w-0 flex-1 text-body">{title}</p>
+      <p id={titleId} className="min-w-0 flex-1 text-body">
+        {title}
+      </p>
       {notice.fixed ? <span className="text-small text-success">Fixed</span> : link}
       <Button
         variant="ghost"
