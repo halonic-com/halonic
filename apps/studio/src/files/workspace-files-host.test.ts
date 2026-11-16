@@ -157,6 +157,20 @@ verifies("studio.workspace-files-host", () => {
     expect(told).toBe(1);
   });
 
+  it("tells a reload listener which files were reloaded because they changed outside", async () => {
+    const { host, watching } = setup(["a.md", "b.md"], { "a.md": "mine" }, {}, { held: ["a.md"] });
+    const reloaded: (readonly string[])[] = [];
+    host.onReloaded((paths) => reloaded.push(paths));
+
+    watching.changed?.([
+      { path: "a.md", kind: "changed" },
+      { path: "b.md", kind: "changed" },
+    ]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(reloaded).toEqual([["b.md"]]);
+  });
+
   it("holds a file that is gone from the folder as deleted", async () => {
     const { host, watching } = setup(
       ["a.md"],

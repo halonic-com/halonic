@@ -1,5 +1,5 @@
 import { type CodeEditor, languageFor, openCodeEditor } from "@halonicjs/studio-code-editor";
-import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
+import { EmptyState, SkeletonBar, useToastStore } from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState } from "react";
 import { fileName } from "../file-item.ts";
@@ -39,12 +39,25 @@ export function FileView({ item, context }: ItemViewProps) {
   const [comparing, setComparing] = useState(false);
   // Why a choice made in the strip couldn't be saved; Compare opens with it.
   const [failure, setFailure] = useState<string | undefined>();
+  const toasts = useToastStore();
+  // Set when the user chose in the strip or in Compare: the reopened editor takes focus.
+  const refocus = useRef(false);
   const [outside, setOutside] = useState<OutsideChange | undefined>(() => host.outside().get(path));
 
   useEffect(() => {
     setOutside(host.outside().get(path));
     return host.subscribe(() => setOutside(host.outside().get(path)));
   }, [host, path]);
+
+  useEffect(
+    () =>
+      host.onReloaded((paths) => {
+        if (paths.includes(path)) {
+          toasts?.show({ tone: "info", title: filesWords.reloadedOutside(fileName(path)) });
+        }
+      }),
+    [host, path, toasts],
+  );
 
   useEffect(() => {
     let stopped = false;
@@ -100,6 +113,10 @@ export function FileView({ item, context }: ItemViewProps) {
       else {
         editor = made;
         unsubscribe = follow(made);
+        if (refocus.current) {
+          refocus.current = false;
+          made.focus();
+        }
       }
     });
     return () => {
@@ -119,6 +136,7 @@ export function FileView({ item, context }: ItemViewProps) {
   async function settleWith(choice: "keep-mine" | "use-other"): Promise<void> {
     try {
       await host.settle(path, choice);
+      refocus.current = true;
       setOutside(host.outside().get(path));
       reload();
     } catch (error) {
@@ -174,6 +192,7 @@ export function FileView({ item, context }: ItemViewProps) {
           change={outside}
           onCompare={() => setComparing(true)}
           onKeepMine={() => settleWith("keep-mine")}
+          onLoadTheirs={() => settleWith("use-other")}
           onClose={() => settleWith("use-other")}
         />
       )}
@@ -190,6 +209,7 @@ export function FileView({ item, context }: ItemViewProps) {
             reload();
           }}
           onDone={() => {
+            refocus.current = true;
             setComparing(false);
             setFailure(undefined);
             setOutside(host.outside().get(path));

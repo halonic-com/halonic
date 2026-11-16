@@ -133,6 +133,10 @@ export class WorkspaceFilesHost implements FilesHost {
         const { theirs } = await this.#parts.files.compare(path);
         this.#outside.set(path, theirs === null ? "deleted" : "changed");
       }
+      const reloaded = changes.map(({ path }) => path).filter((path) => !held.includes(path));
+      if (reloaded.length > 0 && !this.#disposed) {
+        for (const listener of this.#reloadListeners) listener(reloaded);
+      }
     } catch {
       // The next change, or a save that finds the file changed, shows it.
       return;
@@ -346,6 +350,13 @@ export class WorkspaceFilesHost implements FilesHost {
 
   edit(path: string, text: string): void {
     this.#parts.files.change(`Edited ${path}`, { [path]: text }, { coalesceKey: path });
+  }
+
+  onReloaded(listener: (paths: readonly string[]) => void): () => void {
+    this.#reloadListeners.add(listener);
+    return () => {
+      this.#reloadListeners.delete(listener);
+    };
   }
 
   subscribe(listener: () => void): () => void {

@@ -26,8 +26,11 @@ export const filesWords = {
   notTextTitle: "This file can't be shown here.",
   notTextDescription: (size: string): string => `It is ${size}.`,
   /** The strip above the editor of a file with unsaved changes that changed outside Halonic. */
-  changedOutside: (name: string): string => `${name} changed outside Halonic`,
-  deletedOutside: (name: string): string => `${name} was deleted outside Halonic.`,
+  changedOutside: " changed outside Halonic.",
+  deletedOutside: " was deleted outside Halonic.",
+  loadTheirs: "Load theirs",
+  /** The toast for a file without unsaved changes that was reloaded because it changed outside Halonic. */
+  reloadedOutside: (name: string): string => `Reloaded ${name}: changed outside Halonic`,
   compare: "Compare",
   keepMine: "Keep mine",
   useOther: "Use the other one",

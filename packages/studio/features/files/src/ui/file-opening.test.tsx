@@ -12,6 +12,7 @@ afterEach(unmountAll);
 const host: FilesHost = {
   list: async () => ({ paths: ["hubs/p/hub.yaml", "models.yaml"], marks: new Map() }),
   subscribe: () => () => {},
+  onReloaded: () => () => {},
   read: async () => null,
   edit: () => {},
   problems: async () => [],
@@ -35,6 +36,7 @@ verifies("files.ui.file-tab", () => {
       activeItem: {
         get: () => ({ kind: "file", hub: "workspace", id: "models.yaml" }),
         subscribe: () => () => {},
+        onReloaded: () => () => {},
       },
     } as unknown as WorkspaceContext;
     const page = render(<FilesSidebarView context={context} />);

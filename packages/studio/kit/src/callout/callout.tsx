@@ -38,7 +38,8 @@ interface CalloutBase {
   readonly files?: readonly string[];
   /** A 16px icon from the kit's set in place of the tone's own, such as the trust notice's shield. */
   readonly icon?: ReactNode;
-  readonly action?: CalloutAction;
+  /** One action, or several side by side ("Keep mine", "Load theirs"). */
+  readonly action?: CalloutAction | readonly CalloutAction[];
 }
 
 /** A Callout that's always there: plain page content, read in page order. */
@@ -104,6 +105,7 @@ export function Callout(props: CalloutProps) {
   const hasTitle = props.title !== undefined && props.title !== "";
   const files = props.files ?? [];
   const focusable = props.announce === "focus";
+  const actions = props.action === undefined ? [] : [props.action].flat();
 
   return (
     <div
@@ -127,7 +129,13 @@ export function Callout(props: CalloutProps) {
           {props.children}
         </div>
         {files.length > 0 ? <FileList id={ids.files} files={files} /> : null}
-        {props.action === undefined ? null : <CalloutButton action={props.action} />}
+        {actions.length > 0 ? (
+          <div className={`${actionRow} flex flex-wrap`}>
+            {actions.map((action) => (
+              <CalloutButton key={action.label} action={action} />
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -184,12 +192,10 @@ function CalloutButton({ action }: { readonly action: CalloutAction }) {
   }
 
   return (
-    <div className={actionRow}>
-      <OnTintContext value={true}>
-        <Button variant="ghost" size="sm" busy={busy} onClick={run}>
-          {action.label}
-        </Button>
-      </OnTintContext>
-    </div>
+    <OnTintContext value={true}>
+      <Button variant="ghost" size="sm" busy={busy} onClick={run}>
+        {action.label}
+      </Button>
+    </OnTintContext>
   );
 }
