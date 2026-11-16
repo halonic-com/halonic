@@ -43,6 +43,7 @@ const refusedLog = (changed?: boolean): RunEvent[] => [
 async function open(
   log: RunEvent[],
   trust?: (agent: string, pin: LoggedInstructionPin) => Promise<InstructionTrustAnswer>,
+  announce?: (line: string) => void,
 ) {
   const list = new RunsList(fakeSource([failedRun], { [failedRun.id]: log }).source);
   const root = render(
@@ -50,6 +51,7 @@ async function open(
       list={list}
       runId={failedRun.id}
       now={() => mondayMorning}
+      {...(announce === undefined ? {} : { announce })}
       {...(trust === undefined ? {} : { instructionTrust: { trust } })}
     />,
   );
@@ -84,6 +86,40 @@ verifies("runs.run-view.instructions-refusal", () => {
       "Reporter didn't start. Its instructions changed since you trusted them.Nothing was trusted, so the run didn't start.Review instructions",
     );
     expect(reviewButton(root)).toBeDefined();
+  });
+
+  it("keeps the button, busy and focused, while the dialog asks, and says the answer", async () => {
+    let answer: (value: InstructionTrustAnswer) => void = () => {};
+    const announce = vi.fn();
+    const root = await open(
+      refusedLog(),
+      () => new Promise((resolve) => (answer = resolve)),
+      announce,
+    );
+    const pressed = reviewButton(root);
+    act(() => {
+      pressed?.focus();
+      pressed?.click();
+    });
+
+    expect(reviewButton(root)).toBe(pressed);
+    expect(pressed?.getAttribute("aria-busy")).toBe("true");
+    expect(document.activeElement).toBe(pressed);
+
+    await act(async () => answer("declined"));
+    expect(reviewButton(root)).toBe(pressed);
+    expect(document.activeElement).toBe(pressed);
+    expect(announce).toHaveBeenCalledExactlyOnceWith(
+      "Nothing was trusted, so the run didn't start.",
+    );
+  });
+
+  it("moves focus to the banner when trusting drops the button", async () => {
+    const root = await open(refusedLog(), async () => "trusted");
+    act(() => reviewButton(root)?.focus());
+    await act(async () => reviewButton(root)?.click());
+
+    expect(document.activeElement).toBe(banner(root)?.firstElementChild);
   });
 
   it("drops the button once trusted", async () => {

@@ -35,10 +35,13 @@ const twoRoutines = [
 async function openCard(
   t: ReturnType<typeof sandboxInbox>,
   openRun?: (hubId: string, runId: string) => void,
+  announce?: (line: string) => void,
 ) {
   await settled();
   t.inbox.openSetup("sandbox", "this-computer");
-  const root = render(<InboxView inbox={t.inbox} now={now} openRun={openRun} />);
+  const root = render(
+    <InboxView inbox={t.inbox} now={now} openRun={openRun} announce={announce} />,
+  );
   await until(() => root.querySelector("section h2"));
   return root;
 }
@@ -83,6 +86,24 @@ verifies("inbox.sandbox-row", () => {
     expect(card.textContent).toContain("Nothing ran again by itself");
     expect(root.querySelector('[role="grid"]')?.textContent).toContain("Fixed");
     expect(button(root, "Check again")).toBeUndefined();
+  });
+
+  it("keeps Check again focused while a check runs, and says the fix when it passes", async () => {
+    const announce = vi.fn();
+    const root = await openCard(sandboxInbox(twoRoutines), undefined, announce);
+    const pressed = button(root, "Check again");
+    act(() => {
+      pressed?.focus();
+      pressed?.click();
+    });
+
+    expect(button(root, "Check again")).toBe(pressed);
+    expect(pressed?.getAttribute("aria-busy")).toBe("true");
+    expect(document.activeElement).toBe(pressed);
+
+    await until(() => root.querySelector("section h2")?.textContent === "The sandbox is ready");
+    expect(announce).toHaveBeenCalledWith("Sandbox checked: ready.");
+    expect(document.activeElement?.textContent).toContain("Nothing ran again by itself");
   });
 
   it("keeps Check again and shows the new reason while the sandbox is still refused", async () => {

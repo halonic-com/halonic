@@ -25,6 +25,7 @@ export function SetupPane({
   close,
   focus,
   openRun,
+  announce,
 }: SetupPaneProps) {
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key !== "Escape" || event.defaultPrevented) return;
@@ -38,6 +39,7 @@ export function SetupPane({
     close,
     focus,
     openRun,
+    announce,
   };
 
   return (

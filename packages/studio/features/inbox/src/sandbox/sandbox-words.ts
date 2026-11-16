@@ -17,6 +17,10 @@ export const sandboxInboxWords = {
   fixedNotice: "The sandbox is ready. Run each routine that didn't run again from its page.",
   /** `sandbox-inbox.checking` */
   checking: "Checking…",
+  /** `sandbox-inbox.checked-ready`: said once when a press finds the sandbox ready. */
+  checkedReady: "Sandbox checked: ready.",
+  /** `sandbox-inbox.checked-refused`: said once when a press finds it still refuses; the reason follows. */
+  checkedRefused: (reason: string) => `Sandbox checked: not ready. ${reason}`,
   /** `sandbox-inbox.check-failed` */
   checkFailed: "Halonic couldn't check the sandbox. Try again.",
   /** `sandbox-inbox.docs` */

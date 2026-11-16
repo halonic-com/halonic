@@ -1,7 +1,7 @@
 import { type SandboxStartCheck, sandboxStartWords } from "@halonicjs/app";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
-import { Callout } from "@halonicjs/studio-kit";
-import { useState } from "react";
+import { Callout, type CalloutHandle } from "@halonicjs/studio-kit";
+import { useEffect, useRef, useState } from "react";
 import { runPageWords } from "../run-words.ts";
 
 /**
@@ -31,52 +31,61 @@ type Checked =
  * `runs.run-view.sandbox-not-ready`): what is wrong and the fix, from the one catalogue, then
  * "Nothing ran." and **Check again**. A passing check says to run again and drops the button;
  * nothing runs by itself and there is no way to run anyway. Without a `check` (a served page)
- * there is no button.
+ * there is no button. The button stays, busy, while a check runs, so it keeps focus; the answer is
+ * said through `announce`, and a passing check, which drops the button, moves focus to the banner.
  */
 export function SandboxNotReadyBanner({
   workflow,
   reason,
   check,
+  announce,
   phone,
 }: {
   readonly workflow: string;
   readonly reason: string;
   readonly check: SandboxStartCheck | undefined;
+  readonly announce?: ((line: string) => void) | undefined;
   readonly phone: boolean;
 }) {
   const [checked, setChecked] = useState<Checked>();
-  const [checking, setChecking] = useState(false);
   // The newest code a check gave. A check that can't run keeps it rather than going back to the run's.
   const [lastReason, setLastReason] = useState<string>();
+  const banner = useRef<CalloutHandle>(null);
 
   const again = async () => {
     if (check === undefined) return;
-    setChecking(true);
     try {
       const result = await check.check();
       if (!result.ok) setLastReason(result.reason);
       setChecked(result.ok ? { kind: "ready" } : { kind: "refused", reason: result.reason });
+      announce?.(
+        result.ok
+          ? runPageWords.sandboxCheckedReady
+          : runPageWords.sandboxCheckedRefused(sandboxStartWords(result.reason).reason),
+      );
     } catch {
       setChecked({ kind: "failed" });
-    } finally {
-      setChecking(false);
+      announce?.(runPageWords.sandboxCheckFailed);
     }
   };
 
   const words = sandboxStartWords(lastReason ?? reason);
   const ready = checked?.kind === "ready";
+  // The button is gone once the sandbox is ready, so focus goes to the banner that says so.
+  useEffect(() => {
+    if (ready) banner.current?.focus();
+  }, [ready]);
   const action =
     check === undefined || ready
       ? undefined
-      : {
-          label: checking ? runPageWords.sandboxChecking : runPageWords.sandboxCheckAgain,
-          onClick: () => {
-            if (!checking) void again();
-          },
-        };
+      : { label: runPageWords.sandboxCheckAgain, onClick: again };
   return (
     <section aria-label={runPageWords.failedName}>
-      <Callout tone={ready ? "info" : "danger"} {...(action === undefined ? {} : { action })}>
+      <Callout
+        tone={ready ? "info" : "danger"}
+        {...(action === undefined ? {} : { action })}
+        {...(ready ? { announce: "focus" as const, ref: banner } : {})}
+      >
         <span className="block">{runPageWords.sandboxNotReady(workflow)}</span>
         <span className="block">{words.reason}</span>
         <span className="block">{phone ? words.phoneFix : words.calloutFix}</span>
