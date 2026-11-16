@@ -48,6 +48,8 @@ verifies("files.ui.tree-view", () => {
   const hostOf = (value: FilesListing): FilesHost => ({
     list: async () => value,
     subscribe: () => () => {},
+    read: async () => null,
+    edit: () => {},
   });
 
   it("shows an ARIA tree with one Tab stop and the folders closed", async () => {
@@ -92,7 +94,7 @@ verifies("files.ui.tree-view", () => {
   });
 
   it("shows grey bars while the list loads", () => {
-    const pending: FilesHost = { list: () => new Promise(() => {}), subscribe: () => () => {} };
+    const pending: FilesHost = { ...hostOf(listing([])), list: () => new Promise(() => {}) };
     const page = render(<FilesSidebarView context={contextOf(pending)} />);
     expect(page.querySelector('[role="status"]')).not.toBeNull();
     expect(page.querySelector('[role="tree"]')).toBeNull();
@@ -103,7 +105,7 @@ verifies("files.ui.tree-view", () => {
       .fn<FilesHost["list"]>()
       .mockRejectedValueOnce(new Error("The folder is not readable."))
       .mockResolvedValue(listing(files));
-    const page = await show({ list, subscribe: () => () => {} });
+    const page = await show({ ...hostOf(listing([])), list });
     expect(page.textContent).toContain("Couldn't load files");
     expect(page.textContent).toContain("The folder is not readable.");
     const retry = [...page.querySelectorAll("button")].find((b) =>
@@ -123,6 +125,7 @@ verifies("files.ui.tree-view", () => {
     let changed = () => {};
     let current = listing(files);
     const host: FilesHost = {
+      ...hostOf(listing([])),
       list: async () => current,
       subscribe: (listener) => {
         changed = listener;
@@ -142,6 +145,7 @@ verifies("files.ui.tree-view", () => {
     let changed = () => {};
     const pending: Array<(value: FilesListing) => void> = [];
     const host: FilesHost = {
+      ...hostOf(listing([])),
       list: () => new Promise((resolve) => pending.push(resolve)),
       subscribe: (listener) => {
         changed = listener;
