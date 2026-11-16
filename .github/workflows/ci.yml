@@ -2345,11 +2345,28 @@ jobs:
         with:
           persist-credentials: false
           path: head
+          # The merge commit and its parents, so HEAD^1 can be read.
+          fetch-depth: 2
+      # The checkout is the merge ref: the pull request merged into the
+      # newest main. Its first parent is the main commit it was built on, so
+      # the base copy's lists match the files under test. pull_request.base.sha
+      # only moves when the pull request is pushed, and is older when main has
+      # added a dependency or a list entry since (HAL-10801). In the merge
+      # queue the first parent is the commit the group is built on.
+      - id: base
+        name: Find the commit the checked-out ref was built on
+        working-directory: head
+        run: |
+          # Assign first: a failing rev-parse inside echo would not fail the
+          # step, and an empty sha makes the next checkout fall back to the
+          # pull request's own ref.
+          sha=$(git rev-parse --verify HEAD^1)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           path: base
-          ref: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          ref: ${{ steps.base.outputs.sha }}
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           cache: false
