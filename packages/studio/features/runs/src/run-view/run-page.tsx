@@ -1,4 +1,4 @@
-import { shortRunId } from "@halonicjs/app";
+import { type SandboxStartCheck, sandboxStartCheckKey, shortRunId } from "@halonicjs/app";
 import { type RunEvent, type RunSummary, type RunVersion, summarize } from "@halonicjs/events";
 import { Callout, EmptyState, List, StatusChip, usePresentation } from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
@@ -27,12 +27,14 @@ import { StepPanel } from "./step-panel.tsx";
 export function RunPage({ item, context, step }: ItemViewProps) {
   const { openPlace, openItem } = context;
   const instructionTrust = context.services.find(InstructionTrustHostService);
+  const sandboxStartCheck = context.services.find(sandboxStartCheckKey);
   return (
     <RunView
       list={context.services.get(RunsListService)}
       runId={item.id}
       {...(step === undefined ? {} : { step })}
       {...(instructionTrust === undefined ? {} : { instructionTrust })}
+      {...(sandboxStartCheck === undefined ? {} : { sandboxStartCheck })}
       {...(openPlace === undefined
         ? {}
         : { goToRuns: () => openPlace("runs"), reviewInInbox: () => openPlace("inbox") })}
@@ -56,6 +58,8 @@ export interface RunViewProps {
   readonly step?: string;
   /** Asks to trust an agent's instructions; absent on a served page or a phone, which can't ask. */
   readonly instructionTrust?: InstructionTrustHost;
+  /** Checks the sandbox again, for the banner of a run it refused; absent where nothing can check. */
+  readonly sandboxStartCheck?: SandboxStartCheck;
   /** Opens the Runs list, for a run that isn't there any more. */
   readonly goToRuns?: () => void;
   /** Opens the Inbox, for Review in Inbox; without it the button isn't there. */
@@ -88,6 +92,7 @@ export function RunView({
   runId,
   step,
   instructionTrust,
+  sandboxStartCheck,
   goToRuns,
   reviewInInbox,
   openRun,
@@ -127,6 +132,7 @@ export function RunView({
             reviewInInbox={reviewInInbox}
             openRun={openRun}
             instructionTrust={{ host: instructionTrust }}
+            sandboxStartCheck={sandboxStartCheck}
             phone={phone}
             onSeeStep={setOpenEntry}
           />

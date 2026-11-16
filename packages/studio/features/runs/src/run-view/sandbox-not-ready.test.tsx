@@ -1,0 +1,126 @@
+// @vitest-environment jsdom
+import { type SandboxStartResult, sandboxStartWords } from "@halonicjs/app";
+import type { RunEvent } from "@halonicjs/events";
+import { PresentationProvider } from "@halonicjs/studio-kit";
+import { verifies } from "@halonicjs/testing-spec";
+import { act } from "react";
+import { afterEach, expect, it, vi } from "vitest";
+import { RunsList } from "../runs-list.ts";
+import { fakeSource } from "../source.test-helper.ts";
+import { mondayMorning, summaryWith } from "../summary.test-helper.ts";
+import { render, unmountAll } from "../test-support/render.tsx";
+import { RunView } from "./run-page.tsx";
+
+afterEach(unmountAll);
+
+const failedRun = summaryWith({
+  id: "run_a_7k2m9p",
+  status: "failed",
+  reason: "sandbox-not-ready",
+  error: "not ready",
+  endedAt: mondayMorning.toISOString(),
+});
+
+const log = (sandboxReason?: string): RunEvent[] => [
+  {
+    runId: failedRun.id,
+    seq: 1,
+    at: "2026-11-16T08:00:00Z",
+    type: "run.failed",
+    state: "draft",
+    error: "not ready",
+    reason: "sandbox-not-ready",
+    ...(sandboxReason === undefined ? {} : { sandboxReason }),
+  } as RunEvent,
+];
+
+async function open(
+  events: RunEvent[] | undefined,
+  check?: () => Promise<SandboxStartResult>,
+  phone = false,
+) {
+  const list = new RunsList(
+    fakeSource([failedRun], events ? { [failedRun.id]: events } : {}).source,
+  );
+  const root = render(
+    <PresentationProvider presentation={phone ? "phone" : "desktop"}>
+      <RunView
+        list={list}
+        runId={failedRun.id}
+        now={() => mondayMorning}
+        {...(check === undefined ? {} : { sandboxStartCheck: { check } })}
+      />
+    </PresentationProvider>,
+  );
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  return root;
+}
+
+const banner = (root: HTMLElement) => root.querySelector('section[aria-label="Run failed"]');
+const button = (root: HTMLElement) =>
+  [...root.querySelectorAll("button")].find((b) => b.textContent === "Check again");
+
+verifies("runs.run-view.sandbox-not-ready", () => {
+  it("says what is wrong and the fix, from the catalogue, then that nothing ran", async () => {
+    const words = sandboxStartWords("bubblewrap-missing");
+    const root = await open(log("bubblewrap-missing"), async () => ({ ok: true }));
+
+    expect(banner(root)?.textContent).toBe(
+      `Support reply didn't start: the sandbox on this computer isn't ready.${words.reason}${words.calloutFix}Nothing ran.Check again`,
+    );
+  });
+
+  it("reads a missing or unknown code as other", async () => {
+    const other = sandboxStartWords("other");
+    for (const events of [log(), log("from-the-future")]) {
+      const root = await open(events);
+      expect(banner(root)?.textContent).toContain(other.reason);
+      unmountAll();
+    }
+  });
+
+  it("has no button where nothing can check, and never offers to run anyway", async () => {
+    const root = await open(log("bubblewrap-missing"));
+    expect(button(root)).toBeUndefined();
+    expect(root.textContent?.toLowerCase()).not.toContain("anyway");
+  });
+
+  it("turns calm and drops the button when the check passes, without running anything", async () => {
+    const check = vi.fn(async (): Promise<SandboxStartResult> => ({ ok: true }));
+    const root = await open(log("bubblewrap-missing"), check);
+    await act(async () => button(root)?.click());
+
+    expect(check).toHaveBeenCalledTimes(1);
+    expect(banner(root)?.textContent).toContain("The sandbox is ready. Run again to start it.");
+    expect(button(root)).toBeUndefined();
+  });
+
+  it("shows the new reason when the sandbox still can't start, and keeps the button", async () => {
+    const root = await open(log("bubblewrap-missing"), async () => ({
+      ok: false,
+      reason: "ripgrep-missing",
+    }));
+    await act(async () => button(root)?.click());
+
+    expect(banner(root)?.textContent).toContain(sandboxStartWords("ripgrep-missing").reason);
+    expect(button(root)).toBeDefined();
+  });
+
+  it("says so when the check itself fails", async () => {
+    const root = await open(log("bubblewrap-missing"), async () => {
+      throw new Error("host sentence");
+    });
+    await act(async () => button(root)?.click());
+
+    expect(banner(root)?.textContent).toContain("Halonic couldn't check the sandbox. Try again.");
+    expect(banner(root)?.textContent).not.toContain("host sentence");
+    expect(button(root)).toBeDefined();
+  });
+
+  it("says the fix is for the computer on a phone", async () => {
+    const root = await open(log("bubblewrap-missing"), undefined, true);
+    expect(banner(root)?.textContent).toContain(sandboxStartWords("bubblewrap-missing").phoneFix);
+  });
+});

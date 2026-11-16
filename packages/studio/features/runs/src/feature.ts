@@ -1,4 +1,4 @@
-import { shortRunId } from "@halonicjs/app";
+import { sandboxStartCheckKey, shortRunId } from "@halonicjs/app";
 import { defineFeature } from "@halonicjs/studio-shell";
 import { InstructionTrustHostService, RunsSourceService } from "./api.ts";
 import { listRows } from "./list/list-rows.ts";
@@ -17,7 +17,7 @@ export const runsFeature = defineFeature({
   id: "runs",
   title: "Runs",
   needs: [RunsSourceService],
-  wants: [InstructionTrustHostService],
+  wants: [InstructionTrustHostService, sandboxStartCheckKey],
   provides: [RunsListService],
   register(studio) {
     studio.services.provide(
