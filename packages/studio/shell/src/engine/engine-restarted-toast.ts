@@ -21,7 +21,9 @@ export function stoppedRunsText(count: number): string {
 /**
  * Shows an info toast when the engine answers again after the shell restarted it (microcopy 22
  * F15b). With runs that the restart ended, the toast counts them and **Open Runs** opens the
- * list; without, it is the one phrase. A first start and a start after Try again are not restarts
+ * list; without, it is the one phrase, with no full stop (microcopy 1.3). Call it before
+ * `supervise`: a watcher that starts mid-restart misses `starting { attempt: 2 }` and shows
+ * nothing. A first start and a start after Try again are not restarts
  * and show nothing. Returns a function that stops watching.
  *
  * @example
@@ -46,13 +48,13 @@ export function watchEngineRestart(options: EngineRestartOptions): () => void {
     const stopped = event.interruptedRuns ?? 0;
     options.toasts.show({
       tone: "info",
-      title: "The engine stopped and has started again.",
       ...(stopped > 0
         ? {
+            title: "The engine stopped and has started again.",
             text: stoppedRunsText(stopped),
             action: { label: "Open Runs", onClick: options.openRuns },
           }
-        : {}),
+        : { title: "The engine stopped and has started again" }),
     });
   });
 }

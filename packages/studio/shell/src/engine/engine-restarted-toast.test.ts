@@ -59,7 +59,7 @@ verifies("shell.engine-restarted-toast", () => {
     s.launcher.latest.ready();
     restart(s);
     const [toast] = s.toasts.list();
-    expect(toast?.title).toBe("The engine stopped and has started again.");
+    expect(toast?.title).toBe("The engine stopped and has started again");
     expect(toast?.text).toBeUndefined();
     expect(toast?.action).toBeUndefined();
   });
