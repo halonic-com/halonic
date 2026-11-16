@@ -2,6 +2,7 @@ import { existsSync, lstatSync, realpathSync } from "node:fs";
 import { isIP } from "node:net";
 import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import type { NetworkConfig, SandboxRuntimeConfig } from "@anthropic-ai/sandbox-runtime";
+import { writeFencedPaths } from "@halonicjs/app";
 import type { SandboxNetwork, SandboxProfile } from "@halonicjs/ports";
 
 /** A path the way sandbox-runtime wants a plain path: marked literal, so a `*` in it is never read as a pattern. */
@@ -145,11 +146,11 @@ export const DENIED_RESOLVED_ADDRESSES: readonly string[] = [
 ];
 
 /**
- * Files and folders inside the working folder that other tools read as
- * instructions or hooks. The program may write the working folder, but not
- * these, so it can't plant a hook that runs outside the fence later.
- * sandbox-runtime applies a similar list only at the command's own folder, so
- * this list repeats those entries for the working folder's root and adds more.
+ * The files and folders inside the working folder that other tools read as
+ * instructions or hooks (`writeFencedPaths`, shared with the ask policy). The
+ * program may write the working folder, but not these. sandbox-runtime
+ * applies a similar list only at the command's own folder, so this list
+ * repeats those entries for the working folder's root and adds more.
  *
  * Denying `.git/hooks` and `.git/config` when there is no `.git` yet makes
  * `.git` a read-only empty folder, so `git init` fails inside the fence. That
@@ -164,47 +165,7 @@ export const DENIED_RESOLVED_ADDRESSES: readonly string[] = [
  * The session adds the git files only it can find at start, such as each
  * submodule's and each nested clone's settings (see `gitPathsToDeny`).
  */
-const toolSettingsInWorkingFolder = [
-  join(".claude", "settings.json"),
-  join(".claude", "settings.local.json"),
-  join(".claude", "commands"),
-  join(".claude", "agents"),
-  join(".claude", "skills"),
-  join(".claude", "hooks"),
-  ".codex",
-  ".cursor",
-  // Shell start-up files, read when someone opens a shell in the folder.
-  ".bashrc",
-  ".bash_profile",
-  ".bash_login",
-  ".profile",
-  ".zshrc",
-  ".zshenv",
-  ".zprofile",
-  ".envrc",
-  // Git runs these, or what they point to, on the user's next commit or fetch.
-  join(".git", "hooks"),
-  join(".git", "config"),
-  ".gitconfig",
-  ".ripgreprc",
-  ".gitmodules",
-  ".husky",
-  // Package manager settings, which can point installs at another registry or run scripts.
-  ".npmrc",
-  ".yarnrc",
-  ".yarnrc.yml",
-  ".pnpmfile.cjs",
-  join(".yarn", "releases"),
-  join(".yarn", "plugins"),
-  // Tool version managers, which can fetch and run another binary.
-  "mise.toml",
-  ".mise.toml",
-  ".tool-versions",
-  // Editor settings and tasks that run when the folder is opened.
-  ".vscode",
-  ".idea",
-  ".mcp.json",
-];
+const toolSettingsInWorkingFolder = writeFencedPaths.map((segments) => join(...segments));
 
 /**
  * The Mach services the macOS Keychain answers on. srt's Seatbelt profile

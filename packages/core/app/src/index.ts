@@ -11,19 +11,8 @@ export {
   type PlacementSubject,
   type SandboxReason,
 } from "./agent-placement.ts";
-export { joinLinesThatNeedEachOther } from "./changes/change-needs.ts";
-export { describeAgentChange } from "./changes/describe-agent.ts";
-export { describeFileChange, type FileChange } from "./changes/describe-file.ts";
-export { describeItemChange } from "./changes/describe-item.ts";
-export { describeRoutineChange } from "./changes/describe-routine.ts";
-export { describeWorkflowChange } from "./changes/describe-workflow.ts";
-export { type PartValue, partValueIn } from "./changes/part-value.ts";
-export {
-  type ChangeLine,
-  type ItemPath,
-  type RevertPartsProblem,
-  revertParts,
-} from "./changes/revert-parts.ts";
+// biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
+export * from "./changes/index.ts";
 export {
   type ChatAnswer,
   type ChatAnswerEnd,
@@ -175,6 +164,8 @@ export {
   type NewLibraryItemError,
   newLibraryFile,
 } from "./new-library-item.ts";
+// biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
+export * from "./no-sandbox/index.ts";
 export {
   type OpenWorkspaceOptions,
   openWorkspace,
