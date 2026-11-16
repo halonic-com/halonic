@@ -1,8 +1,7 @@
 # Decision: a save pauses for a changed file only, and outside changes can be taken in
 
-- Approval: decided by Liam on HAL-10832; the package owner (Liam) approves this note in review
+- Approval: [HAL-10832](/HAL/issues/HAL-10832)
 - Kind: internal
-- Signature: pending, Liam signs on the review task
 
 ## What changes
 
