@@ -11,6 +11,8 @@ interface FakeSession {
   /** Events before this `seq` are gone. */
   firstKept: number;
   watchers: Set<(event: GatewaySessionEvent) => void>;
+  /** Told when events a watcher hadn't been given are forgotten. */
+  gone: Set<() => void>;
 }
 
 /** A session source that keeps everything in memory, for the gateway's tests. */
@@ -29,7 +31,7 @@ export class FakeSource implements GatewaySessionSource {
       lastSeq: 0,
       updatedAt: "2026-11-16T08:00:00Z",
     };
-    this.sessions.set(id, { info, events: [], firstKept: 1, watchers: new Set() });
+    this.sessions.set(id, { info, events: [], firstKept: 1, watchers: new Set(), gone: new Set() });
   }
 
   /** Adds an event; a watcher hears it in the next microtask. */
@@ -45,12 +47,13 @@ export class FakeSource implements GatewaySessionSource {
     for (const watcher of session.watchers) queueMicrotask(() => watcher(event));
   }
 
-  /** Forgets every event before `seq`. */
+  /** Forgets every event before `seq`; each watch is ended and told, as a real source does. */
   forgetBefore(sessionId: string, seq: number): void {
     const session = this.sessions.get(sessionId);
     if (session === undefined) throw new Error("no such session");
     session.firstKept = seq;
     session.events = session.events.filter((event) => event.seq >= seq);
+    for (const told of [...session.gone]) told();
   }
 
   watcherCount(sessionId: string): number {
@@ -65,6 +68,7 @@ export class FakeSource implements GatewaySessionSource {
     sessionId: string,
     afterSeq: number,
     onEvent: (event: GatewaySessionEvent) => void,
+    onHistoryGone: () => void,
   ): GatewayWatchResult {
     const session = this.sessions.get(sessionId);
     if (session === undefined) return { kind: "unknown-session" };
@@ -76,8 +80,20 @@ export class FakeSource implements GatewaySessionSource {
     const live = (event: GatewaySessionEvent) => {
       if (!replay.includes(event)) onEvent(event);
     };
+    const gone = () => {
+      session.watchers.delete(live);
+      session.gone.delete(gone);
+      onHistoryGone();
+    };
     session.watchers.add(live);
-    return { kind: "watching", stop: () => session.watchers.delete(live) };
+    session.gone.add(gone);
+    return {
+      kind: "watching",
+      stop: () => {
+        session.watchers.delete(live);
+        session.gone.delete(gone);
+      },
+    };
   }
 
   approvalRisk(sessionId: string, approvalId: string): "normal" | "risky" | undefined {

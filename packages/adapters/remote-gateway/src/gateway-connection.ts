@@ -169,8 +169,11 @@ export class GatewayConnection {
     }
     const watch: Watch = { stop: () => undefined };
     // The source calls `onEvent` only after it has returned, so `ok` goes out before the first event.
-    const result = this.deps.source.watch(sessionId, afterSeq, (event) =>
-      this.deliver(sessionId, watch, event),
+    const result = this.deps.source.watch(
+      sessionId,
+      afterSeq,
+      (event) => this.deliver(sessionId, watch, event),
+      () => this.historyGone(sessionId, watch),
     );
     if (result.kind !== "watching") {
       this.refuse(message.id, result.kind);
@@ -227,6 +230,16 @@ export class GatewayConnection {
       return this.refuse(message.id, "unknown-session");
     }
     this.reply({ type: "ok", replyTo: message.id });
+  }
+
+  /**
+   * The source dropped events this watch hadn't been given. The protocol has
+   * no message for that mid-stream, so the connection closes: the phone
+   * reconnects, watches from its last `seq`, and is answered `history-gone`.
+   * A watch that was replaced or ended is none of the phone's business.
+   */
+  private historyGone(sessionId: string, watch: Watch): void {
+    if (this.watches.get(sessionId) === watch) this.close();
   }
 
   /**
