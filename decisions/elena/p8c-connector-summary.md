@@ -2,6 +2,7 @@
 
 - Approval: Liam reviews this on HAL-10952; the change is built in HAL-1303 (P8c)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:En0FVhwuMlqKbJftJG5FEqim15F25Xh0bw/VDm5kDUc39+ixxufdGsRp7FTHmCAovhMENZg31LmDVuXxL0J1Bg==
 
 ## What changes
 
