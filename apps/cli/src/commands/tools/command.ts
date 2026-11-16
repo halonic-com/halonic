@@ -3,6 +3,7 @@ import { toolsMessages } from "../../messages/tools.ts";
 import { printable } from "../../output/printable.ts";
 import { dirOption } from "../../workspace-dir.ts";
 import { approveTools } from "./approve.ts";
+import { reviewTools } from "./review.ts";
 import { revokeTools } from "./revoke.ts";
 import { nodeToolsMachine, type ToolsMachine } from "./source.ts";
 
@@ -14,10 +15,18 @@ import { nodeToolsMachine, type ToolsMachine } from "./source.ts";
 export function toolsCommandWith(machine: () => ToolsMachine): CliCommand {
   return {
     name: "tools",
-    usage: "approve | revoke",
+    usage: "review | approve | revoke",
     summary: toolsMessages.summary(),
     options: {},
     subcommands: [
+      {
+        name: "review",
+        usage: "<source> [--dir <folder>]",
+        summary: toolsMessages.reviewSummary(),
+        action: listAction,
+        options: { dir: dirOption },
+        run: (input, context) => reviewTools(input, context, machine()),
+      },
       {
         name: "approve",
         usage: "<source> <tool>... [--fingerprint <fingerprint>] | <source> --all [--dir <folder>]",

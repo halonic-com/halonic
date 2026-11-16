@@ -1,0 +1,51 @@
+## colour: halonic tools review notes-mcp
+exit 1
+stdout:
+  Review the tools from notes-mcp
+  A server you connected wrote these descriptions. Halonic hasn't checked them.
+  Approve only the tools you expect this server to have.
+  
+  \e[1mChanged\e[22m  \e[1msend\e[22m
+    Its text hasn't changed, but notes-mcp connects differently than when you approved it: another address, version or settings.
+    \e[2mAsks you before each use.\e[22m
+    \e[2mhtl1:516d94c13a33f9c6d5ed3e6e26b9a390310a4c1c3f1c6bffbd02ee68120e7e0e\e[22m
+stderr:
+  \e[33m!\e[39m 1 tool from notes-mcp stays off: there's no terminal to ask you.
+    Approve the ones you've read: halonic tools approve notes-mcp <tool> --fingerprint <fingerprint>
+
+## NO_COLOR: halonic tools review notes-mcp
+exit 1
+stdout:
+  Review the tools from notes-mcp
+  A server you connected wrote these descriptions. Halonic hasn't checked them.
+  Approve only the tools you expect this server to have.
+  
+  Changed  send
+    Its text hasn't changed, but notes-mcp connects differently than when you approved it: another address, version or settings.
+    Asks you before each use.
+    htl1:516d94c13a33f9c6d5ed3e6e26b9a390310a4c1c3f1c6bffbd02ee68120e7e0e
+stderr:
+  ! 1 tool from notes-mcp stays off: there's no terminal to ask you.
+    Approve the ones you've read: halonic tools approve notes-mcp <tool> --fingerprint <fingerprint>
+
+## --json: halonic tools review notes-mcp
+exit 1
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": false,
+    "source": "notes-mcp",
+    "on": [],
+    "waiting": [
+      {
+        "name": "send",
+        "state": "changed",
+        "fingerprint": "htl1:516d94c13a33f9c6d5ed3e6e26b9a390310a4c1c3f1c6bffbd02ee68120e7e0e",
+        "keepsChanging": false,
+        "serverChanged": true,
+        "changes": []
+      }
+    ],
+    "refused": []
+  }
+stderr:
