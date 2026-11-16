@@ -53,6 +53,11 @@ export {
   type ShellEngine,
   type ShellEngineState,
 } from "./engine/engine-connection.ts";
+export {
+  EngineFailedWindow,
+  type EngineFailedWindowProps,
+  type JustUpdated,
+} from "./engine/engine-failed-window.tsx";
 export { EngineLine, type EngineLineProps } from "./engine/engine-line.tsx";
 export {
   type EngineLauncher,
