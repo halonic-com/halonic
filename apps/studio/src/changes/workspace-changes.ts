@@ -7,8 +7,8 @@ import type {
   FileTexts,
   KeptFile,
   ReplaceResult,
-  Version,
   UpdatesResult,
+  Version,
   VersionInput,
 } from "@halonicjs/studio-feature-source-control/api";
 import { historyArgs, versionsFromLog } from "./history-log.ts";

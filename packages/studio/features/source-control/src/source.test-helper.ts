@@ -3,8 +3,8 @@ import type {
   ChangesSource,
   FileTexts,
   KeptFile,
-  Version,
   UpdatesResult,
+  Version,
   VersionInput,
 } from "./api.ts";
 

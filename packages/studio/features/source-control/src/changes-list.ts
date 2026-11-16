@@ -3,7 +3,14 @@ import type { VcsChange } from "@halonicjs/ports";
 import { applyLineChanges, diffLines, type LineChange } from "@halonicjs/std";
 import type { PlaceSignal, ServiceKey } from "@halonicjs/studio-shell";
 import { serviceKey } from "@halonicjs/studio-shell";
-import type { ChangesRead, ChangesSource, FileTexts, KeptFile, UpdatesResult, Version } from "./api.ts";
+import type {
+  ChangesRead,
+  ChangesSource,
+  FileTexts,
+  KeptFile,
+  UpdatesResult,
+  Version,
+} from "./api.ts";
 import { discardWords, pageWords, undoWords, updatesWords, versionWords } from "./changes-words.ts";
 import { loadFailureReason } from "./load-failure.ts";
 import { versionMessage } from "./version-name.ts";
