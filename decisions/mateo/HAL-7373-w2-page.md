@@ -2,6 +2,7 @@
 
 - Approval: Sofia's wording in the approved HAL-7373 plan; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JqOI4D4xLMMHtppSvxQLZhwkD25VgkPZnTKQXi3w2BdvwZTfCfcv0wt0uoFJmpa+Y8tV61KjcjsR36GSweSPBQ==
 
 ## What changes
 
