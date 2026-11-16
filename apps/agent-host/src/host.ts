@@ -6,6 +6,7 @@ import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
+import { type GatewayListener, startGatewayListener } from "@halonicjs/adapter-remote-gateway";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import {
   keptGrantsRecordFolder,
@@ -20,6 +21,9 @@ import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
 import { bridgeSocketFolder, sweepLeftOverBridges } from "./bridge/socket-folder.ts";
 import { hostConnectorRoutes } from "./connector/connector-factory.ts";
 import { connectorRoutes } from "./connector/connector-routes.ts";
+import { type GatewaySettings, gatewaySettings } from "./gateway/gateway-settings.ts";
+import { hostGatewaySource } from "./gateway/host-gateway-source.ts";
+import { RunLedger } from "./gateway/run-ledger.ts";
 import { googleRoutes } from "./google/google-routes.ts";
 import { openGoogleSetup } from "./google/google-setup.ts";
 import { harnessRoutes } from "./harness/harness-routes.ts";
@@ -132,6 +136,11 @@ export async function run(
     io.writeError(given.error);
     return 2;
   }
+  const gateway = gatewaySettings(args);
+  if ("error" in gateway) {
+    io.writeError(gateway.error);
+    return 2;
+  }
   const profileFolder = argumentAfter(args, "--profile-folder");
   // Says why it doesn't sweep only when it was asked to.
   const warn = (text: string) => {
@@ -167,7 +176,13 @@ export async function run(
           profileFolder,
         ),
     wslRemoverOf(profileFolder, sharedFolders),
+    args.includes("--stdio") ? disabledGateway : gateway,
   );
+  if (gateway.enabled && args.includes("--stdio")) {
+    io.writeError(
+      "The remote gateway needs a port, and over --stdio the host listens on none: it stays off.\n",
+    );
+  }
   try {
     if (args.includes("--stdio")) return await serveOverFrames(args, io, host);
     await serve(io, host);
@@ -291,6 +306,7 @@ async function serve(io: HostIo, host: HostServices): Promise<void> {
   const token = randomLaunchToken();
   const server = await startHostServer(token, host.routes);
   host.listeningOn(Number(new URL(server.url).port));
+  await host.startGateway((text) => io.writeError(text));
   const handshake: Handshake = { url: server.url, token };
   io.write(`${JSON.stringify(handshake)}\n`);
   await inputClosed(io.input);
@@ -328,6 +344,7 @@ async function serveOverFrames(
   const handshake: FramedHandshake = { token };
   output.write(`${JSON.stringify(handshake)}\n`);
   host.listeningOn(relayPort);
+  await host.startGateway((text) => io.writeError(text));
   const server = serveHostOverFrames(token, host.routes, { input: io.input, output }, relayPort);
   const ended = await server.ended;
   await host.stop();
@@ -350,7 +367,15 @@ interface HostServices {
   stop(): Promise<void>;
   /** Tells the host which port its own server listens on, so no provider's address may be that port. */
   listeningOn(port: number): void;
+  /**
+   * Starts the remote gateway's listener when the setting turns it on, and does nothing otherwise.
+   * A listener that can't start is told to `log` and the host serves without it.
+   */
+  startGateway(log: (text: string) => void): Promise<void>;
 }
+
+/** The gateway setting of a host that starts no gateway. */
+const disabledGateway: GatewaySettings = { enabled: false };
 
 /**
  * @param socketFolder - where each bridge serves a Unix socket (see {@link bridgeSocketFolder});
@@ -361,6 +386,7 @@ interface HostServices {
  * @param relayPort - the relay's port in `--stdio` mode, which the Google sign-in's redirect names; `undefined` when the host listens on its own port
  * @param choice - the choice service of this host's backend, `undefined` without a profile folder (no choice route is served)
  * @param wslRemover - removes Halonic's WSL distro, `undefined` without a profile folder (no `remove-wsl` route is served)
+ * @param gateway - whether and where the remote gateway listens (requirement `agent-host.remote-gateway`)
  */
 function hostServices(
   version: string,
@@ -372,11 +398,14 @@ function hostServices(
   relayPort: number | undefined,
   choice: SandboxChoiceService | undefined,
   wslRemover: WslRemover | undefined,
+  gateway: GatewaySettings,
 ): HostServices {
   const sessions = new SessionTable();
   const listeningPorts = new Set<number>();
   const bridges = new BridgeTable();
-  const runs = new RunTable();
+  const ledger = new RunLedger();
+  const runs = new RunTable(ledger);
+  let gatewayListener: GatewayListener | undefined;
   const harnesses = hostHarnesses(version);
   const connectorDeps = hostConnectorRoutes(
     { sandbox, version, deniedPaths: connectors.deniedPaths, env: process.env },
@@ -424,13 +453,28 @@ function hostServices(
     // Stop the runs, then their sandboxed programs, so none outlives the host;
     // their bridges then have no caller.
     await runs.cancelAll();
+    await gatewayListener?.close();
     // A connector closes its own session; then any session left.
     await connectorDeps.connectors.closeAll();
     await plugins?.stop();
     await sessions.closeAll();
     await bridges.closeAll();
   };
-  return { routes, stop, listeningOn: (port) => listeningPorts.add(port) };
+  const startGateway = async (log: (text: string) => void) => {
+    if (!gateway.enabled) return;
+    try {
+      gatewayListener = await startGatewayListener({
+        source: hostGatewaySource(ledger, runs),
+        // A phone may not answer a risky approval until the person allows it on this desktop; nothing sets that yet.
+        policy: { allowRiskyRemotely: () => false },
+        ...(gateway.port === undefined ? {} : { port: gateway.port }),
+      });
+      listeningPorts.add(gatewayListener.port);
+    } catch (error) {
+      log(`The remote gateway didn't start: ${String(error)}\n`);
+    }
+  };
+  return { routes, stop, startGateway, listeningOn: (port) => listeningPorts.add(port) };
 }
 
 function logToError(text: string): void {
