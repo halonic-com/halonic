@@ -61,21 +61,36 @@ function deletesFirstOnSameName(entries: [string, string | null][]): [string, st
   ];
 }
 
+/** A file a save left alone because it changed outside Halonic. */
+export interface HeldFile {
+  path: string;
+  /** The file's text now, or `null` when it is gone. */
+  current: string | null;
+}
+
 /**
  * Thrown by a save when a file no longer holds what Halonic last read: it
  * changed outside Halonic. Nothing was written to that file; the changes stay
- * unsaved, so Compare can show both texts (save model 1.7).
+ * unsaved, so Compare can show both texts (save model 1.7). The save went on
+ * with the other files first, so `held` lists every file it left alone.
  */
 export class ChangedOnDiskError extends Error {
+  /** The first held file. */
   readonly path: string;
-  /** The file's text now, or `null` when it is gone. */
+  /** The first held file's text now, or `null` when it is gone. */
   readonly current: string | null;
+  readonly held: readonly HeldFile[];
 
-  constructor(path: string, current: string | null) {
+  constructor(
+    path: string,
+    current: string | null,
+    held: readonly HeldFile[] = [{ path, current }],
+  ) {
     super(`"${path}" changed outside Halonic, so it was not saved.`);
     this.name = "ChangedOnDiskError";
     this.path = path;
     this.current = current;
+    this.held = held;
   }
 }
 
@@ -267,9 +282,10 @@ export class WorkspaceFiles {
    * right state.
    *
    * Every write passes what Halonic last read of the file as `expected`, so
-   * a file that changed outside Halonic is never overwritten: the save stops
-   * with a {@link ChangedOnDiskError} and every change not yet written stays
-   * unsaved.
+   * a file that changed outside Halonic is never overwritten. Saving pauses
+   * for that file only: the others are written, and the save then ends with a
+   * {@link ChangedOnDiskError} that lists the files it held. Their changes
+   * stay unsaved.
    *
    * @returns how many files were written or deleted
    */
@@ -296,6 +312,7 @@ export class WorkspaceFiles {
     }
     const discards = this.discards;
     const written: SavedFile[] = [];
+    const held: HeldFile[] = [];
     try {
       for (const [path, text] of saving) {
         const before = await this.store.read(path);
@@ -306,7 +323,8 @@ export class WorkspaceFiles {
             : await this.store.write(path, text, { expected });
         if (result.status === "changed-on-disk") {
           // `known` stays: another save must not overwrite the outside text. Only a fresh read moves it.
-          throw new ChangedOnDiskError(path, result.current);
+          held.push({ path, current: result.current });
+          continue;
         }
         this.known.set(path, text);
         written.push({ path, before, after: text });
@@ -319,12 +337,18 @@ export class WorkspaceFiles {
         this.history.map((snapshot) => rebase(snapshot, written));
       }
     }
-    // What changed again while saving still differs from the store, so it stays unsaved.
-    const left = this.discards === discards ? rebase(this.changes, written) : this.changes;
-    this.history.breakStep();
-    this.apply(left, `Saved ${saving.length} file${saving.length === 1 ? "" : "s"}`);
-    this.events.emit("files.saved", { paths: saving.map(([path]) => path) });
-    return saving.length;
+    if (written.length > 0) {
+      // What changed again while saving still differs from the store, so it stays unsaved.
+      const left = this.discards === discards ? rebase(this.changes, written) : this.changes;
+      this.history.breakStep();
+      this.apply(left, `Saved ${written.length} file${written.length === 1 ? "" : "s"}`);
+      this.events.emit("files.saved", { paths: written.map(({ path }) => path) });
+    }
+    const [first] = held;
+    if (first !== undefined) {
+      throw new ChangedOnDiskError(first.path, first.current, held);
+    }
+    return written.length;
   }
 
   /**
@@ -369,6 +393,50 @@ export class WorkspaceFiles {
     const settled = text === view.theirs ? others : { ...others, [path]: text };
     this.apply(settled, choice === "use-other" ? `Used the other ${path}` : `Combined ${path}`);
     return view;
+  }
+
+  /**
+   * Takes in what changed outside Halonic for files with no unsaved changes,
+   * as one undo step labelled "Changed outside Halonic". The files then read
+   * their new text and a save expects it. Undoing the step brings the older
+   * text back as an unsaved change, as undoing past a save does.
+   *
+   * A file with unsaved changes is left alone and listed as `held`: its
+   * changes would be lost, so Compare settles it. A file that was never read
+   * has nothing to take in and is left out of both lists.
+   *
+   * @param paths - the files that changed, such as the paths a watch reported
+   * @returns the files taken in, with `null` for the text of one that is gone, and the files held
+   */
+  async reloadFromOutside(
+    paths: readonly string[],
+  ): Promise<{ reloaded: HeldFile[]; held: string[] }> {
+    // Store reads first: `change` may run while they wait, so the unsaved changes are read after them.
+    const stored = await Promise.all(
+      paths.map(async (path) => ({ path, text: await this.store.read(path) })),
+    );
+    const changes = this.changes;
+    const reloaded: HeldFile[] = [];
+    const held: string[] = [];
+    const saved: SavedFile[] = [];
+    for (const { path, text } of stored) {
+      if (!this.known.has(path)) continue;
+      if (Object.hasOwn(changes, path)) {
+        held.push(path);
+        continue;
+      }
+      const before = this.known.get(path) ?? null;
+      this.known.set(path, text);
+      if (before === text) continue;
+      reloaded.push({ path, current: text });
+      saved.push({ path, before, after: text });
+    }
+    if (saved.length === 0) return { reloaded, held };
+    // The kept steps and the new one are measured against the new store text.
+    this.history.map((snapshot) => rebase(snapshot, saved));
+    this.history.record(rebase(changes, saved), null);
+    this.apply(changes, "Changed outside Halonic");
+    return { reloaded, held };
   }
 
   /** Drops every unsaved change and the undo history, such as when the files are read again from disk. */

@@ -271,9 +271,28 @@ verifies("app.workspace-save-unchanged", () => {
     const failure = await files.save().catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(ChangedOnDiskError);
     expect(failure).toMatchObject({ path: "a.yaml", current: "outside" });
+    expect(failure).toMatchObject({ held: [{ path: "a.yaml", current: "outside" }] });
     expect(store.files.get("a.yaml")).toBe("outside");
-    expect(store.files.get("b.yaml")).toBe("b");
-    expect(files.pending).toEqual({ "a.yaml": "mine", "b.yaml": "b2" });
+    // Saving pauses for the held file only.
+    expect(store.files.get("b.yaml")).toBe("b2");
+    expect(files.pending).toEqual({ "a.yaml": "mine" });
+  });
+
+  it("lists every held file and writes the ones after them", async () => {
+    const { store, files } = open({ "a.yaml": "a", "b.yaml": "b", "c.yaml": "c", "d.yaml": "d" });
+    for (const path of ["a.yaml", "b.yaml", "c.yaml", "d.yaml"]) await files.read(path);
+    store.files.set("a.yaml", "outside a");
+    store.files.set("c.yaml", "outside c");
+    files.change("Edited", { "a.yaml": "1", "b.yaml": "2", "c.yaml": "3", "d.yaml": "4" });
+    const failure = await files.save().catch((error: unknown) => error);
+    expect(failure).toMatchObject({
+      held: [
+        { path: "a.yaml", current: "outside a" },
+        { path: "c.yaml", current: "outside c" },
+      ],
+    });
+    expect([store.files.get("b.yaml"), store.files.get("d.yaml")]).toEqual(["2", "4"]);
+    expect(files.pending).toEqual({ "a.yaml": "1", "c.yaml": "3" });
   });
 
   it("does not delete a file that changed outside Halonic", async () => {
@@ -482,5 +501,82 @@ verifies("app.workspace-compare", () => {
     await files.settle("a.yaml", "use-other");
     expect(await files.read("a.yaml")).toBeNull();
     expect(files.pending).toEqual({});
+  });
+});
+
+verifies("app.workspace-reload-outside", () => {
+  it("takes in files changed outside Halonic as one undo step", async () => {
+    const { store, files, changes } = open({ "a.yaml": "a", "b.yaml": "b" });
+    await files.read("a.yaml");
+    await files.read("b.yaml");
+    store.files.set("a.yaml", "a2");
+    store.files.set("b.yaml", "b2");
+    const result = await files.reloadFromOutside(["a.yaml", "b.yaml"]);
+    expect(result).toEqual({
+      reloaded: [
+        { path: "a.yaml", current: "a2" },
+        { path: "b.yaml", current: "b2" },
+      ],
+      held: [],
+    });
+    expect(files.dirty).toBe(false);
+    expect(changes.at(-1)).toBe("Changed outside Halonic");
+    expect(await files.read("a.yaml")).toBe("a2");
+    expect(files.undo()).toBe(true);
+    expect(files.pending).toEqual({ "a.yaml": "a", "b.yaml": "b" });
+    expect(files.canUndo).toBe(false);
+    expect(await files.save()).toBe(2);
+    expect(store.files.get("a.yaml")).toBe("a");
+    expect(files.redo()).toBe(true);
+    expect(files.pending).toEqual({ "a.yaml": "a2", "b.yaml": "b2" });
+  });
+
+  it("saves a file again after it was taken in", async () => {
+    const { store, files } = open({ "a.yaml": "a" });
+    await files.read("a.yaml");
+    store.files.set("a.yaml", "outside");
+    await files.reloadFromOutside(["a.yaml"]);
+    files.change("Edited", { "a.yaml": "mine" });
+    expect(await files.save()).toBe(1);
+    expect(store.files.get("a.yaml")).toBe("mine");
+  });
+
+  it("holds a file with unsaved changes and leaves out files it never read or that did not change", async () => {
+    const { store, files } = open({ "a.yaml": "a", "b.yaml": "b", "c.yaml": "c" });
+    await files.read("a.yaml");
+    await files.read("b.yaml");
+    files.change("Edited", { "a.yaml": "mine" });
+    store.files.set("a.yaml", "outside");
+    store.files.set("c.yaml", "c2");
+    const result = await files.reloadFromOutside(["a.yaml", "b.yaml", "c.yaml"]);
+    expect(result).toEqual({ reloaded: [], held: ["a.yaml"] });
+    expect(files.pending).toEqual({ "a.yaml": "mine" });
+    await expect(files.save()).rejects.toBeInstanceOf(ChangedOnDiskError);
+  });
+
+  it("takes in a file deleted outside Halonic, and undo brings its text back", async () => {
+    const { store, files } = open({ "a.yaml": "a" });
+    await files.read("a.yaml");
+    store.files.delete("a.yaml");
+    const result = await files.reloadFromOutside(["a.yaml"]);
+    expect(result.reloaded).toEqual([{ path: "a.yaml", current: null }]);
+    expect(await files.read("a.yaml")).toBeNull();
+    files.undo();
+    expect(files.pending).toEqual({ "a.yaml": "a" });
+    expect(await files.save()).toBe(1);
+    expect(store.files.get("a.yaml")).toBe("a");
+  });
+
+  it("measures older undo steps against the new text", async () => {
+    const { store, files } = open({ "a.yaml": "a", "b.yaml": "b" });
+    await files.read("a.yaml");
+    await files.read("b.yaml");
+    files.change("Edited b", { "b.yaml": "b1" });
+    store.files.set("a.yaml", "a2");
+    await files.reloadFromOutside(["a.yaml"]);
+    files.undo();
+    expect(files.pending).toEqual({ "b.yaml": "b1", "a.yaml": "a" });
+    files.undo();
+    expect(files.pending).toEqual({ "a.yaml": "a" });
   });
 });
