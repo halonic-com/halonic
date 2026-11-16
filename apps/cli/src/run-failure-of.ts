@@ -9,6 +9,8 @@ import type { ModelAlias, Provider } from "@halonicjs/format";
 import { assertNever } from "@halonicjs/std";
 import { filesOf, type LoadedWorkspace, modelAliases } from "@halonicjs/workspace";
 import { providerAddress } from "./doctor-workspace.ts";
+import { counted } from "./messages/counts.ts";
+import { harnessNames } from "./messages/harness-names.ts";
 import type { RunFailure } from "./messages/run-failures.ts";
 
 /** The event a failed run ends with. */
@@ -33,6 +35,14 @@ export interface FailedModel {
    * model left: no key was sent, rather than a key being turned away.
    */
   readonly keyMissing: boolean;
+}
+
+/** The step that failed while starting its sandbox or its harness program, as the run log names it. */
+export interface FailedStart {
+  /** The agent of the step, such as "writer". */
+  readonly agent: string;
+  /** The harness program the agent runs in; `undefined` for a failed sandbox. */
+  readonly harness?: { readonly id: string; readonly timeoutMs: number };
 }
 
 /** What {@link failedModelOf} reads from the workspace. */
@@ -116,17 +126,46 @@ export function failedModelOf(
 }
 
 /**
+ * The agent, and its harness program, of the step that failed to start: the
+ * step's own `sandbox.started` or `harness.started`, which the engine logs
+ * before it opens or starts anything. An earlier step's event doesn't count.
+ *
+ * @returns `undefined` when the step's log has no such event, as when the
+ *   engine had no harness of that id to start
+ *
+ * @example
+ * failedStartOf(events, failed);
+ * // { agent: "writer", harness: { id: "claude-code", timeoutMs: 60000 } }
+ */
+export function failedStartOf(
+  events: readonly RunEvent[],
+  failed: RunFailedEvent,
+): FailedStart | undefined {
+  let start: FailedStart | undefined;
+  for (const event of events) {
+    if (!("state" in event) || event.state !== failed.state) continue;
+    if (event.type === "sandbox.started" && failed.reason === "sandbox-start-failed") {
+      start = { agent: event.agent };
+    } else if (event.type === "harness.started" && failed.reason === "harness-start-failed") {
+      start = { agent: event.agent, harness: { id: event.harness, timeoutMs: event.timeoutMs } };
+    }
+  }
+  return start;
+}
+
+/**
  * The facts of a failed run's two lines, from its `run.failed` event and
  * the model it called last (requirement `cli.run-failure`).
  *
  * A reason whose lines need a fact the run log doesn't hold yet gets the
  * general lines, with the engine's own message: `budget` (the budget and
- * the spend), as do the reasons whose words wait for the board (HAL-2264)
- * and a model reason whose model or provider file can't be found. Of
- * those, `disk-full`, `interrupted` and `answer-not-an-option` have a known
+ * the spend), as do `harness-unavailable` (cli-output 3.4 has no line for
+ * it), and a reason whose model, provider file or started step can't be
+ * found. Of those, `disk-full`, `interrupted` and `answer-not-an-option` have a known
  * cause, so they leave out the "report it" line 2 (HAL-6451).
  *
  * @param model - from {@link failedModelOf}; `undefined` when the run called no model
+ * @param started - from {@link failedStartOf}; read for `sandbox-start-failed` and `harness-start-failed`
  * @returns `undefined` for a cancelled run, which prints "Stopped." or
  *   `runsMessages.showCancelled` instead (cli-output 1.5)
  *
@@ -137,6 +176,7 @@ export function failedModelOf(
 export function runFailureOf(
   failed: RunFailedEvent,
   model: FailedModel | undefined,
+  started?: FailedStart,
 ): RunFailure | undefined {
   const reason = failed.reason ?? "error";
   switch (reason) {
@@ -186,10 +226,13 @@ export function runFailureOf(
     case "interrupted":
     case "answer-not-an-option":
       return { ...generalFailure(failed), causeKnown: true };
-    case "budget":
     case "model-out-of-memory":
+      return outOfMemoryFailure(failed, model);
     case "sandbox-start-failed":
+      return sandboxFailure(failed, started);
     case "harness-start-failed":
+      return harnessFailure(failed, started);
+    case "budget":
     case "harness-unavailable":
     case "instructions-not-trusted":
     case "error":
@@ -197,6 +240,40 @@ export function runFailureOf(
     default:
       return assertNever(reason, "run failure reason");
   }
+}
+
+/** `model-out-of-memory` at the model the run called last. */
+function outOfMemoryFailure(failed: RunFailedEvent, model: FailedModel | undefined): RunFailure {
+  if (model === undefined) {
+    return generalFailure(failed);
+  }
+  return {
+    reason: "model-out-of-memory",
+    provider: providerName(model),
+    model: model.model,
+    alias: model.alias,
+  };
+}
+
+/** `sandbox-start-failed` for the agent of the step whose sandbox didn't start. */
+function sandboxFailure(failed: RunFailedEvent, started: FailedStart | undefined): RunFailure {
+  return started === undefined
+    ? generalFailure(failed)
+    : { reason: "sandbox-start-failed", agent: started.agent };
+}
+
+/** `harness-start-failed` for the program the step's `harness.started` names, and how long the engine waited for it. */
+function harnessFailure(failed: RunFailedEvent, started: FailedStart | undefined): RunFailure {
+  if (started?.harness === undefined) {
+    return generalFailure(failed);
+  }
+  const { id, timeoutMs } = started.harness;
+  return {
+    reason: "harness-start-failed",
+    agent: started.agent,
+    harness: harnessNames.get(id) ?? id,
+    within: counted(Math.round(timeoutMs / 1000), "second", "seconds"),
+  };
 }
 
 /** `key-refused` or `no-key`, which both name the secret; without one, the general lines. */

@@ -3,7 +3,7 @@ import { moneyAmount } from "@halonicjs/app";
 import type { ModelSkipReason } from "@halonicjs/events";
 import { counted, timesInWords } from "./counts.ts";
 import { defineMessages, type Message } from "./define.ts";
-import { errorMessages } from "./general.ts";
+import { errorMessages, issuesLink } from "./general.ts";
 import { type Phrase, phrase } from "./phrase.ts";
 import { sandboxMessages } from "./sandbox.ts";
 import { suggestedCommand } from "./suggested-command.ts";
@@ -42,8 +42,8 @@ export interface BusyRetries {
  * are here. The engine's other reasons (`RunFailureReason`) are elsewhere or
  * still wait for words:
  *
- * - the newer ones of HAL-2264 (sandbox-start-failed, harness-start-failed,
- *   model-out-of-memory, disk-full, interrupted) wait for the board;
+ * - `disk-full` and `interrupted` are general lines, line 1 only (HAL-6451);
+ *   `harness-unavailable` has no line in cli-output 3.4, so it is general too;
  * - `instructions-not-trusted` waits for words too: the CLI prints the engine's own text;
  * - a run the sandbox check refused before it started is `sandboxMessages`;
  *   one that started and then found the sandbox can't start is `sandbox-not-ready`,
@@ -131,6 +131,22 @@ export type RunFailure =
       readonly reason: "sandbox-not-ready";
       /** The `Sandbox` port's reason code from the run log, such as `bubblewrap-missing`. */
       readonly code: string;
+    }
+  | {
+      readonly reason: "model-out-of-memory";
+      readonly provider: string;
+      /** The model that didn't fit, such as "llama3.1:70b". */
+      readonly model: string;
+      readonly alias: string;
+    }
+  | { readonly reason: "sandbox-start-failed"; readonly agent: string }
+  | {
+      readonly reason: "harness-start-failed";
+      readonly agent: string;
+      /** The program, such as "Claude Code". */
+      readonly harness: string;
+      /** How long the engine waited for its first event, such as "60 seconds". */
+      readonly within: string;
     }
   | {
       readonly reason: "model-no-tools";
@@ -243,6 +259,22 @@ const lineOne = {
       run,
       phrase`${failure.model}, used by the model alias ${failure.alias}, can't use tools, and this step offers tools.`,
     ),
+  "model-out-of-memory": (run, failure) =>
+    failedIn(
+      run,
+      phrase`this computer doesn't have enough free memory for ${failure.provider} to load ${failure.model}.`,
+    ),
+  // The log holds no reason for the sandbox, so line 1 ends where cli-output 3.4's "reason" would start.
+  "sandbox-start-failed": (run, failure) =>
+    failedIn(
+      run,
+      phrase`${failure.agent} didn't start, because the sandbox on this computer didn't start.`,
+    ),
+  "harness-start-failed": (run, failure) =>
+    failedIn(
+      run,
+      phrase`${failure.agent} didn't start, because ${failure.harness} didn't start on this computer or didn't answer within ${failure.within}.`,
+    ),
   error: (run, failure) => {
     // An empty message says no more than none at all.
     const message = failure.message?.trim() ?? "";
@@ -296,6 +328,12 @@ const lineTwo = {
   // "In models.yaml" first, so it can't read as where the tools are.
   "model-no-tools": (_run, failure) =>
     phrase`In models.yaml, point the model alias ${failure.alias} at a model that can use tools.`,
+  "model-out-of-memory": (_run, failure) =>
+    phrase`Close other programs, or point the model alias ${failure.alias} at a smaller model in models.yaml, then run it again.`,
+  "sandbox-start-failed": () =>
+    phrase`Run it again. If it keeps happening, add --debug and report it: ${issuesLink}`,
+  "harness-start-failed": (_run, failure) =>
+    phrase`Check that ${failure.harness} starts in a terminal and is signed in, then run it again.`,
   error: (run) => bugFix(run),
   internal: (run) => bugFix(run),
 } satisfies ByReason;
