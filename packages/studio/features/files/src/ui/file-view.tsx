@@ -2,12 +2,19 @@ import { type CodeEditor, languageFor, openCodeEditor } from "@halonicjs/studio-
 import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState } from "react";
-import { fileName } from "../file-item.ts";
+import { fileItem, fileName } from "../file-item.ts";
 import { sizeOf, textKindOf } from "../file-size.ts";
-import { FilesHostService, type OutsideChange } from "../files-host.ts";
+import { type FileIssue, FilesHostService, type OutsideChange } from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
+import { causedElsewhere, type Elsewhere, problemsElsewhere } from "../problems-elsewhere.ts";
 import { CompareView } from "./compare-view.tsx";
 import { OutsideStrip } from "./outside-strip.tsx";
+import { ProblemsPanel } from "./problems-panel.tsx";
+
+/** How long after the last change the problems are checked again, in milliseconds. */
+export const recheckDelayMs = 300;
+
+const noElsewhere: Elsewhere = { count: 0, firstFile: undefined };
 
 type Loaded =
   | { readonly kind: "loading" }
@@ -42,6 +49,53 @@ export function FileView({ item, context }: ItemViewProps) {
   // Set when the user chose in the strip or in Compare: the reopened editor takes focus.
   const refocus = useRef(false);
   const [outside, setOutside] = useState<OutsideChange | undefined>(() => host.outside().get(path));
+
+  const editorRef = useRef<CodeEditor | undefined>(undefined);
+  // The editor is made once for a file, so it reads the announcer through a ref, not a dependency.
+  const announcer = useRef(context.announcer);
+  announcer.current = context.announcer;
+  const [problems, setProblems] = useState<readonly FileIssue[]>([]);
+  const problemsRef = useRef<readonly FileIssue[]>([]);
+  const [elsewhere, setElsewhere] = useState<Elsewhere>(noElsewhere);
+  const [reveal, setReveal] = useState<{ line: number; round: number } | undefined>();
+
+  // The problems are checked when the tab opens and again a moment after the files change, so
+  // typing never waits for the check. The first check is what other files looked like before
+  // this tab's changes; later ones are compared with it.
+  useEffect(() => {
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let before: ReadonlyMap<string, number> | undefined;
+    let newest = 0;
+    problemsRef.current = [];
+    setProblems([]);
+    setElsewhere(noElsewhere);
+    const check = () => {
+      const turn = ++newest;
+      host.problems().then(
+        (all) => {
+          if (stopped || turn !== newest) return;
+          before ??= problemsElsewhere(path, all);
+          const own = all.filter((issue) => issue.file === path);
+          problemsRef.current = own;
+          setProblems(own);
+          setElsewhere(causedElsewhere(path, before, all));
+          editorRef.current?.setProblems(own);
+        },
+        () => {},
+      );
+    };
+    check();
+    const unsubscribe = host.subscribe(() => {
+      clearTimeout(timer);
+      timer = setTimeout(check, recheckDelayMs);
+    });
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      unsubscribe();
+    };
+  }, [host, path]);
 
   useEffect(() => {
     setOutside(host.outside().get(path));
@@ -97,10 +151,17 @@ export function FileView({ item, context }: ItemViewProps) {
       label: filesWords.editorLabel(path),
       readOnly,
       onChange: (next) => host.edit(path, next),
+      onProblemJump: (problem) =>
+        announcer.current.announce(
+          filesWords.problemRead(problem.severity, problem.line, problem.message),
+        ),
+      onProblemMarkClick: (line) => setReveal((was) => ({ line, round: (was?.round ?? 0) + 1 })),
     }).then((made) => {
       if (stopped) made.destroy();
       else {
         editor = made;
+        editorRef.current = made;
+        made.setProblems(problemsRef.current);
         unsubscribe = follow(made);
         if (refocus.current) {
           refocus.current = false;
@@ -111,6 +172,7 @@ export function FileView({ item, context }: ItemViewProps) {
     return () => {
       stopped = true;
       unsubscribe();
+      editorRef.current = undefined;
       editor?.destroy();
     };
   }, [editing, host, path]);
@@ -207,6 +269,15 @@ export function FileView({ item, context }: ItemViewProps) {
         />
       )}
       {editing && <div ref={parent} className="min-h-0 flex-1 overflow-hidden" />}
+      {editing && (
+        <ProblemsPanel
+          problems={problems}
+          elsewhere={elsewhere}
+          reveal={reveal}
+          onGo={(issue) => editorRef.current?.goTo(issue.line, issue.col)}
+          onOpenFile={(other) => context.openItem?.(fileItem(other))}
+        />
+      )}
     </section>
   );
 }

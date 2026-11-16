@@ -83,6 +83,20 @@ export const filesWords = {
     names.length === 1
       ? `Reloaded ${names[0]}: changed outside Halonic`
       : `Reloaded ${names.length} files changed outside Halonic`,
+  /** The header of the Problems list under the editor; it shows while the list is collapsed. */
+  problems: (count: number): string => `Problems (${count})`,
+  problemsLabel: "Problems",
+  noProblems: "No problems.",
+  /** One row of the list. */
+  problemLine: (line: number, message: string): string => `Line ${line}: ${message}`,
+  /** What a screen reader reads for a row, and after F8 moved to a problem. */
+  problemRead: (severity: "error" | "warning", line: number, message: string): string =>
+    `Line ${line}, ${severity}: ${message.replace(/\.$/, "")}.`,
+  /** The line under the list about problems this file's changes cause in other files; the first file follows as a link. */
+  problemsElsewhere: (count: number): string =>
+    count === 1
+      ? "Changes in this file cause 1 problem in another file."
+      : `Changes in this file cause ${count} problems in other files.`,
   /** The toast after a new file is made, with its full path. */
   created: (path: string): string => `New file ${path}`,
 } as const;

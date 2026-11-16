@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
-import type { CodeEditorOptions } from "@halonicjs/studio-code-editor";
+import type { CodeEditorOptions, EditorProblem } from "@halonicjs/studio-code-editor";
 import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { filesFeature } from "../feature.ts";
 import { fileItem } from "../file-item.ts";
-import type { FilesHost } from "../files-host.ts";
+import type { FileIssue, FilesHost } from "../files-host.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { FileView } from "./file-view.tsx";
 
@@ -15,19 +15,34 @@ const opened: {
   destroyed: boolean;
   text: string;
   loads: string[];
+  shown: readonly EditorProblem[];
+  goneTo: [number, number | undefined][];
 }[] = [];
 
 // The real editor is tested in its own package; here a stand-in lets the test type.
 vi.mock("@halonicjs/studio-code-editor", () => ({
   languageFor: (path: string) => (path.endsWith(".md") ? "markdown" : "yaml"),
   openCodeEditor: async (options: CodeEditorOptions) => {
-    const entry = { options, destroyed: false, text: options.text, loads: [] as string[] };
+    const entry = {
+      options,
+      destroyed: false,
+      text: options.text,
+      loads: [] as string[],
+      shown: [] as readonly EditorProblem[],
+      goneTo: [] as [number, number | undefined][],
+    };
     opened.push(entry);
     return {
       text: () => entry.text,
       load: (text: string) => {
         entry.text = text;
         entry.loads.push(text);
+      },
+      setProblems: (problems: readonly EditorProblem[]) => {
+        entry.shown = problems;
+      },
+      goTo: (line: number, col?: number) => {
+        entry.goneTo.push([line, col]);
       },
       destroy: () => {
         entry.destroyed = true;
@@ -36,9 +51,15 @@ vi.mock("@halonicjs/studio-code-editor", () => ({
   },
 }));
 
+const announced: string[] = [];
+const openedItems: string[] = [];
+
 afterEach(() => {
   unmountAll();
   opened.length = 0;
+  announced.length = 0;
+  openedItems.length = 0;
+  vi.useRealTimers();
 });
 
 function hostOf(read: FilesHost["read"], edit: FilesHost["edit"] = () => {}): FilesHost {
@@ -63,6 +84,8 @@ function hostOf(read: FilesHost["read"], edit: FilesHost["edit"] = () => {}): Fi
 function show(host: FilesHost, path: string): HTMLElement {
   const context = {
     services: limitedLookup(filesFeature, { get: () => host }),
+    announcer: { announce: (text: string) => announced.push(text) },
+    openItem: (item: { id: string }) => openedItems.push(item.id),
   } as unknown as WorkspaceContext;
   return render(<FileView item={fileItem(path)} context={context} Sections={() => null} />);
 }
@@ -87,7 +110,9 @@ verifies("files.ui.file-tab", () => {
     expect(opened[0]?.options.text).toBe("name: a\n");
     expect(opened[0]?.options.language).toBe("yaml");
     expect(opened[0]?.options.label).toBe("Text of models.yaml");
-    expect(page.querySelector("button")).toBeNull();
+    expect([...page.querySelectorAll("button")].map((b) => b.textContent)).toEqual([
+      "▾Problems (0)",
+    ]);
   });
 
   it("sends every edit to the workspace's files", async () => {
@@ -216,5 +241,135 @@ verifies("files.ui.large-or-not-text", () => {
     expect(page.textContent).toContain("This file can't be shown here.");
     expect(page.textContent).toContain("It is 2.0 KB.");
     expect(opened).toHaveLength(0);
+  });
+});
+
+function issueIn(file: string, line: number, message = "Unknown model"): FileIssue {
+  return { file, severity: "error", message, line, col: 8 };
+}
+
+verifies("files.ui.problems-list", () => {
+  it("shows the file's problems in the list and the editor, and not another file's", async () => {
+    const page = show(
+      {
+        ...hostOf(async () => "a"),
+        problems: async () => [issueIn("a.yaml", 2), issueIn("b.yaml", 1)],
+      },
+      "a.yaml",
+    );
+    await settle();
+
+    expect(page.textContent).toContain("Problems (1)");
+    expect(page.textContent).toContain("Line 2: Unknown model");
+    expect(opened[0]?.shown).toEqual([issueIn("a.yaml", 2)]);
+  });
+
+  it("puts the editor's cursor where a chosen row says", async () => {
+    const page = show(
+      { ...hostOf(async () => "a"), problems: async () => [issueIn("a.yaml", 2)] },
+      "a.yaml",
+    );
+    await settle();
+
+    act(() => page.querySelector<HTMLElement>("li button")?.click());
+
+    expect(opened[0]?.goneTo).toEqual([[2, 8]]);
+  });
+
+  it("checks when the tab opens and 300 ms after the last change, not for every key", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const listeners = new Set<() => void>();
+    const notify = () => {
+      for (const listener of listeners) listener();
+    };
+    const problems = vi.fn(async () => [] as FileIssue[]);
+    show(
+      {
+        ...hostOf(async () => "a"),
+        problems,
+        subscribe: (listener) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+      },
+      "a.yaml",
+    );
+    await act(async () => {});
+    expect(problems).toHaveBeenCalledTimes(1);
+
+    notify();
+    await act(async () => vi.advanceTimersByTime(200));
+    notify();
+    await act(async () => vi.advanceTimersByTime(299));
+    expect(problems).toHaveBeenCalledTimes(1);
+    await act(async () => vi.advanceTimersByTime(1));
+    expect(problems).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows the problems the changes here caused in other files, once they appear", async () => {
+    let now: FileIssue[] = [issueIn("old.yaml", 1)];
+    const listeners = new Set<() => void>();
+    const notify = () => {
+      for (const listener of listeners) listener();
+    };
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const page = show(
+      {
+        ...hostOf(async () => "a"),
+        problems: async () => now,
+        subscribe: (listener) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+      },
+      "a.yaml",
+    );
+    await act(async () => {});
+    expect(page.textContent).not.toContain("Changes in this file");
+
+    now = [issueIn("old.yaml", 1), issueIn("flow.yaml", 3)];
+    notify();
+    await act(async () => vi.advanceTimersByTime(300));
+
+    expect(page.textContent).toContain("Changes in this file cause 1 problem in another file.");
+    act(() => page.querySelector<HTMLElement>("p button")?.click());
+    expect(openedItems).toEqual(["flow.yaml"]);
+  });
+
+  it("announces the problem F8 reached, and opens the list for a gutter icon", async () => {
+    const page = show(
+      {
+        ...hostOf(async () => "a"),
+        problems: async () => [issueIn("a.yaml", 2, "Unknown model.")],
+      },
+      "a.yaml",
+    );
+    await settle();
+
+    opened[0]?.options.onProblemJump?.({
+      severity: "error",
+      message: "Unknown model.",
+      line: 2,
+      col: 8,
+    });
+    expect(announced).toEqual(["Line 2, error: Unknown model."]);
+
+    act(() => opened[0]?.options.onProblemMarkClick?.(2));
+    expect(page.querySelector("[hidden]")).toBeNull();
+  });
+
+  it("keeps working when the check fails", async () => {
+    const page = show(
+      {
+        ...hostOf(async () => "a"),
+        problems: async () => {
+          throw new Error("no");
+        },
+      },
+      "a.yaml",
+    );
+    await settle();
+
+    expect(page.textContent).toContain("Problems (0)");
   });
 });

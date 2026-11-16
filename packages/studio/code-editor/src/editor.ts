@@ -19,6 +19,7 @@ import {
   lineNumbers,
 } from "@codemirror/view";
 import type { EditorLanguage } from "./language.ts";
+import { type EditorProblem, jumpToProblem, problemMarks, showProblems } from "./problems.ts";
 import { theme } from "./theme.ts";
 import { canRedo, canUndo, forgetHistoryEffect, redo, undo, undoHistory } from "./undo-history.ts";
 
@@ -34,6 +35,10 @@ export type CodeEditorOptions = {
   readonly onChange?: (text: string) => void;
   /** Called when Tab starts or stops moving focus (Ctrl M, or Esc then Tab). */
   readonly onTabFocusChange?: (tabMovesFocus: boolean) => void;
+  /** Called with the problem F8 or Shift F8 moved the cursor to, so its owner can read it out. */
+  readonly onProblemJump?: (problem: EditorProblem) => void;
+  /** Called with the line when the user clicks a problem's icon in the gutter. */
+  readonly onProblemMarkClick?: (line: number) => void;
 };
 
 export type CodeEditor = {
@@ -41,6 +46,10 @@ export type CodeEditor = {
   /** Replaces the whole text, for example after the file changed on disk. The undo history starts again. */
   readonly load: (text: string, language?: EditorLanguage) => void;
   readonly setReadOnly: (readOnly: boolean) => void;
+  /** Underlines the problems and marks their lines in the gutter, in place of the ones shown before. */
+  readonly setProblems: (problems: readonly EditorProblem[]) => void;
+  /** Puts the cursor at a 1-based line and column (kept inside the text), scrolls to it and focuses the editor. */
+  readonly goTo: (line: number, col?: number) => void;
   readonly focus: () => void;
   readonly undo: () => boolean;
   readonly redo: () => boolean;
@@ -91,6 +100,13 @@ export function createCodeEditor(options: CodeEditorOptions): CodeEditor {
     options.onTabFocusChange?.(on);
   };
 
+  /** F8 and Shift F8: the next and previous problem, wrapping. */
+  const jump = (view: EditorView, direction: 1 | -1): boolean => {
+    const problem = jumpToProblem(view, direction);
+    if (problem !== undefined) options.onProblemJump?.(problem);
+    return true;
+  };
+
   const keys: KeyBinding[] = [
     {
       key: "Tab",
@@ -119,6 +135,7 @@ export function createCodeEditor(options: CodeEditorOptions): CodeEditor {
         return true;
       },
     },
+    { key: "F8", run: (view) => jump(view, 1), shift: (view) => jump(view, -1) },
     { key: "Mod-z", run: undo, preventDefault: true },
     { key: "Mod-Shift-z", run: redo, preventDefault: true },
     { key: "Mod-y", run: redo, preventDefault: true },
@@ -132,6 +149,7 @@ export function createCodeEditor(options: CodeEditorOptions): CodeEditor {
         undoHistory,
         keymap.of([...keys, ...defaultKeymap]),
         lineNumbers(),
+        problemMarks((line) => options.onProblemMarkClick?.(line)),
         highlightActiveLine(),
         highlightActiveLineGutter(),
         drawSelection(),
@@ -166,6 +184,13 @@ export function createCodeEditor(options: CodeEditorOptions): CodeEditor {
     },
     setReadOnly: (readOnly) =>
       view.dispatch({ effects: readOnlySlot.reconfigure(EditorState.readOnly.of(readOnly)) }),
+    setProblems: (problems) => showProblems(view, problems),
+    goTo: (line, col = 1) => {
+      const target = view.state.doc.line(Math.min(Math.max(line, 1), view.state.doc.lines));
+      const at = target.from + Math.min(Math.max(col - 1, 0), target.length);
+      view.dispatch({ selection: { anchor: at }, scrollIntoView: true });
+      view.focus();
+    },
     focus: () => view.focus(),
     undo: () => undo(view),
     redo: () => redo(view),
