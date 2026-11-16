@@ -20,4 +20,19 @@ export const filesWords = {
   missingTitle: "This file isn't here any more",
   missingDescription: "It was moved or deleted. Pick another file in the tree.",
   unreadableTitle: "Couldn't open this file",
+  /** The strip above the editor of a file with unsaved changes that changed outside Halonic. */
+  changedOutside: (name: string): string => `${name} changed outside Halonic`,
+  deletedOutside: (name: string): string => `${name} was deleted outside Halonic.`,
+  compare: "Compare",
+  keepMine: "Keep mine",
+  useOther: "Use the other one",
+  combineBoth: "Combine both",
+  close: "Close",
+  cancel: "Cancel",
+  compareMine: "Yours",
+  compareTheirs: "In the folder now",
+  compareNone: "No file",
+  compareLoading: "Loading both texts",
+  /** What shows when a choice in Compare can't be saved. */
+  compareFailed: (reason: string): string => `Couldn't apply your choice: ${reason}`,
 } as const;
