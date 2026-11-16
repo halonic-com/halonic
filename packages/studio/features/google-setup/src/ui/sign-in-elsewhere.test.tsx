@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 const sentence = "Google sends the sign-in back to the computer running Halonic. Finish this step";
-const command = "halonic google sign-in x@example.com";
+const command = "halonic google sign-in gaccount_1";
 
 function buttons(container: HTMLElement): string[] {
   return [...container.querySelectorAll("button")].map((b) => b.textContent ?? "");
@@ -35,13 +35,14 @@ verifies("google-setup.sign-in-elsewhere", () => {
     expect(buttons(container).filter((name) => /Sign in|Open again|Cancel/.test(name))).toEqual([]);
   });
 
-  it("names the command with the connector's address and copies it", async () => {
+  it("names the command with the record's ref, never the address, and copies it", async () => {
     const { container } = await open(signedOut(), {
       signInEntry: { kind: "elsewhere", commandExists: true },
     });
     expect(container.textContent).toContain(`${sentence} there, or run ${command}`);
     expect(container.textContent).toContain("on it.");
     expect(container.querySelector("code")?.textContent).toBe(command);
+    expect(container.querySelector("code")?.closest("p")?.textContent).not.toContain("example.com");
     expect(container.querySelector(`button[aria-label="Copy the command"]`)).not.toBeNull();
   });
 
