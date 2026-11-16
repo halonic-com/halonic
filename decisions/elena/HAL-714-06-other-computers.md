@@ -2,7 +2,6 @@
 
 - Approval: the text is in the board-approved Google setup design, section 3.5 item 10 (HAL-621), and in the UX checklist 4.7 (HAL-1019); Liam signs this note with the pull request
 - Kind: user-visible
-- Signature: 
 - Task: HAL-714
 
 ## What changes
