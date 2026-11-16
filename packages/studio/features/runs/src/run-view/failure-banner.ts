@@ -1,8 +1,9 @@
 // The failed banners by cause (microcopy 22 F6, F7, F8, F10, F15, F20, F21; checklist FX-D2, FX-D3).
 // Each reads the run's reason, and the log for what the summary doesn't hold: the model and its
 // provider from the last model call, the agent from the last agent that started, and the harness
-// program and its limit from the last `harness.started`. Run again is the banner's button (`run-again.ts`); Open Models and Copy details
-// come with the banner that has room for a second one.
+// program and its limit from the last `harness.started`. Run again is the banner's button
+// (`run-again.ts`); Open Models and Copy details come with the banner that has room for a second
+// one.
 
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { failureWords } from "../failure-words.ts";
