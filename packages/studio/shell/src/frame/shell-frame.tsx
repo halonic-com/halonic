@@ -166,7 +166,7 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
           <ToastRegion store={props.toasts} />
         </div>
         {desktop ? (
-          <footer className="flex h-statusbar shrink-0 items-center gap-4 border-t border-border bg-surface-subtle px-3 text-caption text-fg-muted">
+          <footer className="group/bar flex h-statusbar shrink-0 items-center gap-4 border-t border-border bg-surface-subtle px-3 text-caption text-fg-muted">
             {hasContent(props.badges) ? (
               <div className="flex shrink-0 items-center gap-2 empty:hidden">{props.badges}</div>
             ) : null}
