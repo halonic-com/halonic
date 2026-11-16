@@ -92,6 +92,17 @@ export interface FilesHost {
    * one undo step. Rejects when Combine both is chosen and the texts can't be combined.
    */
   settle(path: string, choice: CompareChoice): Promise<void>;
+  /**
+   * Marks files a save left alone because they changed outside Halonic, `null` for one that is
+   * gone, so they wait for Compare like the ones the watch held. The app calls it with what the
+   * save reported.
+   */
+  noteHeld(held: readonly { readonly path: string; readonly current: string | null }[]): void;
+  /**
+   * Calls `listener` with the files the host took in from outside Halonic, because they had no
+   * unsaved changes (a deleted one counts), after each batch. Returns a function that stops the calls.
+   */
+  onReloaded(listener: (paths: readonly string[]) => void): () => void;
   /** Calls `listener` whenever a file, or a mark on one, may have changed. Returns a function that stops the calls. */
   subscribe(listener: () => void): () => void;
 }

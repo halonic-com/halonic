@@ -72,6 +72,11 @@ export const filesWords = {
       ? `Couldn't move ${name} to the trash.`
       : `Couldn't move ${name} to the trash: ${reason.replace(/\.$/, "")}.`,
   couldntPutBack: (name: string): string => `Couldn't put ${name} back`,
+  /** The toast after files changed outside Halonic were taken in: the name for one file, the count for a batch. */
+  reloaded: (names: readonly string[]): string =>
+    names.length === 1
+      ? `Reloaded ${names[0]}: changed outside Halonic`
+      : `Reloaded ${names.length} files changed outside Halonic`,
   /** The toast after a new file is made, with its full path. */
   created: (path: string): string => `New file ${path}`,
 } as const;

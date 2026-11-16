@@ -1,6 +1,12 @@
 import { AgentHostSandbox } from "@halonicjs/adapter-agent-host-client";
 import { TauriPickedFolders, TauriTrustStore } from "@halonicjs/adapter-fs-tauri";
 import { ServiceRegistry, sandboxStartCheck, sandboxStartCheckKey } from "@halonicjs/app";
+import {
+  type FilesHost,
+  FilesHostService,
+  fileItem,
+  followFilesHost,
+} from "@halonicjs/studio-feature-files/api";
 import { SampleWorkspaceService } from "@halonicjs/studio-feature-first-run/api";
 import { SandboxPassesService } from "@halonicjs/studio-feature-inbox/api";
 import {
@@ -41,6 +47,7 @@ import {
 } from "@halonicjs/studio-services";
 import {
   createShell,
+  itemLocationKey,
   type KeyboardPlatform,
   type Shell,
   type StudioHost,
@@ -334,7 +341,8 @@ export async function openFolder(
   }
   shell.services.instantiate(services);
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name });
-  const saving = scope === undefined ? undefined : savingOf(scope, workspace, name);
+  const outside = showFilesOutside(services, shell.toasts, workspace);
+  const saving = scope === undefined ? undefined : savingOf(scope, workspace, name, outside.onHeld);
   return {
     name,
     workspace,
@@ -342,10 +350,35 @@ export async function openFolder(
     trust: trustView,
     dispose: () => {
       if (trust !== undefined) open.delete(trust);
+      outside.stop();
       assistant?.dispose();
       return scope === undefined ? services.dispose() : scope.close();
     },
   };
+}
+
+/**
+ * Shows what happens to the workspace's files outside Halonic, as toasts and in the save note, and
+ * gives the save the way to tell the Files host about a file it held. Both do nothing without a Files host.
+ */
+function showFilesOutside(
+  services: ServiceRegistry,
+  toasts: Shell["toasts"],
+  workspace: StudioWorkspace,
+): { onHeld: (held: Parameters<FilesHost["noteHeld"]>[0]) => void; stop: () => void } {
+  if (!services.has(FilesHostService)) return { onHeld: () => undefined, stop: () => undefined };
+  const host = services.get(FilesHostService);
+  const stop = followFilesHost({
+    host,
+    toasts,
+    saving: workspace.saving,
+    open: (path) =>
+      workspace.tabs.openHere({
+        key: itemLocationKey(fileItem(path)),
+        title: path.slice(path.lastIndexOf("/") + 1),
+      }),
+  });
+  return { onHeld: (held) => host.noteHeld(held), stop };
 }
 
 /**

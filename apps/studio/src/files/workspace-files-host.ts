@@ -40,7 +40,9 @@ export interface FilesHostParts {
       options?: { coalesceKey?: string },
     ): void;
     /** Takes in outside changes of files with no unsaved changes as one undo step; the rest come back as `held`. */
-    reloadFromOutside(paths: readonly string[]): Promise<{ held: string[] }>;
+    reloadFromOutside(
+      paths: readonly string[],
+    ): Promise<{ reloaded: readonly { path: string }[]; held: string[] }>;
     /** Moves a file as one undo step; `rewrites` is the new text of the files that name it. Rejects with an `Error` when it can't. */
     rename(from: string, to: string, rewrites?: Record<string, string>): Promise<void>;
     /** Takes back the newest undo step; `false` when there is none. */
@@ -70,6 +72,7 @@ export class WorkspaceFilesHost implements FilesHost {
   readonly #parts: FilesHostParts;
   readonly #outside = new Map<string, OutsideChange>();
   readonly #listeners = new Set<() => void>();
+  readonly #reloadListeners = new Set<(paths: readonly string[]) => void>();
   #watch: Promise<DefinitionWatch | undefined> | undefined;
   #disposed = false;
 
@@ -102,16 +105,31 @@ export class WorkspaceFilesHost implements FilesHost {
   async dispose(): Promise<void> {
     this.#disposed = true;
     this.#listeners.clear();
+    this.#reloadListeners.clear();
     const watch = this.#watch;
     this.#watch = undefined;
     await (await watch)?.close();
   }
 
+  noteHeld(held: readonly { readonly path: string; readonly current: string | null }[]): void {
+    for (const { path, current } of held) {
+      this.#outside.set(path, current === null ? "deleted" : "changed");
+    }
+    this.#tell();
+  }
+
+  onReloaded(listener: (paths: readonly string[]) => void): () => void {
+    this.#reloadListeners.add(listener);
+    return () => this.#reloadListeners.delete(listener);
+  }
+
   /** Takes in one batch of outside changes: files without unsaved changes are reloaded, the others are held. */
   async #took(changes: readonly WorkspaceFileChange[]): Promise<void> {
+    let reloaded: readonly { path: string }[];
     try {
-      const { held } = await this.#parts.files.reloadFromOutside(changes.map(({ path }) => path));
-      for (const path of held) {
+      const taken = await this.#parts.files.reloadFromOutside(changes.map(({ path }) => path));
+      reloaded = taken.reloaded;
+      for (const path of taken.held) {
         const { theirs } = await this.#parts.files.compare(path);
         this.#outside.set(path, theirs === null ? "deleted" : "changed");
       }
@@ -120,6 +138,10 @@ export class WorkspaceFilesHost implements FilesHost {
       return;
     }
     this.#tell();
+    if (reloaded.length > 0 && !this.#disposed) {
+      const paths = reloaded.map(({ path }) => path);
+      for (const listener of this.#reloadListeners) listener(paths);
+    }
   }
 
   #tell(): void {

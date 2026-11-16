@@ -1,3 +1,4 @@
+import { ChangedOnDiskError } from "@halonicjs/app";
 import { createToastStore } from "@halonicjs/studio-kit";
 import { SaveState } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
@@ -163,6 +164,44 @@ verifies("workspace.saves-itself", () => {
       expect(historyKey(press({ key: "y", ctrlKey: true }), "windows")).toBeUndefined();
       expect(historyKey(press({ ctrlKey: true, altKey: true }), "windows")).toBeUndefined();
       expect(historyKey(press({ ctrlKey: true }), "macos")).toBeUndefined();
+    });
+  });
+});
+
+verifies("workspace.save-holds-changed-files", () => {
+  describe("WorkspaceSaving with a file changed outside Halonic", () => {
+    it("tells the host which files were held and shows no failure", async () => {
+      const { files, onChange } = fakeFiles();
+      const toasts = createToastStore();
+      const saving = new SaveState(toasts);
+      const heard: string[][] = [];
+      const workspace = new WorkspaceSaving({
+        files,
+        onChange,
+        saving,
+        name: "Acme",
+        onHeld: (held) => heard.push(held.map(({ path }) => path)),
+      });
+      files.failWith = new ChangedOnDiskError("a.md", "theirs");
+      files.change();
+
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+
+      expect(heard).toEqual([["a.md"]]);
+      expect(toasts.list()).toEqual([]);
+      expect(saving.note).toEqual({ kind: "saved" });
+      expect(workspace.problem).toBeUndefined();
+    });
+
+    it("still reports failures of other kinds", async () => {
+      const { files, saving, toasts } = setup();
+      files.failWith = new Error("disk is gone");
+      files.change();
+
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+
+      expect(saving.note.kind).toBe("failed");
+      expect(toasts.list()).toHaveLength(1);
     });
   });
 });
