@@ -13,7 +13,7 @@ import { SaveAsTest, type SaveAsTestProps } from "./save-as-test.tsx";
 /** Props for {@link RunCard}. */
 export interface RunCardProps {
   /** The runs feature's source, which the receipt reads the run's log from. */
-  readonly source: Pick<RunsSource, "log" | "workflow" | "currency">;
+  readonly source: Pick<RunsSource, "log" | "workflow" | "currency" | "providerKind">;
   /** The workspace's runs, to name a child run's workflow. */
   readonly runs: readonly SourcedRun[];
   readonly row: RunRow;
