@@ -73,6 +73,35 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
     expect(linux?.denyWrite).not.toContainEqual({ path: tools[0], literal: true });
   });
 
+  it("leaves out a tool folder on, above or inside anything the config hides or writes", () => {
+    const home = "C:\\Users\\Ada"; // leak-guard: allow absolute-path made-up Windows paths for the test
+    const keep = `${home}\\.nvm\\v22`;
+    const tools = [
+      keep,
+      `${home}\\.halonic-journal`, // journal folder itself
+      `${home}\\.halonic-journal\\bin`, // inside it
+      `${home}\\shared\\tools`, // inside a shared folder
+      `${home}\\.ssh`, // above a denied path
+      `${home}\\WORK\\bin`, // inside the working folder, other case
+    ];
+    const win = buildSrtConfig(
+      profile({
+        workingFolder: `${home}\\work`,
+        deniedPaths: [`${home}\\.ssh\\keys`],
+      }),
+      [`${home}\\.halonic-journal`],
+      [],
+      "win32",
+      [`${home}\\shared`],
+      tools,
+    ).filesystem;
+    expect(win?.allowRead).toContainEqual({ path: keep, literal: true });
+    expect(win?.denyWrite).toContainEqual({ path: keep, literal: true });
+    for (const path of tools.slice(1)) {
+      expect(win?.allowRead).not.toContainEqual({ path, literal: true });
+    }
+  });
+
   it("denies writing the tool settings and hooks inside the working folder", () => {
     const writes = buildSrtConfig(profile()).filesystem?.denyWrite;
     const inWork = (...parts: string[]) => ({

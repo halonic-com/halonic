@@ -4,6 +4,7 @@ import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import type { NetworkConfig, SandboxRuntimeConfig } from "@anthropic-ai/sandbox-runtime";
 import { writeFencedPaths } from "@halonicjs/app";
 import type { SandboxNetwork, SandboxProfile } from "@halonicjs/ports";
+import { clearOfPaths } from "./tool-folders.ts";
 
 /** A path the way sandbox-runtime wants a plain path: marked literal, so a `*` in it is never read as a pattern. */
 function literalPath(path: string): { path: string; literal: true } {
@@ -258,7 +259,8 @@ export async function assertSrtDeniesKeychain(profile: SandboxProfile): Promise<
  * denied (see {@link keychainMachServices}).
  *
  * On Windows, `toolFolders` (see `toolFoldersInProfile`) are readable and
- * not writable.
+ * not writable, unless one lies on, above or inside a hidden, shared or
+ * writable folder (either spelling): then it is left out.
  */
 export function buildSrtConfig(
   profile: SandboxProfile,
@@ -280,8 +282,17 @@ export function buildSrtConfig(
     writableFolders.push(profile.settingsFolder);
   }
   const notDeniedForWriting = deniesHoldingReopened(profile, writableFolders);
+  // srt lets `allowRead` win over `denyRead`, so a tool folder on, above or inside anything
+  // hidden (denied paths, the settings, journal and shared folders) is left out, in both spellings.
+  const tools =
+    platform === "win32"
+      ? clearOfPaths(
+          withResolved([...toolFolders]),
+          withResolved([...hidden, ...sharedFolders, ...writableFolders]),
+        )
+      : [];
   const readable = [
-    ...(platform === "win32" ? [...profile.readOnlyPaths, ...toolFolders] : []),
+    ...(platform === "win32" ? [...profile.readOnlyPaths, ...tools] : []),
     ...(profile.reopenedPaths ?? []),
     ...(sharedFolders.length > 0 ? [...writableFolders, ...profile.readOnlyPaths] : []),
   ];
@@ -303,7 +314,7 @@ export function buildSrtConfig(
       denyWrite: withResolved([
         ...hidden.filter((path) => !notDeniedForWriting.includes(path)),
         ...profile.readOnlyPaths,
-        ...(platform === "win32" ? toolFolders : []),
+        ...tools,
         ...toolSettings,
       ]).map(literalPath),
     },

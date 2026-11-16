@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toolFoldersInProfile } from "./tool-folders.ts";
+import { clearOfPaths, toolFoldersInProfile } from "./tool-folders.ts";
 
 const home = "C:\\Users\\Ada"; // leak-guard: allow absolute-path made-up Windows paths for the test
 const writable = [`${home}\\work`, `${home}\\tmp\\run`];
@@ -76,5 +76,23 @@ describe("toolFoldersInProfile", () => {
 
   it("returns nothing without a PATH", () => {
     expect(toolFoldersInProfile(undefined, home, [], writable)).toEqual([]);
+  });
+});
+
+describe("clearOfPaths", () => {
+  it("drops folders on, above or inside a refused path, ignoring case and slashes", () => {
+    const refused = [`${home}\\shared`, `${home}/Secret/keys`];
+    expect(
+      clearOfPaths(
+        [
+          `${home}\\SHARED`,
+          `${home}\\shared\\bin`,
+          `${home}\\secret`,
+          `${home}\\sharedx`,
+          `${home}\\ok`,
+        ],
+        refused,
+      ),
+    ).toEqual([`${home}\\sharedx`, `${home}\\ok`]);
   });
 });

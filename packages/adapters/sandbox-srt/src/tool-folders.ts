@@ -1,7 +1,7 @@
 import { win32 } from "node:path";
 
 /** `a` is `b`, or lies inside it, as Windows reads paths (without regard to case). */
-function insideOrSame(parent: string, child: string): boolean {
+export function insideOrSame(parent: string, child: string): boolean {
   const base = parent.toLowerCase();
   const path = child.toLowerCase();
   return path === base || path.startsWith(base.endsWith("\\") ? base : `${base}\\`);
@@ -45,4 +45,19 @@ export function toolFoldersInProfile(
     if (!found.has(folder.toLowerCase())) found.set(folder.toLowerCase(), folder);
   }
   return [...found.values()];
+}
+
+/**
+ * The `folders` that are not on, above or inside any of the `refused` paths.
+ * srt lets a read allowance win over a denial, so a tool folder above or
+ * inside a hidden folder would reopen it. Windows spelling and case are
+ * ignored, and `refused` should hold every spelling of each path (as given
+ * and link-resolved).
+ */
+export function clearOfPaths(folders: readonly string[], refused: readonly string[]): string[] {
+  const paths = refused.map((path) => win32.resolve(path));
+  return folders.filter((folder) => {
+    const resolved = win32.resolve(folder);
+    return !paths.some((path) => insideOrSame(path, resolved) || insideOrSame(resolved, path));
+  });
 }
