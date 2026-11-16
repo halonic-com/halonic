@@ -2,6 +2,7 @@
 
 - Approval: the plan for this change is approved on HAL-10655, and the review of this change is a child task of HAL-9910; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Qqbwky6s9nYmR9uehmlLBTlvtvQ+Ygi6gsq44I7UBycfgHYKaO9IEHRlV/60sOHyYrHPp5Cam2tJ9mfcr7PrAQ==
 - Task: HAL-9910
 
 ## What changes
