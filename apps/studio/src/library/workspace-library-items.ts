@@ -118,7 +118,8 @@ export class WorkspaceLibraryItems implements LibraryItemsHost {
     return {
       undo: async () => {
         if (files.pending !== afterDelete || !files.undo()) {
-          throw new Error(
+          throw new KindedError(
+            "conflict",
             `${name} can't be put back, because the workspace changed after it was deleted.`,
           );
         }

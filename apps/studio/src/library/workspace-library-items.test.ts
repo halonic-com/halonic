@@ -130,7 +130,10 @@ verifies("library.library-delete", () => {
     const { host, store, edit } = setup();
     const removed = await host.remove("skill", { hub: null, id: "tone" });
     edit("library/collections/claims.collection.yaml", "id: claims\nname: Claims 2\n");
-    await expect(removed.undo()).rejects.toThrow("can't be put back");
+    await expect(removed.undo()).rejects.toMatchObject({
+      kind: "conflict",
+      message: expect.stringContaining("can't be put back"),
+    });
     expect(store["library/skills/tone/SKILL.md"]).toBeUndefined();
     expect(store["library/collections/claims.collection.yaml"]).toContain("Claims 2");
   });
