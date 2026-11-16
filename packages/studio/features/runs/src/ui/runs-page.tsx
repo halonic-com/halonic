@@ -28,7 +28,6 @@ import {
 import { loadFailureReason } from "../load-failure.ts";
 import { emptyListWords, pageWords, runCommand } from "../run-words.ts";
 import { type RunsList, RunsListService, type RunsListState } from "../runs-list.ts";
-import { RunsOnComputer } from "./runs-on-computer.tsx";
 
 /** The Runs place's page: the open workspace's runs, from `RunsListService`. */
 export function RunsPage({ context }: PlaceViewProps) {
@@ -62,16 +61,14 @@ export interface RunsViewProps {
  * it started over how long it took. Refreshes update the rows in place (D1); the filters work
  * on the runs already loaded, so a filter change never waits (K4).
  *
+ * On a phone (1.14) it is the same page: the heading is for screen readers, the filters take two
+ * rows, and the kit's list draws each run as three lines with no ⋮.
+ *
  * Not here yet: the spend line (T4), opening a run in a new tab, the text
- * and hub filters, and the row's ⋮.
+ * and hub filters (and so the phone's Search and hub picker), and the row's ⋮.
  */
-export function RunsView(props: RunsViewProps) {
-  // The phone layout comes after 0.1.0; until then the phone says so (HAL-9390).
-  if (usePresentation() === "phone") return <RunsOnComputer />;
-  return <DesktopRuns {...props} />;
-}
-
-function DesktopRuns({ list, openRun, now = () => new Date() }: RunsViewProps) {
+export function RunsView({ list, openRun, now = () => new Date() }: RunsViewProps) {
+  const phone = usePresentation() === "phone";
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
   const state = useSyncExternalStore(subscribe, () => list.state);
   const [filters, setFilters] = useState<RunsFilters>(() => ({
@@ -104,8 +101,9 @@ function DesktopRuns({ list, openRun, now = () => new Date() }: RunsViewProps) {
 
   return (
     <div className="flex w-full flex-col gap-4 px-6 py-5">
+      {/* On a phone the top bar says "Runs", so the heading is for screen readers only. */}
       <header className="flex flex-col gap-1">
-        <h1 className="text-title">{pageWords.title}</h1>
+        <h1 className={phone ? "sr-only" : "text-title"}>{pageWords.title}</h1>
         <p className="text-body text-fg-muted">{pageWords.sentence}</p>
       </header>
       {state.loaded && state.error !== undefined ? (
@@ -121,6 +119,7 @@ function DesktopRuns({ list, openRun, now = () => new Date() }: RunsViewProps) {
         showEveryWorkflow={showEveryWorkflow}
         openRow={openRow}
         now={now()}
+        phone={phone}
       />
     </div>
   );
@@ -137,6 +136,7 @@ function PageBody({
   showEveryWorkflow,
   openRow,
   now,
+  phone,
 }: {
   readonly state: RunsListState;
   readonly rows: readonly RunRow[];
@@ -147,6 +147,7 @@ function PageBody({
   readonly showEveryWorkflow: () => void;
   readonly openRow: ((id: string) => void) | undefined;
   readonly now: Date;
+  readonly phone: boolean;
 }) {
   if (!state.loaded && state.error !== undefined) {
     return (
@@ -165,7 +166,7 @@ function PageBody({
   }
   return (
     <>
-      <Filters rows={rows} filters={filters} onChange={onFilters} />
+      <Filters rows={rows} filters={filters} onChange={onFilters} phone={phone} />
       <Runs
         loaded={state.loaded}
         rows={filterRuns(rows, filters)}
@@ -257,16 +258,19 @@ function Runs({
 
 /**
  * The status chips, one choice, with counts on Live and Needs you; then the Test runs chip, and
- * the Workflow chip while the list is of one workflow, which clears it.
+ * the Workflow chip while the list is of one workflow, which clears it. On a phone the two groups
+ * are two rows.
  */
 function Filters({
   rows,
   filters,
   onChange,
+  phone,
 }: {
   readonly rows: readonly RunRow[];
   readonly filters: RunsFilters;
   readonly onChange: (filters: RunsFilters) => void;
+  readonly phone: boolean;
 }) {
   const counts = statusCounts(rows, filters);
   const chip = (value: StatusFilter, count?: number) => ({
@@ -277,7 +281,10 @@ function Filters({
         : `${pageWords.statusChips[value]} ${count}`,
   });
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    // On a phone the two groups sit on two rows, 16px apart (T8-F19).
+    <div
+      className={phone ? "flex flex-col items-start gap-4" : "flex flex-wrap items-center gap-2"}
+    >
       <FilterChips
         label={pageWords.status}
         options={[
