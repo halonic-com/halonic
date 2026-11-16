@@ -46,6 +46,7 @@ import {
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
 import { desktopFeatures } from "./desktop-features.ts";
+import { watchDesktopResources } from "./desktop-resources.ts";
 import { newWorkspaceHostOf } from "./new-workspace-host.ts";
 import { openFolderScope, savingOf } from "./open-folder-scope.ts";
 import { openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
@@ -161,11 +162,13 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     recent: new RecentWorkspaces(page.storage ?? noStorage),
     toasts: shell.toasts,
   });
+  const resources = watchDesktopResources(ipc);
   const parts = {
     shell,
     switcher,
     platform,
     language: studioLanguage,
+    resources,
     ...newWorkspaceOf(page.window, platform),
   };
   const window = mountWorkspaceWindow(page.element, parts);
@@ -180,6 +183,7 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
   });
   const stopped = once(async () => {
     stopRegion();
+    resources.stop();
     await stopListening();
     window.unmount();
     stopAppearance();

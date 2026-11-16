@@ -128,6 +128,7 @@ verifies("studio.entry", () => {
     expect(started.host).toBe("served");
     expect(element.querySelector(tabsSelector)).not.toBeNull();
     expect(element.querySelector(headingSelector)?.textContent).toBe("Home");
+    expect(element.textContent).not.toContain(" free");
   });
 
   it("opens the window with no workspace name when the computer doesn't answer", async () => {
@@ -175,6 +176,14 @@ verifies("studio.entry", () => {
   });
 });
 
+/** What the shell's `resource_report` answers: 230 MB used, 48 GB free. */
+const resourceReport = {
+  engineMemoryBytes: 230 * 1024 ** 2,
+  childProcesses: [],
+  dataBytes: 5 * 1024 ** 2,
+  freeDiskBytes: 48 * 1024 ** 3,
+};
+
 /**
  * The desktop app's webview: Tauri's IPC, answering `pick_folder`, the keychain, and a run
  * folder without runs.
@@ -187,6 +196,7 @@ function desktopWebview(picked: string | null) {
     if (command === "fs_write") return { status: "written" };
     if (command === "fs_list") return [];
     if (command === "host_settings_read") return {};
+    if (command === "resource_report") return resourceReport;
     return command === "run_logs" ? [] : null;
   };
   const internals = { invoke, transformCallback: () => 1, unregisterCallback: () => {} };
@@ -290,6 +300,23 @@ verifies("studio.open-folder", () => {
     expect(new RecentWorkspaces(storage).list()).toEqual([
       { location: "/work/acme", name: "acme" },
     ]);
+  });
+
+  it("shows the resources item in the status bar of an opened folder (HAL-11118)", async () => {
+    const webview = desktopWebview("/work/acme");
+    started = startStudio({
+      element,
+      window: webview.page,
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      storage: memoryStorage(),
+    });
+    await headingShown(element);
+
+    element.querySelector("button")?.click();
+    await drawn(element);
+
+    await vi.waitFor(() => expect(element.textContent).toContain("230 MB · 48 GB free"));
+    expect(webview.calls.map((call) => call.command)).toContain("resource_report");
   });
 
   it("reopens a Recent row's folder in the shell after a restart, then shows it", async () => {

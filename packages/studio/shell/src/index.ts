@@ -9,7 +9,7 @@ export {
   type LiveRegions,
   type Politeness,
 } from "./announcer/announcer.ts";
-export type { AnnouncerTimers } from "./announcer/timers.ts";
+export { type AnnouncerTimers, systemTimers } from "./announcer/timers.ts";
 export {
   type BadgeRegistry,
   type BadgeState,

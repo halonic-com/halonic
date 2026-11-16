@@ -1041,7 +1041,7 @@ workspace.dispose();
 The rest of `src/index.ts`, by area; the types are what the parts above take and return.
 
 - **Announcer:** `createAnnouncer`, `announceQuietMs` (2 s), `Announcer`, `AnnouncerOptions`,
-  `AnnounceOptions`, `Politeness`, `LiveRegion`, `LiveRegions`, `AnnouncerTimers`.
+  `AnnounceOptions`, `Politeness`, `LiveRegion`, `LiveRegions`, `AnnouncerTimers`, `systemTimers`.
 - **Close stack:** `createCloseStack`, `closeLayerKinds` (the ranks, in closing order),
   `CloseStack`, `CloseLayer`, `CloseLayerKind`, `EscapePress`.
 - **Engine:** `createShellEngine`, `ShellEngine`, `ShellEngineState`, `EngineConnectionEvent`,
