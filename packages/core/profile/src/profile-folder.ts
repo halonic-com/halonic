@@ -68,8 +68,7 @@ export interface ProfileFolder {
   /**
    * Windows only: the folder every account on the computer shares for program
    * data (`%ProgramData%`), absolute. Nothing about the account is in its
-   * path. Absent where the system doesn't set it; {@link runnerTempFolder}
-   * then refuses to name a folder.
+   * path. Absent where the system doesn't set it.
    */
   readonly sharedDataFolder?: string;
 }
@@ -163,35 +162,34 @@ export function unfencedRunsFolder(profile: ProfileFolder): string {
 }
 
 /**
- * The folder the runners' private temp folders are made in, `runner-temp`: in
- * the profile folder, outside the shared `/tmp`, which the runner's profile
+ * The folder the runners' private temp folders are made in, `runner-temp` in
+ * the profile folder: outside the shared `/tmp`, which the runner's profile
  * hides, so the one folder a runner may write to is kept apart from it.
  *
- * On Windows it is `halonic\runner-temp` in `%ProgramData%` instead, because
- * the profile folder is inside the user's own profile. The runner sees the
- * path of its temp folder (its working folder, `TEMP`, `USERPROFILE`), and a
- * path inside the user's profile folder would give it the account name.
- * `%ProgramData%` is readable by every account by default, so this is only
- * the shared parent: whoever makes the runner's folder there gives it a
- * private folder of its own (`makeRunnerTempFolder` in
- * `@halonicjs/adapter-sandbox-srt`).
- *
- * @throws RangeError on Windows when the profile has no `sharedDataFolder`
+ * On Windows this folder is inside the user's own profile, so the runner sees
+ * the account name in its temp folder's path (its working folder, `TEMP`,
+ * `USERPROFILE`). {@link sharedRunnerTempFolder} names where it is made
+ * instead, when that can be done safely; this one is the private fallback.
  *
  * @example
  * runnerTempFolder({ platform: "linux", root: "/srv/acme/.local/share/halonic" });
  * // "/srv/acme/.local/share/halonic/runner-temp"
  */
 export function runnerTempFolder(profile: ProfileFolder): string {
-  if (profile.platform !== "windows") {
-    return joinPath(profile.platform, profile.root, runnerTempFolderName);
-  }
-  if (profile.sharedDataFolder === undefined) {
-    throw new RangeError(
-      "The runner's temp folder on Windows is made in %ProgramData%, which is not set to an absolute folder.",
-    );
-  }
-  return joinPath(profile.platform, profile.sharedDataFolder, folderName, runnerTempFolderName);
+  return joinPath(profile.platform, profile.root, runnerTempFolderName);
+}
+
+/**
+ * Windows only: the folder every account of the computer shares and whose
+ * path holds no account name, `%ProgramData%`, where the account's own runner
+ * temp folder is made (`makeRunnerTempFolder` in
+ * `@halonicjs/adapter-sandbox-srt`). Every account can read it by default, so
+ * nothing but a folder named for one account and kept private to it may go
+ * in. Absent on other systems and where `ProgramData` isn't set to an
+ * absolute folder; the runner then keeps {@link runnerTempFolder}.
+ */
+export function sharedRunnerTempFolder(profile: ProfileFolder): string | undefined {
+  return profile.platform === "windows" ? profile.sharedDataFolder : undefined;
 }
 
 /**

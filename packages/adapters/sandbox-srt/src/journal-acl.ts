@@ -82,13 +82,20 @@ export async function currentUserSid(start: RunProgram = runFixed): Promise<stri
 }
 
 /**
- * Windows has no mode bits, so a folder gets its own access list
- * (HAL-3896 for the journals, HAL-10674 for the runner's temp folders): inheritance off, and only the current user (by SID, so a
- * name with a domain or a space can't be misread) may do anything in it. The
- * programs are the fixed `whoami` and `icacls` of the system folder, never
- * from the PATH. The folder's owner is set to this user too (a folder owned by someone else
- * could be opened up again by them). Throws when either fails, so nothing is kept in a folder
+ * Windows has no mode bits, so a folder gets its own access list (HAL-3896 for
+ * the journals, HAL-10674 for the runner's temp folder): inheritance off, and
+ * only the current user (by SID, so a name with a domain or a space can't be
+ * misread) may do anything in it. The programs are the fixed `whoami` and
+ * `icacls` of the system folder, never from the PATH. The folder's owner is
+ * set to this user too (a folder owned by someone else could be opened up
+ * again by them). Throws when either fails, so nothing is kept in a folder
  * another user might reach.
+ *
+ * Use it on a folder this user just made. It takes the ownership when the
+ * owner has handed over the right to, and it leaves every explicit entry that
+ * is not a default one, so on a folder someone else made, whose entries may
+ * stay, it does not make the folder private: read it with `readFolderAccess`
+ * instead and refuse it.
  */
 export async function restrictToThisUser(
   folder: string,

@@ -1,6 +1,11 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { profileFolder, runnerTempFolder, unfencedRunsFolder } from "./profile-folder.ts";
+import {
+  profileFolder,
+  runnerTempFolder,
+  sharedRunnerTempFolder,
+  unfencedRunsFolder,
+} from "./profile-folder.ts";
 
 // Built from parts, so the repo's leak guard doesn't read them as a real machine's paths.
 const drive = "D:";
@@ -14,7 +19,7 @@ verifies("profile.profile-folder", () => {
     expect(runnerTempFolder(linux)).toBe("/srv/acme/.local/share/halonic/runner-temp");
   });
 
-  it("makes the runners' temp folders in %ProgramData% on Windows, away from the account name", () => {
+  it("names %ProgramData% as the shared place for the runners' temp folders on Windows, away from the account name", () => {
     const windows = profileFolder({
       platform: "windows",
       homeFolder: windowsHome,
@@ -23,17 +28,19 @@ verifies("profile.profile-folder", () => {
         ProgramData: `${drive}\\ProgramData\\`,
       },
     });
-    expect(runnerTempFolder(windows)).toBe(`${drive}\\ProgramData\\halonic\\runner-temp`);
-    expect(runnerTempFolder(windows)).not.toContain("acme");
+    expect(sharedRunnerTempFolder(windows)).toBe(`${drive}\\ProgramData`);
+    // The private fallback stays in the profile folder.
+    expect(runnerTempFolder(windows)).toBe(`${windowsHome}\\AppData\\Local\\halonic\\runner-temp`);
   });
 
-  it("refuses a runner temp folder on Windows without an absolute ProgramData", () => {
+  it("names no shared place without an absolute ProgramData, or off Windows", () => {
     const environment = { platform: "windows", homeFolder: windowsHome } as const;
-    expect(() => runnerTempFolder(profileFolder({ ...environment, variables: {} }))).toThrow(
-      RangeError,
-    );
-    expect(() =>
-      runnerTempFolder(profileFolder({ ...environment, variables: { ProgramData: "data" } })),
-    ).toThrow(RangeError);
+    expect(
+      sharedRunnerTempFolder(profileFolder({ ...environment, variables: {} })),
+    ).toBeUndefined();
+    expect(
+      sharedRunnerTempFolder(profileFolder({ ...environment, variables: { ProgramData: "data" } })),
+    ).toBeUndefined();
+    expect(sharedRunnerTempFolder(linux)).toBeUndefined();
   });
 });

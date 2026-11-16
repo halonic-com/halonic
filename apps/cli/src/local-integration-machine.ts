@@ -28,6 +28,7 @@ import {
   pluginsFolder,
   profileFolder,
   runnerTempFolder,
+  sharedRunnerTempFolder,
   unfencedRunsFolder,
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
@@ -102,7 +103,13 @@ export function computerIntegrationMachine(
       return await trust.check(read.subject);
     },
     runnerMachine: async (): Promise<RunnerMachine> => {
-      const tempFolder = await makeRunnerTempFolder(runnerTempFolder(profile));
+      const tempFolder = await makeRunnerTempFolder(
+        {
+          privateParent: runnerTempFolder(profile),
+          sharedParent: sharedRunnerTempFolder(profile),
+        },
+        { log: (text) => process.stderr.write(text) },
+      );
       made.push(tempFolder);
       return {
         homeFolder: homedir(),

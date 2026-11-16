@@ -1,6 +1,10 @@
 export { recoverGitFolders } from "./git-folder-check.ts";
 export { type LinuxHelper, type Machine, systemMachine } from "./machine.ts";
-export { makeRunnerTempFolder } from "./runner-temp-folder.ts";
+export {
+  makeRunnerTempFolder,
+  type RunnerTempOptions,
+  type RunnerTempPlaces,
+} from "./runner-temp-folder.ts";
 export { WSL_SHARED_FOLDERS } from "./shared-folders.ts";
 export { buildSrtConfig } from "./srt-config.ts";
 export { type Runner, sandboxRuntimeFolder, srtRunner } from "./srt-runner.ts";

@@ -23,6 +23,7 @@ import {
   pluginRecordsFolder,
   pluginsFolder,
   runnerTempFolder,
+  sharedRunnerTempFolder,
   trustFolder,
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
@@ -129,7 +130,13 @@ export function hostPluginMachine(options: HostPluginMachineOptions): HostPlugin
       return runner;
     },
     runnerMachine: async () => {
-      const tempFolder = await makeRunnerTempFolder(runnerTempFolder(profile));
+      const tempFolder = await makeRunnerTempFolder(
+        {
+          privateParent: runnerTempFolder(profile),
+          sharedParent: sharedRunnerTempFolder(profile),
+        },
+        { log },
+      );
       made.push(tempFolder);
       return {
         homeFolder: homedir(),

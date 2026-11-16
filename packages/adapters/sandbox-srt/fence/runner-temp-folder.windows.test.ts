@@ -1,19 +1,29 @@
 import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { makeRunnerTempFolder } from "../src/runner-temp-folder.ts";
+import { currentUserSid } from "../src/journal-acl.ts";
+import { accountFolderName, makeRunnerTempFolder } from "../src/runner-temp-folder.ts";
 
 /**
- * The runner's temp folder on a real Windows machine (HAL-10674): in the
- * folder every account shares, `makeRunnerTempFolder` gives the current user a
- * folder only it may use. The folder holds one entry, for the current user,
- * inherits nothing, the current user can write in it, and a second local
- * account can neither list it nor write in it. Run by the `sandbox-windows` CI
- * job (`vitest.fence-windows.config.ts`), whose runner account is an
- * administrator and may create the second account.
+ * The runner's temp folder on a real Windows machine (HAL-10674). The shared
+ * folder is made in `%ProgramData%`, like the one Halonic uses, so a second
+ * local account can read and make folders in it; a base in the CI user's own
+ * profile could not be reached by that account at all, and a denial there
+ * would prove nothing. Every denial is paired with a control that shows the
+ * same account can do the same thing where it is allowed.
+ *
+ * - `makeRunnerTempFolder` gives the current user a folder only it may use:
+ *   one entry, for the current user, nothing inherited.
+ * - A second local account can neither list it nor write in it.
+ * - When that account made the user's account folder first, with an entry of
+ *   its own and the user's full control (which includes taking the ownership),
+ *   the folder is refused and the temp folder is made in the profile.
+ *
+ * Run by the `sandbox-windows` CI job (`vitest.fence-windows.config.ts`), whose
+ * runner account is an administrator and may create the second account.
  */
 /** The exit code of a failed `execFile`, or -1 when it never started. */
 function exitCode(error: (Error & { code?: unknown }) | null): number {
@@ -37,8 +47,16 @@ const other = "halonic_tmp_probe";
 // A new password every run, so a leftover account never has a known one.
 const otherPassword = `Aa1!${randomBytes(4).toString("hex")}`;
 
-/** Runs a command line as the second account; its exit code, or -1 when it could not start. */
-async function asOther(commandLine: string): Promise<number> {
+/** What a command line run as the second account ended with. */
+interface AsOther {
+  /** Its exit code, or -1 when it could not start. */
+  code: number;
+  /** What it and the script around it printed, to put in an assertion's message. */
+  output: string;
+}
+
+/** Runs a command line (`cmd /c`) as the second account. */
+async function asOther(commandLine: string): Promise<AsOther> {
   const script = `
 $ErrorActionPreference = 'Stop'
 $p = New-Object System.Diagnostics.Process
@@ -50,64 +68,135 @@ $p.StartInfo.Domain = $env:COMPUTERNAME
 $p.StartInfo.WorkingDirectory = "$env:SystemRoot\\System32"
 $p.StartInfo.UseShellExecute = $false
 $p.StartInfo.LoadUserProfile = $false
+$p.StartInfo.RedirectStandardOutput = $true
+$p.StartInfo.RedirectStandardError = $true
 $p.Start() | Out-Null
+$out = $p.StandardOutput.ReadToEnd() + $p.StandardError.ReadToEnd()
 $p.WaitForExit()
+Write-Output $out
 exit $p.ExitCode`;
-  const { code } = await run(
+  const { code, stdout, stderr } = await run(
     "powershell.exe",
     ["-NoProfile", "-NonInteractive", "-Command", script],
-    {
-      ...process.env,
-      PROBE_COMMAND: commandLine,
-      PROBE_PASSWORD: otherPassword,
-    },
+    { ...process.env, PROBE_COMMAND: commandLine, PROBE_PASSWORD: otherPassword },
   );
-  return code;
+  return { code, output: `${commandLine}: ${stdout} ${stderr}`.trim() };
 }
 
+/** `icacls` entries of a folder, one lower-cased line each. */
+async function entriesOf(folder: string): Promise<string[]> {
+  const { code, stdout } = await run("icacls.exe", [folder]);
+  expect(code, stdout).toBe(0);
+  return stdout
+    .split(/\r?\n/)
+    .filter((line) => /:\(/.test(line))
+    .map((line) => line.trim().toLowerCase());
+}
+
+const programData = process.env["ProgramData"] ?? "";
+
 describe("the runner's temp folder on Windows", () => {
-  let base: string;
+  /** Stands for %ProgramData%: made there by the administrator, so it has the access lists a folder there has. */
+  let shared: string;
+  let privateParent: string;
+  let profileBase: string;
   let folder: string;
+  let account: string;
+  let notes: string[];
+  let sid: string;
+
+  /** Makes the second account able to make folders in `parent`, as the `Users` group can in `%ProgramData%`. */
+  async function letOtherMakeFolders(parent: string): Promise<void> {
+    const granted = await run("icacls.exe", [parent, "/grant", `${other}:(M)`]);
+    expect(granted.code, `icacls: ${granted.stdout} ${granted.stderr}`).toBe(0);
+  }
 
   beforeAll(async () => {
-    // The folder every account shares: under the temp folder here, readable by the other account like %ProgramData% is.
-    base = await mkdtemp(join(tmpdir(), "halonic-runner-temp-"));
+    expect(programData, "ProgramData is set").not.toBe("");
+    profileBase = await mkdtemp(join(tmpdir(), "halonic-runner-profile-"));
+    privateParent = join(profileBase, "runner-temp");
+    shared = await mkdtemp(join(programData, "halonic-fence-"));
     await run("net.exe", ["user", other, "/delete"]); // a leftover from an earlier run, if any
     const added = await run("net.exe", ["user", other, otherPassword, "/add"]);
     expect(added.code, `net user: ${added.stdout} ${added.stderr}`).toBe(0);
-    folder = await makeRunnerTempFolder(join(base, "runner-temp"));
+    await letOtherMakeFolders(shared);
+    sid = await currentUserSid();
+    account = join(shared, accountFolderName(sid));
+    notes = [];
+    folder = await makeRunnerTempFolder(
+      { privateParent, sharedParent: shared },
+      { log: (text) => notes.push(text) },
+    );
   }, 60_000);
 
   afterAll(async () => {
     await run("net.exe", ["user", other, "/delete"]);
-    await rm(base, { recursive: true, force: true });
+    await rm(profileBase, { recursive: true, force: true });
+    await rm(shared, { recursive: true, force: true });
   });
 
-  it("lets only the current user into the run's folder, and nothing is inherited from the shared folder", async () => {
-    const { code, stdout } = await run("icacls.exe", [folder]);
-    expect(code).toBe(0);
-    const entries = stdout
-      .split(/\r?\n/)
-      .filter((line) => /:\(/.test(line))
-      .map((line) => line.trim().toLowerCase());
-    expect(entries, stdout).toHaveLength(1);
-    expect(entries[0]).toContain((process.env["USERNAME"] ?? "").toLowerCase());
-    for (const group of ["users", "everyone", "authenticated users"]) {
-      expect(entries[0], group).not.toContain(`\\${group}:`);
+  it("makes the run's folder in the account's own folder in the shared folder", () => {
+    expect(notes).toEqual([]);
+    expect(folder.toLowerCase().startsWith(`${account.toLowerCase()}\\r-`)).toBe(true);
+  });
+
+  it("lets only the current user into the account's folder and the run's folder, and nothing is inherited", async () => {
+    for (const path of [account, folder]) {
+      const entries = await entriesOf(path);
+      expect(entries, path).toHaveLength(1);
+      expect(entries[0]).toContain((process.env["USERNAME"] ?? "").toLowerCase());
+      for (const group of ["users", "everyone", "authenticated users"]) {
+        expect(entries[0], group).not.toContain(`\\${group}:`);
+      }
     }
   });
 
   it("lets the current user write in it", async () => {
-    const { code, stdout } = await run("cmd.exe", [
-      "/c",
-      `echo ok > "${join(folder, "scratch.txt")}"`,
-    ]);
-    expect(code, stdout).toBe(0);
+    await writeFile(join(folder, "scratch.txt"), "ok");
+    expect(await readdir(folder)).toContain("scratch.txt");
   });
 
-  it("is reachable by another local account neither to read nor to write", async () => {
-    expect(await asOther("exit 0")).toBe(0); // the account works at all
-    expect(await asOther(`dir "${folder}"`)).not.toBe(0);
-    expect(await asOther(`echo x > "${join(folder, "planted.txt")}"`)).not.toBe(0);
+  it("is reachable by another local account neither to read nor to write, where that account can reach the shared folder", async () => {
+    const works = await asOther("exit 0");
+    expect(works.code, works.output).toBe(0); // the account works at all
+    // The controls: the same account lists the shared folder and makes a folder of its own in it.
+    const lists = await asOther(`dir "${shared}"`);
+    expect(lists.code, lists.output).toBe(0);
+    const makes = await asOther(`mkdir "${join(shared, "control-folder")}"`);
+    expect(makes.code, makes.output).toBe(0);
+    // The attacks.
+    for (const path of [account, folder]) {
+      const reads = await asOther(`dir "${path}"`);
+      expect(reads.code, reads.output).not.toBe(0);
+    }
+    const writes = await asOther(`echo x > "${join(folder, "planted.txt")}"`);
+    expect(writes.code, writes.output).not.toBe(0);
+    expect(await readdir(folder)).not.toContain("planted.txt");
+  });
+
+  it("refuses an account folder another account made first, with its own entry and the user's full control", async () => {
+    const planted = await mkdtemp(join(programData, "halonic-fence-"));
+    try {
+      await letOtherMakeFolders(planted);
+      const plantedAccount = join(planted, accountFolderName(sid));
+      const plantedByOther = await asOther(
+        `mkdir "${plantedAccount}" && icacls "${plantedAccount}" /grant ${other}:(OI)(CI)F /grant *${sid}:(OI)(CI)F`,
+      );
+      expect(plantedByOther.code, plantedByOther.output).toBe(0);
+      const otherNotes: string[] = [];
+      const fallback = join(profileBase, "fallback-runner-temp");
+      const made = await makeRunnerTempFolder(
+        { privateParent: fallback, sharedParent: planted },
+        { log: (text) => otherNotes.push(text) },
+      );
+      expect(made.toLowerCase().startsWith(`${fallback.toLowerCase()}\\`)).toBe(true);
+      expect(otherNotes).toHaveLength(1);
+      expect(otherNotes[0]).toContain("not private");
+      // Nothing of the run went into the planted folder, and its entry was not carried anywhere.
+      expect(await readdir(plantedAccount)).toEqual([]);
+      expect((await entriesOf(made)).join("\n")).not.toContain(other);
+    } finally {
+      await rm(planted, { recursive: true, force: true });
+    }
   });
 });

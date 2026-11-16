@@ -100,15 +100,21 @@ afterAll(async () => {
 
 /**
  * Like {@link attackFolders}, but the temp folder is made the way Halonic makes
- * the runner's on Windows: in the account's own private folder in
- * `halonic\runner-temp` in `%ProgramData%`, outside the user's profile
- * (`runnerTempFolder` in `@halonicjs/profile`, `makeRunnerTempFolder`).
+ * the runner's on Windows: in the account's own private folder directly in
+ * `%ProgramData%`, outside the user's profile (`makeRunnerTempFolder`). The
+ * profile fallback is in `base`, so a folder that fell back there is told apart.
  */
 async function attackFoldersOutsideProfile(base: string, name: string): Promise<AttackFolders> {
   const inBase = await attackFolders(base, name);
-  const parent = join(process.env["ProgramData"] ?? "", "halonic", "runner-temp");
-  const tempFolder = await makeRunnerTempFolder(parent);
+  const sharedParent = process.env["ProgramData"] ?? "";
+  const notes: string[] = [];
+  const tempFolder = await makeRunnerTempFolder(
+    { privateParent: join(base, "profile-runner-temp"), sharedParent },
+    { log: (text) => notes.push(text) },
+  );
   outsideProfileFolders.push(tempFolder);
+  expect(notes, "the shared folder was used").toEqual([]);
+  expect(tempFolder.toLowerCase().startsWith(`${sharedParent.toLowerCase()}\\`)).toBe(true);
   return { integrationFolder: inBase.integrationFolder, tempFolder };
 }
 
@@ -285,8 +291,8 @@ describe("an integration in the runner on native Windows, Node's layer only", ()
     // libuv would fill in with the user's account name, profile folder and
     // domain. Three of them, and the working folder, are the runner's temp
     // folder, which Halonic makes in %ProgramData%, outside the profile
-    // folder (`runnerTempFolder`, HAL-10674), in a folder private to the user, so its path holds no account
-    // name either. The test makes its temp folder in the same place.
+    // folder (HAL-10674), in a folder private to the user, so its path holds no
+    // account name either. The test makes its temp folder in the same place.
     const folders = await attackFoldersOutsideProfile(base, "a17");
     const expected: Record<string, string> = {
       TMPDIR: folders.tempFolder,

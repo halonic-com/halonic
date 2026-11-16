@@ -10,6 +10,7 @@ export {
   sandboxJournalFolder,
   secretsFile,
   settingsFolder,
+  sharedRunnerTempFolder,
   toolApprovalFolder,
   trustFolder,
   unfencedRunsFolder,
