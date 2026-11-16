@@ -33,7 +33,7 @@ function RegisteredBadge({ state }: { readonly state: BadgeState }) {
         <HeaderBadge
           as="button"
           action={action}
-          label={`${state.label}. ${action}`}
+          label={`${asSentence(state.label)} ${action}`}
           onClick={() => onSelect(opener.current)}
         >
           {state.label}
@@ -41,4 +41,9 @@ function RegisteredBadge({ state }: { readonly state: BadgeState }) {
       </span>
     );
   return tooltip === undefined ? badge : <Tooltip text={tooltip}>{() => badge}</Tooltip>;
+}
+
+/** The label as a sentence before the action: a full stop, unless it already ends a sentence. */
+function asSentence(label: string): string {
+  return /[.!?]$/.test(label) ? label : `${label}.`;
 }

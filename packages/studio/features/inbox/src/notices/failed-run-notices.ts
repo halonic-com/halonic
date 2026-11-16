@@ -20,13 +20,19 @@ export interface FailedRunNotice {
   readonly title: string;
 }
 
-/** The routine's name for the title, by its key `<hubId>/<routineId>`. */
-export type RoutineName = (routineId: string) => string;
+/**
+ * The routine's name for the title, by its key `<hubId>/<routineId>`, with the newest failed run
+ * for a name to fall back on when the routine is gone.
+ */
+export type RoutineName = (routineId: string, run: RunSummary) => string;
+
+/** The failure reasons that have their own place: you were there, or another row says it. */
+const madeElsewhere: ReadonlySet<string> = new Set(["cancelled", "budget", "sandbox-not-ready"]);
 
 /**
  * The failed-run notices in these runs: one per routine per day, newest first. A run you started
- * by hand, a Try it or Test run, a cancelled run and a budget stop make none (requirement
- * `inbox.failed-run-notices`).
+ * by hand, a Try it or Test run, a cancelled run, a budget stop and a run the sandbox refused make
+ * none; the sandbox row says those (requirement `inbox.failed-run-notices`).
  *
  * @example
  * failedRunNotices(await store.list({ status: ["failed", "completed"] }), nameOf, new Date());
@@ -44,7 +50,7 @@ export function failedRunNotices(
     if (run.status === "completed") {
       const latest = finished.get(routineId);
       if (latest === undefined || latest < run.endedAt) finished.set(routineId, run.endedAt);
-    } else if (run.status === "failed" && run.reason !== "cancelled" && run.reason !== "budget") {
+    } else if (run.status === "failed" && !madeElsewhere.has(run.reason ?? "")) {
       const key = noticeKey(routineId, localDay(run.endedAt));
       failedByRoutineDay.set(key, [...(failedByRoutineDay.get(key) ?? []), run]);
     }
@@ -65,7 +71,7 @@ function notice(
   const newest = failed.reduce((a, b) => ((a.endedAt ?? "") >= (b.endedAt ?? "") ? a : b));
   const at = newest.endedAt ?? newest.startedAt;
   const routineId = newest.trigger?.routineId ?? "";
-  const name = routineName(routineId);
+  const name = routineName(routineId, newest);
   const day = localDay(at);
   const today = localDay(now.toISOString());
   const count = failed.length;

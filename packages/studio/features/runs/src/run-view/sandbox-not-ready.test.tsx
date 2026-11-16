@@ -95,7 +95,7 @@ verifies("runs.run-view.sandbox-not-ready", () => {
     await act(async () => button(root)?.click());
 
     expect(check).toHaveBeenCalledTimes(1);
-    expect(banner(root)?.textContent).toContain("The sandbox is ready. Run again to start it.");
+    expect(banner(root)?.textContent).toContain("The sandbox is ready. The next run can start.");
     expect(button(root)).toBeUndefined();
   });
 

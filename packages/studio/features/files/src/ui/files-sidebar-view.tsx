@@ -38,6 +38,12 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   const [renaming, setRenaming] = useState<string>();
   const toasts = useToastStore();
   const addButton = useRef<HTMLButtonElement>(null);
+  // The New file button that opened the dialog, the top one or the empty state's, gets focus back.
+  const opener = useRef<HTMLElement | null>(null);
+  const startAdding = useCallback(() => {
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setAdding(true);
+  }, []);
 
   const latest = useRef(0);
 
@@ -130,7 +136,12 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   const folder = focused !== undefined && !files.includes(focused) ? focused : undefined;
   const body =
     roots.length === 0 ? (
-      <EmptyState plain title={filesWords.emptyTitle} description={filesWords.emptyDescription} />
+      <EmptyState
+        plain
+        title={filesWords.emptyTitle}
+        description={filesWords.emptyDescription}
+        action={{ label: filesWords.newFile, onClick: startAdding }}
+      />
     ) : (
       <FilesTree
         roots={roots}
@@ -149,7 +160,7 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
           size="sm"
           icon={<PlusIcon />}
           label={filesWords.newFile}
-          onClick={() => setAdding(true)}
+          onClick={startAdding}
         />
       </div>
       {body}
@@ -157,7 +168,7 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
         <NewFileDialog
           host={host}
           start={startingPath(folder)}
-          returnFocus={() => addButton.current}
+          returnFocus={() => (opener.current?.isConnected ? opener.current : addButton.current)}
           onCancel={() => setAdding(false)}
           onCreated={(path) => {
             setAdding(false);

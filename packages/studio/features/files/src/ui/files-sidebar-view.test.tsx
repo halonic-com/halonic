@@ -133,6 +133,33 @@ verifies("files.ui.tree-view", () => {
     expect(page.textContent).toContain("No files yet");
   });
 
+  it("offers New file in the empty state, which opens the dialog and gets focus back", async () => {
+    fakeModal();
+    try {
+      const page = await show(hostOf(listing([])));
+      const inEmpty = [...page.querySelectorAll("button")].find(
+        (button) => button.textContent === "New file",
+      );
+      expect(inEmpty).toBeDefined();
+      await act(async () => {
+        inEmpty?.focus();
+        inEmpty?.click();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(document.querySelector<HTMLInputElement>("input")?.value).toBe("hubs/");
+      const cancel = [...document.querySelectorAll("button")].find(
+        (button) => button.textContent === "Cancel",
+      );
+      await act(async () => {
+        cancel?.click();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(document.activeElement).toBe(inEmpty);
+    } finally {
+      restoreModal();
+    }
+  });
+
   it("lists again on a change and keeps the opened folders", async () => {
     let changed = () => {};
     let current = listing(files);

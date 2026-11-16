@@ -14,7 +14,14 @@ import type {
 } from "@halonicjs/events";
 import { draftsOf, readsOf, sendsOf } from "@halonicjs/events";
 import type { SourcedRun } from "../api.ts";
-import { costParts, currentStepName, needsYouLine, took, waitingLine } from "../list/run-row.ts";
+import {
+  costParts,
+  currentStepName,
+  enteredAStep,
+  needsYouLine,
+  took,
+  waitingLine,
+} from "../list/run-row.ts";
 import {
   lineSeparator,
   receiptWords,
@@ -73,7 +80,9 @@ function lead(
     case "done":
       return rowLineWords.finishedIn(took(summary));
     case "failed":
-      return summaryWords.failedIn(step, took(summary));
+      return enteredAStep(summary)
+        ? summaryWords.failedIn(step, took(summary))
+        : summaryWords.failedAfter(took(summary));
     case "budget":
       return rowLineWords.budgetReached(step, took(summary));
     case "cancelled":

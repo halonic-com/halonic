@@ -44,11 +44,13 @@ function storage(initial: Record<string, string> = {}) {
   };
 }
 
-function setup(location = "/work/acme", shared = storage()) {
+function setup(location = "/work/acme", shared = storage(), routines = ["acme/daily"]) {
   const listeners = new Set<() => void>();
   const runs = {
     list: async () => [{ summary: failedRun() }],
-    routine: (key: string) => (key === "acme/daily" ? { name: "Daily summary" } : undefined),
+    routine: (key: string) => (routines.includes(key) ? { name: "Daily summary" } : undefined),
+    workflow: (hubId: string, id: string) =>
+      hubId === "acme" && id === "daily" ? { name: "Daily digest" } : undefined,
     subscribe: (listener: () => void) => {
       listeners.add(listener);
       return () => void listeners.delete(listener);
@@ -63,6 +65,13 @@ verifies("studio.inbox-notices", () => {
     const { notices } = setup();
     expect((await notices.list()).map((one) => one.title)).toEqual([
       "Daily summary failed at 06:00",
+    ]);
+  });
+
+  it("names the run by its workflow, not the routine's key, when the routine is gone", async () => {
+    const { notices } = setup("/work/acme", storage(), []);
+    expect((await notices.list()).map((one) => one.title)).toEqual([
+      "Daily digest failed at 06:00",
     ]);
   });
 

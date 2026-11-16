@@ -67,6 +67,16 @@ verifies("inbox.failed-run-notices", () => {
     expect(failedRunNotices(runs, routineName, now)[0]?.fixed).toBe(false);
   });
 
+  it("makes none for a run the sandbox refused, which the sandbox row counts", () => {
+    const runs = [routineRun("refused", 6, 0, { reason: "sandbox-not-ready" })];
+    expect(failedRunNotices(runs, routineName, now)).toEqual([]);
+  });
+
+  it("names a gone routine as the naming gives it, with the newest run to go on", () => {
+    const named = failedRunNotices([routineRun("r1", 6, 0)], (_id, run) => `Run ${run.id}`, now);
+    expect(named[0]?.title).toBe("Run r1 failed at 06:00");
+  });
+
   it("makes none for a run started by hand, a Try it run, a cancel or a budget stop", () => {
     const runs = [
       routineRun("by-hand", 6, 0, { trigger: null }),
