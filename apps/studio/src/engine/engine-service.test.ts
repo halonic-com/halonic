@@ -211,68 +211,26 @@ verifies("studio.engine-service", () => {
 
     describe("with a model provider", () => {
       const providers = {
-        "providers/mock.yaml": "id: mock\ntype: mock\n",
-        "providers/anthropic.yaml":
-          "id: anthropic\nname: Anthropic\ntype: anthropic\nsecret: anthropic-key\n",
+        "providers/anthropic.yaml": "id: anthropic\ntype: anthropic\nsecret: anthropic-key\n",
         "providers/ollama.yaml": "id: ollama\ntype: ollama\nlocal: true\n",
-        "models.yaml": [
-          "aliases:",
-          "  smart: { provider: anthropic, model: claude-opus-5-5 }",
-          "  steady: { provider: mock, model: echo, fallback: [smart] }",
-          "  fast: { provider: mock, model: echo }",
-          "",
-        ].join("\n"),
+        "models.yaml": "aliases:\n  smart: { provider: anthropic, model: claude-opus-5-5 }\n",
       };
 
       it.each([
-        ["an alias of a real provider", "model: smart\n", "Anthropic"],
-        ["a provider/model name", "model: ollama/qwen3\n", "ollama"],
-        ["a mock alias that falls back to a real provider", "model: steady\n", "Anthropic"],
-      ])("refuses %s as `unavailable`, naming the agent and the provider", async (_, model, id) => {
+        ["an alias of a remote provider", "model: smart\n"],
+        ["a provider/model name", "model: ollama/qwen3\n"],
+        ["a model the workspace doesn't define", "model: ghost\n"],
+      ])("passes an agent whose model is %s", async (_, model) => {
         const service = serviceOn(fakeShell(), acmeFiles({ writer: model }, providers));
 
-        const refusal = await service.check(reply).catch((error: unknown) => error);
-
-        expect(refusal).toMatchObject({ kind: "unavailable" });
-        expect((refusal as Error).message).toContain("writer");
-        expect((refusal as Error).message).toContain(`"${id}"`);
+        await expect(service.check(reply)).resolves.toBeUndefined();
       });
 
-      it("refuses an agent whose method uses a real provider's alias", async () => {
-        const writer =
-          "model: fast\nmethods:\n  draft:\n    instructions: Draft.\n    model: smart\n";
+      it("still refuses an agent in a harness that also names a provider", async () => {
+        const writer = "model: smart\nharness: claude-code\n";
         const service = serviceOn(fakeShell(), acmeFiles({ writer }, providers));
 
-        const refusal = await service.check(reply).catch((error: unknown) => error);
-
-        expect(refusal).toMatchObject({ kind: "unavailable" });
-        expect((refusal as Error).message).toContain(`"Anthropic"`);
-      });
-
-      it("passes an agent whose methods use the mock model too", async () => {
-        const writer =
-          "model: fast\nmethods:\n  draft:\n    instructions: Draft.\n    model: fast\n  plain:\n    instructions: Plain.\n";
-        const service = serviceOn(fakeShell(), acmeFiles({ writer }, providers));
-
-        await expect(service.check(reply)).resolves.toBeUndefined();
-      });
-
-      it("passes an agent whose model is the mock model", async () => {
-        const service = serviceOn(fakeShell(), acmeFiles({ writer: "model: fast\n" }, providers));
-
-        await expect(service.check(reply)).resolves.toBeUndefined();
-      });
-
-      it("passes when a real provider exists that no agent of the workflow reaches", async () => {
-        const service = serviceOn(fakeShell(), acmeFiles({ other: "model: smart\n" }, providers));
-
-        await expect(service.check(reply)).resolves.toBeUndefined();
-      });
-
-      it("leaves a model the workspace doesn't define to the engine", async () => {
-        const service = serviceOn(fakeShell(), acmeFiles({ writer: "model: ghost\n" }, providers));
-
-        await expect(service.check(reply)).resolves.toBeUndefined();
+        await expect(service.check(reply)).rejects.toMatchObject({ kind: "unavailable" });
       });
     });
 
@@ -293,25 +251,6 @@ verifies("studio.engine-service", () => {
       await expect(service.startRun(reply, {})).rejects.toMatchObject({ kind: "unavailable" });
 
       expect(shell.calls).toEqual([]);
-    });
-
-    it("never calls a model server for a run it refuses", async () => {
-      const urls: string[] = [];
-      const http = {
-        fetch: async (url: string) => {
-          urls.push(url);
-          throw new TypeError("Failed to fetch");
-        },
-      };
-      const files = acmeFiles(
-        { writer: "model: anthropic/claude-opus-5-5\n" },
-        { "providers/anthropic.yaml": "id: anthropic\ntype: anthropic\nsecret: anthropic-key\n" },
-      );
-      const service = serviceOn(fakeShell(), files, { http });
-
-      await expect(service.startRun(reply, {})).rejects.toMatchObject({ kind: "unavailable" });
-
-      expect(urls).toEqual([]);
     });
 
     it("opens the engine and starts the run", async () => {
