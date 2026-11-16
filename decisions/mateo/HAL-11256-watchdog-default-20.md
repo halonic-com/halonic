@@ -3,7 +3,6 @@
 - Task: HAL-11256
 - Approval: Liam's decision on HAL-11256; Liam signs this note as the CTO
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:81rI8g4GHbnnWbr3HctWWp/HozZFR3bGpabPRJHhS3gviraDLF5clFZe7QBer/8EMkx+Js9ZlIUJKqSRirbYBg==
 
 ## What changes
 
