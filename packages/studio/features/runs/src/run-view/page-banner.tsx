@@ -1,3 +1,4 @@
+import type { SandboxStartCheck } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
 import { Callout, type CalloutAction } from "@halonicjs/studio-kit";
 import type { InstructionTrustHost, SourcedRun } from "../api.ts";
@@ -13,6 +14,7 @@ import {
   type RunPageContext,
   runBanner,
 } from "./run-page-model.ts";
+import { SandboxNotReadyBanner, sandboxNotReadyReason } from "./sandbox-not-ready-banner.tsx";
 
 /** The page's one banner: the failed banner for the run's cause, the sandbox's for a run it stopped, else the usual one. */
 export function PageBanner({
@@ -23,6 +25,7 @@ export function PageBanner({
   reviewInInbox,
   openRun,
   instructionTrust,
+  sandboxStartCheck,
   phone = false,
   onSeeStep,
 }: {
@@ -38,6 +41,8 @@ export function PageBanner({
    * run shows the usual banner there.
    */
   readonly instructionTrust?: { readonly host: InstructionTrustHost | undefined };
+  /** Checks the sandbox again, for the banner of a run it refused; absent where nothing can check. */
+  readonly sandboxStartCheck?: SandboxStartCheck | undefined;
   /** Whether the page is a phone's: a fix it can't do is said as a line (microcopy 15.3). */
   readonly phone?: boolean;
   readonly onSeeStep: (entryId: string) => void;
@@ -53,6 +58,18 @@ export function PageBanner({
         key={run.summary.id}
         refusal={refused}
         host={instructionTrust?.host}
+      />
+    );
+  }
+  const sandboxReason = sandboxNotReadyReason(run.summary, log);
+  if (sandboxReason !== undefined) {
+    return (
+      <SandboxNotReadyBanner
+        key={run.summary.id}
+        workflow={context.workflow?.name ?? run.summary.workflowId}
+        reason={sandboxReason}
+        check={sandboxStartCheck}
+        phone={phone}
       />
     );
   }

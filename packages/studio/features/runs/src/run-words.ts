@@ -234,6 +234,14 @@ export const runPageWords = {
   instructionsBusy: "A question about instructions is already open. Answer it first.",
   instructionsUnavailable: "Nothing was trusted. Try again.",
   instructionsTrusted: "Trusted. Run again to start it.",
+  /** The failed banner of a run the sandbox check refused (checklist 3.6); placeholder words until HAL-1784. */
+  sandboxNotReady: (workflow: string) =>
+    `${workflow} didn't start: the sandbox on this computer isn't ready.`,
+  sandboxNothingRan: "Nothing ran.",
+  sandboxCheckAgain: "Check again",
+  sandboxChecking: "Checking…",
+  sandboxReady: "The sandbox is ready. Run again to start it.",
+  sandboxCheckFailed: "Halonic couldn't check the sandbox. Try again.",
   budgetName: "Stopped at its budget",
   /** One tool approval (mc 15.2): who asks and what for, in the words of the Inbox card's title. */
   approval: (what: string, sends: boolean) =>
