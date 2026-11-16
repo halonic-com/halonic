@@ -163,6 +163,68 @@ verifies("settings.wsl-remove-dialog", () => {
     expect(document.body.textContent).toContain("Something went wrong.");
   });
 
+  it("retries only the removal once the backup is saved", async () => {
+    const requests: WslRemoveRequest[] = [];
+    const host = fakeHost({
+      chooseBackupFile: async () => "b.tar",
+      removeWslSetup: async (request) => {
+        requests.push(request);
+        return { outcome: "failed", reason: "unregister-failed", detail: "" };
+      },
+    });
+    await toChoice(host);
+    await click(radio("Save a backup") as HTMLElement);
+    await press("Choose location…");
+    await press("Save backup and remove sandbox");
+    await press("Try again");
+    expect(requests).toEqual([
+      { choice: "export-then-remove", file: "b.tar" },
+      { choice: "remove-only" },
+    ]);
+  });
+
+  it("doesn't claim a backup when the host throws, and retries the same request", async () => {
+    const requests: WslRemoveRequest[] = [];
+    const host = fakeHost({
+      chooseBackupFile: async () => "b.tar",
+      removeWslSetup: async (request) => {
+        requests.push(request);
+        throw new Error("busy");
+      },
+    });
+    await toChoice(host);
+    await click(radio("Save a backup") as HTMLElement);
+    await press("Choose location…");
+    await press("Save backup and remove sandbox");
+    expect(document.body.textContent).toContain("The sandbox could not be removed");
+    expect(document.body.textContent).not.toContain("Your backup is saved");
+    expect(document.body.textContent).toContain("busy");
+    await press("Try again");
+    expect(requests).toEqual([
+      { choice: "export-then-remove", file: "b.tar" },
+      { choice: "export-then-remove", file: "b.tar" },
+    ]);
+  });
+
+  it("offers another location only for a refused backup file", async () => {
+    let reason: "distro-not-ours" | "bad-export-file" = "distro-not-ours";
+    const host = fakeHost({
+      removeWslSetup: async () => ({ outcome: "refused", reason }),
+    });
+    await toChoice(host);
+    await click(radio("Remove without a backup") as HTMLElement);
+    await press("Remove sandbox without a backup");
+    expect(document.body.textContent).toContain("The sandbox was not removed");
+    expect(button("Choose another location")).toBeUndefined();
+    expect(button("Try again")).toBeUndefined();
+    unmountAll();
+    reason = "bad-export-file";
+    await toChoice(host);
+    await click(radio("Remove without a backup") as HTMLElement);
+    await press("Remove sandbox without a backup");
+    expect(button("Choose another location")).toBeDefined();
+  });
+
   it("offers no backup choice when the host can't ask for a file", async () => {
     await toChoice(fakeHost({ removeWslSetup: async () => ({ outcome: "kept" }) }));
     expect(radio("Save a backup")?.disabled).toBe(true);

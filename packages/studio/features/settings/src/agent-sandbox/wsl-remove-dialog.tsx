@@ -16,9 +16,13 @@ type Stage =
       readonly title: string;
       readonly body: string;
       readonly details: string | null;
-      /** Where a retry starts: the backup failed (or was refused) so nothing changed, or the removal did. */
+      /** The backup file the request named, or null when none was chosen. */
       readonly file: string | null;
-      readonly kind: "backup" | "remove" | "refused";
+      /** What a retry sends: the original request, or `remove-only` once the backup is saved. */
+      readonly retry: WslRemoveRequest;
+      readonly kind: "backup" | "remove" | "refused" | "unknown";
+      /** Why the host refused, for `kind: "refused"`. */
+      readonly refusal?: Extract<WslRemoveResult, { outcome: "refused" }>["reason"];
     };
 
 /** The props of {@link WslRemoveDialog}. */
@@ -62,15 +66,16 @@ export function WslRemoveDialog({ host, onClose, today }: WslRemoveDialogProps) 
     running.current = true;
     const backup = request.choice === "export-then-remove" ? request.file : null;
     setStage({ at: "working", file: backup });
-    let result: WslRemoveResult;
+    let next: Stage;
     try {
-      result = await host.removeWslSetup(request);
+      next = stageFor(await host.removeWslSetup(request), request);
     } catch (error) {
-      result = { outcome: "failed", reason: "unregister-failed", detail: errorText(error) };
+      // The host never answered (busy, connection dropped): nothing says the backup was made.
+      next = unknownProblem(request, errorText(error));
     } finally {
       running.current = false;
     }
-    setStage(stageFor(result, backup));
+    setStage(next);
   };
 
   const step = { host, onClose, go: setStage, run, pick };
@@ -92,7 +97,7 @@ function ExplainStep({ onClose, go }: StepProps) {
   return (
     <Dialog
       title={text.WSL_REMOVE_TITLE}
-      confirm={{ label: text.WSL_CONTINUE, busyLabel: "Continuing…" }}
+      confirm={{ label: text.WSL_CONTINUE, busyLabel: text.WSL_BUSY_CONTINUE }}
       cancelLabel={text.REMOVE_CANCEL}
       onConfirm={() => go({ at: "choose" })}
       onCancel={() => onClose(false)}
@@ -178,7 +183,10 @@ function DoneStep({ host, onClose, file }: StepProps & { file: string | null }) 
   return (
     <Dialog
       title={text.WSL_DONE_TITLE}
-      confirm={{ label: show ? text.WSL_SHOW_IN_FOLDER : text.WSL_DONE, busyLabel: "Closing…" }}
+      confirm={{
+        label: show ? text.WSL_SHOW_IN_FOLDER : text.WSL_DONE,
+        busyLabel: text.WSL_BUSY_CLOSE,
+      }}
       cancelLabel={show ? text.WSL_DONE : text.WSL_CLOSE}
       onConfirm={() => {
         if (show && file) void show.call(host, file);
@@ -208,24 +216,26 @@ function ProblemStep({ host, onClose, go, run, pick, problem }: StepProps & { pr
     const saved = problem.file;
     alternative = { label: text.WSL_SHOW_BACKUP, onClick: () => void host.showInFolder?.(saved) };
   }
-  const retry = () =>
-    run(
-      problem.file !== null
-        ? { choice: "export-then-remove", file: problem.file }
-        : { choice: "remove-only" },
-    );
+  const retry = () => run(problem.retry);
   const refused = problem.kind === "refused";
+  // Only a refused backup file can be fixed by the person; the other refusals end here, with no
+  // footer: the ✕ closes.
+  const badFile = problem.refusal === "bad-export-file";
+  const closeOnly = refused && !badFile;
+  const confirm = closeOnly
+    ? undefined
+    : {
+        label: refused ? text.WSL_CHOOSE_ANOTHER : text.WSL_TRY_AGAIN,
+        busyLabel: text.WSL_BUSY_REMOVE,
+      };
   return (
     <Dialog
       title={problem.title}
-      confirm={{
-        label: refused ? text.WSL_CHOOSE_ANOTHER : text.WSL_TRY_AGAIN,
-        busyLabel: text.WSL_BUSY_REMOVE,
-      }}
+      {...(confirm ? { confirm } : {})}
       {...(alternative ? { alternative } : {})}
       cancelLabel={problem.kind === "remove" ? text.WSL_CLOSE : text.REMOVE_CANCEL}
       onConfirm={refused ? () => go({ at: "choose" }) : () => void retry()}
-      onCancel={() => onClose(false)}
+      onCancel={() => onClose(problem.refusal === "distro-missing")}
     >
       <div className="flex flex-col gap-2">
         <p>{problem.body}</p>
@@ -266,7 +276,8 @@ function errorText(error: unknown): string {
 }
 
 /** What the dialog shows for the host's answer. */
-function stageFor(result: WslRemoveResult, backup: string | null): Stage {
+function stageFor(result: WslRemoveResult, request: WslRemoveRequest): Stage {
+  const backup = request.choice === "export-then-remove" ? request.file : null;
   switch (result.outcome) {
     case "removed":
       return { at: "done", file: result.exportedTo ?? backup };
@@ -284,6 +295,8 @@ function stageFor(result: WslRemoveResult, backup: string | null): Stage {
         }[result.reason],
         details: null,
         file: null,
+        retry: request,
+        refusal: result.reason,
       };
     case "failed": {
       const reason = text.WSL_REASON_FALLBACK;
@@ -296,6 +309,7 @@ function stageFor(result: WslRemoveResult, backup: string | null): Stage {
           body: text.wslBackupFailed(backup ?? "", reason),
           details,
           file: backup,
+          retry: request,
         };
       }
       return {
@@ -305,7 +319,22 @@ function stageFor(result: WslRemoveResult, backup: string | null): Stage {
         body: backup ? text.wslRemoveFailedBackup(backup, reason) : text.wslRemoveFailed(reason),
         details,
         file: backup,
+        // The backup is already saved: a retry only removes.
+        retry: { choice: "remove-only" },
       };
     }
   }
+}
+
+/** A thrown error: the host didn't answer, so no claim about the backup, and a retry is unchanged. */
+function unknownProblem(request: WslRemoveRequest, detail: string): Stage {
+  return {
+    at: "problem",
+    kind: "unknown",
+    title: text.WSL_REMOVE_FAILED_TITLE,
+    body: text.wslRemoveFailed(text.WSL_REASON_FALLBACK),
+    details: detail.trim() === "" ? null : detail,
+    file: null,
+    retry: request,
+  };
 }
