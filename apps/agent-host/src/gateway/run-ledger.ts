@@ -262,11 +262,6 @@ export class RunLedger {
     };
   }
 
-  /** How a waiting approval is decided, or `undefined` when none waits with this id. */
-  approvalVia(id: string, approvalId: string): "run" | "bridge" | undefined {
-    return this.#pendingApproval(id, approvalId)?.via;
-  }
-
   /** How to tell Studio of a remote decision, for an approval at the bridge that still waits. */
   remoteDeciderOf(id: string, approvalId: string): DecideRemotely | undefined {
     return this.#pendingApproval(id, approvalId)?.decide;

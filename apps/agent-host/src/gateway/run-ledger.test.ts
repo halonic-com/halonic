@@ -43,7 +43,6 @@ verifies("agent-host.gateway-run-ledger", () => {
       const request = { callId: "bridge_1", tool: "send_mail", args: { to: "a" } };
       ledger.bridgeApprovalAsked("run_1", "writer", request, decided);
       expect(ledger.list()[0]?.state).toBe("waiting");
-      expect(ledger.approvalVia("run", "approval-1")).toBe("bridge");
       expect(ledger.approvalRisk("run", "approval-1")).toBe("risky");
       ledger.bridgeApprovalEnded("run_1", "writer", "bridge_1", { approved: true });
       expect(ledger.list()[0]?.state).toBe("running");
@@ -100,7 +99,7 @@ verifies("agent-host.gateway-run-ledger", () => {
         decided,
       );
       ledger.answered("run", { type: "approval", callId: "same", approved: true });
-      expect(ledger.approvalVia("run", "approval-1")).toBe("bridge");
+      expect(ledger.remoteDeciderOf("run", "approval-1")).toBe(decided);
     });
 
     it("keeps the way to tell Studio of a phone's decision only while a bridge approval waits", () => {

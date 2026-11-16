@@ -8,7 +8,10 @@ import type {
 } from "@halonicjs/ports";
 import { parse, type Schema, s } from "@halonicjs/schema-kit";
 
-/** What Studio says to a decision made on a remote device. */
+/**
+ * What Studio says to a decision made on a remote device. The host declares
+ * the same type in agent-host's bridge/studio-services.ts; keep the two equal.
+ */
 export type RemoteDecisionStatus = "decided" | "unknown" | "already-decided";
 
 /** A decision on a waiting approval that the host passes on from a remote device. */
