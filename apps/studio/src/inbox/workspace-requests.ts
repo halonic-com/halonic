@@ -1,5 +1,9 @@
 import type { DefinitionSource } from "@halonicjs/ports";
-import type { InboxRequests, RequestWorkflow } from "@halonicjs/studio-feature-inbox/api";
+import type {
+  InboxRequests,
+  RequestWorkflow,
+  StartedRun,
+} from "@halonicjs/studio-feature-inbox/api";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 
 /** What {@link WorkspaceRequests} needs of the workspace's files and the page's engine. */
@@ -52,7 +56,7 @@ export class WorkspaceRequests implements InboxRequests {
     return this.#parts.onChange(listener);
   }
 
-  async start(key: string, message: string): Promise<{ readonly runId: string }> {
+  async start(key: string, message: string): Promise<StartedRun> {
     const { engine } = this.#parts;
     if (engine === undefined) throw new Error("The engine isn't there to start the workflow.");
     // Read now, not from the last offer: the workflow may have been edited since.
@@ -62,7 +66,7 @@ export class WorkspaceRequests implements InboxRequests {
       { hubId: found.hubId, workflowId: found.id },
       { [found.field]: message },
     );
-    return { runId };
+    return { runId, hubId: found.hubId };
   }
 
   /** The workflows with a `start:` block, from one load of the workspace as it is now. */

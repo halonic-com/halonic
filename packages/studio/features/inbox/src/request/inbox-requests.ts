@@ -10,6 +10,12 @@ export interface RequestWorkflow {
   readonly description?: string | undefined;
 }
 
+/** The run a request started. */
+export interface StartedRun {
+  readonly runId: string;
+  readonly hubId: string;
+}
+
 /**
  * The workflows the Inbox starts for you. The app provides it for each open workspace, from the
  * workflows' `start:` blocks and the engine.
@@ -24,7 +30,8 @@ export interface InboxRequests {
   subscribe(listener: () => void): () => void;
   /**
    * Starts the workflow with `message` (already trimmed) as its input, and returns the new run's
-   * id. Rejects with the reason it didn't start, such as an account that is signed out.
+   * id and its hub, which **Open run** needs. Rejects with the reason it didn't start, such as an
+   * account that is signed out.
    */
-  start(key: string, message: string): Promise<{ readonly runId: string }>;
+  start(key: string, message: string): Promise<StartedRun>;
 }
