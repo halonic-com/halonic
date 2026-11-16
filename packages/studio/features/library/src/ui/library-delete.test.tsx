@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import type { ItemUsage } from "@halonicjs/app";
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
-import type { ItemViewProps } from "@halonicjs/studio-shell";
+import { type ItemViewProps, limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { libraryFeature } from "../feature.ts";
 import {
   type LibraryItemsHost,
   LibraryItemsHostService,
@@ -182,10 +183,10 @@ verifies("library.library-delete", () => {
     const props = {
       item: { kind: "skill", hub: "~workspace", id: "tone" },
       context: {
-        services: {
+        services: limitedLookup(libraryFeature, {
           get: (key: unknown) => provided.get(key),
           find: (key: unknown) => provided.get(key),
-        },
+        }),
         announcer: { announceState: vi.fn() },
         openPlace: vi.fn(),
       },

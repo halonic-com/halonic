@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import type { ItemUsage } from "@halonicjs/app";
-import type { ItemViewProps } from "@halonicjs/studio-shell";
+import { type ItemViewProps, limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { libraryFeature } from "../feature.ts";
 import { requestSkillInstructionsFocus } from "../skill-focus-request.ts";
 import { type SkillHost, SkillHostService, type SkillSource } from "../skill-host.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -31,10 +32,10 @@ function setup(
   const props = {
     item: { kind: "skill", hub: "~workspace", id: "refunds" },
     context: {
-      services: {
+      services: limitedLookup(libraryFeature, {
         get: (key: unknown) => (key === SkillHostService ? host : undefined),
         find: (key: unknown) => (key === SkillHostService ? host : undefined),
-      },
+      }),
       announcer: { announceState: vi.fn() },
       openItem,
       openPlace,

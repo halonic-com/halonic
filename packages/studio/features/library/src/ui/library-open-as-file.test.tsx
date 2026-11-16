@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import type { ItemUsage } from "@halonicjs/app";
 import { createToastStore, PresentationProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
-import type { ItemViewProps, PlaceViewProps } from "@halonicjs/studio-shell";
+import { type ItemViewProps, limitedLookup, type PlaceViewProps } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { libraryFeature } from "../feature.ts";
 import {
   type LibraryItemsHost,
   LibraryItemsHostService,
@@ -96,10 +97,10 @@ function skillPageProps(openItem: () => void): ItemViewProps {
   return {
     item: { kind: "skill", hub: "~workspace", id: "tone" },
     context: {
-      services: {
+      services: limitedLookup(libraryFeature, {
         get: (key: unknown) => provided.get(key),
         find: (key: unknown) => provided.get(key),
-      },
+      }),
       announcer: { announceState: vi.fn() },
       openPlace: vi.fn(),
       openItem,
@@ -178,10 +179,10 @@ verifies("library.library-open-as-file", () => {
       [LibraryTabMemoryService, { get: () => undefined, set: vi.fn() }],
     ]);
     const context = {
-      services: {
+      services: limitedLookup(libraryFeature, {
         get: (key: unknown) => provided.get(key),
         find: (key: unknown) => provided.get(key),
-      },
+      }),
       openItem: vi.fn(),
       openItemInNewTab: vi.fn(),
     } as unknown as PlaceViewProps["context"];

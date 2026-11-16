@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
+import { filesFeature } from "../feature.ts";
 import type { FilesHost, FilesListing } from "../files-host.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -16,7 +17,7 @@ const listing = (paths: string[], marks: FilesListing["marks"] = new Map()): Fil
 });
 
 function contextOf(host: FilesHost): WorkspaceContext {
-  const services = { get: () => host, find: () => host };
+  const services = limitedLookup(filesFeature, { get: () => host, find: () => host });
   return { services } as unknown as WorkspaceContext;
 }
 

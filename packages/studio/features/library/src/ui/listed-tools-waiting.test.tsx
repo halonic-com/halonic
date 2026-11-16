@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import type { ItemViewProps } from "@halonicjs/studio-shell";
+import { type ItemViewProps, limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type ConnectorStatusHost, ConnectorStatusHostService } from "../connector-status-host.ts";
+import { libraryFeature } from "../feature.ts";
 import {
   type ListedToolRow,
   type ListedToolsHost,
@@ -70,10 +71,10 @@ function page(tools: ListedToolsHost | undefined): ItemViewProps {
   return {
     item: { kind: "connector", hub: "local", id: "notes" },
     context: {
-      services: {
+      services: limitedLookup(libraryFeature, {
         get: (key: unknown) => provided.get(key),
         find: (key: unknown) => provided.get(key),
-      },
+      }),
       announcer: { announceState: vi.fn() },
     },
     Sections: () => null,

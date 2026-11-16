@@ -368,11 +368,13 @@ export {
   searchPageNames,
   searchPageWords,
 } from "./search/search-page-names.ts";
-export type {
-  FeatureServices,
-  ServiceFactory,
-  ServiceLookup,
-  ServiceTarget,
+export {
+  type FeatureServices,
+  limitedLookup,
+  type OpenLookup,
+  type ServiceFactory,
+  type ServiceLookup,
+  type ServiceTarget,
 } from "./service-catalog.ts";
 export { type ServiceKey, serviceKey } from "./service-key.ts";
 export {

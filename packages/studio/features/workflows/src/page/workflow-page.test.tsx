@@ -2,6 +2,7 @@
 
 import { RunsListService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import { PresentationProvider } from "@halonicjs/studio-kit";
+import { limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -342,15 +343,7 @@ verifies("workflows.runs.runs-view", () => {
       [RunsListService, list],
     ]);
     const context = {
-      // Like the shell's lookup: a service the feature doesn't list in `needs` is an error.
-      services: {
-        get: (key: { name: string }) => {
-          if (!workflowsFeature.needs.some((listed) => listed.name === key.name)) {
-            throw new Error(`workflows doesn't list ${key.name} in needs`);
-          }
-          return services.get(key);
-        },
-      },
+      services: limitedLookup(workflowsFeature, { get: (key) => services.get(key) }),
       openPlace: (place: string) => calls.push(`open ${place}`),
     };
     const page = await show(

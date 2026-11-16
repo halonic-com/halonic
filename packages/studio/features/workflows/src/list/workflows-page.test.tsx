@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
-import { engineWords } from "@halonicjs/studio-shell";
+import { engineWords, limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type WorkflowListing, WorkflowsHostService } from "../api.ts";
+import { workflowsFeature } from "../feature.ts";
 import {
   buttonNamed,
   listing,
@@ -285,7 +286,9 @@ verifies("workflows.list.rows-and-states", () => {
     const { host } = memoryHost(hubs, workflows);
     const context = {
       openItem,
-      services: { get: (key: unknown) => (key === WorkflowsHostService ? host : undefined) },
+      services: limitedLookup(workflowsFeature, {
+        get: (key: unknown) => (key === WorkflowsHostService ? host : undefined),
+      }),
     };
     const page = await show(<WorkflowsPage context={context as never} />);
     const row = [...page.querySelectorAll('[role="gridcell"]')].find((each) =>

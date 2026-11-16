@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { defineFeature, type Studio } from "./index.ts";
+import { defineFeature, limitedLookup, type Studio } from "./index.ts";
 import { serviceKey } from "./service-key.ts";
 import { createShell } from "./shell.ts";
 import { ShellError } from "./shell-error.ts";
@@ -249,6 +249,36 @@ verifies("shell.feature-services", () => {
       const { services } = shell.services.contextFor("reader", target);
       expect(() => services.find(workspaceKey)).toThrow("doesn't list it in needs or wants");
       expect(() => services.get(workspaceKey)).toThrow("doesn't list it in needs or wants");
+    });
+  });
+
+  describe("a limited lookup for a page test", () => {
+    const feature = defineFeature({
+      id: "page",
+      title: "Page",
+      needs: [workspaceKey],
+      wants: [routinesKey],
+      register: () => {},
+    });
+    const open = {
+      get: (key: { name: string }) => `got ${key.name}`,
+      find: (key: { name: string }) => `found ${key.name}`,
+    };
+
+    it("answers from the open lookup for a key in needs or wants", () => {
+      const services = limitedLookup(feature, open);
+      expect(services.get(workspaceKey)).toBe("got workspace");
+      expect(services.find(routinesKey)).toBe("found routines");
+    });
+
+    it("falls back to get when the open lookup has no find", () => {
+      expect(limitedLookup(feature, { get: open.get }).find(workspaceKey)).toBe("got workspace");
+    });
+
+    it("throws the shell's error for a key the feature doesn't list", () => {
+      const services = limitedLookup(feature, open);
+      expect(() => services.get(agentsKey)).toThrow("doesn't list it in needs or wants");
+      expect(() => services.find(agentsKey)).toThrow("doesn't list it in needs or wants");
     });
   });
 });
