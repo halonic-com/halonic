@@ -220,7 +220,12 @@ fn git_allow_list_gets_the_other_side_and_merges_without_conflict_markers() {
     std::fs::create_dir_all(&runner.empty_hooks_folder).expect("the folder is created");
     let acme = user_repository(root, "acme", &remote, &root.join("alternate-refs.ran"));
     // Both sides start from the same commit, then each changes the file.
-    stdout_of(&run_checked(&runner, &acme, &ssh, "pull origin main"));
+    stdout_of(&run_checked(
+        &runner,
+        &acme,
+        &ssh,
+        "pull --ff-only origin main",
+    ));
     std::fs::write(server.join("notes.md"), "one\nsam\n").expect("the file writes");
     plain_git_ok(&server, &["commit", "-q", "-a", "-m", "sam-note"]);
     std::fs::write(acme.top.join("notes.md"), "one\nmine\n").expect("the file writes");
