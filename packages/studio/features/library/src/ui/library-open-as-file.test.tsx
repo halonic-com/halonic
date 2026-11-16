@@ -136,7 +136,7 @@ verifies("library.library-open-as-file", () => {
       page.querySelector<HTMLElement>('button[aria-label="More actions for Tone"]')?.click(),
     );
     const entries = [...document.querySelectorAll('[role="menuitem"]')].map((e) => e.textContent);
-    expect(entries).toEqual(["Delete"]);
+    expect(entries).toEqual(["Open", "Open in new tab", "Delete"]);
   });
 
   it("opens an open page's file from its menu", async () => {
@@ -197,6 +197,6 @@ verifies("library.library-open-as-file", () => {
       page.querySelector<HTMLElement>('button[aria-label="More actions for Tone"]')?.click(),
     );
     const entries = [...document.querySelectorAll('[role="menuitem"]')].map((e) => e.textContent);
-    expect(entries).toEqual(["Delete"]);
+    expect(entries).toEqual(["Open", "Open in new tab", "Delete"]);
   });
 });

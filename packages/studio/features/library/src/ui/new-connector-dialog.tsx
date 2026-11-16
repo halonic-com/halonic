@@ -88,7 +88,6 @@ export function NewConnectorDialog({
           <Field label={newConnectorWords.account} error={shown(errors.account)}>
             <Input
               ref={wayField}
-              autoFocus
               disabled={busy}
               value={account}
               onChange={(event) => setAccount(event.target.value)}
@@ -100,7 +99,6 @@ export function NewConnectorDialog({
           <Field label={newConnectorWords.url} error={shown(errors.url)}>
             <Input
               ref={wayField}
-              autoFocus
               disabled={busy}
               value={url}
               onChange={(event) => setUrl(event.target.value)}
@@ -112,7 +110,6 @@ export function NewConnectorDialog({
           <Field label={newConnectorWords.command} error={shown(errors.command)}>
             <Input
               ref={wayField}
-              autoFocus
               disabled={busy}
               value={command}
               onChange={(event) => setCommand(event.target.value)}

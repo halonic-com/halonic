@@ -121,6 +121,14 @@ verifies("library.new-connector", () => {
       expect(root.ownerDocument.querySelector('input[type="radio"]:checked')).not.toBeNull();
     });
 
+    it("keeps focus on the ways when one is picked, so the arrow keys can go on", async () => {
+      const { root } = setup();
+      const radios = root.ownerDocument.querySelectorAll<HTMLInputElement>('input[type="radio"]');
+      act(() => radios[0]?.focus());
+      await act(async () => radios[1]?.click());
+      expect([...radios]).toContain(root.ownerDocument.activeElement);
+    });
+
     it("checks the field of the picked way", async () => {
       const { root, made } = setup();
       await type(root, "Name", "Notes");
