@@ -17,6 +17,11 @@ export function historyArgs(limit: number): readonly string[] {
   ];
 }
 
+/** A record starts at U+0001 only when a full commit id and U+001F follow: a message may hold either. */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: the log format separates records by U+0001 and U+001F
+const RECORD_START = /\u0001(?=[0-9a-f]{40,64}\u001f)/;
+const COMMIT_ID = /^[0-9a-f]{40,64}$/;
+
 /**
  * Reads what {@link historyArgs} printed. Each commit starts with U+0001; its fields are
  * separated by U+001F, and its file names follow, each ended by NUL. A file `keep` refuses is
@@ -24,10 +29,12 @@ export function historyArgs(limit: number): readonly string[] {
  */
 export function versionsFromLog(output: string, keep: (path: string) => boolean): Version[] {
   const versions: Version[] = [];
-  for (const record of output.split("\u0001")) {
+  for (const record of output.split(RECORD_START)) {
     const end = record.indexOf("\u001f\0");
     if (end === -1) continue;
     const [id = "", author = "", seconds = "", ...message] = record.slice(0, end).split("\u001f");
+    const at = Number(seconds) * 1000;
+    if (!COMMIT_ID.test(id) || !Number.isFinite(at)) continue;
     const [name = "", ...rest] = message.join("\u001f").trim().split(/\r?\n/);
     const files = record
       .slice(end + 2)
@@ -39,7 +46,7 @@ export function versionsFromLog(output: string, keep: (path: string) => boolean)
       name: name.trim(),
       notes: rest.join("\n").trim(),
       author,
-      at: Number(seconds) * 1000,
+      at,
       files,
     });
   }

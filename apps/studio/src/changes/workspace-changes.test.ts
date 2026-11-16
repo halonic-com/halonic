@@ -507,9 +507,9 @@ verifies("source-control.create-version", () => {
       try {
         const run = realGit(dir);
         await run(["init", "--quiet"]);
-        mkdirSync(join(dir, ".halonic"));
+        mkdirSync(join(dir, ".halonic", "review"), { recursive: true });
         writeFileSync(join(dir, "a.md"), "1\n");
-        writeFileSync(join(dir, ".halonic", "p.json"), "{}\n");
+        writeFileSync(join(dir, ".halonic", "review", "p.json"), "{}\n");
         await run(["add", "."]);
         await run(["commit", "-m", "First\n\nWith notes", "--quiet"]);
         writeFileSync(join(dir, "a.md"), "2\n");
