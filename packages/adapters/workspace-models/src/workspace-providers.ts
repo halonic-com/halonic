@@ -100,6 +100,7 @@ export type WorkspaceModelErrorCode =
   | "unknown-provider-type"
   | "no-provider-address"
   | "no-provider"
+  | "not-on-this-machine"
   | "unknown-model-alias";
 
 /** What {@link workspaceProvider} reads from a provider file, or from an agent's unsaved settings. */

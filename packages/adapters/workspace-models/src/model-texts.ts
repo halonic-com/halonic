@@ -24,6 +24,10 @@ export const modelTexts = {
   noProvider: (provider: string, model: string): ModelText =>
     `model ${model} names provider ${provider}, which the workspace doesn't have.`,
   noProviderFix: (provider: string): ModelText => `Add providers/${provider}.yaml, then run again.`,
+  notOnThisMachine: (model: string): ModelText =>
+    `model ${model} is at an address that isn't on this computer, and this workspace is local only.`,
+  notOnThisMachineFix: (): ModelText =>
+    "Use a model on this computer, or turn off privacy.localOnly in workspace.yaml.",
   unknownAlias: (alias: string, hubId: string): ModelText =>
     `hub ${hubId} has no model alias ${alias}.`,
   unknownAliasFix: (): ModelText => "Add the alias to models.yaml, or pick one it has.",
