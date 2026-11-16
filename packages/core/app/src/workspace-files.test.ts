@@ -89,6 +89,34 @@ verifies("app.workspace-undo", () => {
     expect(files.dirty).toBe(false);
   });
 
+  it("keeps `step` over a save and moves it on every other change to the steps", async () => {
+    const { files } = open({ "a.yaml": "v0", "b.yaml": "b0" });
+    files.change("Deleted a", { "a.yaml": null });
+    const step = files.step;
+    const pending = files.pending;
+    await files.save();
+    expect(files.pending).not.toBe(pending);
+    expect(files.step).toBe(step);
+    // The delete is still the newest step after the save, and undo brings the file back.
+    expect(files.undo()).toBe(true);
+    expect(await files.read("a.yaml")).toBe("v0");
+    files.redo();
+    files.change("Edited b", { "b.yaml": "b1" });
+    expect(files.step).not.toBe(step);
+    const afterChange = files.step;
+    files.undo();
+    expect(files.step).not.toBe(afterChange);
+    const afterUndo = files.step;
+    files.redo();
+    expect(files.step).not.toBe(afterUndo);
+    const afterRedo = files.step;
+    await files.rename("b.yaml", "c.yaml");
+    expect(files.step).not.toBe(afterRedo);
+    const afterRename = files.step;
+    files.discard();
+    expect(files.step).not.toBe(afterRename);
+  });
+
   it("undoes a saved new file to an unsaved delete", async () => {
     const { files } = open({});
     files.change("Added b", { "b.yaml": "new" });

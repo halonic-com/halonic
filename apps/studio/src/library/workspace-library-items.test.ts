@@ -20,14 +20,14 @@ function setup(extra: Record<string, string> = {}) {
     ...extra,
   };
   const history: Record<string, string>[] = [];
-  let pending = {};
+  let step = 0;
   const listeners = new Set<() => void>();
   const files: WorkspaceLibraryItemsHostParts["files"] = {
-    get pending() {
-      return pending;
+    get step() {
+      return step;
     },
     change: (_label, changes) => {
-      pending = {};
+      step++;
       history.push({ ...store });
       for (const [path, text] of Object.entries(changes)) {
         if (text === null) delete store[path];
@@ -37,7 +37,7 @@ function setup(extra: Record<string, string> = {}) {
     undo: () => {
       const previous = history.pop();
       if (previous === undefined) return false;
-      pending = {};
+      step++;
       for (const path of Object.keys(store)) delete store[path];
       Object.assign(store, previous);
       return true;
