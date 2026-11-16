@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { LibraryItemKind } from "@halonicjs/app";
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -74,8 +75,15 @@ async function settled(): Promise<void> {
   });
 }
 
-async function show(context: WorkspaceContext): Promise<HTMLElement> {
-  const page = render(<LibraryPlace context={context} />);
+async function show(
+  context: WorkspaceContext,
+  presentation: "desktop" | "phone" = "desktop",
+): Promise<HTMLElement> {
+  const page = render(
+    <PresentationProvider presentation={presentation}>
+      <LibraryPlace context={context} />
+    </PresentationProvider>,
+  );
   await settled();
   return page;
 }
@@ -318,6 +326,39 @@ verifies("library.library-place", () => {
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
+    expect(page.ownerDocument.querySelector("dialog[open]")).toBeNull();
+  });
+});
+
+verifies("library.library-phone", () => {
+  it("offers no New connector on a phone", async () => {
+    const { context } = contextOf("connector");
+    const host: NewConnectorHost = {
+      prepare: async () => {},
+      hubs: () => [{ id: "acme", name: "acme" }],
+      ways: () => ["http"],
+      file: () => "hubs/acme/library/connectors/",
+      create: async () => ({ hub: "acme", id: "notes" }),
+    };
+    const find = context.services.find;
+    context.services.find = ((key: unknown) =>
+      key === NewConnectorHostService ? host : find(key as never)) as typeof find;
+    const page = await show(context, "phone");
+    expect(
+      [...page.querySelectorAll("button")].some((each) =>
+        each.textContent?.includes("New connector"),
+      ),
+    ).toBe(false);
+  });
+
+  it("shows the Connectors tab, and no dialog, for a request on a phone", async () => {
+    const { context } = contextOf("skill");
+    const page = await show(context, "phone");
+    await act(async () => {
+      requestNewConnector({ name: "notes" });
+    });
+    await settled();
+    expect(selectedTab(page)).toContain("Connectors");
     expect(page.ownerDocument.querySelector("dialog[open]")).toBeNull();
   });
 });
