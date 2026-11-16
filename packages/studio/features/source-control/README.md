@@ -32,4 +32,6 @@ The page shows one of these, by what the last read said:
 | `ready`, nothing changed | "Nothing has changed since your last version." |
 | `ready`, files changed | for now a count of the changed files |
 
-Not here yet: the changed items with what changed in them, Create version, Discard, History, Get updates, the sharing strip, the developer view and the phone layout. Each comes in its own pull request under HAL-1302.
+The sharing strip so far has one state: a folder with history and no remote says "Only on this computer" with **Add where to share**, a dialog for one git address (`https://`, `ssh://` or `user@host:path`, checked by `isShareAddress` before git is asked; requirement `source-control.share-address`). The address becomes the remote `origin`; the page then shows Get updates instead of the strip.
+
+Not here yet: History, the strip's other states and Share, "Who should versions be from?", the developer view and the phone layout. Each comes in its own pull request under HAL-1302.

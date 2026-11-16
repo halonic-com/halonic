@@ -108,6 +108,11 @@ export interface ChangesSource {
   /** Whether the folder has a place to share to and get updates from. `false` for a folder with no history. */
   readonly hasRemote: () => Promise<boolean>;
   /**
+   * Makes `address` (a git address that passed `isShareAddress`) the place to share to and get
+   * updates from. Throws, with a reason a person can read, when git refuses it.
+   */
+  readonly addRemote: (address: string) => Promise<void>;
+  /**
    * Brings in the shared copy's newer versions, only when this workspace has none the shared copy
    * lacks (a fast-forward). Changes nothing otherwise. Throws, with a reason a person can read,
    * when the shared copy can't be reached or git refuses.
