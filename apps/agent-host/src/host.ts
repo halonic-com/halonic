@@ -6,7 +6,6 @@ import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
-import { type GatewayListener, startGatewayListener } from "@halonicjs/adapter-remote-gateway";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import {
   keptGrantsRecordFolder,
@@ -21,8 +20,8 @@ import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
 import { bridgeSocketFolder, sweepLeftOverBridges } from "./bridge/socket-folder.ts";
 import { hostConnectorRoutes } from "./connector/connector-factory.ts";
 import { connectorRoutes } from "./connector/connector-routes.ts";
-import { type GatewaySettings, gatewayOff } from "./gateway/gateway-settings.ts";
-import { hostGatewaySource } from "./gateway/host-gateway-source.ts";
+import { type GatewaySettings, gatewayFor, gatewayOff } from "./gateway/gateway-settings.ts";
+import { RemoteGateway } from "./gateway/remote-gateway.ts";
 import { RunLedger } from "./gateway/run-ledger.ts";
 import { googleRoutes } from "./google/google-routes.ts";
 import { openGoogleSetup } from "./google/google-setup.ts";
@@ -173,13 +172,8 @@ export async function run(
           profileFolder,
         ),
     wslRemoverOf(profileFolder, sharedFolders),
-    args.includes("--stdio") ? gatewayOff : gateway,
+    gatewayFor(gateway, args.includes("--stdio"), (text) => io.writeError(text)),
   );
-  if (gateway.enabled && args.includes("--stdio")) {
-    io.writeError(
-      "The remote gateway needs a port, and over --stdio the host listens on none: it stays off.\n",
-    );
-  }
   try {
     if (args.includes("--stdio")) return await serveOverFrames(args, io, host);
     await serve(io, host);
@@ -399,7 +393,7 @@ function hostServices(
   const bridges = new BridgeTable();
   const ledger = new RunLedger();
   const runs = new RunTable(ledger);
-  let gatewayListener: GatewayListener | undefined;
+  const remoteGateway = new RemoteGateway(gateway, ledger, runs);
   const harnesses = hostHarnesses(version);
   const connectorDeps = hostConnectorRoutes(
     { sandbox, version, deniedPaths: connectors.deniedPaths, env: process.env },
@@ -444,10 +438,11 @@ function hostServices(
     signInRoute({ harnesses, openTerminal: (command) => openTerminal(command) }),
   ];
   const stop = async () => {
+    // Close the gateway first, so nothing remote reaches a run that is being stopped.
+    await remoteGateway.close();
     // Stop the runs, then their sandboxed programs, so none outlives the host;
     // their bridges then have no caller.
     await runs.cancelAll();
-    await gatewayListener?.close();
     // A connector closes its own session; then any session left.
     await connectorDeps.connectors.closeAll();
     await plugins?.stop();
@@ -455,18 +450,8 @@ function hostServices(
     await bridges.closeAll();
   };
   const startGateway = async (log: (text: string) => void) => {
-    if (!gateway.enabled) return;
-    try {
-      gatewayListener = await startGatewayListener({
-        source: hostGatewaySource(ledger, runs),
-        // A phone may not answer a risky approval until the person allows it on this desktop; nothing sets that yet.
-        policy: { allowRiskyRemotely: () => false },
-        ...(gateway.port === undefined ? {} : { port: gateway.port }),
-      });
-      listeningPorts.add(gatewayListener.port);
-    } catch (error) {
-      log(`The remote gateway didn't start: ${String(error)}\n`);
-    }
+    const port = await remoteGateway.start(log);
+    if (port !== undefined) listeningPorts.add(port);
   };
   return { routes, stop, startGateway, listeningOn: (port) => listeningPorts.add(port) };
 }

@@ -1,0 +1,49 @@
+import { type GatewayListener, startGatewayListener } from "@halonicjs/adapter-remote-gateway";
+import type { RunTable } from "../harness/run-table.ts";
+import type { GatewaySettings } from "./gateway-settings.ts";
+import { hostGatewaySource } from "./host-gateway-source.ts";
+import type { RunLedger } from "./run-ledger.ts";
+
+/**
+ * The host's remote gateway: starts the listener when the setting turns it on
+ * and closes it again (requirement `agent-host.remote-gateway`).
+ */
+export class RemoteGateway {
+  #listener: GatewayListener | undefined;
+
+  readonly #settings: GatewaySettings;
+  readonly #ledger: RunLedger;
+  readonly #runs: RunTable;
+
+  constructor(settings: GatewaySettings, ledger: RunLedger, runs: RunTable) {
+    this.#settings = settings;
+    this.#ledger = ledger;
+    this.#runs = runs;
+  }
+
+  /**
+   * Starts the listener, or does nothing when the setting is off. A listener
+   * that can't start is told to `log` and the host serves without it.
+   *
+   * @returns the port it listens on, `undefined` when it isn't listening
+   */
+  async start(log: (text: string) => void): Promise<number | undefined> {
+    if (!this.#settings.enabled) return undefined;
+    try {
+      this.#listener = await startGatewayListener({
+        source: hostGatewaySource(this.#ledger, this.#runs),
+        // A phone may not answer a risky approval until the person allows it on this desktop; nothing sets that yet.
+        policy: { allowRiskyRemotely: () => false },
+        ...(this.#settings.port === undefined ? {} : { port: this.#settings.port }),
+      });
+      return this.#listener.port;
+    } catch (error) {
+      log(`The remote gateway didn't start: ${String(error)}\n`);
+      return undefined;
+    }
+  }
+
+  async close(): Promise<void> {
+    await this.#listener?.close();
+  }
+}

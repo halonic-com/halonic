@@ -4,10 +4,12 @@ import type { RunLedger } from "./run-ledger.ts";
 
 /**
  * The remote gateway's view of the host: the sessions and approvals of the
- * {@link RunLedger}, and answers and prompts that go to the run through
+ * {@link RunLedger}, and prompts that go to the run through
  * {@link RunTable.send}, the call Studio's own answers take
- * (requirement `agent-host.remote-gateway`). It can list, watch, answer an
- * approval and send a prompt, and nothing else.
+ * (requirement `agent-host.remote-gateway`). It can list, watch and send a
+ * prompt. It refuses every approval: an answer through `send` would skip the
+ * engine's own decision on the call, so approvals reach the engine in a
+ * follow-up, and until then a phone can't answer one.
  */
 export function hostGatewaySource(ledger: RunLedger, runs: RunTable): GatewaySessionSource {
   return {
@@ -15,10 +17,8 @@ export function hostGatewaySource(ledger: RunLedger, runs: RunTable): GatewaySes
     watch: (sessionId, afterSeq, onEvent, onHistoryGone) =>
       ledger.watch(sessionId, afterSeq, onEvent, onHistoryGone),
     approvalRisk: (sessionId, approvalId) => ledger.approvalRisk(sessionId, approvalId),
-    answerApproval: async (sessionId, approvalId, decision) => {
-      const callId = ledger.callIdOf(sessionId, approvalId);
-      if (callId === undefined) throw new Error("No approval with this id is waiting.");
-      await runs.send(sessionId, { type: "approval", callId, approved: decision === "approve" });
+    answerApproval: async () => {
+      throw new Error("A phone can't answer an approval yet.");
     },
     sendPrompt: (sessionId, text) => runs.send(sessionId, { type: "answer", text }),
   };
