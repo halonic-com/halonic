@@ -12,7 +12,8 @@ export { type RunChip, type RunRow, runRow } from "./list/run-row.ts";
 export type { WorkflowRef } from "./list/runs-filter.ts";
 export { RunCardReceipt, type RunCardReceiptProps } from "./run-view/card-receipt.tsx";
 export { type RunLogRead, useRunLog } from "./run-view/every-step.tsx";
-export { type RunsList, RunsListService, type RunsListState } from "./runs-list.ts";
+export { RunView } from "./run-view/run-page.tsx";
+export { RunsList, RunsListService, type RunsListState } from "./runs-list.ts";
 
 /** One run as the Runs list reads it: its summary. */
 export interface SourcedRun {

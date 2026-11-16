@@ -3083,6 +3083,9 @@ importers:
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../../../core/events
+      '@halonicjs/studio-feature-inbox':
+        specifier: workspace:*
+        version: link:../inbox
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../../testing/spec

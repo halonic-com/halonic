@@ -35,6 +35,7 @@ export type { InboxNotice, InboxNotices, SandboxFixedNotice } from "./notices/in
 export { clockTime } from "./plain/waiting-time.ts";
 export type { InboxRequests, RequestWorkflow, StartedRun } from "./request/inbox-requests.ts";
 export type { SandboxPasses, SandboxRefusals } from "./sandbox/sandbox-setup-source.ts";
+export { WaitCard, type WaitCardProps } from "./ui/wait-card.tsx";
 
 /** The runs the Inbox reads and answers. The app provides it for each open workspace. */
 export const InboxRunsService: ServiceKey<InboxRuns> = serviceKey<InboxRuns>("inbox.runs");

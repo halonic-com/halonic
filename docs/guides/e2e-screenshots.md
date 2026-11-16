@@ -27,5 +27,14 @@ card is the first: `packages/studio/features/workflows/e2e`.
    then call `page.screenshot` with `fullPage: true` and a path
    `test-results/screenshots/<screen>-<state>-<light|dark>.png`.
 
+## Pictures for halonic.dev
+
+`e2e/site-screenshots.spec.ts` takes the pictures the website shows (HAL-10732): the run page of a
+made-up Review pull request run (`run-steps-light.png`, `run-steps-dark.png`) and the Inbox card
+"Publish the review?" (`approval-light.png`, `approval-dark.png`). They are in the same artifact,
+but cropped to the screen's content, at 2x, with names that don't change. The data is invented and
+uses the site's names. The run page lists only the steps a run reached, so the step after the
+approval isn't in the picture.
+
 Don't run Playwright on the shared runner (HAL-2418). Push and let CI run it. See
 [the shell's README](../../packages/studio/shell/README.md) for the shell's own end-to-end tests.
