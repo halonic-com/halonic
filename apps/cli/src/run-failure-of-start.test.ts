@@ -55,6 +55,35 @@ verifies("cli.run-failed-start-and-memory", () => {
       ]);
     });
 
+    it("ends line 1 with the sandbox's reason when the run log gives its code", () => {
+      const events = log({
+        type: "sandbox.started",
+        state: "build",
+        agent: "reporter",
+        timeoutMs: 30_000,
+      });
+      const failure = runFailureOf(
+        { ...failed, sandboxReason: "bubblewrap-missing" },
+        undefined,
+        started(failed, events),
+      );
+      expect(failure).toEqual({
+        reason: "sandbox-start-failed",
+        agent: "reporter",
+        code: "bubblewrap-missing",
+      });
+      expect(wordsOf(failure)[0]).toBe(
+        "Support reply failed in the step Build report: reporter didn't start, because the sandbox on this computer didn't start: bubblewrap isn't installed, and the sandbox needs it.",
+      );
+    });
+
+    it("words a code it doesn't know as other", () => {
+      const failure: RunFailure = { reason: "sandbox-start-failed", agent: "reporter", code: "x" };
+      expect(wordsOf(failure)[0]).toMatch(
+        /didn't start: Halonic can't tell what the sandbox is missing\.$/u,
+      );
+    });
+
     it("gets the general lines when the step's log has no sandbox.started", () => {
       const events = log({
         type: "sandbox.started",
@@ -87,6 +116,26 @@ verifies("cli.run-failed-start-and-memory", () => {
       expect(wordsOf(failure)).toEqual([
         "Support reply failed in the step Build report: writer didn't start, because Claude Code didn't start on this computer or didn't answer within 60 seconds.",
         "Check that Claude Code starts in a terminal and is signed in, then run it again.",
+      ]);
+    });
+
+    it.each([
+      [
+        "not-installed",
+        "writer didn't start, because Claude Code isn't installed on this computer.",
+        "Install Claude Code, then run it again.",
+      ],
+      [
+        "signed-out",
+        "writer didn't start, because Claude Code isn't signed in on this computer.",
+        "Sign in to Claude Code in a terminal, then run it again.",
+      ],
+    ] as const)("words the known cause %s", (harnessCause, one, two) => {
+      const failure = runFailureOf({ ...failed, harnessCause }, undefined, started(failed, events));
+      expect(failure).toMatchObject({ reason: "harness-start-failed", cause: harnessCause });
+      expect(wordsOf(failure)).toEqual([
+        `Support reply failed in the step Build report: ${one}`,
+        two,
       ]);
     });
 

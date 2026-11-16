@@ -259,7 +259,12 @@ function outOfMemoryFailure(failed: RunFailedEvent, model: FailedModel | undefin
 function sandboxFailure(failed: RunFailedEvent, started: FailedStart | undefined): RunFailure {
   return started === undefined
     ? generalFailure(failed)
-    : { reason: "sandbox-start-failed", agent: started.agent };
+    : {
+        reason: "sandbox-start-failed",
+        agent: started.agent,
+        // Left out for a log from before the engine named it, so line 1 stays plain.
+        ...(failed.sandboxReason === undefined ? {} : { code: failed.sandboxReason }),
+      };
 }
 
 /** `harness-start-failed` for the program the step's `harness.started` names, and how long the engine waited for it. */
@@ -273,6 +278,7 @@ function harnessFailure(failed: RunFailedEvent, started: FailedStart | undefined
     agent: started.agent,
     harness: harnessNames.get(id) ?? id,
     within: counted(Math.round(timeoutMs / 1000), "second", "seconds"),
+    ...(failed.harnessCause === undefined ? {} : { cause: failed.harnessCause }),
   };
 }
 
