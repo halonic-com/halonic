@@ -2,7 +2,6 @@
 
 - Approval: HAL-10832
 - Kind: internal
-- Signature: pending (Liam signs on the review)
 
 ## What changes
 
