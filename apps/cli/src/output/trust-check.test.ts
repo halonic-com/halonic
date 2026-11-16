@@ -8,6 +8,7 @@ import type {
 } from "@halonicjs/workspace";
 import { expect, it } from "vitest";
 import { plainText } from "../messages/phrase.ts";
+import { printable } from "./printable.ts";
 import { type FingerprintedCheck, shownDate, trustCheckLines } from "./trust-check.ts";
 
 const facts = { name: "Acme", folder: "./acme" };
