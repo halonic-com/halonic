@@ -33,8 +33,8 @@ mod start;
 use start::running_host;
 
 #[path = "agent_host_updates.rs"]
-mod updates;
-pub use updates::{SecurityUpdatesAnswer, agent_host_security_updates};
+pub mod updates;
+pub use updates::SecurityUpdatesAnswer;
 
 #[path = "agent_host_life.rs"]
 mod life;

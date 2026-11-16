@@ -1,3 +1,4 @@
+import type { SandboxSetting } from "@halonicjs/ports";
 import { FakeSandboxSession, idleProgram } from "@halonicjs/testing-contracts";
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
@@ -17,12 +18,14 @@ import {
 } from "./sandbox-choice.test-helper.ts";
 import {
   defaultBackendOrder,
+  type SandboxBackend,
   type SandboxBackendState,
   type SandboxBackendStatus,
   SandboxChoiceService,
   type SecurityUpdatesState,
   sandboxBackendStates,
 } from "./sandbox-choice.ts";
+import type { CanaryFindings } from "./sandbox-trust-check.ts";
 
 sessions.open = (opened) => new FakeSandboxSession({ profile: opened, program: idleProgram });
 
