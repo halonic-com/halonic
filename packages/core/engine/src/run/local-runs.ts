@@ -26,7 +26,6 @@ import { callOf, hasEnded, type PendingCall, type RunState } from "../kernel/run
 import { readRun, step } from "../kernel/step.ts";
 import { appendFailed } from "./append-failed.ts";
 import { childNow, childStart, endChildrenOf, parentEndedError, receiverOf } from "./child-runs.ts";
-import { endLostRuns } from "./end-interrupted-runs.ts";
 import { failedCallInput } from "./failed-call-input.ts";
 import { LocalHarnessCalls } from "./local-harness-calls.ts";
 import { type CallModel, LocalModelCalls } from "./local-model-calls.ts";
@@ -43,6 +42,7 @@ import { RunFeed } from "./run-feed.ts";
 import { callTimer, childTimer, harnessTimer, stateTimer, toolTimer } from "./run-timer-ids.ts";
 import { StartDeadlines } from "./start-deadlines.ts";
 import { checkStartRequest } from "./start-request.ts";
+import { sweepLostRuns } from "./sweep-lost-runs.ts";
 import { UnfinishedEffects } from "./unfinished-effects.ts";
 import { UnrecordedResults } from "./unrecorded-results.ts";
 import { WatchedRuns } from "./watched-runs.ts";
@@ -206,7 +206,7 @@ export class LocalRuns {
   }
 
   subscribe(runId: string, afterSeq: number, listener: RunEventListener): RunSubscription {
-    return this.#feed.subscribe(runId, afterSeq, listener, this.ready().then(() => undefined));
+    return this.#feed.subscribe(runId, afterSeq, listener, this.ready());
   }
 
   /**
@@ -236,10 +236,11 @@ export class LocalRuns {
   }
 
   /**
-   * Stops running runs in this process: every harness run going on is stopped, with its
-   * session and bridge, and this resolves once they all have. What they were doing isn't
-   * recorded, so their runs stay `running` in the log and end as `interrupted` when an engine
-   * next starts on the store: a harness run can't be resumed.
+   * Stops running runs in this process: every harness run going on is
+   * stopped, with its session and bridge, and this resolves once they all
+   * have. What they were doing isn't recorded, so their runs stay `running`
+   * in the log and end as `interrupted` when an engine next starts on the
+   * store: a harness run can't be resumed.
    */
   async close(): Promise<void> {
     this.#closed = true;
@@ -266,15 +267,9 @@ export class LocalRuns {
    */
   async #endInterruptedRuns(): Promise<number> {
     await this.#connectorCalls.markCutShort();
-    const lost = await endLostRuns(this.store, this.#clock);
-    const ended = [...lost.interrupted, ...lost.cancelled];
-    for (const runId of ended) {
-      const parent = (await readRun(this.store, runId))?.parent;
-      if (parent == null) continue;
-      await this.#options.scheduler.schedule(parent.runId, `${childTimer}${runId}`, this.#now());
-    }
-    for (const runId of ended) await this.#ended(runId);
-    return lost.interrupted.length;
+    return sweepLostRuns(this.store, this.#clock, this.#options.scheduler, (runId) =>
+      this.#ended(runId),
+    );
   }
 
   async #carryOutCall(runId: string, callId: string, kind: CallKind): Promise<void> {
