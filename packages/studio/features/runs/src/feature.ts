@@ -2,8 +2,8 @@ import { sandboxStartCheckKey, shortRunId } from "@halonicjs/app";
 import { defineFeature } from "@halonicjs/studio-shell";
 import {
   InstructionTrustHostService,
-  RunsSourceService,
   RunStartHostService,
+  RunsSourceService,
   SampleHintService,
 } from "./api.ts";
 import { listRows } from "./list/list-rows.ts";
