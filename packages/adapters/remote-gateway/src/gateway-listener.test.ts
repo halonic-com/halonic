@@ -278,13 +278,13 @@ verifies("remote-gateway.listener", () => {
     });
 
     it("keeps a connection that said hello past the hello time", async () => {
-      const t = await openListener({ helloTimeoutMs: 50 });
+      const t = await openListener({ helloTimeoutMs: 1_000 });
       try {
         const client = t.client();
         await client.open(t.listener.port);
         await client.sendJson({ type: "hello", id: "h1", version: 1 });
-        await client.frames(1);
-        await new Promise((resolve) => setTimeout(resolve, 150));
+        expect(await client.frames(1)).toHaveLength(1);
+        await new Promise((resolve) => setTimeout(resolve, 1_500));
         expect(client.socket.destroyed).toBe(false);
       } finally {
         await t.stop();
