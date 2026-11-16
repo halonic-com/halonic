@@ -9,15 +9,25 @@ import type { FilesHost } from "../files-host.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { FileView } from "./file-view.tsx";
 
-const opened: { options: CodeEditorOptions; destroyed: boolean }[] = [];
+const opened: {
+  options: CodeEditorOptions;
+  destroyed: boolean;
+  text: string;
+  loads: string[];
+}[] = [];
 
 // The real editor is tested in its own package; here a stand-in lets the test type.
 vi.mock("@halonicjs/studio-code-editor", () => ({
   languageFor: (path: string) => (path.endsWith(".md") ? "markdown" : "yaml"),
   openCodeEditor: async (options: CodeEditorOptions) => {
-    const entry = { options, destroyed: false };
+    const entry = { options, destroyed: false, text: options.text, loads: [] as string[] };
     opened.push(entry);
     return {
+      text: () => entry.text,
+      load: (text: string) => {
+        entry.text = text;
+        entry.loads.push(text);
+      },
       destroy: () => {
         entry.destroyed = true;
       },
@@ -79,6 +89,36 @@ verifies("files.ui.file-tab", () => {
 
     expect(opened[0]?.options.language).toBe("markdown");
     expect(edit).toHaveBeenCalledWith("notes.md", "ab");
+  });
+
+  it("loads a change the editor didn't make, and ignores the echo of its own edits", async () => {
+    let text = "one";
+    let notify = () => {};
+    const host: FilesHost = {
+      ...hostOf(async () => text),
+      subscribe: (listener) => {
+        notify = listener;
+        return () => {
+          notify = () => {};
+        };
+      },
+    };
+    show(host, "notes.md");
+    await settle();
+
+    // The user's own typing comes back through the host with the editor's text.
+    opened[0]?.options.onChange?.("one!");
+    if (opened[0]) opened[0].text = "one!";
+    text = "one!";
+    notify();
+    await settle();
+    expect(opened[0]?.loads).toEqual([]);
+
+    // The workspace's Undo puts the old text back.
+    text = "one";
+    notify();
+    await settle();
+    expect(opened[0]?.loads).toEqual(["one"]);
   });
 
   it("removes the editor when the tab closes", async () => {

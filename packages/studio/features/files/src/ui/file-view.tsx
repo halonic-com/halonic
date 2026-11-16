@@ -48,10 +48,21 @@ export function FileView({ item, context }: ItemViewProps) {
   useEffect(() => {
     const container = parent.current;
     if (!ready || container === null) return;
-    // The text is read once; the editor owns it from here, so typing is never overwritten.
+    // The editor starts from this text. Later changes the editor didn't make (the workspace's
+    // Undo, a rename, another feature) come through the host and are loaded below.
     const text = loaded.kind === "ready" ? loaded.text : "";
     let editor: CodeEditor | undefined;
     let stopped = false;
+    const follow = (made: CodeEditor) =>
+      host.subscribe(() => {
+        host.read(path).then(
+          (latest) => {
+            if (!stopped && latest !== null && latest !== made.text()) made.load(latest);
+          },
+          () => {},
+        );
+      });
+    let unsubscribe = () => {};
     void openCodeEditor({
       parent: container,
       text,
@@ -60,10 +71,14 @@ export function FileView({ item, context }: ItemViewProps) {
       onChange: (next) => host.edit(path, next),
     }).then((made) => {
       if (stopped) made.destroy();
-      else editor = made;
+      else {
+        editor = made;
+        unsubscribe = follow(made);
+      }
     });
     return () => {
       stopped = true;
+      unsubscribe();
       editor?.destroy();
     };
   }, [ready, host, path]);
