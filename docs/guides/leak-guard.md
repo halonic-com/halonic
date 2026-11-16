@@ -74,9 +74,9 @@ queue may use. A pull request's own CI run scans without them; the
 merge queue checks them again before anything merges. A secret that is set
 but holds no term always fails. A missing secret passes with a warning
 until the repository variable `HALONIC_TERMS_ENFORCED` is `true`; from then
-on a missing secret fails (pull requests from forks and from Dependabot
-never get the secret, so they are exempt). The summary line says how many terms were loaded, never
-which. CI also asks GitHub to mask every term in the job log.
+on a missing secret fails (a pull request's own run never gets the
+secret, so it is exempt). The summary line says how many terms were
+loaded, never which. CI also asks GitHub to mask every term in the job log.
 
 Matching ignores case and finds a term inside longer words. It also sees
 through look-alike spellings: percent escapes (`first%20lastname`),
