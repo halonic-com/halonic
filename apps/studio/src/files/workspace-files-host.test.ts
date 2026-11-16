@@ -156,12 +156,7 @@ verifies("studio.workspace-files-host", () => {
   });
 
   it("stops holding a file once the user settles it", async () => {
-    const { host, watching, settled } = setup(
-      ["a.md"],
-      { "a.md": "mine" },
-      {},
-      { held: ["a.md"] },
-    );
+    const { host, watching, settled } = setup(["a.md"], { "a.md": "mine" }, {}, { held: ["a.md"] });
     watching.changed?.([{ path: "a.md", kind: "changed" }]);
     await new Promise((resolve) => setTimeout(resolve, 0));
     let told = 0;

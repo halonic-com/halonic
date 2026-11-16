@@ -56,11 +56,13 @@ export class WorkspaceFilesHost implements FilesHost {
 
   constructor(parts: FilesHostParts) {
     this.#parts = parts;
-    this.#watch = parts.store.watch?.({
-      changed: (changes) => void this.#took(changes),
-      // Without a watch only a save that finds the file changed shows it.
-      failed: () => undefined,
-    }).catch(() => undefined);
+    this.#watch = parts.store
+      .watch?.({
+        changed: (changes) => void this.#took(changes),
+        // Without a watch only a save that finds the file changed shows it.
+        failed: () => undefined,
+      })
+      .catch(() => undefined);
   }
 
   outside(): ReadonlyMap<string, OutsideChange> {
