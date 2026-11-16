@@ -141,9 +141,7 @@ export function RecordsGrid({ label, model, state, grid }: RecordsGridProps) {
       {rows.length === 0 ? (
         <EmptyState
           plain
-          title={
-            state.view === null ? collectionWords.noRecords : collectionWords.noneInView(state.view)
-          }
+          title={state.view === null ? collectionWords.noRecords : collectionWords.noneInView}
           {...(state.view === null
             ? { action: { label: collectionWords.addRecord, onClick: addRecord } }
             : {})}

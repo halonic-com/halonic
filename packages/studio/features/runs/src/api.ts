@@ -18,8 +18,8 @@ export { type RunsList, RunsListService, type RunsListState } from "./runs-list.
 export interface SourcedRun {
   readonly summary: RunSummary;
   /**
-   * Whether the run's log has a tool call (`RunHistory.madeToolCalls`). A
-   * run "sent nothing" only when it made none (cli-output 3.4).
+   * Whether the run's log has a tool call (`RunHistory.madeToolCalls`). The
+   * Runs list no longer reads it (Studio design 4.5); `halonic runs` does (cli-output 3.4).
    */
   readonly madeToolCalls: boolean;
   /**
@@ -105,6 +105,15 @@ export interface RunsSource {
   /** Calls `listener` whenever a run starts, changes or ends; returns a function that stops it. */
   readonly subscribe: (listener: () => void) => () => void;
 }
+
+/**
+ * Whether the open folder is the Acme sample, which Home's Recent runs words differently. The app
+ * provides it for each open folder; without it no workspace counts as the sample. The First Run
+ * feature owns the same fact, but it builds on this one, so this is its own small key.
+ */
+export const SampleHintService: ServiceKey<{ isSample(): boolean }> = serviceKey<{
+  isSample(): boolean;
+}>("runs.sample-hint");
 
 /** The open workspace's runs. The app provides it for each open workspace. */
 export const RunsSourceService: ServiceKey<RunsSource> = serviceKey<RunsSource>("runs.source");

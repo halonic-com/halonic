@@ -18,7 +18,11 @@ afterEach(() => {
   restoreModal();
 });
 
-const support = { key: "support/support-reply", label: "Answer a customer's email" };
+const support = {
+  key: "support/support-reply",
+  name: "Support reply",
+  label: "Answer a customer's email",
+};
 
 async function settled(): Promise<void> {
   await act(async () => {

@@ -33,7 +33,7 @@ export const collectionWords = {
   removed: (row: string) => `Removed ${row}.`,
   noRecords: "No records yet.",
   addRecord: "Add record",
-  noneInView: (view: string) => `No records in “${view}”.`,
+  noneInView: "No records match this view.",
   usedBy: "Used by",
   notUsed: "No agent uses this collection yet.",
 } as const;

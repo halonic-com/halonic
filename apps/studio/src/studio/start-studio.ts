@@ -3,6 +3,7 @@ import { TauriPickedFolders, TauriTrustStore } from "@halonicjs/adapter-fs-tauri
 import { ServiceRegistry, sandboxStartCheck, sandboxStartCheckKey } from "@halonicjs/app";
 import { SampleWorkspaceService } from "@halonicjs/studio-feature-first-run/api";
 import { SandboxPassesService } from "@halonicjs/studio-feature-inbox/api";
+import { SampleHintService } from "@halonicjs/studio-feature-runs/api";
 import {
   BrowserDisplayPrefs,
   DisplaySettings,
@@ -291,10 +292,9 @@ export async function openFolder(
   const trustView = trust === undefined ? undefined : new WorkspaceTrustView(trust, location);
   services.provide(DisplaySettingsService, display);
   services.provide(WorkspacePageService, { name, trust: trustView });
-  services.provide(
-    SampleWorkspaceService,
-    sampleWorkspaceOf(location, device.recent, device.storage),
-  );
+  const sample = sampleWorkspaceOf(location, device.recent, device.storage);
+  services.provide(SampleWorkspaceService, sample);
+  services.provide(SampleHintService, sample);
   const trustStore = ipc === undefined ? undefined : new TauriTrustStore(ipc);
   services.provide(
     TrustedSourcesService,

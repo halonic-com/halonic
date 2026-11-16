@@ -64,7 +64,7 @@ export interface SandboxFacts {
   readonly securityUpdatesOverdue?: boolean;
 }
 
-export type ChipTone = "attention" | "neutral" | "success";
+export type ChipTone = "attention" | "neutral" | "success" | "warning";
 export type SandboxAction = "remove" | "check-again";
 
 export interface SandboxStep {
@@ -115,7 +115,7 @@ export function sandboxView(facts: SandboxFacts, now: Date = new Date()): Sandbo
     return {
       ...none,
       lead: text.NOT_AVAILABLE,
-      chip: { label: "Not available", tone: "attention" },
+      chip: { label: "Not available", tone: "warning" },
     };
   const { check, running, outcome } = facts;
   const callout = outcome ? calloutFor(outcome) : null;
@@ -184,7 +184,7 @@ function checkedView(
     case "needs-setup":
       return {
         ...none,
-        chip: { label: "Needs setting up", tone: "attention" },
+        chip: { label: "Needs setting up", tone: "warning" },
         lead: text.NEEDS_SETUP,
         callout,
         hint: hint(text.ADMIN_ONCE),

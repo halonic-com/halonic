@@ -26,10 +26,15 @@ afterEach(() => {
 
 const support: RequestWorkflow = {
   key: "support/support-reply",
+  name: "Support reply",
   label: "Answer a customer's email",
   description: 'A customer\'s email, for example: "Hi, my order #1042 arrived damaged."',
 };
-const travel: RequestWorkflow = { key: "ops/book-travel", label: "Book travel" };
+const travel: RequestWorkflow = {
+  key: "ops/book-travel",
+  name: "Book travel",
+  label: "Book travel",
+};
 
 async function settled(): Promise<void> {
   await act(async () => {
@@ -143,9 +148,7 @@ verifies("inbox.request", () => {
       await send(root);
       expect(started).toHaveBeenCalledWith(support.key, "Hi, my order arrived damaged.");
       expect(message(root).value).toBe("");
-      expect(toasts.list().map((toast) => toast.title)).toEqual([
-        "Answer a customer's email started",
-      ]);
+      expect(toasts.list().map((toast) => toast.title)).toEqual(["Support reply started"]);
     });
 
     it("gives the toast Open run, which opens the run it started", async () => {

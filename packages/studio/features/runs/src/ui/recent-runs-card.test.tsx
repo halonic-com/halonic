@@ -52,6 +52,7 @@ function OnHome(props: {
   readonly openRuns?: () => void;
   readonly openRun?: (run: { id: string }) => void;
   readonly phone?: boolean;
+  readonly isSample?: boolean;
 }) {
   const [attempt, setAttempt] = useState(0);
   const view = (
@@ -59,6 +60,7 @@ function OnHome(props: {
       <RecentRunsView
         list={props.list}
         now={() => mondayMorning}
+        {...(props.isSample === undefined ? {} : { isSample: props.isSample })}
         {...(props.openRuns === undefined ? {} : { openRuns: props.openRuns })}
         {...(props.openRun === undefined ? {} : { openRun: props.openRun })}
       />
@@ -126,7 +128,7 @@ verifies("runs.home", () => {
     expect(rows(root)).toEqual([
       "Support replyWaiting for your approval in the step SendNeeds you",
       "Support replyIn DraftRunning",
-      "Support replySent nothingDone",
+      "Support replyFinished in DraftDone",
       "Support replySupport reply failed in the step Draft.Failed",
     ]);
   });
@@ -136,6 +138,15 @@ verifies("runs.home", () => {
     expect(root.textContent).toContain(
       "No runs yet. When an agent or workflow runs, you'll see it here.",
     );
+  });
+
+  it("says to start a run from the Inbox in the Acme sample, with no command line note", async () => {
+    const { root } = await show(fakeSource([]).source, { isSample: true });
+    expect(root.textContent).toContain(
+      "No runs yet. Start one from the Inbox, and it shows up here.",
+    );
+    expect(root.textContent).not.toContain("halonic run");
+    expect(root.querySelector("code")).toBeNull();
   });
 
   it("names the first workflow to run in the command line note", async () => {
@@ -188,7 +199,7 @@ verifies("runs.home", () => {
     await act(async () => root.querySelector("button")?.click());
     await settled();
     await settled();
-    expect(rows(root)).toEqual(["Support replySent nothingDone"]);
+    expect(rows(root)).toEqual(["Support replyFinished in DraftDone"]);
   });
 
   it("opens a run in the active tab from its row", async () => {

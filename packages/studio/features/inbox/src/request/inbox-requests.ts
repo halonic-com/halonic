@@ -4,6 +4,8 @@
 export interface RequestWorkflow {
   /** The app's own key for the workflow. The Inbox only hands it back to {@link InboxRequests.start}. */
   readonly key: string;
+  /** The workflow's name: "Support reply". The started toast says it. */
+  readonly name: string;
   /** The `start.label`: "Answer a customer's email". */
   readonly label: string;
   /** The workflow's description, shown as the Message placeholder. */

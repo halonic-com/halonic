@@ -49,6 +49,7 @@ verifies("studio.inbox-requests", () => {
     expect(await setup().requests.offered()).toEqual([
       {
         key: "support/support-reply",
+        name: "Support reply",
         label: "Answer a customer's email",
         description: "A customer's email",
       },

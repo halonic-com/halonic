@@ -21,7 +21,7 @@ const view = (over: Partial<SandboxFacts>) =>
 verifies("settings.agent-sandbox-state", () => {
   it("shows Needs setting up with the button and the one-prompt hint", () => {
     const v = view({});
-    expect(v.chip).toEqual({ label: "Needs setting up", tone: "attention" });
+    expect(v.chip).toEqual({ label: "Needs setting up", tone: "warning" });
     expect(v.primary).toEqual({ action: "set-up", label: "Set up the sandbox", busy: false });
     expect(v.hint).toBe("Windows asks for administrator rights once.");
   });
@@ -85,7 +85,7 @@ verifies("settings.agent-sandbox-state", () => {
 
   it("shows Not available and no button when the build has no sandbox", () => {
     const v = view({ available: false });
-    expect(v.chip).toEqual({ label: "Not available", tone: "attention" });
+    expect(v.chip).toEqual({ label: "Not available", tone: "warning" });
     expect(v.primary).toBeNull();
     expect(v.secondary).toEqual([]);
   });
