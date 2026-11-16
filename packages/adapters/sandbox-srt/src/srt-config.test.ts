@@ -99,7 +99,7 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
       tools,
     ).filesystem;
     expect(win?.allowRead).toContainEqual({ path: keep, literal: true });
-    expect(win?.denyWrite).toContainEqual({ path: keep, literal: true });
+    expect(win?.denyWrite).not.toContainEqual({ path: keep, literal: true });
     for (const path of tools.slice(1)) {
       expect(win?.allowRead).not.toContainEqual({ path, literal: true });
     }
