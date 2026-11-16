@@ -140,12 +140,17 @@ export class RunBridgeApprovals {
   ): Promise<HarnessAnswer> {
     const asked = this.#asked.get(runId) ?? new Map<string, string>();
     this.#asked.set(runId, asked);
+    let engineCall: string | undefined;
     try {
-      return await call.approvals.ask(question, (engineCallId) =>
-        asked.set(bridgeCallId, engineCallId),
-      );
+      return await call.approvals.ask(question, (engineCallId) => {
+        engineCall = engineCallId;
+        asked.set(bridgeCallId, engineCallId);
+      });
     } finally {
-      asked.delete(bridgeCallId);
+      // A reused bridge call id may name another question by now: take off only our own.
+      if (engineCall !== undefined && asked.get(bridgeCallId) === engineCall) {
+        asked.delete(bridgeCallId);
+      }
       if (asked.size === 0 && this.#asked.get(runId) === asked) this.#asked.delete(runId);
     }
   }

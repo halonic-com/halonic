@@ -4,8 +4,8 @@ import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { finished, harnessPorts, stillOpen } from "../harness/harness-test-kit.test-helper.ts";
 import { KernelBlobs, KernelRuns, writerAgent } from "../kernel/kernel-test-kit.test-helper.ts";
-import { harnessGoneError } from "./local-runs.ts";
 import { replyStart, runsOn, typesOf } from "./local-runs-test-kit.test-helper.ts";
+import { harnessGoneError } from "./run-errors.ts";
 
 const agents = { writer: writerAgent("claude-code") };
 

@@ -233,10 +233,9 @@ export class LocalExecutor implements RunExecutor {
   }
 
   /**
-   * The decisions a remote device makes on the questions of one run's bridge
-   * (HAL-10849), taken the way a card click is, and marked `remote-device` in
-   * the run log. Pass them to the bridge's services as its `remoteDecisions`.
-   * With no `runs`, every decision is `unknown`.
+   * The decisions a remote device makes on one run's bridge questions
+   * (HAL-10849), taken as a card click is. Pass them to the bridge's services
+   * as `remoteDecisions`. With no `runs`, every decision is `unknown`.
    */
   bridgeRemoteDecisions(runId: string): BridgeRemoteDecisions {
     return this.runs?.bridgeRemoteDecisions(runId) ?? noRunDecisions;
