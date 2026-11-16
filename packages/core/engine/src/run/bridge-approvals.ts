@@ -62,9 +62,10 @@ export class RunBridgeApprovals {
    * question at a time: the call's log is held while a question waits, so
    * the next waits behind it.
    *
-   * A request whose `signal` aborts rejects at once, and the run keeps the
-   * question until a person answers it, so the log stays true to what was
-   * asked. The program gets no yes from that.
+   * A request whose `signal` aborts rejects at once. A question already
+   * asked stays in the run until a person answers it, so the log stays true
+   * to what was asked; one still waiting its turn is dropped and never asked.
+   * The program gets no yes from either.
    */
   of(runId: string): BridgeApprovals {
     return {
@@ -75,7 +76,11 @@ export class RunBridgeApprovals {
         try {
           const { approved, comment } = await untilAborted(
             signal,
-            call.log.whileHeld(() => unlessStopped(call.stop, call.approvals.ask({ tool, args }))),
+            call.log.whileHeld(() => {
+              // Waiting its turn is not asking yet: a request withdrawn by now is never put to a person.
+              signal.throwIfAborted();
+              return unlessStopped(call.stop, call.approvals.ask({ tool, args }));
+            }),
           );
           // Only the answer goes to the bridge: what the run's answer carries besides is the engine's.
           return comment === undefined ? { approved } : { approved, comment };

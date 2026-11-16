@@ -153,6 +153,25 @@ verifies("engine.bridge-approvals", () => {
     await harnessCall;
   });
 
+  it("never asks a request that was withdrawn while it waited its turn", async () => {
+    const { executor, runs, ask, waitsOn, harnessCall } = await runningCall();
+    const abort = new AbortController();
+
+    const first = ask();
+    await waitsOn("call-2");
+    const second = ask(abort.signal);
+    abort.abort(new Error("The program went away."));
+    await expect(second).rejects.toThrow("The program went away.");
+    await executor.send("run_1", "approve", undefined, { callId: "call-2" });
+
+    expect((await first).approved).toBe(true);
+    await vi.waitFor(async () =>
+      expect(await runs.get("run_1")).toMatchObject({ status: "running", approvals: [] }),
+    );
+    await executor.cancel("run_1");
+    await harnessCall;
+  });
+
   it("is not approved when the executor runs no workflows", async () => {
     const { executor } = runsOn([], new KernelRuns(), {});
 
