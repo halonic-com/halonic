@@ -31,6 +31,12 @@ export const DisplaySettingsService: ServiceKey<DisplaySettings> =
 
 export type { SandboxCheckFacts, SandboxOutcome } from "./agent-sandbox/sandbox-state.ts";
 
+/** Whether the sandbox's own security updates are late (W2 of HAL-5407); `last` is an ISO time or null. */
+export interface SecurityUpdatesFacts {
+  readonly overdue: boolean;
+  readonly last: string | null;
+}
+
 /**
  * What Settings › Agent sandbox needs of the agent host. The app gives it where a host runs (the
  * desktop app); without it the section reads Not available. Nothing here starts by itself: the
@@ -41,6 +47,11 @@ export interface AgentSandboxHost {
   readonly available: boolean;
   /** The host's check, in the section's words. `checkedAt` is an ISO time. */
   check(): Promise<SandboxCheckFacts>;
+  /**
+   * Whether the sandbox's security updates are overdue, or null for a sandbox without its own
+   * updates. Absent on a host that can't say. Never blocks a run.
+   */
+  securityUpdates?(): Promise<SecurityUpdatesFacts | null>;
   /** Which command runs in the host now, if any: a setup or removal that began before Settings opened. */
   running(): Promise<"setup" | "remove" | null>;
   /**

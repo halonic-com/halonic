@@ -9,6 +9,7 @@ import type {
   AgentSandboxHost,
   SandboxCheckFacts,
   SandboxOutcome,
+  SecurityUpdatesFacts,
 } from "@halonicjs/studio-feature-settings";
 
 /**
@@ -51,12 +52,15 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
   readonly #transport: AgentHostTransport;
   readonly #setup: AgentHostSandboxSetup;
   readonly #now: () => Date;
+  readonly securityUpdates?: () => Promise<SecurityUpdatesFacts | null>;
 
   constructor(
     transport: AgentHostTransport,
     setup: AgentHostSandboxSetup = new AgentHostSandboxSetup(transport),
     now: () => Date = () => new Date(),
+    securityUpdates?: () => Promise<SecurityUpdatesFacts | null>,
   ) {
+    if (securityUpdates !== undefined) this.securityUpdates = securityUpdates;
     this.#transport = transport;
     this.#setup = setup;
     this.#now = now;

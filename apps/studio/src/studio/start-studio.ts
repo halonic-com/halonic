@@ -431,7 +431,10 @@ function provideAgentSandbox(services: ServiceRegistry, window: object): void {
   if (!agentSandboxOffered) return;
   const transport = tauriAgentHostTransport(window);
   if (transport !== undefined)
-    services.provide(AgentSandboxService, new AgentHostSandboxFacts(transport));
+    services.provide(
+      AgentSandboxService,
+      new AgentHostSandboxFacts(transport, undefined, undefined, () => transport.securityUpdates()),
+    );
 }
 
 /**
