@@ -35,7 +35,11 @@ import {
 import type { LocalExecutorOptions } from "./local-executor-options.ts";
 import { type RunTurn, runLocalSubagent } from "./local-subagent.ts";
 import { callAlongsideOthers } from "./run/alongside-others.ts";
-import { noRunApprovals } from "./run/bridge-approvals.ts";
+import {
+  type BridgeRemoteDecisions,
+  noRunApprovals,
+  noRunDecisions,
+} from "./run/bridge-approvals.ts";
 import {
   allowedToolsOf,
   connectorsOf,
@@ -226,6 +230,16 @@ export class LocalExecutor implements RunExecutor {
    */
   bridgeApprovals(runId: string): BridgeApprovals {
     return this.runs?.bridgeApprovals(runId) ?? noRunApprovals;
+  }
+
+  /**
+   * The decisions a remote device makes on the questions of one run's bridge
+   * (HAL-10849), taken the way a card click is, and marked `remote-device` in
+   * the run log. Pass them to the bridge's services as its `remoteDecisions`.
+   * With no `runs`, every decision is `unknown`.
+   */
+  bridgeRemoteDecisions(runId: string): BridgeRemoteDecisions {
+    return this.runs?.bridgeRemoteDecisions(runId) ?? noRunDecisions;
   }
 
   /**

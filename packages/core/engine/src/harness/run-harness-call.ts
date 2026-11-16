@@ -78,9 +78,11 @@ export interface HarnessApprovals {
    * Records the question in the run, which then waits for the person, and
    * resolves with their answer. The harness call keeps running meanwhile.
    *
+   * @param onRecorded - told the run's call id of the question once it is recorded,
+   *   which is the id a decision names
    * @throws when the run doesn't take the question, or the engine stops the call before an answer comes
    */
-  ask(question: HarnessQuestion): Promise<HarnessAnswer>;
+  ask(question: HarnessQuestion, onRecorded?: (callId: string) => void): Promise<HarnessAnswer>;
 }
 
 /** One harness call: the effect `decide` asked for, the run it belongs to and the agent's file. */

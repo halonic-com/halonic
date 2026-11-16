@@ -21,10 +21,11 @@ import type {
   Effect,
   StartChildEffect,
 } from "../kernel/decide-types.ts";
-import { InputRefused } from "../kernel/input-refused.ts";
+import { InputRefused, type RefusalCode } from "../kernel/input-refused.ts";
 import { callOf, hasEnded, type PendingCall, type RunState } from "../kernel/run-state.ts";
 import { readRun, step } from "../kernel/step.ts";
 import { appendFailed } from "./append-failed.ts";
+import type { BridgeRemoteDecisions } from "./bridge-approvals.ts";
 import { childNow, childStart, endChildrenOf, parentEndedError, receiverOf } from "./child-runs.ts";
 import { failedCallInput } from "./failed-call-input.ts";
 import { LocalHarnessCalls } from "./local-harness-calls.ts";
@@ -56,6 +57,13 @@ export const harnessGoneError =
 
 /** The `error` of a run someone cancelled; screens word the reason themselves. */
 export const cancelledError = "The run was cancelled.";
+
+/** Why the kernel refuses a decision on a question that another answer, or the run's end, already took. */
+const lostToAnotherAnswer: ReadonlySet<RefusalCode> = new Set([
+  "engine.decision-callid-must-match",
+  "engine.input-not-accepted",
+  "engine.run-ended",
+]);
 
 /** How a call a run waits on is carried out: a model call, or a run of the agent's harness. */
 type CallKind = "model" | "harness";
@@ -238,6 +246,35 @@ export class LocalRuns {
   /** The approvals of one run's bridge ({@link LocalHarnessCalls.bridgeApprovals}). */
   bridgeApprovals(runId: string) {
     return this.#harnessCalls.bridgeApprovals(runId);
+  }
+
+  /**
+   * Takes a remote device's decisions on the questions of one run's bridge.
+   * A decision goes the way a card click does, a `send` of `approve` or
+   * `reject` to the question's own call id, marked `remote-device`, so the
+   * kernel answers once and the first decision wins. Nothing is decided for a
+   * question that isn't waiting.
+   */
+  bridgeRemoteDecisions(runId: string): BridgeRemoteDecisions {
+    return {
+      decide: async ({ callId, approved }) => {
+        const question = this.#harnessCalls.bridgeQuestionOf(runId, callId);
+        if (question === undefined) return "unknown";
+        try {
+          await this.send(runId, approved ? "approve" : "reject", undefined, {
+            callId: question,
+            by: "remote-device",
+          });
+          return "decided";
+        } catch (error) {
+          // Another answer took the question between the lookup and the send.
+          if (error instanceof InputRefused && lostToAnotherAnswer.has(error.code)) {
+            return "already-decided";
+          }
+          throw error;
+        }
+      },
+    };
   }
 
   /**

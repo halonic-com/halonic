@@ -134,6 +134,11 @@ export class LocalHarnessCalls {
     return this.#bridgeApprovals.of(runId);
   }
 
+  /** The run's call id of the question the bridge asked under `bridgeCallId`, while it waits. */
+  bridgeQuestionOf(runId: string, bridgeCallId: string): string | undefined {
+    return this.#bridgeApprovals.engineCallIdOf(runId, bridgeCallId);
+  }
+
   /** Stops the run's harness calls going on, and resolves once each has stopped all it started. */
   stop(runId: string): Promise<void> {
     return this.#live.stop(runId);
@@ -169,7 +174,7 @@ export class LocalHarnessCalls {
     stop: StopSignal,
   ): HarnessApprovals {
     return {
-      ask: async ({ tool, args }) => {
+      ask: async ({ tool, args }, onRecorded) => {
         const answer = await this.#answers.waitFor(runId, stop, async () => {
           const events = await this.#options.record(runId, {
             type: "harness-asked",
@@ -178,11 +183,13 @@ export class LocalHarnessCalls {
             tool,
             args,
           });
-          if (!events.some(({ type }) => type === "approval.requested")) {
+          const requested = events.find(({ type }) => type === "approval.requested");
+          if (requested === undefined) {
             throw new Error(
               `Agent "${agent}" asked for an approval of "${tool}" where its run can't wait for one, as in an item of a for-each state.`,
             );
           }
+          if ("callId" in requested) onRecorded?.(requested.callId);
         });
         waitedOn.callId = answer.callId;
         return answer;
