@@ -1,6 +1,6 @@
 // The person's choice to continue without a sandbox (HAL-3779 design,
-// section 7). Only a person makes it, in Studio or the app: the CLI reads
-// it and never saves it.
+// section 7). Only a person makes it, in Studio or the app. There is no
+// command line flag for it.
 
 import type { Clock, SandboxSetting, SandboxSettingStore } from "@halonicjs/ports";
 
@@ -15,16 +15,10 @@ export interface NoSandboxOptions {
 }
 
 /**
- * Whether a CLI run may go without a sandbox: only when the saved setting
- * already says `none`. `not-chosen` means the person hasn't made that
- * choice, so the run is refused.
- */
-export type NoSandboxFlagDecision = { allowed: true } | { allowed: false; reason: "not-chosen" };
-
-/**
  * Makes and takes back the "no sandbox" choice (requirement
  * `app.no-sandbox`). `choose` is for a person's click in Studio or the
- * app. No command line or model tool calls it.
+ * app. No command line or model tool calls it, and there is no flag to
+ * run without the sandbox.
  *
  * @example
  * const noSandbox = new NoSandboxService({ settings, clock, appVersion: "0.1.0" });
@@ -56,18 +50,5 @@ export class NoSandboxService {
   async takeBack(): Promise<void> {
     const setting = await this.#options.settings.get();
     if (setting?.backend === "none") await this.#options.settings.remove();
-  }
-
-  /**
-   * Decides a CLI `--no-sandbox`: allowed only when the saved setting
-   * already says `none`. It never saves anything.
-   *
-   * @throws when the saved setting can't be read
-   */
-  async cliFlag(): Promise<NoSandboxFlagDecision> {
-    const setting = await this.#options.settings.get();
-    return setting?.backend === "none"
-      ? { allowed: true }
-      : { allowed: false, reason: "not-chosen" };
   }
 }

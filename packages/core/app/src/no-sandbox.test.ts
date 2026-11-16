@@ -8,14 +8,12 @@ const clock: Clock = { now: () => new Date("2026-11-15T09:00:00.000Z") };
 class FakeSettings implements SandboxSettingStore {
   saved: SandboxSetting | null;
   writes = 0;
-  failToRead = false;
 
   constructor(saved: SandboxSetting | null = null) {
     this.saved = saved;
   }
 
   async get(): Promise<SandboxSetting | null> {
-    if (this.failToRead) throw new Error("The setting can't be read.");
     return this.saved;
   }
 
@@ -74,33 +72,10 @@ verifies("app.no-sandbox", () => {
     expect(settings.writes).toBe(0);
   });
 
-  describe("a CLI --no-sandbox", () => {
-    it("is refused with no saved setting, and saves nothing", async () => {
-      const settings = new FakeSettings();
-      expect(await noSandbox(settings).cliFlag()).toEqual({ allowed: false, reason: "not-chosen" });
-      expect(settings.writes).toBe(0);
-    });
-
-    it("is refused when the person chose a backend", async () => {
-      const settings = new FakeSettings({ backend: "srt", chosenAt: "2026-11-01T09:00:00.000Z" });
-      expect(await noSandbox(settings).cliFlag()).toEqual({ allowed: false, reason: "not-chosen" });
-      expect(settings.writes).toBe(0);
-    });
-
-    it("is allowed when the setting already says none, and changes nothing", async () => {
-      const settings = new FakeSettings({
-        backend: "none",
-        chosenAt: "2026-11-01T09:00:00.000Z",
-        appVersion: "0.1.0",
-      });
-      expect(await noSandbox(settings).cliFlag()).toEqual({ allowed: true });
-      expect(settings.writes).toBe(0);
-    });
-
-    it("throws when the setting can't be read, so a damaged setting never allows it", async () => {
-      const settings = new FakeSettings();
-      settings.failToRead = true;
-      await expect(noSandbox(settings).cliFlag()).rejects.toThrow("can't be read");
-    });
+  it("has no command line flag: the service offers only choose and takeBack", () => {
+    const methods = Object.getOwnPropertyNames(NoSandboxService.prototype).filter(
+      (name) => name !== "constructor",
+    );
+    expect(methods.sort()).toEqual(["choose", "takeBack"]);
   });
 });
