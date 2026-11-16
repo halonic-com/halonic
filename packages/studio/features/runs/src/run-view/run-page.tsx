@@ -36,6 +36,7 @@ export function RunPage({ item, context, step }: ItemViewProps) {
       {...(step === undefined ? {} : { step })}
       {...(instructionTrust === undefined ? {} : { instructionTrust })}
       {...(sandboxStartCheck === undefined ? {} : { sandboxStartCheck })}
+      announce={(line) => context.announcer.announce(line)}
       {...(openPlace === undefined
         ? {}
         : { goToRuns: () => openPlace("runs"), reviewInInbox: () => openPlace("inbox") })}
@@ -61,6 +62,8 @@ export interface RunViewProps {
   readonly instructionTrust?: InstructionTrustHost;
   /** Checks the sandbox again, for the banner of a run it refused; absent where nothing can check. */
   readonly sandboxStartCheck?: SandboxStartCheck;
+  /** Says a line to a screen reader, for the answer to a press in a banner; absent in tests that don't listen. */
+  readonly announce?: (line: string) => void;
   /** Opens the Runs list, for a run that isn't there any more. */
   readonly goToRuns?: () => void;
   /** Opens the Inbox, for Review in Inbox; without it the button isn't there. */
@@ -94,6 +97,7 @@ export function RunView({
   step,
   instructionTrust,
   sandboxStartCheck,
+  announce,
   goToRuns,
   reviewInInbox,
   openRun,
@@ -136,6 +140,7 @@ export function RunView({
             openRun={openRun}
             instructionTrust={{ host: instructionTrust }}
             sandboxStartCheck={sandboxStartCheck}
+            announce={announce}
             phone={phone}
             onSeeStep={setOpenEntry}
           />

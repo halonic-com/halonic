@@ -99,6 +99,8 @@ export interface SetupViewProps {
   readonly focus?: SetupFocus | undefined;
   /** Opens a run's page, for a view that lists runs; left out where the page can't open one. */
   readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
+  /** Says a line to a screen reader, for the answer to a press; left out where nothing listens. */
+  readonly announce?: ((line: string) => void) | undefined;
 }
 
 /** What the Inbox holds now. */

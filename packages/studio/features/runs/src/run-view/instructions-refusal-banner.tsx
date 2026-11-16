@@ -1,5 +1,5 @@
-import { Callout } from "@halonicjs/studio-kit";
-import { useState } from "react";
+import { Callout, type CalloutHandle } from "@halonicjs/studio-kit";
+import { useEffect, useRef, useState } from "react";
 import type { InstructionTrustAnswer, InstructionTrustHost } from "../api.ts";
 import { runPageWords } from "../run-words.ts";
 import type { RefusedInstructions } from "./instructions-refusal.ts";
@@ -22,40 +22,50 @@ function answerLine(answer: InstructionTrustAnswer): string {
  * The failed banner of a run the harness check refused: what happened, and **Review instructions**,
  * which asks in the shell's own dialog (requirement `runs.run-view.instructions-refusal`). Without
  * a `host` (a served page or a phone) it says to trust on the computer and has no button. The page
- * only asks; it never trusts by itself. A declined answer keeps the refusal, in a calm tone.
+ * only asks; it never trusts by itself. A declined answer keeps the refusal, in a calm tone. The
+ * button stays, busy, while the dialog asks, so it keeps focus; the answer is said through
+ * `announce`, and a trusted answer, which drops the button, moves focus to the banner.
  */
 export function InstructionsRefusalBanner({
   refusal,
   host,
+  announce,
 }: {
   readonly refusal: RefusedInstructions;
   readonly host: InstructionTrustHost | undefined;
+  readonly announce?: ((line: string) => void) | undefined;
 }) {
   const [answer, setAnswer] = useState<InstructionTrustAnswer>();
-  const [asking, setAsking] = useState(false);
+  const banner = useRef<CalloutHandle>(null);
   const { agent, pin, changed } = refusal;
 
   const review = async () => {
     if (host === undefined) return;
-    setAsking(true);
-    try {
-      setAnswer(await host.trust(agent, pin));
-    } finally {
-      setAsking(false);
-    }
+    const given = await host.trust(agent, pin);
+    setAnswer(given);
+    announce?.(answerLine(given));
   };
 
   const first =
     changed === true
       ? runPageWords.instructionsChanged(agent)
       : runPageWords.instructionsFirstTime(agent);
+  const trusted = answer === "trusted";
+  // The button is gone once trusted, so focus goes to the banner that says so.
+  useEffect(() => {
+    if (trusted) banner.current?.focus();
+  }, [trusted]);
   const action =
-    host === undefined || answer === "trusted" || asking
+    host === undefined || trusted
       ? undefined
-      : { label: runPageWords.reviewInstructions, onClick: () => void review() };
+      : { label: runPageWords.reviewInstructions, onClick: review };
   return (
     <section aria-label={runPageWords.instructionsName}>
-      <Callout tone={answer === undefined ? "warning" : "info"} {...(action ? { action } : {})}>
+      <Callout
+        tone={answer === undefined ? "warning" : "info"}
+        {...(action ? { action } : {})}
+        {...(trusted ? { announce: "focus" as const, ref: banner } : {})}
+      >
         <span className="block">{first}</span>
         {host === undefined ? (
           <span className="block">{runPageWords.instructionsOnComputer}</span>

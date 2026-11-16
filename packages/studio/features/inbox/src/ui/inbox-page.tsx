@@ -236,6 +236,7 @@ export function InboxView({
               focus={focus}
               openNewConnector={openNewConnector}
               openRun={openRun}
+              announce={announce}
               now={now}
               answering={state.error === undefined}
               words={words}
@@ -288,6 +289,7 @@ function OpenCard({
   focus,
   openNewConnector,
   openRun,
+  announce,
 }: {
   readonly item: InboxItem;
   readonly inbox: Inbox;
@@ -296,6 +298,7 @@ function OpenCard({
   readonly focus: SetupFocus | undefined;
   readonly openNewConnector: (() => void) | undefined;
   readonly openRun: ((hubId: string, runId: string) => void) | undefined;
+  readonly announce: ((line: string) => void) | undefined;
   readonly next: NextItem | null;
   readonly now: () => Date;
   readonly answering: boolean;
@@ -330,6 +333,7 @@ function OpenCard({
         close={close}
         focus={focus}
         openRun={openRun}
+        announce={announce}
       />
     );
   }

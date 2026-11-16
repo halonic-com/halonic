@@ -239,7 +239,10 @@ export const runPageWords = {
     `${workflow} didn't start: the sandbox on this computer isn't ready.`,
   sandboxNothingRan: "Nothing ran.",
   sandboxCheckAgain: "Check again",
-  sandboxChecking: "Checking…",
+  /** Said once when a press of **Check again** finds the sandbox ready. */
+  sandboxCheckedReady: "Sandbox checked: ready.",
+  /** Said once when a press finds it still refuses; the reason follows. */
+  sandboxCheckedRefused: (reason: string) => `Sandbox checked: not ready. ${reason}`,
   sandboxReady: "The sandbox is ready. Run again to start it.",
   sandboxCheckFailed: "Halonic couldn't check the sandbox. Try again.",
   budgetName: "Stopped at its budget",

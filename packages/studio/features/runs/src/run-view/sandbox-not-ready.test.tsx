@@ -38,6 +38,7 @@ async function open(
   events: RunEvent[] | undefined,
   check?: () => Promise<SandboxStartResult>,
   phone = false,
+  announce?: (line: string) => void,
 ) {
   const list = new RunsList(
     fakeSource([failedRun], events ? { [failedRun.id]: events } : {}).source,
@@ -48,6 +49,7 @@ async function open(
         list={list}
         runId={failedRun.id}
         now={() => mondayMorning}
+        {...(announce === undefined ? {} : { announce })}
         {...(check === undefined ? {} : { sandboxStartCheck: { check } })}
       />
     </PresentationProvider>,
@@ -138,6 +140,61 @@ verifies("runs.run-view.sandbox-not-ready", () => {
     expect(banner(root)?.textContent).toContain("Halonic couldn't check the sandbox. Try again.");
     expect(banner(root)?.textContent).toContain(sandboxStartWords("ripgrep-missing").reason);
     expect(banner(root)?.textContent).not.toContain(sandboxStartWords("bubblewrap-missing").reason);
+  });
+
+  it("keeps the button, busy and focused, while a check runs, and says the answer once", async () => {
+    let finish: (result: SandboxStartResult) => void = () => {};
+    const announce = vi.fn();
+    const root = await open(
+      log("bubblewrap-missing"),
+      () => new Promise((resolve) => (finish = resolve)),
+      false,
+      announce,
+    );
+    const pressed = button(root);
+    act(() => {
+      pressed?.focus();
+      pressed?.click();
+    });
+
+    expect(button(root)).toBe(pressed);
+    expect(pressed?.getAttribute("aria-busy")).toBe("true");
+    expect(document.activeElement).toBe(pressed);
+    expect(announce).not.toHaveBeenCalled();
+
+    await act(async () => finish({ ok: false, reason: "ripgrep-missing" }));
+    expect(button(root)).toBe(pressed);
+    expect(document.activeElement).toBe(pressed);
+    expect(announce).toHaveBeenCalledExactlyOnceWith(
+      `Sandbox checked: not ready. ${sandboxStartWords("ripgrep-missing").reason}`,
+    );
+  });
+
+  it("says the sandbox is ready and moves focus to the banner when the button goes", async () => {
+    const announce = vi.fn();
+    const root = await open(log("bubblewrap-missing"), async () => ({ ok: true }), false, announce);
+    act(() => button(root)?.focus());
+    await act(async () => button(root)?.click());
+
+    expect(announce).toHaveBeenCalledExactlyOnceWith("Sandbox checked: ready.");
+    expect(document.activeElement).toBe(banner(root)?.firstElementChild);
+  });
+
+  it("says when the check itself fails", async () => {
+    const announce = vi.fn();
+    const root = await open(
+      log("bubblewrap-missing"),
+      async () => {
+        throw new Error("host sentence");
+      },
+      false,
+      announce,
+    );
+    await act(async () => button(root)?.click());
+
+    expect(announce).toHaveBeenCalledExactlyOnceWith(
+      "Halonic couldn't check the sandbox. Try again.",
+    );
   });
 
   it("says the fix is for the computer on a phone", async () => {

@@ -1,6 +1,12 @@
 import { sandboxStartWords } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
-import { Button, Callout, ExternalLink, usePresentation } from "@halonicjs/studio-kit";
+import {
+  Button,
+  Callout,
+  type CalloutHandle,
+  ExternalLink,
+  usePresentation,
+} from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import { markedName } from "../plain/hidden-characters.ts";
 import type { SandboxViewProps } from "../sandbox/sandbox-setup-source.ts";
@@ -17,15 +23,18 @@ type Checked =
  * The sandbox row's card (requirement `inbox.sandbox-row`, checklist 3.5): the reason and then the
  * fix, from the one catalogue, **Check again**, the guide, and the runs that didn't run, each with
  * **Open run**. A passing check makes the card say "Fixed". Nothing runs again by itself, and
- * there is no way to run anyway.
+ * there is no way to run anyway. **Check again** stays, busy, while a check runs, so it keeps
+ * focus; the answer is said through `announce`, and a passing check, which drops the button,
+ * moves focus to the "Fixed" line.
  */
-export function SandboxSetupView({ item, control, openRun }: SandboxViewProps) {
+export function SandboxSetupView({ item, control, openRun, announce }: SandboxViewProps) {
   const titleId = useId();
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus({ preventScroll: true }), []);
   const phone = usePresentation() === "phone";
   const [checked, setChecked] = useState<Checked>();
-  const [checking, setChecking] = useState(false);
+  const fixedLine = useRef<CalloutHandle>(null);
+  const focusFixed = useRef(false);
   const [runs, setRuns] = useState<readonly RunSummary[]>([]);
   const fixed = item.fixed === true;
   // The runs follow the row: its title changes when they do, and when a check fixes them.
@@ -38,17 +47,24 @@ export function SandboxSetupView({ item, control, openRun }: SandboxViewProps) {
   }, [control, item.title, item.changedAt]);
 
   const checkAgain = async () => {
-    if (checking) return;
-    setChecking(true);
     try {
       const result = await control.check();
+      focusFixed.current = result.ok;
       setChecked(result.ok ? undefined : { kind: "refused", reason: result.reason });
+      announce?.(
+        result.ok
+          ? sandboxInboxWords.checkedReady
+          : sandboxInboxWords.checkedRefused(sandboxStartWords(result.reason).reason),
+      );
     } catch {
       setChecked({ kind: "failed" });
-    } finally {
-      setChecking(false);
+      announce?.(sandboxInboxWords.checkFailed);
     }
   };
+  // The button is gone once the card says "Fixed", so a press that fixed it moves focus there.
+  useEffect(() => {
+    if (fixed && focusFixed.current) fixedLine.current?.focus();
+  }, [fixed]);
 
   const words = sandboxStartWords(checked?.kind === "refused" ? checked.reason : control.reason());
   return (
@@ -60,13 +76,15 @@ export function SandboxSetupView({ item, control, openRun }: SandboxViewProps) {
         since={fixed ? sandboxInboxWords.fixed : null}
       />
       {fixed ? (
-        <Callout tone="info">{sandboxInboxWords.fixedLine}</Callout>
+        <Callout tone="info" announce="focus" ref={fixedLine}>
+          {sandboxInboxWords.fixedLine}
+        </Callout>
       ) : (
         <Callout
           tone="danger"
           action={{
-            label: checking ? sandboxInboxWords.checking : sandboxInboxWords.checkAgain,
-            onClick: () => void checkAgain(),
+            label: sandboxInboxWords.checkAgain,
+            onClick: checkAgain,
           }}
         >
           <span className="block">{words.reason}</span>
