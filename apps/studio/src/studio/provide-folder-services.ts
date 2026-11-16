@@ -3,6 +3,7 @@ import {
   TauriDefinitionStore,
   type TauriFileShell,
   TauriInstructionTrustStore,
+  TauriRecordStore,
   TauriRunStore,
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
@@ -16,6 +17,7 @@ import { randomIds, systemClock } from "@halonicjs/std";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import {
+  CollectionHostService,
   KnowledgeHostService,
   LibraryItemsHostService,
   LibraryTabMemoryService,
@@ -40,6 +42,7 @@ import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.t
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
 import { provideLibraryServices } from "../library/provide-library-services.ts";
+import { WorkspaceCollections } from "../library/workspace-collections.ts";
 import { WorkspaceKnowledge } from "../library/workspace-knowledge.ts";
 import { WorkspaceLibraryItems } from "../library/workspace-library-items.ts";
 import { WorkspaceLibraryTab } from "../library/workspace-library-tab.ts";
@@ -149,6 +152,15 @@ export function provideFolderServices(
     new WorkspaceSkills({
       files: services.get(workspaceFilesKey),
       onChange: (listener) => scope.events.on("files.changed", listener),
+    }),
+  );
+  services.provide(
+    CollectionHostService,
+    new WorkspaceCollections({
+      files: services.get(workspaceFilesKey),
+      onChange: (listener) => scope.events.on("files.changed", listener),
+      records: new TauriRecordStore(ipc, location),
+      clock: systemClock,
     }),
   );
   services.provide(
