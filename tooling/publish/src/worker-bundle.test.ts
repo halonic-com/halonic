@@ -11,8 +11,12 @@ const entryPoint = fileURLToPath(
   new URL("../../../packages/targets/cloudflare/runtime/src/index.ts", import.meta.url),
 );
 
+// Every test here bundles the real Worker, and some bundle it twice. That takes about 2.5 s on a quiet
+// runner and more on a busy one, so the 5 s default is too tight (HAL-10678).
+const BUNDLE_TEST_TIMEOUT_MS = 30_000;
+
 verifies("publish.worker-bundle", () => {
-  describe("buildWorkerBundle", () => {
+  describe("buildWorkerBundle", { timeout: BUNDLE_TEST_TIMEOUT_MS }, () => {
     it("gives the same bytes and the same hash on every build", async () => {
       const first = await buildWorkerBundle(entryPoint);
       const second = await buildWorkerBundle(entryPoint);
@@ -62,7 +66,7 @@ verifies("publish.worker-bundle", () => {
     });
   });
 
-  describe("buildWorkerBundle failures", () => {
+  describe("buildWorkerBundle failures", { timeout: BUNDLE_TEST_TIMEOUT_MS }, () => {
     it("names the import that can't be bundled", async () => {
       const folder = await mkdtemp(`${tmpdir()}/halonic-bundle-`);
       try {
