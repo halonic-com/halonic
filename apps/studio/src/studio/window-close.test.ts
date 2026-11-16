@@ -8,8 +8,7 @@ import { createToastStore } from "@halonicjs/studio-kit";
 import type { StudioWorkspace } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { closeLimitMs, withinLimit } from "./start-studio.ts";
-import { windowCloseHandler } from "./window-close.ts";
+import { closeLimitMs, windowCloseHandler, withinLimit } from "./window-close.ts";
 
 /** A workspace whose save ends when the test says so: `saved(true)`, `saved(false)`, or `crash()`. */
 function slowWorkspace(name: string) {

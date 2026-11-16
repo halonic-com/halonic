@@ -381,7 +381,7 @@ verifies("workspace.saves-itself", () => {
     expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio");
   });
 
-  it('says "still saving" and offers Wait when the window stopped waiting for a save', async () => {
+  it('says "still saving" and offers only Wait and Close anyway, never a second save', async () => {
     const saving = { ...failingSaving(), saveNow: vi.fn(() => new Promise<boolean>(() => {})) };
     const { switcher } = start([], [], saving as unknown as WorkspaceSaving);
     await act(() => switcher.openLocation("/work/acme"));
@@ -393,10 +393,15 @@ verifies("workspace.saves-itself", () => {
       "acme is still saving. Close anyway throws away the changes.",
     );
     expect(buttonNamed("Keep open")).toBeUndefined();
+    expect(buttonNamed("Try again")).toBeUndefined();
+    const buttons = [...document.querySelectorAll("dialog button")].map((b) => b.textContent);
+    expect(buttons.filter(Boolean)).toEqual(["Wait", "Close anywayClosing…"]);
+    expect(saving.saveNow).toHaveBeenCalledOnce();
 
     await act(async () => buttonNamed("Wait")?.click());
     expect(document.querySelector("dialog")).toBeNull();
     expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: acme");
+    expect(saving.saveNow).toHaveBeenCalledOnce();
   });
 
   it("names the dialog's close button after what it does", async () => {

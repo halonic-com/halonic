@@ -73,7 +73,7 @@ export { servedServices } from "./served-studio.ts";
 
 import { followSystemRegion } from "./system-region.ts";
 import { trustedSourcesOf } from "./trusted-sources.ts";
-import { windowCloseHandler } from "./window-close.ts";
+import { closeLimitMs, windowCloseHandler, withinLimit } from "./window-close.ts";
 import { hostSettingsOf } from "./window-host-settings.ts";
 import { WorkspaceTrustView } from "./workspace-trust-control.ts";
 
@@ -219,13 +219,6 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
   return { host: "desktop-app", stop: stopped };
 }
 
-/**
- * How long a closing window waits for the open workspaces to save before it asks, so a
- * hung save can't keep it open for ever. A save that misses it doesn't close the window: it asks
- * "Close Acme?" with "still saving" and waits for the answer (HAL-8048).
- */
-export const closeLimitMs = 5000;
-
 /** Runs `task` on the first call and gives every later call the same run. */
 function once(task: () => Promise<void>): () => Promise<void> {
   let run: Promise<void> | undefined;
@@ -233,19 +226,6 @@ function once(task: () => Promise<void>): () => Promise<void> {
     run ??= task();
     return run;
   };
-}
-
-/** Settles with `task`'s result or, after `ms`, with `fallback`, whichever comes first. */
-export async function withinLimit<T>(task: Promise<T>, ms: number, fallback: T): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const limit = new Promise<T>((resolve) => {
-    timer = setTimeout(() => resolve(fallback), ms);
-  });
-  try {
-    return await Promise.race([task, limit]);
-  } finally {
-    clearTimeout(timer);
-  }
 }
 
 /**

@@ -24,7 +24,9 @@ export const closeAnywayCost = "Close anyway throws away the changes.";
 
 /**
  * "Close Acme?" (UX checklist 1.3): asked only when the workspace's changes couldn't be saved.
- * **Keep open** (**Wait** while a save is still running) is focused, **Close anyway** throws the changes away and **Try again** saves them again.
+ * **Keep open** is focused, **Close anyway** throws the changes away and **Try again** saves them again.
+ * While a save is still running there is no **Try again**, which would start a second save: the
+ * answers are **Wait** (focused) and **Close anyway**.
  *
  * @example
  * <CloseWorkspaceDialog request={request} onCancel={cancel} onCloseAnyway={close} onTryAgain={retry} busy={false} />
@@ -40,9 +42,13 @@ export function CloseWorkspaceDialog({
   return (
     <Dialog
       title={`Close ${request.name}?`}
-      confirm={{ label: "Try again", busyLabel: "Saving…" }}
-      alternative={{ label: "Close anyway", onClick: onCloseAnyway }}
-      onConfirm={onTryAgain}
+      confirm={
+        waiting
+          ? { label: "Close anyway", variant: "danger", busyLabel: "Closing…" }
+          : { label: "Try again", busyLabel: "Saving…" }
+      }
+      {...(waiting ? {} : { alternative: { label: "Close anyway", onClick: onCloseAnyway } })}
+      onConfirm={waiting ? onCloseAnyway : onTryAgain}
       busy={busy}
       cancelLabel={waiting ? "Wait" : "Keep open"}
       closeLabel={waiting ? `Wait for ${request.name}` : `Keep ${request.name} open`}

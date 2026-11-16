@@ -1,5 +1,25 @@
 import type { WorkspaceSwitcher } from "@halonicjs/studio-feature-workspace";
 
+/**
+ * How long a closing window waits for the open workspaces to save before it asks, so a
+ * hung save can't keep it open for ever. A save that misses it doesn't close the window: it asks
+ * "Close Acme?" with "still saving" and waits for the answer (HAL-8048).
+ */
+export const closeLimitMs = 5000;
+
+/** Settles with `task`'s result or, after `ms`, with `fallback`, whichever comes first. */
+export async function withinLimit<T>(task: Promise<T>, ms: number, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const limit = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(fallback), ms);
+  });
+  try {
+    return await Promise.race([task, limit]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** What {@link windowCloseHandler} needs from the window's workspaces. */
 export type ClosingWorkspaces = Pick<
   WorkspaceSwitcher,
