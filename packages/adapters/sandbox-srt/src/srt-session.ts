@@ -36,6 +36,7 @@ import {
   reachesNoNetwork,
 } from "./srt-session-env.ts";
 import { toolFoldersInProfile } from "./tool-folders.ts";
+import { prepareToolFolders } from "./windows-tool-folders.ts";
 
 /** One started program: what the session tracks to stop it and to say why it ended. */
 interface Started {
@@ -158,7 +159,11 @@ export class SrtSession implements SandboxSession {
       const config = buildSrtConfig(
         profile,
         journalFolder === null ? [folder] : [folder, journalFolder],
-        await gitPathsToDeny(profile.workingFolder),
+        [
+          ...(await gitPathsToDeny(profile.workingFolder)),
+          // srt on Windows can't deny a file that doesn't exist, but a folder deny covers what is made later.
+          ...(process.platform === "win32" ? await prepareToolFolders(profile.workingFolder) : []),
+        ],
         process.platform,
         sharedFolders,
         process.platform === "win32"

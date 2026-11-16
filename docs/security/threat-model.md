@@ -465,7 +465,7 @@ A leaked run token gives only what that agent may already do, for that one run.
 | The agent changes what it may reach | Halonic builds the `SandboxProfile` from your profile and the trusted workspace; the agent can't change it. The workspace's definition files are read-only inside. The builder resolves the working folder through links and refuses one that leaves the workspace or the run's proposal folder, or is in `.git`, a definition folder or Halonic's data | Port and builder **on `main`** (`harness-kit.harness-profile`); a host using the builder **Planned** (HAL-187, desktop agent host) |
 | A working folder where tools read settings that run outside | `workingFolder` can't start with `.` (such as `.git`, `.claude`, `.codex`), be a kind's folder or `hubs`, or leave the workspace | **On `main`** (`format.agent-sandbox-fields`) |
 | Writes outside the agent's folders | srt allows writing only to the working, temp and settings folders; denied paths are hidden for reading and writing, read-only paths for writing; a path is never read as a pattern | **On `main`** (`sandbox-srt.profile-to-srt-config`) |
-| Tool settings in the working folder that would run commands | `.claude/settings.json`, `.claude/settings.local.json`, `.codex` and `.cursor` in the working folder are write-denied | **On `main`** (`sandbox-srt`, `src/srt-config.ts`) |
+| Tool settings in the working folder that would run commands | `.claude/settings.json`, `.claude/settings.local.json`, `.codex` and `.cursor` in the working folder are write-denied. **On Windows** native srt can deny only what exists, so the tool folders (`.claude`, `.codex`, `.cursor`, `.vscode`, `.zed`, `.devcontainer`, `.husky`, `.config`) are made empty when missing and denied as whole folders, and `.git/hooks`, `.git/config` and `.idea` are denied when they exist. Root files (`.npmrc`, `.mcp.json`, `.envrc`, hook-manager configs) and a repository made during the session are not covered there (HAL-11305) | **On `main`** (`sandbox-srt`, `src/srt-config.ts`, `src/windows-tool-folders.ts`); the Windows gap is open (HAL-11305) |
 | Sending data to a site nobody allowed | Only the bridge and the allowed sites are reachable; every other host is denied without asking. `allowedSites` has at most 50 entries, no bare `*`, no addresses and no local names | **On `main`** (`sandbox-srt.profile-to-srt-config`, `format.agent-sandbox-fields`) |
 | An allowed name resolves to a local or private address | srt refuses a name that resolves to loopback, link-local, cloud metadata or this computer's own addresses; Halonic adds RFC 1918, carrier-grade NAT and IPv6 unique local ranges. Only the bridge's own address and port are let through | **On `main`** (`sandbox-srt.profile-to-srt-config`) |
 | A changed list of allowed sites slips past you | Harness, programs, sites and folders are part of the trust fingerprint, so a change asks for trust again | **On `main`** (`workspace.trust-agents`) |
@@ -766,7 +766,10 @@ Plugins stay unfenced on Windows (`packages/core/app`, `runner-fence.ts`).
 | Another program's srt shares the machine-wide sandbox account and reads our kept folders | The trust check reports it when another program's srt setup is present, not only a second Halonic user | **Planned** (HAL-5398) |
 | The sandbox account registers a WSL distro of its own and escapes through it | Probed on Windows Server 2025: refused (WSL 1 and WSL 2, in three folders), while the same import works outside srt. A reachable WSL service stays a limit, not an escape. To confirm on Windows 11 | **Probed** (`sandbox-srt`, `scripts/windows-wsl-probe.mjs`) |
 
-The DNS leak is what keeps native srt experimental.
+The DNS leak is what keeps native srt experimental. So does the Windows gap in
+the tool settings of the working folder (4.6): root files such as `.npmrc` and
+`.mcp.json` and a repository made during the session stay writable until
+HAL-11305 closes it.
 
 #### Open probes
 

@@ -146,51 +146,87 @@ console.log(JSON.stringify(result));
     await expect(readFile(join(workspace, "made.txt"), "utf8")).rejects.toThrow();
   });
 
-  it("can't create the tool settings that don't exist yet in the working folder", async () => {
-    // Windows denies through the file system's permissions, which need an existing file or folder.
+  /** Runs a script that tries to create each file (as path segments below the working folder) and reports which were refused. */
+  async function createFiles(
+    name: string,
+    attempts: Record<string, string[]>,
+  ): Promise<Record<string, string>> {
     const out = await runScript(
-      "create-settings.cjs",
+      name,
       `const fs = require("node:fs");
 const path = require("node:path");
 const work = ${JSON.stringify(work)};
-const attempt = (...segments) => {
+const attempts = ${JSON.stringify(attempts)};
+const result = {};
+for (const [label, segments] of Object.entries(attempts)) {
   const target = path.join(work, ...segments);
   try {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, "x");
-    return "written";
+    result[label] = "written";
   } catch {
-    return "refused";
+    result[label] = "refused";
   }
-};
-console.log(JSON.stringify({
-  claudeSettings: attempt(".claude", "settings.json"),
-  npmrc: attempt(".npmrc"),
-  mcp: attempt(".mcp.json"),
-  vscode: attempt(".vscode", "tasks.json"),
-  hookManager: attempt(".pre-commit-config.yaml"),
-  gitHook: attempt(".git", "hooks", "pre-commit"),
-  gitConfig: attempt(".git", "config"),
-}));
+}
+console.log(JSON.stringify(result));
 `,
     );
-    expect(JSON.parse(out.split(/\r?\n/).pop() ?? "")).toEqual({
-      claudeSettings: "refused",
-      npmrc: "refused",
-      mcp: "refused",
-      vscode: "refused",
-      hookManager: "refused",
-      gitHook: "refused",
-      gitConfig: "refused",
+    return JSON.parse(out.split(/\r?\n/).pop() ?? "");
+  }
+
+  it("can't create files in the tool folders that were made at the start (HAL-11246)", async () => {
+    // Windows denies through the file system's permissions, which need an existing folder.
+    // The folder deny covers what is made inside it later.
+    const result = await createFiles("create-in-folders.cjs", {
+      claudeSettings: [".claude", "settings.json"],
+      vscodeTasks: [".vscode", "tasks.json"],
     });
-    for (const path of [
-      [".claude", "settings.json"],
-      [".npmrc"],
-      [".mcp.json"],
-      [".git", "config"],
-    ]) {
-      await expect(readFile(join(work, ...path), "utf8")).rejects.toThrow();
+    expect(result).toEqual({ claudeSettings: "refused", vscodeTasks: "refused" });
+    await expect(readFile(join(work, ".claude", "settings.json"), "utf8")).rejects.toThrow();
+  });
+
+  it("can't create a git hook or change the git config of a repository that was there at the start", async () => {
+    const repository = join(base, "repository");
+    await mkdir(join(repository, ".git", "hooks"), { recursive: true });
+    await writeFile(join(repository, ".git", "config"), "[core]\n");
+    const withRepository = await sandbox.open({ ...profile(), workingFolder: repository });
+    try {
+      const out = await runScript(
+        "hook.cjs",
+        `const fs = require("node:fs");
+const result = {};
+try { fs.writeFileSync(${JSON.stringify(join(repository, ".git", "hooks", "pre-commit"))}, "x"); result.hook = "written"; } catch { result.hook = "refused"; }
+try { fs.appendFileSync(${JSON.stringify(join(repository, ".git", "config"))}, "x"); result.config = "written"; } catch { result.config = "refused"; }
+console.log(JSON.stringify(result));
+`,
+        withRepository,
+      );
+      expect(JSON.parse(out.split(/\r?\n/).pop() ?? "")).toEqual({
+        hook: "refused",
+        config: "refused",
+      });
+    } finally {
+      await withRepository.close();
     }
+  });
+
+  // Known gap (HAL-11305): srt on Windows can't deny a file that doesn't exist, and Halonic makes
+  // no placeholder for root files. `it.fails` turns this red when srt changes, so we notice.
+  it.fails("can't create the tool settings in the root of the working folder", async () => {
+    const result = await createFiles("create-root-files.cjs", {
+      npmrc: [".npmrc"],
+      mcp: [".mcp.json"],
+      hookManager: [".pre-commit-config.yaml"],
+    });
+    expect(result).toEqual({ npmrc: "refused", mcp: "refused", hookManager: "refused" });
+  });
+
+  // Known gap (HAL-11305): a repository made during the session has no deny.
+  it.fails("can't make a git repository with its own hooks", async () => {
+    const result = await createFiles("git-init.cjs", {
+      newRepositoryHook: ["fresh", ".git", "hooks", "pre-commit"],
+    });
+    expect(result).toEqual({ newRepositoryHook: "refused" });
   });
 
   it("without a bridge, reaches no loopback port and gets none of srt's network variables", async () => {
