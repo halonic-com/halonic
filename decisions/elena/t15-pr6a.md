@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11049 (Liam approved the PR 6 split for T15, HAL-1308, with this engine reason as 6a; the reason name is Liam's decision on HAL-902; the review of halonic#3165 (HAL-11055) keeps the 10-minute limit)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KVaZenqdFJIyD+EaYBD0kwvjSk2s/XEMN/ICJDGKmrdq6jeB5n2yWULmnLcsyouJ3Tc6lfPmGZ9ORO2Ac4jKCw==
 
 `ModelCallErrorReason` gains `timeout` and `RunFailureReason` gains `model-timeout`, with the optional
 `host` as `offline` has. The OpenAI-compatible provider (which Ollama uses) and the Anthropic provider
