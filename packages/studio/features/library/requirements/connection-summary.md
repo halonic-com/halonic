@@ -20,9 +20,6 @@ The Library feature shall show, on a connector's page between its name and its s
 - Given a plugin or an integration connector,
   when its page shows,
   then it shows no "Secrets" row.
-- Given an integration or a plugin connector,
-  when its page shows,
-  then it shows no "Secrets" row.
 - Given a connector whose file can't be read,
   when its page shows,
   then it shows no "How it connects" section.

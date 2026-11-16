@@ -38,8 +38,9 @@ function secretsOf(connection: ConnectorConnection): readonly string[] | null {
 
 /**
  * How one connector connects, for the connector page to put above its status: the transport, where
- * it goes, and the names of its secrets (never their values; none for an integration or a plugin), as plain rows under a heading. It is
- * a plain `div`, with no landmark of its own: the shell owns the landmarks.
+ * it goes, and the names of its secrets (never their values; no row for an integration or a plugin),
+ * as plain rows under a heading. It is a plain `div`, with no landmark of its own: the shell owns
+ * the landmarks.
  */
 export function ConnectorConnectionSummary({
   connection,

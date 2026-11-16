@@ -48,16 +48,6 @@ verifies("library.connection-summary", () => {
     ]);
   });
 
-  it("shows no Secrets row for a plugin or an integration, whose secrets are in its sheet", () => {
-    expect(rowsOf({ kind: "plugin", id: "acme-notes" })).toEqual([
-      "Transport: Plugin",
-      "Plugin: acme-notes",
-    ]);
-    expect(rowsOf({ kind: "integration", folder: "integrations/acme" }).join("|")).not.toContain(
-      "Secrets",
-    );
-  });
-
   it("shows no Secrets row for an integration or a plugin, whose sheet declares its own", () => {
     expect(rowsOf({ kind: "integration", folder: "acme-crm" })).toEqual([
       "Transport: Local integration",
