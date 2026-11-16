@@ -3,6 +3,7 @@
 - Task: HAL-11256
 - Approval: the task asks for this change; Liam accepts the behaviour change in the task comment and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QP6cKlPTBU2legRm+TNt2LfNdy4kFGOZf+BZHDfBA+o6R9a3tG7MWXYNaWVHiFcAN/pl1b2IFrpPu0l5IcxeAg==
 
 ## What changes
 
