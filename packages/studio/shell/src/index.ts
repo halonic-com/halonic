@@ -60,6 +60,11 @@ export {
 } from "./engine/engine-failed-window.tsx";
 export { EngineLine, type EngineLineProps } from "./engine/engine-line.tsx";
 export {
+  type EngineRestartOptions,
+  stoppedRunsText,
+  watchEngineRestart,
+} from "./engine/engine-restarted-toast.ts";
+export {
   type EngineLauncher,
   type EngineProcess,
   type EngineProcessEvents,
