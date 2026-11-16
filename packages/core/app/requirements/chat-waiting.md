@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-2212, approved on HAL-2212: the "Waiting for approval" group of a connector's status
 
-After each model turn of a chat answer, the chat service shall tell the answer's listener the listed tools the turn left out because they wait for a person's approval, as the response's `waiting`, or an empty list when the response has none, so the listener always holds the current set. The chat service shall not add them to the messages that go back to the model.
+When a model turn of a chat answer ends, the chat service shall tell the answer's listener the listed tools the turn left out because they wait for a person's approval, as the response's `waiting`, or an empty list when the response has none, so the listener always holds the current set. The chat service shall not add them to the messages that go back to the model.
 
 ## Examples
 

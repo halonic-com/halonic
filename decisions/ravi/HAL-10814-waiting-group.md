@@ -1,7 +1,7 @@
 # Decision: the gate that turns approvals off is a test-only export
 
 - Task: HAL-10814
-- Approval: [HAL-10814](/HAL/issues/HAL-10814)
+- Approval: HAL-10814
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:WlCq5FD0icrSCXOG2W+IfxJL1VusruqkbzaKq/kqDELa8rv4oanbgYPSWw4nIEKqhKhoQQu33qwkAiURsdyRAA==
 
@@ -21,3 +21,6 @@ No test was weakened or removed.
 ## Covers
 
 - tooling/check/policy.json
+- cli.listed-tool-approval
+- library.refusals-feed
+- library.status-section
