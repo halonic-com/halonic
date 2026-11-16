@@ -29,9 +29,9 @@ export { type SandboxBackendId, sandboxBackendIds };
  * - `service-traffic-unfenced`: traffic of the system's own services isn't fenced.
  * - `token-switch-unfenced`: a program that switches its security token isn't fenced.
  * - `schannel-tls-fails`: Windows' own TLS library can't make connections inside.
- * - `kept-roots-readable`: the folders Halonic keeps outside a project can be read. Static
- *   on srt (Windows); also a residual of an `ok` check when another program's srt setup
- *   lets every session read the profile, or the setup can't be read (HAL-5398).
+ * - `kept-roots-readable`: the folders Halonic keeps outside a project can be read. Only a
+ *   residual of an `ok` check on Windows, when another program's srt setup lets every
+ *   session read the profile, or the setup can't be read; no backend lists it as a limit (HAL-5398).
  * - `reads-open-by-default`: the sandbox reads whatever the Users group can read, unless denied.
  * - `wsl-service-reachable`: the WSL service answers sandboxed programs, and `wsl.exe` can't be denied.
  * - `files-leave-machine`: project files are copied to another machine.

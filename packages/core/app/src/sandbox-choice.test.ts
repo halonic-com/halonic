@@ -1,4 +1,4 @@
-import type { SandboxSetting } from "@halonicjs/ports";
+import type { SandboxCheck, SandboxSetting } from "@halonicjs/ports";
 import { FakeSandboxSession, idleProgram } from "@halonicjs/testing-contracts";
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
