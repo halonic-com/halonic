@@ -35,13 +35,13 @@ done
 rm -f "$root/etc/apt/sources.list"
 install -d -m 0755 "$root/etc/apt/sources.list.d"
 cat > "$root/etc/apt/sources.list.d/debian.sources" <<SRC
-Types: deb
+Types: deb deb-src
 URIs: https://deb.debian.org/debian
 Suites: $suite $suite-updates
 Components: main
 Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
 
-Types: deb
+Types: deb deb-src
 URIs: https://security.debian.org/debian-security
 Suites: $suite-security
 Components: main

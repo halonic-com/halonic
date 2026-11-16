@@ -50,6 +50,11 @@ while IFS= read -r line; do
   fail "file with capabilities: $path (${line#* })"
 done < <(getcap -r "$root")
 
+# The NOTICE offers the source through apt-get source, so every apt source
+# must carry deb-src.
+sources="$root/etc/apt/sources.list.d/debian.sources"
+[ "$(grep -c '^Types:' "$sources")" -gt 0 ] || fail "no apt sources"
+[ "$(grep '^Types:' "$sources" | grep -vc 'deb-src')" -eq 0 ] || fail "an apt source lacks deb-src"
 [ -d "$root/opt/halonic" ] || fail "/opt/halonic is missing"
 [ -f "$root/usr/share/doc/halonic-image/NOTICE" ] || fail "licence notice is missing"
 [ -f "$root/usr/share/doc/halonic-image/SNAPSHOT.txt" ] || fail "source pointer is missing"
