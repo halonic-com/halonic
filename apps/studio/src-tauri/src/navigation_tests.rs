@@ -140,8 +140,10 @@ fn guard_keeps_the_apps_own_page_in_the_window_with_or_without_a_confirmed_addre
 /// configuration moves, the window must not be cut off from its own page.
 #[test]
 fn guard_keeps_the_page_the_window_opens() {
-    let context = tauri::generate_context!();
-    let window = context.config().app.windows.first().expect("a window");
+    let app = shell(mock_builder())
+        .build(tauri::generate_context!())
+        .expect("the shell builds on the mock runtime");
+    let window = app.config().app.windows.first().expect("a window").clone();
     let tauri::utils::config::WebviewUrl::App(path) = &window.url else {
         panic!("the window opens a page of the app: {:?}", window.url);
     };
