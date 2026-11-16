@@ -2,6 +2,7 @@ import {
   cantCreateSampleLine,
   isInWorkspaceContent,
   type KeyboardPlatform,
+  type ResourceWatch,
   type Shell,
   StudioWindow,
   type WelcomeSampleProblem,
@@ -43,6 +44,11 @@ export interface WorkspaceWindowProps {
   readonly newWorkspace?: NewWorkspaceHost;
   /** What **Try the Acme sample** needs from the app. Without it Welcome has no such button. */
   readonly sample?: SampleHost;
+  /**
+   * The memory and free-disk watch the status bar's resources item shows. Without it the
+   * item stays hidden (`shell.resource-status-item`).
+   */
+  readonly resources?: ResourceWatch | undefined;
 }
 
 /**
@@ -62,6 +68,7 @@ export function WorkspaceWindow({
   regionFormat,
   newWorkspace,
   sample,
+  resources,
 }: WorkspaceWindowProps) {
   const { open } = switcher;
   const [creating, setCreating] = useState(false);
@@ -205,6 +212,7 @@ export function WorkspaceWindow({
         platform={platform}
         language={language}
         regionFormat={regionFormat}
+        resources={resources}
         switcher={{ workspace: { name: shown.value.name, folder: shown.location }, menu, busy }}
         badges={
           <>
