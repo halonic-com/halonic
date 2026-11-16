@@ -50,6 +50,8 @@ export class FakeEngine implements RunExecutor {
     this.runs.set(runId, {
       ...run,
       status: "waiting",
+      state: "review",
+      lastWaitingAt: "2026-11-10T10:40:00.000Z",
       accepts: ["approve", "reject"],
       approvals: [{ callId } as RunSummary["approvals"][number]],
     });
@@ -68,6 +70,12 @@ export class FakeEngine implements RunExecutor {
     }
     if (options.callId !== undefined && options.callId !== waitsOn) {
       throw new Error(`run ${runId} doesn't wait on call ${options.callId}`);
+    }
+    if (
+      options.wait !== undefined &&
+      (run.state !== options.wait.state || run.lastWaitingAt !== options.wait.since)
+    ) {
+      throw new Error(`run ${runId} doesn't wait at ${options.wait.state}`);
     }
     const next = { ...run, status: "running", accepts: [], approvals: [] } as RunSummary;
     this.runs.set(runId, next);

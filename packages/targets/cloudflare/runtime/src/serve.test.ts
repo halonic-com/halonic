@@ -1,3 +1,4 @@
+import { runExecutorVersion } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { ConfigurationError, type RuntimeEnv } from "./env.ts";
@@ -96,6 +97,7 @@ verifies("runtime.serve", () => {
         product: "halonic",
         version: "0.1.0",
         minAppVersion: "0.1.0",
+        runExecutorVersion,
       });
       expect((await ask(envWith({}), "/api/hello", "OTHER.example.com")).status).toBe(200);
     });

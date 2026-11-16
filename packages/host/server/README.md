@@ -39,10 +39,10 @@ A deployment can cap how many requests its server answers per UTC day. Set `limi
 Answers 200 without a sign-in, with exactly three keys:
 
 ```json
-{ "product": "halonic", "version": "0.1.0", "minAppVersion": "0.1.0" }
+{ "product": "halonic", "version": "0.1.0", "minAppVersion": "0.1.0", "runExecutorVersion": 2 }
 ```
 
-`version` is the server's version and `minAppVersion` is the oldest Android app this server works with. The Android app calls the route before it opens the sign-in page, to check it can talk to this server. It tells nothing else: no workspace name, host name or user. It sits behind the same `Host` and `Origin` checks and the same ceiling as every other route.
+`version` is the server's version and `minAppVersion` is the oldest Android app this server works with. `runExecutorVersion` is the version of the `RunExecutor` port the server honors; a remote executor reads it before it sends an answer that names a wait step. The Android app calls the route before it opens the sign-in page, to check it can talk to this server. It tells nothing else: no workspace name, host name or user. It sits behind the same `Host` and `Origin` checks and the same ceiling as every other route.
 
 ## Example
 

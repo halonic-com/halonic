@@ -11,7 +11,7 @@ import type {
 import type { ChatMessage, ChatParams, ChatResponse, ToolDefinition } from "./chat.ts";
 
 /** Version of the {@link RunExecutor} port. A breaking change bumps it and comes with an ADR. */
-export const runExecutorVersion = 1;
+export const runExecutorVersion = 2;
 
 /**
  * Start a workflow run. Subflows are not started through this port: the

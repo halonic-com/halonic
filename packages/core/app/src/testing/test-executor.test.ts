@@ -20,7 +20,12 @@ runExecutorContract("kernel test fake", async () => {
     async waitForApproval() {
       const run = await executor.start({ hubId: "acme", workflowId: "review", input: {} });
       executor.awaitApproval(run.id, "call-1");
-      return { runId: run.id, event: "approve", callId: "call-1" };
+      return {
+        runId: run.id,
+        event: "approve",
+        callId: "call-1",
+        wait: { state: "review", since: "2026-11-10T10:40:00.000Z" },
+      };
     },
   };
 });

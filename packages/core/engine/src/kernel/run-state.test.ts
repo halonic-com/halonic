@@ -56,6 +56,7 @@ verifies("engine.run-state-fold", () => {
       enteredAt: "2026-11-09T09:00:01.000Z",
       enteredSeq: 2,
       accepts: [],
+      waitingAt: null,
       approvals: [],
       context: { reply: "On its way" },
       calls: 1,

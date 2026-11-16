@@ -18,7 +18,7 @@ export interface InboxDecisions {
 function sendOptions(item: RunItem): SendOptions {
   return item.kind === "approval"
     ? { callId: item.callId }
-    : { wait: { state: item.state, since: item.since } };
+    : { wait: { state: item.state, since: item.waitingAt } };
 }
 
 /**

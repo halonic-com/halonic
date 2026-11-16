@@ -49,6 +49,11 @@ export interface WaitItem {
   readonly answerLabels: Readonly<Record<string, string>>;
   /** ISO time the run started waiting. */
   readonly since: string;
+  /**
+   * ISO time of the run's last `run.waiting`, which with `state` names this wait step. An answer
+   * carries it, so a card that has moved on can't answer the next step.
+   */
+  readonly waitingAt: string;
   /** ISO time the step's first timer moves the run on by itself, or `null` without a timer. */
   readonly movesOnAt: string | null;
 }
@@ -106,8 +111,13 @@ export function inboxItems(runs: readonly RunSummary[]): RunItem[] {
     if (run.status !== "waiting" || run.kind === "test") continue;
     if (run.approvals.length > 0) {
       for (const approval of run.approvals) items.push(approvalItem(run.id, approval));
-    } else if (run.waitingOn === null && run.state !== null && run.accepts.length > 0) {
-      items.push(waitItem(run, run.state));
+    } else if (
+      run.waitingOn === null &&
+      run.state !== null &&
+      run.accepts.length > 0 &&
+      run.lastWaitingAt !== null
+    ) {
+      items.push(waitItem(run, run.state, run.lastWaitingAt));
     }
   }
   return items.sort(newestFirst);
@@ -135,7 +145,7 @@ function approvalItem(runId: string, approval: RunSummary["approvals"][number]):
   };
 }
 
-function waitItem(run: RunSummary, state: string): WaitItem {
+function waitItem(run: RunSummary, state: string, waitingAt: string): WaitItem {
   const title = run.waitingFor?.title ?? "";
   return {
     kind: "wait",
@@ -147,7 +157,8 @@ function waitItem(run: RunSummary, state: string): WaitItem {
     body: run.waitingFor?.body ?? "",
     accepts: run.accepts,
     answerLabels: run.answerLabels,
-    since: run.lastWaitingAt ?? run.updatedAt,
+    since: waitingAt,
+    waitingAt,
     movesOnAt: run.nextTimer,
   };
 }

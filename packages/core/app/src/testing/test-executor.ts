@@ -11,6 +11,8 @@ import {
 
 /** The events a run that waits for approval accepts: `APPROVAL_EVENTS` in `core/workflow`. */
 const approvalEvents: readonly string[] = ["approve", "reject"];
+/** The time every approval wait starts, as the run's summary names it. */
+const waitingSince = "2026-11-10T10:40:00.000Z";
 
 /**
  * A `RunExecutor` that records starts and keeps the port's promise that a
@@ -82,6 +84,8 @@ export class TestExecutor implements RunExecutor, Pick<RunStore, "list"> {
     this.runs.set(runId, {
       ...run,
       status: "waiting",
+      state: approval.state,
+      lastWaitingAt: waitingSince,
       accepts: [...approvalEvents],
       approvals: [...run.approvals, approval],
     });
@@ -97,6 +101,15 @@ export class TestExecutor implements RunExecutor, Pick<RunStore, "list"> {
     const run = this.existing(runId);
     if (run.status !== "waiting" || !run.accepts.includes(event)) {
       throw new Error(`run ${runId} doesn't accept "${event}" now`);
+    }
+    if (
+      options.wait !== undefined &&
+      (run.state !== options.wait.state || run.lastWaitingAt !== options.wait.since)
+    ) {
+      // The code the kernel uses for this refusal.
+      throw new Error(
+        `engine.decision-wait-must-match: run ${runId} doesn't wait at ${options.wait.state}`,
+      );
     }
     // Without a call id, the oldest approval is the one answered, as before `SendOptions`.
     const answered =

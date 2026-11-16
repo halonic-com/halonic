@@ -7,6 +7,7 @@ import {
   type RunExecutor,
   type RunSubscription,
   RunTargetNotFound,
+  runExecutorVersion,
   type SendOptions,
   type StartAgentRequest,
   type StartRunRequest,
@@ -117,6 +118,18 @@ function asRunTargetNotFound(
   return kind === undefined ? error : new RunTargetNotFound(kind, ids[kind], error.message);
 }
 
+/** What `send` needs of the host, from `GET /api/hello`: a host that names no version is version 1. */
+async function readHostRunExecutorVersion(client: HostClient): Promise<number> {
+  const response = await client.call("/api/hello", { method: "GET" });
+  if (!response.ok) {
+    throw await readHostError(response);
+  }
+  const { runExecutorVersion: version } = (await response.json()) as {
+    runExecutorVersion?: unknown;
+  };
+  return typeof version === "number" ? version : 1;
+}
+
 /**
  * The {@link RunExecutor} port against a Halonic host over HTTP, such as
  * `halonic serve` or a Worker. It signs in with the host's password, forwards
@@ -180,7 +193,14 @@ export function createRemoteExecutor(options: RemoteExecutorOptions): RunExecuto
       payload?: unknown,
       sendOptions?: SendOptions,
     ): Promise<RunSummary> {
-      const body = { event, payload, callId: sendOptions?.callId, wait: sendOptions?.wait };
+      const wait = sendOptions?.wait;
+      if (wait !== undefined && (await readHostRunExecutorVersion(client)) < runExecutorVersion) {
+        // An older host would drop `wait` without a word and let a stale card answer the next step.
+        throw new RangeError(
+          "This host is too old to check which wait step an answer is for, so the answer isn't sent. Update the host.",
+        );
+      }
+      const body = { event, payload, callId: sendOptions?.callId, wait };
       return readSummary(await client.call(`${runPath(runId)}/events`, { method: "POST", body }));
     },
 

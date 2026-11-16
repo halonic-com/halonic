@@ -1,4 +1,4 @@
-import { isRunTargetNotFound } from "@halonicjs/ports";
+import { isRunTargetNotFound, runExecutorVersion } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { RemoteHostError } from "./errors.ts";
@@ -111,13 +111,43 @@ verifies("executor-remote.runs", () => {
       });
     });
 
-    it("sends the wait step an event names", async () => {
-      const host = fakeHost(() => Response.json(summaryOf("run_1")));
+    describe("naming a wait step", () => {
       const wait = { state: "review", since: "2026-11-10T10:40:00.000Z" };
 
-      await executorFor(host).send("run_1", "approve", undefined, { wait });
+      function hostWithVersion(hello: Record<string, unknown>) {
+        return fakeHost((call) =>
+          call.path === "/api/hello" ? Response.json(hello) : Response.json(summaryOf("run_1")),
+        );
+      }
 
-      expect(host.calls[0]).toMatchObject({ body: { event: "approve", wait } });
+      it("sends the wait step to a host that honors it", async () => {
+        const host = hostWithVersion({ product: "halonic", runExecutorVersion });
+
+        await executorFor(host).send("run_1", "approve", undefined, { wait });
+
+        expect(host.calls.at(-1)).toMatchObject({ body: { event: "approve", wait } });
+      });
+
+      it.each([
+        ["names no port version", { product: "halonic" }],
+        ["is at version 1", { product: "halonic", runExecutorVersion: 1 }],
+      ])("refuses to send it to a host that %s, and sends nothing", async (_name, hello) => {
+        const host = hostWithVersion(hello);
+
+        await expect(
+          executorFor(host).send("run_1", "approve", undefined, { wait }),
+        ).rejects.toThrow(RangeError);
+
+        expect(host.calls.map((call) => call.path)).toEqual(["/api/hello"]);
+      });
+
+      it("doesn't ask the host for a send that names no wait step", async () => {
+        const host = hostWithVersion({ product: "halonic" });
+
+        await executorFor(host).send("run_1", "approve", undefined, { callId: "c1" });
+
+        expect(host.calls.map((call) => call.path)).toEqual(["/api/runs/run_1/events"]);
+      });
     });
 
     it("rejects an event the host refuses with the host's code", async () => {

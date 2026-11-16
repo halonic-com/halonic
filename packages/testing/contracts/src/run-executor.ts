@@ -14,6 +14,8 @@ export interface WaitingApproval {
   event: string;
   /** The call the run waits on, as its summary names it. */
   callId: string;
+  /** The wait step the run is at, as its summary names it: `state` and `lastWaitingAt` as `since`. */
+  wait: { state: string; since: string };
 }
 
 /** Ids the executor under test has nothing for, and a hub it does have, so each kind of miss can be asked for. */
@@ -89,6 +91,41 @@ export function runExecutorContract(name: string, make: MakeRunExecutor): void {
         // Nothing was recorded, so the call the run waits on can still be answered.
         const summary = await executor.send(waiting.runId, waiting.event, undefined, {
           callId: waiting.callId,
+        });
+        expect(summary.id).toBe(waiting.runId);
+      });
+
+      it("delivers an event for the wait step the run is at", async () => {
+        const { executor, waitForApproval } = await make();
+        const waiting = await waitForApproval();
+
+        const summary = await executor.send(waiting.runId, waiting.event, undefined, {
+          wait: waiting.wait,
+        });
+
+        expect(summary.id).toBe(waiting.runId);
+      });
+
+      it.each([
+        [
+          "another step",
+          (wait: WaitingApproval["wait"]) => ({ ...wait, state: `${wait.state}-other` }),
+        ],
+        [
+          "an earlier wait",
+          (wait: WaitingApproval["wait"]) => ({ ...wait, since: "2026-11-10T09:00:00.000Z" }),
+        ],
+      ])("refuses an event for %s and keeps the run waiting", async (_name, other) => {
+        const { executor, waitForApproval } = await make();
+        const waiting = await waitForApproval();
+
+        await expect(
+          executor.send(waiting.runId, waiting.event, undefined, { wait: other(waiting.wait) }),
+        ).rejects.toThrow();
+
+        // Nothing was recorded, so the step the run is at can still be answered.
+        const summary = await executor.send(waiting.runId, waiting.event, undefined, {
+          wait: waiting.wait,
         });
         expect(summary.id).toBe(waiting.runId);
       });
