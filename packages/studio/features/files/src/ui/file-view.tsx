@@ -62,9 +62,10 @@ export function FileView({ item, context }: ItemViewProps) {
   const [problems, setProblems] = useState<readonly FileIssue[]>([]);
   const problemsRef = useRef<readonly FileIssue[]>([]);
   const [elsewhere, setElsewhere] = useState<Elsewhere>(noElsewhere);
-  // Set when this tab's editor changes the text, cleared by the next check: a problem that shows
-  // up in another file without it did not come from this tab.
-  const editedSince = useRef(false);
+  // Counts the changes this tab's editor makes. A check compares the count at its start with the
+  // count at the last check that was used: a problem that shows up in another file without an edit
+  // in between did not come from this tab.
+  const edits = useRef(0);
   const [reveal, setReveal] = useState<{ line: number; round: number } | undefined>();
 
   // The problems are checked when the tab opens and again a moment after the files change, so
@@ -77,20 +78,22 @@ export function FileView({ item, context }: ItemViewProps) {
     let before: ReadonlyMap<string, number> | undefined;
     let last: ReadonlyMap<string, number> = new Map();
     let newest = 0;
-    editedSince.current = false;
+    let editsAtLast = edits.current;
     problemsRef.current = [];
     setProblems([]);
     setElsewhere(noElsewhere);
     const check = () => {
       const turn = ++newest;
+      // Read at the start: an edit made while the check runs belongs to the next check.
+      const editsAtStart = edits.current;
       host.problems().then(
         (all) => {
           if (stopped || turn !== newest) return;
           const now = problemsElsewhere(path, all);
           if (before === undefined) before = now;
-          else if (!editedSince.current) before = withNewSince(before, last, now);
+          else if (editsAtStart === editsAtLast) before = withNewSince(before, last, now);
           last = now;
-          editedSince.current = false;
+          editsAtLast = editsAtStart;
           const own = all.filter((issue) => issue.file === path);
           problemsRef.current = own;
           setProblems(own);
@@ -166,7 +169,7 @@ export function FileView({ item, context }: ItemViewProps) {
       label: filesWords.editorLabel(path),
       readOnly,
       onChange: (next) => {
-        editedSince.current = true;
+        edits.current += 1;
         host.edit(path, next);
       },
       onProblemJump: (problem) =>

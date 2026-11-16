@@ -364,6 +364,50 @@ verifies("files.ui.problems-list", () => {
     expect(page.textContent).not.toContain("Changes in this file");
   });
 
+  it("still blames this tab for an edit made while a check was running", async () => {
+    let now: FileIssue[] = [];
+    let finishRunning: (() => void) | undefined;
+    const listeners = new Set<() => void>();
+    const notify = () => {
+      for (const listener of listeners) listener();
+    };
+    let holdNext = false;
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const page = show(
+      {
+        ...hostOf(async () => "a"),
+        problems: () => {
+          const seen = now;
+          if (!holdNext) return Promise.resolve(seen);
+          holdNext = false;
+          return new Promise<FileIssue[]>((resolve) => {
+            finishRunning = () => resolve(seen);
+          });
+        },
+        subscribe: (listener) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+      },
+      "a.yaml",
+    );
+    await act(async () => {});
+
+    // The first edit starts a check, which is still running when the second edit arrives.
+    act(() => opened[0]?.options.onChange?.("ab"));
+    holdNext = true;
+    notify();
+    await act(async () => vi.advanceTimersByTime(300));
+    act(() => opened[0]?.options.onChange?.("abc"));
+    notify();
+    await act(async () => finishRunning?.());
+
+    now = [issueIn("flow.yaml", 3)];
+    await act(async () => vi.advanceTimersByTime(300));
+
+    expect(page.textContent).toContain("Changes in this file cause 1 problem in another file.");
+  });
+
   it("announces the problem F8 reached, and opens the list for a gutter icon", async () => {
     const page = show(
       {
