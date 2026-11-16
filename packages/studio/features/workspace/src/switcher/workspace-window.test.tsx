@@ -6,8 +6,10 @@ import {
   createShell,
   defineFeature,
   type Feature,
+  type ResourceWatch,
   type Shell,
   StudioWorkspace,
+  watchResources,
   workspaceContentAttribute,
 } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
@@ -71,6 +73,7 @@ function start(
   saving?: WorkspaceSaving,
   features: readonly Feature[] = [],
   newWorkspace?: NewWorkspaceHost,
+  resources?: ResourceWatch,
 ): { shell: Shell; switcher: WorkspaceSwitcher } {
   const shell = createShell({ features, host: "desktop-app", platform: "windows" });
   const storage = new Map<string, string>();
@@ -103,6 +106,7 @@ function start(
       platform: "windows",
       language: "en",
       ...(newWorkspace === undefined ? {} : { newWorkspace }),
+      resources,
     });
   });
   return { shell, switcher };
@@ -185,6 +189,38 @@ verifies("workspace.workspace-window", () => {
     start([]);
 
     expect(element.textContent).not.toContain("New workspace…");
+  });
+
+  it("shows the resources item in the status bar when the app gives it a watch", async () => {
+    const watch = watchResources({
+      // The minute's check never fires inside the test.
+      timers: { now: () => Date.now(), setTimeout: () => undefined, clearTimeout: () => {} },
+      onError: (error) => {
+        throw error;
+      },
+      read: async () => ({
+        engineMemoryBytes: 230 * 1024 ** 2,
+        childProcesses: [],
+        dataBytes: 0,
+        freeDiskBytes: 48 * 1024 ** 3,
+      }),
+    });
+    try {
+      const { switcher } = start([], [], undefined, [], undefined, watch);
+      await act(() => switcher.openLocation("/work/acme"));
+      await act(async () => {});
+
+      expect(element.textContent).toContain("230 MB");
+    } finally {
+      watch.stop();
+    }
+  });
+
+  it("has no resources item without a watch", async () => {
+    const { switcher } = start([]);
+
+    await act(() => switcher.openLocation("/work/acme"));
+    expect(element.textContent).not.toContain("MB");
   });
 
   it("shows the workspace at a position on Ctrl and its number", async () => {
