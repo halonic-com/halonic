@@ -72,12 +72,32 @@ verifies("runs.run-view.run-again", () => {
   it("says why the run didn't start, and stays on the run", async () => {
     const openRun = vi.fn();
     const startRun = vi.fn(async () => {
-      throw new Error("The workflow changed.");
+      throw Object.assign(new Error("The workflow changed."), { kind: "invalid_input" });
     });
     const root = await open(failed, { startRun }, openRun);
     await act(async () => button(root, "Run again")?.click());
     expect(root.textContent).toContain("Couldn't start the run.");
+    expect(root.textContent).toContain("The workflow changed.");
     expect(openRun).not.toHaveBeenCalled();
+  });
+
+  it("starts one run however often the buttons are clicked while it starts", async () => {
+    let started: (value: { runId: string }) => void = () => {};
+    const startRun = vi.fn(() => new Promise<{ runId: string }>((resolve) => (started = resolve)));
+    const root = await open(failed, { startRun });
+    const header = button(root, "Run again");
+    const banner = [...root.querySelectorAll("button")].filter(
+      (one) => one.textContent === "Run again",
+    )[1];
+    await act(async () => {
+      header?.click();
+      header?.click();
+      banner?.click();
+    });
+    expect(startRun).toHaveBeenCalledTimes(1);
+    await act(async () => started({ runId: "run_b_new" }));
+    await act(async () => button(root, "Run again")?.click());
+    expect(startRun).toHaveBeenCalledTimes(2);
   });
 
   it("is not there for a running run, a test run or a page without a host", async () => {

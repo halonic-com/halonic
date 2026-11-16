@@ -394,7 +394,7 @@ function RunLayout({
             {header.chip.word}
           </StatusChip>
           {runAgain === undefined ? null : (
-            <Button variant="secondary" size="sm" onClick={runAgain.start}>
+            <Button variant="secondary" size="sm" busy={runAgain.busy} onClick={runAgain.start}>
               {runPageWords.runAgain}
             </Button>
           )}

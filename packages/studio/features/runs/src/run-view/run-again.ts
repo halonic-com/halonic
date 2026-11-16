@@ -1,5 +1,5 @@
 import type { RunEvent } from "@halonicjs/events";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { RunStartHost, SourcedRun } from "../api.ts";
 import { loadFailureReason } from "../load-failure.ts";
 
@@ -25,6 +25,8 @@ export function inputToRunAgain(
 export interface RunAgain {
   /** Starts the run and opens it; busy until it has started. Never rejects: a failure is `problem`. */
   readonly start: () => Promise<void>;
+  /** True while a start is pending; a click then does nothing, wherever the button is. */
+  readonly busy: boolean;
   /** Why the last start failed, in the engine's words, until the next one. */
   readonly problem: string | undefined;
 }
@@ -41,19 +43,28 @@ export function useRunAgain(
   openRun: ((runId: string) => void) | undefined,
 ): RunAgain | undefined {
   const [problem, setProblem] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  // A ref, so two clicks in the same render still start one run.
+  const pending = useRef(false);
   const input = run === undefined ? undefined : inputToRunAgain(run, log);
   if (host === undefined || openRun === undefined || run === undefined || input === undefined) {
     return undefined;
   }
   const { hubId, workflowId } = run.summary;
   const start = async () => {
+    if (pending.current) return;
+    pending.current = true;
+    setBusy(true);
     setProblem(undefined);
     try {
       const started = await host.startRun({ hubId, workflowId }, input);
       openRun(started.runId);
     } catch (error) {
       setProblem(loadFailureReason(error));
+    } finally {
+      pending.current = false;
+      setBusy(false);
     }
   };
-  return { start, problem };
+  return { start, busy, problem };
 }
