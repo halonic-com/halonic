@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useId, useReducer, useState, useSyncExternalStore } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
-import type { PlaceContribution } from "../points/frame.ts";
+import type { PlaceContribution, SidebarViewContribution } from "../points/frame.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import type { Registered } from "../points/point-store.ts";
 import { PlacesList } from "../sidebar/places-list.tsx";
 import { SidebarResizeEdge } from "../sidebar/sidebar-resize-edge.tsx";
 import { SidebarSearch } from "../sidebar/sidebar-search.tsx";
+import { SidebarViews } from "../sidebar/sidebar-views.tsx";
 import { SIDEBAR_DEFAULT_WIDTH } from "../sidebar/sidebar-width.ts";
 import { WorkspaceSwitcher, type WorkspaceSwitcherProps } from "../sidebar/workspace-switcher.tsx";
 import type { TabSet } from "../tabs/tab-set.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { shownPlaces } from "./shown-places.ts";
+
+const noViews: readonly Registered<SidebarViewContribution>[] = [];
 
 /** Props for {@link StudioSidebar}. */
 export interface StudioSidebarProps {
@@ -29,6 +32,11 @@ export interface StudioSidebarProps {
   readonly onSearch: () => void;
   /** Opens Settings, from the Settings row last in the sidebar. Without it, there's no such row. */
   readonly onSettings?: (() => void) | undefined;
+  /**
+   * The views features added to the sidebar's Studio switch: `shell.contributions.sidebarViews.list()`.
+   * Pass the same list each render. Without any, there is no switch.
+   */
+  readonly views?: readonly Registered<SidebarViewContribution>[] | undefined;
   /** The workspace switcher, once the app has a workspace menu (T3); without it, none shows. */
   readonly switcher?: WorkspaceSwitcherProps | undefined;
 }
@@ -67,11 +75,25 @@ export function StudioSidebar(props: StudioSidebarProps) {
       >
         {props.switcher === undefined ? null : <WorkspaceSwitcher {...props.switcher} />}
         <SidebarSearch platform={props.platform} onOpen={props.onSearch} />
-        <PlacesList
-          places={places}
-          tabs={tabs}
-          announcer={props.announcer}
-          onSettings={props.onSettings}
+        <SidebarViews
+          views={props.views ?? noViews}
+          contextFor={contextFor}
+          places={
+            <PlacesList
+              places={places}
+              tabs={tabs}
+              announcer={props.announcer}
+              onSettings={props.onSettings}
+            />
+          }
+          settings={
+            <PlacesList
+              places={[]}
+              tabs={tabs}
+              announcer={props.announcer}
+              onSettings={props.onSettings}
+            />
+          }
         />
       </div>
       <SidebarResizeEdge
