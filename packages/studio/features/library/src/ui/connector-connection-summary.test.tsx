@@ -28,7 +28,11 @@ verifies("library.connection-summary", () => {
 
   it("shows a local program's command and the names of its secrets", () => {
     expect(
-      rowsOf({ kind: "stdio", command: "npx -y @acme/notes-mcp", secrets: ["NOTES_TOKEN", "NOTES_KEY"] }),
+      rowsOf({
+        kind: "stdio",
+        command: "npx -y @acme/notes-mcp",
+        secrets: ["NOTES_TOKEN", "NOTES_KEY"],
+      }),
     ).toEqual([
       "Transport: Local program (stdio)",
       "Command: npx -y @acme/notes-mcp",
