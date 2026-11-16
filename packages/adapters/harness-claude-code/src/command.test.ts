@@ -36,6 +36,8 @@ verifies("harness-claude-code.command", () => {
           "--strict-mcp-config",
           "--setting-sources",
           "user",
+          "--permission-mode",
+          "default",
           "--permission-prompt-tool",
           "mcp__halonic-approvals__approve_permission",
           "--model",

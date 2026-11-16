@@ -1,4 +1,14 @@
 export {
+  type AskApprovalsOptions,
+  askModeApprovals,
+  CannotAskError,
+  commandCardNote,
+  defaultAnswerTimeLimitMs,
+  escapeForCard,
+  longCommandLength,
+  toAskToolCall,
+} from "./ask-approvals.ts";
+export {
   type AskPolicyOptions,
   type AskReason,
   type AskToolCall,
