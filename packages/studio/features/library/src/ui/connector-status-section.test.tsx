@@ -92,7 +92,7 @@ verifies("library.status-section", () => {
     it("shows the state as a word with its sentence, then the refusals as plain lines", async () => {
       const { host } = fakeHost({ connectors: [notes], refusals: [refusal(1), refusal(2)] });
       const { root } = await openSection(host);
-      expect(root.textContent).toContain("Needs sign-in");
+      expect(root.textContent).toContain("Needs sign-in again");
       expect(root.textContent).toContain("isn't signed in on this computer.");
       expect(root.querySelector("h2")?.textContent).toBe("Recent refusals");
       expect(lines(root)).toEqual([
@@ -219,7 +219,7 @@ verifies("library.status-section", () => {
       await settled();
       expect(root.textContent).toContain("The engine isn't answering. Showing what it said last.");
       expect(lines(root)).toHaveLength(1);
-      expect(root.textContent).toContain("Needs sign-in");
+      expect(root.textContent).toContain("Needs sign-in again");
     });
   });
 

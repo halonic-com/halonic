@@ -43,7 +43,7 @@ verifies("google-setup.connector-badges", () => {
     render(<ConnectorBadges context={context} />);
     await settle();
     const [badge] = badges.list();
-    expect(badge?.label).toBe("Needs sign-in");
+    expect(badge?.label).toBe("Needs sign-in again");
     badge?.onSelect?.(null);
     expect(openSetup).toHaveBeenCalledWith("google", "gaccount_1");
     expect(openPlace).toHaveBeenCalledWith("inbox");

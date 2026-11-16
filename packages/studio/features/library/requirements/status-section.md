@@ -10,14 +10,14 @@ The Library feature shall give a status section for one connector, which the con
 
 - Given a connector that needs sign-in with two refusals,
   when the section shows,
-  then it shows the word "Needs sign-in", its sentence, and two lines under "Recent refusals".
+  then it shows the word "Needs sign-in again", its sentence, and two lines under "Recent refusals".
 - Given a host that has not answered,
   when the section shows,
   then it shows loading and not "Nothing refused since Halonic started."
 - Given a host whose first answer fails,
   when the section shows,
   then it shows "Couldn't load refusals" and Try again, which asks the host again.
-- Given a shown connector whose state changes from Connected to Needs sign-in,
+- Given a shown connector whose state changes from Connected to Needs sign-in again,
   when the host says so,
   then the change is announced once.
 - Given a connector with two tools that wait for approval,

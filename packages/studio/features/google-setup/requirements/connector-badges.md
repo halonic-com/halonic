@@ -10,10 +10,10 @@ The Google setup feature shall show, through the shell's header badges, one badg
 
 - Given an account whose sign-in Google refused,
   when the window opens,
-  then a "Needs sign-in" badge shows, and **Fix** opens that account's setup item in the Inbox.
+  then a "Needs sign-in again" badge shows, and **Fix** opens that account's setup item in the Inbox.
 - Given an account whose client secret Google refused,
   when the window opens,
-  then a "Needs new secret" badge shows, left of any "Needs sign-in" badge.
+  then a "Needs new secret" badge shows, left of any "Needs sign-in again" badge.
 - Given a badge for an account,
   when the account signs in again,
   then the badge goes.

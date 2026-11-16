@@ -24,7 +24,7 @@ const priorities: Partial<Record<ConnectionState, number>> = {
  * only, so two accounts with the same state stay apart.
  *
  * @example
- * connectorBadge(account, (ref) => inbox.openSetup("google", ref))?.label; // "Needs sign-in"
+ * connectorBadge(account, (ref) => inbox.openSetup("google", ref))?.label; // "Needs sign-in again"
  */
 export function connectorBadge(
   account: GoogleSetupAccount,
