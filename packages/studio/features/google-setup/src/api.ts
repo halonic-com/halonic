@@ -58,6 +58,21 @@ export type SecretEntry =
     };
 
 /**
+ * Whether this window can run the sign-in (design 3.5, item 10). Google sends the sign-in back to
+ * the computer that runs Halonic, so only a window on that computer has **Sign in with Google**.
+ * The host knows how Studio reaches it, so the view never guesses from the address bar.
+ */
+export type SignInEntry =
+  /** Studio runs on the computer that runs Halonic: the button is there. */
+  | { readonly kind: "here" }
+  /**
+   * A phone, or a served browser on another computer: there is no button. `commandExists` says
+   * whether `halonic google sign-in <address>` can be shown instead (it is a later feature of the
+   * host, so it is false until the host has it).
+   */
+  | { readonly kind: "elsewhere"; readonly commandExists: boolean };
+
+/**
  * What the host says after a new client secret was sent (design 4.3). Before the first sign-in the
  * new secret replaces the old one at once (`replaced`). After it, the host checks the new secret
  * with Google first, and swaps it in only when Google accepts it (`accepted`).
@@ -102,6 +117,8 @@ export type CheckAgainAnswer =
 export interface GoogleSetupAccounts {
   /** How the client secret is entered on this host. It doesn't change while the workspace is open. */
   readonly secretEntry: SecretEntry;
+  /** Whether **Sign in with Google** can run in this window. It doesn't change while the workspace is open. */
+  readonly signInEntry: SignInEntry;
   /** Every connected account, whether its setup needs you or not. */
   list(): Promise<readonly GoogleSetupAccount[]>;
   /**

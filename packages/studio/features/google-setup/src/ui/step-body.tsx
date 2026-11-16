@@ -20,6 +20,7 @@ import {
 } from "@halonicjs/studio-kit";
 import { type ReactNode, useId } from "react";
 import { adminNote } from "../admin-note.ts";
+import type { SignInEntry } from "../api.ts";
 import { listNames } from "./account-labels.ts";
 import { BeforeSignIn } from "./before-sign-in.tsx";
 import { ConsoleLink } from "./console-link.tsx";
@@ -27,6 +28,7 @@ import { CopyLine } from "./copy-line.tsx";
 import { CredentialsBody, type CredentialsBodyProps } from "./credentials-body.tsx";
 import { GoogleErrorList } from "./google-error-list.tsx";
 import { useNotAnswering } from "./not-answering.tsx";
+import { SignInElsewhere } from "./sign-in-elsewhere.tsx";
 import { SignInEnded, type SignInEndedProps } from "./sign-in-ended.tsx";
 import { SignInPanel, type SignInPanelProps } from "./sign-in-panel.tsx";
 import { SignInResults, type SignInResultsProps } from "./sign-in-results.tsx";
@@ -50,6 +52,8 @@ export interface StepBodyProps {
   /** The app name chosen in step 3, and the saved project ID, for step 7's text before the button. */
   readonly appName: string | undefined;
   readonly savedProjectId: string | null;
+  /** Where the sign-in can run: the button here, or the text for another computer. */
+  readonly signInEntry: SignInEntry;
   /** What step 7's sign-in needs from the host and the record. */
   readonly signIn: Omit<SignInPanelProps, "answering" | "whileWaiting">;
   /** The last check per service, shown above the button once a sign-in has come back. */
@@ -119,20 +123,28 @@ export function StepBody(props: StepBodyProps) {
             onOpenSecretStep={() => props.onOpenStep("credentials")}
           />
           <SignInResults {...props.results} />
-          <SignInPanel
-            {...props.signIn}
-            answering={props.answering}
-            whileWaiting={
-              <GoogleErrorList
-                accountType={props.accountType}
-                canPublish={props.canPublish}
-                email={props.results.email}
-                adminNote={note}
-                onOpenStep={leaveWaiting}
-                onClearInProduction={() => props.onInProduction(false)}
-              />
-            }
-          />
+          {props.signInEntry.kind === "elsewhere" ? (
+            <SignInElsewhere
+              email={props.results.email}
+              commandExists={props.signInEntry.commandExists}
+              copyable
+            />
+          ) : (
+            <SignInPanel
+              {...props.signIn}
+              answering={props.answering}
+              whileWaiting={
+                <GoogleErrorList
+                  accountType={props.accountType}
+                  canPublish={props.canPublish}
+                  email={props.results.email}
+                  adminNote={note}
+                  onOpenStep={leaveWaiting}
+                  onClearInProduction={() => props.onInProduction(false)}
+                />
+              }
+            />
+          )}
         </div>
       );
     }
