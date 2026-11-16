@@ -43,6 +43,22 @@ export interface VersionInput {
   readonly paths: readonly string[];
 }
 
+/** One version in the history: a recorded set of changes. */
+export interface Version {
+  /** The version's full id. */
+  readonly id: string;
+  /** Its name: the first line of its message. */
+  readonly name: string;
+  /** The rest of its message; empty when it has none. */
+  readonly notes: string;
+  /** Who recorded it. */
+  readonly author: string;
+  /** When it was recorded, in milliseconds since 1970. */
+  readonly at: number;
+  /** The files it changed, from the workspace folder; none for a version that changed nothing. */
+  readonly files: readonly string[];
+}
+
 /** The history of one open workspace, as the app provides it. */
 export interface ChangesSource {
   /** Reads what changed since the last version. Throws when git answers with an error. */
@@ -68,6 +84,11 @@ export interface ChangesSource {
    * (`.studio/`), so it stays out of the history. Throws when the copy can't be kept.
    */
   readonly keepCopy: (files: readonly KeptFile[]) => Promise<void>;
+  /**
+   * Reads the newest `limit` versions that touch the workspace folder, newest first. A folder
+   * without history or without a version gives none. Throws when git answers with an error.
+   */
+  readonly readHistory: (limit: number) => Promise<readonly Version[]>;
   /** Records a version of exactly `paths`; other files stay as changes. Throws when git refuses. */
   readonly createVersion: (input: VersionInput) => Promise<void>;
   /**

@@ -1,6 +1,7 @@
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import type { Version } from "./api.ts";
 import { ChangesList } from "./changes-list.ts";
 import { fakeSource, settle } from "./source.test-helper.ts";
 
@@ -188,6 +189,78 @@ verifies("source-control.create-version", () => {
       expect(await list.createVersion("x", "")).toBe(
         "Nothing has changed since your last version.",
       );
+    });
+  });
+});
+
+verifies("source-control.history", () => {
+  describe("ChangesList history", () => {
+    const versions = (count: number): Version[] =>
+      Array.from({ length: count }, (_, i) => ({
+        id: `v${count - i}`,
+        name: `Version ${count - i}`,
+        notes: "",
+        author: "Sam",
+        at: (count - i) * 1000,
+        files: ["a.md"],
+      }));
+    const opened = async (count: number) => {
+      const fake = fakeSource({ kind: "ready", changes: [] });
+      fake.setHistory(versions(count));
+      const list = new ChangesList(fake.source);
+      await settle();
+      return { fake, list };
+    };
+
+    it("shows the newest 20 versions and knows there are older ones", async () => {
+      const { list } = await opened(25);
+      const { history } = list.state;
+      expect(history.versions.map((v) => v.id)).toEqual(
+        versions(25)
+          .slice(0, 20)
+          .map((v) => v.id),
+      );
+      expect(history).toMatchObject({ more: true, loaded: true });
+    });
+
+    it("shows 20 more, newest first", async () => {
+      const { list } = await opened(25);
+      await list.showMoreHistory();
+      expect(list.state.history.versions).toHaveLength(25);
+      expect(list.state.history.versions[0]?.id).toBe("v25");
+      expect(list.state.history.more).toBe(false);
+    });
+
+    it("keeps the versions already shown when it reads again", async () => {
+      const { fake, list } = await opened(45);
+      await list.showMoreHistory();
+      await list.refresh();
+      expect(list.state.history.versions).toHaveLength(40);
+      expect(fake.historyLimits.at(-1)).toBe(41);
+    });
+
+    it("has no versions, and says it read them, for a repository without one", async () => {
+      const { list } = await opened(0);
+      expect(list.state.history).toMatchObject({ versions: [], more: false, loaded: true });
+    });
+
+    it("keeps the versions and the reason when a later read fails", async () => {
+      const { fake, list } = await opened(3);
+      fake.failHistory(new KindedError("unavailable", "Locked"));
+      await list.refreshHistory();
+      expect(list.state.history.versions).toHaveLength(3);
+      expect(list.state.history.error).toBeDefined();
+      fake.failHistory(undefined);
+      await list.refreshHistory();
+      expect(list.state.history.error).toBeUndefined();
+    });
+
+    it("does not read the history of a folder that isn't a repository", async () => {
+      const fake = fakeSource({ kind: "not-a-repository" });
+      const list = new ChangesList(fake.source);
+      await settle();
+      expect(fake.historyLimits).toEqual([]);
+      expect(list.state.history.loaded).toBe(false);
     });
   });
 });

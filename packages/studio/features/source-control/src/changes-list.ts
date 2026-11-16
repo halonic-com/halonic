@@ -3,13 +3,28 @@ import type { VcsChange } from "@halonicjs/ports";
 import { applyLineChanges, diffLines, type LineChange } from "@halonicjs/std";
 import type { PlaceSignal, ServiceKey } from "@halonicjs/studio-shell";
 import { serviceKey } from "@halonicjs/studio-shell";
-import type { ChangesRead, ChangesSource, FileTexts, KeptFile } from "./api.ts";
+import type { ChangesRead, ChangesSource, FileTexts, KeptFile, Version } from "./api.ts";
 import { discardWords, pageWords, undoWords, versionWords } from "./changes-words.ts";
 import { loadFailureReason } from "./load-failure.ts";
 import { versionMessage } from "./version-name.ts";
 
 /** How many changed files' texts are read at the same time. */
 const readsAtOnce = 4;
+
+/** How many versions History shows first, and how many more Show more adds. */
+export const historyPageSize = 20;
+
+/** What History holds now: the newest versions of the workspace folder. */
+export interface HistoryState {
+  /** The newest versions, newest first; empty before the first read worked and for a new repository. */
+  readonly versions: readonly Version[];
+  /** Whether the workspace has older versions than `versions`. */
+  readonly more: boolean;
+  /** Whether a read worked yet, so "No versions yet." isn't said while it still loads. */
+  readonly loaded: boolean;
+  /** Why the last read failed, until one works; `versions` stay as they were. */
+  readonly error: unknown;
+}
 
 /** One changed file: what changed in it, and the texts the changes can be undone from. */
 export interface ChangedFile {
@@ -45,6 +60,8 @@ export interface ChangesListState {
    * changed file. `undefined` when it is closed.
    */
   readonly version: { readonly paths: readonly string[] | undefined } | undefined;
+  /** The workspace's versions; only read while the folder is a git repository. */
+  readonly history: HistoryState;
 }
 
 /**
@@ -65,10 +82,12 @@ export class ChangesList {
     turnOnError: undefined,
     turningOn: false,
     version: undefined,
+    history: { versions: [], more: false, loaded: false, error: undefined },
   };
   readonly #listeners = new Set<() => void>();
   readonly #stopWatching: () => void;
   #reads = 0;
+  #historyReads = 0;
   #disposed = false;
 
   constructor(source: ChangesSource) {
@@ -106,9 +125,46 @@ export class ChangesList {
       const files = answer.kind === "ready" ? await this.#describe(answer.changes) : [];
       if (read !== this.#reads || this.#disposed) return;
       this.#set({ ...this.#state, read: answer, files, error: undefined });
+      if (answer.kind === "ready") await this.#readHistory(this.#state.history.versions.length);
     } catch (error) {
       if (read !== this.#reads || this.#disposed) return;
       this.#set({ ...this.#state, error });
+    }
+  }
+
+  /** Shows the next {@link historyPageSize} older versions. */
+  async showMoreHistory(): Promise<void> {
+    const { history } = this.#state;
+    await this.#readHistory(Math.max(history.versions.length, historyPageSize) + historyPageSize);
+  }
+
+  /** Reads History again for Try again, after a read failed. */
+  async refreshHistory(): Promise<void> {
+    await this.#readHistory(this.#state.history.versions.length);
+  }
+
+  /**
+   * Reads the newest `shown` versions, at least one page. One more than that is asked for to
+   * know whether there are older ones. Only the last read started counts.
+   */
+  async #readHistory(shown: number): Promise<void> {
+    const read = ++this.#historyReads;
+    const limit = Math.max(shown, historyPageSize);
+    try {
+      const found = await this.source.readHistory(limit + 1);
+      if (read !== this.#historyReads || this.#disposed) return;
+      this.#set({
+        ...this.#state,
+        history: {
+          versions: found.slice(0, limit),
+          more: found.length > limit,
+          loaded: true,
+          error: undefined,
+        },
+      });
+    } catch (error) {
+      if (read !== this.#historyReads || this.#disposed) return;
+      this.#set({ ...this.#state, history: { ...this.#state.history, error } });
     }
   }
 

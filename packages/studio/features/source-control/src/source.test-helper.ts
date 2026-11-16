@@ -1,4 +1,11 @@
-import type { ChangesRead, ChangesSource, FileTexts, KeptFile, VersionInput } from "./api.ts";
+import type {
+  ChangesRead,
+  ChangesSource,
+  FileTexts,
+  KeptFile,
+  Version,
+  VersionInput,
+} from "./api.ts";
 
 /**
  * A source whose answer and failures a test sets, and which a test can wake as the window coming
@@ -9,7 +16,10 @@ export function fakeSource(initial: ChangesRead) {
   let readFailure: unknown;
   let turnOnFailure: unknown;
   let versionFailure: unknown;
+  let historyFailure: unknown;
   let turnedOn = 0;
+  let recorded: readonly Version[] = [];
+  const historyLimits: number[] = [];
   const texts = new Map<string, FileTexts>();
   const replaced: { path: string; text: string; expected: string | null }[] = [];
   const removed: { path: string; expected: string }[] = [];
@@ -44,6 +54,11 @@ export function fakeSource(initial: ChangesRead) {
     keepCopy: async (files) => {
       if (keepFailure !== undefined) throw keepFailure;
       kept.push([...files]);
+    },
+    readHistory: async (limit) => {
+      historyLimits.push(limit);
+      if (historyFailure !== undefined) throw historyFailure;
+      return recorded.slice(0, limit);
     },
     createVersion: async (input) => {
       if (versionFailure !== undefined) throw versionFailure;
@@ -93,6 +108,16 @@ export function fakeSource(initial: ChangesRead) {
     failVersion: (error: unknown) => {
       versionFailure = error;
     },
+    /** The versions the history holds, newest first. */
+    setHistory: (versions: readonly Version[]) => {
+      recorded = versions;
+    },
+    /** Makes reading the history fail with `error`; `undefined` makes it work again. */
+    failHistory: (error: unknown) => {
+      historyFailure = error;
+    },
+    /** The `limit` of every `readHistory` call, in order. */
+    historyLimits,
     /** Makes Turn on history fail with `error`. */
     failTurnOn: (error: unknown) => {
       turnOnFailure = error;
