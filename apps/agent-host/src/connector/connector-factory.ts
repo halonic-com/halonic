@@ -2,6 +2,7 @@ import {
   SandboxStdioConnectorFactory,
   SessionWorkspaceFactory,
 } from "@halonicjs/adapter-connector-stdio-sandbox";
+import { connectorHostClass } from "@halonicjs/adapter-http-kit";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import {
   createRunnerSearch,
@@ -90,7 +91,7 @@ export function hostConnectorRoutes(
   connectors: ConnectorTable = new ConnectorTable(),
   log?: (text: string) => void,
 ): ConnectorRouteDeps {
-  const http: HttpClient = createNodeHttpClient({ hostClass: () => "public" });
+  const http: HttpClient = createNodeHttpClient({ hostClass: connectorHostClass });
   // A `stdio` connector reads no sign-in token.
   const tokens: TokenStore = new MemoryTokenStore();
   return {
