@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11252 (Liam's decision on the task, 16 Nov; the wording is a small addition to the approved "Close Acme?" question)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jYJ/kUfnROl9pTyFd7k+yBaEj9Dylyahga0iHMO4PZuepPt/YUBC2ykV62hkVlAFV6MYCS3xqw5u8lbsmpNpBw==
 
 `workspace.saves-itself` promises a question before changes are thrown away. When the person closed
 the window, the app waited 5 seconds for the saves and then closed the window whatever happened, so
