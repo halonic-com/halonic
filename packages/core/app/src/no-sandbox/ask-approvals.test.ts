@@ -114,6 +114,34 @@ verifies("app.ask-approvals", () => {
     expect(escapeForCard("a\n\tb\r")).toBe("a\n\tb\\u{000d}");
   });
 
+  it("escapes tag characters and other invisible ones", () => {
+    expect(escapeForCard("a\u{e0041}\u00adb\ufe0f\u3164")).toBe(
+      "a\\u{e0041}\\u{00ad}b\\u{fe0f}\\u{3164}",
+    );
+  });
+
+  it("escapes every string in the args of a call that isn't a command", async () => {
+    const { approvals, asked } = setup();
+    await approvals.request(
+      call("Write", { file_path: `${root}/.claude/settings.json\u202e`, nested: ["x\u0007"] }),
+      { signal },
+    );
+    expect(asked[0]?.args).toEqual({
+      file_path: `${root}/.claude/settings.json\\u{202e}`,
+      nested: ["x\\u{0007}"],
+    });
+  });
+
+  it("answers no without asking when the call was already withdrawn", async () => {
+    const { approvals, asked } = setup();
+    const withdrawn = new AbortController();
+    withdrawn.abort();
+    expect(
+      await approvals.request(call("Bash", { command: "ls" }), { signal: withdrawn.signal }),
+    ).toMatchObject({ approved: false });
+    expect(asked).toEqual([]);
+  });
+
   it("asks again for the same command: nothing is remembered", async () => {
     const { approvals, asked } = setup();
     await approvals.request(call("Bash", { command: "ls" }), { signal });

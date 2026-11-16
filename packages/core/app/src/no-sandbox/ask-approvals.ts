@@ -52,18 +52,17 @@ export class CannotAskError extends Error {
   }
 }
 
-/** Control characters but tab and line breaks, and the characters that hide or reorder text. */
-function needsEscape(code: number): boolean {
-  if (code === 0x09 || code === 0x0a) return false;
-  return (
-    code <= 0x1f ||
-    (code >= 0x7f && code <= 0x9f) ||
-    code === 0x061c ||
-    (code >= 0x200b && code <= 0x200f) ||
-    (code >= 0x2028 && code <= 0x202e) ||
-    (code >= 0x2060 && code <= 0x2069) ||
-    code === 0xfeff
-  );
+/**
+ * Control and format characters (this takes in the bidirectional marks, zero
+ * width and tag characters), line and paragraph separators, variation
+ * selectors, the combining grapheme joiner and the Hangul fillers. Tab and
+ * line feed stay.
+ */
+const hiddenCharacters =
+  /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\u115f\u1160\u180e\u3164\uffa0]|[\ufe00-\ufe0f]|[\u{e0100}-\u{e01ef}]|\u034f/u;
+
+function needsEscape(char: string): boolean {
+  return char !== "\t" && char !== "\n" && hiddenCharacters.test(char);
 }
 
 /**
@@ -74,8 +73,9 @@ function needsEscape(code: number): boolean {
 export function escapeForCard(text: string): string {
   let out = "";
   for (const char of text) {
-    const code = char.codePointAt(0) ?? 0;
-    out += needsEscape(code) ? `\\u{${code.toString(16).padStart(4, "0")}}` : char;
+    out += needsEscape(char)
+      ? `\\u{${(char.codePointAt(0) ?? 0).toString(16).padStart(4, "0")}}`
+      : char;
   }
   return out;
 }
@@ -108,8 +108,20 @@ export function toAskToolCall(tool: string, args: unknown): AskToolCall {
   return { kind: "other", name: tool };
 }
 
+/** Every string in the args, however deep, written out so nothing in it is hidden. */
+function escapeDeep(value: unknown): unknown {
+  if (typeof value === "string") return escapeForCard(value);
+  if (Array.isArray(value)) return value.map(escapeDeep);
+  if (typeof value === "object" && value !== null) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, inner]) => [escapeForCard(key), escapeDeep(inner)]),
+    );
+  }
+  return value;
+}
+
 function cardArgs(call: AskToolCall, args: unknown): unknown {
-  if (call.kind !== "shell") return args;
+  if (call.kind !== "shell") return escapeDeep(args);
   return {
     command: escapeForCard(call.command),
     note: commandCardNote,
@@ -164,6 +176,7 @@ async function askWithin(
   signal: AbortSignal,
   limitMs: number,
 ): Promise<BridgeApprovalDecision> {
+  if (signal.aborted) return { approved: false, comment: "The question was withdrawn." };
   const own = options.newAbortController();
   const stop = (): void => own.abort();
   signal.addEventListener("abort", stop, { once: true });
