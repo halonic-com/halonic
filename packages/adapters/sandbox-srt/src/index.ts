@@ -33,6 +33,7 @@ export {
   memoryWslSetupStore,
   removeWslSetup,
   systemWslHost,
+  systemWslRemoveHost,
   WSL_KERNEL_FLOOR,
   type WslHost,
   type WslRemoveChoice,
