@@ -152,7 +152,9 @@ function changedLines(
     ...agentsSection([
       ...changes.agents.added.flatMap((agent) => tagged(agentRow(agent), newRow)),
       ...changes.agents.changed.flatMap((agent) =>
-        agentFieldChanges(agent).map((change) => withTag(row(agent.id, change), changedRow)),
+        agentFieldChanges(agent).map((change) =>
+          withTag(row(printable(agent.id), change), changedRow),
+        ),
       ),
     ]),
     ...section(trustMessages.addressesHeading(), [

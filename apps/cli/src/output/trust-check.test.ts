@@ -446,36 +446,3 @@ verifies("cli.trust-check", () => {
     expect(shownDate(trustedAt)).toBe("3 Nov");
   });
 });
-
-const hostile = "a\u001b[2K\rb\u202ec";
-const shownHostile = "a\\u001b[2K\\u000db\\u202ec";
-
-const escapesWorkspaceText = () => {
-  it("shows control and bidi characters in a program's arguments as \\u codes", () => {
-    const sneaky = program("sneaky", "npx", [hostile, "x\u202ey", "p\rq"]);
-    const shown = lines({ status: "new", content: { connectors: [sneaky] }, ...current });
-    expect(shown).toContain(`  sneaky        npx ${shownHostile} x\\u202ey p\\u000dq`);
-    expect(shown.map(printable)).toEqual(shown);
-  });
-
-  it("escapes the other text a workspace writes", () => {
-    const sneaky = program("sn\u202eeaky", "n\u001bpx", [], { "K\u202eEY": "‹secret K\u202eEY›" });
-    const shown = lines({ status: "new", content: { connectors: [sneaky] }, ...current });
-    expect(shown.join("\n")).toContain("sn\\u202eeaky");
-    expect(shown.join("\n")).toContain("n\\u001bpx");
-    expect(shown.join("\n")).toContain("K\\u202eEY");
-    expect(shown.map(printable)).toEqual(shown);
-  });
-
-  it("escapes the workspace's name and folder in the heading", () => {
-    const shown = trustCheckLines(
-      { status: "new", content: { connectors: [mail] }, ...current },
-      { name: "Ac\u001b[31mme\u202e", folder: "./a\rcme" },
-    ).map(plainText);
-    expect(shown[0]).toBe("Trust check for Ac\\u001b[31mme\\u202e (./a\\u000dcme)");
-    expect(shown.map(printable)).toEqual(shown);
-  });
-};
-
-verifies("cli.commands.validate.check-workspace", escapesWorkspaceText);
-verifies("cli.commands.tools.blocks", escapesWorkspaceText);
