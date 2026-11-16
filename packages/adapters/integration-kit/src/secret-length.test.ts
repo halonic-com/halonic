@@ -33,6 +33,14 @@ verifies("integration-kit.secret-min-length", () => {
     expect(sent).toHaveLength(1);
   });
 
+  it("refuses a short declared secret the request doesn't place, rather than reading it as a carried value", async () => {
+    // `abc` is in the host, which would otherwise count as a carried secret.
+    const { http, sent } = clientWithKey("abc");
+    const code = await refusal(http.fetch("https://abc.example.com/"));
+    expect(code).toBe("secret-too-short");
+    expect(sent).toEqual([]);
+  });
+
   it("counts bytes, not characters", () => {
     expect(minSecretBytes).toBe(8);
     // Four characters of two bytes each.
