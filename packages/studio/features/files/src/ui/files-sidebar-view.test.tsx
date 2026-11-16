@@ -50,6 +50,7 @@ verifies("files.ui.tree-view", () => {
     subscribe: () => () => {},
     read: async () => null,
     edit: () => {},
+    problems: async () => [],
   });
 
   it("shows an ARIA tree with one Tab stop and the folders closed", async () => {
