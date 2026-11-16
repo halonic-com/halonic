@@ -39,7 +39,7 @@ jobs:
           step 6 'halonic --version && halonic --help'
           step 7 'halonic doctor'
           step 8 'mkdir halonic-start && cd halonic-start && halonic init --example acme && cd acme && halonic validate && halonic test && halonic run support-reply --input examples/refund-question.json'
-          step 9 'cd halonic-start/acme && halonic routines && halonic trust && halonic run reports/weekly-report && (perl -e 'alarm 15; exec @ARGV' halonic routines watch || true)'
+          step 9 'cd halonic-start/acme && halonic routines && halonic trust && halonic run reports/weekly-report && (perl -e "alarm 15; exec @ARGV" halonic routines watch || true)'
           {
             echo "## Docs install check (macOS)"
             echo
