@@ -128,6 +128,30 @@ verifies("source-control.change-list", () => {
       expect(document.activeElement?.tagName).toBe("H1");
     });
 
+    it("keeps the heading and the count when only files no kind places changed", async () => {
+      const fake = fakeSource({
+        kind: "ready",
+        changes: [{ path: "README.md", status: "modified", staged: false }],
+      });
+      fake.setTexts("README.md", { before: "a\n", after: "b\n" });
+      const root = render(<ChangesView list={new ChangesList(fake.source)} />);
+      await act(settle);
+      const headings = [...root.querySelectorAll("h2")].map((heading) => heading.textContent);
+      expect(headings[0]).toContain("Since your last version");
+      expect(headings[0]).toContain("1 item");
+      expect(headings[1]).toBe("Other files");
+    });
+
+    it("leaves focus alone on a re-render while an item is open", async () => {
+      const { root } = await openPage();
+      openItem(root, "triage");
+      await act(async () => {
+        (document.activeElement as HTMLElement | null)?.blur();
+      });
+      await act(settle);
+      expect(document.activeElement).toBe(document.body);
+    });
+
     it("shows a file no kind places as one line without Undo this change", async () => {
       const { root } = await openPage();
       const section = openItem(root, "README.md");

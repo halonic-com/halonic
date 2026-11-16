@@ -1,4 +1,4 @@
-import { Button, List, PlaceIcon, SettingsIcon } from "@halonicjs/studio-kit";
+import { Button, List, ListHeading, PlaceIcon, SettingsIcon } from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { ChangeItem } from "../change-items.ts";
 import { groupIntoItems } from "../change-items.ts";
@@ -67,12 +67,16 @@ export function ChangeList({
     },
     [],
   );
+  const latestItems = useRef(items);
+  latestItems.current = items;
   const open = items.find((item) => item.id === openId);
   if (open !== undefined) openIndex.current = items.indexOf(open);
+  // `items` is a new array on every render; the effect below follows the open item being there.
+  const isOpenPresent = open !== undefined;
 
   useEffect(() => {
     const focusLost = !document.activeElement || document.activeElement === document.body;
-    if (open !== undefined) {
+    if (isOpenPresent) {
       // The last change an Undo button belonged to is gone, and the button with it.
       if (focusLost) panelHeading.current?.focus();
       return;
@@ -80,11 +84,12 @@ export function ChangeList({
     if (openId === undefined) return;
     // The open item is gone, as after Undo these changes: the row that took its place, else the heading.
     setOpenId(undefined);
-    if (focusLost) focusRowOrHeading(region.current, items[openIndex.current]);
-  }, [openId, open, items]);
+    if (focusLost) focusRowOrHeading(region.current, latestItems.current[openIndex.current]);
+  }, [openId, isOpenPresent]);
 
   const itemRows = items.filter(isItem).map(rowOf);
   const otherRows = items.filter((item) => !isItem(item)).map(rowOf);
+  const sinceHeading = { name: versionWords.sinceLastVersion, detail: countChip(items.length) };
   return (
     <section
       aria-label={versionWords.sinceLastVersion}
@@ -108,13 +113,15 @@ export function ChangeList({
           </Button>
         </div>
       )}
+      {/* The List drops a group with no rows, heading and count with it; with only Other files changed, this heading stands in. */}
+      {itemRows.length === 0 ? <ListHeading {...sinceHeading} headingLevel={2} /> : null}
       <List
         label={versionWords.sinceLastVersion}
         groupHeadingLevel={2}
         groups={[
           {
             id: "items",
-            heading: { name: versionWords.sinceLastVersion, detail: countChip(items.length) },
+            heading: sinceHeading,
             rows: itemRows,
           },
           { id: "other", heading: { name: itemWords.otherFiles }, rows: otherRows },
