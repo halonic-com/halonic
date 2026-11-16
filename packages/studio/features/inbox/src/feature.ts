@@ -1,5 +1,5 @@
 import { defineFeature } from "@halonicjs/studio-shell";
-import { InboxRunsService, InboxService } from "./api.ts";
+import { InboxRequestsService, InboxRunsService, InboxService } from "./api.ts";
 import { Inbox } from "./inbox.ts";
 
 /**
@@ -12,6 +12,7 @@ export const inboxFeature = defineFeature({
   id: "inbox",
   title: "Inbox",
   needs: [InboxRunsService],
+  wants: [InboxRequestsService],
   provides: [InboxService],
   register(studio) {
     studio.services.provide(InboxService, (services) => new Inbox(services.get(InboxRunsService)));
