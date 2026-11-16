@@ -3,6 +3,7 @@
 - Task: HAL-10926
 - Approval: Liam approved the change in his review of pull request #3137 (HAL-10929), and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:bGEuvEM5tDadz31AIwYUCrTb6+22WnQv7slFDXFFaOBeWuBE6nM9AOc48OGsV30Vz/f+qgBe5Ng2E/roBfo7BQ==
 
 ## What changes
 
