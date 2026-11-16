@@ -1322,6 +1322,9 @@ jobs:
           security default-keychain -d user -s "$keychain"
       - name: Keychain contract (Keychain)
         run: cargo test --locked -p halonic-keychain -- --ignored
+      - name: Resource probe (task_info)
+        # Builds and tests the macOS `unsafe` memory call in the resource-probe crate.
+        run: cargo test --locked -p halonic-resource-probe
       - name: Remove the temporary keychain
         if: always()
         run: security delete-keychain "$RUNNER_TEMP/halonic-ci.keychain-db" || true

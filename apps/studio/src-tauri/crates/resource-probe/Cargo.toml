@@ -20,8 +20,8 @@ unsafe_code = "allow"
 all = { level = "warn", priority = -1 }
 undocumented_unsafe_blocks = "deny"
 
-# Pinned to the version already in Cargo.lock, so this crate adds no new
-# code to the build.
+# Pinned to the version already in Cargo.lock, so this crate adds no new code
+# to the build.
 [target.'cfg(unix)'.dependencies]
 libc = { version = "=0.2.191", default-features = false }
 
