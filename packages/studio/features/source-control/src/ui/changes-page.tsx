@@ -1,9 +1,9 @@
-import { EmptyState, ExternalLink, List } from "@halonicjs/studio-kit";
+import { EmptyState, ExternalLink, List, usePresentation } from "@halonicjs/studio-kit";
 import type { PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 import { type ChangesRead, type DeveloperView, DeveloperViewService } from "../api.ts";
 import { type ChangesList, ChangesListService, type ChangesListState } from "../changes-list.ts";
-import { pageWords, stateWords } from "../changes-words.ts";
+import { pageWords, phoneWords, stateWords } from "../changes-words.ts";
 import { loadFailureReason } from "../load-failure.ts";
 import { AddShareAddressDialog } from "./add-share-address-dialog.tsx";
 import { ChangeList } from "./change-list.tsx";
@@ -36,18 +36,22 @@ export interface ChangesViewProps {
  * work", "Halonic needs git to keep versions.", or "Nothing has changed since your last version.".
  * A later read that fails keeps what the page showed (states D1).
  *
+ * On a phone (2.12) it is the same page in one column with a 16px inset: the top bar says
+ * "Changes", so the heading is for screen readers only, and git's words say "your computer".
+ *
  * Not here yet: the sharing strip's other states.
  */
 export function ChangesView({ list, developerView }: ChangesViewProps) {
+  const phone = usePresentation() === "phone";
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
   const state = useSyncExternalStore(subscribe, () => list.state);
   const developer = useDeveloperView(developerView);
   const heading = useRef<HTMLHeadingElement>(null);
   const [addingAddress, setAddingAddress] = useState(false);
   return (
-    <div className="flex w-full flex-col gap-4 px-6 py-5">
+    <div className={`flex w-full flex-col gap-4 ${phone ? "p-4" : "px-6 py-5"}`}>
       <header className="flex items-center gap-3">
-        <h1 ref={heading} tabIndex={-1} className="text-title flex-1">
+        <h1 ref={heading} tabIndex={-1} className={phone ? "sr-only flex-1" : "text-title flex-1"}>
           {pageWords.title}
         </h1>
         {state.hasRemote ? <GetUpdates list={list} /> : null}
@@ -59,6 +63,7 @@ export function ChangesView({ list, developerView }: ChangesViewProps) {
         list={list}
         state={state}
         developer={developer}
+        phone={phone}
         focusHeading={() => heading.current?.focus()}
       />
       {addingAddress ? (
@@ -87,28 +92,31 @@ function PageBody({
   list,
   state,
   developer,
+  phone,
   focusHeading,
 }: {
   readonly list: ChangesList;
   readonly state: ChangesListState;
   readonly developer: boolean;
+  readonly phone: boolean;
   readonly focusHeading: () => void;
 }) {
   const retry = () => void list.refresh();
   const { read } = state;
   if (read === undefined && state.error !== undefined)
-    return <LoadFailed list={list} state={state} focusHeading={focusHeading} />;
+    return <LoadFailed list={list} state={state} phone={phone} focusHeading={focusHeading} />;
   if (read === undefined) return <Loading retry={retry} />;
   return (
     <>
       {state.error === undefined ? null : (
-        <LoadFailed list={list} state={state} focusHeading={focusHeading} />
+        <LoadFailed list={list} state={state} phone={phone} focusHeading={focusHeading} />
       )}
       <ReadBody
         list={list}
         state={state}
         read={read}
         developer={developer}
+        phone={phone}
         focusHeading={focusHeading}
       />
     </>
@@ -121,18 +129,20 @@ function ReadBody({
   state,
   read,
   developer,
+  phone,
   focusHeading,
 }: {
   readonly list: ChangesList;
   readonly state: ChangesListState;
   readonly read: ChangesRead;
   readonly developer: boolean;
+  readonly phone: boolean;
   readonly focusHeading: () => void;
 }) {
   if (read.kind === "not-a-repository") {
     return <TurnOnHistory list={list} state={state} focusHeading={focusHeading} />;
   }
-  if (read.kind === "no-git") return <NoGit list={list} />;
+  if (read.kind === "no-git") return <NoGit list={list} phone={phone} />;
   if (read.kind === "nested-repository") {
     return (
       <EmptyState
@@ -148,7 +158,7 @@ function ReadBody({
       {read.changes.length === 0 ? (
         <p className="text-body text-fg-muted">{stateWords.nothingChanged}</p>
       ) : (
-        <ChangeList list={list} files={state.files} developer={developer} />
+        <ChangeList list={list} files={state.files} developer={developer} phone={phone} />
       )}
       <History list={list} history={state.history} />
     </>
@@ -184,10 +194,12 @@ function useBusy(work: () => Promise<void>): readonly [boolean, () => void] {
 function LoadFailed({
   list,
   state,
+  phone,
   focusHeading,
 }: {
   readonly list: ChangesList;
   readonly state: ChangesListState;
+  readonly phone: boolean;
   readonly focusHeading: () => void;
 }) {
   const [busy, retry] = useBusy(async () => {
@@ -202,7 +214,7 @@ function LoadFailed({
         tone="error"
         align="start"
         title={stateWords.loadFailed}
-        description={loadFailureReason(state.error)}
+        description={loadFailureReason(state.error, phone)}
         action={{ label: stateWords.tryAgain, onClick: retry, busy }}
       />
     </div>
@@ -261,7 +273,7 @@ function TurnOnHistory({
 }
 
 /** git isn't installed: a way to get it, and Check again for when the person has. */
-function NoGit({ list }: { readonly list: ChangesList }) {
+function NoGit({ list, phone }: { readonly list: ChangesList; readonly phone: boolean }) {
   const [stillMissing, setStillMissing] = useState(false);
   const [busy, check] = useBusy(async () => {
     setStillMissing(false);
@@ -271,7 +283,7 @@ function NoGit({ list }: { readonly list: ChangesList }) {
   return (
     <>
       <EmptyState
-        title={stateWords.noGitTitle}
+        title={phone ? phoneWords.noGitTitle : stateWords.noGitTitle}
         description={
           <ExternalLink href={stateWords.installGitAddress}>{stateWords.installGit}</ExternalLink>
         }

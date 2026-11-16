@@ -35,6 +35,12 @@ export const stateWords = {
   notAnswering: "Git didn't answer. Try again in a moment.",
 };
 
+/** Where the phone's words differ: git runs on the person's computer, not on the phone (552 5.7). */
+export const phoneWords = {
+  noGitTitle: "Halonic needs git on your computer to keep versions.",
+  notAnswering: "Halonic on your computer isn't answering.",
+};
+
 /** The list of changes and Undo this change (checklist part 2, 2.3). */
 export const listWords = {
   important: "Important",
