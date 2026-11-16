@@ -46,7 +46,8 @@ function limitsOf(id: HostBackend["id"], platform: string): LimitCode[] {
     return [
       "project-folder-writable",
       "name-lookups-leave",
-      "kept-roots-readable",
+      "reads-open-by-default",
+      "wsl-service-reachable",
       "schannel-tls-fails",
     ];
   }
