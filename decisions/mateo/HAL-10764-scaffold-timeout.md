@@ -3,7 +3,6 @@
 - Task: HAL-10764 (follow-up to HAL-10702: #3063 was dropped from the merge queue)
 - Approval: Liam approves this note in review on HAL-10764 (CI workflows are the guard's path; internal CI budget, no board card)
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Bo+ges9PrfWkDWv1mvOXJZcl3FyThIx8ft5itGYsg92riNKYXb5EvKf/SWXQsHsmxDRrQMThJjO9NdWKPVHwDw==
 
 ## What changes
 
