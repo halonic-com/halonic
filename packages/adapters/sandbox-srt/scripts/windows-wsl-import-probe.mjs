@@ -81,7 +81,7 @@ try {
   const setup = await rootRaw([
     "sh",
     "-c",
-    "apk add --no-cache git >/dev/null 2>&1; adduser -D halonic; git --version; id halonic",
+    "apk add --no-cache git coreutils >/dev/null 2>&1; adduser -D halonic; git --version; id halonic",
   ]);
   say(`- distro set-up (git, user halonic): exit ${setup.code} ${setup.text.replace(/\n/g, " | ")}`);
 
