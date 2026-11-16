@@ -1,9 +1,9 @@
 import { Button, List, ListHeading, PlaceIcon, SettingsIcon } from "@halonicjs/studio-kit";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import type { ChangeItem } from "../change-items.ts";
 import { groupIntoItems } from "../change-items.ts";
 import type { ChangedFile, ChangesList } from "../changes-list.ts";
-import { itemWords, versionWords } from "../changes-words.ts";
+import { itemWords, mergeWords, versionWords } from "../changes-words.ts";
 import { ItemChanges } from "./item-changes.tsx";
 
 /** Props for {@link ChangeList}. */
@@ -50,6 +50,8 @@ export function ChangeList({
   phone = false,
   focusHeading,
 }: ChangeListProps) {
+  const waitingId = useId();
+  const waiting = list.merging;
   const grouped = groupIntoItems(files);
   // The order the rows are drawn in: items, then the files no kind places.
   const items = [...grouped.filter(isItem), ...grouped.filter((item) => !isItem(item))];
@@ -103,16 +105,32 @@ export function ChangeList({
       }}
     >
       {phone ? (
-        <Button variant="secondary" size="touch" block onClick={() => list.startVersion()}>
+        <Button
+          variant="secondary"
+          size="touch"
+          block
+          unavailable={waiting ? { reason: waitingId } : undefined}
+          onClick={() => list.startVersion()}
+        >
           {versionWords.createVersion}
         </Button>
       ) : (
         <div className="flex justify-end">
-          <Button variant="primary" size="sm" onClick={() => list.startVersion()}>
+          <Button
+            variant="primary"
+            size="sm"
+            unavailable={waiting ? { reason: waitingId } : undefined}
+            onClick={() => list.startVersion()}
+          >
             {versionWords.createVersion}
           </Button>
         </div>
       )}
+      {waiting ? (
+        <span id={waitingId} className="text-small text-fg-muted">
+          {mergeWords.finishFirst}
+        </span>
+      ) : null}
       {/* The List drops a group with no rows, heading and count with it; with only Other files changed, this heading stands in. */}
       {itemRows.length === 0 ? <ListHeading {...sinceHeading} headingLevel={2} /> : null}
       <List

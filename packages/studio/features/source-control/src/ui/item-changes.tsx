@@ -4,7 +4,7 @@ import { Button, useToastStore } from "@halonicjs/studio-kit";
 import { useId, useMemo, useRef, useState } from "react";
 import type { ChangeItem } from "../change-items.ts";
 import type { ChangedFile, ChangesList, DiscardOutcome } from "../changes-list.ts";
-import { discardWords, listWords, undoWords } from "../changes-words.ts";
+import { discardWords, listWords, mergeWords, undoWords } from "../changes-words.ts";
 
 /** Props for {@link ItemChanges}. */
 export interface ItemChangesProps {
@@ -61,6 +61,7 @@ function FileChanges({
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string>();
   const discarding = useDiscardToasts();
+  const waitingId = useId();
 
   async function discardFile() {
     setBusy(true);
@@ -90,10 +91,21 @@ function FileChanges({
             {showLines ? discardWords.hideLines : discardWords.showLines}
           </Button>
         ) : null}
-        <Button variant="ghost" size="sm" busy={busy} onClick={() => void discardFile()}>
+        <Button
+          variant="ghost"
+          size="sm"
+          busy={busy}
+          unavailable={list.merging ? { reason: waitingId } : undefined}
+          onClick={() => void discardFile()}
+        >
           {developer ? discardWords.discard : discardWords.undoTheseChanges}
         </Button>
       </div>
+      {list.merging ? (
+        <span id={waitingId} className="text-small text-fg-muted">
+          {mergeWords.finishFirst}
+        </span>
+      ) : null}
       {failure === undefined ? null : (
         <span role="alert" className="text-small text-danger">
           {discardWords.failed}. {failure}
@@ -289,6 +301,11 @@ function ChangeRow({
     toasts?.show({ tone: "danger", title: undoWords.undoFailed, text: reason });
   }
 
+  // What keeps Undo this change from working now: a half-done Get updates, or another change.
+  let why: string | undefined;
+  if (list.merging) why = mergeWords.finishFirst;
+  else if (dependent !== undefined) why = listWords.undoThatFirst(dependent.sentence);
+
   return (
     <div className="flex items-center gap-3">
       <span className="text-body flex-1">{line.sentence}</span>
@@ -297,15 +314,15 @@ function ChangeRow({
           variant="ghost"
           size="sm"
           busy={busy}
-          unavailable={dependent === undefined ? undefined : { reason: reasonId }}
+          unavailable={why === undefined ? undefined : { reason: reasonId }}
           onClick={() => void undo()}
         >
           {listWords.undoThisChange}
         </Button>
       )}
-      {dependent === undefined ? null : (
+      {why === undefined ? null : (
         <span id={reasonId} className="text-small text-fg-muted">
-          {listWords.undoThatFirst(dependent.sentence)}
+          {why}
         </span>
       )}
       {failure === undefined ? null : (

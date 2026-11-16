@@ -3,18 +3,20 @@ import type { VcsChange } from "@halonicjs/ports";
 import { applyLineChanges, diffLines, type LineChange } from "@halonicjs/std";
 import type { PlaceSignal, ServiceKey } from "@halonicjs/studio-shell";
 import { serviceKey } from "@halonicjs/studio-shell";
-import type { ChangesSource, Identity, KeptFile } from "./api.ts";
+import type { ChangesSource, Identity, KeptFile, UpdateChoice, UpdateMerge } from "./api.ts";
 import { type ChangeItem, groupIntoItems } from "./change-items.ts";
 import {
   type ChangedFile,
   type ChangesListState,
   type DiscardOutcome,
   historyPageSize,
+  type MergeOutcome,
   type UndoOutcome,
   type UpdatesOutcome,
 } from "./changes-list-state.ts";
 import {
   discardWords,
+  mergeWords,
   pageWords,
   shareWords,
   undoWords,
@@ -33,6 +35,7 @@ export type {
   ChangesListState,
   DiscardOutcome,
   HistoryState,
+  MergeOutcome,
   UndoOutcome,
   UpdatesOutcome,
 } from "./changes-list-state.ts";
@@ -58,6 +61,9 @@ export class ChangesList {
     identity: undefined,
     hasRemote: false,
     gettingUpdates: false,
+    merge: undefined,
+    choosing: false,
+    mergeBusy: false,
     version: undefined,
     history: { versions: [], more: false, loaded: false, error: undefined },
   };
@@ -108,13 +114,28 @@ export class ChangesList {
       const hasRemote = answer.kind === "ready" && (await this.source.hasRemote());
       if (read !== this.#reads || this.#disposed) return;
       const identity = answer.kind === "ready" ? await this.#identity() : undefined;
+      const merge = await this.#readMerge(answer.kind === "ready");
       if (read !== this.#reads || this.#disposed) return;
-      this.#set({ ...this.#state, read: answer, files, hasRemote, identity, error: undefined });
+      this.#set({
+        ...this.#state,
+        read: answer,
+        files,
+        hasRemote,
+        identity,
+        merge: merge ?? undefined,
+        choosing: merge !== null && this.#state.choosing,
+        error: undefined,
+      });
       if (answer.kind === "ready") await this.#readHistory(this.#state.history.versions.length);
     } catch (error) {
       if (read !== this.#reads || this.#disposed) return;
       this.#set({ ...this.#state, error });
     }
+  }
+
+  /** The merge left open, `null` when none is or the folder has no history. */
+  async #readMerge(ready: boolean): Promise<UpdateMerge | null> {
+    return ready ? await this.source.readMerge() : null;
   }
 
   /** Shows the next {@link historyPageSize} older versions. */
@@ -409,15 +430,70 @@ export class ChangesList {
     }
     this.#set({ ...this.#state, gettingUpdates: true });
     try {
-      const outcome = await this.source.getUpdates();
+      let outcome: UpdatesOutcome = await this.source.getUpdates();
+      if (outcome.kind === "both-moved") {
+        const start = await this.source.startMerge();
+        // Both having moved is the one case that is chosen for item by item; if it has changed
+        // since, the answer stays the first one.
+        if (start.kind === "started") outcome = { kind: "choosing" };
+      }
       if (this.#disposed) return outcome;
-      this.#set({ ...this.#state, gettingUpdates: false });
-      if (outcome.kind === "got") await this.refresh();
+      this.#set({ ...this.#state, gettingUpdates: false, choosing: outcome.kind === "choosing" });
+      if (outcome.kind === "got" || outcome.kind === "choosing") await this.refresh();
       return outcome;
     } catch (error) {
       if (!this.#disposed) this.#set({ ...this.#state, gettingUpdates: false });
       return { kind: "failed", reason: loadFailureReason(error) };
     }
+  }
+
+  /** Whether a merge of both sides' versions is started: what waits for it is unavailable. */
+  get merging(): boolean {
+    return this.#state.merge !== undefined;
+  }
+
+  /** Opens the choices of a merge that was left open. */
+  continueMerge(): void {
+    if (this.#state.merge !== undefined) this.#set({ ...this.#state, choosing: true });
+  }
+
+  /** Settles one item: Keep mine, Use theirs or Keep both. */
+  chooseUpdate(path: string, choice: UpdateChoice): Promise<MergeOutcome> {
+    const people = this.#state.merge?.people ?? [];
+    const label = people.length === 1 ? (people[0] ?? "") : "shared";
+    return this.#mergeStep(() => this.source.chooseUpdate(path, choice, label));
+  }
+
+  /** Takes a choice back. */
+  undoUpdateChoice(path: string): Promise<MergeOutcome> {
+    return this.#mergeStep(() => this.source.undoUpdateChoice(path));
+  }
+
+  /** Completes the merge once every item is chosen, as "Merged Sam's updates". */
+  async finishMerge(): Promise<MergeOutcome> {
+    const people = this.#state.merge?.people ?? [];
+    return this.#mergeStep(() => this.source.finishMerge(mergeWords.merged(people)), true);
+  }
+
+  /** Drops the merge and puts every file back as it was. */
+  cancelMerge(): Promise<MergeOutcome> {
+    return this.#mergeStep(() => this.source.cancelMerge(), true);
+  }
+
+  /** Runs one step of the merge, one at a time, then reads again; the reason it failed, or `undefined`. */
+  async #mergeStep(step: () => Promise<void>, ends = false): Promise<MergeOutcome> {
+    if (this.#disposed || this.#state.mergeBusy) return mergeWords.working;
+    this.#set({ ...this.#state, mergeBusy: true });
+    let reason: string | undefined;
+    try {
+      await step();
+    } catch (error) {
+      reason = loadFailureReason(error);
+    }
+    if (this.#disposed) return reason;
+    this.#set({ ...this.#state, mergeBusy: false, choosing: !ends || reason !== undefined });
+    await this.refresh();
+    return reason;
   }
 
   /**

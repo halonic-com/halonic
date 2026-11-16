@@ -167,6 +167,61 @@ export const updatesWords = {
   alreadyWorking: "Halonic is already getting updates.",
 };
 
+/** Choosing per item when both sides changed (checklist part 2, 2.8; microcopy revision 94, 16). */
+export const mergeWords = {
+  /** Whose updates: "Sam's" for one person, "the shared" for more (the tile says "the shared one"). */
+  whose: (people: readonly string[]) =>
+    people.length === 1 && people[0] !== undefined ? `${people[0]}'s` : "the shared",
+  /** The other side's name for the page: "Sam", or "the team" when more than one person's versions came. */
+  who: (people: readonly string[]) =>
+    people.length === 1 && people[0] !== undefined ? people[0] : "the team",
+  /** "Sam's" or "The shared one", the start of "…: not used". */
+  theirsName: (people: readonly string[]) =>
+    people.length === 1 && people[0] !== undefined ? `${people[0]}'s` : "The shared one",
+  heading: "Getting updates",
+  intro: (people: readonly string[], count: number) =>
+    `You and ${mergeWords.who(people)} both changed ${count === 1 ? "1 item" : `${count} items`}. Choose which one to keep. Your version is kept in History either way.`,
+  /** The strip over the page while a merge is left open. */
+  inTheMiddle: (people: readonly string[]) =>
+    `You're in the middle of getting ${mergeWords.whose(people)} updates.`,
+  continue: "Continue",
+  yours: "Yours",
+  keepMine: "Keep mine",
+  useTheirs: (people: readonly string[]) =>
+    people.length === 1 && people[0] !== undefined ? `Use ${people[0]}'s` : "Use the shared one",
+  keepBoth: "Keep both",
+  keepingYours: "Keeping yours",
+  keepingTheirs: (people: readonly string[]) =>
+    people.length === 1 && people[0] !== undefined
+      ? `Keeping ${people[0]}'s`
+      : "Keeping the shared one",
+  keepingBoth: "Keeping both",
+  notUsed: (people: readonly string[]) => `${mergeWords.theirsName(people)}: not used`,
+  /** Under "Keeping both": where the other side's copy went. */
+  copySavedAs: (path: string) => `Saved next to yours as ${path}.`,
+  undo: "Undo",
+  /** What a tile shows for a side that deleted the item. */
+  deleted: "Deleted",
+  /** A side's text, cut after a few lines. */
+  moreLines: (count: number) => (count === 1 ? "1 more line" : `${count} more lines`),
+  finish: "Finish getting updates",
+  /** Finish's visible description until every item is chosen. */
+  chooseForMore: (count: number) =>
+    count === 1 ? "Choose for 1 more item." : `Choose for ${count} more items.`,
+  cancel: "Cancel getting updates",
+  working: "Working…",
+  /** The message of the version that completes the merge. */
+  merged: (people: readonly string[]) => `Merged ${mergeWords.whose(people)} updates`,
+  cancelled: "Cancelled getting updates",
+  /** The reason under Create version and Get updates, and the tooltip and description of what waits. */
+  finishFirst: "Finish getting updates first.",
+  /** A choice that didn't work; the reason follows. */
+  choiceFailed: "Couldn't make that choice",
+  finishFailed: "Couldn't finish getting updates",
+  cancelFailed: "Couldn't cancel getting updates",
+  tryAgain: "Try again",
+};
+
 /** History (checklist part 2, 2.9 and 2.10; microcopy revision 94, 16). */
 export const historyWords = {
   title: "History",
