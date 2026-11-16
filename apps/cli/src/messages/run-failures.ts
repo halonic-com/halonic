@@ -139,12 +139,19 @@ export type RunFailure =
       readonly model: string;
       readonly alias: string;
     }
-  | { readonly reason: "sandbox-start-failed"; readonly agent: string }
+  | {
+      readonly reason: "sandbox-start-failed";
+      readonly agent: string;
+      /** The `Sandbox` port's reason code from the run log; left out when the log has none. */
+      readonly code?: string;
+    }
   | {
       readonly reason: "harness-start-failed";
       readonly agent: string;
       /** The program, such as "Claude Code". */
       readonly harness: string;
+      /** Why it didn't start, when the run log says; without it, line 1 stays general. */
+      readonly cause?: "not-installed" | "signed-out";
       /** How long the engine waited for its first event, such as "60 seconds". */
       readonly within: string;
     }
@@ -264,17 +271,36 @@ const lineOne = {
       run,
       phrase`this computer doesn't have enough free memory for ${failure.provider} to load ${failure.model}.`,
     ),
-  // The log holds no reason for the sandbox, so line 1 ends where cli-output 3.4's "reason" would start.
+  // A log from before the engine named the sandbox's reason ends where cli-output 3.4's "reason" would start.
   "sandbox-start-failed": (run, failure) =>
-    failedIn(
-      run,
-      phrase`${failure.agent} didn't start, because the sandbox on this computer didn't start.`,
-    ),
-  "harness-start-failed": (run, failure) =>
-    failedIn(
-      run,
-      phrase`${failure.agent} didn't start, because ${failure.harness} didn't start on this computer or didn't answer within ${failure.within}.`,
-    ),
+    failure.code === undefined
+      ? failedIn(
+          run,
+          phrase`${failure.agent} didn't start, because the sandbox on this computer didn't start.`,
+        )
+      : failedIn(
+          run,
+          phrase`${failure.agent} didn't start, because the sandbox on this computer didn't start: ${sandboxMessages.reason(failure.code).phrase}`,
+        ),
+  "harness-start-failed": (run, failure) => {
+    switch (failure.cause) {
+      case "not-installed":
+        return failedIn(
+          run,
+          phrase`${failure.agent} didn't start, because ${failure.harness} isn't installed on this computer.`,
+        );
+      case "signed-out":
+        return failedIn(
+          run,
+          phrase`${failure.agent} didn't start, because ${failure.harness} isn't signed in on this computer.`,
+        );
+      default:
+        return failedIn(
+          run,
+          phrase`${failure.agent} didn't start, because ${failure.harness} didn't start on this computer or didn't answer within ${failure.within}.`,
+        );
+    }
+  },
   error: (run, failure) => {
     // An empty message says no more than none at all.
     const message = failure.message?.trim() ?? "";
@@ -332,8 +358,16 @@ const lineTwo = {
     phrase`Close other programs, or point the model alias ${failure.alias} at a smaller model in models.yaml, then run it again.`,
   "sandbox-start-failed": () =>
     phrase`Run it again. If it keeps happening, add --debug and report it: ${issuesLink}`,
-  "harness-start-failed": (_run, failure) =>
-    phrase`Check that ${failure.harness} starts in a terminal and is signed in, then run it again.`,
+  "harness-start-failed": (_run, failure) => {
+    switch (failure.cause) {
+      case "not-installed":
+        return phrase`Install ${failure.harness}, then run it again.`;
+      case "signed-out":
+        return phrase`Sign in to ${failure.harness} in a terminal, then run it again.`;
+      default:
+        return phrase`Check that ${failure.harness} starts in a terminal and is signed in, then run it again.`;
+    }
+  },
   error: (run) => bugFix(run),
   internal: (run) => bugFix(run),
 } satisfies ByReason;
