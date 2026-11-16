@@ -30,6 +30,8 @@ export function fakeSource(initial: ChangesRead) {
   let remote = false;
   let updates: UpdatesResult = { kind: "up-to-date" };
   let updatesFailure: unknown;
+  let remoteFailure: unknown;
+  const remotes: string[] = [];
   let updatesAsked = 0;
   const texts = new Map<string, FileTexts>();
   const replaced: { path: string; text: string; expected: string | null }[] = [];
@@ -94,6 +96,11 @@ export function fakeSource(initial: ChangesRead) {
       answer = { kind: "ready", changes: [] };
     },
     hasRemote: async () => remote,
+    addRemote: async (address) => {
+      if (remoteFailure !== undefined) throw remoteFailure;
+      remotes.push(address);
+      remote = true;
+    },
     getUpdates: async () => {
       updatesAsked += 1;
       if (updatesFailure !== undefined) throw updatesFailure;
@@ -159,6 +166,12 @@ export function fakeSource(initial: ChangesRead) {
     /** Makes saving who versions are from fail with `error`. */
     failIdentity: (error: unknown) => {
       identityFailure = error;
+    },
+    /** Every address `addRemote` was given, in order. */
+    remotes,
+    /** Makes adding a share address fail with `error`; `undefined` makes it work again. */
+    failRemote: (error: unknown) => {
+      remoteFailure = error;
     },
     /** Whether the folder has a place to get updates from. */
     setRemote: (has: boolean) => {

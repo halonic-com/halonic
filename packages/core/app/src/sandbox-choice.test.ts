@@ -1,150 +1,33 @@
-import type {
-  SandboxBackendId,
-  SandboxCheck,
-  SandboxProfile,
-  SandboxSession,
-  SandboxSetting,
-} from "@halonicjs/ports";
+import type { SandboxSetting } from "@halonicjs/ports";
 import { FakeSandboxSession, idleProgram } from "@halonicjs/testing-contracts";
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
 import {
+  choose,
+  chosenAt,
+  clean,
+  inContainer,
+  type Machine,
+  machine,
+  needsSetup,
+  ok,
+  profile,
+  sessions,
+  statusOf,
+  tooStrict,
+} from "./sandbox-choice.test-helper.ts";
+import {
   defaultBackendOrder,
-  type LimitCode,
   type SandboxBackend,
   type SandboxBackendState,
+  type SandboxBackendStatus,
   SandboxChoiceService,
+  type SecurityUpdatesState,
   sandboxBackendStates,
 } from "./sandbox-choice.ts";
 import type { CanaryFindings } from "./sandbox-trust-check.ts";
 
-const profile: SandboxProfile = {
-  workingFolder: "/acme/project",
-  tempFolder: "/local-app-data/Halonic/tmp/canary",
-  settingsFolder: null,
-  readOnlyPaths: [],
-  deniedPaths: [],
-  env: {},
-  network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
-  timeLimitMs: 30_000,
-};
-
-const ok: SandboxCheck = { ok: true, reason: null, missing: [] };
-const needsSetup: SandboxCheck = { ok: false, reason: "setup-needed", missing: ["not set up"] };
-const inContainer: SandboxCheck = { ok: false, reason: "container", missing: ["in a container"] };
-
-const clean: CanaryFindings = {
-  started: true,
-  leaks: [],
-  controls: { readOnlyFileRead: true, workFolderScriptLoaded: true, networkBlockProven: true },
-  nameLookupsLeave: true,
-  missing: [],
-};
-
-const tooStrict: CanaryFindings = {
-  ...clean,
-  controls: { readOnlyFileRead: false, workFolderScriptLoaded: true, networkBlockProven: true },
-  missing: ["the read-only file couldn't be read"],
-};
-
-const chosenAt = "2026-11-14T09:00:00.000Z";
-const choose = (backend: SandboxBackendId): SandboxSetting => ({ backend, chosenAt });
-
-interface FakeBackend {
-  check?: SandboxCheck;
-  offered?: boolean;
-  limits?: LimitCode[];
-  /** What each canary run finds, in turn; the last one repeats. Without it every run finds nothing. */
-  canary?: CanaryFindings[];
-  /** Each canary probe waits for this before it reports. */
-  probeGate?: () => Promise<void>;
-  /** The backend needs its one-time download; each try answers `downloads` in turn (the last repeats), and a `done` one ends the need. */
-  needsDownload?: boolean;
-  downloads?: Array<{ done: true } | { done: false; problem: string }>;
-}
-
-interface Machine {
-  platform?: string;
-  setting?: SandboxSetting | null;
-  backends?: Partial<Record<SandboxBackendId, FakeBackend>>;
-}
-
-/** A choice over fake backends, how many trust checks each ran, and the most that ran at once. */
-function machine(setup: Machine = {}) {
-  let setting = setup.setting ?? null;
-  const checks: Partial<Record<SandboxBackendId, number>> = {};
-  const downloadNeeded: Partial<Record<SandboxBackendId, boolean>> = {};
-  const downloadTries: Partial<Record<SandboxBackendId, number>> = {};
-  const sandboxChecks: Partial<Record<SandboxBackendId, number>> = {};
-  let running = 0;
-  let mostAtOnce = 0;
-  const given = setup.backends ?? { srt: { check: ok }, mxc: { check: ok, canary: [clean] } };
-  const backends = (Object.keys(given) as SandboxBackendId[]).map((id): SandboxBackend => {
-    const fake = given[id] ?? {};
-    const findings = fake.canary ?? [clean];
-    downloadNeeded[id] = fake.needsDownload ?? false;
-    return {
-      id,
-      offered: async () => fake.offered ?? true,
-      limits: fake.limits ?? [],
-      sandbox: {
-        check: async () => {
-          sandboxChecks[id] = (sandboxChecks[id] ?? 0) + 1;
-          return fake.check ?? ok;
-        },
-        open: async (opened): Promise<SandboxSession> =>
-          new FakeSandboxSession({ profile: opened, program: idleProgram }),
-      },
-      ...(fake.needsDownload === undefined
-        ? {}
-        : {
-            setup: {
-              downloadNeeded: async () => downloadNeeded[id] ?? false,
-              download: async () => {
-                const answers = fake.downloads ?? [{ done: true }];
-                const tries = downloadTries[id] ?? 0;
-                downloadTries[id] = tries + 1;
-                const answer = answers[Math.min(tries, answers.length - 1)] ?? { done: true };
-                if (answer.done) downloadNeeded[id] = false;
-                return answer;
-              },
-            },
-          }),
-      canary: {
-        profile: async () => profile,
-        probe: async () => {
-          checks[id] = (checks[id] ?? 0) + 1;
-          running += 1;
-          mostAtOnce = Math.max(mostAtOnce, running);
-          try {
-            await fake.probeGate?.();
-            return findings[Math.min(checks[id] ?? 1, findings.length) - 1] ?? clean;
-          } finally {
-            running -= 1;
-          }
-        },
-      },
-    };
-  });
-  const choice = new SandboxChoiceService({
-    platform: setup.platform ?? "linux",
-    backends,
-    settings: { get: async () => setting },
-  });
-  return {
-    choice,
-    trustChecks: (id: SandboxBackendId) => checks[id] ?? 0,
-    ownChecks: (id: SandboxBackendId) => sandboxChecks[id] ?? 0,
-    downloadTries: (id: SandboxBackendId) => downloadTries[id] ?? 0,
-    mostAtOnce: () => mostAtOnce,
-    saves: (next: SandboxSetting | null) => {
-      setting = next;
-    },
-  };
-}
-
-const statusOf = (choice: { backends: { id: SandboxBackendId }[] } | null, id: SandboxBackendId) =>
-  choice?.backends.find((backend) => backend.id === id);
+sessions.open = (opened) => new FakeSandboxSession({ profile: opened, program: idleProgram });
 
 verifies("app.sandbox-choice", () => {
   it("runs the first default backend of the platform when nothing is chosen", async () => {
@@ -248,6 +131,32 @@ verifies("app.sandbox-choice", () => {
       limits: ["name-lookups-leave", "project-folder-writable"],
       residuals: ["name-lookups-leave"],
     });
+  });
+
+  it("adds security-updates-overdue as a residual, with the last date or none", async () => {
+    const overdue = async (securityUpdates: SecurityUpdatesState | Error) => {
+      const { choice } = machine({
+        platform: "win32",
+        backends: { "srt-wsl": { check: ok, securityUpdates } },
+      });
+      const status = statusOf(await choice.start(), "srt-wsl");
+      if (status === undefined) throw new Error("srt-wsl has no status");
+      return status as SandboxBackendStatus;
+    };
+    expect(await overdue({ overdue: true, last: "2026-11-01T03:00:00Z" })).toMatchObject({
+      state: "in-use",
+      residuals: ["name-lookups-leave", "security-updates-overdue"],
+      securityUpdatesLast: "2026-11-01T03:00:00Z",
+    });
+    // Never ran or unknown: no date, not an empty string. The same for a call that fails.
+    for (const state of [{ overdue: true, last: null } as const, new Error("wsl.exe failed")]) {
+      const status = await overdue(state);
+      expect(status).toMatchObject({ state: "in-use", securityUpdatesLast: null });
+      expect(status.residuals).toContain("security-updates-overdue");
+    }
+    const current = await overdue({ overdue: false });
+    expect(current.residuals).not.toContain("security-updates-overdue");
+    expect(current).not.toHaveProperty("securityUpdatesLast");
   });
 
   it("runs nothing when the check fails, without falling through or changing the setting", async () => {

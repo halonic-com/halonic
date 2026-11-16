@@ -47,6 +47,9 @@ export interface WorkspaceChangesOptions {
   readonly now?: () => Date;
 }
 
+/** What the share address is called in git: the name git itself gives the place a clone came from. */
+const shareRemoteName = "origin";
+
 /** The line that keeps Halonic's own data out of the history. */
 const studioIgnoreLine = ".studio/";
 
@@ -167,6 +170,12 @@ export class WorkspaceChanges implements ChangesSource {
   async hasRemote(): Promise<boolean> {
     const remotes = await this.#run(["remote"]);
     return remotes !== "no-git" && remotes.code === 0 && remotes.stdout.trim() !== "";
+  }
+
+  async addRemote(address: string): Promise<void> {
+    const add = await this.#run(["remote", "add", shareRemoteName, address]);
+    if (add === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
+    if (add.code !== 0) throw new KindedError("unavailable", addressReason(add));
   }
 
   async getUpdates(): Promise<UpdatesResult> {
@@ -308,6 +317,13 @@ function gitReason(answer: GitAnswer): string {
 /** Why who versions are from couldn't be saved, as one plain sentence: git's own output is never shown. */
 function identityReason(answer: GitAnswer): string {
   return knownGitProblem(answer) ?? "Git didn't accept this name and email.";
+}
+
+/** Why a share address couldn't be added, as one plain sentence: git's own output is never shown. */
+function addressReason(answer: GitAnswer): string {
+  const said = `${answer.stderr}\n${answer.stdout}`;
+  if (/already exists/i.test(said)) return "This workspace already has a place to share to.";
+  return knownGitProblem(answer) ?? "Git didn't accept this address.";
 }
 
 /** Why getting updates failed, as one plain sentence: git's own output is never shown. */

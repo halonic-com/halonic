@@ -164,3 +164,19 @@ export const historyWords = {
   noFiles: "No workspace files changed.",
   fileCount: (count: number) => (count === 1 ? "1 file" : `${count} files`),
 };
+
+/** The sharing strip and Add where to share (checklist part 2, 2.3; microcopy 16, HAL-1566). */
+export const shareWords = {
+  onlyHere: "Only on this computer",
+  addWhereToShare: "Add where to share",
+  adding: "Adding…",
+  intro: "Your team gets your versions from this git address, and you get theirs.",
+  addressLabel: "Git address",
+  addressHint: "Copy it from the Clone button on GitHub, GitLab or your own git server.",
+  add: "Add",
+  /** Under Git address, for an empty field or an address that isn't one of the three forms. */
+  badAddress:
+    "Enter a git address, like https://github.com/acme/agents.git or git@github.com:acme/agents.git.",
+  failed: "Couldn't add this address",
+  tryAgain: "Try again",
+};

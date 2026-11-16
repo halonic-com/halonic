@@ -35,6 +35,8 @@ export { type SandboxBackendId, sandboxBackendIds };
  * - `no-file-fence`, `no-network-fence`: with no sandbox, nothing fences files or the network.
  * - `anonymous-loopback`, `deny-only-user-sid`, `lowered-integrity-unprobed`: srt's own
  *   residuals on Windows, as `srt-win wfp verify` reports them.
+ * - `security-updates-overdue`: a backend with its own system updates (`srt-wsl`, W2 of
+ *   HAL-5407) hasn't run them for more than 7 days. A warning, never a failure.
  */
 export const limitCodes = [
   "name-lookups-leave",
@@ -49,6 +51,7 @@ export const limitCodes = [
   "anonymous-loopback",
   "deny-only-user-sid",
   "lowered-integrity-unprobed",
+  "security-updates-overdue",
 ] as const;
 
 /** A limit of a backend: one of {@link limitCodes}. */
@@ -66,11 +69,23 @@ export interface SandboxBackend {
   sandbox: Pick<Sandbox, "check" | "open">;
   /** What this backend does not protect: facts about the backend, fixed. */
   limits: readonly LimitCode[];
+  /**
+   * For a backend that updates its own system (`srt-wsl`'s distro): whether
+   * those security updates are overdue. The choice asks at every start, after
+   * the trust check passed. Never throws: a failure counts as overdue with no date.
+   */
+  securityUpdates?(): Promise<SecurityUpdatesState>;
   /** The trust check's canary. Every backend has one: none runs steps before it passes. */
   canary: TrustCanary;
   /** The backend's one-time download, for a backend that needs one before it can run. MXC's SDK is one. */
   setup?: BackendSetup;
 }
+
+/**
+ * Where a backend's security updates stand. `last` is when they last ran, as
+ * the backend printed it, or `null` when they never did or it didn't say.
+ */
+export type SecurityUpdatesState = { overdue: false } | { overdue: true; last: string | null };
 
 /** A backend's one-time download. It starts only when the host calls {@link SandboxChoiceService.download}, which the host does when the person picks the backend. */
 export interface BackendSetup {
@@ -134,6 +149,11 @@ export interface SandboxBackendStatus {
   limits: LimitCode[];
   /** What this start's trust check saw that it does not protect. Empty unless the backend is in use. */
   residuals: LimitCode[];
+  /**
+   * When security updates last ran, while `security-updates-overdue` is a
+   * residual: `null` for "no date" (never, or unknown). Absent otherwise.
+   */
+  securityUpdatesLast?: string | null;
 }
 
 /** Which sandbox runs, for Studio and the CLI. */
@@ -347,7 +367,8 @@ export class SandboxChoiceService {
       this.#failures.get(backend.id) ?? (await runTrustCheck(backend.sandbox, backend.canary));
     if (result.passed) {
       status.state = "in-use";
-      if (result.nameLookupsLeave) status.residuals = ["name-lookups-leave"];
+      if (result.nameLookupsLeave) status.residuals.push("name-lookups-leave");
+      await this.#noteSecurityUpdates(backend, status);
       return true;
     }
     this.#failures.set(backend.id, result);
@@ -355,5 +376,20 @@ export class SandboxChoiceService {
     status.reason = result.reason;
     status.missing = [...result.missing];
     return false;
+  }
+
+  /** Adds `security-updates-overdue` as a residual when the backend says its updates are late. */
+  async #noteSecurityUpdates(backend: SandboxBackend, status: SandboxBackendStatus): Promise<void> {
+    if (backend.securityUpdates === undefined) return;
+    let state: SecurityUpdatesState;
+    try {
+      state = await backend.securityUpdates();
+    } catch {
+      // A warning beats silence: a backend that can't say is treated as overdue.
+      state = { overdue: true, last: null };
+    }
+    if (!state.overdue) return;
+    status.residuals.push("security-updates-overdue");
+    status.securityUpdatesLast = state.last;
   }
 }
