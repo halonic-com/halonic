@@ -20,6 +20,53 @@ const startedSchema = s.object({ accountRef: s.string() }).strict();
 const updatedSchema = s.object({ updated: s.literal(true) }).strict();
 const startedOverSchema = s.object({ clientSecret: s.string(), accountRef: s.string() }).strict();
 const signInSchema = s.object({ authUrl: s.string() }).strict();
+const savedSchema = s.object({ saved: s.literal(true) }).strict();
+
+const secretReplacedSchema: Schema<GoogleSecretReplaced> = s.union([
+  s.object({ result: s.literal("accepted"), accountsFixed: s.array(s.string()) }).strict(),
+  s
+    .object({
+      result: s.enum([
+        "replaced",
+        "refused",
+        "signInRefused",
+        "nothingStaged",
+        "notSignedIn",
+        "unreachable",
+        "googleError",
+        "unexpectedAnswer",
+      ]),
+    })
+    .strict(),
+]);
+
+/** What a secret field holds: only the request that sends it asks for the text. Studio's `SecretText` is one. */
+export interface RevealableSecret {
+  reveal(): string;
+}
+
+/** The ways a check of a new client secret ends without Google accepting or refusing it. */
+export type GoogleSecretCheckUnfinished =
+  | "signInRefused"
+  | "nothingStaged"
+  | "notSignedIn"
+  | "unreachable"
+  | "googleError"
+  | "unexpectedAnswer";
+
+/**
+ * How replacing a client secret ended, in the host's own words; it holds no secret.
+ * - `replaced`: nothing used the old secret, so the new one is in place without a check.
+ * - `accepted`: Google accepted the new secret; it is in use, and `accountsFixed` lists the
+ *   accounts it fixed.
+ * - `refused`: Google refused the new secret; the old one stays.
+ * - `signInRefused`: Google refused the account's sign-in, so the secret wasn't tested; it
+ *   stays staged and the old one stays in use.
+ * - the rest: the check couldn't finish; both secrets are as they were.
+ */
+export type GoogleSecretReplaced =
+  | { readonly result: "accepted"; readonly accountsFixed: readonly string[] }
+  | { readonly result: "replaced" | "refused" | GoogleSecretCheckUnfinished };
 
 /** Which kind of Google account a setup is for. */
 export type GoogleAccountType = "workspace" | "personal";
@@ -142,5 +189,40 @@ export class AgentHostGoogleSetup {
     const route = "POST /v1/google/sign-in/cancel";
     const answer = await this.#transport.request(route, { accountRef });
     if (answer.status !== 204) throw answerError(route, answer);
+  }
+
+  /**
+   * Keeps a client secret for an account that has none. The secret goes to the host once, in
+   * this request, and the host stores it; the page never holds it again.
+   *
+   * @throws {@link AgentHostError} when the host can't be reached or refuses (`google_setup_not_found`, `secret_needs_staging` when the account's secret is in use and {@link replaceClientSecret} is the way, `google_failed`)
+   */
+  async saveClientSecret(accountRef: string, secret: RevealableSecret): Promise<void> {
+    const route = "POST /v1/google/secret";
+    const answer = await this.#transport.request(route, {
+      accountRef,
+      clientSecret: secret.reveal(),
+    });
+    readAnswer(route, answer, savedSchema);
+  }
+
+  /**
+   * Replaces the account's client secret. When Google has never been asked to use the old one,
+   * the new one takes its place; otherwise the host checks it with Google first, and an old
+   * secret is never replaced by one Google refused.
+   *
+   * @returns how it ended; see {@link GoogleSecretReplaced}
+   * @throws {@link AgentHostError} when the host can't be reached or refuses (`google_setup_not_found`, `google_failed`); the old secret is still in use
+   */
+  async replaceClientSecret(
+    accountRef: string,
+    secret: RevealableSecret,
+  ): Promise<GoogleSecretReplaced> {
+    const route = "POST /v1/google/secret/replace";
+    const answer = await this.#transport.request(route, {
+      accountRef,
+      clientSecret: secret.reveal(),
+    });
+    return readAnswer(route, answer, secretReplacedSchema);
   }
 }

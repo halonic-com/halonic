@@ -65,11 +65,16 @@ export async function readJsonBody(request: IncomingMessage): Promise<unknown> {
  * Reads the request's body and checks it against `schema`. When it can't, it
  * answers the request with the reason (413 or 400, listing every problem with
  * its path) and returns `undefined`, so the route only has to stop.
+ *
+ * A problem's text can quote what the caller sent (an unknown key's name, for
+ * one). A route whose body holds a secret passes `describeProblems: false`, and
+ * the 400 says only that the body is not valid.
  */
 export async function readCheckedBody<T>(
   request: IncomingMessage,
   response: ServerResponse,
   schema: Schema<T>,
+  options: { readonly describeProblems?: boolean } = {},
 ): Promise<T | undefined> {
   let body: unknown;
   try {
@@ -89,6 +94,7 @@ export async function readCheckedBody<T>(
   const parsed = parse(schema, body);
   if (parsed.ok) return parsed.value as T;
   const problems = parsed.error.map((issue) => `${formatPath(issue.path)}: ${issue.message}`);
-  sendError(response, 400, "body_invalid", `The request body is not valid. ${problems.join("; ")}`);
+  const detail = options.describeProblems === false ? "" : ` ${problems.join("; ")}`;
+  sendError(response, 400, "body_invalid", `The request body is not valid.${detail}`);
   return undefined;
 }

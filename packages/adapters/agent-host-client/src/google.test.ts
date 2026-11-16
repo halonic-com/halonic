@@ -166,4 +166,81 @@ verifies("agent-host-client.google", () => {
       });
     });
   });
+
+  describe("client secret", () => {
+    const saveRoute = "POST /v1/google/secret";
+    const replaceRoute = "POST /v1/google/secret/replace";
+    // An invented value: not a real client secret.
+    const typed = "fake-client-secret-0000000001";
+    const secret = { reveal: () => typed };
+
+    it("saves it with the ref, once, and answers nothing", async () => {
+      const host = new FakeHost().answer(saveRoute, ok({ saved: true }));
+
+      await new AgentHostGoogleSetup(host).saveClientSecret("gaccount_one", secret);
+
+      expect(host.calls).toEqual([
+        { route: saveRoute, body: { accountRef: "gaccount_one", clientSecret: typed } },
+      ]);
+    });
+
+    it("fails a save with the host's kind when the secret in use must be checked first", async () => {
+      const host = new FakeHost().answer(
+        saveRoute,
+        refused(409, "secret_needs_staging", "This client secret is in use."),
+      );
+
+      await expect(
+        new AgentHostGoogleSetup(host).saveClientSecret("gaccount_one", secret),
+      ).rejects.toMatchObject({ status: 409, kind: "secret_needs_staging" });
+    });
+
+    it("replaces it and answers how the host's check ended, each outcome as its own", async () => {
+      const outcomes = [
+        { result: "replaced" },
+        { result: "accepted", accountsFixed: ["gaccount_two"] },
+        { result: "refused" },
+        { result: "signInRefused" },
+        { result: "unreachable" },
+      ];
+      for (const outcome of outcomes) {
+        const host = new FakeHost().answer(replaceRoute, ok(outcome));
+
+        expect(
+          await new AgentHostGoogleSetup(host).replaceClientSecret("gaccount_one", secret),
+        ).toEqual(outcome);
+        expect(host.calls).toEqual([
+          { route: replaceRoute, body: { accountRef: "gaccount_one", clientSecret: typed } },
+        ]);
+      }
+    });
+
+    it("fails with answer_invalid for an outcome it doesn't know, instead of taking it for another", async () => {
+      const host = new FakeHost().answer(replaceRoute, ok({ result: "something-new" }));
+
+      await expect(
+        new AgentHostGoogleSetup(host).replaceClientSecret("gaccount_one", secret),
+      ).rejects.toMatchObject({ kind: "answer_invalid" });
+    });
+
+    it("asks for the text only while it builds the request, and no error holds it", async () => {
+      let reveals = 0;
+      const counting = {
+        reveal: () => {
+          reveals += 1;
+          return typed;
+        },
+      };
+      const host = new FakeHost().answer(replaceRoute, refused(502, "google_failed", "No."));
+
+      const failure = await new AgentHostGoogleSetup(host)
+        .replaceClientSecret("gaccount_one", counting)
+        .catch((error: unknown) => error);
+
+      expect(reveals).toBe(1);
+      expect(failure).toMatchObject({ kind: "google_failed" });
+      expect(JSON.stringify(failure, Object.getOwnPropertyNames(failure))).not.toContain(typed);
+      expect((failure as Error).cause).toBeUndefined();
+    });
+  });
 });
