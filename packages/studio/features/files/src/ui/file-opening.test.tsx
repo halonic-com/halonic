@@ -15,6 +15,9 @@ const host: FilesHost = {
   read: async () => null,
   edit: () => {},
   problems: async () => [],
+  outside: () => new Map(),
+  compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
+  settle: async () => {},
 };
 
 verifies("files.ui.file-tab", () => {

@@ -6,7 +6,13 @@ function setup(
   saved: string[] | Error,
   pending: Record<string, string | null> = {},
   more: Record<string, string> = {},
+  outside: { held?: string[]; theirs?: string | null } = {},
 ) {
+  const watching: {
+    changed?: (changes: { path: string; kind: "changed" | "removed" }[]) => void;
+    closed: number;
+  } = { closed: 0 };
+  const settled: string[] = [];
   const texts: Record<string, string> = { "workspace.yaml": "id: acme\nname: Acme\n", ...more };
   const listeners = new Set<() => void>();
   const changes: { label: string; changes: Record<string, string | null>; key?: string }[] = [];
@@ -16,9 +22,27 @@ function setup(
         if (saved instanceof Error) throw saved;
         return saved;
       },
+      watch: async (listener) => {
+        watching.changed = listener.changed;
+        return {
+          close: async () => {
+            watching.closed++;
+          },
+        };
+      },
     },
     files: {
       pending,
+      reloadFromOutside: async () => ({ held: outside.held ?? [] }),
+      compare: async (path) => ({
+        path,
+        mine: "mine",
+        theirs: outside.theirs === undefined ? "theirs" : outside.theirs,
+        combined: null,
+      }),
+      settle: async (path) => {
+        settled.push(path);
+      },
       read: async (path) => (path in pending ? (pending[path] ?? null) : (texts[path] ?? null)),
       list: async (dir) => Object.keys(texts).filter((path) => path.startsWith(`${dir}/`)),
       change: (label, made, options) => {
@@ -34,7 +58,7 @@ function setup(
       return () => listeners.delete(listener);
     },
   });
-  return { host, listeners, changes };
+  return { host, listeners, changes, watching, settled };
 }
 
 verifies("studio.workspace-files-host", () => {
@@ -102,5 +126,55 @@ verifies("studio.workspace-files-host", () => {
     const { host } = setup(["notes.md"], { "notes.md": "hi" });
 
     expect(await host.problems()).toEqual([]);
+  });
+
+  it("marks a file with unsaved changes that changed outside, and tells a subscriber", async () => {
+    const { host, watching } = setup(["a.md"], { "a.md": "mine" }, {}, { held: ["a.md"] });
+    let told = 0;
+    host.subscribe(() => told++);
+
+    watching.changed?.([{ path: "a.md", kind: "changed" }]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(host.outside().get("a.md")).toBe("changed");
+    expect((await host.list()).marks.get("a.md")?.outside).toBe(true);
+    expect(told).toBe(1);
+  });
+
+  it("holds a file that is gone from the folder as deleted", async () => {
+    const { host, watching } = setup(
+      ["a.md"],
+      { "a.md": "mine" },
+      {},
+      { held: ["a.md"], theirs: null },
+    );
+
+    watching.changed?.([{ path: "a.md", kind: "removed" }]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(host.outside().get("a.md")).toBe("deleted");
+  });
+
+  it("stops holding a file once the user settles it", async () => {
+    const { host, watching, settled } = setup(["a.md"], { "a.md": "mine" }, {}, { held: ["a.md"] });
+    watching.changed?.([{ path: "a.md", kind: "changed" }]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    let told = 0;
+    host.subscribe(() => told++);
+
+    await host.settle("a.md", "use-other");
+
+    expect(settled).toEqual(["a.md"]);
+    expect(host.outside().size).toBe(0);
+    expect(told).toBe(1);
+  });
+
+  it("closes the watch when disposed", async () => {
+    const { host, watching } = setup([]);
+
+    await host.dispose();
+    await host.dispose();
+
+    expect(watching.closed).toBe(1);
   });
 });

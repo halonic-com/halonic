@@ -3,9 +3,12 @@
  * import each other only through this file.
  */
 export {
+  type CompareChoice,
+  type FileCompare,
   type FileIssue,
   type FilesHost,
   FilesHostService,
   type FilesListing,
+  type OutsideChange,
 } from "./files-host.ts";
 export type { FileMarks, TreeMarks } from "./tree/tree-model.ts";
