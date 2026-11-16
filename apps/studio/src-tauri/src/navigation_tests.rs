@@ -125,11 +125,7 @@ const APP_ORIGIN: &str = if cfg!(any(windows, target_os = "android")) {
 
 #[test]
 fn guard_keeps_the_connect_page_with_the_change_address_fragment() {
-    assert_all(
-        &[CHANGE_ADDRESS_PAGE, &format!("{CONNECT_PAGE}#")],
-        None,
-        Destination::Stay,
-    );
+    assert_all(&[CHANGE_ADDRESS_PAGE], None, Destination::Stay);
 }
 
 /// Every other page the app bundles has the window's capabilities too, so
@@ -151,6 +147,7 @@ fn guard_keeps_no_other_page_of_the_app_origin_in_the_window() {
         "/connect.html?",
         "/connect.html?x=1#change-address",
         "/connect.html#other",
+        "/connect.html#",
     ];
     for path in paths {
         let url = format!("{APP_ORIGIN}{path}");
