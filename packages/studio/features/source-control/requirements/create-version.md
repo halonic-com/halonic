@@ -6,7 +6,7 @@
 
 When the person presses Create version on the Changes page, or another screen opens it for some items, the source control feature shall open a dialog with a name that is offered and selected, notes, and what's in the version, with the Important changes first, marked Important, and shown as before → after. It shall not ask to save first. Ctrl Enter (Cmd Enter on macOS) in any field shall create the version, and Enter in Notes shall add a line. An empty name shall say "Give this version a name." under Name and focus it, and the button shall not be disabled beforehand. Creating shall record only the files in the dialog, with the name as the first line of the message and the notes after an empty line, then show the toast `Created version "<name>"`, close the dialog, and move focus to the page heading. When git refuses, the dialog shall stay open with "Couldn't create the version." and git's reason, and keep the name and notes.
 
-Not covered yet: the tests line, "Share with your team right away" and "Ask for review" (HAL-3227). The first-time "Who should versions be from?" is `source-control.identity`.
+Not covered yet: the tests line, "Share with your team right away", the first-time "Who should versions be from?" and "Ask for review" (HAL-3227).
 
 ## Examples
 
