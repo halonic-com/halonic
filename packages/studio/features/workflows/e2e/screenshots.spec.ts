@@ -38,3 +38,37 @@ for (const state of states) {
     });
   }
 }
+
+/**
+ * The first-start sandbox choice (HAL-5405) on a Windows PC, at the window sizes the plan names
+ * (HAL-3777): the halo must stay partly visible around the card at each. Every screen at the largest
+ * size, and the first screen at the others.
+ */
+const sizes = [
+  { width: 1280, height: 800 },
+  { width: 1000, height: 700 },
+  { width: 720, height: 560 },
+  { width: 480, height: 640 },
+] as const;
+const choiceScreens = ["choose", "more-info", "options", "confirm-none"] as const;
+
+for (const size of sizes) {
+  for (const screen of choiceScreens) {
+    if (screen !== "choose" && size !== sizes[0]) continue;
+    for (const scheme of schemes) {
+      test(`sandbox choice, ${screen}, ${size.width}x${size.height}, ${scheme}`, async ({
+        page,
+      }) => {
+        await page.setViewportSize(size);
+        await page.emulateMedia({ colorScheme: scheme });
+        await page.goto(`/sandbox-choice.html?screen=${screen}`);
+        await expect(page.getByRole("heading", { level: 2 })).toBeVisible();
+        await expect(page.getByTestId("sandbox-halo")).toBeAttached();
+        await page.screenshot({
+          path: `test-results/screenshots/sandbox-choice-${screen}-${size.width}x${size.height}-${scheme}.png`,
+          fullPage: true,
+        });
+      });
+    }
+  }
+}

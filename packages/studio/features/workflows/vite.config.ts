@@ -17,6 +17,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         "run-card": `${import.meta.dirname}/e2e/pages/run-card.html`,
+        "sandbox-choice": `${import.meta.dirname}/e2e/pages/sandbox-choice.html`,
       },
     },
   },
