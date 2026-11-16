@@ -1,11 +1,8 @@
-import { isSea } from "node:sea";
 import type { Readable, Writable } from "node:stream";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
 import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
-import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
-import { MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import {
   keptGrantsRecordFolder,
@@ -30,10 +27,8 @@ import { RunTable } from "./harness/run-table.ts";
 import { signInRoute } from "./harness/sign-in-route.ts";
 import { hostModelRoutes } from "./model/host-model-routes.ts";
 import { modelRoutes } from "./model/model-routes.ts";
-import { hostPluginBackends, unavailablePluginBackends } from "./plugin/host-plugin-backends.ts";
-import { hostPluginMachine } from "./plugin/host-plugin-machine.ts";
+import { hostPlugins } from "./plugin/host-plugins.ts";
 import { pluginRoutes } from "./plugin/plugin-routes.ts";
-import { PluginTable } from "./plugin/plugin-table.ts";
 import { hostSandboxChoice } from "./sandbox/choice-host.ts";
 import { sandboxChoiceRoutes } from "./sandbox/choice-routes.ts";
 import { sandboxRoutes } from "./sandbox/sandbox-routes.ts";
@@ -458,37 +453,6 @@ function hostServices(
 
 function logToError(text: string): void {
   process.stderr.write(text);
-}
-
-/**
- * The table of plugin runners, started in the host's own sandbox. `stop`
- * stops every runner and removes the temp folders of their starts.
- */
-function hostPlugins(
-  version: string,
-  sandbox: SrtSandbox,
-  profile: ProfileFolder | undefined,
-): { table: PluginTable; stop(): Promise<void> } | undefined {
-  if (profile === undefined) return undefined;
-  if (isSea()) {
-    return { table: new PluginTable(unavailablePluginBackends()), stop: async () => undefined };
-  }
-  const { machine, dispose } = hostPluginMachine({ fenced: sandbox, profile, version });
-  // A backend reads no secret and no sign-in token yet.
-  const context = {
-    secrets: { get: async () => null },
-    tokens: new MemoryTokenStore(),
-    http: createNodeHttpClient({ hostClass: () => "public" }),
-    trust: null,
-  };
-  const table = new PluginTable(hostPluginBackends(machine, context, logToError));
-  return {
-    table,
-    stop: async () => {
-      await table.closeAll();
-      await dispose();
-    },
-  };
 }
 
 /** The harnesses the host runs: Claude Code and Codex, found with this computer's launcher. */
