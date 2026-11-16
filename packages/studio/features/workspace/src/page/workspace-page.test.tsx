@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
-import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it } from "vitest";
 import type { WorkspacePage as Facts } from "../api.ts";
+import { workspaceFeature } from "../feature.ts";
 import type { WorkspaceTrustControl } from "../trust/workspace-trust-control.ts";
 import { WorkspacePage } from "./workspace-page.tsx";
 import { requestWorkspaceTarget } from "./workspace-page-target.ts";
@@ -49,7 +50,9 @@ function show(
 ): HTMLElement {
   element = document.createElement("div");
   document.body.append(element);
-  const context = { services: { get: () => facts } } as unknown as WorkspaceContext;
+  const context = {
+    services: limitedLookup(workspaceFeature, { get: () => facts }),
+  } as unknown as WorkspaceContext;
   root = createRoot(element);
   act(() =>
     root?.render(
@@ -145,7 +148,7 @@ verifies("workspace.workspace-page", () => {
     hidden.inert = true;
     document.body.append(hidden);
     const context = {
-      services: { get: () => ({ name: "Acme", trust }) },
+      services: limitedLookup(workspaceFeature, { get: () => ({ name: "Acme", trust }) }),
     } as unknown as WorkspaceContext;
     const props = {
       item: { kind: "workspace", hub: "local", id: "settings" },

@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
-import type { ItemRef, WorkspaceContext } from "@halonicjs/studio-shell";
+import { type ItemRef, limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ModelsSection } from "../aliases/models-section.tsx";
 import type { ModelsFiles } from "../api.ts";
+import { modelsFeature } from "../feature.ts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -58,7 +59,9 @@ async function show(files: ModelsFiles) {
   const toasts = createToastStore();
   element = document.createElement("div");
   document.body.append(element);
-  const context = { services: { get: () => files } } as unknown as WorkspaceContext;
+  const context = {
+    services: limitedLookup(modelsFeature, { get: () => files }),
+  } as unknown as WorkspaceContext;
   root = createRoot(element);
   await act(async () =>
     root?.render(

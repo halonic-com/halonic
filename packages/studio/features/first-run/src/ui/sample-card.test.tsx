@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import type { SampleStepId } from "../api.ts";
+import { firstRunFeature } from "../feature.ts";
 import type { SampleProgress, SampleProgressState } from "../sample-progress.ts";
 import { SampleCard, SampleSteps } from "./sample-card.tsx";
 import { stepOpeners } from "./step-openers.ts";
@@ -133,7 +134,7 @@ function contextWith(waiting: boolean) {
   const openPlace = vi.fn();
   const openItem = vi.fn();
   const context = {
-    services: { get: () => inbox },
+    services: limitedLookup(firstRunFeature, { get: () => inbox }),
     openPlace,
     openItem,
   } as unknown as WorkspaceContext;
@@ -178,7 +179,9 @@ verifies("first-run.sample-card", () => {
 verifies("first-run.sample-card", () => {
   it("shows nothing in a workspace that isn't the sample", () => {
     const firstRun = { progress: () => undefined };
-    const context = { services: { get: () => firstRun } } as unknown as WorkspaceContext;
+    const context = {
+      services: limitedLookup(firstRunFeature, { get: () => firstRun }),
+    } as unknown as WorkspaceContext;
     const root = render(<SampleCard context={context} />);
     expect(root.textContent).toBe("");
   });

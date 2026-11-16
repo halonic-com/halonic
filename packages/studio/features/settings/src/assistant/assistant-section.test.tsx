@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { HostSettings } from "@halonicjs/app";
-import type { SettingsSectionProps } from "@halonicjs/studio-shell";
+import { limitedLookup, type SettingsSectionProps } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HostSettingsService } from "../api.ts";
+import { settingsFeature } from "../feature.ts";
 import { change, control, typeAndLeave } from "../test-support/controls.ts";
 import { MemoryHostSettingsStore } from "../test-support/memory-host-settings-store.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -169,10 +170,10 @@ verifies("settings.ai-agent-section", () => {
     const settings = new HostSettings(store);
     await settings.load().catch(() => undefined);
     const context = {
-      services: {
-        get: (key: unknown) => (key === HostSettingsService ? settings : undefined),
+      services: limitedLookup(settingsFeature, {
+        get: (key) => (key === HostSettingsService ? settings : undefined),
         find: () => undefined,
-      },
+      }),
       announcer: { announce: vi.fn() },
     } as unknown as SettingsSectionProps["context"];
     const view = render(
@@ -205,10 +206,10 @@ verifies("settings.ai-agent-section", () => {
     const settings = new HostSettings(store);
     await settings.load().catch(() => undefined);
     const context = {
-      services: {
-        get: (key: unknown) => (key === HostSettingsService ? settings : undefined),
+      services: limitedLookup(settingsFeature, {
+        get: (key) => (key === HostSettingsService ? settings : undefined),
         find: () => undefined,
-      },
+      }),
       announcer: { announce: vi.fn() },
     } as unknown as SettingsSectionProps["context"];
     const view = render(

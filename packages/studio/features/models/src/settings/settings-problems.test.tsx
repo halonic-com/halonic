@@ -2,7 +2,7 @@
 
 import type { RunsList } from "@halonicjs/studio-feature-runs/api";
 import { RunsListService } from "@halonicjs/studio-feature-runs/api";
-import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -82,7 +82,10 @@ function contextOf(setup: Setup): WorkspaceContext {
     [RunsListService, runs],
   ]);
   return {
-    services: { get: (key: unknown) => table.get(key), find: (key: unknown) => table.get(key) },
+    services: limitedLookup(modelsFeature, {
+      get: (key) => table.get(key),
+      find: (key) => table.get(key),
+    }),
     runCommand: () => true,
   } as unknown as WorkspaceContext;
 }

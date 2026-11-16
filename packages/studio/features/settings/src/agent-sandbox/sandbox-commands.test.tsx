@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
-import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { type AgentSandboxHost, AgentSandboxService } from "../api.ts";
+import { settingsFeature } from "../feature.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { sandboxCommands } from "./sandbox-commands.ts";
 import { createSandboxFlow, SandboxFlowService } from "./sandbox-flow.ts";
@@ -31,7 +32,10 @@ function setup(
   ]);
   const openSettings = vi.fn();
   const context = {
-    services: { find: (key: { name: string }) => services.get(key.name) },
+    services: limitedLookup(settingsFeature, {
+      get: (key) => services.get(key.name),
+      find: (key) => services.get(key.name),
+    }),
     announcer: { announce: vi.fn() },
     openSettings,
   } as unknown as WorkspaceContext;
