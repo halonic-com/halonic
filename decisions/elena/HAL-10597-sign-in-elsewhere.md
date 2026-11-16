@@ -2,6 +2,7 @@
 
 - Approval: Liam approved the code on HAL-10696 and Sofia the UX on HAL-10695; the scope was decided on HAL-10682; Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:up67m4Bo+MJU0ZlZsClGpiuqSOsKG/wSg8ZL08AKw1z6Dx/ueOU6RU84lAiCU1yiTndwssHp1EdVeQbZP6ZvCg==
 - Task: HAL-10597
 
 ## What changes
