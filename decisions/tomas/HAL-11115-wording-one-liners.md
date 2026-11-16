@@ -1,7 +1,7 @@
 # Decision: five wording fixes from the design check
 
 - Task: HAL-11115
-- Approval: Liam routed these fixes from the design check on HAL-11107 (https://paperclip.halonic.com/HAL/issues/HAL-11107) and approves them as written in HAL-11115. A team decision with no board card (HAL-2282 rule: small wording that builds on an approved screen).
+- Approval: HAL-11133 (Liam's review of PR 3187, team decision under the HAL-2282 rule for small wording on an approved screen)
 - Kind: user-visible
 
 ## What changes
@@ -20,6 +20,7 @@ The design check (HAL-11098) found each of these wordings differing from the app
 
 ## Covers
 
+- inbox.request
 - library.collection-grid
 - runs.home
 - runs.row-columns
