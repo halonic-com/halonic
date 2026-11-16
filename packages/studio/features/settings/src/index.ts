@@ -10,6 +10,8 @@ export {
   type SandboxCheckFacts,
   type SandboxOutcome,
   type SecurityUpdatesFacts,
+  type WslRemoveRequest,
+  type WslRemoveResult,
 } from "./api.ts";
 export {
   agentCharactersPref,

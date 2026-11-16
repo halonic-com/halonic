@@ -98,3 +98,63 @@ export const RUN_HERE_BODY =
   "New agents will have your access to files and the network, without the sandbox. Agents you already have keep their setting. This applies on this computer only.";
 export const RUN_HERE_CONFIRM = "Run new agents on this computer";
 export const NEW_AGENTS_NOT_LOADED = "Couldn't load where new agents run on this computer.";
+
+/** Remove sandbox setup (HAL-10974): the three-step dialog, in the words HAL-11015 settled. */
+export const WSL_REMOVE_LINE =
+  "Deletes Halonic's sandbox from this computer. You can set it up again later.";
+export const WSL_REMOVE_BUTTON = "Remove sandbox setup";
+export const WSL_REMOVE_TITLE = "Remove sandbox setup";
+export const WSL_REMOVE_EXPLAIN =
+  "Halonic will delete its sandbox and everything stored inside it, such as tools and files the agents installed there. Your workspaces on Windows are not touched.";
+export const WSL_REMOVE_EXPLAIN_AGENTS =
+  "Agents that need the sandbox cannot run until you set it up again.";
+export const WSL_CONTINUE = "Continue";
+export const WSL_BACK = "Back";
+export const WSL_CHOICE_TITLE = "What should happen to the sandbox contents?";
+export const WSL_CHOICE_BACKUP = "Save a backup, then remove";
+export const WSL_CHOICE_BACKUP_HELP =
+  "Halonic saves a copy to a file you choose, then removes the sandbox. If saving fails, nothing is removed.";
+export const WSL_CHOICE_NO_BACKUP = "Remove without a backup";
+export const WSL_CHOICE_NO_BACKUP_HELP =
+  "The contents are gone for good. There is no way to get them back.";
+export const WSL_CHOICE_CANCEL = "Cancel";
+export const WSL_CHOICE_CANCEL_HELP = "Keep the sandbox as it is.";
+export const WSL_CHOOSE_LOCATION = "Choose location…";
+export const WSL_CHOOSE_ANOTHER = "Choose another location";
+export const wslSaveTo = (file: string) => `Save to: ${file}`;
+export const wslBackupName = (date: string) => `halonic-sandbox-backup-${date}.tar`;
+export const WSL_CONFIRM_NONE = "Remove sandbox";
+export const WSL_CONFIRM_BACKUP = "Save backup and remove sandbox";
+export const WSL_CONFIRM_NO_BACKUP = "Remove sandbox without a backup";
+export const WSL_BUSY_BACKUP = "Saving backup…";
+export const WSL_BUSY_BACKUP_NOTE = "This can take a few minutes. Keep Halonic open.";
+export const WSL_BUSY_CONTINUE = "Continuing…";
+export const WSL_BUSY_CLOSE = "Closing…";
+export const WSL_BUSY_REMOVE = "Removing the sandbox…";
+export const WSL_STARTED = "Removal has started and can't be stopped.";
+export const WSL_DONE_TITLE = "Sandbox removed";
+export const wslDoneBackup = (file: string) => `Your backup is saved at ${file}.`;
+export const WSL_DONE_NO_BACKUP = "Halonic's sandbox is gone from this computer.";
+export const WSL_SHOW_IN_FOLDER = "Show in folder";
+export const WSL_DONE = "Done";
+export const WSL_CLOSE = "Close";
+export const WSL_TRY_AGAIN = "Try again";
+export const WSL_BACKUP_FAILED_TITLE = "The backup didn't work, so nothing was removed";
+export const wslBackupFailed = (file: string, reason: string) =>
+  `Halonic could not save the backup to ${file}. Your sandbox is unchanged. ${reason}`;
+export const WSL_REMOVE_FAILED_TITLE = "The sandbox could not be removed";
+export const wslRemoveFailedBackup = (file: string, reason: string) =>
+  `Your backup is saved at ${file}. Halonic could not remove the sandbox. ${reason}`;
+export const wslRemoveFailed = (reason: string) =>
+  `Halonic could not remove the sandbox. ${reason}`;
+export const WSL_SHOW_BACKUP = "Show backup in folder";
+export const WSL_REASON_FALLBACK =
+  "Something went wrong. Close other programs that use the sandbox and try again.";
+export const WSL_REFUSED_TITLE = "The sandbox was not removed";
+export const WSL_REFUSED_NOT_OURS =
+  "This sandbox was not set up by Halonic, so Halonic leaves it alone. Nothing was removed.";
+export const WSL_REFUSED_MISSING =
+  "There is no Halonic sandbox on this computer. Nothing was removed.";
+export const WSL_REFUSED_FILE =
+  "That backup location can't be used. Nothing was removed. Choose another location.";
+export const WSL_DETAILS = "Details";
