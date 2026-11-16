@@ -1,4 +1,4 @@
-import type { Harness, HarnessDetectOptions, HarnessRun } from "@halonicjs/ports";
+import type { Harness, HarnessDetectOptions, HarnessEvent, HarnessRun } from "@halonicjs/ports";
 import type { BridgeTable } from "../bridge/bridge-routes.ts";
 import type { SessionTable } from "../sandbox/session-table.ts";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
@@ -77,10 +77,9 @@ function answerRunRoutes(runs: RunTable): HostRoute[] {
       handle: async (request, response) => {
         const body = await readCheckedBody(request, response, sendRunBody);
         if (body === undefined) return;
-        const run = runs.get(body.run);
-        if (run === undefined) return sendUnknown(response, "run");
+        if (runs.get(body.run) === undefined) return sendUnknown(response, "run");
         try {
-          await run.send(body.input);
+          await runs.send(body.run, body.input);
           sendJson(response, 200, { sent: true });
         } catch (error) {
           sendError(response, 409, "send_failed", messageOf(error));
@@ -130,31 +129,41 @@ function startRunHandler(
       stream.end();
       return;
     }
-    const id = runs.add(run);
+    const id = runs.add(run, body.task);
     stream.send({ type: "started", run: id });
     let finished = false;
+    let outcome: "done" | "failed" = "failed";
     // Studio went away: nobody reads the events or can answer the agent any more.
     // Nobody awaits this cancel, so a rejection is dropped here: left unhandled, it would
     // stop the whole host, and every other session and bridge with it.
     void stream.ended.then(() => (finished ? undefined : run.cancel())).catch(() => {});
     try {
-      await sendEvents(run, stream);
+      outcome = await sendEvents(run, stream, (event) => runs.record(id, event));
     } finally {
       finished = true;
-      runs.remove(id);
+      runs.remove(id, outcome);
       stream.end();
     }
   };
 }
 
-/** Sends each event of the run, then how it ended. */
-async function sendEvents(run: HarnessRun, stream: NdjsonStream): Promise<void> {
+/** Sends each event of the run, then how it ended, and tells `record` of each event. */
+async function sendEvents(
+  run: HarnessRun,
+  stream: NdjsonStream,
+  record: (event: HarnessEvent) => void,
+): Promise<"done" | "failed"> {
   try {
-    for await (const event of run) stream.send({ type: "event", event });
+    for await (const event of run) {
+      record(event);
+      stream.send({ type: "event", event });
+    }
     stream.send({ type: "finished" });
+    return "done";
   } catch (error) {
     // The port keeps the bridge token out of a run's errors, so the message can go to Studio.
     stream.send({ type: "failed", message: messageOf(error) });
+    return "failed";
   }
 }
 
