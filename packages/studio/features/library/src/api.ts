@@ -64,6 +64,7 @@ export {
   type NewConnectorHub,
   type NewConnectorWay,
 } from "./new-connector-host.ts";
+export { type NewConnectorRequest, requestNewConnector } from "./new-connector-request.ts";
 export {
   type NewSkillDraft,
   type NewSkillHost,

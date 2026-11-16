@@ -9,6 +9,7 @@ import { LibraryTabMemoryService } from "../library-tab-memory.ts";
 import { takeLibraryTabRequests } from "../library-tab-request.ts";
 import { NewCollectionHostService } from "../new-collection-host.ts";
 import { type ConnectorRef, NewConnectorHostService } from "../new-connector-host.ts";
+import { type NewConnectorRequest, takeNewConnectorRequests } from "../new-connector-request.ts";
 import { NewSkillHostService } from "../new-skill-host.ts";
 import { requestSkillInstructionsFocus } from "../skill-focus-request.ts";
 import type { SkillRef } from "../skill-host.ts";
@@ -25,6 +26,13 @@ export const sharedHubKey = "~workspace";
 
 function refOf(kind: LibraryItemKind, { hub, id }: LibraryEntryPlace) {
   return { kind, hub: hub ?? sharedHubKey, id };
+}
+
+function prepareThen(host: { prepare(): Promise<void> }, open: () => void): void {
+  void host
+    .prepare()
+    .catch(() => undefined)
+    .then(open);
 }
 
 function newButtonOf(
@@ -56,7 +64,15 @@ export function LibraryPlace({ context }: PlaceViewProps) {
   const newCollectionHost = context.services.find(NewCollectionHostService);
   const [makingCollection, setMakingCollection] = useState(false);
   const newConnectorHost = context.services.find(NewConnectorHostService);
-  const [makingConnector, setMakingConnector] = useState(false);
+  const [makingConnector, setMakingConnector] = useState<NewConnectorRequest>();
+  // The run banner's "Add connector" opens New connector on the Connectors tab with what it knows filled in.
+  useEffect(() => {
+    if (newConnectorHost === undefined) return;
+    return takeNewConnectorRequests((request) => {
+      show("connector");
+      prepareThen(newConnectorHost, () => setMakingConnector(request));
+    });
+  }, [newConnectorHost, show]);
   const { openItem, openItemInNewTab } = context;
   const openSkill = ({ hub, id }: SkillRef) =>
     openItem?.({ kind: "skill", hub: hub ?? sharedHubKey, id });
@@ -64,11 +80,6 @@ export function LibraryPlace({ context }: PlaceViewProps) {
     openItem?.({ kind: "collection", hub: hub ?? sharedHubKey, id });
   const openConnector = ({ hub, id }: ConnectorRef) =>
     openItem?.({ kind: "connector", hub: hub ?? sharedHubKey, id });
-  const prepareThen = (host: { prepare(): Promise<void> }, open: () => void) =>
-    void host
-      .prepare()
-      .catch(() => undefined)
-      .then(open);
   // Skills, Collections and Connectors have a New dialog; Knowledge shows no button (its items are files).
   // The dialog opens even if the read failed: it has fallbacks, and Create shows its own error.
   const onNew = newButtonOf(kind, {
@@ -76,7 +87,7 @@ export function LibraryPlace({ context }: PlaceViewProps) {
     collection:
       newCollectionHost && (() => prepareThen(newCollectionHost, () => setMakingCollection(true))),
     connector:
-      newConnectorHost && (() => prepareThen(newConnectorHost, () => setMakingConnector(true))),
+      newConnectorHost && (() => prepareThen(newConnectorHost, () => setMakingConnector({}))),
   });
   return (
     <>
@@ -109,15 +120,17 @@ export function LibraryPlace({ context }: PlaceViewProps) {
           onCancel={() => setMakingCollection(false)}
         />
       )}
-      {makingConnector && newConnectorHost !== undefined && (
+      {makingConnector !== undefined && newConnectorHost !== undefined && (
         <NewConnectorDialog
           host={newConnectorHost}
+          {...(makingConnector.name === undefined ? {} : { name: makingConnector.name })}
+          {...(makingConnector.way === undefined ? {} : { way: makingConnector.way })}
           onCreated={(connector) => {
-            setMakingConnector(false);
+            setMakingConnector(undefined);
             requestConnectorTitleFocus(connector);
             openConnector(connector);
           }}
-          onCancel={() => setMakingConnector(false)}
+          onCancel={() => setMakingConnector(undefined)}
         />
       )}
     </>

@@ -9,6 +9,7 @@ import { type LibraryTabMemory, LibraryTabMemoryService } from "../library-tab-m
 import { requestLibraryTab } from "../library-tab-request.ts";
 import { type NewCollectionHost, NewCollectionHostService } from "../new-collection-host.ts";
 import { type NewConnectorHost, NewConnectorHostService } from "../new-connector-host.ts";
+import { requestNewConnector } from "../new-connector-request.ts";
 import { type NewSkillHost, NewSkillHostService } from "../new-skill-host.ts";
 import { fakeModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -210,5 +211,31 @@ verifies("library.library-place", () => {
     });
     const dialog = page.ownerDocument.querySelector("dialog[open]");
     expect(dialog?.textContent).toContain("How it connects");
+  });
+
+  it("opens New connector with the name and way a run banner asked for, on the Connectors tab", async () => {
+    fakeModal();
+    const { context, memory } = contextOf("skill");
+    const host: NewConnectorHost = {
+      prepare: async () => {},
+      hubs: () => [{ id: "acme", name: "acme" }],
+      ways: () => ["google", "http"],
+      file: () => "hubs/acme/library/connectors/drive.connector.yaml",
+      create: async () => ({ hub: "acme", id: "drive" }),
+    };
+    const find = context.services.find;
+    context.services.find = ((key: unknown) =>
+      key === NewConnectorHostService ? host : find(key as never)) as typeof find;
+    const page = await show(context);
+    await act(async () => {
+      requestNewConnector({ name: "drive", way: "google" });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const dialog = page.ownerDocument.querySelector("dialog[open]");
+    expect(memory.set).toHaveBeenCalledWith("connector");
+    expect(dialog?.querySelector<HTMLInputElement>("input")?.value).toBe("drive");
+    expect(dialog?.querySelector<HTMLInputElement>("input[type=radio]:checked")?.value).toBe(
+      "google",
+    );
   });
 });
