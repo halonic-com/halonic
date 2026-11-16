@@ -24,7 +24,6 @@ function machine(overrides: Partial<Machine> = {}): Machine {
     hasSeatbelt: async () => true,
     packageManager: async () => null,
     windowsSandboxState: async () => "setup-needed" as const,
-    profileReadGranted: async () => false,
     installWindowsSandbox: async () => "installed" as const,
     letSandboxReadParents: async () => undefined,
     uninstallWindowsSandbox: async () => "removed" as const,
@@ -285,7 +284,6 @@ verifies("sandbox-srt.check", () => {
           machine({
             platform: "win32",
             windowsSandboxState: async () => "ok" as const,
-            profileReadGranted: async () => false,
             letSandboxReadParents: async (folders) => {
               asked.push(folders);
               throw new Error("icacls failed");
@@ -369,7 +367,6 @@ verifies("sandbox-srt.setup", () => {
       return machine({
         platform: "win32",
         windowsSandboxState: async () => (installed ? "ok" : "setup-needed"),
-        profileReadGranted: async () => false,
         installWindowsSandbox: async () => {
           const result = await install();
           installed ||= result === "installed";
@@ -445,7 +442,6 @@ verifies("sandbox-srt.remove", () => {
       return machine({
         platform: "win32",
         windowsSandboxState: async () => (installed ? "ok" : "setup-needed"),
-        profileReadGranted: async () => false,
         uninstallWindowsSandbox: async () => {
           const result = await uninstall();
           installed &&= result !== "removed";
