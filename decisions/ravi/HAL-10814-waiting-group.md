@@ -3,7 +3,6 @@
 - Task: HAL-10814
 - Approval: HAL-10814
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:WlCq5FD0icrSCXOG2W+IfxJL1VusruqkbzaKq/kqDELa8rv4oanbgYPSWw4nIEKqhKhoQQu33qwkAiURsdyRAA==
 
 ## What changes
 
