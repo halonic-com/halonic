@@ -126,7 +126,12 @@ verifies("runs.run-view.sandbox-not-ready", () => {
         throw new Error("host sentence");
       },
     ];
-    const root = await open(log("bubblewrap-missing"), () => (results.shift() ?? results[0])?.());
+    let call = 0;
+    const root = await open(log("bubblewrap-missing"), () => {
+      const next = results[Math.min(call++, results.length - 1)];
+      if (next === undefined) throw new Error("no result");
+      return next();
+    });
     await act(async () => button(root)?.click());
     await act(async () => button(root)?.click());
 
