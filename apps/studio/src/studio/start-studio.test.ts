@@ -128,9 +128,6 @@ verifies("studio.entry", () => {
     expect(started.host).toBe("served");
     expect(element.querySelector(tabsSelector)).not.toBeNull();
     expect(element.querySelector(headingSelector)?.textContent).toBe("Home");
-    // The resources item is the only status bar text with a tooltip about memory or free disk.
-    expect(element.querySelector('[title*="of memory"], [title*="free on this disk"]')).toBeNull();
-    expect(element.textContent).not.toContain(" free");
   });
 
   it("opens the window with no workspace name when the computer doesn't answer", async () => {

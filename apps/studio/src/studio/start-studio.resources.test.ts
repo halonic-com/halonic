@@ -85,4 +85,18 @@ verifies("studio.entry", () => {
     });
     expect(webview.commands).toContain("resource_report");
   });
+
+  it("shows no resources item in the status bar of the served Studio (HAL-11118)", async () => {
+    started = startStudio({
+      element,
+      window,
+      userAgent: "Mozilla/5.0 (X11; Linux x86_64)",
+      fetch: async () => Response.json({ name: "Acme", sample: false, folder: "~/Projects/acme" }),
+    });
+    await vi.waitFor(() => expect(element.querySelector("button")).not.toBeNull());
+
+    // The resources item is the only status bar text with a tooltip about memory or free disk.
+    expect(element.querySelector('[title*="of memory"], [title*="free on this disk"]')).toBeNull();
+    expect(element.textContent).not.toContain(" free");
+  });
 });
