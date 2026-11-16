@@ -8,8 +8,6 @@ When routines didn't run because the sandbox couldn't start, the Inbox shall lis
 
 **Check again** shall ask the sandbox start check. When it passes, the count drops at once and the row and the card say "Fixed": the item stays, without counting, until you open another row or leave the Inbox, and has no ×. Nothing runs again by itself, and no screen offers to run anyway; each run stays failed and has **Run again** on its page. When the sandbox is still refused, the card shows the new reason; when the check can't run, the card says so and keeps **Check again**. On a phone the fix is the one that says to do it on the computer. Without the app's refused runs or its start check, the Inbox shall have no sandbox row.
 
-Once the row has been seen as Fixed and you open another row or leave the Inbox, it shall leave one "fixed" notice in Notices, with its ×, that says the sandbox is ready and each routine that didn't run is run again from its page; it is gone on the next load. A check that passed on another screen (a run page's **Check again**) while routines were refused shall go straight to that notice, with no Fixed row. A check made on the card itself shall not make a second notice.
-
 The last passing check is kept in memory only. After a restart, a refusal shows again until a run starts after it or **Check again** passes.
 
 The words are placeholders until HAL-1784 is approved.
@@ -25,12 +23,6 @@ The words are placeholders until HAL-1784 is approved.
 - Given the card is open and the check passes,
   when the Inbox loads again,
   then the row and the card say "Fixed", the count is 0 and the row stays until another row opens.
-- Given the row says "Fixed" and you open another row,
-  when the Inbox loads again,
-  then Notices has one "fixed" notice with ×, and the row is gone.
-- Given routines were refused and a run page's **Check again** passes while the Inbox is closed,
-  when you open the Inbox,
-  then Notices has the "fixed" notice and there is no sandbox row.
 - Given the check says `bubblewrap-missing`,
   when you choose **Check again**,
   then the card shows that reason and its fix, and keeps **Check again**.

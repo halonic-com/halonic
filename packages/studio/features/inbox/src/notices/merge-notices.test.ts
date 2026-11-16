@@ -31,7 +31,7 @@ function source(notices: readonly InboxNotice[]) {
   return { source: notices_, dismiss };
 }
 
-verifies("inbox.sandbox-row", () => {
+verifies("inbox.sandbox-fixed-notice", () => {
   it("returns the one source there is", () => {
     const one = source([]).source;
     expect(mergeNotices(one, undefined)).toBe(one);

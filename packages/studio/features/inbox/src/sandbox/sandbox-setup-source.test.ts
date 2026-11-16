@@ -134,7 +134,9 @@ verifies("inbox.sandbox-row", () => {
     await settled();
     expect(restarted.inbox.state.items).toEqual([]);
   });
+});
 
+verifies("inbox.sandbox-fixed-notice", () => {
   it("leaves one notice when the fixed row is released, with its own dismissal", async () => {
     const t = sandboxInbox([refusedRun("a", "daily", "2026-11-10T06:00:00.000Z")]);
     await settled();
