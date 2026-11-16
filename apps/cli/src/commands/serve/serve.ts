@@ -35,6 +35,7 @@ import {
   type StoppedResult,
   UsageError,
 } from "../../command.ts";
+import { openGoogleHost } from "../../google-host.ts";
 import type { RoutineEngine } from "../../local-engine-host.ts";
 import { serveMessages } from "../../messages/serve.ts";
 import { printable } from "../../output/printable.ts";
@@ -47,6 +48,7 @@ import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts
 import { trustedGrant, workspaceNameOf } from "../../workspace-trust.ts";
 import { type VersionChecks, WatchedVersions } from "../routines/watch-versions.ts";
 import type { RunSetup } from "../run/run.ts";
+import { workspaceGoogleRead } from "./google-read.ts";
 import { startsOnLiveVersion } from "./live-version-runs.ts";
 import { workspaceModelSettings } from "./model-settings-gate.ts";
 
@@ -223,6 +225,13 @@ async function listenOnComputer(
     coordination: parts.coordination,
     trust: workspaceTrustGate(dir, setup.trust()),
     modelSettings: workspaceModelSettings(() => versions.latest()),
+    // Read only: a served window shows the Google setups, and its sign-in is finished on this computer (HAL-10697).
+    googleRead: workspaceGoogleRead({
+      setups: openGoogleHost({ profile: environment, clock: parts.clock }).setups,
+      workspaceKey: folders.key,
+      root,
+      workspace: () => versions.latest(),
+    }),
     webhooks: {
       find: async (key) =>
         (await versions.routines.list()).find((placed) => routineKey(placed) === key) ?? null,
