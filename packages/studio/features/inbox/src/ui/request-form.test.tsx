@@ -38,7 +38,7 @@ async function settled(): Promise<void> {
 }
 
 function fakeRequests(offered: readonly RequestWorkflow[], start?: InboxRequests["start"]) {
-  const started = vi.fn(start ?? (async () => ({ runId: "r9" })));
+  const started = vi.fn(start ?? (async () => ({ runId: "r9", hubId: "acme" })));
   const requests: InboxRequests = {
     offered: async () => offered,
     subscribe: () => () => {},
@@ -47,7 +47,10 @@ function fakeRequests(offered: readonly RequestWorkflow[], start?: InboxRequests
   return { requests, started };
 }
 
-async function open(requests: InboxRequests | undefined, options: { phone?: boolean } = {}) {
+async function open(
+  requests: InboxRequests | undefined,
+  options: { phone?: boolean; openRun?: (hubId: string, runId: string) => void } = {},
+) {
   const toasts: ToastStore = createToastStore();
   const waiting = waitingRun("r1", {
     approvals: [pendingApproval("call-1", "notes-mcp__create_note", new Date().toISOString())],
@@ -55,7 +58,7 @@ async function open(requests: InboxRequests | undefined, options: { phone?: bool
   const inbox = new Inbox(fakeRuns([waiting]).runs);
   const view = (
     <ToastStoreProvider store={toasts}>
-      <InboxView inbox={inbox} requests={requests} />
+      <InboxView inbox={inbox} requests={requests} openRun={options.openRun} />
     </ToastStoreProvider>
   );
   const root = render(
@@ -145,13 +148,33 @@ verifies("inbox.request", () => {
       ]);
     });
 
+    it("gives the toast Open run, which opens the run it started", async () => {
+      const { requests } = fakeRequests([support]);
+      const openRun = vi.fn();
+      const { root, toasts } = await open(requests, { openRun });
+      await type(message(root), "Hello");
+      await send(root);
+      const action = toasts.list()[0]?.action;
+      expect(action?.label).toBe("Open run");
+      action?.onClick();
+      expect(openRun).toHaveBeenCalledWith("acme", "r9");
+    });
+
+    it("has no Open run where the page can't open a run", async () => {
+      const { requests } = fakeRequests([support]);
+      const { root, toasts } = await open(requests);
+      await type(message(root), "Hello");
+      await send(root);
+      expect(toasts.list()[0]?.action).toBeUndefined();
+    });
+
     it("says Working… and keeps focus on Send while the run starts", async () => {
       let finish: (() => void) | undefined;
       const { requests } = fakeRequests(
         [support],
         () =>
           new Promise((resolve) => {
-            finish = () => resolve({ runId: "r9" });
+            finish = () => resolve({ runId: "r9", hubId: "acme" });
           }),
       );
       const { root } = await open(requests);
@@ -206,7 +229,7 @@ verifies("inbox.request", () => {
       let settle: (error?: Error) => void = () => {};
       const { requests, started } = fakeRequests([support], () => {
         return new Promise((resolve, reject) => {
-          settle = (error) => (error ? reject(error) : resolve({ runId: "r9" }));
+          settle = (error) => (error ? reject(error) : resolve({ runId: "r9", hubId: "acme" }));
         });
       });
       const { root } = await open(requests);

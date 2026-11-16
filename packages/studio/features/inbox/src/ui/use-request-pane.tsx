@@ -29,8 +29,10 @@ export function useRequestPane(options: {
   readonly list: RefObject<HTMLElement | null>;
   readonly closeItem: () => void;
   readonly words: EngineWords;
+  /** Opens a run's page, for **Open run** on the toast; without it the toast has no button. */
+  readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
 }): RequestPane {
-  const { requests, phone, list, closeItem, words } = options;
+  const { requests, phone, list, closeItem, words, openRun } = options;
   const offered = useOffered(phone ? undefined : requests);
   const [draft, setDraft] = useState(emptyDraft);
   const [busy, setBusy] = useState(false);
@@ -43,9 +45,15 @@ export function useRequestPane(options: {
     setNotStarted("");
     setBusy(true);
     try {
-      await requests.start(workflow.key, text);
+      const started = await requests.start(workflow.key, text);
       setDraft((d) => ({ ...d, message: "" }));
-      toasts?.show({ tone: "success", title: `${workflow.label} started` });
+      toasts?.show({
+        tone: "success",
+        title: `${workflow.label} started`,
+        ...(openRun && {
+          action: { label: "Open run", onClick: () => openRun(started.hubId, started.runId) },
+        }),
+      });
     } catch (error) {
       setNotStarted(notStartedLine(error, words));
     } finally {

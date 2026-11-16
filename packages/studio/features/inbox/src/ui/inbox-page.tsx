@@ -43,12 +43,16 @@ const nothingWaiting = {
 
 /** The Inbox place's page: the open workspace's Inbox, from `InboxService`. */
 export function InboxPage({ context }: PlaceViewProps) {
+  const { openItem } = context;
   return (
     <InboxView
       inbox={context.services.get(InboxService)}
       words={engineWordsOf(context)}
       requests={context.services.find(InboxRequestsService)}
       {...(context.openPlace === undefined ? {} : { openPlace: context.openPlace })}
+      {...(openItem && {
+        openRun: (hubId: string, runId: string) => openItem({ kind: "run", hub: hubId, id: runId }),
+      })}
     />
   );
 }
@@ -67,6 +71,8 @@ export interface InboxViewProps {
   readonly requests?: InboxRequests | undefined;
   /** Opens a sidebar place, for a secret pasted when no account is there to take it: the Library. */
   readonly openPlace?: (place: SidebarPlace) => void;
+  /** Opens a run's page, for **Open run** on the toast that says a request started. */
+  readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
 }
 
 /**
@@ -86,8 +92,7 @@ export interface InboxViewProps {
  * With no card open, the right pane is the request form when the workspace has a workflow with a
  * `start:` block (`InboxRequests`), and **New request** in the header brings it back.
  *
- * Not here yet: notices, the narrow layout (HAL-1305), and **Open run**, which comes with the run
- * page.
+ * Not here yet: notices and the narrow layout (HAL-1305).
  */
 export function InboxView({
   inbox,
@@ -95,6 +100,7 @@ export function InboxView({
   words = engineWords["desktop-app"],
   requests,
   openPlace,
+  openRun,
 }: InboxViewProps) {
   const subscribe = useCallback((listener: () => void) => inbox.subscribe(listener), [inbox]);
   const state = useSyncExternalStore(subscribe, () => inbox.state);
@@ -119,6 +125,7 @@ export function InboxView({
     list,
     closeItem: () => openItem(null),
     words,
+    openRun,
   });
 
   return (

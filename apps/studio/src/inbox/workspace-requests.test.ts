@@ -68,7 +68,7 @@ verifies("studio.inbox-requests", () => {
       { hubId: "support", workflowId: "support-reply" },
       { mail: "Hi, Sam here." },
     );
-    expect(run).toEqual({ runId: "r9" });
+    expect(run).toEqual({ runId: "r9", hubId: "support" });
   });
 
   it("refuses a workflow that isn't offered any more, or a key it never offered", async () => {
