@@ -91,7 +91,13 @@ fn distro_host_command_for_real_wsl() -> Result<DistroCommand, HostRefusal> {
 pub(super) fn local_host_installed() -> bool {
     std::env::current_exe()
         .ok()
-        .is_some_and(|shell| executable_beside(&shell).is_ok())
+        .is_some_and(|shell| host_file_beside(&shell))
+}
+
+/// Whether the host file exists in the shell's folder (`executable_beside`
+/// only builds the path).
+fn host_file_beside(shell: &Path) -> bool {
+    executable_beside(shell).is_ok_and(|host| host.is_file())
 }
 
 /// The host next to the shell's executable, for the CLI's profile, with
