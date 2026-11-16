@@ -2,6 +2,8 @@
 // 15.2). The run row says what `halonic runs` says, word for word, so
 // the two lists read the same.
 
+import { escapeHidden } from "@halonicjs/std";
+
 /** The status chip's word for each standing (mc 15.2, Status chips). */
 export const chipWords = {
   running: "Running",
@@ -365,12 +367,14 @@ function asSentence(text: string): string {
 
 /**
  * How a step is named (cli-output 3.4): the first line of its description,
- * trimmed, else its id with only the first letter made a capital.
+ * trimmed, else its id with only the first letter made a capital. A hidden
+ * character in the description is written as an escape, since a description
+ * can be filled in from model output.
  */
 export function stepName(stateId: string, description: string | undefined): string {
   const firstLine = description?.split("\n")[0]?.trim() ?? "";
   if (firstLine !== "") {
-    return firstLine;
+    return escapeHidden(firstLine);
   }
   return stateId.charAt(0).toUpperCase() + stateId.slice(1);
 }

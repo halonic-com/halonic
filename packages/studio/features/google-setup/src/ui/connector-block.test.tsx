@@ -16,6 +16,7 @@ import { GoogleConnectorBlock } from "./connector-block.tsx";
 
 beforeEach(fakeModal);
 afterEach(() => {
+  vi.useRealTimers();
   unmountAll();
   restoreModal();
 });
@@ -233,6 +234,7 @@ verifies("google-setup.connector-block", () => {
   });
 
   it("keeps the question open and says so when the host can't disconnect", async () => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
     const { container, toasts } = await show(account(signedIn), {
       answer: async () => {
         throw new Error("The engine isn't answering.");
@@ -241,7 +243,7 @@ verifies("google-setup.connector-block", () => {
     await press(button(container, "Disconnect Google…"));
     await press(questionButton(container, "Disconnect"));
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await vi.advanceTimersByTimeAsync(50);
     });
     expect(dialog(container)?.textContent).toContain(
       "Couldn't disconnect: the engine isn't answering.",
@@ -250,6 +252,7 @@ verifies("google-setup.connector-block", () => {
   });
 
   it("doesn't bring an old error back when you cancel and ask again", async () => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
     const { container } = await show(account(signedIn), {
       answer: async () => {
         throw new Error("The engine isn't answering.");
@@ -258,7 +261,7 @@ verifies("google-setup.connector-block", () => {
     await press(button(container, "Disconnect Google…"));
     await press(questionButton(container, "Disconnect"));
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await vi.advanceTimersByTimeAsync(50);
     });
     expect(dialog(container)?.textContent).toContain("Couldn't disconnect");
     await press(questionButton(container, "Cancel"));

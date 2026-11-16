@@ -14,6 +14,7 @@ import { GoogleSetupView } from "./google-setup-view.tsx";
 
 beforeEach(fakeModal);
 afterEach(() => {
+  vi.useRealTimers();
   unmountAll();
   restoreModal();
 });
@@ -376,6 +377,7 @@ verifies("google-setup.resume-and-start-over", () => {
   });
 
   it("keeps the question open and says so when the host can't start over", async () => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
     const { fake, container } = await open([account(threeDone)]);
     fake.source.startOver = async () => {
       throw new Error("The engine isn't answering.");
@@ -385,7 +387,7 @@ verifies("google-setup.resume-and-start-over", () => {
     await press(confirm as HTMLElement);
     // The kit's alert slot fills a frame after the request ends.
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await vi.advanceTimersByTimeAsync(50);
     });
     expect(dialog(container)?.textContent).toContain(
       "Couldn't start over: the engine isn't answering.",

@@ -4,7 +4,7 @@ import { createToastStore, type ToastStore } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type {
   TrustGrantResult,
   TrustReview,
@@ -30,6 +30,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   act(() => root?.unmount());
   root = undefined;
   element.remove();
@@ -185,6 +186,7 @@ verifies("workspace.trust-section", () => {
   });
 
   it("stays open and says why when removing fails", async () => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
     const trust = control("trusted", async () => ({ ok: false, reason: "the disk is full" }));
     show(trust.value);
     act(() => button("Remove trust")?.click());
@@ -192,7 +194,7 @@ verifies("workspace.trust-section", () => {
       dialogButton("Remove trust")?.click();
     });
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await vi.advanceTimersByTimeAsync(50);
     });
     const dialog = document.querySelector("dialog[open]");
     expect(dialog?.textContent).toContain("Couldn't remove trust from Acme: the disk is full.");

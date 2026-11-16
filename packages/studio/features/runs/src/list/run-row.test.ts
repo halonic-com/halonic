@@ -2,6 +2,7 @@ import type { RunSummary, RunTrigger } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { RunRoutine, RunWorkflow } from "../api.ts";
+import { stepName } from "../run-words.ts";
 import { approvalAt, minutesLater, mondayMorning, summaryWith } from "../summary.test-helper.ts";
 import { type RunRow, runRow } from "./run-row.ts";
 
@@ -54,6 +55,18 @@ verifies("runs.row", () => {
 
       expect(described.line).toBe("Waiting for you: Approve this reply?");
       expect(plain.line).toBe("Waiting for you in the step Check");
+    });
+
+    it("writes a hidden character in a wait title or step description as an escape", () => {
+      const title = rowOf({
+        status: "waiting",
+        state: "review",
+        accepts: ["approve"],
+        waitingFor: { title: "Refund\u202Efor Sam", body: "" },
+      });
+
+      expect(title.line).toBe("Waiting for you: Refund\\u202efor Sam");
+      expect(stepName("review", "Check\u200Bit\nsecond line")).toBe("Check\\u200bit");
     });
 
     it("says when a timer is due and which child run a run waits for, with a grey chip", () => {
