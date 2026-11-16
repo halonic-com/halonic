@@ -403,7 +403,7 @@ export function toolAction(tool: string): string {
   return plainToolActions[tool] ?? `use ${tool}`;
 }
 
-function capitalised(text: string): string {
+export function capitalised(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 

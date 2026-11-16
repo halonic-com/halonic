@@ -13,6 +13,7 @@ const supportReply: RunWorkflow = {
 const context: RunPageContext = {
   workflow: supportReply,
   workflowOfRun: (runId) => (runId === "run_child_7k2m9p" ? "Verify" : undefined),
+  providerKind: () => undefined,
   currency: "EUR",
   now: mondayMorning,
 };

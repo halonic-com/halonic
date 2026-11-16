@@ -15,6 +15,7 @@ import { logOf } from "./run-log.test-helper.ts";
 const context = {
   workflow: { name: "Support reply", stepDescription: () => undefined },
   workflowOfRun: () => undefined,
+  providerKind: () => undefined,
   currency: "EUR",
   now: mondayMorning,
 };

@@ -7,6 +7,7 @@ import { detailRows } from "./details-model.ts";
 const context = {
   workflow: { name: "Support reply", stepDescription: () => undefined },
   workflowOfRun: () => undefined,
+  providerKind: () => undefined,
   currency: "EUR",
   now: mondayMorning,
 };
