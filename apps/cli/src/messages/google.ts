@@ -39,7 +39,8 @@ export const googleMessages = defineMessages("google", {
   secretNoValue: () => phrase`No client secret was given. Nothing was saved.`,
   secretSaved: () => phrase`${markPart("done")} Saved.`,
   unknownAccount: () => phrase`There's no Google account set up under that name.`,
-  unknownAccountFix: () => phrase`Start the setup in the Studio first.`,
+  unknownAccountFix: () =>
+    phrase`The command takes the setup's ref, not an e-mail address. Start the setup in the Studio, whose sign-in step shows the command with its ref.`,
   secretNeedsTokenKey: () => phrase`The secret can't be saved: the token key isn't set.`,
   secretNeedsTokenKeyFix: () =>
     phrase`Set the secret token-key to 32 random bytes in base64url, then try again.`,

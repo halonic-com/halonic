@@ -391,6 +391,7 @@ function OpenStep(props: OpenStepProps) {
         credentials={props.credentials}
         appName={props.appName}
         savedProjectId={account.record.projectId}
+        accountRef={account.record.accountRef}
         signInEntry={props.signInEntry}
         signIn={props.signIn}
         results={props.results}
