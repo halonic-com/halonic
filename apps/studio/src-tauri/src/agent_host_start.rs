@@ -87,6 +87,13 @@ fn distro_host_command_for_real_wsl() -> Result<DistroCommand, HostRefusal> {
     Ok(Box::new(move |port| distro_host_command(&wsl, port)))
 }
 
+/// Whether the host binary sits beside the shell's executable.
+pub(super) fn local_host_installed() -> bool {
+    std::env::current_exe()
+        .ok()
+        .is_some_and(|shell| executable_beside(&shell).is_ok())
+}
+
 /// The host next to the shell's executable, for the CLI's profile, with
 /// the folders it may sweep kept grants in.
 fn real_host_command<R: Runtime>(app: &AppHandle<R>) -> Result<Command, HostRefusal> {
