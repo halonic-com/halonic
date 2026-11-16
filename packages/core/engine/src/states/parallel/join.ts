@@ -78,6 +78,8 @@ function failedState(stateId: string, state: WorkflowState, first: EndedBranch):
   const end = first.end;
   const error = "error" in end ? end.error : "";
   const reason = "reason" in end ? end.reason : "error";
+  const refusal = "refusal" in end ? end.refusal : undefined;
+  const agent = "agent" in end ? end.agent : undefined;
   const what =
     state.join === "any"
       ? `Every branch of parallel state "${stateId}" failed; the first, "${first.name}"`
@@ -85,7 +87,13 @@ function failedState(stateId: string, state: WorkflowState, first: EndedBranch):
   return {
     events: [],
     effects: [],
-    outcome: { type: "fail", error: `${what} failed: ${error}`, reason },
+    outcome: {
+      type: "fail",
+      error: `${what} failed: ${error}`,
+      reason,
+      ...(agent === undefined ? {} : { agent }),
+      ...(refusal === undefined ? {} : { refusal }),
+    },
   };
 }
 

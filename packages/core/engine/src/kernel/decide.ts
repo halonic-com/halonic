@@ -1,4 +1,9 @@
-import type { CantTryStep, RunFailureReason, RunStatus } from "@halonicjs/events";
+import type {
+  CantTryStep,
+  InstructionsRefusal,
+  RunFailureReason,
+  RunStatus,
+} from "@halonicjs/events";
 import type { Agent, Workflow } from "@halonicjs/format";
 import { getState, type Scope, selectTransition } from "@halonicjs/workflow";
 import { states } from "../generated/states.ts";
@@ -269,8 +274,17 @@ function fail(
   state: string | null,
   error: string,
   reason: RunFailureReason = "error",
+  agent?: string,
+  refusal?: InstructionsRefusal,
 ): void {
-  emit(draft, { type: "run.failed", state, error, reason });
+  emit(draft, {
+    type: "run.failed",
+    state,
+    error,
+    reason,
+    ...(agent === undefined ? {} : { agent }),
+    ...refusal,
+  });
 }
 
 /**
@@ -301,7 +315,8 @@ function settle(draft: Draft, stateId: string, step: StateStep): void {
   }
   draft.effects.push(...step.effects);
   if (step.outcome?.type === "fail") {
-    fail(draft, stateId, step.outcome.error, step.outcome.reason);
+    const { error, reason, agent, refusal } = step.outcome;
+    fail(draft, stateId, error, reason, agent, refusal);
   }
   if (step.outcome?.type === "cant-try") {
     endCantTry(draft, stateId, step.outcome.found);

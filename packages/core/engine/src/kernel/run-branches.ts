@@ -15,13 +15,14 @@ export function branchesOf(state: WorkflowState): [string, Branch][] {
 /**
  * How a branch ended: its agent's answer, why it failed, or the step it
  * couldn't try, which ends the branch as a failure does. A branch whose
- * instructions weren't trusted also keeps what the check saw.
+ * instructions weren't trusted also keeps its agent and what the check saw.
  */
 export type BranchEnd =
   | { readonly output: unknown }
   | {
       readonly error: string;
       readonly reason: RunFailureReason;
+      readonly agent?: string;
       readonly refusal?: InstructionsRefusal;
     }
   | { readonly error: string; readonly cantTry: CantTryStep };

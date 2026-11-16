@@ -346,7 +346,7 @@ function branchEndOf(event: Extract<RunEvent, { type: "agent.finished" }>): Bran
     pin: event.pin,
     ...(event.changed === undefined ? {} : { changed: event.changed }),
   };
-  return { error: event.error, reason, refusal };
+  return { error: event.error, reason, agent: event.agent, refusal };
 }
 
 /**
