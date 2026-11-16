@@ -2,6 +2,7 @@ import type {
   ChangesRead,
   ChangesSource,
   FileTexts,
+  Identity,
   KeptFile,
   Version,
   VersionInput,
@@ -20,6 +21,10 @@ export function fakeSource(initial: ChangesRead) {
   let turnedOn = 0;
   let recorded: readonly Version[] = [];
   const historyLimits: number[] = [];
+  // Set, so the tests of Create version don't ask who versions are from.
+  let identity: Identity = { name: "Sam Smith", email: "sam@acme.example" };
+  let identityFailure: unknown;
+  const identities: Identity[] = [];
   const texts = new Map<string, FileTexts>();
   const replaced: { path: string; text: string; expected: string | null }[] = [];
   const removed: { path: string; expected: string }[] = [];
@@ -67,6 +72,12 @@ export function fakeSource(initial: ChangesRead) {
       if (answer.kind === "ready") {
         answer = { kind: "ready", changes: answer.changes.filter((c) => !recorded.has(c.path)) };
       }
+    },
+    readIdentity: async () => identity,
+    setIdentity: async (next) => {
+      if (identityFailure !== undefined) throw identityFailure;
+      identities.push(next);
+      identity = next;
     },
     turnOnHistory: async () => {
       turnedOn += 1;
@@ -121,6 +132,16 @@ export function fakeSource(initial: ChangesRead) {
     /** Makes Turn on history fail with `error`. */
     failTurnOn: (error: unknown) => {
       turnOnFailure = error;
+    },
+    /** Who versions are from now; empty texts for a part that isn't set. */
+    setIdentity: (next: Identity) => {
+      identity = next;
+    },
+    /** Every identity `setIdentity` was given, in order. */
+    identities,
+    /** Makes saving who versions are from fail with `error`. */
+    failIdentity: (error: unknown) => {
+      identityFailure = error;
     },
     /** The window came to the front, or a save may have changed a file. */
     wake: () => {

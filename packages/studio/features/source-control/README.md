@@ -32,4 +32,6 @@ The page shows one of these, by what the last read said:
 | `ready`, nothing changed | "Nothing has changed since your last version." |
 | `ready`, files changed | for now a count of the changed files |
 
+Before the first Create version of a workspace whose history has no name or email, **Who should versions be from?** asks for both (requirement `source-control.identity`). They are saved in the workspace's own git config through the shell's narrow `config user.name` / `config user.email` form, and `ChangesSource.readIdentity` reads what git would use, the person's own setting included.
+
 Not here yet: the changed items with what changed in them, Create version, Discard, History, Get updates, the sharing strip, the developer view and the phone layout. Each comes in its own pull request under HAL-1302.

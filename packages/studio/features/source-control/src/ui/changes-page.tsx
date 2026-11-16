@@ -7,6 +7,7 @@ import { pageWords, stateWords } from "../changes-words.ts";
 import { loadFailureReason } from "../load-failure.ts";
 import { ChangeList } from "./change-list.tsx";
 import { CreateVersionDialog } from "./create-version-dialog.tsx";
+import { IdentityDialog } from "./identity-dialog.tsx";
 
 /** The Changes place's page: the open workspace's changes, from `ChangesListService`. */
 export function ChangesPage({ context }: PlaceViewProps) {
@@ -51,7 +52,10 @@ export function ChangesView({ list, developerView }: ChangesViewProps) {
         developer={developer}
         focusHeading={() => heading.current?.focus()}
       />
-      {state.version === undefined ? null : (
+      {list.needsIdentity && state.identity !== undefined ? (
+        <IdentityDialog list={list} initial={state.identity} returnFocus={() => heading.current} />
+      ) : null}
+      {state.version === undefined || list.needsIdentity ? null : (
         <CreateVersionDialog
           list={list}
           files={list.versionFiles}

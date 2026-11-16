@@ -3,8 +3,22 @@ import type { VcsChange } from "@halonicjs/ports";
 import { applyLineChanges, diffLines, type LineChange } from "@halonicjs/std";
 import type { PlaceSignal, ServiceKey } from "@halonicjs/studio-shell";
 import { serviceKey } from "@halonicjs/studio-shell";
-import type { ChangesRead, ChangesSource, FileTexts, KeptFile, Version } from "./api.ts";
-import { discardWords, pageWords, undoWords, versionWords } from "./changes-words.ts";
+import type {
+  ChangesRead,
+  ChangesSource,
+  FileTexts,
+  Identity,
+  KeptFile,
+  Version,
+} from "./api.ts";
+import {
+  discardWords,
+  identityWords,
+  pageWords,
+  undoWords,
+  versionWords,
+} from "./changes-words.ts";
+import { isAuthorEmail, isAuthorName, isIdentityComplete } from "./identity.ts";
 import { loadFailureReason } from "./load-failure.ts";
 import { versionMessage } from "./version-name.ts";
 
@@ -43,6 +57,16 @@ export type UndoOutcome =
 /** What {@link ChangesList.discardFile} did; the toast's Undo is `undo`, as for an undone change. */
 export type DiscardOutcome = UndoOutcome;
 
+/** What {@link ChangesList.saveIdentity} did; `invalid` says what is wrong under each field. */
+export type IdentityOutcome =
+  | { readonly kind: "saved" }
+  | {
+      readonly kind: "invalid";
+      readonly name: string | undefined;
+      readonly email: string | undefined;
+    }
+  | { readonly kind: "failed"; readonly reason: string };
+
 /** What the Changes list holds now. */
 export interface ChangesListState {
   /** The last read that worked; `undefined` before the first one. */
@@ -55,6 +79,11 @@ export interface ChangesListState {
   readonly turnOnError: unknown;
   /** Whether Turn on history is working. */
   readonly turningOn: boolean;
+  /**
+   * Who versions are from, as of the last read that worked; `undefined` before one. Create version
+   * asks first while a part of it is not set.
+   */
+  readonly identity: Identity | undefined;
   /**
    * Set while Create version is open: the paths it opened with, or `undefined` inside for every
    * changed file. `undefined` when it is closed.
@@ -81,6 +110,7 @@ export class ChangesList {
     error: undefined,
     turnOnError: undefined,
     turningOn: false,
+    identity: undefined,
     version: undefined,
     history: { versions: [], more: false, loaded: false, error: undefined },
   };
@@ -124,7 +154,9 @@ export class ChangesList {
       const answer = await this.source.read();
       const files = answer.kind === "ready" ? await this.#describe(answer.changes) : [];
       if (read !== this.#reads || this.#disposed) return;
-      this.#set({ ...this.#state, read: answer, files, error: undefined });
+      const identity = answer.kind === "ready" ? await this.source.readIdentity() : undefined;
+      if (read !== this.#reads || this.#disposed) return;
+      this.#set({ ...this.#state, read: answer, files, identity, error: undefined });
       if (answer.kind === "ready") await this.#readHistory(this.#state.history.versions.length);
     } catch (error) {
       if (read !== this.#reads || this.#disposed) return;
@@ -269,6 +301,33 @@ export class ChangesList {
    */
   startVersion(paths?: readonly string[]): void {
     this.#set({ ...this.#state, version: { paths } });
+  }
+
+  /** Whether Create version must first ask who versions are from. */
+  get needsIdentity(): boolean {
+    const { identity, version } = this.#state;
+    return version !== undefined && identity !== undefined && !isIdentityComplete(identity);
+  }
+
+  /**
+   * Saves who versions are from, so Create version can go on. Says what is wrong with a name or
+   * email that is empty or isn't one, without reaching git, or why git refused.
+   */
+  async saveIdentity(identity: Identity): Promise<IdentityOutcome> {
+    const name = identity.name.trim();
+    const email = identity.email.trim();
+    const nameProblem = isAuthorName(name) ? undefined : identityWords.emptyName;
+    const emailProblem = isAuthorEmail(email) ? undefined : identityWords.badEmail;
+    if (nameProblem !== undefined || emailProblem !== undefined) {
+      return { kind: "invalid", name: nameProblem, email: emailProblem };
+    }
+    try {
+      await this.source.setIdentity({ name, email });
+    } catch (error) {
+      return { kind: "failed", reason: loadFailureReason(error) };
+    }
+    if (!this.#disposed) this.#set({ ...this.#state, identity: { name, email } });
+    return { kind: "saved" };
   }
 
   /** Closes Create version without creating anything. */
