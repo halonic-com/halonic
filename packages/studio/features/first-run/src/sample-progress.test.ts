@@ -104,6 +104,19 @@ verifies("first-run.sample-card", () => {
       expect(progress.state.done.has("decide")).toBe(true);
     });
 
+    it("counts the answer once a run that was running, then waiting, has completed", async () => {
+      const fake = fakeRuns([run("r1")], { r1: [answered] });
+      const progress = new SampleProgress(fake.runs, workspace().value);
+      await settled();
+      fake.change([run("r1", { status: "waiting" })]);
+      await settled();
+      expect(progress.state.done.has("decide")).toBe(false);
+
+      fake.change([run("r1", { status: "completed" })]);
+      await settled();
+      expect(progress.state.done.has("decide")).toBe(true);
+    });
+
     it("counts the page of a finished run as step 3 and offers that run to open", async () => {
       const fake = fakeRuns([run("r1", { status: "completed" })]);
       const progress = new SampleProgress(fake.runs, workspace().value);

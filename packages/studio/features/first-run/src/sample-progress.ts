@@ -21,7 +21,7 @@ export interface SampleProgressState {
 /**
  * Follows the open sample's runs and tells which steps of the Try the sample card are done
  * (flow-first-run 3.3): a run of the support workflow has started; one of its wait steps has been
- * answered; the page of a finished one has been opened. A step stays done: it is saved through the
+ * answered (an `event.received` in the log of a run that has finished); the page of a finished one has been opened. A step stays done: it is saved through the
  * workspace as soon as it is seen.
  *
  * @example
@@ -33,7 +33,7 @@ export class SampleProgress {
   readonly #workspace: SampleWorkspace;
   readonly #listeners = new Set<() => void>();
   readonly #stopWatching: () => void;
-  /** The runs whose log was read for an answer, so a refresh doesn't read it again. */
+  /** The finished runs whose log was read for an answer, so a refresh doesn't read it again. */
   readonly #logsRead = new Set<string>();
   #state: SampleProgressState;
   #disposed = false;
@@ -80,7 +80,10 @@ export class SampleProgress {
       this.#markDone("see");
     }
     for (const run of runs) {
-      if (run.status === "waiting" || this.#logsRead.has(run.id)) continue;
+      // A run still going has no answer to count yet; only a finished run's log is read, once.
+      if (run.status === "running" || run.status === "waiting" || this.#logsRead.has(run.id)) {
+        continue;
+      }
       this.#logsRead.add(run.id);
       let log: RunEvent[];
       try {

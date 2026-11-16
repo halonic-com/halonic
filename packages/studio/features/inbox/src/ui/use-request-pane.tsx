@@ -59,13 +59,15 @@ export function useRequestPane(options: {
     return inbox.subscribe(take);
   }, [inbox]);
   // Focus goes to Message once the form is in the pane, which may be after the offered list loads.
+  // Without requests there will be no form, so an ask doesn't wait for one.
   // biome-ignore lint/correctness/useExhaustiveDependencies: `asks` and `offered` say the form may have appeared.
   useEffect(() => {
+    if (requests === undefined) formAsked.current = false;
     if (formAsked.current && message.current !== null) {
       message.current.focus();
       formAsked.current = false;
     }
-  }, [asks, offered.length]);
+  }, [asks, offered.length, requests]);
   if (requests === undefined || offered.length === 0) return { newRequest: null, form: null };
   const send = async (workflow: RequestWorkflow, text: string) => {
     if (busy) return;
