@@ -7,7 +7,11 @@ import { codexHarness } from "@halonicjs/adapter-harness-codex";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
-import { SrtSandbox, WSL_SHARED_FOLDERS } from "@halonicjs/adapter-sandbox-srt";
+import {
+  keptGrantsRecordFolder,
+  SrtSandbox,
+  WSL_SHARED_FOLDERS,
+} from "@halonicjs/adapter-sandbox-srt";
 import type { GoogleSetupPorts } from "@halonicjs/host-server";
 import type { Harness, TrustStore } from "@halonicjs/ports";
 import { type ProfileFolder, type ProfilePlatform, trustFolder } from "@halonicjs/profile";
@@ -102,10 +106,16 @@ export async function run(
   args: readonly string[],
   version: string,
   io: HostIo = standardIo(),
-  makeSandbox: (sweepRoots: readonly string[], sharedFolders: readonly string[]) => SrtSandbox = (
-    roots,
-    sharedFolders,
-  ) => new SrtSandbox(undefined, undefined, null, { sweepRoots: roots, sharedFolders }),
+  makeSandbox: (
+    sweepRoots: readonly string[],
+    sharedFolders: readonly string[],
+    recordFolder?: string,
+  ) => SrtSandbox = (roots, sharedFolders, recordFolder) =>
+    new SrtSandbox(undefined, undefined, null, {
+      sweepRoots: roots,
+      sharedFolders,
+      ...(recordFolder === undefined ? {} : { recordFolder }),
+    }),
 ): Promise<number> {
   if (args.includes("--version")) {
     io.write(`halonic-agent-host ${version}\n`);
@@ -125,7 +135,11 @@ export async function run(
   };
   const lock = profileFolder === undefined ? null : await takeHostLock(profileFolder, warn);
   const sharedFolders = sharedFoldersOf(args);
-  const sandbox = makeSandbox(lock === null ? [] : given.roots, sharedFolders);
+  const sandbox = makeSandbox(
+    lock === null ? [] : given.roots,
+    sharedFolders,
+    profileFolder === undefined ? undefined : keptGrantsRecordFolder(profileFolder),
+  );
   // Right after the lock is taken, so a host starting next skips its sweep
   // before any session of ours could lose a grant to it.
   if (lock !== null) void sandbox.sweepOnce();

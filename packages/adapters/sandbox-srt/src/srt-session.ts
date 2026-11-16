@@ -142,6 +142,8 @@ export class SrtSession implements SandboxSession {
       folder: await snapshotGitFolder(profile.workingFolder),
       nested: await snapshotNestedGit(profile.workingFolder),
     };
+    // Recorded before srt can grant anything (write-ahead, S2); a forget takes it out again.
+    grants?.record([profile.workingFolder, profile.tempFolder]);
     const folder = await mkdtemp(join(tmpdir(), "halonic-srt-"));
     let journal: string | null = null;
     let launcherTemp: string | null = null;

@@ -1,4 +1,5 @@
 export { recoverGitFolders } from "./git-folder-check.ts";
+export { keptGrantsRecordFolder } from "./kept-grants.ts";
 export { type LinuxHelper, type Machine, systemMachine } from "./machine.ts";
 export {
   makeRunnerTempFolder,
