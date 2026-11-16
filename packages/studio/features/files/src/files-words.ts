@@ -20,6 +20,11 @@ export const filesWords = {
   missingTitle: "This file isn't here any more",
   missingDescription: "It was moved or deleted. Pick another file in the tree.",
   unreadableTitle: "Couldn't open this file",
+  /** The line above the editor of a file over the size limit. */
+  largeFile: "This file is large, so it opens read-only.",
+  /** What a file that isn't text says in place of the editor, with its size as the description. */
+  notTextTitle: "This file can't be shown here.",
+  notTextDescription: (size: string): string => `It is ${size}.`,
   /** The strip above the editor of a file with unsaved changes that changed outside Halonic. */
   changedOutside: (name: string): string => `${name} changed outside Halonic`,
   deletedOutside: (name: string): string => `${name} was deleted outside Halonic.`,

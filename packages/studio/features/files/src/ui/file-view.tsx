@@ -3,6 +3,7 @@ import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState } from "react";
 import { fileName } from "../file-item.ts";
+import { sizeOf, textKindOf } from "../file-size.ts";
 import { FilesHostService, type OutsideChange } from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
 import { CompareView } from "./compare-view.tsx";
@@ -12,7 +13,16 @@ type Loaded =
   | { readonly kind: "loading" }
   | { readonly kind: "error"; readonly reason: string }
   | { readonly kind: "missing" }
-  | { readonly kind: "ready"; readonly text: string };
+  | { readonly kind: "not-text"; readonly size: string }
+  | { readonly kind: "ready"; readonly text: string; readonly readOnly: boolean };
+
+/** What a file's text shows as: the editor, the editor read-only, or a note that it isn't text. */
+function loadedOf(text: string | null): Loaded {
+  if (text === null) return { kind: "missing" };
+  const kind = textKindOf(text);
+  if (kind === "not-text") return { kind: "not-text", size: sizeOf(text) };
+  return { kind: "ready", text, readOnly: kind === "large" };
+}
 
 /**
  * A file in its tab: the file's name over the code editor. Typing goes straight to the
@@ -42,7 +52,7 @@ export function FileView({ item, context }: ItemViewProps) {
     host.read(path).then(
       (text) => {
         if (stopped) return;
-        setLoaded(text === null ? { kind: "missing" } : { kind: "ready", text });
+        setLoaded(loadedOf(text));
       },
       (error: unknown) => {
         if (stopped) return;
@@ -65,6 +75,7 @@ export function FileView({ item, context }: ItemViewProps) {
     // The editor starts from this text. Later changes the editor didn't make (the workspace's
     // Undo, a rename, another feature) come through the host and are loaded below.
     const text = loaded.kind === "ready" ? loaded.text : "";
+    const readOnly = loaded.kind === "ready" && loaded.readOnly;
     let editor: CodeEditor | undefined;
     let stopped = false;
     const follow = (made: CodeEditor) =>
@@ -82,6 +93,7 @@ export function FileView({ item, context }: ItemViewProps) {
       text,
       language: languageFor(path),
       label: filesWords.editorLabel(path),
+      readOnly,
       onChange: (next) => host.edit(path, next),
     }).then((made) => {
       if (stopped) made.destroy();
@@ -132,6 +144,21 @@ export function FileView({ item, context }: ItemViewProps) {
           title={filesWords.missingTitle}
           description={filesWords.missingDescription}
         />
+      )}
+      {loaded.kind === "not-text" && (
+        <EmptyState
+          plain
+          title={filesWords.notTextTitle}
+          description={filesWords.notTextDescription(loaded.size)}
+        />
+      )}
+      {loaded.kind === "ready" && loaded.readOnly && (
+        <div
+          role="status"
+          className="border-b border-border bg-surface-muted px-4 py-1 text-small text-fg"
+        >
+          {filesWords.largeFile}
+        </div>
       )}
       {loaded.kind === "error" && (
         <EmptyState
