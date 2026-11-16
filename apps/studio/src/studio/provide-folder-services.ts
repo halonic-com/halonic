@@ -30,7 +30,12 @@ import {
 import { InstructionTrustHostService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import { ChangesSourceService } from "@halonicjs/studio-feature-source-control/api";
 import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
-import { shellKeychain, type TauriIpc, tauriAgentHostTransport } from "@halonicjs/studio-services";
+import {
+  ShellHttpClient,
+  shellKeychain,
+  type TauriIpc,
+  tauriAgentHostTransport,
+} from "@halonicjs/studio-services";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
@@ -103,7 +108,7 @@ export function provideFolderServices(
       location,
       definitions: new TauriDefinitionStore(files, location),
       secrets: shellKeychain(ipc),
-      http: { fetch: (url, init) => globalThis.fetch(url, init) },
+      http: new ShellHttpClient(ipc),
       clock: systemClock,
       ids: randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), systemClock),
       setTimer: (callback, delayMs) => {
