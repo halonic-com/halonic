@@ -1,4 +1,4 @@
-import { type ChangeLine, describeFileChange, type FileChange, revertParts } from "@halonicjs/app";
+import { type ChangeLine, type FileChange, revertParts } from "@halonicjs/app";
 import type { VcsChange } from "@halonicjs/ports";
 import { applyLineChanges, diffLines, type LineChange } from "@halonicjs/std";
 import type { PlaceSignal, ServiceKey } from "@halonicjs/studio-shell";
@@ -12,20 +12,12 @@ import type {
   UpdatesResult,
   Version,
 } from "./api.ts";
-import {
-  discardWords,
-  identityWords,
-  pageWords,
-  undoWords,
-  updatesWords,
-  versionWords,
-} from "./changes-words.ts";
-import { isAuthorEmail, isAuthorName, isIdentityComplete } from "./identity.ts";
+import { discardWords, pageWords, undoWords, updatesWords, versionWords } from "./changes-words.ts";
+import { describeChanges } from "./describe-changes.ts";
+import { isIdentityComplete } from "./identity.ts";
+import { type IdentityOutcome, saveIdentity } from "./identity-save.ts";
 import { loadFailureReason } from "./load-failure.ts";
 import { versionMessage } from "./version-name.ts";
-
-/** How many changed files' texts are read at the same time. */
-const readsAtOnce = 4;
 
 /** How many versions History shows first, and how many more Show more adds. */
 export const historyPageSize = 20;
@@ -59,15 +51,6 @@ export type UndoOutcome =
 /** What {@link ChangesList.discardFile} did; the toast's Undo is `undo`, as for an undone change. */
 export type DiscardOutcome = UndoOutcome;
 
-/** What {@link ChangesList.saveIdentity} did; `invalid` says what is wrong under each field. */
-export type IdentityOutcome =
-  | { readonly kind: "saved" }
-  | {
-      readonly kind: "invalid";
-      readonly name: string | undefined;
-      readonly email: string | undefined;
-    }
-  | { readonly kind: "failed"; readonly reason: string };
 /** What {@link ChangesList.getUpdates} did. */
 export type UpdatesOutcome = UpdatesResult | { readonly kind: "failed"; readonly reason: string };
 
@@ -162,7 +145,8 @@ export class ChangesList {
     const read = ++this.#reads;
     try {
       const answer = await this.source.read();
-      const files = answer.kind === "ready" ? await this.#describe(answer.changes) : [];
+      const files =
+        answer.kind === "ready" ? await describeChanges(this.source, answer.changes) : [];
       const hasRemote = answer.kind === "ready" && (await this.source.hasRemote());
       if (read !== this.#reads || this.#disposed) return;
       const identity = answer.kind === "ready" ? await this.#identity() : undefined;
@@ -328,25 +312,13 @@ export class ChangesList {
     return version !== undefined && identity !== undefined && !isIdentityComplete(identity);
   }
 
-  /**
-   * Saves who versions are from, so Create version can go on. Says what is wrong with a name or
-   * email that is empty or isn't one, without reaching git, or why git refused.
-   */
+  /** Saves who versions are from, so Create version can go on. */
   async saveIdentity(identity: Identity): Promise<IdentityOutcome> {
-    const name = identity.name.trim();
-    const email = identity.email.trim();
-    const nameProblem = isAuthorName(name) ? undefined : identityWords.emptyName;
-    const emailProblem = isAuthorEmail(email) ? undefined : identityWords.badEmail;
-    if (nameProblem !== undefined || emailProblem !== undefined) {
-      return { kind: "invalid", name: nameProblem, email: emailProblem };
+    const outcome = await saveIdentity(this.source, identity);
+    if (outcome.kind === "saved" && !this.#disposed) {
+      this.#set({ ...this.#state, identity: outcome.identity });
     }
-    try {
-      await this.source.setIdentity({ name, email });
-    } catch (error) {
-      return { kind: "failed", reason: loadFailureReason(error) };
-    }
-    if (!this.#disposed) this.#set({ ...this.#state, identity: { name, email } });
-    return { kind: "saved" };
+    return outcome;
   }
 
   /** Closes Create version without creating anything. */
@@ -454,28 +426,6 @@ export class ChangesList {
     return first.status;
   }
 
-  /** What changed in each file, one entry for each path. A file that can't be read is just "Changed". */
-  async #describe(changes: readonly VcsChange[]): Promise<ChangedFile[]> {
-    const firstOfEachPath = [...new Map(changes.map((change) => [change.path, change])).values()];
-    const files: ChangedFile[] = [];
-    // A few files at a time: every read starts a git process.
-    for (let start = 0; start < firstOfEachPath.length; start += readsAtOnce) {
-      const batch = firstOfEachPath.slice(start, start + readsAtOnce);
-      files.push(...(await Promise.all(batch.map((change) => this.#describeFile(change)))));
-    }
-    return files;
-  }
-
-  async #describeFile(change: VcsChange): Promise<ChangedFile> {
-    try {
-      const texts = await this.source.readTexts(change);
-      const description = describeFileChange(change.path, texts.before, texts.after);
-      return { path: change.path, description, texts };
-    } catch {
-      return { path: change.path, description: unreadable(change), texts: undefined };
-    }
-  }
-
   /** Turns history on, then reads again. A failure stays in `turnOnError` for the page to say. */
   async turnOnHistory(): Promise<void> {
     if (this.#disposed || this.#state.turningOn) return;
@@ -529,19 +479,6 @@ export class ChangesList {
     this.#state = state;
     for (const listener of [...this.#listeners]) listener();
   }
-}
-
-/** The one line for a file that couldn't be read as text: only that it is new, deleted or changed. */
-function unreadable(change: VcsChange): FileChange {
-  let sentence = "Changed";
-  if (change.status === "added" || change.status === "untracked") sentence = "New";
-  if (change.status === "deleted") sentence = "Deleted";
-  return {
-    path: change.path,
-    kind: undefined,
-    lines: [{ id: "item", sentence, parts: [] }],
-    described: false,
-  };
 }
 
 /** The open workspace's {@link ChangesList}; the feature provides it from `ChangesSourceService`. */
