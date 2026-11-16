@@ -154,11 +154,21 @@ function FailedContent({
   );
 }
 
+/** The kit's `ExternalLink` throws on anything but http or https, which would blank this window. */
+const webAddress = /^https?:\/\//;
+
 function JustUpdatedLine({ update }: { readonly update: JustUpdated }) {
   return (
     <span className="mt-2 block">
-      {engineFailedWords.justUpdated(update.newVersion, update.oldVersion)}{" "}
-      <ExternalLink href={update.releasePageUrl}>{engineFailedWords.openReleasePage}</ExternalLink>
+      {engineFailedWords.justUpdated(update.newVersion, update.oldVersion)}
+      {webAddress.test(update.releasePageUrl) ? (
+        <>
+          {" "}
+          <ExternalLink href={update.releasePageUrl}>
+            {engineFailedWords.openReleasePage}
+          </ExternalLink>
+        </>
+      ) : null}
     </span>
   );
 }
