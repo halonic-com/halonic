@@ -221,6 +221,31 @@ describe("listedRun", () => {
     });
   });
 
+  it("shows a running run with an open approval as Needs you, as Studio does", () => {
+    const summary = runOf(
+      [
+        started,
+        { type: "state.entered", state: "draft" },
+        {
+          type: "approval.requested",
+          state: "draft",
+          agent: "writer",
+          tool: "gmail__send",
+          args: {},
+          callId: "c1",
+          resume: { messages: [], calls: [], step: 0 },
+        },
+      ],
+      today,
+    );
+
+    expect(summary.status).toBe("running");
+    expect(row(summary)).toMatchObject({
+      status: "needsYou",
+      what: "Waiting for your approval in the step Draft a reply",
+    });
+  });
+
   it("shows a run waiting for its child run as Waiting, by the child's short id", () => {
     const summary = runOf(
       [
