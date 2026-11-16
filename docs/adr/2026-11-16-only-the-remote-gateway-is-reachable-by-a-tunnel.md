@@ -30,17 +30,21 @@ general remote API. Both would make every future endpoint remote by default.
   (`remote-gateway-protocol.ts` in `@halonicjs/ports`, version 1): sessions,
   their events, approvals and prompt input, nothing else. It has no message
   for a shell command, a file, a secret or a setting. Each message is at most
-  64 KiB. A malformed, oversized or unknown message gets one `error` and the
-  host closes the connection. A new message type is a new protocol version.
+  64 KiB. A malformed, oversized or unknown message, a second `hello` or
+  another version gets one `error` and the host closes the connection; the
+  full list is in `ports.remote-gateway-protocol`. A new message type is a
+  new protocol version, and there is no version negotiation.
 - **The tunnel carries bytes only.** `TunnelProvider` (port version 1) makes
   the gateway reachable and reports its state; it never sees what flows. The
   protocol always runs inside Halonic's own end-to-end session (pairing,
   phase B), even when the provider encrypts the path itself.
 - **Same gates as local.** A remote prompt or approval goes through the same
-  trust gate and sandbox as a local one. A risky approval (shell, file write,
-  secret, leaving the sandbox) is refused with `not-allowed-remotely` unless
-  the person allows it for that host, and needs a biometric unlock on the
-  phone.
+  trust gate and sandbox as a local one. Only the host decides whether an
+  approval is risky (shell, file write, secret, leaving the sandbox), and a
+  risky one is refused with `not-allowed-remotely` by default, unless the
+  person allows remote answers to them for that host on the desktop. The
+  phone asks for a biometric unlock first, but the host can't check it and
+  never treats it as proof.
 - **iOS designed in now.** Sessions are resumable: after a reconnect the phone
   watches each session again from the last event it saw. Transports are
   foreground-only: `pause` closes the connection and stops every timer, and
