@@ -1,5 +1,11 @@
-import { Dialog, type ToastStore, useOpenExternal, useToastStore } from "@halonicjs/studio-kit";
-import type { DialogHostProps } from "@halonicjs/studio-shell";
+import {
+  Dialog,
+  type ToastStore,
+  useOpenExternal,
+  useToastStore,
+  useWriteClipboard,
+} from "@halonicjs/studio-kit";
+import { copyDetails, copyDetailsWords, type DialogHostProps } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState } from "react";
 import { RestartRunsService, UpdaterService } from "../api.ts";
 import { TRY_AGAIN, UPDATER_DIDNT_ANSWER } from "./about-text.ts";
@@ -46,6 +52,7 @@ const toldManaged = new WeakMap<UpdaterHost, Set<string>>();
 function RestartHostView({ host, flow, runs, announce }: RestartHostViewProps) {
   const toasts = useToastStore();
   const openExternal = useOpenExternal();
+  const writeClipboard = useWriteClipboard();
   const status = useUpdateStatus(host);
   const [asking, setAsking] = useState<{ runs: RestartRuns; version: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -101,7 +108,7 @@ function RestartHostView({ host, flow, runs, announce }: RestartHostViewProps) {
     }
     before.current = state.kind;
     announceManagedOnce(host, status, announce);
-    if (toasts !== null) showStartToasts(host, status, toasts, openExternal);
+    if (toasts !== null) showStartToasts(host, status, toasts, openExternal, writeClipboard);
     // Each status is handled once; the callbacks it reads are the page's own.
   }, [status]);
 
@@ -148,12 +155,13 @@ function readyVersion(status: UpdateStatus | null): string | null {
     : null;
 }
 
-/** The two toasts a start can show, each once for this page: after an update and when it didn't install. */
+/** The toasts a start can show, each once for this page: after an update, settings left behind, and an update that didn't install. */
 function showStartToasts(
   host: UpdaterHost,
   status: UpdateStatus,
   toasts: ToastStore,
   openExternal: (address: string) => Promise<void>,
+  writeClipboard: (text: string) => Promise<boolean>,
 ): void {
   const shown = toastsShown.get(host) ?? new Set<string>();
   toastsShown.set(host, shown);
@@ -166,6 +174,24 @@ function showStartToasts(
       action: {
         label: text.WHATS_NEW,
         onClick: () => void openExternal(releasePage(justUpdated.to)),
+      },
+    });
+  }
+  if (
+    justUpdated !== null &&
+    justUpdated.notCarriedOver.length > 0 &&
+    once(`not-carried-over:${justUpdated.to}`)
+  ) {
+    toasts.show({
+      tone: "info",
+      title: text.settingsNotCarriedOver(justUpdated.from),
+      text: text.SETTINGS_KEPT_COPY,
+      sticky: true,
+      action: {
+        label: copyDetailsWords.label,
+        onClick: () =>
+          void copyDetails(text.notCarriedOverDetails(justUpdated), toasts, writeClipboard),
+        keepOpen: true,
       },
     });
   }

@@ -295,3 +295,30 @@ verifies("settings.restart-flow", () => {
     expect(titles(page.toasts).at(-1)).toBe("Halonic's updater didn't answer.");
   });
 });
+
+verifies("settings.not-carried-toast", () => {
+  it("shows one sticky toast for settings an update couldn't carry over, with Copy details", async () => {
+    const justUpdated = {
+      from: "0.1.0",
+      to: "0.1.1",
+      notCarriedOver: ["appearance.panelOpacity", "formats.dateStyle"],
+    };
+    const { toasts } = await mount(statusOf({ kind: "up-to-date" }, { justUpdated }));
+    await settle();
+    const toast = toasts.list().find((t) => t.sticky);
+    expect(toast?.tone).toBe("info");
+    expect(toast?.title).toBe(
+      "Some settings couldn't be carried over from Halonic 0.1.0, so they're back to their defaults.",
+    );
+    expect(toast?.text).toBe("Halonic kept a copy of the old ones.");
+    expect(toast?.action?.label).toBe("Copy details");
+    expect(toasts.list().filter((t) => t.sticky)).toHaveLength(1);
+  });
+
+  it("shows no settings toast when nothing was left behind", async () => {
+    const justUpdated = { from: "0.1.0", to: "0.1.1", notCarriedOver: [] };
+    const { toasts } = await mount(statusOf({ kind: "up-to-date" }, { justUpdated }));
+    await settle();
+    expect(toasts.list().some((t) => t.sticky)).toBe(false);
+  });
+});
