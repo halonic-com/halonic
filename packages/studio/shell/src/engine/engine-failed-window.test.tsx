@@ -184,7 +184,13 @@ verifies("shell.engine-failed-window", () => {
 
   it("shows the update sentence without the link when the release page address isn't http or https", () => {
     failWithNoAnswer();
-    for (const releasePageUrl of ["", "not an address", "javascript:alert(1)"]) {
+    for (const releasePageUrl of [
+      "",
+      "not an address",
+      "javascript:alert(1)",
+      "https://",
+      "http://x y",
+    ]) {
       const container = renderWindow({ justUpdated: { ...update, releasePageUrl } });
       expect(container.textContent).toContain("Halonic was just updated to 0.1.1.");
       expect(container.textContent).not.toContain("Open release page");
