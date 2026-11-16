@@ -65,6 +65,10 @@
       "reason": "On Windows only, takes back the write grants srt keeps on a session's folders (HAL-5884). It starts only srt-win.exe from sandbox-runtime's own vendored folder, with the fixed arguments `acl forget <folder>` or `user status`, no shell. It never loads a skill.",
       "scriptsTest": "packages/adapters/sandbox-srt/src/kept-grants.starts.test.ts"
     },
+    "packages/adapters/sandbox-srt/src/wsl-setup/system-host.ts": {
+      "reason": "On Windows only, sets up Halonic's WSL distro (HAL-5394). It starts only wsl.exe, reg.exe and powershell.exe from Windows' System32 folder, with no shell. Every argument is a literal here or comes from the setup: the distro's name and folder, the image path, the one RunOnce command Studio gave, and for runInDistro a program the setup itself names (true, test, ls). PowerShell gets two fixed scripts, a start-time query and the elevated start of wsl.exe with literal arguments. It never loads a skill.",
+      "scriptsTest": "packages/adapters/sandbox-srt/src/wsl-setup/system-host.starts.test.ts"
+    },
     "packages/adapters/sandbox-srt/src/machine.ts": {
       "reason": "Probes whether bubblewrap starts and may create user namespaces. It runs only bwrap with fixed arguments.",
       "scriptsTest": "packages/adapters/sandbox-srt/src/machine.starts.test.ts"
