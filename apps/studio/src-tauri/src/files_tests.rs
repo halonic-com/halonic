@@ -245,11 +245,11 @@ fn files_name_a_special_file_refusal_for_the_page() {
 fn files_keep_discarded_copies_in_the_studio_folder_made_by_a_write() {
     let scratch = Scratch::new("discarded");
     let workspace = scratch.0.join("workspace");
-    let root = kept_copies_root(&workspace, Making::Nothing).expect("a read makes nothing");
+    let root = kept_copies::root(&workspace, Making::Nothing).expect("a read makes nothing");
     assert!(root.ends_with(".studio/discarded"), "{root:?}");
     assert!(!workspace.join(".studio").exists());
 
-    let root = kept_copies_root(&workspace, Making::Folder).expect("a write makes the folders");
+    let root = kept_copies::root(&workspace, Making::Folder).expect("a write makes the folders");
     assert!(root.is_dir());
     assert!(workspace.join(".studio/discarded").is_dir());
 }
@@ -263,7 +263,7 @@ fn files_refuse_a_link_on_the_way_to_the_discarded_folder() {
     std::fs::create_dir_all(&elsewhere).expect("the target");
     std::os::unix::fs::symlink(&elsewhere, workspace.join(".studio")).expect("the link");
 
-    let refusal = kept_copies_root(&workspace, Making::Folder).expect_err("a link is refused");
+    let refusal = kept_copies::root(&workspace, Making::Folder).expect_err("a link is refused");
     assert_eq!(refusal.kind, "private_path");
     assert!(
         std::fs::read_dir(&elsewhere)
@@ -276,7 +276,7 @@ fn files_refuse_a_link_on_the_way_to_the_discarded_folder() {
 
 #[test]
 fn files_let_only_a_write_reach_the_discarded_folder() {
-    assert!(only_writes_to_kept_copies(Some(FileFolder::Discarded)).is_err());
-    assert!(only_writes_to_kept_copies(Some(FileFolder::Review)).is_ok());
-    assert!(only_writes_to_kept_copies(None).is_ok());
+    assert!(kept_copies::only_writes(Some(FileFolder::Discarded)).is_err());
+    assert!(kept_copies::only_writes(Some(FileFolder::Review)).is_ok());
+    assert!(kept_copies::only_writes(None).is_ok());
 }
