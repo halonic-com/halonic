@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11240
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:m2S11v/fpr0Tgb866WF9SAst2GZyrKLnzUo87/SFegR3Ax9AF0AM0S11RAKE7pGM91ealvVxNGhD3tNNIaviBA==
 
 A card for a `wait` step used to answer whatever wait step its run was at when the answer arrived. Now an answer names the step it is for, by its state and the time it started waiting, and the engine refuses it when the run has moved on. A person who presses Approve on a card that is out of date gets a refusal and the run's new step stays open.
 
