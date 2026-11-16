@@ -6,6 +6,7 @@ import { LibraryTabMemoryService } from "./library-tab-memory.ts";
 import { requestLibraryTab } from "./library-tab-request.ts";
 import { libraryKinds, tabLabel } from "./library-words.ts";
 import { ListedToolsHostService } from "./listed-tools-host.ts";
+import { requestNewConnector } from "./new-connector-request.ts";
 import { SkillHostService } from "./skill-host.ts";
 
 /** Alt+4 to Alt+7 open the tabs, in the tabs' order. */
@@ -48,6 +49,16 @@ export const libraryFeature = defineFeature({
         keys: `Alt+${firstTabKey + index}`,
         when: "workspaceFocused",
       });
+    });
+    // The Inbox's **Go to the secret field** runs this by id, as it can't import the Library.
+    studio.commands.add({
+      id: "library.new-connector",
+      title: "New connector",
+      run: (context) => {
+        if (context.openPlace === undefined) return;
+        requestNewConnector({});
+        context.openPlace("library");
+      },
     });
     studio.itemKinds.add({
       kind: "skill",

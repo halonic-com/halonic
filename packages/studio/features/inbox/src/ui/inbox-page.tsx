@@ -5,7 +5,6 @@ import {
   engineWordsOf,
   errorMessageFor,
   type PlaceViewProps,
-  type SidebarPlace,
 } from "@halonicjs/studio-shell";
 import {
   type ReactNode,
@@ -32,6 +31,9 @@ import { useRequestPane } from "./use-request-pane.tsx";
 import { useSentRequestCard } from "./use-sent-request-card.ts";
 import { WaitCard } from "./wait-card.tsx";
 
+/** The Library's command that opens New connector; the Inbox can't import the Library, so it runs it by id. */
+const newConnectorCommand = "library.new-connector";
+
 const loadFailed = "Couldn't load the Inbox";
 
 /**
@@ -54,7 +56,9 @@ export function InboxPage({ context }: PlaceViewProps) {
       announce={(line) => context.announcer.announce(line)}
       requests={context.services.find(InboxRequestsService)}
       notices={context.services.find(InboxNoticesService)}
-      {...(context.openPlace === undefined ? {} : { openPlace: context.openPlace })}
+      {...(context.runCommand === undefined
+        ? {}
+        : { openNewConnector: () => context.runCommand?.(newConnectorCommand) })}
       {...(openItem && {
         openRun: (hubId: string, runId: string) => openItem({ kind: "run", hub: hubId, id: runId }),
       })}
@@ -76,8 +80,8 @@ export interface InboxViewProps {
   readonly requests?: InboxRequests | undefined;
   /** The notices under Needs you; without it there is no Notices section. */
   readonly notices?: InboxNotices | undefined;
-  /** Opens a sidebar place, for a secret pasted when no account is there to take it: the Library. */
-  readonly openPlace?: (place: SidebarPlace) => void;
+  /** Opens New connector, for a secret pasted when no account is there to take it. */
+  readonly openNewConnector?: () => void;
   /** Opens a run's page, for **Open run** on the toast that says a request started. */
   readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
   /** Says a line where a screen reader hears it: "New in Needs you: …" for a sent request's card that didn't open. */
@@ -111,7 +115,7 @@ export function InboxView({
   words = engineWords["desktop-app"],
   requests,
   notices,
-  openPlace,
+  openNewConnector,
   openRun,
   announce,
 }: InboxViewProps) {
@@ -219,7 +223,7 @@ export function InboxView({
               next={nextItem(state.items, open, openAt.current, openItem)}
               items={state.items}
               focus={focus}
-              openPlace={openPlace}
+              openNewConnector={openNewConnector}
               now={now}
               answering={state.error === undefined}
               words={words}
@@ -270,14 +274,14 @@ function OpenCard({
   close,
   items,
   focus,
-  openPlace,
+  openNewConnector,
 }: {
   readonly item: InboxItem;
   readonly inbox: Inbox;
   /** Everything waiting, to find the account a pasted secret belongs to. */
   readonly items: readonly InboxItem[];
   readonly focus: SetupFocus | undefined;
-  readonly openPlace: ((place: SidebarPlace) => void) | undefined;
+  readonly openNewConnector: (() => void) | undefined;
   readonly next: NextItem | null;
   readonly now: () => Date;
   readonly answering: boolean;
@@ -292,16 +296,15 @@ function OpenCard({
   }, [inbox, item.key]);
   const target = secretTarget("google", items);
   // With no account to set up and no place to open, the button would do nothing, so it isn't offered.
-  const somewhereToGo = target.kind === "setup" || openPlace !== undefined;
+  const somewhereToGo = target.kind === "setup" || openNewConnector !== undefined;
   const goToSecret = (note: string) => {
     inbox.setAside(item.key, note);
     if (target.kind === "setup") {
       inbox.openSetup(target.provider, target.account, "secret");
       return;
     }
-    // The Library stands in until there is a Connectors view with **New connector**.
-    // Follow-up (HAL-9823): send it to that view's New connector once the Connectors view exists.
-    openPlace?.("library");
+    // With no account to set up, the secret goes in a connector: Library > **New connector**.
+    openNewConnector?.();
   };
   if (item.kind === "setup") {
     return (

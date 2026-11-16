@@ -44,7 +44,10 @@ function GoogleSetupView({ focus }: SetupViewProps) {
   return <p>Setup opened for {focus ?? "nothing"}</p>;
 }
 
-async function openInbox(options: { accounts: boolean; openPlace?: InboxViewProps["openPlace"] }) {
+async function openInbox(options: {
+  accounts: boolean;
+  openNewConnector?: InboxViewProps["openNewConnector"];
+}) {
   const inbox = new Inbox(fakeRuns([notes]).runs);
   if (options.accounts) {
     inbox.addSetupSource(
@@ -58,7 +61,9 @@ async function openInbox(options: { accounts: boolean; openPlace?: InboxViewProp
     <InboxView
       inbox={inbox}
       now={now}
-      {...(options.openPlace === undefined ? {} : { openPlace: options.openPlace })}
+      {...(options.openNewConnector === undefined
+        ? {}
+        : { openNewConnector: options.openNewConnector })}
     />,
   );
   await settled();
@@ -119,12 +124,12 @@ verifies("inbox.secret-hold", () => {
     expect(field.value).toBe(note);
   });
 
-  it("opens the Library when there is no account to take the secret", async () => {
-    const openPlace = vi.fn();
-    const root = await openInbox({ accounts: false, openPlace });
+  it("opens New connector when there is no account to take the secret", async () => {
+    const openNewConnector = vi.fn();
+    const root = await openInbox({ accounts: false, openNewConnector });
     const dialog = await holdSecret(root);
     await press(buttonNamed(dialog, "Go to the secret field"));
-    expect(openPlace).toHaveBeenCalledWith("library");
+    expect(openNewConnector).toHaveBeenCalledOnce();
   });
 
   it("offers no Go to the secret field when there is nowhere to go", async () => {
