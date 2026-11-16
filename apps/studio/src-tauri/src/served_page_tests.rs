@@ -137,6 +137,7 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "record_replace",
         "google_setup_read",
         "workspace_key",
+        "resource_report",
         "agent_host_request",
         "agent_host_stream",
         "agent_host_stream_end",
