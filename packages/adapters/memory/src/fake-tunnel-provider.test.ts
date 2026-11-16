@@ -1,8 +1,13 @@
+// The fake lives in @halonicjs/testing-contracts, whose code is measured in
+// this package's run (its "measuredIn"), so its tests run here.
 import type { TunnelConfig, TunnelStatus } from "@halonicjs/ports";
+import {
+  FakeTunnelProvider,
+  FakeTunnelTime,
+  tunnelProviderContract,
+} from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { FakeTunnelProvider, FakeTunnelTime } from "./fake-tunnel-provider.ts";
-import { tunnelProviderContract } from "./tunnel-provider.ts";
 
 const config: TunnelConfig = { gateway: { host: "127.0.0.1", port: 4100 } };
 
