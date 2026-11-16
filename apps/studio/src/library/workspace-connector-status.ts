@@ -1,3 +1,4 @@
+import type { Connector } from "@halonicjs/format";
 import type { ChatTurnWaiting, DefinitionStore, DefinitionWatch } from "@halonicjs/ports";
 import {
   connectorFacts,
@@ -5,6 +6,7 @@ import {
   type GoogleSetupAccounts,
 } from "@halonicjs/studio-feature-google-setup/api";
 import type {
+  ConnectorConnection,
   ConnectorStatus,
   ConnectorStatusHost,
   RecordedRefusal,
@@ -37,6 +39,29 @@ const notSetUp: ConnectionState = connectionStateOf({
   secretValid: false,
   apiOn: false,
 });
+
+/** How a connector file says it connects. Secrets by name only. */
+function connectionOf({ transport, secret }: Connector): ConnectorConnection {
+  if ("http" in transport) {
+    return {
+      kind: "http",
+      url: transport.http.url,
+      secrets: secret === undefined ? [] : [secret],
+    };
+  }
+  if ("stdio" in transport) {
+    const { command, args, secretEnv } = transport.stdio;
+    return {
+      kind: "stdio",
+      command: [command, ...args].join(" "),
+      secrets: Object.values(secretEnv ?? {}),
+    };
+  }
+  if ("google" in transport) return { kind: "google", account: transport.google.account };
+  if ("integration" in transport)
+    return { kind: "integration", folder: transport.integration.folder };
+  return { kind: "plugin", id: transport.plugin.id };
+}
 
 /**
  * The connectors of one open workspace as the Library's status view reads them
@@ -78,6 +103,7 @@ export class WorkspaceConnectorStatus implements ConnectorStatusHost {
         id: connector.id,
         name: connector.name ?? connector.id,
         state: this.#stateOf(connector, accounts),
+        connection: connectionOf(connector),
       }),
     );
     // A file that parsed is not an unreadable one.

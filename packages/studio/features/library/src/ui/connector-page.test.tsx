@@ -9,8 +9,11 @@ import { ConnectorPage } from "./connector-page.tsx";
 
 afterEach(unmountAll);
 
+const hostList = vi.fn<ConnectorStatusHost["list"]>(async () => [
+  { id: "notes", name: "Notes", state: "connected" },
+]);
 const host: ConnectorStatusHost = {
-  list: async () => [{ id: "notes", name: "Notes", state: "connected" }],
+  list: hostList,
   refusals: async () => [],
   waiting: async () => [],
   subscribe: () => () => {},
@@ -38,6 +41,21 @@ async function settled(): Promise<void> {
 }
 
 describe("ConnectorPage", () => {
+  it("shows how the connector connects between its name and its status", async () => {
+    hostList.mockResolvedValueOnce([
+      {
+        id: "notes",
+        name: "Notes",
+        state: "connected",
+        connection: { kind: "http", url: "https://notes.acme.example/mcp", secrets: [] },
+      },
+    ]);
+    const root = render(<ConnectorPage {...props("notes")} />);
+    await settled();
+    const headings = [...root.querySelectorAll("h2")].map((h) => h.textContent);
+    expect(headings).toEqual(["How it connects", "Recent refusals"]);
+  });
+
   it("shows the connector's name as the h1, then its status section", async () => {
     const root = render(<ConnectorPage {...props("notes")} />);
     await settled();

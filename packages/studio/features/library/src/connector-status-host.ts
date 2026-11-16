@@ -2,6 +2,14 @@ import type { ChatTurnRefusal, ChatTurnWaiting } from "@halonicjs/ports";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { ConnectionState } from "./connection-state.ts";
 
+/** How a connector reaches its tools, as its file says: names and addresses only, never a secret's value. */
+export type ConnectorConnection =
+  | { readonly kind: "google"; readonly account: string }
+  | { readonly kind: "http"; readonly url: string; readonly secrets: readonly string[] }
+  | { readonly kind: "stdio"; readonly command: string; readonly secrets: readonly string[] }
+  | { readonly kind: "integration"; readonly folder: string }
+  | { readonly kind: "plugin"; readonly id: string };
+
 /** One connector as the status view shows it. */
 export interface ConnectorStatus {
   /** The connector's id, the same text a refusal carries as its `source`. */
@@ -11,6 +19,8 @@ export interface ConnectorStatus {
   readonly state: ConnectionState;
   /** One sentence that says why the connector is in this state. Absent when there is nothing to add. */
   readonly reason?: string;
+  /** How the connector connects. Absent when its file can't be read. */
+  readonly connection?: ConnectorConnection;
 }
 
 /** One refusal and the time it arrived. */

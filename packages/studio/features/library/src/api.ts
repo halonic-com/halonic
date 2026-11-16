@@ -23,6 +23,7 @@ export {
   connectionStateTable,
 } from "./connection-state.ts";
 export {
+  type ConnectorConnection,
   type ConnectorStatus,
   type ConnectorStatusHost,
   ConnectorStatusHostService,

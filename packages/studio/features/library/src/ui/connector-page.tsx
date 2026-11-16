@@ -10,13 +10,14 @@ import { ConnectorStatusHostService } from "../connector-status-host.ts";
 import { ConnectorStatusModel } from "../connector-status-model.ts";
 import { ListedToolsHostService } from "../listed-tools-host.ts";
 import { ListedToolsReviewModel } from "../listed-tools-review-model.ts";
+import { ConnectorConnectionSummary } from "./connector-connection-summary.tsx";
 import { ConnectorStatusSection } from "./connector-status-section.tsx";
 import { sharedHubKey } from "./library-place.tsx";
 import { ListedToolsWaiting } from "./listed-tools-waiting.tsx";
 
 /**
  * The `connector` item kind's page, kept thin so the full connector page (HAL-751) can replace it
- * without touching the section: the connector's name as the `h1`, then the status section, then the sections other features add
+ * without touching the section: the connector's name as the `h1`, then how it connects, then the status section, then the sections other features add
  * (the Google block, for a Google connector).
  */
 export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
@@ -59,6 +60,9 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
       </h1>
       {toolsModel === undefined ? null : (
         <ListedToolsWaiting model={toolsModel} sourceName={connector?.name ?? item.id} />
+      )}
+      {connector?.connection === undefined ? null : (
+        <ConnectorConnectionSummary connection={connector.connection} />
       )}
       <ConnectorStatusSection
         model={model}
