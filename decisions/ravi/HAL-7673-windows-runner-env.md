@@ -2,6 +2,7 @@
 
 - Approval: Liam reviews this on HAL-7673
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:q0Rr0gaE9U0Vt4bWKsbPlRTK5HFWMXBwBShAp7C9dsruxTMgmFL+aHCQ+THaGvNWX9KPxV6154m2iYqyvQ3kBQ==
 - Task: HAL-7673
 
 ## What changes
