@@ -25,6 +25,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   act(() => root?.unmount());
   root = undefined;
   element.remove();
@@ -116,6 +117,7 @@ verifies("workspace.trusted-sources", () => {
   });
 
   it("keeps the dialog open and says why when removing fails", async () => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
     const host = hostOf([inbox], async () => {
       throw new Error("the disk is full");
     });
@@ -123,7 +125,7 @@ verifies("workspace.trusted-sources", () => {
     act(() => button("Remove")?.click());
     await act(async () => confirm()?.click());
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await vi.advanceTimersByTimeAsync(50);
     });
     expect(document.querySelector("dialog")?.textContent).toContain(
       "Couldn't remove trust from inbox-helper: the disk is full.",

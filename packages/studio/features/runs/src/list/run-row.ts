@@ -12,6 +12,7 @@ import {
   shortRunId,
 } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
+import { escapeHidden } from "@halonicjs/std";
 import type { StatusChipTone } from "@halonicjs/studio-kit";
 import type { RunRoutine, RunWorkflow, SourcedRun } from "../api.ts";
 import {
@@ -210,7 +211,7 @@ export function needsYouLine(wait: RunWait, step: string): string {
       : rowLineWords.waitingForApprovals(wait.count);
   }
   if (wait.kind === "step" && wait.title !== null) {
-    return rowLineWords.waitingForYou(wait.title);
+    return rowLineWords.waitingForYou(escapeHidden(wait.title));
   }
   return rowLineWords.waitingInStep(step);
 }

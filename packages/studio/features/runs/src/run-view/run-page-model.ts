@@ -4,6 +4,7 @@
 
 import { runWait, shortRunId } from "@halonicjs/app";
 import type { PendingApproval, RunSummary } from "@halonicjs/events";
+import { escapeHidden } from "@halonicjs/std";
 import type { ProviderKind, RunWorkflow, SourcedRun } from "../api.ts";
 import { currentStepName, type RunChip, runRow } from "../list/run-row.ts";
 import { lineSeparator, runPageWords } from "../run-words.ts";
@@ -130,7 +131,7 @@ export function runBanner(run: SourcedRun, context: RunPageContext): RunBanner |
       return needsYou(
         wait.title === null
           ? runPageWords.waitStepNoDescription(step)
-          : runPageWords.waitStep(wait.title),
+          : runPageWords.waitStep(escapeHidden(wait.title)),
       );
     case "child-run":
       return childRunBanner(wait.runId, context);
