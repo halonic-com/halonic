@@ -1,5 +1,6 @@
+import { needsApproval } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
-import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
+import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { expect, it } from "vitest";
 import { type NewLibraryItem, newLibraryFile } from "./new-library-item.ts";
 import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
@@ -76,6 +77,32 @@ verifies("app.new-library-item", () => {
       expect(file.text).toContain("google" in transport ? "- gmail_send" : "approve: all");
       expect(file.issues).toEqual([]);
     }
+  });
+
+  it("loads back as a connector where any tool an MCP server offers asks, even one it adds later", async () => {
+    const mcp = [
+      { http: { url: "https://notes.acme.dev/mcp" } },
+      { stdio: { command: "npx -y @acme/notes-mcp" } },
+    ] as const;
+    for (const transport of mcp) {
+      const file = await made({ kind: "connector", name: "Notes", hub: null, transport });
+      const [connector] = filesOf(file.reloaded, "connector");
+
+      expect(connector?.value.tools.approve).toBe("all");
+      expect(needsApproval(connector?.value.tools ?? { approve: [] }, "added_next_week")).toBe(
+        true,
+      );
+    }
+  });
+
+  it("makes a Google connector ask only for the tools it names", async () => {
+    const transport = { google: { account: "fin@acme.example", askFirst: ["gmail_send"] } };
+    const file = await made({ kind: "connector", name: "Mail", hub: null, transport });
+    const [connector] = filesOf(file.reloaded, "connector");
+    const tools = connector?.value.tools ?? { approve: "all" as const };
+
+    expect(needsApproval(tools, "gmail_send")).toBe(true);
+    expect(needsApproval(tools, "gmail_search")).toBe(false);
   });
 
   it("names the secret, never a value, for an HTTP connector and a local program", async () => {
