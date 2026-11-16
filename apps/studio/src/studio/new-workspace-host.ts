@@ -10,7 +10,7 @@ import {
 import { createWorkspace } from "@halonicjs/workspace";
 
 /** The shell's commands for a new workspace's folder (`create_workspace_folder`, its two helpers, and the probe and open of a folder that is there). */
-const commands = {
+export const commands = {
   documents: "documents_folder",
   pickParent: "pick_parent_folder",
   create: "create_workspace_folder",
@@ -143,7 +143,7 @@ function splitFolder(folder: string, separator: string): { parent: string; name:
 }
 
 /** What the shell found at `<parent>/<name>`; a refusal becomes the reason the dialog shows. */
-async function probed(
+export async function probed(
   shell: TauriFileShell,
   parent: string,
   name: string,
@@ -172,7 +172,11 @@ async function openedFolder(
 }
 
 /** Makes the folder through the shell; a refusal becomes the reason the dialog shows. */
-async function madeFolder(shell: TauriFileShell, parent: string, name: string): Promise<string> {
+export async function madeFolder(
+  shell: TauriFileShell,
+  parent: string,
+  name: string,
+): Promise<string> {
   try {
     const made = await shell.invoke(commands.create, { parent, name });
     if (typeof made !== "string") throw new Error("the desktop shell gave no answer");
@@ -220,7 +224,7 @@ export function reasonOf(reason: unknown): string {
 }
 
 /** Saves the trust of a folder the template wrote whole; a failure is reported, not thrown. */
-async function trustOf(
+export async function trustOf(
   parts: NewWorkspaceHostParts,
   folder: string,
   whole: boolean,

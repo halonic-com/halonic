@@ -2,7 +2,8 @@
   "extends": "@halonicjs/tooling-config/tsconfig/studio.json",
   "compilerOptions": {
     "types": [
-      "node"
+      "node",
+      "vite/client"
     ]
   },
   "include": [

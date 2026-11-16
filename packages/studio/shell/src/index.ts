@@ -442,6 +442,7 @@ export {
   WELCOME_RECENT_ROWS,
   type WelcomeRecentWorkspace,
 } from "./welcome/welcome-recent.tsx";
+export type { WelcomeSampleProblem } from "./welcome/welcome-sample.tsx";
 export { WelcomeWindow, type WelcomeWindowProps } from "./welcome/welcome-window.tsx";
 export type { ItemPageSectionViewProps } from "./window/item-page-sections.tsx";
 export type { ItemViewProps } from "./window/item-view.tsx";
