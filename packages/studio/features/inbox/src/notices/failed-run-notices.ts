@@ -25,7 +25,7 @@ export type RoutineName = (routineId: string) => string;
 /**
  * The failed-run notices in these runs: one per routine per day, newest first. A run you started
  * by hand, a Try it or Test run, a cancelled run and a budget stop make none (requirement
- * `inbox.notices.failed-run`).
+ * `inbox.failed-run-notices`).
  *
  * @example
  * failedRunNotices(await store.list({ status: ["failed", "completed"] }), nameOf, new Date());

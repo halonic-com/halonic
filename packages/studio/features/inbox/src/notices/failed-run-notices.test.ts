@@ -19,7 +19,7 @@ function routineRun(id: string, hour: number, minute: number, fields: Partial<Ru
   });
 }
 
-verifies("inbox.notices.failed-run", () => {
+verifies("inbox.failed-run-notices", () => {
   it("makes one notice for a failed routine run, which opens that run", () => {
     const [notice, ...others] = failedRunNotices([routineRun("r1", 6, 0)], routineName, now);
     expect(others).toEqual([]);

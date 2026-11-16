@@ -1,4 +1,4 @@
-# inbox.notices.failed-run
+# inbox.failed-run-notices
 
 - Status: active
 - Since: 0.1.0
