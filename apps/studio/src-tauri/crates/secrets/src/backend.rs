@@ -14,12 +14,19 @@ pub const SERVICE: &str = "halonic";
 ///
 /// A backend receives names that are already canonical and values that
 /// already passed [`check_value`]; the functions [`get_secret`],
-/// [`set_secret`] and [`delete_secret`] see to that. It holds no desktop
+/// [`has_secret`], [`set_secret`] and [`delete_secret`] see to that. It holds no desktop
 /// types, so the Android backend can implement it with only a plugin
 /// handle.
 pub trait SecretBackend: Send + Sync {
     /// The value, or `None` when nothing is stored under the name.
     fn get(&self, name: &SecretName) -> Result<Option<String>, SecretError>;
+
+    /// Whether a value is stored under the name. The answer is only yes or
+    /// no: the default reads inside the shell and drops the value there, and
+    /// a backend that can ask its store without reading may override it.
+    fn has(&self, name: &SecretName) -> Result<bool, SecretError> {
+        Ok(self.get(name)?.is_some())
+    }
 
     /// Stores the value, replacing any value already there.
     fn set(&self, name: &SecretName, value: &str) -> Result<(), SecretError>;
@@ -58,6 +65,12 @@ fn check_value_fits(backend: &dyn SecretBackend, value: &str) -> Result<(), Secr
 /// What `secret_get` does: checks the name, then reads.
 pub fn get_secret(backend: &dyn SecretBackend, name: &str) -> Result<Option<String>, SecretError> {
     backend.get(&SecretName::parse(name)?)
+}
+
+/// What `secret_has` does: checks the name, then answers whether a value is
+/// stored. The value never leaves the backend call.
+pub fn has_secret(backend: &dyn SecretBackend, name: &str) -> Result<bool, SecretError> {
+    backend.has(&SecretName::parse(name)?)
 }
 
 /// What `secret_set` does: checks the name and the value, then writes.

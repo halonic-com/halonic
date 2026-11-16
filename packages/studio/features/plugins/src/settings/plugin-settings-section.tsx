@@ -37,12 +37,12 @@ export interface PluginSettingsReader extends PluginSettingsHost {
 }
 
 /**
- * The keychain, as the section uses it: the writer, and `get` to tell
- * "Set" from "Not set". `TauriSecrets` has this shape. The section never
- * keeps or shows a value it reads.
+ * The keychain, as the section uses it: the writer, and `has` to tell
+ * "Set" from "Not set". `TauriSecrets` has this shape. `has` answers yes or
+ * no, so the page never receives a stored value.
  */
 export interface PluginSecretStore extends PluginSecretWriter {
-  get(name: string): Promise<string | null>;
+  has(name: string): Promise<boolean>;
 }
 
 /** Where the page's toolbar is: "Saving…", then "✓ Saved" or "Couldn't save". */
@@ -410,7 +410,7 @@ const SECRET_STATE_TEXT: Record<SecretState, string> = {
 
 /**
  * Whether each secret setting has a value in the keychain. One the keychain
- * can't read is `unknown`, never "not set"; the value itself is dropped at once.
+ * can't read is `unknown`, never "not set". The keychain answers yes or no, never the value.
  */
 async function secretsSet(
   host: PluginSettingsReader,
@@ -427,7 +427,7 @@ async function secretsSet(
       continue;
     }
     try {
-      set[setting] = (await secrets.get(name)) === null ? "not-set" : "set";
+      set[setting] = (await secrets.has(name)) ? "set" : "not-set";
     } catch (error) {
       console.error(`Couldn't read the secret for the setting ${setting}.`, error);
       set[setting] = "unknown";

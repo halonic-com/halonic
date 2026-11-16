@@ -93,10 +93,10 @@ function fakes(options: FakeOptions = {}) {
     forget: async () => {},
   };
   const secrets: PluginSecretStore = {
-    get: async (name) => {
+    has: async (name) => {
       if (options.keychainUnreadable === true)
         throw new KindedError("unavailable", "The keychain is locked.");
-      return keychain.get(name) ?? null;
+      return keychain.has(name);
     },
     set: async (name, value) => {
       if (locked) throw new KindedError("unavailable", "The keychain is locked.");

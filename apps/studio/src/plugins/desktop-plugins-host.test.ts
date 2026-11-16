@@ -18,7 +18,7 @@ function emptyShell(revealed: boolean) {
 function hostOver(shell: TauriShell) {
   return desktopPluginsHost({
     ipc: shell,
-    secrets: { get: async () => null, set: async () => {}, remove: async () => {} },
+    secrets: { has: async () => false, set: async () => {}, remove: async () => {} },
     caller: { call: async () => "" },
     onReloadFailed: () => {},
   });

@@ -6,7 +6,8 @@ import { WorkspaceModelKeys } from "./workspace-model-keys.ts";
 function setup() {
   const stored = new Map<string, string>();
   const keys = new WorkspaceModelKeys({
-    get: async (name) => stored.get(name) ?? null,
+    get: async () => expect.unreachable("a key must never be read to tell whether it is stored"),
+    has: async (name) => stored.has(name),
     set: async (name, value) => void stored.set(name, value),
     remove: async (name) => void stored.delete(name),
   });

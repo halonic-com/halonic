@@ -101,6 +101,7 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "connect",
         "git",
         "secret_get",
+        "secret_has",
         "secret_set",
         "secret_delete",
         "pick_folder",
@@ -241,6 +242,7 @@ fn served_page_test_sees_the_connect_page_allowed_the_secret_commands_on_desktop
     let window = app_window();
     for (command, body) in [
         ("secret_get", json!({"name": "not a name"})),
+        ("secret_has", json!({"name": "not a name"})),
         ("secret_set", json!({"name": "not a name", "value": "v"})),
         ("secret_delete", json!({"name": "not a name"})),
     ] {

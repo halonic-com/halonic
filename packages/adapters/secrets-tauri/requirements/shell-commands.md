@@ -4,9 +4,16 @@
 - Since: 0.1.0
 - Source: HAL-2611, HAL-192 (the shell's `secret_*` commands), HAL-229 (interface agreed with Elena), HAL-2903 (malformed replies)
 
-The Tauri secrets shall implement `Secrets` and `TokenStore` by calling the shell's `secret_get`, `secret_set` and `secret_delete` commands with the name as given, and shall check the name against the `Secrets` name rule before it sends anything. It shall add no value rule of its own: a value the shell refuses (`invalid_value`) shall reject with a `RangeError`, and an answer to `secret_get` that is neither non-empty text nor `null`, or an answer to `secret_set` or `secret_delete` that is not `null`, shall reject with a `KeychainError` of refusal `backend`. The shell never stores an empty value, and its set and delete return nothing, so any other answer is malformed and is not taken for a value or for success.
+The Tauri secrets shall implement `Secrets` and `TokenStore` by calling the shell's `secret_get`, `secret_has`, `secret_set` and `secret_delete` commands with the name as given, and shall check the name against the `Secrets` name rule before it sends anything. It shall also tell whether a name is stored with `has`, which asks `secret_has` and never reads the value. It shall add no value rule of its own: a value the shell refuses (`invalid_value`) shall reject with a `RangeError`, and an answer to `secret_get` that is neither non-empty text nor `null`, or an answer to `secret_has` that is not `true` or `false`, or an answer to `secret_set` or `secret_delete` that is not `null`, shall reject with a `KeychainError` of refusal `backend`. The shell never stores an empty value, and its set and delete return nothing, so any other answer is malformed and is not taken for a value or for success.
 
 ## Examples
+
+- Given `Google-Refresh` is set,
+  when `has` is called with `google_refresh`,
+  then the shell receives `secret_has` only, and the answer is `true` with no value.
+- Given a shell that answers `secret_has` with `"yes"`,
+  when `has` is called,
+  then it rejects with a `KeychainError` of refusal `backend`.
 
 - Given `Google-Refresh` is set,
   when `GOOGLE-REFRESH` is removed,

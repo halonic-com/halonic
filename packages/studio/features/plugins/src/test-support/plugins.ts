@@ -93,7 +93,7 @@ export function noSettings(): { settings: PluginSettingsReader; secrets: PluginS
       secretNames: () => ({}),
       forget: async () => {},
     },
-    secrets: { get: async () => null, set: async () => {}, remove: async () => {} },
+    secrets: { has: async () => false, set: async () => {}, remove: async () => {} },
   };
 }
 

@@ -56,6 +56,8 @@ export class FakeShell implements TauriShell {
     switch (command) {
       case "secret_get":
         return this.entries.get(name) ?? null;
+      case "secret_has":
+        return this.entries.has(name);
       case "secret_set":
         this.entries.set(name, this.#checkedValue(args?.["value"]));
         return null;

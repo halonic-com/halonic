@@ -1,4 +1,4 @@
-//! The `secret_get`, `secret_set` and `secret_delete` commands, the page's
+//! The `secret_get`, `secret_has`, `secret_set` and `secret_delete` commands, the page's
 //! way to the keychain (HAL-192, interface agreed with Priya on HAL-229).
 //! The name and value rules live in the `halonic-secrets` crate and the
 //! desktop keychain in `halonic-keychain`; this file only runs the calls
@@ -7,7 +7,9 @@
 use std::sync::Arc;
 
 use halonic_keychain::DesktopKeychain;
-use halonic_secrets::{SecretBackend, SecretError, delete_secret, get_secret, set_secret};
+use halonic_secrets::{
+    SecretBackend, SecretError, delete_secret, get_secret, has_secret, set_secret,
+};
 use serde::Serialize;
 use tauri::{AppHandle, Manager, Runtime};
 
@@ -67,6 +69,16 @@ pub async fn secret_get<R: Runtime>(
     name: String,
 ) -> Result<Option<String>, SecretRefusal> {
     on_worker(&app, move |backend| get_secret(backend, &name)).await
+}
+
+/// Whether a value is stored under the name. The page asks this to show
+/// "Set" or "Not set"; the answer holds no value.
+#[tauri::command]
+pub async fn secret_has<R: Runtime>(
+    app: AppHandle<R>,
+    name: String,
+) -> Result<bool, SecretRefusal> {
+    on_worker(&app, move |backend| has_secret(backend, &name)).await
 }
 
 /// Stores the value under the name, replacing any value already there.
