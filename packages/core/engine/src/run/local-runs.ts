@@ -40,6 +40,7 @@ import {
 import type { RunsConnectors } from "./run-connectors.ts";
 import { RunFeed } from "./run-feed.ts";
 import { callTimer, childTimer, harnessTimer, stateTimer, toolTimer } from "./run-timer-ids.ts";
+import { sendNames } from "./send-names.ts";
 import { StartDeadlines } from "./start-deadlines.ts";
 import { checkStartRequest } from "./start-request.ts";
 import { sweepLostRuns } from "./sweep-lost-runs.ts";
@@ -177,9 +178,7 @@ export class LocalRuns {
       at: this.#now(),
       event,
       ...(payload === undefined ? {} : { payload }),
-      ...(options?.callId === undefined ? {} : { callId: options.callId }),
-      ...(options?.wait === undefined ? {} : { wait: options.wait }),
-      ...(options?.by === undefined ? {} : { by: options.by }),
+      ...sendNames(options),
     });
     return this.#summary(runId);
   }
