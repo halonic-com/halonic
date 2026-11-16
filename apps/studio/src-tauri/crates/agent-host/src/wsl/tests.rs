@@ -6,7 +6,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use super::{WslError, lists_distro, run_runtime_step, send_archive};
+use std::time::{Duration, Instant};
+
+use super::{WslError, lists_distro, run_runtime_step, run_runtime_step_within, send_archive};
 
 const ARCHIVE: &[u8] = b"a runtime archive\n";
 /// The SHA-256 of [`ARCHIVE`].
@@ -84,6 +86,7 @@ fn runtime_update_reports_the_updaters_reason() {
         (4, WslError::ChecksumDiffers),
         (5, WslError::ArchiveRefused),
         (6, WslError::NothingToRollBack),
+        (7, WslError::MountsLeft),
         (2, WslError::Failed(Some(2))),
     ] {
         let (updater, _script) = ending_with(code, &received);
@@ -94,6 +97,24 @@ fn runtime_update_reports_the_updaters_reason() {
         let (updater, _script) = ending_with(code, &received);
         assert_eq!(run_runtime_step(updater), Err(expected));
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn a_step_with_a_time_limit_answers_what_it_printed_or_is_stopped() {
+    let script = temp_file("sh", b"echo cleaned 0 import mounts, 0 left\n");
+    let mut updater = Command::new("/bin/sh");
+    updater.arg(&*script);
+    let answer = run_runtime_step_within(updater, Duration::from_secs(30));
+    assert_eq!(answer, Ok("cleaned 0 import mounts, 0 left\n".to_owned()));
+
+    let script = temp_file("sh", b"sleep 30\n");
+    let mut stuck = Command::new("/bin/sh");
+    stuck.arg(&*script);
+    let started = Instant::now();
+    let answer = run_runtime_step_within(stuck, Duration::from_millis(200));
+    assert_eq!(answer, Err(WslError::TimedOut));
+    assert!(started.elapsed() < Duration::from_secs(10));
 }
 
 fn utf16(text: &str) -> Vec<u8> {

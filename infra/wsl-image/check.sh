@@ -164,4 +164,27 @@ if chroot "$root" dpkg-statoverride --list "$own" >/dev/null; then
 fi
 chroot "$root" "$updater" status | grep -q '"securityUpdated":"[0-9]\{4\}-' || fail "status doesn't say when updates ran"
 chroot "$root" "$updater" security-update | grep -q '^skipped' || fail "security updates ran twice in a day"
+# Import mounts a crash left behind (HAL-5402): nothing happens with no import
+# folder; a folder named import- and 32 hex digits goes, one with another name,
+# a link and a folder holding a file stay (the step never deletes contents); a
+# second run changes nothing more; halonic can't run it.
+imports="$root/mnt/halonic-import"
+chroot "$root" "$updater" cleanup-import-mounts | grep -q '^nothing to clean up' || fail "a missing import folder wasn't fine"
+mkdir -p "$imports"
+stale=import-0123456789abcdef0123456789abcdef
+mkdir "$imports/$stale" "$imports/import-0123" "$imports/import-0123456789ABCDEF0123456789ABCDEF" "$imports/$stale.old"
+ln -s /tmp "$imports/import-fedcba9876543210fedcba9876543210"
+mkdir "$imports/import-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+touch "$imports/import-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/file"
+code=0; out="$(chroot "$root" "$updater" cleanup-import-mounts 2>/dev/null)" || code=$?
+[ "$code" -eq 7 ] || fail "a folder with a file gave exit $code, not 7"
+[ "$out" = "cleaned 1 import mounts, 1 left" ] || fail "cleanup said: $out"
+[ ! -e "$imports/$stale" ] || fail "the stale mount point stayed"
+for stays in import-0123 import-0123456789ABCDEF0123456789ABCDEF "$stale.old" import-fedcba9876543210fedcba9876543210; do
+  [ -e "$imports/$stays" ] || [ -L "$imports/$stays" ] || fail "$stays was removed"
+done
+[ -f "$imports/import-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/file" ] || fail "a file was deleted"
+code=0; chroot "$root" su halonic -s /bin/sh -c "$updater cleanup-import-mounts" 2>/dev/null || code=$?
+[ "$code" -eq 2 ] || fail "halonic could clean up import mounts (exit $code)"
+rm -rf "$imports"
 echo "OK: image checks passed"

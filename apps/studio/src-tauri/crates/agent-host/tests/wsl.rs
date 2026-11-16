@@ -136,6 +136,10 @@ fn wsl_launch_runs_each_updater_step_as_root_with_fixed_arguments() {
         (install, vec!["install", "1.2.0-rc.1+b7", SHA]),
         (RuntimeStep::Rollback, vec!["rollback"]),
         (RuntimeStep::SecurityUpdate, vec!["security-update"]),
+        (
+            RuntimeStep::CleanupImportMounts,
+            vec!["cleanup-import-mounts"],
+        ),
         (RuntimeStep::Status, vec!["status"]),
     ] {
         let expected: Vec<&str> = prefix.iter().copied().chain(tail).collect();

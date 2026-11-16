@@ -7,6 +7,8 @@
 #                               puts it in /opt/halonic/<version> and points `current` at it
 #   rollback                    points `current` back at the version before it
 #   security-update             Debian security updates, at most once a day
+#   cleanup-import-mounts       unmounts and removes the read-only import mounts a crash left
+#                               under /mnt/halonic-import (HAL-5402); no arguments, no input
 #   status                      prints {"current":...,"previous":...,"securityUpdated":...}
 #                               (when security updates last ran, UTC; empty if never,
 #                               or when not run as root)
@@ -18,7 +20,8 @@
 # this script checks it again before unpacking.
 #
 # Exit codes: 0 done, 2 wrong use, 3 busy (a sandbox session runs), 4 checksum
-# differs, 5 archive refused, 6 nothing to roll back to, 1 anything else.
+# differs, 5 archive refused, 6 nothing to roll back to, 7 a mount point could
+# not be cleaned up (the others were), 1 anything else.
 set -euo pipefail
 umask 022
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
@@ -28,6 +31,7 @@ cd /
 
 slot=/opt/halonic
 state=/var/lib/halonic
+imports=/mnt/halonic-import
 
 fail() { echo "halonic-runtime: $2" >&2; exit "$1"; }
 
@@ -221,6 +225,37 @@ security_updated() {
   fi
 }
 
+# Import mounts are read-only mounts of a Windows folder the engine makes for
+# one import (W5). A crash or kill can leave one behind. Only a real folder
+# (never a link) directly under $imports, named import- and 32 lowercase hex
+# digits, is touched, and only with umount and rmdir: rmdir fails on a folder
+# that holds anything, so no file is ever deleted. One that can't be cleaned
+# is reported and the rest go on. Running it again changes nothing more.
+do_cleanup_import_mounts() {
+  [ $# -eq 0 ] || fail 2 "usage: cleanup-import-mounts"
+  [ -d "$imports" ] && [ ! -L "$imports" ] || { echo "nothing to clean up"; return 0; }
+  cleaned=0
+  stuck=0
+  for folder in "$imports"/import-*; do
+    name="${folder##*/}"
+    [[ "$name" =~ ^import-[0-9a-f]{32}$ ]] || continue
+    [ -d "$folder" ] && [ ! -L "$folder" ] || continue
+    if mountpoint -q -- "$folder" && ! umount -- "$folder"; then
+      echo "halonic-runtime: could not unmount $folder" >&2
+      stuck=$((stuck + 1))
+      continue
+    fi
+    if rmdir -- "$folder"; then
+      cleaned=$((cleaned + 1))
+    else
+      echo "halonic-runtime: could not remove $folder" >&2
+      stuck=$((stuck + 1))
+    fi
+  done
+  echo "cleaned $cleaned import mounts, $stuck left"
+  [ "$stuck" -eq 0 ] || exit 7
+}
+
 do_status() {
   printf '{"current":"%s","previous":"%s","securityUpdated":"%s"}\n' \
     "$(target current)" "$(target previous)" "$(security_updated)"
@@ -232,6 +267,7 @@ case "$command" in
   install) need_root; do_install "$@" ;;
   rollback) need_root; do_rollback "$@" ;;
   security-update) need_root; do_security_update "$@" ;;
+  cleanup-import-mounts) [ "$(id -u)" -eq 0 ] || fail 2 "run as root"; do_cleanup_import_mounts "$@" ;;
   status) do_status ;;
-  *) fail 2 "usage: halonic-runtime install <version> <sha256> | rollback | security-update | status" ;;
+  *) fail 2 "usage: halonic-runtime install <version> <sha256> | rollback | security-update | cleanup-import-mounts | status" ;;
 esac
