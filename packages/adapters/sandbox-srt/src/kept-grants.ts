@@ -162,6 +162,16 @@ export class KeptGrants {
     }
   }
 
+  /** Deletes the record file. Never throws: a stale record only costs a repeat forget. */
+  #dropRecord(): void {
+    if (this.#recordFile === null) return;
+    try {
+      rmSync(this.#recordFile, { force: true });
+    } catch {
+      // Left in place.
+    }
+  }
+
   /** The recorded folders; none when the record can't be read. */
   #recorded(): string[] {
     if (this.#recordFile === null) return [];
@@ -268,13 +278,7 @@ export class KeptGrants {
       }
     }
     // `--all` took back every grant, recorded ones included.
-    if (failed.length === 0 && this.#recordFile !== null) {
-      try {
-        rmSync(this.#recordFile, { force: true });
-      } catch {
-        // A stale record only costs a repeat forget.
-      }
-    }
+    if (failed.length === 0) this.#dropRecord();
     return failed;
   }
 
