@@ -4,6 +4,13 @@ export {
   type GatewayTransport,
 } from "./gateway-connection.ts";
 export {
+  type GatewayListener,
+  type GatewayListenerOptions,
+  gatewayLoopbackHost,
+  gatewayPath,
+  startGatewayListener,
+} from "./gateway-listener.ts";
+export {
   type GatewayFrame,
   type GatewayParseResult,
   parseGatewayClientMessage,
