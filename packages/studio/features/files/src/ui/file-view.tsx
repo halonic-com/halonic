@@ -6,7 +6,12 @@ import { fileItem, fileName } from "../file-item.ts";
 import { sizeOf, textKindOf } from "../file-size.ts";
 import { type FileIssue, FilesHostService, type OutsideChange } from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
-import { causedElsewhere, type Elsewhere, problemsElsewhere } from "../problems-elsewhere.ts";
+import {
+  causedElsewhere,
+  type Elsewhere,
+  problemsElsewhere,
+  withNewSince,
+} from "../problems-elsewhere.ts";
 import { CompareView } from "./compare-view.tsx";
 import { OutsideStrip } from "./outside-strip.tsx";
 import { ProblemsPanel } from "./problems-panel.tsx";
@@ -57,16 +62,22 @@ export function FileView({ item, context }: ItemViewProps) {
   const [problems, setProblems] = useState<readonly FileIssue[]>([]);
   const problemsRef = useRef<readonly FileIssue[]>([]);
   const [elsewhere, setElsewhere] = useState<Elsewhere>(noElsewhere);
+  // Set when this tab's editor changes the text, cleared by the next check: a problem that shows
+  // up in another file without it did not come from this tab.
+  const editedSince = useRef(false);
   const [reveal, setReveal] = useState<{ line: number; round: number } | undefined>();
 
   // The problems are checked when the tab opens and again a moment after the files change, so
   // typing never waits for the check. The first check is what other files looked like before
-  // this tab's changes; later ones are compared with it.
+  // this tab's changes; later ones are compared with it. A check that follows no edit here moves
+  // that baseline on, so another file's change is never blamed on this tab.
   useEffect(() => {
     let stopped = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let before: ReadonlyMap<string, number> | undefined;
+    let last: ReadonlyMap<string, number> = new Map();
     let newest = 0;
+    editedSince.current = false;
     problemsRef.current = [];
     setProblems([]);
     setElsewhere(noElsewhere);
@@ -75,7 +86,11 @@ export function FileView({ item, context }: ItemViewProps) {
       host.problems().then(
         (all) => {
           if (stopped || turn !== newest) return;
-          before ??= problemsElsewhere(path, all);
+          const now = problemsElsewhere(path, all);
+          if (before === undefined) before = now;
+          else if (!editedSince.current) before = withNewSince(before, last, now);
+          last = now;
+          editedSince.current = false;
           const own = all.filter((issue) => issue.file === path);
           problemsRef.current = own;
           setProblems(own);
@@ -150,7 +165,10 @@ export function FileView({ item, context }: ItemViewProps) {
       language: languageFor(path),
       label: filesWords.editorLabel(path),
       readOnly,
-      onChange: (next) => host.edit(path, next),
+      onChange: (next) => {
+        editedSince.current = true;
+        host.edit(path, next);
+      },
       onProblemJump: (problem) =>
         announcer.current.announce(
           filesWords.problemRead(problem.severity, problem.line, problem.message),

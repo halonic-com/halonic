@@ -64,8 +64,8 @@ export function ProblemsPanel({
           <p className="px-4 py-1 text-small text-fg-muted">{filesWords.noProblems}</p>
         ) : (
           <ul ref={list} className="grid">
-            {sorted.map((issue) => (
-              <li key={`${issue.line}:${issue.col}:${issue.severity}:${issue.message}`}>
+            {sorted.map((issue, index) => (
+              <li key={`${index}:${issue.line}:${issue.col}:${issue.severity}:${issue.message}`}>
                 <button
                   type="button"
                   data-line={issue.line}

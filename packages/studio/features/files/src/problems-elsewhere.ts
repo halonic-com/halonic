@@ -25,6 +25,23 @@ export function problemsElsewhere(
 }
 
 /**
+ * `before` plus the problems that appeared between two checks (`last` and `now`), for a check
+ * that this tab's own changes did not come before: those problems came from somewhere else.
+ */
+export function withNewSince(
+  before: ReadonlyMap<string, number>,
+  last: ReadonlyMap<string, number>,
+  now: ReadonlyMap<string, number>,
+): ReadonlyMap<string, number> {
+  const merged = new Map(before);
+  for (const [key, count] of now) {
+    const added = count - (last.get(key) ?? 0);
+    if (added > 0) merged.set(key, (merged.get(key) ?? 0) + added);
+  }
+  return merged;
+}
+
+/**
  * The problems in other files now that the check before the user's changes (`before`) did not
  * have: what the changes in `path` caused. A problem that went away is not subtracted, and one
  * that was there already is not counted.

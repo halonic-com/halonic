@@ -327,6 +327,7 @@ verifies("files.ui.problems-list", () => {
     await act(async () => {});
     expect(page.textContent).not.toContain("Changes in this file");
 
+    act(() => opened[0]?.options.onChange?.("ab"));
     now = [issueIn("old.yaml", 1), issueIn("flow.yaml", 3)];
     notify();
     await act(async () => vi.advanceTimersByTime(300));
@@ -334,6 +335,33 @@ verifies("files.ui.problems-list", () => {
     expect(page.textContent).toContain("Changes in this file cause 1 problem in another file.");
     act(() => page.querySelector<HTMLElement>("p button")?.click());
     expect(openedItems).toEqual(["flow.yaml"]);
+  });
+
+  it("does not blame this tab for a problem another file's change brought in", async () => {
+    let now: FileIssue[] = [];
+    const listeners = new Set<() => void>();
+    const notify = () => {
+      for (const listener of listeners) listener();
+    };
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const page = show(
+      {
+        ...hostOf(async () => "a"),
+        problems: async () => now,
+        subscribe: (listener) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+      },
+      "a.yaml",
+    );
+    await act(async () => {});
+
+    now = [issueIn("b.yaml", 3)];
+    notify();
+    await act(async () => vi.advanceTimersByTime(300));
+
+    expect(page.textContent).not.toContain("Changes in this file");
   });
 
   it("announces the problem F8 reached, and opens the list for a gutter icon", async () => {

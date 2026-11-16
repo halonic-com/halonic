@@ -1,7 +1,12 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { FileIssue } from "./files-host.ts";
-import { causedElsewhere, problemsElsewhere, sortedForList } from "./problems-elsewhere.ts";
+import {
+  causedElsewhere,
+  problemsElsewhere,
+  sortedForList,
+  withNewSince,
+} from "./problems-elsewhere.ts";
 
 function issue(file: string, severity: "error" | "warning", line: number, col = 1): FileIssue {
   return { file, severity, message: `${severity} at ${line}`, line, col };
@@ -37,6 +42,18 @@ describe("problems caused elsewhere", () => {
       const before = problemsElsewhere("a.yaml", [old, issue("b.yaml", "error", 3)]);
 
       expect(causedElsewhere("a.yaml", before, [old])).toEqual({ count: 0, firstFile: undefined });
+    });
+
+    it("moves the baseline past problems that appeared between two checks", () => {
+      const old = issue("b.yaml", "error", 2);
+      const fresh = issue("c.yaml", "error", 4);
+      const before = problemsElsewhere("a.yaml", [old]);
+      const last = problemsElsewhere("a.yaml", [old]);
+      const now = [old, fresh];
+
+      const moved = withNewSince(before, last, problemsElsewhere("a.yaml", now));
+
+      expect(causedElsewhere("a.yaml", moved, now)).toEqual({ count: 0, firstFile: undefined });
     });
 
     it("sorts errors before warnings, then by line and column", () => {
