@@ -1,4 +1,6 @@
 import type {
+  BridgeApprovalDecision,
+  BridgeApprovalRequest,
   GatewayApproval,
   GatewayEventBody,
   GatewaySession,
@@ -43,6 +45,8 @@ const summaryLength = 300;
 const sessionsBudgetBytes = gatewayMaxMessageBytes - 1024;
 
 interface PendingApproval {
+  /** Where the approval is decided: by the run as an event, or at the bridge. */
+  readonly via: "run" | "bridge";
   readonly callId: string;
   readonly approval: GatewayApproval;
   /** The `seq` of its `approval-requested` event. */
@@ -63,6 +67,9 @@ interface Watcher {
 /** One run as the gateway sees it. */
 class LedgerSession {
   readonly id: string;
+  /** The engine's run and the agent the harness run works as; a bridge names its approvals by them. */
+  readonly runId: string;
+  readonly agentId: string;
   state: GatewaySession["state"] = "running";
   title: string;
   updatedAt: string;
@@ -72,8 +79,10 @@ class LedgerSession {
   nextApproval = 1;
   readonly watchers = new Set<Watcher>();
 
-  constructor(id: string, title: string, at: string) {
+  constructor(id: string, task: HarnessTask, title: string, at: string) {
     this.id = id;
+    this.runId = task.runId;
+    this.agentId = task.agentId;
     this.title = title;
     this.updatedAt = at;
   }
@@ -109,7 +118,7 @@ export class RunLedger {
 
   /** A run has started: its prompt is the first message. */
   started(id: string, task: HarnessTask): void {
-    const session = new LedgerSession(id, titleOf(task.prompt), this.#at());
+    const session = new LedgerSession(id, task, titleOf(task.prompt), this.#at());
     this.#sessions.set(id, session);
     this.#append(session, { type: "message", role: "user", text: task.prompt });
   }
@@ -119,17 +128,40 @@ export class RunLedger {
     const session = this.#sessions.get(id);
     if (session === undefined) return;
     if (event.type === "approval.requested") {
-      const approval: GatewayApproval = {
-        id: `approval-${session.nextApproval++}`,
-        summary: shorten(`${event.tool}: ${describe(event.args)}`, summaryLength),
-        risk: judgeApprovalRisk(event.tool),
-      };
-      const seq = this.#append(session, { type: "approval-requested", approval });
-      session.pending.push({ callId: event.callId, approval, seq });
-      this.#setState(session, "waiting");
+      this.#ask(session, "run", event.callId, event.tool, event.args);
     } else if (event.type === "agent.finished" && event.parent === undefined) {
       this.#append(session, { type: "message", role: "agent", text: describe(event.output) });
     }
+  }
+
+  /**
+   * A bridge asked a person to approve a call, as Claude Code's tools and
+   * Halonic's own tools do for every harness. The bridge names the engine's
+   * run and the agent, not the host's run id, so the session is the one that
+   * run started for that agent.
+   */
+  bridgeApprovalAsked(runId: string, agentId: string, request: BridgeApprovalRequest): void {
+    const session = this.#runningSessionOf(runId, agentId);
+    if (session === undefined) return;
+    this.#ask(session, "bridge", request.callId, request.tool, request.args);
+  }
+
+  /**
+   * The bridge's call for an approval ended: with the person's decision, or
+   * with none (`undefined`) because the call was cancelled or failed, which
+   * counts as denied.
+   */
+  bridgeApprovalEnded(
+    runId: string,
+    agentId: string,
+    callId: string,
+    decision: BridgeApprovalDecision | undefined,
+  ): void {
+    const session = this.#runningSessionOf(runId, agentId);
+    const waiting = session?.pending.find((p) => p.via === "bridge" && p.callId === callId);
+    if (session === undefined || waiting === undefined) return;
+    this.#settle(session, waiting, decision?.approved === true ? "approve" : "deny");
+    if (session.pending.length === 0) this.#setState(session, "running");
   }
 
   /** A person's answer went to the run, from the desktop or a phone. */
@@ -140,7 +172,9 @@ export class RunLedger {
       this.#append(session, { type: "message", role: "user", text: input.text });
       return;
     }
-    const waiting = session.pending.find((pending) => pending.callId === input.callId);
+    const waiting = session.pending.find(
+      (pending) => pending.via === "run" && pending.callId === input.callId,
+    );
     if (waiting === undefined) return;
     this.#settle(session, waiting, input.approved ? "approve" : "deny");
     if (session.pending.length === 0) this.#setState(session, "running");
@@ -220,6 +254,11 @@ export class RunLedger {
     };
   }
 
+  /** How a waiting approval is decided, or `undefined` when none waits with this id. */
+  approvalVia(id: string, approvalId: string): "run" | "bridge" | undefined {
+    return this.#pendingApproval(id, approvalId)?.via;
+  }
+
   /** The risk of the approval that waits in the session, or `undefined` when none does. */
   approvalRisk(id: string, approvalId: string): "normal" | "risky" | undefined {
     return this.#pendingApproval(id, approvalId)?.approval.risk;
@@ -232,6 +271,35 @@ export class RunLedger {
 
   #pendingApproval(id: string, approvalId: string): PendingApproval | undefined {
     return this.#sessions.get(id)?.pending.find(({ approval }) => approval.id === approvalId);
+  }
+
+  /** The newest session of the engine's run and agent that hasn't ended. */
+  #runningSessionOf(runId: string, agentId: string): LedgerSession | undefined {
+    return [...this.#sessions.values()]
+      .reverse()
+      .find(
+        (session) =>
+          session.runId === runId &&
+          session.agentId === agentId &&
+          (session.state === "running" || session.state === "waiting"),
+      );
+  }
+
+  #ask(
+    session: LedgerSession,
+    via: PendingApproval["via"],
+    callId: string,
+    tool: string,
+    args: unknown,
+  ): void {
+    const approval: GatewayApproval = {
+      id: `approval-${session.nextApproval++}`,
+      summary: shorten(`${tool}: ${describe(args)}`, summaryLength),
+      risk: judgeApprovalRisk(tool),
+    };
+    const seq = this.#append(session, { type: "approval-requested", approval });
+    session.pending.push({ via, callId, approval, seq });
+    this.#setState(session, "waiting");
   }
 
   #at(): string {

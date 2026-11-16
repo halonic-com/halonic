@@ -50,6 +50,37 @@ describe("studioServices", () => {
     });
   });
 
+  it("tells the observer when an approval is asked and what was decided", async () => {
+    const { channel } = answeringChannel({ approved: true });
+    const told: unknown[] = [];
+    const { approvals } = studioServices(channel, {
+      asked: (request) => told.push(["asked", request.callId]),
+      ended: (callId, decision) => told.push(["ended", callId, decision]),
+    });
+    const request = { callId: "c1", tool: "Bash", args: {} };
+    await approvals.request(request, { signal: new AbortController().signal });
+    expect(told).toEqual([
+      ["asked", "c1"],
+      ["ended", "c1", { approved: true }],
+    ]);
+  });
+
+  it("tells the observer a call that failed ended without a decision, and survives its faults", async () => {
+    const { channel } = answeringChannel({ kind: "maybe" });
+    const told: unknown[] = [];
+    const { approvals } = studioServices(channel, {
+      asked: () => {
+        throw new Error("observer fault");
+      },
+      ended: (_callId, decision) => told.push(decision),
+    });
+    const request = { callId: "c1", tool: "Bash", args: {} };
+    await expect(
+      approvals.request(request, { signal: new AbortController().signal }),
+    ).rejects.toThrow("wrong shape");
+    expect(told).toEqual([undefined]);
+  });
+
   it("gives up on a quick call Studio never answers, but lets a tool's run and an approval wait", async () => {
     vi.useFakeTimers();
     const lines: unknown[] = [];

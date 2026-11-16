@@ -410,6 +410,10 @@ function hostServices(
           ...(socketFolder === undefined ? {} : { socketFolder }),
         }),
       bridges,
+      (runId, agentId) => ({
+        asked: (request) => ledger.bridgeApprovalAsked(runId, agentId, request),
+        ended: (callId, decision) => ledger.bridgeApprovalEnded(runId, agentId, callId, decision),
+      }),
     ),
     ...harnessRoutes({ harnesses, sessions, bridges, runs }),
     ...connectorRoutes(connectorDeps),

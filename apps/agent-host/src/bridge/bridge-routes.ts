@@ -12,10 +12,13 @@ import {
   openBridgeBody,
   priceIn,
 } from "./bridge-schemas.ts";
-import { studioSecrets, studioServices } from "./studio-services.ts";
+import { type ApprovalObserver, studioSecrets, studioServices } from "./studio-services.ts";
 
 /** Makes the bridge server of one run, which reads its provider keys from `secrets`. */
 export type BridgeServerFactory = (secrets: Secrets) => HarnessBridgeServer;
+
+/** Who hears the approvals the bridge of this run and agent asks for (see {@link ApprovalObserver}). */
+export type ApprovalObserverFor = (runId: string, agentId: string) => ApprovalObserver;
 
 /** How many bridges the host keeps open at once, opening ones included. */
 export const defaultMaxBridges = 64;
@@ -130,9 +133,17 @@ export class BridgeTable {
  *   `{ bridge, call, error }` answers one call.
  * - `POST /v1/bridge/close` with `{ bridge }` closes the bridge and ends its stream.
  */
-export function bridgeRoutes(serverFor: BridgeServerFactory, bridges: BridgeTable): HostRoute[] {
+export function bridgeRoutes(
+  serverFor: BridgeServerFactory,
+  bridges: BridgeTable,
+  observerFor?: ApprovalObserverFor,
+): HostRoute[] {
   return [
-    { method: "POST", path: "/v1/bridge/open", handle: openBridgeHandler(serverFor, bridges) },
+    {
+      method: "POST",
+      path: "/v1/bridge/open",
+      handle: openBridgeHandler(serverFor, bridges, observerFor),
+    },
     {
       method: "POST",
       path: "/v1/bridge/answer",
@@ -166,6 +177,7 @@ export function bridgeRoutes(serverFor: BridgeServerFactory, bridges: BridgeTabl
 function openBridgeHandler(
   serverFor: BridgeServerFactory,
   bridges: BridgeTable,
+  observerFor: ApprovalObserverFor | undefined,
 ): HostRoute["handle"] {
   return async (request, response) => {
     const body = await readCheckedBody(request, response, openBridgeBody);
@@ -178,7 +190,7 @@ function openBridgeHandler(
     const stream = startNdjsonStream(response);
     let opened: { id: string; channel: CallChannel } | undefined;
     try {
-      opened = await openBridge(serverFor, bridges, body, stream);
+      opened = await openBridge(serverFor, bridges, body, stream, observerFor);
     } finally {
       release();
     }
@@ -202,6 +214,7 @@ async function openBridge(
   bridges: BridgeTable,
   body: OpenBridgeBody,
   stream: NdjsonStream,
+  observerFor: ApprovalObserverFor | undefined,
 ): Promise<{ id: string; channel: CallChannel } | undefined> {
   const channel = new CallChannel(stream);
   let bridge: OpenHarnessBridge;
@@ -211,7 +224,7 @@ async function openBridge(
       agentId: body.agentId,
       providers: body.providers,
       price: (provider, model) => priceIn(body.prices, provider, model),
-      ...studioServices(channel),
+      ...studioServices(channel, observerFor?.(body.runId, body.agentId)),
     });
   } catch (error) {
     stream.send({

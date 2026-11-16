@@ -36,6 +36,46 @@ function startedLedger(options = {}): RunLedger {
 
 verifies("agent-host.gateway-run-ledger", () => {
   describe("RunLedger", () => {
+    it("records an approval the bridge asks for, and settles it with the decision", () => {
+      const ledger = startedLedger();
+      const request = { callId: "bridge_1", tool: "send_mail", args: { to: "a" } };
+      ledger.bridgeApprovalAsked("run_1", "writer", request);
+      expect(ledger.list()[0]?.state).toBe("waiting");
+      expect(ledger.approvalVia("run", "approval-1")).toBe("bridge");
+      expect(ledger.approvalRisk("run", "approval-1")).toBe("risky");
+      ledger.bridgeApprovalEnded("run_1", "writer", "bridge_1", { approved: true });
+      expect(ledger.list()[0]?.state).toBe("running");
+      expect(ledger.approvalRisk("run", "approval-1")).toBeUndefined();
+    });
+
+    it("settles a bridge approval whose call ended without a decision as denied", async () => {
+      const ledger = startedLedger();
+      ledger.bridgeApprovalAsked("run_1", "writer", { callId: "b", tool: "Bash", args: {} });
+      ledger.bridgeApprovalEnded("run_1", "writer", "b", undefined);
+      const bodies = (await eventsFrom(ledger, 0)).map(({ body }) => body);
+      expect(bodies).toContainEqual({
+        type: "approval-settled",
+        approvalId: "approval-1",
+        decision: "deny",
+      });
+    });
+
+    it("ignores a bridge approval of a run or agent it doesn't know, or of a run that ended", () => {
+      const ledger = startedLedger();
+      ledger.bridgeApprovalAsked("other", "writer", { callId: "b", tool: "Bash", args: {} });
+      ledger.bridgeApprovalAsked("run_1", "reviewer", { callId: "b", tool: "Bash", args: {} });
+      ledger.ended("run", "done");
+      ledger.bridgeApprovalAsked("run_1", "writer", { callId: "b", tool: "Bash", args: {} });
+      expect(ledger.list()[0]).toMatchObject({ state: "done", lastSeq: 2 });
+    });
+
+    it("doesn't settle a bridge approval with an answer sent to the run under the same call id", () => {
+      const ledger = startedLedger();
+      ledger.bridgeApprovalAsked("run_1", "writer", { callId: "same", tool: "Bash", args: {} });
+      ledger.answered("run", { type: "approval", callId: "same", approved: true });
+      expect(ledger.approvalVia("run", "approval-1")).toBe("bridge");
+    });
+
     it("lists a started run with its first line as the title", () => {
       expect(startedLedger().list()).toEqual([
         {
