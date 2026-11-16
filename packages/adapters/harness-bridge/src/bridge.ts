@@ -7,7 +7,7 @@ import {
   harnessBridgeTokenHeader,
   type OpenHarnessBridge,
 } from "@halonicjs/ports";
-import { KindedError } from "@halonicjs/std";
+import { errorKindOf, KindedError } from "@halonicjs/std";
 import { sendBridgeError, sendBridgeRefusal } from "./bridge-error.ts";
 import { type BridgePlace, listenAt } from "./listener.ts";
 import { type BodyLimits, bodyTooLarge, readRequestBody } from "./read-body.ts";
@@ -157,11 +157,26 @@ async function serve(context: ServeContext, request: IncomingMessage, response: 
       response.destroy();
       return;
     }
+    reportUnnamedFailure(run, token, error);
     // The program may still be sending: close the connection once the error reply is out.
     endedConnections.add(request.socket);
     response.shouldKeepAlive = false;
     sendBridgeError(response, error);
   }
+}
+
+/**
+ * Tells the run about a failure the program was only told "the run log has the
+ * details" for, so that sentence is true. A failure the bridge named (a
+ * {@link KindedError} other than `internal`) is already in the reply.
+ */
+function reportUnnamedFailure(run: HarnessBridgeOptions, token: string, error: unknown) {
+  if (error instanceof KindedError && errorKindOf(error) !== "internal") return;
+  const text = error instanceof Error ? error.message : String(error);
+  run.reportError?.({
+    kind: errorKindOf(error),
+    message: text.replaceAll(token, "[run token]"),
+  });
 }
 
 /** The route for a request's method and path, ignoring its query. */

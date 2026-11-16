@@ -1,4 +1,5 @@
 import type { BridgeEvent, HarnessBridgeOptions, OpenHarnessBridge } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type BridgeSettings, openBridge } from "./bridge.ts";
@@ -285,6 +286,39 @@ verifies("harness-bridge.server", () => {
       expect(reply.status).toBe(500);
       expect(reply.text).not.toContain(bridge.token);
       expect(JSON.parse(reply.text)).toMatchObject({ error: { type: "internal" } });
+    });
+
+    it("reports an unknown error to the run, without the run token", async () => {
+      const sent = { token: "" };
+      const failing: BridgeRoute = {
+        ...echo,
+        handle: async () => {
+          throw new TypeError(`bad reply header ${sent.token}`);
+        },
+      };
+      const failures: { kind: string; message: string }[] = [];
+      const run: HarnessBridgeOptions = {
+        ...fakeRun(),
+        reportError: (failure) => failures.push(failure),
+      };
+      const bridge = await openWith(run, { ...settings, routes: [failing] });
+      sent.token = bridge.token;
+      await send(bridge, "/echo", { token: bridge.token });
+      expect(failures).toEqual([{ kind: "internal", message: "bad reply header [run token]" }]);
+    });
+
+    it("doesn't report an error it named to the program", async () => {
+      const named: BridgeRoute = {
+        ...echo,
+        handle: async () => {
+          throw new KindedError("not_found", "No such thing.");
+        },
+      };
+      const failures: unknown[] = [];
+      const run: HarnessBridgeOptions = { ...fakeRun(), reportError: (f) => failures.push(f) };
+      const bridge = await openWith(run, { ...settings, routes: [named] });
+      await send(bridge, "/echo", { token: bridge.token });
+      expect(failures).toEqual([]);
     });
   });
 
