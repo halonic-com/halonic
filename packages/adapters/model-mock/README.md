@@ -1,6 +1,6 @@
 # @halonicjs/adapter-model-mock
 
-The scripted mock model. It answers each agent from a script, turns `tool:<name> <json>` lines into tool calls, and never touches the network, so a run gives the same event log every time. It is meant for `halonic test`, the engine's tests and the parity run; no package depends on it yet. A workspace can also use it as a provider with `type: mock`.
+The scripted mock model. It answers each agent from a script, turns `tool:<name> <json>` lines into tool calls, and never touches the network, so a run gives the same event log every time. It is meant for `halonic test`, the engine's tests and the parity run; no package depends on it yet. A workspace can also use it as a provider with `type: mock`. A workspace's mock restarts its script for each run (the resolver in `adapter-workspace-models` makes one mock per run).
 
 - **Layer:** adapters
 - **Owner:** liam

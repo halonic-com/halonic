@@ -115,7 +115,7 @@ export {
   withKnowledgeFirst,
 } from "./knowledge/knowledge-first.ts";
 export { defaultMaxRounds, LocalExecutor } from "./local-executor.ts";
-export type { LocalExecutorOptions } from "./local-executor-options.ts";
+export type { LocalExecutorOptions, ModelScope } from "./local-executor-options.ts";
 export type { AbortOnStop } from "./run/abort-on-stop.ts";
 export {
   type EndedLostRuns,

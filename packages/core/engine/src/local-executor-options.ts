@@ -16,6 +16,11 @@ import type { AgentKnowledgeOptions } from "./knowledge/agent-knowledge.ts";
 import type { AbortOnStop } from "./run/abort-on-stop.ts";
 import type { LocalRunsOptions } from "./run/local-runs-options.ts";
 
+/** The run a model call is made in. A chat turn has none. */
+export interface ModelScope {
+  readonly runId: string;
+}
+
 /** What a {@link LocalExecutor} works with. Everything comes in here: no registry, no adapters. */
 export interface LocalExecutorOptions {
   /**
@@ -23,9 +28,12 @@ export interface LocalExecutorOptions {
    * the unsaved `agent` settings, with the alias's own fallbacks. The
    * workspace package plugs in here once it has model aliases.
    *
+   * @param scope - the run of a run's model call, and of its subagents'; absent
+   *   for a chat turn. A resolver whose models keep state (the mock's script)
+   *   starts them afresh for each run.
    * @throws when no model fits; `chatTurn` then rejects with that error
    */
-  resolveModel(request: ChatTurnRequest): Promise<ResolvedModel>;
+  resolveModel(request: ChatTurnRequest, scope?: ModelScope): Promise<ResolvedModel>;
   /** Halonic's own tools, offered after the caller's. */
   readonly halonicTools: readonly HalonicTool[];
   /**

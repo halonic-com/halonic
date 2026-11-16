@@ -1,6 +1,6 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve as resolvePath } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import type { ChatTurnRequest, HttpClient, Secrets } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
@@ -166,11 +166,12 @@ verifies("cli.workspace-models", () => {
       expect(model.provider.type).toBe("openai");
     });
 
-    it("builds each provider once", async () => {
+    it("builds each provider once in a run", async () => {
       const resolve = await resolverFor();
+      const scope = { runId: "run-1" };
 
-      const first = await resolve(callOf({ agentId: "writer" }));
-      const second = await resolve(callOf({ alias: "smart" }));
+      const first = await resolve(callOf({ agentId: "writer" }), scope);
+      const second = await resolve(callOf({ alias: "smart" }), scope);
 
       expect(second.provider).toBe(first.provider);
       expect(second.fallback?.[0]?.provider).toBe(first.fallback?.[0]?.provider);
@@ -208,6 +209,66 @@ verifies("cli.workspace-models", () => {
         code: "unknown-model-alias",
         message: "hub support has no model alias default.",
       });
+    });
+  });
+
+  describe("a mock model's script", () => {
+    it("starts afresh for each run, and stays with one run and its subagents", async () => {
+      const resolve = await resolverFor();
+      const first = await resolve(callOf({ agentId: "helper" }), { runId: "run-1" });
+      const again = await resolve(callOf({ agentId: "writer" }), { runId: "run-1" });
+      const second = await resolve(callOf({ agentId: "helper" }), { runId: "run-2" });
+
+      expect(again.fallback?.[0]?.provider).toBe(first.provider);
+      expect(second.provider).not.toBe(first.provider);
+    });
+
+    it("gives a call without a run a new mock each time", async () => {
+      const resolve = await resolverFor();
+
+      const one = await resolve(callOf({ agentId: "helper" }));
+      const two = await resolve(callOf({ agentId: "helper" }));
+
+      expect(two.provider).not.toBe(one.provider);
+    });
+
+    it("gives the Acme sample's sorter the same answer in every run", async () => {
+      const acme = resolvePath(import.meta.dirname, "../../../../examples/acme");
+      const workspace = await loadWorkspace(new FolderDefinitionStore(acme, "./acme"));
+      const resolve = workspaceModelResolver({ workspace, secrets, http });
+      const sorterAnswer = async (runId: string): Promise<string> => {
+        const model = await resolve(callOf({ hubId: "support", agentId: "sorter" }), { runId });
+        const answer = await model.provider.chat({
+          model: model.model,
+          messages: [{ role: "user", content: "Sam wants a refund" }],
+          meta: { agentId: "sorter" },
+        });
+        return answer.content;
+      };
+
+      expect(await sorterAnswer("run-1")).toBe("refund");
+      expect(await sorterAnswer("run-2")).toBe("refund");
+    });
+
+    it("builds a real provider once, whatever the run", async () => {
+      const resolve = await resolverFor();
+
+      const one = await resolve(callOf({ agentId: "writer" }), { runId: "run-1" });
+      const two = await resolve(callOf({ agentId: "writer" }), { runId: "run-2" });
+
+      expect(two.provider).toBe(one.provider);
+    });
+
+    it("forgets the oldest runs' mocks past 32 runs", async () => {
+      const resolve = await resolverFor();
+      const first = await resolve(callOf({ agentId: "helper" }), { runId: "run-0" });
+      for (let run = 1; run <= 32; run += 1) {
+        await resolve(callOf({ agentId: "helper" }), { runId: `run-${run}` });
+      }
+
+      const later = await resolve(callOf({ agentId: "helper" }), { runId: "run-0" });
+
+      expect(later.provider).not.toBe(first.provider);
     });
   });
 });
