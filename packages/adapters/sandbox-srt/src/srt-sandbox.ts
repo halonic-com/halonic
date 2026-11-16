@@ -291,7 +291,7 @@ export class SrtSandbox implements Sandbox {
   async #profileReadable(): Promise<boolean> {
     if (this.#machine.platform !== "win32") return false;
     try {
-      return await this.#machine.profileReadGranted();
+      return (await this.#machine.profileReadGranted?.()) ?? false;
     } catch {
       return true;
     }

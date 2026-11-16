@@ -79,9 +79,10 @@ export interface Machine {
    * Whether srt's profile read grant is on this machine, which lets every
    * sandboxed session read the user's profile (another program installed srt
    * without `--skip-profile-grant`). Also true when the grant can't be read:
-   * the answer errs on reporting a limit. Windows only; false elsewhere.
+   * the answer errs on reporting a limit. Windows only; false elsewhere. A
+   * machine without it counts as no grant.
    */
-  profileReadGranted(): Promise<boolean>;
+  profileReadGranted?(): Promise<boolean>;
   /**
    * Runs srt's Windows install (`srt windows-install`): the sandbox account and
    * its network filters, for the whole machine. It asks for an administrator
