@@ -7,17 +7,26 @@ import {
   type PlaceViewProps,
   type SidebarPlace,
 } from "@halonicjs/studio-shell";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { flushSync } from "react-dom";
-import { InboxService } from "../api.ts";
+import { InboxRequestsService, InboxService } from "../api.ts";
 import type { Inbox, SetupFocus } from "../inbox.ts";
 import type { InboxItem } from "../inbox-items.ts";
 import { secretTarget } from "../plain/secret-target.ts";
+import type { InboxRequests } from "../request/inbox-requests.ts";
 import { ApprovalCard } from "./approval-card.tsx";
 import type { NextItem } from "./card-parts.tsx";
 import { countDetail, itemTitle, lateCount, rowFor } from "./inbox-row.tsx";
 import { SetupPane } from "./setup-pane.tsx";
 import { useOpenItem } from "./use-open-item.ts";
+import { useRequestPane } from "./use-request-pane.tsx";
 import { WaitCard } from "./wait-card.tsx";
 
 const loadFailed = "Couldn't load the Inbox";
@@ -38,6 +47,7 @@ export function InboxPage({ context }: PlaceViewProps) {
     <InboxView
       inbox={context.services.get(InboxService)}
       words={engineWordsOf(context)}
+      requests={context.services.find(InboxRequestsService)}
       {...(context.openPlace === undefined ? {} : { openPlace: context.openPlace })}
     />
   );
@@ -53,6 +63,8 @@ export interface InboxViewProps {
    * and over the list when a later load fails (microcopy 10.1). The desktop app's by default.
    */
   readonly words?: EngineWords;
+  /** The workflows the Inbox starts as requests; without it there is no request form. */
+  readonly requests?: InboxRequests | undefined;
   /** Opens a sidebar place, for a secret pasted when no account is there to take it: the Library. */
   readonly openPlace?: (place: SidebarPlace) => void;
 }
@@ -71,13 +83,17 @@ export interface InboxViewProps {
  * as a page with **Back to Inbox**; the top bar already says "Inbox", so the page's own heading is
  * for screen readers only.
  *
- * Not here yet: notices, the request form, the narrow layout (HAL-1305), and
- * **Open run**, which comes with the run page.
+ * With no card open, the right pane is the request form when the workspace has a workflow with a
+ * `start:` block (`InboxRequests`), and **New request** in the header brings it back.
+ *
+ * Not here yet: notices, the narrow layout (HAL-1305), and **Open run**, which comes with the run
+ * page.
  */
 export function InboxView({
   inbox,
   now = () => new Date(),
   words = engineWords["desktop-app"],
+  requests,
   openPlace,
 }: InboxViewProps) {
   const subscribe = useCallback((listener: () => void) => inbox.subscribe(listener), [inbox]);
@@ -97,12 +113,20 @@ export function InboxView({
   const failedFirst = !state.loaded && state.error !== undefined;
   const phone = usePresentation() === "phone";
   const itemPage = phone && open !== null;
+  const request = useRequestPane({
+    requests,
+    phone,
+    list,
+    closeItem: () => openItem(null),
+    words,
+  });
 
   return (
     <div className="flex h-full min-h-0 w-full">
       <div data-pane="list" className={listPaneClass(phone, itemPage)}>
-        <header className={phone ? "sr-only" : "flex items-center px-4 py-3"}>
+        <header className={phone ? "sr-only" : "flex items-center justify-between px-4 py-3"}>
           <h1 className="text-title">Inbox</h1>
+          {request.newRequest}
         </header>
         {state.loaded && state.error !== undefined ? (
           <p className="px-4 pb-2 text-small text-fg-muted">{words.showingLast}</p>
@@ -150,7 +174,9 @@ export function InboxView({
             </div>
           ) : null}
           {open === null ? (
-            <NothingOpen loaded={state.loaded} waiting={state.items.length} />
+            <NothingOpen loaded={state.loaded} waiting={state.items.length}>
+              {request.form}
+            </NothingOpen>
           ) : (
             <OpenCard
               key={open.key}
@@ -273,9 +299,21 @@ function OpenCard({
   return <WaitCard item={item} decisions={inbox.decisions} next={next} back={null} now={now} />;
 }
 
-/** The right pane with nothing open (UX checklist 2.3), without the request form for now. */
-function NothingOpen({ loaded, waiting }: { readonly loaded: boolean; readonly waiting: number }) {
+/**
+ * The right pane with nothing open (UX checklist 2.3): the request form when the workspace offers
+ * one (`form`), else a line.
+ */
+function NothingOpen({
+  loaded,
+  waiting,
+  children: form,
+}: {
+  readonly loaded: boolean;
+  readonly waiting: number;
+  readonly children: ReactNode;
+}) {
   if (!loaded) return null;
+  if (form !== null) return form;
   if (waiting > 0) {
     return (
       <p className="m-auto p-6 text-center text-body text-fg-muted">
