@@ -2,6 +2,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { fakeSetups, setupEntry } from "../fake-setups.test-helper.ts";
 import { refusedRun, sandboxInbox } from "../sandbox/fake-sandbox.test-helper.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -128,6 +129,20 @@ verifies("inbox.sandbox-row", () => {
     await settled();
     expect(t.inbox.state.items).toHaveLength(1);
     expect(root.querySelector("section h2")?.textContent).toBe("The sandbox is ready");
+  });
+
+  it("lets the fixed row go when you move to another setup item", async () => {
+    const t = sandboxInbox(twoRoutines);
+    t.inbox.addSetupSource(
+      fakeSetups("google", [setupEntry("acct-1", "2026-11-10T11:00:00.000Z")]).source,
+    );
+    const root = await openCard(t);
+    await act(async () => button(root, "Check again")?.click());
+    await settled();
+    expect(t.inbox.state.items).toHaveLength(2);
+    act(() => t.inbox.openSetup("google", "acct-1"));
+    await settled();
+    expect(t.inbox.state.items.map((item) => item.key)).toEqual(["setup:google:acct-1"]);
   });
 
   it("has no way to run anyway", async () => {

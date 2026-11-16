@@ -38,7 +38,11 @@ export function useOpenItem(inbox: Inbox, items: readonly InboxItem[]): OpenItem
   // A fixed item only stays while it is open: the source drops it once it isn't (or the page closes).
   // It runs when the open key changes or the page closes, not when a refresh swaps in a new object.
   const lastSetup = useRef<SetupItem | null>(null);
-  if (open?.kind === "setup") lastSetup.current = open;
+  // The ref is set in an effect, not during render: React runs every cleanup before the new
+  // effects, so moving to another setup item still releases the one you left.
+  useEffect(() => {
+    if (open?.kind === "setup") lastSetup.current = open;
+  });
   const openKey = open?.kind === "setup" ? open.key : undefined;
   useEffect(
     () => () => {
