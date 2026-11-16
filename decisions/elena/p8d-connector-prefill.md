@@ -3,6 +3,7 @@
 - Task: HAL-10950 (P8d, HAL-1303)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-10954 (Liam's review of #3144; a team decision with no board card, HAL-2282 rule: it builds on the approved flow-library 3.3 New connector dialog and fills in two of its fields)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TuNk9IV3zlDs/SFC2pBCi1QUt8eW1NcWrXXH4sjELb/6ZvP0gY8JUg+cLWqXOi1OgymSadGCw+JlfU3kuIt7BA==
 
 ## What changes
 
