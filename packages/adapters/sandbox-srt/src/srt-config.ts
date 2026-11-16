@@ -256,6 +256,9 @@ export async function assertSrtDeniesKeychain(profile: SandboxProfile): Promise<
  *
  * A profile with `keyStore: "denied"` gets the Keychain's Mach services
  * denied (see {@link keychainMachServices}).
+ *
+ * On Windows, `toolFolders` (see `toolFoldersInProfile`) are readable and
+ * not writable.
  */
 export function buildSrtConfig(
   profile: SandboxProfile,
@@ -263,6 +266,7 @@ export function buildSrtConfig(
   gitPaths: string[] = [],
   platform: NodeJS.Platform = process.platform,
   sharedFolders: readonly string[] = [],
+  toolFolders: readonly string[] = [],
 ): SrtConfig {
   const hidden = [...profile.deniedPaths, ...hiddenPaths];
   const toolSettings = [
@@ -277,7 +281,7 @@ export function buildSrtConfig(
   }
   const notDeniedForWriting = deniesHoldingReopened(profile, writableFolders);
   const readable = [
-    ...(platform === "win32" ? profile.readOnlyPaths : []),
+    ...(platform === "win32" ? [...profile.readOnlyPaths, ...toolFolders] : []),
     ...(profile.reopenedPaths ?? []),
     ...(sharedFolders.length > 0 ? [...writableFolders, ...profile.readOnlyPaths] : []),
   ];
@@ -299,6 +303,7 @@ export function buildSrtConfig(
       denyWrite: withResolved([
         ...hidden.filter((path) => !notDeniedForWriting.includes(path)),
         ...profile.readOnlyPaths,
+        ...(platform === "win32" ? toolFolders : []),
         ...toolSettings,
       ]).map(literalPath),
     },

@@ -63,6 +63,16 @@ verifies("sandbox-srt.profile-to-srt-config", () => {
     expect(buildSrtConfig(profile(), [], [], "win32").filesystem).not.toHaveProperty("allowRead");
   });
 
+  it("grants reading, not writing, the tool folders on Windows only", () => {
+    const tools = ["C:\\Users\\Ada\\.nvm\\v22"]; // leak-guard: allow absolute-path made-up Windows paths for the test
+    const win = buildSrtConfig(profile(), [], [], "win32", [], tools).filesystem;
+    expect(win?.allowRead).toContainEqual({ path: tools[0], literal: true });
+    expect(win?.denyWrite).toContainEqual({ path: tools[0], literal: true });
+    const linux = buildSrtConfig(profile(), [], [], "linux", [], tools).filesystem;
+    expect(linux).not.toHaveProperty("allowRead");
+    expect(linux?.denyWrite).not.toContainEqual({ path: tools[0], literal: true });
+  });
+
   it("denies writing the tool settings and hooks inside the working folder", () => {
     const writes = buildSrtConfig(profile()).filesystem?.denyWrite;
     const inWork = (...parts: string[]) => ({

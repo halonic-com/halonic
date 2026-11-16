@@ -1,5 +1,5 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { startFolder } from "@halonicjs/adapter-system-node";
 import { skillScriptsRefusal, touchesSkillScripts } from "@halonicjs/format";
@@ -35,6 +35,7 @@ import {
   programEnv,
   reachesNoNetwork,
 } from "./srt-session-env.ts";
+import { toolFoldersInProfile } from "./tool-folders.ts";
 
 /** One started program: what the session tracks to stop it and to say why it ended. */
 interface Started {
@@ -158,6 +159,14 @@ export class SrtSession implements SandboxSession {
         await gitPathsToDeny(profile.workingFolder),
         process.platform,
         sharedFolders,
+        process.platform === "win32"
+          ? toolFoldersInProfile(
+              process.env["PATH"],
+              homedir(),
+              [...profile.deniedPaths, folder],
+              [profile.workingFolder, profile.tempFolder],
+            )
+          : [],
       );
       await writeFile(settingsPath, JSON.stringify(config), { mode: 0o600 });
       const fence = await proveFence({
