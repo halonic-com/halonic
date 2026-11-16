@@ -6,7 +6,14 @@ import { updatesWords } from "../changes-words.ts";
  * Get updates (checklist part 2, 2.8): brings in the shared copy's newer versions when this
  * workspace has none the shared copy lacks. The result is a toast; a failure's has Try again.
  */
-export function GetUpdates({ list }: { readonly list: ChangesList }) {
+export function GetUpdates({
+  list,
+  phone = false,
+}: {
+  readonly list: ChangesList;
+  /** On a phone the button is a 48px touch button. */
+  readonly phone?: boolean;
+}) {
   const toasts = useToastStore();
   const getUpdates = async (): Promise<void> => {
     const outcome = await list.getUpdates();
@@ -27,7 +34,7 @@ export function GetUpdates({ list }: { readonly list: ChangesList }) {
   return (
     <Button
       variant="secondary"
-      size="sm"
+      size={phone ? "touch" : "sm"}
       busy={list.state.gettingUpdates}
       busyLabel={updatesWords.gettingUpdates}
       onClick={() => void getUpdates()}

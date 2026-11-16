@@ -3,6 +3,7 @@ import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { Version } from "../api.ts";
 import { ChangesList } from "../changes-list.ts";
 import { fakeSource, settle } from "../source.test-helper.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
@@ -14,6 +15,16 @@ afterEach(() => {
   unmountAll();
   restoreModal();
 });
+
+const manyVersions = (count: number): Version[] =>
+  Array.from({ length: count }, (_, i) => ({
+    id: `v${count - i}`,
+    name: `Version ${count - i}`,
+    notes: "",
+    author: "Sam Lee",
+    at: Date.now() - 60_000 - i * 1000,
+    files: [],
+  }));
 
 async function openPhonePage(fake: ReturnType<typeof fakeSource>) {
   const root = render(
@@ -77,6 +88,42 @@ verifies("source-control.changes-phone", () => {
       expect(root.textContent).toContain("Couldn't load changes");
       expect(root.textContent).toContain("Halonic on your computer isn't answering.");
       expect(root.textContent).toContain("Try again");
+    });
+    it("says the share address is on the computer, with no way to add one", async () => {
+      const root = await openPhonePage(changedModels());
+      expect(root.textContent).toContain("Only on your computer.");
+      expect(root.textContent).toContain("Add where to share on a computer.");
+      const buttons = [...root.querySelectorAll("button")].map((b) => b.textContent?.trim());
+      expect(buttons).not.toContain("Add where to share");
+    });
+
+    it("draws Get updates as a touch button at the end of the header", async () => {
+      const fake = changedModels();
+      fake.setRemote(true);
+      const root = await openPhonePage(fake);
+      const button = [...root.querySelectorAll("button")].find(
+        (element) => element.textContent?.startsWith("Get updates") === true,
+      );
+      expect(button?.className).toContain("min-h-touch");
+      expect(button?.closest(".ml-auto")).not.toBeNull();
+    });
+
+    it("draws Show more in History as a full-width touch button", async () => {
+      const fake = changedModels();
+      fake.setHistory(manyVersions(25));
+      const root = await openPhonePage(fake);
+      const more = [...root.querySelectorAll("button")].find(
+        (element) => element.textContent?.trim() === "Show more",
+      );
+      expect(more?.className).toContain("w-full");
+      expect(more?.className).toContain("min-h-touch");
+    });
+
+    it("says Halonic on the computer isn't answering when History can't load", async () => {
+      const fake = changedModels();
+      fake.failHistory(new Error("boom"));
+      const root = await openPhonePage(fake);
+      expect(root.textContent).toContain("Halonic on your computer isn't answering.");
     });
   });
 });
