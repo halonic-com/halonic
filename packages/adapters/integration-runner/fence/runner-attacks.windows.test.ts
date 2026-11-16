@@ -1,7 +1,7 @@
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { createSocket, type Socket as UdpSocket } from "node:dgram";
 import { existsSync } from "node:fs";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:net";
 import { join } from "node:path";
 import { createHostSandbox } from "@halonicjs/adapter-sandbox-host";
@@ -50,6 +50,8 @@ let resolver: UdpSocket;
 let resolverPort: number;
 let resolverQueries = 0;
 const victims: ChildProcess[] = [];
+/** Temp folders made outside the profile, removed in `afterAll`. */
+const outsideProfileFolders: string[] = [];
 
 beforeAll(async () => {
   base = await fenceTestBase("ra-");
@@ -92,7 +94,22 @@ afterAll(async () => {
     // Not there when `beforeAll` failed before adding it.
   }
   await rm(base, { recursive: true, force: true });
+  for (const folder of outsideProfileFolders) await rm(folder, { recursive: true, force: true });
 });
+
+/**
+ * Like {@link attackFolders}, but the temp folder is made where Halonic makes
+ * the runner's on Windows: `halonic\runner-temp` in `%ProgramData%`, outside
+ * the user's profile (`runnerTempFolder` in `@halonicjs/profile`).
+ */
+async function attackFoldersOutsideProfile(base: string, name: string): Promise<AttackFolders> {
+  const inBase = await attackFolders(base, name);
+  const parent = join(process.env["ProgramData"] ?? "", "halonic", "runner-temp");
+  await mkdir(parent, { recursive: true });
+  const tempFolder = await realpath(await mkdtemp(join(parent, "r-")));
+  outsideProfileFolders.push(tempFolder);
+  return { integrationFolder: inBase.integrationFolder, tempFolder };
+}
 
 let runs = 0;
 
@@ -262,13 +279,14 @@ describe("an integration in the runner on native Windows, Node's layer only", ()
     expect(await hasEnded(pid)).toBe(true);
   });
 
-  it("A17: sees fixed values for the variables Windows adds, and the temp folder's path (narrowed gap)", async () => {
+  it("A17: sees fixed values for the variables Windows adds, and nothing of the account (closed)", async () => {
     // The launcher passes TMPDIR and its own fixed values for the variables
     // libuv would fill in with the user's account name, profile folder and
-    // domain. Three of them are the runner's temp folder, and that folder is
-    // inside the profile folder, so its path still shows the account name.
-    // The user's own values must not appear in the others.
-    const folders = await attackFolders(base, "a17");
+    // domain. Three of them, and the working folder, are the runner's temp
+    // folder, which Halonic makes in %ProgramData%, outside the profile
+    // folder (`runnerTempFolder`, HAL-10674), so its path holds no account
+    // name either. The test makes its temp folder in the same place.
+    const folders = await attackFoldersOutsideProfile(base, "a17");
     const expected: Record<string, string> = {
       TMPDIR: folders.tempFolder,
       ...windowsEnvironment(folders.tempFolder, windowsFolder),
@@ -278,7 +296,9 @@ describe("an integration in the runner on native Windows, Node's layer only", ()
       .map((name) => `await attempt("${name}", () => process.env["${name}"]);`)
       .join("\n");
     const { attempts } = await attack(
-      `await attempt("names", () => Object.keys(process.env).sort().join(","));\n${readEach}`,
+      `await attempt("names", () => Object.keys(process.env).sort().join(","));
+await attempt("cwd", () => process.cwd());
+${readEach}`,
       "on",
       folders,
     );
@@ -287,14 +307,17 @@ describe("an integration in the runner on native Windows, Node's layer only", ()
       Object.keys(expected).map((name) => [name, attempts[name]?.detail ?? ""]),
     );
     expect(seen).toEqual(expected);
-    const fromTempFolder = ["TMPDIR", "TEMP", "USERPROFILE"];
-    const others = Object.entries(seen).filter(([name]) => !fromTempFolder.includes(name));
+    expect(attempts["cwd"]?.detail).toBe(folders.tempFolder);
+    // Every value, the temp folder's too: nothing of the user's own.
+    const everything = JSON.stringify([...Object.values(seen), attempts["cwd"]?.detail]);
     for (const own of [
       process.env["USERNAME"],
       process.env["USERPROFILE"],
       process.env["USERDOMAIN"],
     ]) {
-      expect(JSON.stringify(others), "the user's own value").not.toContain(own ?? "\0");
+      expect(everything.toLowerCase(), "the user's own value").not.toContain(
+        (own ?? "\0").toLowerCase(),
+      );
     }
   });
 

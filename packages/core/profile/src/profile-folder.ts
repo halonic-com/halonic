@@ -52,8 +52,9 @@ export interface ProfileEnvironment {
   /** The person's home folder, absolute. */
   readonly homeFolder: string;
   /**
-   * The environment variables. Only `HALONIC_HOME`, `LOCALAPPDATA` (Windows)
-   * and `XDG_DATA_HOME` (Linux) are read. An empty value counts as unset.
+   * The environment variables. Only `HALONIC_HOME`, `LOCALAPPDATA` and
+   * `ProgramData` (Windows) and `XDG_DATA_HOME` (Linux) are read. An empty
+   * value counts as unset.
    */
   readonly variables: Readonly<Record<string, string | undefined>>;
 }
@@ -64,6 +65,13 @@ export interface ProfileFolder {
   readonly platform: ProfilePlatform;
   /** The folder, absolute, without a trailing separator. It may not exist yet. */
   readonly root: string;
+  /**
+   * Windows only: the folder every account on the computer shares for program
+   * data (`%ProgramData%`), absolute. Nothing about the account is in its
+   * path. Absent where the system doesn't set it; {@link runnerTempFolder}
+   * then refuses to name a folder.
+   */
+  readonly sharedDataFolder?: string;
 }
 
 /**
@@ -96,9 +104,17 @@ export function profileFolder(environment: ProfileEnvironment): ProfileFolder {
         `HALONIC_HOME must be an absolute folder, not ${JSON.stringify(chosen)}.`,
       );
     }
-    return { platform, root: withoutTrailingSeparators(platform, chosen) };
+    return {
+      platform,
+      root: withoutTrailingSeparators(platform, chosen),
+      ...sharedData(environment),
+    };
   }
-  return { platform, root: joinPath(platform, userDataFolder(environment), folderName) };
+  return {
+    platform,
+    root: joinPath(platform, userDataFolder(environment), folderName),
+    ...sharedData(environment),
+  };
 }
 
 /**
@@ -147,16 +163,33 @@ export function unfencedRunsFolder(profile: ProfileFolder): string {
 }
 
 /**
- * The folder the runners' private temp folders are made in, `runner-temp` in
- * the profile folder: outside the shared `/tmp`, which the runner's profile
+ * The folder the runners' private temp folders are made in, `runner-temp`: in
+ * the profile folder, outside the shared `/tmp`, which the runner's profile
  * hides, so the one folder a runner may write to is kept apart from it.
+ *
+ * On Windows it is `halonic\runner-temp` in `%ProgramData%` instead, because
+ * the profile folder is inside the user's own profile. The runner sees the
+ * path of its temp folder (its working folder, `TEMP`, `USERPROFILE`), and a
+ * path inside the user's profile folder would give it the account name. Windows keeps
+ * what an account makes in `%ProgramData%` from the other accounts: they can
+ * make folders there but not list another's.
+ *
+ * @throws RangeError on Windows when the profile has no `sharedDataFolder`
  *
  * @example
  * runnerTempFolder({ platform: "linux", root: "/srv/acme/.local/share/halonic" });
  * // "/srv/acme/.local/share/halonic/runner-temp"
  */
 export function runnerTempFolder(profile: ProfileFolder): string {
-  return joinPath(profile.platform, profile.root, runnerTempFolderName);
+  if (profile.platform !== "windows") {
+    return joinPath(profile.platform, profile.root, runnerTempFolderName);
+  }
+  if (profile.sharedDataFolder === undefined) {
+    throw new RangeError(
+      "The runner's temp folder on Windows is made in %ProgramData%, which is not set to an absolute folder.",
+    );
+  }
+  return joinPath(profile.platform, profile.sharedDataFolder, folderName, runnerTempFolderName);
 }
 
 /**
@@ -227,6 +260,15 @@ function userDataFolder(environment: ProfileEnvironment): string {
     return xdgDataHome;
   }
   return joinPath(platform, home, ".local", "share");
+}
+
+/** The shared program data folder on Windows, as a field to add to the profile folder; nothing elsewhere or when unset. */
+function sharedData(environment: ProfileEnvironment): { sharedDataFolder?: string } {
+  const { platform } = environment;
+  if (platform !== "windows") return {};
+  const programData = variableOf(environment, "ProgramData");
+  if (programData === undefined || !isAbsolutePath(platform, programData)) return {};
+  return { sharedDataFolder: withoutTrailingSeparators(platform, programData) };
 }
 
 function homeFolderOf(environment: ProfileEnvironment): string {

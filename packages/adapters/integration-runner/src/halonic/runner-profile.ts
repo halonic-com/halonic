@@ -277,7 +277,8 @@ function runnerEnvironment(machine: RunnerMachine): Record<string, string> {
  * missing, with the user's own values: their account name, profile folder and
  * domain among them. Giving each one here keeps libuv from adding it, so the
  * integration learns nothing about the account. The user's variables point at
- * the runner's temp folder or hold a fixed name; the system ones are the
+ * the runner's temp folder, which is outside the profile folder on Windows
+ * (`runnerTempFolder`), or hold a fixed name; the system ones are the
  * Windows folder's own, the same for every account. `PATH` is the system
  * folder alone.
  */
