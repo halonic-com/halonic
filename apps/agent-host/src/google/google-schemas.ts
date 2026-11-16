@@ -31,3 +31,12 @@ export const startSetupBody = s
 export const editSetupBody = s
   .object({ accountRef, change: s.record(s.string(), s.unknown()) })
   .strict();
+
+/**
+ * What Studio gives to save or replace a client secret: the ref and the secret.
+ * The limit is the handler's own (512), so a longer one is refused before the
+ * host runs anything. The secret is never in a message the checks make.
+ */
+export const secretBody = s
+  .object({ accountRef, clientSecret: s.string().min(1).max(512) })
+  .strict();

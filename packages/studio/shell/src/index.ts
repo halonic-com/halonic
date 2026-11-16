@@ -317,6 +317,11 @@ export {
   readResourceReport,
 } from "./resources/resource-report.ts";
 export {
+  ResourceStatusItem,
+  type ResourceStatusItemProps,
+  resourceItemRefreshMs,
+} from "./resources/resource-status-item.tsx";
+export {
   lowDiskBytes,
   type ResourceCheckReason,
   type ResourceListener,

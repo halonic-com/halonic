@@ -7,6 +7,7 @@ import { pageWords, stateWords } from "../changes-words.ts";
 import { loadFailureReason } from "../load-failure.ts";
 import { ChangeList } from "./change-list.tsx";
 import { CreateVersionDialog } from "./create-version-dialog.tsx";
+import { GetUpdates } from "./get-updates.tsx";
 import { IdentityDialog } from "./identity-dialog.tsx";
 
 /** The Changes place's page: the open workspace's changes, from `ChangesListService`. */
@@ -41,10 +42,11 @@ export function ChangesView({ list, developerView }: ChangesViewProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   return (
     <div className="flex w-full flex-col gap-4 px-6 py-5">
-      <header className="flex flex-col gap-1">
-        <h1 ref={heading} tabIndex={-1} className="text-title">
+      <header className="flex items-center gap-3">
+        <h1 ref={heading} tabIndex={-1} className="text-title flex-1">
           {pageWords.title}
         </h1>
+        {state.hasRemote ? <GetUpdates list={list} /> : null}
       </header>
       <PageBody
         list={list}

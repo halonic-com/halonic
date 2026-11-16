@@ -125,3 +125,23 @@ export const identityWords = {
   failed: "Couldn't save this",
   tryAgain: "Try again",
 };
+
+/** Get updates (checklist part 2, 2.8; microcopy revision 94, 16). */
+export const updatesWords = {
+  getUpdates: "Get updates",
+  gettingUpdates: "Getting updates…",
+  /** The toast: "Got 2 versions from the shared copy". One phrase, no full stop. */
+  got: (count: number) =>
+    count === 1
+      ? "Got 1 version from the shared copy"
+      : `Got ${count} versions from the shared copy`,
+  upToDate: "Already up to date",
+  /** The toast's title when nothing could be got; the reason and "Nothing changed here." follow. */
+  failed: "Couldn't get versions",
+  nothingChanged: "Nothing changed here.",
+  /** Both sides have new versions; combining them, item by item, comes with Keep mine and Use theirs. */
+  bothMoved:
+    "The shared copy and this workspace both have new versions, so they can't be combined here yet.",
+  tryAgain: "Try again",
+  alreadyWorking: "Halonic is already getting updates.",
+};

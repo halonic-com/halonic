@@ -6,8 +6,8 @@ export const lowDiskBytes = 1024 ** 3;
 /** How often the shell reads the resource report by itself. */
 export const resourceCheckIntervalMs = 60_000;
 
-/** Why the report was read: the minute's check, or before a big write. */
-export type ResourceCheckReason = "interval" | "run" | "download" | "model-pull";
+/** Why the report was read: the minute's check, before a big write, or the status bar's refresh. */
+export type ResourceCheckReason = "interval" | "run" | "download" | "model-pull" | "status-bar";
 
 /** One reading of the engine's resource report. */
 export interface ResourceReading {

@@ -19,6 +19,8 @@ import { usePhonePlaces } from "../phone/use-phone-places.ts";
 import { placeNames, type SidebarPlace } from "../points/frame.ts";
 import type { ItemRef, OpenItemOptions } from "../points/item-kinds.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
+import { ResourceStatusItem } from "../resources/resource-status-item.tsx";
+import type { ResourceWatch } from "../resources/resource-watch.ts";
 import { announceSaveNotes } from "../save/save-note-words.ts";
 import { SettingsDialog } from "../settings/settings-dialog.tsx";
 import { listedSections, settingsGroups } from "../settings/settings-groups.ts";
@@ -80,6 +82,25 @@ export interface StudioWindowProps {
   readonly phoneSwitcher?: MorePageSwitcher | undefined;
   /** The workspace's header badges, such as "Not trusted yet · Review", on the desktop. */
   readonly badges?: ReactNode;
+  /**
+   * The engine's resource report, for the status bar item with Halonic's memory and free disk
+   * space. The desktop app passes it; a served browser and a phone don't show the item.
+   */
+  readonly resources?: ResourceWatch | undefined;
+}
+
+/** The memory and disk item: only the desktop app, and only when it passed the engine's report. */
+function DesktopResourceItem({
+  host,
+  resources,
+}: {
+  readonly host: StudioHost;
+  readonly resources: ResourceWatch | undefined;
+}) {
+  if (host !== "desktop-app" || resources === undefined) {
+    return null;
+  }
+  return <ResourceStatusItem watch={resources} />;
 }
 
 /**
@@ -263,7 +284,12 @@ export function StudioWindow(props: StudioWindowProps) {
           switcher={sidebarSwitcher}
         />
       }
-      statusBar={<StatusBarItems items={contributions.statusBar.list()} contextFor={contextFor} />}
+      statusBar={
+        <>
+          <StatusBarItems items={contributions.statusBar.list()} contextFor={contextFor} />
+          <DesktopResourceItem host={host} resources={props.resources} />
+        </>
+      }
       phoneTopBar={
         <StudioPhoneTopBar
           places={phone}

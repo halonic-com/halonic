@@ -1,5 +1,4 @@
 import type { Identity } from "./api.ts";
-import { identityWords } from "./changes-words.ts";
 
 /** The longest name or email the shell accepts, in UTF-8 bytes. */
 const longest = 254;
@@ -28,19 +27,6 @@ export function isAuthorEmail(text: string): boolean {
 /** Whether a name and email are both set. */
 export function isIdentityComplete(identity: Identity): boolean {
   return identity.name.trim() !== "" && identity.email.trim() !== "";
-}
-
-/** What is wrong under each field of a name and email; `undefined` for a field that is fine. */
-export interface IdentityProblems {
-  readonly name: string | undefined;
-  readonly email: string | undefined;
-}
-
-/** What is wrong with a name or email that is empty or isn't one, or `undefined` when both are fine. */
-export function identityProblems(identity: Identity): IdentityProblems | undefined {
-  const name = isAuthorName(identity.name.trim()) ? undefined : identityWords.emptyName;
-  const email = isAuthorEmail(identity.email.trim()) ? undefined : identityWords.badEmail;
-  return name === undefined && email === undefined ? undefined : { name, email };
 }
 
 function isOneLine(text: string): boolean {
