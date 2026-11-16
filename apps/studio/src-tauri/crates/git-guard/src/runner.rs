@@ -8,8 +8,8 @@ use crate::error::GitError;
 use crate::limited_run::{GitOutput, Limits, run_limited};
 use crate::opened_folders::{OpenedFolders, canonical, plain_path};
 use crate::repo_config::{
-    ConfigEntry, add_repository_filters, blank_filters, check_listing, check_refused_keys,
-    has_command_entry, neutralise_programs, parse_listing,
+    ConfigEntry, add_repository_filters, blank_filters, blank_merge_options, check_listing,
+    check_refused_keys, has_command_entry, neutralise_programs, parse_listing,
 };
 use crate::repository::{LOCATE_ARGS, Repository, check_located, gitlinks, untracked_repositories};
 
@@ -190,6 +190,9 @@ impl GitRunner {
         self.check_untracked_nested(folders, &repository, call, deadline)?;
         let mut overrides = blank_filters(&filters);
         overrides.extend(neutralise_programs(&entries));
+        if call.subcommand() == "merge" {
+            overrides.extend(blank_merge_options(&entries));
+        }
         Ok(Ok(Checked {
             repository: Some(repository),
             overrides,
@@ -315,7 +318,7 @@ impl GitRunner {
         command.arg(subcommand);
         // `remote.<name>.uploadpack` and `receivepack`.
         match subcommand.as_str() {
-            "pull" => {
+            "pull" | "fetch" => {
                 command.arg("--upload-pack=git-upload-pack");
             }
             "push" => {

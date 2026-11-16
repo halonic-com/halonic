@@ -327,6 +327,38 @@ fn git_hardening_accepts_a_wrapper_that_passes_its_config_on() {
         .expect("the wrapper is accepted");
 }
 
+#[cfg(unix)]
+#[test]
+fn git_hardening_refuses_a_merge_in_a_repository_that_plants_merge_options() {
+    let sandbox = Sandbox::new();
+    sandbox.init_repository();
+    sandbox.write("notes.md", "one\n");
+    sandbox.write(".gitattributes", "notes.md merge=planted\n");
+    sandbox.git_ok("add -A");
+    sandbox.git_ok("commit -m first-note");
+    sandbox.git_ok("branch other");
+    sandbox.write("notes.md", "one\nmine\n");
+    sandbox.git_ok("add -A");
+    sandbox.git_ok("commit -m my-note");
+    sandbox.git_ok("switch other");
+    sandbox.write("notes.md", "one\nsam\n");
+    sandbox.git_ok("add -A");
+    sandbox.git_ok("commit -m sam-note");
+    sandbox.git_ok("switch main");
+    sandbox.append_config(&format!(
+        "[branch \"main\"]\n\tmergeOptions = -s recursive\n\
+         [merge \"planted\"]\n\tdriver = {}\n",
+        sandbox.planted("driver")
+    ));
+    let refused = sandbox
+        .git("merge --no-ff --no-commit -s ours other")
+        .expect_err("the merge is refused");
+    assert_eq!(refused.kind(), "config_not_allowed");
+    assert_eq!(sandbox.marks(), Vec::<String>::new());
+    let file = std::fs::read_to_string(sandbox.acme.join("notes.md")).expect("the file reads");
+    assert_eq!(file, "one\nmine\n");
+}
+
 #[test]
 fn git_hardening_sets_and_reads_the_identity_in_the_repository_config() {
     let sandbox = Sandbox::new();
