@@ -103,7 +103,8 @@ async function choose(label: string) {
   const item = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
     (candidate) => candidate.textContent?.trim() === label,
   );
-  await act(async () => item?.click());
+  if (item === undefined) throw new Error(`No menu item ${label}`);
+  await act(async () => item.click());
 }
 
 const text = () => document.body.textContent ?? "";
