@@ -1,5 +1,13 @@
 import type { SkillChange } from "@halonicjs/app";
-import { Button, EmptyState, Field, FormRows, Input, TextArea } from "@halonicjs/studio-kit";
+import {
+  Button,
+  EmptyState,
+  Field,
+  FormRows,
+  Input,
+  settleOnClose,
+  TextArea,
+} from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { savingFor } from "../saving.ts";
@@ -153,7 +161,7 @@ function LoadedSkillPage({
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => saveInstructions.current(), INSTRUCTIONS_SAVE_AFTER_MS);
   };
-  const leave = async (field: Edited) => {
+  const leaveField = async (field: Edited) => {
     if (field === "instructions") {
       clearTimeout(saveTimer.current);
       saveTimer.current = undefined;
@@ -165,6 +173,7 @@ function LoadedSkillPage({
       if (draftsNow.current[field] === draft) setDrafts(without(field));
     }
   };
+  const leave = (field: Edited) => settleOnClose(leaveField(field));
   saveInstructions.current = () => void leave("instructions");
   const keptHint = (field: SkillField, text: string) => (kept.includes(field) ? text : undefined);
 

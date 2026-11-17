@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { settlePendingSaves } from "@halonicjs/studio-kit";
 import { type ItemRef, limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -165,6 +166,26 @@ verifies("models.aliases.edit-target", () => {
     expect(changes[0]?.label).toBe("Updated model alias smart");
     expect(changes[0]?.text).toContain("claude-opus-5-5");
     expect(tab.querySelector("[role=status]")?.textContent).toBe("Updated model alias smart");
+  });
+
+  it("registers a field's save with the window close while models.yaml is still being read", async () => {
+    const { files, changes } = memoryFiles(workspaceModels);
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const read = files.readModels;
+    const tab = await showTab(files);
+    files.readModels = async () => {
+      await held;
+      return read();
+    };
+    await typeInto(field(tab, "Model"), "claude-opus-5-5");
+    expect(changes).toHaveLength(0);
+
+    const settled = settlePendingSaves();
+    release();
+    await settled;
+
+    expect(changes).toHaveLength(1);
   });
 
   it("writes nothing for an empty model name and offers the old one back", async () => {

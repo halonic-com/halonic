@@ -73,7 +73,12 @@ export { servedServices } from "./served-studio.ts";
 
 import { followSystemRegion } from "./system-region.ts";
 import { trustedSourcesOf } from "./trusted-sources.ts";
-import { closeLimitMs, windowCloseHandler, withinLimit } from "./window-close.ts";
+import {
+  closeLimitMs,
+  leaveFocusedField,
+  windowCloseHandler,
+  withinLimit,
+} from "./window-close.ts";
 import { hostSettingsOf } from "./window-host-settings.ts";
 import { WorkspaceTrustView } from "./workspace-trust-control.ts";
 
@@ -206,6 +211,7 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
       stop: () => stopped(),
       limitMs: closeLimitMs,
       within: withinLimit,
+      settleDrafts: () => leaveFocusedField(page.element.ownerDocument),
     }),
   );
   const stopped = once(async () => {

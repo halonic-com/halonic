@@ -212,6 +212,7 @@ export {
   type MenuProps,
   type MenuTriggerProps,
 } from "./menu/menu.tsx";
+export { settleOnClose, settlePendingSaves } from "./pending-saves/pending-saves.ts";
 export {
   PICKER_SEARCH_FROM,
   type PickerOption,
