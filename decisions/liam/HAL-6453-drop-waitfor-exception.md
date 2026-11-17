@@ -3,8 +3,6 @@
 - Task: HAL-6453 (last step of HAL-6369)
 - Approval: `tooling/check/src/guard/` is a trust root, so this note needs both guardians: Liam (CTO) and Julian (security reviewer)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:lpSMi2C4FOm1NVHXhUm/slHa8tlpRwJOipfEJjsKZlAPHiG0SFYfeU14A43VN7Gl+iDOCwIQ8TeIiufV+9wdAA==
-- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:3UCbBL8kVMMQ+d1lZFkdYtfFQhjjjp6b+diHuObhb+2AtRfD+QwEZzxpyAW71L++6htcq2p63Nddh1fHR2QOAA==
 
 ## What changes
 
@@ -16,8 +14,10 @@ The exception was a stopgap. `vi.waitFor` ran its callback again until it passed
 
 ## Tests
 
-No test was skipped. `guard-test-runs.test.ts` passes (16 tests). The removed tests checked the exception itself; the new one checks that a test with `vi.waitFor` is held to the same rule as any other.
+No test was skipped. `guard-test-runs.test.ts` passes (16 tests, 20 before). The four removed tests checked the exception itself; the new one checks that a test with `vi.waitFor` is held to the same rule as any other. They all verify `check.guard-fewer-assertions`, so that requirement now has 6 tests and 8 expect calls instead of 10 and 12. The drop is intended, so both are listed under Covers.
 
 ## Covers
 
 - tooling/check/
+- tooling/check/src/test/guard-test-runs.test.ts
+- check.guard-fewer-assertions
