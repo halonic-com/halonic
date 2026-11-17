@@ -13,7 +13,7 @@ When the page is shown, the runs list shall note that this run's page has been o
 
 - Given a run that started today at 10:40 and is still running,
   when its page is shown,
-  then the header reads "Run · Support reply", "Run 01jd8q", the chip Running and "today 10:40 · updates live", with no banner.
+  then the header reads "Support reply", "Run 01jd8q", the chip Running and "today 10:40 · updates live", with no banner.
 - Given a run with one open approval in the step Send,
   when its page is shown,
   then the violet banner reads "Waiting for your approval. *Reporter wants to send an email with Gmail.* Nothing is sent until you decide." with Review in Inbox.

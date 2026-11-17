@@ -75,7 +75,16 @@ verifies("runs.run-view.receipt-summary", () => {
         sentCall("gmail_send", ["email", "emails"]),
         sentCall("drive_create_file", ["Drive file", "Drive files"], "saved"),
       ]),
-    ).toBe("Waiting for your approval in the step Send · sent 1 email · saved 1 Drive file so far");
+    ).toBe("Waiting for you · started 10:40 · sent 1 email · saved 1 Drive file so far");
+  });
+
+  it("doesn't count the times a live run asked, and doesn't repeat the banner's sentence", () => {
+    const waiting: RunEventBody = {
+      type: "run.waiting",
+      state: "review",
+      events: ["approve"],
+    } as RunEventBody;
+    expect(line({ approvals: [approvalAt(1)] }, [waiting])).toBe("Waiting for you · started 10:40");
   });
 
   it("opens a failed run with its step and how long it took, and keeps a possible send", () => {

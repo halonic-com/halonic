@@ -28,7 +28,7 @@ verifies("runs.run-page", () => {
     it("names the run by its short id, with what ran, the chip and when it started", () => {
       expect(page({}).header).toEqual({
         title: "Run 01jd8q",
-        kindLabel: "Run · Support reply",
+        kindLabel: "Support reply",
         chip: { word: "Running", tone: "running", dot: true },
         line: "today 10:40 · updates live",
       });

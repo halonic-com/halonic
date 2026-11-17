@@ -186,7 +186,7 @@ export const pageWords = {
  */
 export const runPageWords = {
   title: (shortId: string) => `Run ${shortId}`,
-  kindLabel: (workflow: string) => `Run · ${workflow}`,
+  kindLabel: (workflow: string) => workflow,
   startedToday: (time: string) => `today ${time}`,
   startedYesterday: (time: string) => `yesterday ${time}`,
   took: (took: string) => `took ${took}`,
@@ -420,6 +420,8 @@ export const summaryWords = {
   failedIn: (step: string, took: string) => `Failed in ${step} after ${took}`,
   /** A failed run that never entered a step (HAL-11190). */
   failedAfter: (took: string) => `Failed after ${took}`,
+  /** A run waiting for the user: the banner says for what, so the line says since when. */
+  waitingForYou: (since: string) => `Waiting for you${lineSeparator}started ${since}`,
   askedYou: (times: string) => `asked you ${times}`,
   soFar: (phrase: string) => `${phrase} so far`,
   counted: (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`,

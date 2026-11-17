@@ -14,14 +14,7 @@ import type {
 } from "@halonicjs/events";
 import { draftsOf, readsOf, sendsOf } from "@halonicjs/events";
 import type { SourcedRun } from "../api.ts";
-import {
-  costParts,
-  currentStepName,
-  enteredAStep,
-  needsYouLine,
-  took,
-  waitingLine,
-} from "../list/run-row.ts";
+import { costParts, currentStepName, enteredAStep, took, waitingLine } from "../list/run-row.ts";
 import {
   lineSeparator,
   receiptWords,
@@ -30,11 +23,13 @@ import {
   toolAction,
 } from "../run-words.ts";
 import { clockTime } from "../time-words.ts";
-import type { RunPageContext } from "./run-page-model.ts";
+import { type RunPageContext, startedWords } from "./run-page-model.ts";
 
 /**
  * The summary line of a run's receipt, from its log. Live runs say "so far"
- * once, after the last thing they sent. A run on the test model or a local
+ * once, after the last thing they sent, and don't count the times they asked
+ * the user: that is a receipt of a finished run. A run that waits for the user
+ * says since when, never the banner's sentence again. A run on the test model or a local
  * model has no cost part, never "€0.00".
  *
  * @example
@@ -56,7 +51,7 @@ export function summaryLine(
   return [
     lead(standing, run, step, context),
     ...sentParts,
-    ...askedParts(events),
+    ...(live ? [] : askedParts(events)),
     ...costParts(summary, context.currency),
   ].join(lineSeparator);
 }
@@ -74,7 +69,8 @@ function lead(
     case "cant-try":
       return rowLineWords.inStep(step);
     case "needs-you":
-      return needsYouLine(runWait(summary), step);
+      // The banner above says what it waits for; this line only says since when.
+      return summaryWords.waitingForYou(startedSince(new Date(summary.startedAt), context.now));
     case "waiting":
       return waitingLine(runWait(summary), step, context.now);
     case "done":
@@ -88,6 +84,13 @@ function lead(
     case "cancelled":
       return rowLineWords.cancelledIn(step, took(summary));
   }
+}
+
+/** "12:25" for a run started today, else "yesterday 10:40" or "Fri 6 Nov 10:40". */
+function startedSince(started: Date, now: Date): string {
+  return started.toDateString() === now.toDateString()
+    ? clockTime(started)
+    : startedWords(started, now);
 }
 
 /** "asked you once" or "twice" or "3 times", for each time the run waited for the user. */
