@@ -11,7 +11,7 @@ import type {
 /** What {@link memoryAgentsHost} starts with. */
 export interface MemoryAgentsHostOptions {
   readonly hubs: readonly AgentHub[];
-  readonly agents?: readonly AgentListing[] | undefined;
+  readonly agents?: readonly (AgentListing & { readonly instructions?: string })[] | undefined;
   /** The workflows that run each agent, keyed by `hubId/id` of the agent. */
   readonly users?: Readonly<Record<string, readonly AgentUser[]>> | undefined;
 }
