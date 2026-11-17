@@ -17,10 +17,14 @@ The harness refusal and the connector refusal stay, with their tests.
 ## Which tests went and why
 
 `engine-service.test.ts` goes from 21 to 17 tests, and `studio.engine-service` from 37 to 29 expect calls.
-The removed tests checked only the refusal that no longer exists:
+The removed tests checked only the refusal that no longer exists (or a case that only mattered for it):
 
-- refusing an agent with a real model provider;
-- the matching cases for the extra `unavailable` parameters that carried that refusal.
+- refuses an agent whose method uses a real provider's alias;
+- passes an agent whose methods use the mock model too;
+- passes an agent whose model is the mock model;
+- passes when a real provider exists that no agent of the workflow reaches;
+- leaves a model the workspace doesn't define to the engine;
+- never calls a model server for a run it refuses (replaced by the new test below).
 
 Nothing else was weakened. A new test covers the replacement behaviour: a workflow whose agent uses an
 `openai-compatible` provider makes its model call through the given `http`, at the provider's address, with
