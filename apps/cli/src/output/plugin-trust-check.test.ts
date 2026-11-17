@@ -1,3 +1,5 @@
+import { homedir } from "node:os";
+import { join, sep } from "node:path";
 import {
   pluginTrustContent,
   pluginTrustSectionHeadings,
@@ -6,8 +8,6 @@ import {
 } from "@halonicjs/app";
 import { parseFile } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
-import { homedir } from "node:os";
-import { join, sep } from "node:path";
 import { expect, it } from "vitest";
 import { plainText } from "../messages/phrase.ts";
 import {
@@ -114,7 +114,7 @@ verifies("app.plugin-trust-sections", () => {
     ]);
   });
 
-  it("lists eleven files in full instead of \"and 1 more\"", () => {
+  it('lists eleven files in full instead of "and 1 more"', () => {
     const paths = Array.from(
       { length: 11 },
       (_, index) => `backend/file-${String(index).padStart(2, "0")}.js`,

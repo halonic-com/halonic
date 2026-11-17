@@ -19,8 +19,8 @@ import type { Message } from "../messages/define.ts";
 import { markPart, type Phrase, phrase, plainText } from "../messages/phrase.ts";
 import { pluginMessages } from "../messages/plugin.ts";
 import { trustMessages } from "../messages/trust.ts";
-import { printable } from "./printable.ts";
 import { nodeProfileEnvironment } from "../workspace-runs.ts";
+import { printable } from "./printable.ts";
 import { row, rowIndent } from "./trust-check-rows.ts";
 
 /** The tool risks in the order the check lists them, each with its group's heading. */
