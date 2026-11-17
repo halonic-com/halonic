@@ -2,7 +2,7 @@
 
 - Task: HAL-11580
 - Approval: Liam asked for this change on HAL-11580 (https://paperclip.halonic.com/HAL/issues/HAL-11580). A team decision with no board card.
-- Kind: internal
+- Kind: user-visible
 
 ## What changes
 
