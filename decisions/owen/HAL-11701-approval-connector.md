@@ -3,6 +3,7 @@
 - Task: HAL-11701
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11698 (the team agreed option (a) there: add `connector` next to the bare `tool`)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:svDc1mMO9s7O5H7MvwUCo5iKYEsK6SNh54mEs4NYBL8p3ZVw+jp966wAxVM7JLN1mh2mgT7NH/4sSWGdqIlmDA==
 
 ## What changes
 
