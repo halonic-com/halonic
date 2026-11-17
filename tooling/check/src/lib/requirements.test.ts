@@ -82,6 +82,10 @@ verifies("check.requirement-file-format", () => {
     });
   });
 
+  test("accepts Since: unreleased", () => {
+    expect(messagesFor(valid.replace("Since: 0.1.0", "Since: unreleased"))).toEqual([]);
+  });
+
   test("accepts Windows line endings", () => {
     expect(messagesFor(valid.replaceAll("\n", "\r\n"))).toEqual([]);
   });
@@ -120,7 +124,7 @@ verifies("check.requirement-file-format", () => {
     [
       "a Since that isn't a version",
       valid.replace("0.1.0", "soon"),
-      '4: Since "soon" is not a version such as 0.1.0.',
+      '4: Since "soon" is not a version such as 0.1.0 or "unreleased".',
     ],
     [
       "an unknown field",

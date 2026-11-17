@@ -39,6 +39,8 @@ type FieldName = (typeof fieldNames)[number];
 /** The five EARS sentence shapes, by their opening word. */
 const earsOpenings = ["The ", "When ", "While ", "If ", "Where "];
 
+/** What `Since` says until the release that ships the requirement is cut. */
+const unreleased = "unreleased";
 const versionPattern = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 
 /** True for a Markdown file directly inside a `requirements/` folder. */
@@ -196,8 +198,8 @@ function fieldProblem(
   if (name === "Status" && !statuses.includes(value as RequirementStatus)) {
     return `Status "${value}" is not one of ${statuses.join(", ")}.`;
   }
-  if (name === "Since" && !versionPattern.test(value)) {
-    return `Since "${value}" is not a version such as 0.1.0.`;
+  if (name === "Since" && value !== unreleased && !versionPattern.test(value)) {
+    return `Since "${value}" is not a version such as 0.1.0 or "${unreleased}".`;
   }
   return undefined;
 }
