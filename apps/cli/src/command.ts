@@ -155,6 +155,13 @@ export interface CommandResult {
    * nowhere, and it is never part of stdout or `--json`.
    */
   readonly debugText?: string;
+  /**
+   * Warnings for stderr after the result lines, such as "! 2 tools from
+   * notes-mcp stay off: there's no terminal to ask you." (cli-output
+   * section 2: warnings go to stderr). Not printed with `--json`, whose
+   * document holds the result.
+   */
+  readonly warnings?: readonly Phrase[];
 }
 
 /**
