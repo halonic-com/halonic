@@ -29,6 +29,7 @@ import {
 } from "@halonicjs/studio-feature-models/api";
 import { pluginsFeature } from "@halonicjs/studio-feature-plugins";
 import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
+import { routinesFeature } from "@halonicjs/studio-feature-routines";
 import { RoutinesHostService } from "@halonicjs/studio-feature-routines/api";
 import { runsFeature } from "@halonicjs/studio-feature-runs";
 import { RunsSourceService, SampleHintService } from "@halonicjs/studio-feature-runs/api";
@@ -66,6 +67,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     sourceControlFeature,
     agentsFeature,
     workflowsFeature,
+    routinesFeature,
     workspaceFeature,
   ],
   hostServices: [

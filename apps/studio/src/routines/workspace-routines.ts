@@ -51,9 +51,9 @@ import {
   skipOf,
   startedByOf,
   startsOwner,
+  summaryOf,
   targetFor,
   targetFound,
-  targetName,
   targetsOf,
 } from "./routine-reads.ts";
 
@@ -155,7 +155,7 @@ export class WorkspaceRoutines implements RoutinesHost {
         id: idOf(file),
         name: file.value.name,
         enabled: file.value.enabled,
-        summary: `${describeTrigger(file.value.trigger)} → ${targetName(workspace, file)}`,
+        summary: summaryOf(workspace, file),
         nextRun: file.value.enabled ? this.#nextRunOf(file, now) : undefined,
         needsSignIn: false,
         needsYou: own.filter((run) => run.status === "waiting").length,
@@ -182,6 +182,7 @@ export class WorkspaceRoutines implements RoutinesHost {
       enabled: value.enabled,
       trigger: triggerOfFile(value.trigger),
       triggerSentence: describeTrigger(value.trigger),
+      summary: summaryOf(workspace, file),
       target,
       targetState: targetFound(workspace, target) ? "ready" : "not-found",
       overlap: value.overlap,

@@ -82,6 +82,8 @@ export interface RoutineView extends RoutineRef {
   readonly trigger: RoutineTrigger;
   /** The trigger in words, from the engine: "Weekdays at 07:30". */
   readonly triggerSentence: string;
+  /** The routine as one line, as {@link RoutineListing.summary} has it: "Weekdays at 07:30 → Briefing". */
+  readonly summary: string;
   readonly target: RoutineTarget;
   readonly targetState: RoutineTargetState;
   readonly overlap: RoutineOverlap;

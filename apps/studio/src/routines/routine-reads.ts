@@ -1,5 +1,5 @@
 import type { RunSummary } from "@halonicjs/events";
-import { routineKey } from "@halonicjs/routines";
+import { describeTrigger, routineKey } from "@halonicjs/routines";
 import { KindedError } from "@halonicjs/std";
 import type {
   RoutineRef,
@@ -116,6 +116,11 @@ export function targetName(workspace: LoadedWorkspace, file: PlacedFile): string
       (one) => one.kind === target.kind && one.id === target.id,
     )?.name ?? target.id
   );
+}
+
+/** The routine as one line, for its row and its page: "Weekdays at 07:30 → Briefing". */
+export function summaryOf(workspace: LoadedWorkspace, file: PlacedFile): string {
+  return `${describeTrigger(file.value.trigger)} → ${targetName(workspace, file)}`;
 }
 
 export function startsOwner(file: PlacedFile, owner: TriggerOwner): boolean {
