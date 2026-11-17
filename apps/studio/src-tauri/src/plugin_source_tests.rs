@@ -3,6 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
+use halonic_git_guard::plain_path;
 use halonic_profile::{Platform, ProfileFolder};
 use halonic_workspace_files::FolderReader;
 
@@ -190,7 +191,11 @@ fn plugin_source_test_accepts_a_pick_and_refuses_the_profile_and_the_plugins_fol
 
     let (real, location) = check_source(&scratch.source(), &profile).expect("a folder to use");
     assert_eq!(real, scratch.source());
-    assert_eq!(Path::new(&location), scratch.source());
+    assert_eq!(
+        Path::new(&location),
+        Path::new(&plain_path(&scratch.source())),
+        "the location is the plain path"
+    );
     for refused in [
         scratch.0.join("profile"),
         plugins.clone(),
