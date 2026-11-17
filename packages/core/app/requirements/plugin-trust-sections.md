@@ -6,7 +6,7 @@
 
 The app shall give the sections of a plugin's trust check from its trust content, in this order and under these headings: "Tools for agents", "Programs", "Secrets", "Addresses" and "In Studio". A section shall be given only when it has something in it: a tool, a local program, a secret, a host, or settings, a command, a card or a panel in the plugin's `ui`. Every host that shows a plugin's trust check shall take its sections, their order and their headings from these.
 
-The app shall also give the files of the plugin's folder that its fingerprint covers, for the check to list under the plugin's folder: the first ten by path and the number of files after them, so a host can say "and N more". They sit under the headings "Folder" for where the plugin is on disk and "Files the fingerprint covers" for the list. The manifest `plugin.yaml` is not listed. A host shall escape each path as other text from the workspace before it shows it.
+The app shall also give the files of the plugin's folder that its fingerprint covers, for the check to list under the plugin's folder: all of them when there are at most eleven, otherwise the first ten by path and the number of files after them, so a host can say "and N more" and never "and 1 more". They sit under the headings "Folder" for where the plugin is on disk and "Backend files" for the list. The manifest `plugin.yaml` is not listed. A host shall escape each path as other text from the workspace before it shows it.
 
 ## Examples
 

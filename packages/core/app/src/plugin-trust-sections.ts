@@ -95,8 +95,9 @@ export interface PluginTrustFiles {
  * The files in the plugin's folder that the fingerprint covers, for the
  * check to list: the first {@link pluginTrustFileCap} by path, and how many
  * more there are. One more file is shown rather than "and 1 more", which
- * takes the same row and says less, so the list is at most one row over the cap. The manifest isn't one of them. The paths come from the
- * workspace, so a host escapes them before it shows them.
+ * takes the same row and says less, so the list is at most one row over the
+ * cap. The manifest isn't one of them. The paths come from the workspace, so
+ * a host escapes them before it shows them.
  *
  * @example
  * pluginTrustFiles(weather); // { shown: ["backend/index.js"], more: 0 }
