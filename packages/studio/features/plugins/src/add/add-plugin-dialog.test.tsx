@@ -90,10 +90,19 @@ async function pickGit() {
 const text = () => document.querySelector("dialog")?.textContent ?? "";
 
 verifies("plugins.plugin-add", () => {
+  it("is titled Add a plugin, with an Add button (T4)", () => {
+    const seen = fresh();
+    show(reply(seen, { kind: "added", plugin: "weather" }), seen);
+    expect(text()).toContain("Add a plugin");
+    expect(button("Add")).toBeDefined();
+    const labels = [...document.querySelectorAll("button")].map((one) => one.textContent?.trim());
+    expect(labels).not.toContain("Add plugin");
+  });
+
   it("says what to enter when Add is pressed on an empty field, and asks nothing", async () => {
     const seen = fresh();
     show(reply(seen, { kind: "added", plugin: "weather" }), seen);
-    await press("Add plugin");
+    await press("Add");
     expect(text()).toContain("Enter a folder or a git address.");
     expect(seen.sources).toEqual([]);
   });
@@ -102,14 +111,14 @@ verifies("plugins.plugin-add", () => {
     const seen = fresh();
     show(reply(seen, { kind: "added", plugin: "weather" }), seen);
     await type(inputLabelled("Folder"), "/plugins/halonic-weather");
-    await press("Add plugin");
+    await press("Add");
     // The window closes the dialog once it's added; a fresh one stands in for the next time.
     unmountAll();
     show(reply(seen, { kind: "added", plugin: "weather" }), seen);
     await pickGit();
     await type(inputLabelled("Address"), "https://github.com/acme/halonic-weather.git");
     await type(inputLabelled("Branch, tag or version"), "v1.2.0");
-    await press("Add plugin");
+    await press("Add");
     expect(seen.sources).toEqual([
       { kind: "folder", path: "/plugins/halonic-weather" },
       {
@@ -130,7 +139,7 @@ verifies("plugins.plugin-add", () => {
       async () => undefined,
     );
     await type(inputLabelled("Folder"), "/plugins/halonic-weather/");
-    await press("Add plugin");
+    await press("Add");
     expect(text()).toContain("Getting halonic-weather…");
     expect(inputLabelled("Folder").disabled).toBe(true);
     expect(button("Choose folder…").getAttribute("aria-busy")).toBe("true");
@@ -155,7 +164,7 @@ verifies("plugins.plugin-add", () => {
       seen,
     );
     await type(inputLabelled("Folder"), "/plugins/halonic-weather");
-    await press("Add plugin");
+    await press("Add");
     const shown = text();
     expect(shown).toContain(
       "Can't add halonic-weather. Its plugin.yaml has 2 problems. Nothing was installed.",
@@ -170,7 +179,7 @@ verifies("plugins.plugin-add", () => {
     const seen = fresh();
     show(reply(seen, { kind: "taken", plugin: "weather" }), seen);
     await type(inputLabelled("Folder"), "/plugins/halonic-weather");
-    await press("Add plugin");
+    await press("Add");
     expect(text()).toContain(
       "A plugin called weather is already installed. Update it from its page.",
     );
@@ -182,7 +191,7 @@ verifies("plugins.plugin-add", () => {
     const seen = fresh();
     show(reply(seen, { kind: "taken", plugin: "weather" }), seen);
     await type(inputLabelled("Folder"), "/plugins/halonic-weather");
-    await press("Add plugin");
+    await press("Add");
     expect(document.activeElement?.textContent).toContain("already installed");
   });
 
@@ -190,12 +199,12 @@ verifies("plugins.plugin-add", () => {
     const seen = fresh();
     show(reply(seen, { kind: "offline", host: "github.com" }), seen);
     await type(inputLabelled("Folder"), "/x");
-    await press("Add plugin");
+    await press("Add");
     expect(text()).toContain("Couldn't reach github.com: you're offline.");
     unmountAll();
     show(reply(seen, { kind: "no-manifest" }), seen);
     await type(inputLabelled("Folder"), "/x");
-    await press("Add plugin");
+    await press("Add");
     expect(text()).toContain("That folder has no plugin.yaml.");
   });
 
@@ -205,7 +214,7 @@ verifies("plugins.plugin-add", () => {
       throw new KindedError("unavailable", "The disk is full.");
     }, seen);
     await type(inputLabelled("Folder"), "/plugins/halonic-weather");
-    await press("Add plugin");
+    await press("Add");
     expect(text()).toContain(
       "Couldn't add halonic-weather: The disk is full. Nothing was installed.",
     );
@@ -222,10 +231,10 @@ verifies("plugins.plugin-add", () => {
     const seen = fresh();
     show(reply(seen, { kind: "no-manifest" }), seen);
     await type(inputLabelled("Folder"), "/plugins/empty");
-    await press("Add plugin");
+    await press("Add");
     expect(text()).toContain("That folder has no plugin.yaml.");
     await pickGit();
     expect(text()).not.toContain("That folder has no plugin.yaml.");
-    expect(button("Add plugin")).toBeDefined();
+    expect(button("Add")).toBeDefined();
   });
 });

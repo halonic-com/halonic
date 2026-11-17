@@ -11,7 +11,8 @@ import { useEffect, useRef, useState } from "react";
 import { messageOf } from "../message-of.ts";
 import type { PluginLoadProblem } from "../page/plugin-pages.ts";
 import {
-  ADD_PLUGIN,
+  ADD,
+  ADD_TITLE,
   ADDRESS_FIELD,
   brokenLine,
   CHOOSE_FOLDER,
@@ -149,11 +150,11 @@ export function AddPluginDialog({ installer, onAdded, onOpen, onCancel }: AddPlu
 
   return (
     <Dialog
-      title={ADD_PLUGIN}
+      title={ADD_TITLE}
       size="md"
       form
       confirm={{
-        label: ADD_PLUGIN,
+        label: ADD,
         busyLabel: gettingLine(busyName ?? ""),
       }}
       busy={busy}
