@@ -2,6 +2,7 @@
 
 - Approval: HAL-7123 asks for this change, as planned in the note for HAL-4757; Liam signs it
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mF/WEQcrxia7TEusBeOBGlkeDBagXF3laNNMvK+mLizqoONwSxwmRTiyAqiQsmNzHpZL/jOiCl5zCB40V4C0Dg==
 - Task: HAL-7123
 
 ## What changes
