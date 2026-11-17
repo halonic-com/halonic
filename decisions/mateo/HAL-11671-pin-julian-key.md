@@ -3,6 +3,7 @@
 - Task: HAL-11671
 - Approval: HAL-11668, option 1 extended to `internal`; carries out AGENTS.md "Requirements and tests" (neither Liam nor Julian signs a pull request they wrote, the other one signs)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4Ldnq0Il6ggmy8u26/rnNx73VevO+WzMW1kULkaVbxrzgJXx7WoWGCQ0M8aAUElIvuuiqaa0bqyubYyOUuiXAQ==
 
 ## What changes
 

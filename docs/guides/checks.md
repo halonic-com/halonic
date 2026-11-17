@@ -343,8 +343,8 @@ base branch already has the note: a branch name that was used before needs
 a new name. Both guards fail the pull request when they find an error. A
 change to a requirement needs an approved note of either kind. A change to
 the guard's own paths needs a `user-visible` note, except routine changes
-under `.github/`, `tooling/check/` and `.gitattributes`, where the CTO's
-signed `internal` note is enough, unless the change reaches a trust root
+under `.github/`, `tooling/check/` and `.gitattributes`, where a signed
+`internal` note is enough, unless the change reaches a trust root
 (see the two guardians above).
 
 **Notes on `main` are append-only.** A pull request that edits or deletes a
