@@ -3,6 +3,7 @@
 - Task: HAL-11693
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11699 (Sofia's wording decision; a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:HtlKGxAj6ZKN/7a+mhaeHR0Ul+1Rg8f20/Oikj56A8SMV6Q+PvusmyReXf2g/Guw5HsVqChnIzntYOWZsXz0CA==
 
 ## What changes
 
