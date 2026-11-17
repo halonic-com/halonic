@@ -1,4 +1,4 @@
-import { Button, List, ListHeading, PlaceIcon, SettingsIcon } from "@halonicjs/studio-kit";
+import { Button, FileIcon, List, ListHeading, PlaceIcon } from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useId, useRef } from "react";
 import type { ChangeItem } from "../change-items.ts";
 import { groupIntoItems } from "../change-items.ts";
@@ -26,7 +26,7 @@ const isItem = (item: ChangeItem) => item.kind !== undefined;
 
 /** The sidebar's place icon that says most about an item's kind. */
 function iconOf(item: ChangeItem): ReactNode {
-  if (item.kind === undefined) return <SettingsIcon />;
+  if (item.kind === undefined) return <FileIcon />;
   const place =
     item.kind === "agent" || item.kind === "workflow" || item.kind === "routine"
       ? (`${item.kind}s` as const)
