@@ -1614,7 +1614,13 @@ jobs:
           HALONIC_TEST_TIMEOUT: "30000"
         # No coverage here: the floors are checked on Linux, and the tests
         # skipped on Windows would only lower the numbers.
-        run: pnpm exec turbo run test --continue --env-mode=loose --output-logs=new-only --summarize $FILTERS -- --coverage.enabled=false
+        #
+        # Two packages at a time (HAL-11709). Turbo's default of ten started
+        # eleven packages' tests on this four-core runner at once, each with
+        # its own workers, and a test that starts about a hundred git
+        # processes (`cli.local-harness-host`) then took 30 s instead of 5 s
+        # and timed out, in a different test each time.
+        run: pnpm exec turbo run test --continue --concurrency=2 --env-mode=loose --output-logs=new-only --summarize $FILTERS -- --coverage.enabled=false
       # Per package test time, from the Turbo run summary, so the numbers in
       # the windows-coverage document come from real runs.
       - name: Test time per package
