@@ -54,6 +54,50 @@ function goToFiles(): void {
     ?.focus();
 }
 
+/** What stands in for the editor while the file loads, is gone, isn't text, or can't be read. */
+function LoadNotice({ loaded, missing }: { loaded: Loaded; missing: boolean }) {
+  return (
+    <>
+      {loaded.kind === "loading" && (
+        <div role="status" aria-label={filesWords.fileLoading} className="grid gap-3 p-4">
+          <SkeletonBar kind="title" width="2/3" />
+          <SkeletonBar kind="title" width="1/2" />
+        </div>
+      )}
+      {missing && (
+        <EmptyState
+          plain
+          title={filesWords.missingTitle}
+          action={{ label: filesWords.goToFiles, onClick: goToFiles }}
+        />
+      )}
+      {loaded.kind === "not-text" && (
+        <EmptyState
+          plain
+          title={filesWords.notTextTitle}
+          description={filesWords.notTextDescription(loaded.size)}
+        />
+      )}
+      {loaded.kind === "ready" && loaded.readOnly && (
+        <div
+          role="status"
+          className="border-b border-border bg-surface-muted px-4 py-1 text-small text-fg"
+        >
+          {filesWords.largeFile}
+        </div>
+      )}
+      {loaded.kind === "error" && (
+        <EmptyState
+          tone="error"
+          plain
+          title={filesWords.unreadableTitle}
+          description={loaded.reason}
+        />
+      )}
+    </>
+  );
+}
+
 /**
  * A file in its tab: the file's name over the code editor. Typing goes straight to the
  * workspace's files, which save a moment later, so the tab has no Save button and no unsaved dot
@@ -270,42 +314,7 @@ export function FileView({ item, context }: ItemViewProps) {
       <h1 className="truncate px-4 py-2 text-base font-medium" title={path}>
         {fileName(path)}
       </h1>
-      {loaded.kind === "loading" && (
-        <div role="status" aria-label={filesWords.fileLoading} className="grid gap-3 p-4">
-          <SkeletonBar kind="title" width="2/3" />
-          <SkeletonBar kind="title" width="1/2" />
-        </div>
-      )}
-      {missing && (
-        <EmptyState
-          plain
-          title={filesWords.missingTitle}
-          action={{ label: filesWords.goToFiles, onClick: goToFiles }}
-        />
-      )}
-      {loaded.kind === "not-text" && (
-        <EmptyState
-          plain
-          title={filesWords.notTextTitle}
-          description={filesWords.notTextDescription(loaded.size)}
-        />
-      )}
-      {loaded.kind === "ready" && loaded.readOnly && (
-        <div
-          role="status"
-          className="border-b border-border bg-surface-muted px-4 py-1 text-small text-fg"
-        >
-          {filesWords.largeFile}
-        </div>
-      )}
-      {loaded.kind === "error" && (
-        <EmptyState
-          tone="error"
-          plain
-          title={filesWords.unreadableTitle}
-          description={loaded.reason}
-        />
-      )}
+      <LoadNotice loaded={loaded} missing={missing} />
       {trashedHere && trash !== undefined && (
         <TrashedStrip
           announce={(text) => announcer.current.announce(text)}
