@@ -5,6 +5,7 @@ export const sampleCardWords = {
   heading: "Try the sample",
   caption: (done: number) => `${done} of 3 done`,
   finished: "You've seen it work.",
+  runTests: "Run its tests",
   startOwnWorkspace: "Start your own workspace",
   /** Read after a done step's title, as the mark itself is hidden from screen readers. */
   doneNote: "done",

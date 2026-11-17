@@ -8,7 +8,7 @@ import type { SampleStepId } from "../api.ts";
 import { firstRunFeature } from "../feature.ts";
 import type { SampleProgress, SampleProgressState } from "../sample-progress.ts";
 import { SampleCard, SampleSteps } from "./sample-card.tsx";
-import { stepOpeners } from "./step-openers.ts";
+import { stepOpeners, testsOpener } from "./step-openers.ts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -104,6 +104,43 @@ verifies("first-run.sample-card", () => {
     expect(startOwnWorkspace).toHaveBeenCalledOnce();
   });
 
+  it("offers Run its tests when finished, which opens the support workflow in the hub of its runs", () => {
+    const openTests = vi.fn();
+    const root = render(
+      <SampleSteps
+        progress={progressWith(["start", "decide", "see"], {
+          kind: "run",
+          hub: "support",
+          id: "r1",
+        })}
+        openers={noOpeners}
+        openTests={openTests}
+      />,
+    );
+    const button = [...root.querySelectorAll("button")].find(
+      (each) => each.textContent === "Run its tests",
+    );
+    act(() => button?.click());
+    expect(openTests).toHaveBeenCalledWith("support");
+    // Not offered while no finished run says which hub the workflow is in, or before the end.
+    const noRun = render(
+      <SampleSteps
+        progress={progressWith(["start", "decide", "see"])}
+        openers={noOpeners}
+        openTests={openTests}
+      />,
+    );
+    expect(noRun.textContent).not.toContain("Run its tests");
+    const unfinished = render(
+      <SampleSteps
+        progress={progressWith(["start"], { kind: "run", hub: "support", id: "r1" })}
+        openers={noOpeners}
+        openTests={openTests}
+      />,
+    );
+    expect(unfinished.textContent).not.toContain("Run its tests");
+  });
+
   it("offers no button when the app has no New workspace dialog, and doesn't save an unfinished card", () => {
     const recordFinishedShown = vi.fn();
     const finished = render(
@@ -158,6 +195,18 @@ verifies("first-run.sample-card", () => {
     const none = contextWith(false);
     stepOpeners(none.context, progressWith([])).decide();
     expect(none.inbox.requestNewRequest).toHaveBeenCalledOnce();
+  });
+
+  it("opens the support workflow on its Tests for Run its tests, where the window can open pages", () => {
+    const { context, openItem } = contextWith(false);
+    testsOpener(context)?.("support");
+    expect(openItem).toHaveBeenCalledWith(
+      { kind: "workflow", hub: "support", id: "support-reply" },
+      { step: "tests" },
+    );
+    expect(
+      testsOpener({ services: context.services, announcer: context.announcer }),
+    ).toBeUndefined();
   });
 
   it("opens the finished run for step 3, and else what the next open step does", () => {

@@ -1,7 +1,7 @@
 import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import type { SampleStepId } from "../api.ts";
-import type { SampleProgress } from "../sample-progress.ts";
+import { type SampleProgress, SUPPORT_WORKFLOW } from "../sample-progress.ts";
 
 /** What each step of the Try the sample card does when it's opened. */
 export type StepOpeners = Readonly<Record<SampleStepId, () => void>>;
@@ -30,4 +30,14 @@ export function stepOpeners(context: WorkspaceContext, progress: SampleProgress)
     return done.has("start") ? decide() : startRequest();
   };
   return { start: startRequest, decide, see };
+}
+
+/**
+ * What **Run its tests** does: opens the sample's support workflow, in the hub of its runs, on its
+ * Tests. Absent where the window can't open a page.
+ */
+export function testsOpener(context: WorkspaceContext): ((hub: string) => void) | undefined {
+  const { openItem } = context;
+  if (openItem === undefined) return undefined;
+  return (hub) => openItem({ kind: "workflow", hub, id: SUPPORT_WORKFLOW }, { step: "tests" });
 }

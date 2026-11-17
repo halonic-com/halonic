@@ -39,8 +39,18 @@ import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
 
 type WorkflowView = "flow" | "configuration" | "runs";
 
+/** The tab a page opens on: Configuration when asked for its Tests, else Flow. */
+function firstView(startOnTests: boolean | undefined): WorkflowView {
+  return startOnTests ? "configuration" : "flow";
+}
+
+/** What Configuration starts with: Tests with no test picked when asked for them, else General. */
+function firstTestsPick(startOnTests: boolean | undefined) {
+  return startOnTests ? { name: undefined, n: 0 } : undefined;
+}
+
 /** The workflow's page in its tab: `item` names the workflow, the host gives its steps. */
-export function WorkflowPage({ item, context }: ItemViewProps) {
+export function WorkflowPage({ item, context, step }: ItemViewProps) {
   const { openItem, openPlace } = context;
   const runsList = context.services.get(RunsListService);
   return (
@@ -49,6 +59,7 @@ export function WorkflowPage({ item, context }: ItemViewProps) {
       runs={context.services.get(RunsSourceService)}
       hubId={item.hub}
       id={item.id}
+      {...(step === "tests" && { startOnTests: true })}
       notAnswering={engineWordsOf(context).notAnswering}
       {...(openItem && {
         openRun: (runId: string, step?: string) =>
@@ -79,6 +90,7 @@ export function WorkflowScreen({
   openRun,
   seeAllRuns,
   reviewInInbox,
+  startOnTests,
 }: WorkflowScreenProps) {
   // After a Try again reads, the workflow's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -93,7 +105,7 @@ export function WorkflowScreen({
   );
   const everyWorkflow = useHostRead(host, { hubId, id }, (one) => one.list(), focusTitle);
   const runsRead = useRuns(runs, focusTitle);
-  const [view, setView] = useState<WorkflowView>("flow");
+  const [view, setView] = useState<WorkflowView>(firstView(startOnTests));
   // The canvas unmounts on Configuration, so the page keeps its zoom and pan (D9). They belong to
   // one workflow: the same screen can be handed another, which opens fitted.
   const [kept, setKept] = useState<{ readonly of: string; readonly view: View } | undefined>();
@@ -105,11 +117,12 @@ export function WorkflowScreen({
   const [shownId, setShownId] = useState<string | undefined>();
   // The step picked on the canvas, which says what happened to it while a run is shown (4.5).
   const [pickedStep, setPickedStep] = useState<string | undefined>();
-  // The test just made from a run: Configuration opens on Tests with it picked.
+  // The test just made from a run: Configuration opens on Tests with it picked. A page opened on
+  // its Tests (`startOnTests`) starts the same way, with no test picked.
   // `n` counts the tests made, so each one remounts Configuration and the Tests page reads again.
   const [madeTest, setMadeTest] = useState<
-    { readonly name: string; readonly n: number } | undefined
-  >();
+    { readonly name: string | undefined; readonly n: number } | undefined
+  >(firstTestsPick(startOnTests));
   const testsMade = useRef(0);
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
