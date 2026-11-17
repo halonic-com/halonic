@@ -86,6 +86,28 @@ verifies("routines.when.mail-fields", () => {
     );
   });
 
+  it("says it is still reading while the connectors are read, and drops that once they arrive", async () => {
+    let arrive: (found: readonly RoutineMailbox[]) => void = () => {};
+    const saved: RoutineChanges[] = [];
+    const host = {
+      mailboxes: () => new Promise<readonly RoutineMailbox[]>((resolve) => (arrive = resolve)),
+      nextTimes: async () => ({ times: [], atNextCheck: false }),
+      save: async (_ref: unknown, changes: RoutineChanges) => {
+        saved.push(changes);
+      },
+    } as unknown as RoutinesHost;
+    const page = await show(
+      <WhenCard host={host} routine={routineWith({ kind: "manual" })} announce={() => {}} />,
+    );
+    await choose(page.querySelector("select") as HTMLSelectElement, "mail");
+    expect(saved).toEqual([]);
+    expect(page.textContent).toContain("Still reading the Google connectors.");
+    expect(page.textContent).not.toContain("Add a Google connector first");
+    await act(async () => arrive([acme]));
+    expect(page.textContent).not.toContain("Still reading");
+    expect(page.textContent).not.toContain("Add a Google connector first");
+  });
+
   it("lists the mailboxes with their accounts, and keeps a connector the workspace doesn't offer", async () => {
     const { page } = await card(mail);
     const mailbox = page.querySelectorAll("select")[1] as HTMLSelectElement;
