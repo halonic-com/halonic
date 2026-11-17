@@ -80,7 +80,7 @@ interface Counts {
  * HAL-6369: `vi.waitFor` runs its callback again until it passes, so the
  * `expect` count would depend on how fast the runner was. For the test's
  * run, `vi.waitFor` counts only the calls of the attempt that passed, as
- * if the callback ran once. (`expect.poll` already counts once.) The
+ * if the callback ran once. (A polled expect already counts once.) The
  * cleanup puts the original back after the test.
  */
 function countLastAttempt(context: TestContext): () => void {
