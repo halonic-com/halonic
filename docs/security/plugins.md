@@ -59,9 +59,8 @@ No plugin script or web page is loaded into the window. By design, a plugin's
 `ui` has no way to read the rest of Studio, skip a theme or keyboard rule, or
 send Studio messages, because there is no frame and no message interface. Everything a plugin
 shows is untrusted text: it is drawn as text or sanitised Markdown, never as
-HTML or script, and its links go through Studio's external-link handling. Not
-in 0.1: nothing draws `ui` yet (see the end of this page), so these rules
-describe what the screens must do. A broken plugin will fail with an error that
+HTML or script, and its links go through Studio's external-link handling. Studio's plugin screens are on `main` and draw `ui` by these rules, but Studio
+isn't released yet. A broken plugin fails with an error that
 names it, and the rest of Studio keeps working. A secret setting goes straight to Secrets under the plugin's own name,
 and the plugin reads only the secrets stored for it.
 
@@ -93,8 +92,11 @@ cloned workspace can't trust itself.
 
 The plugin file kind, the trust check, the `halonic plugin` and
 `halonic trust --plugin` commands and the conformance suite work. The
-security tests for local tools, and Studio's screens for plugins, are still
-being built. To report a vulnerability in the plugin system, see
+security tests for local tools are still being built. Studio's screens for
+plugins (Settings → Plugins, the trust check, Review changes) are on `main`
+but not released; see
+[Add and trust a plugin in Studio](https://halonic.dev/docs/guides/studio-plugins).
+The trust check there is still a list, not a sandbox. To report a vulnerability in the plugin system, see
 [SECURITY.md](../../SECURITY.md). The
 [threat model](threat-model.md#1-scope) names what is in an app you can run.
 
