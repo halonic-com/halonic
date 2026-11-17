@@ -54,6 +54,12 @@ export interface EngineServiceOptions {
   /** What the model providers call their servers with. */
   readonly http: HttpClient;
   readonly clock: Clock;
+  /**
+   * Whether the workspace, as the engine loaded it, is trusted on this computer. Asked on every
+   * model call, so a provider's stored key goes to a non-default address only after a person
+   * trusted exactly these files (HAL-11342).
+   */
+  readonly isTrusted: (workspace: LoadedWorkspace) => Promise<boolean>;
   readonly ids: IdGenerator;
   /** How the scheduler wakes itself up. */
   readonly setTimer: SetTimer;
@@ -173,6 +179,7 @@ export class EngineService {
             secrets: this.#options.secrets,
             http: this.#options.http,
             clock,
+            isTrusted: () => this.#options.isTrusted(workspace),
             // Until Studio has its approval store (HAL-850 step 6), no listed tool is offered.
             listedToolApproval: noListedToolApproval,
           }),

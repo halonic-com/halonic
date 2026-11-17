@@ -126,6 +126,11 @@ export interface LocalEngineInput {
   /** What the model providers call their servers with. */
   readonly http: HttpClient;
   /**
+   * Whether the command's trust check granted trust, so a provider's stored key may go to a
+   * non-default address (HAL-11342). A run that can only reach the test model has none.
+   */
+  readonly trusted: boolean;
+  /**
    * Hears every error the engine handles itself: one the scheduler handles,
    * such as a run's step that threw and will be retried, or one with the
    * engine's lock. Only a lost lock stops the engine, which then closes.
@@ -333,6 +338,7 @@ function engineOn(
         secrets: input.secrets,
         http: input.http,
         clock,
+        isTrusted: () => input.trusted,
         // The approvals a person gave with `halonic tools`, read at the start of every turn.
         listedToolApproval: cliListedToolApproval({
           location,

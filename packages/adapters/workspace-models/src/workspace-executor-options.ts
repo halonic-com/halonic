@@ -20,6 +20,7 @@ import {
   type LoadedWorkspace,
 } from "@halonicjs/workspace";
 import { abortOnStop } from "./abort-on-stop.ts";
+import type { WorkspaceModelResolverInput } from "./workspace-model-resolver.ts";
 import { latestModelResolver } from "./workspace-model-resolver.ts";
 
 /** What {@link workspaceExecutorOptions} reads. */
@@ -36,6 +37,12 @@ export interface WorkspaceExecutorInput {
   /** What the model providers call their servers with. */
   readonly http: HttpClient;
   readonly clock: Clock;
+  /**
+   * Whether the workspace is trusted on this computer, asked on every model
+   * call: a provider's stored key goes to a non-default address only when it
+   * is (see {@link WorkspaceModelResolverInput.isTrusted}).
+   */
+  readonly isTrusted: () => boolean | Promise<boolean>;
   /** Which tools a server lists a person approved; the host chooses, so none is offered by default. */
   readonly listedToolApproval: ListedToolApproval;
   /** The connected servers a chat turn calls; none by default. */
@@ -55,7 +62,10 @@ export type WorkspaceExecutorOptions = Omit<LocalExecutorOptions, "runs">;
 export function workspaceExecutorOptions(input: WorkspaceExecutorInput): WorkspaceExecutorOptions {
   const latest = input.latest ?? (() => input.workspace);
   return {
-    resolveModel: latestModelResolver({ secrets: input.secrets, http: input.http }, latest),
+    resolveModel: latestModelResolver(
+      { secrets: input.secrets, http: input.http, isTrusted: input.isTrusted },
+      latest,
+    ),
     halonicTools: [],
     connectors: input.connectors ?? [],
     secrets: input.secrets,

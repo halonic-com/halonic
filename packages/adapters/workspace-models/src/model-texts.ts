@@ -28,6 +28,10 @@ export const modelTexts = {
     `model ${model} is at an address that isn't on this computer, and this workspace is local only.`,
   notOnThisMachineFix: (): ModelText =>
     "Use a model on this computer, or turn off privacy.localOnly in workspace.yaml.",
+  untrustedAddress: (provider: string, origin: string): ModelText =>
+    `provider ${provider} would send its key to ${origin}, and this workspace isn't trusted on this computer.`,
+  untrustedAddressFix: (provider: string): ModelText =>
+    `Check providers/${provider}.yaml, then trust the workspace, or point it at the type's own address.`,
   unknownAlias: (alias: string, hubId: string): ModelText =>
     `hub ${hubId} has no model alias ${alias}.`,
   unknownAliasFix: (): ModelText => "Add the alias to models.yaml, or pick one it has.",

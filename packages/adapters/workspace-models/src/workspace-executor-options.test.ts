@@ -34,6 +34,7 @@ async function optionsOf(files: Record<string, string>) {
     secrets,
     http: { fetch },
     clock,
+    isTrusted: () => true,
     listedToolApproval: noListedToolApproval,
   });
 }

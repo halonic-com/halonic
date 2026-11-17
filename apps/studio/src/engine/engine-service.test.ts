@@ -113,6 +113,7 @@ function serviceOn(
     secrets,
     http: { fetch },
     clock,
+    isTrusted: async () => true,
     ids,
     setTimer: () => () => {},
     newToken: () => "token",

@@ -153,6 +153,12 @@ export const trustMessages = defineMessages("trust", {
   /** Under a program whose version isn't pinned, with a ! (decided from the command alone). */
   notPinned: (registry: PackageRegistry) =>
     phrase`Can download new code from ${registry} when it starts: version not pinned.`,
+  /**
+   * Under a model provider whose stored key goes to an address other than its type's own
+   * (HAL-11342, decided by the team under HAL-2282). The origin is the scheme, host and port,
+   * never the path or user info.
+   */
+  keyDestination: (origin: string) => phrase`Sends its key to ${origin}.`,
   /** The label above the full fingerprint, which is never shortened. */
   fingerprintHeading: () => phrase`Fingerprint`,
 

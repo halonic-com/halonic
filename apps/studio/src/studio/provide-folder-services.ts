@@ -154,6 +154,7 @@ export function provideFolderServices(
       secrets: shellKeychain(ipc),
       http: new ShellHttpClient(ipc),
       clock: systemClock,
+      isTrusted: async (workspace) => (await trust.checkLoaded(workspace)).status === "trusted",
       ids: randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), systemClock),
       setTimer: (callback, delayMs) => {
         const timer = setTimeout(callback, delayMs);
