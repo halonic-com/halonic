@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -152,8 +152,7 @@ console.log(JSON.stringify(result));
    * for each how much content is on disk afterwards. Windows lets a program create a file in a
    * denied folder but refuses to write to it, so an empty file may be left behind: that is no
    * content. A file that is not there counts as empty too. Also reports whether each file was
-   * there before the attempt, which says whether the empty file is the program's create or
-   * something the session made at its start.
+   * there before the attempt.
    */
   async function contentLeftBy(
     how: "writing" | "moving",
@@ -195,6 +194,31 @@ console.log(JSON.stringify(result));
     return Object.fromEntries(Object.entries(left).map(([label, file]) => [label, file.size]));
   }
 
+  it("makes the root tool-settings files empty when it opens and denies them (HAL-11246)", async () => {
+    // Looked at from the host, before any program has tried anything.
+    const sizesAtOpen: Record<string, number> = {};
+    for (const file of [".npmrc", ".mcp.json", ".pre-commit-config.yaml"]) {
+      sizesAtOpen[file] = (await stat(join(work, file))).size;
+    }
+    expect(sizesAtOpen).toEqual({ ".npmrc": 0, ".mcp.json": 0, ".pre-commit-config.yaml": 0 });
+  });
+
+  it("reports whether those empty files stay after the session closes (HAL-11246)", async () => {
+    const closing = join(base, "closing");
+    await mkdir(closing, { recursive: true });
+    const closed = await sandbox.open({ ...profile(), workingFolder: closing });
+    await closed.close();
+    const left: Record<string, boolean> = {};
+    for (const file of [".npmrc", ".mcp.json", ".pre-commit-config.yaml"]) {
+      left[file] = await stat(join(closing, file)).then(
+        () => true,
+        () => false,
+      );
+    }
+    // Not asserted: this records what srt does, for the threat model (4.6).
+    console.log(`placeholders left after close: ${JSON.stringify(left)}`);
+  });
+
   for (const how of ["writing", "moving"] as const) {
     it(`can't put content into the tool folders that were made at the start, by ${how} it (HAL-11246)`, async () => {
       // Windows denies through the file system's permissions, which need an existing folder.
@@ -207,22 +231,15 @@ console.log(JSON.stringify(result));
     });
 
     it(`can't put content into the tool settings in the root of the working folder, by ${how} it`, async () => {
-      // No placeholder is made for these, yet srt refuses content in a new file here.
       const left = await contentLeftBy(how, `root-${how}.cjs`, {
         npmrc: [".npmrc"],
         mcp: [".mcp.json"],
         hookManager: [".pre-commit-config.yaml"],
       });
       expect(sizes(left)).toEqual({ npmrc: 0, mcp: 0, hookManager: 0 });
-      if (how === "writing") {
-        // The first attempt on these files: the session didn't make them, so an empty file left
-        // behind is the program's own create, which srt allows.
-        expect(Object.values(left).map((file) => file.existedBefore)).toEqual([
-          false,
-          false,
-          false,
-        ]);
-      }
+      // srt made each of them empty when the session opened and denies it, so the program's
+      // attempt finds the file already there.
+      expect(Object.values(left).map((file) => file.existedBefore)).toEqual([true, true, true]);
     });
   }
 
