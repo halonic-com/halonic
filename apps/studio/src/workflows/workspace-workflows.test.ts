@@ -218,10 +218,10 @@ verifies("studio.workspace-workflow-read", () => {
     });
   });
 
-  it("refuses a workflow the hub doesn't have, and says which", async () => {
+  it("refuses a workflow the hub doesn't have as not found", async () => {
     const { host } = setup();
     await expect(host.read({ hubId: "acme", id: "gone" })).rejects.toThrow(
-      'The hub "acme" has no workflow "gone".',
+      "This workflow isn't in this workspace any more.",
     );
   });
 
@@ -257,7 +257,7 @@ verifies("studio.workspace-workflow-read", () => {
 
   it("rejects the settings of a workflow the hub doesn't have", async () => {
     await expect(setup().host.configuration({ hubId: "acme", id: "gone" })).rejects.toThrow(
-      'The hub "acme" has no workflow "gone".',
+      "This workflow isn't in this workspace any more.",
     );
   });
 
@@ -280,7 +280,9 @@ verifies("studio.workspace-workflow-read", () => {
     const { host } = setup();
 
     expect((await host.tests({ hubId: "acme", id: "reply" })).cases).toEqual([]);
-    await expect(host.tests({ hubId: "acme", id: "gone" })).rejects.toThrow("has no workflow");
+    await expect(host.tests({ hubId: "acme", id: "gone" })).rejects.toThrow(
+      "isn't in this workspace any more",
+    );
   });
 
   describe("saving a run as a test", () => {
@@ -362,7 +364,7 @@ verifies("studio.workspace-workflow-read", () => {
       const { host } = setup([run], logs());
 
       await expect(host.saveRunAsTest({ hubId: "acme", id: "gone" }, "r1", "A")).rejects.toThrow(
-        'no workflow "gone"',
+        "isn't in this workspace any more",
       );
     });
   });
