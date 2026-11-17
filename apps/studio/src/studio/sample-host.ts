@@ -1,6 +1,7 @@
 import type { WorkspaceFolderProbe } from "@halonicjs/adapter-fs-tauri";
 import { TauriDefinitionStore } from "@halonicjs/adapter-fs-tauri";
 import type { CreatedSample, SampleHost } from "@halonicjs/studio-feature-workspace";
+import { errorKindOf } from "@halonicjs/std";
 import { copyWorkspace } from "@halonicjs/workspace";
 import {
   commands,
@@ -46,15 +47,21 @@ export function sampleHostOf(parts: NewWorkspaceHostParts): SampleHost {
         if (!copied.ok) return cant("the folder isn't empty");
         return { kind: "created", folder: made, name, trust: await trustOf(parts, made, true) };
       } catch (reason) {
-        return cant(reasonOf(reason));
+        return cant(reasonOf(reason), errorKindOf(reason) === "unavailable");
       }
     },
   };
 }
 
-/** The refusal Welcome shows: where it was meant to go, as the person knows it, and why it didn't. */
-function cant(reason: string): CreatedSample {
-  return { kind: "cant", folder: documentsName, reason };
+/** The refusal Welcome shows: where it was meant to go, as the person knows it, and why it didn't;
+ * `unavailable` when the shell gave no answer, which Welcome words itself and tries again first. */
+function cant(reason: string, unavailable = false): CreatedSample {
+  return {
+    kind: "cant",
+    folder: documentsName,
+    reason,
+    ...(unavailable ? { unavailable: true as const } : {}),
+  };
 }
 
 /** Where Documents is; rejects when this computer has none. */

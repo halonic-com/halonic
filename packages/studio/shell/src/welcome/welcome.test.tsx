@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { ClipboardProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
@@ -7,7 +8,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { createShell } from "../shell.ts";
 import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
-import type { WelcomeOpenProblem } from "./cant-open.ts";
+import { cantOpenProblem, type WelcomeOpenProblem } from "./cant-open.ts";
 import { Welcome } from "./welcome.tsx";
 import { WelcomeWindow } from "./welcome-window.tsx";
 
@@ -116,6 +117,34 @@ verifies("shell.welcome-cant-open", () => {
       "Can't open /work/old: the folder is gone.",
     );
     expect(openButton(root).getAttribute("aria-busy")).not.toBe("true");
+  });
+
+  it("stays busy and tries again for 10 seconds, then says the engine isn't answering", async () => {
+    vi.useFakeTimers();
+    try {
+      const onOpenFolder = vi.fn(async () =>
+        cantOpenProblem(
+          "~/Documents/Acme",
+          new KindedError("unavailable", "The desktop shell gave no answer"),
+        ),
+      );
+      const root = render(<Welcome onOpenFolder={onOpenFolder} />);
+
+      await act(async () => openButton(root).click());
+      await act(async () => vi.advanceTimersByTimeAsync(5_000));
+      expect(openButton(root).getAttribute("aria-busy")).toBe("true");
+      expect(root.querySelector('[role="alert"]')?.textContent).toBe("");
+
+      await act(async () => vi.advanceTimersByTimeAsync(6_000));
+      const line = root.querySelector('[role="alert"]')?.textContent;
+      expect(line).toBe(
+        "Can't open ~/Documents/Acme: the engine isn't answering. It may still be starting.",
+      );
+      expect(line).not.toMatch(/shell/i);
+      expect(openButton(root).getAttribute("aria-busy")).not.toBe("true");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("clears the message on the next press", async () => {

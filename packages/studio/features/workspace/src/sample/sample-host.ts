@@ -12,7 +12,13 @@ export type CreatedSample =
   /** A sample the device already knows is in this folder, so nothing was written. */
   | { readonly kind: "existing"; readonly folder: string }
   /** Nothing was written: `folder` is where it was meant to go, as the person knows it. */
-  | { readonly kind: "cant"; readonly folder: string; readonly reason: string };
+  | {
+      readonly kind: "cant";
+      readonly folder: string;
+      readonly reason: string;
+      /** True when the shell gave no answer; Welcome then words it itself, never with `reason`. */
+      readonly unavailable?: true;
+    };
 
 /** What the app does for **Try the Acme sample** on Welcome. */
 export interface SampleHost {

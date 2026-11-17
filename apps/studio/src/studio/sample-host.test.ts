@@ -15,7 +15,7 @@ function hostOf(taken: string[], answers: Record<string, unknown> = {}) {
       if (command === "documents_folder") return "/docs/Documents";
       if (command === "probe_workspace_folder")
         return taken.includes(String(args?.["name"])) ? "files" : "new";
-      if (command === "create_workspace_folder") return `${args?.["parent"]}/${args?.["name"]}`;
+      if (command === "create_workspace_folder" && !Object.hasOwn(answers, command)) return `${args?.["parent"]}/${args?.["name"]}`;
       return answer;
     },
     openChannel: () => {
@@ -66,6 +66,17 @@ verifies("studio.try-sample", () => {
     });
     expect(await store.list()).toEqual([]);
     expect(trust).not.toHaveBeenCalled();
+  });
+
+  it("marks a shell that gives no answer, so Welcome words it itself", async () => {
+    const { host } = hostOf([], { create_workspace_folder: null });
+
+    expect(await host.create([])).toEqual({
+      kind: "cant",
+      folder: "~/Documents",
+      reason: "the desktop shell gave no answer",
+      unavailable: true,
+    });
   });
 
   it("reopens the first taken name when the device knows it as a sample, and writes nothing", async () => {

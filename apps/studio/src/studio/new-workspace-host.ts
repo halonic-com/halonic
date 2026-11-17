@@ -169,7 +169,8 @@ async function openedFolder(
   try {
     const opened = await shell.invoke(commands.open, { parent, name });
     if (opened === null) return null;
-    if (typeof opened !== "string") throw new Error("the desktop shell gave no answer");
+    if (typeof opened !== "string")
+      throw new KindedError("unavailable", "the desktop shell gave no answer");
     return opened;
   } catch (reason) {
     throw refusalOf(reason);
@@ -184,7 +185,8 @@ export async function madeFolder(
 ): Promise<string> {
   try {
     const made = await shell.invoke(commands.create, { parent, name });
-    if (typeof made !== "string") throw new Error("the desktop shell gave no answer");
+    if (typeof made !== "string")
+      throw new KindedError("unavailable", "the desktop shell gave no answer");
     return made;
   } catch (reason) {
     throw refusalOf(reason);
@@ -208,6 +210,7 @@ const refusalKinds: Readonly<Record<string, ErrorKind>> = {
  * dialog gives the generic sentence and the shell's text stays in the cause, for the log.
  */
 function refusalOf(reason: unknown): Error {
+  if (reason instanceof KindedError && reason.kind === "unavailable") return reason;
   const kind =
     typeof reason === "object" && reason !== null ? (reason as { kind?: unknown }).kind : undefined;
   const known =
