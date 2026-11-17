@@ -17,8 +17,13 @@ renamed row gets focus, and the file opens at its new path only when it was the 
 The design check (HAL-11370, F2) found that the dialog broke checklist 8.11 and that the toast had
 no Undo (microcopy 7). The sentence "That is the file's own path." is not in the microcopy, so it is
 gone: a name left as it was changes nothing. Two small sentences are new and are the team's call:
-"A name can't contain /." and "Also updated *n* places: *names*." (the second names the places as
-microcopy 19.7 asks; the link to the full list is not built yet).
+"A name can't contain a slash." and "Also updated *n* places: *names*." (the second names the places
+as microcopy 19.7 asks; the link to the full list is not built yet).
+
+Sofia decided the wording on HAL-11399: "slash" is spelled out because a lone `/` before a full stop
+reads like a stray path fragment, and it matches the other full-sentence refusals. "Also updated" stays
+as written. When the second line shows, the title ends with a full stop ("Renamed to *path*."), as the
+delete toast does; without it, no full stop. At most three names show, then "and *n* more".
 
 ## Tests
 

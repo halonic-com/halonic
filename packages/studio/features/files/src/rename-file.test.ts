@@ -43,8 +43,21 @@ verifies("files.ui.rename-file", () => {
       rename: async () => renamed({ places: 3, owners: ["Daily digest", "Support triage"] }),
     };
     await renameFile(host, store, "c.yaml", "d.yaml", effects());
+    expect(show.mock.calls[0]?.[0].title).toBe("Renamed to d.yaml.");
     expect(show.mock.calls[0]?.[0].text).toBe(
       "Also updated 3 places: Daily digest, Support triage.",
+    );
+  });
+
+  it("shows at most three names, then how many more", async () => {
+    const { show, store } = toastsOf();
+    const host = {
+      rename: async () =>
+        renamed({ places: 5, owners: ["Support agent", "Billing hub", "Triage", "A", "B"] }),
+    };
+    await renameFile(host, store, "c.yaml", "d.yaml", effects());
+    expect(show.mock.calls[0]?.[0].text).toBe(
+      "Also updated 5 places: Support agent, Billing hub, Triage and 2 more.",
     );
   });
 
@@ -65,7 +78,7 @@ verifies("files.ui.rename-file", () => {
       "Give the file",
     );
     expect(await renameFile({ rename }, null, "a.yaml", "x/y.yaml", effects())).toBe(
-      "A name can't contain /.",
+      "A name can't contain a slash.",
     );
     expect(rename).not.toHaveBeenCalled();
   });

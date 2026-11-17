@@ -47,7 +47,7 @@ export async function renameFile(
     effects.moved(to);
     toasts?.show({
       tone: "success",
-      title: filesWords.renamed(to),
+      title: filesWords.renamed(to, renamed.places > 0),
       ...(renamed.places > 0
         ? { text: filesWords.alsoUpdated(renamed.places, renamed.owners) }
         : {}),
