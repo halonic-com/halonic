@@ -283,6 +283,8 @@ export class WorkspaceRoutines implements RoutinesHost {
   }
 
   async create({ name, hubId }: NewRoutine): Promise<RoutineRef> {
+    // The hubs are known once the workspace has loaded.
+    await this.#load();
     if (!this.#hubs.some((hub) => hub.id === hubId)) {
       throw new Error(`The workspace has no hub "${hubId}".`);
     }
