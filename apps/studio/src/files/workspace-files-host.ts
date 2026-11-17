@@ -5,6 +5,7 @@ import {
   isPrivateWorkspacePath,
   type WorkspaceFileChange,
 } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
 import {
   type CompareChoice,
   type FileCompare,
@@ -249,7 +250,7 @@ export class WorkspaceFilesHost implements FilesHost {
   }
 
   async rename(from: string, to: string): Promise<RenamedFile> {
-    if (from === to) throw new Error(`${to} already has that name.`);
+    if (from === to) throw new KindedError("conflict", `${to} already has that name.`);
     await this.#checkFreePath(to);
     await this.#refuseSkillSplit(from, to);
     const { rewrites, places, owners } = await this.#renamePlan(from, to);
@@ -261,7 +262,8 @@ export class WorkspaceFilesHost implements FilesHost {
       owners,
       undo: async () => {
         if (files.step !== afterRename || !files.undo()) {
-          throw new Error(
+          throw new KindedError(
+            "conflict",
             `${to} can't be moved back, because the workspace changed after it was renamed.`,
           );
         }
@@ -271,7 +273,8 @@ export class WorkspaceFilesHost implements FilesHost {
 
   async remove(path: string): Promise<RemovedFile> {
     const files = this.#parts.files;
-    if ((await files.read(path)) === null) throw new Error(`${path} isn't here any more.`);
+    if ((await files.read(path)) === null)
+      throw new KindedError("not_found", `${path} isn't here any more.`);
     await this.#refuseSkillSplit(path, undefined);
     const old = placeOf(path);
     const places =
@@ -285,7 +288,8 @@ export class WorkspaceFilesHost implements FilesHost {
       places: places.length,
       undo: async () => {
         if (files.step !== afterDelete || !files.undo()) {
-          throw new Error(
+          throw new KindedError(
+            "conflict",
             `${path} can't be put back, because the workspace changed after it was deleted.`,
           );
         }
@@ -305,7 +309,10 @@ export class WorkspaceFilesHost implements FilesHost {
     const others = (await this.#parts.files.list(folder)).filter((path) => path !== from);
     if (others.length > 0) {
       const verb = to === undefined ? "deleted" : "renamed";
-      throw new Error(`This skill has other files in its folder, so it can't be ${verb} here yet.`);
+      throw new KindedError(
+        "conflict",
+        `This skill has other files in its folder, so it can't be ${verb} here yet.`,
+      );
     }
   }
 

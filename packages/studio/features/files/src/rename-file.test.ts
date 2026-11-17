@@ -1,8 +1,9 @@
 import type { ToastStore } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
-import type { RenamedFile } from "./files-host.ts";
+import { FilePathError, type RenamedFile } from "./files-host.ts";
 import { renameFile } from "./rename-file.ts";
+import { kinded } from "./test-support/kinded.ts";
 
 function toastsOf() {
   const show = vi.fn();
@@ -64,7 +65,7 @@ verifies("files.ui.rename-file", () => {
   it("gives the host's sentence for a refused name and shows no toast", async () => {
     const { show, store } = toastsOf();
     const rename = async () => {
-      throw new Error("b.yaml already exists.");
+      throw new FilePathError("b.yaml already exists.");
     };
     expect(await renameFile({ rename }, store, "a.yaml", "b.yaml", effects())).toBe(
       "b.yaml already exists.",
@@ -87,7 +88,7 @@ verifies("files.ui.rename-file", () => {
     const { show, store } = toastsOf();
     const seen = effects();
     const undo = async () => {
-      throw new Error("b.yaml can't be moved back, because the workspace changed.");
+      throw kinded("conflict", "b.yaml can't be moved back, because the workspace changed.");
     };
     await renameFile({ rename: async () => renamed({ undo }) }, store, "a.yaml", "b.yaml", seen);
     show.mock.calls[0]?.[0].action.onClick();

@@ -5,6 +5,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { FilesHost } from "../files-host.ts";
+import { kinded } from "../test-support/kinded.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { contextHost, contextOf, listing, rowNamed, settled } from "../test-support/sidebar.ts";
@@ -110,7 +111,7 @@ verifies("files.ui.rename-file", () => {
 
   it("says why under the row and keeps the field when the host refuses", async () => {
     const rename = async () => {
-      throw new Error("providers.yaml already exists.");
+      throw kinded("conflict", "providers.yaml already exists.");
     };
     const { page } = await startRename({ ...contextHost(), rename });
     const input = rowNamed(page, "models.yaml").querySelector("input");
@@ -138,7 +139,7 @@ verifies("files.ui.rename-file", () => {
     await key(input, "Enter");
     const elsewhere = await leaveRow(input);
     await act(async () => {
-      refuse(new Error("providers.yaml already exists."));
+      refuse(kinded("conflict", "providers.yaml already exists."));
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(page.querySelector("input")).toBeNull();
@@ -228,7 +229,7 @@ verifies("files.ui.rename-file", () => {
 
   it("leaves the focus where the user put it when the row is left after a refusal", async () => {
     const rename = async () => {
-      throw new Error("providers.yaml already exists.");
+      throw kinded("conflict", "providers.yaml already exists.");
     };
     const { page } = await startRename({ ...contextHost(), rename });
     const input = rowNamed(page, "models.yaml").querySelector("input");

@@ -1,5 +1,5 @@
 import { Button, EmptyState, PlusIcon, SkeletonBar, useToastStore } from "@halonicjs/studio-kit";
-import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import { errorReasonFor, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { FILE_KIND, fileItem } from "../file-item.ts";
 import { FilesHostService, type FilesListing } from "../files-host.ts";
@@ -65,8 +65,7 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
         },
         (error: unknown) => {
           if (stale()) return;
-          const reason = error instanceof Error ? error.message : String(error);
-          setLoaded({ kind: "error", reason });
+          setLoaded({ kind: "error", reason: errorReasonFor(error) });
         },
       );
     },

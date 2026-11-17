@@ -1,11 +1,12 @@
 import type { ToastStore } from "@halonicjs/studio-kit";
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import type { FilesHost, RemovedFile } from "./files-host.ts";
 import { filesWords } from "./files-words.ts";
 import { clearTrashed, markTrashed } from "./trash.ts";
 
-/** The sentence an `Error` of the host gives; anything else gives none, as no system message reaches the user. */
+/** The sentence a kinded error of the host gives; anything else gives none, as no system message reaches the user. */
 function reasonOf(error: unknown): string | undefined {
-  const reason = error instanceof Error ? error.message.trim() : "";
+  const reason = errorReasonFor(error, "");
   return reason === "" ? undefined : reason;
 }
 

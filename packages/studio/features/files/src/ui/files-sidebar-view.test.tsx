@@ -5,6 +5,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { FilesHost, FilesListing } from "../files-host.ts";
+import { kinded } from "../test-support/kinded.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { contextHost, contextOf, listing, rowNamed, settled } from "../test-support/sidebar.ts";
@@ -116,7 +117,7 @@ verifies("files.ui.tree-view", () => {
   it("says it couldn't load, and shows the tree after Try again works", async () => {
     const list = vi
       .fn<FilesHost["list"]>()
-      .mockRejectedValueOnce(new Error("The folder is not readable."))
+      .mockRejectedValueOnce(kinded("unavailable", "The folder is not readable."))
       .mockResolvedValue(listing(files));
     const page = await show({ ...hostOf(listing([])), list });
     expect(page.textContent).toContain("Couldn't load files");
