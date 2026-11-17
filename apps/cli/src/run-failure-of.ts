@@ -157,11 +157,12 @@ export function failedStartOf(
  * The facts of a failed run's two lines, from its `run.failed` event and
  * the model it called last (requirement `cli.run-failure`).
  *
- * A reason whose lines need a fact the run log doesn't hold yet gets the
- * general lines, with the engine's own message: `budget` (the budget and
- * the spend), as do `harness-unavailable` (cli-output 3.4 has no line for
- * it), and a reason whose model, provider file or started step can't be
- * found. Of those, `disk-full`, `interrupted` and `answer-not-an-option` have a known
+ * `budget` reads the budget, the spend and the currency from the engine's
+ * error (requirement `engine.budget-stop-message`). A reason whose lines need
+ * a fact the run log doesn't hold gets the general lines, with the engine's
+ * own message: `harness-unavailable` (cli-output 3.4 has no line for it), a
+ * budget stop whose error doesn't read as the engine writes it, and a reason
+ * whose model, provider file or started step can't be found. Of those, `disk-full`, `interrupted` and `answer-not-an-option` have a known
  * cause, so they leave out the "report it" line 2 (HAL-6451).
  *
  * @param model - from {@link failedModelOf}; `undefined` when the run called no model
@@ -235,6 +236,7 @@ export function runFailureOf(
     case "harness-start-failed":
       return harnessFailure(failed, started);
     case "budget":
+      return budgetFailure(failed);
     case "harness-unavailable":
     case "instructions-not-trusted":
     case "error":
@@ -242,6 +244,33 @@ export function runFailureOf(
     default:
       return assertNever(reason, "run failure reason");
   }
+}
+
+/**
+ * The engine's budget stop, at the end of its error, since a parent run wraps
+ * its child's: "Run budget reached: 5.08 of 5.00 EUR spent." or "Monthly
+ * budget reached: 50.10 of 50.00 EUR spent this month."
+ */
+const budgetStop =
+  /(Run|Monthly) budget reached: (\d+(?:\.\d+)?) of (\d+(?:\.\d+)?) ([A-Z]{3}) spent(?: this month)?\.$/;
+
+/** `budget` with the amounts of the engine's error; a monthly budget resets on the first of the next month (UTC). */
+function budgetFailure(failed: RunFailedEvent): RunFailure {
+  const [, per, spent, limit, currency] = budgetStop.exec(failed.error) ?? [];
+  if (currency === undefined) {
+    return generalFailure(failed);
+  }
+  const budget = Number(limit);
+  return per === "Run"
+    ? { reason: "budget", per: "run", budget, spent: Number(spent), currency }
+    : { reason: "budget", per: "month", budget, currency, resetsOn: nextMonthStart(failed.at) };
+}
+
+/** The first of the month after `at` (UTC), as "1 Dec". */
+function nextMonthStart(at: string): string {
+  const stopped = new Date(at);
+  const next = new Date(Date.UTC(stopped.getUTCFullYear(), stopped.getUTCMonth() + 1, 1));
+  return next.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 }
 
 /** `model-out-of-memory` at the model the run called last. */

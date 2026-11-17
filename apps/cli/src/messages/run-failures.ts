@@ -93,14 +93,16 @@ export type RunFailure =
   | {
       readonly reason: "budget";
       readonly per: "run";
-      /** In euros, as are all amounts here. */
       readonly budget: number;
       readonly spent: number;
+      /** The workspace's `budget.currency`, such as "EUR", which both amounts are in. */
+      readonly currency: string;
     }
   | {
       readonly reason: "budget";
       readonly per: "month";
       readonly budget: number;
+      readonly currency: string;
       /** When the monthly budget starts again, such as "1 Dec". */
       readonly resetsOn: string;
     }
@@ -227,8 +229,8 @@ const lineOne = {
   budget: (run, failure) =>
     phrase`${run.title} stopped in the step ${run.step}: ${
       failure.per === "run"
-        ? phrase`this run reached its budget of ${moneyAmount(failure.budget)} (estimated ${moneyAmount(failure.spent)} spent).`
-        : phrase`this month's estimated spend reached its budget of ${moneyAmount(failure.budget)}.`
+        ? phrase`this run reached its budget of ${moneyAmount(failure.budget, failure.currency)} (estimated ${moneyAmount(failure.spent, failure.currency)} spent).`
+        : phrase`this month's estimated spend reached its budget of ${moneyAmount(failure.budget, failure.currency)}.`
     }`,
   "turn-limit": (run, failure) => {
     // "used all 1 turn" reads like a bug (HAL-2745).
@@ -339,10 +341,11 @@ const lineTwo = {
     }, or point the model alias ${failure.alias} at another model in models.yaml.`,
   "model-timeout": () => tryLater(),
   // A per-run budget doesn't reset, so only a monthly one can be waited out.
+  // Each names its own key in workspace.yaml (HAL-12007).
   budget: (_run, failure) =>
     failure.per === "run"
-      ? phrase`Raise the budget in workspace.yaml.`
-      : phrase`Raise the budget in workspace.yaml, or wait until it resets on ${failure.resetsOn}.`,
+      ? phrase`Raise budget.perRun in workspace.yaml.`
+      : phrase`Raise budget.monthly in workspace.yaml, or wait until it resets on ${failure.resetsOn}.`,
   "turn-limit": (run, failure) =>
     phrase`See what ${failure.agent} did with ${suggestedCommand("runs show", run.dir, run.runId)}. Raise its turn limit in ${failure.agentFile} if it needs more turns.`,
   "tool-timeout": () => tryLater(),
