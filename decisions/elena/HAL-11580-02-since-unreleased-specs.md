@@ -18,4 +18,4 @@ FAQ fact-check (HAL-11579) read main as 0.1.0.
 
 ## Covers
 
-- packages/testing/spec/
+- tooling/check/
