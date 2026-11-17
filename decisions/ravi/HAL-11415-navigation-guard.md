@@ -1,7 +1,7 @@
 # Decision: say "That page can't be shown here" when the guard sends the Android window back to the connect page
 
 - Task: HAL-11415
-- Approval: Chief approves this requirement edit on HAL-11461 (https://paperclip.halonic.com/HAL/issues/HAL-11461#comment-d20325b6-b1a8-4f0a-9129-e58dd27238aa). A team decision with no board card (HAL-2282 rule); the wording was decided by the team in HAL-11446.
+- Approval: Liam (CTO) approves this requirement edit on HAL-11461 (https://paperclip.halonic.com/HAL/issues/HAL-11461#comment-d20325b6-b1a8-4f0a-9129-e58dd27238aa), at head 902393c4. A team decision with no board card (HAL-2282 rule; the board supervisor confirmed on HAL-11460 that requirement changes take agent signatures); the wording was decided by the team in HAL-11446.
 - Kind: user-visible
 
 ## What changes
