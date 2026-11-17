@@ -16,7 +16,7 @@ On the phone's own Settings page (served Studio, flow-settings 13 and mc 13.2), 
   and the example reads "Example: 12,345.60 · Tue 17 Nov, 08:00" (today).
 - Given Formats shows,
   when "Dutch (Netherlands)" is picked,
-  then `nl-NL` is saved and the example reads "45,00 · ma 9 nov, 08:00".
+  then `nl-NL` is saved and the example reads "Example: 12.345,60 · di 17 nov, 08:00".
 - Given saving fails,
   when a format is picked,
   then the dialog says "Couldn't save the format on this computer. Format is back to …".
