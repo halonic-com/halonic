@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { type ToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -332,6 +333,48 @@ verifies("files.ui.delete-file", () => {
     });
     expect(remove).toHaveBeenCalledWith("models.yaml");
     expect(document.querySelector("input")).toBeNull();
+  });
+
+  it("moves focus to the next row after a delete, and to the restored row after Undo", async () => {
+    let paths = ["a.md", "b.md", "c.md"];
+    let notify = () => {};
+    const undo = vi.fn(async () => {
+      paths = ["a.md", "b.md", "c.md"];
+      notify();
+    });
+    const host: FilesHost = {
+      ...contextHost(),
+      list: async () => listing(paths),
+      subscribe: (listener) => {
+        notify = listener;
+        return () => {};
+      },
+      remove: async () => {
+        paths = ["a.md", "c.md"];
+        notify();
+        return { places: 0, undo };
+      },
+    };
+    const toasts = { show: vi.fn() };
+    const page = render(
+      <ToastStoreProvider store={toasts as unknown as ToastStore}>
+        <FilesSidebarView context={contextOf(host)} />
+      </ToastStoreProvider>,
+    );
+    await settled();
+    const row = rowNamed(page, "b.md");
+    act(() => row.click());
+    await act(async () => {
+      row.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true }));
+    });
+    await settled();
+    expect(document.activeElement).toBe(rowNamed(page, "c.md"));
+
+    await act(async () => {
+      toasts.show.mock.calls[0]?.[0].action.onClick();
+    });
+    await settled();
+    expect(document.activeElement).toBe(rowNamed(page, "b.md"));
   });
 });
 

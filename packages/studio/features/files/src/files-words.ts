@@ -17,8 +17,10 @@ export const filesWords = {
   fileLoading: "Loading the file",
   /** The editor's name for a screen reader: the file's path. */
   editorLabel: (path: string): string => `Text of ${path}`,
-  missingTitle: "This file isn't here any more",
-  missingDescription: "It was moved or deleted. Pick another file in the tree.",
+  missingTitle: "This file isn't in this workspace any more.",
+  goToFiles: "Go to Files",
+  /** The strip above the greyed editor of a file that was moved to the trash; Undo follows. */
+  trashed: "This file was moved to the trash",
   unreadableTitle: "Couldn't open this file",
   /** The line above the editor of a file over the size limit. */
   largeFile: "This file is large, so it opens read-only.",
@@ -64,8 +66,8 @@ export const filesWords = {
   /** The toast after a rename, with the new path. */
   renamed: (path: string): string => `Renamed to ${path}`,
   /** The toast after a delete: with a second line it is a sentence and ends with a full stop. */
-  deleted: (name: string, withLine: boolean): string =>
-    `Moved ${name} to the trash${withLine ? "." : ""}`,
+  deleted: (path: string, withLine: boolean): string =>
+    `Moved ${path} to the trash${withLine ? "." : ""}`,
   /** The second line of that toast when other files name the deleted one by its id. */
   deletedPlaces: (count: number): string =>
     count === 1
@@ -73,11 +75,11 @@ export const filesWords = {
       : `${count} places now show an error until you update them.`,
   undo: "Undo",
   tryAgain: "Try again",
-  couldntDelete: (name: string, reason: string | undefined): string =>
+  couldntDelete: (path: string, reason: string | undefined): string =>
     reason === undefined
-      ? `Couldn't move ${name} to the trash.`
-      : `Couldn't move ${name} to the trash: ${reason.replace(/\.$/, "")}.`,
-  couldntPutBack: (name: string): string => `Couldn't put ${name} back`,
+      ? `Couldn't move ${path} to the trash.`
+      : `Couldn't move ${path} to the trash: ${reason.replace(/\.$/, "")}.`,
+  couldntPutBack: (path: string): string => `Couldn't put ${path} back`,
   /** The toast after files changed outside Halonic were taken in: the name for one file, the count for a batch. */
   reloaded: (names: readonly string[]): string =>
     names.length === 1

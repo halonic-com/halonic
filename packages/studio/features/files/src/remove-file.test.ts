@@ -3,6 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import type { RemovedFile } from "./files-host.ts";
 import { removeFile } from "./remove-file.ts";
+import { trashedFile } from "./trash.ts";
 
 function toastsOf() {
   const show = vi.fn();
@@ -17,7 +18,10 @@ verifies("files.ui.delete-file", () => {
     await removeFile({ remove: async () => ({ places: 0, undo }) }, store, "agents/models.yaml");
 
     const toast = show.mock.calls[0]?.[0];
-    expect(toast).toMatchObject({ tone: "success", title: "Moved models.yaml to the trash" });
+    expect(toast).toMatchObject({
+      tone: "success",
+      title: "Moved agents/models.yaml to the trash",
+    });
     expect(toast.text).toBeUndefined();
     toast.action.onClick();
     expect(undo).toHaveBeenCalledOnce();
@@ -72,12 +76,31 @@ verifies("files.ui.delete-file", () => {
     const toast = show.mock.calls[0]?.[0];
     expect(toast).toMatchObject({
       tone: "danger",
-      title: "Couldn't move a.md to the trash: a.md isn't here any more.",
+      title: "Couldn't move dir/a.md to the trash: a.md isn't here any more.",
       sticky: true,
     });
     toast.action.onClick();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(remove).toHaveBeenCalledTimes(2);
-    expect(show.mock.calls[1]?.[0]).toMatchObject({ title: "Moved a.md to the trash" });
+    expect(show.mock.calls[1]?.[0]).toMatchObject({ title: "Moved dir/a.md to the trash" });
+  });
+
+  it("tells the tree when the file is in the trash and when Undo brought it back", async () => {
+    const { show, store } = toastsOf();
+    const removed = vi.fn();
+    const restored = vi.fn();
+
+    await removeFile({ remove: async () => ({ places: 0, undo: async () => {} }) }, store, "a.md", {
+      removed,
+      restored,
+    });
+    expect(removed).toHaveBeenCalledOnce();
+    expect(restored).not.toHaveBeenCalled();
+    expect(trashedFile("a.md")).toBeDefined();
+
+    show.mock.calls[0]?.[0].action.onClick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(restored).toHaveBeenCalledOnce();
+    expect(trashedFile("a.md")).toBeUndefined();
   });
 });

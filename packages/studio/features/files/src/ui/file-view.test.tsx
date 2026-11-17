@@ -8,6 +8,7 @@ import { filesFeature } from "../feature.ts";
 import { fileItem } from "../file-item.ts";
 import type { FileIssue, FilesHost } from "../files-host.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
+import { clearTrashed, markTrashed } from "../trash.ts";
 import { FileView } from "./file-view.tsx";
 
 const opened: {
@@ -38,6 +39,7 @@ vi.mock("@halonicjs/studio-code-editor", () => ({
         entry.text = text;
         entry.loads.push(text);
       },
+      focus: () => {},
       setProblems: (problems: readonly EditorProblem[]) => {
         entry.shown = problems;
       },
@@ -182,15 +184,82 @@ verifies("files.ui.file-tab", () => {
     expect(opened).toHaveLength(0);
   });
 
-  it("says a missing file isn't here any more", async () => {
+  it("says a missing file isn't in this workspace any more, with Go to Files", async () => {
     const page = show(
       hostOf(async () => null),
       "gone.md",
     );
     await settle();
 
-    expect(page.textContent).toContain("This file isn't here any more");
+    expect(page.textContent).toContain("This file isn't in this workspace any more.");
+    expect([...page.querySelectorAll("button")].map((b) => b.textContent)).toContain("Go to Files");
     expect(opened).toHaveLength(0);
+  });
+
+  it("greys the editor and says the file went to the trash, with Undo that brings it back", async () => {
+    let text: string | null = "keep";
+    let notify = () => {};
+    const undo = vi.fn(async () => {
+      text = "keep";
+      clearTrashed("a.md");
+      notify();
+      return true;
+    });
+    const host: FilesHost = {
+      ...hostOf(async () => text),
+      subscribe: (listener) => {
+        notify = listener;
+        return () => {};
+      },
+    };
+    const page = show(host, "a.md");
+    await settle();
+    expect(opened).toHaveLength(1);
+
+    text = null;
+    await act(async () => {
+      markTrashed("a.md", { undo });
+    });
+    await settle();
+
+    expect(page.textContent).toContain("This file was moved to the trash");
+    expect(announced).toContain("This file was moved to the trash");
+    expect(opened.at(-1)?.options.readOnly).toBe(true);
+    expect(opened.at(-1)?.options.text).toBe("keep");
+    const button = [...page.querySelectorAll("button")].find((b) => b.textContent === "Undo");
+    expect(document.activeElement).toBe(button);
+
+    await act(async () => {
+      button?.click();
+    });
+    await settle();
+
+    expect(undo).toHaveBeenCalledOnce();
+    expect(page.textContent).not.toContain("moved to the trash");
+    expect(opened.at(-1)?.options.readOnly).toBe(false);
+  });
+
+  it("says the file isn't here any more when it goes away without the trash", async () => {
+    let text: string | null = "x";
+    const notifiers: (() => void)[] = [];
+    const host: FilesHost = {
+      ...hostOf(async () => text),
+      subscribe: (listener) => {
+        notifiers.push(listener);
+        return () => {};
+      },
+    };
+    const page = show(host, "b.md");
+    await settle();
+
+    text = null;
+    await act(async () => {
+      for (const notify of notifiers) notify();
+    });
+    await settle();
+
+    expect(page.textContent).toContain("This file isn't in this workspace any more.");
+    expect(opened[0]?.destroyed).toBe(true);
   });
 
   it("says why a file can't be read", async () => {
