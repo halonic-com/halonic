@@ -1,5 +1,18 @@
 [
   {
+    "id": "method-fields-in-file-order",
+    "task": "HAL-11746",
+    "area": "workflow runs: the fields line of a method prompt",
+    "old": "784f78d's prompt for a step that calls a method named the fields of the method's JSON answer in the order the agent file lists them (the extract method: vendor, amount, note).",
+    "new": "The engine names them in name order (amount, note, vendor), because runs keep their definitions as canonical JSON. That is one of several differences in these tests: the fields line is an allowed difference (method-fields-by-name), but the parallel checks branch events come in a different order, the notifier prompt and so its token counts and cost differ, and an artifact hash and unpricedCalls differ. HAL-11746 traces those.",
+    "tests": [
+      "billing/invoice/an approved invoice is paid and announced",
+      "billing/invoice/a rejection with a comment ends in rejected",
+      "billing/invoice/an approval nobody answers expires after two days",
+      "billing/invoice/without a decision the run waits"
+    ]
+  },
+  {
     "id": "run-starts-with-signed-out-connector",
     "task": "HAL-5291",
     "area": "CLI runs: a connector that isn't signed in",

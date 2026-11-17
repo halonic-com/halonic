@@ -2,17 +2,20 @@
 
 - Approval: HAL-7123 asks for this change, as planned in the note for HAL-4757; Liam signs it
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mF/WEQcrxia7TEusBeOBGlkeDBagXF3laNNMvK+mLizqoONwSxwmRTiyAqiQsmNzHpZL/jOiCl5zCB40V4C0Dg==
 - Task: HAL-7123
 
 ## What changes
 
-The known gap `method-fields-in-file-order` becomes the allowed difference `method-fields-by-name` in
-`packages/testing/parity/allowed-differences.json`, for the requirement `engine.task-method`. A run rule of the same
-name sorts the fields of the old runner's line `Answer with JSON with these fields: ...` by name, in `agent.started`
-and `knowledge.searched`, so the compare sees the old prompt in the order the engine writes it. The list of
-requirements the allowed-differences test checks gains `engine.task-method`. No test, requirement or golden file is
-removed or weakened.
+The allowed difference `method-fields-by-name` is added to `packages/testing/parity/allowed-differences.json`, for the
+requirement `engine.task-method`. A run rule of the same name sorts the fields of the old runner's line
+`Answer with JSON with these fields: ...` by name, in `agent.started` and `knowledge.searched`, so the compare sees the
+old prompt in the order the engine writes it. The list of requirements the allowed-differences test checks gains
+`engine.task-method`. No test, requirement or golden file is removed or weakened.
+
+The known gap `method-fields-in-file-order` stays, for the four `billing/invoice/*` tests it lists, because those tests
+differ in more than the fields line: the parallel `checks` branch events come in a different order, the `notifier`
+prompt and so its token counts and cost differ, and an artifact hash and `unpricedCalls` differ. Its text now says so,
+and it moves to HAL-11746, which traces those differences. The allowed difference covers the fields line only.
 
 ## Why
 
