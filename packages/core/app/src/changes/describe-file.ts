@@ -16,6 +16,8 @@ export interface FileChange {
    * the caller offers the line diff instead.
    */
   readonly described: boolean;
+  /** The name the item carries in its file, as the Library shows it; absent when it has none or the file doesn't read. */
+  readonly name?: string;
 }
 
 /**
@@ -38,13 +40,21 @@ export function describeFileChange(
   after: string | null,
 ): FileChange {
   const place = placeOf(path);
+  const name = place === undefined ? undefined : nameOf(place.kind, place.placeId, after ?? before);
+  const named = name === undefined ? {} : { name };
   if (place !== undefined) {
     const lines = describeItem(place.kind, place.placeId, before, after);
     if (lines !== undefined && (lines.length > 0 || before === after)) {
-      return { path, kind: place.kind, lines: importantFirst(lines), described: true };
+      return { path, kind: place.kind, lines: importantFirst(lines), described: true, ...named };
     }
   }
-  return { path, kind: place?.kind, lines: [wholeFileLine(before, after)], described: false };
+  return {
+    path,
+    kind: place?.kind,
+    lines: [wholeFileLine(before, after)],
+    described: false,
+    ...named,
+  };
 }
 
 /** The item's lines, or `undefined` when a text that exists doesn't read as the kind. */
@@ -58,6 +68,14 @@ function describeItem<Name extends KindName>(
   const is = read(kind, id, after);
   if (was === "unreadable" || is === "unreadable") return undefined;
   return describeItemChange(kind, was, is);
+}
+
+/** The `name` an item's text carries, when the text reads as the kind and has one. */
+function nameOf(kind: KindName, id: string | undefined, text: string | null): string | undefined {
+  const value = read(kind, id, text);
+  if (typeof value !== "object" || value === null) return undefined;
+  const name = (value as { readonly name?: unknown }).name;
+  return typeof name === "string" && name !== "" ? name : undefined;
 }
 
 function read<Name extends KindName>(

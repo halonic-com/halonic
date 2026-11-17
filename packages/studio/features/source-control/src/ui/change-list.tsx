@@ -34,9 +34,13 @@ function iconOf(item: ChangeItem): ReactNode {
   return <PlaceIcon name={place} />;
 }
 
-/** What a list of rows needs to say about each item: its icon, name and one sentence. */
+/** What a list of rows needs to say about each item: its icon, name, and kind with one sentence. */
 function rowOf(item: ChangeItem) {
-  return { id: item.id, title: item.name, meta: item.sentence, icon: iconOf(item) };
+  const meta =
+    item.kind === undefined
+      ? item.sentence
+      : itemWords.kindAndSentence(itemWords.kind[item.kind], item.sentence);
+  return { id: item.id, title: item.name, meta, icon: iconOf(item) };
 }
 
 /** The order the rows are drawn in: items, then the files no kind places. */

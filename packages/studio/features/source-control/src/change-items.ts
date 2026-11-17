@@ -88,9 +88,13 @@ export function groupIntoItems(files: readonly ChangedFile[]): ChangeItem[] {
     const id = item?.key ?? `file:${file.path}`;
     const found = byId.get(id);
     if (found === undefined) {
-      const name = item?.name ?? friendlyNames[file.path] ?? baseName(file.path);
+      const name =
+        file.description.name ?? item?.name ?? friendlyNames[file.path] ?? baseName(file.path);
       byId.set(id, { name, kind: item?.kind, hub: item?.hub ?? "", files: [file] });
     } else {
+      // A skill's name is in its SKILL.md; the other files of its folder carry none.
+      if (file.description.name !== undefined && item !== undefined)
+        found.name = file.description.name;
       found.files.push(file);
     }
   }

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { groupIntoItems } from "./change-items.ts";
 import type { ChangedFile } from "./changes-list-state.ts";
 
-function changed(path: string, sentence: string, from?: string): ChangedFile {
+function changed(path: string, sentence: string, from?: string, name?: string): ChangedFile {
   return {
     path,
     ...(from === undefined ? {} : { from }),
@@ -12,6 +12,7 @@ function changed(path: string, sentence: string, from?: string): ChangedFile {
       path,
       kind: undefined,
       described: false,
+      ...(name === undefined ? {} : { name }),
       lines: [{ id: "item", sentence, parts: [] }],
     },
   };
@@ -27,6 +28,16 @@ verifies("source-control.changes-page", () => {
       expect(items).toHaveLength(1);
       expect(items[0]).toMatchObject({ name: "triage", kind: "skill", sentence: "Changed" });
       expect(items[0]?.files).toHaveLength(2);
+    });
+
+    it("names an item by the name in its file, as the Library does, not by its id", () => {
+      const [skill, agent] = groupIntoItems([
+        changed("library/skills/refund-handling/SKILL.md", "New", undefined, "Refund handling"),
+        changed("library/skills/refund-handling/notes.md", "New"),
+        changed("agents/help.agent.yaml", "Changed", undefined, "Help desk"),
+      ]);
+      expect(skill).toMatchObject({ name: "Refund handling", kind: "skill" });
+      expect(agent).toMatchObject({ name: "Help desk", kind: "agent" });
     });
 
     it("keeps the same skill in two hubs as two items", () => {
