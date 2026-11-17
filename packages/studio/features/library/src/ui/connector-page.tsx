@@ -33,13 +33,20 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
       listedTools === undefined ? undefined : new ListedToolsReviewModel(listedTools, item.id),
     [listedTools, item.id],
   );
-  const title = useRef<HTMLHeadingElement>(null);
+  const title = useRef<HTMLHeadingElement | null>(null);
   const trash = useItemTrash(context, {
     kind: "connector",
     hub: item.hub === sharedHubKey ? null : item.hub,
     id: item.id,
     name: connector?.name ?? item.id,
   });
+  const titleRef = useCallback(
+    (element: HTMLHeadingElement | null) => {
+      title.current = element;
+      trash.titleRef(element);
+    },
+    [trash.titleRef],
+  );
   const ready = loaded && connector !== undefined;
   // A connector just made in New connector opens with its name focused, so a screen reader reads it.
   useEffect(() => {
@@ -66,7 +73,7 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
     <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 wide:px-6">
       <PageBackLinkSlot />
       <div className="flex items-start justify-between gap-2">
-        <h1 ref={title} tabIndex={-1} className="text-title [overflow-wrap:anywhere]">
+        <h1 ref={titleRef} tabIndex={-1} className="text-title [overflow-wrap:anywhere]">
           {connector?.name ?? item.id}
         </h1>
         {trash.menu}

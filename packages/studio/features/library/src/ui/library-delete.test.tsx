@@ -180,6 +180,7 @@ verifies("library.library-delete", () => {
       [SkillHostService, skills],
       [LibraryItemsHostService, host],
     ]);
+    const announce = vi.fn();
     const props = {
       item: { kind: "skill", hub: "~workspace", id: "tone" },
       context: {
@@ -187,7 +188,7 @@ verifies("library.library-delete", () => {
           get: (key: unknown) => provided.get(key),
           find: (key: unknown) => provided.get(key),
         }),
-        announcer: { announceState: vi.fn() },
+        announcer: { announce, announceState: vi.fn() },
         openPlace: vi.fn(),
       },
       Sections: () => null,
@@ -204,10 +205,15 @@ verifies("library.library-delete", () => {
     expect(page.textContent).toContain("This skill was moved to the trash");
     expect(page.textContent).not.toContain("isn't in this workspace any more");
     const undoButton = [...page.querySelectorAll("button")].find((b) => b.textContent === "Undo");
+    expect(document.activeElement).toBe(undoButton);
+    expect(announce).toHaveBeenCalledWith(
+      "Moved Tone to the trash. 1 agent now shows an error until you take it off its Tools page.",
+    );
     await act(async () => undoButton?.click());
     await settled();
     expect(undo).toHaveBeenCalledOnce();
     expect(page.querySelector("h1")?.textContent).toBe("Tone");
+    expect(document.activeElement).toBe(page.querySelector("h1"));
     expect(page.textContent).not.toContain("This skill was moved to the trash");
   });
 });
