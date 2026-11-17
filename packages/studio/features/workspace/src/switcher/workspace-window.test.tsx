@@ -392,7 +392,7 @@ verifies("workspace.saves-itself", () => {
     expect(document.querySelector("dialog p")?.textContent).toBe(
       "acme is still saving. Close anyway throws away the changes.",
     );
-    expect(buttonNamed("Keep open")).toBeUndefined();
+    expect(buttonNamed("Cancel")).toBeUndefined();
     expect(buttonNamed("Try again")).toBeUndefined();
     const buttons = [...document.querySelectorAll("dialog button")].map((b) => b.textContent);
     expect(buttons.filter(Boolean)).toEqual(["Wait", "Close anywayClosing…"]);
@@ -412,12 +412,12 @@ verifies("workspace.saves-itself", () => {
     expect(document.querySelector('dialog [aria-label="Keep acme open"]')).not.toBeNull();
   });
 
-  it("keeps the workspace on Keep open", async () => {
+  it("keeps the workspace on Cancel", async () => {
     const { switcher } = start([], [], failingSaving() as unknown as WorkspaceSaving);
     await act(() => switcher.openLocation("/work/acme"));
     await act(() => switcher.closeShown());
 
-    await act(async () => buttonNamed("Keep open")?.click());
+    await act(async () => buttonNamed("Cancel")?.click());
     expect(document.querySelector("dialog")).toBeNull();
     expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: acme");
   });
