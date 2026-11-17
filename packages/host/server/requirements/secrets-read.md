@@ -1,7 +1,7 @@
 # server.secrets-read
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1292 (T4, PR 4a); models flow 3.3 (the API key's rules)
 
 The server shall answer `GET /api/secrets/<name>`, behind the sign-in, with `{"stored": true}` or `{"stored": false}` for a provider key, and nothing else: it shall never answer a value. It shall do this only when the host gave it a `providerKeys` store; without one the route shall answer 404 `keys_not_supported`, for every verb. `GET` and `DELETE` stay allowed over plain http, since `GET` returns only a yes or no.

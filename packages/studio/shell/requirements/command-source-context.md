@@ -1,7 +1,7 @@
 # shell.command-source-context
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1740; plugins design 8.1 and 8.3 (HAL-1739); review of halonic#1831
 
 When the window lists commands, for Ctrl K or a phone's Search, the shell shall ask each command source for its commands with the context of the feature that added the source, the same context that feature's views get, so a source can read its feature's services for the open workspace. When commands are listed without a window, the shell shall ask each source without a context.

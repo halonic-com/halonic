@@ -1,7 +1,7 @@
 # deploy.lock
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6704, HAL-6804; build plan 3a (HAL-198); multi-cloud ADR 5.6
 
 The deploy shall hold a lock in the deployed database while it changes anything, so two deploys of the same Worker never run at once. The lock is a lease of ten minutes. It shall be taken with one conditional write that wins only when no lease exists or the old one has expired, renewed at each step and in the background during a long step, and freed when the deploy ends, however it ends, and on Ctrl C. A second deploy shall stop with a typed error that names the holder and when it started. A deploy that finds its lease taken over shall stop. `plan` mode shall take no lock.

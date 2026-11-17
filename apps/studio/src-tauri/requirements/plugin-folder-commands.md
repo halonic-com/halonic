@@ -1,7 +1,7 @@
 # studio.src-tauri.plugin-folder-commands
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9377; `pluginsFolder` in `@halonicjs/profile`; `studio.src-tauri.crates.workspace-files.folder-reader`
 
 When the page calls a `plugin_folder_*` command, the shell shall work in the folder `pluginsFolder` names, in `@halonicjs/profile`, for the CLI's profile, and never in a folder the page names. The commands shall only read: they list entries with their kind, give a file's exact bytes and give real locations, never follow a link, never open a special file and refuse a path that is unsafe. If the plugins folder is a link, or not a folder, then the shell shall refuse every call. If there is no plugins folder yet, then the shell shall answer as for an empty one and create nothing. `plugin_folder_reveal` shall show only the plugins folder or the folder of one installed plugin in the file manager, never a link, a file or a path outside it.

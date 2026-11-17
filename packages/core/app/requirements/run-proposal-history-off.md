@@ -1,7 +1,7 @@
 # app.run-proposal-history-off
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: req-workspace `app.run-proposal-history-off`; engine answer 2 on HAL-3267 ("history off"); plan on HAL-3248 (approved on HAL-5271)
 
 When history is off, a run that can write files shall get a copy of the saved files in Halonic's data folder, made of two sides: a base left as the workspace was at the start, and the run's side, the only folder it writes in. The copy shall leave out what Accept may never write (`.git/`, `.halonic/`) and what the workspace store won't serve. At the run's end, the proposal shall be the files the run added, deleted or modified, in the same record shape as with history on, with no commit and no ref, each with the digest of its base. Both sides shall then keep only those files, and nothing when the run changed nothing. Accept, its parts and changes, Compare, Reject, Undo, settle, the 30 days and unavailable shall work as with history on. A proposal shall be read from its own kind of texts whatever the setting is later. When the workspace has more files or bytes than a copy may hold, the run shall fail at start, saying the workspace is too big to run with history off and that history can be turned on or a smaller folder opened, and leave no copy.

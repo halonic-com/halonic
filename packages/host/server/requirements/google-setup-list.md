@@ -1,7 +1,7 @@
 # server.google-setup-list
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10697 (served Studio: Google setup read and sign-in place); rule from Liam on HAL-10597
 
 The server shall answer `GET /api/google/setups` with every setup whose account a connector still uses, each as `GET /api/google/setups/<accountRef>` shows it ([server.google-setup](google-setup.md)), and `signIn`: `here` or `elsewhere`, worked out from this request alone. It answers `here` only when **both** the socket's address (as the host vouches for it, never from a header) is loopback (`127.0.0.1`, `::1`, `::ffff:127.0.0.1`) **and** the `Origin` header, or the `Host` header when there is no `Origin`, names a loopback host (`localhost`, `127.0.0.1`, `[::1]`). Every other request, including one with no address, `Origin: null` or a name that only ends in `localhost`, answers `elsewhere`. The list is behind the sign-in, like the rest of the Google routes.

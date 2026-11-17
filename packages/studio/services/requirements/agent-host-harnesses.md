@@ -1,7 +1,7 @@
 # services.agent-host-harnesses
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-4878 (part 6c)
 
 The Studio's harness stand-ins for the agent host shall each carry the harness's own `environment` function by its id: `claudeCodeEnvironment` for `claude-code` and `codexEnvironment` for `codex`, taken from the adapters' browser-safe `./environment` entry points. They run on the page, so the bridge's token goes into the sandbox profile and nowhere else. A harness the host lists without such a function shall have no `environment`.

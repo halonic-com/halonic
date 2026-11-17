@@ -1,7 +1,7 @@
 # harness-bridge.github-read
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-3104 (step 2 of HAL-3023, plan section 4.5); first slice of HAL-194's MCP endpoint
 
 The Node bridge shall offer, as `BridgeTools` the engine can serve at `/mcp` under the rules of `harness-bridge.mcp`, four read-only tools on one GitHub repository fixed when the tools are made: `github_get_pull_request`, `github_get_pull_request_diff`, `github_list_pull_request_files` and `github_get_pull_request_checks`. Each takes one pull request `number`, a whole number of 1 or more; any other value shall get an error result without a call to GitHub. The program shall never name the repository. Each tool shall make only `GET` calls, to `https://api.github.com`, and shall not follow a redirect. The `github_get_pull_request` result shall hold the pull request's number, title, state, author, branches, head commit, description and counts; `github_get_pull_request_diff` its diff as text; `github_list_pull_request_files` each file's name, status and line counts; `github_get_pull_request_checks` the head commit and each check's name, status and conclusion. A list is the first 100 items, and its result shall say, with `truncated`, when there may be more. The diff and the pull request's text are copied as they are into the result, and so into the run log, which means anything written in them is recorded there too.

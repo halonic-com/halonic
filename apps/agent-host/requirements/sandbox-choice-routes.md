@@ -1,7 +1,7 @@
 # agent-host.sandbox-choice-routes
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10796; HAL-5405 (Studio's onboarding reads the choice); `app.sandbox-choice`
 
 When Studio asks which sandbox runs, the agent host shall answer the `SandboxChoice` of its choice service as codes, with the trust check run on the first ask and the latest choice after that. When the shell tells it that the person's setting changed, the host shall choose again from the setting saved in its profile and answer the new choice. The host shall take nothing about the setting from the caller, shall never save, change or remove the setting, and shall never download a backend. When the saved setting can't be read or isn't valid, then the host shall answer 500 `sandbox_choice_failed` and shall not take that for "no setting".

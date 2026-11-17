@@ -1,7 +1,7 @@
 # agent-host.sweep-lock
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6256; HAL-7302 (left-over bridge folders)
 
 When the agent host starts to serve with a profile folder, the agent host shall take the host lock in that profile and hold it until it stops, and only while it holds the lock shall it sweep the kept Windows grants inside each folder given with `--sweep-root`, starting the sweep right after it takes the lock. On Linux and macOS, while it holds the lock and before it serves, it shall also remove the run folders in the profile's `bridges` folder that bridges left behind (`harness-bridge.socket-sweep`), and when that fails it shall say why on standard error and serve all the same. If another live host holds the lock, or the lock can't be taken, then the agent host shall serve without a sweep and, when it was given a sweep root, say why on standard error. If a `--sweep-root` has no value or a relative one, then the agent host shall refuse to start, with exit code 2.

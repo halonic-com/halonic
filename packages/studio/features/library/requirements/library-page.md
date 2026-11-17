@@ -1,7 +1,7 @@
 # library.library-page
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1303 (T10, P4a); HAL-9897; flow-library 3.1; microcopy 11.1
 
 The Library page shall show four tabs in the order Skills, Knowledge, Collections, Connectors, with one sentence under the title that follows the selected tab. Under them it shall show the shell's overview page with the selected tab's items from the host, in the words of microcopy 11.1 for each state, and a New button only on the tabs that have one (not Knowledge). An empty Knowledge tab offers Open the docs folder when the app gives it. A tab whose items haven't arrived shows loading, never the previous tab's rows. It shall say "Couldn't load" with the tab's name, and read the items again on Try again or when the host says something changed. A kinded error's own reason shows; any other error shows no reason, so a system message never reaches the user. A later read that fails keeps the list it has and adds a line with Try again above it. Each row's ⋮ menu shall list Open, Open in new tab, Open as file (desktop only) and Delete, in that order; on a phone Open in new tab does the same as Open, as the plugin list does. While nothing is listed, the tab has no search field and its one button is in the empty state (Open the docs folder on Knowledge, New skill or New collection elsewhere).

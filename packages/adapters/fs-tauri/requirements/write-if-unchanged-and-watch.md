@@ -1,7 +1,7 @@
 # fs-tauri.write-if-unchanged-and-watch
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: routing note task 3 (HAL-3236), HAL-3247, HAL-3335, command shapes agreed on HAL-5753 and HAL-5761; `ports.definition-store-write-if-unchanged`, `ports.definition-store-watch`; `DefinitionStore` port v2
 
 The Tauri definition store shall implement `DefinitionStore` and pass its contract suite by calling the shell's `fs_list`, `fs_read`, `fs_write` and `fs_remove` commands, naming the workspace it was made for in every call, and checking every path with the port's rules before it calls the shell. It shall send a write's `expected` to the shell, which compares it with the file and renames the new text into place under one lock, and shall never compare and write in two calls. It shall send a remove's `expected` to the shell too, which compares it with the file under the same lock as a write and answers `removed` or `changed-on-disk` with the file's current text, and shall never read and then remove in two calls. When the shell refuses a path, which only it can see behind a link, the call shall reject with a `RangeError`; an unreadable folder with an `UnreadableWorkspaceFolderError` naming it; a workspace that isn't open with a `denied` error; a file that isn't UTF-8 text with an `invalid_input` error; an `io` refusal with an `unavailable` error that keeps the shell's message. A rejection that isn't the shell's refusal shape, or an answer that isn't the command's, shall reject with an `unavailable` error that doesn't repeat its text.

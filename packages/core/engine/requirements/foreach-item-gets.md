@@ -1,7 +1,7 @@
 # engine.foreach-item-gets
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6982; E8 in HAL-185's engine bug decisions
 
 When a `foreach` state whose items run its agent picks data with `gets` and has no `input`, the engine shall ask each item's agent with the item, as text or JSON, followed by the picked data, as it does after an `input` or a method's prompt.

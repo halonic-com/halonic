@@ -1,7 +1,7 @@
 # events.run-started-version
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5173, step 6a of HAL-3246 (save model 2.2–2.3; `runs.run-view.live-or-saved` in req-runs)
 
 The events package shall let a `run.started` event name, in an optional `version`, which version of the workspace the run read: `{ reads: "live-version", commit, versionDate }` for the live version, where `versionDate` is the ISO date that version was made, or `{ reads: "saved-files" }` for the files as saved, so a run view can say whether a run ran the live version of a date or the saved files. A `run.started` without `version`, as older logs have it, shall read as before, and means the version wasn't recorded, not that the run read the saved files.

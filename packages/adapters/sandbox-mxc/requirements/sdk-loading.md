@@ -1,7 +1,7 @@
 # sandbox-mxc.sdk-loading
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-7607, HAL-7603 (decision: an optional SDK, loaded only on Windows), ADR 2026-11-10-mxc-sandbox-backend, HAL-3305 (decision note HAL-3305-02-mxc-session: telemetry passed off on every spawn)
 
 The sandbox-mxc adapter shall load MXC's SDK (`@microsoft/mxc-sdk/v1`) only on Windows, only when it is first asked whether MXC is offered or can start, and at most once per process. It shall never load the SDK at module top level. When it isn't Windows, or the SDK can't be imported, or the module lacks the calls the adapter reads, MXC shall not start: the check's reason shall be `other` on Windows 11 (`windows` on other systems, which never reach the SDK), and no session shall open. The adapter shall read the SDK's platform support and available backends, and start programs with its `spawn`. It shall pass `telemetry: { enabled: false }` on every `spawn` call and never call `requestTelemetryConsent`.

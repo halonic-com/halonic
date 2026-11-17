@@ -1,7 +1,7 @@
 # server.webhooks
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-195 (plan D22, webhook triggers for routines; build plan PR 7b); HAL-9 plan phase 4
 
 The server shall let a signed web request start a routine that has a `webhook` trigger, on `POST /api/webhooks/<hubId or @workspace>/<routineId>`. The sender signs instead of signing in. Its request carries `x-halonic-delivery` (a delivery id of 1 to 128 letters, digits and `._:-`), `x-halonic-timestamp` (whole Unix seconds) and `x-halonic-signature` (`sha256=` and the hex HMAC-SHA-256 of `<delivery id>.<timestamp>.<body>`), keyed with the secret the routine's `trigger.webhook.secret` names, which the server reads from the `Secrets` port at every request, never from the routine file. The signature is checked in constant time.

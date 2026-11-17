@@ -1,7 +1,7 @@
 # plugins.plugin-changes
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1740; plugin screens design section 6 (HAL-1739); UX acceptance checklist 4 (HAL-1952)
 
 The Studio shall open **Review changes** on a plugin that changed since the person trusted it as a dialog titled "*name* changed since you trusted it on *date*", with the change rows core found, each with a tag **New**, **Changed** or **Removed** and, for a change, the old value, an arrow and the new value, then a closed "Unchanged (*n*)" list. Its buttons shall be **Not now**, focused, and **Trust again and turn on**, which trusts the plugin through the app. When core can't compare what was trusted with the plugin, the dialog shall say that something changed and that Halonic can't say what.

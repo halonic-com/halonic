@@ -1,7 +1,7 @@
 # plugins.plugin-add
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1740; plugin screens design section 4 (HAL-1739); microcopy 24 T5; UX acceptance checklist 3 (HAL-1952)
 
 The Studio shall give **Add plugin** a dialog with two ways in: a folder on this computer, and a git repository with an optional branch, tag or version. **Add** shall stay pressable while the field is empty and say "Enter a folder or a git address." While the app copies the plugin, the button shall say "Getting *name*…" and the fields shall be unavailable. When the app adds the plugin, the dialog shall hand its id on so the trust check can open. When it can't, a `danger` callout shall say why and that nothing was installed, and the button shall become **Try again**. A plugin that is already installed shall offer **Open *name***. What the plugin or the computer says shall only ever be shown as plain text.

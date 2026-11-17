@@ -1,7 +1,7 @@
 # sandbox-srt.wsl-mounts
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5402 (W5 of the HAL-5407 review; design in HAL-3779 section 5.1)
 
 The sandbox-srt adapter shall mount a Windows folder for an import read-only with `noexec`, `nosuid` and `nodev`, at a fresh random mount point under its own folder, and shall unmount and remove the mount point when the import ends, also when it fails. It shall remove the mount points a crash left behind at the next start, only with `umount` and `rmdir`. It shall mount a project on the Windows drive for the `halonic` user only (`umask=077`, `nosuid`, `nodev`), and only the one project folder, which must be an absolute Windows drive path without `..`.

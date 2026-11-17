@@ -1,7 +1,7 @@
 # workflows.canvas.fit-and-zoom
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9865 (T7 PR 3); flow-workflows 4.7; states C8, D9
 
 When the canvas is opened or **Auto layout** is pressed, the workflows feature shall fit all steps in the viewport without zooming in past 100 %, and when the person zooms, the canvas shall keep the point under the pointer where it is and stay between 25 % and 200 %.

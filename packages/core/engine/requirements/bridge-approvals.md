@@ -1,7 +1,7 @@
 # engine.bridge-approvals
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10849 (Liam's decision on HAL-10847)
 
 The engine shall give the host the approvals of one run's bridge, for what the harness's program or a Halonic tool needs a person's OK for. A request shall be recorded in the run as `approval.requested` under a call id the engine makes itself (`call-<n>`), not the bridge's, followed by `run.waiting` for `approve` and `reject`, as for an approval the harness itself asks for (`engine.harness-approvals`). The request shall resolve with the person's answer and comment when `approve` or `reject` is sent for that call id; the run's checks shall refuse an unknown or an already answered call id, so the first answer wins and a later one changes nothing. Requests of one run shall wait one at a time, in the order they came. The engine shall never answer yes by itself: a request with no harness call of the run going on (the run ended, the engine stopped, or the call is gone), with more than one going on, or that the run can't wait for, shall resolve as not approved, and a request whose signal aborts shall reject. The run keeps a question that was withdrawn this way until a person answers it.

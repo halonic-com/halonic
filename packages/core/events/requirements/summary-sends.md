@@ -1,7 +1,7 @@
 # events.summary-sends
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-2868, from Sofia's wording call on HAL-2848 ("Sent 1 email, 2 invites", in call order); reader rules from HAL-2831; child runs from Sofia's Q1 on HAL-2868
 
 The events package shall work out from a run's log what the run sent, by the reader rules of `events.tool-result-risk`, so the receipt of `halonic run` and the runs list say the same thing. It gives the calls that sent and the calls that may have sent, each as one group per verb, ordered by the verb's first call. Inside a group there is one count per noun, ordered by the noun's first call. Calls with the same verb and noun add up. A call without a `verb` counts as `sent`. It also says whether the run made a tool call at all, because a run "sent nothing" only when it made none. Starting a child run counts as a tool call, because the child may have sent; what the child sent stays in its own log.

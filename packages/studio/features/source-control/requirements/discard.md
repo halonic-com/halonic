@@ -1,7 +1,7 @@
 # source-control.discard
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1302 (T9); req-source-control (HAL-110) revision 4, `source-control.changes.discard-with-warning` and `source-control.changes.discard-per-file-and-hunk`; save model 3.1, 3.3 and 3.4 (HAL-1102)
 
 The Changes page shall give each changed file Undo these changes, which at once puts the file back as the last version has it, without a question: a changed or deleted file gets its text back and a new file is deleted. Before it changes anything, Halonic shall keep a copy of the text it throws away in `.studio/discarded`, which git ignores, and when the copy can't be kept, nothing shall be discarded and the page shall say "Couldn't discard these changes." and why. A toast "Discarded changes in 1 file" shall offer Undo, which brings the file back as one undo step, or, when the file changed in the meantime, shows a toast "Couldn't put the changes back" and why. Nothing shall be written when the file changed since the page read it, and a file that another program added to a version, or that can't be read as text, can't be discarded here and the page shall say why.

@@ -1,7 +1,7 @@
 # remote-gateway.websocket-frames
 
 - Status: active
-- Since: 0.2.0
+- Since: unreleased
 - Source: tunnel phase A of the plan "phone reaches a runtime host through pluggable tunnels", approved by the board on 11 Nov; task HAL-5685
 
 The gateway shall read WebSocket frames (RFC 6455) with its own reader, which accepts only masked, unfragmented text, binary, close, ping and pong frames with the reserved bits clear, since no extension is ever negotiated, and a control frame of at most 125 bytes; anything else is a protocol error and the reader reads nothing more. It shall decide that a message frame is too large from its header, with a length over the limit (a 64-bit length beyond what a number holds included), before it holds any of the payload, so a client can't make the host hold more than one message. It shall read frames whose bytes arrive in any split, and write the frames it sends unmasked, with the shortest length form.

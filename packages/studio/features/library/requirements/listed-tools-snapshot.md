@@ -1,7 +1,7 @@
 # library.listed-tools-snapshot
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-2213 / HAL-8338 part 3 (HAL-8634)
 
 The Library feature shall build a connector's review snapshot from the core review of its listed tools, so that each changed tool shows the texts it changed since its stored approval, the approved text beside the new one, and whether only its server changed.

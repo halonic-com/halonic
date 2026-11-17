@@ -1,7 +1,7 @@
 # library.library-phone
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1303 (P9c); flow-library 8
 
 While the app is a phone, the Library feature shall not offer New connector, on the Connectors tab or from a run banner's request: connectors are looked at there, and set up on a larger screen. While the app is a phone, Knowledge and Connectors rows and pages shall not offer Delete either, because a phone can't remove what it can't make again; only skill and collection rows and pages keep it (flow-library 8.1, phone layout 1.1).

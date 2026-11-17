@@ -1,7 +1,7 @@
 # workspace.local-only-harness
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6125 (HAL-5922, ADR `docs/adr/2026-11-08-local-first.md`)
 
 When `loadWorkspace` has parsed a workspace whose `workspace.yaml` sets `privacy.localOnly: true`, the workspace package shall report as an error, at the agent file's `harness` key with its line, every agent whose `harness` names a program (`claude-code` or `codex`), because such a program sends the work to its own cloud model. The message names the agent and its harness, and ends with how to turn local-only off: `privacy.localOnly: false` in `workspace.yaml`. An agent without `harness`, or with `harness: halonic` (Halonic's own loop), gets no such error, and a workspace without `privacy.localOnly: true` gets none.

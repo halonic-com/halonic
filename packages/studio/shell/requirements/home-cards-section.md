@@ -1,7 +1,7 @@
 # shell.home-cards-section
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1740; plugins design 8.2 and decision D3 (HAL-1739, HAL-1801); plugins UX checklist 8 and 16, B4 (HAL-1952); T16-F35 and F37
 
 The shell shall let one feature add Home's Cards section through `home.addCard` with the section `cards`, and shall show it after Recent runs, with the heading "Cards" and, when its card can't load, the title "Couldn't load cards". While the Cards section loads, the shell shall show, after the same 300 ms, two skeleton cards instead of skeleton rows. When a section's card renders `HomeSectionEmpty`, the shell shall hide the whole section, its heading included, and shall show it again once the card renders something else.

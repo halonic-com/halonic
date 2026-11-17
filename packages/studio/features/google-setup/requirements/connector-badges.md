@@ -1,7 +1,7 @@
 # google-setup.connector-badges
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-715; google-setup-flow (HAL-621) section 5.2; ux-checklists (HAL-1019) section 5
 
 The Google setup feature shall show, through the shell's header badges, one badge for each Google account whose connector needs a sign-in again ("Needs sign-in") or a new secret ("Needs new secret"), with the label and tone the library gives that state, below the trust badge and with the secret before the sign-in. Each badge shall have the button **Fix**, which opens that account's setup item in the Inbox, and shall go when the account no longer needs it. The badge shall not name the account; its tooltip shall. The "API off" badge comes with the run banner (HAL-1845), because only a run knows it.

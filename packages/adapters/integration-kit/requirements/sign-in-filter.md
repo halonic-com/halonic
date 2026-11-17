@@ -1,7 +1,7 @@
 # integration-kit.sign-in-filter
 
 - Status: active
-- Since: 0.2.0
+- Since: unreleased
 - Source: HAL-8279 (pull request 2 of HAL-984, design section 5, and attack cases T4 and T5)
 
 The kit shall treat every value `SignInTokens.filterValues` lists, which are the access tokens not yet expired, the refresh token and the client secret, like a secret's value: it removes every form the filter knows (raw, URL-encoded, form-encoded, JSON-escaped) from the responses it hands back, from its refusals and errors, and from the headers and URL, and it refuses a request whose own method, URL, headers or body carries one with `secret-in-request`, to any host. A token the kit placed is also removed in its placed form (`Bearer <value>`, or the header's prefix and the value). The values are read for each request, and again for each hop that places a token, so a token a refresh issued during the request is removed too.

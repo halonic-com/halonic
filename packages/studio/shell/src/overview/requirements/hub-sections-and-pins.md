@@ -1,7 +1,7 @@
 # shell.overview.hub-sections-and-pins
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10 migration checklist U5 (Now); HAL-1303 (T10, P1)
 
 While the "All" filter is selected, the overview page shall show one section per hub, even an empty one, followed by a section "Shared in <workspace name>" when there are shared items, with pinned items first in each section.

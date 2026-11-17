@@ -1,7 +1,7 @@
 # engine.llm-request-alias
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1308 (the Failed banner for a model that can't use tools names the model alias it came from, "used by the model alias `fast`")
 
 The run log's `llm.request` event shall carry an optional `alias`, the name of the model alias the call went to, such as `fast`. The engine writes it when the model has an alias and leaves it out otherwise. It holds a name, never a key. A reader that doesn't find it (an older log) shows the banner without the alias.

@@ -1,7 +1,7 @@
 # workflows.page.frame-and-states
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9865 (T7 PR 3); flow-workflows 3.1, 4.7; states C8, C9, C16, D9, D10; UX checklist 3.4
 
 When a workflow's tab opens, the workflows feature shall show a full-width page with the workflow's letter avatar, "WORKFLOW" and its name, and under it the canvas of its steps, with no ⤢, no ✕ and no chat column; when the host takes over 300 ms to give the workflow it shall show a skeleton, never before; when the host can't read it, it shall say "Couldn't load this workflow", the reason and **Try again**; when it is opened on its Tests (`openItem`'s `step` is `tests`) it shall open Configuration on Tests instead of the canvas.

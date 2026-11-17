@@ -1,7 +1,7 @@
 # ports.send-wait
 
 - Status: active
-- Since: 0.1.2
+- Since: unreleased
 - Source: HAL-11240; `RunExecutor` port v2 (see the ADR "A send can name the wait step it answers")
 
 The `RunExecutor.send` method shall take in its `SendOptions` an optional `wait`, with the `state` of the wait step the event is meant for and the time it started waiting (`since`, the run summary's `lastWaitingAt`).

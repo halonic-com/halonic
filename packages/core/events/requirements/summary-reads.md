@@ -1,7 +1,7 @@
 # events.summary-reads
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-62 receipt requirements RCPT-2.2 and RCPT-2.7; the `drafted` verb from HAL-8274 (HAL-1301)
 
 The events package shall work out from a run's log what the run read and what it drafted, by the reader rules of `events.tool-result-risk`. `readsOf` counts the ok calls of a tool whose declared risk is `read` and that has a `noun`, one count per noun in the order of each noun's first call. `draftsOf` counts the ok calls of a tool whose risk is `write` and whose `verb` is `drafted`, the same way. Calls that failed, broke off, or lack a `noun` are not counted, and a send is never a draft.

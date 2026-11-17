@@ -1,7 +1,7 @@
 # files.tree.keyboard
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-329 files flow 3.3 (new, accessibility); changed by the save-model decision, HAL-1102; req-files (HAL-110); HAL-1293
 
 The file tree shall let the user move between rows with the up and down arrow keys, open and close folders with the right and left arrow keys, open the focused file in a tab with Enter, start Rename with F2, and move the focused file to the trash with the Delete key.

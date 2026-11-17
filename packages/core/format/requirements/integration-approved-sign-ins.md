@@ -1,7 +1,7 @@
 # format.integration-approved-sign-ins
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8323 (HAL-984 design, section 4, "The approved sign-in")
 
 The `approvedSignIns` function shall give each sign-in of a sheet with every setting filled in: its `authorizeUrl`, `tokenUrl`, `revokeUrl`, `revokeEndsClientGrants` (only when true) and `issuer` as `https` URLs (a `{ fromSetting, path }` URL becomes the host of that setting plus the path), its client ID (fixed, or read from its setting), its client authentication, the name of its client secret, its scopes without their reasons, and its resolved access hosts and placement. It shall refuse a client ID setting that is missing (`client-id-missing`) or holds a space or line break (`client-id-invalid`), and an address setting a sign-in URL reads that is missing, outside its class or plain http, with the same problems as the sheet's hosts. It shall hold no secret value.

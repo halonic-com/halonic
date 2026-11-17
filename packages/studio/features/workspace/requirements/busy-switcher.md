@@ -1,7 +1,7 @@
 # workspace.busy-switcher
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: states-flow-map O7 and D9 (HAL-5878), kit busy rule, accessibility pass A1; HAL-1291
 
 When a workspace opens from the workspace menu, whether from **Open a folder…** or a Recent row, and it is still opening after 300 ms, the workspace switcher button shall be busy until the workspace shows or the toast that says why it couldn't appears: a spinner in place of its chevron, `aria-busy`, focus kept, and presses ignored. An open shorter than 300 ms shall never show busy. While a workspace opens, other requests to open one shall be ignored.

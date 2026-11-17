@@ -1,7 +1,7 @@
 # fs-node.folder-trash
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: `Trash` of `@halonicjs/app`; HAL-6477; the file rules of `fs-node.agent-placement-store-files`
 
 The fs-node trash shall keep what it takes out of a workspace's store as one JSON file per entry, named by an id the trash made, in a folder given to it, private to the user, holding the file's workspace path and text. `moveToTrash` shall take the file out of the store only after its entry is on disk, and only when the file still holds what the caller expected: for a file that is gone or changed it shall change nothing and say `changed-on-disk` with the text now. `restore` shall write the text back to its path only when nothing is there, say `occupied` with the text found otherwise, and say `missing` for an entry that isn't there, was put back already, or whose id isn't one the trash made; it shall delete the entry once the file is back. An entry that is a link, or isn't a path and a text, shall make `restore` throw.

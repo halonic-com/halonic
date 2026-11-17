@@ -1,7 +1,7 @@
 # app.workspace-rename
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1293, save model 5; decision on HAL-10506
 
 When the user renames a file, the kernel shall move its text to the new path, mark the old path for deletion and apply the given rewrites to the files that name it, all as one undo step. A saved rename shall remove the old file without sending it to the trash, because its text lives on at the new path, and Git shall keep the history because it detects the rename from the identical text. The kernel shall refuse a rename, and change nothing, when the old file doesn't exist or is marked for deletion, or when the new path already exists, in the store or as an unsaved new file. Undoing a rename after it was saved shall give back the old path, with the old text in the files that were rewritten. That undo deletes the new file through the trash, because it is a plain delete. A saved delete of the old path goes to the trash unless the same save writes the text the rename gave the new path.

@@ -1,7 +1,7 @@
 # models.aliases.create
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9386 (design check B10); decided on HAL-9653; microcopy 6.1
 
 When the user chooses **New alias**, the models feature shall ask for a name, a provider and a model in a "New model alias" dialog, write the alias to `models.yaml` as one undo step, close the dialog and open the alias's tab, and, while the name is empty, taken or contains a `/`, or the model is empty, not write the file and show a field error.

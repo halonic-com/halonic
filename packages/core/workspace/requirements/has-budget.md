@@ -1,7 +1,7 @@
 # workspace.has-budget
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: flow-models 2.1 "Has a budget" rule (HAL-177), HAL-63
 
 The workspace package shall say whether a workspace has a budget: it does when `budget` in `workspace.yaml` has `perRun` or `monthly`, and never just because a `budget` block exists. A block with only a currency means no limit.

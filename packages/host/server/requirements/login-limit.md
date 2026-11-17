@@ -1,7 +1,7 @@
 # server.login-limit
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6 finding 6; build plan on HAL-195 (PR 3); HAL-8164
 
 The server shall allow at most 10 sign-in attempts in each 15-minute window for each client address, counted in the `Coordination` port, so every instance of a deployment shares the count, and at most 100 in the window for the whole server as a ceiling. The client address shall be the `clientAddress` of the `RequestContext` that the host passes to `handle`, which a host fills only from what it can vouch for (the socket address on Node, `CF-Connecting-IP` on Cloudflare) and never from a header the client sets. The server shall count an IPv6 address by its first 64 bits, since one client usually owns a whole /64, and an IPv4-mapped IPv6 address (`::ffff:a.b.c.d`) as its IPv4 address; an address that does not parse is counted as it is. When the host passes no client address, the server shall allow at most 10 attempts in the window for the whole server. It shall count an attempt before it checks the password, the client's own count first, so an attempt refused for its address does not use up the server's count. It shall answer an attempt over a limit with 429, the code `too_many_attempts` and a `Retry-After` of the seconds until that window ends, without checking the password. A malformed request (400) shall not count.

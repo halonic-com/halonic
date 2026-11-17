@@ -1,7 +1,7 @@
 # studio.src-tauri.tool-approval-folder
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8868, plan approved by Liam on HAL-8904; `toolApprovalFolder` in `@halonicjs/profile`; `FileToolApprovalStore` in `fs-node`, which it matches; `fileCommands` in `packages/adapters/fs-tauri`
 
 When the page calls an `fs_*` command with the folder `"tool-approvals"` and a source, the shell shall work in the folder `FileToolApprovalStore` names for the source in the workspace's real path, `tool-approvals/<SHA-256 of [location, source] as JSON>` in the CLI's profile, and never in a folder the page names. If the workspace is not a folder the person opened in the shell, nor inside one, then the shell shall refuse the call as `folder_not_open`, and without a source as `unsafe_path`, without reading or writing anything. It shall refuse the folder as `private_path` when it is inside the workspace. It shall work only on the store's own files, an approval's SHA-256 and `.json`, or `waiting.json`, and list only the whole folder, refusing any other name as `unsafe_path`. A write shall make the folder private to the user and write the file private to the user, and a write or a remove shall hold the folder's `lock` file for as long as it works, as the CLI does.

@@ -1,7 +1,7 @@
 # scheduler-node.slow-delivery
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5207; plan 4.4
 
 While a listener call or a tick is still running, the Node scheduler shall keep its wake-up set for the next due timer or tick, so one slow call holds back no other timer. When the tick is still running at the time of the next one, the scheduler shall not wake for it until the running tick settles, and shall then start the next tick at once.

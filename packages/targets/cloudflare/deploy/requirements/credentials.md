@@ -1,7 +1,7 @@
 # deploy.credentials
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6704, HAL-6804; build plan 3a (HAL-198)
 
 The deploy shall accept a `cfut_` user token, a `cfat_` account token and a legacy token. It shall find the account with `GET /accounts`, verify a `cfat_` token at the account endpoint and any other token at the user endpoint (a legacy token whose user check fails is tried at the account endpoint), and call no other `/user/*` or `/memberships` endpoint. It shall stop with a typed error when the token is inactive or the account is missing or ambiguous, and no error or message shall contain the token.

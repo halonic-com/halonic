@@ -1,7 +1,7 @@
 # scheduler-node.store-failure
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5615, from Liam's review of HAL-5207 (PR #1803): a store that fails while a delivery is recorded must not make the scheduler deliver again at once, in a loop
 
 When the store fails while the Node scheduler records how a delivery went (the removal of a delivered timer, or the retry of one the listener rejected), the scheduler shall report the error with the timer as its source and deliver the timer again after a timer's retry wait: 1 second after the first failure in a row, doubling up to at most 15 minutes. It shall not wake up again at once for that timer.

@@ -1,7 +1,7 @@
 # deploy.worker-transfer
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6706; build plan 3c (HAL-198); multi-cloud ADR 5.6
 
 The `exportFromWorker` and `importToWorker` functions shall move a deployment's runtime export between a folder and the Worker's `/admin/export` and `/admin/import` routes, sending the job's key only as `Authorization: Bearer`, only over HTTPS and never following a redirect. An export shall check every file against the manifest's size and SHA-256, write the manifest last, and write only into a folder that is empty or new. An import shall check every file of the folder against the manifest before it sends any, stage each file, post the manifest, and when the Worker says `files_missing` or `files_differ` stage those paths once more and post again. A refused export or import shall fail with `export-refused` or `import-refused`, naming paths and kinds and never data; any other failure shall be `transfer-failed`. No error shall hold the key.

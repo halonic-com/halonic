@@ -1,7 +1,7 @@
 # oauth-sign-in.callback-state
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8323 (HAL-984 design, section 4); the generic form of `google-setup.sign-in-callback-state`
 
 When the provider's callback arrives, the sign-in shall first find and remove the pending sign-in whose `state` matches, and only then read `error` or `code`; when no unexpired pending sign-in matches, or `state` is missing, it shall return `linkNoLongerValid`, read nothing else and leave in place every pending sign-in whose `state` didn't match.

@@ -1,7 +1,7 @@
 # agent-host.google-sign-in-callback-failure
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10263 (follow-up of HAL-10258); builds on `agent-host.google-sign-in-callback`
 
 When finishing the sign-in fails on the callback, the agent host shall answer 502 with a fixed HTML page, not JSON, because a browser tab shows it. The page shall hold no text of the error, no `state` and no code, and the detail shall go to the host's log only.

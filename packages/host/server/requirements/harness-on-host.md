@@ -1,7 +1,7 @@
 # server.harness-on-host
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9 plan phase 4 (v1.17: harness runs on the serve host); build plan on HAL-195 (PR 11)
 
 The server shall start an agent whose file names a harness (Claude Code or Codex) on the host it runs on, through its own run executor, and never on the caller's computer. Where and how that agent runs shall be the host's decision alone, taken from the agent's file and from the choices a person made at the computer: a start request shall not choose the harness, the placement ("sandbox" or "this computer"), the sandbox, the profile, the working folder or the allowed sites. `POST /api/runs` and `POST /api/agent-runs` shall refuse with 400 (`bad_request`) a body that names `harness`, `placement`, `sandbox`, `profile`, `workingFolder` or `allowedSites`, before the trust gate is asked, and shall start nothing. A start that names none of them shall pass the executor only the fields it validated (`hubId`, `workflowId` and `input`, or `hubId`, `agentId` and `prompt`, and an optional `runId`), so an unknown field in the body never reaches it. The trust gate, the sign-in and the body limit shall apply to a harness agent's start as to any other.

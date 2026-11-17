@@ -1,7 +1,7 @@
 # source-control.history-page
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10664 (T9); ux-checklists-t8-t9 (HAL-1360) part 2, 2.9 and 2.10; save model 2.8
 
 The Changes page shall show these under "History", below the changes, grouped by day ("Today", "Yesterday", then the date), each row with the version's name, its author and the time. A version picked with a click or Enter shall show beside the list its name, author, date, notes and the files in it, never only on hover; ↑ ↓ move between versions. While the first read works it shall show skeleton rows labelled "Loading history"; an empty history shall say "No versions yet."; a failed read shall say "Couldn't load history" with the reason and Try again. A folder that is not a git repository shall show no History and say "History is off. Everything you save is used right away." under "Keep a history of your work".

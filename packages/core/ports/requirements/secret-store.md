@@ -1,7 +1,7 @@
 # ports.secret-store
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-195 (PR 9a-1, approved by Liam on HAL-8325)
 
 The ports package shall describe `SecretStore` as `Secrets` that can also be written: `set(name, value)`, `remove(name)` and `names()`, sharing the version of `Secrets`. It shall export `checkSecretValue`, which refuses an empty value, or one longer than `maxSecretValueLength` (65,536 characters), with a `RangeError` that gives only the length. A host that only reads secrets keeps implementing `Secrets` alone.

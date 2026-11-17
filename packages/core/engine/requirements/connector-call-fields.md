@@ -1,7 +1,7 @@
 # engine.connector-call-fields
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5214, findings of the 11 Nov code review
 
 When the local executor makes a connector call a run recorded, it shall hand the host's `callTool` only the call's own fields: `type`, `callId`, `idempotencyKey`, `state`, `agent`, `connector`, `tool`, `args` and `timeoutMs`. It shall never hand it the prompt or the conversation the agent stopped in.

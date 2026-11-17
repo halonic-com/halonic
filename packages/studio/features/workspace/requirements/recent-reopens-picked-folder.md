@@ -1,7 +1,7 @@
 # workspace.recent-reopens-picked-folder
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6637 (Liam's decision: the desktop shell remembers picked folders across restarts), states-flow-map W2, W7 and E2 (HAL-5878), HAL-7058 (Sofia's wording for a folder to pick again); HAL-1291
 
 When the user opens a Recent row whose folder isn't open in the window, the workspace switcher shall first have the app reopen the folder the user picked before, and shall open the workspace only when that worked. When the app can't reopen it, the switcher shall say why as for any folder that fails to open, so a folder that's gone reads "the folder is gone." and offers **Remove from Recent**. When the app won't reopen it until the user picks it again (it was never picked in this app, or a different folder is at that path now), the switcher shall say "pick the folder again." and, from the workspace menu, offer **Open folder**, which shows the folder picker, and the row shall stay in Recent. When the user removes a row from Recent, the switcher shall also have the app forget the folder, unless it is open in the window, and the row shall go even if forgetting fails.

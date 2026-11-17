@@ -1,7 +1,7 @@
 # studio.served-google-setup-accounts
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10697 (served Studio: Google setup read and sign-in place); UX check HAL-10741
 
 The served Studio shall read the Google setups of its workspace with `GET /api/google/setups` on the page's own address and the page's session, and give them to the Google setup feature as accounts, each with the connector's address and the services of its sheets as the computer lists them. Any answer that isn't that list, or a refusal, shall make the read fail, so the window shows "Couldn't load the Google setup" and never a half-known setup.

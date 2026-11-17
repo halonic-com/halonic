@@ -1,7 +1,7 @@
 # server.event-stream
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-195 (build plan PR 10b, remote run executor); PR 10 plan approved on HAL-9093
 
 The server shall let a signed-in caller follow a run it already started with `GET /api/runs/<runId>/events?after=<seq>`, which answers `text/event-stream`. Each durable event after `seq` (all of them when `after` is absent) is one message named `run`, whose `data` is the event as one line of JSON and whose `id` is the event's `seq`. New events follow as they are appended. When the run has ended and every event was sent, the server sends one message named `end` and closes the stream; a stream that closes without `end` broke, and the caller asks again with the last `seq` it saw, either as `after` or in a `Last-Event-ID` header, which wins over `after` so a client that reconnects by itself with the original URL does not repeat events and which must be written in digits like `after`. The route passes the same `Host` and `Origin` checks, sign-in and daily request ceiling as every route, and counts as one request however long it stays open. An `after` that isn't a whole number written in digits answers 400 `bad_request`; a run id that doesn't exist answers 404 `run_not_found` with a fixed message. When the stream breaks on the host's side, the cause goes to the error log and never to the caller. When the caller closes the request, the server closes the subscription. Reading needs no trust, as the summary needs none. Known v1 limit: a stream already open keeps sending after the caller logs out or the session expires.

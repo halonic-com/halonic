@@ -1,7 +1,7 @@
 # studio.src-tauri.crates.sandbox-elevate.sandbox-elevate-runtime
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-7414 (S-9), HAL-8068
 
 When the helper sets up the agent sandbox, it shall put a pinned `vcruntime140.dll` into the admin-only folder under Program Files, next to srt-win's copy, so that srt-win starts on a Windows without the Visual C++ runtime. The file shall come from a copy shipped next to the helper under another name, and the helper shall check its SHA-256 against the one built into it before it writes any of it into that folder. The helper shall never write a `vcruntime140.dll` into the user's app folder. A removal shall delete the copy, and shall still work when the sandbox was set up before the runtime was shipped.

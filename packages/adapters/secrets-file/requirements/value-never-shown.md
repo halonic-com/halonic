@@ -1,7 +1,7 @@
 # secrets-file.value-never-shown
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-195 (PR 9a-1b); design approved by Liam on HAL-8325
 
 The file secret store shall never put a value in an error, a log or a listing. A damaged file is reported by its location and fix, never by its content: the text a JSON parser quotes in its own error is dropped. `names()` lists names only.

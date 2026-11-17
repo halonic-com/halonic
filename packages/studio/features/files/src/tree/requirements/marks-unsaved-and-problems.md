@@ -1,7 +1,7 @@
 # files.tree.marks-unsaved-and-problems
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10 migration checklist U4, U32 (Now); changed by the save-model decision, HAL-1102; req-files (HAL-110); HAL-1293. Unsaved marks are gone; the id keeps "unsaved" so links still work
 
 The file tree shall show each file's and folder's count of errors and of warnings, and mark each file and folder that changed outside Halonic and waits for the user's choice in Compare with the "not saved" mark (not the amber "needs you" dot, which is only for the Inbox).

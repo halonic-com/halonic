@@ -1,7 +1,7 @@
 # engine.run-agent-instructions
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-4754, from the old runner's `systemPrompt` at `784f78d`; found by the parity run on HAL-1541
 
 When a workflow run calls a state's agent, or a `delegate_` tool hands a subagent a task, the engine shall send the model a system message before the step's prompt or the task, built from the agent's file in the run's kept definitions: its instructions, trimmed; each skill its `skills` lists that the kept definitions have, as `## Skill: <name>`, its description and its body; the delegation line of `engine.subagent-tools` when it has `subagents`; a line on connector tools when it has `connectors`; and how to reply when its `output` is a choice or JSON. The parts shall be joined by blank lines. The engine shall leave out a skill the kept definitions don't have, and shall send no system message when no part is left or the kept definitions have no file for the agent.

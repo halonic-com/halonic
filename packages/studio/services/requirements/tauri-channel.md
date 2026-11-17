@@ -1,7 +1,7 @@
 # services.tauri-channel
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-4878 (part 6), Tauri 2.12's `Channel` in `@tauri-apps/api`
 
 The Studio shall read a shell channel the way Tauri 2.12's `Channel` does, without that library: it shall register a callback, pass `__CHANNEL__:<id>` as the command's argument, and hand on the shell's `{ message, index }` messages in index order, holding a message until the ones before it have come. It shall remove the callback once the shell's `{ end: true, index }` marker and every message before it have come, or when the Studio closes the channel, and drop anything the shell sends after that.

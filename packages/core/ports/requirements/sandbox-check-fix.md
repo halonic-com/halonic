@@ -1,7 +1,7 @@
 # ports.sandbox-check-fix
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5393; design section 2.6 on HAL-3779 (the check step names the fix for this machine); plan approved by Liam on HAL-7479 (docs/adr/2026-11-12-sandbox-check-fix-data.md)
 
 When the sandbox can't start, the `Sandbox` port shall let the adapter add what fixes it on this machine as data, not words: either one install of every missing package with the package manager it found (`apt`, `dnf`, `pacman`, `zypper` or `brew`, or `null` when it found none), or an AppArmor profile with the program it covers, the file it goes in and its text. The fix is optional, never set when the sandbox can start, and only advice: Studio and the CLI word it, and no caller runs it on its own.

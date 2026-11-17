@@ -1,7 +1,7 @@
 # harness-kit.proposal-worktree-git
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-3188 (Julian's case for `app.run-proposal-worktree`); HAL-4790
 
 While an agent works in a proposal folder that is a git worktree, its sandbox profile shall leave the worktree's `.git` file, the worktree's record in the main repository (its gitdir) and the main repository's hooks outside every folder the program may write, and shall name the `.git` file read-only. The profile builder shall refuse a working folder that a link in the worktree leads into the main repository's `.git` folder.

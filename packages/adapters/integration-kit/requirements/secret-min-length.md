@@ -1,7 +1,7 @@
 # integration-kit.secret-min-length
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5216
 
 The kit shall refuse a secret value shorter than 8 UTF-8 bytes with `secret-too-short`, both when it places the secret in a request and when it reads the declared secrets for the filter, and shall then send nothing. The secret filter replaces every copy of a value in what the integration sees, so a shorter value would remove ordinary text, and where it was removed would give the value away.

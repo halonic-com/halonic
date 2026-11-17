@@ -1,7 +1,7 @@
 # format.runtime-export
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6700 (HAL-198 step 1b); multi-cloud ADR on HAL-35, rule 3 and 5.6; plan 4.4; review changes on HAL-6707; review follow-ups on HAL-7352
 
 The `@halonicjs/format/runtime-export` entry point shall offer `runtimeExportManifestSchema`, `RuntimeExportManifest`, `RUNTIME_EXPORT_FORMAT_VERSION` and `RUNTIME_EXPORT_MANIFEST`, the format of `halonic deploy export` and `import`: one deployment's runtime data in a folder that holds the manifest `halonic-export.json` and the files it lists, in the layout `halonic serve` will keep in the profile (it isn't built yet). Runs are kept per deployment, but records and blobs are kept per workspace, so the export step decides which records and blobs an export carries. It shall import only schema-kit and ports (never `yaml`) and not be re-exported from `@halonicjs/format`, so a Worker can write an export without the YAML parser.

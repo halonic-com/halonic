@@ -1,7 +1,7 @@
 # app.listed-tool-review
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-2210 (HAL-850 step 5), from the adversarial cases on HAL-2579 (rows F9, G2) and the CLI and Studio check on HAL-2842 (T4, T11, T12), for `ports.listed-tool-approval`
 
 The app shall give one review of a source's listed tools, which Studio and the CLI both only format: the tools to ask about, those with an approval ("Changed") before those without one ("Not approved"), each in listing order; the tools Halonic refused, with why; and the tools their server keeps changing, which are shown but not asked about. A tool that waits only because the source now points at another server, with the same text, is marked as such, so the person isn't shown "Changed" over no changes. When the whole listing is refused, or one of the source's approvals can't be read, the review says so, naming the tool whose approval it is when it can be told.

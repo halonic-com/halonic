@@ -1,7 +1,7 @@
 # profile.tool-approval-folder
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-2827 (listed tool approvals live in the profile, never in a workspace)
 
 The profile package shall name one folder for the approvals of listed tools, `tool-approvals` in the profile folder, joined with the profile's own separator, so that the CLI and the Studio read and remove the same approvals.

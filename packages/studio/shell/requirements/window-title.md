@@ -1,7 +1,7 @@
 # shell.window-title
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1290 (T2), plan PR 16d; Sofia's UX check of #1713 (HAL-5329); HAL-5401
 
 While a Studio window shows, the shell shall keep the page's title as the title of the page shown (the active tab's on the desktop, the phone place's page on a phone), the workspace's name and "Halonic", joined by " · ", such as "Home · Acme · Halonic". When the window doesn't know the workspace's name, or the name is empty, the title shall leave it out. The title shall follow tab switches, Back and Forward, renames of the active tab on the desktop, moves on the phone, and the window crossing the phone width.

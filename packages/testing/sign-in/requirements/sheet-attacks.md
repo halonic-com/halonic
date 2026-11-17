@@ -1,7 +1,7 @@
 # sign-in.sheet-attacks
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8618 (HAL-984 design, section 8: attack cases T1, T6 and T16)
 
 The sheet and the address check shall keep a sign-in's endpoints on public `https` hosts: the sheet refuses a sign-in whose URLs are not `https`, carry credentials, a fragment or (for the token, revoke and issuer URLs) a query, or whose self-hosted setting is not a public `https` host, and the Node client refuses, before it connects, a name that resolves to a private, loopback or metadata address. The sheet shall also refuse a client secret with hosts of its own, a shared or an unused one, a token placed in a form, an access host it doesn't declare and sign-ins below kit 2.

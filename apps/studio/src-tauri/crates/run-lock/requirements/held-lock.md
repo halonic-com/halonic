@@ -1,7 +1,7 @@
 # studio.src-tauri.crates.run-lock.held-lock
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8792, decided on HAL-6602; `holdLock` in `fs-node`; `cli.local-engine-lock`
 
 When the shell holds a lock for as long as it runs, such as the engine lock of a workspace, it shall take the file with an exclusive create, holding a `RunLockRecord` as JSON written byte for byte as `holdLock` of `fs-node` writes it, and never wait for a live holder: it shall refuse the lock and name the holder's record. It shall remove a stale lock as the run lock does, so the lock of a process that has ended is taken over. It shall renew the lock a third of the stale limit apart by writing a new record into a file next to the lock and renaming it over, so no process reads half a record. A lock that no longer holds its own record, or is older than the stale limit, shall be given up and reported as lost, and the shell shall remove its own lock on release only while it still holds its own record.

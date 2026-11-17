@@ -1,7 +1,7 @@
 # workspace.save-holds-changed-files
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: save model 1.5, 1.6 and 1.7; flow-files 4.6; HAL-10534, HAL-11169
 
 When a save leaves files alone because they changed outside Halonic, the workspace shall treat it as no failed save: it shall show no failed note and no error toast, tell the host which files were held, and leave them unsaved, so closing the workspace still asks.

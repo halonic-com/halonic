@@ -1,7 +1,7 @@
 # shell.overview.search
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10 migration checklist U5 (Now); HAL-1303 (T10, P1)
 
 When the user types in an overview page's search field, the overview page shall show only the items whose name, id, description or detail line contains the text, ignoring case, and hide hub sections without a match.

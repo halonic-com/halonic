@@ -1,7 +1,7 @@
 # runtime.self-test
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6704 (deploy engine PR 5); free-plan decision HAL-6804
 
 The Worker's `fetch()` shall answer `POST /self-test` only when `env.HALONIC_SELFTEST_TOKEN` is set to a non-empty string and the request carries `Authorization: Bearer <that value>`, compared in constant time. Without the variable the path shall answer 404 as any unknown path does; with the variable and a missing or wrong token it shall answer 401 with a code and a short message. A `GET` on the path shall answer 405 with `Allow: POST`.

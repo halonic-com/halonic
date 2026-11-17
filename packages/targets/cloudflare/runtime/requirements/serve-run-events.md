@@ -1,7 +1,7 @@
 # runtime.serve-run-events
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6850; build plan part 11 (HAL-197); `streamRunEvents` in `host/server`
 
 The Worker shall stream the events of a run in a run object through `GET /api/runs/<id>/events` as `host/server` frames them for `halonic serve`: each event after `after` (or `Last-Event-ID`) as a `run` message with its `seq` as the id, the events appended while the stream is open after them, and an `end` message when the run's ending event was sent. The route needs a session like every other API route, and a run nobody stored shall answer 404.
