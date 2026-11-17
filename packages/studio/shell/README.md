@@ -972,7 +972,11 @@ and a tab on a place a feature added that place's view, which gets `PlaceViewPro
 the feature that added it. A tab on an item (`kind/hub/id`) shows the `open` view of the kind a
 feature added, which gets `ItemViewProps`: the item and the context of that feature
 (`shell.item-tabs`). The view is imported the first time a tab shows an item of that kind, and
-only once, however often it's mounted again. The window also draws the features' dialog hosts
+only once, however often it's mounted again. While a page's, a sidebar view's or a Settings
+section's view loads, `LoadedView` shows nothing for 300 ms, then skeleton rows read as "Loading
+_page_", and after 10 s "Still loading" with **Try again**. A view whose import failed is imported
+again on the next mount, so **Reload page** can fix a page that couldn't load
+(`shell.view-loading-state`). The window also draws the features' dialog hosts
 (`FeatureDialogs`), and the context it gives views and commands has `openItem(item)`, which opens
 an item as Ctrl K opens a found one, its tab named by the kind's `tab.describe`, else the item's id
 (`shell.open-item`).
