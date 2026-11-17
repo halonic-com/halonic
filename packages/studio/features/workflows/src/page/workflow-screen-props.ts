@@ -16,4 +16,6 @@ export interface WorkflowScreenProps {
   readonly seeAllRuns?: () => void;
   /** Opens the Inbox, for a run card's Review in Inbox; absent where the app can't open it. */
   readonly reviewInInbox?: () => void;
+  /** Opens the page on Configuration's Tests, as `openItem`'s `step: "tests"` asks; on Flow when absent. */
+  readonly startOnTests?: boolean;
 }
