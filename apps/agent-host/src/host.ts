@@ -1,8 +1,9 @@
 import type { Readable, Writable } from "node:stream";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
-import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
+import { NodeHarnessBridgeServer, providerHostClass } from "@halonicjs/adapter-harness-bridge";
 import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
+import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import {
   keptGrantsRecordFolder,
@@ -386,6 +387,8 @@ function hostServices(
   const sessions = new SessionTable();
   const listeningPorts = new Set<number>();
   const bridges = new BridgeTable();
+  const providerHttp = createNodeHttpClient({ hostClass: providerHostClass });
+  const providerFetch = (url: string, init?: RequestInit) => providerHttp.fetch(url, init);
   // Runs are recorded only when the gateway can show them to someone.
   const ledger = gateway.enabled ? new RunLedger() : undefined;
   const runs = new RunTable(ledger);
@@ -408,6 +411,7 @@ function hostServices(
       (secrets) =>
         new NodeHarnessBridgeServer({
           secrets,
+          fetch: providerFetch,
           ...(socketFolder === undefined ? {} : { socketFolder }),
         }),
       bridges,

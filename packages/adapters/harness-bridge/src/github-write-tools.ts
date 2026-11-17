@@ -39,7 +39,7 @@ export interface GitHubWriteToolsOptions {
    */
   secret: string;
   secrets: Secrets;
-  fetch?: Fetch;
+  fetch: Fetch;
   limits?: GitHubWriteLimits;
 }
 
@@ -112,7 +112,7 @@ export class GitHubWriteTools implements BridgeTools {
       throw new RangeError("The repository must be written as owner/name.");
     }
     this.#options = options;
-    this.#fetch = options.fetch ?? globalThis.fetch;
+    this.#fetch = options.fetch;
     this.#limits = options.limits ?? defaultGitHubWriteLimits;
     this.#specs = toolSpecs(options.repository);
   }

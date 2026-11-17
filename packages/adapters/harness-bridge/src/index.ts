@@ -18,6 +18,7 @@ export {
   type PaperclipWriteToolsOptions,
 } from "./paperclip-write-tools.ts";
 export type { Fetch, UpstreamLimits } from "./pass-through.ts";
+export { providerHostClass } from "./provider-hosts.ts";
 export type { BodyLimits } from "./read-body.ts";
 export {
   defaultBridgeLimits,

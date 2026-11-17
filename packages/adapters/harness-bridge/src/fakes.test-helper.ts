@@ -5,6 +5,11 @@ import {
   type OpenHarnessBridge,
 } from "@halonicjs/ports";
 
+/** The `fetch` for a test that makes no provider or tool call: it fails if one is made. */
+export async function noOutsideCall(): Promise<never> {
+  throw new Error("This test doesn't expect a call to the outside.");
+}
+
 /** Stands in for every part of the run the bridge's own checks never use. */
 async function notUsedYet(): Promise<never> {
   throw new Error("The bridge skeleton doesn't use this part of the run.");

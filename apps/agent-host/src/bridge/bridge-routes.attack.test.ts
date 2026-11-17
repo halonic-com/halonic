@@ -53,7 +53,13 @@ class CountingBridgeServer implements HarnessBridgeServer {
   readonly inner: HarnessBridgeServer;
 
   constructor(secrets: Secrets) {
-    this.inner = new NodeHarnessBridgeServer({ secrets, closeTimeoutMs: 1_000 });
+    this.inner = new NodeHarnessBridgeServer({
+      secrets,
+      fetch: async () => {
+        throw new Error("This test doesn't expect a call to the outside.");
+      },
+      closeTimeoutMs: 1_000,
+    });
   }
 
   async open(options: HarnessBridgeOptions): Promise<OpenHarnessBridge> {

@@ -47,7 +47,7 @@ export interface GitHubReadToolsOptions {
   /** The name of the secret that holds the GitHub token, read from {@link secrets} on each call. */
   secret: string;
   secrets: Secrets;
-  fetch?: Fetch;
+  fetch: Fetch;
   limits?: GitHubReadLimits;
 }
 
@@ -98,7 +98,7 @@ export class GitHubReadTools implements BridgeTools {
       throw new RangeError("The repository must be written as owner/name.");
     }
     this.#options = options;
-    this.#fetch = options.fetch ?? globalThis.fetch;
+    this.#fetch = options.fetch;
     this.#limits = options.limits ?? defaultGitHubReadLimits;
     this.#specs = this.#toolSpecs();
   }
