@@ -84,7 +84,7 @@ export function settled(): Promise<void> {
 export async function openPage(
   shell: FakeShell,
   store: AddressStore,
-  options: { changeAddress?: boolean } = {},
+  options: { changeAddress?: boolean; pageNotShown?: boolean } = {},
 ): Promise<ConnectPageView> {
   const html = readFileSync(pageFile, "utf8");
   const parsed = new DOMParser().parseFromString(html, "text/html");
@@ -94,6 +94,7 @@ export async function openPage(
     bridge: shell,
     store,
     changeAddress: options.changeAddress ?? false,
+    pageNotShown: options.pageNotShown ?? false,
   });
   return new ConnectPageView();
 }

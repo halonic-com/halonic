@@ -17,10 +17,11 @@ use tauri_plugin_opener::OpenerExt;
 /// The page `back_to_connect` loads: the app's own page, which is the connect
 /// page on Android (tauri.android.conf.json) and the Studio on desktop
 /// (tauri.conf.json), the only page the guard keeps. On Android,
-/// `#change-address` tells the connect page to show the connect screen with
-/// the remembered address filled in, instead of connecting straight away.
+/// `#page-not-shown` tells the connect page to show the connect screen with
+/// the remembered address filled in, instead of connecting straight away,
+/// and a line saying the page the window was on can't be shown here.
 const CHANGE_ADDRESS_PAGE: &str = if cfg!(target_os = "android") {
-    "http://tauri.localhost/connect.html#change-address"
+    "http://tauri.localhost/connect.html#page-not-shown"
 } else if cfg!(windows) {
     "http://tauri.localhost/studio.html"
 } else {
@@ -56,11 +57,16 @@ pub fn guard<R: Runtime>() -> TauriPlugin<R> {
             match navigation_destination(&target(url), confirmed.as_ref()) {
                 Destination::Stay => true,
                 Destination::BackToConnect => {
-                    back_to_connect(webview);
+                    // The desktop has no connect screen: the Studio is
+                    // already showing, and loading it again would drop
+                    // what the user hasn't saved. The link only cancels.
+                    if cfg!(target_os = "android") {
+                        back_to_connect(webview);
+                    }
                     false
                 }
                 Destination::Browser => {
-                    // If no browser can open it, the tap does nothing.
+                    // If nothing can open it, the tap does nothing.
                     let _ = webview.opener().open_url(url.as_str(), None::<&str>);
                     false
                 }

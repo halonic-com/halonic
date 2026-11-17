@@ -154,12 +154,15 @@ fn guard_keeps_the_page_the_window_opens() {
 
 #[test]
 fn guard_keeps_the_connect_page_with_the_change_address_fragment_on_android_only() {
-    let page = format!("{APP_ORIGIN}/connect.html#change-address");
     // Not bundled on desktop, and the Studio reads no fragment.
-    assert_eq!(
-        decide(&page, None) == Destination::Stay,
-        cfg!(target_os = "android")
-    );
+    for fragment in ["change-address", "page-not-shown"] {
+        let page = format!("{APP_ORIGIN}/connect.html#{fragment}");
+        assert_eq!(
+            decide(&page, None) == Destination::Stay,
+            cfg!(target_os = "android"),
+            "{fragment}"
+        );
+    }
 }
 
 /// Every other page of the app origin has the window's capabilities too, so
@@ -176,6 +179,7 @@ fn guard_keeps_no_other_page_of_the_app_origin_in_the_window() {
     let paths = [
         OTHER_PAGE,
         "/studio.html#change-address",
+        "/studio.html#page-not-shown",
         "/studio.html#",
         "/studio.html#other",
         "/studio.html?x=1",
@@ -188,6 +192,7 @@ fn guard_keeps_no_other_page_of_the_app_origin_in_the_window() {
         "/connect.html?x=1",
         "/connect.html?",
         "/connect.html?x=1#change-address",
+        "/connect.html#Page-Not-Shown",
         "/connect.html#other",
         "/connect.html#",
         "/studio.html/..%2fconnect.html",
@@ -388,10 +393,10 @@ fn guard_checks_a_loaded_page_with_the_same_rule() {
 }
 
 #[test]
-fn change_address_page_is_the_apps_own_page_and_on_android_shows_the_change_address_state() {
+fn change_address_page_is_the_apps_own_page_and_on_android_says_the_page_is_not_shown() {
     let page = Url::parse(CHANGE_ADDRESS_PAGE).expect("a valid page address");
     assert_eq!(
-        page.as_str().contains("#change-address"),
+        page.as_str().contains("#page-not-shown"),
         cfg!(target_os = "android")
     );
     assert_eq!(page.as_str().split('#').next(), Some(app_page().as_str()));

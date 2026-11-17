@@ -23,6 +23,19 @@ verifies("studio.connect.connect-screen", () => {
     expect(shell.asked).toEqual([]);
   });
 
+  it("says the page can't be shown here only when the shell sent the window back", async () => {
+    const sentBack = await openPage(new FakeShell(), new MemoryStore(), { pageNotShown: true });
+    const line = document.querySelector<HTMLElement>("#page-not-shown");
+    expect(line?.hidden).toBe(false);
+    expect(line?.textContent?.trim()).toBe(
+      "That page can't be shown here. Check the address and connect again.",
+    );
+    expect(sentBack.screen).toBe("connect");
+
+    await openPage(new FakeShell(), new MemoryStore(), { changeAddress: true });
+    expect(document.querySelector<HTMLElement>("#page-not-shown")?.hidden).toBe(true);
+  });
+
   it("shows Address as a label, the example as the placeholder, and the hint", async () => {
     const page = await openPage(new FakeShell(), new MemoryStore());
 

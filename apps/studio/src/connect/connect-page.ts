@@ -11,6 +11,11 @@ export interface ConnectPageOptions {
    * the connect screen with the address filled in instead of connecting.
    */
   readonly changeAddress: boolean;
+  /**
+   * True when the shell sent the window back because the page it was on
+   * can't be shown here. The connect screen then says so, once.
+   */
+  readonly pageNotShown: boolean;
 }
 
 type ScreenName = "starting" | "connect" | "not-answering" | "app-too-old" | "computer-too-old";
@@ -31,7 +36,7 @@ const quietStartMs = 1000;
  */
 export async function startConnectPage(options: ConnectPageOptions): Promise<void> {
   const page = new ConnectPage(options);
-  await page.start(options.changeAddress);
+  await page.start(options.changeAddress, options.pageNotShown);
 }
 
 class ConnectPage {
@@ -64,12 +69,13 @@ class ConnectPage {
     this.listen();
   }
 
-  async start(changeAddress: boolean): Promise<void> {
+  async start(changeAddress: boolean, pageNotShown: boolean): Promise<void> {
     const remembered = this.store.load();
     if (remembered !== undefined) {
       this.input.value = remembered;
     }
     if (changeAddress || remembered === undefined) {
+      this.find("#page-not-shown").hidden = !pageNotShown;
       this.showConnectScreen();
       return;
     }

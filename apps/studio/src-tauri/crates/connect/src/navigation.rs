@@ -32,6 +32,10 @@ const APP_PAGE_PATH: &str = if cfg!(target_os = "android") {
 const CONNECT_PAGE_PATH: &str = "/connect.html";
 /// The fragment that tells the connect page to show the Change address state.
 const CHANGE_ADDRESS_FRAGMENT: &str = "change-address";
+/// The fragment that shows the same state, with a line saying the page the
+/// window was on can't be shown here. The shell loads it after the guard
+/// sent the window back.
+const PAGE_NOT_SHOWN_FRAGMENT: &str = "page-not-shown";
 
 /// What the guard does with a navigation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -41,16 +45,18 @@ pub enum Destination {
     /// Cancel it and open the connect screen with the address filled in:
     /// the served About page's Change address link, `halonic-app://connect`.
     BackToConnect,
-    /// Cancel it and open the link in the phone's browser.
+    /// Cancel it and hand the link to the system to open: the browser for a
+    /// web page, the mail or phone app for `mailto:` and `tel:`.
     Browser,
     /// Cancel it: `javascript:`, `file:`, `intent:` and anything else that
-    /// isn't a web page.
+    /// isn't a web page, an email address or a phone number.
     Nowhere,
 }
 
 /// Decides where a navigation goes. Only the app's own page and the
 /// address the last Connect confirmed stay in the window; any other web page
-/// opens in the browser.
+/// opens in the browser, and `mailto:` and `tel:` links open in the system's
+/// mail and phone apps.
 pub fn navigation_destination(
     target: &NavigationTarget,
     confirmed: Option<&Address>,
@@ -60,6 +66,9 @@ pub fn navigation_destination(
     }
     if is_app_page(target) {
         return Destination::Stay;
+    }
+    if target.scheme == "mailto" || target.scheme == "tel" {
+        return Destination::Browser;
     }
     if target.scheme != "http" && target.scheme != "https" {
         return Destination::Nowhere;
@@ -91,7 +100,7 @@ pub fn page_may_stay(target: &NavigationTarget, confirmed: Option<&Address>) -> 
 /// The window's capabilities (secrets, files, git) belong to every page on
 /// this origin, so only that page stays: no other bundled page, and no query,
 /// because neither page reads one. The connect page reads the fragment, which
-/// may be empty or `change-address`; the Studio reads none.
+/// may be empty, `change-address` or `page-not-shown`; the Studio reads none.
 fn is_app_page(target: &NavigationTarget) -> bool {
     let own_origin = if cfg!(any(windows, target_os = "android")) {
         target.scheme == "http" && target.host == Some("tauri.localhost") && target.port == Some(80)
@@ -100,7 +109,9 @@ fn is_app_page(target: &NavigationTarget) -> bool {
     };
     let fragment_allowed = match target.fragment {
         None => true,
-        Some(CHANGE_ADDRESS_FRAGMENT) => APP_PAGE_PATH == CONNECT_PAGE_PATH,
+        Some(CHANGE_ADDRESS_FRAGMENT | PAGE_NOT_SHOWN_FRAGMENT) => {
+            APP_PAGE_PATH == CONNECT_PAGE_PATH
+        }
         Some(_) => false,
     };
     own_origin && target.path == APP_PAGE_PATH && target.query.is_none() && fragment_allowed
@@ -217,7 +228,7 @@ mod tests {
     #[test]
     fn navigation_guard_keeps_the_apps_own_page_with_the_fragments_it_reads() {
         let fragments: &[Option<&str>] = if cfg!(target_os = "android") {
-            &[None, Some("change-address")]
+            &[None, Some("change-address"), Some("page-not-shown")]
         } else {
             &[None]
         };
@@ -273,12 +284,15 @@ mod tests {
             (None, Some("other")),
             (None, Some("Change-Address")),
             (None, Some("change-address&x")),
+            (None, Some("Page-Not-Shown")),
+            (Some("a=b"), Some("page-not-shown")),
         ];
         // The Studio reads no fragment, so `change-address` doesn't stay there.
         let variants = variants
             .iter()
             .copied()
-            .chain((!cfg!(target_os = "android")).then_some((None, Some("change-address"))));
+            .chain((!cfg!(target_os = "android")).then_some((None, Some("change-address"))))
+            .chain((!cfg!(target_os = "android")).then_some((None, Some("page-not-shown"))));
         for (query, fragment) in variants {
             let page = NavigationTarget {
                 query,
@@ -354,6 +368,28 @@ mod tests {
         };
         assert!(!may_stay(blob));
         assert!(!page_may_stay(&target("http", "192.168.1.20", 4280), None));
+    }
+
+    #[test]
+    fn navigation_guard_hands_email_and_phone_links_to_the_system() {
+        let laptop = confirmed("192.168.1.20:4280");
+        for scheme in ["mailto", "tel"] {
+            let link = NavigationTarget {
+                scheme,
+                host: None,
+                port: None,
+                path: "someone@example.com",
+                query: None,
+                fragment: None,
+            };
+            assert_eq!(
+                navigation_destination(&link, Some(&laptop)),
+                Destination::Browser,
+                "{scheme}"
+            );
+            // A page that loads this way isn't a page that may stay.
+            assert!(!page_may_stay(&link, Some(&laptop)), "{scheme}");
+        }
     }
 
     #[test]
