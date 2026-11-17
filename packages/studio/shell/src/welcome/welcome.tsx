@@ -2,7 +2,7 @@ import { Button, inlineLinkClasses } from "@halonicjs/studio-kit";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { copyDetailsWords } from "../errors/copy-details-words.ts";
 import { useCopyDetails } from "../page/copy-details.ts";
-import type { WelcomeOpenProblem } from "./cant-open.ts";
+import { engineWaitMs, type WelcomeOpenProblem } from "./cant-open.ts";
 import {
   WELCOME_RECENT_ROWS,
   WelcomeRecent,
@@ -38,6 +38,27 @@ export interface WelcomeProps {
   readonly onTrySample?: (() => Promise<WelcomeSampleProblem | undefined>) | undefined;
   /** The workspaces remembered on this device; without it, or while it's empty, none show. */
   readonly recent?: WelcomeRecentList | undefined;
+}
+
+/** How long Welcome waits between two tries while the engine doesn't answer. */
+const engineRetryMs = 1_000;
+
+/**
+ * Tries again by itself while the engine doesn't answer, for up to {@link engineWaitMs} after the
+ * press, and returns the last answer. The person only sees the button busy meanwhile.
+ */
+async function untilAnswered<T>(
+  attempt: () => Promise<T>,
+  silent: (answer: T) => boolean,
+): Promise<T> {
+  const until = Date.now() + engineWaitMs;
+  for (;;) {
+    const answer = await attempt();
+    if (!silent(answer) || Date.now() + engineRetryMs > until) {
+      return answer;
+    }
+    await new Promise((resolve) => setTimeout(resolve, engineRetryMs));
+  }
 }
 
 /** What failed to open, and whether a Recent row asked for it. */
@@ -112,7 +133,11 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
     setShownProblem(undefined);
     setSampleProblem(undefined);
     try {
-      const problem = await open();
+      // The picker's folder is retried by whoever opens it, so the picker isn't shown again.
+      const problem =
+        what.from === "recent"
+          ? await untilAnswered(open, (answer) => answer?.kind === "unavailable")
+          : await open();
       setShownProblem(
         problem === undefined
           ? undefined
@@ -135,7 +160,7 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
     setShownProblem(undefined);
     setSampleProblem(undefined);
     try {
-      setSampleProblem(await onTrySample());
+      setSampleProblem(await untilAnswered(onTrySample, (answer) => answer?.unavailable === true));
     } finally {
       setCreatingSample(false);
     }

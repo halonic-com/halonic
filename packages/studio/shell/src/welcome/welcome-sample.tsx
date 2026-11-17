@@ -1,5 +1,6 @@
 import { Button } from "@halonicjs/studio-kit";
 import { useId } from "react";
+import { cantOpenWords } from "./cant-open.ts";
 
 /** Why the Acme sample couldn't be created: the folder it goes in, as the user knows it, and the reason. */
 export interface WelcomeSampleProblem {
@@ -7,6 +8,8 @@ export interface WelcomeSampleProblem {
   readonly folder: string;
   /** Why nothing was written, such as "permission denied". */
   readonly reason: string;
+  /** True when the engine didn't answer: the line then says so, never `reason`. */
+  readonly unavailable?: true;
 }
 
 /** The sample action and its cost line (microcopy 5, flow-first-run 2.1). */
@@ -20,6 +23,9 @@ export const trySampleWords = {
 
 /** The sentence under Welcome's text when the sample couldn't be created, with a closing full stop. */
 export function cantCreateSampleLine(problem: WelcomeSampleProblem): string {
+  if (problem.unavailable === true) {
+    return `Can't create the sample in ${problem.folder}: ${cantOpenWords.silent}`;
+  }
   const reason = problem.reason.endsWith(".") ? problem.reason : `${problem.reason}.`;
   return `Can't create the sample in ${problem.folder}: ${reason}`;
 }

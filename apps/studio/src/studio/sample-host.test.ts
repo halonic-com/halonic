@@ -1,4 +1,5 @@
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { sampleHostOf } from "./sample-host.ts";
@@ -15,7 +16,8 @@ function hostOf(taken: string[], answers: Record<string, unknown> = {}) {
       if (command === "documents_folder") return "/docs/Documents";
       if (command === "probe_workspace_folder")
         return taken.includes(String(args?.["name"])) ? "files" : "new";
-      if (command === "create_workspace_folder") return `${args?.["parent"]}/${args?.["name"]}`;
+      if (command === "create_workspace_folder" && !Object.hasOwn(answers, command))
+        return `${args?.["parent"]}/${args?.["name"]}`;
       return answer;
     },
     openChannel: () => {
@@ -66,6 +68,24 @@ verifies("studio.try-sample", () => {
     });
     expect(await store.list()).toEqual([]);
     expect(trust).not.toHaveBeenCalled();
+  });
+
+  it("marks a shell that gives no answer, so Welcome words it itself", async () => {
+    const { host } = hostOf([], { create_workspace_folder: null });
+
+    expect(await host.create([])).toEqual({
+      kind: "cant",
+      folder: "~/Documents",
+      reason: "the desktop shell gave no answer",
+      unavailable: true,
+    });
+  });
+
+  it("doesn't mark a failure after the folder is made, so Welcome never makes a second copy", async () => {
+    const { host, trust } = hostOf([]);
+    trust.mockRejectedValueOnce(new KindedError("unavailable", "the shell gave no answer"));
+
+    expect(await host.create([])).not.toHaveProperty("unavailable");
   });
 
   it("reopens the first taken name when the device knows it as a sample, and writes nothing", async () => {
