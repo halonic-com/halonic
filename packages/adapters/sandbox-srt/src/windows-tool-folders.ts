@@ -41,8 +41,8 @@ async function exists(path: string): Promise<boolean> {
  * it: those names and `.idea` when it exists. Something that is already there
  * under one of the names, even a file, is denied as it is; making a folder
  * over it would fail and the session wouldn't open. Root files (`.npmrc`,
- * `.mcp.json`) get no placeholder, so they are not covered on Windows
- * (HAL-11305): an empty file made at the start would show in the person's
+ * `.mcp.json`) get no placeholder: srt on Windows refuses content in them
+ * anyway, and an empty file made at the start would show in the person's
  * `git status` and could break the tool that reads it.
  */
 export async function prepareToolFolders(workingFolder: string): Promise<string[]> {
