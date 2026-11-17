@@ -32,6 +32,7 @@ function routineWith(trigger: RoutineTrigger): RoutineView {
 async function card(trigger: RoutineTrigger) {
   const saved: RoutineChanges[] = [];
   const host = {
+    mailboxes: async () => [],
     nextTimes: async () => ({ times: [], atNextCheck: false }),
     save: async (_ref: unknown, changes: RoutineChanges) => {
       saved.push(changes);

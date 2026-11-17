@@ -1,9 +1,10 @@
 import { Field, FilterChips, Input, Select } from "@halonicjs/studio-kit";
 import { useState } from "react";
-import type { RoutineTrigger } from "../api.ts";
+import type { RoutineMailbox, RoutineTrigger } from "../api.ts";
 import { ScheduleAdvanced, SignalFields } from "./advanced-fields.tsx";
 import {
   cronFor,
+  defaultMailTrigger,
   defaultTrigger,
   EVERY_UNITS,
   type EveryUnit,
@@ -24,16 +25,20 @@ export interface TriggerFieldsProps {
   readonly trigger: RoutineTrigger;
   /** Whether the routine starts on its own. */
   readonly enabled: boolean;
+  /** The Google connectors a mail trigger can watch; empty until they are read, or when there are none. */
+  readonly mailboxes: readonly RoutineMailbox[];
   /** Called with the whole new trigger as soon as a field changes to a value that can be written. */
   readonly onChange: (trigger: RoutineTrigger) => void;
 }
 
 /**
  * The When card's trigger fields (`routines.when.trigger-fields`): the Trigger picker and, under
- * it, the fields of the kind picked. A trigger the picker can't switch to (mail) is shown as the
- * kind it is and has no fields yet.
+ * it, the fields of the kind picked. A trigger the picker can't switch to (a web request) is shown
+ * as the kind it is and has no fields yet. Picking New mail with no Google connector writes
+ * nothing and says to add one.
  */
-export function TriggerFields({ trigger, enabled, onChange }: TriggerFieldsProps) {
+export function TriggerFields({ trigger, enabled, mailboxes, onChange }: TriggerFieldsProps) {
+  const [noMailbox, setNoMailbox] = useState(false);
   const kinds: readonly RoutineTrigger["kind"][] = (PICKABLE_KINDS as readonly string[]).includes(
     trigger.kind,
   )
@@ -41,11 +46,18 @@ export function TriggerFields({ trigger, enabled, onChange }: TriggerFieldsProps
     : [...PICKABLE_KINDS, trigger.kind];
   const pick = (kind: string) => {
     if (kind === trigger.kind) return;
-    onChange(defaultTrigger(kind as PickableKind, deviceTimeZone()));
+    if (kind === "mail") {
+      const first = mailboxes[0];
+      setNoMailbox(first === undefined);
+      if (first !== undefined) onChange(defaultMailTrigger(first.connector));
+      return;
+    }
+    setNoMailbox(false);
+    onChange(defaultTrigger(kind as Exclude<PickableKind, "mail">, deviceTimeZone()));
   };
   return (
     <div className="flex flex-col gap-3">
-      <Field label={words.trigger}>
+      <Field label={words.trigger} error={noMailbox ? words.addGoogleConnector : null}>
         <Select
           options={kinds.map((kind) => ({ value: kind, label: words.kinds[kind] }))}
           value={trigger.kind}
@@ -56,6 +68,9 @@ export function TriggerFields({ trigger, enabled, onChange }: TriggerFieldsProps
         <ScheduleFields trigger={trigger} enabled={enabled} onChange={onChange} />
       )}
       {trigger.kind === "signal" && <SignalFields trigger={trigger} onChange={onChange} />}
+      {trigger.kind === "mail" && (
+        <MailFields trigger={trigger} mailboxes={mailboxes} onChange={onChange} />
+      )}
       {trigger.kind === "every" && (
         <EveryFields
           interval={trigger.interval}
@@ -154,6 +169,66 @@ function SimpleScheduleFields({
           onChange={(event) => changeTime(event.target.value)}
         />
       </Field>
+    </>
+  );
+}
+
+/**
+ * The mailbox, the Gmail search and how often to check. The search is written once it isn't
+ * empty; while it is, the field says so and the file keeps the last search.
+ */
+function MailFields({
+  trigger,
+  mailboxes,
+  onChange,
+}: {
+  readonly trigger: Extract<RoutineTrigger, { kind: "mail" }>;
+  readonly mailboxes: readonly RoutineMailbox[];
+  readonly onChange: (trigger: RoutineTrigger) => void;
+}) {
+  const [query, setQuery] = useState<string | undefined>();
+  const queryText = query ?? trigger.query;
+  const known = mailboxes.some((mailbox) => mailbox.connector === trigger.connector);
+  const options = [
+    ...mailboxes.map((mailbox) => ({
+      value: mailbox.connector,
+      label: words.mailboxOption(mailbox.name, mailbox.account),
+    })),
+    // A connector the file names that the workspace doesn't offer stays selectable as it is.
+    ...(known ? [] : [{ value: trigger.connector, label: trigger.connector }]),
+  ];
+  const changeQuery = (text: string) => {
+    setQuery(text);
+    if (text.trim() !== "") onChange({ ...trigger, query: text.trim() });
+  };
+  return (
+    <>
+      <Field label={words.mailbox}>
+        <Select
+          options={options}
+          value={trigger.connector}
+          onChange={(connector) => onChange({ ...trigger, connector })}
+        />
+      </Field>
+      <Field
+        label={words.search}
+        hint={words.searchHint}
+        error={queryText.trim() === "" ? words.searchNeeded : null}
+      >
+        <Input
+          value={queryText}
+          spellCheck={false}
+          onChange={(event) => changeQuery(event.target.value)}
+          onBlur={() => setQuery(undefined)}
+        />
+      </Field>
+      <fieldset className="m-0 flex min-w-0 flex-col gap-1 border-0 p-0">
+        <legend className="px-4 text-small text-fg-muted">{words.checkEvery}</legend>
+        <EveryFields
+          interval={trigger.every}
+          onChange={(every) => onChange({ ...trigger, every })}
+        />
+      </fieldset>
     </>
   );
 }

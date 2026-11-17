@@ -32,6 +32,7 @@ function routineWith(trigger: RoutineTrigger): RoutineView {
 async function card(trigger: RoutineTrigger) {
   const saved: RoutineChanges[] = [];
   const host = {
+    mailboxes: async () => [],
     nextTimes: async () => ({ times: [], atNextCheck: false }),
     save: async (_ref: unknown, changes: RoutineChanges) => {
       saved.push(changes);
@@ -71,6 +72,7 @@ verifies("routines.when.trigger-fields", () => {
       "Manual only",
       "On a schedule",
       "Every …",
+      "New mail",
       "On a signal",
     ]);
     await choose(select, "manual");
@@ -84,15 +86,10 @@ verifies("routines.when.trigger-fields", () => {
   });
 
   it("shows a kind it can't switch to as that kind", async () => {
-    const { page } = await card({
-      kind: "mail",
-      connector: "acme-gmail",
-      query: "in:inbox",
-      every: "2m",
-    });
+    const { page } = await card({ kind: "webhook" });
     const select = page.querySelector("select") as HTMLSelectElement;
-    expect(select.value).toBe("mail");
-    expect(select.selectedOptions[0]?.text).toBe("New mail");
+    expect(select.value).toBe("webhook");
+    expect(select.selectedOptions[0]?.text).toBe("From a web request");
   });
 
   it("writes the days and the time into the cron line and keeps the time zone", async () => {
@@ -143,6 +140,7 @@ verifies("routines.when.trigger-fields", () => {
 
   it("shows why a change couldn't be saved", async () => {
     const host = {
+      mailboxes: async () => [],
       nextTimes: async () => ({ times: [], atNextCheck: false }),
       save: async () => {
         throw new Error("disk full");

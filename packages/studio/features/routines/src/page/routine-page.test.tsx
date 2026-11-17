@@ -40,6 +40,7 @@ function hostReading(routine: () => RoutineView, fail?: () => Error | undefined)
   const { host, change } = memoryHost([], []);
   const reading = {
     ...host,
+    mailboxes: async () => [],
     nextTimes: async () => ({ times: [], atNextCheck: false }),
     read: async () => {
       const error = fail?.();

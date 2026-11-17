@@ -2,6 +2,7 @@ import type { RunSummary } from "@halonicjs/events";
 import { describeTrigger, routineKey } from "@halonicjs/routines";
 import { KindedError } from "@halonicjs/std";
 import type {
+  RoutineMailbox,
   RoutineRef,
   RoutineRun,
   RoutineSkip,
@@ -93,6 +94,24 @@ export function targetsOf(workspace: LoadedWorkspace, hubId: string | null): Rou
         name: file.value.name,
       })),
   ];
+}
+
+/** The Google connectors a routine of the hub can watch for mail: the hub's own first, then the shared ones at the root. */
+export function mailboxesOf(workspace: LoadedWorkspace, hubId: string | null): RoutineMailbox[] {
+  const connectors = filesOf(workspace, "connector");
+  const own = connectors.filter((file) => file.hub === hubId);
+  const shared = hubId === null ? [] : connectors.filter((file) => file.hub === null);
+  return [...own, ...shared].flatMap((file) =>
+    "google" in file.value.transport
+      ? [
+          {
+            connector: file.value.id,
+            name: file.value.name ?? file.value.id,
+            account: file.value.transport.google.account,
+          },
+        ]
+      : [],
+  );
 }
 
 /** What a routine made from `choice` runs: a workflow with no input, or an agent with a stand-in prompt. */
