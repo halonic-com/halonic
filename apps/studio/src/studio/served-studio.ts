@@ -43,7 +43,7 @@ export function startServedStudio(
     host,
     platform,
   });
-  const services = servedServices(pageFetch);
+  const services = servedServices(pageFetch, windowFocus(page.window));
   shell.services.instantiate(services);
   const load = () => loadServedWorkspace(pageFetch);
   let window: MountedServedWindow | undefined;
@@ -87,16 +87,23 @@ export function startServedStudio(
  */
 export function servedServices(
   fetch: PageFetch = (path, init) => globalThis.fetch(path, init),
+  onFocus?: (listener: () => void) => () => void,
 ): ServiceRegistry {
   const services = new ServiceRegistry();
   services.provide(hostSettingsStoreKey, new MemoryHostSettingsStore());
   services.provide(HalonicVersionService, halonicVersion);
-  services.provide(InboxRunsService, new ServedInboxRuns({ fetch, onFocus: windowFocus }));
+  services.provide(
+    InboxRunsService,
+    new ServedInboxRuns({ fetch, ...(onFocus === undefined ? {} : { onFocus }) }),
+  );
   return services;
 }
 
-/** Calls `listener` when the page comes to the front, so the Inbox reads again at once. */
-function windowFocus(listener: () => void): () => void {
-  window.addEventListener("focus", listener);
-  return () => window.removeEventListener("focus", listener);
+/** Calls `listener` when the page's window comes to the front, so the Inbox reads again at once. */
+function windowFocus(page: object): (listener: () => void) => () => void {
+  const target = page as Pick<Window, "addEventListener" | "removeEventListener">;
+  return (listener) => {
+    target.addEventListener("focus", listener);
+    return () => target.removeEventListener("focus", listener);
+  };
 }
