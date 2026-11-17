@@ -20,6 +20,7 @@ async function openPage() {
     changes: [
       { path: notes, status: "modified", staged: false },
       { path: agent, status: "modified", staged: false },
+      { path: "notes/new.txt", status: "untracked", staged: false },
     ],
   });
   fake.setTexts(notes, { before: "buy milk\n", after: "buy oat milk\n" });
@@ -27,6 +28,7 @@ async function openPage() {
     before: "id: triage\nname: Triage\nmodel: claude\n",
     after: "id: triage\nname: Triage\nmodel: gpt\n",
   });
+  fake.setTexts("notes/new.txt", { before: null, after: "hello\n" });
   const root = render(<ChangesView list={new ChangesList(fake.source)} />);
   await act(settle);
   return root;
@@ -47,6 +49,13 @@ verifies("source-control.cant-describe", () => {
       expect(advanced(page)?.getAttribute("aria-expanded")).toBe("true");
       expect(page.textContent).toContain("+ buy oat milk");
       expect(page.textContent).toContain("Undo these changes");
+    });
+
+    it("labels a new file NEW and offers no Advanced", async () => {
+      const page = openItem(await openPage(), "new.txt");
+      expect(page.textContent).toContain("Halonic can't describe this change.");
+      expect(page.textContent).toContain("NEW");
+      expect(advanced(page)).toBeUndefined();
     });
 
     it("leaves a described item alone, with Advanced closed", async () => {

@@ -6,9 +6,9 @@
 
 ## What changes
 
-The line diff of a changed file moves behind an **Advanced** button that every person has, not only the developer view (which used to call it Show lines). Per-part **Discard this part** stays developer-only. A file Halonic can't put in words (no item kind, or unreadable) now shows "Halonic can't describe this change.", one label (CHANGED, NEW or DELETED) with the file name in mono, and Advanced already open; this replaces the one-line "New", "Deleted" or "Changed".
+The line diff of a changed file moves behind an **Advanced** button that every person has, not only the developer view (which used to call it Show lines). Per-part **Discard this part** stays developer-only. A file Halonic can't put in words (no item kind, or unreadable) now shows "Halonic can't describe this change.", one label (CHANGED, NEW or DELETED) with the file name in mono, and Advanced already open when the file has changed lines (a new or deleted file has none); this replaces the one-line "New", "Deleted" or "Changed".
 
-The requirements `source-control.line-diff`, `source-control.discard` and `source-control.change-list` change their words to match, and a new requirement `source-control.cant-describe` covers the layout. No test was weakened or skipped; the tests that pressed Show lines now press Advanced.
+The requirements `source-control.line-diff`, `source-control.discard` and `source-control.change-list` change their words to match, and a new requirement `source-control.cant-describe` covers the layout. No test was weakened or skipped. Files with no item kind (the hub in the older tests) start with Advanced open, so those tests no longer press anything; new tests cover a described file with Advanced closed, then pressed, including Discard this part in the developer view.
 
 ## Why
 

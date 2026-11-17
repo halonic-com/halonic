@@ -4,13 +4,7 @@ import { Button, StatusChip, useToastStore } from "@halonicjs/studio-kit";
 import { useId, useMemo, useRef, useState } from "react";
 import type { ChangeItem } from "../change-items.ts";
 import type { ChangedFile, ChangesList } from "../changes-list.ts";
-import {
-  discardWords,
-  listWords,
-  mergeWords,
-  partChangeWords,
-  undoWords,
-} from "../changes-words.ts";
+import { discardWords, listWords, mergeWords, undoWords } from "../changes-words.ts";
 import { PartChanges } from "./part-change.tsx";
 import { type DiscardToasts, useDiscardToasts } from "./use-discard-toasts.ts";
 
@@ -161,7 +155,7 @@ function DescribedLines({
  * (CHANGED, NEW or DELETED) and which file.
  */
 function CantDescribe({ file }: { readonly file: ChangedFile }) {
-  const label = file.description.lines[0]?.sentence.toUpperCase() ?? partChangeWords.changed;
+  const label = fileLabel(file);
   return (
     <div className="flex flex-col gap-2">
       <p className="text-body">{discardWords.cantDescribe}</p>
@@ -171,6 +165,19 @@ function CantDescribe({ file }: { readonly file: ChangedFile }) {
       </div>
     </div>
   );
+}
+
+/** What happened to a file Halonic can't describe, by what it had before and has now. */
+function fileLabel(file: ChangedFile): string {
+  // A file that couldn't be read has no texts; its one line still says whether it is new or deleted.
+  const sentence = file.description.lines[0]?.sentence;
+  if (file.texts?.before === null || (file.texts === undefined && sentence === "New")) {
+    return discardWords.fileLabel.new;
+  }
+  if (file.texts?.after === null || (file.texts === undefined && sentence === "Deleted")) {
+    return discardWords.fileLabel.deleted;
+  }
+  return discardWords.fileLabel.changed;
 }
 
 /** Says why changes can't be undone while a Get updates is half done; nothing otherwise. */
