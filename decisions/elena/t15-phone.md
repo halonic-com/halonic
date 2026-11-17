@@ -2,6 +2,7 @@
 
 - Approval: the phone sample chip sheet, the finished card's link rows and the phone Check chip are in the board-approved first-run flow (flow-first-run rev 15, HAL-663, sections 7.2 and 7.3); Liam approved the T15 plan that builds them on HAL-10917
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gQkKEAPwqjdaq/ZKnss0CdCjoHhexgiEBqS/tKEDVyWPNOmkPaMZkV9DJ8VpAbAyijKCQboPa4LVHOf6YUchBQ==
 
 Each of the three requirements gets one added sentence and one or two examples for the phone, and the kit's header badge sheet gets an optional note line with one example; nothing else in them
 changes, and no test was weakened. The served Studio on a phone shows the sample chip under More's workspace row and
