@@ -1,6 +1,6 @@
 # Decision: a stored key can carry the origins it may go to
 
-- Approval: https://paperclip.halonic.com/HAL/issues/HAL-11874#comment-7408dd26-737c-479e-a500-86b5386a983c (plan (a) of step B, approved on HAL-11874; Liam signs this note with the pull request)
+- Approval: plan (a) of step B was approved on HAL-11874 (Paperclip task); Liam signs this note with the pull request
 - Kind: user-visible
 - Task: HAL-11871
 
