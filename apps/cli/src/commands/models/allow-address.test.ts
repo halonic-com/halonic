@@ -154,19 +154,23 @@ verifies("cli.commands.models.allow-address", () => {
     });
   });
 
-  describe.skipIf(process.platform === "win32")("a profile that can't be written", () => {
-    it("shows the saved-addresses row and changes nothing", async () => {
-      await chmod(secretsFile(), 0o444);
-      const before = await readFile(secretsFile(), "utf8");
+  describe("a profile that can't be written", () => {
+    // Windows has no read permission bits, and root writes any file.
+    it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+      "[platform:win32] needs POSIX modes: shows the saved-addresses row and changes nothing",
+      async () => {
+        await chmod(secretsFile(), 0o444);
+        const before = await readFile(secretsFile(), "utf8");
 
-      const { code, io } = await allow(["openai-key", gateway]);
+        const { code, io } = await allow(["openai-key", gateway]);
 
-      expect(code).toBe(exitCode.unavailable);
-      expect(io.stderr.join("\n")).toContain(
-        "Couldn't read the addresses saved for this key. Nothing was changed.",
-      );
-      expect(await readFile(secretsFile(), "utf8")).toBe(before);
-    });
+        expect(code).toBe(exitCode.unavailable);
+        expect(io.stderr.join("\n")).toContain(
+          "Couldn't read the addresses saved for this key. Nothing was changed.",
+        );
+        expect(await readFile(secretsFile(), "utf8")).toBe(before);
+      },
+    );
   });
 
   describe("inside a run", () => {
