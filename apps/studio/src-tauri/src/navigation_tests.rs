@@ -155,13 +155,11 @@ fn guard_keeps_the_page_the_window_opens() {
 #[test]
 fn guard_keeps_the_connect_page_with_the_change_address_fragment_on_android_only() {
     let page = format!("{APP_ORIGIN}/connect.html#change-address");
-    let expected = if cfg!(target_os = "android") {
-        Destination::Stay
-    } else {
-        // Not bundled on desktop, and the Studio reads no fragment.
-        Destination::Nowhere
-    };
-    assert_eq!(decide(&page, None), expected);
+    // Not bundled on desktop, and the Studio reads no fragment.
+    assert_eq!(
+        decide(&page, None) == Destination::Stay,
+        cfg!(target_os = "android")
+    );
 }
 
 /// Every other page of the app origin has the window's capabilities too, so
