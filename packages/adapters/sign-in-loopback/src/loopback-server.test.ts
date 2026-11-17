@@ -100,12 +100,18 @@ verifies("sign-in-loopback.loopback-server", () => {
       const gate = new Promise<void>((resolve) => {
         release = resolve;
       });
+      let reached: () => void = () => undefined;
+      const handlerReached = new Promise<void>((resolve) => {
+        reached = resolve;
+      });
       const server = await serve(async () => {
+        reached();
         await gate;
         return new Response("late");
       });
       const inFlight = fetch(`http://127.0.0.1:${server.port}/`);
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      // Closing before the request arrived would cut an idle connection, so wait for the handler.
+      await handlerReached;
 
       const closing = server.close();
       release();
