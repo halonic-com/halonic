@@ -8,7 +8,7 @@ import {
   ViewOnlyLine,
 } from "@halonicjs/studio-kit";
 import { saveNoteWords } from "@halonicjs/studio-shell";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { ADD_COMMAND, viewOnlyLine } from "../list/list-text.ts";
 import {
   type PluginSecretStore,
@@ -87,6 +87,7 @@ export function PluginPage({
 }: PluginPageProps) {
   const { phone, viewOnly } = useViewOnly(place);
   const statusId = useId();
+  const statusBox = useRef<HTMLDivElement>(null);
   const [saveState, setSaveState] = useState<SettingsSaveState | undefined>(undefined);
   const [removing, setRemoving] = useState(false);
   const [reviewing, setReviewing] = useState(false);
@@ -166,6 +167,7 @@ export function PluginPage({
           trust={actions.trust}
           programsRun={actions.programsRun}
           onClose={() => setReviewing(false)}
+          returnFocus={() => statusBox.current}
           onTrusted={() => toastOn(plugin.name, manifest)}
         />
       ) : null}
@@ -198,6 +200,7 @@ export function PluginPage({
         )}
         <StatusBox
           id={statusId}
+          boxRef={statusBox}
           plugin={plugin}
           now={now}
           onCheckAgain={() => run("reload", actions.reload)}

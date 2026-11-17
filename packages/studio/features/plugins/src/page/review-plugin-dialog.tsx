@@ -18,6 +18,8 @@ export interface ReviewPluginDialogProps {
   readonly onClose: () => void;
   /** After **Trust** is saved, before `onClose`: the page says "*name* is on" in a toast. */
   readonly onTrusted?: () => void;
+  /** Where focus goes when the opener is gone (**Review** leaves once the plugin is on). */
+  readonly returnFocus?: () => HTMLElement | null;
 }
 
 /**
@@ -37,6 +39,7 @@ export function ReviewPluginDialog({
   programsRun,
   onClose,
   onTrusted,
+  returnFocus,
 }: ReviewPluginDialogProps) {
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | undefined>(undefined);
@@ -68,6 +71,7 @@ export function ReviewPluginDialog({
       failure={failure}
       onTrust={() => void confirm()}
       onNotNow={onClose}
+      returnFocus={returnFocus}
     />
   );
 }
