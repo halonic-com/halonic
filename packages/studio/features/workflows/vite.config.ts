@@ -23,6 +23,7 @@ export default defineConfig({
         approval: `${import.meta.dirname}/e2e/pages/approval.html`,
         settings: `${import.meta.dirname}/e2e/pages/settings.html`,
         "agents-list": `${import.meta.dirname}/e2e/pages/agents-list.html`,
+        welcome: `${import.meta.dirname}/e2e/pages/welcome.html`,
       },
     },
   },

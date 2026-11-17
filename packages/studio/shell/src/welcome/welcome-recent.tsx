@@ -29,6 +29,22 @@ export interface WelcomeRecentProps {
   readonly onOpen: (location: string) => void;
   /** Takes each row's button, by location, so focus can move to a row. */
   readonly rowRef: (location: string) => Ref<HTMLButtonElement>;
+  /** The row whose folder failed to open: it gets the danger outline and is described by the alert line. */
+  readonly failed?: { readonly location: string; readonly alertId: string } | undefined;
+}
+
+/** How much of a folder's end always shows when its line is cut in the middle. */
+const TAIL_LENGTH = 24;
+
+/** A folder that, when too long, is cut in the middle so its end, which tells folders apart, stays. */
+function MiddleCut({ text }: { readonly text: string }) {
+  const at = Math.max(0, text.length - TAIL_LENGTH);
+  return (
+    <span className="flex min-w-0 text-caption text-fg-subtle">
+      <span className="truncate">{text.slice(0, at)}</span>
+      <span className="shrink-0 whitespace-pre">{text.slice(at)}</span>
+    </span>
+  );
 }
 
 /**
@@ -41,7 +57,7 @@ export interface WelcomeRecentProps {
  * @example
  * <WelcomeRecent workspaces={recent} opening={undefined} onOpen={open} rowRef={rowRef} />
  */
-export function WelcomeRecent({ workspaces, opening, onOpen, rowRef }: WelcomeRecentProps) {
+export function WelcomeRecent({ workspaces, opening, onOpen, rowRef, failed }: WelcomeRecentProps) {
   const headingId = useId();
   const shown = workspaces.slice(0, WELCOME_RECENT_ROWS);
   if (shown.length === 0) {
@@ -55,6 +71,7 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef }: WelcomeRe
       <ul className="flex flex-col">
         {shown.map((workspace) => {
           const busy = workspace.location === opening;
+          const failedRow = workspace.location === failed?.location;
           return (
             <li key={workspace.location}>
               <button
@@ -62,7 +79,8 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef }: WelcomeRe
                 type="button"
                 aria-label={`${workspace.name}, ${workspace.location}${workspace.sample === true ? `, ${sampleTag}` : ""}`}
                 aria-busy={busy || undefined}
-                className={rowClasses}
+                aria-describedby={failedRow ? failed?.alertId : undefined}
+                className={failedRow ? `${rowClasses} ${failedClasses}` : rowClasses}
                 onClick={() => {
                   if (!busy) {
                     onOpen(workspace.location);
@@ -71,7 +89,7 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef }: WelcomeRe
               >
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate text-body text-fg">{workspace.name}</span>
-                  <span className="truncate text-caption text-fg-subtle">{workspace.location}</span>
+                  <MiddleCut text={workspace.location} />
                 </span>
                 {workspace.sample === true ? (
                   <span aria-hidden="true" className={tagClasses}>
@@ -92,8 +110,10 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef }: WelcomeRe
   );
 }
 
+const failedClasses = "border-danger";
+
 // The sidebar switcher's padding and radius, so a workspace row looks the same in both places.
 const rowClasses = [
-  "flex w-full min-w-0 items-center gap-2.5 rounded-sm px-2 py-1.5 text-start outline-none focus-ring",
+  "flex w-full min-w-0 items-center gap-2.5 rounded-sm border border-transparent px-2 py-1.5 text-start outline-none focus-ring",
   "hover:bg-surface-muted active:bg-surface-muted",
 ].join(" ");

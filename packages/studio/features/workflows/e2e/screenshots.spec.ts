@@ -225,3 +225,48 @@ for (const scheme of schemes) {
     });
   });
 }
+
+/**
+ * The Welcome screen (HAL-11985) in its three states, brand-new, five Recent rows and a Recent row
+ * that failed to open, at a wide and a phone-width window. The title and **Open folder** must sit
+ * at the same y in all three, so the screen doesn't move under the pointer when Recent or an error
+ * line appears.
+ */
+const welcomeStates = ["new", "recent", "failed"] as const;
+const welcomeSizes = [
+  { width: 1440, height: 900 },
+  { width: 360, height: 640 },
+] as const;
+
+for (const size of welcomeSizes) {
+  for (const scheme of schemes) {
+    test(`welcome, ${size.width}x${size.height}, ${scheme}`, async ({ page }) => {
+      await page.setViewportSize(size);
+      await page.emulateMedia({ colorScheme: scheme });
+      const ys = new Map<string, { title: number; open: number }>();
+      for (const state of welcomeStates) {
+        await page.goto(`/welcome.html?state=${state}`);
+        await expect(page.getByRole("heading", { name: "Halonic Studio", level: 1 })).toBeVisible();
+        if (state === "failed") {
+          await page.getByRole("button", { name: /Customer Support/ }).click();
+          await expect(page.getByRole("alert")).toContainText("the folder is gone.");
+          await expect(page.getByRole("button", { name: "Remove from Recent" })).toBeVisible();
+        }
+        const title = await page.getByRole("heading", { level: 1 }).boundingBox();
+        const open = await page.getByRole("button", { name: "Open folder" }).boundingBox();
+        expect(title, "the title is shown").not.toBeNull();
+        expect(open, "Open folder is shown").not.toBeNull();
+        ys.set(state, { title: title?.y ?? NaN, open: open?.y ?? NaN });
+        await page.screenshot({
+          path: `test-results/screenshots/welcome-${state}-${size.width}-${scheme}.png`,
+          fullPage: true,
+        });
+      }
+      const first = ys.get("new");
+      for (const state of welcomeStates) {
+        expect(ys.get(state)?.title, `the title's y in ${state}`).toBe(first?.title);
+        expect(ys.get(state)?.open, `Open folder's y in ${state}`).toBe(first?.open);
+      }
+    });
+  }
+}

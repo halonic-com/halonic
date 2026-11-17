@@ -1,5 +1,5 @@
 import { Button, inlineLinkClasses } from "@halonicjs/studio-kit";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { copyDetailsWords } from "../errors/copy-details-words.ts";
 import { useCopyDetails } from "../page/copy-details.ts";
 import type { WelcomeOpenProblem } from "./cant-open.ts";
@@ -44,6 +44,8 @@ export interface WelcomeProps {
 interface ShownProblem {
   readonly problem: WelcomeOpenProblem;
   readonly fromRecent: boolean;
+  /** The Recent row that asked, when one did: it is marked as the one that failed. */
+  readonly location?: string | undefined;
 }
 
 /** What is opening: the picked folder, or the Recent row in that folder. */
@@ -53,11 +55,12 @@ type Opening = { readonly from: "picker" } | { readonly from: "recent"; readonly
  * The window while no workspace is open (`shell.welcome.open-action`, microcopy 3.2): "Halonic
  * Studio", what a workspace is, and **Open folder**, the one primary button, centred with no
  * sidebar and no tabs. With the app's New workspace dialog, **New workspace…** sits under it as
- * a secondary button. While the folder opens the button reads "Opening…" and is busy: it keeps
- * focus and ignores presses. A folder that fails to open says why under the text in the danger
- * colour, and the button works again (`shell.welcome.cant-open`); a reason Halonic can't explain
- * comes with **Copy details**. Cancelling the picker changes
- * nothing. Focus starts on **Open folder** (accessibility pass 1.3).
+ * a secondary button. The column hangs a fixed 18% of the window height from the top rather than
+ * centring, so nothing above a new line (Recent, an error) moves under the pointer. While the
+ * folder opens the button reads "Opening…" and is busy: it keeps focus and ignores presses. A
+ * folder that fails to open says why under the text in the danger colour, and the button works
+ * again (`shell.welcome.cant-open`); a reason Halonic can't explain comes with **Copy details**.
+ * Cancelling the picker changes nothing. Focus starts on **Open folder** (accessibility pass 1.3).
  *
  * Under the button, **Recent** lists up to five remembered workspaces, and one press opens one
  * (states-flow-map W2). A row whose folder is gone says so on the same line with
@@ -78,6 +81,7 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
   const openButton = useRef<HTMLButtonElement>(null);
   const rows = useRef(new Map<string, HTMLButtonElement>());
   const copyDetails = useCopyDetails();
+  const alertId = useId();
   useEffect(() => {
     openButton.current?.focus();
   }, []);
@@ -110,7 +114,13 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
     try {
       const problem = await open();
       setShownProblem(
-        problem === undefined ? undefined : { problem, fromRecent: what.from === "recent" },
+        problem === undefined
+          ? undefined
+          : {
+              problem,
+              fromRecent: what.from === "recent",
+              location: what.from === "recent" ? what.location : undefined,
+            },
       );
     } finally {
       setOpening(undefined);
@@ -152,8 +162,8 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
     shownProblem?.fromRecent === true && problem?.kind === "not_found" && recent !== undefined;
 
   return (
-    <div className="grid h-full place-items-center overflow-auto p-6">
-      <div className="flex w-full min-w-0 max-w-dialog-sm flex-col items-center gap-4 text-center">
+    <div className="flex h-full justify-center overflow-auto p-6 pt-[18vh]">
+      <div className="flex h-fit w-full min-w-0 max-w-dialog-sm flex-col items-center gap-4 text-center">
         <div className="flex flex-col gap-2">
           <h1 className="text-title">Halonic Studio</h1>
           <p className="text-body text-fg-muted">
@@ -177,7 +187,7 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
           </Button>
         )}
         {hasRecent ? null : sample}
-        <p role="alert" className="text-body text-danger break-words empty:hidden">
+        <p id={alertId} role="alert" className="text-body text-danger break-words empty:hidden">
           {problem === undefined ? null : `Can't open ${problem.folder}: ${problem.reason}`}
           {sampleProblem === undefined ? null : cantCreateSampleLine(sampleProblem)}
         </p>
@@ -205,6 +215,11 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
             opening={opening?.from === "recent" ? opening.location : undefined}
             onOpen={(location) => run({ from: "recent", location }, () => recent.onOpen(location))}
             rowRef={rowRef}
+            failed={
+              shownProblem?.location === undefined
+                ? undefined
+                : { location: shownProblem.location, alertId }
+            }
           />
         )}
         {hasRecent ? sample : null}

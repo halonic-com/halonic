@@ -235,6 +235,50 @@ verifies("shell.welcome-recent", () => {
     expect(recentRow(root, "beta")?.hasAttribute("aria-busy")).toBe(false);
   });
 
+  it("marks the row that failed and describes it by the alert line", async () => {
+    const root = render(
+      <Welcome
+        onOpenFolder={async () => undefined}
+        recent={{
+          workspaces,
+          onOpen: async (location) => ({
+            folder: location,
+            kind: "not_found",
+            reason: "the folder is gone.",
+          }),
+          onRemove: () => {},
+        }}
+      />,
+    );
+
+    await act(async () => recentRow(root, "beta")?.click());
+    const alertId = root.querySelector('[role="alert"]')?.id;
+    expect(alertId).toBeTruthy();
+    expect(recentRow(root, "beta")?.getAttribute("aria-describedby")).toBe(alertId);
+    expect(recentRow(root, "beta")?.className).toContain("border-danger");
+    expect(recentRow(root, "acme")?.hasAttribute("aria-describedby")).toBe(false);
+    expect(recentRow(root, "acme")?.className).not.toContain("border-danger");
+  });
+
+  it("cuts a long folder in the middle and keeps its end", () => {
+    const location = "/work/projects/Customer Support/Halonic Workspaces/Q3 Renewals";
+    const root = render(
+      <Welcome
+        onOpenFolder={async () => undefined}
+        recent={{
+          workspaces: [{ location, name: "Q3" }],
+          onOpen: async () => undefined,
+          onRemove: () => {},
+        }}
+      />,
+    );
+
+    const row = root.querySelector("li button");
+    expect(row?.getAttribute("aria-label")).toBe(`Q3, ${location}`);
+    expect(row?.textContent).toContain(location);
+    expect(row?.querySelector(".shrink-0")?.textContent).toBe(location.slice(-24));
+  });
+
   it("says a row's folder is gone, offers Remove from Recent and keeps the row", async () => {
     const root = render(
       <Welcome
