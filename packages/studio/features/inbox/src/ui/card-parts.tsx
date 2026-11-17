@@ -8,7 +8,10 @@ import {
 } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWords } from "@halonicjs/studio-shell";
 import { type RefObject, useEffect, useState } from "react";
+import { wasDecidedElsewhere } from "../decide.ts";
 import { PlainValue } from "./plain-value.tsx";
+
+export { wasDecidedElsewhere };
 
 /** The line above the bar when an answer wasn't recorded (mc 10.2). */
 export const failedText = "Couldn't record your decision.";
@@ -16,22 +19,6 @@ export const failedText = "Couldn't record your decision.";
 /** The line when the engine refused an answer because the run isn't waiting for it any more (mc 10.2). */
 export const decidedElsewhereText =
   "This is no longer waiting for you. It was answered somewhere else or the run moved on.";
-
-/** The engine's refusals that mean "not waiting for this answer any more", so trying again can't work. */
-const staleAnswerCodes: ReadonlySet<string> = new Set([
-  "engine.decision-callid-must-match",
-  "engine.decision-wait-must-match",
-]);
-
-/**
- * Whether an answer was refused because its tool call or wait step isn't the run's current one.
- * The refusal's `code` is read, and its message too: it may reach Studio as a plain `Error`.
- */
-export function wasDecidedElsewhere(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false;
-  const { code, message } = error as { code?: unknown; message?: unknown };
-  return [code, message].some((each) => typeof each === "string" && staleAnswerCodes.has(each));
-}
 
 /** The item after this one, for the decided card's **Next** (flow-inbox 5.3). */
 export interface NextItem {
