@@ -97,7 +97,7 @@ verifies("runs.row", () => {
     });
 
     it("names the step a run on the test model finished in, with no amount", () => {
-      expect(rowOf({ status: "completed", state: "send", cost: 0 }).line).toBe("Finished in Send");
+      expect(rowOf({ status: "completed", state: "send", cost: 0 }).line).toBe("Finished");
     });
 
     it("gives a failed run the failed banner's first sentence", () => {
@@ -153,7 +153,7 @@ verifies("runs.row-columns", () => {
     );
     expect(ended.took).toBe("took 3 min");
     expect(ended.label).toBe(
-      "Run 01jd8q, Support reply, done, finished in Draft. Started by a test case, 10:40, test run.",
+      "Run 01jd8q, Support reply, done, finished. Started by a test case, 10:40, test run.",
     );
     expect(failed.label).toBe(
       "Run 01jd8q, Support reply, failed in the step Draft. Started by you, in the terminal, 10:40.",

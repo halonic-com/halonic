@@ -135,7 +135,7 @@ function whatColumn(
     case "waiting":
       return waitingWhat(summary, step, clock);
     case "done":
-      return doneWhat(run, step);
+      return doneWhat(run);
     case "stopped":
       return summary.reason === "budget"
         ? runsListMessages.budgetReached(step).phrase
@@ -147,17 +147,16 @@ function whatColumn(
  * A completed run, never an empty column (cli-output 3.4, revisions 32 and
  * 38): what it sent and its estimated cost, as the receipt says them. A run
  * whose tool calls sent nothing has no sent part, so then its estimated cost,
- * or for a run that had no priced call (a subscription), the step it
- * finished in.
+ * or for a run that had no priced call (a subscription), "Finished".
  */
-function doneWhat(run: RunToList, step: string): Phrase {
+function doneWhat(run: RunToList): Phrase {
   const cost = run.summary.cost > 0 ? moneyAmount(run.summary.cost) : undefined;
   const sends = run.sends === undefined ? [] : sendsInWords(run.sends);
   if (sends.length > 0) {
     return runsListMessages.whatItSent(sends, cost).phrase;
   }
   return cost === undefined
-    ? runsListMessages.finishedIn(step).phrase
+    ? runsListMessages.finished().phrase
     : runsListMessages.estimatedCost(cost).phrase;
 }
 
