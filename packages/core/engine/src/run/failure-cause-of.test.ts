@@ -1,6 +1,7 @@
-import { KindedError } from "@halonicjs/std";
-import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import type { RunFailureKind } from "@halonicjs/events";
+import { type ErrorKind, KindedError } from "@halonicjs/std";
+import { typeTest, verifies } from "@halonicjs/testing-spec";
+import { expect, expectTypeOf, it } from "vitest";
 import { failedCallInput } from "./failed-call-input.ts";
 import { failureCauseOf } from "./failure-cause-of.ts";
 
@@ -10,6 +11,10 @@ function integrationError(kind: string, failureCause?: unknown): Error {
 }
 
 verifies("engine.run-failure-cause-of", () => {
+  typeTest("keeps the kinds of a cause equal to the kit's error kinds", () => {
+    expectTypeOf<RunFailureKind>().toEqualTypeOf<ErrorKind>();
+  });
+
   it("takes the kind, the code and the detail an integration names", () => {
     const detail = { api: "drive.googleapis.com", project: "123456" };
     const error = integrationError("denied", { code: "google.api-disabled", detail });
