@@ -65,7 +65,7 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    create: async ({ name, hubId }) => {
+    create: async ({ name, hubId, instructions }) => {
       if (!options.hubs.some((hub) => hub.id === hubId)) {
         throw new KindedError("not_found", "This hub isn't there.");
       }
@@ -73,7 +73,7 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
         .filter((each) => each.hubId === hubId)
         .map((each) => each.id);
       const id = uniqueName(slugify(name), taken);
-      agents.set(keyOf({ hubId, id }), { hubId, id, name, instructions: "" });
+      agents.set(keyOf({ hubId, id }), { hubId, id, name, instructions: instructions ?? "" });
       for (const listener of listeners) listener();
       return { hubId, id };
     },

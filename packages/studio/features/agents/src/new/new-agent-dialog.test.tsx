@@ -4,7 +4,14 @@ import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { buttonNamed, openDialogsInJsdom, show, typeInto, unmount } from "../test-support.tsx";
+import {
+  buttonNamed,
+  openDialogsInJsdom,
+  show,
+  typeInto,
+  typeIntoArea,
+  unmount,
+} from "../test-support.tsx";
 import { agentFilePath } from "./agent-file.ts";
 import { NewAgentDialog, type NewAgentDialogProps } from "./new-agent-dialog.tsx";
 
@@ -16,10 +23,12 @@ const beta = { id: "beta", name: "beta" };
 
 function dialog(props: Partial<NewAgentDialogProps> = {}) {
   const onCreated = vi.fn();
-  const create = vi.fn(async (newAgent: { name: string; hubId: string }) => ({
-    hubId: newAgent.hubId,
-    id: "refund-checker",
-  }));
+  const create = vi.fn(
+    async (newAgent: { name: string; hubId: string; instructions?: string | undefined }) => ({
+      hubId: newAgent.hubId,
+      id: "refund-checker",
+    }),
+  );
   return {
     onCreated,
     create,
@@ -74,8 +83,32 @@ verifies("agents.new.create", () => {
 
     await act(async () => buttonNamed(document.body, "Create")?.click());
 
-    expect(create).toHaveBeenCalledWith({ name: "Refund checker", hubId: "acme" });
+    expect(create).toHaveBeenCalledWith({
+      name: "Refund checker",
+      hubId: "acme",
+      instructions: "",
+    });
     expect(onCreated).toHaveBeenCalledWith({ hubId: "acme", id: "refund-checker" });
+  });
+
+  it("hands the written instructions over, and refuses a key in them", async () => {
+    const { node, create } = dialog();
+    await show(node);
+    await typeInto(nameField(), "Refund checker");
+    const area = document.querySelector("textarea") as HTMLTextAreaElement;
+
+    await typeIntoArea(area, `use sk-${"a1B2".repeat(6)}`);
+    await act(async () => buttonNamed(document.body, "Create")?.click());
+    expect(body()).toContain("This looks like a key. Keep it as a secret instead?");
+    expect(create).not.toHaveBeenCalled();
+
+    await typeIntoArea(area, " Check refunds against the policy. ");
+    await act(async () => buttonNamed(document.body, "Create")?.click());
+    expect(create).toHaveBeenCalledWith({
+      name: "Refund checker",
+      hubId: "acme",
+      instructions: "Check refunds against the policy.",
+    });
   });
 
   it("says 'Give it a name.' and creates nothing while the name is empty", async () => {

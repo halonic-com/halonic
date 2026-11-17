@@ -56,6 +56,16 @@ verifies("studio.workspace-agents", () => {
       expect(host.nameOf({ hubId: "acme", id: "writer" })).toBe("Writer");
     });
 
+    it("writes the instructions given with a new agent, quoted so any text is safe", async () => {
+      const { host } = setup();
+      const ref = await host.create({
+        name: "Refund checker",
+        hubId: "acme",
+        instructions: 'Say "no": it\'s policy.\nBe brief.',
+      });
+      expect((await host.settings(ref)).instructions).toBe('Say "no": it\'s policy.\nBe brief.');
+    });
+
     it("creates an agent as one change, listed at once, with the id taken from the name", async () => {
       const { host, store, changes } = setup();
       const ref = await host.create({ name: "Refund checker", hubId: "acme" });

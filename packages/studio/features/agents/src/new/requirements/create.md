@@ -16,3 +16,5 @@ When the user chooses **New agent**, the agents feature shall ask for a name, an
 - Given the host can't write the file because "the disk is full", then the dialog says "Couldn't create the agent: the disk is full." and **Create** tries again.
 - Given the workspace has no default model, then the dialog says "It has no model yet. Pick one in Configuration › Model."; otherwise it shows no note.
 - Given the window is a phone, then the dialog has no File line and says "It starts with the workspace's default model and runs in a sandbox on your computer.".
+- Given the user wrote "Check refunds against the policy." in **What should it do? (optional)**, then **Create** hands it to the host as the agent's instructions; left empty, the agent starts with none.
+- Given that box holds text that looks like a key, then **Create** says "This looks like a key. Keep it as a secret instead?" under it, focuses it and creates nothing.
