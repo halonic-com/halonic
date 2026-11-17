@@ -3,6 +3,7 @@
 - Task: HAL-11339
 - Approval: HAL-11243 (Liam's decision on PR 3213: show them, as `docs/security/trust.md` promises)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KSfLKVDfVGW/zE7zkuvifo92RWZJbo63VvSPb4mFxKDZsVJ4f6xXqhwm1WVH9ThF6SHtB2jEGIH9eqq53YHrBQ==
 
 The trust check already shows, under each program's row, the path its command resolves to and
 the program's own `env` entries (PR 3213). The `cli.trust-check` requirement said nothing about
