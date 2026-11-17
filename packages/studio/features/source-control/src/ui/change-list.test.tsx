@@ -90,6 +90,15 @@ verifies("source-control.change-list", () => {
       expect(root.textContent).toContain("3 items");
     });
 
+    it("gives a file no kind places the file icon, not the gear of Settings", async () => {
+      const { root } = await openPage();
+      const rows = [...root.querySelectorAll("tr[data-row-id]")];
+      const readme = rows.find((row) => row.textContent?.includes("README.md"));
+      expect(readme?.querySelector("svg")).not.toBeNull();
+      // The gear has a hole drawn as a circle; the file's page does not.
+      expect(readme?.querySelector("svg circle")).toBeNull();
+    });
+
     it("is one Tab stop: only one cell of the list is in the Tab order, and the arrows move", async () => {
       const { root } = await openPage();
       const cells = [...root.querySelectorAll<HTMLElement>('td[role="gridcell"]')];
