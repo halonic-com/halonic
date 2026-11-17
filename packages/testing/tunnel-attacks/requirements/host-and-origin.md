@@ -13,7 +13,7 @@ The remote gateway shall make a WebSocket only of a request that names it by a `
   then the answer is 421 and the connection ends.
 - Given a `Host` with user information, a trailing dot, a trailing label or another port,
   then the answer is 421.
-- Given a request with no `Host`, with two `Host` lines or with a `Host` forwarded in `X-Forwarded-Host`,
+- Given a request with no `Host` or with a `Host` forwarded in `X-Forwarded-Host`,
   then no WebSocket is made.
 - Given a request whose target is an absolute URL for another host,
   then no WebSocket is made.
