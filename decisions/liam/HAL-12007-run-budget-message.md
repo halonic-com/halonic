@@ -3,6 +3,7 @@
 - Task: HAL-12007
 - Approval: a second engineer reviews it on HAL-12007, Liam signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ZFMLyry/bB+tbPD8nOcaAynDbIz8/OgJFTkPBOZoDmowAdO2qbKgNzysVYBZWQo3BI1bxLZEwTatIzhQPMJPDA==
 
 ## What changes
 
