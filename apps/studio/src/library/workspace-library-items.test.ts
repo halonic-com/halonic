@@ -72,6 +72,28 @@ verifies("library.library-page", () => {
     expect(listing.shared?.entries[0]?.detail).toBe("How we write");
   });
 
+  it("gives an item's name once it was read, for a tab that can't wait for the list", async () => {
+    const { host } = setup();
+    expect(host.nameOf("skill", { hub: "support", id: "refunds" })).toBeUndefined();
+    await host.list("skill");
+    expect(host.nameOf("skill", { hub: "support", id: "refunds" })).toBe("Refunds");
+    expect(host.nameOf("skill", { hub: null, id: "tone" })).toBe("Tone");
+    host.remember("skill", { hub: null, id: "refund-handling" }, "Refund handling");
+    expect(host.nameOf("skill", { hub: null, id: "refund-handling" })).toBe("Refund handling");
+  });
+
+  it("keeps a name current after the file changes", async () => {
+    const { host, edit, listeners } = setup();
+    await host.list("skill");
+    edit(
+      "library/skills/tone/SKILL.md",
+      "---\nname: Voice\ndescription: How we write\n---\nPlain.\n",
+    );
+    for (const listener of listeners) listener();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(host.nameOf("skill", { hub: null, id: "tone" })).toBe("Voice");
+  });
+
   it("says who uses an item", async () => {
     const { host } = setup();
     const refunds = (await host.list("skill")).hubs.find((hub) => hub.id === "support")?.entries[0];
@@ -90,10 +112,11 @@ verifies("library.library-page", () => {
 
   it("tells the app when the files change, until it stops", () => {
     const { host, listeners } = setup();
+    // The host's own listener keeps the names; the app's is the one more.
     const stop = host.subscribe(() => {});
-    expect(listeners.size).toBe(1);
+    expect(listeners.size).toBe(2);
     stop();
-    expect(listeners.size).toBe(0);
+    expect(listeners.size).toBe(1);
   });
 });
 

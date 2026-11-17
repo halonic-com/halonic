@@ -1,6 +1,7 @@
 import { newLibraryFile } from "@halonicjs/app";
 import { KindedError } from "@halonicjs/std";
 import type {
+  LibraryItemPlace,
   NewSkillDraft,
   NewSkillHost,
   NewSkillHub,
@@ -31,8 +32,12 @@ export class WorkspaceNewSkill implements NewSkillHost {
   readonly #parts: WorkspaceSkillsParts;
   #snapshot: LoadedWorkspace | undefined;
 
-  constructor(parts: WorkspaceSkillsParts) {
+  /** Told the name of each item made, so its tab can show it before the Library reads it again. */
+  readonly #made: ((place: LibraryItemPlace, name: string) => void) | undefined;
+
+  constructor(parts: WorkspaceSkillsParts, made?: (place: LibraryItemPlace, name: string) => void) {
     this.#parts = parts;
+    this.#made = made;
   }
 
   async prepare(): Promise<void> {
@@ -62,6 +67,7 @@ export class WorkspaceNewSkill implements NewSkillHost {
     if (!made.ok) throw new KindedError("invalid_input", refusals[made.error]);
     const { id, path, text } = made.value;
     this.#parts.files.change(`Added skill ${id}`, { [path]: text });
+    this.#made?.({ hub: draft.hub, id }, draft.name.trim());
     return { hub: draft.hub, id };
   }
 

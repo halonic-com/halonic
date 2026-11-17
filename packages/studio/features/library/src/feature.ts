@@ -1,4 +1,5 @@
-import { defineFeature } from "@halonicjs/studio-shell";
+import type { LibraryItemKind } from "@halonicjs/app";
+import { defineFeature, type ItemRef, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { CollectionHostService } from "./collection-host.ts";
 import { ConnectorStatusHostService } from "./connector-status-host.ts";
 import { KnowledgeHostService } from "./knowledge-host.ts";
@@ -12,7 +13,14 @@ import { NewConnectorHostService } from "./new-connector-host.ts";
 import { requestNewConnector } from "./new-connector-request.ts";
 import { newConnectorWords } from "./new-connector-words.ts";
 import { NewSkillHostService } from "./new-skill-host.ts";
+import { sharedHubKey } from "./shared-hub-key.ts";
 import { SkillHostService } from "./skill-host.ts";
+
+/** The name the list shows for the item, or its id while the host hasn't read it (HAL-11790). */
+function nameOfItem(context: WorkspaceContext, kind: LibraryItemKind, item: ItemRef): string {
+  const place = { hub: item.hub === sharedHubKey ? null : item.hub, id: item.id };
+  return context.services.find(LibraryItemsHostService)?.nameOf?.(kind, place) ?? item.id;
+}
 
 /** Alt+4 to Alt+7 open the tabs, in the tabs' order. */
 const firstTabKey = 4;
@@ -82,7 +90,7 @@ export const libraryFeature = defineFeature({
       place: "library",
       open: { view: "SkillPage", load: () => import("./ui/skill-page.tsx") },
       tab: {
-        describe: (item) => ({ label: item.id }),
+        describe: (item, context) => ({ label: nameOfItem(context, "skill", item) }),
         exists: () => true,
       },
     });
@@ -93,7 +101,7 @@ export const libraryFeature = defineFeature({
       place: "library",
       open: { view: "KnowledgePage", load: () => import("./ui/knowledge-page.tsx") },
       tab: {
-        describe: (item) => ({ label: item.id }),
+        describe: (item, context) => ({ label: nameOfItem(context, "knowledge", item) }),
         exists: () => true,
       },
     });
@@ -104,7 +112,7 @@ export const libraryFeature = defineFeature({
       place: "library",
       open: { view: "ConnectorPage", load: () => import("./ui/connector-page.tsx") },
       tab: {
-        describe: (item) => ({ label: item.id }),
+        describe: (item, context) => ({ label: nameOfItem(context, "connector", item) }),
         exists: () => true,
       },
     });
