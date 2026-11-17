@@ -17,8 +17,8 @@ type Checked =
  * The sandbox row's card (requirement `inbox.sandbox-row`, checklist 3.5): the reason and then the
  * fix, from the one catalogue, **Check again**, the guide, and the runs that didn't run, each with
  * **Open run**, then the footer (mc 23.3). A passing check makes the card say "Fixed", with the
- * footer as `success` text in place of the Callout. Nothing runs again by itself, and there is no
- * way to run anyway. **Check again** stays, busy ("Checking…"), while a check runs, so it keeps
+ * footer as `success` text in place of the Callout. No failed run runs again by itself (the footer says routines start again at their next time),
+ * and there is no way to run anyway. **Check again** stays, busy ("Checking…"), while a check runs, so it keeps
  * focus; the answer is said through `announce`, and a passing check, which drops the button,
  * moves focus to the "Fixed" line.
  */

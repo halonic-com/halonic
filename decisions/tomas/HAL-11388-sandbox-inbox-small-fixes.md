@@ -3,15 +3,18 @@
 - Task: HAL-11388
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11388 (wording from microcopy 13.1a and design check HAL-11370 item X1; small wording and detail of an approved screen is a team decision, HAL-2282 rule)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:i8VoXKGcrfcvip5icOHghY1W6rR5tFh9RIAASX8CelXg8dWYcyWwFXO1CHvWxFqtzMaoxJuZxLJZYL4lCV9JCA==
 
 ## What changes
 
 The Remove sandbox setup dialog no longer has a third Cancel choice. Remove sandbox stays unavailable
 until the user picks what happens to the contents, and the reason is shown under the choices.
 
-The requirements `settings.sandbox-choice-flow` and `settings.sandbox-choice-view` gain these
-cases. No test was weakened or skipped.
+The requirement `settings.wsl-remove-dialog` changes: two choices instead of three, and an unavailable
+confirm button with its reason. `inbox.sandbox-row` gains one sentence about the footer.
+
+Tests: the test that checked the Cancel choice is replaced by one for the new behaviour. In
+`sandbox-setup-view.test.tsx` the "no way to run anyway" assertion no longer looks for `without the
+sandbox`, because the footer (mc 23.3) now names that setting. No other test was weakened or skipped.
 
 ## Why
 
@@ -20,5 +23,5 @@ close control, so the choice list only holds real outcomes.
 
 ## Covers
 
-- settings.sandbox-choice-flow
-- settings.sandbox-choice-view
+- settings.wsl-remove-dialog
+- inbox.sandbox-row
