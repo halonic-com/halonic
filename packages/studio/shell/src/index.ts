@@ -59,6 +59,7 @@ export {
   type JustUpdated,
 } from "./engine/engine-failed-window.tsx";
 export { EngineLine, type EngineLineProps } from "./engine/engine-line.tsx";
+export { EngineNotAnswering } from "./engine/engine-not-answering.ts";
 export {
   type EngineRestartOptions,
   stoppedRunsText,

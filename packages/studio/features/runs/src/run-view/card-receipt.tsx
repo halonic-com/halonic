@@ -1,8 +1,9 @@
 import { shortRunId } from "@halonicjs/app";
 import { summarize } from "@halonicjs/events";
 import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
+import { type EngineWords, engineWordsOf } from "@halonicjs/studio-shell";
 import type { RunsSource, SourcedRun } from "../api.ts";
-import { loadFailureReason } from "../load-failure.ts";
+import { FailureReason } from "../load-failure.tsx";
 import { runPageWords } from "../run-words.ts";
 import { EveryStep, type RunLogRead } from "./every-step.tsx";
 import { everyStep } from "./every-step-model.ts";
@@ -33,6 +34,8 @@ export interface RunCardReceiptProps {
   readonly openRun?: ((runId: string) => void) | undefined;
   /** Opens the run's page, for See the step and a step's row: the card has no step panel. */
   readonly onOpenStep?: (() => void) | undefined;
+  /** What the card calls the engine when it isn't answering, for this window's host; the desktop app's by default. */
+  readonly engine?: EngineWords;
 }
 
 /**
@@ -53,6 +56,7 @@ export function RunCardReceipt({
   reviewInInbox,
   openRun,
   onOpenStep,
+  engine = engineWordsOf({}),
 }: RunCardReceiptProps) {
   const log = read.events;
   const { summary } = run;
@@ -72,7 +76,13 @@ export function RunCardReceipt({
         tone="error"
         align="start"
         title={runPageWords.loadFailed(shortId)}
-        description={loadFailureReason(read.failure)}
+        description={
+          <FailureReason
+            what={runPageWords.loadFailed(shortId)}
+            error={read.failure}
+            engine={engine}
+          />
+        }
         action={{ label: "Try again", onClick: read.retry }}
       />
     );

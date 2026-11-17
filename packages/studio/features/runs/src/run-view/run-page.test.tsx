@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { RunEvent } from "@halonicjs/events";
+import { EngineNotAnswering, engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -175,7 +176,7 @@ verifies("runs.run-page", () => {
     expect(root.querySelector('section[aria-label="Waiting for you"]')).not.toBeNull();
   });
 
-  it("keeps the run and adds the engine's line when a later load fails", async () => {
+  it("keeps the run and says it couldn't refresh it when a later load fails", async () => {
     const fake = fakeSource([running]);
     const { root, list } = await openRun(fake.source, running.id);
 
@@ -183,7 +184,23 @@ verifies("runs.run-page", () => {
     await act(async () => list.refresh());
 
     expect(root.querySelector("h1")?.textContent).toBe("Run 7k2m9p");
-    expect(root.textContent).toContain("The engine isn't answering. Showing what it said last.");
+    expect(root.textContent).toContain(
+      "Couldn't refresh run 7k2m9p. Halonic ran into a problem it can't explain yet.",
+    );
+    expect(root.textContent).not.toContain("isn't answering");
+    expect(root.textContent).not.toContain("no answer");
+  });
+
+  it("keeps the run and says the host's engine line when the engine can't be reached", async () => {
+    const fake = fakeSource([running]);
+    const { root, list } = await openRun(fake.source, running.id, { engine: engineWords.phone });
+
+    fake.fail(new EngineNotAnswering());
+    await act(async () => list.refresh());
+
+    expect(root.textContent).toContain(
+      "Halonic on your computer isn't answering. Showing what it said last.",
+    );
   });
 
   it("says the run isn't in this workspace any more, with Go to Runs", async () => {
@@ -202,7 +219,9 @@ verifies("runs.run-page", () => {
 
     expect(root.querySelector("h1")?.textContent).toBe("Run 7k2m9p");
     expect(root.textContent).toContain("Couldn't load run 7k2m9p");
-    expect(root.textContent).toContain("The engine isn't answering. It may still be starting.");
+    expect(root.textContent).toContain("Halonic ran into a problem it can't explain yet.");
+    expect(button(root, "Copy details")).toBeDefined();
+    expect(root.textContent).not.toContain("no answer");
 
     fake.answer();
     await act(async () => button(root, "Try again").click());
@@ -235,7 +254,8 @@ verifies("runs.run-page", () => {
     fake.failLog(new Error("no answer"));
     const { root } = await openRun(fake.source, running.id);
     expect(root.textContent).toContain("Couldn't read this run's log");
-    expect(root.textContent).toContain("The engine isn't answering. It may still be starting.");
+    expect(root.textContent).toContain("Halonic ran into a problem it can't explain yet.");
+    expect(root.textContent).not.toContain("isn't answering");
 
     fake.answer();
     await act(async () => button(root, "Try again").click());

@@ -1,7 +1,8 @@
 import type { RunEvent } from "@halonicjs/events";
+import type { EngineWords } from "@halonicjs/studio-shell";
 import { useRef, useState } from "react";
 import type { RunStartHost, SourcedRun } from "../api.ts";
-import { loadFailureReason } from "../load-failure.ts";
+import { loadFailureReason } from "../load-failure.tsx";
 import { runPageWords } from "../run-words.ts";
 
 /**
@@ -28,8 +29,8 @@ export interface RunAgain {
   readonly start: () => Promise<void>;
   /** True while a start is pending; a click then does nothing, wherever the button is. */
   readonly busy: boolean;
-  /** Why the last start failed, in the engine's words, until the next one. */
-  readonly problem: string | undefined;
+  /** Why the last start failed, until the next one: the error, which the page words. */
+  readonly problem: { readonly error: unknown } | undefined;
 }
 
 /**
@@ -42,9 +43,10 @@ export function useRunAgain(
   run: SourcedRun | undefined,
   log: readonly RunEvent[] | undefined,
   openRun: ((runId: string) => void) | undefined,
+  engine: EngineWords,
   announce?: (line: string) => void,
 ): RunAgain | undefined {
-  const [problem, setProblem] = useState<string>();
+  const [problem, setProblem] = useState<{ readonly error: unknown }>();
   const [busy, setBusy] = useState(false);
   // A ref, so two clicks in the same render still start one run.
   const pending = useRef(false);
@@ -62,9 +64,8 @@ export function useRunAgain(
       const started = await host.startRun({ hubId, workflowId }, input);
       openRun(started.runId);
     } catch (error) {
-      const reason = loadFailureReason(error);
-      setProblem(reason);
-      announce?.(runPageWords.runAgainFailed(reason));
+      setProblem({ error });
+      announce?.(runPageWords.runAgainFailed(loadFailureReason(error, engine)));
     } finally {
       pending.current = false;
       setBusy(false);

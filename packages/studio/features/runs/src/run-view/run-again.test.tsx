@@ -88,7 +88,7 @@ verifies("runs.run-view.run-again", () => {
 
   it("says each failed start once", async () => {
     const startRun = vi.fn(async () => {
-      throw new Error("The engine isn't answering.");
+      throw new Error("no answer");
     });
     const announce = vi.fn();
     const root = await open(failed, { startRun }, vi.fn(), (line) => announce(line));
