@@ -98,11 +98,11 @@ verifies("source-control.create-version", () => {
   describe("Create version", () => {
     it("opens with the offered name selected and everything that changed in it", async () => {
       await openDialog();
-      expect(nameField()?.value).toBe("Changes to triage and README.md");
+      expect(nameField()?.value).toBe("Changes to Triage and README.md");
       expect(nameField()?.selectionStart).toBe(0);
       expect(nameField()?.selectionEnd).toBe(nameField()?.value.length);
       const contents = dialog()?.querySelector("section")?.textContent ?? "";
-      expect(contents).toContain("triage");
+      expect(contents).toContain("Triage");
       expect(contents).toContain("README.md");
       expect(contents).not.toContain(agentPath);
       expect(dialog()?.textContent).not.toContain("Save first");
@@ -144,7 +144,7 @@ verifies("source-control.create-version", () => {
       await act(settle);
       await act(async () => list.startVersion());
       const rows = [...(dialog()?.querySelectorAll("section > ul > li") ?? [])];
-      expect(rows[0]?.textContent).toContain("triage");
+      expect(rows[0]?.textContent).toContain("Triage");
       expect(rows[0]?.querySelector("div > span.rounded-full")?.textContent).toBe("Important");
       expect(rows[1]?.querySelector("span.rounded-full")).toBeNull();
     });
@@ -223,7 +223,7 @@ verifies("source-control.create-version", () => {
     it("opens with one item when a screen asks for it", async () => {
       const { list } = await openPage();
       await act(async () => list.startVersion([agentPath]));
-      expect(nameField()?.value).toBe("Changes to triage");
+      expect(nameField()?.value).toBe("Changes to Triage");
       expect(dialog()?.querySelector("section")?.textContent).not.toContain("README.md");
     });
 
