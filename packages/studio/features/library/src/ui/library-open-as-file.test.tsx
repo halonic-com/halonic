@@ -3,7 +3,7 @@ import type { ItemUsage } from "@halonicjs/app";
 import { createToastStore, PresentationProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { type ItemViewProps, limitedLookup, type PlaceViewProps } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { libraryFeature } from "../feature.ts";
 import {
@@ -17,6 +17,7 @@ import { installFakePopover } from "../test-support/popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { LibraryPage } from "./library-page.tsx";
 import { LibraryPlace } from "./library-place.tsx";
+import { OpenAsFileSheet } from "./open-as-file-sheet.tsx";
 import { SkillPage } from "./skill-page.tsx";
 
 let restorePopover: () => void;
@@ -42,6 +43,7 @@ function itemsHost(usage: ItemUsage, remove?: LibraryItemsHost["remove"]) {
   const host: LibraryItemsHost = {
     list: async () => listing(usage),
     remove: remove ?? vi.fn(async () => ({ undo })),
+    readFile: async () => "name: Tone\n",
     subscribe: () => () => {},
   };
   return { host, undo };
@@ -79,8 +81,12 @@ async function showLibrary(host: LibraryItemsHost) {
   return { page, toasts };
 }
 
-function skillPageProps(openItem: () => void): ItemViewProps {
-  const { host } = itemsHost(nobody);
+function skillPageProps(
+  openItem: () => void,
+  readFile?: LibraryItemsHost["readFile"],
+): ItemViewProps {
+  const { host: base } = itemsHost(nobody);
+  const host = readFile === undefined ? base : { ...base, readFile };
   const skills: SkillHost = {
     read: async () => ({
       text: "---\nname: Tone\ndescription: How we write\n---\nPlain.\n",
@@ -156,23 +162,98 @@ verifies("library.library-open-as-file", () => {
     });
   });
 
-  it("offers no Open as file on a phone, even where openItem opens the page", async () => {
+  it("shows an open page's file as text in a sheet with Back on a phone", async () => {
+    const openItem = vi.fn();
     const page = render(
       <PresentationProvider presentation="phone">
         <ToastStoreProvider store={createToastStore()}>
-          <SkillPage {...skillPageProps(vi.fn())} />
+          <SkillPage {...skillPageProps(openItem)} />
         </ToastStoreProvider>
       </PresentationProvider>,
     );
     await settled();
-    act(() =>
-      page.querySelector<HTMLElement>('button[aria-label="More actions for Tone"]')?.click(),
-    );
-    const entries = [...document.querySelectorAll('[role="menuitem"]')].map((e) => e.textContent);
-    expect(entries).toEqual(["Delete"]);
+    await pick(page, "More actions for Tone", "Open as file");
+    expect(openItem).not.toHaveBeenCalled();
+    expect(document.querySelector("aside h2")?.textContent).toBe("SKILL.md");
+    expect(document.querySelector("pre")?.textContent).toBe("name: Tone\n");
+    expect(document.querySelector("pre")?.className).toContain("whitespace-pre-wrap");
+    act(() => document.querySelector<HTMLElement>('button[aria-label="Back"]')?.click());
+    expect(document.querySelector("pre")).toBeNull();
   });
 
-  it("offers no Open as file in the Library's rows on a phone", async () => {
+  it("says it couldn't load the file, and Try again reads it again", async () => {
+    const readFile = vi
+      .fn<LibraryItemsHost["readFile"]>()
+      .mockRejectedValueOnce(
+        Object.assign(new Error("The skill tone isn't in this workspace any more."), {
+          kind: "not_found",
+        }),
+      )
+      .mockResolvedValue("name: Tone\n");
+    const page = render(
+      <PresentationProvider presentation="phone">
+        <ToastStoreProvider store={createToastStore()}>
+          <SkillPage {...skillPageProps(vi.fn(), readFile)} />
+        </ToastStoreProvider>
+      </PresentationProvider>,
+    );
+    await settled();
+    await pick(page, "More actions for Tone", "Open as file");
+    expect(document.body.textContent).toContain("Couldn't load the skill");
+    expect(document.body.textContent).toContain("The skill tone isn't in this workspace any more.");
+    const retry = [...document.querySelectorAll<HTMLElement>("button")].find(
+      (each) => each.textContent === "Try again",
+    );
+    await act(async () => retry?.click());
+    await settled();
+    expect(document.querySelector("pre")?.textContent).toBe("name: Tone\n");
+  });
+
+  it("reads the file once when the page re-renders with a new place object", async () => {
+    const readFile = vi.fn<LibraryItemsHost["readFile"]>().mockResolvedValue("name: Tone\n");
+    const host: LibraryItemsHost = { ...itemsHost(nobody).host, readFile };
+    const context = skillPageProps(vi.fn()).context;
+    let rerender = () => {};
+    function Page() {
+      const [, setCount] = useState(0);
+      rerender = () => setCount((count) => count + 1);
+      // A new place object on every render, as an item page passes it.
+      return (
+        <OpenAsFileSheet
+          host={host}
+          context={context}
+          kind="skill"
+          place={{ hub: "~workspace", id: "tone" }}
+          onClose={() => undefined}
+        />
+      );
+    }
+    render(
+      <PresentationProvider presentation="phone">
+        <Page />
+      </PresentationProvider>,
+    );
+    await settled();
+    act(() => rerender());
+    await settled();
+    expect(readFile).toHaveBeenCalledTimes(1);
+    expect(document.querySelector("pre")?.textContent).toBe("name: Tone\n");
+  });
+
+  it("shows a file that isn't valid YAML as text", async () => {
+    const page = render(
+      <PresentationProvider presentation="phone">
+        <ToastStoreProvider store={createToastStore()}>
+          <SkillPage {...skillPageProps(vi.fn(), async () => "name: [unclosed\n")} />
+        </ToastStoreProvider>
+      </PresentationProvider>,
+    );
+    await settled();
+    await pick(page, "More actions for Tone", "Open as file");
+    expect(document.querySelector("pre")?.textContent).toBe("name: [unclosed\n");
+  });
+
+  it("offers Open as file in a phone's skill rows, which show it in a sheet", async () => {
     const { host } = itemsHost(nobody);
     const provided = new Map<unknown, unknown>([
       [LibraryItemsHostService, host],
@@ -194,10 +275,9 @@ verifies("library.library-open-as-file", () => {
       </PresentationProvider>,
     );
     await settled();
-    act(() =>
-      page.querySelector<HTMLElement>('button[aria-label="More actions for Tone"]')?.click(),
-    );
-    const entries = [...document.querySelectorAll('[role="menuitem"]')].map((e) => e.textContent);
-    expect(entries).toEqual(["Open", "Open in new tab", "Delete"]);
+    await pick(page, "More actions for Tone", "Open as file");
+    expect(document.querySelector("aside h2")?.textContent).toBe("SKILL.md");
+    expect(document.querySelector("pre")?.textContent).toBe("name: Tone\n");
+    expect(context.openItem).not.toHaveBeenCalled();
   });
 });

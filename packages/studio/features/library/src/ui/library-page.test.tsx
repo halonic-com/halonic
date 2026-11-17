@@ -49,6 +49,7 @@ function hostWith(
       return listing;
     }),
     remove: vi.fn(async () => ({ undo: vi.fn(async () => {}) })),
+    readFile: async () => "",
     subscribe: () => () => {},
   };
 }

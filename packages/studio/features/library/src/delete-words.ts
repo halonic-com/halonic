@@ -31,6 +31,13 @@ export const deleteWords = {
   couldntUndo: (name: string) => `Couldn't put ${name} back`,
 } as const;
 
+/** The Open as file sheet's wording on a phone: the item pages' own loading and can't-load lines, for the kind. */
+export const openAsFileWords = {
+  loading: (kind: LibraryItemKind) => `Loading the ${kindNouns[kind]}`,
+  couldntLoad: (kind: LibraryItemKind) => `Couldn't load the ${kindNouns[kind]}`,
+  tryAgain: deleteWords.tryAgain,
+} as const;
+
 /** Whether a phone can delete the kind: it can't remove what it can't make again (flow-library 8.1, phone layout 1.1). */
 export function phoneCanDelete(kind: LibraryItemKind): boolean {
   return kind === "skill" || kind === "collection";

@@ -20,3 +20,8 @@ export function itemFileRef(
 ): { readonly kind: string; readonly hub: string; readonly id: string } {
   return { kind: fileKind, hub: fileHub, id: itemFilePath(kind, place) };
 }
+
+/** The file's name as the Open as file sheet's title: `SKILL.md`, `claims.collection.yaml`. */
+export function itemFileName(kind: LibraryItemKind, place: LibraryItemPlace): string {
+  return itemFilePath(kind, place).split("/").pop() ?? place.id;
+}

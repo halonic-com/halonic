@@ -25,7 +25,7 @@ While the app is a phone, the Library feature shall not offer New connector, on 
   then each row's ⋮ menu also has Delete.
 - Given a phone and a Knowledge or Connectors page,
   when it shows,
-  then it has no ⋮ menu, as it holds no entry.
+  then its ⋮ menu has only Open as file.
 - Given a phone and a skill or collection page,
   when it shows,
-  then its ⋮ menu has Delete.
+  then its ⋮ menu has Open as file, and Delete after it.

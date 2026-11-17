@@ -1,4 +1,4 @@
-import { type LibraryItemKind, whoUses } from "@halonicjs/app";
+import { type LibraryItemKind, libraryItemPath, whoUses } from "@halonicjs/app";
 import type { DefinitionSource } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type {
@@ -125,6 +125,18 @@ export class WorkspaceLibraryItems implements LibraryItemsHost {
         }
       },
     };
+  }
+
+  /** The item's file as the workspace holds it now, unsaved changes included. */
+  async readFile(kind: LibraryItemKind, place: LibraryItemPlace): Promise<string> {
+    const text = await this.#parts.files.read(libraryItemPath(kind, place));
+    if (text === null) {
+      throw new KindedError(
+        "not_found",
+        `${displayName(kind, place.id)} isn't in this workspace any more.`,
+      );
+    }
+    return text;
   }
 
   subscribe(listener: () => void): () => void {

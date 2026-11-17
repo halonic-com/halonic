@@ -45,6 +45,7 @@ function changingHost(names: readonly string[]) {
         },
       };
     },
+    readFile: async () => "",
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);

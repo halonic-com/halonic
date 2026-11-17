@@ -33,6 +33,7 @@ const host: LibraryItemsHost = {
     },
   }),
   remove: vi.fn(async () => ({ undo: async () => {} })),
+  readFile: async () => "",
   subscribe: () => () => {},
 };
 

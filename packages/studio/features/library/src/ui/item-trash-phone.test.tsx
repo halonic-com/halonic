@@ -22,6 +22,7 @@ afterEach(() => {
 const host: LibraryItemsHost = {
   list: async () => ({ hubs: [], shared: { workspaceName: "Acme", entries: [] } }),
   remove: vi.fn(async () => ({ undo: async () => {} })),
+  readFile: async () => "",
   subscribe: () => () => {},
 };
 
@@ -48,14 +49,23 @@ function showOnPhone(kind: LibraryItemKind) {
 const menuButton = 'button[aria-label="More actions for Tone"]';
 
 verifies("library.library-phone", () => {
-  it.each(["knowledge", "connector"] as const)("has no ⋮ menu on a phone's %s page", (kind) => {
-    expect(showOnPhone(kind).querySelector(menuButton)).toBeNull();
-  });
+  it.each(["knowledge", "connector"] as const)(
+    "has only Open as file on a phone's %s page",
+    (kind) => {
+      const page = showOnPhone(kind);
+      act(() => page.querySelector<HTMLElement>(menuButton)?.click());
+      const entries = [...document.querySelectorAll('[role="menuitem"]')].map((e) => e.textContent);
+      expect(entries).toEqual(["Open as file"]);
+    },
+  );
 
-  it.each(["skill", "collection"] as const)("keeps Delete on a phone's %s page", (kind) => {
-    const page = showOnPhone(kind);
-    act(() => page.querySelector<HTMLElement>(menuButton)?.click());
-    const entries = [...document.querySelectorAll('[role="menuitem"]')].map((e) => e.textContent);
-    expect(entries).toEqual(["Delete"]);
-  });
+  it.each(["skill", "collection"] as const)(
+    "keeps Open as file and Delete on a phone's %s page",
+    (kind) => {
+      const page = showOnPhone(kind);
+      act(() => page.querySelector<HTMLElement>(menuButton)?.click());
+      const entries = [...document.querySelectorAll('[role="menuitem"]')].map((e) => e.textContent);
+      expect(entries).toEqual(["Open as file", "Delete"]);
+    },
+  );
 });

@@ -49,6 +49,7 @@ function itemsHost(usage: ItemUsage, remove?: LibraryItemsHost["remove"]) {
   const host: LibraryItemsHost = {
     list: async () => listing(usage),
     remove: remove ?? vi.fn(async () => ({ undo })),
+    readFile: async () => "",
     subscribe: () => () => {},
   };
   return { host, undo };

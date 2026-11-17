@@ -51,6 +51,7 @@ function contextOf(
   const host: LibraryItemsHost = {
     list,
     remove: async () => ({ undo: async () => {} }),
+    readFile: async () => "",
     subscribe: () => () => {},
   };
   const memory = { get: () => kept, set: vi.fn() };

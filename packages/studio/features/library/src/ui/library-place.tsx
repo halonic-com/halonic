@@ -17,10 +17,11 @@ import { NewSkillHostService } from "../new-skill-host.ts";
 import { requestSkillInstructionsFocus } from "../skill-focus-request.ts";
 import type { SkillRef } from "../skill-host.ts";
 import { LibraryKindList } from "./library-kind-list.tsx";
-import { LibraryPage } from "./library-page.tsx";
+import { LibraryPage, type LibraryPageProps } from "./library-page.tsx";
 import { NewCollectionDialog } from "./new-collection-dialog.tsx";
 import { NewConnectorDialog } from "./new-connector-dialog.tsx";
 import { NewSkillDialog } from "./new-skill-dialog.tsx";
+import { OpenAsFileSheet, type OpenedFile } from "./open-as-file-sheet.tsx";
 
 /**
  * The hub in an item's tab key (`kind/hub/id`), which has to name one: what the workspace shares
@@ -44,6 +45,13 @@ function newButtonOf(
   opens: Partial<Record<LibraryItemKind, (() => void) | undefined>>,
 ): (() => void) | undefined {
   return opens[kind];
+}
+
+function openItemAsFile(
+  openItem: PlaceViewProps["context"]["openItem"],
+): Pick<LibraryPageProps, "onOpenAsFile"> {
+  if (openItem === undefined) return {};
+  return { onOpenAsFile: (kind, place) => openItem(itemFileRef(kind, place)) };
 }
 
 /**
@@ -129,7 +137,15 @@ function LibraryKindView({ context, sub }: PlaceViewProps) {
       });
     });
   }, [newConnectorHost, show]);
+  const [openedFile, setOpenedFile] = useState<OpenedFile>();
   const { openItem, openItemInNewTab } = context;
+  // The desktop opens the file in a tab; a phone has no tabs, so it shows the text in a sheet.
+  const openAsFile = desktop
+    ? openItemAsFile(openItem)
+    : {
+        onOpenAsFile: (kind: LibraryItemKind, place: LibraryEntryPlace) =>
+          setOpenedFile({ kind, place }),
+      };
   const openSkill = ({ hub, id }: SkillRef) =>
     openItem?.({ kind: "skill", hub: hub ?? sharedHubKey, id });
   const openCollection = ({ hub, id }: CollectionRef) =>
@@ -153,12 +169,17 @@ function LibraryKindView({ context, sub }: PlaceViewProps) {
         onKindChange={show}
         onOpen={(each, entry) => openItem?.(refOf(each, entry))}
         onOpenInNewTab={(each, entry) => openItemInNewTab?.(refOf(each, entry))}
-        // A phone has no tabs: its openItem opens the page, so Open as file is desktop only.
-        {...(!desktop || openItem === undefined
-          ? {}
-          : { onOpenAsFile: (each, entry) => openItem(itemFileRef(each, entry)) })}
+        {...openAsFile}
         {...(onNew === undefined ? {} : { onNew })}
       />
+      {openedFile !== undefined && (
+        <OpenAsFileSheet
+          host={host}
+          context={context}
+          {...openedFile}
+          onClose={() => setOpenedFile(undefined)}
+        />
+      )}
       {makingSkill && newSkillHost !== undefined && (
         <NewSkillDialog
           host={newSkillHost}
