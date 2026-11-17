@@ -1,7 +1,7 @@
 import type { ItemUsage, LibraryItemKind } from "@halonicjs/app";
 import { Button, Menu, MoreIcon, usePresentation, useToastStore } from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import { deleteWords, phoneCanDelete } from "../delete-words.ts";
 import { itemFileRef } from "../item-file.ts";
 import { LibraryItemsHostService, type RemovedLibraryItem } from "../library-items-host.ts";
@@ -47,6 +47,8 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
   const desktop = usePresentation() === "desktop";
   const [removed, setRemoved] = useState<RemovedLibraryItem>();
   const { kind, hub, id, name, usage } = item;
+  const stripTextId = useId();
+  const movedLine = usedByLine(usage ?? noUsage);
   // Set by Undo; the page's title takes focus when it is drawn again.
   const focusTitle = useRef(false);
   const titleRef = useCallback((title: HTMLElement | null) => {
@@ -65,25 +67,21 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
       { kind, place: { hub, id }, name, usage: used },
       {
         quiet: true,
-        onRemoved: (done) => {
-          setRemoved(done);
-          // The strip is new on the page, so a screen reader would not read it by itself.
-          const line = usedByLine(used);
-          context.announcer.announce(
-            [deleteWords.moved(name, line !== undefined), line].filter(Boolean).join(" "),
-          );
-        },
+        // Focus goes to Undo, which reads the strip's text as its description: no announcement too.
+        onRemoved: setRemoved,
       },
     );
-  }, [host, toasts, context.announcer, kind, hub, id, name, usage]);
+  }, [host, toasts, kind, hub, id, name, usage]);
 
   const onUndo = useCallback(async () => {
     if (removed === undefined) return;
     if (await putBack(removed, name, toasts)) {
       focusTitle.current = true;
       setRemoved(undefined);
+      // The title takes focus but only says the name; nothing else says the item is back.
+      context.announcer.announce(deleteWords.restored(name));
     }
-  }, [removed, name, toasts]);
+  }, [removed, name, toasts, context.announcer]);
 
   const entries = [
     ...(!desktop || context.openItem === undefined
@@ -116,9 +114,17 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
     );
   const strip =
     removed === undefined ? null : (
-      <p role="status" className="flex flex-wrap items-center gap-2 px-4 py-5">
-        {deleteWords.pageMoved(kind)}
-        <Button ref={focusOnMount} variant="ghost" onClick={() => void onUndo()}>
+      <p className="flex flex-wrap items-center gap-2 px-4 py-5">
+        <span id={stripTextId}>
+          {deleteWords.pageMoved(kind, name)}
+          {movedLine === undefined ? null : `. ${movedLine}`}
+        </span>
+        <Button
+          ref={focusOnMount}
+          variant="ghost"
+          aria-describedby={stripTextId}
+          onClick={() => void onUndo()}
+        >
           {deleteWords.undo}
         </Button>
       </p>
