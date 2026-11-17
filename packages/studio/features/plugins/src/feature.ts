@@ -49,6 +49,7 @@ export const pluginsFeature = defineFeature({
     studio.settings.add({
       id: "plugins",
       title: "Plugins",
+      icon: "plugins",
       scope: "host",
       order: 60,
       view: "PluginsSettingsSection",
