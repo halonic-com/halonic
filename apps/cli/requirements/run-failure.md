@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-6451 (no bug report line for a known cause, decided by Liam on the task); HAL-3814 (the mapping, decided by Liam on the task, and the review of #1155); HAL-3810 (`server` from the provider's type); the failure lines of cli-output 3.4 at revision 28 (HAL-2718), and revision 39 for `provider-busy` without tries (HAL-2184)
+- Source: HAL-12007 (`budget` from the engine's error, decided by Liam on the task); HAL-6451 (no bug report line for a known cause, decided by Liam on the task); HAL-3814 (the mapping, decided by Liam on the task, and the review of #1155); HAL-3810 (`server` from the provider's type); the failure lines of cli-output 3.4 at revision 28 (HAL-2718), and revision 39 for `provider-busy` without tries (HAL-2184)
 
-The CLI shall print a failed run's two lines from the reason its `run.failed` event names and from the model the run called last, with that model's alias and provider file from the workspace. The model called last shall be the one named by the last `llm.request`, `llm.fallback` or `llm.skipped` in the run log. `key-refused` shall read as `no-key` when the run skipped that model because its key isn't set and had no other model left. `provider-busy` shall name the provider of that model, and no tries while the run log doesn't hold them. `model-missing` shall offer the Ollama download command only when the provider's type is `ollama`, and the general download fix for any other provider or when the provider file can't be found. `model-unreachable` shall name the host the event names, or else the provider's own address. `model-timeout` shall name the provider and "5 minutes", and for a provider on this computer also the address, from the event's host or else the provider's own. A cancelled run shall get no failure lines. A reason whose lines need a fact the run log doesn't hold, `harness-unavailable` (cli-output 3.4 has no line for it), and a model reason whose model or provider file can't be found shall get the general lines with the engine's message. Of those, `disk-full`, `interrupted` and `answer-not-an-option` shall get line 1 only, without the general line 2 that asks for a bug report, because their cause is known.
+The CLI shall print a failed run's two lines from the reason its `run.failed` event names and from the model the run called last, with that model's alias and provider file from the workspace. The model called last shall be the one named by the last `llm.request`, `llm.fallback` or `llm.skipped` in the run log. `key-refused` shall read as `no-key` when the run skipped that model because its key isn't set and had no other model left. `provider-busy` shall name the provider of that model, and no tries while the run log doesn't hold them. `model-missing` shall offer the Ollama download command only when the provider's type is `ollama`, and the general download fix for any other provider or when the provider file can't be found. `model-unreachable` shall name the host the event names, or else the provider's own address. `model-timeout` shall name the provider and "5 minutes", and for a provider on this computer also the address, from the event's host or else the provider's own. A cancelled run shall get no failure lines. `budget` shall take the budget, the spend and the currency from the engine's error (`engine.budget-stop-message`), also when a parent run wraps it, and a monthly budget shall reset on the first of the month after the run stopped (UTC). A reason whose lines need a fact the run log doesn't hold, a `budget` error that doesn't read as the engine writes it, `harness-unavailable` (cli-output 3.4 has no line for it), and a model reason whose model or provider file can't be found shall get the general lines with the engine's message. Of those, `disk-full`, `interrupted` and `answer-not-an-option` shall get line 1 only, without the general line 2 that asks for a bug report, because their cause is known.
 
 ## Examples
 
@@ -23,9 +23,12 @@ The CLI shall print a failed run's two lines from the reason its `run.failed` ev
 - Given a run that failed with `model-timeout` after calling a model at Ollama on `localhost:11434`,
   when the CLI prints its failure,
   then line 1 says Ollama didn't start answering at `localhost:11434` within 5 minutes and that it may still be loading the model, and line 2 says to run it again in a few minutes.
-- Given a run that failed with `budget`,
+- Given a run that failed with `budget` and the error `Run budget reached: 0.0740 of 0.0001 EUR spent.`,
   when the CLI prints its failure,
-  then it prints the general lines with the engine's message.
+  then line 1 says the run stopped because it reached its budget, with the estimated spend, and line 2 says "Raise budget.perRun in workspace.yaml."
+- Given a run whose child run failed with `budget` and the wrapped error `Workflow "draft-twice" failed: Monthly budget reached: 0.60 of 0.50 EUR spent this month.` on 31 December,
+  when the CLI prints its failure,
+  then line 2 says "Raise budget.monthly in workspace.yaml, or wait until it resets on 1 Jan."
 - Given a run that failed with `disk-full`, `interrupted` or `answer-not-an-option`,
   when the CLI prints its failure,
   then it prints the general line 1 with the engine's message and no line 2.

@@ -140,8 +140,45 @@ verifies("cli.run-failure", () => {
       expect(runFailureOf(failedWith("cancelled"), calledModel())).toBeUndefined();
     });
 
+    it("reads a run budget's amounts and currency from the engine's error (HAL-12007)", () => {
+      const failure = runFailureOf(
+        { ...failedWith("budget"), error: "Run budget reached: 0.0740 of 0.0001 EUR spent." },
+        calledModel(),
+      );
+      expect(failure).toEqual({
+        reason: "budget",
+        per: "run",
+        budget: 0.0001,
+        spent: 0.074,
+        currency: "EUR",
+      });
+      expect(fixLine(failure)).toBe("Raise budget.perRun in workspace.yaml.");
+    });
+
+    it("reads a monthly budget from a child run's wrapped error, resetting on the next month's first", () => {
+      const failure = runFailureOf(
+        {
+          ...failedWith("budget"),
+          at: "2026-12-31T23:59:00.000Z",
+          error:
+            'Workflow "draft-twice" failed in item 0 of for-each state "work": Monthly budget reached: 0.60 of 0.50 USD spent this month.',
+        },
+        undefined,
+      );
+      expect(failure).toEqual({
+        reason: "budget",
+        per: "month",
+        budget: 0.5,
+        currency: "USD",
+        resetsOn: "1 Jan",
+      });
+      expect(fixLine(failure)).toBe(
+        "Raise budget.monthly in workspace.yaml, or wait until it resets on 1 Jan.",
+      );
+    });
+
     const generalReasons: readonly RunFailureReason[] = [
-      // The log doesn't hold the budget and the spend yet.
+      // An error that doesn't read as the engine's budget stop.
       "budget",
       // cli-output 3.4 has no line for it; the engine's message names the step's effect.
       "harness-unavailable",

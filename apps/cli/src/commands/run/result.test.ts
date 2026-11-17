@@ -127,6 +127,22 @@ verifies("cli.run", () => {
     expect(runResult(run, facts).exitCode).toBe(exitCode.ok);
   });
 
+  it("exits 8 for a run its budget stopped, and 1 for any other failure (HAL-12007)", () => {
+    const facts = {
+      workspace,
+      workspaceName: "acme",
+      dir: undefined,
+      clock: { now: new Date(run.summary.startedAt), timeZone: "UTC" },
+    };
+    const failed = (reason: "budget" | "error") => ({
+      ...run,
+      summary: { ...run.summary, status: "failed" as const, reason },
+    });
+
+    expect(runResult(failed("budget"), facts).exitCode).toBe(exitCode.limitReached);
+    expect(runResult(failed("error"), facts).exitCode).toBe(exitCode.failed);
+  });
+
   it("shows an escape code in the workflow's name as its code", async () => {
     const workflowFile = join(acme, "hubs/support/workflows/support-reply.workflow.yaml");
     const workflow = await readFile(workflowFile, "utf8");
