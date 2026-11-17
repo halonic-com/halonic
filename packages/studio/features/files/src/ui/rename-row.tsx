@@ -8,9 +8,10 @@ export interface RenameRowProps {
   readonly name: string;
   /**
    * Applies the typed name. Resolves to the sentence that says why not, which stays under the row
-   * while the name is edited; `blur` says the focus left the row rather than Enter was pressed.
+   * while the name is edited; `left` says whether the focus has left the row, which can happen
+   * while the host works, so read it when the answer comes.
    */
-  readonly onApply: (name: string, blur: boolean) => Promise<string | undefined>;
+  readonly onApply: (name: string, left: () => boolean) => Promise<string | undefined>;
   /** Escape, or a name left as it was: the row shows the name again. */
   readonly onCancel: (blur: boolean) => void;
 }
@@ -45,7 +46,7 @@ export function RenameRow({ name, onApply, onCancel }: RenameRowProps) {
       return onCancel(blur);
     }
     setBusy(true);
-    const refused = await onApply(value, blur);
+    const refused = await onApply(value, () => blur || left.current);
     setBusy(false);
     if (refused === undefined || blur || left.current) {
       settled.current = true;
