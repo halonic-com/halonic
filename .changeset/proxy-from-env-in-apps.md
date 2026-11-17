@@ -1,5 +1,4 @@
 ---
-"halonic": minor
 "@halonicjs/app-agent-host": minor
 ---
 
