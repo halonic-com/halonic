@@ -2,12 +2,14 @@ import type { CantTryStep } from "@halonicjs/events";
 import { isCantTryError } from "@halonicjs/ports";
 import { BudgetReachedError } from "../budget/call-budget.ts";
 import type { EffectFailedInput } from "../kernel/decide-types.ts";
+import { failureCauseOf } from "./failure-cause-of.ts";
 import { providerTextOf } from "./provider-text-of.ts";
 import { runFailureReasonOf } from "./run-failure-reason-of.ts";
 
 /**
  * The input a call the run waits on gives when it throws: why it failed,
- * the provider's own text when there is one, and, for a `CantTryError`, the
+ * the typed cause when the error has a kind (requirement
+ * `engine.run-failure-cause-of`), the provider's own text when there is one, and, for a `CantTryError`, the
  * step it couldn't try. The adapter knows the item being tried and why; the
  * step is the state the call ran in. A call the budget stopped fails with
  * the reason `budget`.
@@ -35,12 +37,14 @@ export function failedCallInput(
   const cantTry: CantTryStep | null = isCantTryError(error)
     ? { status: "cant-try", item: error.item, step: call.step, reason: error.reason }
     : null;
+  const cause = failureCauseOf(error);
   return {
     type: "effect-failed",
     at: call.at,
     callId: call.callId,
     error: error instanceof Error ? error.message : String(error),
     ...runFailureReasonOf(error),
+    ...(cause === undefined ? {} : { cause }),
     ...(providerText === undefined ? {} : { providerText }),
     ...(cantTry === null ? {} : { cantTry }),
   };

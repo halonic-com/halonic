@@ -7,6 +7,7 @@ import type {
   ProviderText,
   RunEventBase,
   RunEventBody,
+  RunFailureCause,
   RunFailureReason,
   RunKind,
   RunParent,
@@ -174,6 +175,8 @@ export interface EffectFailedInput extends InputBase {
   readonly refusal?: InstructionsRefusal;
   /** The model provider's own error text, for `--debug` and Copy details only. */
   readonly providerText?: ProviderText;
+  /** The typed cause of the failure, from the error's kind, for a screen to read instead of `error`. */
+  readonly cause?: RunFailureCause;
   /**
    * Set when the call's step couldn't be tried, because it needs a change
    * left out of the run: it ends its branch as a failure does, but the run
