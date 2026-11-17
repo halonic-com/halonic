@@ -72,6 +72,23 @@ fn git_export_never_repeats_the_address_or_its_token_in_what_git_said() {
 }
 
 #[test]
+fn git_export_redacts_an_address_git_printed_without_its_trailing_slash() {
+    let address = "https://s3cr3ttoken@github.com/acme/weather/";
+    let message = redact(
+        "fatal: https://s3cr3ttoken@github.com/acme/weather: 403",
+        address,
+    );
+    assert!(!message.contains("s3cr3ttoken"), "{message}");
+    assert!(!message.contains("github.com"), "{message}");
+}
+
+#[test]
+fn git_export_leaves_a_short_user_in_what_git_said() {
+    let message = redact("fatal: a is not a user of the address", "ssh://a@host/x");
+    assert!(message.contains("a is not a user"), "{message}");
+}
+
+#[test]
 fn git_export_takes_only_plain_references() {
     for reference in ["HEAD", "main", "v1.2.0", "feature/new-thing", "0123abcd"] {
         assert_eq!(

@@ -122,24 +122,60 @@ fn plugin_git_export_ending_an_unknown_token_does_nothing() {
     assert_eq!(exports.end("never-begun"), Ended::Nothing);
 }
 
+/// Makes `name` in the scratch folder, last changed `age` ago.
+fn aged(scratch: &Scratch, name: &str, age: std::time::Duration) -> PathBuf {
+    let folder = scratch.work(name).work;
+    let changed = std::time::SystemTime::now() - age;
+    std::fs::File::open(&folder)
+        .and_then(|file| file.set_modified(changed))
+        .expect("the time is set");
+    folder
+}
+
 #[test]
-fn plugin_git_export_removes_what_an_earlier_run_left_before_the_first_export() {
+fn plugin_git_export_sweeps_only_old_export_folders_once_per_process() {
     let scratch = Scratch::new("sweep");
-    let left = scratch.work("left-over");
+    let hour = std::time::Duration::from_secs(3600);
+    let old = aged(&scratch, "export-1-0-1", hour);
+    let young = aged(&scratch, "export-2-0-2", std::time::Duration::ZERO);
+    let other = aged(&scratch, "not-an-export", hour);
     let exports = PluginGitExports::default();
     exports.begin("dialog-1", &scratch.0).expect("begins");
-    assert!(!left.work.exists(), "the leftover stayed");
-    // A second export must not remove the first one's folder.
-    let kept = scratch.work("work-2");
-    let work = kept.work.clone();
-    assert!(exports.finish("dialog-1", kept));
+    assert!(!old.exists(), "the old export stayed");
+    assert!(young.exists(), "a running export's folder was swept");
+    assert!(other.exists(), "a folder that isn't an export was swept");
+    // The sweep happens once: an old folder made later stays.
+    let later = aged(&scratch, "export-3-0-3", hour);
+    exports.end("dialog-1");
     exports.begin("dialog-2", &scratch.0).expect("begins");
-    assert!(work.exists(), "a kept export's folder was swept");
+    assert!(later.exists(), "a second sweep ran");
 }
 
 #[test]
 fn plugin_git_export_sweeping_a_missing_folder_is_fine() {
-    sweep(Path::new("no-such-folder-of-the-shell"));
+    sweep(
+        Path::new("no-such-folder-of-the-shell"),
+        std::time::Duration::ZERO,
+    );
+}
+
+#[test]
+fn plugin_git_export_forgets_an_export_whose_thread_panicked() {
+    let scratch = Scratch::new("panic");
+    let exports = PluginGitExports::default();
+    exports.begin("dialog-1", &scratch.0).expect("begins");
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let _guard = super::FailGuard {
+            exports: &exports,
+            token: "dialog-1",
+            armed: true,
+        };
+        panic!("the export panicked");
+    }));
+    assert!(result.is_err());
+    exports
+        .begin("dialog-1", &scratch.0)
+        .expect("the token is free");
 }
 
 #[test]

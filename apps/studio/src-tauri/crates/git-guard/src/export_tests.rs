@@ -378,7 +378,7 @@ fn git_export_reads_no_user_config_and_asks_no_question() {
     );
     assert_eq!(
         environment("GIT_SSH_COMMAND").as_deref(),
-        Some("ssh -o BatchMode=yes")
+        Some("ssh -o BatchMode=yes -o ForwardAgent=no -o ClearAllForwardings=yes")
     );
     let keys: Vec<String> = (0..)
         .map_while(|index| environment(&format!("GIT_CONFIG_KEY_{index}")))
@@ -387,6 +387,8 @@ fn git_export_reads_no_user_config_and_asks_no_question() {
         "credential.helper",
         "core.attributesFile",
         "core.excludesFile",
+        "fetch.unpackLimit",
+        "transfer.fsckObjects",
     ] {
         assert!(keys.iter().any(|known| known == key), "{key} isn't blanked");
     }
