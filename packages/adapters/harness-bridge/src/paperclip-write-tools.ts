@@ -31,7 +31,7 @@ export interface PaperclipWriteToolsOptions {
    */
   secret: string;
   secrets: Secrets;
-  fetch?: Fetch;
+  fetch: Fetch;
   limits?: PaperclipWriteLimits;
 }
 
@@ -86,7 +86,7 @@ export class PaperclipWriteTools implements BridgeTools {
       throw new RangeError("The task id must be letters, digits and dashes.");
     }
     this.#options = options;
-    this.#fetch = options.fetch ?? globalThis.fetch;
+    this.#fetch = options.fetch;
     this.#limits = options.limits ?? defaultPaperclipWriteLimits;
     this.#specs = toolSpecs(options.taskId);
   }

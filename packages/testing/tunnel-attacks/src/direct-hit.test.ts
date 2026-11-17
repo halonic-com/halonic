@@ -11,6 +11,11 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { openTunnelRig } from "./tunnel-rig.ts";
 
+/** The bridge is opened for its tunnel checks only; no provider or tool call is expected. */
+async function noOutsideCall(): Promise<never> {
+  throw new Error("This test doesn't expect a call to the outside.");
+}
+
 /** An address of this computer that isn't loopback, such as its LAN address, if it has one. */
 function outsideAddress(): string | undefined {
   const all = Object.values(networkInterfaces()).flatMap((list) => list ?? []);
@@ -79,9 +84,10 @@ verifies("tunnel-attacks.direct-hit", () => {
   describe("a client on this computer's other addresses", () => {
     it("can't connect to the gateway or the bridge, there or on ::1", async () => {
       const rig = await openTunnelRig();
-      const bridge = await new NodeHarnessBridgeServer({ secrets: { get: async () => null } }).open(
-        bareRun,
-      );
+      const bridge = await new NodeHarnessBridgeServer({
+        secrets: { get: async () => null },
+        fetch: noOutsideCall,
+      }).open(bareRun);
       try {
         const bridgePort = Number(new URL(bridge.url).port);
         // The ports are really open, so a refusal below says something about the address.
@@ -105,9 +111,10 @@ verifies("tunnel-attacks.direct-hit", () => {
   describe("a tunnel that points somewhere else", () => {
     it("is refused by the host's check, and all but a wrong port by the fake provider too, so no tunnel is made", async () => {
       const rig = await openTunnelRig();
-      const bridge = await new NodeHarnessBridgeServer({ secrets: { get: async () => null } }).open(
-        bareRun,
-      );
+      const bridge = await new NodeHarnessBridgeServer({
+        secrets: { get: async () => null },
+        fetch: noOutsideCall,
+      }).open(bareRun);
       try {
         const bridgePort = Number(new URL(bridge.url).port);
         const configs: unknown[] = [
@@ -178,9 +185,10 @@ verifies("tunnel-attacks.direct-hit", () => {
   describe("the bridge, if a client could reach it", () => {
     it("refuses the tunnel's name as a Host, token or no token", async () => {
       const rig = await openTunnelRig();
-      const bridge = await new NodeHarnessBridgeServer({ secrets: { get: async () => null } }).open(
-        bareRun,
-      );
+      const bridge = await new NodeHarnessBridgeServer({
+        secrets: { get: async () => null },
+        fetch: noOutsideCall,
+      }).open(bareRun);
       try {
         const port = Number(new URL(bridge.url).port);
         for (const headers of [{}, { [harnessBridgeTokenHeader]: bridge.token }]) {

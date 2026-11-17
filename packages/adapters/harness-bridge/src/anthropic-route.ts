@@ -15,7 +15,7 @@ import type { BridgeRoute } from "./route.ts";
 import { readModelCall, recordModelCall } from "./spend.ts";
 
 /** The one host the bridge sends Anthropic requests to. */
-const anthropicOrigin = "https://api.anthropic.com";
+export const anthropicOrigin = "https://api.anthropic.com";
 
 /** The request headers that go on to Anthropic. The program's key and the run token stay behind. */
 const forwardedRequestHeaders = ["accept", "anthropic-beta", "anthropic-version", "content-type"];
