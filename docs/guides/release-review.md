@@ -46,6 +46,7 @@ commit if it changed.
 | Checks that each fix closes its finding (delta review if needed) | Security reviewer |
 | Puts the counts and any exceptions on the release card | Whoever prepares the release card |
 | Signs exceptions and approves the release | Board |
+| Checks the staged version's provenance (commit and ref) on npmjs.com before approving it there, and says so on the release card | Release owner |
 | Checks that the review passed for the head commit before merging the release pull request | Maintainer (merge captain) |
 
 Nobody reviews code they wrote alone. The review runs in a fresh session with
