@@ -2,6 +2,7 @@
 
 - Approval: the task to build this is HAL-7956, assigned by Liam from HAL-11564; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:EdFN7uhN26npQYo0g3+O81hRjPiHPw+ejgKV7K96MNdUJd3AK9xYpLVEE+AcKmKpTMyqyqC+jaybCehsOXeKBQ==
 - Task: HAL-7956
 
 ## What changes
