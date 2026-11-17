@@ -144,12 +144,12 @@ function StatusMark({ status }: { readonly status: WorkspaceTrustControl["status
   );
 }
 
-/** Whether **Review** or **Review changes** shows: not for a workspace with nothing to trust. */
+/** Whether **Review** or **Review changes** shows: not for a workspace with nothing to trust, even when its saved record reads `changed`. */
 function asksForReview(
   status: WorkspaceTrustControl["status"],
   trust: WorkspaceTrustControl,
 ): boolean {
-  return status === "changed" || (status === "not-trusted" && trust.needsNoTrust !== true);
+  return (status === "changed" || status === "not-trusted") && trust.needsNoTrust !== true;
 }
 
 function statusLine(
@@ -157,7 +157,9 @@ function statusLine(
   trustedAt: string | undefined,
   trust: WorkspaceTrustControl,
 ): string {
-  if (status === "not-trusted" && trust.needsNoTrust === true) return NOTHING_TO_TRUST_LINE;
+  if ((status === "not-trusted" || status === "changed") && trust.needsNoTrust === true) {
+    return NOTHING_TO_TRUST_LINE;
+  }
   const failure = trust.failure;
   switch (status) {
     case "trusted":
