@@ -2,6 +2,7 @@
 
 - Approval: HAL-12034, decided by Liam with Kim for the words (from HAL-12012). Liam reviews this pull request, so he signs the note.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:LB2uJZtYHdR6XStO5kuy9z9oT00hnf1OclACt2n98bjv43P5i4DfK4CYYOLc0ptmHanBoBaTdyLtEnh16rnJDg==
 - Task: HAL-12034
 
 ## What changes
