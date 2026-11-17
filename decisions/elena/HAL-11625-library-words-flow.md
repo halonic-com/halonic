@@ -5,7 +5,7 @@
 
 Library pages say what the approved microcopy says. A failed save of a skill or knowledge source shows in the
 status bar and as a toast ("Couldn't save *name*: *reason*." with **Try again**), not as a box on the page. The
-item-page trash strip is "This skill was moved to the trash" with no name, and Undo announces nothing. Load
+item-page trash strip is "This skill was moved to the trash" with no name (a full stop when a line about agents follows), and Undo announces nothing. Load
 failures read "Couldn't load this skill" and name their item for knowledge. Summarize uses the window's own
 "isn't answering" words. The phone's empty Knowledge sentence drops the desktop sentence, and phone kind rows show
 counts. A connector page shows the 11.4 Tools words with a quiet link to its file. Requirements are edited to the

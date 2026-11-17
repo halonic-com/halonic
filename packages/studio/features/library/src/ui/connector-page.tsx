@@ -1,3 +1,4 @@
+import { Button, usePresentation } from "@halonicjs/studio-kit";
 import {
   engineWordsOf,
   ItemGone,
@@ -35,6 +36,8 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
     [listedTools, item.id],
   );
   const { openItem } = context;
+  // A phone has no tabs to open the file in, so the sentence stays and the link goes.
+  const desktop = usePresentation() !== "phone";
   const title = useRef<HTMLHeadingElement | null>(null);
   const trash = useItemTrash(context, {
     kind: "connector",
@@ -87,21 +90,23 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
               ? connectorToolsWords.line
               : asksFirstWords[connector.asks]}
           </p>
-          {connector.asks === "every-tool" && openItem !== undefined && (
-            <button
-              type="button"
-              className="self-start text-small text-fg-muted underline"
-              onClick={() =>
-                openItem(
-                  itemFileRef("connector", {
-                    hub: item.hub === sharedHubKey ? null : item.hub,
-                    id: item.id,
-                  }),
-                )
-              }
-            >
-              {connectorToolsWords.changeInFile}
-            </button>
+          {connector.asks === "every-tool" && desktop && openItem !== undefined && (
+            <div className="self-start">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  openItem(
+                    itemFileRef("connector", {
+                      hub: item.hub === sharedHubKey ? null : item.hub,
+                      id: item.id,
+                    }),
+                  )
+                }
+              >
+                {connectorToolsWords.changeInFile}
+              </Button>
+            </div>
           )}
         </div>
       )}

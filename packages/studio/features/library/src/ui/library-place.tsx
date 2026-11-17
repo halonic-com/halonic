@@ -177,8 +177,8 @@ function LibraryKindView({ context, sub }: PlaceViewProps) {
   const openAsFile = desktop
     ? openItemAsFile(openItem)
     : {
-        onOpenAsFile: (kind: LibraryItemKind, place: LibraryEntryPlace) =>
-          setOpenedFile({ kind, place }),
+        onOpenAsFile: (kind: LibraryItemKind, place: LibraryEntryPlace, name: string) =>
+          setOpenedFile({ kind, place, name }),
       };
   const openSkill = ({ hub, id }: SkillRef) =>
     openItem?.({ kind: "skill", hub: hub ?? sharedHubKey, id });

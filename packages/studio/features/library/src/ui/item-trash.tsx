@@ -121,6 +121,7 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
             context={context}
             kind={kind}
             place={{ hub, id }}
+            name={name}
             onClose={() => setShowingFile(false)}
           />
         )}
@@ -130,8 +131,13 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
     removed === undefined ? null : (
       <p className="flex flex-wrap items-center gap-2 px-4 py-5">
         <span id={stripTextId}>
-          {deleteWords.pageMoved(kind)}
-          {movedLine === undefined ? null : <span className="block">{movedLine}</span>}
+          {deleteWords.pageMoved(kind, movedLine !== undefined)}
+          {movedLine === undefined ? null : (
+            <>
+              {" "}
+              <span className="block">{movedLine}</span>
+            </>
+          )}
         </span>
         <Button
           ref={focusOnMount}

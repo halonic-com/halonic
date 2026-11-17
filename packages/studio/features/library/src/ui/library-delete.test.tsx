@@ -212,7 +212,7 @@ verifies("library.library-delete", () => {
       undoButton?.getAttribute("aria-describedby") ?? "",
     )?.textContent;
     expect(description).toBe(
-      "This skill was moved to the trash1 agent now shows an error until you take it off its Tools page.",
+      "This skill was moved to the trash. 1 agent now shows an error until you take it off its Tools page.",
     );
     expect(announce).not.toHaveBeenCalled();
     await act(async () => undoButton?.click());

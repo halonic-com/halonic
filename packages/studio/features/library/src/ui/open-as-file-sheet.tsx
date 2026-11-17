@@ -12,6 +12,8 @@ import { LoadFailed } from "./load-failed.tsx";
 export interface OpenedFile {
   readonly kind: LibraryItemKind;
   readonly place: LibraryItemPlace;
+  /** The name the item's row or page shows, for "Loading …" and "Couldn't load …"; the id when nothing gave it. */
+  readonly name?: string;
 }
 
 interface OpenAsFileSheetProps extends OpenedFile {
@@ -31,8 +33,16 @@ type Read =
  * the kit's `SidePanel` over the page with Back, titled with the file's name. Long lines wrap,
  * because nothing scrolls sideways on a phone. A file that isn't valid YAML still shows as text.
  */
-export function OpenAsFileSheet({ host, context, kind, place, onClose }: OpenAsFileSheetProps) {
+export function OpenAsFileSheet({
+  host,
+  context,
+  kind,
+  place,
+  name: itemName,
+  onClose,
+}: OpenAsFileSheetProps) {
   const name = itemFileName(kind, place);
+  const shownName = itemName ?? place.id;
   const [read, setRead] = useState<Read>({ state: "loading" });
   // Callers often pass a new `place` object each render, so the read depends on its fields.
   const { hub, id } = place;
@@ -46,12 +56,12 @@ export function OpenAsFileSheet({ host, context, kind, place, onClose }: OpenAsF
         mine === attempt.current &&
         setRead({
           state: "failed",
-          reason: readFailureReason(error, openAsFileWords.couldntLoad(kind, id), {
+          reason: readFailureReason(error, openAsFileWords.couldntLoad(kind, shownName), {
             kindName: openAsFileWords.kindName(kind),
           }),
         }),
     );
-  }, [host, kind, hub, id]);
+  }, [host, kind, hub, id, shownName]);
   useEffect(() => {
     load();
     return () => {
@@ -78,7 +88,7 @@ export function OpenAsFileSheet({ host, context, kind, place, onClose }: OpenAsF
       <SidePanel
         title={name}
         onClose={onClose}
-        {...(read.state === "loading" ? { loading: openAsFileWords.loading(kind, place.id) } : {})}
+        {...(read.state === "loading" ? { loading: openAsFileWords.loading(kind, shownName) } : {})}
       >
         {read.state === "loaded" && (
           <pre className="text-code font-mono whitespace-pre-wrap text-fg wrap-anywhere">
@@ -87,7 +97,7 @@ export function OpenAsFileSheet({ host, context, kind, place, onClose }: OpenAsF
         )}
         {read.state === "failed" && (
           <LoadFailed
-            title={openAsFileWords.couldntLoad(kind, place.id)}
+            title={openAsFileWords.couldntLoad(kind, shownName)}
             reason={read.reason}
             retryLabel={openAsFileWords.tryAgain}
             context={context}

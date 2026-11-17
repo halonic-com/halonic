@@ -133,7 +133,7 @@ verifies("library.library-open-as-file", () => {
     );
     await settled();
     await pick(page, "More actions for Tone", "Open as file");
-    expect(onOpenAsFile).toHaveBeenCalledWith("skill", { hub: null, id: "tone" });
+    expect(onOpenAsFile).toHaveBeenCalledWith("skill", { hub: null, id: "tone" }, "Tone");
   });
 
   it("offers no Open as file when the app can't open a tab", async () => {
@@ -210,6 +210,24 @@ verifies("library.library-open-as-file", () => {
     expect(document.querySelector("pre")?.textContent).toBe("name: Tone\n");
   });
 
+  it("names a knowledge source by its name, not its id, when it couldn't load", async () => {
+    const readFile = vi.fn<LibraryItemsHost["readFile"]>().mockRejectedValue(new Error("down"));
+    render(
+      <PresentationProvider presentation="phone">
+        <OpenAsFileSheet
+          host={{ readFile } as unknown as LibraryItemsHost}
+          context={skillPageProps(vi.fn(), readFile).context}
+          kind="knowledge"
+          place={{ hub: null, id: "handbook" }}
+          name="Acme handbook"
+          onClose={() => undefined}
+        />
+      </PresentationProvider>,
+    );
+    await settled();
+    expect(document.body.textContent).toContain("Couldn't load Acme handbook");
+    expect(document.body.textContent).not.toContain("Couldn't load handbook");
+  });
   it("reads the file once when the page re-renders with a new place object", async () => {
     const readFile = vi.fn<LibraryItemsHost["readFile"]>().mockResolvedValue("name: Tone\n");
     const host: LibraryItemsHost = { ...itemsHost(nobody).host, readFile };

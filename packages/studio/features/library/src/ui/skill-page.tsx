@@ -14,6 +14,7 @@ import { UsedByField } from "./used-by-field.tsx";
 
 type Edited = keyof SkillChange;
 type Drafts = Partial<Record<Edited, string>>;
+const editedFields: readonly Edited[] = ["name", "description", "instructions"];
 
 function refOf(hub: string, id: string): SkillRef {
   return { hub: hub === sharedHubKey ? null : hub, id };
@@ -85,6 +86,18 @@ function LoadedSkillPage({
       instructions.current?.focus();
     }
   }, [ready, item.hub, item.id]);
+
+  // A write that the window's Try again runs later never reaches `leave`, so a draft that now equals
+  // the saved text is dropped here, and the field follows the file again (a change from outside shows).
+  useEffect(() => {
+    if (parts === undefined) return;
+    setDrafts((current) => {
+      const settled = editedFields.filter((field) => current[field] === parts[field]);
+      return settled.length === 0
+        ? current
+        : settled.reduce((rest, field) => without(field)(rest), current);
+    });
+  }, [parts]);
 
   if (gone) {
     return trash.strip ?? <Gone context={context} />;

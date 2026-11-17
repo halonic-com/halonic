@@ -41,11 +41,21 @@ function setup(
   const openItem = vi.fn();
   const openPlace = vi.fn();
   const saving = savingStub();
+  let current = source;
+  const listeners = new Set<() => void>();
+  /** The file changes from outside the page, as an edit in Changes or the code editor does. */
+  const external = (newText: string) => {
+    current = { text: newText, files: [] };
+    for (const listener of listeners) listener();
+  };
   const host: SkillHost = {
-    read: async () => (missing ? undefined : source),
+    read: async () => (missing ? undefined : current),
     write,
     usage: async () => usage,
-    subscribe: () => () => {},
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
   };
   const props = {
     item: { kind: "skill", hub: "~workspace", id: "refunds" },
@@ -61,19 +71,13 @@ function setup(
     },
     Sections: () => null,
   } as unknown as ItemViewProps;
-  return { props, write, openItem, openPlace, saving };
+  return { props, write, openItem, openPlace, saving, external };
 }
 
 async function settled(): Promise<void> {
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
-}
-
-function _button(root: HTMLElement, label: string): HTMLButtonElement {
-  const found = [...root.querySelectorAll("button")].find((each) => each.textContent === label);
-  if (found === undefined) throw new Error(`No button ${label}`);
-  return found;
 }
 
 function field(root: HTMLElement, label: string): HTMLInputElement | HTMLTextAreaElement {
@@ -181,6 +185,23 @@ verifies("library.skill-page", () => {
       });
       await settled();
       expect(write).toHaveBeenCalledTimes(2);
+    });
+
+    it("follows the file again after the window's Try again saved the draft", async () => {
+      const { props, write, saving, external } = setup();
+      write.mockRejectedValueOnce(new Error("The disk is full."));
+      const root = render(<SkillPage {...props} />);
+      await settled();
+      const instructions = field(root, "Instructions");
+      type(instructions, "Be very kind.");
+      await leave(instructions);
+      await act(async () => {
+        await saving.failed[0]?.retry();
+      });
+      await settled();
+      external(text.replace("Be kind.", "Be brief."));
+      await settled();
+      expect(field(root, "Instructions").value).toBe("Be brief.");
     });
 
     it("keeps the old name with its hint when the name is emptied, and drops the hint on the next edit", async () => {
