@@ -138,7 +138,7 @@ function LoadedSkillPage({
     <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 wide:px-6">
       <PageBackLinkSlot />
       <div className="flex items-start justify-between gap-2">
-        <h1 tabIndex={-1} className="text-title [overflow-wrap:anywhere]">
+        <h1 ref={trash.titleRef} tabIndex={-1} className="text-title [overflow-wrap:anywhere]">
           {parts.name || item.id}
         </h1>
         {trash.menu}

@@ -1,11 +1,12 @@
 import type { ItemUsage, LibraryItemKind } from "@halonicjs/app";
 import { Button, Menu, MoreIcon, usePresentation, useToastStore } from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { deleteWords, phoneCanDelete } from "../delete-words.ts";
 import { itemFileRef } from "../item-file.ts";
 import { LibraryItemsHostService, type RemovedLibraryItem } from "../library-items-host.ts";
 import { putBack, removeItem } from "../remove-item.ts";
+import { usedByLine } from "../used-by-text.ts";
 
 /** What an open item page knows of itself, for deleting it. */
 export interface TrashableItem {
@@ -22,8 +23,15 @@ export interface TrashableItem {
 export interface ItemTrash {
   /** The page's ⋮ button with Delete, or `null` when the app gives no Library items. */
   readonly menu: React.ReactNode;
+  /** Goes on the page's title (`<h1 tabIndex={-1}>`): after Undo the page comes back with focus on it. */
+  readonly titleRef: React.RefCallback<HTMLElement>;
   /** The strip that replaces the "isn't in this workspace any more" state after Delete, or `null`. */
   readonly strip: React.ReactNode;
+}
+
+/** Puts focus on Undo when the strip appears: the page and its ⋮ button, where focus was, are gone. */
+function focusOnMount(button: HTMLButtonElement | null): void {
+  button?.focus();
 }
 
 const noUsage: ItemUsage = { agents: [], hubs: [], routines: [], collections: [] };
@@ -39,20 +47,42 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
   const desktop = usePresentation() === "desktop";
   const [removed, setRemoved] = useState<RemovedLibraryItem>();
   const { kind, hub, id, name, usage } = item;
+  // Set by Undo; the page's title takes focus when it is drawn again.
+  const focusTitle = useRef(false);
+  const titleRef = useCallback((title: HTMLElement | null) => {
+    if (title !== null && focusTitle.current) {
+      focusTitle.current = false;
+      title.focus();
+    }
+  }, []);
 
   const onDelete = useCallback(async () => {
     if (host === undefined) return;
+    const used = usage ?? noUsage;
     await removeItem(
       host,
       toasts,
-      { kind, place: { hub, id }, name, usage: usage ?? noUsage },
-      { quiet: true, onRemoved: setRemoved },
+      { kind, place: { hub, id }, name, usage: used },
+      {
+        quiet: true,
+        onRemoved: (done) => {
+          setRemoved(done);
+          // The strip is new on the page, so a screen reader would not read it by itself.
+          const line = usedByLine(used);
+          context.announcer.announce(
+            [deleteWords.moved(name, line !== undefined), line].filter(Boolean).join(" "),
+          );
+        },
+      },
     );
-  }, [host, toasts, kind, hub, id, name, usage]);
+  }, [host, toasts, context.announcer, kind, hub, id, name, usage]);
 
   const onUndo = useCallback(async () => {
     if (removed === undefined) return;
-    if (await putBack(removed, name, toasts)) setRemoved(undefined);
+    if (await putBack(removed, name, toasts)) {
+      focusTitle.current = true;
+      setRemoved(undefined);
+    }
   }, [removed, name, toasts]);
 
   const entries = [
@@ -88,10 +118,10 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
     removed === undefined ? null : (
       <p role="status" className="flex flex-wrap items-center gap-2 px-4 py-5">
         {deleteWords.pageMoved(kind)}
-        <Button variant="ghost" onClick={() => void onUndo()}>
+        <Button ref={focusOnMount} variant="ghost" onClick={() => void onUndo()}>
           {deleteWords.undo}
         </Button>
       </p>
     );
-  return { menu, strip };
+  return { menu, titleRef, strip };
 }
