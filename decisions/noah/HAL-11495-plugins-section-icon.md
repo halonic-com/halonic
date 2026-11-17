@@ -3,6 +3,7 @@
 - Task: HAL-11495
 - Approval: Liam approved the code of PR #3286 on HAL-11499; a small detail of the Settings → Plugins row (HAL-1740), decided by the team
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:NhlHTHmDfhI7z4L6TNZtrrKIKtQ0RXEOBsPwIKvH8ot+N6w+f1KGaVAOPc8GmTu5lx3N6IsUcXZPek8MDOqACg==
 
 The requirement widens one promise and narrows none: `SectionIcon` draws one more icon, for the
 Plugins section, so its row in the settings nav lines up with the others. The drawing is a plug
