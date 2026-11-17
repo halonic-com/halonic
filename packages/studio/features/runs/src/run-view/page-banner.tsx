@@ -9,6 +9,7 @@ import {
   useToastStore,
   useWriteClipboard,
 } from "@halonicjs/studio-kit";
+import { copyDetailsWords, useCopyDetails } from "@halonicjs/studio-shell";
 import type { InstructionTrustHost, SourcedRun } from "../api.ts";
 import { failureWords } from "../failure-words.ts";
 import { runPageWords } from "../run-words.ts";
@@ -145,6 +146,7 @@ function Banner({
 }) {
   const writeClipboard = useWriteClipboard();
   const toasts = useToastStore();
+  const copyDetails = useCopyDetails();
   if (banner === undefined) {
     return null;
   }
@@ -159,7 +161,12 @@ function Banner({
     own === undefined && banner.tone === "danger" && runAgain !== undefined
       ? [{ label: runPageWords.runAgain, onClick: runAgain.start }]
       : [];
-  const action = [...(own === undefined ? [] : [own]), ...fixes, ...again];
+  const { details } = banner;
+  const copy =
+    details === undefined
+      ? []
+      : [{ label: copyDetailsWords.label, onClick: () => copyDetails(details) }];
+  const action = [...(own === undefined ? [] : [own]), ...fixes, ...again, ...copy];
   return (
     <section aria-label={banner.name}>
       <Callout

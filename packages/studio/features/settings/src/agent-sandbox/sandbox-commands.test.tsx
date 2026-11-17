@@ -75,6 +75,23 @@ verifies("settings.sandbox-commands", () => {
     expect(openSettings).toHaveBeenCalledWith("agent-sandbox");
   });
 
+  it("never shows a system message as the cause, and gives a kinded error's own sentence", async () => {
+    const { context, host, toasts } = setup();
+    host.setUp = vi.fn(async () => {
+      throw new Error("spawn EACCES helper.exe");
+    });
+    await act(async () => void sandboxCommands(context)[0]?.run(context));
+    expect(toasts.list()[0]?.title).not.toContain("EACCES");
+
+    host.setUp = vi.fn(async () => {
+      throw Object.assign(new Error("The agent host stopped"), { kind: "unavailable" });
+    });
+    await act(async () => void sandboxCommands(context)[0]?.run(context));
+    expect(toasts.list().at(-1)?.title).toBe(
+      "The agent sandbox isn't set up: The agent host stopped.",
+    );
+  });
+
   it("says when Windows must restart", async () => {
     const { context, toasts } = setup({ check: { state: "restart-needed" } });
     await act(async () => void sandboxCommands(context)[0]?.run(context));
