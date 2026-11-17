@@ -95,8 +95,9 @@ verifies("source-control.discard", () => {
       expect(fake.kept).toEqual([[{ path: hub, text: after }]]);
       expect(fake.replaced[0]).toEqual({ path: hub, text: before, expected: after });
       const toast = toasts.list()[0];
-      expect(toast?.title).toBe("Discarded changes in 1 file");
-      expect(toast?.text).toBe("sales");
+      expect(toast?.title).toBe("Discarded sales");
+      expect(toast?.text).toBeUndefined();
+      expect(toast?.action?.label).toBe("Put it back");
       await act(async () => {
         toast?.action?.onClick();
         await settle();
@@ -118,6 +119,14 @@ verifies("source-control.discard", () => {
         text: "Be kind.\n",
         expected: null,
       });
+    });
+
+    it("shows the first lines of a new file", async () => {
+      const { root } = await openPage();
+      const page = section(root, "skills/tone/SKILL.md");
+      expect(
+        page.querySelector('[aria-label="First lines of skills/tone/SKILL.md"] pre')?.textContent,
+      ).toBe("Be kind.");
     });
 
     it("brings a deleted file back, and Undo deletes it again", async () => {

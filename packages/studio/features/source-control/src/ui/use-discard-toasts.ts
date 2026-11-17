@@ -1,17 +1,17 @@
 import { useToastStore } from "@halonicjs/studio-kit";
 import type { DiscardOutcome } from "../changes-list.ts";
-import { discardWords, undoWords } from "../changes-words.ts";
+import { discardWords } from "../changes-words.ts";
 
 /** What a discard's toast says, and what its Undo does. */
 export interface DiscardToasts {
   /** Shows the toast for a finished discard; gives the reason when it failed. */
   readonly run: (
     outcome: DiscardOutcome,
-    toast: { readonly title: string; readonly text: string },
+    toast: { readonly title: string; readonly text?: string },
   ) => Promise<string | undefined>;
 }
 
-/** The toast every discard shows: what was discarded, with Undo, which puts it all back. */
+/** The toast every discard shows: what was discarded, with Put it back, which puts it all back. */
 export function useDiscardToasts(): DiscardToasts {
   const toasts = useToastStore();
   return {
@@ -21,9 +21,9 @@ export function useDiscardToasts(): DiscardToasts {
       toasts?.show({
         tone: "success",
         title,
-        text,
+        ...(text === undefined ? {} : { text }),
         action: {
-          label: undoWords.undo,
+          label: discardWords.putItBack,
           onClick: () =>
             void undo().then((reason) => {
               if (reason === undefined) return;

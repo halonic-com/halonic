@@ -60,7 +60,7 @@ function FileChanges({
     setBusy(true);
     setFailure(undefined);
     const reason = await discarding.run(await list.discardFile(file), {
-      title: discardWords.discarded(1),
+      title: discardWords.fileDiscarded,
       text: file.path,
     });
     setBusy(false);
@@ -89,6 +89,7 @@ function FileChanges({
       {developer && showLines ? (
         <LineDiff list={list} file={file} hunks={hunks} discarding={discarding} />
       ) : null}
+      <NewFileLines file={file} />
       {important.length === 0 ? null : (
         <Group
           title={listWords.important}
@@ -165,6 +166,27 @@ function FileBar({
       </div>
       {onDiscard === undefined ? null : <WaitingNote list={list} id={waitingId} />}
     </>
+  );
+}
+
+/** How many lines of a new file are shown, so the person can tell what they would discard. */
+const previewLines = 8;
+
+/** The first lines of a file that is new; nothing for any other file. */
+function NewFileLines({ file }: { readonly file: ChangedFile }) {
+  const text = file.texts?.before === null ? file.texts.after : null;
+  if (text === null || text === undefined || text.trim() === "") return null;
+  const lines = text.replace(/\n$/u, "").split("\n");
+  const rest = lines.length - previewLines;
+  return (
+    <section aria-label={discardWords.firstLines(file.path)} className="flex flex-col gap-1">
+      <pre className="text-small overflow-x-auto rounded-md border border-border p-2">
+        {lines.slice(0, previewLines).join("\n")}
+      </pre>
+      {rest > 0 ? (
+        <span className="text-small text-fg-muted">{mergeWords.moreLines(rest)}</span>
+      ) : null}
+    </section>
   );
 }
 
