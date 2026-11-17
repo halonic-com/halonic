@@ -131,8 +131,8 @@ verifies("plugins.plugin-settings-list", () => {
     expect(view.textContent).not.toContain("Add plugin");
   });
 
-  it("hides Add plugin when the host gives no installer", async () => {
-    const { feed } = feedOf([]);
+  it("is view only in a served Settings, even with an installer and no host place", async () => {
+    const { feed } = feedOf([weather()]);
     const shell = createShell({ features: [pluginsFeature], hostServices: [PluginsHostService] });
     const workspace = new WorkspaceServices();
     workspace.provide(PluginsHostService, {
@@ -154,32 +154,10 @@ verifies("plugins.plugin-settings-list", () => {
         surface="window"
       />,
     );
-    expect(view.textContent).not.toContain("Add plugin");
-  });
-
-  it("is view only in a served Settings even when the host leaves its place unset", async () => {
-    const { feed } = feedOf([weather()]);
-    const shell = createShell({ features: [pluginsFeature], hostServices: [PluginsHostService] });
-    const workspace = new WorkspaceServices();
-    workspace.provide(PluginsHostService, {
-      feed,
-      caller: { call: async () => "" },
-      ...noSettings(),
-      ...noActions(),
-    });
-    shell.services.instantiate(workspace);
-    const section = shell.contributions.settings.list().find(({ id }) => id === "plugins");
-    if (section === undefined) throw new Error("No Plugins section");
-    const View = await loadView<ComponentType<SettingsSectionProps>>(section);
-    const view = render(
-      <View
-        context={shell.services.contextFor("plugins", workspace)}
-        closeSettings={() => {}}
-        place="served"
-        surface="window"
-      />,
-    );
     expect(view.textContent).toContain("Weather");
+    expect(view.textContent).toContain(
+      "View only here. Add, trust and remove plugins on the computer that runs Halonic:",
+    );
     expect(view.textContent).not.toContain("Add plugin");
   });
 });
