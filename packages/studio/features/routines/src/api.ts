@@ -44,6 +44,8 @@ export interface RoutineListing extends RoutineRef {
   readonly enabled: boolean;
   /** The routine as one line, as it is live: "Weekdays at 07:30 (Europe/Amsterdam) → Briefing". */
   readonly summary: string;
+  /** The name of the workflow or agent it starts, for the line that says what deleting it stops. */
+  readonly targetName: string;
   /** ISO time it next starts on its own; absent when it is off or its trigger isn't a clock. */
   readonly nextRun?: string | undefined;
   /** Held for a Google sign-in, which the row shows as "Needs sign-in". */
@@ -222,6 +224,12 @@ export type RunNowResult =
   | { readonly started: true; readonly runId: string }
   | { readonly started: false; readonly refusal: RunNowRefusal };
 
+/** A routine that was moved to the trash, and the way to bring it back. */
+export interface TrashedRoutine {
+  /** Puts the routine back as it was. Rejects with an `Error` whose message is one sentence when it can't. */
+  undo(): Promise<void>;
+}
+
 /**
  * The workspace's routines, as the app reads and changes them. Changes are written to the routine
  * files as one undo step each, so listing, creating, editing and deleting work while the engine is
@@ -250,8 +258,11 @@ export interface RoutinesHost {
    * when the engine can't be reached; a refusal the person can act on is a result, not a rejection.
    */
   runNow?(ref: RoutineRef): Promise<RunNowResult>;
-  /** Moves the routine's file to the trash; undoing the change brings it back as it was. */
-  trash(ref: RoutineRef): Promise<void>;
+  /**
+   * Moves the routine's file to the trash as one change. Rejects with the reason it couldn't, such
+   * as when the routine is gone.
+   */
+  trash(ref: RoutineRef): Promise<TrashedRoutine>;
   /**
    * The name of a routine the host has read or made, for a tab or a page title, or `undefined`
    * before it has read it. Sync, because a tab is named the moment it opens.
