@@ -230,3 +230,15 @@ verifies("source-control.discard", () => {
     });
   });
 });
+
+verifies("source-control.line-diff", () => {
+  it("heads each part with where it is and says added and removed lines in words", async () => {
+    const { root } = await openPage({ developer: true });
+    await press(buttons(section(root, hub), "Show lines")[0]);
+    const text = section(root, hub).textContent ?? "";
+    expect(text).toContain("Line 1");
+    expect(text).toContain("Line 8");
+    expect(text).toContain("Removed line: - a");
+    expect(text).toContain("Added line: + A");
+  });
+});

@@ -156,6 +156,14 @@ function partKey(part: LineChange): string {
   return `${part.beforeStart}:${part.afterStart}`;
 }
 
+/** "Lines 12 to 18": where the part is in the file now, or where it was when it only removed lines. */
+function partHeading(part: LineChange): string {
+  if (part.added.length > 0) {
+    return discardWords.partLines(part.afterStart + 1, part.afterStart + part.added.length);
+  }
+  return discardWords.partLines(part.beforeStart + 1, part.beforeEnd);
+}
+
 /** The developer view's line diff of one file: each part with its own "Discard this part". */
 function LineDiff({
   list,
@@ -193,18 +201,23 @@ function LineDiff({
     <section aria-label={discardWords.lines(file.path)} className="flex flex-col gap-2">
       {hunks.map((part) => (
         <div key={partKey(part)} className="flex items-start gap-3">
-          <pre className="text-small flex-1 overflow-x-auto rounded-md border border-border p-2">
-            {part.removed.map((line, index) => (
-              <span key={`-${index}`} className="block text-danger">
-                {`- ${line.replace(/\n$/u, "")}`}
-              </span>
-            ))}
-            {part.added.map((line, index) => (
-              <span key={`+${index}`} className="block text-success">
-                {`+ ${line.replace(/\n$/u, "")}`}
-              </span>
-            ))}
-          </pre>
+          <div className="flex-1">
+            <h5 className="text-small text-fg-muted">{partHeading(part)}</h5>
+            <pre className="text-small overflow-x-auto rounded-md border border-border p-2">
+              {part.removed.map((line, index) => (
+                <span key={`-${index}`} className="block text-danger">
+                  <span className="sr-only">{discardWords.removedLine} </span>
+                  {`- ${line.replace(/\n$/u, "")}`}
+                </span>
+              ))}
+              {part.added.map((line, index) => (
+                <span key={`+${index}`} className="block text-success">
+                  <span className="sr-only">{discardWords.addedLine} </span>
+                  {`+ ${line.replace(/\n$/u, "")}`}
+                </span>
+              ))}
+            </pre>
+          </div>
           <Button
             variant="ghost"
             size="sm"

@@ -87,6 +87,12 @@ export const discardWords = {
   /** The toast after a discard: "Discarded changes in 1 file". */
   discarded: (count: number) =>
     count === 1 ? "Discarded changes in 1 file" : `Discarded changes in ${count} files`,
+  /** A part's heading: "Line 12" or "Lines 12 to 18"; `first` and `last` count from 1. */
+  partLines: (first: number, last: number) =>
+    first === last ? `Line ${first}` : `Lines ${first} to ${last}`,
+  /** Read before a line of a part, since its + or − glyph and its tint are not words. */
+  addedLine: "Added line:",
+  removedLine: "Removed line:",
   partDiscarded: "Discarded this part",
   failed: "Couldn't discard these changes",
   partFailed: "Couldn't discard this part",
