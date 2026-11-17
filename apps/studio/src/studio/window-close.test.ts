@@ -6,7 +6,7 @@ import {
   type WorkspaceSaving,
   WorkspaceSwitcher,
 } from "@halonicjs/studio-feature-workspace";
-import { createToastStore } from "@halonicjs/studio-kit";
+import { createToastStore, settleOnClose } from "@halonicjs/studio-kit";
 import type { StudioWorkspace } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -167,6 +167,26 @@ describe("leaveFocusedField", () => {
     (document.activeElement as HTMLElement | null)?.blur();
     await expect(leaveFocusedField(document)).resolves.toBeUndefined();
   });
+
+  it("waits for the save the blur started, not for a turn", async () => {
+    const box = document.createElement("input");
+    document.body.append(box);
+    box.focus();
+    let staged = false;
+    box.addEventListener("blur", () => {
+      void settleOnClose(
+        (async () => {
+          for (let turn = 0; turn < 5; turn += 1) await new Promise((r) => setTimeout(r, 1));
+          staged = true;
+        })(),
+      );
+    });
+
+    await leaveFocusedField(document);
+
+    expect(staged).toBe(true);
+    box.remove();
+  });
 });
 
 describe("windowCloseHandler settleDrafts", () => {
@@ -191,5 +211,80 @@ describe("windowCloseHandler settleDrafts", () => {
 
     expect(await handler(async () => {})).toBe(true);
     expect(order).toEqual(["drafts", "save"]);
+  });
+
+  it("has the workspaces save only after a slow blur save has staged its change", async () => {
+    let staged = false;
+    const seen: boolean[] = [];
+    const handler = windowCloseHandler({
+      workspaces: {
+        saveAllForWindowClose: async () => {
+          seen.push(staged);
+          return true;
+        },
+        askStillSaving: () => undefined,
+        withdrawStillSaving: () => false,
+      },
+      stop: async () => {},
+      limitMs: closeLimitMs,
+      within: withinLimit,
+      settleDrafts: () => {
+        void settleOnClose(
+          new Promise<void>((resolve) => setTimeout(resolve, 20)).then(() => {
+            staged = true;
+          }),
+        );
+        return leaveFocusedField({ activeElement: null });
+      },
+    });
+
+    expect(await handler(async () => {})).toBe(true);
+    expect(seen).toEqual([true]);
+  });
+
+  it("still closes within the limit when a draft save hangs", async () => {
+    vi.useFakeTimers();
+    try {
+      const destroy = vi.fn(async () => {});
+      const handler = windowCloseHandler({
+        workspaces: {
+          saveAllForWindowClose: async () => true,
+          askStillSaving: () => undefined,
+          withdrawStillSaving: () => false,
+        },
+        stop: async () => {},
+        limitMs: 100,
+        within: withinLimit,
+        settleDrafts: () => new Promise<void>(() => {}),
+      });
+
+      const answer = handler(destroy);
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(await answer).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("logs a failing draft settle and goes on to save", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const handler = windowCloseHandler({
+      workspaces: {
+        saveAllForWindowClose: async () => true,
+        askStillSaving: () => undefined,
+        withdrawStillSaving: () => false,
+      },
+      stop: async () => {},
+      limitMs: closeLimitMs,
+      within: withinLimit,
+      settleDrafts: async () => {
+        throw new Error("no");
+      },
+    });
+
+    expect(await handler(async () => {})).toBe(true);
+    expect(log).toHaveBeenCalled();
+    log.mockRestore();
   });
 });

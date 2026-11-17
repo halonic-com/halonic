@@ -1,4 +1,4 @@
-import type { GridCellProps } from "@halonicjs/studio-kit";
+import { type GridCellProps, settleOnClose } from "@halonicjs/studio-kit";
 import type { KeyboardEvent } from "react";
 import { cellText } from "../collection-format.ts";
 import type { CollectionColumn, CollectionNewRow } from "../collection-host.ts";
@@ -112,7 +112,7 @@ export function RecordCell({
         initial={edits.editing?.seed ?? (isNew ? typedText : editText(value))}
         shown={shown}
         preview={preview}
-        onCommit={(text) => void edits.commit(row, field, text)}
+        onCommit={(text) => void settleOnClose(edits.commit(row, field, text))}
         onCancel={edits.stopEditing}
         focusTarget={focusTarget}
       />

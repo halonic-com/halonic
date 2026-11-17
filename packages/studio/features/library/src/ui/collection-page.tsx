@@ -1,4 +1,4 @@
-import { Callout, FilterChips, FormRows } from "@halonicjs/studio-kit";
+import { Callout, FilterChips, FormRows, settleOnClose } from "@halonicjs/studio-kit";
 import {
   engineWordsOf,
   ItemGone,
@@ -104,7 +104,7 @@ function LoadedCollectionPage({
             label={`${collectionWords.kindName} name`}
             onRename={(next) => {
               setRenameFailed(false);
-              void model.rename(next).then((written) => setRenameFailed(!written));
+              void settleOnClose(model.rename(next).then((written) => setRenameFailed(!written)));
             }}
           />
         </h1>

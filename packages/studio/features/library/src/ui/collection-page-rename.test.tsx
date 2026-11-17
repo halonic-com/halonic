@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { settlePendingSaves } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -27,6 +28,24 @@ verifies("library.collection-page", () => {
       await keepName(root, "Claims 2024");
       expect(rename).toHaveBeenCalledTimes(1);
       expect(rename).toHaveBeenCalledWith({ hub: null, id: "claims" }, "Claims 2024");
+    });
+
+    it("registers the rename with the window close until it is written", async () => {
+      let release: () => void = () => undefined;
+      const rename = vi.fn(() => new Promise<void>((resolve) => (release = resolve)));
+      const { root } = await opened(sourceOf([swim]), undefined, { rename });
+      await keepName(root, "Claims 2024");
+      let done = false;
+      const waiting = settlePendingSaves().then(() => {
+        done = true;
+      });
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      expect(done).toBe(false);
+
+      release();
+      await waiting;
+
+      expect(done).toBe(true);
     });
 
     it("renames nothing when the name is left unchanged", async () => {

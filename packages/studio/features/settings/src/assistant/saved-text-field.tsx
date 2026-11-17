@@ -1,4 +1,4 @@
-import { Field, Input, isComposing, TextArea } from "@halonicjs/studio-kit";
+import { Field, Input, isComposing, settleOnClose, TextArea } from "@halonicjs/studio-kit";
 import { useRef, useState } from "react";
 import type { FieldCheck } from "./assistant-checks.ts";
 
@@ -63,7 +63,7 @@ export function SavedTextField<Value>({
     placeholder,
     onChange: (event: { target: { value: string } }) => setDraft(event.target.value),
     onBlur: () => {
-      void commit();
+      void settleOnClose(commit());
     },
   };
   return (
@@ -75,7 +75,7 @@ export function SavedTextField<Value>({
           {...common}
           mono={mono}
           onKeyDown={(event) => {
-            if (event.key === "Enter" && !isComposing(event)) void commit();
+            if (event.key === "Enter" && !isComposing(event)) void settleOnClose(commit());
           }}
         />
       )}

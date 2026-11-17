@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { ItemUsage } from "@halonicjs/app";
+import { settlePendingSaves } from "@halonicjs/studio-kit";
 import { type ItemViewProps, limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -163,6 +164,30 @@ verifies("library.skill-page", () => {
       type(name, "Acme refunds");
       await leave(name);
       expect(write).toHaveBeenCalledOnce();
+    });
+
+    it("registers a field's save with the window close until its write ends", async () => {
+      const { props, write } = setup();
+      let release: () => void = () => undefined;
+      write.mockImplementation(() => new Promise<void>((resolve) => (release = resolve)));
+      const root = render(<SkillPage {...props} />);
+      await settled();
+      const name = field(root, "Name");
+      type(name, "Acme refunds");
+      await leave(name);
+      let settled_ = false;
+      const waiting = settlePendingSaves().then(() => {
+        settled_ = true;
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      });
+      expect(settled_).toBe(false);
+
+      release();
+      await waiting;
+
+      expect(settled_).toBe(true);
     });
 
     it("saves Instructions after a pause in typing, and when the page closes with the cursor still in them", async () => {
