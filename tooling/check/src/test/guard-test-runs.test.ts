@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, test } from "vitest";
+import { expect, test } from "vitest";
 import { checkTestRuns } from "../guard/test-runs.ts";
 import {
   noteCovering,
@@ -128,72 +128,18 @@ verifies("check.guard-fewer-assertions", () => {
     expect(await errorsFor(two, fewer)).toEqual([]);
   });
 
-  describe("tests that retry with vi.waitFor", () => {
+  test("fails a lower count in a test that retries with vi.waitFor: verifies() counts only the passing attempt", async () => {
     const helper = "src/assert-timer.ts";
-    const retrySource =
-      'import { expect, test, vi } from "vitest";\nawait vi.waitFor(() => expect(fired).toBe(true));\n';
-    const retrying = (files: Record<string, string>): Record<string, string> => ({
+    const retrying = (files: Record<string, string>, calls: number): Record<string, string> => ({
       ...files,
-      [testFile]: retrySource,
-    });
-    const withHelper = (files: Record<string, string>, calls: number): Record<string, string> => ({
-      ...files,
+      [testFile]:
+        'import { expect, test, vi } from "vitest";\nawait vi.waitFor(() => expect(fired).toBe(true));\n',
       [helper]: `export const assertTimer = ${calls};\n`,
     });
-
-    test("passes a lower count when only other files in the package changed", async () => {
-      const errors = await errorsFor(retrying(withHelper(two, 2)), retrying(withHelper(fewer, 1)));
-      expect(errors).toEqual([]);
-    });
-
-    test("fails when a test drops to 0 calls: a retry runs its expect calls at least once", async () => {
-      const none = ran(
-        { name: "fires", requirement: id, assertions: 2 },
-        { name: "fires once", requirement: id, assertions: 0 },
-      );
-      const errors = await errorsFor(retrying(withHelper(two, 2)), retrying(withHelper(none, 1)));
-      expect(errors).toEqual([
-        `${testPath}: The tests of the requirement "${id}" made 2 expect call(s), 3 on the merge base.`,
-      ]);
-    });
-
-    test("fails a lower count in a test file of the requirement without vi.waitFor", async () => {
-      const otherFile = "src/timer-later.test.ts";
-      const withOther = (calls: number): Record<string, string> => ({
-        ...retrying(withHelper({}, calls)),
-        [otherFile]: testSource,
-        ...results([
-          { name: "fires", requirement: id, assertions: 2 },
-          { name: "fires once", requirement: id, assertions: 1 },
-          { name: "fires later", file: otherFile, requirement: id, assertions: calls },
-        ]),
-      });
-      expect(await errorsFor(withOther(4), withOther(1))).toEqual([
-        `${testPath}: The tests of the requirement "${id}" made 4 expect call(s), 7 on the merge base.`,
-      ]);
-    });
-
-    test("fails a lower count when vi.waitFor is only in a string, without an import of vi", async () => {
-      const mention = (files: Record<string, string>): Record<string, string> => ({
-        ...files,
-        [testFile]: `${testSource}const text = "await vi.waitFor(() => expect(fired).toBe(true));";\n`,
-      });
-      const errors = await errorsFor(mention(withHelper(two, 2)), mention(withHelper(fewer, 1)));
-      expect(errors).toEqual([
-        `${testPath}: The tests of the requirement "${id}" made 2 expect call(s), 3 on the merge base.`,
-      ]);
-    });
-
-    test("fails a lower count when the test file changed", async () => {
-      const head = retrying(fewer);
-      const errors = await errorsFor(retrying(two), {
-        ...head,
-        [testFile]: `${head[testFile]}// edited\n`,
-      });
-      expect(errors).toEqual([
-        `${testPath}: The tests of the requirement "${id}" made 2 expect call(s), 3 on the merge base.`,
-      ]);
-    });
+    const errors = await errorsFor(retrying(two, 2), retrying(fewer, 1));
+    expect(errors).toEqual([
+      `${testPath}: The tests of the requirement "${id}" made 2 expect call(s), 3 on the merge base.`,
+    ]);
   });
 
   test("passes the same or more expect calls, or a note that covers the requirement", async () => {
