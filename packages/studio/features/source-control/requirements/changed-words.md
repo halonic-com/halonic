@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-1302 (T9); ux-checklists-t8-t9 (HAL-1360) part 2, 2.4 The words; a11y 13.5
 
-On the What changed page, under each change that covers parts of an item, the Studio shall say what happened to each part with a neutral label: CHANGED when it had a value and has another, ADDED when it had none, REMOVED when it has none now. The old value shall be shown struck through in a `<del>` and the new one in an `<ins>`, each beginning with the hidden words "Before:" or "After:" for a screen reader. ADDED shall show no old value and REMOVED no new one. The label and the strike-through shall carry the meaning, not colour.
+When the person opens What changed, then under each change that covers parts of an item, the Studio shall say what happened to each part with a neutral label: CHANGED when it had a value and has another, ADDED when it had none, REMOVED when it has none now. The old value shall be shown struck through in a `<del>` and the new one in an `<ins>`, each beginning with the hidden words "Before:" or "After:" for a screen reader. ADDED shall show no old value and REMOVED no new one. The label and the strike-through shall carry the meaning, not colour.
 
 ## Examples
 
