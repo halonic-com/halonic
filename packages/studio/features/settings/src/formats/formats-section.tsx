@@ -13,7 +13,7 @@ import {
   formatOptions,
   formatPref,
 } from "./format-pref.ts";
-import { FORMAT, FORMAT_NOT_SAVED } from "./formats-text.ts";
+import { FORMAT, FORMAT_EXAMPLE, FORMAT_NOT_SAVED } from "./formats-text.ts";
 
 /**
  * Settings → Formats as the settings container shows it. "Follow" follows the system's region
@@ -79,10 +79,10 @@ export function FormatsView({
     options.find((option) => option.value === choice)?.label ?? choice;
 
   return (
-    <div className="flex max-w-90 flex-col gap-4">
+    <div className="flex max-w-lg flex-col gap-4">
       <Field
         label={FORMAT}
-        hint={formatExample(formatLocale(format.value, followTag))}
+        hint={`${FORMAT_EXAMPLE} ${formatExample(formatLocale(format.value, followTag))}`}
         error={format.failed && !phone ? FORMAT_NOT_SAVED.line : null}
       >
         <Select

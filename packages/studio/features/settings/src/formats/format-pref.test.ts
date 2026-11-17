@@ -11,6 +11,8 @@ import {
   usableTag,
 } from "./format-pref.ts";
 
+const NOW = new Date(2026, 10, 17, 8, 0);
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -56,9 +58,9 @@ verifies("settings.formats-format", () => {
     expect(values).toContain("nl-NL");
   });
 
-  it("shows a number and a date in the format, with no currency", () => {
-    expect(formatExample("en-GB")).toBe("45.00 · Mon 9 Nov, 08:00");
-    expect(formatExample("nl-NL")).toBe("45,00 · ma 9 nov, 08:00");
+  it("shows a number and today's date in the format, with no currency", () => {
+    expect(formatExample("en-GB", NOW)).toBe("12,345.60 · Tue 17 Nov, 08:00");
+    expect(formatExample("nl-NL", NOW)).toBe("12.345,60 · di 17 nov, 08:00");
   });
 
   it("formats with the followed tag, or the chosen one", () => {
@@ -73,7 +75,7 @@ verifies("settings.formats-format", () => {
     expect(formatOptions({ followTag: "en_GB", place: "app" })[0]?.label).toBe(
       "Follow this computer: English (United Kingdom)",
     );
-    expect(formatExample("en-GB-u-ca-buddhist")).toBe("45.00 · Mon 9 Nov, 08:00");
+    expect(formatExample("en-GB-u-ca-buddhist", NOW)).toBe("12,345.60 · Tue 17 Nov, 08:00");
     expect(formatLocale("follow", "nl_NL.UTF-8")).toBe("nl-NL");
   });
 
@@ -87,7 +89,7 @@ verifies("settings.formats-format", () => {
     expect(formatOptions({ followTag: "", place: "app" })[0]?.label).toBe(
       "Follow this computer: English (United Kingdom)",
     );
-    expect(formatExample("")).toBe("45.00 · Mon 9 Nov, 08:00");
+    expect(formatExample("", NOW)).toBe("12,345.60 · Tue 17 Nov, 08:00");
   });
 
   it("stores the tag, and follows the computer for anything else", () => {
