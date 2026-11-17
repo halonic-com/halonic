@@ -1,19 +1,28 @@
 // @vitest-environment jsdom
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
+import type { ItemRef } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ChangedFile } from "../changes-list.ts";
 import { ChangesList } from "../changes-list.ts";
 import { fakeSource, settle } from "../source.test-helper.ts";
 import { openItem } from "../test-support/open-item.ts";
+import { installFakePopover } from "../test-support/popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ChangeList, orderItems } from "./change-list.tsx";
 import { ChangesView } from "./changes-page.tsx";
 import { useOpenItem } from "./use-open-item.ts";
 import { WhatChangedPage } from "./whats-changed-page.tsx";
 
-afterEach(unmountAll);
+let removePopover = () => {};
+beforeEach(() => {
+  removePopover = installFakePopover();
+});
+afterEach(() => {
+  unmountAll();
+  removePopover();
+});
 
 /** The list and its What changed page for files given directly, without a read from git. */
 function ChangesPageOf({ list, files }: { list: ChangesList; files: readonly ChangedFile[] }) {
@@ -94,9 +103,11 @@ verifies("source-control.change-list", () => {
       const { root } = await openPage();
       const rows = [...root.querySelectorAll("tr[data-row-id]")];
       const readme = rows.find((row) => row.textContent?.includes("README.md"));
-      expect(readme?.querySelector("svg")).not.toBeNull();
+      // The row's first icon is its own; the ⋮ comes last.
+      const icon = readme?.querySelector("svg");
+      expect(icon).not.toBeNull();
       // The gear has a hole drawn as a circle; the file's page does not.
-      expect(readme?.querySelector("svg circle")).toBeNull();
+      expect(icon?.querySelector("circle")).toBeNull();
     });
 
     it("is one Tab stop: only one cell of the list is in the Tab order, and the arrows move", async () => {
@@ -158,6 +169,85 @@ verifies("source-control.change-list", () => {
         await settle();
       });
       expect(document.activeElement?.tagName).toBe("H1");
+    });
+
+    describe("the ⋮ of a row", () => {
+      const menuItems = () =>
+        [...document.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent?.trim());
+
+      async function openMenu(root: HTMLElement, name: string) {
+        const more = root.querySelector<HTMLElement>(
+          `button[aria-label="More actions for ${name}"]`,
+        );
+        if (more === null) throw new Error(`no ⋮ for ${name}`);
+        await act(async () => more.click());
+      }
+
+      async function pageWithOpen() {
+        const fake = fakeSource({
+          kind: "ready",
+          changes: [
+            { path: agentPath, status: "modified", staged: false },
+            { path: "README.md", status: "modified", staged: false },
+          ],
+        });
+        fake.setTexts(agentPath, { before, after });
+        fake.setTexts("README.md", { before: "a\n", after: "b\n" });
+        const toasts = createToastStore();
+        const opened: ItemRef[] = [];
+        const root = render(
+          <ToastStoreProvider store={toasts}>
+            <ChangesView
+              list={new ChangesList(fake.source)}
+              openItem={(item) => opened.push(item)}
+            />
+          </ToastStoreProvider>,
+        );
+        await act(settle);
+        return { fake, root, toasts, opened };
+      }
+
+      it("has Open and Undo these changes for an agent, with Open first, and Open opens the agent", async () => {
+        const { root, opened } = await pageWithOpen();
+        await openMenu(root, "Triage");
+        expect(menuItems()).toEqual(["Open Triage", "Undo these changes"]);
+        await act(async () => document.querySelector<HTMLElement>('[role="menuitem"]')?.click());
+        expect(opened).toEqual([{ kind: "agent", hub: "", id: "triage" }]);
+      });
+
+      it("has only Undo these changes for a file no kind places", async () => {
+        const { root } = await pageWithOpen();
+        await openMenu(root, "README.md");
+        expect(menuItems()).toEqual(["Undo these changes"]);
+      });
+
+      it("undoes the item at once from the menu, with the toast that offers Undo", async () => {
+        const { fake, root, toasts } = await pageWithOpen();
+        await openMenu(root, "Triage");
+        await act(async () => {
+          [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+            .find((item) => item.textContent?.trim() === "Undo these changes")
+            ?.click();
+          await settle();
+        });
+        expect(fake.replaced[0]).toEqual({ path: agentPath, text: before, expected: after });
+        expect(toasts.list()[0]?.title).toBe("Discarded Triage");
+        expect(toasts.list()[0]?.action?.label).toBe("Put it back");
+      });
+    });
+
+    it("draws the first 200 items and counts the rest under the list", async () => {
+      const changes = Array.from({ length: 205 }, (_, index) => ({
+        path: `notes/file-${String(index).padStart(3, "0")}.txt`,
+        status: "untracked" as const,
+        staged: false,
+      }));
+      const root = render(
+        <ChangesView list={new ChangesList(fakeSource({ kind: "ready", changes }).source)} />,
+      );
+      await act(settle);
+      expect(root.querySelectorAll("tr[data-row-id]")).toHaveLength(200);
+      expect(root.textContent).toContain("and 5 more");
     });
 
     it("keeps the heading and the count when only files no kind places changed", async () => {
