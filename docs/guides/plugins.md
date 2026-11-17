@@ -239,7 +239,10 @@ keep it. A breaking change raises it and comes with a decision record.
 `halonic plugin add <folder | git address>[@commit]` copies the plugin (or
 clones the repository at one commit) into the plugins folder in your profile
 (your Halonic data on this computer), never into a workspace, and records the SHA-256 of every file. Then it shows the
-trust check and asks.
+trust check and asks. In the Studio desktop app, **Settings → Plugins → Add plugin** does the same
+from a folder you pick with **Choose folder…** or from a git address: the app exports one commit
+of the repository (files only, with no `.git`, no submodules and none of your git settings), checks it
+as `plugin add` does, and adds the plugin not trusted, so you review the check next.
 
 The check lists what the plugin can do and reach:
 

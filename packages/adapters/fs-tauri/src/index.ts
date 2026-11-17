@@ -47,6 +47,15 @@ export { pluginFolderCommands } from "./plugin-folder-commands.ts";
 export { TauriPluginFolderReader } from "./plugin-folder-reader.ts";
 export { TauriPluginFolderWriter } from "./plugin-folder-writer.ts";
 export {
+  isPluginInstallRefusal,
+  type PluginInstallRefusal,
+  type PluginInstallRefusalKind,
+  pluginInstallCommands,
+  pluginInstallRefusalKinds,
+} from "./plugin-install-commands.ts";
+export { type ExportedPluginSource, TauriPluginInstallSource } from "./plugin-install-source.ts";
+export { TauriPluginSourceReader } from "./plugin-source-reader.ts";
+export {
   isRecordRefusal,
   type RecordRefusal,
   type RecordRefusalKind,

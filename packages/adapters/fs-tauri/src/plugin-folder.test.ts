@@ -1,4 +1,4 @@
-import { errorKindOf, KindedError } from "@halonicjs/std";
+import { errorKindOf } from "@halonicjs/std";
 import { folderReaderContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -120,16 +120,6 @@ verifies("fs-tauri.plugin-folder", () => {
       const writer = new TauriPluginFolderWriter(new FakePluginFolderShell({ tree: {} }));
       const placing = writer.place("..", new Map(), { replace: false });
       expect(await rejection(placing)).toBeInstanceOf(RangeError);
-    });
-
-    it("refuses to place a plugin: adding one is a CLI action", async () => {
-      const shell = new FakePluginFolderShell({ tree: {} });
-      const error = await rejection(
-        new TauriPluginFolderWriter(shell).place("acme-weather", new Map(), { replace: false }),
-      );
-      expect(error).toBeInstanceOf(KindedError);
-      expect((error as Error).message).toContain("halonic plugin add");
-      expect(shell.calls).toEqual([]);
     });
   });
 });

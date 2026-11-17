@@ -6,8 +6,9 @@
  * `/`-separated; `plugin` is one folder name.
  *
  * Reading never follows a link or opens a special file. Removing deletes
- * one plugin's folder, or the link itself. Nothing here writes a file:
- * adding a plugin is a CLI action.
+ * one plugin's folder, or the link itself. Placing a plugin is
+ * `pluginInstallCommands.place`, with the commands that pick or export what
+ * to place.
  */
 export const pluginFolderCommands = {
   /** `{ dir, limit, recursive }` → entries as for `folder_entries`; `[]` while no plugin is installed. */
