@@ -1,0 +1,60 @@
+name: Leak terms
+
+# The personal-terms part of the leak guard for a pull request, in a
+# workflow the pull request can't change (HAL-11232). The terms are real
+# people's names, so they live in the environment `leak-terms`, which only
+# `main` and the merge queue may use; CI's Leak guard job gets them only
+# there. On pull_request_target, GitHub runs this file from the base
+# branch, and the job runs only the base's code: the pull request's head is
+# fetched as git objects and only read. No install, no cache, a read-only
+# token. It prints locations, never a term.
+#
+# Not a required check: the merge queue runs ci.yml's Leak guard with the
+# terms before anything merges. This run tells the author sooner, also after
+# a title or body edit. Pull requests from forks and Dependabot get no
+# terms, as before: their author could use the result to guess the list.
+on:
+  # zizmor: ignore[dangerous-triggers] runs only the base branch's code; the pull request is read as data
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited]
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: leak-terms-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  terms:
+    name: Personal terms (base branch's code)
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: leak-terms
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+          package-manager-cache: false
+      # The title, body and branch come from this event's payload, so an
+      # edit is checked by its own run.
+      - name: Scan the pull request (base branch's code)
+        env:
+          HALONIC_DENY_TERMS: ${{ secrets.HALONIC_DENY_TERMS }}
+          HALONIC_TERMS_REQUIRED: ${{ vars.HALONIC_TERMS_ENFORCED == 'true' && 'true' || 'false' }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch --quiet --no-tags origin "$HEAD"
+          node tooling/check/src/cli/leaks.ts \
+            --allowed-phrases tooling/check/terms-allowed-phrases.txt \
+            --allow-file tooling/check/leak-allow.txt \
+            --range "$BASE..$HEAD"
