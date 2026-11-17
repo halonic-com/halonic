@@ -6,7 +6,7 @@
 
 The requirement said a phone shows no form until its request sheet lands. It now says what the sheet is: a New request
 row at the top of the phone's list opens a form sheet with Message focused, Send at the bottom, the same empty-message
-and "Not started" lines as on a computer, and it closes once the run has started. Nothing else in the requirement
+and "Not started" lines as on a computer, and it stays open once the run has started until the request's card arrives (then it closes and the card opens by itself) or Close is pressed. Nothing else in the requirement
 changes, and no test was weakened.
 
 ## Covers
