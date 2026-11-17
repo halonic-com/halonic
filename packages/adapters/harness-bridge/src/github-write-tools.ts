@@ -97,7 +97,7 @@ interface ToolSpec {
  * The token stays here, as in {@link GitHubReadTools}.
  *
  * @example
- * const tools = new GitHubWriteTools({ repository: "halonic-com/halonic", secret: "GITHUB_WRITE_TOKEN", secrets });
+ * const tools = new GitHubWriteTools({ repository: "halonic-com/halonic", secret: "GITHUB_WRITE_TOKEN", secrets, fetch });
  * await tools.check("github_open_pull_request", { title, head, base }); // { kind: "ask" }
  */
 export class GitHubWriteTools implements BridgeTools {
