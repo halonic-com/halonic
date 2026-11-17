@@ -3,6 +3,7 @@
 - Task: HAL-11383
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11383 (item F3 of the design check HAL-11370, which cites the board-approved microcopy row mc 16; Liam's review of #3268 on HAL-11420 accepted it; a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:GdkWH886516NGfeI9/UFcGKRFgTDjuzvWEHOvtlbaX3FOeboesHZEO1OXdlYTffsBZjlB8DK//RhMjnFIuUPAQ==
 - Supersedes: `HAL-11117-files-outside-strip.md`, for the strip's buttons only (its quiet-reload toast stays)
 
 ## What changes
