@@ -16,6 +16,7 @@ import {
   type RoutineChanges,
   type RoutineHub,
   type RoutineListing,
+  type RoutineMailbox,
   type RoutineNextTimes,
   type RoutineRef,
   type RoutineRun,
@@ -41,6 +42,7 @@ import {
 } from "./routine-files.ts";
 import {
   idOf,
+  mailboxesOf,
   nameKey,
   type PlacedFile,
   routineFiles,
@@ -202,6 +204,12 @@ export class WorkspaceRoutines implements RoutinesHost {
     const workspace = await this.#load();
     this.#find(workspace, ref);
     return targetsOf(workspace, ref.hubId);
+  }
+
+  async mailboxes(ref: RoutineRef): Promise<readonly RoutineMailbox[]> {
+    const workspace = await this.#load();
+    this.#find(workspace, ref);
+    return mailboxesOf(workspace, ref.hubId);
   }
 
   /** Writes the fields present as edits of the routine's file, which keep its comments and layout. */
@@ -403,12 +411,16 @@ export class WorkspaceRoutines implements RoutinesHost {
     return workspace;
   }
 
-  /** The workspace's hubs and its root `workflows` folder, where routines live, with unsaved changes applied. */
+  /** The workspace's hubs, its root `workflows` folder, where routines live, and its root `library`, where shared connectors are, with unsaved changes applied. */
   #source(): DefinitionSource {
     const { files } = this.#parts;
     return {
       location: "workspace:unsaved",
-      list: async () => [...(await files.list("hubs")), ...(await files.list("workflows"))],
+      list: async () => [
+        ...(await files.list("hubs")),
+        ...(await files.list("workflows")),
+        ...(await files.list("library")),
+      ],
       read: (path) => files.read(path),
       version: async () => "unsaved",
     };

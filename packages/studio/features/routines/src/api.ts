@@ -69,6 +69,15 @@ export type RoutineTrigger =
   | { readonly kind: "signal"; readonly name: string; readonly when?: Guard | undefined }
   | { readonly kind: "webhook" };
 
+/** A Google connector a mail trigger can watch, which the Mailbox picker lists. */
+export interface RoutineMailbox {
+  /** The connector's id, which the trigger's `connector` holds. */
+  readonly connector: string;
+  readonly name: string;
+  /** The Google account it acts as, which the picker shows next to the name. */
+  readonly account: string;
+}
+
 /** What to do when a time comes while the previous run is still going. */
 export type RoutineOverlap = "skip" | "queue" | "allow";
 
@@ -227,6 +236,8 @@ export interface RoutinesHost {
   read(ref: RoutineRef): Promise<RoutineView>;
   /** The workflows and agents the routine's hub lets it start. */
   targets(ref: RoutineRef): Promise<readonly RoutineTargetChoice[]>;
+  /** The Google connectors the routine can watch for mail: its hub's own first, then the shared ones. */
+  mailboxes(ref: RoutineRef): Promise<readonly RoutineMailbox[]>;
   /** Writes `changes` to the routine's file; rejects with the reason it couldn't be written. */
   save(ref: RoutineRef, changes: RoutineChanges): Promise<void>;
   /** The next `count` times the routine starts on its own, from its live version. */

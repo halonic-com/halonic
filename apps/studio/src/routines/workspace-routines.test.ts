@@ -280,6 +280,29 @@ verifies("studio.workspace-routines", () => {
     expect(changes).toEqual([]);
   });
 
+  it("lists the Google connectors a routine can watch, the hub's own first, then the shared ones", async () => {
+    const google = (name: string, account: string) =>
+      `name: ${name}\ntransport:\n  google:\n    account: ${account}\n`;
+    const { host } = setup({}, [], {
+      "workspace.yaml": "id: team\nname: Team\n",
+      "library/connectors/shared-mail.connector.yaml": google("Shared mail", "team@example.com"),
+      "hubs/acme/library/connectors/acme-gmail.connector.yaml": google(
+        "Acme Gmail",
+        "me@example.com",
+      ),
+      "hubs/acme/library/connectors/notes.connector.yaml":
+        "name: Notes\ntransport:\n  http:\n    url: https://mcp.example.com\n",
+      "hubs/beta/library/connectors/beta-gmail.connector.yaml": google(
+        "Beta Gmail",
+        "b@example.com",
+      ),
+    });
+    expect(await host.mailboxes(weekly)).toEqual([
+      { connector: "acme-gmail", name: "Acme Gmail", account: "me@example.com" },
+      { connector: "shared-mail", name: "Shared mail", account: "team@example.com" },
+    ]);
+  });
+
   it("lists the routines that start an owner, and adds one named after it", async () => {
     const { host } = setup();
     expect(

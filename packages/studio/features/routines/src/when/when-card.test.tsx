@@ -41,6 +41,7 @@ function hostWith(
 ) {
   const saved: RoutineChanges[] = [];
   const host = {
+    mailboxes: async () => [],
     nextTimes: async () => next,
     save: async (_ref: unknown, changes: RoutineChanges) => {
       saved.push(changes);

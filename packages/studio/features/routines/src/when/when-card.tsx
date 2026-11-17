@@ -3,6 +3,7 @@ import { useId, useState } from "react";
 import type { RoutinesHost, RoutineTrigger, RoutineView } from "../api.ts";
 import { failureReason } from "../page/page-words.ts";
 import { TriggerFields } from "./trigger-fields.tsx";
+import { useMailboxes } from "./use-mailboxes.ts";
 import { useNextTimes } from "./use-next-times.ts";
 import { deviceTimeZone, nextTime, whenWords as words } from "./when-words.ts";
 
@@ -24,6 +25,7 @@ export function WhenCard({ host, routine, announce }: WhenCardProps) {
   const reasonId = useId();
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | undefined>();
+  const mailboxes = useMailboxes(host, routine);
   const manual = routine.trigger.kind === "manual";
   const neverLive = !routine.everLive;
   const times = useNextTimes(host, routine, routine.enabled && !neverLive && !manual, routine);
@@ -84,6 +86,7 @@ export function WhenCard({ host, routine, announce }: WhenCardProps) {
         <TriggerFields
           trigger={routine.trigger}
           enabled={routine.enabled}
+          mailboxes={mailboxes}
           onChange={(trigger) => void changeTrigger(trigger)}
         />
         {blocked && (
