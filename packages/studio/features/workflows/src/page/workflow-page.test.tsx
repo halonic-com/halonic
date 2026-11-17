@@ -289,6 +289,33 @@ verifies("workflows.page.frame-and-states", () => {
     await act(async () => ask());
     expect(page.querySelector("[role=tab][aria-selected=true][id$=-tests]")).not.toBeNull();
   });
+
+  it("goes to Tests when asked from Configuration's General", async () => {
+    const { host } = memoryHost([], [], [reply], [settings]);
+    let ask: () => void = () => undefined;
+    function Asked() {
+      const [asked, setAsked] = useState(false);
+      ask = () => setAsked(true);
+      return (
+        <WorkflowScreen
+          host={host}
+          runs={memoryRuns().source}
+          hubId="acme"
+          id="reply"
+          startOnTests={asked}
+        />
+      );
+    }
+    const page = await show(<Asked />);
+    const tab = (name: string) =>
+      [...page.querySelectorAll<HTMLElement>("[role=tab]")].find((one) =>
+        one.textContent?.startsWith(name),
+      );
+    await act(async () => tab("Configuration")?.click());
+    expect(page.querySelector("[role=tab][aria-selected=true][id$=-general]")).not.toBeNull();
+    await act(async () => ask());
+    expect(page.querySelector("[role=tab][aria-selected=true][id$=-tests]")).not.toBeNull();
+  });
 });
 
 verifies("workflows.page.step-cards", () => {

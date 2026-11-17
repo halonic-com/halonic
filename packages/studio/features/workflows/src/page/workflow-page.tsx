@@ -131,7 +131,9 @@ export function WorkflowScreen({
     setAskedForTests(startOnTests === true);
     if (startOnTests) {
       setView("configuration");
-      setMadeTest(firstTestsPick(true));
+      // Counted like a made test, so Configuration remounts even if it is already open.
+      testsMade.current += 1;
+      setMadeTest({ name: undefined, n: testsMade.current });
     }
   }
   const ids = useTabIds();
