@@ -72,7 +72,7 @@ function recordAssertions(context: TestContext): void {
 
 // Vitest's own `vi.waitFor`, taken once when the file loads. Each test
 // wraps and restores this one, so a test never mistakes another test's
-// wrapper for the original (as it could in `describe.concurrent`).
+// wrapper for the original (as it could in concurrent tests).
 const realWaitFor = vi.waitFor;
 
 /** The `expect` counts of the global `expect` and the test's own. */
@@ -85,14 +85,14 @@ interface Counts {
  * HAL-6369: `vi.waitFor` runs its callback again until it passes, so the
  * `expect` count would depend on how fast the runner was. For the test's
  * run, `vi.waitFor` counts only the calls of the attempt that passed, as
- * if the callback ran once. (`expect.poll` already counts once.) The
+ * if the callback ran once. (Vitest's polling `expect` already counts once.) The
  * cleanup puts the original back after the test.
  *
  * It covers every `vi.waitFor(...)` call made during the test, also from
  * helpers in other files, because they share one `vi` object. Not covered:
  * a `waitFor` taken off `vi` before the test (`const { waitFor } = vi`),
  * `waitFor` from `@testing-library/*`, two `vi.waitFor` running at once in
- * one test (`Promise.all`), and tests in `describe.concurrent`, which
+ * one test (`Promise.all`), and concurrent tests, which
  * share the global count anyway.
  */
 function countLastAttempt(context: TestContext): () => void {
