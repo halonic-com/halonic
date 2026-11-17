@@ -18,4 +18,9 @@ export interface WorkflowScreenProps {
   readonly reviewInInbox?: () => void;
   /** Opens the page on Configuration's Tests, as `openItem`'s `step: "tests"` asks; on Flow when absent. */
   readonly startOnTests?: boolean;
+  /**
+   * How many times the tab was asked for its Tests (`TabLocation.asked`). A page that is open
+   * already goes to Tests again when this changes, also when it is asked for the same step twice.
+   */
+  readonly testsAsked?: number;
 }

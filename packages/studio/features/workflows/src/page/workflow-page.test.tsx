@@ -316,6 +316,34 @@ verifies("workflows.page.frame-and-states", () => {
     await act(async () => ask());
     expect(page.querySelector("[role=tab][aria-selected=true][id$=-tests]")).not.toBeNull();
   });
+
+  it("goes to Tests again when asked a second time after the person went back to Flow", async () => {
+    const { host } = memoryHost([], [], [reply], [settings]);
+    let ask: () => void = () => undefined;
+    function Asked() {
+      const [asked, setAsked] = useState(1);
+      ask = () => setAsked((count) => count + 1);
+      return (
+        <WorkflowScreen
+          host={host}
+          runs={memoryRuns().source}
+          hubId="acme"
+          id="reply"
+          startOnTests
+          testsAsked={asked}
+        />
+      );
+    }
+    const page = await show(<Asked />);
+    const tab = (name: string) =>
+      [...page.querySelectorAll<HTMLElement>("[role=tab]")].find((one) =>
+        one.textContent?.startsWith(name),
+      );
+    await act(async () => tab("Flow")?.click());
+    expect(tab("Flow")?.getAttribute("aria-selected")).toBe("true");
+    await act(async () => ask());
+    expect(page.querySelector("[role=tab][aria-selected=true][id$=-tests]")).not.toBeNull();
+  });
 });
 
 verifies("workflows.page.step-cards", () => {
