@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import {
   type OpenedWorkspace,
   RecentWorkspaces,
@@ -8,7 +10,12 @@ import { createToastStore } from "@halonicjs/studio-kit";
 import type { StudioWorkspace } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { closeLimitMs, windowCloseHandler, withinLimit } from "./window-close.ts";
+import {
+  closeLimitMs,
+  leaveFocusedField,
+  windowCloseHandler,
+  withinLimit,
+} from "./window-close.ts";
 
 /** A workspace whose save ends when the test says so: `saved(true)`, `saved(false)`, or `crash()`. */
 function slowWorkspace(name: string) {
@@ -139,5 +146,50 @@ verifies("workspace.saves-itself", () => {
       expect(await answer).toBe(true);
       expect(stop).toHaveBeenCalledOnce();
     });
+  });
+});
+
+describe("leaveFocusedField", () => {
+  it("blurs the field with the cursor in it, so its blur save starts before the window closes", async () => {
+    const box = document.createElement("textarea");
+    document.body.append(box);
+    box.focus();
+    const left = vi.fn();
+    box.addEventListener("blur", left);
+
+    await leaveFocusedField(document);
+
+    expect(left).toHaveBeenCalledOnce();
+    box.remove();
+  });
+
+  it("does nothing when no field has the cursor", async () => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    await expect(leaveFocusedField(document)).resolves.toBeUndefined();
+  });
+});
+
+describe("windowCloseHandler settleDrafts", () => {
+  it("settles drafts before the workspaces save", async () => {
+    const order: string[] = [];
+    const handler = windowCloseHandler({
+      workspaces: {
+        saveAllForWindowClose: async () => {
+          order.push("save");
+          return true;
+        },
+        askStillSaving: () => undefined,
+        withdrawStillSaving: () => false,
+      },
+      stop: async () => {},
+      limitMs: closeLimitMs,
+      within: withinLimit,
+      settleDrafts: async () => {
+        order.push("drafts");
+      },
+    });
+
+    expect(await handler(async () => {})).toBe(true);
+    expect(order).toEqual(["drafts", "save"]);
   });
 });

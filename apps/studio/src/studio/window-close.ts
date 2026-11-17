@@ -26,6 +26,19 @@ export type ClosingWorkspaces = Pick<
   "saveAllForWindowClose" | "askStillSaving" | "withdrawStillSaving"
 >;
 
+/**
+ * Hands in what the person has typed but not yet left: the field with the cursor in it saves on
+ * blur, so blurring it starts that save. Waits one turn so the save is under way before the
+ * workspaces are asked to finish theirs.
+ */
+export async function leaveFocusedField(page: Pick<Document, "activeElement">): Promise<void> {
+  const field = page.activeElement;
+  if (field instanceof HTMLElement) {
+    field.blur();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  }
+}
+
 /** What {@link windowCloseHandler} is given. */
 export interface WindowCloseOptions {
   readonly workspaces: ClosingWorkspaces;
@@ -35,6 +48,8 @@ export interface WindowCloseOptions {
   readonly limitMs: number;
   /** Settles with the task's result or, after `ms`, with `fallback`. */
   readonly within: <T>(task: Promise<T>, ms: number, fallback: T) => Promise<T>;
+  /** Runs before the workspaces save, to hand in drafts a page keeps until a field is left. */
+  readonly settleDrafts?: () => Promise<void>;
 }
 
 /**
@@ -50,12 +65,15 @@ export interface WindowCloseOptions {
 export function windowCloseHandler(
   options: WindowCloseOptions,
 ): (destroy: () => Promise<void>) => Promise<boolean> {
-  const { workspaces, stop, limitMs, within } = options;
+  const { workspaces, stop, limitMs, within, settleDrafts } = options;
   const closeWindow = async (destroy: () => Promise<void>) => {
     await within(stop(), limitMs, undefined);
     await destroy();
   };
   return async (destroy) => {
+    if (settleDrafts !== undefined) {
+      await settleDrafts().catch((error: unknown) => console.error(error));
+    }
     const saving = workspaces.saveAllForWindowClose();
     const saved = await within<boolean | "still-saving">(saving, limitMs, "still-saving");
     if (saved === false) return false;
