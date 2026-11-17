@@ -119,6 +119,14 @@ verifies("runs.run-page", () => {
       });
     });
 
+    it("writes a hidden character in the agent's name as an escape", () => {
+      const run = { summary: summaryWith({ approvals: [approvalAt(1)] }) };
+      const named = { ...context, agentName: () => "News\u202Edesk" };
+      expect(runBanner(run, named)).toMatchObject({
+        lines: [expect.stringContaining("News\\u202edesk wants")],
+      });
+    });
+
     it("writes a hidden character in a wait title as an escape", () => {
       const atReview = { status: "waiting" as const, state: "review", accepts: ["approve"] };
       expect(

@@ -159,7 +159,10 @@ export function runBanner(run: SourcedRun, context: RunPageContext): RunBanner |
 /** The approval banner's sentence, built from the oldest approval (mc 15.2); the Inbox card has the rest. */
 function approvalText(oldest: PendingApproval, count: number, context: RunPageContext): string {
   const asker = oldest.subagent ?? oldest.agent;
-  const what = runPageWords.approvalAsk(context.agentName?.(asker) ?? asker, oldest.tool);
+  const what = runPageWords.approvalAsk(
+    escapeHidden(context.agentName?.(asker) ?? asker),
+    oldest.tool,
+  );
   return count === 1
     ? runPageWords.approval(what, oldest.tool === "gmail_send")
     : runPageWords.approvals(count, what);
