@@ -274,7 +274,9 @@ verifies("workflows.page.step-cards", () => {
     const page = await show(
       <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
     );
-    const cards = [...page.querySelectorAll("button[aria-pressed]")].map((card) => card.textContent);
+    const cards = [...page.querySelectorAll("button[aria-pressed]")].map(
+      (card) => card.textContent,
+    );
 
     expect(cards[0]).toContain("Read the email");
     expect(cards[0]).not.toContain("start");
