@@ -184,6 +184,7 @@ export type { RestartRuns, RestartRunsHost } from "./updater/restart-runs.ts";
 export const RestartRunsService: ServiceKey<RestartRunsHost> =
   serviceKey<RestartRunsHost>("settings.restart-runs");
 
+export { BrowserDisplayPrefs } from "./browser-display-prefs.ts";
 export type { SandboxChoiceHost } from "./sandbox-choice/sandbox-choice-host.ts";
 export { SandboxChoiceHostService } from "./sandbox-choice/sandbox-choice-host.ts";
 export type { SandboxCard, SandboxChoiceView } from "./sandbox-choice/sandbox-choice-view.ts";
@@ -201,8 +202,6 @@ export type {
   SandboxStepStatus,
 } from "./sandbox-choice/ui/sandbox-setup-flow.tsx";
 export { SandboxSetupFlow } from "./sandbox-choice/ui/sandbox-setup-flow.tsx";
-
-export { BrowserDisplayPrefs } from "./browser-display-prefs.ts";
 
 /**
  * Load the Settings › Agent sandbox and Formats views, for the CI screenshots

@@ -201,7 +201,7 @@ for (const section of settingsSections) {
       await page.emulateMedia({ colorScheme: scheme });
       await page.goto(`/settings.html?section=${section}`);
       await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
-      await expect(page.getByRole("heading", { level: 3 })).toBeVisible();
+      await expect(page.locator("section[aria-labelledby] > h3")).toBeVisible();
       // The section's own view loads after its name, so wait for something past the heading.
       await expect(page.locator("section[aria-labelledby] > div").last()).not.toBeEmpty();
       await page.screenshot({
