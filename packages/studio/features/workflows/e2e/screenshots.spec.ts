@@ -81,6 +81,10 @@ for (const size of sizes) {
               card.y + card.height,
             );
             expect(setUp.y, "Set up is inside the window").toBeGreaterThanOrEqual(0);
+            expect(
+              setUp.y + setUp.height,
+              "Set up is above the window's bottom",
+            ).toBeLessThanOrEqual(size.height);
             expect(more.y + more.height, "links clear the card edge").toBeLessThanOrEqual(
               card.y + card.height - 8,
             );

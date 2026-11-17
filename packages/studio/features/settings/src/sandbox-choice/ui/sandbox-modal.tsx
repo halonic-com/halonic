@@ -41,7 +41,7 @@ export function SandboxModal({
       />
       <section
         aria-labelledby={titleId}
-        className="relative flex max-h-[60vh] min-h-0 w-full max-w-110 flex-col overflow-hidden rounded-lg border border-border-strong bg-surface shadow-2 [@media(max-height:700px)]:max-h-[85vh] [@media(max-height:560px)]:max-h-[90vh]"
+        className="relative flex max-h-[60vh] min-h-0 w-full max-w-110 flex-col overflow-hidden rounded-lg border border-border-strong bg-surface shadow-2 [@media(min-height:561px)_and_(max-height:700px)]:max-h-[85vh] [@media(max-height:560px)]:max-h-[90vh]"
       >
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
           <header className="flex flex-col gap-1">
