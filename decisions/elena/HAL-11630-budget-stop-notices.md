@@ -3,6 +3,7 @@
 - Task: HAL-11630, from the UX check (HAL-11613, B1)
 - Approval: Liam, in review of HAL-11630 (his signature is added there). The words are the approved ones of microcopy 6.5 and 10.3, so no board card.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hxE9cQZDFzqJbg/mp1u4L1Emo78C/9iatk9rF9EJ9c5Dov7/MnPISPeJdUh9WcdkjNWbBy4GU79GJFGIrZmZDQ==
 
 ## What changes
 
