@@ -1,7 +1,7 @@
 # Decision: verifies() counts only the passing vi.waitFor attempt's expect calls
 
 - Task: HAL-6453 (step 2 of HAL-6369)
-- Approval: Liam wrote this pull request, so Julian approves the note in review on REVIEW_TASK
+- Approval: Liam wrote this pull request, so Julian approves the note in review on HAL-11623
 - Kind: user-visible
 
 ## What changes
