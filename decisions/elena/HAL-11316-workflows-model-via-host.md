@@ -5,6 +5,7 @@
 - Task: HAL-11316
 - Approval: Liam approved dropping the mock-only refusal and its tests on HAL-11316 (option 1, desktop only)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:LUp56JHSIb+YQmTnufER50+yKppRdJRKGOQB5JuUZnmXlOvVp8De3GY3pO9FlCN9QXqz7enMl32uKHI5Lhl9DQ==
 
 ## What changes
 
