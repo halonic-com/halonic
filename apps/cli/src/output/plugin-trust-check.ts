@@ -14,11 +14,13 @@ import {
   pluginTrustFiles,
   pluginTrustSections,
 } from "@halonicjs/app";
+import { withHomeAsTilde } from "@halonicjs/profile";
 import type { Message } from "../messages/define.ts";
 import { markPart, type Phrase, phrase, plainText } from "../messages/phrase.ts";
 import { pluginMessages } from "../messages/plugin.ts";
 import { trustMessages } from "../messages/trust.ts";
 import { printable } from "./printable.ts";
+import { nodeProfileEnvironment } from "../workspace-runs.ts";
 import { row, rowIndent } from "./trust-check-rows.ts";
 
 /** The tool risks in the order the check lists them, each with its group's heading. */
@@ -55,10 +57,15 @@ export function pluginTrustCheckLines(content: PluginTrustContent, folder: strin
  *
  * @example
  * pluginFingerprintLines("hpf1:c9b6…");
- * // ["", "Fingerprint", "  hpf1:c9b6…"] (as phrases)
+ * // ["", "Fingerprint", "  hpf1:c9b6…", "  Covers the manifest and the backend files above."]
  */
 export function pluginFingerprintLines(fingerprint: string): Phrase[] {
-  return [phrase``, trustMessages.fingerprintHeading().phrase, phrase`${rowIndent}${fingerprint}`];
+  return [
+    phrase``,
+    trustMessages.fingerprintHeading().phrase,
+    phrase`${rowIndent}${fingerprint}`,
+    phrase`${rowIndent}${pluginMessages.fingerprintCovers().phrase}`,
+  ];
 }
 
 /** Each section the CLI shows, with its heading from the catalogue and its rows. */
@@ -95,7 +102,9 @@ function sectionLines(content: PluginTrustContent, name: PluginTrustSection): Ph
 
 /**
  * Where the plugin sits on disk, then the files its fingerprint covers: the
- * first ones and "and N more". Both come from the workspace, so each is escaped.
+ * first ones and "and N more". Both come from the workspace, so each is
+ * escaped. The folder is written in full, with only the home folder as `~`:
+ * a person deciding to trust it should see exactly where it sits.
  */
 function locationLines(content: PluginTrustContent, folder: string): Phrase[] {
   const { shown, more } = pluginTrustFiles(content);
@@ -104,9 +113,15 @@ function locationLines(content: PluginTrustContent, folder: string): Phrase[] {
   return [
     phrase``,
     pluginMessages.folderHeading().phrase,
-    phrase`${rowIndent}${printable(folder)}`,
+    phrase`${rowIndent}${printable(shownFolder(folder))}`,
     ...(files.length === 0 ? [] : [phrase``, pluginMessages.filesHeading().phrase, ...files]),
   ];
+}
+
+/** The folder with the home folder written as `~`; the rest of the path stays. */
+function shownFolder(folder: string): string {
+  const profile = nodeProfileEnvironment();
+  return withHomeAsTilde(profile.platform, profile.homeFolder, folder);
 }
 
 /** Tools grouped by what they do; a tool that changes or sends something asks a person first. */

@@ -6,9 +6,15 @@ import {
 } from "@halonicjs/app";
 import { parseFile } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
+import { homedir } from "node:os";
+import { join, sep } from "node:path";
 import { expect, it } from "vitest";
 import { plainText } from "../messages/phrase.ts";
-import { pluginTrustCheckHeadings, pluginTrustCheckLines } from "./plugin-trust-check.ts";
+import {
+  pluginFingerprintLines,
+  pluginTrustCheckHeadings,
+  pluginTrustCheckLines,
+} from "./plugin-trust-check.ts";
 
 /** A plugin with something in every section of the trust check. Example data only. */
 const weatherManifest = `id: weather
@@ -89,7 +95,7 @@ verifies("app.plugin-trust-sections", () => {
       "Folder",
       `  ${folder}`,
       "",
-      "Files the fingerprint covers",
+      "Backend files",
       "  backend/index.js",
       "",
     ]);
@@ -101,15 +107,41 @@ verifies("app.plugin-trust-sections", () => {
       (_, index) => `backend/file-${String(index).padStart(2, "0")}.js`,
     );
     const lines = linesOf(paths);
-    const start = lines.indexOf("Files the fingerprint covers");
+    const start = lines.indexOf("Backend files");
     expect(lines.slice(start + 1, start + 12)).toEqual([
       ...paths.slice(0, 10).map((path) => `  ${path}`),
       "  and 3 more",
     ]);
   });
 
+  it("lists eleven files in full instead of \"and 1 more\"", () => {
+    const paths = Array.from(
+      { length: 11 },
+      (_, index) => `backend/file-${String(index).padStart(2, "0")}.js`,
+    );
+    const lines = linesOf(paths);
+    const start = lines.indexOf("Backend files");
+    expect(lines.slice(start + 1, start + 12)).toEqual(paths.map((path) => `  ${path}`));
+    expect(lines.join("\n")).not.toContain("more");
+  });
+
+  it("writes the home folder as ~ and keeps the rest of the folder", () => {
+    const inHome = join(homedir(), ".halonic", "plugins", "weather");
+    const lines = pluginTrustCheckLines(weatherContent([]), inHome).map(plainText);
+    expect(lines).toContain(`  ~${sep}${join(".halonic", "plugins", "weather")}`);
+  });
+
+  it("says under the fingerprint what it covers", () => {
+    expect(pluginFingerprintLines("hpf1:abc").map(plainText)).toEqual([
+      "",
+      "Fingerprint",
+      "  hpf1:abc",
+      "  Covers the manifest and the backend files above.",
+    ]);
+  });
+
   it("leaves out the file list for a plugin with only its manifest", () => {
-    expect(linesOf([])).not.toContain("Files the fingerprint covers");
+    expect(linesOf([])).not.toContain("Backend files");
   });
 
   it("escapes control characters in the folder and in a file name", () => {
