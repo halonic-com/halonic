@@ -21,3 +21,5 @@ HAL-11670 walk of the Examples pages).
 ## Covers
 
 - inbox.items
+- inbox.approval-card
+- inbox.approval-title

@@ -14,7 +14,7 @@ After a decision the card shall be replaced in place: the header keeps **Open ru
 
 ## Examples
 
-- Given Sorter's call to `notes-mcp__create_note` with `{ title: "Refund for Sam", body: "" }`, asked at 10:42,
+- Given Sorter's call to `create_note` from the connector `notes-mcp` with `{ title: "Refund for Sam", body: "" }`, asked at 10:42,
   when the card opens at 10:43,
   then the title "Sorter wants to use create_note (notes-mcp)" has focus, the header reads "Waiting since 10:42 (1 min)", the tag reads "External connector (MCP)", and the arguments read `title: Refund for Sam` and `body: (empty)`.
 - Given the card has been open for 1 s,
