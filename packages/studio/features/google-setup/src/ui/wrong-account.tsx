@@ -1,6 +1,6 @@
 import { Button, Callout } from "@halonicjs/studio-kit";
+import { failureLine } from "@halonicjs/studio-shell";
 import { useEffect, useId, useRef, useState } from "react";
-import { failureLine } from "./failure-line.ts";
 import { useNotAnswering } from "./not-answering.tsx";
 
 /** Props for {@link WrongAccount}. */

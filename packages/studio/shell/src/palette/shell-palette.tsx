@@ -168,7 +168,10 @@ export function runAction(
   runWithToast(command, contextFor, toasts);
 }
 
-/** Runs one command as Ctrl K does, so Settings and the palette fail the same way. */
+/**
+ * Runs one command as Ctrl K does, so Settings and the palette fail the same way: a danger toast,
+ * with **Try again** when the error's kind says trying again may help.
+ */
 export function runWithToast(
   command: Registered<CommandContribution>,
   contextFor: (featureId: string) => WorkspaceContext,
@@ -176,7 +179,14 @@ export function runWithToast(
 ): void {
   const failed = (error: unknown) => {
     const message = errorMessageFor(error, { title: `Couldn't run ${command.title}.` });
-    toasts.show({ tone: "danger", title: message.title, text: message.body });
+    // A failure worth trying again (microcopy 1.1) runs the same command again from the toast.
+    const toast = { tone: "danger" as const, title: message.title, text: message.body };
+    if (message.action?.id !== "try-again") {
+      toasts.show(toast);
+      return;
+    }
+    const again = () => runWithToast(command, contextFor, toasts);
+    toasts.show({ ...toast, action: { label: message.action.label, onClick: again } });
   };
   // Started inside a promise, so a command that throws at once fails like one that rejects.
   void Promise.resolve()

@@ -1,10 +1,12 @@
-import { defaultCurrency, moneyAmount } from "@halonicjs/app";
+import { moneyAmount } from "@halonicjs/app";
 import type { WorkspaceSettings } from "@halonicjs/format";
 import type { ModelsState } from "../aliases/read-models.ts";
 
 /** The words of Settings → Models (flow-settings 1.1; team decision, HAL-10289). */
 export const OPEN_MODELS = "Open Models";
 export const NO_PROVIDERS_YET = "No providers yet";
+/** The line while a part can't be read, rather than a line with that part missing (HAL-11643). */
+export const MODELS_UNREADABLE = "Couldn't read the models settings.";
 
 /** "1 alias", "3 aliases". */
 function count(n: number, one: string, many: string): string {
@@ -22,22 +24,19 @@ function budgetPart(budget: WorkspaceSettings["budget"], currency: string) {
 
 /**
  * The one line of the Models section, "3 aliases · 2 providers · budget €50.00 a month": no
- * providers is "No providers yet"; no budget leaves its part out; while `models.yaml` can't be
- * read the aliases are left out, and while the `providers/` folder can't be read the providers
- * are (that isn't "no providers"). `undefined` while the files are still being read, or when
- * nothing is left to say.
+ * providers is "No providers yet"; no budget leaves its part out. While `models.yaml` or the
+ * `providers/` folder can't be read it says so, as a line with parts missing would read as fewer
+ * aliases or providers. `undefined` while the files are still being read.
  */
 export function modelsSummary(state: ModelsState): string | undefined {
   if (state.status === "loading") return undefined;
-  if (state.providers.length === 0 && !state.providersFailed) return NO_PROVIDERS_YET;
-  const currency =
-    state.status === "ready" ? state.currency : (state.budget?.currency ?? defaultCurrency);
-  const parts = [
-    state.status === "ready"
-      ? count(Object.keys(state.models.aliases).length, "alias", "aliases")
-      : undefined,
-    state.providersFailed ? undefined : count(state.providers.length, "provider", "providers"),
-    budgetPart(state.budget, currency),
-  ].filter((part) => part !== undefined);
-  return parts.length === 0 ? undefined : parts.join(" · ");
+  if (state.status === "unreadable" || state.providersFailed) return MODELS_UNREADABLE;
+  if (state.providers.length === 0) return NO_PROVIDERS_YET;
+  return [
+    count(Object.keys(state.models.aliases).length, "alias", "aliases"),
+    count(state.providers.length, "provider", "providers"),
+    budgetPart(state.budget, state.currency),
+  ]
+    .filter((part) => part !== undefined)
+    .join(" · ");
 }

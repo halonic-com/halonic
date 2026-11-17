@@ -1,6 +1,7 @@
 import { isProjectId, type SetupEdit, type SetupStep, type StepId } from "@halonicjs/google-setup";
 import type { SetupFocus } from "@halonicjs/studio-feature-inbox/api";
 import { Button, Callout, type CalloutHandle, type SecretText } from "@halonicjs/studio-kit";
+import { failureLine } from "@halonicjs/studio-shell";
 import { type ReactNode, type Ref, useEffect, useId, useRef, useState } from "react";
 import type {
   CheckAgainAnswer,
@@ -12,7 +13,6 @@ import type {
 import { connectorProblem } from "../connector-problem.ts";
 import { stepTitle } from "../step-names.ts";
 import { credentialSaves } from "./credential-saves.ts";
-import { failureLine } from "./failure-line.ts";
 import { useNotAnswering } from "./not-answering.tsx";
 import { ProblemBanner } from "./problem-banner.tsx";
 import { currentResultLines } from "./result-lines.ts";

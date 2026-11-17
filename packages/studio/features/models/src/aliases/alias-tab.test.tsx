@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { settlePendingSaves } from "@halonicjs/studio-kit";
 import { type ItemRef, limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
@@ -186,6 +187,23 @@ verifies("models.aliases.edit-target", () => {
     await settled;
 
     expect(changes).toHaveLength(1);
+  });
+
+  it("says a save that failed, with its reason, and Try again saves it", async () => {
+    const { files, changes } = memoryFiles(workspaceModels);
+    const tab = await showTab(files);
+    const read = files.readModels;
+    files.readModels = () => Promise.reject(new KindedError("unavailable", "The disk is full."));
+
+    await typeInto(field(tab, "Model"), "claude-opus-5-5");
+
+    expect(changes).toEqual([]);
+    expect(tab.textContent).toContain("Couldn't save the model alias: the disk is full.");
+    files.readModels = read;
+    const retry = [...tab.querySelectorAll("button")].find((b) => b.textContent === "Try again");
+    await act(async () => retry?.click());
+    expect(changes[0]?.text).toContain("claude-opus-5-5");
+    expect(tab.textContent).not.toContain("Couldn't save the model alias");
   });
 
   it("writes nothing for an empty model name and offers the old one back", async () => {

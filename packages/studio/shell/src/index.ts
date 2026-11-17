@@ -93,6 +93,7 @@ export {
   itemGoneWords,
   type RulePlace,
 } from "./errors/error-message.ts";
+export { failureLine } from "./errors/failure-line.ts";
 export { defineFeature, type Feature, type FeatureDefinition } from "./feature.ts";
 export {
   narrowQuery,

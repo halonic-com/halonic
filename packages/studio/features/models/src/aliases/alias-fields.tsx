@@ -1,6 +1,7 @@
 import type { ModelAlias, Models, Provider } from "@halonicjs/format";
 import { parseAmount, type Result } from "@halonicjs/std";
 import { Field, FormRows, Input, Select, settleOnClose } from "@halonicjs/studio-kit";
+import { failureLine } from "@halonicjs/studio-shell";
 import { useId, useState } from "react";
 import type { ModelsFiles } from "../api.ts";
 import {
@@ -21,6 +22,7 @@ import {
   PRICE_HEADING,
   PRICE_HINT,
 } from "./alias-text.ts";
+import { SaveFailed } from "./save-failed.tsx";
 import { useDraft } from "./use-draft.ts";
 
 /** The props of {@link AliasFields}. */
@@ -60,14 +62,25 @@ export function AliasFields({ files, models, providers, name, currency }: AliasF
   const warningId = useId();
   const [problem, setProblem] = useState<FieldProblem>();
   const [status, setStatus] = useState("");
+  // The save that threw, with its line, so Try again makes it again.
+  const [failed, setFailed] = useState<{ line: string; retry: () => Promise<void> }>();
   const [model, setModel] = useDraft(alias?.model ?? "");
   const [fallbacks, setFallbacks] = useDraft((alias?.fallback ?? []).join(", "));
   const [input, setInput] = useDraft(priceText(alias?.price?.input));
   const [output, setOutput] = useDraft(priceText(alias?.price?.output));
   if (alias === undefined) return null;
 
-  const saveEdit = async (edit: (text: string) => Result<string, FieldProblem>) => {
-    const { problem: found, wrote } = await saveModelsEdit(files, aliasUpdatedLine(name), edit);
+  const saveEdit = async (edit: (text: string) => Result<string, FieldProblem>): Promise<void> => {
+    setFailed(undefined);
+    let saved: Awaited<ReturnType<typeof saveModelsEdit>>;
+    try {
+      saved = await saveModelsEdit(files, aliasUpdatedLine(name), edit);
+    } catch (error) {
+      setStatus("");
+      setFailed({ line: failureLine("save the model alias", error), retry: () => save(edit) });
+      return;
+    }
+    const { problem: found, wrote } = saved;
     setProblem(found);
     if (found !== undefined) setStatus("");
     else if (wrote) setStatus(aliasUpdatedLine(name));
@@ -153,6 +166,7 @@ export function AliasFields({ files, models, providers, name, currency }: AliasF
       </fieldset>
       {problemFor("yaml") === null ? null : <p role="alert">{problemFor("yaml")}</p>}
       <p role="status">{status}</p>
+      <SaveFailed line={failed?.line} retry={() => failed?.retry()} />
     </div>
   );
 }

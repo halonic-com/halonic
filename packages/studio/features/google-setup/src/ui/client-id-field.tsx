@@ -1,7 +1,7 @@
 import { isClientId, looksLikeGoogleClientSecret } from "@halonicjs/google-setup";
 import { Button, CopyButton, Field, Input } from "@halonicjs/studio-kit";
+import { failureLine } from "@halonicjs/studio-shell";
 import { useEffect, useId, useState } from "react";
-import { failureLine } from "./failure-line.ts";
 
 /** What is wrong with a client ID that has the wrong shape. */
 export const clientIdShapeError =
