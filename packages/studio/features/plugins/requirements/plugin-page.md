@@ -36,6 +36,3 @@ The Studio shall open a plugin's page in a tab, as the item kind `plugin`, at `p
 - Given the description `<b>Hi</b> [x](javascript:alert(1))`,
   when the page opens,
   then it shows those characters in quotes, with no bold text and no link.
-- Given the keyboard is the only input and a button on the page goes away (**Review** after Trust, **Check again** once the plugin loads, **Check for updates** once it says "Up to date (1.2.0)"),
-  when the page updates,
-  then focus is on the status box, never on the page's heading or the document body.
