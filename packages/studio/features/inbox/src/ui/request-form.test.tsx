@@ -60,7 +60,8 @@ async function open(
   const waiting = waitingRun("r1", {
     approvals: [pendingApproval("call-1", "notes-mcp__create_note", new Date().toISOString())],
   });
-  const inbox = new Inbox(fakeRuns([waiting]).runs);
+  const runs = fakeRuns([waiting]);
+  const inbox = new Inbox(runs.runs);
   const view = (
     <ToastStoreProvider store={toasts}>
       <InboxView inbox={inbox} requests={requests} openRun={options.openRun} />
@@ -70,7 +71,7 @@ async function open(
     options.phone ? <PresentationProvider presentation="phone">{view}</PresentationProvider> : view,
   );
   await settled();
-  return { root, toasts };
+  return { root, toasts, runs, inbox };
 }
 
 function message(root: HTMLElement): HTMLTextAreaElement {
@@ -132,11 +133,98 @@ verifies("inbox.request", () => {
         unmountAll();
       }
     });
+  });
 
-    it("shows no form on a phone until its request sheet lands", async () => {
+  describe("on a phone", () => {
+    it("shows a New request row and no form until it is pressed", async () => {
       const { root } = await open(fakeRequests([support]).requests, { phone: true });
       expect(root.querySelector("textarea")).toBeNull();
-      expect(root.textContent).not.toContain("New request");
+      expect(root.querySelector("dialog")).toBeNull();
+      await act(async () => {
+        button(root, "New request").click();
+      });
+      const sheet = root.querySelector("dialog");
+      expect(sheet?.textContent).toContain("Answer a customer's email");
+      expect(message(root).value).toBe("");
+      expect(message(root).placeholder).toBe(support.description);
+    });
+
+    it("sends from the sheet, keeps it open with the message cleared and says the run started", async () => {
+      const { requests, started } = fakeRequests([support]);
+      const { root, toasts } = await open(requests, { phone: true });
+      await act(async () => {
+        button(root, "New request").click();
+      });
+      await type(message(root), "Hi, my order arrived damaged.");
+      await send(root);
+      expect(started).toHaveBeenCalledWith(support.key, "Hi, my order arrived damaged.");
+      expect(root.querySelector("dialog")).not.toBeNull();
+      expect(message(root).value).toBe("");
+      expect(toasts.list().map((toast) => toast.title)).toEqual(["Support reply started"]);
+    });
+
+    it("closes the sheet and opens the card by itself when the card arrives while it is open", async () => {
+      const { requests } = fakeRequests([support]);
+      const { root, runs } = await open(requests, { phone: true });
+      await act(async () => {
+        button(root, "New request").click();
+      });
+      await type(message(root), "Hi, my order arrived damaged.");
+      await send(root);
+      await act(async () => {
+        runs.change([
+          waitingRun("r9", { state: "review", accepts: ["approve", "reject"] }),
+          waitingRun("r1", {}),
+        ]);
+      });
+      await settled();
+      expect(root.querySelector("dialog")).toBeNull();
+      expect(root.textContent).toContain("Approve");
+    });
+
+    it("keeps only the row when Close is pressed before the card arrives", async () => {
+      const { requests } = fakeRequests([support]);
+      const { root, runs } = await open(requests, { phone: true });
+      await act(async () => {
+        button(root, "New request").click();
+      });
+      await type(message(root), "Hi");
+      await send(root);
+      await act(async () => {
+        root.querySelector<HTMLButtonElement>('dialog button[aria-label="Close"]')?.click();
+      });
+      await act(async () => {
+        runs.change([waitingRun("r9", { state: "review", accepts: ["approve", "reject"] })]);
+      });
+      await settled();
+      expect(root.querySelector("dialog")).toBeNull();
+      expect(root.textContent).not.toContain("Approve");
+    });
+
+    it("puts focus in Message whether the row is pressed or another page asks", async () => {
+      const { requests } = fakeRequests([support]);
+      const pressed = await open(requests, { phone: true });
+      await act(async () => {
+        button(pressed.root, "New request").click();
+      });
+      expect(document.activeElement).toBe(message(pressed.root));
+      unmountAll();
+      const asked = await open(requests, { phone: true });
+      await act(async () => {
+        asked.inbox.requestNewRequest();
+      });
+      expect(document.activeElement).toBe(message(asked.root));
+    });
+
+    it("keeps the sheet and says what is missing on an empty Send", async () => {
+      const { requests, started } = fakeRequests([support]);
+      const { root } = await open(requests, { phone: true });
+      await act(async () => {
+        button(root, "New request").click();
+      });
+      await send(root);
+      expect(started).not.toHaveBeenCalled();
+      expect(root.querySelector("dialog")?.textContent).toContain("Write a message first.");
     });
   });
 

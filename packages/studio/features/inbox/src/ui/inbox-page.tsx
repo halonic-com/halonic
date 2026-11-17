@@ -147,7 +147,13 @@ export function InboxView({
   const failedFirst = !state.loaded && state.error !== undefined;
   const phone = usePresentation() === "phone";
   const itemPage = phone && open !== null;
-  const sentCard = useSentRequestCard({ items: state.items, openItem, announce });
+  const requestSheetOpen = useRef(false);
+  const sentCard = useSentRequestCard({
+    items: state.items,
+    openItem,
+    sheetOpen: requestSheetOpen,
+    announce,
+  });
   const request = useRequestPane({
     inbox,
     requests,
@@ -157,15 +163,14 @@ export function InboxView({
     words,
     openRun,
     onStarted: sentCard.watch,
+    sheetOpen: requestSheetOpen,
+    cardOpen: open !== null,
   });
 
   return (
     <div className="flex h-full min-h-0 w-full">
       <div data-pane="list" className={listPaneClass(phone, itemPage)}>
-        <header className={phone ? "sr-only" : "flex items-center justify-between px-4 py-3"}>
-          <h1 className="text-title">Inbox</h1>
-          {request.newRequest}
-        </header>
+        <ListHeader phone={phone} newRequest={request.newRequest} />
         {state.loaded && state.error !== undefined ? (
           <p className="px-4 pb-2 text-small text-fg-muted">{words.showingLast}</p>
         ) : null}
@@ -210,6 +215,7 @@ export function InboxView({
           )}
         </div>
       </div>
+      {request.sheet}
       <div
         data-pane="item"
         className={`${phone && open === null ? "hidden" : "flex"} min-w-0 flex-1 justify-center overflow-y-auto`}
@@ -246,6 +252,19 @@ export function InboxView({
         </div>
       </div>
     </div>
+  );
+}
+
+/** The list's title with **New request**: beside it on a desktop, a full-width row under it on a phone. */
+function ListHeader({ phone, newRequest }: { phone: boolean; newRequest: ReactNode }) {
+  return (
+    <>
+      <header className={phone ? "sr-only" : "flex items-center justify-between px-4 py-3"}>
+        <h1 className="text-title">Inbox</h1>
+        {phone ? null : newRequest}
+      </header>
+      {phone ? newRequest : null}
+    </>
   );
 }
 
