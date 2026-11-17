@@ -43,12 +43,13 @@ export type UndoOutcome =
 /**
  * What {@link ChangesList.discardFile} did; the toast's Undo is `undo`, as for an undone change.
  * `noCopy` is a refusal: the copy couldn't be kept, so nothing was changed and the person is asked
- * first. `discarded` is a discard they went on with anyway, which has no Undo.
+ * first. `discarded` is a discard they went on with anyway, which has no Undo for the person;
+ * `putBack` is for Halonic only, to roll it back when a later file of the same item fails.
  */
 export type DiscardOutcome =
   | UndoOutcome
   | { readonly kind: "noCopy" }
-  | { readonly kind: "discarded" };
+  | { readonly kind: "discarded"; readonly putBack: () => Promise<string | undefined> };
 
 /** What {@link ChangesList.getUpdates} did. */
 export type UpdatesOutcome =
