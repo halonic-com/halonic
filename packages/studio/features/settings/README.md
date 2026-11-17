@@ -44,7 +44,7 @@ the format's name; any other stored value follows the computer.
 import { formatExample, formatLocale, formatOptions, formatPref } from "@halonicjs/studio-feature-settings";
 
 formatOptions({ followTag: "en_GB.UTF-8", place: "app" })[0];
-// { value: "follow", label: "Follow this computer: English (United Kingdom)" }
+// { value: "follow", label: "Follow this computer: English (UK)" }
 formatExample(formatLocale(settings.get(formatPref), "en-GB")); // "12,345.60 · Tue 17 Nov, 08:00" (today)
 ```
 
