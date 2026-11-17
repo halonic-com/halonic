@@ -1,4 +1,5 @@
 import { Button, Dialog, Field, Input, SecretText } from "@halonicjs/studio-kit";
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState } from "react";
 import type { KeyEntry, ModelKeys } from "../api.ts";
 import {
@@ -126,8 +127,9 @@ function KeyField({ keys, entry, secretName, providerName, onFirstKey }: KeyFiel
       setDone(line);
       return true;
     } catch (error) {
-      // The key is taken out of the reason, in case the error repeats it.
-      const reason = error instanceof Error ? error.message : String(error);
+      // No reason is a known phrase ("Couldn't save the key. Try again."). The key is taken out of
+      // the reason, in case the error repeats it.
+      const reason = errorReasonFor(error, "");
       setProblem(failure(secret === undefined ? reason : reason.split(secret).join("")));
       return false;
     } finally {

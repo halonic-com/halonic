@@ -121,6 +121,27 @@ verifies("workflows.tests.page", () => {
     expect(runTests).toHaveBeenCalledTimes(2);
   });
 
+  it("shows no path or stack when the tests can't be run", async () => {
+    const leak = new Error("ENOENT: /srv/studio/.halonic/tests.json\n    at read (tests.ts:1:1)");
+    const runTests = vi.fn().mockRejectedValue(leak);
+    const { page, toasts } = await open({ tests: async () => afterRun, runTests });
+    await act(async () => buttonNamed(page, "Run tests")?.click());
+
+    const title = toasts.list()[0]?.title ?? "";
+    expect(title).toBe(
+      "Couldn't run the tests: The engine isn't answering. It may still be starting.",
+    );
+    expect(title).not.toMatch(/srv|ENOENT| at /);
+  });
+
+  it("shows no path or stack when the tests can't be read", async () => {
+    const leak = new Error("ENOENT: /srv/studio/.halonic/tests.json\n    at read (tests.ts:1:1)");
+    const { page } = await open({ tests: () => Promise.reject(leak) });
+
+    expect(page.textContent).toContain("The engine isn't answering.");
+    expect(page.textContent).not.toMatch(/srv|ENOENT|tests\.ts/);
+  });
+
   it("has no Run tests when the app can't run them", async () => {
     const { page } = await open({ tests: async () => afterRun });
 

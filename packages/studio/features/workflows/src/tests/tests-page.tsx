@@ -17,6 +17,8 @@ export interface TestsPageProps {
   readonly openRun?: ((runId: string) => void) | undefined;
   /** The name of the case that starts picked, once the cases have loaded: the one just made from a run. */
   readonly pickName?: string | undefined;
+  /** The words for "the engine isn't answering", for a failed read or run. */
+  readonly notAnswering?: string | undefined;
 }
 
 /**
@@ -24,7 +26,14 @@ export interface TestsPageProps {
  * with a failed case's sentence and **Open run**, and a case's card docked at the right. With no
  * tests there is no header and no button, only the Empty state.
  */
-export function TestsPage({ host, workflow, name, openRun, pickName }: TestsPageProps) {
+export function TestsPage({
+  host,
+  workflow,
+  name,
+  openRun,
+  pickName,
+  notAnswering,
+}: TestsPageProps) {
   const { load, retry } = useHostRead(host, workflow, (one, ref) => one.tests(ref));
   const toasts = useToastStore();
   const [ran, setRan] = useState<WorkflowTests | undefined>();
@@ -98,7 +107,7 @@ export function TestsPage({ host, workflow, name, openRun, pickName }: TestsPage
     } catch (error) {
       toasts?.show({
         tone: "danger",
-        title: words.cantRun(failureReason(error)),
+        title: words.cantRun(failureReason(error, notAnswering)),
         action: { label: words.tryAgain, onClick: () => void start() },
       });
     } finally {

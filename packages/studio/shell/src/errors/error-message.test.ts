@@ -236,5 +236,15 @@ verifies("shell.error-messages", () => {
     ])("gives the generic sentence, never the text, for %s", (_, error) => {
       expect(errorReasonFor(error)).toBe("Halonic ran into a problem it can't explain yet.");
     });
+
+    it("gives the screen's own fallback instead, when it passes one", () => {
+      const leak = new Error("ENOENT: /srv/studio/.halonic/trust.json\n    at read (trust.ts:1:1)");
+      expect(errorReasonFor(leak, "The engine isn't answering.")).toBe(
+        "The engine isn't answering.",
+      );
+      expect(errorReasonFor(new KindedError("not_found", "No such source."), "x")).toBe(
+        "No such source.",
+      );
+    });
   });
 });

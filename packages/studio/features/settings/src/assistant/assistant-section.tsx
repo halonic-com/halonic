@@ -2,6 +2,7 @@ import type { HostSettings } from "@halonicjs/app";
 import type { HostSettingValue } from "@halonicjs/ports";
 import { EmptyState, Field, Select, Switch } from "@halonicjs/studio-kit";
 import {
+  errorReasonFor,
   focusSectionHeading,
   type SettingsPlace,
   type SettingsSectionProps,
@@ -65,14 +66,6 @@ export function AssistantSection({ context, closeSettings, place, surface }: Set
   );
 }
 
-/** A failure's message when it is one plain line; a path, a stack or a long dump gives null. */
-function plainReason(error: unknown): string | null {
-  if (!(error instanceof Error)) return null;
-  const message = error.message.trim();
-  const plain = message !== "" && message.length <= 140 && !/[\n\r/\\]|\bat .*:\d+/.test(message);
-  return plain ? message : null;
-}
-
 /** Whether the host settings are loaded, why not, and a way to load them again. */
 function useLoaded(settings: HostSettings) {
   const [, redraw] = useState(0);
@@ -94,7 +87,7 @@ function useLoaded(settings: HostSettings) {
             setReason(null);
             setRecovered(true);
           },
-          (error: unknown) => setReason(plainReason(error)),
+          (error: unknown) => setReason(errorReasonFor(error, text.NOT_LOADED_REASON)),
         )
         .finally(() => {
           setTrying(false);

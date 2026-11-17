@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import type { SecretText } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -129,7 +130,7 @@ verifies("models.api-keys.enter-key", () => {
     const failing: ModelKeys = {
       ...keys,
       save: async (_name: string, key: SecretText) => {
-        throw new Error(`refused ${key.reveal()}`);
+        throw new KindedError("unavailable", `refused ${key.reveal()}`);
       },
     };
     const view = await show(failing);
@@ -138,6 +139,26 @@ verifies("models.api-keys.enter-key", () => {
     expect(view.textContent).toContain("Couldn't save the key: refused");
     expect(view.textContent).not.toContain("sk-acme-test-789");
     expect(input.value).toBe("sk-acme-test-789");
+  });
+
+  it("shows no path or stack when saving fails", async () => {
+    const { keys } = keysWith(desktop);
+    const leak = new Error("EPERM: /srv/studio/.halonic/keys\n    at write (keys.ts:1:1)");
+    const view = await show({ ...keys, save: async () => Promise.reject(leak) });
+    await type(view, "sk-acme-test-789");
+    await press(view, "Save key");
+    expect(view.textContent).toContain("Couldn't save the key. Try again.");
+    expect(view.textContent).not.toMatch(/srv|EPERM|keys\.ts/);
+  });
+
+  it("shows no path or stack when removing fails", async () => {
+    const { keys } = keysWith(desktop, ["anthropic"]);
+    const leak = new Error("EPERM: /srv/studio/.halonic/keys\n    at write (keys.ts:1:1)");
+    const view = await show({ ...keys, remove: async () => Promise.reject(leak) });
+    await press(view, "Remove key");
+    await press(document.querySelector("dialog") as HTMLElement, "Remove key");
+    expect(view.textContent).toContain("Couldn't remove the key. Try again.");
+    expect(view.textContent).not.toMatch(/srv|EPERM|keys\.ts/);
   });
 });
 

@@ -217,6 +217,7 @@ export function WorkflowScreen({
                   name={name}
                   openRun={openRun}
                   pickName={madeTest?.name}
+                  notAnswering={notAnswering}
                 />
               }
               startOn={madeTest === undefined ? undefined : "tests"}
