@@ -116,7 +116,7 @@ function Assert-UserData([hashtable]$Before) {
 function Write-ReopenReport([datetime]$Since, [hashtable]$Seen) {
   Write-Output "--- reopen report: no Halonic within 180 s of update_restart ($($Since.ToString('HH:mm:ss')) local) ---"
   Write-Output "installed: $(Get-InstalledVersion); Halonic processes seen while waiting: $(if ($Seen.Count) { ($Seen.GetEnumerator() | ForEach-Object { "$($_.Key) from $($_.Value.ToString('HH:mm:ss'))" }) -join ', ' } else { 'none' })"
-  Get-Process | Where-Object { $_.Name -match 'Halonic|setup|installer|agent|explorer|msedgewebview2' } | Sort-Object Name | Format-Table Id, Name, SessionId, StartTime, Path -AutoSize | Out-String -Width 250 | Write-Output
+  Get-Process | Where-Object { $_.Name -match 'Halonic|setup|installer|agent|explorer|msedgewebview2' } | Sort-Object Name | Format-Table Id, Name, SessionId, StartTime, MainWindowTitle, Path -AutoSize | Out-String -Width 250 | Write-Output
   Get-CimInstance Win32_Process -Filter "Name like '%setup%' or Name like '%installer%' or Name like 'Halonic%'" -ErrorAction SilentlyContinue | ForEach-Object { "$($_.ProcessId) parent $($_.ParentProcessId): $($_.CommandLine)" } | Write-Output
   Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = $Since.AddSeconds(-30) } -ErrorAction SilentlyContinue |
     Where-Object { $_.Message -match 'Halonic|halonic-agent-host|msedgewebview2' } | Select-Object -First 10 |
