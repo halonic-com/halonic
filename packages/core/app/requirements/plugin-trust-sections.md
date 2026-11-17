@@ -25,3 +25,9 @@ The app shall also give the files of the plugin's folder that its fingerprint co
 - Given a plugin folder with `plugin.yaml` and exactly ten other files,
   when its files are read,
   then all ten are shown and there are no more.
+- Given a plugin folder with `plugin.yaml` and eleven other files,
+  when its files are read,
+  then all eleven are shown and there are no more, because "and 1 more" would take the same row.
+- Given a plugin folder with `plugin.yaml` and twelve other files,
+  when its files are read,
+  then the first ten by path are shown and two more.

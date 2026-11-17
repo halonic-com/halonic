@@ -74,7 +74,7 @@ function addsToStudio(content: PluginTrustContent): boolean {
  */
 export const pluginTrustLocationHeadings = {
   folder: "Folder",
-  files: "Files the fingerprint covers",
+  files: "Backend files",
 } as const;
 
 /** How many files the trust check names before it says how many more there are. */
@@ -85,7 +85,7 @@ const manifestPath = "plugin.yaml";
 
 /** The plugin's files the fingerprint covers, as the check lists them. */
 export interface PluginTrustFiles {
-  /** The first files by path, at most {@link pluginTrustFileCap}. */
+  /** The first files by path: {@link pluginTrustFileCap} of them, or all when only one more would follow. */
   readonly shown: readonly string[];
   /** How many files come after the ones shown: the "and N more". */
   readonly more: number;
@@ -94,7 +94,8 @@ export interface PluginTrustFiles {
 /**
  * The files in the plugin's folder that the fingerprint covers, for the
  * check to list: the first {@link pluginTrustFileCap} by path, and how many
- * more there are. The manifest isn't one of them. The paths come from the
+ * more there are. One more file is shown rather than "and 1 more", which
+ * takes the same row and says less, so the list is at most one row over the cap. The manifest isn't one of them. The paths come from the
  * workspace, so a host escapes them before it shows them.
  *
  * @example
@@ -102,8 +103,7 @@ export interface PluginTrustFiles {
  */
 export function pluginTrustFiles(content: PluginTrustContent): PluginTrustFiles {
   const paths = content.files.map((file) => file.path).filter((path) => path !== manifestPath);
-  return {
-    shown: paths.slice(0, pluginTrustFileCap),
-    more: Math.max(0, paths.length - pluginTrustFileCap),
-  };
+  const collapses = paths.length > pluginTrustFileCap + 1;
+  const shownCount = collapses ? pluginTrustFileCap : paths.length;
+  return { shown: paths.slice(0, shownCount), more: paths.length - shownCount };
 }

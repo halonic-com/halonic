@@ -56,6 +56,18 @@ verifies("app.plugin-trust-sections", () => {
     });
   });
 
+  it("lists eleven files in full, because \"and 1 more\" would take the same row", () => {
+    const content = pluginTrustContent({ plugin: pluginFrom(), files: filesNamed(11) });
+    expect(pluginTrustFiles(content)).toMatchObject({ more: 0 });
+    expect(pluginTrustFiles(content).shown).toHaveLength(11);
+  });
+
+  it("collapses from twelve files, so the count is at least two", () => {
+    const content = pluginTrustContent({ plugin: pluginFrom(), files: filesNamed(12) });
+    expect(pluginTrustFiles(content)).toMatchObject({ more: 2 });
+    expect(pluginTrustFiles(content).shown).toHaveLength(10);
+  });
+
   it("lists exactly ten files without a count of more", () => {
     const content = pluginTrustContent({ plugin: pluginFrom(), files: filesNamed(10) });
     expect(pluginTrustFiles(content)).toMatchObject({ more: 0 });
