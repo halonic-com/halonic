@@ -17,6 +17,8 @@ export interface ChangeItem {
   readonly name: string;
   /** The item's kind, or `undefined` for an other file. */
   readonly kind: KindName | undefined;
+  /** The hub the item is in; empty for an item that sits in the workspace itself. */
+  readonly hub: string;
   /** The changed files of the item; at least one. */
   readonly files: readonly ChangedFile[];
   /** The one sentence of the row: what changed first, or that the item was renamed. */
@@ -40,19 +42,22 @@ function baseName(path: string): string {
 /** Which item a path belongs to: its kind, hub and name; `undefined` for a file that is no item. */
 function itemOf(
   path: string,
-): { readonly kind: KindName; readonly name: string; readonly key: string } | undefined {
+):
+  | { readonly kind: KindName; readonly name: string; readonly hub: string; readonly key: string }
+  | undefined {
   const place = placeOf(path);
   if (place?.placeId !== undefined) {
     return {
       kind: place.kind,
       name: place.placeId,
+      hub: place.hub ?? "",
       key: `${place.kind}:${place.hub ?? ""}:${place.placeId}`,
     };
   }
   const skill = skillFolderFile.exec(path)?.[1];
   if (skill === undefined) return undefined;
   const hub = /^hubs\/([^/]+)\//u.exec(path)?.[1] ?? "";
-  return { kind: "skill", name: skill, key: `skill:${hub}:${skill}` };
+  return { kind: "skill", name: skill, hub, key: `skill:${hub}:${skill}` };
 }
 
 /** The name an item had before it moved: "Support" for `agents/support.agent.yaml`. */
@@ -76,7 +81,7 @@ function sentenceOf(files: readonly ChangedFile[]): string {
 export function groupIntoItems(files: readonly ChangedFile[]): ChangeItem[] {
   const byId = new Map<
     string,
-    { name: string; kind: KindName | undefined; files: ChangedFile[] }
+    { name: string; kind: KindName | undefined; hub: string; files: ChangedFile[] }
   >();
   for (const file of files) {
     const item = itemOf(file.path);
@@ -84,7 +89,7 @@ export function groupIntoItems(files: readonly ChangedFile[]): ChangeItem[] {
     const found = byId.get(id);
     if (found === undefined) {
       const name = item?.name ?? friendlyNames[file.path] ?? baseName(file.path);
-      byId.set(id, { name, kind: item?.kind, files: [file] });
+      byId.set(id, { name, kind: item?.kind, hub: item?.hub ?? "", files: [file] });
     } else {
       found.files.push(file);
     }

@@ -3,14 +3,27 @@ import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it } from "vitest";
+import type { ChangedFile } from "../changes-list.ts";
 import { ChangesList } from "../changes-list.ts";
 import { fakeSource, settle } from "../source.test-helper.ts";
 import { openItem } from "../test-support/open-item.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
-import { ChangeList } from "./change-list.tsx";
+import { ChangeList, orderItems } from "./change-list.tsx";
 import { ChangesView } from "./changes-page.tsx";
+import { useOpenItem } from "./use-open-item.ts";
+import { WhatChangedPage } from "./whats-changed-page.tsx";
 
 afterEach(unmountAll);
+
+/** The list and its What changed page for files given directly, without a read from git. */
+function ChangesPageOf({ list, files }: { list: ChangesList; files: readonly ChangedFile[] }) {
+  const items = orderItems(files);
+  const nav = useOpenItem(items, () => undefined);
+  if (nav.open === undefined) {
+    return <ChangeList list={list} items={items} onOpen={nav.show} returnFocus={nav.returnFocus} />;
+  }
+  return <WhatChangedPage list={list} item={nav.open} developer={false} onBack={nav.back} />;
+}
 
 const lines = (...all: string[]) => `${all.join("\n")}\n`;
 const agentPath = "agents/triage.agent.yaml";
@@ -50,7 +63,7 @@ verifies("source-control.change-list", () => {
     it("lists each changed file with its Important changes first and Undo this change on the ones with parts", async () => {
       const { root } = await openPage();
       const section = openItem(root, "triage");
-      expect(section.querySelector("h4")?.textContent).toBe("Important");
+      expect(section.querySelector("h2")?.textContent).toBe("Important");
       const rows = [...section.querySelectorAll("li")].map((row) => row.textContent);
       expect(rows[0]).toContain("Instructions");
       expect(rows[1]).toContain("Model");
@@ -87,7 +100,8 @@ verifies("source-control.change-list", () => {
         first?.focus();
         first?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
       });
-      expect(root.querySelector('section[aria-label="triage"]')).not.toBeNull();
+      expect(root.querySelector("h1")?.textContent).toBe("triage");
+      expect(document.activeElement?.textContent).toBe("triage");
     });
 
     it("moves focus to the row that took its place after Undo these changes, never to the page", async () => {
@@ -104,7 +118,7 @@ verifies("source-control.change-list", () => {
         buttons(section, "Undo these changes")[0]?.click();
         await settle();
       });
-      expect(root.querySelector('section[aria-label="triage"]')).toBeNull();
+      expect(root.querySelector("h1")?.textContent).toBe("Changes");
       const focused = document.activeElement;
       expect(focused).not.toBe(document.body);
       expect(focused?.textContent).toContain("README.md");
@@ -272,7 +286,7 @@ verifies("source-control.change-list", () => {
         },
       };
       const list = new ChangesList(fakeSource({ kind: "ready", changes: [] }).source);
-      const root = render(<ChangeList list={list} files={[file]} />);
+      const root = render(<ChangesPageOf list={list} files={[file]} />);
       openItem(root, "alert");
       const [first, second] = buttons(root, "Undo this change");
       expect(first?.getAttribute("aria-disabled")).toBe("true");

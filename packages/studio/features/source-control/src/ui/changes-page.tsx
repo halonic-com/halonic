@@ -1,18 +1,21 @@
 import { EmptyState, ExternalLink, List, usePresentation } from "@halonicjs/studio-kit";
-import type { PlaceViewProps } from "@halonicjs/studio-shell";
+import type { ItemRef, PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 import { type ChangesRead, type DeveloperView, DeveloperViewService } from "../api.ts";
+import type { ChangeItem } from "../change-items.ts";
 import { type ChangesList, ChangesListService, type ChangesListState } from "../changes-list.ts";
 import { pageWords, phoneWords, stateWords } from "../changes-words.ts";
 import { loadFailureReason } from "../load-failure.ts";
 import { AddShareAddressDialog } from "./add-share-address-dialog.tsx";
-import { ChangeList } from "./change-list.tsx";
+import { ChangeList, orderItems } from "./change-list.tsx";
 import { CreateVersionDialog } from "./create-version-dialog.tsx";
 import { GetUpdates } from "./get-updates.tsx";
 import { History } from "./history.tsx";
 import { IdentityDialog } from "./identity-dialog.tsx";
 import { MergeChoices, MergeStrip } from "./merge-choices.tsx";
 import { SharingStrip } from "./sharing-strip.tsx";
+import { type OpenItem, useOpenItem } from "./use-open-item.ts";
+import { WhatChangedPage } from "./whats-changed-page.tsx";
 
 /** The Changes place's page: the open workspace's changes, from `ChangesListService`. */
 export function ChangesPage({ context }: PlaceViewProps) {
@@ -20,6 +23,7 @@ export function ChangesPage({ context }: PlaceViewProps) {
     <ChangesView
       list={context.services.get(ChangesListService)}
       developerView={context.services.find(DeveloperViewService)}
+      openItem={context.openItem}
     />
   );
 }
@@ -29,6 +33,8 @@ export interface ChangesViewProps {
   readonly list: ChangesList;
   /** Whether the developer view is on; without it the view is off. */
   readonly developerView?: DeveloperView | undefined;
+  /** Opens an item in this tab, for the What changed page's Open button; without it there is none. */
+  readonly openItem?: ((item: ItemRef) => void) | undefined;
 }
 
 /**
@@ -42,15 +48,31 @@ export interface ChangesViewProps {
  *
  * Not here yet: the sharing strip's other states.
  */
-export function ChangesView({ list, developerView }: ChangesViewProps) {
+export function ChangesView({ list, developerView, openItem }: ChangesViewProps) {
   const phone = usePresentation() === "phone";
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
   const state = useSyncExternalStore(subscribe, () => list.state);
   const developer = useDeveloperView(developerView);
   const heading = useRef<HTMLHeadingElement>(null);
   const [addingAddress, setAddingAddress] = useState(false);
+  const items = orderItems(state.files);
+  const nav = useOpenItem(items, () => heading.current?.focus());
+  const pageClass = `flex w-full flex-col gap-4 ${phone ? "p-4" : "px-6 py-5"}`;
+  if (nav.open !== undefined) {
+    return (
+      <div className={pageClass}>
+        <WhatChangedPage
+          list={list}
+          item={nav.open}
+          developer={developer}
+          openItem={openItem}
+          onBack={nav.back}
+        />
+      </div>
+    );
+  }
   return (
-    <div className={`flex w-full flex-col gap-4 ${phone ? "p-4" : "px-6 py-5"}`}>
+    <div className={pageClass}>
       <header className="flex items-center gap-3">
         <h1 ref={heading} tabIndex={-1} className={phone ? "sr-only flex-1" : "text-title flex-1"}>
           {pageWords.title}
@@ -71,7 +93,8 @@ export function ChangesView({ list, developerView }: ChangesViewProps) {
       <PageBody
         list={list}
         state={state}
-        developer={developer}
+        items={items}
+        nav={nav}
         phone={phone}
         focusHeading={() => heading.current?.focus()}
       />
@@ -100,13 +123,15 @@ export function ChangesView({ list, developerView }: ChangesViewProps) {
 function PageBody({
   list,
   state,
-  developer,
+  items,
+  nav,
   phone,
   focusHeading,
 }: {
   readonly list: ChangesList;
   readonly state: ChangesListState;
-  readonly developer: boolean;
+  readonly items: readonly ChangeItem[];
+  readonly nav: OpenItem;
   readonly phone: boolean;
   readonly focusHeading: () => void;
 }) {
@@ -124,7 +149,8 @@ function PageBody({
         list={list}
         state={state}
         read={read}
-        developer={developer}
+        items={items}
+        nav={nav}
         phone={phone}
         focusHeading={focusHeading}
       />
@@ -137,14 +163,16 @@ function ReadBody({
   list,
   state,
   read,
-  developer,
+  items,
+  nav,
   phone,
   focusHeading,
 }: {
   readonly list: ChangesList;
   readonly state: ChangesListState;
   readonly read: ChangesRead;
-  readonly developer: boolean;
+  readonly items: readonly ChangeItem[];
+  readonly nav: OpenItem;
   readonly phone: boolean;
   readonly focusHeading: () => void;
 }) {
@@ -169,10 +197,10 @@ function ReadBody({
       ) : (
         <ChangeList
           list={list}
-          files={state.files}
-          developer={developer}
+          items={items}
+          onOpen={nav.show}
+          returnFocus={nav.returnFocus}
           phone={phone}
-          focusHeading={focusHeading}
         />
       )}
       <History list={list} history={state.history} phone={phone} />

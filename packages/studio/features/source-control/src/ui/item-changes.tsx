@@ -3,8 +3,9 @@ import type { LineChange } from "@halonicjs/std";
 import { Button, useToastStore } from "@halonicjs/studio-kit";
 import { useId, useMemo, useRef, useState } from "react";
 import type { ChangeItem } from "../change-items.ts";
-import type { ChangedFile, ChangesList, DiscardOutcome } from "../changes-list.ts";
+import type { ChangedFile, ChangesList } from "../changes-list.ts";
 import { discardWords, listWords, mergeWords, undoWords } from "../changes-words.ts";
+import { type DiscardToasts, useDiscardToasts } from "./use-discard-toasts.ts";
 
 /** Props for {@link ItemChanges}. */
 export interface ItemChangesProps {
@@ -12,24 +13,17 @@ export interface ItemChangesProps {
   readonly item: ChangeItem;
   /** Whether the developer view is on: it adds Discard and "Discard this part". */
   readonly developer: boolean;
-  /** Where focus goes when what it was on is gone, such as the Undo button of the last change. */
-  readonly headingRef: React.Ref<HTMLHeadingElement>;
 }
 
 /**
- * What changed in one item, opened from its row: the item's name, then each of its files with the
- * Important changes first, each as before → after, then the others. Every change that can be
- * undone on its own has Undo this change.
+ * The body of What changed: each file of the item with the Important changes first, each as
+ * before → after, then the others. Every change that can be undone on its own has Undo this
+ * change. The page's `h1` is the item's name, so a file's path, when shown, is the `h2`, and the
+ * groups and parts under it go one level down.
  */
-export function ItemChanges({ list, item, developer, headingRef }: ItemChangesProps) {
+export function ItemChanges({ list, item, developer }: ItemChangesProps) {
   return (
-    <section
-      aria-label={item.name}
-      className="flex flex-col gap-3 rounded-md border border-border p-4"
-    >
-      <h3 ref={headingRef} tabIndex={-1} className="text-heading outline-none">
-        {item.name}
-      </h3>
+    <div className="flex flex-col gap-4">
       {item.files.map((file) => (
         <FileChanges
           key={file.path}
@@ -39,7 +33,7 @@ export function ItemChanges({ list, item, developer, headingRef }: ItemChangesPr
           showPath={developer || item.files.length > 1}
         />
       ))}
-    </section>
+    </div>
   );
 }
 
@@ -61,7 +55,6 @@ function FileChanges({
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string>();
   const discarding = useDiscardToasts();
-  const waitingId = useId();
 
   async function discardFile() {
     setBusy(true);
@@ -77,31 +70,17 @@ function FileChanges({
   const other = lines.filter((line) => !line.important);
   return (
     <section aria-label={file.path} className="flex flex-col gap-2">
-      <div className="flex items-center gap-3">
-        <span className={showPath ? "text-label flex-1 break-all" : "flex-1"}>
-          {showPath ? file.path : null}
-        </span>
-        {developer && hunks.length > 0 ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-expanded={showLines}
-            onClick={() => setShowLines(!showLines)}
-          >
-            {showLines ? discardWords.hideLines : discardWords.showLines}
-          </Button>
-        ) : null}
-        <Button
-          variant="ghost"
-          size="sm"
+      {showPath ? (
+        <FileBar
+          path={file.path}
+          canShowLines={developer && hunks.length > 0}
+          showLines={showLines}
+          onToggleLines={() => setShowLines(!showLines)}
+          onDiscard={developer ? () => void discardFile() : undefined}
           busy={busy}
-          unavailable={list.merging ? { reason: waitingId } : undefined}
-          onClick={() => void discardFile()}
-        >
-          {developer ? discardWords.discard : discardWords.undoTheseChanges}
-        </Button>
-      </div>
-      <WaitingNote list={list} id={waitingId} />
+          list={list}
+        />
+      ) : null}
       {failure === undefined ? null : (
         <span role="alert" className="text-small text-danger">
           {discardWords.failed}. {failure}
@@ -111,11 +90,18 @@ function FileChanges({
         <LineDiff list={list} file={file} hunks={hunks} discarding={discarding} />
       ) : null}
       {important.length === 0 ? null : (
-        <Group title={listWords.important} list={list} file={file} lines={important} />
+        <Group
+          title={listWords.important}
+          level={showPath ? 3 : 2}
+          list={list}
+          file={file}
+          lines={important}
+        />
       )}
       {other.length === 0 ? null : (
         <Group
           title={important.length === 0 ? undefined : listWords.other}
+          level={showPath ? 3 : 2}
           list={list}
           file={file}
           lines={other}
@@ -126,7 +112,7 @@ function FileChanges({
 }
 
 /** Says why changes can't be undone while a Get updates is half done; nothing otherwise. */
-function WaitingNote({ list, id }: { readonly list: ChangesList; readonly id: string }) {
+export function WaitingNote({ list, id }: { readonly list: ChangesList; readonly id: string }) {
   if (!list.merging) return null;
   return (
     <span id={id} className="text-small text-fg-muted">
@@ -135,38 +121,51 @@ function WaitingNote({ list, id }: { readonly list: ChangesList; readonly id: st
   );
 }
 
-/** What a discard's toast says, and what its Undo does. */
-interface DiscardToasts {
-  /** Shows the toast for a finished discard; gives the reason when it failed. */
-  readonly run: (
-    outcome: DiscardOutcome,
-    toast: { readonly title: string; readonly text: string },
-  ) => Promise<string | undefined>;
-}
-
-/** The toast every discard shows: what was discarded, with Undo, which puts it all back. */
-function useDiscardToasts(): DiscardToasts {
-  const toasts = useToastStore();
-  return {
-    run: async (outcome, { title, text }) => {
-      if (outcome.kind === "failed") return outcome.reason;
-      const { undo } = outcome;
-      toasts?.show({
-        tone: "success",
-        title,
-        text,
-        action: {
-          label: undoWords.undo,
-          onClick: () =>
-            void undo().then((reason) => {
-              if (reason === undefined) return;
-              toasts.show({ tone: "danger", title: discardWords.undoFailed, text: reason });
-            }),
-        },
-      });
-      return undefined;
-    },
-  };
+/** A file's path as the heading of its changes, with the developer view's Show lines and Discard. */
+function FileBar({
+  path,
+  canShowLines,
+  showLines,
+  onToggleLines,
+  onDiscard,
+  busy,
+  list,
+}: {
+  readonly path: string;
+  readonly canShowLines: boolean;
+  readonly showLines: boolean;
+  readonly onToggleLines: () => void;
+  /** Only the developer view discards a single file. */
+  readonly onDiscard: (() => void) | undefined;
+  readonly busy: boolean;
+  /** Says why Discard is unavailable while a Get updates is half done. */
+  readonly list: ChangesList;
+}) {
+  const waitingId = useId();
+  return (
+    <>
+      <div className="flex items-center gap-3">
+        <h2 className="text-label flex-1 break-all">{path}</h2>
+        {canShowLines ? (
+          <Button variant="ghost" size="sm" aria-expanded={showLines} onClick={onToggleLines}>
+            {showLines ? discardWords.hideLines : discardWords.showLines}
+          </Button>
+        ) : null}
+        {onDiscard === undefined ? null : (
+          <Button
+            variant="ghost"
+            size="sm"
+            busy={busy}
+            unavailable={list.merging ? { reason: waitingId } : undefined}
+            onClick={onDiscard}
+          >
+            {discardWords.discard}
+          </Button>
+        )}
+      </div>
+      {onDiscard === undefined ? null : <WaitingNote list={list} id={waitingId} />}
+    </>
+  );
 }
 
 /** What tells one part of a file from the others. */
@@ -220,7 +219,7 @@ function LineDiff({
       {hunks.map((part) => (
         <div key={partKey(part)} className="flex items-start gap-3">
           <div className="flex-1">
-            <h5 className="text-small text-fg-muted">{partHeading(part)}</h5>
+            <h3 className="text-small text-fg-muted">{partHeading(part)}</h3>
             <pre className="text-small overflow-x-auto rounded-md border border-border p-2">
               {part.removed.map((line, index) => (
                 <span key={`-${index}`} className="block text-danger">
@@ -257,18 +256,21 @@ function LineDiff({
 
 function Group({
   title,
+  level,
   list,
   file,
   lines,
 }: {
   readonly title: string | undefined;
+  /** The heading level of the title: under the file's path, or straight under the page's `h1`. */
+  readonly level: 2 | 3;
   readonly list: ChangesList;
   readonly file: ChangedFile;
   readonly lines: readonly ChangeLine[];
 }) {
   return (
     <div className="flex flex-col gap-1">
-      {title === undefined ? null : <h4 className="text-label text-fg-muted">{title}</h4>}
+      {title === undefined ? null : <GroupHeading level={level}>{title}</GroupHeading>}
       <ul className="flex flex-col gap-1">
         {lines.map((line) => (
           <li key={line.id}>
@@ -278,6 +280,11 @@ function Group({
       </ul>
     </div>
   );
+}
+
+function GroupHeading({ level, children }: { readonly level: 2 | 3; readonly children: string }) {
+  const Heading = level === 2 ? "h2" : "h3";
+  return <Heading className="text-label text-fg-muted">{children}</Heading>;
 }
 
 /** One change and its Undo this change, or why it can't be undone yet. */
