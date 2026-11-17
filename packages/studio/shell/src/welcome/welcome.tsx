@@ -93,6 +93,13 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
     (row ?? openButton.current)?.focus();
     setFocusAfterRemove(undefined);
   }, [focusAfterRemove]);
+  const failedLocation = shownProblem?.location;
+  useEffect(() => {
+    if (failedLocation !== undefined) {
+      // On a small window the failed row can sit below the fold, and its outline is what names it.
+      rows.current.get(failedLocation)?.scrollIntoView?.({ block: "nearest" });
+    }
+  }, [failedLocation]);
   const rowRef = useCallback(
     (location: string) => (button: HTMLButtonElement | null) => {
       if (button === null) {
