@@ -3,7 +3,6 @@
 - Task: HAL-10718
 - Approval: Liam reviews and signs this on HAL-10718 (https://paperclip.halonic.com/HAL/issues/HAL-10718); his comment there says he signs any decision note on the task. A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
-- Signature: PENDING (Liam signs from a clean worktree of `origin/main`)
 
 ## What changes
 
