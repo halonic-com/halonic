@@ -118,8 +118,17 @@ the provider and the origin, never the key or the path. Origins match as a
 whole (scheme, host and port), never by prefix.
 
 A key saved before lists existed has none, and keeps the rule above. This step
-adds the list and the check only; there is no way to edit a list in the app or
-the CLI yet, and Studio's keychain keeps no list, so its keys keep the rule above.
+adds the list and the check; Studio's keychain keeps no list, so its keys keep
+the rule above.
+
+`halonic models allow-address <key-name> <address>` adds one address to a key's
+list, keeping the others. It keeps the scheme, host and port of what you type,
+and refuses an address with a user name or password. It refuses to run from
+inside a run, when the run marker `HALONIC_RUN_TOKEN` is in its environment.
+That check is a second layer so a tool gets a clear answer; it is not the
+boundary. The boundary is the sandbox, which denies a run the profile folder
+where the list is kept, so a tool can't edit the list even by removing the
+marker.
 
 ## What Studio asks for
 

@@ -9,6 +9,7 @@ import {
 } from "@halonicjs/adapter-fs-node";
 import {
   checkSecretValue,
+  isSecretName,
   type KeyOrigins,
   maxAllowedOrigins,
   type SecretStore,
@@ -16,7 +17,9 @@ import {
 } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import {
+  type AddressProblem,
   originOf,
+  originOfAddress as originOfTypedAddress,
   parseSecretsFile,
   type SecretEntry,
   secretsFileText,
@@ -72,6 +75,48 @@ export class FileSecretStore implements SecretStore, KeyOrigins {
   async allowedOrigins(name: string): Promise<readonly string[] | undefined> {
     const key = secretKey(name);
     return (await this.#load()).get(key)?.allowedOrigins;
+  }
+
+  /**
+   * Adds one origin to the ones a stored key may be sent to, keeping the
+   * others, in one step with the file's lock so two callers never lose each
+   * other's change. The address is reduced to its scheme, host and port, as
+   * {@link setAllowedOrigins} does.
+   *
+   * An expected outcome is returned, not thrown: no stored secret under the
+   * name (a name that breaks the rule has none), an address that can't be an
+   * origin, or a list that already holds {@link maxAllowedOrigins}. Nothing is
+   * written then, and nothing is written when the origin is already on the list.
+   *
+   * @throws KindedError when the file can't be read or written; the message
+   *   never repeats a value
+   */
+  async addAllowedOrigin(name: string, address: string): Promise<AddOriginResult> {
+    const found = originOfTypedAddress(address);
+    if ("problem" in found) {
+      return { result: "bad-address", problem: found.problem };
+    }
+    if (!isSecretName(name)) {
+      return { result: "no-key" };
+    }
+    const key = secretKey(name);
+    return await this.#exclusively(async () => {
+      const entries = await this.#load();
+      const entry = entries.get(key);
+      if (entry === undefined) {
+        return { result: "no-key" } as const;
+      }
+      const current = entry.allowedOrigins ?? [];
+      if (current.includes(found.origin)) {
+        return { result: "already-allowed", origin: found.origin } as const;
+      }
+      if (current.length >= maxAllowedOrigins) {
+        return { result: "full" } as const;
+      }
+      entries.set(key, { ...entry, allowedOrigins: [...current, found.origin] });
+      await this.#save(entries);
+      return { result: "added", origin: found.origin } as const;
+    });
   }
 
   /**
@@ -170,3 +215,9 @@ function originOfAddress(address: string): string {
 function isMissing(error: unknown): boolean {
   return (error as { code?: unknown } | null)?.code === "ENOENT";
 }
+
+/** What {@link FileSecretStore.addAllowedOrigin} did; `origin` is the address as it is stored. */
+export type AddOriginResult =
+  | { readonly result: "added" | "already-allowed"; readonly origin: string }
+  | { readonly result: "no-key" | "full" }
+  | { readonly result: "bad-address"; readonly problem: AddressProblem };
