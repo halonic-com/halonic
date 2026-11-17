@@ -10,6 +10,7 @@ import { ConnectorStatusHostService } from "../connector-status-host.ts";
 import { ConnectorStatusModel } from "../connector-status-model.ts";
 import { ListedToolsHostService } from "../listed-tools-host.ts";
 import { ListedToolsReviewModel } from "../listed-tools-review-model.ts";
+import { asksFirstWords } from "../new-connector-words.ts";
 import { ConnectorConnectionSummary } from "./connector-connection-summary.tsx";
 import { ConnectorStatusSection } from "./connector-status-section.tsx";
 import { useItemTrash } from "./item-trash.tsx";
@@ -70,6 +71,9 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
         </h1>
         {trash.menu}
       </div>
+      {connector?.asks === undefined ? null : (
+        <p className="text-body text-fg-muted">{asksFirstWords[connector.asks]}</p>
+      )}
       {toolsModel === undefined ? null : (
         <ListedToolsWaiting model={toolsModel} sourceName={connector?.name ?? item.id} />
       )}

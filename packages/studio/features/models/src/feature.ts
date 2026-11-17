@@ -2,7 +2,12 @@ import { RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { defineFeature } from "@halonicjs/studio-shell";
 import { ALIAS_KIND, ALIAS_KIND_LABEL, aliasTitle } from "./aliases/alias-text.ts";
 import { readModels } from "./aliases/read-models.ts";
-import { ModelKeysService, ModelsFilesService, NoLimitMemoryService } from "./api.ts";
+import {
+  ModelKeysService,
+  ModelsFilesService,
+  NoLimitMemoryService,
+  ProviderCheckService,
+} from "./api.ts";
 import { PROVIDER_KIND, PROVIDER_KIND_LABEL, providerTabLabel } from "./providers/provider-text.ts";
 import { modelsSummary } from "./settings/settings-text.ts";
 import { hasProblems } from "./settings/use-problems.ts";
@@ -21,7 +26,7 @@ export const modelsFeature = defineFeature({
   id: "models",
   title: "Models",
   needs: [ModelsFilesService],
-  wants: [ModelKeysService, NoLimitMemoryService, RunsListService],
+  wants: [ModelKeysService, NoLimitMemoryService, ProviderCheckService, RunsListService],
   register(studio) {
     studio.settings.add({
       id: "models",

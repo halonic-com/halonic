@@ -43,7 +43,10 @@ lists, in this order (requirement `cli.trust-check`):
 - **Addresses:** HTTP connectors, local integrations that read an address from
   a setting, and every model provider other than the test model, with its
   `baseUrl` (or its type when the file names none) and the secret it gets.
-  Secrets are shown by name, never by value.
+  Secrets are shown by name, never by value. A provider whose key goes to an
+  address other than its type's own gets a second line, "Sends its key to
+  https://llm.example.com." (see
+  [a key goes only to its own address](#a-key-goes-only-to-its-own-address)).
 - **Fingerprint:** the full fingerprint, never shortened.
 
 When the workspace changed since you trusted it, the check shows only what is
@@ -77,6 +80,30 @@ trusted or changed since, and 500 when the check itself fails; in both cases
 nothing starts. Unlike the CLI, it makes no exception for a run that can only
 reach the test model. `GET /api/trust` only shows the decision. No route of the
 server grants trust: you do that on the computer, with `halonic trust`.
+
+## A key goes only to its own address
+
+A provider file with a `secret` makes Halonic send that key to the provider's
+`baseUrl`. Every call that resolves a provider checks where the key would go,
+in the CLI, in Studio and for the agent editor's unsaved settings
+(requirement `cli.workspace-provider-key-trust`). The key may go to a non-default address
+only when the workspace is trusted on this computer. Otherwise the call is
+refused with the error `untrusted-provider-address`, which names the provider
+and the origin (scheme, host and port), never the key or the path, and says
+to check `providers/<id>.yaml` and trust the workspace.
+
+An address is the default when `baseUrl` is left out, or when its scheme, host
+and port are the same as the type's own: `https://api.anthropic.com` for
+`anthropic`, `https://api.openai.com` for `openai`, `http://localhost:11434`
+for `ollama` and `http://localhost:1234` for `lmstudio`. Everything else is not
+the default: a type with no address of its own such as `openai-compatible`,
+`http` where the type's own is `https`, another port, an IP address (even
+`127.0.0.1` for a type that uses `localhost`), a host that only looks like the
+default one, and an address with a user name or password. A provider without a
+`secret` and the test model have no key to protect. The model adapters never
+follow a redirect, so a server can't pass the key on to another address.
+A folder you already trusted stays trusted: the trust fingerprint already
+holds each provider's type, `baseUrl` and secret name.
 
 ## What Studio asks for
 

@@ -7,7 +7,7 @@
 import { rm } from "node:fs/promises";
 import { homedir } from "node:os";
 import { FileSystemFolderReader, FileUnfencedRunConsentStore } from "@halonicjs/adapter-fs-node";
-import type { AddressCheckingHttpClient } from "@halonicjs/adapter-http-kit";
+import { type AddressCheckingHttpClient, connectorHostClass } from "@halonicjs/adapter-http-kit";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import {
   type RunnerMachine,
@@ -33,7 +33,6 @@ import {
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
-import { connectorHostClass } from "./connector-machine.ts";
 import type { LocalIntegrationMachine } from "./open-local-integration.ts";
 import type { PluginBackendMachine } from "./open-plugin-backend.ts";
 import { openPluginService } from "./plugin-host.ts";

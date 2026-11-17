@@ -43,6 +43,7 @@ beforeAll(async () => {
   const engine = await openLocalEngine({
     workspace: ranIn,
     workspaceRoot: acme,
+    trusted: true,
     secrets: { get: async () => null },
     http: { fetch: () => Promise.reject(new TypeError("no server")) },
     environment: { ...nodeProfileEnvironment(), variables: { HALONIC_HOME: join(folder, "home") } },

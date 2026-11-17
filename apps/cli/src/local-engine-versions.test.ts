@@ -71,6 +71,7 @@ async function openEngine(
       forget: () => {},
     },
     workspaceRoot: acme,
+    trusted: true,
     secrets,
     http,
     environment: profile,

@@ -97,7 +97,7 @@ export function trustCheckLines(check: FingerprintedCheck, rawFacts: TrustCheckF
     ...section(trustMessages.addressesHeading(), [
       ...addresses(connectors).map((row) => addressRow(row)),
       ...integrations.flatMap(integrationRows),
-      ...providers.map(providerRow),
+      ...providers.flatMap(providerRow),
     ]),
     ...fingerprint,
   ];
@@ -161,8 +161,8 @@ function changedLines(
       ...rowsOf(addresses, (row) => [addressRow(row)]),
       ...changes.integrations.added.flatMap((row) => tagged(integrationRows(row), newRow)),
       ...changes.integrations.changed.flatMap(integrationChanges),
-      ...changes.providers.added.map((row) => withTag(providerRow(row), newRow)),
-      ...changes.providers.changed.map((row) => withTag(providerRow(row.after), changedRow)),
+      ...changes.providers.added.flatMap((row) => tagged(providerRow(row), newRow)),
+      ...changes.providers.changed.flatMap((row) => tagged(providerRow(row.after), changedRow)),
     ]),
   ];
 }

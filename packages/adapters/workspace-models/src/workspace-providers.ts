@@ -82,15 +82,16 @@ export function workspaceProvider(
 
 /**
  * Why a run's model call has no model to go to, as the CLI prints it:
- * `not_found`, so exit 4. Its message is the reason and its fix the next
- * step; the command's own action makes line 1.
+ * `not_found`, so exit 4, or `denied` for `untrusted-provider-address`. Its
+ * message is the reason and its fix the next step; the command's own action
+ * makes line 1.
  */
 export class WorkspaceModelError extends KindedError {
   /** The detailed code on line 3 and in `--json`. */
   readonly code: WorkspaceModelErrorCode;
 
   constructor(code: WorkspaceModelErrorCode, reason: ModelText, fix: ModelText) {
-    super("not_found", reason, { fix });
+    super(code === "untrusted-provider-address" ? "denied" : "not_found", reason, { fix });
     this.code = code;
   }
 }
@@ -100,6 +101,7 @@ export type WorkspaceModelErrorCode =
   | "unknown-provider-type"
   | "no-provider-address"
   | "no-provider"
+  | "untrusted-provider-address"
   | "not-on-this-machine"
   | "unknown-model-alias";
 

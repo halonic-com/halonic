@@ -2,7 +2,7 @@ import { Callout, Dialog, Field, Input, RadioGroup, Select } from "@halonicjs/st
 import { useRef, useState } from "react";
 import { newConnectorErrors } from "../new-connector-check.ts";
 import type { ConnectorRef, NewConnectorHost, NewConnectorWay } from "../new-connector-host.ts";
-import { newConnectorWords } from "../new-connector-words.ts";
+import { asksFirstWords, newConnectorWords } from "../new-connector-words.ts";
 
 /** The props of {@link NewConnectorDialog}. */
 export interface NewConnectorDialogProps {
@@ -190,7 +190,7 @@ export function NewConnectorDialog({
         )}
         {way !== null && (
           <Callout tone="info">
-            {way === "google" ? newConnectorWords.googleAsksFirst : newConnectorWords.asksFirst}
+            {asksFirstWords[way === "google" ? "changes" : "every-tool"]}
           </Callout>
         )}
       </div>

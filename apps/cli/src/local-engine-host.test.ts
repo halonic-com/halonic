@@ -71,6 +71,7 @@ async function openEngine(): Promise<LocalEngine> {
   const engine = await openLocalEngine({
     workspace,
     workspaceRoot: acme,
+    trusted: true,
     secrets,
     http,
     environment: profile,
@@ -267,6 +268,7 @@ describe("openLocalEngine", () => {
       openLocalEngine({
         workspace,
         workspaceRoot: join(folder, "gone"),
+        trusted: true,
         secrets,
         http,
         environment: profile,
@@ -288,6 +290,7 @@ describe("openLocalEngine", () => {
     const engine = await openLocalEngine({
       workspace,
       workspaceRoot: acme,
+      trusted: true,
       secrets,
       http,
       environment: profile,
@@ -315,6 +318,7 @@ describe("the engine lock under attack", () => {
     const second = openLocalEngine({
       workspace,
       workspaceRoot: linked,
+      trusted: true,
       secrets,
       http,
       environment: profile,
@@ -330,6 +334,7 @@ describe("the engine lock under attack", () => {
     const engine = await openLocalEngine({
       workspace,
       workspaceRoot: acme,
+      trusted: true,
       secrets,
       http,
       environment: profile,
@@ -439,6 +444,7 @@ describe("the engine lock under attack", () => {
       const engine = await openLocalEngine({
         workspace,
         workspaceRoot: acme,
+        trusted: true,
         secrets,
         http,
         environment: profile,
@@ -467,6 +473,7 @@ describe("the engine lock under attack", () => {
       const engine = await openLocalEngine({
         workspace,
         workspaceRoot: acme,
+        trusted: true,
         secrets,
         http,
         environment: profile,

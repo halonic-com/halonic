@@ -26,6 +26,7 @@ import {
   resolveModel,
 } from "@halonicjs/workspace";
 import { modelTexts } from "./model-texts.ts";
+import { keyDestination } from "./provider-origin.ts";
 import {
   type ProviderFile,
   WorkspaceModelError,
@@ -42,6 +43,13 @@ export interface WorkspaceModelResolverInput {
   /** The CLI's remembered secrets, never a raw adapter (`apps/cli/AGENTS.md`). */
   readonly secrets: Secrets;
   readonly http: HttpClient;
+  /**
+   * Whether the workspace is trusted on this computer, asked on every model
+   * call. A provider's stored key goes only to its type's own address unless
+   * this says yes (HAL-11342). Required, so no host can forget it; a check
+   * that throws fails the call, as a no does.
+   */
+  readonly isTrusted: () => boolean | Promise<boolean>;
 }
 
 /**
@@ -113,6 +121,7 @@ export function workspaceModelResolver(
     definitions: HubDefinitions,
     target: ModelTarget,
     scope: ModelScope | undefined,
+    trusted: boolean,
   ): ResolvedModel => {
     const file: Provider | undefined = definitions.providers[target.provider];
     if (file === undefined) {
@@ -122,6 +131,7 @@ export function workspaceModelResolver(
         modelTexts.noProviderFix(target.provider),
       );
     }
+    requireTrustForKey(file, trusted);
     let provider: LlmProvider | undefined;
     if (file.type === "mock") {
       provider = mockFor(file, scope);
@@ -136,8 +146,9 @@ export function workspaceModelResolver(
   };
 
   return async (request, scope) => {
+    const trusted = await input.isTrusted();
     if (request.agent !== undefined) {
-      return unsavedModel(request.agent, { ...context, localOnly });
+      return unsavedModel(request.agent, { ...context, localOnly, trusted });
     }
     const definitions = definitionsFor(request.hubId);
     const name = callModelName(definitions, request);
@@ -149,8 +160,8 @@ export function workspaceModelResolver(
         modelTexts.unknownAliasFix(),
       );
     }
-    const fallback = target.fallback.map((next) => modelAt(definitions, next, scope));
-    return { ...modelAt(definitions, target, scope), fallback };
+    const fallback = target.fallback.map((next) => modelAt(definitions, next, scope, trusted));
+    return { ...modelAt(definitions, target, scope, trusted), fallback };
   };
 }
 
@@ -176,6 +187,25 @@ export function latestModelResolver(
     }
     return await last.resolve(request, scope);
   };
+}
+
+/**
+ * Refuses a provider whose stored key would go to an address other than its
+ * type's own, unless the workspace is trusted on this computer. The message
+ * names the provider and the origin, never the key or the path.
+ *
+ * @throws {WorkspaceModelError} `untrusted-provider-address`
+ */
+function requireTrustForKey(file: ProviderFile, trusted: boolean): void {
+  const destination = keyDestination(file);
+  if (destination === undefined || destination.isDefault || trusted) {
+    return;
+  }
+  throw new WorkspaceModelError(
+    "untrusted-provider-address",
+    modelTexts.untrustedAddress(destination.provider, destination.origin),
+    modelTexts.untrustedAddressFix(destination.provider),
+  );
 }
 
 /**
@@ -207,7 +237,7 @@ function resolvedModel(
  */
 function unsavedModel(
   settings: ChatAgentSettings,
-  context: { secrets: Secrets; http: HttpClient; localOnly: boolean },
+  context: { secrets: Secrets; http: HttpClient; localOnly: boolean; trusted: boolean },
 ): ResolvedModel {
   if (context.localOnly && !isOnThisMachine({ ...settings, options: {} })) {
     throw new WorkspaceModelError(
@@ -224,6 +254,7 @@ function unsavedModel(
     ...(settings.baseUrl === undefined ? {} : { baseUrl: settings.baseUrl }),
     ...(settings.secret === undefined ? {} : { secret: settings.secret }),
   };
+  requireTrustForKey(file, context.trusted);
   return resolvedModel(workspaceProvider(file, context), file, {
     provider: file.id,
     model: settings.model,

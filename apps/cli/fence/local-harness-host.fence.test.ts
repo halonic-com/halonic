@@ -167,6 +167,7 @@ describe("a harness run in the real srt sandbox", () => {
       const engine = await openLocalEngine({
         workspace: await loadWorkspace(new FolderDefinitionStore(acme, "./acme")),
         workspaceRoot: acme,
+        trusted: true,
         secrets: { get: async () => null },
         http: { fetch: () => Promise.reject(new TypeError("The run calls no server.")) },
         environment: profile,

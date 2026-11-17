@@ -33,8 +33,8 @@ export interface CloseRequest {
   /** The folder of the workspace asked to close. */
   readonly location: string;
   readonly name: string;
-  /** Why saving failed. */
-  readonly reason: SaveReason;
+  /** Why saving failed, or `still-saving` when the window stopped waiting for a save that hasn't ended. */
+  readonly reason: SaveReason | "still-saving";
 }
 
 /** What {@link WorkspaceSwitcher} needs from the app. */
@@ -79,6 +79,8 @@ export class WorkspaceSwitcher {
   #buttonBusy = false;
   #retrying = false;
   #closeRequest: CloseRequest | undefined;
+  /** The folder whose save {@link saveAllForWindowClose} is waiting for. */
+  #savingForClose: string | undefined;
 
   constructor(options: WorkspaceSwitcherOptions) {
     this.#options = options;
@@ -312,17 +314,62 @@ export class WorkspaceSwitcher {
    */
   async saveAllForWindowClose(): Promise<boolean> {
     for (const slot of this.open.all) {
-      if (slot.value.saving !== undefined && !(await slot.value.saving.saveNow())) {
+      this.#savingForClose = slot.location;
+      const saved = await this.#saveForClose(slot);
+      this.#savingForClose = undefined;
+      if (!saved) {
         this.open.show(slot.location);
         this.#remember();
         this.#setCloseRequest({
           location: slot.location,
           name: slot.value.name,
-          reason: slot.value.saving.problem?.reason ?? "failed",
+          reason: slot.value.saving?.problem?.reason ?? "failed",
         });
         return false;
       }
     }
+    return true;
+  }
+
+  /** Whether the workspace's save worked; a save that throws didn't. */
+  async #saveForClose(slot: { value: OpenedWorkspace }): Promise<boolean> {
+    try {
+      return slot.value.saving === undefined || (await slot.value.saving.saveNow());
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * The window stopped waiting for {@link saveAllForWindowClose}: shows the workspace that is still
+   * saving with "Close Acme?", whose reason is that it's still saving. The save goes on. Returns
+   * the request, for {@link withdrawStillSaving}, or `undefined` when nothing is being saved.
+   */
+  askStillSaving(): CloseRequest | undefined {
+    const slot =
+      this.#savingForClose === undefined ? undefined : this.open.find(this.#savingForClose);
+    if (slot === undefined) {
+      return undefined;
+    }
+    this.open.show(slot.location);
+    this.#remember();
+    this.#setCloseRequest({
+      location: slot.location,
+      name: slot.value.name,
+      reason: "still-saving",
+    });
+    return this.#closeRequest;
+  }
+
+  /**
+   * Takes back the question {@link askStillSaving} showed, because the save ended. Returns whether
+   * it was still open: a person who answered it has decided, so the window must not go on its own.
+   */
+  withdrawStillSaving(request: CloseRequest): boolean {
+    if (this.#closeRequest !== request) {
+      return false;
+    }
+    this.#setCloseRequest(undefined);
     return true;
   }
 

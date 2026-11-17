@@ -189,7 +189,7 @@ verifies("library.library-open-as-file", () => {
     const page = render(
       <PresentationProvider presentation="phone">
         <ToastStoreProvider store={createToastStore()}>
-          <LibraryPlace context={context} />
+          <LibraryPlace context={context} sub="skill" />
         </ToastStoreProvider>
       </PresentationProvider>,
     );

@@ -3,10 +3,16 @@ import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { MODELS_LOADING_LINE } from "../aliases/alias-text.ts";
 import { fileId } from "../aliases/read-models.ts";
 import { useModels } from "../aliases/use-models.ts";
-import { ModelKeysService, ModelsFilesService, NoLimitMemoryService } from "../api.ts";
+import {
+  ModelKeysService,
+  ModelsFilesService,
+  NoLimitMemoryService,
+  ProviderCheckService,
+} from "../api.ts";
 import { KeyBlock } from "../api-keys/key-block.tsx";
 import { becamePayPerUse } from "../budget-step/step-asks.ts";
 import { useStepOffer } from "../budget-step/use-step-offer.tsx";
+import { CheckProvider } from "./provider-check.tsx";
 import { ProviderFields } from "./provider-fields.tsx";
 import { providerName, providerPlace } from "./provider-rows.ts";
 import {
@@ -32,6 +38,7 @@ export function ProviderPage({ item, context }: ItemViewProps) {
   const files = context.services.get(ModelsFilesService);
   const keys = context.services.find(ModelKeysService);
   const memory = context.services.find(NoLimitMemoryService);
+  const check = context.services.find(ProviderCheckService);
   const [state, retry] = useModels(files);
   const entry =
     state.status !== "loading"
@@ -59,6 +66,7 @@ export function ProviderPage({ item, context }: ItemViewProps) {
           {state.localOnly && providerPlace(entry.provider) === "cloud" ? (
             <p role="alert">{blockedLocalOnlyLine(state.workspaceName)}</p>
           ) : null}
+          <CheckProvider check={check} provider={entry.provider} />
           <ProviderFields
             files={files}
             provider={entry.provider}

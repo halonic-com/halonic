@@ -4,13 +4,19 @@ import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { FirstRunService, type SampleStepId, sampleSteps } from "../api.ts";
 import type { SampleProgress } from "../sample-progress.ts";
 import { sampleCardWords, sampleStepWords } from "../sample-text.ts";
-import { type StepOpeners, stepOpeners } from "./step-openers.ts";
+import { type StepOpeners, stepOpeners, testsOpener } from "./step-openers.ts";
 
 /** Home's Get set up slot in the Acme sample: the Try the sample card, or nothing elsewhere. */
 export function SampleCard({ context }: HomeCardProps) {
   const progress = context.services.get(FirstRunService).progress();
   if (progress === undefined || progress.hidden) return <HomeSectionEmpty />;
-  return <SampleSteps progress={progress} openers={stepOpeners(context, progress)} />;
+  return (
+    <SampleSteps
+      progress={progress}
+      openers={stepOpeners(context, progress)}
+      openTests={testsOpener(context)}
+    />
+  );
 }
 
 /** Props for {@link SampleSteps}. */
@@ -18,6 +24,8 @@ export interface SampleStepsProps {
   readonly progress: SampleProgress;
   /** What each step opens; a step without one can't be opened. */
   readonly openers: StepOpeners;
+  /** Opens the support workflow's Tests in a hub; without it, or before a run has finished, the finished card has no Run its tests. */
+  readonly openTests?: ((hub: string) => void) | undefined;
 }
 
 /**
@@ -26,9 +34,9 @@ export interface SampleStepsProps {
  * and the card is gone from the next visit on. Steps can be done in any order and by
  * any route: the card only shows what happened.
  */
-export function SampleSteps({ progress, openers }: SampleStepsProps) {
+export function SampleSteps({ progress, openers, openTests }: SampleStepsProps) {
   const subscribe = useCallback((listener: () => void) => progress.subscribe(listener), [progress]);
-  const { done } = useSyncExternalStore(subscribe, () => progress.state);
+  const { done, finishedRun } = useSyncExternalStore(subscribe, () => progress.state);
   const finished = done.size === sampleSteps.length;
   useEffect(() => {
     if (finished) progress.recordFinishedShown();
@@ -41,6 +49,11 @@ export function SampleSteps({ progress, openers }: SampleStepsProps) {
           <TickIcon /> {sampleCardWords.finished}
         </p>
         <p>{sampleCardWords.caption(done.size)}</p>
+        {openTests === undefined || finishedRun === undefined ? null : (
+          <Button variant="secondary" size="sm" onClick={() => openTests(finishedRun.hub)}>
+            {sampleCardWords.runTests}
+          </Button>
+        )}
         {startOwnWorkspace === undefined ? null : (
           <Button variant="secondary" size="sm" onClick={startOwnWorkspace}>
             {sampleCardWords.startOwnWorkspace}

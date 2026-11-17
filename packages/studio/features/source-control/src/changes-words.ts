@@ -53,6 +53,16 @@ export const listWords = {
   undoThatFirst: (sentence: string) => `${sentence} uses this. Undo that change first.`,
 };
 
+/** The items of the list and the files that are no item (checklist part 2, 2.2). */
+export const itemWords = {
+  /** The heading of the files no kind places, shown by their friendly names. */
+  otherFiles: "Other files",
+  workspaceSettings: "Workspace settings",
+  models: "Models",
+  /** The sentence of an item that moved: "Renamed from Support". */
+  renamedFrom: (name: string) => `Renamed from ${name}`,
+};
+
 /** What Undo this change says when it is done or can't be done. */
 export const undoWords = {
   undone: "Change undone",

@@ -2,7 +2,8 @@
 
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { closeLimitMs, type StartedStudio, startStudio } from "./start-studio.ts";
+import { type StartedStudio, startStudio } from "./start-studio.ts";
+import { closeLimitMs } from "./window-close.ts";
 
 /** A desktop window: jsdom has no `matchMedia`, and the shell follows the phone width with it. */
 function desktopMediaQueries(query: string): MediaQueryList {

@@ -16,6 +16,12 @@ import { ItemView, itemOfLocationKey } from "./item-view.tsx";
 /** What a place's view gets: the context of the feature that added the place. */
 export interface PlaceViewProps {
   readonly context: WorkspaceContext;
+  /**
+   * The sub-page a phone pushed above the place's list (`openPlaceList`), the part of the page's
+   * key after `place/`, such as `skill` for `library/skill`. It is `undefined` on the place's own
+   * page, and always on the desktop, which has no such pages.
+   */
+  readonly sub?: string;
 }
 
 /** Props for {@link StudioPage}. */
@@ -69,9 +75,21 @@ export function StudioPage({
       />
     );
   }
-  const place = contributions.places.list().find((added) => added.id === location.key);
+  const place = contributions.places.list().find((added) => {
+    const rest = location.key.slice(added.id.length + 1);
+    return (
+      location.key === added.id || (location.key.startsWith(`${added.id}/`) && !rest.includes("/"))
+    );
+  });
   if (place !== undefined) {
-    return <PlaceView place={place} context={contextFor(place.featureId)} />;
+    const sub = location.key.slice(place.id.length + 1);
+    return (
+      <PlaceView
+        place={place}
+        context={contextFor(place.featureId)}
+        {...(sub === "" ? {} : { sub })}
+      />
+    );
   }
   const item = itemOfLocationKey(location.key);
   const kind = item === undefined ? undefined : contributions.itemKinds.get(item.kind);
@@ -104,14 +122,16 @@ export function StudioPage({
 function PlaceView({
   place,
   context,
+  sub,
 }: {
   readonly place: Registered<PlaceContribution>;
   readonly context: WorkspaceContext;
+  readonly sub?: string;
 }) {
   const View = lazyView<PlaceViewProps>(place);
   return (
     <Suspense fallback={null}>
-      <View context={context} />
+      <View context={context} {...(sub === undefined ? {} : { sub })} />
     </Suspense>
   );
 }

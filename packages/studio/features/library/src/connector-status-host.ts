@@ -10,6 +10,13 @@ export type ConnectorConnection =
   | { readonly kind: "integration"; readonly folder: string }
   | { readonly kind: "plugin"; readonly id: string };
 
+/**
+ * Which of a connector's tools ask a person first, as its file says, when the New connector dialog
+ * wrote it that way: every tool (`every-tool`), or only the Google tools that change or send
+ * something (`changes`).
+ */
+export type ConnectorAsks = "every-tool" | "changes";
+
 /** One connector as the status view shows it. */
 export interface ConnectorStatus {
   /** The connector's id, the same text a refusal carries as its `source`. */
@@ -21,6 +28,8 @@ export interface ConnectorStatus {
   readonly reason?: string;
   /** How the connector connects. Absent when its file can't be read. */
   readonly connection?: ConnectorConnection;
+  /** Absent when the file asks in some other way, so the page says nothing about it. */
+  readonly asks?: ConnectorAsks;
 }
 
 /** One refusal and the time it arrived. */

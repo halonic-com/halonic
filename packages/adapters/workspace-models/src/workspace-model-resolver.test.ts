@@ -66,7 +66,12 @@ function callOf(fields: Partial<ChatTurnRequest> = {}): ChatTurnRequest {
 }
 
 async function resolverFor(files: Record<string, string> = acmeFiles) {
-  return workspaceModelResolver({ workspace: await workspaceOf(files), secrets, http });
+  return workspaceModelResolver({
+    workspace: await workspaceOf(files),
+    secrets,
+    http,
+    isTrusted: () => true,
+  });
 }
 
 verifies("cli.workspace-models", () => {
@@ -293,7 +298,7 @@ verifies("cli.workspace-models", () => {
     it("gives the Acme sample's sorter the same answer in every run", async () => {
       const acme = resolvePath(import.meta.dirname, "../../../../examples/acme");
       const workspace = await loadWorkspace(new FolderDefinitionStore(acme, "./acme"));
-      const resolve = workspaceModelResolver({ workspace, secrets, http });
+      const resolve = workspaceModelResolver({ workspace, secrets, http, isTrusted: () => true });
       const sorterAnswer = async (runId: string): Promise<string> => {
         const model = await resolve(callOf({ hubId: "support", agentId: "sorter" }), { runId });
         const answer = await model.provider.chat({

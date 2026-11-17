@@ -28,6 +28,14 @@ export interface WorkspaceContext {
    */
   readonly openPlace?: (place: SidebarPlace) => void;
   /**
+   * Pushes a list under a place's page, as the phone's Library does with a kind's items: its key
+   * is `place/sub` and the place's view gets `sub` (`PlaceViewProps`). The page is a list, so the
+   * bottom navigation stays, and Back leads to the place's page. The window gives it to the views it
+   * draws and it does nothing on the desktop, which has no such pages; a context built without a
+   * window has none.
+   */
+  readonly openPlaceList?: (place: SidebarPlace, sub: string, title: string) => void;
+  /**
    * The window's header badges, so a feature can show a state of its own, such as a connector that
    * needs a sign-in. It is the window's one registry, not the workspace's, and the window gives it
    * to the views it draws; a context built without a window has none.
