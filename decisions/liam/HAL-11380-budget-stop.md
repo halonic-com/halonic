@@ -2,6 +2,7 @@
 
 - Approval: HAL-11391. Liam wrote this pull request, so Owen approves the note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:omOs8243D3tNOcSQgZwrZMYHeR7ZsP8fXD2uui1LemcrmlZ+FMeUH/bueu2Ygmx6hC1pVS9iB9pHHIK8ckd9BA==
 - Task: HAL-11380
 
 ## What changes
