@@ -107,43 +107,57 @@ function Choose({ view, focusTitle, onSetUp, onMore, onOptions, onWithout }: Cho
   } else if (card === null) {
     body = null;
   } else {
-    body = <RecommendedCard card={card} onSetUp={onSetUp} onMore={onMore} />;
+    body = <RecommendedCard card={card} onMore={onMore} />;
   }
   const hasOptions = typeof view !== "string" && view.options.length > 0;
   return (
-    <SandboxModal step={text.STEP_LABEL} title={text.TITLE} focusTitle={focusTitle}>
+    <SandboxModal
+      step={text.STEP_LABEL}
+      title={text.TITLE}
+      focusTitle={focusTitle}
+      footer={
+        <>
+          {card === null ? null : (
+            <div className="flex justify-end">
+              <Button variant="primary" onClick={() => onSetUp(card.id)}>
+                {card.action}
+              </Button>
+            </div>
+          )}
+          <div className="flex w-full items-center justify-between">
+            {hasOptions ? (
+              <Button variant="ghost" size="sm" onClick={onOptions}>
+                {text.OTHER_OPTIONS}
+              </Button>
+            ) : (
+              <span />
+            )}
+            {card === null ? null : (
+              <Button variant="ghost" size="sm" onClick={onMore}>
+                {text.MORE_INFO}
+              </Button>
+            )}
+          </div>
+          <div>
+            <Button variant="ghost" size="sm" onClick={onWithout}>
+              {text.CONTINUE_WITHOUT}
+            </Button>
+          </div>
+        </>
+      }
+    >
       <p>{text.INTRO}</p>
       {body}
-      <div className="flex flex-col items-start gap-1">
-        <div className="flex w-full items-center justify-between">
-          {hasOptions ? (
-            <Button variant="ghost" size="sm" onClick={onOptions}>
-              {text.OTHER_OPTIONS}
-            </Button>
-          ) : (
-            <span />
-          )}
-          {card === null ? null : (
-            <Button variant="ghost" size="sm" onClick={onMore}>
-              {text.MORE_INFO}
-            </Button>
-          )}
-        </div>
-        <Button variant="ghost" size="sm" onClick={onWithout}>
-          {text.CONTINUE_WITHOUT}
-        </Button>
-      </div>
     </SandboxModal>
   );
 }
 
 interface RecommendedProps {
   readonly card: SandboxCard;
-  readonly onSetUp: (backend: SandboxBackendId) => void;
   readonly onMore: () => void;
 }
 
-function RecommendedCard({ card, onSetUp, onMore }: RecommendedProps) {
+function RecommendedCard({ card, onMore }: RecommendedProps) {
   return (
     <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-subtle p-4">
       {card.badge === null ? null : (
@@ -172,11 +186,6 @@ function RecommendedCard({ card, onSetUp, onMore }: RecommendedProps) {
           </Button>
         </p>
       )}
-      <div className="flex justify-end">
-        <Button variant="primary" onClick={() => onSetUp(card.id)}>
-          {card.action}
-        </Button>
-      </div>
     </div>
   );
 }
@@ -196,7 +205,18 @@ function MoreInfo({
   const covers = windows && !wsl ? text.MORE_COVERS_WINDOWS : text.MORE_COVERS;
   const others = windows ? text.MORE_OTHERS_WINDOWS : text.MORE_OTHERS;
   return (
-    <SandboxModal step={text.STEP_LABEL} title={text.MORE_INFO} focusTitle={focusTitle}>
+    <SandboxModal
+      step={text.STEP_LABEL}
+      title={text.MORE_INFO}
+      focusTitle={focusTitle}
+      footer={
+        <div>
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            {text.BACK}
+          </Button>
+        </div>
+      }
+    >
       <Block title={text.MORE_WHAT_TITLE}>
         <p>{text.MORE_WHAT}</p>
       </Block>
@@ -211,11 +231,6 @@ function MoreInfo({
       <Block title={text.MORE_OTHERS_TITLE}>
         <Lines lines={others} />
       </Block>
-      <div>
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          {text.BACK}
-        </Button>
-      </div>
     </SandboxModal>
   );
 }
@@ -254,7 +269,38 @@ function Options({ cards, focusTitle, onSetUp, onBack }: OptionsProps) {
   const needsBox = card?.needsConfirmation === true;
   const blockedReason = useId();
   return (
-    <SandboxModal step={text.STEP_LABEL} title={text.OTHER_OPTIONS_TITLE} focusTitle={focusTitle}>
+    <SandboxModal
+      step={text.STEP_LABEL}
+      title={text.OTHER_OPTIONS_TITLE}
+      focusTitle={focusTitle}
+      footer={
+        <>
+          {/* The view gives every card that needs a box its label, so the box is always there. */}
+          {needsBox && card?.confirmation != null ? (
+            <Checkbox checked={confirmed} onChange={setConfirmed}>
+              {card.confirmation}
+            </Checkbox>
+          ) : null}
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="sm" onClick={onBack}>
+              {text.BACK}
+            </Button>
+            <Button
+              variant="primary"
+              {...(card === null || (needsBox && !confirmed)
+                ? { unavailable: { reason: blockedReason } }
+                : {})}
+              onClick={() => card !== null && onSetUp(card.id)}
+            >
+              {card === null ? text.SET_UP : text.setUpWith(card.name)}
+            </Button>
+          </div>
+          <span id={blockedReason} className="sr-only">
+            {card === null ? text.PICK_ONE : (card.confirmation ?? "")}
+          </span>
+        </>
+      }
+    >
       <p>{text.OTHER_OPTIONS_INTRO}</p>
       <RadioGroup<SandboxBackendId>
         label={text.OTHER_OPTIONS_TITLE}
@@ -287,29 +333,6 @@ function Options({ cards, focusTitle, onSetUp, onBack }: OptionsProps) {
           {card.caveat}
         </p>
       )}
-      {/* The view gives every card that needs a box its label, so the box is always there. */}
-      {needsBox && card?.confirmation != null ? (
-        <Checkbox checked={confirmed} onChange={setConfirmed}>
-          {card.confirmation}
-        </Checkbox>
-      ) : null}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          {text.BACK}
-        </Button>
-        <Button
-          variant="primary"
-          {...(card === null || (needsBox && !confirmed)
-            ? { unavailable: { reason: blockedReason } }
-            : {})}
-          onClick={() => card !== null && onSetUp(card.id)}
-        >
-          {card === null ? text.SET_UP : text.setUpWith(card.name)}
-        </Button>
-      </div>
-      <span id={blockedReason} className="sr-only">
-        {card === null ? text.PICK_ONE : (card.confirmation ?? "")}
-      </span>
     </SandboxModal>
   );
 }
@@ -324,18 +347,23 @@ function ConfirmNone({
   readonly onContinue: () => void;
 }) {
   return (
-    <SandboxModal title={text.CONFIRM_TITLE} focusTitle={focusTitle}>
+    <SandboxModal
+      title={text.CONFIRM_TITLE}
+      focusTitle={focusTitle}
+      footer={
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="secondary" onClick={onContinue}>
+            {text.CONTINUE_WITHOUT}
+          </Button>
+          <Button variant="primary" onClick={onSetUp}>
+            {text.SET_UP_A_SANDBOX}
+          </Button>
+        </div>
+      }
+    >
       {text.CONFIRM_BODY.map((paragraph) => (
         <p key={paragraph}>{paragraph}</p>
       ))}
-      <div className="flex items-center justify-end gap-2">
-        <Button variant="secondary" onClick={onContinue}>
-          {text.CONTINUE_WITHOUT}
-        </Button>
-        <Button variant="primary" onClick={onSetUp}>
-          {text.SET_UP_A_SANDBOX}
-        </Button>
-      </div>
     </SandboxModal>
   );
 }
