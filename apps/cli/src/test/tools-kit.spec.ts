@@ -1,9 +1,10 @@
 // A spec helper, not a test file of its own: it uses Vitest, so its name ends in `.spec.ts`.
 // `halonic tools` run in-process on Acme's `notes-mcp` (`acme-notes.ts`),
-// for the tests of `approve` and `revoke`.
+// for the tests of `review`, `approve` and `revoke`.
 
 import { join } from "node:path";
 import { afterEach, beforeEach, expect } from "vitest";
+import type { QuestionTerminal } from "../output/question.ts";
 import { runCli, type Terminal } from "../run-cli.ts";
 import { type AcmeNotes, acmeNotes } from "./acme-notes.ts";
 import { captureIo } from "./capture-io.ts";
@@ -27,6 +28,14 @@ export interface ToolsKit {
   ): Promise<{ code: number; stdout: string[]; stderr: string[] }>;
   /** `notes-mcp`'s listed tools now: the ones on, and the ones waiting with their fingerprints. */
   listedNow(): Promise<ListedNow>;
+  /** The `--json` document of `halonic tools review notes-mcp` now. */
+  reviewJson(): Promise<ReviewJson>;
+}
+
+/** The fields of `review`'s document the tests read. */
+export interface ReviewJson {
+  readonly on: string[];
+  readonly waiting: { name: string; state: string; fingerprint: string; serverChanged: boolean }[];
 }
 
 /** What {@link ToolsKit.listedNow} gives back. */
@@ -81,5 +90,26 @@ export function toolsKit(): ToolsKit {
         })),
       };
     },
+    async reviewJson() {
+      const { stdout } = await tools(["review", "notes-mcp", "--json"]);
+      return JSON.parse(stdout.join("\n")) as ReviewJson;
+    },
   };
+}
+
+/** A terminal where the user types `answers`, one per question, keeping what was written to stderr. */
+export function terminalTyping(...answers: (string | undefined)[]) {
+  const written: string[] = [];
+  const questions: QuestionTerminal = {
+    write: (text) => written.push(text),
+    readLine: async () => answers.shift(),
+  };
+  const terminal: Terminal = {
+    env: { LANG: "en_US.UTF-8", NO_COLOR: "1" },
+    platform: "linux",
+    stdoutIsTerminal: true,
+    stderrIsTerminal: true,
+    questions,
+  };
+  return { terminal, written };
 }

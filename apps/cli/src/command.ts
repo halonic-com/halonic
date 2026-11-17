@@ -162,6 +162,20 @@ export interface CommandResult {
    * document holds the result.
    */
   readonly warnings?: readonly Phrase[];
+  /**
+   * Why the command exits with a code other than 0 although it ran to its
+   * end, such as a review that nobody could answer. `--json` shows it as the
+   * document's `error`, so a script reads `error.kind` as it does for any
+   * failed command (cli-output 1.8). The lines and warnings are as for a result.
+   */
+  readonly failure?: CommandFailure;
+}
+
+/** The `error` of a failed command's `--json` document, as text. */
+export interface CommandFailure {
+  readonly kind: ErrorKind;
+  readonly message: string;
+  readonly fix?: string;
 }
 
 /**
