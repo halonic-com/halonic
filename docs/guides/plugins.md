@@ -21,9 +21,12 @@ Plugins arrive in steps, and not every step is in 0.1:
   backend.
 - `halonic plugin add`, `list` and `remove`, and `halonic trust --plugin`,
   add and trust a plugin from the command line.
-- Studio's screens for plugins (settings, commands, Home cards, the panel)
-  aren't in 0.1. Nothing draws a plugin's `ui` yet, so you can't see your
-  settings or cards; you can still write and validate them.
+- Studio has screens for plugins on `main`: Settings → Plugins to add one,
+  the trust check, and Review changes for a plugin that changed. Studio isn't
+  released yet, so the words on those screens may still change. The steps are
+  in [Add and trust a plugin in Studio](https://halonic.dev/docs/guides/studio-plugins).
+  A plugin's `ui` (settings, commands, cards, the panel) is drawn by those
+  screens, so you can see your own settings and cards in a Studio build.
 - Security tests for local tools are still being built. A local tool is
   fenced by the sandbox, but check for yourself that yours lists only the
   tools you declared.
@@ -272,6 +275,10 @@ key you entered.
 In a script, `plugin add` and `trust --plugin` take
 `--yes --fingerprint <fingerprint>`; the fingerprint must match what the check
 shows now. `plugin remove` takes only `--yes`.
+
+In Studio the same check is in Settings → Plugins, and a changed plugin shows
+**Review changes**, which tags each row New, Changed or Removed. See
+[Add and trust a plugin in Studio](https://halonic.dev/docs/guides/studio-plugins).
 
 Trust is a list, not a sandbox. Read what the check says before you answer. See
 [workspace trust](../security/trust.md) for the limits.
