@@ -118,7 +118,6 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
     row.focus();
   }, [loaded, state.focus, roots]);
 
-
   // The file in the active tab, read when a rename finishes or is undone, which may be later.
   const activeNow = useRef(activePath);
   activeNow.current = activePath;

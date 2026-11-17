@@ -3,7 +3,6 @@
 - Task: HAL-11382
 - Approval: Liam approves this note in review on the review task for HAL-11382 (team decision under the HAL-2282 rule: it builds on the approved Files flow, checklist 8.11)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:fsp/m5gkryLldseBQNpYQg5YIpINu6gAvMiMUYsdqUJNvZX3WudfvllDcf61vwO5IWgzpZfLDGUoK1CIdQcSCA==
 
 ## What changes
 
