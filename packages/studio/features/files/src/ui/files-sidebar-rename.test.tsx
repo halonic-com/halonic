@@ -124,7 +124,7 @@ verifies("files.ui.rename-file", () => {
     expect(rowNamed(page, "models.yaml").getAttribute("aria-description")).toBeNull();
   });
 
-  it("closes the field when the row was left while Enter's rename ran and the host refuses", async () => {
+  it("keeps the field and offers Try again when the row was left while Enter's rename ran and the host refuses", async () => {
     let refuse: (error: Error) => void = () => {};
     const rename = () =>
       new Promise<never>((_, reject) => {
@@ -141,10 +141,15 @@ verifies("files.ui.rename-file", () => {
       refuse(new Error("providers.yaml already exists."));
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(page.querySelector("input")).toBeNull();
+    expect(page.querySelector("input")?.value).toBe("providers.yaml");
     expect(document.activeElement).toBe(elsewhere);
     expect(show).toHaveBeenCalledWith(
-      expect.objectContaining({ tone: "danger", title: "providers.yaml already exists." }),
+      expect.objectContaining({
+        tone: "danger",
+        title: "Couldn't rename models.yaml: providers.yaml already exists.",
+        sticky: true,
+        action: expect.objectContaining({ label: "Try again" }),
+      }),
     );
     elsewhere.remove();
   });
@@ -226,18 +231,66 @@ verifies("files.ui.rename-file", () => {
     elsewhere.remove();
   });
 
-  it("leaves the focus where the user put it when the row is left after a refusal", async () => {
-    const rename = async () => {
-      throw new Error("providers.yaml already exists.");
-    };
-    const { page } = await startRename({ ...contextHost(), rename });
+  it("keeps the typed name when the row is left after a refusal, and Try again applies it", async () => {
+    let attempts = 0;
+    const rename = vi.fn(async () => {
+      attempts += 1;
+      if (attempts === 1) throw new Error("The disk is full.");
+      return { places: 0, owners: [], undo: async () => {} };
+    });
+    const show = vi.fn();
+    const toasts = { show } as unknown as ToastStore;
+    const { page } = await startRename({ ...contextHost(), rename }, vi.fn(), "", toasts);
     const input = rowNamed(page, "models.yaml").querySelector("input");
     await typeInto(input, "providers.yaml");
     const elsewhere = await leaveRow(input);
-    expect(page.querySelector("input")).toBeNull();
+    expect(page.querySelector("input")?.value).toBe("providers.yaml");
     expect(document.activeElement).toBe(elsewhere);
-    expect(rowNamed(page, "models.yaml").tabIndex).toBe(0);
+    const again = show.mock.calls[0]?.[0].action;
+    expect(show.mock.calls[0]?.[0].title).toBe("Couldn't rename models.yaml: The disk is full.");
+    await act(async () => {
+      again.onClick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(rename).toHaveBeenCalledTimes(2);
+    expect(rename).toHaveBeenLastCalledWith("models.yaml", "providers.yaml");
     elsewhere.remove();
+  });
+
+  it("names the field Rename and says a taken name as you type, without asking the host", async () => {
+    const rename = vi.fn(contextHost().rename);
+    const host: FilesHost = {
+      ...contextHost(),
+      list: async () => listing(["models.yaml", "providers.yaml"]),
+      rename,
+    };
+    const { page } = await startRename(host);
+    const input = rowNamed(page, "models.yaml").querySelector("input");
+    expect(input?.getAttribute("aria-label") ?? page.querySelector("label")?.textContent).toContain(
+      "Rename models.yaml",
+    );
+    expect(page.querySelector('[aria-live="polite"]')).not.toBeNull();
+    await typeInto(input, "providers.yaml");
+    expect(page.textContent).toContain("providers.yaml already exists.");
+    await key(input, "Enter");
+    expect(rename).not.toHaveBeenCalled();
+    expect(page.querySelector("input")?.value).toBe("providers.yaml");
+    await typeInto(input, "other.yaml");
+    expect(page.textContent).not.toContain("already exists.");
+  });
+
+  it("says the places a rename also updates under the field while typing", async () => {
+    const host: FilesHost = {
+      ...contextHost(),
+      renameImpact: async () => ({ places: 3, owners: ["Daily digest", "Support triage"] }),
+    };
+    const { page } = await startRename(host);
+    const input = rowNamed(page, "models.yaml").querySelector("input");
+    await typeInto(input, "providers.yaml");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    });
+    expect(page.textContent).toContain("Also updates 3 places: Daily digest, Support triage");
   });
 
   it("leaves the focus where the user put it when the row is left with the name unchanged", async () => {

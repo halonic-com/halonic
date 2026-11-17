@@ -2,7 +2,7 @@ import type { ToastStore } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import type { RenamedFile } from "./files-host.ts";
-import { renameFile } from "./rename-file.ts";
+import { renameFile, renameImpactLine, typedNameProblem } from "./rename-file.ts";
 
 function toastsOf() {
   const show = vi.fn();
@@ -37,28 +37,42 @@ verifies("files.ui.rename-file", () => {
     expect(undo).toHaveBeenCalledOnce();
   });
 
-  it("names the places that also update", async () => {
+  it("says only the new path in the toast: the places were said under the field", async () => {
     const { show, store } = toastsOf();
     const host = {
       rename: async () => renamed({ places: 3, owners: ["Daily digest", "Support triage"] }),
     };
     await renameFile(host, store, "c.yaml", "d.yaml", effects());
-    expect(show.mock.calls[0]?.[0].title).toBe("Renamed to d.yaml.");
-    expect(show.mock.calls[0]?.[0].text).toBe(
-      "Also updated 3 places: Daily digest, Support triage.",
-    );
+    expect(show.mock.calls[0]?.[0].title).toBe("Renamed to d.yaml");
+    expect(show.mock.calls[0]?.[0].text).toBeUndefined();
   });
 
-  it("shows at most three names, then how many more", async () => {
-    const { show, store } = toastsOf();
-    const host = {
-      rename: async () =>
-        renamed({ places: 5, owners: ["Support agent", "Billing hub", "Triage", "A", "B"] }),
-    };
-    await renameFile(host, store, "c.yaml", "d.yaml", effects());
-    expect(show.mock.calls[0]?.[0].text).toBe(
-      "Also updated 5 places: Support agent, Billing hub, Triage and 2 more.",
+  it("names the places a typed name would update, at most three names, then how many more", async () => {
+    const renameImpact = async () => ({
+      places: 5,
+      owners: ["Support agent", "Billing hub", "Triage", "A", "B"],
+    });
+    expect(await renameImpactLine({ renameImpact }, "c.yaml", "d.yaml")).toBe(
+      "Also updates 5 places: Support agent, Billing hub, Triage and 2 more",
     );
+    expect(
+      await renameImpactLine(
+        { renameImpact: async () => ({ places: 3, owners: ["Daily digest", "Support triage"] }) },
+        "c.yaml",
+        "d.yaml",
+      ),
+    ).toBe("Also updates 3 places: Daily digest, Support triage");
+    expect(
+      await renameImpactLine({ renameImpact: async () => ({ places: 0, owners: [] }) }, "c", "d"),
+    ).toBeUndefined();
+  });
+
+  it("checks a typed name against the files as you type", () => {
+    const paths = ["hubs/a.yaml", "hubs/b.yaml"];
+    expect(typedNameProblem("hubs/a.yaml", "b.yaml", paths)).toBe("hubs/b.yaml already exists.");
+    expect(typedNameProblem("hubs/a.yaml", "a.yaml", paths)).toBeUndefined();
+    expect(typedNameProblem("hubs/a.yaml", "c.yaml", paths)).toBeUndefined();
+    expect(typedNameProblem("hubs/a.yaml", " ", paths)).toContain("Give the file");
   });
 
   it("gives the host's sentence for a refused name and shows no toast", async () => {

@@ -14,5 +14,5 @@ The Files view shall have a **+** button named "New file" that opens a dialog wi
 - Given the path reads `../x.yaml`, then "Files must stay inside the workspace." shows.
 - Given the path reads `.studio/x.yaml`, then `".studio/x.yaml" is not part of the workspace definitions` shows.
 - Given the host says "workspace.yaml already exists.", then that sentence shows under the field and the dialog stays open.
-- Given the host fails to write `hubs/a.yaml` with "The disk is full.", then "Couldn't create hubs/a.yaml: The disk is full." shows in a Callout with **Try again**, nothing shows under the field and the dialog stays open; pressing **Try again** asks the host again.
+- Given the host fails to write `hubs/a.yaml` with "The disk is full.", then "Couldn't create hubs/a.yaml: The disk is full." shows in a Callout, last in the dialog body, with **Try again**, nothing shows under the field and the dialog stays open; pressing **Try again** asks the host again and focus stays on **Create**.
 - Given the path reads `hubs/p/agents/b.agent.yaml` and the host makes it, then the dialog closes, the toast reads "New file hubs/p/agents/b.agent.yaml" and the window opens that file.

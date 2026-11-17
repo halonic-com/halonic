@@ -2,8 +2,8 @@
 export const filesWords = {
   treeLabel: "Files",
   loading: "Loading files",
-  emptyTitle: "Everything in this workspace is a file.",
-  emptyDescription: "Add one with +.",
+  /** The quiet line under the `workspace.yaml` row when it is the only file. */
+  onlyWorkspaceFile: "Everything in this workspace is a file. Add one with +.",
   errorTitle: "Couldn't load files",
   retry: "Try again",
   retrying: "Checking…",
@@ -77,20 +77,23 @@ export const filesWords = {
       : `Couldn't create ${path}: ${reason.replace(/\.$/, "")}.`,
   pathPrivate: (path: string): string => `"${path}" is not part of the workspace definitions`,
   /** The name of the field that edits a file's name in its row, for a screen reader. */
-  renameLabel: (name: string): string => `Name of ${name}`,
+  renameLabel: (name: string): string => `Rename ${name}`,
   /** Under the name being edited in its row when it holds a `/`. */
   renameSlash: "A name can't contain a slash.",
-  /** When the host gave no sentence for a refused rename. */
-  couldntRename: (path: string): string => `Couldn't rename to ${path}.`,
-  /** The second line of the rename toast: how many places in other files change, and whose they are. */
-  alsoUpdated: (count: number, owners: readonly string[]): string => {
+  /** When the host gave no sentence for a refused rename (microcopy 22, F13). */
+  renameUnexplained: "Halonic ran into a problem it can't explain yet.",
+  /** The toast when a rename is refused; Try again follows and the row keeps the typed name. */
+  couldntRename: (name: string, reason: string): string =>
+    `Couldn't rename ${name}: ${reason.replace(/\.$/, "")}.`,
+  /** The line under the name field while it is typed: how many places in other files change, and whose they are. */
+  alsoUpdates: (count: number, owners: readonly string[]): string => {
     const shown = owners.slice(0, 3).join(", ");
     const more = owners.length - 3;
     const names = more > 0 ? `${shown} and ${more} more` : shown;
-    return `Also updated ${count} ${count === 1 ? "place" : "places"}${owners.length > 0 ? `: ${names}` : ""}.`;
+    return `Also updates ${count} ${count === 1 ? "place" : "places"}${owners.length > 0 ? `: ${names}` : ""}`;
   },
-  /** The toast after a rename, with the new path: with a second line it is a sentence and ends with a full stop. */
-  renamed: (path: string, withLine: boolean): string => `Renamed to ${path}${withLine ? "." : ""}`,
+  /** The toast after a rename, with the new path. */
+  renamed: (path: string): string => `Renamed to ${path}`,
   /** The toast when Undo can't move a renamed file back. */
   couldntMoveBack: (path: string): string => `Couldn't move ${path} back`,
   /** The toast after a delete: with a second line it is a sentence and ends with a full stop. */

@@ -83,6 +83,47 @@ verifies("files.ui.unreadable-strip", () => {
     expect(opened).toBe(1);
   });
 
+  it("draws the strip with the warning look and its icon", async () => {
+    const page = show(
+      hostOf(async () => "name: [unclosed\n", { yamlSyntaxLine: async () => 1 }),
+      "a.agent.yaml",
+    );
+    await settle();
+
+    const strip = [...page.querySelectorAll('[role="status"]')].find((each) =>
+      each.textContent?.includes("can't be read"),
+    );
+    expect(strip?.querySelector("svg")).not.toBeNull();
+    expect(page.querySelector(".bg-danger-soft")).toBeNull();
+  });
+
+  it("shows the strip alone: not with the one for a file changed outside", async () => {
+    const page = show(
+      hostOf(async () => "name: [unclosed\n", {
+        yamlSyntaxLine: async () => 1,
+        outside: () => new Map([["a.agent.yaml", "changed" as const]]),
+      }),
+      "a.agent.yaml",
+    );
+    await settle();
+
+    expect(page.textContent).toContain("can't be read");
+    expect(page.textContent).not.toContain("changed outside Halonic");
+  });
+
+  it("shows the strip for a file changed outside once it reads again", async () => {
+    const page = show(
+      hostOf(async () => "name: a\n", {
+        outside: () => new Map([["a.agent.yaml", "changed" as const]]),
+      }),
+      "a.agent.yaml",
+    );
+    await settle();
+
+    expect(page.textContent).not.toContain("can't be read");
+    expect(page.textContent).toContain("changed outside Halonic");
+  });
+
   it("shows no strip when the file reads", async () => {
     const page = show(
       hostOf(async () => "name: a\n"),

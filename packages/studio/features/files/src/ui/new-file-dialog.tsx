@@ -45,7 +45,7 @@ export function NewFileDialog({
 }: NewFileDialogProps) {
   const [path, setPath] = useState(start);
   const [problem, setProblem] = useState<string>();
-  // The write itself failed, not the path: a Callout with Try again, not a sentence under the field.
+  // The write itself failed, not the path: a Callout with Try again, last in the dialog body, not a sentence under the field.
   const [writeFailure, setWriteFailure] = useState<string>();
   const [busy, setBusy] = useState(false);
   const field = useRef<HTMLInputElement>(null);
@@ -75,9 +75,9 @@ export function NewFileDialog({
     onCreated(wanted);
   }
 
-  /** The Callout goes with the press, so focus returns to the field first and stays inside the form. */
+  /** The Callout goes with the press, so focus moves to Create first and stays in the dialog (FL13). */
   function retry(): void {
-    field.current?.focus();
+    field.current?.closest("dialog")?.querySelector<HTMLElement>('button[type="submit"]')?.focus();
     void create();
   }
 
@@ -92,13 +92,6 @@ export function NewFileDialog({
       onCancel={onCancel}
       {...(returnFocus === undefined ? {} : { returnFocus })}
     >
-      {writeFailure !== undefined && (
-        <div className="mb-3">
-          <Callout tone="danger" action={{ label: filesWords.tryAgain, onClick: retry }}>
-            {writeFailure}
-          </Callout>
-        </div>
-      )}
       <Field label={filesWords.path} hint={filesWords.pathHint} error={problem ?? null}>
         <Input
           ref={field}
@@ -117,6 +110,13 @@ export function NewFileDialog({
           }}
         />
       </Field>
+      {writeFailure !== undefined && (
+        <div className="mt-3">
+          <Callout tone="danger" action={{ label: filesWords.tryAgain, onClick: retry }}>
+            {writeFailure}
+          </Callout>
+        </div>
+      )}
     </Dialog>
   );
 }

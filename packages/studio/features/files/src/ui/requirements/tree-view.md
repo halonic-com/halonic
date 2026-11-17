@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-329 files flow 3.3 (new, accessibility); req-files (HAL-110); HAL-1293; component specs 24.6; HAL-11383
 
-The Files view shall show the file tree as an ARIA tree with one Tab stop, show a long name cut in the middle with the full name as the row's title, draw the error count, the warning count and the "not saved" mark on each row, each with a glyph so no state rests on colour alone (✕ errors, △ warnings, ✎ not saved), show warnings only on a row that has no errors, name a folder row that has marks as "*name*, folder, a file inside not saved, 3 errors", and show a loading state, a can't-load state with "Try again", and an empty state in place of the tree.
+The Files view shall show the file tree as an ARIA tree with one Tab stop, show a long name cut in the middle with the full name as the row's title, draw the error count, the warning count and the "not saved" mark on each row, each with a glyph so no state rests on colour alone (✕ errors, △ warnings, ✎ not saved), show warnings only on a row that has no errors, name a folder row that has marks as "*name*, folder, a file inside not saved, 3 errors", and show a loading state, a can't-load state with "Try again", and a quiet line under `workspace.yaml` when it is the only file.
 
 ## Examples
 
@@ -15,5 +15,5 @@ The Files view shall show the file tree as an ARIA tree with one Tab stop, show 
 - Given the folder `agents` holds a file that isn't saved and has 3 errors, then its row is named "agents, folder, a file inside not saved, 3 errors" for a screen reader.
 - Given the file list is still loading, then three or more grey bars show and nothing else.
 - Given the folder can't be read, then the view reads "Couldn't load files" with the reason and "Try again"; after "Try again" works, the tree shows.
-- Given the workspace has no files, then the view reads "Everything in this workspace is a file." with "Add one with +." and a **New file** button, which opens the same dialog as the **+** button (HAL-11190).
+- Given the workspace has only `workspace.yaml`, then its row shows, with the quiet line "Everything in this workspace is a file. Add one with +." under it and no button; the **New file** button above the tree opens the dialog.
 - Given a file changes while the view shows, then the tree shows the new list and keeps the opened folders.

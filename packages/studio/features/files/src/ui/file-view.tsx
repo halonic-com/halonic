@@ -1,5 +1,5 @@
 import { type CodeEditor, languageFor, openCodeEditor } from "@halonicjs/studio-code-editor";
-import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
+import { Callout, EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { fileItem, fileName } from "../file-item.ts";
@@ -228,6 +228,8 @@ export function FileView({ item, context }: ItemViewProps) {
   const trashedHere = ready && trash !== undefined;
   const missing = loaded.kind === "missing" || (ready && gone && trash === undefined);
   const editing = ready && !comparing && !missing;
+  // The line where the YAML stopped being valid: its strip is the only one shown, whatever else is true.
+  const unreadableLine = editing ? syntaxLine : null;
   useEffect(() => {
     const container = parent.current;
     if (!editing || container === null) return;
@@ -320,7 +322,13 @@ export function FileView({ item, context }: ItemViewProps) {
         {fileName(path)}
       </h1>
       <LoadNotice loaded={loaded} missing={missing} />
-      {trashedHere && trash !== undefined && (
+      {/* One strip at a time, the worst first: can't be read, trash, changed or deleted outside. */}
+      {unreadableLine !== null && (
+        <div role="status" className="px-4 pb-2">
+          <Callout tone="warning">{filesWords.cantBeRead(fileName(path), unreadableLine)}</Callout>
+        </div>
+      )}
+      {unreadableLine === null && trashedHere && trash !== undefined && (
         <TrashedStrip
           announce={(text) => announcer.current.announce(text)}
           onUndo={() => void trash.undo()}
@@ -329,12 +337,7 @@ export function FileView({ item, context }: ItemViewProps) {
       {settled !== undefined && outside === undefined && !comparing && !trashedHere && (
         <p className="px-4 pb-1 text-small text-fg-muted">{filesWords.settled[settled]}</p>
       )}
-      {editing && syntaxLine !== null && (
-        <div className="border-b border-border bg-danger-soft px-4 py-1 text-small text-fg">
-          {filesWords.cantBeRead(fileName(path), syntaxLine)}
-        </div>
-      )}
-      {outside !== undefined && !comparing && !trashedHere && (
+      {unreadableLine === null && outside !== undefined && !comparing && !trashedHere && (
         <OutsideStrip
           path={path}
           change={outside}

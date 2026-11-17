@@ -95,6 +95,13 @@ verifies("files.ui.new-file", () => {
     await create(page);
     expect(text(page)).toContain("Couldn't create hubs/a.yaml: The disk is full.");
     expect(field(page).disabled).toBe(false);
+    // The box is last in the dialog body, after the Path field.
+    const box = [...page.ownerDocument.querySelectorAll("*")].find((each) =>
+      each.textContent?.startsWith("Couldn't create hubs/a.yaml"),
+    );
+    expect(
+      field(page).compareDocumentPosition(box as Node) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     const again = [...page.ownerDocument.querySelectorAll("button")].find((each) =>
       each.textContent?.startsWith("Try again"),
     );
@@ -102,6 +109,8 @@ verifies("files.ui.new-file", () => {
       again?.click();
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
+    // Focus goes to Create, not to the Path field.
+    expect(page.ownerDocument.activeElement).not.toBe(field(page));
     expect(host.create).toHaveBeenCalledTimes(2);
     expect(onCreated).toHaveBeenCalledWith("hubs/a.yaml");
   });

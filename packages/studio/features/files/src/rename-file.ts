@@ -28,9 +28,9 @@ export interface RenameEffects {
 }
 
 /**
- * Renames a file in its folder. Success shows a toast with Undo (and, when other files name the
- * file by its id, a second line that names the places it also updates) and resolves to nothing; a
- * name the host refuses resolves to the one sentence that says why, for the row to show.
+ * Renames a file in its folder. Success shows a toast with Undo and resolves to nothing; the places
+ * in other files it also updates were said under the name field while it was typed. A name the host
+ * refuses resolves to the one sentence that says why, for the row to show.
  */
 export async function renameFile(
   host: Pick<FilesHost, "rename">,
@@ -47,10 +47,7 @@ export async function renameFile(
     effects.moved(to);
     toasts?.show({
       tone: "success",
-      title: filesWords.renamed(to, renamed.places > 0),
-      ...(renamed.places > 0
-        ? { text: filesWords.alsoUpdated(renamed.places, renamed.owners) }
-        : {}),
+      title: filesWords.renamed(to),
       action: {
         label: filesWords.undo,
         onClick: () => void moveBack(renamed.undo, from, to, toasts, effects),
@@ -59,7 +56,7 @@ export async function renameFile(
     return undefined;
   } catch (error) {
     const reason = error instanceof Error ? error.message.trim() : "";
-    return reason === "" ? filesWords.couldntRename(to) : reason;
+    return reason === "" ? filesWords.renameUnexplained : reason;
   }
 }
 
@@ -80,5 +77,35 @@ async function moveBack(
       title: filesWords.couldntMoveBack(to),
       ...(reason === "" ? {} : { text: reason }),
     });
+  }
+}
+
+/**
+ * The line under the name field for what typing `name` in place of `from` would do: the problem
+ * with the name itself (empty, a slash, a name already taken), else nothing yet. `paths` are the
+ * workspace's files.
+ */
+export function typedNameProblem(
+  from: string,
+  name: string,
+  paths: readonly string[],
+): string | undefined {
+  const own = nameProblem(name);
+  if (own !== undefined) return own;
+  const to = renamedPath(from, name);
+  return to !== from && paths.includes(to) ? filesWords.pathTaken(to) : undefined;
+}
+
+/** The line "Also updates 3 places: …" for the places a rename of `from` to `name` would change, or nothing. */
+export async function renameImpactLine(
+  host: Pick<FilesHost, "renameImpact">,
+  from: string,
+  name: string,
+): Promise<string | undefined> {
+  try {
+    const impact = await host.renameImpact(from, renamedPath(from, name));
+    return impact.places > 0 ? filesWords.alsoUpdates(impact.places, impact.owners) : undefined;
+  } catch {
+    return undefined;
   }
 }
