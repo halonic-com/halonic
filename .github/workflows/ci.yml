@@ -13,7 +13,7 @@ on:
     types: [opened, synchronize, reopened]
   merge_group:
   push:
-    branches: [main]
+    branches: [main, "release/**"]
 
 permissions: {}
 
@@ -222,7 +222,7 @@ jobs:
     # pr.read can wait about 10 min in total under a GitHub rate limit.
     timeout-minutes: 15
     # The personal terms live in the environment `leak-terms`, which only
-    # `main` and the merge queue may use (deployment branch rule), like the
+    # `main`, `release/*` and the merge queue may use (deployment branch rule), like the
     # Turbo signing key. A pull request gets the empty `pull-request` and
     # scans without them; leak-terms.yml checks its terms from the base
     # branch, and the merge queue checks them here before anything merges
