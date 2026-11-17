@@ -1,6 +1,14 @@
 // @vitest-environment jsdom
 import type { RunSummary } from "@halonicjs/events";
-import { createShell, type ServiceKey, type ServiceTarget } from "@halonicjs/studio-shell";
+import { KindedError } from "@halonicjs/std";
+import {
+  createShell,
+  EngineNotAnswering,
+  type EngineWords,
+  engineWords,
+  type ServiceKey,
+  type ServiceTarget,
+} from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -33,13 +41,18 @@ async function settled(): Promise<void> {
   });
 }
 
-async function openPage(source: RunsSource, openRun?: (run: RunSummary) => void) {
+async function openPage(
+  source: RunsSource,
+  openRun?: (run: RunSummary) => void,
+  engine?: EngineWords,
+) {
   const list = new RunsList(source);
   const root = render(
     <RunsView
       list={list}
       now={() => mondayMorning}
       {...(openRun === undefined ? {} : { openRun })}
+      {...(engine === undefined ? {} : { engine })}
     />,
   );
   await settled();
@@ -276,12 +289,14 @@ verifies("runs.list", () => {
       expect(root.querySelector("[role=radiogroup]")).not.toBeNull();
     });
 
-    it("says it couldn't load, that the engine isn't answering, and tries again", async () => {
+    it("says it couldn't load, that Halonic can't explain why, and tries again", async () => {
       const fake = fakeSource([done]);
       fake.fail(new Error("fetch failed"));
       const { root } = await openPage(fake.source);
       expect(root.textContent).toContain("Couldn't load runs");
-      expect(root.textContent).toContain("The engine isn't answering. It may still be starting.");
+      expect(root.textContent).toContain("Halonic ran into a problem it can't explain yet.");
+      expect(control(root, "Copy details")).toBeDefined();
+      expect(root.textContent).not.toContain("isn't answering");
       expect(root.textContent).not.toContain("fetch failed");
 
       fake.answer();
@@ -290,13 +305,42 @@ verifies("runs.list", () => {
       expect(shown(root)).toHaveLength(2);
     });
 
-    it("keeps the rows when a later load fails, and says they're what the engine said last", async () => {
+    it("gives a kinded error's own reason, without Copy details", async () => {
+      const fake = fakeSource([done]);
+      fake.fail(new KindedError("not_found", "This workspace's runs folder is gone."));
+      const { root } = await openPage(fake.source);
+      expect(root.textContent).toContain("This workspace's runs folder is gone.");
+      expect(root.textContent).not.toContain("Copy details");
+    });
+
+    it("says the host's words when the engine can't be reached", async () => {
+      const fake = fakeSource([done]);
+      fake.fail(new EngineNotAnswering());
+      const { root } = await openPage(fake.source, undefined, engineWords.phone);
+      expect(root.textContent).toContain("Halonic on your computer isn't answering.");
+      expect(root.textContent).not.toContain("engine");
+    });
+
+    it("keeps the rows when a later load fails, and says it couldn't refresh them", async () => {
       const fake = fakeSource([done]);
       const { root, list } = await openPage(fake.source);
       fake.fail(new Error("fetch failed"));
       await act(() => list.refresh());
       expect(shown(root)).toHaveLength(2);
-      expect(root.textContent).toContain("The engine isn't answering. Showing what it said last.");
+      expect(root.textContent).toContain(
+        "Couldn't refresh runs. Halonic ran into a problem it can't explain yet.",
+      );
+    });
+
+    it("keeps the rows and says they're what the engine said last when it can't be reached", async () => {
+      const fake = fakeSource([done]);
+      const { root, list } = await openPage(fake.source, undefined, engineWords.served);
+      fake.fail(new EngineNotAnswering());
+      await act(() => list.refresh());
+      expect(shown(root)).toHaveLength(2);
+      expect(root.textContent).toContain(
+        "Halonic on the server isn't answering. Showing what it said last.",
+      );
     });
   });
 

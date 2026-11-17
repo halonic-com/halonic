@@ -11,6 +11,8 @@ export const listWords = {
   chipsLabel: "Hub",
   allChip: "All",
   loadFailedTitle: "Couldn't load workflows",
+  /** Before the reason, over the rows the list kept, when a later read failed for a reason that isn't the engine. */
+  refreshFailed: "Couldn't refresh workflows.",
   tryAgain: "Try again",
   tryingAgain: "Trying again…",
   nothingYetTitle: "No workflows yet",

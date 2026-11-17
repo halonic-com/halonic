@@ -299,7 +299,7 @@ export function useRunLog(
           setLog({ runId, events: error.events, damagedLine: error.line });
           return;
         }
-        // The list's own load says the engine isn't answering; a log already shown stays as it was.
+        // The page says why; a log already shown stays as it was.
         setFailure({ runId, error });
       },
     );

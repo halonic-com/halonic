@@ -1,15 +1,14 @@
 import { type SandboxStartCheck, sandboxStartCheckKey, shortRunId } from "@halonicjs/app";
 import { type RunEvent, type RunSummary, type RunVersion, summarize } from "@halonicjs/events";
+import { Callout, EmptyState, List, usePresentation } from "@halonicjs/studio-kit";
 import {
-  Button,
-  Callout,
-  EmptyState,
-  List,
-  StatusChip,
-  usePresentation,
-} from "@halonicjs/studio-kit";
-import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
-import { type ReactNode, useCallback, useEffect, useState, useSyncExternalStore } from "react";
+  type EngineWords,
+  engineWordsOf,
+  ItemGone,
+  type ItemViewProps,
+  PageBackLinkSlot,
+} from "@halonicjs/studio-shell";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import {
   type InstructionTrustHost,
   InstructionTrustHostService,
@@ -17,8 +16,8 @@ import {
   RunStartHostService,
   type SourcedRun,
 } from "../api.ts";
-import { loadFailureReason } from "../load-failure.ts";
-import { emptyListWords, runPageWords } from "../run-words.ts";
+import { FailureReason } from "../load-failure.tsx";
+import { runPageWords } from "../run-words.ts";
 import { type RunsList, RunsListService } from "../runs-list.ts";
 import { Details, type DetailsProps, DetailsRow } from "./details.tsx";
 import { detailRows } from "./details-model.ts";
@@ -33,8 +32,9 @@ import {
   readLines,
   summaryLine,
 } from "./receipt-model.ts";
-import { type RunAgain, useRunAgain } from "./run-again.ts";
-import { type RunPageContext, runHeader } from "./run-page-model.ts";
+import { useRunAgain } from "./run-again.ts";
+import { LogUnread, RunLayout } from "./run-layout.tsx";
+import type { RunPageContext } from "./run-page-model.ts";
 import { slowStepDueAt } from "./slow-step.ts";
 import { StepPanel } from "./step-panel.tsx";
 
@@ -51,6 +51,7 @@ export function RunPage({ item, context, step, asked }: ItemViewProps) {
     <RunView
       list={context.services.get(RunsListService)}
       runId={item.id}
+      engine={engineWordsOf(context)}
       {...(step === undefined ? {} : { step })}
       {...(asked === undefined ? {} : { asked })}
       {...(instructionTrust === undefined ? {} : { instructionTrust })}
@@ -104,6 +105,8 @@ export interface RunViewProps {
   readonly openRun?: (runId: string) => void;
   /** The clock for the start time and due times; tests pass a fixed one. */
   readonly now?: () => Date;
+  /** What the page calls the engine when it isn't answering, for this window's host; the desktop app's by default. */
+  readonly engine?: EngineWords;
 }
 
 /**
@@ -140,6 +143,7 @@ export function RunView({
   reviewInInbox,
   openRun,
   now = () => new Date(),
+  engine = engineWordsOf({}),
 }: RunViewProps) {
   const phone = usePresentation() === "phone";
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
@@ -152,7 +156,7 @@ export function RunView({
   useEffect(() => list.noteOpened(runId), [list, runId]);
   const title = runPageWords.title(shortRunId(runId));
   const retry = () => void list.refresh();
-  const runAgain = useRunAgain(runStart, run, log, openRun, announce);
+  const runAgain = useRunAgain(runStart, run, log, openRun, engine, announce);
 
   if (run !== undefined) {
     const context = pageContext(list, state.runs, run, now());
@@ -167,7 +171,8 @@ export function RunView({
         <RunLayout
           run={run}
           context={context}
-          showingLast={state.error !== undefined}
+          refreshError={state.error}
+          engine={engine}
           phone={phone}
           runAgain={runAgain}
         >
@@ -200,6 +205,7 @@ export function RunView({
                 context={context}
                 log={log}
                 logRead={logRead}
+                engine={engine}
                 entries={entries}
                 openEntry={open?.id}
                 onOpenEntry={setOpenEntry}
@@ -251,7 +257,13 @@ export function RunView({
           tone="error"
           align="start"
           title={runPageWords.loadFailed(shortRunId(runId))}
-          description={loadFailureReason(state.error)}
+          description={
+            <FailureReason
+              what={runPageWords.loadFailed(shortRunId(runId))}
+              error={state.error}
+              engine={engine}
+            />
+          }
           action={{ label: "Try again", onClick: retry }}
         />
       )}
@@ -274,6 +286,7 @@ function ReceiptAndSteps({
   context,
   log,
   logRead,
+  engine,
   entries,
   openEntry,
   onOpenEntry,
@@ -282,12 +295,13 @@ function ReceiptAndSteps({
   readonly context: RunPageContext;
   readonly log: readonly RunEvent[] | undefined;
   readonly logRead: ReturnType<typeof useRunLog>;
+  readonly engine: EngineWords;
   readonly entries: readonly StepEntry[];
   readonly openEntry: string | undefined;
   readonly onOpenEntry: (entryId: string | undefined) => void;
 }) {
   if (log === undefined) {
-    return <LogUnread failure={logRead.failure} retry={logRead.retry} />;
+    return <LogUnread failure={logRead.failure} retry={logRead.retry} engine={engine} />;
   }
   return (
     <>
@@ -358,80 +372,6 @@ export function DamagedLogBanner({ line }: { readonly line: number | undefined }
     <section aria-label={runPageWords.damagedLogName}>
       <Callout tone="danger">{runPageWords.damagedLog(line)}</Callout>
     </section>
-  );
-}
-
-/** What stands where the receipt and Every step go while the log isn't read: a skeleton, or why not. */
-function LogUnread({ failure, retry }: { readonly failure: unknown; readonly retry: () => void }) {
-  if (failure === undefined) {
-    return (
-      <List
-        label={runPageWords.loadingLog}
-        rows={[]}
-        loading
-        loadingLabel={runPageWords.loadingLog}
-      />
-    );
-  }
-  return (
-    <EmptyState
-      tone="error"
-      align="start"
-      title={runPageWords.logFailed}
-      description={loadFailureReason(failure)}
-      action={{ label: "Try again", onClick: retry }}
-    />
-  );
-}
-
-/** The header, the engine line while the engine doesn't answer, then what goes under them. */
-function RunLayout({
-  run,
-  context,
-  showingLast,
-  phone,
-  runAgain,
-  children,
-}: {
-  readonly run: SourcedRun;
-  readonly context: RunPageContext;
-  readonly showingLast: boolean;
-  readonly phone: boolean;
-  readonly runAgain: RunAgain | undefined;
-  readonly children: ReactNode;
-}) {
-  const header = runHeader(run, context);
-  return (
-    <div className={`flex w-full min-w-0 flex-col gap-4 ${phone ? "px-4 py-4" : "px-6 py-5"}`}>
-      <PageBackLinkSlot />
-      <header className="flex flex-col gap-1">
-        <p className="text-small text-fg-muted">{header.kindLabel}</p>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className={phone ? "sr-only" : "text-title"}>{header.title}</h1>
-          <StatusChip tone={header.chip.tone} dot={header.chip.dot}>
-            {header.chip.word}
-          </StatusChip>
-          {runAgain === undefined ? null : (
-            <Button variant="secondary" size="sm" busy={runAgain.busy} onClick={runAgain.start}>
-              {runPageWords.runAgain}
-            </Button>
-          )}
-        </div>
-        <p className="text-small text-fg-muted">{header.line}</p>
-        {header.catchUpLine === undefined ? null : (
-          <p className="text-small text-fg-muted">{header.catchUpLine}</p>
-        )}
-      </header>
-      {runAgain?.problem === undefined ? null : (
-        <section aria-label={runPageWords.runAgainFailedName}>
-          <Callout tone="danger">{runPageWords.runAgainFailed(runAgain.problem)}</Callout>
-        </section>
-      )}
-      {showingLast ? (
-        <p className="text-small text-fg-muted">{emptyListWords.showingLast}</p>
-      ) : null}
-      {children}
-    </div>
   );
 }
 

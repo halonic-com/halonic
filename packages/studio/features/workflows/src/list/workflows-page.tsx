@@ -1,9 +1,14 @@
-import { Button, EmptyState, usePresentation } from "@halonicjs/studio-kit";
+import { Button, EmptyState, inlineLinkClasses, usePresentation } from "@halonicjs/studio-kit";
 import {
+  copyDetailsWords,
+  detailsOf,
+  EngineNotAnswering,
   type EngineWords,
   engineWordsOf,
+  errorReasonFor,
   OverviewPage,
   type PlaceViewProps,
+  useCopyDetails,
 } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -19,16 +24,16 @@ import { rowId, workflowHubs } from "./workflow-rows.tsx";
 
 /**
  * Whether the workflows have loaded: the skeleton, a first read that failed, or the list. A list
- * that was read keeps its rows when a later read fails (`stale`) or is still going (`refreshing`).
- * A failed first read stays on screen while **Try again** reads again (`retrying`).
+ * that was read keeps its rows when a later read fails (`stale`, with its error) or is still going
+ * (`refreshing`). A failed first read stays on screen while **Try again** reads again (`retrying`).
  */
 type Load =
   | { readonly kind: "loading" }
-  | { readonly kind: "failed"; readonly retrying: boolean }
+  | { readonly kind: "failed"; readonly error: unknown; readonly retrying: boolean }
   | {
       readonly kind: "ready";
       readonly listings: readonly WorkflowListing[];
-      readonly stale: boolean;
+      readonly stale: { readonly error: unknown } | undefined;
       readonly refreshing: boolean;
     };
 
@@ -92,22 +97,22 @@ export function WorkflowsView({ host, open, openInNewTab, engine }: WorkflowsVie
       if (showProgress) {
         setLoad((was) => {
           if (was.kind === "ready") return { ...was, refreshing: true };
-          return was.kind === "failed" ? { kind: "failed", retrying: true } : was;
+          return was.kind === "failed" ? { ...was, retrying: true } : was;
         });
       }
       host.list().then(
         (listings) => {
           if (mine !== newestRead.current) return;
-          setLoad({ kind: "ready", listings, stale: false, refreshing: false });
+          setLoad({ kind: "ready", listings, stale: undefined, refreshing: false });
           // The button that had the focus is gone: the page's heading takes it.
           if (showProgress) title.current?.focus();
         },
-        () => {
+        (error: unknown) => {
           if (mine !== newestRead.current) return;
           setLoad((was) =>
             was.kind === "ready"
-              ? { ...was, stale: true, refreshing: false }
-              : { kind: "failed", retrying: false },
+              ? { ...was, stale: { error }, refreshing: false }
+              : { kind: "failed", error, retrying: false },
           );
         },
       );
@@ -154,26 +159,16 @@ export function WorkflowsView({ host, open, openInNewTab, engine }: WorkflowsVie
           <p className="text-body text-fg-muted">{listWords.sentence}</p>
         )}
       </header>
-      {load.kind === "ready" && load.stale && (
-        <p className="flex flex-wrap items-center gap-2 text-small text-fg-muted">
-          {words.showingLast}
-          <Button
-            variant="ghost"
-            busy={load.refreshing}
-            busyLabel={listWords.tryingAgain}
-            onClick={tryAgain}
-          >
-            {listWords.tryAgain}
-          </Button>
-        </p>
+      {load.kind === "ready" && load.stale !== undefined && (
+        <RefreshFailed
+          error={load.stale.error}
+          words={words}
+          refreshing={load.refreshing}
+          tryAgain={tryAgain}
+        />
       )}
       {load.kind === "failed" ? (
-        <EmptyState
-          tone="error"
-          title={listWords.loadFailedTitle}
-          description={words.notAnswering}
-          action={{ label: listWords.tryAgain, onClick: tryAgain, busy: load.retrying }}
-        />
+        <LoadFailed error={load.error} words={words} retrying={load.retrying} tryAgain={tryAgain} />
       ) : (
         <OverviewPage
           hubs={workflowHubs(host.hubs(), listings)}
@@ -222,4 +217,92 @@ export function WorkflowsView({ host, open, openInNewTab, engine }: WorkflowsVie
       )}
     </div>
   );
+}
+
+/**
+ * The line over the rows the list kept when a later read failed, with **Try again**, and **Copy
+ * details** when there's no reason to show (as the Runs list's).
+ */
+function RefreshFailed({
+  error,
+  words,
+  refreshing,
+  tryAgain,
+}: {
+  readonly error: unknown;
+  readonly words: EngineWords;
+  readonly refreshing: boolean;
+  readonly tryAgain: () => void;
+}) {
+  const copyDetails = useCopyDetails();
+  return (
+    <p className="flex flex-wrap items-center gap-2 text-small text-fg-muted">
+      {error instanceof EngineNotAnswering
+        ? words.showingLast
+        : `${listWords.refreshFailed} ${reasonOf(error, words)}`}
+      {unexplained(error) && (
+        <button
+          type="button"
+          className={inlineLinkClasses}
+          onClick={() => void copyDetails(detailsOf(listWords.refreshFailed, error))}
+        >
+          {copyDetailsWords.label}
+        </button>
+      )}
+      <Button
+        variant="ghost"
+        busy={refreshing}
+        busyLabel={listWords.tryingAgain}
+        onClick={tryAgain}
+      >
+        {listWords.tryAgain}
+      </Button>
+    </p>
+  );
+}
+
+/** A first read that failed: why, **Try again**, and **Copy details** when there's no reason to show. */
+function LoadFailed({
+  error,
+  words,
+  retrying,
+  tryAgain,
+}: {
+  readonly error: unknown;
+  readonly words: EngineWords;
+  readonly retrying: boolean;
+  readonly tryAgain: () => void;
+}) {
+  const copyDetails = useCopyDetails();
+  return (
+    <EmptyState
+      tone="error"
+      title={listWords.loadFailedTitle}
+      description={reasonOf(error, words)}
+      action={{ label: listWords.tryAgain, onClick: tryAgain, busy: retrying }}
+      {...(unexplained(error)
+        ? {
+            link: {
+              label: copyDetailsWords.label,
+              onClick: () => void copyDetails(detailsOf(listWords.loadFailedTitle, error)),
+            },
+          }
+        : {})}
+    />
+  );
+}
+
+/**
+ * Why the list couldn't be read. The list reads the workspace's files, which works while the
+ * engine is stopped, so only a host that says the engine can't be reached gets "isn't answering";
+ * any other failure gives a kinded error's own reason, else "Halonic ran into a problem it can't
+ * explain yet." (microcopy 22 F13).
+ */
+function reasonOf(error: unknown, words: EngineWords): string {
+  return error instanceof EngineNotAnswering ? words.notAnswering : errorReasonFor(error);
+}
+
+/** Whether the failure has no reason of its own to show, so the page offers Copy details. */
+function unexplained(error: unknown): boolean {
+  return !(error instanceof EngineNotAnswering) && errorReasonFor(error, "") === "";
 }

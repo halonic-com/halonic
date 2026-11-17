@@ -26,7 +26,7 @@ A row's line is never empty and says what the What column of `halonic runs` says
 
 ## The Runs list
 
-The feature keeps one `RunsList` per open workspace, from `RunsSourceService`. The Runs place's page and the sidebar's running dot ("Runs, 1 running") read it, so they change together (requirement `runs.list`). A refresh swaps the rows in place and never shows a skeleton again; when a later load fails the rows stay, under "The engine isn't answering. Showing what it said last.".
+The feature keeps one `RunsList` per open workspace, from `RunsSourceService`. The Runs place's page and the sidebar's running dot ("Runs, 1 running") read it, so they change together (requirement `runs.list`). A refresh swaps the rows in place and never shows a skeleton again; when a later load fails the rows stay, under "Couldn't refresh runs." and why. Only a host that says the engine can't be reached (`EngineNotAnswering`) gets "isn't answering", in that host's words (`engineWordsOf`); any other failure gives its own reason, or "Halonic ran into a problem it can't explain yet." with Copy details (`load-failure.tsx`).
 
 What the list shows is worked out in `list/runs-filter.ts`, so the page only draws it:
 

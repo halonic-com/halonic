@@ -161,8 +161,8 @@ export const emptyListWords = {
   },
   loading: "Loading runs",
   loadFailed: "Couldn't load runs",
-  notAnswering: "The engine isn't answering. It may still be starting.",
-  showingLast: "The engine isn't answering. Showing what it said last.",
+  /** Over the rows the list kept, when a later read failed for a reason that isn't the engine. */
+  refreshFailed: "Couldn't refresh runs",
 };
 
 /** The Runs page's own words (checklist part 1, 1.2, 1.3 and R-D1). */
@@ -210,6 +210,8 @@ export const runPageWords = {
   },
   loading: (shortId: string) => `Loading run ${shortId}`,
   loadFailed: (shortId: string) => `Couldn't load run ${shortId}`,
+  /** Over the run the page kept, when a later read failed for a reason that isn't the engine. */
+  refreshFailed: (shortId: string) => `Couldn't refresh run ${shortId}`,
   /** The skeleton under the banner while the run's log is read (mc 15.2). */
   loadingLog: "Loading the run",
   logFailed: "Couldn't read this run's log",
@@ -221,6 +223,7 @@ export const runPageWords = {
   reviewInInbox: "Review in Inbox",
   runAgain: "Run again",
   runAgainFailedName: "Run didn't start",
+  runAgainFailedTitle: "Couldn't start the run",
   runAgainFailed: (reason: string) => `Couldn't start the run: ${reason}`,
   openRun: (shortId: string) => `Open run ${shortId}`,
   waitingForYouName: "Waiting for you",

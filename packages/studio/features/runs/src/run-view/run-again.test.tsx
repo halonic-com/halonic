@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { EngineNotAnswering, type EngineWords, engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -23,6 +24,7 @@ async function open(
   runStart: RunStartHost | undefined,
   openRun = vi.fn(),
   announce?: (line: string) => void,
+  engine?: EngineWords,
 ) {
   const log = logOf(summary.id, [[0, entered("draft")]]).map((event) =>
     event.type === "run.started" ? { ...event, input: { message: "Hi" } } : event,
@@ -36,6 +38,7 @@ async function open(
       openRun={openRun}
       {...(announce === undefined ? {} : { announce })}
       {...(runStart === undefined ? {} : { runStart })}
+      {...(engine === undefined ? {} : { engine })}
     />,
   );
   await settled();
@@ -44,6 +47,10 @@ async function open(
 
 const button = (root: HTMLElement, name: string) =>
   [...root.querySelectorAll("button")].find((one) => one.textContent === name);
+
+// The failed run's banner has its own Copy details; Run again's line may add one.
+const copyDetailsCount = (root: HTMLElement) =>
+  [...root.querySelectorAll("button")].filter((one) => one.textContent === "Copy details").length;
 
 const failed = summaryWith({
   id: "run_a_7k2m9p",
@@ -86,9 +93,40 @@ verifies("runs.run-view.run-again", () => {
     expect(openRun).not.toHaveBeenCalled();
   });
 
+  it("says the engine isn't answering in the host's words only when the host says so", async () => {
+    const startRun = vi.fn(async () => {
+      throw new EngineNotAnswering();
+    });
+    const announce = vi.fn();
+    const root = await open(failed, { startRun }, vi.fn(), announce, engineWords.phone);
+    const before = copyDetailsCount(root);
+    await act(async () => button(root, "Run again")?.click());
+    expect(root.textContent).toContain(
+      "Couldn't start the run: Halonic on your computer isn't answering.",
+    );
+    expect(announce).toHaveBeenCalledExactlyOnceWith(
+      "Couldn't start the run: Halonic on your computer isn't answering.",
+    );
+    expect(copyDetailsCount(root)).toBe(before);
+  });
+
+  it("gives an unexplained failure the can't-explain line with Copy details", async () => {
+    const startRun = vi.fn(async () => {
+      throw new Error("no answer");
+    });
+    const root = await open(failed, { startRun }, vi.fn(), undefined, engineWords.phone);
+    const before = copyDetailsCount(root);
+    await act(async () => button(root, "Run again")?.click());
+    expect(root.textContent).toContain(
+      "Couldn't start the run: Halonic ran into a problem it can't explain yet.",
+    );
+    expect(root.textContent).not.toContain("isn't answering");
+    expect(copyDetailsCount(root)).toBe(before + 1);
+  });
+
   it("says each failed start once", async () => {
     const startRun = vi.fn(async () => {
-      throw new Error("The engine isn't answering.");
+      throw new Error("no answer");
     });
     const announce = vi.fn();
     const root = await open(failed, { startRun }, vi.fn(), (line) => announce(line));
