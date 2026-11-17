@@ -253,7 +253,6 @@ verifies("shell.welcome-recent", () => {
     expect(recentRow(root, "beta")?.hasAttribute("aria-busy")).toBe(false);
   });
 
-
   it("a Recent row stays busy and tries again for 10 seconds, then says the engine isn't answering", async () => {
     vi.useFakeTimers();
     try {
@@ -263,10 +262,12 @@ verifies("shell.welcome-recent", () => {
           new KindedError("unavailable", "The desktop shell gave no answer"),
         ),
       );
-      const root = render(<Welcome
+      const root = render(
+        <Welcome
           onOpenFolder={async () => undefined}
           recent={{ workspaces, onOpen, onRemove: () => {} }}
-        />);
+        />,
+      );
 
       const row = recentRow(root, "acme");
       await act(async () => row?.click());
