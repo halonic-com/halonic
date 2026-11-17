@@ -1,4 +1,5 @@
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { sampleHostOf } from "./sample-host.ts";
@@ -78,6 +79,13 @@ verifies("studio.try-sample", () => {
       reason: "the desktop shell gave no answer",
       unavailable: true,
     });
+  });
+
+  it("doesn't mark a failure after the folder is made, so Welcome never makes a second copy", async () => {
+    const { host, trust } = hostOf([]);
+    trust.mockRejectedValueOnce(new KindedError("unavailable", "the shell gave no answer"));
+
+    expect(await host.create([])).not.toHaveProperty("unavailable");
   });
 
   it("reopens the first taken name when the device knows it as a sample, and writes nothing", async () => {

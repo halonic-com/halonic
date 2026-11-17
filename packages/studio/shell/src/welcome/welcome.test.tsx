@@ -119,29 +119,18 @@ verifies("shell.welcome-cant-open", () => {
     expect(openButton(root).getAttribute("aria-busy")).not.toBe("true");
   });
 
-  it("stays busy and tries again for 10 seconds, then says the engine isn't answering", async () => {
+  it("asks the picker once and doesn't retry it, as the folder's opening is retried elsewhere", async () => {
     vi.useFakeTimers();
     try {
       const onOpenFolder = vi.fn(async () =>
-        cantOpenProblem(
-          "~/Documents/Acme",
-          new KindedError("unavailable", "The desktop shell gave no answer"),
-        ),
+        cantOpenProblem("/work/odd", new KindedError("unavailable", "no answer")),
       );
       const root = render(<Welcome onOpenFolder={onOpenFolder} />);
 
       await act(async () => openButton(root).click());
-      await act(async () => vi.advanceTimersByTimeAsync(5_000));
-      expect(openButton(root).getAttribute("aria-busy")).toBe("true");
-      expect(root.querySelector('[role="alert"]')?.textContent).toBe("");
+      await act(async () => vi.advanceTimersByTimeAsync(11_000));
 
-      await act(async () => vi.advanceTimersByTimeAsync(6_000));
-      const line = root.querySelector('[role="alert"]')?.textContent;
-      expect(line).toBe(
-        "Can't open ~/Documents/Acme: the engine isn't answering. It may still be starting.",
-      );
-      expect(line).not.toMatch(/shell/i);
-      expect(openButton(root).getAttribute("aria-busy")).not.toBe("true");
+      expect(onOpenFolder).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();
     }
@@ -262,6 +251,39 @@ verifies("shell.welcome-recent", () => {
 
     await act(async () => finish());
     expect(recentRow(root, "beta")?.hasAttribute("aria-busy")).toBe(false);
+  });
+
+
+  it("a Recent row stays busy and tries again for 10 seconds, then says the engine isn't answering", async () => {
+    vi.useFakeTimers();
+    try {
+      const onOpen = vi.fn(async () =>
+        cantOpenProblem(
+          "~/Documents/Acme",
+          new KindedError("unavailable", "The desktop shell gave no answer"),
+        ),
+      );
+      const root = render(<Welcome
+          onOpenFolder={async () => undefined}
+          recent={{ workspaces, onOpen, onRemove: () => {} }}
+        />);
+
+      const row = recentRow(root, "acme");
+      await act(async () => row?.click());
+      await act(async () => vi.advanceTimersByTimeAsync(5_000));
+      expect(row?.getAttribute("aria-busy")).toBe("true");
+      expect(root.querySelector('[role="alert"]')?.textContent).toBe("");
+
+      await act(async () => vi.advanceTimersByTimeAsync(6_000));
+      const line = root.querySelector('[role="alert"]')?.textContent;
+      expect(line).toBe(
+        "Can't open ~/Documents/Acme: the engine isn't answering. It may still be starting.",
+      );
+      expect(line).not.toMatch(/shell/i);
+      expect(row?.getAttribute("aria-busy")).not.toBe("true");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("says a row's folder is gone, offers Remove from Recent and keeps the row", async () => {

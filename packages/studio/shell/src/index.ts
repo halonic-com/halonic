@@ -436,6 +436,7 @@ export {
   cantOpenProblem,
   cantOpenWords,
   cantReopenProblem,
+  engineWaitMs,
   type WelcomeOpenProblem,
 } from "./welcome/cant-open.ts";
 export {

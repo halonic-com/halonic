@@ -215,6 +215,29 @@ verifies("workspace.failed-open-leaves-no-slot", () => {
     );
   });
 
+  it("retries only the opening of the picked folder, asking for a folder once", async () => {
+    vi.useFakeTimers();
+    try {
+      let answers = 0;
+      const { switcher, options } = setup({
+        openFolder: vi.fn(async (location: string) => {
+          answers += 1;
+          if (answers < 3) throw new KindedError("unavailable", "no answer");
+          return opened(folderName(location));
+        }),
+      });
+
+      const pending = switcher.pickAndOpen();
+      await vi.advanceTimersByTimeAsync(2_000);
+
+      expect(await pending).toBeUndefined();
+      expect(options.pickFolder).toHaveBeenCalledTimes(1);
+      expect(options.openFolder).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("offers Copy details when it can't explain the failure", async () => {
     const writeText = vi.fn(async () => {});
     vi.stubGlobal("navigator", { clipboard: { writeText } });

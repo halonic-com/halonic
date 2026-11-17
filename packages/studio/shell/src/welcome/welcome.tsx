@@ -129,7 +129,11 @@ export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: W
     setShownProblem(undefined);
     setSampleProblem(undefined);
     try {
-      const problem = await untilAnswered(open, (answer) => answer?.kind === "unavailable");
+      // The picker's folder is retried by whoever opens it, so the picker isn't shown again.
+      const problem =
+        what.from === "recent"
+          ? await untilAnswered(open, (answer) => answer?.kind === "unavailable")
+          : await open();
       setShownProblem(
         problem === undefined ? undefined : { problem, fromRecent: what.from === "recent" },
       );

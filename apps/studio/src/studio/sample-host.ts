@@ -37,24 +37,29 @@ export function sampleHostOf(parts: NewWorkspaceHostParts): SampleHost {
   const storeOf = parts.storeOf ?? ((folder) => new TauriDefinitionStore(parts.shell, folder));
   return {
     create: async (known) => {
+      // Once the folder is made, trying again would make a second copy, so a failure from then on
+      // is never `unavailable`.
+      let written = false;
       try {
         const parent = await documentsOf(parts);
         const place = await freeName(parts, parent, known);
         if (place.kind === "known") return { kind: "existing", folder: place.folder };
         const { name } = place;
         const made = await madeFolder(parts.shell, parent, name);
+        written = true;
         const copied = await copyWorkspace(sampleSource(), storeOf(made));
         if (!copied.ok) return cant("the folder isn't empty");
         return { kind: "created", folder: made, name, trust: await trustOf(parts, made, true) };
       } catch (reason) {
-        return cant(reasonOf(reason), errorKindOf(reason) === "unavailable");
+        return cant(reasonOf(reason), !written && errorKindOf(reason) === "unavailable");
       }
     },
   };
 }
 
 /** The refusal Welcome shows: where it was meant to go, as the person knows it, and why it didn't;
- * `unavailable` when the shell gave no answer, which Welcome words itself and tries again first. */
+ * `unavailable` when the shell gave no answer before anything was written, which Welcome words
+ * itself and tries again first. */
 function cant(reason: string, unavailable = false): CreatedSample {
   return {
     kind: "cant",
