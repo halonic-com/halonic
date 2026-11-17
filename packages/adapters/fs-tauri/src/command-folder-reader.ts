@@ -21,6 +21,8 @@ export interface FolderReaderPlace {
   readonly args: Record<string, unknown>;
   /** Where the folder is, for messages. */
   readonly location: string;
+  /** The error a rejected command becomes; the workspace's {@link folderFailure} when left out. */
+  readonly failure?: (reason: unknown) => Error;
 }
 
 /**
@@ -34,6 +36,7 @@ export class CommandFolderReader implements FolderReader {
   readonly #shell: TauriShell;
   readonly #commands: FolderReaderCommands;
   readonly #placeArgs: Record<string, unknown>;
+  readonly #failure: (reason: unknown) => Error;
 
   /**
    * @param shell - the shell's IPC, usually `window.__TAURI_INTERNALS__`
@@ -45,6 +48,7 @@ export class CommandFolderReader implements FolderReader {
     this.#commands = commands;
     this.#placeArgs = place.args;
     this.location = place.location;
+    this.#failure = place.failure ?? folderFailure;
   }
 
   async entries(dir?: string, options: FolderEntriesOptions = {}): Promise<FolderEntry[]> {
@@ -91,7 +95,7 @@ export class CommandFolderReader implements FolderReader {
     try {
       return await this.#shell.invoke(command, { ...this.#placeArgs, ...args });
     } catch (reason) {
-      throw folderFailure(reason);
+      throw this.#failure(reason);
     }
   }
 }
