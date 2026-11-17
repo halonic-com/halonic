@@ -138,6 +138,14 @@ verifies("workspace.trust-section", () => {
     expect(button("Review")).toBeUndefined();
   });
 
+  it("says there is nothing to trust, with no Review, for a workspace that holds nothing (HAL-10131)", () => {
+    const { value } = control("not-trusted");
+    show({ ...value, needsNoTrust: true });
+
+    expect(document.body.textContent).toContain("Nothing to trust here.");
+    expect(button("Review")).toBeUndefined();
+  });
+
   it("offers Review for a workspace that isn't trusted yet", () => {
     show(control("not-trusted").value);
     expect(element.textContent).toContain(

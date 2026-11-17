@@ -7,7 +7,12 @@ import {
   trustSubjectOf,
 } from "@halonicjs/app";
 import type { DefinitionSource, Digest, FolderReader } from "@halonicjs/ports";
-import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
+import {
+  filesOf,
+  type LoadedWorkspace,
+  loadWorkspace,
+  reachesOnlyTheTestModel,
+} from "@halonicjs/workspace";
 
 /** What {@link WorkspaceTrust} reads a folder's trust from, all through the desktop shell. */
 export interface WorkspaceTrustSources {
@@ -42,6 +47,7 @@ export class WorkspaceTrust {
   /** Whether the settled check may answer `isTrusted`: false while a new check runs. */
   #settled = false;
   #subject: TrustSubject | undefined;
+  #needsNoTrust = false;
   readonly #listeners = new Set<() => void>();
   #name: string | undefined;
   #latest = 0;
@@ -61,6 +67,15 @@ export class WorkspaceTrust {
    */
   get check(): TrustCheck | undefined {
     return this.#check;
+  }
+
+  /**
+   * Whether the last check found nothing to trust (HAL-10131): every provider is the test model
+   * and no connector, agent program or local integration is there, the rule the CLI skips trust
+   * by. The workspace still counts as not trusted; there is just nothing to ask about.
+   */
+  get needsNoTrust(): boolean {
+    return this.#check !== undefined && this.#needsNoTrust;
   }
 
   /**
@@ -153,12 +168,14 @@ export class WorkspaceTrust {
       this.#name = name;
       this.#check = check;
       this.#subject = subject;
+      this.#needsNoTrust = reachesOnlyTheTestModel(subject);
       this.#settled = true;
     } catch (error) {
       // Fails closed: no check, so no trust.
       if (mine === this.#latest) {
         this.#check = undefined;
         this.#subject = undefined;
+        this.#needsNoTrust = false;
         this.#failure =
           error instanceof Error && error.message !== "" ? error.message : "unknown error";
       }

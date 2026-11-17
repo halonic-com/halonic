@@ -69,6 +69,24 @@ verifies("studio.workspace-trust-status", () => {
     expect(view.trustedAt).toBeUndefined();
   });
 
+  it("shows no badge and no check when there is nothing to trust, and still counts as not trusted (HAL-10131)", async () => {
+    await rm(join(folder, "library"), { recursive: true });
+    const view = await viewOf();
+
+    expect(view.needsNoTrust).toBe(true);
+    expect(view.status).toBe("not-trusted");
+    expect(view.badge).toBe("none");
+    expect(view.review()).toBeUndefined();
+  });
+
+  it("asks the full first-time check when a connector is there", async () => {
+    const view = await viewOf();
+
+    expect(view.needsNoTrust).toBe(false);
+    expect(view.badge).toBe("not-trusted");
+    expect(view.review()?.title).toBe("Trust Acme?");
+  });
+
   it("is trusted with the day the person trusted it", async () => {
     const view = await viewOf();
     await view.grant(view.review()?.fingerprint ?? "");
