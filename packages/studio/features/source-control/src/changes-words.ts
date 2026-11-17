@@ -84,6 +84,8 @@ export const itemWords = {
   /** A row's second line: its kind word, then what changed. */
   kindAndSentence: (kind: string, sentence: string) =>
     sentence === "" ? kind : `${kind} · ${sentence}`,
+  /** `.gitignore`: the file Halonic writes when history is turned on. */
+  historyLeavesOut: "Files history leaves out",
   /** The sentence of an item that moved: "Renamed from Support". */
   renamedFrom: (name: string) => `Renamed from ${name}`,
 };
@@ -157,6 +159,10 @@ export const versionWords = {
   tryAgain: "Try again",
   nothingToCreate: "Nothing has changed since your last version.",
   created: (name: string) => `Created version "${name}"`,
+  /** Under the list of the first version: Halonic made the file, not the person. */
+  addedByHistory: "Halonic added this when you turned on history.",
+  /** The name offered for the first version of a workspace. */
+  firstVersion: "First version",
   /** The name offered for a version of one or more items. */
   suggestedName: (items: readonly string[]) => {
     const [first, second] = items;

@@ -112,6 +112,7 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
         <CreateVersionDialog
           list={list}
           files={list.versionFiles}
+          first={hasNoVersions(state.history)}
           returnFocus={() => heading.current}
         />
       )}
@@ -277,6 +278,11 @@ function Loading({ retry }: { readonly retry: () => void }) {
       onRetry={retry}
     />
   );
+}
+
+/** History has loaded and holds no version yet: the next one is the first. */
+function hasNoVersions(history: { loaded: boolean; versions: readonly unknown[] }): boolean {
+  return history.loaded && history.versions.length === 0;
 }
 
 /** The folder has no git history yet: one button makes it one. */

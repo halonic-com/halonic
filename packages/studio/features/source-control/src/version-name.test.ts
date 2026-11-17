@@ -1,22 +1,41 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import type { ChangedFile } from "./changes-list-state.ts";
 import { suggestedVersionName, versionMessage } from "./version-name.ts";
 
 verifies("source-control.create-version", () => {
+  const changed = (path: string): ChangedFile => ({
+    path,
+    texts: undefined,
+    description: {
+      path,
+      kind: undefined,
+      described: false,
+      lines: [{ id: "item", sentence: "Changed", parts: [] }],
+    },
+  });
+  const named = (...paths: string[]) => suggestedVersionName(paths.map(changed), { first: false });
+
   describe("suggestedVersionName", () => {
     it("names one, two or several items", () => {
-      expect(suggestedVersionName(["agents/triage.agent.yaml"])).toBe("Changes to triage");
-      expect(suggestedVersionName(["agents/triage.agent.yaml", "hubs/sales/hub.yaml"])).toBe(
-        "Changes to triage and hub",
+      expect(named("agents/triage.agent.yaml")).toBe("Changes to triage");
+      expect(named("agents/triage.agent.yaml", "agents/sorter.agent.yaml")).toBe(
+        "Changes to triage and sorter",
       );
-      expect(suggestedVersionName(["a.md", "b.md", "c.md"])).toBe("Changes to 3 items");
+      expect(named("a.md", "b.md", "c.md")).toBe("Changes to 3 items");
     });
 
-    it("counts two files of one item once, and reads a file with no kind by its name", () => {
-      expect(suggestedVersionName(["skills/tone/SKILL.md", "skills/tone/notes.md"])).toBe(
-        "Changes to SKILL and notes",
+    it("counts the items the page counts: files of one item once, same names apart", () => {
+      expect(named("library/skills/tone/SKILL.md", "library/skills/tone/notes.md")).toBe(
+        "Changes to tone",
       );
-      expect(suggestedVersionName(["README.md", "README.md"])).toBe("Changes to README");
+      expect(named("agents/a.agent.yaml", "workflows/a.workflow.yaml", "b.md", "c.md")).toBe(
+        "Changes to 4 items",
+      );
+    });
+
+    it("is First version for the first version", () => {
+      expect(suggestedVersionName([changed("README.md")], { first: true })).toBe("First version");
     });
   });
 

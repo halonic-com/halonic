@@ -1,21 +1,22 @@
+import { groupIntoItems } from "./change-items.ts";
+import type { ChangedFile } from "./changes-list-state.ts";
 import { versionWords } from "./changes-words.ts";
 
-/** The item's name in a path: `agents/triage.agent.yaml` is "triage", `README.md` is "README". */
-function itemName(path: string): string {
-  const fileName = path.slice(path.lastIndexOf("/") + 1);
-  const dot = fileName.indexOf(".");
-  return dot > 0 ? fileName.slice(0, dot) : fileName;
-}
-
 /**
- * The name Create version offers: "Changes to triage" for one changed file, "Changes to triage
- * and sorter" for two, "Changes to 4 items" for more. The person can always change it.
+ * The name Create version offers, from the items the page lists: "Changes to triage" for one,
+ * "Changes to triage and sorter" for two, "Changes to 4 items" for more, so it counts what the
+ * page counts. The first version of a workspace is "First version". The person can always
+ * change it.
  *
  * @example
- * suggestedVersionName(["agents/triage.agent.yaml"]); // "Changes to triage"
+ * suggestedVersionName(files, { first: false }); // "Changes to triage"
  */
-export function suggestedVersionName(paths: readonly string[]): string {
-  return versionWords.suggestedName([...new Set(paths.map(itemName))]);
+export function suggestedVersionName(
+  files: readonly ChangedFile[],
+  { first }: { readonly first: boolean },
+): string {
+  if (first) return versionWords.firstVersion;
+  return versionWords.suggestedName(groupIntoItems(files).map((item) => item.name));
 }
 
 /**
