@@ -191,6 +191,16 @@ The ID of `packages/core/workflow/requirements/timer-fires.md` is
 `packages/studio/features/agents/src/explorer/requirements/filter-by-hub.md`
 is `agents.explorer.filter-by-hub`.
 
+### What `Since` says
+
+`Since` is the version that first ships the requirement. A requirement
+written after the last release tag isn't in any release yet, so it says
+`Since: unreleased`. Don't guess the next version: what goes into it is the
+board's release scope. The release checklist replaces every
+`Since: unreleased` with the version being released, in the release's own
+pull request. The check accepts `unreleased` or a version such as `0.1.0`
+and nothing else.
+
 ## Requirement guard: nothing that works may break
 
 The requirement guard compares a pull request with the main commit its merge
