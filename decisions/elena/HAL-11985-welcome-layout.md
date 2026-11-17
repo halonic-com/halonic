@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11985 (Sofia's UX check, HAL-11973; Liam approves and signs this note in review)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KOS0VbK7SLIt9Sv2qlI4dspqNM5U5yvB6gBliVwaqXdAx6BEiVgKnJj6vzq+rpt4eF6jWuEQ1AozQX9rro6qCg==
 
 Three rules are added to `shell.welcome-recent`:
 
