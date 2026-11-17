@@ -20,7 +20,7 @@ The known gap `method-fields-in-file-order` is removed. Everything it hid is now
   differently on purpose (`engine.run-agent-instructions`), so the compare takes only those
   figures out of those calls and out of the summary of a run that has one.
 
-Both allowed differences and the widened one are `proposed` until Liam signs them off in review.
+Liam signed off both allowed differences and the widened one in review on HAL-11746.
 
 ## Why the note covers parity.known-gaps-checked
 

@@ -629,7 +629,7 @@
     "old": "784f78d's runner started a parallel state's branches one after the other: each branch's agent.started, model calls and agent.finished events came before the next branch's, and the context.updated results and the output map came in the order the file lists the branches (the base fixture's invoice: vendor, then amount).",
     "new": "The engine starts every branch before any of them calls its model, so the branches' events interleave (agent.started for all, then each branch's calls), and it writes the results and the output map in name order (amount, then vendor). The set of branches, each branch's own events in their order, every result and the final output are the same.",
     "why": "Runs keep their definitions as canonical JSON (HAL-186 decision 5), which sorts keys, so the file's order is gone when a run reads them. Branches run alongside each other, so with a real model the order of their events follows who answers first; the compare sorts both sides by branch name. Each branch writes only under its own name, so the order changes the log, not a result. Decided by Liam on HAL-3703; if a fixture shows a result that depends on branch order, this entry no longer applies and the question goes back to him. Widened to the interleaving and to the new side on HAL-11746.",
-    "status": "proposed",
+    "status": "signed-off",
     "runRules": [
       "parallel-branches-by-name"
     ]
@@ -641,7 +641,7 @@
     "old": "784f78d's prompt for a step that calls a method named the fields of the method's JSON answer in the order the agent file lists them (the base fixture's extract: vendor, amount, note).",
     "new": "The engine names them in name order (amount, note, vendor). The rest of the prompt, each field's type and the answer are the same.",
     "why": "Runs keep their definitions as canonical JSON (HAL-186 decision 5), which sorts keys, so the file's order is gone when a run reads them; the same cause as parallel-branch-name-order. The line tells the model which fields to answer with, and the answer is read as JSON by name, so the order changes the prompt, not a result.",
-    "status": "proposed",
+    "status": "signed-off",
     "runRules": [
       "method-fields-by-name"
     ]
@@ -653,7 +653,7 @@
     "old": "784f78d's systemPrompt described an agent's knowledge sources in the system message, and its line on connector tools was short. The base fixture's clerk (two skills, two knowledge sources, a collection) sent 192 input tokens for its extract call, and the notifier (three connectors) 61. The clerk's method model has no price, so its call had no cost and counted in unpricedCalls.",
     "new": "The engine's system message leaves the knowledge sources to the knowledge tools (engine.agent-knowledge), so the clerk's call sends 126 input tokens, and its connector line carries the warning about untrusted tool texts, so the notifier's call sends 158. A scripted model without a price costs 0 in a test run, because every scripted model counts as local (callCost), so the clerk's call has cost 0 and the run has no unpriced call. The prompt the user message carries, the answers and the output tokens are the same.",
     "why": "The size of a system message follows what the agent has, and the engine builds it differently on purpose: the knowledge tools replace the description, and the untrusted-text warning is a safety line the old runner didn't have. Input tokens, and the cost worked out from them, would only match if the engine sent the old text. The compare takes the input tokens and cost out of the calls of the base's clerk and notifier, and the figures made of them out of the summary of a run that has one; every other call, the output tokens and all the other tests keep being compared strictly.",
-    "status": "proposed",
+    "status": "signed-off",
     "runRules": [
       "system-message-figures"
     ]
