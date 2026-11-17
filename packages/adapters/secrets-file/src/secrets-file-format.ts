@@ -14,23 +14,32 @@ export interface SecretEntry {
 
 const formatVersion = 1;
 
+/** Why an address can't be an allowed origin: it isn't an `http` or `https` address, or it holds a user name or password. */
+export type AddressProblem = "not-an-address" | "has-user-info";
+
 /**
- * The origin of an address, written as `new URL(…).origin` writes it, or
- * `undefined` for an address that doesn't parse, isn't `http` or `https`, or
- * holds a user name or password. The model resolver compares an address'
- * origin with the list as a whole string, so both sides must agree on this form.
+ * The origin of an address, written as `new URL(…).origin` writes it, or the
+ * reason it has none. The model resolver compares an address' origin with the
+ * list as a whole string, so both sides must agree on this form.
+ */
+export function originOfAddress(address: string): { origin: string } | { problem: AddressProblem } {
+  const url = URL.parse(address);
+  if (url === null || (url.protocol !== "https:" && url.protocol !== "http:")) {
+    return { problem: "not-an-address" };
+  }
+  if (url.username !== "" || url.password !== "") {
+    return { problem: "has-user-info" };
+  }
+  return { origin: url.origin };
+}
+
+/**
+ * The origin of an address, or `undefined` for an address that doesn't parse,
+ * isn't `http` or `https`, or holds a user name or password.
  */
 export function originOf(address: string): string | undefined {
-  const url = URL.parse(address);
-  if (
-    url === null ||
-    (url.protocol !== "https:" && url.protocol !== "http:") ||
-    url.username !== "" ||
-    url.password !== ""
-  ) {
-    return undefined;
-  }
-  return url.origin;
+  const found = originOfAddress(address);
+  return "origin" in found ? found.origin : undefined;
 }
 
 /** The file's text: `{ "version": 1, "secrets": { "<KEY>": { "name", "value", "allowedOrigins"? } } }`, keyed by `secretKey`. */
