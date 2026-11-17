@@ -68,8 +68,8 @@ nickname
 Set `HALONIC_DENY_TERMS_FILE` to keep the file somewhere else. If there is
 no file, or it holds only comments, the hooks print a one-line notice and
 check everything else. CI reads the terms from the `HALONIC_DENY_TERMS`
-secret of the `leak-terms` environment, which only `main` and the merge
-queue may use. A pull request's own CI run scans without them; the
+secret of the `leak-terms` environment, which only `main`, `release/*` and the
+merge queue may use. A pull request's own CI run scans without them; the
 `Leak terms` workflow checks its terms with the base branch's code, and the
 merge queue checks them again before anything merges. A secret that is set
 but holds no term always fails. A missing secret passes with a warning

@@ -13,7 +13,7 @@ on:
     types: [opened, synchronize, reopened]
   merge_group:
   push:
-    branches: [main]
+    branches: [main, "release/**"]
 
 permissions: {}
 
@@ -222,8 +222,8 @@ jobs:
     # pr.read can wait about 10 min in total under a GitHub rate limit.
     timeout-minutes: 15
     # The personal terms live in the environment `leak-terms`, which only
-    # `main` and the merge queue may use (deployment branch rule), like the
-    # Turbo signing key. A pull request gets the empty `pull-request` and
+    # `main`, `release/*` and the merge queue may use (deployment branch
+    # rule). A pull request gets the empty `pull-request` and
     # scans without them; leak-terms.yml checks its terms from the base
     # branch, and the merge queue checks them here before anything merges
     # (HAL-11232).
@@ -253,7 +253,7 @@ jobs:
           HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.event.after }}
         run: |
           if [ "$EVENT" = "push" ]; then
-            # A push to main scans the pushed commits too, not only the tree it
+            # A push scans the pushed commits too, not only the tree it
             # ends at. The first push to a new repo has no "before" commit.
             node tooling/check/src/cli/leaks.ts
             case "$BASE" in
@@ -380,12 +380,13 @@ jobs:
     # The key that signs the remote cache's entries lives in the environment
     # `turbo-cache-write`, which only `main` and the merge queue may use
     # (deployment branch rule). Only a push to `main` gets a token that can
-    # write; the merge queue runs the queued change's own code, so it reads
-    # and verifies but never uploads. A pull request gets the
-    # empty `turbo-cache-read`, whatever its ci.yml says, so it holds neither
-    # secret and uses the local cache only (HAL-5220: the signing key was a
-    # repository secret, readable by any pull request's own workflow).
-    environment: ${{ github.event_name == 'pull_request' && 'turbo-cache-read' || 'turbo-cache-write' }}
+    # write. A push to any other branch (`release/**`) and a pull request
+    # get the empty `turbo-cache-read`, whatever their ci.yml says, so they
+    # hold neither secret and use the local cache only (HAL-5220: the
+    # signing key was a repository secret, readable by any pull request's
+    # own workflow). The merge queue runs the queued change's own code, so
+    # it reads and verifies but never uploads.
+    environment: ${{ (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main')) && 'turbo-cache-read' || 'turbo-cache-write' }}
     permissions:
       contents: read
       id-token: write # to ask the cache for a write token (below)
@@ -1298,6 +1299,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "26"
+          package-manager-cache: false
       # The CLI's side of the folder keys: Node's realpath on the same golden
       # cases the shell's test checked above.
       - name: Folder keys, the CLI's side
