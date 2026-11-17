@@ -31,6 +31,15 @@ function reasonOf(error: unknown, notAnswering: string): string {
   return errorReasonFor(error);
 }
 
+/**
+ * The next step a refusal carries (`fix` of a kinded error). A refusal with one can't be cured by
+ * starting again, so the card shows the step in place of **Try again**.
+ */
+function fixOf(error: unknown): string | undefined {
+  if (typeof error !== "object" || error === null || !("fix" in error)) return undefined;
+  return typeof error.fix === "string" && error.fix.trim() !== "" ? error.fix : undefined;
+}
+
 function withFullStop(reason: string): string {
   return /[.!?]$/.test(reason) ? reason : `${reason}.`;
 }
@@ -47,10 +56,16 @@ function parseInput(text: string): Record<string, unknown> | undefined {
   }
 }
 
+/** What a failed start shows: the line, and the next step when retrying can't help. */
+interface StartFailure {
+  readonly line: string;
+  readonly fix: string | undefined;
+}
+
 /**
  * The card **▶ Run** opens (`workflows.start.start-run`), docked at the right: the run's input and
  * **Start run**. A failed start stays in the card with the input kept, in a danger Callout that
- * takes focus, with **Try again** (D7).
+ * takes focus, with **Try again** (D7), unless the refusal names a next step: then the step is the second line and there is no **Try again**.
  */
 export function StartRunCard({ start, notAnswering, onStarted, onClose }: StartRunCardProps) {
   const heading = useRef<HTMLHeadingElement>(null);
@@ -58,7 +73,7 @@ export function StartRunCard({ start, notAnswering, onStarted, onClose }: StartR
   const [text, setText] = useState("{}");
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | undefined>();
-  const [failure, setFailure] = useState<string | undefined>();
+  const [failure, setFailure] = useState<StartFailure | undefined>();
   useEffect(() => heading.current?.focus(), []);
   useEffect(() => {
     if (failure !== undefined) callout.current?.focus();
@@ -77,7 +92,7 @@ export function StartRunCard({ start, notAnswering, onStarted, onClose }: StartR
       onStarted(runId);
     } catch (error) {
       const reason = reasonOf(error, notAnswering);
-      setFailure(words.couldntStart(withFullStop(reason)));
+      setFailure({ line: words.couldntStart(withFullStop(reason)), fix: fixOf(error) });
     } finally {
       setBusy(false);
     }
@@ -122,9 +137,12 @@ export function StartRunCard({ start, notAnswering, onStarted, onClose }: StartR
           tone="danger"
           announce="focus"
           ref={callout}
-          action={{ label: words.tryAgain, onClick: submit }}
+          {...(failure.fix === undefined
+            ? { action: { label: words.tryAgain, onClick: submit } }
+            : {})}
         >
-          {failure}
+          <p>{failure.line}</p>
+          {failure.fix !== undefined && <p>{withFullStop(failure.fix)}</p>}
         </Callout>
       )}
       {failure === undefined && (

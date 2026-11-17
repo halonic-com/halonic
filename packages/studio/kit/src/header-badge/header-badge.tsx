@@ -93,7 +93,12 @@ export function HeaderBadge(props: HeaderBadgeProps) {
 function PlainBadge({ props }: { readonly props: HeaderBadgeProps }) {
   if (props.as === "menu") {
     return (
-      <button type="button" className={headerBadgeMenuClasses} onClick={props.onOpenSheet}>
+      <button
+        type="button"
+        className={headerBadgeMenuClasses}
+        aria-label={spokenOf(props.children)}
+        onClick={props.onOpenSheet}
+      >
         <MenuBadgeBody text={props.children} />
       </button>
     );
@@ -115,6 +120,11 @@ function PlainBadge({ props }: { readonly props: HeaderBadgeProps }) {
   );
 }
 
+/** What a screen reader says of a chip's text: the middle dot reads as a comma (microcopy 19.6). */
+function spokenOf(text: string): string {
+  return text.replaceAll(" · ", ", ");
+}
+
 /** The sample chip on desktop: the trigger of a Menu lined up with its right edge, 4px below. */
 function MenuBadge({ props }: { readonly props: HeaderBadgeMenu }) {
   return (
@@ -123,7 +133,12 @@ function MenuBadge({ props }: { readonly props: HeaderBadgeMenu }) {
       description={props.description}
       entries={props.entries}
       trigger={(trigger: MenuTriggerProps) => (
-        <button type="button" {...trigger} className={headerBadgeMenuClasses}>
+        <button
+          type="button"
+          {...trigger}
+          aria-label={spokenOf(props.children)}
+          className={headerBadgeMenuClasses}
+        >
           <MenuBadgeBody text={props.children} />
         </button>
       )}

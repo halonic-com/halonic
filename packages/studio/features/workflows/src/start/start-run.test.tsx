@@ -200,6 +200,25 @@ verifies("workflows.start.start-run", () => {
     expect(page.textContent).toContain("Couldn't start the run: The disk is full.");
   });
 
+  it("shows the next step of a refusal in place of Try again", async () => {
+    const { page } = await open(async () => {
+      throw new KindedError("unavailable", "Writer uses the model provider Anthropic.", {
+        fix: "Run this workflow from the command line, or give the agent the mock model",
+      });
+    });
+
+    await click(runButton(page));
+    await click(buttonNamed(page, "Start run"));
+
+    expect(page.textContent).toContain(
+      "Couldn't start the run: Writer uses the model provider Anthropic.",
+    );
+    expect(page.textContent).toContain(
+      "Run this workflow from the command line, or give the agent the mock model.",
+    );
+    expect(page.textContent).not.toContain("Try again");
+  });
+
   it("starts nothing when the input isn't a JSON object", async () => {
     const started = vi.fn(async () => ({ runId: "x" }));
     const { page } = await open(started);

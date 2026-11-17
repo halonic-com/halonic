@@ -38,9 +38,14 @@ interface ListRowBase<Id extends string> {
 export interface ListRow<Id extends string = string> extends ListRowBase<Id> {
   /** On the right: a status chip or a value. */
   readonly trailing?: ReactNode;
+  /**
+   * The sentence a screen reader hears for the row, in its own order and words, as the sample
+   * card's "Step 2 of 3: See what it did, not done". Without it they hear the title, the meta line
+   * and the trailing part.
+   */
+  readonly label?: string;
   readonly tag?: never;
   readonly cells?: never;
-  readonly label?: never;
   readonly child?: never;
 }
 

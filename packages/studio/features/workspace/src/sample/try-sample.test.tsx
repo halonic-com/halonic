@@ -199,7 +199,10 @@ verifies("workspace.try-sample", () => {
     await act(async () => (row as HTMLElement | undefined)?.click());
 
     expect(shell.toasts.list().map((toast) => toast.title)).toContain(
-      "Can't create the sample in ~/Documents: permission denied.",
+      "Couldn't create a fresh copy of the sample: permission denied.",
+    );
+    expect(shell.toasts.list().find((toast) => toast.sticky === true)?.action?.label).toBe(
+      "Try again",
     );
   });
 });
