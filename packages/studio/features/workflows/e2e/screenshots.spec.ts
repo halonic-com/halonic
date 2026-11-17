@@ -256,7 +256,9 @@ for (const size of welcomeSizes) {
         const open = await page.getByRole("button", { name: "Open folder" }).boundingBox();
         expect(title, "the title is shown").not.toBeNull();
         expect(open, "Open folder is shown").not.toBeNull();
-        ys.set(state, { title: title?.y ?? NaN, open: open?.y ?? NaN });
+        // Page-relative: the failed row scrolls into view, which moves the viewport.
+        const scrollY = await page.evaluate(() => window.scrollY);
+        ys.set(state, { title: (title?.y ?? NaN) + scrollY, open: (open?.y ?? NaN) + scrollY });
         await page.screenshot({
           path: `test-results/screenshots/welcome-${state}-${size.width}-${scheme}.png`,
           fullPage: true,
