@@ -245,7 +245,7 @@ can judge the result for yourself.
    request, a review and the automated checks before it merges: tests, licence
    and dependency checks, and a check for leaked secrets.
 5. **A person says yes to every release.** Nothing is released or published
-   without a person's yes, and a person at Korse Holding is accountable for it.
+   without a person's yes, and a person at Halonic is accountable for it.
    A person can stop or override anything an agent does.
 
 Tests lower the risk of a broken feature; they don't remove it. This is a first
