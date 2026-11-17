@@ -184,6 +184,7 @@ export function WorkspaceWindow({
     creating && newWorkspace !== undefined ? (
       <NewWorkspaceDialog
         host={newWorkspace}
+        announce={(line) => shell.announcer.announce(line)}
         onCancel={() => setCreating(false)}
         onOpen={(folder) => {
           setCreating(false);

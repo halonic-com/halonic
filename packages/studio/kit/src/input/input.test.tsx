@@ -212,4 +212,18 @@ verifies("kit.enter-while-composing", () => {
     expect(press(input, { key: "Enter" }).cancelled).toBe(false);
     expect(onKeyDown).toHaveBeenCalledTimes(1);
   });
+
+  it("reads an extra description after the Field's line", () => {
+    const { container } = render(
+      <>
+        <span id="extra">Folder: ~/Documents</span>
+        <Field label="Name" error="Give it a name.">
+          <Input describedBy="extra" />
+        </Field>
+      </>,
+    );
+    const ids = container.querySelector("input")?.getAttribute("aria-describedby")?.split(" ");
+    expect(ids).toHaveLength(2);
+    expect(ids?.[1]).toBe("extra");
+  });
 });
