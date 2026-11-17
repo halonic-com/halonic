@@ -9,6 +9,7 @@ import type { GoogleSetupPorts } from "@halonicjs/host-server";
 import type { HttpClient, Secrets } from "@halonicjs/ports";
 import { type ProfileFolder, secretsFile } from "@halonicjs/profile";
 import { randomIds, systemClock } from "@halonicjs/std";
+import { proxySetting } from "../proxy-setting.ts";
 import { googleAccountActions } from "./google-actions.ts";
 import { workspaceConnectorSource } from "./workspace-connector-source.ts";
 
@@ -64,7 +65,8 @@ export function openGoogleSetup(options: GoogleSetupOptions): GoogleSetupPorts {
     secrets: tokenKeySecrets(options),
     clock,
   });
-  const http = options.http ?? createNodeHttpClient({ hostClass: googleHostClass });
+  const http =
+    options.http ?? createNodeHttpClient({ hostClass: googleHostClass, proxy: proxySetting });
   const setups = setupRecords({
     records: new FileRecordStore(join(googleFolder, "setups")),
     clock,

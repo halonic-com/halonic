@@ -28,6 +28,11 @@ export class ProxyEndpoint {
     } catch {
       return refusal("The proxy setting is not a URL. Halonic needs it as http://host:port.");
     }
+    // Without `//` after the scheme, `bob:secret@proxy:3128` reads as the scheme `bob:` with no host.
+    // Say nothing of the scheme then: it is the user name.
+    if (url.protocol !== "http:" && url.hostname === "") {
+      return refusal("The proxy setting is not a URL. Halonic needs it as http://host:port.");
+    }
     if (url.protocol !== "http:") {
       return refusal(
         `Halonic supports an http:// proxy; yours is ${url.protocol}//${url.host}. ` +

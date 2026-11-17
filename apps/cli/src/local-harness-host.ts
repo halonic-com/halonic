@@ -52,6 +52,7 @@ import type {
 import type { ProfileEnvironment, ProfileFolder, WorkspaceFolders } from "@halonicjs/profile";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { lazyProposalGit } from "./lazy-proposal-git.ts";
+import { proxySetting } from "./proxy-setting.ts";
 import { placementFolder } from "./sandbox-gate-machine.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
 import { skillFileOf } from "./skill-file.ts";
@@ -327,7 +328,7 @@ async function nodeBridgeServer(input: LocalHarnessInput): Promise<HarnessBridge
   const sockets = platform === "linux" || platform === "darwin";
   const socketFolder = join(input.profile.root, bridgeSocketsFolder);
   if (sockets) await makePrivateFolder(socketFolder);
-  const providers = createNodeHttpClient({ hostClass: providerHostClass });
+  const providers = createNodeHttpClient({ hostClass: providerHostClass, proxy: proxySetting });
   return new NodeHarnessBridgeServer({
     secrets: noSecrets,
     fetch: (url, init) => providers.fetch(url, init),

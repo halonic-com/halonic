@@ -53,10 +53,15 @@ verifies("http-node.proxy-config", () => {
       );
     });
 
+    it("refuses a value without a scheme as not a URL, naming nothing from it", () => {
+      const message = refusalOf(proxyFromEnv({ HTTPS_PROXY: "proxy.corp:3128" }));
+      expect(message).toContain("not a URL");
+      expect(message).not.toContain("proxy.corp");
+    });
+
     it.each([
       ["socks5://proxy.corp:1080", "socks5"],
       ["https://proxy.corp:3129", "https"],
-      ["proxy.corp:3128", "proxy.corp"],
     ])("refuses %s and names the scheme", (value, shown) => {
       expect(refusalOf(proxyFromEnv({ HTTPS_PROXY: value }))).toContain(shown);
     });
@@ -94,6 +99,7 @@ verifies("http-node.proxy-config", () => {
         proxyUrl("socks5", "bob", "hunter2", "proxy.corp:1080"),
         proxyUrl("http", "bob", "hunter2%zz", "proxy.corp:1"),
         proxyUrl("http", "bob", "hunter2", "proxy.corp:1/path"),
+        "bob:hunter2@proxy.corp:3128", // no scheme: `bob:` reads as one
       ]) {
         expect(refusalOf(proxyFromEnv({ HTTPS_PROXY: value }))).not.toMatch(/bob|hunter2/);
       }
