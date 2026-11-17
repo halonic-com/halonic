@@ -10,13 +10,13 @@ import { markedName } from "./hidden-characters.ts";
  * server names the tool and the connector, so a hidden character in them
  * shows as its marker.
  *
- * @param agentName the agent's name as the workspace shows it; its id until it's known
+ * @param agentName the agent's name as the workspace shows it; its id when its file can't be read
  * @param subagentName the subagent's name, likewise; `null` when the agent asked itself
  */
 export function approvalTitle(
   item: ApprovalItem,
-  agentName: string = item.agent,
-  subagentName: string | null = item.subagent,
+  agentName: string = item.agentName,
+  subagentName: string | null = item.subagentName,
 ): string {
   const tool =
     item.connector === null

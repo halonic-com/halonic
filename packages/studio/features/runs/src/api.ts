@@ -77,6 +77,8 @@ export interface RunsSource {
   readonly log: (runId: string) => Promise<RunEvent[]>;
   /** The run's workflow; `undefined` when it's no longer in the workspace. */
   readonly workflow: (hubId: string, workflowId: string) => RunWorkflow | undefined;
+  /** An agent's name as its file says; `undefined` when the workspace has no such agent. */
+  readonly agentName?: (agentId: string) => string | undefined;
   /**
    * The routine with the key a run's `trigger.routineId` holds; `undefined`
    * when it's no longer in the workspace.

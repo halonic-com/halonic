@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
+import type { RunEvent } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import { DamagedRunLog } from "../api.ts";
+import { DamagedRunLog, type RunsSource } from "../api.ts";
 import { RunsList } from "../runs-list.ts";
 import { fakeSource } from "../source.test-helper.ts";
 import { approvalAt, mondayMorning, summaryWith } from "../summary.test-helper.ts";
@@ -43,6 +44,40 @@ function button(root: HTMLElement, name: string): HTMLButtonElement {
   return found;
 }
 
+/** A source like the app's `WorkspaceRuns`: its lookups are methods that read a private field. */
+class PrivateFieldSource {
+  readonly #inner: RunsSource;
+  readonly #names = new Map([["reporter", "Handbook reader"]]);
+  readonly list: RunsSource["list"];
+  readonly log: RunsSource["log"];
+  readonly workflow: RunsSource["workflow"];
+  readonly routine: RunsSource["routine"];
+  readonly runnableWorkflows: RunsSource["runnableWorkflows"];
+  readonly currency: RunsSource["currency"];
+  readonly monthlyBudget: RunsSource["monthlyBudget"];
+  readonly subscribe: RunsSource["subscribe"];
+
+  constructor(inner: RunsSource) {
+    this.#inner = inner;
+    this.list = inner.list;
+    this.log = inner.log;
+    this.workflow = inner.workflow;
+    this.routine = inner.routine;
+    this.runnableWorkflows = inner.runnableWorkflows;
+    this.currency = inner.currency;
+    this.monthlyBudget = inner.monthlyBudget;
+    this.subscribe = inner.subscribe;
+  }
+
+  agentName(id: string): string | undefined {
+    return this.#names.get(id);
+  }
+
+  providerKind(id: string): ReturnType<RunsSource["providerKind"]> {
+    return this.#inner.providerKind(id);
+  }
+}
+
 verifies("runs.run-page", () => {
   it("shows the header of a live run, without a banner", async () => {
     const { root } = await openRun(fakeSource([running]).source, running.id);
@@ -52,6 +87,45 @@ verifies("runs.run-page", () => {
       "Run · Support replyRun 7k2m9pRunningtoday 10:40 · updates live",
     );
     expect(root.querySelector("section[aria-label]")).toBeNull();
+  });
+
+  it("names the agent and tells a local model's failure from a source whose lookups use private fields", async () => {
+    const source = new PrivateFieldSource(fakeSource([needsYou]).source);
+    const { root } = await openRun(source, needsYou.id);
+    expect(root.querySelector('section[aria-label="Waiting for you"]')?.textContent).toContain(
+      "Handbook reader wants to send an email with Gmail",
+    );
+
+    const failedRun = summaryWith({
+      id: "run_f_9x2k1a",
+      status: "failed",
+      reason: "model-unreachable",
+      state: "draft",
+    });
+    const log = [
+      {
+        runId: failedRun.id,
+        seq: 2,
+        at: "2026-11-16T08:00:00Z",
+        type: "llm.request",
+        agent: "reporter",
+        provider: "ollama",
+        model: "llama3.2",
+        messages: 1,
+      },
+      {
+        runId: failedRun.id,
+        seq: 3,
+        at: "2026-11-16T08:00:01Z",
+        type: "run.failed",
+        state: "draft",
+        error: "x",
+        host: "localhost:11434",
+      },
+    ] as unknown as RunEvent[];
+    const failing = new PrivateFieldSource(fakeSource([failedRun], { [failedRun.id]: log }).source);
+    const failed = await openRun(failing, failedRun.id);
+    expect(failed.root.textContent).toContain("Ollama may not be running on this computer");
   });
 
   it("tells the runs list the run's page was shown, once", async () => {

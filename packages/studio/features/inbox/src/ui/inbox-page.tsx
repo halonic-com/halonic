@@ -369,8 +369,8 @@ function OpenCard({
     return (
       <ApprovalCard
         item={item}
-        agentName={item.agent}
-        subagentName={item.subagent}
+        agentName={item.agentName}
+        subagentName={item.subagentName}
         decisions={inbox.decisions}
         next={next}
         back={null}
