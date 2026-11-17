@@ -4,6 +4,7 @@
 - Approval: `tooling/check/src/guard/` is a trust root, so this note needs both guardians: Liam (CTO) and Julian (security reviewer)
 - Kind: user-visible
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:YdyztIkmalFd8k/bD/U5z9gnKjxBTK7RykFG8OKLhC6M3wPOrEAZPvhOTNO7AfkdBjepncevKm2N/TwiQgLZBw==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:zMYhx8hxq6C3ZS85d9D+Uwg7sob7bYPg9Lsip3BpbTBM4T/IVWX4Qv6K8WSHgFozlSWwMogs9VLuGOKdWAUqDQ==
 
 ## What changes
 
