@@ -16,6 +16,7 @@ import {
   type RunnerFrame,
 } from "../frames.ts";
 import { BridgedHttp } from "./bridged-http.ts";
+import { type FailureNote, failureNoteOf } from "./failure-note.ts";
 
 /**
  * What a fenced integration gets: the same host as in-process, but without
@@ -172,7 +173,7 @@ class CallRunner {
       .run(call, async () => callTool())
       .then(
         (text) => this.#answer(call, { text }),
-        (error: unknown) => this.#answer(call, { error: describe(error) }),
+        (error: unknown) => this.#answer(call, { error: describe(error), ...failureNoteOf(error) }),
       );
   }
 
@@ -184,7 +185,7 @@ class CallRunner {
     for (const call of this.#aborts.keys()) this.cancel(call);
   }
 
-  #answer(call: number, outcome: { text: string } | { error: string }): void {
+  #answer(call: number, outcome: { text: string } | ({ error: string } & FailureNote)): void {
     this.#aborts.delete(call);
     try {
       this.#send({ type: "result", call, ...outcome });
