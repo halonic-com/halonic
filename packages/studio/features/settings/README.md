@@ -45,7 +45,7 @@ import { formatExample, formatLocale, formatOptions, formatPref } from "@halonic
 
 formatOptions({ followTag: "en_GB.UTF-8", place: "app" })[0];
 // { value: "follow", label: "Follow this computer: English (United Kingdom)" }
-formatExample(formatLocale(settings.get(formatPref), "en-GB")); // "45.00 · Mon 9 Nov, 08:00"
+formatExample(formatLocale(settings.get(formatPref), "en-GB")); // "12,345.60 · Tue 17 Nov, 08:00" (today)
 ```
 
 `followTag` is the system's region format in the desktop app and the browser's language when

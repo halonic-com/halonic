@@ -27,6 +27,13 @@ function setup(place: "app" | "served" = "served") {
 }
 
 verifies("settings.formats-section", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date(2026, 10, 17, 8, 0) });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("follows the browser by default and shows the example", () => {
     const { prefs, view } = setup();
     const select = control<HTMLSelectElement>(view, "select");
@@ -34,7 +41,7 @@ verifies("settings.formats-section", () => {
     expect(select.selectedOptions[0]?.textContent).toBe(
       "Follow this browser: English (United Kingdom)",
     );
-    expect(view.textContent).toContain("45.00 · Mon 9 Nov, 08:00");
+    expect(view.textContent).toContain("Example: 12,345.60 · Tue 17 Nov, 08:00");
     expect(prefs.stored.size).toBe(0);
   });
 
@@ -50,7 +57,7 @@ verifies("settings.formats-section", () => {
     await change(control(view, "select"), "nl-NL");
     expect(settings.get(formatPref)).toBe("nl-NL");
     expect(prefs.stored.get(formatPref.key)).toBe("nl-NL");
-    expect(view.textContent).toContain("45,00 · ma 9 nov, 08:00");
+    expect(view.textContent).toContain("Example: 12.345,60 · di 17 nov, 08:00");
   });
 
   describe("a failed save", () => {
