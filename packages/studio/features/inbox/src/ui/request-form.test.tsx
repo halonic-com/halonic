@@ -133,6 +133,29 @@ verifies("inbox.request", () => {
         unmountAll();
       }
     });
+
+    it("says it couldn't load the workflows when the read fails, and Try again reads them", async () => {
+      let fail = true;
+      const requests: InboxRequests = {
+        ...fakeRequests([support]).requests,
+        offered: async () => {
+          if (fail) throw new KindedError("unavailable", "Halonic isn't answering.");
+          return [support];
+        },
+      };
+      const { root } = await open(requests);
+      const pane = root.querySelector('[data-pane="item"]') as HTMLElement;
+      expect(pane.querySelector('[role="status"]')?.textContent).toBe(
+        "Couldn't load the workflows you can start.Try again",
+      );
+      expect(root.querySelector("textarea")).toBeNull();
+
+      fail = false;
+      await act(async () => button(root, "Try again").click());
+      await settled();
+      expect(message(root).placeholder).toBe(support.description);
+      expect(root.textContent).not.toContain("Couldn't load the workflows");
+    });
   });
 
   describe("on a phone", () => {

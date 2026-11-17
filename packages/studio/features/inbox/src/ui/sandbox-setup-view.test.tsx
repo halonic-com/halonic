@@ -7,6 +7,7 @@ import { refusedRun, sandboxInbox } from "../sandbox/fake-sandbox.test-helper.ts
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { InboxView } from "./inbox-page.tsx";
+import { SandboxSetupView } from "./sandbox-setup-view.tsx";
 
 beforeEach(fakeModal);
 afterEach(() => {
@@ -183,5 +184,43 @@ verifies("inbox.sandbox-row", () => {
     const labels = [...root.querySelectorAll("button")].map((b) => b.textContent ?? "");
     expect(labels.join(" ")).not.toMatch(/anyway|ignore|skip|run without|continue/i);
     expect(root.textContent).not.toMatch(/run anyway/i);
+  });
+
+  it("says it couldn't load the runs that didn't run, and Try again loads them", async () => {
+    let fail = true;
+    const [run] = twoRoutines;
+    const root = render(
+      <SandboxSetupView
+        item={{
+          kind: "setup",
+          key: "setup:sandbox:this-computer",
+          provider: "sandbox",
+          account: "this-computer",
+          title: "1 routine didn't run",
+          progress: "",
+          changedAt: "2026-11-10T06:00:00.000Z",
+        }}
+        control={{
+          check: async () => ({ ok: true }),
+          reason: () => "bubblewrap-missing",
+          runs: async () => {
+            if (fail) throw new Error("no store");
+            return run === undefined ? [] : [run];
+          },
+          name: () => "Daily summary",
+        }}
+        answering
+        close={() => {}}
+      />,
+    );
+    await until(() => root.textContent?.includes("Couldn't load"));
+    expect(root.textContent).toContain("Couldn't load the runs that didn't run.");
+    expect(root.textContent).not.toContain("Didn't run because of this");
+
+    fail = false;
+    await act(async () => button(root, "Try again")?.click());
+    await until(() => root.textContent?.includes("Daily summary"));
+    expect(root.textContent).toContain("Didn't run because of this");
+    expect(root.textContent).not.toContain("Couldn't load the runs");
   });
 });

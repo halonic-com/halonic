@@ -6,6 +6,7 @@ import { markedName } from "../plain/hidden-characters.ts";
 import type { SandboxViewProps } from "../sandbox/sandbox-setup-source.ts";
 import { sandboxDocsBase, sandboxInboxWords } from "../sandbox/sandbox-words.ts";
 import { CardHeader } from "./card-parts.tsx";
+import { QuietLine } from "./quiet-line.tsx";
 
 /** What the last check came to. A refusal that follows another shows its own reason. */
 type Checked =
@@ -30,16 +31,21 @@ export function SandboxSetupView({ item, control, openRun, announce }: SandboxVi
   const [checked, setChecked] = useState<Checked>();
   const fixedLine = useRef<HTMLParagraphElement>(null);
   const focusFixed = useRef(false);
-  const [runs, setRuns] = useState<readonly RunSummary[]>([]);
+  const [runs, setRuns] = useState<readonly RunSummary[] | "failed">([]);
+  const [tries, setTries] = useState(0);
   const fixed = item.fixed === true;
   // The runs follow the row: its title changes when they do, and when a check fixes them.
+  // `tries` counts the presses of Try again, so each press reads again.
   useEffect(() => {
     let current = true;
-    void control.runs().then((list) => current && setRuns(list));
+    control.runs().then(
+      (list) => current && setRuns(list),
+      () => current && setRuns("failed"),
+    );
     return () => {
       current = false;
     };
-  }, [control, item.title, item.changedAt]);
+  }, [control, item.title, item.changedAt, tries]);
 
   const checkAgain = async () => {
     try {
@@ -97,7 +103,10 @@ export function SandboxSetupView({ item, control, openRun, announce }: SandboxVi
           </ExternalLink>
         </p>
       )}
-      {runs.length === 0 ? null : (
+      {runs === "failed" ? (
+        <QuietLine line={sandboxInboxWords.runsFailed} retry={() => setTries((n) => n + 1)} />
+      ) : null}
+      {runs === "failed" || runs.length === 0 ? null : (
         <div className="flex flex-col gap-1">
           <h3 className="text-small text-fg-muted">{sandboxInboxWords.runsHeading}</h3>
           <ul>

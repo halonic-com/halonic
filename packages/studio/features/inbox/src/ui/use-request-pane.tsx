@@ -13,6 +13,7 @@ import type { Inbox } from "../inbox.ts";
 import type { InboxRequests, RequestWorkflow } from "../request/inbox-requests.ts";
 import { notStartedLine } from "../request/not-started.ts";
 import { useOffered } from "../request/use-offered.ts";
+import { QuietLine } from "./quiet-line.tsx";
 import { emptyDraft, RequestForm } from "./request-form.tsx";
 import { RequestSheet } from "./request-sheet.tsx";
 
@@ -21,6 +22,9 @@ const newRequestRowClasses = [
   "flex w-full min-h-touch items-center gap-3 border-b border-border px-4 text-left text-body text-accent-text",
   "transition-colors focus-ring-inset hover:bg-surface-subtle active:bg-surface-subtle",
 ].join(" ");
+
+/** Said in place of the form while the workflows you can start can't be read (states audit gap 5). */
+export const OFFERED_FAILED = "Couldn't load the workflows you can start.";
 
 /** What the Inbox page needs from the request form, or nothing when there is none to offer. */
 export interface RequestPane {
@@ -69,7 +73,7 @@ export function useRequestPane(options: {
     sheetOpen: shared,
     cardOpen,
   } = options;
-  const offered = useOffered(requests);
+  const { list: offered, failed, retry } = useOffered(requests);
   const [draft, setDraft] = useState(emptyDraft);
   const [busy, setBusy] = useState(false);
   const [notStarted, setNotStarted] = useState("");
@@ -105,6 +109,11 @@ export function useRequestPane(options: {
       formAsked.current = false;
     }
   }, [asks, offered.length, requests, sheetOpen]);
+  if (requests !== undefined && failed) {
+    // Said where the form would be, so a failed read doesn't look like a workspace with none.
+    const line = <QuietLine line={OFFERED_FAILED} retry={retry} />;
+    return { newRequest: phone ? line : null, form: phone ? null : line, sheet: null };
+  }
   if (requests === undefined || offered.length === 0) {
     return { newRequest: null, form: null, sheet: null };
   }
