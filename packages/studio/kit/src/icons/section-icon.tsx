@@ -7,6 +7,7 @@ export const sectionIconNames = [
   "assistant",
   "agent-sandbox",
   "trusted-sources",
+  "plugins",
   "about",
 ] as const;
 
@@ -40,6 +41,8 @@ const drawings: Readonly<Record<SectionIconName, SectionDrawing>> = {
   "agent-sandbox": { outline: "M12 3l8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9" },
   // A folder with a tick.
   "trusted-sources": { outline: "M4 7h6l2 2h8v10H4zM9 14l2 2 4-4" },
+  // A plug: two prongs, a round body and a short cord.
+  plugins: { outline: "M9 3v4M15 3v4M6 7h12v4a6 6 0 01-12 0zM12 17v4" },
   // The info mark.
   about: { outline: "M12 4a8 8 0 110 16 8 8 0 010-16zM12 11v5M12 8v.01" },
 };
