@@ -3,6 +3,7 @@
 - Task: HAL-11385
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-751#document-microcopy (revision 105, checked by Maya on HAL-11393; small wording fixes on approved screens from the HAL-11370 design check are a team decision, HAL-2282 rule; Liam reviewed the PR on HAL-11448 and HAL-11450)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4lNbs96qLWHSo4uQXIhM61yvdaHliG+sjhV9bkCmidDeiW2YBa/XJDu3ChuabfWOvGDn+lHMijOR81DvR6CyAA==
 
 ## What changes
 
