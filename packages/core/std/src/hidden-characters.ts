@@ -54,3 +54,22 @@ export function escapeHidden(json: string): string {
   }
   return escaped;
 }
+
+/**
+ * A short text, such as a name or a path, as one string with every hidden character written out
+ * as a marker like `⟦U+202E⟧`, so it can't act on the text around it. A Windows line end
+ * (`\r\n`) counts as a newline; a `\r` on its own is marked.
+ *
+ * @example
+ * markHiddenName(`create${String.fromCodePoint(0x200b)}note`); // "create⟦U+200B⟧note"
+ */
+export function markHiddenName(value: string): string {
+  let marked = "";
+  for (const character of value.replace(/\r\n/g, "\n")) {
+    const point = character.codePointAt(0) ?? 0;
+    marked += isHiddenCharacter(point)
+      ? `⟦U+${point.toString(16).toUpperCase().padStart(4, "0")}⟧`
+      : character;
+  }
+  return marked;
+}

@@ -28,6 +28,16 @@ verifies("studio.desktop-plugins-host", () => {
     expect(weather?.commands).toHaveLength(1);
   });
 
+  it("gives each plugin's folder and the backend files its fingerprint covers", async () => {
+    const { service } = acme();
+    const feed = new PluginFeed(service);
+    await feed.reload();
+    const weather = feed.current().find(({ plugin }) => plugin === "weather");
+    expect(weather?.location).toEqual(expect.stringContaining("weather"));
+    expect(weather?.backendFiles?.shown).not.toContain("plugin.yaml");
+    expect(weather?.backendFiles?.more).toBe(0);
+  });
+
   it("tells listeners only when a read finds something different", async () => {
     const { service } = acme();
     const feed = new PluginFeed(service);

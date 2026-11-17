@@ -1,7 +1,7 @@
+import { markHiddenName } from "@halonicjs/std";
 import { Button } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef } from "react";
 import type { SetupViewProps } from "../inbox.ts";
-import { markedName } from "../plain/hidden-characters.ts";
 import { CardHeader } from "./card-parts.tsx";
 
 /**
@@ -18,9 +18,9 @@ export function SetupCard({ item, close }: SetupViewProps) {
     <section aria-labelledby={titleId} className="flex flex-col gap-4 p-4">
       <CardHeader
         titleId={titleId}
-        title={markedName(item.title)}
+        title={markHiddenName(item.title)}
         heading={heading}
-        since={markedName(item.progress)}
+        since={markHiddenName(item.progress)}
       />
       <div>
         <Button variant="secondary" onClick={close}>

@@ -1,4 +1,4 @@
-import type { PluginTrustChanges } from "@halonicjs/app";
+import type { PluginTrustChanges, PluginTrustFiles } from "@halonicjs/app";
 import type { Plugin } from "@halonicjs/format";
 import type { ItemKindContribution, ItemRef, WorkspaceContext } from "@halonicjs/studio-shell";
 import type { PluginPanelFeed, PluginPanelUi } from "../panel/plugin-panels.ts";
@@ -43,6 +43,10 @@ export interface InstalledPlugin extends PluginPanelUi {
   readonly origin?: PluginOrigin | undefined;
   /** What changed since the person trusted it, while its status is `changed`. */
   readonly changes?: PluginTrustChanges | undefined;
+  /** The plugin folder's real path on this computer, for the trust check's Folder line. */
+  readonly location?: string | undefined;
+  /** The backend files its fingerprint covers, as the trust check lists them. */
+  readonly backendFiles?: PluginTrustFiles | undefined;
   /** Why it can't load; empty while it loads. */
   readonly problems: readonly PluginLoadProblem[];
 }

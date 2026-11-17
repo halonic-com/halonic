@@ -1,8 +1,8 @@
+import { markHiddenName } from "@halonicjs/std";
 import { Button, type CalloutHandle, Tooltip } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import type { InboxDecisions } from "../decide.ts";
 import type { WaitItem } from "../inbox-items.ts";
-import { markedName } from "../plain/hidden-characters.ts";
 import { decidedAt, movesOnLine, waitingSince } from "../plain/waiting-time.ts";
 import {
   type BackLink,
@@ -51,7 +51,7 @@ type CardState =
  * words with a capital first letter, `needs_info` as "Needs info".
  */
 export function answerLabel(event: string, own?: string): string {
-  if (own !== undefined && own.trim() !== "") return markedName(own.trim());
+  if (own !== undefined && own.trim() !== "") return markHiddenName(own.trim());
   const words = event.replace(/[-_]+/g, " ").trim();
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
@@ -149,7 +149,7 @@ export function WaitCard(props: WaitCardProps) {
         <CardHeader
           titleId={titleId}
           // Filled in from the run's context, so it can hold model output: mark what's hidden.
-          title={markedName(item.title)}
+          title={markHiddenName(item.title)}
           heading={heading}
           since={state.kind === "answered" ? null : waitingSince(new Date(item.since), now())}
           onOpenRun={

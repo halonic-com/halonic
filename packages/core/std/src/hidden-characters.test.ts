@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { escapeHidden, isHiddenCharacter } from "./hidden-characters.ts";
+import { escapeHidden, isHiddenCharacter, markHiddenName } from "./hidden-characters.ts";
 
 verifies("std.hidden-characters", () => {
   it("finds direction overrides, zero-width and control characters", () => {
@@ -27,5 +27,19 @@ verifies("std.hidden-characters", () => {
     const escaped = escapeHidden(JSON.stringify(value));
     expect(escaped).toBe('"a\\udb40\\udc41"');
     expect(JSON.parse(escaped)).toBe(value);
+  });
+
+  it("writes a name's hidden characters out as markers", () => {
+    expect(markHiddenName(`create${String.fromCodePoint(0x200b)}note`)).toBe("create⟦U+200B⟧note");
+    expect(markHiddenName(`backend/x${String.fromCodePoint(0x202e)}sj.exe`)).toBe(
+      "backend/x⟦U+202E⟧sj.exe",
+    );
+    expect(markHiddenName("a\u001b[31mb")).toBe("a⟦U+001B⟧[31mb");
+  });
+
+  it("leaves a name without hidden characters as it is, and a Windows line end as a newline", () => {
+    expect(markHiddenName("create_note")).toBe("create_note");
+    expect(markHiddenName("one\r\ntwo")).toBe("one\ntwo");
+    expect(markHiddenName("one\rtwo")).toBe("one⟦U+000D⟧two");
   });
 });
