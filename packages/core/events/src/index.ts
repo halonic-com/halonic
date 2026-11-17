@@ -18,6 +18,7 @@ export type {
   ProviderText,
   RunCatchUp,
   RunFailureCause,
+  RunFailureKind,
   RunFailureReason,
   RunKind,
   RunParent,

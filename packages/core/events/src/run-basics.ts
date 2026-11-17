@@ -1,5 +1,3 @@
-import type { ErrorKind } from "@halonicjs/std";
-
 /** Whether a run is a real run or part of a workflow test. */
 export type RunKind = "run" | "test";
 
@@ -279,18 +277,35 @@ export interface InstructionsRefusal {
 export type HarnessStartCause = "not-installed" | "signed-out";
 
 /**
+ * How a surface responds to a failure: the kit's error kinds. This package
+ * may not import `@halonicjs/std`, so it holds its own list; the engine's
+ * type test (requirement `engine.run-failure-cause-of`) fails when it and
+ * `ErrorKind` differ.
+ */
+export type RunFailureKind =
+  | "invalid_input"
+  | "not_found"
+  | "conflict"
+  | "unauthenticated"
+  | "denied"
+  | "limit_reached"
+  | "unavailable"
+  | "internal";
+
+/**
  * The typed cause of a failed run, for a screen that has to tell one failure
  * from another without reading the free-text `error` (requirement
  * `events.run-failed-cause`), such as Studio's "API off" banner.
  *
- * `kind` is the error kind the failing error carried. `code` is a stable
+ * `kind` is the error kind the failing error carried, one of the kit's eight
+ * (the engine's type test keeps {@link RunFailureKind} equal to `ErrorKind`). `code` is a stable
  * string for a cause a screen knows by name, such as `google.api-disabled`;
  * a reader that doesn't know a code still has `kind`. `detail` holds a few
  * short strings that cause names, such as the API, the project and a link
  * that fixes it. It never holds a credential or a provider's own text.
  */
 export interface RunFailureCause {
-  readonly kind: ErrorKind;
+  readonly kind: RunFailureKind;
   readonly code?: string;
   readonly detail?: Readonly<Record<string, string>>;
 }

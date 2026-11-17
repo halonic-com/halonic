@@ -1,7 +1,11 @@
-import type { ErrorKind } from "@halonicjs/std";
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
-import type { ProviderText, RunFailureCause, RunFailureReason } from "./run-basics.ts";
+import type {
+  ProviderText,
+  RunFailureCause,
+  RunFailureKind,
+  RunFailureReason,
+} from "./run-basics.ts";
 import type { RunEventBody, RunEventType } from "./run-event.ts";
 import { summaryOf } from "./summarize.test-helper.ts";
 import { summarize } from "./summarize.ts";
@@ -292,7 +296,7 @@ verifies("events.run-failed-instructions-not-trusted", () => {
 verifies("events.run-failed-cause", () => {
   typeTest("gives a cause a kind, and optionally a code and short strings", () => {
     expectTypeOf<RunFailureCause>().toEqualTypeOf<{
-      readonly kind: ErrorKind;
+      readonly kind: RunFailureKind;
       readonly code?: string;
       readonly detail?: Readonly<Record<string, string>>;
     }>();
