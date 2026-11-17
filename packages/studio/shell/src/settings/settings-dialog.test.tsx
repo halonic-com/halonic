@@ -208,6 +208,19 @@ verifies("shell.settings-workspace-line", () => {
     const host = await open({ requested: "assistant" });
     expect(lineUnder(host.container) ?? "").not.toContain("Part of");
   });
+
+  it("leaves the line out of a workspace section that opts out, and keeps its description", async () => {
+    const trust = {
+      ...section("trust", "Trust", "workspace", 20),
+      workspaceLine: false as const,
+      description: "Whether Halonic may run programs here.",
+    };
+    const { container } = await open({ sections: [trust], requested: "trust" });
+    expect(container.querySelector("section h3 + p")?.textContent).toBe(
+      "Whether Halonic may run programs here.",
+    );
+    expect(container.textContent).not.toContain("Part of Acme");
+  });
 });
 
 verifies("shell.settings-attention-mark", () => {

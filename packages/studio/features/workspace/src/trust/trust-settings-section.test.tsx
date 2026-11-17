@@ -64,6 +64,12 @@ verifies("workspace.settings-trust", () => {
     expect(element.textContent).toContain("Trusted on 3 Nov 2026");
   });
 
+  it("says there is nothing to trust, as the workspace page does", () => {
+    const { element } = show({ ...control("not-trusted"), needsNoTrust: true });
+    expect(element.textContent).toContain("Nothing to trust here.");
+    expect(element.textContent).not.toContain("Not trusted yet");
+  });
+
   it("shows only the button without a folder to trust", () => {
     const { element } = show(undefined);
     expect(element.querySelectorAll("p")).toHaveLength(0);

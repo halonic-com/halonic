@@ -1,6 +1,6 @@
 import { Button } from "@halonicjs/studio-kit";
 import type { SettingsSectionProps } from "@halonicjs/studio-shell";
-import { useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { WorkspacePageService } from "../api.ts";
 import { OPEN_TRUST } from "./trust-section-text.ts";
 import { StatusMark, statusLine } from "./workspace-trust-section.tsx";
@@ -15,20 +15,18 @@ const openTrustCommand = "workspace.open-trust";
  */
 export function TrustSettingsSection({ context, closeSettings }: SettingsSectionProps) {
   const trust = context.services.get(WorkspacePageService).trust;
-  const never = () => () => {};
-  const status = useSyncExternalStore(trust?.subscribe.bind(trust) ?? never, () => trust?.status);
-  const trustedAt = useSyncExternalStore(
-    trust?.subscribe.bind(trust) ?? never,
-    () => trust?.trustedAt,
+  const subscribe = useCallback(
+    (onChange: () => void) => trust?.subscribe(onChange) ?? (() => {}),
+    [trust],
   );
+  const status = useSyncExternalStore(subscribe, () => trust?.status);
+  const trustedAt = useSyncExternalStore(subscribe, () => trust?.trustedAt);
   return (
     <div className="mt-2 flex flex-col items-start gap-4">
       {trust === undefined || status === undefined ? null : (
         <div className="flex items-start gap-2">
           <StatusMark status={status} />
-          <p className="m-0 text-small text-fg-muted">
-            {statusLine(status, trustedAt, trust.failure)}
-          </p>
+          <p className="m-0 text-small text-fg-muted">{statusLine(status, trustedAt, trust)}</p>
         </div>
       )}
       <Button
