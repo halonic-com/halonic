@@ -16,7 +16,7 @@ async function setup() {
     service,
     feed,
     secrets: {
-      get: async () => null,
+      has: async () => false,
       set: async () => {},
       remove: async (name) => {
         if (keychain.failing) throw new Error("the keychain is locked");
@@ -102,7 +102,7 @@ verifies("studio.desktop-plugins-host", () => {
       desktopPluginActions({
         service,
         feed,
-        secrets: { get: async () => null, set: async () => {}, remove: async () => {} },
+        secrets: { has: async () => false, set: async () => {}, remove: async () => {} },
         reveal: async () => answer as boolean,
         onReloadFailed: () => {},
       }).openFolder("weather");

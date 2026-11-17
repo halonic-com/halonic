@@ -1,4 +1,4 @@
-import { TauriSecrets } from "@halonicjs/adapter-secrets-tauri";
+import { type SecretPresence, TauriSecrets } from "@halonicjs/adapter-secrets-tauri";
 import { type ServiceRegistry, serviceKey } from "@halonicjs/app";
 import {
   maxSecretNameLength,
@@ -56,12 +56,13 @@ export function provideShellSecrets(
 
 /**
  * The OS keychain (the service `halonic`) as it is, with no name rule beyond the keychain's own.
+ * `has` asks whether a name is stored without reading it.
  * A caller that lets a workspace pick the name must refuse Halonic's and a plugin's names itself,
  * as `workspaceSecrets` does for reading.
  *
  * @param ipc - the shell's IPC, from `tauriIpc`
  */
-export function shellKeychain(ipc: TauriIpc): Secrets & TokenStore {
+export function shellKeychain(ipc: TauriIpc): Secrets & TokenStore & SecretPresence {
   return new TauriSecrets(ipc);
 }
 

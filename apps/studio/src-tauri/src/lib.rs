@@ -141,6 +141,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             connect::connect,
             git::git,
             secrets::secret_get,
+            secrets::secret_has,
             secrets::secret_set,
             secrets::secret_delete,
             trust::pick_folder,

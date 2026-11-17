@@ -10,6 +10,7 @@ fn main() {
         "connect",
         "git",
         "secret_get",
+        "secret_has",
         "secret_set",
         "secret_delete",
         "pick_folder",

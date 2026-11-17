@@ -2,9 +2,14 @@ import { type Secrets, secretKey, type TokenStore } from "@halonicjs/ports";
 import { KeychainError, keychainFailure } from "./keychain-error.ts";
 import { secretCommands, type TauriShell } from "./shell.ts";
 
+/** Whether a value is stored, without reading it: what a page that only shows "Set" needs. */
+export interface SecretPresence {
+  has(name: string): Promise<boolean>;
+}
+
 /**
  * Secrets and tokens in the OS keychain, for the Studio desktop app: every
- * call goes to the shell's `secret_get`, `secret_set` or `secret_delete`
+ * call goes to the shell's `secret_get`, `secret_has`, `secret_set` or `secret_delete`
  * command, which keeps the value under the service `halonic` in canonical
  * form, the same entry the CLI uses.
  *
@@ -18,7 +23,7 @@ import { secretCommands, type TauriShell } from "./shell.ts";
  * Secrets and tokens share the one keychain service, as they do in the CLI,
  * so a token and a configured secret with the same name are the same entry.
  */
-export class TauriSecrets implements Secrets, TokenStore {
+export class TauriSecrets implements Secrets, TokenStore, SecretPresence {
   readonly #shell: TauriShell;
 
   /** @param shell - the shell's IPC, usually `window.__TAURI_INTERNALS__` */
@@ -40,6 +45,23 @@ export class TauriSecrets implements Secrets, TokenStore {
       return answer;
     }
     throw new KeychainError("backend", "the shell's answer is not a value");
+  }
+
+  /**
+   * Whether a value is stored under the name. The shell answers yes or no, so
+   * the value itself never reaches the page: use this, not {@link get}, to
+   * show "Set" or "Not set".
+   *
+   * @throws RangeError when the name breaks the secret name rule
+   * @throws KeychainError when the keychain can't be read
+   */
+  async has(name: string): Promise<boolean> {
+    checkName(name);
+    const answer = await this.#call(secretCommands.has, { name });
+    if (typeof answer === "boolean") {
+      return answer;
+    }
+    throw new KeychainError("backend", "the shell's answer is not yes or no");
   }
 
   /**

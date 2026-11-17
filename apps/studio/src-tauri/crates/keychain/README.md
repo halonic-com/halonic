@@ -1,6 +1,6 @@
 # halonic-keychain
 
-The Studio shell's desktop keychain (HAL-192, plan approved on HAL-1508): the `SecretBackend` from `halonic-secrets` on macOS, Windows and Linux. The shell's `secret_get`, `secret_set` and `secret_delete` commands use it.
+The Studio shell's desktop keychain (HAL-192, plan approved on HAL-1508): the `SecretBackend` from `halonic-secrets` on macOS, Windows and Linux. The shell's `secret_get`, `secret_has`, `secret_set` and `secret_delete` commands use it.
 
 - **Where secrets go:** the macOS Keychain, the Windows Credential Manager, or the Secret Service on Linux (GNOME Keyring, KWallet), through the `keyring` crate (3.6.3, pinned, one platform feature per target).
 - **The entry:** service `halonic`, user the canonical name (`Acme-Key` becomes `acme_key`), the entry the CLI uses for the same name. On Windows the entry's target is `acme_key.halonic`.

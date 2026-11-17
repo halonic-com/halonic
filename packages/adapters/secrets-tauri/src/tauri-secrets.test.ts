@@ -42,10 +42,31 @@ verifies("secrets-tauri.shell-commands", () => {
       expect(shell.entries.size).toBe(0);
     });
 
+    it("tells whether a name is stored by asking secret_has, and never reads the value", async () => {
+      const shell = new FakeShell();
+      const secrets = new TauriSecrets(shell);
+      expect(await secrets.has("Google-Refresh")).toBe(false);
+      await secrets.set("google_refresh", "one");
+      expect(await secrets.has("GOOGLE-REFRESH")).toBe(true);
+      expect(shell.calls.map((call) => call.command)).toEqual([
+        "secret_has",
+        "secret_set",
+        "secret_has",
+      ]);
+    });
+
+    it("refuses an answer to secret_has that is not true or false", async () => {
+      const secrets = new TauriSecrets({ invoke: async () => "yes" });
+      const refused = await rejection(secrets.has("google_refresh"));
+      expect(refused).toBeInstanceOf(KeychainError);
+      expect((refused as KeychainError).refusal).toBe("backend");
+    });
+
     it("refuses a bad name before anything is sent", async () => {
       const shell = new FakeShell();
       const secrets = new TauriSecrets(shell);
       await expect(secrets.get("serve.password")).rejects.toThrow(RangeError);
+      await expect(secrets.has("serve.password")).rejects.toThrow(RangeError);
       await expect(secrets.set("1password", "x")).rejects.toThrow(RangeError);
       await expect(secrets.remove("../token")).rejects.toThrow(RangeError);
       expect(shell.calls).toEqual([]);

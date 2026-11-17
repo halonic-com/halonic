@@ -3,7 +3,7 @@ import { isPlainObject } from "@halonicjs/std";
 /**
  * The part of Tauri's IPC this adapter needs. The shell puts `invoke` on the
  * app's own page (`window.__TAURI_INTERNALS__`), and the `desktop-secrets`
- * capability lets that page call the three `secret_*` commands. Passed in, so
+ * capability lets that page call the `secret_*` commands. Passed in, so
  * tests use a fake shell and the adapter needs no Tauri library.
  */
 export interface TauriShell {
@@ -13,12 +13,14 @@ export interface TauriShell {
 
 /**
  * The shell's keychain commands (`apps/studio/src-tauri/src/secrets.rs`). The
- * Android Keystore backend (HAL-1211) answers the same three commands, so this
+ * Android Keystore backend (HAL-1211) answers the same commands, so this
  * adapter is the same on desktop and Android.
  */
 export const secretCommands = {
   /** `{ name }` → the value, or `null` when nothing is stored. */
   get: "secret_get",
+  /** `{ name }` → `true` or `false`: whether a value is stored. The answer holds no value. */
+  has: "secret_has",
   /** `{ name, value }` → nothing; replaces a stored value. */
   set: "secret_set",
   /** `{ name }` → nothing; also when nothing is stored. */

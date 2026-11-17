@@ -2,7 +2,9 @@
 //! HAL-229). CI runs it against [`crate::MemoryBackend`]; the desktop
 //! keychain and the Android Keystore run the same check in their own tests.
 
-use crate::backend::{MAX_VALUE_BYTES, SecretBackend, delete_secret, get_secret, set_secret};
+use crate::backend::{
+    MAX_VALUE_BYTES, SecretBackend, delete_secret, get_secret, has_secret, set_secret,
+};
 use crate::error::SecretError;
 
 /// The names the check writes to. They start with `halonic_contract_`, so
@@ -28,7 +30,17 @@ fn run_cases(backend: &dyn SecretBackend) -> Result<(), String> {
         get_secret(backend, FIRST),
         None,
     )?;
+    present(
+        "a missing secret is not present",
+        has_secret(backend, FIRST),
+        false,
+    )?;
     step("set", set_secret(backend, FIRST, "first value"))?;
+    present(
+        "a stored secret is present",
+        has_secret(backend, FIRST),
+        true,
+    )?;
     expect(
         "set then get",
         get_secret(backend, FIRST),
@@ -85,12 +97,25 @@ fn run_cases(backend: &dyn SecretBackend) -> Result<(), String> {
         get_secret(backend, FIRST),
         None,
     )?;
+    present(
+        "a deleted secret is not present",
+        has_secret(backend, FIRST),
+        false,
+    )?;
     step("delete a missing secret", delete_secret(backend, FIRST))?;
     Ok(())
 }
 
 fn step(case: &str, result: Result<(), SecretError>) -> Result<(), String> {
     result.map_err(|error| format!("{case}: {error}"))
+}
+
+fn present(case: &str, actual: Result<bool, SecretError>, expected: bool) -> Result<(), String> {
+    match actual {
+        Ok(found) if found == expected => Ok(()),
+        Ok(_) => Err(format!("{case}: the backend answered the other way")),
+        Err(error) => Err(format!("{case}: {error}")),
+    }
 }
 
 fn expect(

@@ -2,7 +2,7 @@
 
 use halonic_secrets::{
     MAX_VALUE_BYTES, MemoryBackend, SecretBackend, SecretError, SecretName, check_backend_contract,
-    delete_secret, get_secret, set_secret,
+    delete_secret, get_secret, has_secret, set_secret,
 };
 
 #[test]
@@ -20,6 +20,11 @@ fn secret_commands_refuse_bad_names_before_the_backend() {
             "{name:?}"
         );
         assert_eq!(
+            has_secret(&backend, name),
+            Err(SecretError::InvalidName),
+            "{name:?}"
+        );
+        assert_eq!(
             set_secret(&backend, name, "value"),
             Err(SecretError::InvalidName),
             "{name:?}"
@@ -30,6 +35,16 @@ fn secret_commands_refuse_bad_names_before_the_backend() {
             "{name:?}"
         );
     }
+}
+
+#[test]
+fn secret_commands_say_whether_a_secret_is_stored_without_returning_it() {
+    let backend = MemoryBackend::new();
+    assert_eq!(has_secret(&backend, "acme-key"), Ok(false));
+    set_secret(&backend, "acme-key", "acme-secret-value").expect("stores");
+    assert_eq!(has_secret(&backend, "Acme-Key"), Ok(true));
+    delete_secret(&backend, "acme-key").expect("removes");
+    assert_eq!(has_secret(&backend, "acme-key"), Ok(false));
 }
 
 #[test]

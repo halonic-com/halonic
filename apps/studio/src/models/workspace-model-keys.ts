@@ -7,25 +7,32 @@ import {
 import type { KeyEntry, ModelKeys } from "@halonicjs/studio-feature-models/api";
 import type { SecretText } from "@halonicjs/studio-kit";
 
+/**
+ * The OS keychain as the keys use it: `has` tells whether a key is there
+ * without reading it.
+ */
+type Keychain = Secrets & TokenStore & { has(name: string): Promise<boolean> };
+
 /** The key entry of the desktop app: the field is there and this computer's keychain keeps the key. */
 const desktopEntry: KeyEntry = { kind: "field", keptOn: "this-computer", offHostHttps: false };
 
 /**
  * The API keys of a workspace's providers, kept in the OS keychain. A workspace picks the secret
  * name, so every method refuses the names that belong to Halonic or to a plugin, as
- * `workspaceSecrets` does for reading. No method returns a key, and no error repeats one.
+ * `workspaceSecrets` does for reading. No method returns a key, and no error repeats one:
+ * `stored` asks the keychain whether a key is there and never reads it.
  */
 export class WorkspaceModelKeys implements ModelKeys {
   readonly entry: KeyEntry = desktopEntry;
-  readonly #keychain: Secrets & TokenStore;
+  readonly #keychain: Keychain;
 
   /** @param keychain - the OS keychain, before the workspace's name rule */
-  constructor(keychain: Secrets & TokenStore) {
+  constructor(keychain: Keychain) {
     this.#keychain = keychain;
   }
 
   async stored(secretName: string): Promise<boolean> {
-    return (await this.#keychain.get(this.#picked(secretName))) !== null;
+    return this.#keychain.has(this.#picked(secretName));
   }
 
   async save(secretName: string, key: SecretText): Promise<void> {

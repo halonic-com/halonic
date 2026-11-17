@@ -4,7 +4,7 @@
 //! - [`SecretName`]: the `Secrets` port's name rule and canonical form, the
 //!   same as the CLI's (requirement `secret-names`).
 //! - [`SecretBackend`]: where secrets are kept, with [`get_secret`],
-//!   [`set_secret`] and [`delete_secret`] checking names and values first
+//!   [`has_secret`], [`set_secret`] and [`delete_secret`] checking names and values first
 //!   (requirement `secret-commands`).
 //! - [`check_backend_contract`]: the behaviour every backend must show.
 //!
@@ -18,7 +18,8 @@ mod memory;
 mod name;
 
 pub use backend::{
-    MAX_VALUE_BYTES, SERVICE, SecretBackend, check_value, delete_secret, get_secret, set_secret,
+    MAX_VALUE_BYTES, SERVICE, SecretBackend, check_value, delete_secret, get_secret, has_secret,
+    set_secret,
 };
 pub use contract::check_backend_contract;
 pub use error::SecretError;
