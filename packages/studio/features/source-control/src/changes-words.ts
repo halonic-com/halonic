@@ -131,12 +131,12 @@ export const discardWords = {
   fileLabel: { changed: "CHANGED", new: "NEW", deleted: "DELETED" },
   /** The line diff's heading, read by a screen reader. */
   lines: (path: string) => `Changed lines in ${path}`,
-  /** The toast after Undo these changes: "Discarded refund-handling". */
-  discarded: (name: string) => `Discarded ${name}`,
+  /** The toast after Undo these changes: "Undid changes to Sorter." */
+  undid: (name: string) => `Undid changes to ${name}.`,
   /** The toast after the developer view's Discard of one file; the path follows. */
   fileDiscarded: "Discarded this file",
   /** The toast's link: puts back what the toast says was discarded. */
-  putItBack: "Put it back",
+  undo: "Undo",
   /** Over the first lines of a new file, read by a screen reader. */
   firstLines: (path: string) => `First lines of ${path}`,
   /** A part's heading: "Line 12" or "Lines 12 to 18"; `first` and `last` count from 1. */
@@ -154,6 +154,11 @@ export const discardWords = {
   addedOutside:
     "Another program added this file to a version. Discard it there, or create the version here.",
   noCopy: "Halonic couldn't keep a copy, so nothing was discarded.",
+  /** The one question Undo these changes ever asks: when no copy can be kept (checklist 2.5). */
+  noCopyTitle: (name: string) => `Undo changes to ${name}?`,
+  noCopyBody: "Halonic couldn't keep a copy, so this can't be undone.",
+  noCopyConfirm: "Undo changes",
+  noCopyBusy: "Undoing…",
 };
 
 /** Create version (checklist part 2, 2.6; microcopy revision 94, 16). */

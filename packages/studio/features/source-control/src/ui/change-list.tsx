@@ -16,6 +16,7 @@ import type { ChangeItem } from "../change-items.ts";
 import { groupIntoItems, isOpenable } from "../change-items.ts";
 import type { ChangedFile, ChangesList } from "../changes-list.ts";
 import { discardWords, itemWords, mergeWords, versionWords } from "../changes-words.ts";
+import { UndoWithoutCopyDialog } from "./undo-without-copy-dialog.tsx";
 import type { ReturnFocus } from "./use-open-item.ts";
 import { useUndoItem } from "./use-undo-item.ts";
 
@@ -111,17 +112,20 @@ export function ChangeList({
 
   const [menu, setMenu] = useState<{ readonly id: string; readonly target: ContextMenuTarget }>();
   const toasts = useToastStore();
-  const { undo } = useUndoItem(list);
+  const undoing = useUndoItem(list);
   const openMore =
     (id: string): MoreHandler =>
     (event) =>
       setMenu({ id, target: { element: event.currentTarget } });
   const menuItem = items.find((item) => item.id === menu?.id);
 
-  async function undoFromMenu(item: ChangeItem) {
-    const reason = await undo(item);
-    if (reason === undefined) return;
+  function sayFailed(reason: string) {
     toasts?.show({ tone: "danger", title: discardWords.failed, text: reason });
+  }
+
+  async function undoFromMenu(item: ChangeItem) {
+    const reason = await undoing.undo(item);
+    if (reason !== undefined) sayFailed(reason);
   }
 
   const shown = items.slice(0, ROW_LIMIT);
@@ -186,6 +190,7 @@ export function ChangeList({
         target={menu?.target}
         onClose={() => setMenu(undefined)}
       />
+      <UndoWithoutCopyDialog undoing={undoing} onFailed={sayFailed} />
     </section>
   );
 }

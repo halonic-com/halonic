@@ -5,6 +5,7 @@ import { type ChangeItem, isOpenable } from "../change-items.ts";
 import type { ChangesList } from "../changes-list.ts";
 import { discardWords, pageWords } from "../changes-words.ts";
 import { ItemChanges, WaitingNote } from "./item-changes.tsx";
+import { UndoWithoutCopyDialog } from "./undo-without-copy-dialog.tsx";
 import { useUndoItem } from "./use-undo-item.ts";
 
 /** Props for {@link WhatChangedPage}. */
@@ -26,7 +27,8 @@ export interface WhatChangedPageProps {
 export function WhatChangedPage({ list, item, developer, openItem, onBack }: WhatChangedPageProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), []);
-  const { busy, failure, undo } = useUndoItem(list);
+  const undoing = useUndoItem(list);
+  const { busy, failure, undo } = undoing;
   const waitingId = useId();
   const headingId = useId();
 
@@ -74,6 +76,8 @@ export function WhatChangedPage({ list, item, developer, openItem, onBack }: Wha
         </span>
       )}
       <ItemChanges list={list} item={item} developer={developer} />
+      {/* A failure after the question shows where every failure of this page shows. */}
+      <UndoWithoutCopyDialog undoing={undoing} onFailed={() => undefined} />
     </section>
   );
 }
