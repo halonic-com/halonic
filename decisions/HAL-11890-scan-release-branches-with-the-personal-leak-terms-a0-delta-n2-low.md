@@ -9,6 +9,7 @@
 - `leak-terms.yml` also runs for pull requests into `release/**`, and `ci.yml` also runs on a push to `release/**`.
 - A push to a branch other than `main` (so `release/**`) uses the empty `turbo-cache-read` environment, not `turbo-cache-write`. The signing key's environment is unchanged.
 - The `leak-terms` environment's deployment branch rule must also allow `release/*`. That setting is outside the repo; Chief applies it.
+- `release/0.1.1` already exists and keeps its own copies of `ci.yml` and `leak-terms.yml`, so this change reaches only release branches cut from `main` after it merges. It does not cover 0.1.1.
 
 ## Precondition
 
@@ -24,4 +25,5 @@ Workflow triggers only: no unit test applies. The first pull request into a `rel
 
 ## Covers
 
+- .github/
 - leak-guard
