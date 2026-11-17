@@ -9,7 +9,10 @@
 //! all: the files go into a new folder next to the plugins folder, on the
 //! same disk, and the folder is then renamed into place, so a reader never
 //! lists a half-written plugin. A name that exists, in any case, answers
-//! `taken` and nothing is written. Nothing runs: no script, no install. The
+//! `taken` and nothing is written, unless the page asks to `replace` the
+//! plugin's own folder of exactly that name: that folder is then replaced,
+//! and since the trust fingerprint covers every file hash, the plugin loses
+//! its trust. Nothing runs: no script, no install. The
 //! plugin lands not trusted, and the trust check turns it on.
 
 use std::collections::HashSet;

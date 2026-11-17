@@ -1,6 +1,6 @@
 {
   "identifier": "desktop-plugin-folder-place",
-  "description": "On desktop, the app's own page may write one new plugin's files into the profile's plugins folder, through the plugin_folder_place command (src/plugin_folder_place.rs). It is its own capability, apart from reading the plugins, so the grant to write is easy to see. The shell works out the plugins folder itself, takes one plugin name and its files, never a path, writes them into a new folder beside the plugins folder and renames it into place, so nothing is half written and no existing plugin is overwritten. Nothing runs and the plugin is not trusted. It is local only, so the Studio the computer serves cannot add a plugin.",
+  "description": "On desktop, the app's own page may write one new plugin's files into the profile's plugins folder, through the plugin_folder_place command (src/plugin_folder_place.rs). It is its own capability, apart from reading the plugins, so the grant to write is easy to see. The shell works out the plugins folder itself, takes one plugin name and its files, never a path, writes them into a new folder beside the plugins folder and renames it into place, so nothing is half written. A name already in use answers taken, unless the page asks to replace the plugin's own folder of exactly that name, which then loses its trust. Nothing runs and the plugin is not trusted. It is local only, so the Studio the computer serves cannot add a plugin.",
   "local": true,
   "windows": [
     "main"
