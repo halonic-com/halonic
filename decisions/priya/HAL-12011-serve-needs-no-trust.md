@@ -2,6 +2,7 @@
 
 - Approval: decided by Liam on HAL-12011 (from the real CLI run on HAL-12006); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:i218hK30uv7cXTf6v1ft9Xt1H7AaIF64EHMKJJ/hQ32iclF5d95Smo8jLjjtjs/2l1MvhcFGsmc+4E0PpDj/AQ==
 - Task: HAL-12011, from HAL-12008
 
 ## What changes
