@@ -2,6 +2,7 @@
 
 - Approval: HAL-12012, decided by Liam on that task (from HAL-12008). Liam reviews this pull request, so he signs the note.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:c8s17N+Z40WtmRwiI+R+BYiMJjYJSm7AuOTHUM99mjgAD0m7T56Bk9/nPKyGG/LWt3O7J4HKTwiO14zk7syZBA==
 - Task: HAL-12012
 
 ## What changes
