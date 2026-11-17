@@ -97,7 +97,7 @@ export function StatusBox({
         {plugin.status === "on" && update !== undefined ? <UpdateAction update={update} /> : null}
         {viewOnly || plugin.status === "on" || plugin.manifest === undefined ? null : (
           <div className="mt-2">
-            <Button variant="secondary" size="sm" onClick={onReview}>
+            <Button variant="primary" size="sm" onClick={onReview}>
               {plugin.status === "changed" ? REVIEW_CHANGES : REVIEW}
             </Button>
           </div>
