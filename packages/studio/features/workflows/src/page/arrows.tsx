@@ -45,12 +45,11 @@ const CHIP_HEIGHT = 18;
 /** The words on an arrow, on an opaque chip beside the line so no line runs through them. */
 function ArrowLabel({ shape, label }: { readonly shape: ArrowShape; readonly label: string }) {
   const width = label.length * CHAR_WIDTH + CHIP_PADDING * 2;
-  const left =
-    shape.labelAnchor === "start"
-      ? shape.label.x
-      : shape.labelAnchor === "end"
-        ? shape.label.x - width
-        : shape.label.x - width / 2;
+  const left = {
+    start: shape.label.x,
+    end: shape.label.x - width,
+    middle: shape.label.x - width / 2,
+  }[shape.labelAnchor];
   return (
     <g>
       <rect
