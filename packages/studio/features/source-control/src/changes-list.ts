@@ -23,6 +23,7 @@ import {
   versionWords,
 } from "./changes-words.ts";
 import { describeChanges } from "./describe-changes.ts";
+import { discardWithCopy } from "./discard-with-copy.ts";
 import { isIdentityComplete } from "./identity.ts";
 import { type IdentityOutcome, saveIdentity } from "./identity-save.ts";
 import { loadFailureReason } from "./load-failure.ts";
@@ -230,7 +231,8 @@ export class ChangesList {
     const { path } = file;
     const { before, after } = texts;
     if (status === "untracked" && after !== null) {
-      return this.#discard(
+      return discardWithCopy(
+        this.source,
         [{ path, text: after }],
         () => this.#remove(path, after),
         () => this.#replace(path, after, null),
@@ -238,7 +240,8 @@ export class ChangesList {
       );
     }
     if (status === "modified" && before !== null && after !== null) {
-      return this.#discard(
+      return discardWithCopy(
+        this.source,
         [{ path, text: after }],
         () => this.#replace(path, before, after),
         () => this.#replace(path, after, before),
@@ -246,7 +249,8 @@ export class ChangesList {
       );
     }
     if (status === "deleted" && before !== null && after === null) {
-      return this.#discard(
+      return discardWithCopy(
+        this.source,
         [],
         () => this.#replace(path, before, null),
         () => this.#remove(path, before),
@@ -275,7 +279,8 @@ export class ChangesList {
       return { kind: "failed", reason: discardWords.cantDiscard };
     }
     const { path } = file;
-    return this.#discard(
+    return discardWithCopy(
+      this.source,
       [{ path, text: after }],
       () => this.#replace(path, text, after),
       () => this.#replace(path, after, text),
@@ -381,30 +386,6 @@ export class ChangesList {
     } catch (error) {
       return loadFailureReason(error);
     }
-  }
-
-  /**
-   * Keeps a copy of `thrown`, then runs the discard. Nothing is discarded when the copy can't be
-   * kept. `undo` is what the toast's Undo runs.
-   */
-  async #discard(
-    thrown: readonly KeptFile[],
-    run: () => Promise<string | undefined>,
-    undo: () => Promise<string | undefined>,
-    options: { readonly withoutCopy?: boolean } = {},
-  ): Promise<DiscardOutcome> {
-    let kept = true;
-    if (thrown.length > 0) {
-      try {
-        await this.source.keepCopy(thrown);
-      } catch {
-        if (options.withoutCopy !== true) return { kind: "noCopy" };
-        kept = false;
-      }
-    }
-    const reason = await run();
-    if (reason !== undefined) return { kind: "failed", reason };
-    return kept ? { kind: "undone", undo } : { kind: "discarded" };
   }
 
   /**
