@@ -114,4 +114,58 @@ verifies("cli.commands.tools.review", () => {
     expect(run.stderr[0]).toBe("✕ halonic tools review needs a connector's id.");
     expect(run.stderr.join("\n")).toContain("halonic tools review <source>");
   });
+
+  it("runs the fix line that `approve` prints for a changed tool, and it shows the tools", async () => {
+    const stale = await kit.tools([
+      "approve",
+      "notes-mcp",
+      "lookup",
+      "--fingerprint",
+      `htl1:${"0".repeat(64)}`,
+    ]);
+    const fixLine = stale.stderr.find((line) => line.includes("halonic tools review"));
+    if (fixLine === undefined) throw new Error("approve names the command to read the tool first");
+    const command = fixLine.slice(fixLine.indexOf("halonic tools review")).split(" ");
+
+    const run = await kit.tools(command.slice(2));
+
+    expect(run.code).toBe(exitCode.failed);
+    expect(run.stdout.join("\n")).toContain("lookup");
+  });
+
+  it("approves the fingerprint it showed, so a tool that changed meanwhile is Changed again", async () => {
+    const shown = (await kit.reviewJson()).waiting.find((tool) => tool.name === "archive");
+    const servers = kit.notes().servers;
+    const terminal = terminalTyping("n", "y");
+    const answering = terminal.terminal.questions;
+    if (answering === undefined) throw new Error("the test terminal asks");
+    const readLine = answering.readLine;
+    answering.readLine = async (signal) => {
+      servers.tools = [
+        notesTools.send,
+        notesTools.lookup,
+        { ...notesTools.archive, description: "Moves a note anywhere." },
+      ];
+      return await readLine(signal);
+    };
+
+    await kit.tools(["review", "notes-mcp"], terminal.terminal);
+
+    const after = (await kit.listedNow()).waiting.find((tool) => tool.name === "archive");
+    expect(after).toEqual(expect.objectContaining({ state: "changed" }));
+    expect(after?.fingerprint).not.toBe(shown?.fingerprint);
+  });
+
+  it("shows no control or bidi character of a server's text", async () => {
+    const evil = `${escapeCode}[31mred${rightToLeft}`;
+    kit.notes().servers.tools = [
+      { ...notesTools.archive, name: `archive${evil}`, description: `Moves${evil} a note.` },
+    ];
+
+    const run = await kit.tools(["review", "notes-mcp"]);
+
+    const text = [...run.stdout, ...run.stderr].join("\n");
+    expect(text).not.toContain(escapeCode);
+    expect(text).not.toContain(rightToLeft);
+  });
 });
