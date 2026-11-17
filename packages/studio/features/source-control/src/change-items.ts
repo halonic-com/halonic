@@ -42,9 +42,7 @@ function baseName(path: string): string {
 }
 
 /** Which item a path belongs to: its kind, hub and name; `undefined` for a file that is no item. */
-function itemOf(
-  path: string,
-):
+function itemOf(path: string):
   | {
       readonly kind: KindName;
       readonly name: string;
@@ -75,10 +73,8 @@ function previousName(from: string): string {
 /** What the row says: that the item was renamed, else its first change, Important ones first. */
 function sentenceOf(files: readonly ChangedFile[]): string {
   const renamed = files.find((file) => file.from !== undefined);
-  if (renamed?.from !== undefined)
-    return itemWords.renamedFrom(previousName(renamed.from));
-  const described =
-    files.find((file) => file.description.described) ?? files[0];
+  if (renamed?.from !== undefined) return itemWords.renamedFrom(previousName(renamed.from));
+  const described = files.find((file) => file.description.described) ?? files[0];
   return described?.description.lines[0]?.sentence ?? "";
 }
 
@@ -104,10 +100,7 @@ export function groupIntoItems(files: readonly ChangedFile[]): ChangeItem[] {
     const found = byId.get(id);
     if (found === undefined) {
       const name =
-        file.description.name ??
-        item?.name ??
-        friendlyNames[file.path] ??
-        baseName(file.path);
+        file.description.name ?? item?.name ?? friendlyNames[file.path] ?? baseName(file.path);
       byId.set(id, {
         name,
         itemId: item?.name ?? name,
