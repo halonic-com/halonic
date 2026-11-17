@@ -112,5 +112,26 @@ verifies("source-control.whats-changed-page", () => {
       });
       expect(fake.replaced).toHaveLength(4);
     });
+
+    it("leaves the item as it was, with no toast, when one of its files can't go back", async () => {
+      const { fake, root, toasts } = await openPage();
+      const page = openItem(root, "tone");
+      const [first, second] = skillPaths;
+      fake.setTexts(second, { before: "Be brief.\n", after: "Edited elsewhere.\n" });
+      await act(async () => {
+        buttons(page, "Undo these changes")[0]?.click();
+        await settle();
+      });
+      // The first file went back, the second was refused, and the first was put the way it was.
+      expect(fake.replaced).toEqual([
+        { path: first, text: "Be brief.\n", expected: "Be kind.\n" },
+        { path: second, text: "Be brief.\n", expected: "Be kind.\n" },
+        { path: first, text: "Be kind.\n", expected: "Be brief.\n" },
+      ]);
+      expect(toasts.list()).toHaveLength(0);
+      expect(page.querySelector('[role="alert"]')?.textContent).toContain(
+        "The file changed while you were looking.",
+      );
+    });
   });
 });

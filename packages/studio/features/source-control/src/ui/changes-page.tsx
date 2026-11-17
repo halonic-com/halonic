@@ -200,6 +200,7 @@ function ReadBody({
           items={items}
           onOpen={nav.show}
           returnFocus={nav.returnFocus}
+          onFocusPlaced={nav.focusPlaced}
           phone={phone}
         />
       )}

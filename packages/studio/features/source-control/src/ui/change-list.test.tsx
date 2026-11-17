@@ -20,7 +20,15 @@ function ChangesPageOf({ list, files }: { list: ChangesList; files: readonly Cha
   const items = orderItems(files);
   const nav = useOpenItem(items, () => undefined);
   if (nav.open === undefined) {
-    return <ChangeList list={list} items={items} onOpen={nav.show} returnFocus={nav.returnFocus} />;
+    return (
+      <ChangeList
+        list={list}
+        items={items}
+        onOpen={nav.show}
+        returnFocus={nav.returnFocus}
+        onFocusPlaced={nav.focusPlaced}
+      />
+    );
   }
   return <WhatChangedPage list={list} item={nav.open} developer={false} onBack={nav.back} />;
 }

@@ -15,6 +15,8 @@ export interface ChangeListProps {
   readonly onOpen: (id: string) => void;
   /** Where focus goes when the list comes back from a page; `undefined` leaves it alone. */
   readonly returnFocus?: ReturnFocus | undefined;
+  /** Called once focus is placed from `returnFocus`, so the caller can forget it. */
+  readonly onFocusPlaced?: (() => void) | undefined;
   /** On a phone Create version is a full-width touch button under the heading and count (2.12). */
   readonly phone?: boolean;
 }
@@ -49,11 +51,20 @@ export function orderItems(files: readonly ChangedFile[]): ChangeItem[] {
  * kit List: one Tab stop, ↑ ↓ move, Enter opens the item's What changed page. When the list comes
  * back from that page, focus goes to the row it was opened from, or the one that took its place.
  */
-export function ChangeList({ list, items, onOpen, returnFocus, phone = false }: ChangeListProps) {
+export function ChangeList({
+  list,
+  items,
+  onOpen,
+  returnFocus,
+  onFocusPlaced,
+  phone = false,
+}: ChangeListProps) {
   const waitingId = useId();
   const waiting = list.merging;
   const region = useRef<HTMLElement>(null);
   const placeFocus = useRef(returnFocus);
+  const focusPlaced = useRef(onFocusPlaced);
+  focusPlaced.current = onFocusPlaced;
   const latestItems = useRef(items);
   latestItems.current = items;
   useEffect(() => {
@@ -63,6 +74,7 @@ export function ChangeList({ list, items, onOpen, returnFocus, phone = false }: 
       latestItems.current.find((item) => item.id === target.id) ??
       latestItems.current[target.index];
     focusRowOrHeading(region.current, next);
+    focusPlaced.current?.();
   }, []);
 
   const itemRows = items.filter(isItem).map(rowOf);

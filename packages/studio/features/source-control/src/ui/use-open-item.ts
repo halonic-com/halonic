@@ -13,6 +13,8 @@ export interface OpenItem {
   readonly open: ChangeItem | undefined;
   /** Where the list puts focus when it is drawn again after a page; `undefined` leaves it alone. */
   readonly returnFocus: ReturnFocus | undefined;
+  /** Says the list has put focus where `returnFocus` asked, so a later redraw leaves focus alone. */
+  readonly focusPlaced: () => void;
   readonly show: (id: string) => void;
   readonly back: () => void;
 }
@@ -46,6 +48,7 @@ export function useOpenItem(items: readonly ChangeItem[], onNothingLeft: () => v
   return {
     open,
     returnFocus: goneFocus ?? returnFocus,
+    focusPlaced: () => setReturnFocus(undefined),
     show: (id) => {
       setReturnFocus(undefined);
       setOpenId(id);

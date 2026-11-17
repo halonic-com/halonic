@@ -34,6 +34,7 @@ export function WhatChangedPage({ list, item, developer, openItem, onBack }: Wha
   const [failure, setFailure] = useState<string>();
   const discarding = useDiscardToasts();
   const waitingId = useId();
+  const headingId = useId();
 
   async function undoTheseChanges() {
     setBusy(true);
@@ -49,14 +50,14 @@ export function WhatChangedPage({ list, item, developer, openItem, onBack }: Wha
   const canOpen =
     openItem !== undefined && item.kind !== undefined && openableKinds.includes(item.kind);
   return (
-    <div className="flex flex-col gap-4">
+    <section aria-labelledby={headingId} className="flex flex-col gap-4">
       <span className="self-start">
         <Button variant="ghost" size="sm" onClick={onBack}>
           {pageWords.back}
         </Button>
       </span>
       <header className="flex items-center gap-3">
-        <h1 ref={heading} tabIndex={-1} className="text-title flex-1 outline-none">
+        <h1 id={headingId} ref={heading} tabIndex={-1} className="text-title flex-1 outline-none">
           {item.name}
         </h1>
         {canOpen ? (
@@ -85,6 +86,6 @@ export function WhatChangedPage({ list, item, developer, openItem, onBack }: Wha
         </span>
       )}
       <ItemChanges list={list} item={item} developer={developer} />
-    </div>
+    </section>
   );
 }

@@ -9,7 +9,7 @@ export function openItem(root: HTMLElement, name: string): HTMLElement {
     const heading = [...root.querySelectorAll<HTMLElement>("h1")].find(
       (candidate) => candidate.textContent === name,
     );
-    return heading?.parentElement?.parentElement ?? null;
+    return heading?.closest<HTMLElement>("section") ?? null;
   };
   const open = panel();
   if (open !== null) return open;
