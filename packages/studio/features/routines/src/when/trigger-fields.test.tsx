@@ -71,6 +71,7 @@ verifies("routines.when.trigger-fields", () => {
       "Manual only",
       "On a schedule",
       "Every …",
+      "On a signal",
     ]);
     await choose(select, "manual");
     expect(saved).toEqual([]);
@@ -78,13 +79,20 @@ verifies("routines.when.trigger-fields", () => {
     expect(saved[0]?.trigger).toMatchObject({ kind: "schedule", cron: "0 8 * * 1-5" });
     await choose(select, "every");
     expect(saved[1]?.trigger).toEqual({ kind: "every", interval: "1h" });
+    await choose(select, "signal");
+    expect(saved[2]?.trigger).toEqual({ kind: "signal", name: "mail.tagged" });
   });
 
   it("shows a kind it can't switch to as that kind", async () => {
-    const { page } = await card({ kind: "signal", name: "mail.tagged" });
+    const { page } = await card({
+      kind: "mail",
+      connector: "acme-gmail",
+      query: "in:inbox",
+      every: "2m",
+    });
     const select = page.querySelector("select") as HTMLSelectElement;
-    expect(select.value).toBe("signal");
-    expect(select.selectedOptions[0]?.text).toBe("On a signal");
+    expect(select.value).toBe("mail");
+    expect(select.selectedOptions[0]?.text).toBe("New mail");
   });
 
   it("writes the days and the time into the cron line and keeps the time zone", async () => {
@@ -109,7 +117,9 @@ verifies("routines.when.trigger-fields", () => {
 
   it("shows no chips for a schedule more detailed than them", async () => {
     const { page } = await card({ kind: "schedule", cron: "*/15 * * * *" });
-    expect(page.textContent).toContain("This schedule is more detailed than the day picker.");
+    expect(page.textContent).toContain(
+      "This schedule is more detailed than the day picker. Edit it as cron below.",
+    );
     expect(chip(page, "Mo")).toBeUndefined();
     expect(page.querySelector("input[type=time]")).toBeNull();
   });

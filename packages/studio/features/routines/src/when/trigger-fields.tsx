@@ -1,6 +1,7 @@
 import { Field, FilterChips, Input, Select } from "@halonicjs/studio-kit";
 import { useState } from "react";
 import type { RoutineTrigger } from "../api.ts";
+import { ScheduleAdvanced, SignalFields } from "./advanced-fields.tsx";
 import {
   cronFor,
   defaultTrigger,
@@ -21,16 +22,18 @@ import { deviceTimeZone, whenWords as words } from "./when-words.ts";
 /** Props for {@link TriggerFields}. */
 export interface TriggerFieldsProps {
   readonly trigger: RoutineTrigger;
+  /** Whether the routine starts on its own. */
+  readonly enabled: boolean;
   /** Called with the whole new trigger as soon as a field changes to a value that can be written. */
   readonly onChange: (trigger: RoutineTrigger) => void;
 }
 
 /**
  * The When card's trigger fields (`routines.when.trigger-fields`): the Trigger picker and, under
- * it, the fields of the kind picked. A trigger the picker can't switch to (mail, signal) is shown
- * as the kind it is and has no fields yet.
+ * it, the fields of the kind picked. A trigger the picker can't switch to (mail) is shown as the
+ * kind it is and has no fields yet.
  */
-export function TriggerFields({ trigger, onChange }: TriggerFieldsProps) {
+export function TriggerFields({ trigger, enabled, onChange }: TriggerFieldsProps) {
   const kinds: readonly RoutineTrigger["kind"][] = (PICKABLE_KINDS as readonly string[]).includes(
     trigger.kind,
   )
@@ -49,7 +52,10 @@ export function TriggerFields({ trigger, onChange }: TriggerFieldsProps) {
           onChange={pick}
         />
       </Field>
-      {trigger.kind === "schedule" && <ScheduleFields trigger={trigger} onChange={onChange} />}
+      {trigger.kind === "schedule" && (
+        <ScheduleFields trigger={trigger} enabled={enabled} onChange={onChange} />
+      )}
+      {trigger.kind === "signal" && <SignalFields trigger={trigger} onChange={onChange} />}
       {trigger.kind === "every" && (
         <EveryFields
           interval={trigger.interval}
@@ -60,19 +66,52 @@ export function TriggerFields({ trigger, onChange }: TriggerFieldsProps) {
   );
 }
 
-/** Days and At for a simple schedule; for a more detailed one, only the line that says so. */
+/**
+ * Days and At for a simple schedule; for a more detailed one, only the line that says so. Advanced
+ * (cron and time zone) is under both, and opens by itself when the chips can't show the schedule.
+ */
 function ScheduleFields({
   trigger,
+  enabled,
   onChange,
 }: {
   readonly trigger: Extract<RoutineTrigger, { kind: "schedule" }>;
+  readonly enabled: boolean;
   readonly onChange: (trigger: RoutineTrigger) => void;
 }) {
-  const [needsDay, setNeedsDay] = useState(false);
   const schedule = simpleSchedule(trigger.cron);
-  if (schedule === undefined) {
-    return <p className="text-small text-fg-muted">{words.moreDetailed}</p>;
-  }
+  // Whether Advanced starts open is decided once: typing a simple line mustn't close it.
+  const [openAtFirst] = useState(schedule === undefined);
+  return (
+    <>
+      {schedule === undefined ? (
+        <p className="text-small text-fg-muted">{words.moreDetailed}</p>
+      ) : (
+        <SimpleScheduleFields trigger={trigger} schedule={schedule} onChange={onChange} />
+      )}
+      <ScheduleAdvanced
+        trigger={trigger}
+        enabled={enabled}
+        defaultOpen={openAtFirst}
+        onChange={onChange}
+      />
+    </>
+  );
+}
+
+/** The day chips and the time field. */
+function SimpleScheduleFields({
+  trigger,
+  schedule,
+  onChange,
+}: {
+  readonly trigger: Extract<RoutineTrigger, { kind: "schedule" }>;
+  readonly schedule: SimpleSchedule;
+  readonly onChange: (trigger: RoutineTrigger) => void;
+}) {
+  // The hint belongs to the line it was shown for, so a change made elsewhere takes it away.
+  const [needsDayFor, setNeedsDayFor] = useState<string | undefined>();
+  const needsDay = needsDayFor === trigger.cron;
   const write = (next: SimpleSchedule) => onChange({ ...trigger, cron: cronFor(next) });
   const toggleDay = (cron: number, pressed: boolean) => {
     const days = new Set(schedule.days);
@@ -80,10 +119,10 @@ function ScheduleFields({
     else days.delete(cron);
     if (days.size === 0) {
       // The last day stays on; the hint stays until another day is turned on.
-      setNeedsDay(true);
+      setNeedsDayFor(trigger.cron);
       return;
     }
-    setNeedsDay(false);
+    setNeedsDayFor(undefined);
     write({ ...schedule, days });
   };
   const changeTime = (text: string) => {

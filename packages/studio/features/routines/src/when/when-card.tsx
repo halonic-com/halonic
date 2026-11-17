@@ -83,6 +83,7 @@ export function WhenCard({ host, routine, announce }: WhenCardProps) {
         <p className="text-body">{routine.triggerSentence}</p>
         <TriggerFields
           trigger={routine.trigger}
+          enabled={routine.enabled}
           onChange={(trigger) => void changeTrigger(trigger)}
         />
         {blocked && (

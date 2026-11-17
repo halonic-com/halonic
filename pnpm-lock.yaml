@@ -3012,6 +3012,9 @@ importers:
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../../core/format
+      '@halonicjs/routines':
+        specifier: workspace:*
+        version: link:../../../core/routines
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std
