@@ -5,8 +5,9 @@
 // the rule is `reachesOnlyTheTestModel` in the workspace package, so
 // Studio can use it too, and `needsNoTrust` in `workspace-trust.ts` asks it
 // for `run`, `routines watch`, `serve` and the serve trust gate): then
-// nothing outside Halonic starts, and `init --example acme` runs straight away. The service that starts the run
-// doesn't check trust; each surface asks in its own way (Liam, HAL-3895).
+// nothing outside Halonic starts, and `init --example acme` runs straight
+// away. The service that starts the run doesn't check trust; each surface
+// asks in its own way (Liam, HAL-3895).
 
 import type { TrustGrant } from "@halonicjs/ports";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
