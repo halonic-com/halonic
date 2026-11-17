@@ -118,7 +118,9 @@ fn local_ssh(root: &Path, script_body: &str) -> PathBuf {
         let ssh = root.join("local-ssh.cmd");
         let line = format!("@sh \"{}\" %*\r\n", posix(&script));
         std::fs::write(&ssh, line).expect("the ssh writes");
-        ssh
+        // git hands GIT_SSH_COMMAND to sh, which eats backslashes and
+        // can't read the `\\?\` prefix, so name the .cmd with forward slashes.
+        PathBuf::from(posix(&ssh))
     }
 }
 

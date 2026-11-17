@@ -7,8 +7,8 @@ use std::sync::atomic::AtomicBool;
 use std::time::{Duration, Instant};
 
 use super::{
-    address_of, entries_of, git_program, local_ssh, plain_git, posix, runner, running_ssh, server,
-    Scratch,
+    Scratch, address_of, entries_of, git_program, local_ssh, plain_git, posix, runner, running_ssh,
+    server,
 };
 use crate::error::GitError;
 use crate::export::ExportLimits;
