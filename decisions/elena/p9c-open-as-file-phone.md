@@ -3,7 +3,6 @@
 - Task: HAL-10955
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11400 (Liam's design for the phone Open as file sheet); Liam signs this note
 - Kind: user-visible
-- Signature:
 
 ## What changes
 
