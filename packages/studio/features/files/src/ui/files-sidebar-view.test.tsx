@@ -130,6 +130,14 @@ verifies("files.ui.tree-view", () => {
     expect(page.querySelector('[role="tree"]')).not.toBeNull();
   });
 
+  it("never shows a system error's own text, only the general reason", async () => {
+    const list = vi.fn<FilesHost["list"]>().mockRejectedValue(new Error("EIO: i/o error, scandir"));
+    const page = await show({ ...hostOf(listing([])), list });
+    expect(page.textContent).toContain("Couldn't load files");
+    expect(page.textContent).toContain("Halonic ran into a problem it can't explain yet.");
+    expect(page.textContent).not.toContain("EIO");
+  });
+
   it("says there are no files", async () => {
     const page = await show(hostOf(listing([])));
     expect(page.textContent).toContain("Everything in this workspace is a file.");

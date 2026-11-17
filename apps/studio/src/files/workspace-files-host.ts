@@ -3,9 +3,10 @@ import {
   checkWorkspacePath,
   type DefinitionWatch,
   isPrivateWorkspacePath,
+  UnreadableWorkspaceFolderError,
   type WorkspaceFileChange,
 } from "@halonicjs/ports";
-import { KindedError } from "@halonicjs/std";
+import { errorKindOf, KindedError } from "@halonicjs/std";
 import {
   type CompareChoice,
   type FileCompare,
@@ -161,8 +162,7 @@ export class WorkspaceFilesHost implements FilesHost {
     try {
       saved = await this.#parts.store.list();
     } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      throw new Error(reason.endsWith(".") ? reason : `${reason}.`);
+      throw listFailure(error);
     }
     const paths = new Set(saved);
     for (const [path, text] of Object.entries(this.#parts.files.pending)) {
@@ -404,4 +404,18 @@ export class WorkspaceFilesHost implements FilesHost {
       stop();
     };
   }
+}
+
+/**
+ * What a failed folder read rejects with. The store's kinded errors are kept, so the sidebar
+ * shows their reason; an unreadable folder becomes `unavailable` naming it. Anything else keeps
+ * no kind, so its text goes only into the log (rule 1.4).
+ */
+function listFailure(error: unknown): unknown {
+  if (errorKindOf(error) !== "internal") return error;
+  if (error instanceof UnreadableWorkspaceFolderError) {
+    const folder = error.path === "" ? "The workspace folder" : error.path;
+    return new KindedError("unavailable", `${folder} can't be read.`, { cause: error });
+  }
+  return error;
 }
