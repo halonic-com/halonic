@@ -101,11 +101,7 @@ function FileChanges({
           {developer ? discardWords.discard : discardWords.undoTheseChanges}
         </Button>
       </div>
-      {list.merging ? (
-        <span id={waitingId} className="text-small text-fg-muted">
-          {mergeWords.finishFirst}
-        </span>
-      ) : null}
+      <WaitingNote list={list} id={waitingId} />
       {failure === undefined ? null : (
         <span role="alert" className="text-small text-danger">
           {discardWords.failed}. {failure}
@@ -126,6 +122,16 @@ function FileChanges({
         />
       )}
     </section>
+  );
+}
+
+/** Says why changes can't be undone while a Get updates is half done; nothing otherwise. */
+function WaitingNote({ list, id }: { readonly list: ChangesList; readonly id: string }) {
+  if (!list.merging) return null;
+  return (
+    <span id={id} className="text-small text-fg-muted">
+      {mergeWords.finishFirst}
+    </span>
   );
 }
 

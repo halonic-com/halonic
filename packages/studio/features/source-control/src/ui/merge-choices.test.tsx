@@ -189,9 +189,14 @@ verifies("source-control.get-updates-per-item", () => {
     });
 
     it("makes what waits unavailable, with the reason, while the merge is started", async () => {
-      await openPage({ left: merge([item("a.md", "m\n", "s\n")]) });
+      const { root } = await openPage({ left: merge([item("a.md", "m\n", "s\n")]) });
       expect(unavailable("Create version")).toBe(true);
       expect(unavailable("Get updates")).toBe(true);
+      const row = root.querySelector<HTMLElement>('td[role="gridcell"]');
+      await act(async () => {
+        row?.focus();
+        row?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      });
       expect(unavailable("Undo these changes")).toBe(true);
       expect(document.body.textContent).toContain("Finish getting updates first.");
     });

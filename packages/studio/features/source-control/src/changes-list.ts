@@ -3,7 +3,7 @@ import type { VcsChange } from "@halonicjs/ports";
 import { applyLineChanges, diffLines, type LineChange } from "@halonicjs/std";
 import type { PlaceSignal, ServiceKey } from "@halonicjs/studio-shell";
 import { serviceKey } from "@halonicjs/studio-shell";
-import type { ChangesSource, Identity, KeptFile, UpdateMerge } from "./api.ts";
+import type { ChangesSource, Identity, KeptFile } from "./api.ts";
 import { type ChangeItem, groupIntoItems } from "./change-items.ts";
 import {
   type ChangedFile,
@@ -108,6 +108,9 @@ export class ChangesList {
     return { mark: "count", value: count, spoken: pageWords.spokenCount(count) };
   }
 
+  /** The merge left open: none, or the folder has no history, is `null`. */
+  #readMerge = async (ready: boolean) => (ready ? await this.source.readMerge() : null);
+
   /**
    * Reads the changes again. When reads overlap, only the last one started counts, so an older
    * answer never overwrites a newer one. Once the workspace has closed it does nothing.
@@ -139,11 +142,6 @@ export class ChangesList {
       if (read !== this.#reads || this.#disposed) return;
       this.#set({ ...this.#state, error });
     }
-  }
-
-  /** The merge left open, `null` when none is or the folder has no history. */
-  async #readMerge(ready: boolean): Promise<UpdateMerge | null> {
-    return ready ? await this.source.readMerge() : null;
   }
 
   /** Shows the next {@link historyPageSize} older versions. */
@@ -441,8 +439,7 @@ export class ChangesList {
       let outcome: UpdatesOutcome = await this.source.getUpdates();
       if (outcome.kind === "both-moved") {
         const start = await this.source.startMerge();
-        // Both having moved is the one case that is chosen for item by item; if it has changed
-        // since, the answer stays the first one.
+        // Only when both sides moved is it chosen item by item; if that changed, the answer stays.
         if (start.kind === "started") outcome = { kind: "choosing" };
       }
       if (this.#disposed) return outcome;
