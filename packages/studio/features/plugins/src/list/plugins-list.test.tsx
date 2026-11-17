@@ -48,6 +48,7 @@ function show(
     builtIn?: boolean;
     openBuiltIn?: boolean;
     phone?: boolean;
+    noAdd?: boolean;
     place?: "app" | "served";
   } = {},
 ): Seen {
@@ -65,7 +66,7 @@ function show(
         {...(options.openBuiltIn === false
           ? {}
           : { onOpenBuiltIn: (id: string) => seen.builtIns.push(id) })}
-        onAdd={() => seen.calls.push("add")}
+        {...(options.noAdd === true ? {} : { onAdd: () => seen.calls.push("add") })}
         onRetry={() => seen.calls.push("retry")}
         now={now}
       />
@@ -231,6 +232,14 @@ verifies("plugins.plugin-list", () => {
       (candidate) => candidate.textContent === "Add plugin",
     );
     expect(labels).toHaveLength(1);
+  });
+
+  it("shows the command line instead of a missing Add plugin when the app has no installer", () => {
+    show([], { noAdd: true });
+    expect(text()).toContain("No plugins yet");
+    expect(text()).not.toContain("Add plugin");
+    expect(text()).toContain("This app can't add a plugin yet.");
+    expect(text()).toContain("halonic plugin add <folder or git address>");
   });
 
   it("opens nothing on a built-in row, and gives it no ⋮, when the host can't open one", () => {
