@@ -95,8 +95,9 @@ if (root === null) {
 }
 createRoot(root).render(
   <StrictMode>
-    {/* The screenshot's frame: as wide as Studio's content column, as tall as its content. */}
-    <div id="shot" className="w-[1100px] bg-surface text-fg">
+    {/* The screenshot's frame: Studio's content column wide (or the window, if
+        narrower), as tall as its content. */}
+    <div id="shot" className="w-full max-w-[1100px] bg-surface text-fg">
       <RunView
         list={new RunsList(source)}
         runId={runId}
