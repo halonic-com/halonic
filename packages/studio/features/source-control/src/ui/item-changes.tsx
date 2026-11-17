@@ -1,10 +1,16 @@
 import type { ChangeLine } from "@halonicjs/app";
 import type { LineChange } from "@halonicjs/std";
-import { Button, useToastStore } from "@halonicjs/studio-kit";
+import { Button, StatusChip, useToastStore } from "@halonicjs/studio-kit";
 import { useId, useMemo, useRef, useState } from "react";
 import type { ChangeItem } from "../change-items.ts";
 import type { ChangedFile, ChangesList } from "../changes-list.ts";
-import { discardWords, listWords, mergeWords, undoWords } from "../changes-words.ts";
+import {
+  discardWords,
+  listWords,
+  mergeWords,
+  partChangeWords,
+  undoWords,
+} from "../changes-words.ts";
 import { PartChanges } from "./part-change.tsx";
 import { type DiscardToasts, useDiscardToasts } from "./use-discard-toasts.ts";
 
@@ -50,9 +56,9 @@ function FileChanges({
   /** A path is for the developer view and for telling an item's files apart, never for a row. */
   readonly showPath: boolean;
 }) {
-  const { lines } = file.description;
   const hunks = useMemo(() => list.hunks(file), [list, file]);
-  const [showLines, setShowLines] = useState(false);
+  // Advanced starts open when Halonic can't say in words what changed: the lines are all there is.
+  const [showLines, setShowLines] = useState(!file.description.described);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string>();
   const discarding = useDiscardToasts();
@@ -67,16 +73,11 @@ function FileChanges({
     setBusy(false);
     setFailure(reason);
   }
-  const important = lines.filter((line) => line.important);
-  const other = lines.filter((line) => !line.important);
   return (
     <section aria-label={file.path} className="flex flex-col gap-2">
       {showPath ? (
         <FileBar
           path={file.path}
-          canShowLines={developer && hunks.length > 0}
-          showLines={showLines}
-          onToggleLines={() => setShowLines(!showLines)}
           onDiscard={developer ? () => void discardFile() : undefined}
           busy={busy}
           list={list}
@@ -87,14 +88,56 @@ function FileChanges({
           {discardWords.failed}. {failure}
         </span>
       )}
-      {developer && showLines ? (
-        <LineDiff list={list} file={file} hunks={hunks} discarding={discarding} />
-      ) : null}
       <NewFileLines file={file} />
+      {file.description.described ? (
+        <DescribedLines list={list} file={file} level={showPath ? 3 : 2} />
+      ) : (
+        <CantDescribe file={file} />
+      )}
+      {hunks.length === 0 ? null : (
+        <div className="flex flex-col gap-2">
+          <span className="self-start">
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-expanded={showLines}
+              onClick={() => setShowLines(!showLines)}
+            >
+              {discardWords.advanced}
+            </Button>
+          </span>
+          {showLines ? (
+            <LineDiff
+              list={list}
+              file={file}
+              hunks={hunks}
+              discarding={developer ? discarding : undefined}
+            />
+          ) : null}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** The changes Halonic can put in words: the Important ones first, then the others. */
+function DescribedLines({
+  list,
+  file,
+  level,
+}: {
+  readonly list: ChangesList;
+  readonly file: ChangedFile;
+  readonly level: 2 | 3;
+}) {
+  const important = file.description.lines.filter((line) => line.important);
+  const other = file.description.lines.filter((line) => !line.important);
+  return (
+    <>
       {important.length === 0 ? null : (
         <Group
           title={listWords.important}
-          level={showPath ? 3 : 2}
+          level={level}
           list={list}
           file={file}
           lines={important}
@@ -103,13 +146,30 @@ function FileChanges({
       {other.length === 0 ? null : (
         <Group
           title={important.length === 0 ? undefined : listWords.other}
-          level={showPath ? 3 : 2}
+          level={level}
           list={list}
           file={file}
           lines={other}
         />
       )}
-    </section>
+    </>
+  );
+}
+
+/**
+ * What a file says when Halonic can't put its change in words: the label of what happened to it
+ * (CHANGED, NEW or DELETED) and which file.
+ */
+function CantDescribe({ file }: { readonly file: ChangedFile }) {
+  const label = file.description.lines[0]?.sentence.toUpperCase() ?? partChangeWords.changed;
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-body">{discardWords.cantDescribe}</p>
+      <div className="flex items-center gap-2">
+        <StatusChip tone="neutral">{label}</StatusChip>
+        <code className="text-small break-all">{file.path}</code>
+      </div>
+    </div>
   );
 }
 
@@ -123,20 +183,14 @@ export function WaitingNote({ list, id }: { readonly list: ChangesList; readonly
   );
 }
 
-/** A file's path as the heading of its changes, with the developer view's Show lines and Discard. */
+/** A file's path as the heading of its changes, with the developer view's Discard. */
 function FileBar({
   path,
-  canShowLines,
-  showLines,
-  onToggleLines,
   onDiscard,
   busy,
   list,
 }: {
   readonly path: string;
-  readonly canShowLines: boolean;
-  readonly showLines: boolean;
-  readonly onToggleLines: () => void;
   /** Only the developer view discards a single file. */
   readonly onDiscard: (() => void) | undefined;
   readonly busy: boolean;
@@ -148,11 +202,6 @@ function FileBar({
     <>
       <div className="flex items-center gap-3">
         <h2 className="text-label flex-1 break-all">{path}</h2>
-        {canShowLines ? (
-          <Button variant="ghost" size="sm" aria-expanded={showLines} onClick={onToggleLines}>
-            {showLines ? discardWords.hideLines : discardWords.showLines}
-          </Button>
-        ) : null}
         {onDiscard === undefined ? null : (
           <Button
             variant="ghost"
@@ -204,7 +253,10 @@ function partHeading(part: LineChange): string {
   return discardWords.partLines(part.beforeStart + 1, part.beforeEnd);
 }
 
-/** The developer view's line diff of one file: each part with its own "Discard this part". */
+/**
+ * The line diff of one file, shown under Advanced. With `discarding`, which only the developer view
+ * passes, each part has its own "Discard this part".
+ */
 function LineDiff({
   list,
   file,
@@ -214,7 +266,7 @@ function LineDiff({
   readonly list: ChangesList;
   readonly file: ChangedFile;
   readonly hunks: readonly LineChange[];
-  readonly discarding: DiscardToasts;
+  readonly discarding: DiscardToasts | undefined;
 }) {
   const [failure, setFailure] = useState<string>();
   // The part being discarded: a second press on it, or on another part, would find the file changed.
@@ -222,7 +274,7 @@ function LineDiff({
   // A ref too, since a second press can come before the page has drawn the busy state.
   const working = useRef(false);
   async function discardPart(part: LineChange) {
-    if (working.current) return;
+    if (working.current || discarding === undefined) return;
     working.current = true;
     setBusyPart(partKey(part));
     setFailure(undefined);
@@ -258,14 +310,16 @@ function LineDiff({
               ))}
             </pre>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            busy={busyPart !== undefined}
-            onClick={() => void discardPart(part)}
-          >
-            {discardWords.discardThisPart}
-          </Button>
+          {discarding === undefined ? null : (
+            <Button
+              variant="ghost"
+              size="sm"
+              busy={busyPart !== undefined}
+              onClick={() => void discardPart(part)}
+            >
+              {discardWords.discardThisPart}
+            </Button>
+          )}
         </div>
       ))}
       {failure === undefined ? null : (
