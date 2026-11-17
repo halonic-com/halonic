@@ -14,6 +14,13 @@ export interface TabLocation {
    * the same item is the same place, whichever part it opens on.
    */
   readonly step?: string;
+  /**
+   * How many times the place was asked to open on a `step`, so a page that is open already can
+   * tell it was asked again, also for the same step. `openHere` counts it up; a caller doesn't set
+   * it. It isn't part of the key, and a tab that comes back (Ctrl Shift T) keeps its count, which
+   * isn't a new request.
+   */
+  readonly asked?: number;
 }
 
 /** One window tab with its own history, like a browser tab. */
@@ -102,7 +109,7 @@ export class TabSet {
   /**
    * Opens `location` in the active tab, after the place it shows, and drops that tab's Forward.
    * If the active tab shows it already, nothing changes; if another tab does, that tab becomes
-   * active instead. A `step` on `location` moves the tab that shows it to that step.
+   * active instead. A `step` on `location` moves the tab that shows it to that step and counts `asked` up, also when the tab is on that step already.
    */
   openHere(location: TabLocation): void {
     const tab = this.active;
@@ -308,14 +315,14 @@ export class TabSet {
     this.update({ tabs, activeId });
   }
 
-  /** Points the tab's current place at the step `location` asks for, without a new history entry. */
+  /** Points the tab's current place at the step `location` asks for and counts the ask, without a new history entry. */
   private moveToStep(tab: WindowTab, location: TabLocation): void {
     const { step } = location;
-    if (step === undefined || currentLocation(tab).step === step) {
+    if (step === undefined) {
       return;
     }
     const history = tab.history.map((place, index) =>
-      index === tab.position ? { ...place, step } : place,
+      index === tab.position ? { ...place, step, asked: (place.asked ?? 0) + 1 } : place,
     );
     this.replace(tab.id, { ...tab, history });
   }

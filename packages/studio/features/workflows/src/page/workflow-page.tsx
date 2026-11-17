@@ -51,7 +51,7 @@ function firstTestsPick(startOnTests: boolean | undefined) {
 }
 
 /** The workflow's page in its tab: `item` names the workflow, the host gives its steps. */
-export function WorkflowPage({ item, context, step }: ItemViewProps) {
+export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
   const { openItem, openPlace } = context;
   const runsList = context.services.get(RunsListService);
   return (
@@ -60,7 +60,7 @@ export function WorkflowPage({ item, context, step }: ItemViewProps) {
       runs={context.services.get(RunsSourceService)}
       hubId={item.hub}
       id={item.id}
-      {...(step === "tests" && { startOnTests: true })}
+      {...(step === "tests" && { startOnTests: true, testsAsked: asked ?? 0 })}
       notAnswering={engineWordsOf(context).notAnswering}
       {...(openItem && {
         openRun: (runId: string, step?: string) =>
@@ -92,6 +92,7 @@ export function WorkflowScreen({
   seeAllRuns,
   reviewInInbox,
   startOnTests,
+  testsAsked = 0,
 }: WorkflowScreenProps) {
   // After a Try again reads, the workflow's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -125,10 +126,10 @@ export function WorkflowScreen({
     { readonly name: string | undefined; readonly n: number } | undefined
   >(firstTestsPick(startOnTests));
   const testsMade = useRef(0);
-  // A page that is already open and is asked for its Tests (`startOnTests` turns true) goes to
-  // Configuration on Tests, as if it had opened there. It is counted like a made test, so
-  // Configuration remounts even if it is already open.
-  useAskedForTests(startOnTests, () => {
+  // A page that is already open and is asked for its Tests (`startOnTests` turns true, or
+  // `testsAsked` counts up while it is true) goes to Configuration on Tests, as if it had opened
+  // there. It is counted like a made test, so Configuration remounts even if it is already open.
+  useAskedForTests(startOnTests, testsAsked, () => {
     setView("configuration");
     testsMade.current += 1;
     setMadeTest({ name: undefined, n: testsMade.current });

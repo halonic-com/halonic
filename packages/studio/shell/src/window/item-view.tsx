@@ -18,6 +18,8 @@ export interface ItemViewProps {
   readonly Sections: ComponentType;
   /** The part of the page the item was opened on (`openItem`'s `step`), if it was asked for one. */
   readonly step?: string;
+  /** How many times the page was asked for a `step`, so a page that is open can tell it was asked again. */
+  readonly asked?: number;
 }
 
 /**
@@ -41,6 +43,7 @@ export function ItemView({
   sections,
   contextFor,
   step,
+  asked,
 }: {
   readonly kind: ItemKindContribution;
   readonly item: ItemRef;
@@ -51,6 +54,8 @@ export function ItemView({
   readonly contextFor: (featureId: string) => WorkspaceContext;
   /** The part of the page to open on, from the tab's place. */
   readonly step?: string | undefined;
+  /** How many times the place was asked for a step, from the tab's place. */
+  readonly asked?: number | undefined;
 }) {
   const View = lazyView<ItemViewProps>(kind.open);
   const Sections = useSectionsComponent(item, sections, contextFor);
@@ -61,6 +66,7 @@ export function ItemView({
         context={context}
         Sections={Sections}
         {...(step === undefined ? {} : { step })}
+        {...(asked === undefined ? {} : { asked })}
       />
     </Suspense>
   );

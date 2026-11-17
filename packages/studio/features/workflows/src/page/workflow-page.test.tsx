@@ -18,6 +18,7 @@ import {
   show,
   unmount,
 } from "../test-support.tsx";
+import { reply, settings } from "./page-fixtures.ts";
 import { WorkflowPage, WorkflowScreen } from "./workflow-page.tsx";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
@@ -25,23 +26,6 @@ afterEach(() => {
   unmount();
   vi.useRealTimers();
 });
-
-const reply: WorkflowView = {
-  hubId: "acme",
-  id: "reply",
-  name: "Support reply",
-  initial: "start",
-  steps: [
-    { id: "start", type: "task" },
-    { id: "write", type: "task", agent: "writer" },
-    { id: "done", type: "final" },
-  ],
-  arrows: [
-    { from: "start", to: "write" },
-    { from: "write", to: "done", label: "ok" },
-  ],
-  layout: {},
-};
 
 const surface = (page: HTMLElement) =>
   page.querySelector<HTMLElement>("[data-testid=canvas-surface]");
@@ -244,80 +228,6 @@ verifies("workflows.page.frame-and-states", () => {
   });
 });
 
-verifies("workflows.page.frame-and-states", () => {
-  it("opens on Configuration's Tests when asked, and General when you come back to it", async () => {
-    const { host } = memoryHost([], [], [reply], [settings]);
-    const page = await show(
-      <WorkflowScreen
-        host={host}
-        runs={memoryRuns().source}
-        hubId="acme"
-        id="reply"
-        startOnTests
-      />,
-    );
-    const tab = (name: string) =>
-      [...page.querySelectorAll<HTMLElement>("[role=tab]")].find((one) =>
-        one.textContent?.startsWith(name),
-      );
-    expect(tab("Configuration")?.getAttribute("aria-selected")).toBe("true");
-    expect(page.querySelector("[role=tab][aria-selected=true][id$=-tests]")).not.toBeNull();
-    await act(async () => tab("Flow")?.click());
-    await act(async () => tab("Configuration")?.click());
-    expect(page.querySelector("[role=tab][aria-selected=true][id$=-general]")).not.toBeNull();
-  });
-
-  it("goes to Configuration's Tests when an open page is asked for them", async () => {
-    const { host } = memoryHost([], [], [reply], [settings]);
-    let ask: () => void = () => undefined;
-    function Asked() {
-      const [asked, setAsked] = useState(false);
-      ask = () => setAsked(true);
-      return (
-        <WorkflowScreen
-          host={host}
-          runs={memoryRuns().source}
-          hubId="acme"
-          id="reply"
-          startOnTests={asked}
-        />
-      );
-    }
-    const page = await show(<Asked />);
-    const selected = () => page.querySelector("[role=tab][aria-selected=true]")?.textContent;
-    expect(selected()?.startsWith("Flow")).toBe(true);
-    await act(async () => ask());
-    expect(page.querySelector("[role=tab][aria-selected=true][id$=-tests]")).not.toBeNull();
-  });
-
-  it("goes to Tests when asked from Configuration's General", async () => {
-    const { host } = memoryHost([], [], [reply], [settings]);
-    let ask: () => void = () => undefined;
-    function Asked() {
-      const [asked, setAsked] = useState(false);
-      ask = () => setAsked(true);
-      return (
-        <WorkflowScreen
-          host={host}
-          runs={memoryRuns().source}
-          hubId="acme"
-          id="reply"
-          startOnTests={asked}
-        />
-      );
-    }
-    const page = await show(<Asked />);
-    const tab = (name: string) =>
-      [...page.querySelectorAll<HTMLElement>("[role=tab]")].find((one) =>
-        one.textContent?.startsWith(name),
-      );
-    await act(async () => tab("Configuration")?.click());
-    expect(page.querySelector("[role=tab][aria-selected=true][id$=-general]")).not.toBeNull();
-    await act(async () => ask());
-    expect(page.querySelector("[role=tab][aria-selected=true][id$=-tests]")).not.toBeNull();
-  });
-});
-
 verifies("workflows.page.step-cards", () => {
   it("draws a card per step with its kind, id, agent and the Start mark, and an arrow per way on", async () => {
     const { host } = memoryHost([], [], [reply]);
@@ -361,16 +271,6 @@ verifies("workflows.page.step-cards", () => {
     expect(surface(page)?.style.transform).toBe(fitted);
   });
 });
-
-const settings = {
-  hubId: "acme",
-  id: "reply",
-  name: "Support reply",
-  initial: "start",
-  stepIds: ["start", "write", "done"],
-  file: "hubs/acme/workflows/reply.workflow.yaml",
-  problems: [],
-} as const;
 
 const startCommand = (page: HTMLElement) =>
   page.querySelector("[data-testid=start-command] code")?.textContent;

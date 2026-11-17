@@ -102,6 +102,7 @@ export function StudioPage({
         sections={contributions.itemPage.sectionsFor(kind.kind)}
         contextFor={contextFor}
         step={location.step}
+        asked={location.asked}
       />
     );
     if (!backLink || kind.place === undefined) {

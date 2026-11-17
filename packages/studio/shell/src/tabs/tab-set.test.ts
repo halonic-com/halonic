@@ -146,6 +146,20 @@ verifies("shell.tab-set", () => {
     expect(tabs.active.history).toHaveLength(1);
   });
 
+  it("counts how often a step is asked for, also the same step, and keeps the key", () => {
+    const run: TabLocation = { key: "run/acme/run_a", title: "Run a" };
+    const tabs = new TabSet();
+    tabs.openHere(run);
+    tabs.openHere({ ...run, step: "draft" });
+    const first = currentLocation(tabs.active).asked;
+    tabs.openHere({ ...run, step: "draft" });
+    const second = currentLocation(tabs.active).asked;
+    expect(second).not.toBe(first);
+    expect(currentLocation(tabs.active).key).toBe(run.key);
+    expect(tabs.state.tabs).toHaveLength(1);
+    expect(tabs.active.history).toHaveLength(2);
+  });
+
   it("leaves the step of an item alone when it is opened without one", () => {
     const run: TabLocation = { key: "run/acme/run_a", title: "Run a", step: "draft" };
     const tabs = tabsOn(run);
