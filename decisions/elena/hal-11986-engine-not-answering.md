@@ -3,7 +3,6 @@
 - Task: HAL-11986
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11986 (Sofia's UX check on HAL-11973 and microcopy 3.2, revision 96, HAL-8954 FR5; a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:B6WUrnXk3fMsQ1w3oJZ9MG1cFKYxNJ/jALpRPVn/y+8p1aoA/A7r2cwo8keAgFVmBA2EU0q/ClMDuPlmL/cXAQ==
 
 ## What changes
 
