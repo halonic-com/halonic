@@ -3,6 +3,7 @@
 - Task: HAL-6453 (last step of HAL-6369)
 - Approval: `tooling/check/src/guard/` is a trust root, so this note needs both guardians: Liam (CTO) and Julian (security reviewer)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:lpSMi2C4FOm1NVHXhUm/slHa8tlpRwJOipfEJjsKZlAPHiG0SFYfeU14A43VN7Gl+iDOCwIQ8TeIiufV+9wdAA==
 
 ## What changes
 
