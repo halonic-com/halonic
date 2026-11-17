@@ -8,17 +8,20 @@ import {
   type BackLink,
   CardHeader,
   DecidedBar,
+  type EngineState,
   FailedLine,
   type ManualAnswer,
   manualAnswerOf,
   type NextItem,
+  NotAnsweringLine,
+  unavailableWhile,
   useEveryMinute,
   wasDecidedElsewhere,
 } from "./card-parts.tsx";
 import { type DecisionGuard, useDecisionGuard } from "./decision-guard.ts";
 import { PlainValue } from "./plain-value.tsx";
 
-export interface WaitCardProps {
+export interface WaitCardProps extends EngineState {
   readonly item: WaitItem;
   readonly decisions: Pick<InboxDecisions, "answer">;
   /** Opens the run; without it the card has no **Open run**. */
@@ -181,6 +184,7 @@ export function WaitCard(props: WaitCardProps) {
           labels={item.answerLabels}
           state={state}
           guard={guard}
+          engine={props}
           onAnswer={answer}
           onOpenRun={
             props.onOpenRun === undefined ? undefined : () => props.onOpenRun?.(item.runId)
@@ -196,6 +200,7 @@ interface AnswerBarProps {
   readonly labels: Readonly<Record<string, string>>;
   readonly state: Exclude<CardState, { kind: "answered" }>;
   readonly guard: DecisionGuard;
+  readonly engine: EngineState;
   readonly onAnswer: (event: string) => void;
   readonly onOpenRun: (() => void) | undefined;
 }
@@ -210,7 +215,9 @@ interface AnswerBarProps {
  * sits in a `@container` as wide as the button, so the label can be capped at that width less
  * the button's widest padding and edges.
  */
-function AnswerBar({ accepts, labels, state, guard, onAnswer, onOpenRun }: AnswerBarProps) {
+function AnswerBar({ accepts, labels, state, guard, engine, onAnswer, onOpenRun }: AnswerBarProps) {
+  const reasonId = useId();
+  const unavailable = unavailableWhile(engine.answering ?? true, reasonId);
   const [first, ...others] = accepts;
   const failed = state.kind === "open" ? state.failed : null;
   const answerButton = (event: string, primary: boolean) => {
@@ -224,6 +231,7 @@ function AnswerBar({ accepts, labels, state, guard, onAnswer, onOpenRun }: Answe
               {...tooltip}
               variant={primary ? "primary" : "secondary"}
               block
+              unavailable={unavailable}
               busy={state.kind === "answering" && state.event === event}
               busyLabel={busyLabel(event, ownLabel(labels, event))}
               onClick={() => onAnswer(event)}
@@ -241,6 +249,7 @@ function AnswerBar({ accepts, labels, state, guard, onAnswer, onOpenRun }: Answe
       onPointerDownCapture={guard.onPointerDownCapture}
       onKeyDownCapture={guard.onKeyDownCapture}
     >
+      <NotAnsweringLine id={reasonId} {...engine} />
       <FailedLine
         onRetry={failed === null ? null : () => onAnswer(failed)}
         manual={state.kind === "open" ? state.manual : null}

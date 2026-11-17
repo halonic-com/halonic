@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -319,6 +320,32 @@ verifies("inbox.approval-card", () => {
       const { root } = openCard({ onOpenRun });
       await press(button(root, "Open run"));
       expect(onOpenRun).toHaveBeenCalledWith("r47");
+    });
+  });
+
+  describe("while the engine isn't answering", () => {
+    it("shows the last-said line and keeps the three buttons focusable but still", async () => {
+      const { root, sent, later } = openCard({ answering: false });
+      later(2);
+      const line = root.querySelector("p[id]");
+      expect(line?.textContent).toBe(engineWords["desktop-app"].showingLast);
+      for (const name of ["Approve", "Ask for changes", "Reject"]) {
+        const target = button(root, name);
+        expect(target.getAttribute("aria-disabled")).toBe("true");
+        expect(target.getAttribute("aria-describedby")).toBe(line?.id);
+        expect(target.disabled).toBe(false);
+        await press(target);
+      }
+      expect(sent).toEqual([]);
+      expect(document.querySelector("dialog")).toBeNull();
+    });
+
+    it("shows no line and decides as usual while it answers", async () => {
+      const { root, sent, later } = openCard({ answering: true });
+      later(2);
+      expect(root.textContent).not.toContain(engineWords["desktop-app"].showingLast);
+      await press(button(root, "Approve"));
+      expect(sent).toEqual(["approve"]);
     });
   });
 });

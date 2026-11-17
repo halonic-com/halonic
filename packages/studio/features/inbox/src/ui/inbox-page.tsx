@@ -367,12 +367,24 @@ function OpenCard({
         back={null}
         now={now}
         initialNote={aside}
+        answering={answering}
+        words={words}
         {...(somewhereToGo ? { onGoToSecret: goToSecret } : {})}
         secretPlace={target.kind}
       />
     );
   }
-  return <WaitCard item={item} decisions={inbox.decisions} next={next} back={null} now={now} />;
+  return (
+    <WaitCard
+      item={item}
+      decisions={inbox.decisions}
+      next={next}
+      back={null}
+      now={now}
+      answering={answering}
+      words={words}
+    />
+  );
 }
 
 /**
