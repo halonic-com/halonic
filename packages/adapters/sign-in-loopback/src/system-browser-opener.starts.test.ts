@@ -18,6 +18,8 @@ vi.mock("node:child_process", async () => {
 
 const { createSystemBrowserOpener } = await import("./system-browser-opener.ts");
 
+const windowsEnv = { SystemRoot: "\\\\winhost\\root" };
+
 verifies("sign-in-loopback.system-browser-opener", () => {
   describe("what the opener starts", () => {
     it.each([
@@ -32,20 +34,22 @@ verifies("sign-in-loopback.system-browser-opener", () => {
     ])("refuses %s and starts nothing", async (_, url) => {
       spawned.length = 0;
       for (const platform of ["linux", "darwin", "win32"] as const) {
-        await expect(createSystemBrowserOpener(platform).open(url)).resolves.toBe(false);
+        await expect(createSystemBrowserOpener(platform, windowsEnv).open(url)).resolves.toBe(
+          false,
+        );
       }
       expect(spawned).toEqual([]);
     });
 
     it.each([
       ["linux", "xdg-open", []],
-      ["darwin", "open", []],
-      ["win32", "rundll32", ["url.dll,FileProtocolHandler"]],
+      ["darwin", "/usr/bin/open", []],
+      ["win32", "\\\\winhost\\root\\System32\\rundll32.exe", ["url.dll,FileProtocolHandler"]],
     ] as const)(
       "on %s starts only %s with the address, not through a shell",
       async (platform, program, before) => {
         spawned.length = 0;
-        const opened = await createSystemBrowserOpener(platform).open(
+        const opened = await createSystemBrowserOpener(platform, windowsEnv).open(
           "https://accounts.example.test/auth?state=abc",
         );
         expect(opened).toBe(true);
@@ -56,5 +60,15 @@ verifies("sign-in-loopback.system-browser-opener", () => {
         expect(options).not.toHaveProperty("shell");
       },
     );
+
+    it.each([
+      ["missing", {}],
+      ["a relative folder", { SystemRoot: "windows" }],
+    ])("on win32 with a SystemRoot that is %s starts nothing", async (_, env) => {
+      spawned.length = 0;
+      const opened = await createSystemBrowserOpener("win32", env).open("https://example.test/");
+      expect(opened).toBe(false);
+      expect(spawned).toEqual([]);
+    });
   });
 });
