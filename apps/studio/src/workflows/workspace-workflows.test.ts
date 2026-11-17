@@ -194,6 +194,9 @@ verifies("studio.workspace-workflow-read", () => {
       "states:",
       "  first:",
       "    agent: writer",
+      "    description: |",
+      "      Read the email",
+      "      {{context.email}}",
       "    on:",
       "      - to: done",
       "        label: ok",
@@ -210,7 +213,7 @@ verifies("studio.workspace-workflow-read", () => {
       name: "Reply",
       initial: "first",
       steps: [
-        { id: "first", type: "task", agent: "writer" },
+        { id: "first", type: "task", title: "Read the email", agent: "writer" },
         { id: "done", type: "final", agent: undefined },
       ],
       arrows: [{ from: "first", to: "done", label: "ok" }],

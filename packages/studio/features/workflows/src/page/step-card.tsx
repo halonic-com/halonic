@@ -20,7 +20,7 @@ export interface StepCardProps {
 }
 
 /**
- * One step on the canvas (`workflows.page.step-cards`): its kind, its id, and the agent it runs,
+ * One step on the canvas (`workflows.page.step-cards`): its kind, its title (its id when it has none), and the agent it runs,
  * or "No agent" for a task step that has none (a step without an agent passes the data on). A
  * click selects it; the docked card that edits it lands with Configuration.
  */
@@ -50,10 +50,12 @@ export function StepCard({
       className={`absolute flex flex-col items-start justify-center gap-0.5 rounded-lg border bg-surface px-3 text-left ${ring}`}
     >
       <span className="text-caption text-fg-muted">{pageWords.stepKind[step.type]}</span>
-      <span className="flex items-center gap-2 text-small-strong text-fg">
-        {step.id}
-        {first && <span className="text-caption text-accent-text">{pageWords.startChip}</span>}
-      </span>
+      {first && (
+        <span className="absolute -top-2.5 left-3 rounded-full border border-border bg-surface px-2 text-caption text-accent-text">
+          {pageWords.startChip}
+        </span>
+      )}
+      <span className="text-small-strong text-fg">{step.title ?? step.id}</span>
       {failed && <StatusChip tone="danger">{startWords.failedChip}</StatusChip>}
       {step.type === "task" && (
         <span className="text-small text-fg-muted">{step.agent ?? pageWords.noAgent}</span>

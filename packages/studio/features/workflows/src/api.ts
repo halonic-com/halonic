@@ -43,6 +43,8 @@ export type WorkflowStepType = "task" | "wait" | "final" | "workflow" | "paralle
 export interface WorkflowStep {
   readonly id: string;
   readonly type: WorkflowStepType;
+  /** The step's own words for itself (the first line of its description); `undefined` when it has none. */
+  readonly title?: string | undefined;
   /** The agent a task step runs; `undefined` when it has none (the step passes the data on). */
   readonly agent?: string | undefined;
 }
