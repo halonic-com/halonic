@@ -82,9 +82,12 @@ function childMoved({ run, stateId, state, scope }: StateContext, input: ChildIn
   if (input.status === "failed") {
     const error = `Workflow "${child.workflow}" failed: ${input.error}`;
     // Only a budget stop goes up as it is: any other failure of the child
-    // is an error of this run's state.
-    const reason = input.reason === "budget" ? { reason: input.reason } : {};
-    return { events, effects: [], outcome: { type: "fail", error, ...reason } };
+    // is an error of this run's state. The child's cause goes up with it.
+    const budgetStop =
+      input.reason === "budget"
+        ? { reason: input.reason, ...(input.cause === undefined ? {} : { cause: input.cause }) }
+        : {};
+    return { events, effects: [], outcome: { type: "fail", error, ...budgetStop } };
   }
   if (input.status === "cant-try") {
     // The child's steps are this run's too: it couldn't try them either.

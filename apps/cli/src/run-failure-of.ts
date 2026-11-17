@@ -4,7 +4,7 @@
 // and provider file, name the rest. `halonic run` and `halonic runs show`
 // both print a failed run through here.
 
-import type { RunEvent } from "@halonicjs/events";
+import type { RunEvent, RunFailureCause } from "@halonicjs/events";
 import type { ModelAlias, Provider } from "@halonicjs/format";
 import { assertNever } from "@halonicjs/std";
 import { filesOf, type LoadedWorkspace, modelAliases } from "@halonicjs/workspace";
@@ -158,7 +158,8 @@ export function failedStartOf(
  * the model it called last (requirement `cli.run-failure`).
  *
  * `budget` reads the budget, the spend and the currency from the engine's
- * error (requirement `engine.budget-stop-message`). A reason whose lines need
+ * cause (requirement `engine.budget-stops`), or from its error text in a log
+ * written before the cause (`engine.budget-stop-message`). A reason whose lines need
  * a fact the run log doesn't hold gets the general lines, with the engine's
  * own message: `harness-unavailable` (cli-output 3.4 has no line for it), a
  * budget stop whose error doesn't read as the engine writes it, and a reason
@@ -246,24 +247,72 @@ export function runFailureOf(
   }
 }
 
+/** The figures of a budget stop, from the engine's cause or from its error text. */
+interface BudgetStop {
+  readonly per: "run" | "month";
+  readonly currency: string;
+  readonly budget: number;
+  readonly spent: number;
+}
+
+/** Which budget the engine's cause codes name. */
+const budgetCodes: Readonly<Record<string, BudgetStop["per"]>> = {
+  "budget.run": "run",
+  "budget.month": "month",
+};
+
+/**
+ * `budget` with the figures of the engine's cause (requirement
+ * `engine.budget-stops`); a log from before the engine wrote the cause gets
+ * them from its error text instead. A monthly budget resets on the first of
+ * the next month (UTC).
+ */
+function budgetFailure(failed: RunFailedEvent): RunFailure {
+  const stop = budgetStopOfCause(failed.cause) ?? budgetStopOfError(failed.error);
+  if (stop === undefined) {
+    return generalFailure(failed);
+  }
+  const { currency, budget, spent } = stop;
+  return stop.per === "run"
+    ? { reason: "budget", per: "run", budget, spent, currency }
+    : { reason: "budget", per: "month", budget, currency, resetsOn: nextMonthStart(failed.at) };
+}
+
+/** What a `budget.run` or `budget.month` cause says, or `undefined` for any other cause or one that is missing a figure. */
+function budgetStopOfCause(cause: RunFailureCause | undefined): BudgetStop | undefined {
+  const per = budgetCodes[cause?.code ?? ""];
+  const { limit, spent, currency } = cause?.detail ?? {};
+  if (per === undefined || limit === undefined || spent === undefined || currency === undefined) {
+    return undefined;
+  }
+  const budget = Number(limit);
+  const spentAmount = Number(spent);
+  if (!Number.isFinite(budget) || !Number.isFinite(spentAmount)) {
+    return undefined;
+  }
+  return { per, currency, budget, spent: spentAmount };
+}
+
 /**
  * The engine's budget stop, at the end of its error, since a parent run wraps
  * its child's: "Run budget reached: 5.08 of 5.00 EUR spent." or "Monthly
  * budget reached: 50.10 of 50.00 EUR spent this month."
  */
-const budgetStop =
+const budgetStopText =
   /(Run|Monthly) budget reached: (\d+(?:\.\d+)?) of (\d+(?:\.\d+)?) ([A-Z]{3}) spent(?: this month)?\.$/;
 
-/** `budget` with the amounts of the engine's error; a monthly budget resets on the first of the next month (UTC). */
-function budgetFailure(failed: RunFailedEvent): RunFailure {
-  const [, per, spent, limit, currency] = budgetStop.exec(failed.error) ?? [];
-  if (currency === undefined) {
-    return generalFailure(failed);
+/** The figures of the engine's error text, for a log written before it had the cause. */
+function budgetStopOfError(error: string): BudgetStop | undefined {
+  const [, per, spent, limit, currency] = budgetStopText.exec(error) ?? [];
+  if (per === undefined || spent === undefined || limit === undefined || currency === undefined) {
+    return undefined;
   }
-  const budget = Number(limit);
-  return per === "Run"
-    ? { reason: "budget", per: "run", budget, spent: Number(spent), currency }
-    : { reason: "budget", per: "month", budget, currency, resetsOn: nextMonthStart(failed.at) };
+  return {
+    per: per === "Run" ? "run" : "month",
+    currency,
+    budget: Number(limit),
+    spent: Number(spent),
+  };
 }
 
 /** The first of the month after `at` (UTC), as "1 Dec". */

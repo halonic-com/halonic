@@ -80,6 +80,11 @@ verifies("engine.budget-stops", () => {
       state: "draft",
       reason: "budget",
       error: "Monthly budget reached: 0.60 of 0.50 EUR spent this month.",
+      cause: {
+        kind: "limit_reached",
+        code: "budget.month",
+        detail: { limit: "0.5", spent: "0.6", currency: "EUR" },
+      },
     });
     expect(typesOf(runs.logs.get("run_1"))).toEqual([
       "run.started",
@@ -139,6 +144,7 @@ verifies("engine.budget-stops", () => {
       state: "polish",
       reason: "budget",
       error: "Run budget reached: 0.60 of 0.50 EUR spent.",
+      cause: { code: "budget.run", detail: { limit: "0.5", spent: "0.6", currency: "EUR" } },
     });
     expect(model.requests).toHaveLength(1);
   });
@@ -155,6 +161,7 @@ verifies("engine.budget-stops", () => {
       status: "failed",
       reason: "budget",
       error: 'Workflow "draft-twice" failed: Run budget reached: 0.60 of 0.50 EUR spent.',
+      cause: { kind: "limit_reached", code: "budget.run" },
     });
   });
 

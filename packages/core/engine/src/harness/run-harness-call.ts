@@ -20,7 +20,12 @@ import {
   type SandboxSession,
 } from "@halonicjs/ports";
 import { KindedError, type StopSignal, StopSource } from "@halonicjs/std";
-import { BudgetReachedError, type CallBudget, noCallBudget } from "../budget/call-budget.ts";
+import {
+  BudgetReachedError,
+  BudgetStopError,
+  type CallBudget,
+  noCallBudget,
+} from "../budget/call-budget.ts";
 import type { RunHarnessEffect } from "../kernel/decide-types.ts";
 import { SandboxNotReadyError } from "../run/sandbox-not-ready-error.ts";
 import { StartFailedError } from "../run/start-failed-error.ts";
@@ -203,7 +208,8 @@ function bridgeRecorderOf(log: HarnessEventLog, budget: CallBudget, callStop: St
           await budget.keep();
         } catch (error) {
           if (error instanceof KindedError && error.kind === "limit_reached") {
-            callStop.stop(new BudgetReachedError(error.message));
+            const failureCause = error instanceof BudgetStopError ? error.stop.cause : undefined;
+            callStop.stop(new BudgetReachedError(error.message, failureCause));
           }
           throw error;
         }

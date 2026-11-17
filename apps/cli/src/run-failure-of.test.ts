@@ -177,6 +177,59 @@ verifies("cli.run-failure", () => {
       );
     });
 
+    describe("budget cause", () => {
+      const withCause = (code: string, detail: Record<string, string>, error = "Budget.") =>
+        ({
+          ...failedWith("budget"),
+          error,
+          cause: { kind: "limit_reached", code, detail },
+        }) as const;
+
+      it("reads a monthly budget from the cause, also when it is too small for the error text", () => {
+        const failure = runFailureOf(
+          withCause("budget.month", { limit: "0.00001", spent: "0.0001", currency: "EUR" }),
+          calledModel(),
+        );
+        expect(failure).toEqual({
+          reason: "budget",
+          per: "month",
+          budget: 0.00001,
+          currency: "EUR",
+          resetsOn: "1 Dec",
+        });
+      });
+
+      it("prefers the cause to the error text", () => {
+        const failure = runFailureOf(
+          withCause(
+            "budget.run",
+            { limit: "5", spent: "5.08", currency: "USD" },
+            "Run budget reached: 1 of 2 EUR spent.",
+          ),
+          calledModel(),
+        );
+        expect(failure).toEqual({
+          reason: "budget",
+          per: "run",
+          budget: 5,
+          spent: 5.08,
+          currency: "USD",
+        });
+      });
+
+      it("falls back to the error text when the cause has no usable figures", () => {
+        const failure = runFailureOf(
+          withCause(
+            "budget.run",
+            { limit: "lots", spent: "5", currency: "EUR" },
+            "Run budget reached: 0.0740 of 0.0001 EUR spent.",
+          ),
+          calledModel(),
+        );
+        expect(failure).toMatchObject({ reason: "budget", per: "run", budget: 0.0001 });
+      });
+    });
+
     const generalReasons: readonly RunFailureReason[] = [
       // An error that doesn't read as the engine's budget stop.
       "budget",
