@@ -50,6 +50,7 @@ const host: ConnectorStatusHost = {
 const itemsHost: LibraryItemsHost = {
   list: async () => ({ hubs: [] }),
   remove: async () => ({ undo: async () => {} }),
+  readFile: async () => "",
   subscribe: () => () => {},
 };
 

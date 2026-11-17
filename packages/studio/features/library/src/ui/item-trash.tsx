@@ -7,6 +7,7 @@ import { itemFileRef } from "../item-file.ts";
 import { LibraryItemsHostService, type RemovedLibraryItem } from "../library-items-host.ts";
 import { putBack, removeItem } from "../remove-item.ts";
 import { usedByLine } from "../used-by-text.ts";
+import { OpenAsFileSheet } from "./open-as-file-sheet.tsx";
 
 /** What an open item page knows of itself, for deleting it. */
 export interface TrashableItem {
@@ -46,6 +47,7 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
   const toasts = useToastStore();
   const desktop = usePresentation() === "desktop";
   const [removed, setRemoved] = useState<RemovedLibraryItem>();
+  const [showingFile, setShowingFile] = useState(false);
   const { kind, hub, id, name, usage } = item;
   // Set by Undo; the page's title takes focus when it is drawn again.
   const focusTitle = useRef(false);
@@ -86,13 +88,15 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
   }, [removed, name, toasts]);
 
   const entries = [
-    ...(!desktop || context.openItem === undefined
+    // The desktop opens the file in a tab; a phone has no tabs, so it shows the text in a sheet.
+    ...(host === undefined || (desktop && context.openItem === undefined)
       ? []
       : [
           {
             id: "open-as-file",
             label: deleteWords.openAsFile,
-            onSelect: () => context.openItem?.(itemFileRef(kind, { hub, id })),
+            onSelect: () =>
+              desktop ? context.openItem?.(itemFileRef(kind, { hub, id })) : setShowingFile(true),
           },
         ]),
     ...(desktop || phoneCanDelete(kind)
@@ -101,18 +105,29 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
   ];
   const menu =
     host === undefined || entries.length === 0 ? null : (
-      <Menu
-        align="end"
-        trigger={(props) => (
-          <Button
-            {...props}
-            variant="ghost"
-            icon={<MoreIcon />}
-            label={deleteWords.pageMenuLabel(name)}
+      <>
+        <Menu
+          align="end"
+          trigger={(props) => (
+            <Button
+              {...props}
+              variant="ghost"
+              icon={<MoreIcon />}
+              label={deleteWords.pageMenuLabel(name)}
+            />
+          )}
+          entries={entries}
+        />
+        {showingFile && (
+          <OpenAsFileSheet
+            host={host}
+            context={context}
+            kind={kind}
+            place={{ hub, id }}
+            onClose={() => setShowingFile(false)}
           />
         )}
-        entries={entries}
-      />
+      </>
     );
   const strip =
     removed === undefined ? null : (

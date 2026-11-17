@@ -154,3 +154,21 @@ verifies("library.library-delete", () => {
     await expect(removed.undo()).rejects.toThrow("can't be put back");
   });
 });
+
+verifies("library.library-open-as-file", () => {
+  it("reads an item's file with unsaved changes, whatever it holds", async () => {
+    const { host, edit } = setup();
+    expect(await host.readFile("skill", { hub: null, id: "tone" })).toContain("Plain.");
+    edit("library/collections/claims.collection.yaml", "fields: [unclosed\n");
+    expect(await host.readFile("collection", { hub: null, id: "claims" })).toBe(
+      "fields: [unclosed\n",
+    );
+  });
+
+  it("says so when the item is gone", async () => {
+    const { host } = setup();
+    await expect(host.readFile("knowledge", { hub: null, id: "missing" })).rejects.toThrow(
+      "isn't in this workspace any more",
+    );
+  });
+});

@@ -50,6 +50,12 @@ export interface LibraryItemsHost {
    * Rejects with an `Error` whose message is one sentence when it can't, such as when the item is gone.
    */
   remove(kind: LibraryItemKind, place: LibraryItemPlace): Promise<RemovedLibraryItem>;
+  /**
+   * The text of the item's file (a skill's `SKILL.md`, or the one file of the other kinds), with
+   * unsaved changes applied, whatever it holds: a file that isn't valid YAML still reads.
+   * Rejects with an `Error` whose message is one sentence when it can't, such as when the item is gone.
+   */
+  readFile(kind: LibraryItemKind, place: LibraryItemPlace): Promise<string>;
   /** Calls `listener` whenever a Library item may have changed. Returns a function that stops the calls. */
   subscribe(listener: () => void): () => void;
 }

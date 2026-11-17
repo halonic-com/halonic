@@ -238,7 +238,8 @@ export function LibraryPage({
             label: deleteWords.openInNewTab,
             onSelect: () => onOpenInNewTab(kind, entryOfRow(row.id)),
           },
-          ...(onOpenAsFile === undefined
+          // On a phone only the kinds whose rows keep a ⋮ for Delete offer it (flow-library 8.3).
+          ...(onOpenAsFile === undefined || (phone && !phoneCanDelete(kind))
             ? []
             : [
                 {

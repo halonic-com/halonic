@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { itemFilePath, itemFileRef } from "./item-file.ts";
+import { itemFileName, itemFilePath, itemFileRef } from "./item-file.ts";
 
 describe("itemFilePath", () => {
   it("names a skill's SKILL.md, in a hub or shared", () => {
@@ -25,5 +25,12 @@ describe("itemFilePath", () => {
       hub: "workspace",
       id: "library/skills/tone/SKILL.md",
     });
+  });
+});
+
+describe("itemFileName", () => {
+  it("is the last part of the file's path", () => {
+    expect(itemFileName("skill", { hub: "support", id: "tone" })).toBe("SKILL.md");
+    expect(itemFileName("collection", { hub: null, id: "claims" })).toBe("claims.collection.yaml");
   });
 });
