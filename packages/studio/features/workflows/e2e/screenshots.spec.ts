@@ -181,3 +181,47 @@ for (const screen of setupScreens) {
     }
   }
 }
+
+/**
+ * Settings sections and the Agents list (HAL-11861), drawn from made-up data, at 1440 × 900 like
+ * the run card. Settings is the shell's real dialog, open on one section; the Agents list has two
+ * hubs. The phone's Settings sheet isn't taken: this guide doesn't cover phone screens yet.
+ */
+const settingsSections = [
+  "models",
+  "trusted-sources",
+  "agent-sandbox",
+  "formats",
+  "plugins",
+] as const;
+
+for (const section of settingsSections) {
+  for (const scheme of schemes) {
+    test(`settings, ${section}, ${scheme}`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto(`/settings.html?section=${section}`);
+      await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 3 })).toBeVisible();
+      // The section's own view loads after its name, so wait for something past the heading.
+      await expect(page.locator("section[aria-labelledby] > div").last()).not.toBeEmpty();
+      await page.screenshot({
+        path: `test-results/screenshots/settings-${section}-${scheme}.png`,
+        fullPage: true,
+      });
+    });
+  }
+}
+
+for (const scheme of schemes) {
+  test(`agents list, two groups, ${scheme}`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.goto("/agents-list.html");
+    await expect(page.getByRole("heading", { name: "Agents", level: 1 })).toBeVisible();
+    await expect(page.getByText("Triage")).toBeVisible();
+    await expect(page.getByText("Lead scout")).toBeVisible();
+    await page.screenshot({
+      path: `test-results/screenshots/agents-list-two-groups-${scheme}.png`,
+      fullPage: true,
+    });
+  });
+}

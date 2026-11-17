@@ -19,7 +19,7 @@ export const HostSettingsService: ServiceKey<HostSettings> =
   serviceKey<HostSettings>("settings.host");
 
 export type { DisplayPref } from "./display-prefs.ts";
-export type { DisplaySettings, SaveOutcome } from "./display-settings.ts";
+export { DisplaySettings, type SaveOutcome } from "./display-settings.ts";
 
 /**
  * The window's display settings: Appearance, Formats and Developer. The app makes one
@@ -201,3 +201,13 @@ export type {
   SandboxStepStatus,
 } from "./sandbox-choice/ui/sandbox-setup-flow.tsx";
 export { SandboxSetupFlow } from "./sandbox-choice/ui/sandbox-setup-flow.tsx";
+
+export { BrowserDisplayPrefs } from "./browser-display-prefs.ts";
+
+/**
+ * Load the Settings › Agent sandbox and Formats views, for the CI screenshots
+ * (`docs/guides/e2e-screenshots.md`), which draw them with made-up data. The app never calls them:
+ * the feature registers the sections itself.
+ */
+export const loadAgentSandboxSection = () => import("./agent-sandbox/agent-sandbox-section.tsx");
+export const loadFormatsSection = () => import("./formats/formats-section.tsx");

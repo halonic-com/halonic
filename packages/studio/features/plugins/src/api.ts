@@ -14,3 +14,9 @@ export const PluginsHostService: ServiceKey<PluginsHost> = serviceKey<PluginsHos
 
 /** The open workspace's plugins, as the plugins feature's contributions use them. */
 export const PluginsService: ServiceKey<StudioPlugins> = serviceKey<StudioPlugins>("plugins");
+
+/**
+ * Loads the Settings › Plugins view, for the CI screenshots (`docs/guides/e2e-screenshots.md`),
+ * which draw it with made-up data. The app never calls it: the feature registers the section itself.
+ */
+export const loadPluginsSettingsSection = () => import("./list/plugins-settings-section.tsx");

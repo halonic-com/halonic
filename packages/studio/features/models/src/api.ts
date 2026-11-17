@@ -142,3 +142,9 @@ export interface ProviderCheck {
 /** The provider check of the open folder. It is optional. */
 export const ProviderCheckService: ServiceKey<ProviderCheck> =
   serviceKey<ProviderCheck>("models.provider-check");
+
+/**
+ * Loads the Settings › Models view, for the CI screenshots (`docs/guides/e2e-screenshots.md`),
+ * which draw it with made-up data. The app never calls it: the feature registers the section itself.
+ */
+export const loadModelsSettingsSection = () => import("./settings/models-settings-section.tsx");
