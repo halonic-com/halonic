@@ -22,6 +22,16 @@ verifies("cli.commands.tools.approve", () => {
     await kit.expectGolden("approve-all-keep-changing", ["tools", "approve", "notes-mcp", "--all"]);
   });
 
+  it("approves with --all only the tools the connector's allow offers", async () => {
+    await kit.notes().rewriteConnector(`${notesConnector().trimEnd()}\n  allow: [lookup]\n`);
+
+    const { stdout } = await kit.tools(["approve", "notes-mcp", "--all"]);
+
+    expect(stdout.join("\n")).toContain("Approved lookup");
+    expect(stdout.join("\n")).not.toContain("archive");
+    expect((await kit.listedNow()).waiting.map((tool) => tool.name)).toContain("archive");
+  });
+
   it("approves with --all only the version it printed, so a later change asks again", async () => {
     await kit.tools(["approve", "notes-mcp", "--all"]);
     kit.notes().servers.tools = [
