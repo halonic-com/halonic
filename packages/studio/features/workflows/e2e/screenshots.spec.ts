@@ -252,11 +252,23 @@ for (const size of welcomeSizes) {
           await expect(page.getByRole("alert")).toContainText("the folder is gone.");
           await expect(page.getByRole("button", { name: "Remove from Recent" })).toBeVisible();
         }
-        const title = await page.getByRole("heading", { level: 1 }).boundingBox();
-        const open = await page.getByRole("button", { name: "Open folder" }).boundingBox();
-        expect(title, "the title is shown").not.toBeNull();
-        expect(open, "Open folder is shown").not.toBeNull();
-        ys.set(state, { title: title?.y ?? NaN, open: open?.y ?? NaN });
+        // Scroll-independent: the failed row scrolls into view, and the welcome window scrolls
+        // inside its own box, so add back every ancestor's scroll offset.
+        const found = await page.evaluate(() => {
+          const top = (element: Element | undefined) => {
+            if (!element) return Number.NaN;
+            let y = element.getBoundingClientRect().y;
+            for (let at = element.parentElement; at; at = at.parentElement) y += at.scrollTop;
+            return y;
+          };
+          return {
+            title: top(document.querySelector("h1") ?? undefined),
+            open: top(
+              [...document.querySelectorAll("button")].find((b) => b.textContent === "Open folder"),
+            ),
+          };
+        });
+        ys.set(state, found);
         await page.screenshot({
           path: `test-results/screenshots/welcome-${state}-${size.width}-${scheme}.png`,
           fullPage: true,

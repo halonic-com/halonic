@@ -337,6 +337,29 @@ verifies("shell.welcome-recent", () => {
     expect(recentRow(root, "acme")?.className).not.toContain("border-danger");
   });
 
+  it("scrolls the row that failed into view", async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    const root = render(
+      <Welcome
+        onOpenFolder={async () => undefined}
+        recent={{
+          workspaces,
+          onOpen: async () => ({
+            folder: "/work/beta",
+            kind: "not_found",
+            reason: "the folder is gone.",
+          }),
+          onRemove: () => {},
+        }}
+      />,
+    );
+
+    await act(async () => recentRow(root, "beta")?.click());
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+    delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+  });
+
   it("cuts a long folder in the middle and keeps its end", () => {
     const location = "/work/projects/Customer Support/Halonic Workspaces/Q3 Renewals";
     const root = render(
@@ -353,7 +376,7 @@ verifies("shell.welcome-recent", () => {
     const row = root.querySelector("li button");
     expect(row?.getAttribute("aria-label")).toBe(`Q3, ${location}`);
     expect(row?.textContent).toContain(location);
-    expect(row?.querySelector(".shrink-0")?.textContent).toBe(location.slice(-24));
+    expect(row?.querySelector(".shrink-0")?.textContent).toBe("/Halonic Workspaces/Q3 Renewals");
   });
 
   it("says a row's folder is gone, offers Remove from Recent and keeps the row", async () => {

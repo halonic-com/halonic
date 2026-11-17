@@ -39,9 +39,12 @@ export interface WelcomeRecentProps {
 /** How much of a folder's end always shows when its line is cut in the middle. */
 const TAIL_LENGTH = 24;
 
-/** A folder that, when too long, is cut in the middle so its end, which tells folders apart, stays. */
+/** A folder that, when too long, is cut in the middle so its end, which tells folders apart, stays; the cut lands on a "/" when it can. */
 function MiddleCut({ text }: { readonly text: string }) {
-  const at = Math.max(0, text.length - TAIL_LENGTH);
+  const cut = Math.max(0, text.length - TAIL_LENGTH);
+  // Cut at a "/" so the end starts on a whole folder name, when there is one to cut at.
+  const slash = text.lastIndexOf("/", cut);
+  const at = slash > 0 ? slash : cut;
   return (
     <span className="flex min-w-0 text-caption text-fg-subtle">
       <span className="truncate">{text.slice(0, at)}</span>
@@ -83,7 +86,7 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef, failed }: W
                 aria-label={`${workspace.name}, ${workspace.location}${workspace.sample === true ? `, ${sampleTag}` : ""}`}
                 aria-busy={busy || undefined}
                 aria-describedby={failedRow ? failed?.alertId : undefined}
-                className={failedRow ? `${rowClasses} ${failedClasses}` : rowClasses}
+                className={`${rowClasses} ${failedRow ? failedBorder : idleBorder}`}
                 onClick={() => {
                   if (!busy) {
                     onOpen(workspace.location);
@@ -118,10 +121,12 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef, failed }: W
   );
 }
 
-const failedClasses = "border-danger";
+// One border colour per state: both on a row would fight, and the transparent one could win.
+const idleBorder = "border-transparent";
+const failedBorder = "border-danger";
 
 // The sidebar switcher's padding and radius, so a workspace row looks the same in both places.
 const rowClasses = [
-  "flex w-full min-w-0 items-center gap-2.5 rounded-sm border border-transparent px-2 py-1.5 text-start outline-none focus-ring",
+  "flex w-full min-w-0 items-center gap-2.5 rounded-sm border px-2 py-1.5 text-start outline-none focus-ring",
   "hover:bg-surface-muted active:bg-surface-muted",
 ].join(" ");
