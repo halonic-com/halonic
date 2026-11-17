@@ -26,7 +26,7 @@ const LAST_MARK: Record<RunRow["standing"], StepMark> = {
   budget: "stopped",
   cancelled: "stopped",
   running: "running",
-  "cant-try": "running",
+  "cant-try": "stopped",
   waiting: "waiting",
   "needs-you": "waiting",
 };

@@ -20,6 +20,7 @@ verifies("workflows.canvas.status-dots", () => {
     expect(marksOf(["start", "write"], "failed")["write"]).toBe("failed");
     expect(marksOf(["start", "write"], "done")["write"]).toBe("done");
     expect(marksOf(["start", "write"], "cancelled")["write"]).toBe("stopped");
+    expect(marksOf(["start", "write"], "cant-try")["write"]).toBe("stopped");
   });
 
   it("names the active step only while the run is going", () => {
@@ -28,5 +29,6 @@ verifies("workflows.canvas.status-dots", () => {
     expect(shownRun(row("waiting"), run("write", visited), undefined).active).toBe("write");
     expect(shownRun(row("done"), run("write", visited), undefined).active).toBeUndefined();
     expect(shownRun(row("failed"), run("write", visited), undefined).active).toBeUndefined();
+    expect(shownRun(row("cant-try"), run("write", visited), undefined).active).toBeUndefined();
   });
 });
