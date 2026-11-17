@@ -41,3 +41,11 @@ export interface TrustedSourcesHost {
 export const TrustedSourcesService: ServiceKey<TrustedSourcesHost> = serviceKey<TrustedSourcesHost>(
   "workspace.trusted-sources",
 );
+
+/**
+ * Loads the Settings › Trusted sources view, for the CI screenshots
+ * (`docs/guides/e2e-screenshots.md`), which draw it with made-up data. The app never calls it: the
+ * feature registers the section itself.
+ */
+export const loadTrustedSourcesSection = () =>
+  import("./trusted-sources/trusted-sources-section.tsx");

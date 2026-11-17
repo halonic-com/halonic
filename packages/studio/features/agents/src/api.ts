@@ -98,3 +98,9 @@ export interface AgentsHost {
 
 /** The open workspace's agents, provided by the app (`agents.host`). */
 export const AgentsHostService: ServiceKey<AgentsHost> = serviceKey<AgentsHost>("agents.host");
+
+/**
+ * Loads the Agents list, for the CI screenshots (`docs/guides/e2e-screenshots.md`), which draw it
+ * with made-up data. The app never calls it: the feature registers the page itself.
+ */
+export const loadAgentsPage = () => import("./list/agents-page.tsx");
