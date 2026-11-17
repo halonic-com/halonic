@@ -15,4 +15,5 @@
 
 ## Covers
 
+- app.money-amount
 - cli.run-failure

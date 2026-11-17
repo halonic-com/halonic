@@ -183,6 +183,9 @@ type ByReason = {
   ) => Phrase;
 };
 
+// A budget line puts the amount after "of" or "estimated", where "less than €0.001" reads better than "under" (HAL-12034).
+const afterOf: MoneyAmountOptions = { tiny: "less than" };
+
 /**
  * Line 1 by reason (cli-output 3.4, revisions 5 and 23): the Studio sentence
  * after "Support reply failed in the step Draft a reply:", without what line 2
@@ -190,9 +193,6 @@ type ByReason = {
  * user set; `error` and `internal` have a full stop after the step, because
  * "Halonic can't tell the cause yet" is the reason.
  */
-// A budget line puts the amount after "of" or "estimated", where "less than €0.001" reads better than "under" (HAL-12034).
-const afterOf: MoneyAmountOptions = { tiny: "less than" };
-
 const lineOne = {
   "key-refused": (run, failure) =>
     failedIn(
