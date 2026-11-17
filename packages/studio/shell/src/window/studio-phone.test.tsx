@@ -54,6 +54,55 @@ function AgentsView() {
   return <h1 tabIndex={-1}>Agents</h1>;
 }
 
+/** A place whose top page has a row that pushes a list, and whose pushed list says what it got. */
+function RoutinesView({ context, sub }: PlaceViewProps) {
+  if (sub !== undefined) {
+    return (
+      <>
+        <h1 tabIndex={-1}>{`Routines ${sub}`}</h1>
+        <button
+          type="button"
+          className="push-weekly"
+          onClick={() => context.openPlaceList?.("routines", "weekly", "Weekly")}
+        >
+          Weekly
+        </button>
+      </>
+    );
+  }
+  return (
+    <>
+      <h1 tabIndex={-1}>Routines</h1>
+      <button
+        type="button"
+        className="push-list"
+        onClick={() => context.openPlaceList?.("routines", "daily", "Daily")}
+      >
+        Daily
+      </button>
+      <button
+        type="button"
+        className="push-weekly"
+        onClick={() => context.openPlaceList?.("routines", "weekly", "Weekly")}
+      >
+        Weekly
+      </button>
+    </>
+  );
+}
+
+const routinesFeature = defineFeature({
+  id: "routines",
+  title: "Routines",
+  register(studio) {
+    studio.places.add({
+      id: "routines",
+      view: "RoutinesView",
+      load: async () => ({ RoutinesView }),
+    });
+  },
+});
+
 function BrokenAgentsView(): never {
   throw new Error("the agents view broke");
 }
@@ -230,6 +279,42 @@ verifies("shell.studio-phone", () => {
     expect(container.querySelector("main h1.inbox-view")?.textContent).toBe("Inbox");
     const inbox = container.querySelector('nav[aria-label="Places"] a[aria-label^="Inbox"]');
     expect(inbox?.getAttribute("aria-current")).toBe("page");
+  });
+
+  it("pushes a list above a place's page for the view, with Back and the bottom navigation", async () => {
+    const { container, title, heading, button, openUnderMore } = renderPhoneWindow([
+      inboxFeature,
+      routinesFeature,
+    ]);
+    await openUnderMore("Routines");
+    act(() => container.querySelector<HTMLButtonElement>("button.push-list")?.click());
+    await settle();
+
+    expect(title()).toBe("Daily");
+    expect(heading()).toBe("Routines daily");
+    expect(container.querySelector('nav[aria-label="Places"]')).not.toBeNull();
+
+    act(() => button("Back")?.click());
+    await settle();
+    expect(heading()).toBe("Routines");
+  });
+
+  it("replaces a pushed list with another from it, so Back leads to the place's page", async () => {
+    const { container, title, heading, button, openUnderMore } = renderPhoneWindow([
+      inboxFeature,
+      routinesFeature,
+    ]);
+    await openUnderMore("Routines");
+    act(() => container.querySelector<HTMLButtonElement>("button.push-list")?.click());
+    await settle();
+    act(() => container.querySelector<HTMLButtonElement>("button.push-weekly")?.click());
+    await settle();
+    expect(title()).toBe("Weekly");
+    expect(heading()).toBe("Routines weekly");
+
+    act(() => button("Back")?.click());
+    await settle();
+    expect(heading()).toBe("Routines");
   });
 
   it("opens a place under More with Back, and Back goes back to the More page", async () => {

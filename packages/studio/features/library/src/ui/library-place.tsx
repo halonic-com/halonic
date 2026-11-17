@@ -9,12 +9,14 @@ import { LibraryItemsHostService } from "../library-items-host.ts";
 import type { LibraryEntryPlace } from "../library-overview.ts";
 import { LibraryTabMemoryService } from "../library-tab-memory.ts";
 import { takeLibraryTabRequests } from "../library-tab-request.ts";
+import { libraryKinds, tabLabel } from "../library-words.ts";
 import { NewCollectionHostService } from "../new-collection-host.ts";
 import { type ConnectorRef, NewConnectorHostService } from "../new-connector-host.ts";
 import { type NewConnectorRequest, takeNewConnectorRequests } from "../new-connector-request.ts";
 import { NewSkillHostService } from "../new-skill-host.ts";
 import { requestSkillInstructionsFocus } from "../skill-focus-request.ts";
 import type { SkillRef } from "../skill-host.ts";
+import { LibraryKindList } from "./library-kind-list.tsx";
 import { LibraryPage } from "./library-page.tsx";
 import { NewCollectionDialog } from "./new-collection-dialog.tsx";
 import { NewConnectorDialog } from "./new-connector-dialog.tsx";
@@ -45,20 +47,58 @@ function newButtonOf(
 }
 
 /**
- * The Library place's page: {@link LibraryPage} over the open workspace's items. It opens on the
+ * The Library place's page (see {@link LibraryKindView} for the tabs): on a phone, the list of
+ * kinds at the place's top and a kind's list as a page pushed above it (flow-library 8).
+ */
+export function LibraryPlace(props: PlaceViewProps) {
+  const { context, sub } = props;
+  const phone = usePresentation() === "phone";
+  const onList = phone && !libraryKinds.some((kind) => kind === sub);
+  const { openPlaceList } = context;
+  // An Alt+4 to Alt+7 command asks for a tab: on the list of kinds, that is the kind's page.
+  useEffect(
+    () =>
+      onList
+        ? takeLibraryTabRequests((kind) => openPlaceList?.("library", kind, tabLabel(kind)))
+        : undefined,
+    [onList, openPlaceList],
+  );
+  if (onList) {
+    const plugins = context.settingsSections?.find(({ id }) => id === "plugins");
+    const { openSettings } = context;
+    return (
+      <LibraryKindList
+        onOpenKind={(kind) => openPlaceList?.("library", kind, tabLabel(kind))}
+        {...(plugins === undefined || openSettings === undefined
+          ? {}
+          : { onOpenPlugins: () => openSettings(plugins.id) })}
+      />
+    );
+  }
+  return <LibraryKindView {...props} />;
+}
+
+/**
+ * The Library's tabs: {@link LibraryPage} over the open workspace's items. It opens on the
  * tab the workspace was last on (Skills the first time), shows the tab an Alt+4 to Alt+7 command
  * asks for, and remembers the tab it ends on.
  */
-export function LibraryPlace({ context }: PlaceViewProps) {
+function LibraryKindView({ context, sub }: PlaceViewProps) {
   const host = context.services.get(LibraryItemsHostService);
   const memory = context.services.get(LibraryTabMemoryService);
-  const [kind, setKind] = useState<LibraryItemKind>(() => memory.get() ?? "skill");
+  const [chosen, setKind] = useState<LibraryItemKind>(() => memory.get() ?? "skill");
+  const desktop = usePresentation() === "desktop";
+  // A phone shows the list of kinds, and a kind's list as a page of its own (flow-library 8).
+  const phoneKind = desktop ? undefined : libraryKinds.find((each) => each === sub);
+  const kind = phoneKind ?? chosen;
+  const { openPlaceList } = context;
   const show = useCallback(
     (next: LibraryItemKind) => {
       setKind(next);
       memory.set(next);
+      if (!desktop) openPlaceList?.("library", next, tabLabel(next));
     },
-    [memory],
+    [memory, desktop, openPlaceList],
   );
   useEffect(() => takeLibraryTabRequests(show), [show]);
   const newSkillHost = context.services.find(NewSkillHostService);
@@ -66,7 +106,6 @@ export function LibraryPlace({ context }: PlaceViewProps) {
   const newCollectionHost = context.services.find(NewCollectionHostService);
   const [makingCollection, setMakingCollection] = useState(false);
   // A phone only looks at connectors: New connector (a three-way setup dialog) is desktop only.
-  const desktop = usePresentation() === "desktop";
   const newConnectorHost = desktop ? context.services.find(NewConnectorHostService) : undefined;
   const [makingConnector, setMakingConnector] = useState<NewConnectorRequest>();
   // Each request gets its own dialog, so a second request while one is open shows its own name and way.

@@ -30,6 +30,28 @@ function on(place: "inbox" | "runs" | "more", ...pages: TabLocation[]): PlaceSta
 }
 
 verifies("shell.place-stacks", () => {
+  describe("sibling pages", () => {
+    const sub = (name: string, title: string): TabLocation => ({ key: `routines/${name}`, title });
+    const daily = sub("daily", "Daily");
+    const weekly = sub("weekly", "Weekly");
+
+    it("replaces a place's sub page with another, so Back leads to the place's page", () => {
+      const top = on("more", { key: "routines", title: "Routines" });
+      const opened = openPhonePage(openPhonePage(top, daily, { list: true }), weekly, {
+        list: true,
+        replaceSibling: true,
+      });
+      expect(shown(opened)).toBe("routines/weekly");
+      expect(shown(goBackOnPhone(opened) as PlaceStacks)).toBe("routines");
+    });
+
+    it("pushes a sub page on the place's page", () => {
+      const top = on("more", { key: "routines", title: "Routines" });
+      const opened = openPhonePage(top, daily, { list: true, replaceSibling: true });
+      expect(shown(goBackOnPhone(opened) as PlaceStacks)).toBe("routines");
+    });
+  });
+
   describe("places", () => {
     it("starts on Home with every place at its top", () => {
       const stacks = startPlaceStacks();

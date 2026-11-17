@@ -191,6 +191,10 @@ export function StudioWindow(props: StudioWindowProps) {
       ...shell.services.contextFor(featureId, workspace.services),
       ...(onDesktop.current ? { activeItem } : {}),
       openPlace: (place) => openPlaceHere.current(place),
+      openPlaceList: (place, sub, title) => {
+        if (!onDesktop.current)
+          openPhone({ key: `${place}/${sub}`, title }, { list: true, replaceSibling: true });
+      },
       badges: shell.badges,
       openItem: (item, options) => openHere.current(locationOfItem(item, options)),
       openItemInNewTab: (item) => openItemInNewTab.current(locationOfItem(item)),
@@ -205,7 +209,7 @@ export function StudioWindow(props: StudioWindowProps) {
         return true;
       },
     }),
-    [shell, workspace, openSettings, settingsSections, contributions, activeItem],
+    [shell, workspace, openSettings, openPhone, settingsSections, contributions, activeItem],
   );
   const runCommand = (commandId: string): boolean => {
     const command = contributions.commands.get(commandId, contextFor);

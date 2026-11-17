@@ -47,6 +47,11 @@ export interface PlaceStacks {
 export interface PhoneOpenOptions {
   /** The page is still a list, so the bottom navigation stays; see {@link PhonePage.list}. */
   readonly list?: boolean;
+  /**
+   * Replaces the page shown when it is a sibling of this one (`place/a` and `place/b`) instead of
+   * stacking on it, so Back from either leads to the place's page, not through the first.
+   */
+  readonly replaceSibling?: boolean;
 }
 
 /** The phone at the start: on Home, every place at its top. */
@@ -118,7 +123,9 @@ export function openPhonePage(
     return openMoreList(stacks, settingsLocation);
   }
   const page: PhonePage = { location, list: options.list ?? false };
-  return withStack(stacks, stacks.place, [...stacks.stacks[stacks.place], page]);
+  const stack = stacks.stacks[stacks.place];
+  const replaced = options.replaceSibling === true && isSibling(currentPhonePage(stacks), location);
+  return withStack(stacks, stacks.place, [...(replaced ? stack.slice(0, -1) : stack), page]);
 }
 
 /**
@@ -181,6 +188,12 @@ function withStack(
   pages: readonly PhonePage[],
 ): PlaceStacks {
   return { ...stacks, stacks: { ...stacks.stacks, [place]: pages } };
+}
+
+/** Whether the page is a `place/sub` page and the location another one of the same place. */
+function isSibling(page: PhonePage, location: TabLocation): boolean {
+  const [place, sub] = page.location.key.split("/");
+  return sub !== undefined && location.key.startsWith(`${place}/`);
 }
 
 /** A sidebar place or Settings, which open where they live rather than on the place shown. */
