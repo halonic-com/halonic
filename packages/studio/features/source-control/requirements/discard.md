@@ -6,7 +6,7 @@
 
 The Changes page shall give each changed file Undo these changes, which at once puts the file back as the last version has it, without a question: a changed or deleted file gets its text back and a new file is deleted. Before it changes anything, Halonic shall keep a copy of the text it throws away in `.studio/discarded`, which git ignores, and when the copy can't be kept, nothing shall be discarded and the page shall say "Couldn't discard these changes." and why. A toast "Discarded changes in 1 file" shall offer Undo, which brings the file back as one undo step, or, when the file changed in the meantime, shows a toast "Couldn't put the changes back" and why. Nothing shall be written when the file changed since the page read it, and a file that another program added to a version, or that can't be read as text, can't be discarded here and the page shall say why.
 
-While the developer view is on (Settings → Developer → Show files and branches), the same button shall read Discard, and each file with changed lines shall have Show lines, which lists its parts as removed and added lines, each part with Discard this part. That puts back only that part, keeps the rest of the file, and shows the toast "Discarded this part" with Undo. While the developer view is off, there shall be no Discard, no Show lines and no Discard this part.
+While the developer view is on (Settings → Developer → Show files and branches), the same button shall read Discard, and the lines under Advanced shall each part have Discard this part. That puts back only that part, keeps the rest of the file, and shows the toast "Discarded this part" with Undo. While the developer view is off, there shall be no Discard and no Discard this part.
 
 ## Examples
 
@@ -20,4 +20,4 @@ While the developer view is on (Settings → Developer → Show files and branch
 - Given the developer view is on and `hub.yaml` has two changed parts,
   when the person presses Discard this part on the first,
   then only that part is back as last committed, the second stays, and the toast offers Undo.
-- Given the developer view is off, then the page has no Discard, no Show lines and no Discard this part.
+- Given the developer view is off, then the page has no Discard and no Discard this part, though Advanced still lists the lines.

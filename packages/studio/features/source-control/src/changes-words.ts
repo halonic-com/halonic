@@ -117,8 +117,12 @@ export const discardWords = {
   undoTheseChanges: "Undo these changes",
   discard: "Discard",
   discardThisPart: "Discard this part",
-  showLines: "Show lines",
-  hideLines: "Hide lines",
+  /** The disclosure that opens the line diff of a file. */
+  advanced: "Advanced",
+  /** Said once for a file whose change Halonic can't put in words. */
+  cantDescribe: "Halonic can't describe this change.",
+  /** The label beside that file's name, by what happened to it. */
+  fileLabel: { changed: "CHANGED", new: "NEW", deleted: "DELETED" },
   /** The line diff's heading, read by a screen reader. */
   lines: (path: string) => `Changed lines in ${path}`,
   /** The toast after Undo these changes: "Discarded refund-handling". */

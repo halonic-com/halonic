@@ -187,14 +187,14 @@ verifies("source-control.change-list", () => {
     it("shows a file no kind places as one line without Undo this change", async () => {
       const { root } = await openPage();
       const section = openItem(root, "README.md");
-      expect(section.textContent).toContain("Changed");
+      expect(section.textContent).toContain("CHANGED");
       expect(buttons(section, "Undo this change")).toHaveLength(0);
     });
 
     it("shows a file that can't be read as text as one line, New for an untracked one", async () => {
       const { root } = await openPage();
       const section = openItem(root, "new.txt");
-      expect(section.textContent).toContain("New");
+      expect(section.textContent).toContain("NEW");
       expect(buttons(section, "Undo this change")).toHaveLength(0);
     });
 

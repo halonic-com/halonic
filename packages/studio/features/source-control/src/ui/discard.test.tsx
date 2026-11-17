@@ -16,6 +16,10 @@ const lines = (...all: string[]) => `${all.join("\n")}\n`;
 const hub = "hubs/sales/hub.yaml";
 const before = lines("a", "b", "c", "d", "e", "f", "g", "h");
 const after = lines("A", "b", "c", "d", "e", "f", "g", "H");
+/** A file Halonic describes in words, so its Advanced starts closed. */
+const agent = "agents/triage.agent.yaml";
+const agentBefore = lines("id: triage", "name: Triage", "model: claude");
+const agentAfter = lines("id: triage", "name: Triage", "model: gpt");
 
 function developerView(initial: boolean) {
   let on = initial;
@@ -49,8 +53,10 @@ async function openPage(
       { path: hub, status: "modified", staged: options.staged ?? false },
       { path: "skills/tone/SKILL.md", status: "untracked", staged: false },
       { path: "old/gone.md", status: "deleted", staged: false },
+      { path: agent, status: "modified", staged: false },
     ],
   });
+  fake.setTexts(agent, { before: agentBefore, after: agentAfter });
   fake.setTexts(hub, options.texts ?? { before, after });
   fake.setTexts("skills/tone/SKILL.md", { before: null, after: "Be kind.\n" });
   fake.setTexts("old/gone.md", { before: "bye\n", after: null });
@@ -84,6 +90,7 @@ const rowNames: Readonly<Record<string, string>> = {
   [hub]: "sales",
   "skills/tone/SKILL.md": "SKILL.md",
   "old/gone.md": "gone.md",
+  [agent]: "Triage",
 };
 const section = (root: HTMLElement, path: string) => openItem(root, rowNames[path] ?? path);
 
@@ -184,10 +191,11 @@ verifies("source-control.discard", () => {
   });
 
   describe("developer view", () => {
-    it("has no Discard, Show lines or Discard this part while it is off", async () => {
+    it("has no Discard or Discard this part while it is off, though Advanced lists the lines", async () => {
       const { root } = await openPage();
+      const page = section(root, hub);
+      expect(page.textContent).toContain("+ H");
       expect(buttons(root, "Discard")).toHaveLength(0);
-      expect(buttons(root, "Show lines")).toHaveLength(0);
       expect(buttons(root, "Discard this part")).toHaveLength(0);
     });
 
@@ -201,7 +209,6 @@ verifies("source-control.discard", () => {
 
     it("discards only one part, keeps the other and offers Undo", async () => {
       const { fake, root, toasts } = await openPage({ developer: true });
-      await press(buttons(section(root, hub), "Show lines")[0]);
       expect(section(root, hub).textContent).toContain("- a");
       expect(section(root, hub).textContent).toContain("+ H");
       const parts = buttons(section(root, hub), "Discard this part");
@@ -221,9 +228,18 @@ verifies("source-control.discard", () => {
       expect(fake.replaced[1]?.text).toBe(after);
     });
 
+    it("discards one part of a described file after Advanced is pressed", async () => {
+      const { fake, root, toasts } = await openPage({ developer: true });
+      const page = section(root, agent);
+      expect(buttons(page, "Discard this part")).toHaveLength(0);
+      await press(buttons(page, "Advanced")[0]);
+      await press(buttons(page, "Discard this part")[0]);
+      expect(fake.replaced[0]).toEqual({ path: agent, text: agentBefore, expected: agentAfter });
+      expect(toasts.list()[0]?.title).toBe("Discarded this part");
+    });
+
     it("ignores a second press on Discard this part while the first is working", async () => {
       const { fake, root } = await openPage({ developer: true });
-      await press(buttons(section(root, hub), "Show lines")[0]);
       const [part] = buttons(section(root, hub), "Discard this part");
       await act(async () => {
         part?.click();
@@ -239,10 +255,10 @@ verifies("source-control.discard", () => {
       expect(fake.replaced[0]?.text).toBe(before);
     });
 
-    it("offers no Show lines for a new or deleted file", async () => {
+    it("offers no Advanced for a new or deleted file", async () => {
       const { root } = await openPage({ developer: true });
-      expect(buttons(section(root, "skills/tone/SKILL.md"), "Show lines")).toHaveLength(0);
-      expect(buttons(section(root, "old/gone.md"), "Show lines")).toHaveLength(0);
+      expect(buttons(section(root, "skills/tone/SKILL.md"), "Advanced")).toHaveLength(0);
+      expect(buttons(section(root, "old/gone.md"), "Advanced")).toHaveLength(0);
     });
   });
 });
@@ -250,12 +266,24 @@ verifies("source-control.discard", () => {
 verifies("source-control.line-diff", () => {
   it("heads each part with where it is and says added and removed lines in words", async () => {
     const { root } = await openPage({ developer: true });
-    await press(buttons(section(root, hub), "Show lines")[0]);
     const text = section(root, hub).textContent ?? "";
     expect(text).toContain("Line 1");
     expect(text).toContain("Line 8");
     expect(text).toContain("Removed line: - a");
     expect(text).toContain("Added line: + A");
+  });
+
+  it("shows a described file's lines only once Advanced is pressed", async () => {
+    const { root } = await openPage();
+    const page = section(root, agent);
+    const advanced = buttons(page, "Advanced")[0];
+    expect(advanced?.getAttribute("aria-expanded")).toBe("false");
+    expect(page.textContent).not.toContain("Removed line:");
+    await press(advanced);
+    expect(advanced?.getAttribute("aria-expanded")).toBe("true");
+    expect(page.textContent).toContain("Line 3");
+    expect(page.textContent).toContain("Removed line: - model: claude");
+    expect(page.textContent).toContain("Added line: + model: gpt");
   });
 
   it("heads a part of several lines with the first and last line it covers", async () => {
@@ -266,7 +294,6 @@ verifies("source-control.line-diff", () => {
         after: lines("a", "B", "C", "d"),
       },
     });
-    await press(buttons(section(root, hub), "Show lines")[0]);
     expect(section(root, hub).textContent).toContain("Lines 2 to 3");
   });
 });
